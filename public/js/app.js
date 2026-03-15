@@ -371,209 +371,97 @@ function syncKey(key,val){
 
 
 // ══ ONBOARDING ══
-let obStep=0;
-const OB_STEPS=['welcome','profile','school','schedule','done'];
+let obCurrentStep=1;
+const OB_TOTAL=4;
+let obSelectedGrade='10';
+let obSelectedTrack='Pre-IB / MYP';
+let obScheduleImgData=null;
+let obExtractedClasses=[];
 
 function showOnboarding(){
-  obStep=0;
-  document.getElementById('onboarding').style.display='flex';
-  document.getElementById('loginScreen').classList.remove('visible');
-  renderObStep();
-}
-
-function renderObStep(){
-  const wrap=document.getElementById('obWrap');
-  const step=OB_STEPS[obStep];
-  const dots=OB_STEPS.map((_,i)=>`<div style="width:${i===obStep?24:8}px;height:8px;border-radius:4px;background:${i<=obStep?'var(--accent)':('var(--border2)')};transition:all .3s"></div>`).join('');
-  const dotBar=`<div style="display:flex;gap:6px;justify-content:center;margin-bottom:28px">${dots}</div>`;
-  let inner='';
-  if(step==='welcome'){
-    inner=`<div style="text-align:center;margin-bottom:24px"><div style="font-size:2.2rem;margin-bottom:10px">👋</div><div style="font-size:1.3rem;font-weight:800;margin-bottom:8px">Welcome to Flux</div><div style="font-size:.88rem;color:var(--muted2);line-height:1.7">Let's set up your planner in about 2 minutes. You can change everything later.</div></div><button onclick="obNext()" style="width:100%;padding:14px;font-size:1rem">Get Started →</button><div style="text-align:center;margin-top:12px"><span style="font-size:.75rem;color:var(--muted);cursor:pointer" onclick="obSkipAll()">Skip setup →</span></div>`;
-  }else if(step==='profile'){
-    const p=load('profile',{});
-    inner=`<div style="font-size:1.1rem;font-weight:800;margin-bottom:6px">About you</div><div style="font-size:.82rem;color:var(--muted2);margin-bottom:20px">Tell Flux a bit about yourself</div><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Your first name</label><input type="text" id="obName" placeholder="e.g. Azfer" value="${p.name||''}" style="margin-bottom:14px"><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Grade</label><select id="obGrade" style="margin-bottom:14px"><option value="9" ${p.grade==='9'?'selected':''}>9th Grade</option><option value="10" ${(!p.grade||p.grade==='10')?'selected':''}>10th Grade</option><option value="11" ${p.grade==='11'?'selected':''}>11th Grade</option><option value="12" ${p.grade==='12'?'selected':''}>12th Grade</option></select><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">IB Track</label><select id="obTrack" style="margin-bottom:20px"><option ${(!p.track||p.track.includes('MYP'))?'selected':''}>Pre-IB / MYP</option><option ${p.track&&p.track.includes('Diploma')?'selected':''}>IB Diploma</option></select><button onclick="obSaveProfile()" style="width:100%;padding:14px">Continue →</button>`;
-  }else if(step==='school'){
-    inner=`<div style="font-size:1.1rem;font-weight:800;margin-bottom:6px">Your school</div><div style="font-size:.82rem;color:var(--muted2);margin-bottom:20px">Optional — fill in later anytime</div><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">School name</label><input type="text" id="obSchoolName" placeholder="e.g. International Academy East" value="${schoolInfo.schoolName||''}" style="margin-bottom:14px"><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Counselor name</label><input type="text" id="obCounselor" placeholder="e.g. Ms. Johnson" value="${schoolInfo.counselor||''}" style="margin-bottom:14px"><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Locker number</label><input type="text" id="obLocker" placeholder="e.g. 342" value="${schoolInfo.locker||''}" style="margin-bottom:14px"><label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Locker combination</label><input type="text" id="obCombo" placeholder="e.g. 14-32-07" value="${schoolInfo.combo||''}" style="margin-bottom:20px"><button onclick="obSaveSchool()" style="width:100%;padding:14px">Continue →</button><div style="text-align:center;margin-top:10px"><span style="font-size:.75rem;color:var(--muted);cursor:pointer" onclick="obNext()">Skip for now</span></div>`;
-  }else if(step==='schedule'){
-    inner=`<div style="font-size:1.1rem;font-weight:800;margin-bottom:6px">Your schedule</div><div style="font-size:.82rem;color:var(--muted2);margin-bottom:20px">Upload a photo and AI will read it automatically</div><label id="obUploadLabel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border:2px dashed var(--border2);border-radius:14px;padding:28px 16px;cursor:pointer;background:var(--card2);transition:border-color .2s;margin-bottom:14px"><div style="font-size:2rem">📷</div><div style="font-size:.88rem;font-weight:600">Tap to upload schedule photo</div><div style="font-size:.72rem;color:var(--muted)">StudentConnect screenshot, printed schedule, etc.</div><input type="file" id="obScheduleImg" accept="image/*" style="display:none" onchange="obHandleScheduleImg(event)"></label><div id="obImgPreview" style="display:none;margin-bottom:14px"></div><div id="obAIResult" style="display:none;margin-bottom:14px;padding:14px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:12px;font-size:.82rem;line-height:1.8;max-height:220px;overflow-y:auto"></div><div id="obAnalyzeBtn" style="display:none;margin-bottom:14px"><button onclick="obAnalyzeSchedule()" id="obAnalyzeBtnEl" style="width:100%;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">✦ Analyze with AI</button></div><button onclick="obNext()" style="width:100%;padding:14px" id="obScheduleNext">Continue →</button><div style="text-align:center;margin-top:10px"><span style="font-size:.75rem;color:var(--muted);cursor:pointer" onclick="obNext()">Skip for now</span></div>`;
-  }else if(step==='done'){
-    const name=load('profile',{}).name||'there';
-    inner=`<div style="text-align:center"><div style="font-size:2.8rem;margin-bottom:12px">🎉</div><div style="font-size:1.3rem;font-weight:800;margin-bottom:8px">You're all set, ${name}!</div><div style="font-size:.88rem;color:var(--muted2);line-height:1.7;margin-bottom:28px">Your planner is ready. Data syncs to your Google account automatically.</div><button onclick="obFinish()" style="width:100%;padding:14px;font-size:1rem">Open Flux →</button></div>`;
-  }
-  wrap.innerHTML=dotBar+inner;
-}
-
-function obNext(){obStep=Math.min(obStep+1,OB_STEPS.length-1);renderObStep();}
-function obSkipAll(){save('flux_onboarded',true);document.getElementById('onboarding').style.display='none';document.getElementById('app').classList.add('visible');}
-function obFinish(){save('flux_onboarded',true);document.getElementById('onboarding').style.display='none';document.getElementById('app').classList.add('visible');spawnConfetti();}
-
-function obSaveProfile(){
-  const name=document.getElementById('obName').value.trim();
-  const grade=document.getElementById('obGrade').value;
-  const track=document.getElementById('obTrack').value;
-  const p={name,grade,track};
-  localStorage.setItem('profile',JSON.stringify(p));
-  localStorage.setItem('flux_user_name',name.split(' ')[0]||name);
-  const sn=document.getElementById('sidebarName');if(sn&&name)sn.textContent=name;
-  obNext();
-}
-
-function obSaveSchool(){
-  schoolInfo.schoolName=document.getElementById('obSchoolName').value.trim();
-  schoolInfo.counselor=document.getElementById('obCounselor').value.trim();
-  schoolInfo.locker=document.getElementById('obLocker').value.trim();
-  schoolInfo.combo=document.getElementById('obCombo').value.trim();
-  save('flux_school',schoolInfo);
-  obNext();
-}
-
-let obScheduleBase64=null,obScheduleMime=null;
-function obHandleScheduleImg(event){
-  const file=event.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    obScheduleBase64=e.target.result.split(',')[1];
-    obScheduleMime=file.type;
-    const prev=document.getElementById('obImgPreview');
-    prev.style.display='block';
-    prev.innerHTML=`<img src="${e.target.result}" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;border:1px solid var(--border)">`;
-    document.getElementById('obAnalyzeBtn').style.display='block';
-    const lbl=document.getElementById('obUploadLabel');if(lbl)lbl.style.borderColor='var(--accent)';
-  };
-  reader.readAsDataURL(file);
-}
-
-async function obAnalyzeSchedule(){
-  const btn=document.getElementById('obAnalyzeBtnEl');
-  if(!obScheduleBase64){alert('Please upload an image first.');return;}
-  btn.disabled=true;btn.textContent='✦ Analyzing...';
-  const resEl=document.getElementById('obAIResult');
-  resEl.style.display='block';resEl.innerHTML='<em style="color:var(--muted)">Reading your schedule...</em>';
-  try{
-    const res=await fetch('/api/gemini-proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:obScheduleBase64,mimeType:obScheduleMime,prompt:'This is a student class schedule. Extract every class/period and return ONLY a JSON array: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. If period numbers are missing, number them 1,2,3... Use empty string for missing fields. Return ONLY the JSON array.'})});
-    const data=await res.json();
-    let txt=(data.text||'').trim().replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(txt);
-    classes=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:c.name||'Class '+(i+1),teacher:c.teacher||'',room:c.room||''}));
-    save('flux_classes',classes);
-    resEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:10px">✓ Found '+classes.length+' classes:</div>'+classes.map(c=>`<div style="padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent);font-family:JetBrains Mono,monospace;font-size:.8rem">P${c.period}</span> <strong>${c.name}</strong>${c.teacher?' · '+c.teacher:''}</div>`).join('');
-    btn.textContent='✓ Done';
-    document.getElementById('obScheduleNext').textContent='Looks good, continue →';
-  }catch(e){
-    resEl.innerHTML='<div style="color:var(--red)">Could not read schedule automatically. Add classes manually in the School tab.</div>';
-    btn.disabled=false;btn.textContent='Try again';
-  }
-}
-
-// ══ ONBOARDING ══
-let obCurrentStep = 1;
-const OB_TOTAL = 4;
-let obSelectedGrade = '10';
-let obSelectedTrack = 'Pre-IB / MYP';
-let obScheduleImgData = null;
-let obExtractedClasses = [];
-
-function showOnboarding(){
+  obCurrentStep=1;
   document.getElementById('loginScreen').classList.remove('visible');
   document.getElementById('app').classList.remove('visible');
-  const ob = document.getElementById('onboarding');
-  ob.classList.add('visible');
-  obCurrentStep = 1;
+  document.getElementById('onboarding').classList.add('visible');
   renderObProgress();
   showObStep(1);
+  // Personalise done step with name if already known
+  const p=load('profile',{});
+  if(p.name){const t=document.getElementById('obDoneTitle');if(t)t.textContent="You're all set, "+p.name+"!";}
 }
 
 function renderObProgress(){
-  const el = document.getElementById('obProgress');
-  if(!el) return;
-  el.innerHTML = Array.from({length:OB_TOTAL},(_,i)=>{
-    const n = i+1;
-    const cls = n < obCurrentStep ? 'done' : n === obCurrentStep ? 'active' : '';
-    return `<div class="ob-dot ${cls}"></div>`;
+  const el=document.getElementById('obProgress');if(!el)return;
+  el.innerHTML=Array.from({length:OB_TOTAL},(_,i)=>{
+    const n=i+1;
+    const cls=n<obCurrentStep?'done':n===obCurrentStep?'active':'';
+    return`<div class="ob-dot ${cls}"></div>`;
   }).join('');
 }
 
 function showObStep(n){
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
-  const s = document.getElementById('ob-step-'+n);
-  if(s) s.classList.add('active');
-  obCurrentStep = n;
-  renderObProgress();
+  const s=document.getElementById('ob-step-'+n);if(s)s.classList.add('active');
+  obCurrentStep=n;renderObProgress();
+  if(n===4){const p=load('profile',{});const t=document.getElementById('obDoneTitle');if(t&&p.name)t.textContent="You're all set, "+p.name.split(' ')[0]+"!";}
 }
 
-function selectObChip(el, key, val){
-  const parent = el.parentElement;
-  parent.querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
+function selectObChip(el,key,val){
+  el.closest('.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
-  if(key==='obGrade') obSelectedGrade = val;
-  if(key==='obTrack') obSelectedTrack = val;
+  if(key==='obGrade')obSelectedGrade=val;
+  if(key==='obTrack')obSelectedTrack=val;
 }
 
 function updateObPreview(){
-  const name = (document.getElementById('obName')?.value||'').split(' ')[0];
-  const av = document.getElementById('obAvatar');
-  if(av && name && !av.querySelector('img')) av.textContent = name.charAt(0).toUpperCase()||'?';
+  const name=(document.getElementById('obName')?.value||'').trim();
+  const av=document.getElementById('obAvatar');
+  if(av&&name&&!av.querySelector('img'))av.textContent=name.charAt(0).toUpperCase();
 }
 
 function handleObPic(event){
-  const file = event.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const av = document.getElementById('obAvatar');
-    if(av) av.innerHTML = `<img src="${e.target.result}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
-    localStorage.setItem('flux_profile_pic', e.target.result);
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    localStorage.setItem('flux_profile_pic',e.target.result);
+    const av=document.getElementById('obAvatar');
+    if(av)av.innerHTML=`<img src="${e.target.result}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
   };
   reader.readAsDataURL(file);
 }
 
 function obNext(){
   if(obCurrentStep===1){
-    const name = document.getElementById('obName')?.value.trim();
-    if(!name){document.getElementById('obName').focus();return;}
-    const p = {name, grade:obSelectedGrade, track:obSelectedTrack};
-    localStorage.setItem('profile', JSON.stringify(p));
-    localStorage.setItem('flux_user_name', name.split(' ')[0]);
+    const name=document.getElementById('obName')?.value.trim();
+    if(!name){document.getElementById('obName')?.focus();return;}
+    const p={name,grade:obSelectedGrade,track:obSelectedTrack};
+    localStorage.setItem('profile',JSON.stringify(p));
+    localStorage.setItem('flux_user_name',name.split(' ')[0]);
     _updateSidebarName(name);
   }
   if(obCurrentStep===2){
-    schoolInfo.schoolName = document.getElementById('obSchool')?.value.trim()||'';
-    schoolInfo.counselor  = document.getElementById('obCounselor')?.value.trim()||'';
-    schoolInfo.locker     = document.getElementById('obLocker')?.value.trim()||'';
-    schoolInfo.combo      = document.getElementById('obCombo')?.value.trim()||'';
-    save('flux_school', schoolInfo);
+    schoolInfo.schoolName=document.getElementById('obSchool')?.value.trim()||'';
+    schoolInfo.counselor=document.getElementById('obCounselor')?.value.trim()||'';
+    schoolInfo.locker=document.getElementById('obLocker')?.value.trim()||'';
+    schoolInfo.combo=document.getElementById('obCombo')?.value.trim()||'';
+    save('flux_school',schoolInfo);
   }
   if(obCurrentStep===3){
-    // Merge any extracted classes
-    if(obExtractedClasses.length) {
-      classes = obExtractedClasses;
-      save('flux_classes', classes);
-    }
+    if(obExtractedClasses.length){classes=obExtractedClasses;save('flux_classes',classes);}
   }
-  if(obCurrentStep===4){
-    obFinish(); return;
-  }
+  if(obCurrentStep===4){obFinish();return;}
   showObStep(obCurrentStep+1);
 }
 
-function obBack(){
-  if(obCurrentStep>1) showObStep(obCurrentStep-1);
-}
+function obBack(){if(obCurrentStep>1)showObStep(obCurrentStep-1);}
 
 function obFinish(){
-  // Save DNA
-  const dnaChips = document.querySelectorAll('[data-dna].active');
-  studyDNA = Array.from(dnaChips).map(c=>c.dataset.dna);
-  save('flux_dna', studyDNA);
-  // Save study goal
-  settings.dailyGoalHrs = parseFloat(document.getElementById('obStudyGoal')?.value||'2');
-  save('flux_settings', settings);
-  // Mark onboarded
-  save('flux_onboarded', true);
+  save('flux_onboarded',true);
   document.getElementById('onboarding').classList.remove('visible');
   document.getElementById('app').classList.add('visible');
   spawnConfetti();
+  renderProfile();renderSchool();
   syncToCloud();
-  renderProfile();
 }
 
 function _updateSidebarName(name){
@@ -581,74 +469,48 @@ function _updateSidebarName(name){
   const mn=document.getElementById('mobName');if(mn)mn.textContent=name;
 }
 
-// Schedule image upload + Gemini analysis
 function handleScheduleImg(event){
-  const file = event.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    obScheduleImgData = e.target.result;
-    const prev = document.getElementById('schedulePreview');
-    const img  = document.getElementById('schedulePreviewImg');
-    if(prev && img){ prev.style.display='block'; img.src=e.target.result; }
-    // Auto-analyze
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    obScheduleImgData=e.target.result;
+    const prev=document.getElementById('obImgPreview');
+    if(prev){prev.style.display='block';prev.src=e.target.result;}
+    const zone=document.getElementById('obUploadZone');if(zone)zone.classList.add('has-img');
     analyzeScheduleImg();
   };
   reader.readAsDataURL(file);
 }
 
 async function analyzeScheduleImg(){
-  if(!obScheduleImgData) return;
-  const analyzing = document.getElementById('obAnalyzing');
-  const resultEl  = document.getElementById('obExtractedClasses');
-  if(analyzing) analyzing.style.display='flex';
-  if(resultEl)  resultEl.innerHTML='';
+  if(!obScheduleImgData)return;
+  const analyzing=document.getElementById('obAnalyzing');
+  const resultEl=document.getElementById('obExtractedClasses');
+  if(analyzing)analyzing.style.display='flex';
+  if(resultEl)resultEl.innerHTML='';
   try{
-    const res = await fetch('/api/vision-proxy',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({image: obScheduleImgData, prompt:null})
+    const base64=obScheduleImgData.split(',')[1];
+    const mime=obScheduleImgData.split(';')[0].split(':')[1];
+    const res=await fetch('/api/gemini-proxy',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({imageBase64:base64,mimeType:mime,
+        prompt:'This is a student class schedule. Extract every class and return ONLY a JSON array: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods sequentially if not shown. Empty string for missing fields. ONLY the JSON array.'})
     });
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
-    let txt = (data.text||'[]').replace(/```json|```/g,'').trim();
-    // Extract JSON array even if there's surrounding text
-    const match = txt.match(/\[[\s\S]*\]/);
-    if(match) txt = match[0];
-    const parsed = JSON.parse(txt);
-    obExtractedClasses = parsed.map((c,i)=>({
-      id: Date.now()+i,
-      period: c.period||i+1,
-      name: c.name||'Class '+(i+1),
-      teacher: c.teacher||'',
-      room: c.room||'',
-      days: c.days||''
-    }));
+    const data=await res.json();
+    let txt=(data.text||'[]').replace(/```json|```/g,'').trim();
+    const match=txt.match(/\[[\s\S]*\]/);if(match)txt=match[0];
+    const parsed=JSON.parse(txt);
+    obExtractedClasses=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:c.name||'Class '+(i+1),teacher:c.teacher||'',room:c.room||''}));
     if(resultEl){
-      resultEl.innerHTML = obExtractedClasses.map(c=>`
-        <div class="ob-class-item">
-          <div class="ob-class-period">${c.period}</div>
-          <div style="flex:1"><div style="font-weight:700">${esc(c.name)}</div>
-          <div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher?c.teacher:''}${c.room?' · Rm '+c.room:''}${c.days?' · '+c.days:''}</div></div>
-        </div>`).join('');
+      resultEl.style.display='block';
+      resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
     }
   }catch(e){
-    if(resultEl) resultEl.innerHTML=`<div style="padding:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);border-radius:10px;font-size:.8rem;color:var(--red)">Could not read schedule automatically. You can add classes manually in the School tab after setup.</div>`;
+    if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
   }finally{
-    if(analyzing) analyzing.style.display='none';
+    if(analyzing)analyzing.style.display='none';
   }
-}
-
-function addObClass(){
-  const period = parseInt(document.getElementById('obManualPeriod')?.value)||obExtractedClasses.length+1;
-  const name   = document.getElementById('obManualName')?.value.trim();
-  const teacher= document.getElementById('obManualTeacher')?.value.trim()||'';
-  if(!name) return;
-  obExtractedClasses.push({id:Date.now(),period,name,teacher,room:'',days:''});
-  const resultEl = document.getElementById('obExtractedClasses');
-  if(resultEl) resultEl.innerHTML += `<div class="ob-class-item"><div class="ob-class-period">${period}</div><div style="flex:1"><div style="font-weight:700">${esc(name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${teacher}</div></div></div>`;
-  if(document.getElementById('obManualPeriod')) document.getElementById('obManualPeriod').value='';
-  if(document.getElementById('obManualName'))   document.getElementById('obManualName').value='';
-  if(document.getElementById('obManualTeacher'))document.getElementById('obManualTeacher').value='';
 }
 
 // ══ AUTH ══
