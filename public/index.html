@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Flux IA East Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ─── TOPBAR ─── -->
+<div class="topbar">
+  <span class="topbar-title">Flux IA East</span>
+  <div class="topbar-right">
+    <div id="panicPill" style="display:none;padding:4px 10px;border-radius:20px;background:rgba(220,38,38,.2);border:1px solid #ef4444;font-size:.68rem;color:#f87171;font-family:'JetBrains Mono',monospace;font-weight:700;cursor:pointer">🚨 PANIC</div>
+    <div class="ab-pill" id="abPill"></div>
+    <div class="date-pill" id="datePill"></div>
+    <div class="user-pill" id="userPill" onclick="signOut()">
+      <div class="u-av" id="uAv">?</div>
+      <span class="u-name" id="uName"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── DASHBOARD ─── -->
+<div id="dashboard" class="panel active">
+  <div class="panic-banner" id="panicBanner">
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;color:#fca5a5">🚨 PANIC MODE — Due within 12 hours!</div>
+      <div id="panicList" style="font-size:.75rem;color:#fca5a5;margin-top:3px;font-family:'JetBrains Mono',monospace"></div>
+    </div>
+  </div>
+  <div class="stats-row" id="statsRow"></div>
+  <!-- Smart suggestion -->
+  <div class="card" id="smartSugCard" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(192,132,252,.06));border-color:rgba(var(--accent-rgb),.25);display:none">
+    <h3>✦ What to work on now</h3>
+    <div id="smartSug" style="font-size:.88rem;font-weight:600"></div>
+    <div id="smartSugSub" style="font-size:.75rem;color:var(--muted2);margin-top:4px;font-family:'JetBrains Mono',monospace"></div>
+  </div>
+  <!-- Energy check-in -->
+  <div class="card" id="energyCard">
+    <h3>⚡ Energy Level</h3>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="range" id="energySlider" min="1" max="5" value="3" style="flex:1;margin:0" oninput="setEnergy(this.value)">
+      <div style="font-size:1.4rem" id="energyEmoji">😐</div>
+      <div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;min-width:40px" id="energyLabel">Neutral</div>
+    </div>
+  </div>
+  <!-- Add task -->
+  <div class="card">
+    <h3>Add Task</h3>
+    <input type="text" id="taskName" placeholder="Assignment, test, project...">
+    <div class="irow" style="margin-bottom:8px">
+      <select id="taskSubject">
+        <option value="">No subject</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option>
+        <option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option>
+        <option value="ORC">Orchestra</option><option value="PHY">Physics</option><option value="PP">Personal Project</option><option value="GYM">Gym</option>
+      </select>
+      <select id="taskPriority">
+        <option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option>
+      </select>
+    </div>
+    <div class="irow" style="margin-bottom:8px">
+      <input type="date" id="taskDate">
+      <select id="taskType">
+        <option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option>
+        <option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="other">Other</option>
+      </select>
+    </div>
+    <div class="irow" style="margin-bottom:8px">
+      <input type="number" id="taskEstTime" placeholder="Est. minutes" min="5" max="480" style="flex:0 1 140px">
+      <input type="number" id="taskDifficulty" placeholder="Difficulty 1–5" min="1" max="5">
+    </div>
+    <textarea id="taskNotes" placeholder="Notes (optional)..." style="min-height:52px;margin-bottom:8px"></textarea>
+    <button onclick="addTask()" style="width:100%">+ Add Task</button>
+  </div>
+  <!-- Filters -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="filterChips">
+    <button onclick="setFilter('all',this)" class="tmode-btn active">All</button>
+    <button onclick="setFilter('active',this)" class="tmode-btn">Active</button>
+    <button onclick="setFilter('done',this)" class="tmode-btn">Done</button>
+    <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
+    <button onclick="setFilter('today',this)" class="tmode-btn">Today</button>
+    <button onclick="setFilter('high',this)" class="tmode-btn">High Pri</button>
+  </div>
+  <div id="taskList"></div>
+  <!-- Exam countdown -->
+  <div class="card" id="countdownCard" style="display:none">
+    <h3>Next Exam Countdown</h3>
+    <div id="countdownLabel" style="font-size:.82rem;font-weight:600;margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="countdownGrid"></div>
+  </div>
+</div>
+
+<!-- ─── CALENDAR ─── -->
+<div id="calendar" class="panel">
+  <div class="card" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <button class="btn-sec" style="padding:5px 12px;font-size:.85rem" onclick="changeMonth(-1)">‹</button>
+      <div style="font-size:.9rem;font-weight:700" id="calMonthLabel"></div>
+      <button class="btn-sec" style="padding:5px 12px;font-size:.85rem" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
+      <span>🟦 A Day</span><span>🟩 B Day</span><span>📵 No-HW</span><span>🔴 Overdue</span>
+    </div>
+  </div>
+  <div class="card" id="calDayCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:.88rem;font-weight:700" id="calDayTitle">Select a day</div>
+      <button id="calAddBtn" onclick="openAddForDate()" style="display:none;padding:5px 12px;font-size:.75rem">+ Task</button>
+    </div>
+    <div id="calDayTasks"></div>
+  </div>
+</div>
+
+<!-- ─── GRADES ─── -->
+<div id="grades" class="panel">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><h3 style="margin:0 0 2px">Grades</h3><div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">4-decimal GPA</div></div>
+      <div style="text-align:right"><div style="font-size:1.8rem;font-weight:800;color:var(--accent)" id="gpaDisplay">—</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">EST. GPA</div></div>
+    </div>
+    <div id="gradeInputs"></div>
+    <div class="irow" style="margin-top:8px">
+      <input type="text" id="newSubject" placeholder="Subject name">
+      <input type="text" id="newGrade" placeholder="Grade %" style="max-width:110px">
+      <button onclick="addGradeRow()">+ Add</button>
+    </div>
+    <button onclick="saveGrades()" style="width:100%;margin-top:10px">Save Grades</button>
+  </div>
+  <!-- Weighted calculator -->
+  <div class="card">
+    <h3>Weighted Calculator</h3>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Category</div>
+      <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Weight %</div>
+      <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Score %</div>
+    </div>
+    <div id="weightRows"></div>
+    <div class="irow" style="margin-top:8px">
+      <input type="text" id="wCat" placeholder="Category (e.g. Tests)">
+      <input type="number" id="wWeight" placeholder="Weight %" min="0" max="100" style="max-width:90px">
+      <input type="number" id="wScore" placeholder="Score %" min="0" max="100" style="max-width:90px">
+      <button onclick="addWeightRow()">+</button>
+    </div>
+    <div style="margin-top:10px;padding:10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:.82rem;font-weight:600">Weighted Grade</span>
+      <span style="font-size:1.2rem;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace" id="weightedResult">—</span>
+    </div>
+  </div>
+  <!-- What do I need on the final -->
+  <div class="card">
+    <h3>"What do I need on the final?"</h3>
+    <div class="irow">
+      <input type="number" id="finalCurrent" placeholder="Current grade %">
+      <input type="number" id="finalWeight" placeholder="Final weight %">
+      <input type="number" id="finalTarget" placeholder="Target grade %">
+    </div>
+    <button onclick="calcFinal()" style="width:100%;margin-top:4px">Calculate</button>
+    <div id="finalResult" style="margin-top:10px;font-size:.88rem;font-weight:600;display:none"></div>
+  </div>
+  <div class="card"><h3>Grade Overview</h3><div id="gradeOverview"></div></div>
+</div>
+
+<!-- ─── NOTES ─── -->
+<div id="notes" class="panel">
+  <div id="notesListView">
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="noteSearch" placeholder="Search notes..." style="flex:1;margin:0" oninput="renderNotesList()">
+      <button onclick="openNewNote()">+ New</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button onclick="setNoteFilter('all',this)" class="tmode-btn active">All</button>
+      <button onclick="setNoteFilter('starred',this)" class="tmode-btn">⭐ Starred</button>
+      <button onclick="setNoteFilter('flashcards',this)" class="tmode-btn">🃏 Cards</button>
+    </div>
+    <div id="notesList"></div>
+  </div>
+  <div id="notesEditorView" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <button onclick="backToNotesList()" class="btn-sec" style="padding:6px 12px;font-size:.82rem">← Back</button>
+      <input type="text" id="noteTitleInput" placeholder="Note title..." style="flex:1;margin:0;font-size:1rem;font-weight:700">
+      <button onclick="toggleStarNote()" id="starBtn" style="background:none;border:1px solid var(--border2);color:var(--gold);padding:6px 10px;font-size:1rem">☆</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <select id="noteSubjectTag" style="width:auto;margin:0;padding:5px 8px;font-size:.78rem">
+        <option value="">No subject</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option>
+        <option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option>
+        <option value="ORC">Orchestra</option><option value="PHY">Physics</option><option value="PP">PP</option>
+      </select>
+      <button onclick="saveNote()" style="padding:6px 14px;font-size:.78rem">Save</button>
+      <button onclick="deleteNote()" class="btn-sec" style="padding:6px 10px;font-size:.78rem;color:var(--red)">Delete</button>
+      <button onclick="generateFlashcardsFromNote()" style="padding:6px 12px;font-size:.78rem;background:rgba(var(--accent-rgb),.2);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent)">🃏 Flashcards</button>
+      <button onclick="summarizeNoteWithAI()" style="padding:6px 12px;font-size:.78rem;background:rgba(192,132,252,.15);border:1px solid rgba(192,132,252,.3);color:var(--purple)">✦ Summarize</button>
+    </div>
+    <div class="rtbar">
+      <button class="rtbtn" onclick="fmt('bold')"><b>B</b></button>
+      <button class="rtbtn" onclick="fmt('italic')"><i>I</i></button>
+      <button class="rtbtn" onclick="fmt('underline')"><u>U</u></button>
+      <button class="rtbtn" onclick="insHeading()">H</button>
+      <button class="rtbtn" onclick="insBullet()">• List</button>
+      <button class="rtbtn" onclick="insCode()">{ }</button>
+      <button class="rtbtn" onclick="insHR()">—</button>
+    </div>
+    <div id="noteEditor" class="card" contenteditable="true" spellcheck="true"></div>
+    <div id="aiNoteResult" style="display:none;margin-top:12px"></div>
+  </div>
+  <!-- Flashcard viewer -->
+  <div id="flashcardView" style="display:none;text-align:center;padding:20px 0">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px;font-family:'JetBrains Mono',monospace" id="fcProgress">Card 1 / 1</div>
+    <div id="fcCard" onclick="flipFC()" style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:32px 20px;cursor:pointer;min-height:160px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;transition:all .2s">
+      <div id="fcText" style="font-size:1rem;font-weight:600;text-align:center;line-height:1.6"></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:14px">Tap to flip</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="prevFC()" class="btn-sec" style="flex:1;max-width:120px">← Prev</button>
+      <button onclick="nextFC()" style="flex:1;max-width:120px">Next →</button>
+    </div>
+    <button onclick="closeFlashcards()" class="btn-sec" style="width:100%;margin-top:10px">Back to Notes</button>
+  </div>
+</div>
+
+<!-- ─── GOALS ─── -->
+<div id="goals" class="panel">
+  <div class="card">
+    <h3>Add Goal</h3>
+    <input type="text" id="goalTitle" placeholder="e.g. Achieve 3.8 GPA this semester">
+    <div class="irow">
+      <select id="goalCat">
+        <option value="academic">Academic</option><option value="gpa">GPA Target</option>
+        <option value="habit">Habit</option><option value="extracurricular">Extracurricular</option>
+        <option value="college">College Prep</option><option value="personal">Personal</option>
+      </select>
+      <input type="date" id="goalDeadline">
+    </div>
+    <input type="number" id="goalTarget" placeholder="Target value (e.g. 3.8 or 100)" min="0">
+    <button onclick="addGoal()" style="width:100%">+ Add Goal</button>
+  </div>
+  <div id="goalsList"></div>
+  <div class="card">
+    <h3>College App Tracker</h3>
+    <div id="collegeList"></div>
+    <div class="irow" style="margin-top:8px">
+      <input type="text" id="cName" placeholder="School name">
+      <input type="date" id="cDeadline">
+      <select id="cStatus">
+        <option value="researching">Researching</option><option value="in-progress">In Progress</option>
+        <option value="submitted">Submitted</option><option value="accepted">Accepted ✓</option><option value="rejected">Rejected</option>
+      </select>
+      <button onclick="addCollege()">+</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MOOD & WELLBEING ─── -->
+<div id="mood" class="panel">
+  <div class="card">
+    <h3>Daily Check-In</h3>
+    <div style="font-size:.88rem;font-weight:600;margin-bottom:12px">How are you feeling today?</div>
+    <div style="display:flex;justify-content:space-around;margin-bottom:16px" id="moodBtns">
+      <button class="mood-btn" onclick="setMood(1,this)" title="Awful">😞</button>
+      <button class="mood-btn" onclick="setMood(2,this)" title="Bad">😕</button>
+      <button class="mood-btn" onclick="setMood(3,this)" title="Neutral">😐</button>
+      <button class="mood-btn" onclick="setMood(4,this)" title="Good">🙂</button>
+      <button class="mood-btn" onclick="setMood(5,this)" title="Great">😄</button>
+    </div>
+    <div style="font-size:.78rem;color:var(--muted2);margin-bottom:4px">Stress level:</div>
+    <input type="range" id="stressSlider" min="1" max="10" value="3" oninput="setStress(this.value)" style="margin-bottom:0">
+    <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;margin-bottom:10px"><span>Low</span><span id="stressVal">3</span><span>High</span></div>
+    <input type="number" id="sleepHours" placeholder="Hours slept last night" min="0" max="14" step="0.5">
+    <button onclick="saveMoodEntry()" style="width:100%">Save Check-In</button>
+    <div id="burnoutAlert" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);border-radius:8px;font-size:.82rem;color:var(--red)">⚠️ Burnout warning: high stress + low sleep. Take it easy today.</div>
+  </div>
+  <div class="card">
+    <h3>Mood History (30 days)</h3>
+    <div id="moodHistory" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:8px" id="moodInsight"></div>
+  </div>
+  <div class="card">
+    <h3>Affirmation of the Day</h3>
+    <div id="affirmation" style="font-size:.92rem;font-style:italic;line-height:1.7;color:var(--muted2)"></div>
+  </div>
+  <div class="card">
+    <h3>4-7-8 Breathing</h3>
+    <div style="text-align:center;padding:16px 0">
+      <div id="breathCircle" style="width:80px;height:80px;border-radius:50%;background:rgba(var(--accent-rgb),.2);border:3px solid var(--accent);margin:0 auto 14px;transition:all 4s ease;display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:pre-line;text-align:center">START</div>
+      <button onclick="startBreathing()" id="breathBtn" style="padding:8px 24px">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── HABITS ─── -->
+<div id="habits" class="panel">
+  <div class="card">
+    <h3>Add Habit</h3>
+    <div class="irow">
+      <input type="text" id="habitName" placeholder="Habit name...">
+      <input type="text" id="habitIcon" placeholder="Icon" style="max-width:60px">
+      <select id="habitCat">
+        <option value="study">Study</option><option value="health">Health</option>
+        <option value="sleep">Sleep</option><option value="reading">Reading</option><option value="other">Other</option>
+      </select>
+    </div>
+    <button onclick="addHabit()" style="width:100%;margin-top:4px">+ Add Habit</button>
+  </div>
+  <div id="habitList"></div>
+  <div class="card" id="heatmapCard" style="display:none">
+    <h3>Last 90 Days Heatmap</h3>
+    <div id="heatmapGrid" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<!-- ─── TIMER ─── -->
+<div id="timer" class="panel">
+  <div class="card" style="text-align:center;padding:24px 16px">
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:20px;flex-wrap:wrap">
+      <button class="tmode-btn active" onclick="setTMode('pomodoro',this)">Pomodoro</button>
+      <button class="tmode-btn" onclick="setTMode('short',this)">Short Break</button>
+      <button class="tmode-btn" onclick="setTMode('long',this)">Long Break</button>
+    </div>
+    <div style="position:relative;display:inline-block;margin-bottom:14px">
+      <svg width="190" height="190" class="timer-ring" viewBox="0 0 200 200">
+        <circle class="t-bg" cx="100" cy="100" r="88"/>
+        <circle class="t-fill" id="timerRing" cx="100" cy="100" r="88" stroke-dasharray="553" stroke-dashoffset="0"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="t-disp" id="tDisplay">25:00</div>
+        <div class="t-lbl" id="tLbl">Focus Time</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;align-items:center">
+      Work: <input type="number" id="customWork" value="25" min="1" max="90" style="width:44px;padding:3px 5px;margin:0 4px;font-size:.72rem;text-align:center" onchange="updateTLengths()"> min
+      &nbsp; Short: <input type="number" id="customShort" value="5" min="1" max="30" style="width:44px;padding:3px 5px;margin:0 4px;font-size:.72rem;text-align:center" onchange="updateTLengths()"> min
+    </div>
+    <div style="margin-bottom:14px">
+      <select id="timerSubject" style="width:auto;padding:5px 10px;margin:0;font-size:.78rem;display:inline-block">
+        <option value="">No subject tag</option>
+        <option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option>
+        <option value="FRE">French</option><option value="MTH">Math 3</option><option value="PHY">Physics</option><option value="PP">PP</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">
+      <button onclick="resetTimer()" class="btn-sec" style="padding:10px 24px">↺ Reset</button>
+      <button onclick="toggleTimer()" id="timerBtn" style="padding:10px 24px">▶ Start</button>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:center" id="timerDots"></div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace" id="tSessionLbl">Session 1 of 4</div>
+  </div>
+  <!-- Ambient sounds -->
+  <div class="card">
+    <h3>Ambient Sounds</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="playAmbient('rain',this)" class="tmode-btn">🌧 Rain</button>
+      <button onclick="playAmbient('cafe',this)" class="tmode-btn">☕ Café</button>
+      <button onclick="playAmbient('ocean',this)" class="tmode-btn">🌊 Ocean</button>
+      <button onclick="playAmbient('fire',this)" class="tmode-btn">🔥 Fire</button>
+      <button onclick="playAmbient('white',this)" class="tmode-btn">〰 White</button>
+      <button onclick="stopAmbient()" class="tmode-btn">⏹ Stop</button>
+    </div>
+  </div>
+  <!-- Stats + subject budget -->
+  <div class="card">
+    <h3>Today's Focus</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:14px">
+      <div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--accent)" id="tSessions">0</div><div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Sessions</div></div>
+      <div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--green)" id="tMinutes">0</div><div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Minutes</div></div>
+      <div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--purple)" id="tStreak">0</div><div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Streak 🔥</div></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Subject Time Budget (hrs/week)</div>
+    <div id="subjectBudget"></div>
+  </div>
+  <div class="card">
+    <h3>Weekly Focus Heatmap</h3>
+    <div id="focusHeatmap" style="display:flex;gap:4px;justify-content:space-between"></div>
+    <div style="font-size:.62rem;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace">Mon → Sun this week</div>
+  </div>
+</div>
+
+<!-- ─── PROFILE ─── -->
+<div id="profile" class="panel">
+  <div class="profile-hero">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div class="p-avatar" id="pAvatar" onclick="document.getElementById('picUpload').click()">?
+        <input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">
+      </div>
+      <div>
+        <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px" id="profileName">Your Name</div>
+        <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Grade 10 · Pre-IB</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px" id="profileBadges"></div>
+      </div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">CAS Progress</div>
+        <div style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace" id="casPercent">40%</div>
+      </div>
+      <div class="cas-bar"><div class="cas-fill" id="casBar" style="width:40%"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Profile Info</h3>
+    <label style="font-size:.72rem;color:var(--muted)">Name</label>
+    <input type="text" id="name" placeholder="Your name">
+    <label style="font-size:.72rem;color:var(--muted)">Grade</label>
+    <select id="grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
+    <label style="font-size:.72rem;color:var(--muted)">IB Track</label>
+    <select id="track"><option>Pre-IB / MYP</option><option>IB Diploma</option></select>
+    <button onclick="saveProfile()" style="width:100%">Save Profile</button>
+  </div>
+  <!-- Study DNA -->
+  <div class="card">
+    <h3>Study DNA</h3>
+    <div style="font-size:.82rem;color:var(--muted2);margin-bottom:12px">How do you learn best? (select all that apply)</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button onclick="setDNA('visual')" class="tmode-btn" id="dna-visual">👁 Visual</button>
+      <button onclick="setDNA('audio')" class="tmode-btn" id="dna-audio">👂 Audio</button>
+      <button onclick="setDNA('reading')" class="tmode-btn" id="dna-reading">📖 Reading</button>
+      <button onclick="setDNA('practice')" class="tmode-btn" id="dna-practice">✏️ Practice</button>
+    </div>
+    <div id="studyDNAResult" style="font-size:.82rem;color:var(--muted2)"></div>
+  </div>
+  <!-- Course confidence -->
+  <div class="card">
+    <h3>Course Confidence</h3>
+    <div id="confidenceSliders"></div>
+    <button onclick="saveConfidences()" style="width:100%;margin-top:8px">Save</button>
+  </div>
+  <!-- Academic stats -->
+  <div class="card">
+    <h3>Academic Stats</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="profileStats"></div>
+  </div>
+  <!-- Badges -->
+  <div class="card">
+    <h3>Earned Badges</h3>
+    <div id="badgesDisplay"></div>
+  </div>
+</div>
+
+<!-- ─── AI ASSISTANT ─── -->
+<div id="ai" class="panel">
+  <div class="card" style="padding:14px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="ai-orb"></div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:1rem;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Flux AI</div>
+        <div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;-webkit-text-fill-color:var(--muted)">Tutoring · Flashcards · Study plans · Exam prep · Essay help</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.75rem;color:var(--muted2)">
+        📷 <input type="file" accept="image/*" id="aiImgUpload" style="display:none;width:auto;margin:0" onchange="handleAIImg(event)">
+      </label>
+    </div>
+    <div id="aiImgPreview" style="display:none;margin-top:10px"></div>
+  </div>
+  <div class="ai-sugs" id="aiSugs"></div>
+  <div class="ai-msgs" id="aiMsgs"></div>
+  <div class="ai-irow">
+    <textarea id="aiInput" rows="1" placeholder="Ask anything — tutoring, flashcards, exam prep, study plans..."
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+    <button class="ai-send" id="aiSendBtn" onclick="sendAI()">↑</button>
+  </div>
+  <div style="font-size:.62rem;color:var(--muted);text-align:center;padding:4px 0;font-family:'JetBrains Mono',monospace">Flux AI · Groq · Llama 3.3 70B · Physics: g = 10 m/s²</div>
+</div>
+
+<!-- ─── SETTINGS ─── -->
+<div id="settings" class="panel">
+  <div class="stabs">
+    <button class="stab active" onclick="switchStab('appearance',this)">Theme</button>
+    <button class="stab" onclick="switchStab('notifications',this)">Alerts</button>
+    <button class="stab" onclick="switchStab('integrations',this)">Integrations</button>
+    <button class="stab" onclick="switchStab('account',this)">Account</button>
+  </div>
+  <div class="spane active" id="spane-appearance">
+    <div class="card">
+      <h3>Theme</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <button onclick="themeDark()" class="btn-sec">🌙 Dark</button>
+        <button onclick="themeCrimson()" style="background:rgba(153,0,0,.7)">🏫 IA Crimson</button>
+        <button onclick="themeFocus()" class="btn-sec">◼ Focus</button>
+        <button onclick="themeSepia()" style="background:rgba(180,120,40,.5)">📜 Sepia</button>
+      </div>
+      <div class="slabel2">Accent Color</div>
+      <div class="swatches" id="swatches">
+        <div class="swatch active" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
+        <div class="swatch" style="background:#3b82f6" onclick="setAccent('#3b82f6','59,130,246',this)"></div>
+        <div class="swatch" style="background:#a78bfa" onclick="setAccent('#a78bfa','167,139,250',this)"></div>
+        <div class="swatch" style="background:#10d9a0" onclick="setAccent('#10d9a0','16,217,160',this)"></div>
+        <div class="swatch" style="background:#f43f5e" onclick="setAccent('#f43f5e','244,63,94',this)"></div>
+        <div class="swatch" style="background:#fbbf24" onclick="setAccent('#fbbf24','251,191,36',this)"></div>
+        <div class="swatch" style="background:#fb923c" onclick="setAccent('#fb923c','251,146,60',this)"></div>
+        <div class="swatch" style="background:#e879f9" onclick="setAccent('#e879f9','232,121,249',this)"></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="slabel2">Custom Color</div>
+        <div class="irow" style="margin-top:8px">
+          <input type="color" id="customColor" value="#6366f1" style="flex:0 0 44px;width:44px;height:38px;margin:0;padding:2px;border-radius:8px;cursor:pointer">
+          <button onclick="applyCustomColor()" style="flex:1">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="spane" id="spane-notifications">
+    <div class="card">
+      <h3>Alerts</h3>
+      <div class="srow"><div><div class="slabel">🚨 Panic Mode</div><div class="ssub">Alert when task due within 12 hours</div></div><button class="toggle on" id="panicToggle" onclick="toggleSetting('panic',this)"></button></div>
+      <div class="srow"><div><div class="slabel">🔕 Quiet Hours</div><div class="ssub">Silence during school hours</div></div><button class="toggle on" id="quietToggle" onclick="toggleSetting('quiet',this)"></button></div>
+      <div class="srow" style="border:none">
+        <div style="flex:1"><div class="slabel">Custom quiet period</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <input type="time" id="dndStart" value="07:50" style="width:auto;padding:5px 8px;margin:0;font-size:.8rem;flex:1;min-width:90px">
+            <span style="color:var(--muted);font-size:.8rem">to</span>
+            <input type="time" id="dndEnd" value="14:30" style="width:auto;padding:5px 8px;margin:0;font-size:.8rem;flex:1;min-width:90px">
+            <button onclick="saveDND()" style="padding:6px 12px;font-size:.78rem">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Daily Study Goal</h3>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="number" id="dailyGoalHrs" min="0.5" max="12" step="0.5" value="2" style="flex:1;margin:0">
+        <span style="font-size:.85rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">hrs / day</span>
+        <button onclick="saveDailyGoal()" style="padding:7px 12px;font-size:.78rem">Set</button>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted2);margin-top:8px;font-family:'JetBrains Mono',monospace" id="dailyGoalStatus"></div>
+    </div>
+  </div>
+  <div class="spane" id="spane-integrations">
+    <div class="card">
+      <h3>Integrations</h3>
+      <div class="srow"><div><div class="slabel">🎨 Canvas LMS</div><div class="ssub">Connect via AI tab</div></div><span class="badge badge-blue">Via AI</span></div>
+      <div class="srow"><div><div class="slabel">📅 Export to iCal</div><div class="ssub">Download tasks as .ics</div></div><button onclick="exportToICal()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
+      <div class="srow" style="border:none"><div><div class="slabel">📄 Export Data</div><div class="ssub">Download all data as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
+    </div>
+    <div class="card"><h3>IA East No-HW Dates</h3><div id="noHWList" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;line-height:2.2"></div></div>
+  </div>
+  <div class="spane" id="spane-account">
+    <div class="card">
+      <h3>Account</h3>
+      <div class="srow"><div><div class="slabel">Email</div><div class="ssub" id="accountEmail">Not signed in</div></div></div>
+      <div class="srow" style="border:none"><div><div class="slabel">Sign Out</div></div><button onclick="signOut()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red);border-color:var(--red)">Sign Out</button></div>
+    </div>
+    <div class="card">
+      <h3>Data</h3>
+      <div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--gold)">Clear</button></div>
+    </div>
+    <div class="card">
+      <h3>About</h3>
+      <div style="font-size:.78rem;color:var(--muted2);line-height:2.2;font-family:'JetBrains Mono',monospace">
+        <div>Flux IA East Planner v2.0</div>
+        <div>AI: Groq · Llama 3.3 70B</div>
+        <div>Auth: Supabase · IA East, Troy MI</div>
+        <div>GPA: 4 decimal places · g = 10 m/s²</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EDIT TASK MODAL ─── -->
+<div id="editModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEdit()">
+  <div class="modal-card">
+    <div class="modal-title">Edit Task</div>
+    <div class="mrow"><label>Task</label><input type="text" id="editText"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="mrow"><label>Subject</label>
+        <select id="editSubject"><option value="">None</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="ORC">Orchestra</option><option value="PHY">Physics</option><option value="PP">PP</option><option value="GYM">Gym</option></select>
+      </div>
+      <div class="mrow"><label>Priority</label>
+        <select id="editPriority"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select>
+      </div>
+      <div class="mrow"><label>Type</label>
+        <select id="editType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="other">Other</option></select>
+      </div>
+      <div class="mrow"><label>Due Date</label><input type="date" id="editDue"></div>
+      <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
+      <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
+    </div>
+    <div class="mrow"><label>Sub-tasks (one per line)</label><textarea id="editSubtasks" style="min-height:70px" placeholder="Sub-task 1&#10;Sub-task 2"></textarea></div>
+    <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
+    <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
+  </div>
+</div>
+
+<!-- ─── GOAL PROGRESS MODAL ─── -->
+<div id="goalModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeGoalModal()">
+  <div class="modal-card">
+    <div class="modal-title">Update Goal Progress</div>
+    <div class="mrow"><label>Current Progress</label><input type="number" id="goalProgressInput" min="0" max="9999" step="0.1"></div>
+    <div id="goalProgressLabel" style="font-size:.78rem;color:var(--muted2);margin-bottom:10px"></div>
+    <div class="mactions"><button onclick="closeGoalModal()" class="btn-sec">Cancel</button><button onclick="saveGoalProgress()">Save</button></div>
+  </div>
+</div>
+
+<!-- ─── BOTTOM NAV ─── -->
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="nav('dashboard',this)" data-tab="dashboard"><span class="icon">⚡</span>Home</button>
+  <button class="nav-btn" onclick="nav('calendar',this)" data-tab="calendar"><span class="icon">📅</span>Cal</button>
+  <button class="nav-btn" onclick="nav('grades',this)" data-tab="grades"><span class="icon">📊</span>Grades</button>
+  <button class="nav-btn" onclick="nav('notes',this)" data-tab="notes"><span class="icon">📝</span>Notes</button>
+  <button class="nav-btn" onclick="nav('ai',this)" data-tab="ai"><span class="icon">✦</span>AI</button>
+  <button class="nav-btn" onclick="nav('timer',this)" data-tab="timer"><span class="icon">⏱</span>Timer</button>
+  <button class="nav-btn" onclick="nav('habits',this)" data-tab="habits"><span class="icon">🔥</span>Habits</button>
+  <button class="nav-btn" onclick="nav('mood',this)" data-tab="mood"><span class="icon">😊</span>Mood</button>
+  <button class="nav-btn" onclick="nav('goals',this)" data-tab="goals"><span class="icon">🎯</span>Goals</button>
+  <button class="nav-btn" onclick="nav('profile',this)" data-tab="profile"><span class="icon">👤</span>Me</button>
+  <button class="nav-btn" onclick="nav('settings',this)" data-tab="settings"><span class="icon">⚙</span>More</button>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
