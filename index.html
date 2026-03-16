@@ -2,36 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flux Planner</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="public/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.321.0/dist/umd/lucide.min.js"></script>
 </head>
-<body>
+<body style="margin:0; font-family: sans-serif;">
+
     <div id="splash-screen" style="position:fixed; inset:0; background:#fff; display:flex; align-items:center; justify-content:center; z-index:9999;">
-        <h1 style="font-family:'Plus Jakarta Sans'; letter-spacing:-2px;">FLUX</h1>
+        <h1 style="letter-spacing:-2px; color:#333;">FLUX</h1>
     </div>
 
-    <div id="app" style="display: none;">
-        <nav class="sidebar">
-            <h2 style="padding:20px;">FLUX</h2>
-            <button class="nav-item" onclick="loadTab('dashboard')">Dashboard</button>
-            <button class="nav-item" onclick="loadTab('school-info')">School Info</button>
-        </nav>
-        <main class="content">
-            <header class="topbar"><h2 id="tab-title">Dashboard</h2></header>
-            <section id="tab-content"></section>
-        </main>
-    </div>
-
-    <div id="auth-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); align-items:center; justify-content:center; z-index:10000;">
-        <div style="text-align:center; padding:40px; background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
-            <h2>Welcome to Flux</h2>
-            <button id="login-btn" style="margin-top:20px; padding:12px 24px; cursor:pointer;">Login with Google</button>
+    <div id="auth-overlay" style="display:none; position:fixed; inset:0; background:#f9f9f9; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
+        <div style="text-align:center; background:#fff; padding:50px; border-radius:24px; box-shadow:0 10px 40px rgba(0,0,0,0.05);">
+            <h2 style="margin-bottom:10px;">Welcome to Flux</h2>
+            <p style="color:#666; margin-bottom:30px;">Your academic command center.</p>
+            <button id="login-btn" style="background:#000; color:#fff; border:none; padding:15px 30px; border-radius:12px; cursor:pointer; font-weight:600;">Continue with Google</button>
         </div>
     </div>
+
+    <div id="app" style="display:none;">
+        <div style="display:flex; height:100vh;">
+            <nav style="width:250px; background:#f4f4f4; padding:20px; border-right:1px solid #ddd;">
+                <h2>FLUX</h2>
+                <button onclick="showTab('dashboard')" style="display:block; width:100%; text-align:left; padding:10px; margin:5px 0; border:none; background:none; cursor:pointer;">Dashboard</button>
+                <button onclick="showTab('school')" style="display:block; width:100%; text-align:left; padding:10px; margin:5px 0; border:none; background:none; cursor:pointer;">School Info</button>
+            </nav>
+            <main style="flex:1; padding:40px;">
+                <h1 id="view-title">Dashboard</h1>
+                <div id="view-content"></div>
+            </main>
+        </div>
+    </div>
+
     <script src="public/js/app.js"></script>
 </body>
 </html>
