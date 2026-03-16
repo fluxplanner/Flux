@@ -1,4 +1,4 @@
-/* ── FLUX IA EAST PLANNER · app.js v2 ── */
+/* ── FLUX PLANNER · app.js v2 ── */
 
 // ══ CONSTANTS ══
 const SUBJECTS={LIT:{name:'Am. Lit',short:'LIT',color:'#6366f1'},AME:{name:'Am. Studies',short:'AME',color:'#f43f5e'},PP:{name:'Personal Project',short:'PP',color:'#10d9a0'},CHE:{name:'Chemistry',short:'CHE',color:'#fbbf24'},FRE:{name:'French',short:'FRE',color:'#3b82f6'},ORC:{name:'Orchestra',short:'ORC',color:'#c084fc'},PHY:{name:'Physics',short:'PHY',color:'#fb923c'},MTH:{name:'Math 3',short:'MTH',color:'#e879f9'},GYM:{name:'Gym',short:'GYM',color:'#10d9a0'}};
@@ -42,9 +42,16 @@ let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 // ══ SUPABASE + API ══
 const SB_URL='https://lfigdijuqmbensebnevo.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
-// All AI calls go to Supabase Edge Functions - no separate backend needed
-const API={ai:`${SB_URL}/functions/v1/ai-proxy`,gemini:`${SB_URL}/functions/v1/gemini-proxy`,canvas:`${SB_URL}/functions/v1/canvas-proxy`};
+const API={
+  ai:`${SB_URL}/functions/v1/ai-proxy`,
+  gemini:`${SB_URL}/functions/v1/gemini-proxy`,
+  canvas:`${SB_URL}/functions/v1/canvas-proxy`
+};
+// Headers for Supabase Edge Functions (AI + Canvas)
 const API_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${SB_ANON}`};
+// Gemini proxy doesn't need Authorization header - it uses the server-side key
+const GEMINI_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${SB_ANON}`};
+
 let _sb=null,currentUser=null;
 function getSB(){if(!_sb&&window.supabase?.createClient)_sb=window.supabase.createClient(SB_URL,SB_ANON);return _sb;}
 
@@ -70,7 +77,6 @@ function hidePanic(){document.getElementById('panicBanner').classList.remove('on
 // ══ SPLASH ANIMATION ══
 function runSplash(cb){
   const splash=document.getElementById('splash');
-  // Trigger animations
   requestAnimationFrame(()=>{
     splash.classList.add('active');
     setTimeout(()=>{
@@ -84,15 +90,12 @@ function runSplash(cb){
 function nav(id,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  // sidebar
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll(`[data-tab="${id}"]`).forEach(b=>b.classList.add('active'));
-  // bottom nav
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
-  // topbar title
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();},calendar:()=>renderCalendar(),school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),habits:()=>{renderHabitList();renderHeatmap();},goals:()=>{renderGoalsList();renderCollegeList();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>renderAISugs(),settings:()=>renderNoHWList()};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();},calendar:()=>renderCalendar(),school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),habits:()=>{renderHabitList();renderHeatmap();},goals:()=>{renderGoalsList();renderCollegeList();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>renderAISugs(),settings:()=>renderNoHWList(),gmail:()=>loadGmail()};
   fns[id]?.();
 }
 function navMob(id){closeDrawer();nav(id);}
@@ -156,22 +159,18 @@ function deleteClass(id){classes=classes.filter(c=>c.id!==id);save('flux_classes
 function addTeacherNote(){const teacher=document.getElementById('tNoteTeacher').value.trim(),note=document.getElementById('tNoteText').value.trim();if(!teacher||!note)return;teacherNotes.push({id:Date.now(),teacher,note});save('flux_teacher_notes',teacherNotes);document.getElementById('tNoteTeacher').value='';document.getElementById('tNoteText').value='';renderSchool();}
 function deleteTeacherNote(id){teacherNotes=teacherNotes.filter(n=>n.id!==id);save('flux_teacher_notes',teacherNotes);renderSchool();}
 function renderSchool(){
-  // fill display tiles
   document.getElementById('displayLocker').textContent=schoolInfo.locker||'—';
   document.getElementById('displayCombo').textContent=schoolInfo.combo||'—';
   document.getElementById('displayCounselor').textContent=schoolInfo.counselor||'—';
   document.getElementById('displayStudentID').textContent=schoolInfo.studentID||'—';
-  // fill inputs
   document.getElementById('inputLocker').value=schoolInfo.locker||'';
   document.getElementById('inputCombo').value=schoolInfo.combo||'';
   document.getElementById('inputCounselor').value=schoolInfo.counselor||'';
   document.getElementById('inputStudentID').value=schoolInfo.studentID||'';
-  // classes
   const cl=document.getElementById('classesList');
   if(!classes.length){cl.innerHTML='<div class="empty" style="padding:10px 0">No classes added yet.</div>';return;}
   const subColors=Object.values(SUBJECTS).map(s=>s.color);
   cl.innerHTML=classes.map((c,i)=>{const col=subColors[i%subColors.length];return`<div class="class-row"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher?c.teacher:''}${c.room?' · '+c.room:''}</div></div><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;}).join('');
-  // teacher notes
   const tn=document.getElementById('teacherNotesList');
   if(!teacherNotes.length){tn.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-bottom:8px">No notes yet.</div>';return;}
   tn.innerHTML=teacherNotes.map(n=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:.82rem;font-weight:700">${esc(n.teacher)}</div><div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(n.note)}</div></div><button onclick="deleteTeacherNote(${n.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`).join('');
@@ -264,7 +263,7 @@ function stopAmbient(){if(ambientCtx){try{ambientCtx.close();}catch(e){}ambientC
 function saveProfile(){const p={name:document.getElementById('name').value,grade:document.getElementById('grade').value,track:document.getElementById('track').value};localStorage.setItem('profile',JSON.stringify(p));localStorage.setItem('flux_user_name',p.name);renderProfile();syncKey('profile',p);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Profile',1500);}}
 function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}"><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;};r.readAsDataURL(file);}
 function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');}
-function renderProfile(){const p=load('profile',{});const name=p.name||localStorage.getItem('flux_user_name')||'Student';const grade=p.grade||'10';const track=p.track||'Pre-IB / MYP';document.getElementById('profileName').textContent=name;document.getElementById('profileSubline').textContent=`Grade ${grade} · ${track}`;if(p.name){document.getElementById('name').value=p.name;document.getElementById('grade').value=p.grade||'10';document.getElementById('track').value=p.track||'Pre-IB / MYP';}const pic=localStorage.getItem('flux_profile_pic');const av=document.getElementById('pAvatar');if(av)av.innerHTML=(pic?`<img src="${pic}">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;const gpa=calcGPA(grades);const done=tasks.filter(t=>t.done).length;const badges=[];if(gpa!==null&&gpa>=3.7)badges.push({t:'🏆 Honor Roll',c:'badge-gold'});if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});if(tStreak>=7)badges.push({t:'🔥 Study Streak',c:'badge-red'});if(track.toLowerCase().includes('ib diploma'))badges.push({t:'📚 IB Diploma',c:'badge-blue'});if(notes.length>=10)badges.push({t:'📝 Note Taker',c:'badge-purple'});const badgeEl=document.getElementById('profileBadges');if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';const ps=document.getElementById('profileStats');if(ps)ps.innerHTML=[[gpa!==null?precise(gpa):'—','GPA (4dp)','var(--accent)'],[done,'Done','var(--green)'],[tasks.filter(t=>!t.done).length,'Active','var(--gold)'],[notes.length,'Notes','var(--purple)']].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:${c}">${n}</div><div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div></div>`).join('');const confEl=document.getElementById('confidenceSliders');if(confEl)confEl.innerHTML=Object.entries(SUBJECTS).map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${s.short}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});}
+function renderProfile(){const p=load('profile',{});const name=p.name||localStorage.getItem('flux_user_name')||'Student';const grade=p.grade||'10';const track=p.track||'Pre-IB / MYP';document.getElementById('profileName').textContent=name;document.getElementById('profileSubline').textContent=`Grade ${grade} · ${track}`;if(p.name){document.getElementById('name').value=p.name;document.getElementById('grade').value=p.grade||'10';document.getElementById('track').value=p.track||'Pre-IB / MYP';}const pic=localStorage.getItem('flux_profile_pic');const av=document.getElementById('pAvatar');if(av)av.innerHTML=(pic?`<img src="${pic}">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;const gpa=calcGPA(grades);const done=tasks.filter(t=>t.done).length;const badges=[];if(gpa!==null&&gpa>=3.7)badges.push({t:'🏆 Honor Roll',c:'badge-gold'});if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});if(tStreak>=7)badges.push({t:'🔥 Study Streak',c:'badge-red'});if(track.toLowerCase().includes('ib diploma'))badges.push({t:'📚 IB Diploma',c:'badge-blue'});if(notes.length>=10)badges.push({t:'📝 Note Taker',c:'badge-purple'});const badgeEl=document.getElementById('profileBadges');if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';const ps=document.getElementById('profileStats');if(ps)ps.innerHTML=[[gpa!==null?precise(gpa):'—','GPA (4dp)','var(--accent)'],[done,'Done','var(--green)'],[tasks.filter(t=>!t.done).length,'Active','var(--gold)'],[notes.length,'Notes','var(--purple)']].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:${c}">${n}</div><div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div></div>`).join('');const confEl=document.getElementById('confidenceSliders');if(confEl)confEl.innerHTML=Object.entries(SUBJECTS).map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${s.short}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});renderCanvasStatus();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
 // ══ THEMES ══
@@ -284,34 +283,65 @@ function saveDailyGoal(){settings.dailyGoalHrs=parseFloat(document.getElementByI
 function loadSettingsUI(){const pt=document.getElementById('panicToggle');if(pt)pt.classList.toggle('on',settings.panic!==false);const qt=document.getElementById('quietToggle');if(qt)qt.classList.toggle('on',settings.quiet!==false);const ds=document.getElementById('dndStart');if(ds)ds.value=settings.dndStart||'07:50';const de=document.getElementById('dndEnd');if(de)de.value=settings.dndEnd||'14:30';const dg=document.getElementById('dailyGoalHrs');if(dg)dg.value=settings.dailyGoalHrs||2;}
 function renderNoHWList(){const el=document.getElementById('noHWList');if(!el)return;const sorted=[...noHomeworkDays].sort();const groups=[];let rs=null,rp=null;const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});sorted.forEach(d=>{if(!rs){rs=d;rp=d;}else{const prev=new Date(rp+'T12:00:00');prev.setDate(prev.getDate()+1);if(prev.toISOString().slice(0,10)===d)rp=d;else{groups.push(rs===rp?fmt(rs):fmt(rs)+' – '+fmt(rp));rs=d;rp=d;}}});if(rs)groups.push(rs===rp?fmt(rs):fmt(rs)+' – '+fmt(rp));el.innerHTML=groups.map(g=>`<div>📵 ${g}</div>`).join('');}
 function exportData(){const data={tasks,grades,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux-data.json';a.click();URL.revokeObjectURL(url);}
-function exportToICal(){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Flux IA East//EN'];tasks.filter(t=>t.date&&!t.done).forEach(t=>{const d=t.date.replace(/-/g,'');lines.push('BEGIN:VEVENT','DTSTART;VALUE=DATE:'+d,'SUMMARY:'+t.name,'END:VEVENT');});lines.push('END:VCALENDAR');const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux.ics';a.click();URL.revokeObjectURL(url);}
+function exportToICal(){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Flux Planner//EN'];tasks.filter(t=>t.date&&!t.done).forEach(t=>{const d=t.date.replace(/-/g,'');lines.push('BEGIN:VEVENT','DTSTART;VALUE=DATE:'+d,'SUMMARY:'+t.name,'END:VEVENT');});lines.push('END:VCALENDAR');const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux.ics';a.click();URL.revokeObjectURL(url);}
 function clearCache(){if(!confirm('Clear all local data?'))return;const keep=['flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name'];Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];renderStats();renderTasks();}
 
 // ══ AI ══
 function fmtAI(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/^### (.+)$/gm,'<strong style="display:block;margin-top:8px;margin-bottom:2px">$1</strong>').replace(/^- (.+)$/gm,'<li style="margin-left:14px;margin-bottom:3px">$1</li>').replace(/Q:\s*(.+)/g,'<strong style="color:var(--accent)">Q:</strong> $1').replace(/A:\s*(.+)/g,'<strong style="color:var(--green)">A:</strong> $1').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
 function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';}else{const f=isBot?fmtAI(content):esc(content);const init=(localStorage.getItem('flux_user_name')||'U').charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'end'});return div;}
 function renderAISugs(){const el=document.getElementById('aiSugs');if(!el)return;el.innerHTML='';["What's due this week?","Make me a study plan","Create Chemistry flashcards","Explain this Physics concept","Help with my essay outline","Quiz me on Math 3","What should I work on now?","Generate a 3-day exam prep plan"].forEach(s=>{const btn=document.createElement('button');btn.className='ai-sug';btn.textContent=s;btn.onclick=()=>{document.getElementById('aiInput').value=s;sendAI();};el.appendChild(btn);});}
-function handleAIImg(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{aiPendingImg=e.target.result;const prev=document.getElementById('aiImgPreview');if(prev){prev.style.display='block';prev.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:8px"><img src="${aiPendingImg}" style="width:44px;height:44px;object-fit:cover;border-radius:6px"><div style="flex:1;font-size:.78rem;font-weight:600">${file.name}</div><button onclick="aiPendingImg=null;this.parentElement.parentElement.style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0">✕</button></div>`;}};reader.readAsDataURL(file);}
-function buildAIPrompt(){const ctx=refreshAIContext();const name=localStorage.getItem('flux_user_name')||'Student';const now=new Date();now.setHours(0,0,0,0);const ab=AB_MAP[todayStr()];const gpa=calcGPA(grades);const mood=moodHistory.slice(-1)[0];const fmt=t=>{const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?' [NO-HW]':'';const s=SUBJECTS[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};return`You are Flux AI — a brilliant, warm AI tutor in Flux, a school planner for IB MYP students at IA East (International Academy East, Troy MI).
-Student: ${name} · 10th Grade · MYP Program · Today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})} · ${ab||'?'} Day
+function handleAIImg(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{aiPendingImg={data:e.target.result.split(',')[1],mime:file.type,name:file.name};const prev=document.getElementById('aiImgPreview');if(prev){prev.style.display='block';prev.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:8px"><img src="${e.target.result}" style="width:44px;height:44px;object-fit:cover;border-radius:6px"><div style="flex:1;font-size:.78rem;font-weight:600">${file.name}</div><button onclick="aiPendingImg=null;this.parentElement.parentElement.style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0">✕</button></div>`;}};reader.readAsDataURL(file);}
+function buildAIPrompt(){const ctx=refreshAIContext();const name=localStorage.getItem('flux_user_name')||'Student';const now=new Date();now.setHours(0,0,0,0);const ab=AB_MAP[todayStr()];const gpa=calcGPA(grades);const mood=moodHistory.slice(-1)[0];const fmt=t=>{const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?' [NO-HW]':'';const s=SUBJECTS[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};return`You are Flux AI — a brilliant, warm AI tutor and planner assistant.
+Student: ${name} · Today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})} · ${ab||'?'} Day
 ${mood?`Mood: ${mood.mood}/5, Stress: ${mood.stress}/10, Sleep: ${mood.sleep}h`:''}
 Recent (7d): ${ctx.recent.length?ctx.recent.map(fmt).join(' | '):'None'}
 Upcoming (14d): ${ctx.upcoming.length?ctx.upcoming.map(fmt).join(' | '):'None'}
 Active tasks: ${tasks.filter(t=>!t.done).slice(0,20).map(fmt).join(' | ')||'None'}
 ${Object.keys(grades).length?`Grades: ${Object.entries(grades).map(([k,v])=>k+': '+v).join(', ')} | GPA: ${gpa!==null?precise(gpa):'—'}`:''}
-Physics: always g=10 m/s². GPA: 4dp always. Be warm, call by name.
+Physics: always g=10 m/s². GPA: 4dp always. Be warm, call student by name.
 TASK ACTIONS:
 \`\`\`actions
 [{"action":"add_task","name":"...","priority":"high","date":"YYYY-MM-DD","type":"test","subject":"CHE"}]
 \`\`\``;}
 function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)```/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
-async function sendAI(){const input=document.getElementById('aiInput'),btn=document.getElementById('aiSendBtn');if(!input||!btn)return;const text=input.value.trim();if(!text&&!aiPendingImg)return;if(btn.disabled)return;document.getElementById('aiSugs').style.display='none';appendMsg('user',text||'📷 Analyze image');let msgContent=text;if(aiPendingImg){msgContent=text||'Please analyze this image.';aiPendingImg=null;const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';}aiHistory.push({role:'user',content:msgContent});input.value='';input.style.height='auto';btn.disabled=true;const thinkEl=appendMsg('bot','',true);try{const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,body:JSON.stringify({system:buildAIPrompt(),messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))})});if(!res.ok){const err=await res.json().catch(()=>({error:'Unknown error'}));throw new Error(err.error||'HTTP '+res.status);}const data=await res.json();const reply=data.content?.[0]?.text||"I didn't get a response — try again.";thinkEl.remove();const ar=execActions(reply);const clean=reply.replace(/```actions[\s\S]*?```/g,'').trim();appendMsg('bot',clean+(ar?'\n\n'+ar:''));aiHistory.push({role:'assistant',content:reply});if(aiHistory.length>24)aiHistory=aiHistory.slice(-24);}catch(err){thinkEl.remove();appendMsg('bot','Something went wrong: '+err.message);}btn.disabled=false;input.focus();}
+async function sendAI(){
+  const input=document.getElementById('aiInput'),btn=document.getElementById('aiSendBtn');
+  if(!input||!btn)return;
+  const text=input.value.trim();
+  if(!text&&!aiPendingImg)return;
+  if(btn.disabled)return;
+  document.getElementById('aiSugs').style.display='none';
+  const imgSnapshot=aiPendingImg;
+  appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
+  aiPendingImg=null;
+  const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
+  const userMsg=text||(imgSnapshot?'Please analyze this image.':'');
+  aiHistory.push({role:'user',content:userMsg});
+  input.value='';input.style.height='auto';btn.disabled=true;
+  const thinkEl=appendMsg('bot','',true);
+  try{
+    const body={system:buildAIPrompt(),messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))};
+    // If image attached, send it for Gemini vision via the ai-proxy
+    if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
+    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,body:JSON.stringify(body)});
+    if(!res.ok){const err=await res.json().catch(()=>({error:'Unknown error'}));throw new Error(err.error||'HTTP '+res.status);}
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||"I didn't get a response — try again.";
+    thinkEl.remove();
+    const ar=execActions(reply);
+    const clean=reply.replace(/```actions[\s\S]*?```/g,'').trim();
+    appendMsg('bot',clean+(ar?'\n\n'+ar:''));
+    aiHistory.push({role:'assistant',content:reply});
+    if(aiHistory.length>24)aiHistory=aiHistory.slice(-24);
+  }catch(err){
+    thinkEl.remove();
+    appendMsg('bot','Something went wrong: '+err.message+'\n\nCheck that your Supabase Edge Functions are deployed and API keys are set.');
+  }
+  btn.disabled=false;input.focus();
+}
 
 // ══ SUPABASE SYNC ══
-// All user data stored in one row per user in a `user_data` table.
-// Schema: id (uuid, PK, = auth.uid()), data (jsonb), updated_at (timestamptz)
 const SYNC_KEYS=['tasks','grades','notes','habits','goals','colleges','moodHistory','schoolInfo','classes','teacherNotes','profile'];
-
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
@@ -320,9 +350,7 @@ function setSyncStatus(status){
   else{el.className='sync-badge offline';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
   el.style.display=currentUser?'flex':'none';
 }
-
 function getCloudPayload(){return{tasks,grades,weightedRows,notes:notes.map(n=>({...n,body:n.body||''})),habits,goals,colleges,moodHistory,schoolInfo,classes,teacherNotes,profile:load('profile',{}),studyDNA,confidences,sessionLog};}
-
 async function syncToCloud(){
   if(!currentUser)return;
   const sb=getSB();if(!sb)return;
@@ -333,7 +361,6 @@ async function syncToCloud(){
     setSyncStatus('synced');save('flux_last_sync',Date.now());
   }catch(e){console.error('Sync error',e);setSyncStatus('offline');}
 }
-
 async function syncFromCloud(){
   if(!currentUser)return;
   const sb=getSB();if(!sb)return;
@@ -342,7 +369,6 @@ async function syncFromCloud(){
     const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
     if(error||!data){setSyncStatus('offline');return;}
     const d=data.data;
-    // Merge: cloud wins for all keys
     if(d.tasks){tasks=d.tasks;save('tasks',tasks);}
     if(d.grades){grades=d.grades;save('flux_grades',grades);}
     if(d.weightedRows){weightedRows=d.weightedRows;save('flux_weighted',weightedRows);}
@@ -359,19 +385,15 @@ async function syncFromCloud(){
     if(d.confidences){confidences=d.confidences;save('flux_conf',confidences);}
     if(d.sessionLog){sessionLog=d.sessionLog;save('flux_session_log',sessionLog);}
     setSyncStatus('synced');
-    // Re-render everything
     renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();renderNotesList();renderHabitList();renderGoalsList();renderCollegeList();renderMoodHistory();renderSchool();updateTStats();
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
 }
-
-// Throttled per-key sync — called after each data mutation when signed in
 const syncDebounceTimers={};
 function syncKey(key,val){
   if(!currentUser)return;
   clearTimeout(syncDebounceTimers[key]);
   syncDebounceTimers[key]=setTimeout(()=>syncToCloud(),3000);
 }
-
 
 // ══ ONBOARDING ══
 let obCurrentStep=1;
@@ -388,11 +410,7 @@ function showOnboarding(){
   document.getElementById('onboarding').classList.add('visible');
   renderObProgress();
   showObStep(1);
-  // Personalise done step with name if already known
-  const p=load('profile',{});
-  if(p.name){const t=document.getElementById('obDoneTitle');if(t)t.textContent="You're all set, "+p.name+"!";}
 }
-
 function renderObProgress(){
   const el=document.getElementById('obProgress');if(!el)return;
   el.innerHTML=Array.from({length:OB_TOTAL},(_,i)=>{
@@ -401,27 +419,22 @@ function renderObProgress(){
     return`<div class="ob-dot ${cls}"></div>`;
   }).join('');
 }
-
 function showObStep(n){
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
   const s=document.getElementById('ob-step-'+n);if(s)s.classList.add('active');
   obCurrentStep=n;renderObProgress();
-  if(n===4){const p=load('profile',{});const t=document.getElementById('obDoneTitle');if(t&&p.name)t.textContent="You're all set, "+p.name.split(' ')[0]+"!";}
 }
-
 function selectObChip(el,key,val){
-  el.closest('.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
+  el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   if(key==='obGrade')obSelectedGrade=val;
   if(key==='obTrack')obSelectedTrack=val;
 }
-
 function updateObPreview(){
   const name=(document.getElementById('obName')?.value||'').trim();
   const av=document.getElementById('obAvatar');
   if(av&&name&&!av.querySelector('img'))av.textContent=name.charAt(0).toUpperCase();
 }
-
 function handleObPic(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -432,7 +445,6 @@ function handleObPic(event){
   };
   reader.readAsDataURL(file);
 }
-
 function obNext(){
   if(obCurrentStep===1){
     const name=document.getElementById('obName')?.value.trim();
@@ -455,9 +467,7 @@ function obNext(){
   if(obCurrentStep===4){obFinish();return;}
   showObStep(obCurrentStep+1);
 }
-
 function obBack(){if(obCurrentStep>1)showObStep(obCurrentStep-1);}
-
 function obFinish(){
   save('flux_onboarded',true);
   document.getElementById('onboarding').classList.remove('visible');
@@ -466,25 +476,23 @@ function obFinish(){
   renderProfile();renderSchool();
   syncToCloud();
 }
-
 function _updateSidebarName(name){
   const sn=document.getElementById('sidebarName');if(sn)sn.textContent=name;
   const mn=document.getElementById('mobName');if(mn)mn.textContent=name;
 }
-
 function handleScheduleImg(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
     obScheduleImgData=e.target.result;
-    const prev=document.getElementById('obImgPreview');
-    if(prev){prev.style.display='block';prev.src=e.target.result;}
-    const zone=document.getElementById('obUploadZone');if(zone)zone.classList.add('has-img');
+    const prev=document.getElementById('schedulePreview');
+    const prevImg=document.getElementById('schedulePreviewImg');
+    if(prev)prev.style.display='block';
+    if(prevImg)prevImg.src=e.target.result;
     analyzeScheduleImg();
   };
   reader.readAsDataURL(file);
 }
-
 async function analyzeScheduleImg(){
   if(!obScheduleImgData)return;
   const analyzing=document.getElementById('obAnalyzing');
@@ -495,10 +503,11 @@ async function analyzeScheduleImg(){
     const base64=obScheduleImgData.split(',')[1];
     const mime=obScheduleImgData.split(';')[0].split(':')[1];
     const res=await fetch(API.gemini,{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',headers:GEMINI_HEADERS,
       body:JSON.stringify({imageBase64:base64,mimeType:mime,
         prompt:'This is a student class schedule. Extract every class and return ONLY a JSON array: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods sequentially if not shown. Empty string for missing fields. ONLY the JSON array.'})
     });
+    if(!res.ok)throw new Error('Gemini error '+res.status);
     const data=await res.json();
     let txt=(data.text||'[]').replace(/```json|```/g,'').trim();
     const match=txt.match(/\[[\s\S]*\]/);if(match)txt=match[0];
@@ -517,28 +526,38 @@ async function analyzeScheduleImg(){
 }
 
 // ══ AUTH ══
-// IMPORTANT: The redirect URL must match EXACTLY what's in Supabase Dashboard
-// Authentication > URL Configuration > Redirect URLs
-// Add both: https://azferplanner.vercel.app/ AND http://localhost:3000/
+// getRedirectURL works for GitHub Pages (/Fluxplanner/ path) and any other host
 function getRedirectURL(){
-  return window.location.origin + '/';
+  // Use origin + pathname base for GitHub Pages subdirectory support
+  const loc=window.location;
+  // If on github.io/Fluxplanner, redirect back to that exact path
+  if(loc.pathname.includes('/Fluxplanner')){
+    return loc.origin+'/Fluxplanner/';
+  }
+  return loc.origin+'/';
 }
 
 async function signInWithGoogle(){
   const sb=getSB();
-  if(!sb){alert('Auth not available — please refresh the page.');return;}
+  if(!sb){
+    alert('Supabase not loaded yet — please refresh the page.');
+    return;
+  }
   try{
+    const redirectTo=getRedirectURL();
     const{error}=await sb.auth.signInWithOAuth({
       provider:'google',
       options:{
-        redirectTo:getRedirectURL(),
+        redirectTo,
+        // Request Gmail read scope alongside default auth scopes
+        scopes:'openid email profile https://www.googleapis.com/auth/gmail.readonly',
         queryParams:{access_type:'offline',prompt:'select_account'}
       }
     });
     if(error)throw error;
   }catch(e){
     console.error('OAuth error:',e);
-    alert('Sign in error: '+e.message+'\n\nFix: Go to Supabase Dashboard > Authentication > URL Configuration and add:\n'+getRedirectURL());
+    alert('Sign in failed: '+e.message+'\n\nMake sure '+getRedirectURL()+' is added to Supabase > Authentication > URL Configuration > Redirect URLs');
   }
 }
 
@@ -548,19 +567,66 @@ async function signOut(){
   handleSignedOut();
 }
 
+// ── GUEST LOGIN — shows disclaimer then enters app ──
 function skipLogin(){
+  // Show guest disclaimer modal first
+  showGuestDisclaimer();
+}
+
+function showGuestDisclaimer(){
+  // Remove existing modal if any
+  const existing=document.getElementById('guestModal');if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='guestModal';
+  modal.className='modal-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)';
+  modal.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px 24px;width:100%;max-width:400px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:12px">👤</div>
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
+      <div style="font-size:.85rem;color:var(--muted2);line-height:1.7;margin-bottom:20px">
+        Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
+        It will not sync across devices and may be lost if you clear your browser data.<br><br>
+        <span style="font-size:.78rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Sign in with Google anytime to back up your data.</span>
+      </div>
+      <button onclick="confirmGuestLogin()" style="width:100%;padding:12px;margin-bottom:10px">Got it — Continue as Guest</button>
+      <button onclick="document.getElementById('guestModal').remove();document.getElementById('loginScreen').classList.add('visible')" class="btn-sec" style="width:100%;padding:10px;font-size:.85rem">← Back to Sign In</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function confirmGuestLogin(){
+  const modal=document.getElementById('guestModal');if(modal)modal.remove();
   document.getElementById('loginScreen').classList.remove('visible');
-  document.getElementById('onboarding').style.display='none';
-  document.getElementById('app').classList.add('visible');
+  const onboarded=load('flux_onboarded',false);
+  const hasData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0;
+  if(!onboarded&&!hasData){
+    showOnboarding();
+  }else{
+    document.getElementById('app').classList.add('visible');
+  }
   setSyncStatus('offline');
 }
 
 async function initAuth(){
-  const sb=getSB();if(!sb)return;
-  const{data:{session}}=await sb.auth.getSession();
-  if(session?.user)await handleSignedIn(session.user);
-  else showLoginOrApp();
-  sb.auth.onAuthStateChange(async(_,s)=>{if(s?.user)await handleSignedIn(s.user);else handleSignedOut();});
+  const sb=getSB();
+  if(!sb){
+    // Supabase didn't load — go straight to login screen
+    document.getElementById('loginScreen').classList.add('visible');
+    return;
+  }
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session?.user)await handleSignedIn(session.user,session);
+    else showLoginOrApp();
+    sb.auth.onAuthStateChange(async(event,s)=>{
+      if(event==='SIGNED_IN'&&s?.user)await handleSignedIn(s.user,s);
+      else if(event==='SIGNED_OUT')handleSignedOut();
+    });
+  }catch(e){
+    console.error('Auth init error:',e);
+    showLoginOrApp();
+  }
 }
 
 function showLoginOrApp(){
@@ -575,10 +641,15 @@ function showLoginOrApp(){
   }
 }
 
-async function handleSignedIn(user){
+async function handleSignedIn(user,session){
   currentUser=user;
+  // Store Gmail token for later use
+  if(session?.provider_token){
+    gmailToken=session.provider_token;
+    sessionStorage.setItem('flux_gmail_token',session.provider_token);
+  }
   document.getElementById('loginScreen').classList.remove('visible');
-  const name=user.user_metadata?.full_name||user.email.split('@')[0];
+  const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'Student';
   const firstName=name.split(' ')[0];
   if(!load('profile',{}).name)localStorage.setItem('flux_user_name',firstName);
   _updateUserUI(user,name);
@@ -587,12 +658,15 @@ async function handleSignedIn(user){
   const hasData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0;
   const shouldOnboard=!load('flux_onboarded',false)&&!hasData;
   if(shouldOnboard)showOnboarding();
-  else{document.getElementById('onboarding').style.display='none';document.getElementById('app').classList.add('visible');}
+  else{
+    const ob=document.getElementById('onboarding');if(ob)ob.classList.remove('visible');
+    document.getElementById('app').classList.add('visible');
+  }
   setInterval(syncToCloud,5*60*1000);
 }
 
 function _updateUserUI(user,name){
-  const firstName=(name||user.email.split('@')[0]).split(' ')[0];
+  const firstName=(name||user.email?.split('@')[0]||'User').split(' ')[0];
   localStorage.setItem('flux_user_name',firstName);
   const sav=document.getElementById('sidebarAv');if(sav){if(user.user_metadata?.avatar_url)sav.innerHTML=`<img src="${user.user_metadata.avatar_url}" referrerpolicy="no-referrer">`;else sav.textContent=firstName.charAt(0).toUpperCase();}
   const sn=document.getElementById('sidebarName');if(sn)sn.textContent=name||firstName;
@@ -606,7 +680,8 @@ function _updateUserUI(user,name){
 }
 
 function handleSignedOut(){
-  currentUser=null;
+  currentUser=null;gmailToken=null;
+  sessionStorage.removeItem('flux_gmail_token');
   const asd=document.getElementById('accountSignedOut');if(asd)asd.style.display='block';
   const asi=document.getElementById('accountSignedIn');if(asi)asi.style.display='none';
   const sn=document.getElementById('sidebarName');if(sn)sn.textContent='Not signed in';
@@ -625,7 +700,7 @@ function handleSignedOut(){
   const ab=AB_MAP[todayStr()];
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':('rgba(16,217,160,.15)');p.style.color=ab==='A'?'var(--accent)':('var(--green)');p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':('rgba(16,217,160,.3)'));}
   const td=document.getElementById('taskDate');if(td)td.valueAsDate=TODAY;
-  setEnergy(document.getElementById('energySlider').value);
+  setEnergy(document.getElementById('energySlider')?.value||3);
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();renderGradeInputs();renderGradeOverview();renderWeightedRows();
   renderNotesList();renderHabitList();renderGoalsList();renderCollegeList();
@@ -640,237 +715,238 @@ function handleSignedOut(){
 
 // ══ IMAGE IMPORT FEATURES ══
 
-// Generic Gemini vision call
-async function callGemini(imageBase64, mimeType, prompt) {
-  const res = await fetch(API.gemini, {
-    method: 'POST', headers: API_HEADERS,
-    body: JSON.stringify({ imageBase64, mimeType, prompt })
-  });
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error||'Gemini error'); }
-  return (await res.json()).text || '';
-}
-
-// Import grades from photo
-async function importGradesFromPhoto(event) {
-  const file = event.target.files[0]; if (!file) return;
-  const el = document.getElementById('gradesImportResult');
-  el.style.display = 'block';
-  el.innerHTML = '<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading grades with Gemini...</div>';
-  try {
-    const base64 = await fileToBase64(file);
-    const txt = await callGemini(base64, file.type,
-      'This is a student gradebook or report card. Extract every subject and its grade percentage. Return ONLY a JSON object like {"Chemistry":92,"Math 3":88}. Use the exact subject names shown. Return ONLY the JSON object.');
-    const clean = txt.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
-    let imported = 0;
-    Object.entries(parsed).forEach(([k,v]) => { if(k&&v!==undefined){grades[k]=String(v);imported++;} });
-    save('flux_grades', grades);
-    renderGradeInputs(); renderGradeOverview(); updateGPADisplay();
-    el.innerHTML = `<div style="color:var(--green);font-size:.82rem">✓ Imported ${imported} grades! Review and save below.</div>`;
-    syncKey('grades', grades);
-  } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);font-size:.82rem">Could not read grades: ${e.message}</div>`;
-  }
-}
-
-// Import note content from photo (assignment guide, worksheet, etc.)
-async function importNoteFromPhoto(event) {
-  const file = event.target.files[0]; if (!file) return;
-  const resEl = document.getElementById('aiNoteResult');
-  resEl.style.display = 'block';
-  resEl.innerHTML = '<div style="color:var(--muted2);font-size:.82rem">📷 Reading image with Gemini...</div>';
-  try {
-    const base64 = await fileToBase64(file);
-    const txt = await callGemini(base64, file.type,
-      'This is a student assignment, worksheet, or lesson guide. Extract all the text and content from it. Format it clearly with headers and bullet points where appropriate. Preserve all important details like questions, instructions, and due dates.');
-    const editor = document.getElementById('noteEditor');
-    if (editor) {
-      const existing = editor.innerHTML;
-      editor.innerHTML = existing + (existing ? '<hr style="border-color:var(--border);margin:12px 0">' : '') + '<p>' + fmtAI(txt) + '</p>';
-    }
-    resEl.innerHTML = '<div style="color:var(--green);font-size:.82rem">✓ Content added to note. Save when ready.</div>';
-  } catch(e) {
-    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Could not read image: ${e.message}</div>`;
-  }
-}
-
-// Import schedule from photo (used in onboarding + school tab)
-async function importScheduleFromPhoto(event, resultElId) {
-  const file = event.target.files[0]; if (!file) return;
-  const resEl = document.getElementById(resultElId||'schoolImgResult');
-  if (resEl) { resEl.style.display='block'; resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini...</div>'; }
-  try {
-    const base64 = await fileToBase64(file);
-    const txt = await callGemini(base64, file.type,
-      'This is a student class schedule. Extract every class/period and return ONLY a JSON array: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods 1,2,3 if not shown. Empty string for missing fields. ONLY the JSON array.');
-    const clean = txt.replace(/```json|```/g,'').trim();
-    const match = clean.match(/\[[\s\S]*\]/);
-    const parsed = JSON.parse(match ? match[0] : clean);
-    classes = parsed.map((c,i) => ({id:Date.now()+i, period:c.period||i+1, name:c.name||'Class '+(i+1), teacher:c.teacher||'', room:c.room||''}));
-    save('flux_classes', classes);
-    renderSchool();
-    if (resEl) resEl.innerHTML = `<div style="color:var(--green);font-size:.82rem">✓ Imported ${classes.length} classes!</div>`;
-    syncKey('classes', classes);
-  } catch(e) {
-    if (resEl) resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${e.message}</div>`;
-  }
-}
-
-// Utility: file to base64
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result.split(',')[1]);
-    reader.onerror = reject;
+// Utility: file to base64 (returns just the data part, no prefix)
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>resolve(e.target.result.split(',')[1]);
+    reader.onerror=reject;
     reader.readAsDataURL(file);
   });
 }
 
-// ══ CANVAS SYNC ══
-let canvasToken = load('flux_canvas_token', '');
-let canvasUrl = load('flux_canvas_url', '');
-
-function saveCanvasConfig() {
-  canvasToken = document.getElementById('canvasToken')?.value.trim() || '';
-  canvasUrl = document.getElementById('canvasUrl')?.value.trim() || '';
-  save('flux_canvas_token', canvasToken);
-  save('flux_canvas_url', canvasUrl);
-  const b = event?.target; if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
-  renderCanvasStatus();
+// Generic Gemini vision call via edge function
+async function callGemini(imageBase64,mimeType,prompt){
+  const res=await fetch(API.gemini,{
+    method:'POST',headers:GEMINI_HEADERS,
+    body:JSON.stringify({imageBase64,mimeType,prompt})
+  });
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Gemini error '+res.status);}
+  const data=await res.json();
+  return data.text||'';
 }
 
-function renderCanvasStatus() {
-  const el = document.getElementById('canvasStatus'); if (!el) return;
-  if (canvasToken && canvasUrl) {
-    el.innerHTML = `<div class="sync-badge synced">✓ Canvas connected</div>`;
-  } else {
-    el.innerHTML = `<div class="sync-badge offline">○ Not connected</div>`;
+// Import grades from photo
+async function importGradesFromPhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const el=document.getElementById('gradesImportResult');
+  el.style.display='block';
+  el.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading grades with Gemini AI...</div>';
+  try{
+    const base64=await fileToBase64(file);
+    const txt=await callGemini(base64,file.type,
+      'This is a student gradebook or report card. Extract every subject and its grade percentage or letter grade. Return ONLY a JSON object like {"Chemistry":92,"Math 3":"B+"}. Use the exact subject names shown. Return ONLY the JSON object, no markdown.');
+    const clean=txt.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(clean);
+    let imported=0;
+    Object.entries(parsed).forEach(([k,v])=>{if(k&&v!==undefined){grades[k]=String(v);imported++;}});
+    save('flux_grades',grades);
+    renderGradeInputs();renderGradeOverview();updateGPADisplay();
+    el.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Imported ${imported} grades! Review and save below.</div>`;
+    syncKey('grades',grades);
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read grades: ${e.message}</div>`;
   }
 }
 
-async function syncCanvas() {
-  if (!canvasToken || !canvasUrl) { alert('Enter your Canvas URL and token first.'); return; }
-  const btn = event?.target; if(btn){btn.textContent='Syncing...';btn.disabled=true;}
-  try {
-    const base = canvasUrl.replace(/\/+$/, '');
-    const res = await fetch(`${API.canvas}?url=${encodeURIComponent(base+'/api/v1/courses?enrollment_state=active&per_page=20')}&token=${encodeURIComponent(canvasToken)}`, { headers: API_HEADERS });
-    const courses = await res.json();
-    if (!Array.isArray(courses)) throw new Error('Invalid response from Canvas');
-    let added = 0;
-    for (const course of courses.slice(0, 10)) {
-      const aRes = await fetch(`${API.canvas}?url=${encodeURIComponent(base+'/api/v1/courses/'+course.id+'/assignments?per_page=30&order_by=due_at')}&token=${encodeURIComponent(canvasToken)}`, { headers: API_HEADERS });
-      const assignments = await aRes.json();
-      if (!Array.isArray(assignments)) continue;
-      assignments.forEach(a => {
-        if (!a.due_at) return;
-        const due = a.due_at.slice(0,10);
-        const name = a.name || 'Assignment';
-        if (!tasks.find(t => t.name === name && t.date === due)) {
-          tasks.unshift({ id: Date.now()+Math.random(), name, date: due, subject: '', priority: 'med', type: 'hw', done: false, rescheduled: 0, createdAt: Date.now(), urgencyScore: 0 });
+// Import note/assignment guide content from photo
+async function importNoteFromPhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const resEl=document.getElementById('aiNoteResult');
+  resEl.style.display='block';
+  resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">📷 Reading image with Gemini AI...</div>';
+  try{
+    const base64=await fileToBase64(file);
+    const txt=await callGemini(base64,file.type,
+      'This is a student assignment guide, worksheet, or lesson material. Extract all the text and content. Format it clearly with headers and bullet points where appropriate. Preserve all important details including questions, instructions, and due dates.');
+    const editor=document.getElementById('noteEditor');
+    if(editor){
+      const existing=editor.innerHTML;
+      editor.innerHTML=existing+(existing?'<hr style="border-color:var(--border);margin:12px 0">':'')+'<p>'+fmtAI(txt)+'</p>';
+    }
+    resEl.innerHTML='<div style="color:var(--green);font-size:.82rem">✓ Content added to note. Save when ready.</div>';
+  }catch(e){
+    resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read image: ${e.message}</div>`;
+  }
+}
+
+// Import schedule from photo (school tab)
+async function importScheduleFromPhoto(event,resultElId){
+  const file=event.target.files[0];if(!file)return;
+  const resEl=document.getElementById(resultElId||'schoolImgResult');
+  if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini AI...</div>';}
+  try{
+    const base64=await fileToBase64(file);
+    const txt=await callGemini(base64,file.type,
+      'This is a student class schedule. Extract every class/period. Return ONLY a JSON array: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods 1,2,3... if not shown. Use empty string for missing fields. ONLY return the JSON array, no markdown.');
+    const clean=txt.replace(/```json|```/g,'').trim();
+    const match=clean.match(/\[[\s\S]*\]/);
+    const parsed=JSON.parse(match?match[0]:clean);
+    classes=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:c.name||'Class '+(i+1),teacher:c.teacher||'',room:c.room||''}));
+    save('flux_classes',classes);
+    renderSchool();
+    if(resEl)resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Imported ${classes.length} classes!</div>`;
+    syncKey('classes',classes);
+  }catch(e){
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${e.message}</div>`;
+  }
+}
+
+// ══ CANVAS SYNC ══
+let canvasToken=load('flux_canvas_token','');
+let canvasUrl=load('flux_canvas_url','');
+
+function saveCanvasConfig(){
+  canvasToken=document.getElementById('canvasToken')?.value.trim()||'';
+  canvasUrl=document.getElementById('canvasUrl')?.value.trim()||'';
+  save('flux_canvas_token',canvasToken);
+  save('flux_canvas_url',canvasUrl);
+  const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
+  renderCanvasStatus();
+}
+function renderCanvasStatus(){
+  const el=document.getElementById('canvasStatus');if(!el)return;
+  const urlEl=document.getElementById('canvasUrl');if(urlEl)urlEl.value=canvasUrl||'';
+  if(canvasToken&&canvasUrl){
+    el.innerHTML=`<div class="sync-badge synced">✓ Canvas connected</div>`;
+  }else{
+    el.innerHTML=`<div class="sync-badge offline">○ Not connected — enter URL and token below</div>`;
+  }
+}
+async function syncCanvas(){
+  if(!canvasToken||!canvasUrl){alert('Enter your Canvas URL and token first.');return;}
+  const btn=event?.target;if(btn){btn.textContent='Syncing...';btn.disabled=true;}
+  try{
+    const base=canvasUrl.replace(/\/+$/,'');
+    const res=await fetch(`${API.canvas}?url=${encodeURIComponent(base+'/api/v1/courses?enrollment_state=active&per_page=20')}&token=${encodeURIComponent(canvasToken)}`,{headers:API_HEADERS});
+    const courses=await res.json();
+    if(!Array.isArray(courses))throw new Error('Invalid response from Canvas — check your URL and token');
+    let added=0;
+    for(const course of courses.slice(0,10)){
+      const aRes=await fetch(`${API.canvas}?url=${encodeURIComponent(base+'/api/v1/courses/'+course.id+'/assignments?per_page=30&order_by=due_at')}&token=${encodeURIComponent(canvasToken)}`,{headers:API_HEADERS});
+      const assignments=await aRes.json();
+      if(!Array.isArray(assignments))continue;
+      assignments.forEach(a=>{
+        if(!a.due_at)return;
+        const due=a.due_at.slice(0,10);
+        const name=a.name||'Assignment';
+        if(!tasks.find(t=>t.name===name&&t.date===due)){
+          tasks.unshift({id:Date.now()+Math.random(),name,date:due,subject:'',priority:'med',type:'hw',done:false,rescheduled:0,createdAt:Date.now(),urgencyScore:0});
           added++;
         }
       });
     }
-    save('tasks', tasks); renderStats(); renderTasks(); renderCountdown();
-    if(btn){btn.textContent=`✓ Imported ${added} tasks`;setTimeout(()=>{btn.textContent='Sync Canvas';btn.disabled=false;},2000);}
-    syncKey('tasks', tasks);
-  } catch(e) {
+    save('tasks',tasks);renderStats();renderTasks();renderCountdown();
+    if(btn){btn.textContent=`✓ Imported ${added} tasks`;setTimeout(()=>{btn.textContent='↓ Sync Assignments';btn.disabled=false;},2500);}
+    syncKey('tasks',tasks);
+  }catch(e){
     if(btn){btn.textContent='Sync failed';btn.disabled=false;}
     alert('Canvas sync error: '+e.message);
   }
 }
 
 // ══ GMAIL PANEL ══
-// Gmail uses Google OAuth (same token from Supabase Google login)
-// We read emails via Gmail API using the user's access token
-let gmailEmails = [];
-let gmailToken = null;
+let gmailEmails=[];
+let gmailToken=sessionStorage.getItem('flux_gmail_token')||null;
 
-async function loadGmail() {
-  const el = document.getElementById('gmailList');
-  if (!el) return;
-  // Get access token from Supabase session
-  const sb = getSB(); if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.provider_token) {
-    el.innerHTML = `<div class="empty" style="padding:24px">
-      <div style="font-size:1.5rem;margin-bottom:10px">📧</div>
-      <div style="font-size:.88rem;font-weight:600;margin-bottom:6px">Connect Gmail</div>
-      <div style="font-size:.78rem;color:var(--muted2);margin-bottom:16px">Sign in with Google to view your school emails here.</div>
-      <button onclick="signInWithGoogleGmail()" style="padding:10px 20px">Sign in with Google</button>
+async function loadGmail(){
+  const el=document.getElementById('gmailList');if(!el)return;
+  // Try to get token from current session if not already stored
+  if(!gmailToken){
+    const sb=getSB();
+    if(sb){
+      try{
+        const{data:{session}}=await sb.auth.getSession();
+        if(session?.provider_token){
+          gmailToken=session.provider_token;
+          sessionStorage.setItem('flux_gmail_token',gmailToken);
+        }
+      }catch(e){}
+    }
+  }
+  if(!gmailToken){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:28px 20px">
+      <div style="font-size:2rem;margin-bottom:12px">📧</div>
+      <div style="font-size:.95rem;font-weight:700;margin-bottom:8px">Connect Gmail</div>
+      <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px;line-height:1.6">Sign in with Google to view your school emails and add them as tasks.</div>
+      <button onclick="signInWithGoogle()" style="width:100%;padding:12px;display:flex;align-items:center;justify-content:center;gap:10px">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with Google
+      </button>
     </div>`;
     return;
   }
-  gmailToken = session.provider_token;
-  el.innerHTML = '<div style="color:var(--muted2);font-size:.82rem;padding:16px;font-family:JetBrains Mono,monospace">Loading emails...</div>';
-  try {
-    // Fetch recent emails
-    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=in:inbox', {
-      headers: { 'Authorization': `Bearer ${gmailToken}` }
+  el.innerHTML='<div style="color:var(--muted2);font-size:.82rem;padding:16px;font-family:JetBrains Mono,monospace">Loading emails...</div>';
+  try{
+    const res=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=in:inbox',{
+      headers:{'Authorization':`Bearer ${gmailToken}`}
     });
-    if (!res.ok) throw new Error('Gmail API error '+res.status);
-    const data = await res.json();
-    if (!data.messages?.length) { el.innerHTML = '<div class="empty">No emails found.</div>'; return; }
-    // Fetch details for each
-    gmailEmails = await Promise.all(data.messages.map(async m => {
-      const detail = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
-        headers: { 'Authorization': `Bearer ${gmailToken}` }
-      });
-      const d = await detail.json();
-      const headers = d.payload?.headers || [];
-      const get = name => headers.find(h => h.name===name)?.value || '';
-      return { id: m.id, subject: get('Subject'), from: get('From'), date: get('Date'), snippet: d.snippet || '' };
+    if(res.status===401){
+      // Token expired — clear and prompt re-login
+      gmailToken=null;sessionStorage.removeItem('flux_gmail_token');
+      el.innerHTML=`<div class="card" style="text-align:center;padding:24px"><div style="color:var(--red);font-size:.85rem;margin-bottom:14px">Gmail session expired.</div><button onclick="signInWithGoogle()" style="padding:10px 20px">Re-connect Gmail</button></div>`;
+      return;
+    }
+    if(!res.ok)throw new Error('Gmail API error '+res.status);
+    const data=await res.json();
+    if(!data.messages?.length){el.innerHTML='<div class="empty">No emails found in inbox.</div>';return;}
+    gmailEmails=await Promise.all(data.messages.map(async m=>{
+      try{
+        const detail=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,{
+          headers:{'Authorization':`Bearer ${gmailToken}`}
+        });
+        const d=await detail.json();
+        const headers=d.payload?.headers||[];
+        const get=name=>headers.find(h=>h.name===name)?.value||'';
+        return{id:m.id,subject:get('Subject'),from:get('From'),date:get('Date'),snippet:d.snippet||''};
+      }catch(e){return{id:m.id,subject:'(error)',from:'',date:'',snippet:''};}
     }));
     renderGmailList();
-  } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);font-size:.82rem;padding:16px">${e.message}<br><br><button onclick="signInWithGoogleGmail()" style="padding:8px 16px;font-size:.8rem">Re-connect Gmail</button></div>`;
+  }catch(e){
+    el.innerHTML=`<div style="color:var(--red);font-size:.82rem;padding:16px">${e.message}<br><br><button onclick="signInWithGoogle()" style="padding:8px 16px;font-size:.8rem;margin-top:8px">Re-connect Gmail</button></div>`;
   }
 }
 
-async function signInWithGoogleGmail() {
-  const sb = getSB(); if (!sb) return;
-  await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin + '/',
-      scopes: 'https://www.googleapis.com/auth/gmail.readonly',
-      queryParams: { access_type: 'offline', prompt: 'consent' }
-    }
-  });
-}
-
-function renderGmailList() {
-  const el = document.getElementById('gmailList'); if (!el) return;
-  if (!gmailEmails.length) { el.innerHTML = '<div class="empty">No emails.</div>'; return; }
-  el.innerHTML = gmailEmails.map(e => `
-    <div class="gmail-item" onclick="expandEmail('${e.id}')">
+function renderGmailList(){
+  const el=document.getElementById('gmailList');if(!el)return;
+  if(!gmailEmails.length){el.innerHTML='<div class="empty">No emails.</div>';return;}
+  el.innerHTML=gmailEmails.map(e=>`
+    <div class="gmail-item">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
         <div style="flex:1;min-width:0">
           <div style="font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.subject||'(no subject)')}</div>
           <div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.from)}</div>
           <div style="font-size:.78rem;color:var(--muted2);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(e.snippet)}</div>
         </div>
-        <button onclick="event.stopPropagation();addEmailAsTask('${e.id}')" style="padding:5px 10px;font-size:.72rem;white-space:nowrap;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">+ Task</button>
+        <button onclick="addEmailAsTask('${e.id}')" style="padding:5px 10px;font-size:.72rem;white-space:nowrap;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);flex-shrink:0">+ Task</button>
       </div>
     </div>`).join('');
 }
 
-function addEmailAsTask(id) {
-  const email = gmailEmails.find(e => e.id === id); if (!email) return;
-  const task = {
-    id: Date.now(), name: email.subject || 'Email task',
-    date: '', subject: '', priority: 'med', type: 'hw',
-    notes: `From: ${email.from}\n\n${email.snippet}`,
-    done: false, rescheduled: 0, createdAt: Date.now()
+function addEmailAsTask(id){
+  const email=gmailEmails.find(e=>e.id===id);if(!email)return;
+  const task={
+    id:Date.now(),name:email.subject||'Email task',
+    date:'',subject:'',priority:'med',type:'hw',
+    notes:`From: ${email.from}\n\n${email.snippet}`,
+    done:false,rescheduled:0,createdAt:Date.now()
   };
-  task.urgencyScore = calcUrgency(task);
-  tasks.unshift(task); save('tasks', tasks);
-  renderStats(); renderTasks();
-  syncKey('tasks', tasks);
-  // Show feedback
-  const btn = event?.target; if(btn){btn.textContent='✓ Added';btn.style.color='var(--green)';setTimeout(()=>{btn.textContent='+ Task';btn.style.color='var(--accent)';},2000);}
+  task.urgencyScore=calcUrgency(task);
+  tasks.unshift(task);save('tasks',tasks);
+  renderStats();renderTasks();
+  syncKey('tasks',tasks);
+  const btn=event?.target;
+  if(btn){btn.textContent='✓ Added';btn.style.color='var(--green)';setTimeout(()=>{btn.textContent='+ Task';btn.style.color='var(--accent)';},2000);}
 }
 
-function renderGmail() {
-  loadGmail();
-}
+function renderGmail(){loadGmail();}
