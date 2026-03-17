@@ -214,13 +214,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ── CARDS ── */
 .card{
   background:var(--card);
-  backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
   border:1px solid var(--border);
   padding:20px;margin-bottom:14px;border-radius:var(--r);
   box-shadow:var(--shadow-card);
   transition:border-color .2s,box-shadow .2s;
 }
-.card:hover{border-color:rgba(255,255,255,.1)}
+.card:hover{border-color:rgba(255,255,255,.11)}
 .card h3{font-size:.72rem;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:500;margin-bottom:14px}
 
 /* ── INPUTS ── */
@@ -460,6 +459,12 @@ button:active{transform:scale(.97) translateY(0)}
 /* ── MISC ── */
 .empty{text-align:center;color:var(--muted);padding:32px 16px;font-size:.87rem}
 .slabel2{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;margin-top:4px}
+
+/* ── CALENDAR TWO-COLUMN ── */
+.cal-layout{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+@media(max-width:900px){.cal-layout{grid-template-columns:1fr}}
+.cal-today-col{display:flex;flex-direction:column;gap:12px}
+.cal-today-header{font-size:.72rem;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
 
 /* ── LIQUID GLASS HIGHLIGHT on hover ── */
 @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
