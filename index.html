@@ -126,21 +126,18 @@
         <div style="font-size:2rem;margin-bottom:10px">🏫</div>
         <div class="ob-title">Your School</div>
         <div class="ob-sub">Tell us where you go so Flux can personalize your experience.</div>
-        <span class="ob-label">School name</span>
-        <input type="text" id="obSchool" placeholder="e.g. International Academy East" style="margin:0">
-        <span class="ob-label">IB Program / Track</span>
+        <span class="ob-label">School name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+        <input type="text" id="obSchool" placeholder="e.g. Lincoln High School" style="margin:0">
+        <span class="ob-label">Academic Program <span style="color:var(--muted);font-weight:400">(optional)</span></span>
         <div class="ob-chip-wrap" id="obTrackChips">
-          <div class="ob-chip active" onclick="selectObChip(this,'obTrack','Pre-IB / MYP')">Pre-IB / MYP</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB Diploma')">IB Diploma</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','Not IB')">Not IB</div>
+          <div class="ob-chip" onclick="selectObChip(this,'obTrack','General')">General</div>
+          <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB MYP')">IB MYP</div>
+          <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB DP')">IB DP</div>
+          <div class="ob-chip" onclick="selectObChip(this,'obTrack','AP')">AP</div>
+          <div class="ob-chip" onclick="selectObChip(this,'obTrack','Honours')">Honours</div>
         </div>
         <span class="ob-label">Counselor name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
         <input type="text" id="obCounselor" placeholder="e.g. Ms. Johnson" style="margin:0">
-        <span class="ob-label">Locker <span style="color:var(--muted);font-weight:400">(optional)</span></span>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="obLocker" placeholder="e.g. 342" style="margin:0;flex:1">
-          <input type="text" id="obCombo" placeholder="Combo e.g. 14-32-07" style="margin:0;flex:2">
-        </div>
         <button class="ob-btn" onclick="obNext()">Continue →</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
       </div>
@@ -324,7 +321,7 @@
         <h3>Add Task</h3>
         <input type="text" id="taskName" placeholder="Assignment, test, project...">
         <div class="irow" style="margin-bottom:8px">
-          <select id="taskSubject"><option value="">No subject</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="ORC">Orchestra</option><option value="PHY">Physics</option><option value="PP">Personal Project</option><option value="GYM">Gym</option></select>
+          <select id="taskSubject"><option value="">No subject</option></select>
           <select id="taskPriority"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
         </div>
         <div class="irow" style="margin-bottom:8px">
@@ -423,7 +420,7 @@
           <div class="mrow" id="addEventTimeRow"><label>Time (optional)</label><input type="time" id="addEventTime"></div>
         </div>
         <div class="mrow" id="addEventSubjectRow"><label>Subject</label>
-          <select id="addEventSubject"><option value="">No subject</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="PHY">Physics</option><option value="PP">Personal Project</option></select>
+          <select id="addEventSubject"><option value="">No subject</option></select>
         </div>
         <div class="mrow" id="addEventPriorityRow"><label>Priority</label>
           <select id="addEventPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
@@ -561,7 +558,7 @@
           <button onclick="toggleStarNote()" id="starBtn" style="background:none;border:1px solid var(--border2);color:var(--gold);padding:6px 10px;font-size:1rem">☆</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-          <select id="noteSubjectTag" style="width:auto;margin:0;padding:5px 8px;font-size:.78rem"><option value="">No subject</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="PHY">Physics</option><option value="PP">PP</option></select>
+          <select id="noteSubjectTag" style="width:auto;margin:0;padding:5px 8px;font-size:.78rem"><option value="">No subject</option></select>
           <button onclick="saveNote()" style="padding:6px 14px;font-size:.78rem">Save</button>
           <button onclick="deleteNote()" class="btn-sec" style="padding:6px 10px;font-size:.78rem;color:var(--red)">Delete</button>
           <button onclick="generateFlashcardsFromNote()" style="padding:6px 12px;font-size:.78rem;background:rgba(var(--accent-rgb),.2);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent)">🃏 Flashcards</button>
@@ -618,7 +615,6 @@
         <div style="margin-bottom:14px">
           <select id="timerSubject" style="width:auto;padding:5px 10px;margin:0;font-size:.78rem;display:inline-block">
             <option value="">No subject tag</option>
-            <option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="PHY">Physics</option><option value="PP">PP</option>
           </select>
         </div>
         <div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">
@@ -661,16 +657,16 @@
           </div>
           <div>
             <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px" id="profileName">Your Name</div>
-            <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Grade 10 · Pre-IB</div>
+            <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Set up your profile</div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px" id="profileBadges"></div>
           </div>
         </div>
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
             <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">CAS Progress</div>
-            <div style="font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace" id="casPercent">40%</div>
+            
           </div>
-          <div class="cas-bar"><div class="cas-fill" id="casBar" style="width:40%"></div></div>
+          <div id="programTracker"></div>
         </div>
       </div>
       <div class="card">
@@ -679,8 +675,18 @@
         <input type="text" id="name" placeholder="Your name">
         <label style="font-size:.72rem;color:var(--muted)">Grade</label>
         <select id="grade"><option value="9">9th Grade</option><option value="10" selected>10th Grade</option><option value="11">11th Grade</option><option value="12">12th Grade</option></select>
-        <label style="font-size:.72rem;color:var(--muted)">IB Track</label>
-        <select id="track"><option>Pre-IB / MYP</option><option>IB Diploma</option></select>
+        <label style="font-size:.72rem;color:var(--muted)">School</label>
+        <input type="text" id="profileSchool" placeholder="e.g. Lincoln High School">
+        <label style="font-size:.72rem;color:var(--muted)">Academic Program</label>
+        <select id="program">
+          <option value="">Not specified</option>
+          <option value="General">General</option>
+          <option value="IB MYP">IB MYP</option>
+          <option value="IB DP">IB DP</option>
+          <option value="AP">AP</option>
+          <option value="Honours">Honours</option>
+          <option value="Other">Other</option>
+        </select>
         <button onclick="saveProfile()" style="width:100%">Save Profile</button>
       </div>
       <div class="card">
@@ -939,7 +945,15 @@
             <button onclick="signOut()" class="btn-sec" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red)">Sign Out</button>
           </div>
         </div>
-        <div class="card"><h3>No-HW Dates</h3><div id="noHWList" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;line-height:2.2"></div></div>
+        <div class="card">
+          <h3>No-Homework Days</h3>
+          <div style="font-size:.78rem;color:var(--muted2);margin-bottom:10px">Days when no homework is assigned (holidays, breaks).</div>
+          <div id="noHWList" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="noHWInput" style="flex:1;margin:0">
+            <button onclick="addNoHWDay()" style="padding:8px 14px">+ Add</button>
+          </div>
+        </div>
       </div>
       <div class="spane" id="spane-tabs">
         <div class="card">
@@ -980,7 +994,7 @@
     <div class="modal-title">Edit Task</div>
     <div class="mrow"><label>Task</label><input type="text" id="editText"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="mrow"><label>Subject</label><select id="editSubject"><option value="">None</option><option value="LIT">Am. Lit</option><option value="AME">Am. Studies</option><option value="CHE">Chemistry</option><option value="FRE">French</option><option value="MTH">Math 3</option><option value="ORC">Orchestra</option><option value="PHY">Physics</option><option value="PP">PP</option><option value="GYM">Gym</option></select></div>
+      <div class="mrow"><label>Subject</label><select id="editSubject"><option value="">No subject</option></select></div>
       <div class="mrow"><label>Priority</label><select id="editPriority"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
       <div class="mrow"><label>Type</label><select id="editType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="other">Other</option></select></div>
       <div class="mrow"><label>Due Date</label><input type="date" id="editDue"></div>
