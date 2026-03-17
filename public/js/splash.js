@@ -3,10 +3,7 @@ window.runSplash = function(callback) {
   const splash = document.getElementById('splash');
   if (!splash) { callback(); return; }
 
-  // Make visible immediately
-  splash.style.cssText = 'position:fixed;inset:0;background:#0a0b10;z-index:9999;overflow:hidden;display:block';
-
-  splash.style.cssText = 'position:fixed;inset:0;background:#0c0d12;z-index:9999;overflow:hidden';
+  splash.style.cssText = 'position:fixed;inset:0;background:#0c0d12;z-index:9999;overflow:hidden;display:block';
 
   splash.innerHTML = `
     <canvas id="splashCanvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
@@ -36,13 +33,13 @@ window.runSplash = function(callback) {
   }
   resize();
 
-  const COLORS = ['#6366f1','#a78bfa','#10d9a0','#3b82f6','#e879f9','#fbbf24','#fb923c'];
-  const pts = Array.from({length: 90}, () => ({
+  const COLORS = ['#6366f1','#a78bfa','#10d9a0','#3b82f6','#e879f9','#fbbf24'];
+  const pts = Array.from({length: 70}, () => ({
     x: Math.random() * W, y: Math.random() * H,
     r: Math.random() * 1.6 + 0.3,
     dx: (Math.random() - .5) * .5, dy: (Math.random() - .5) * .5,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    a: Math.random() * .45 + .08
+    a: Math.random() * .4 + .08
   }));
 
   function frame() {
@@ -51,9 +48,9 @@ window.runSplash = function(callback) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
         const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < 130) {
+        if (d < 120) {
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(99,102,241,${(1-d/130)*.07})`;
+          ctx.strokeStyle = `rgba(99,102,241,${(1-d/120)*.06})`;
           ctx.lineWidth = .5;
           ctx.moveTo(pts[i].x, pts[i].y);
           ctx.lineTo(pts[j].x, pts[j].y);
@@ -75,7 +72,7 @@ window.runSplash = function(callback) {
   }
   animId = requestAnimationFrame(frame);
 
-  // Stagger reveals
+  // Stagger text reveals
   const show = (id, delay) => setTimeout(() => {
     const el = document.getElementById(id); if (!el) return;
     el.style.opacity = '1';
@@ -87,11 +84,14 @@ window.runSplash = function(callback) {
   show('splSub', 900);
   show('splDots', 1100);
 
-  // Exit
+  // Exit after 2.8s
   setTimeout(() => {
     cancelAnimationFrame(animId);
     splash.style.transition = 'opacity .6s ease';
     splash.style.opacity = '0';
-    setTimeout(() => { splash.style.display = 'none'; callback(); }, 620);
-  }, 2900);
+    setTimeout(() => {
+      splash.style.display = 'none';
+      callback();
+    }, 620);
+  }, 2800);
 };
