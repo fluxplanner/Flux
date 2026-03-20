@@ -114,7 +114,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .main-content{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden}
 
 .topbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(7,8,15,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:30;gap:12px}
-.topbar-left{font-weight:800;font-size:1.05rem;letter-spacing:-.3px;background:linear-gradient(90deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar-left{font-weight:800;font-size:1.05rem;letter-spacing:-.3px;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transition:background .3s ease}
 .topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
 .date-pill{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);white-space:nowrap}
 .ab-pill{padding:4px 12px;border-radius:20px;font-size:.68rem;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px;display:none;white-space:nowrap}
@@ -611,3 +611,66 @@ button:active:not(:disabled){transform:scale(.96) translateY(0)!important}
 
 /* ══ EMAIL AUTH FORM ══ */
 .login-email-form input{margin-top:0!important;margin-bottom:8px!important}
+
+/* ══ FAB PLUS CENTERING — final fix ══ */
+#fabBtn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 1.8rem !important;
+  font-weight: 200 !important;
+  letter-spacing: 0 !important;
+}
+
+/* ══ TOPBAR PILLS ══ */
+#topbarTaskPill {
+  font-size: .65rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+#topbarNextClass {
+  font-size: .65rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media(max-width:768px) {
+  #topbarNextClass { display: none !important; }
+  #topbarTaskPill { font-size: .6rem !important; padding: 3px 8px !important; }
+}
+
+/* ══ ABOUT SPANE ══ */
+#spane-about .srow { align-items: flex-start; }
+
+/* ══ SETTINGS TAB — sticky on desktop ══ */
+@media(min-width:769px) {
+  .stabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding-bottom: 4px;
+  }
+}
+@media(max-width:768px) {
+  .stabs {
+    position: sticky;
+    top: 57px;
+    z-index: 10;
+    background: var(--bg);
+  }
+}
