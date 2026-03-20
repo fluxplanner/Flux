@@ -296,7 +296,7 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 #aiChatTabs{display:flex;gap:5px;flex:1;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
 #aiChatTabs::-webkit-scrollbar{display:none}
 
-.stabs{display:flex;gap:3px;background:rgba(255,255,255,.04);border-radius:13px;padding:4px;margin-bottom:16px;overflow-x:auto}
+.stabs{display:flex;gap:3px;background:rgba(255,255,255,.04);border-radius:13px;padding:4px;margin-bottom:16px;overflow-x:auto;position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
 .stab{flex:1;min-width:fit-content;padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;text-align:center;transition:var(--transition);white-space:nowrap}
 .stab.active{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .spane{display:none}.spane.active{display:block;animation:panelIn var(--t-base) var(--ease)}
