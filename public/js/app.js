@@ -892,34 +892,27 @@ function renderSchool(){
     const colorMap={};
     classes.forEach((c,i)=>{colorMap[c.id]=c.color||COLORS[i%COLORS.length];});
     // Check if any class uses A Day / B Day scheduling
-    const hasAB=classes.some(c=>c.days&&(c.days==='A Day'||c.days==='B Day'));
-    if(hasAB){
-      const aClasses=classes.filter(c=>!c.days||c.days===''||c.days==='A Day'||c.days==='Mon-Fri'||c.days==='Mon/Wed/Fri'||c.days==='Tue/Thu'||(!c.days.includes('B Day')));
-      const bClasses=classes.filter(c=>c.days&&c.days==='B Day');
-      const renderClassRow=(c,col)=>{
+    const hasAB=classes.some(c=>c.days&&(c.days.includes('A Day')||c.days.includes('B Day')));
+  if(hasAB){
+    const aClasses=classes.filter(c=>!c.days||c.days===''||c.days.includes('A Day')||c.days==='Mon-Fri'||c.days==='Mon/Wed/Fri'||c.days==='Tue/Thu');
+    const bClasses=classes.filter(c=>c.days&&c.days.includes('B Day'));
+    const renderDayCol=(list,label,color)=>{
+      const rows=list.map((c,i)=>{
+        const col=subColors[i%subColors.length]||'#6366f1';
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
-      };
-      cl.innerHTML=`
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div>
-            <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-family:'JetBrains Mono',monospace;padding:0 0 8px;border-bottom:1px solid rgba(var(--accent-rgb),.2);margin-bottom:10px;font-weight:700">A Day · ${aClasses.length} classes</div>
-            ${aClasses.map(c=>renderClassRow(c,colorMap[c.id])).join('')}
-          </div>
-          <div>
-            <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:2px;color:var(--green);font-family:'JetBrains Mono',monospace;padding:0 0 8px;border-bottom:1px solid rgba(16,217,160,.2);margin-bottom:10px;font-weight:700">B Day · ${bClasses.length} classes</div>
-            ${bClasses.map(c=>renderClassRow(c,colorMap[c.id])).join('')}
-          </div>
-        </div>`;
-    } else {
-      cl.innerHTML=classes.map((c,i)=>{
-        const col=colorMap[c.id];
-        const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
-        const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return `<div class="class-row" style="margin-bottom:5px"><div class="class-period" style="background:${col}22;color:${col};font-size:.72rem;min-width:22px;padding:4px 5px">${c.period}</div><div style="flex:1;min-width:0"><div style="font-size:.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div><div style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${meta||'No details'}</div></div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 3px">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 4px">✕</button></div>`;
       }).join('');
-    }
+      return `<div><div style="font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:${color};font-family:'JetBrains Mono',monospace;padding:4px 0 7px;border-bottom:1px solid var(--border);margin-bottom:8px;font-weight:700">${label} · ${list.length} classes</div>${rows||'<div style="color:var(--muted);font-size:.78rem;padding:6px 0">No classes set for this day</div>'}</div>`;
+    };
+    cl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${renderDayCol(aClasses,'A Day','var(--accent)')}${renderDayCol(bClasses,'B Day','var(--green)')}</div>`;
+  } else {
+    cl.innerHTML=classes.map((c,i)=>{
+      const col=subColors[i%subColors.length]||'#6366f1';
+      const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
+      const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
+      return`<div class="class-row"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta||'No details'}</div></div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:4px">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+    }).join('');
   }
   const tn=document.getElementById('teacherNotesList');
   if(tn){
@@ -1501,6 +1494,9 @@ function initModFeatures(){
   const isOwnerAcc=role==='owner';
   badge.style.cssText=`padding:6px 10px;margin-bottom:6px;background:${isOwnerAcc?'linear-gradient(135deg,rgba(251,191,36,.2),rgba(249,115,22,.15))':'linear-gradient(135deg,rgba(var(--accent-rgb),.15),rgba(192,132,252,.1))'};border:1px solid ${isOwnerAcc?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:10px;font-size:.68rem;font-family:JetBrains Mono,monospace;color:${isOwnerAcc?'var(--gold)':'var(--accent)'};display:flex;align-items:center;gap:6px;cursor:pointer`;
   badge.innerHTML=`<span>${isOwnerAcc?'👑':'⚡'}</span><span>${isOwnerAcc?'Owner':'Dev Account'}</span><span style="margin-left:auto;opacity:.6">${isDevMode()?'DEV':'LIVE'}</span>`;
+  // Show dev broadcast panel
+  const dbp=document.getElementById('devBroadcastPanel');
+  if(dbp)dbp.style.display='block';
   badge.onclick=()=>openModPanel();
   footer.insertBefore(badge,footer.firstChild);
 }
