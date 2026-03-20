@@ -3,16 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#6c63ff">
+<meta name="theme-color" content="#0c0d12">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Flux">
 <meta name="description" content="Your AI-powered student school planner">
 <title>Flux Planner</title>
-<meta property="og:title" content="Flux Planner">
-<meta property="og:site_name" content="Flux Planner">
-<link rel="privacy-policy" href="https://azfermohammed.github.io/Fluxplanner/privacy.html">
-
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -21,7 +17,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<h1 style="position:absolute;left:-9999px;top:-9999px;">Flux Planner</h1>
 
 <!-- ══ SPLASH SCREEN ══ -->
 <!-- Built dynamically by splash.js, just needs the container -->
@@ -81,7 +76,7 @@
     <div class="login-right">
       <div class="login-card">
         <div class="login-logo-wrap">
-          <span class="login-logo">Flux Planner</span>
+          <span class="login-logo">Flux</span>
           <span class="login-tagline">YOUR SMART SCHOOL PLANNER</span>
         </div>
 
@@ -115,12 +110,6 @@
         <div class="login-divider">or</div>
         <span class="login-skip" onclick="skipLogin()">Continue without signing in</span>
         <div class="login-note">Sign in to sync your data across all devices.</div>
-        <!-- Privacy policy — required for Google OAuth verification -->
-        <div style="text-align:center;margin-top:16px;font-size:0.72rem;color:#666;">
-          <a href="privacy.html" style="color:#888;text-decoration:underline;">Privacy Policy</a>
-          &nbsp;·&nbsp; Flux Planner
-        </div>
-
 
         <!-- Stats row -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:20px">
