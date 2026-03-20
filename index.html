@@ -560,6 +560,20 @@
           </div>
         </div>
         <div style="margin-top:8px"><label style="font-size:.7rem;color:var(--muted)">Room / Notes (optional)</label><input type="text" id="classRoom" placeholder="e.g. Room 204" style="margin-bottom:0"></div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+          <label style="font-size:.7rem;color:var(--muted);flex-shrink:0">Class Color</label>
+          <input type="color" id="classColor" value="#3b82f6" style="width:44px;height:36px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <div style="width:24px;height:24px;border-radius:6px;background:#3b82f6;cursor:pointer;border:2px solid transparent" onclick="document.getElementById('classColor').value='#3b82f6'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#f43f5e;cursor:pointer" onclick="document.getElementById('classColor').value='#f43f5e'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#10d9a0;cursor:pointer" onclick="document.getElementById('classColor').value='#10d9a0'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#fbbf24;cursor:pointer" onclick="document.getElementById('classColor').value='#fbbf24'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#a78bfa;cursor:pointer" onclick="document.getElementById('classColor').value='#a78bfa'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#fb923c;cursor:pointer" onclick="document.getElementById('classColor').value='#fb923c'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#e879f9;cursor:pointer" onclick="document.getElementById('classColor').value='#e879f9'"></div>
+            <div style="width:24px;height:24px;border-radius:6px;background:#22d3ee;cursor:pointer" onclick="document.getElementById('classColor').value='#22d3ee'"></div>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h3>📷 Import Schedule from Photo</h3>
@@ -853,31 +867,13 @@
           <button onclick="addCollege()">+</button>
         </div>
       </div>
-
-      <!-- Extracurriculars, Awards & Achievements -->
       <div class="card">
         <h3>🏆 Activities, Awards & Achievements</h3>
-        <div id="extrasList" style="margin-bottom:12px"></div>
-        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end">
-          <div>
-            <label style="font-size:.7rem;color:var(--muted)">Name</label>
-            <input type="text" id="extraName" placeholder="e.g. Varsity Soccer, Honor Roll..." style="margin:0">
-          </div>
-          <div>
-            <label style="font-size:.7rem;color:var(--muted)">Type</label>
-            <select id="extraType" style="margin:0">
-              <option value="activity">Activity</option>
-              <option value="award">Award</option>
-              <option value="achievement">Achievement</option>
-              <option value="leadership">Leadership</option>
-              <option value="sport">Sport</option>
-              <option value="art">Art</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:.7rem;color:var(--muted)">Year</label>
-            <input type="text" id="extraYear" placeholder="e.g. 2024" style="margin:0;width:80px">
-          </div>
+        <div id="extrasList" style="margin-bottom:10px"></div>
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;flex-wrap:wrap">
+          <div><label style="font-size:.7rem;color:var(--muted)">Name</label><input type="text" id="extraName" placeholder="e.g. Varsity Soccer, Honor Roll..." style="margin:0"></div>
+          <div><label style="font-size:.7rem;color:var(--muted)">Type</label><select id="extraType" style="margin:0"><option value="activity">Activity</option><option value="award">Award</option><option value="achievement">Achievement</option><option value="leadership">Leadership</option><option value="sport">Sport</option><option value="art">Art / Music</option><option value="volunteer">Volunteer</option></select></div>
+          <div><label style="font-size:.7rem;color:var(--muted)">Year</label><input type="text" id="extraYear" placeholder="2025" style="margin:0;width:72px"></div>
           <button onclick="addExtra()" style="align-self:end;padding:10px 14px">+</button>
         </div>
       </div>
@@ -1190,7 +1186,7 @@
   </div>
 </div>
 
-<div id="privacy-footer" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px;font-size:0.72rem;background:rgba(0,0,0,0.5);color:#888;z-index:99999;"><a href="privacy.html" style="color:#888;text-decoration:underline;">Privacy Policy</a> · Flux Planner</div>
+<div id="privacy-footer" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px;font-size:0.72rem;background:rgba(0,0,0,0.5);color:#888;z-index:99997;pointer-events:none;"><a href="privacy.html" style="color:#888;text-decoration:underline;pointer-events:all;">Privacy Policy</a> · Flux Planner</div>
 <!-- Load scripts -->
 <script src="public/js/splash.js"></script>
 <script src="public/js/app.js"></script>
