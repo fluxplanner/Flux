@@ -343,7 +343,19 @@ const API_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${S
 const GEMINI_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${SB_ANON}`};
 
 let _sb=null,currentUser=null;
-function getSB(){if(!_sb&&window.supabase?.createClient)_sb=window.supabase.createClient(SB_URL,SB_ANON);return _sb;}
+function getSB(){
+  if(!_sb&&window.supabase?.createClient){
+    _sb=window.supabase.createClient(SB_URL,SB_ANON,{
+      auth:{
+        detectSessionInUrl:true,   // picks up OAuth callback from URL on page load
+        persistSession:true,       // keeps session in localStorage
+        autoRefreshToken:true,     // refresh tokens automatically
+        flowType:'implicit',       // use implicit flow (no PKCE server needed)
+      }
+    });
+  }
+  return _sb;
+}
 
 // ══ HELPERS ══
 const precise=n=>Number(n).toFixed(4);
@@ -2496,20 +2508,21 @@ async function signInWithGoogleKeepData(){
 
 async function signInWithGoogle(){
   const sb=getSB();
-  if(!sb){alert('Supabase not loaded yet — please refresh the page.');return;}
+  if(!sb){alert('Auth not available — please refresh.');return;}
   try{
-    // Always use the exact GitHub Pages URL as redirect
-    const redirectTo='https://azfermohammed.github.io/Fluxplanner/';
-    const{data,error}=await sb.auth.signInWithOAuth({
+    // This navigates the CURRENT TAB to Google.
+    // After Google auth, Google redirects back to redirectTo in the SAME TAB.
+    // Supabase then picks up the session from the URL on page load via getSession().
+    const{error}=await sb.auth.signInWithOAuth({
       provider:'google',
       options:{
-        redirectTo,
+        redirectTo:'https://azfermohammed.github.io/Fluxplanner/',
         scopes:'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
-        queryParams:{access_type:'offline',prompt:'select_account'}
+        queryParams:{access_type:'offline',prompt:'select_account'},
       }
     });
     if(error)throw error;
-    // Supabase will redirect the current tab to Google — no new tab needed
+    // Current tab now navigates to Google — user will be back after auth
   }catch(e){
     console.error('OAuth error:',e);
     alert('Sign in failed: '+e.message);
@@ -2567,25 +2580,38 @@ function confirmGuestLogin(){
 async function initAuth(){
   const sb=getSB();
   if(!sb){
-    // Supabase didn't load — go straight to login screen
-    document.getElementById('loginScreen').classList.add('visible');
+    showLoginScreen();
     return;
   }
   try{
-    const{data:{session}}=await sb.auth.getSession();
-    if(session?.user)await handleSignedIn(session.user,session);
-    else showLoginOrApp();
+    // STEP 1: Handle OAuth callback — Supabase v2 automatically exchanges
+    // the code/token in the URL hash on getSession(). This runs on every
+    // page load including when Google redirects back to GitHub Pages.
+    const{data:{session},error}=await sb.auth.getSession();
+    
+    // STEP 2: If we have a session (including from OAuth callback), sign in
+    if(session?.user){
+      await handleSignedIn(session.user,session);
+    }else{
+      showLoginOrApp();
+    }
+
+    // STEP 3: Listen for future auth changes
     sb.auth.onAuthStateChange(async(event,s)=>{
       if(event==='SIGNED_IN'&&s?.user){
+        // Hide login immediately
         const ls=document.getElementById('loginScreen');
         if(ls){ls.style.display='none';ls.classList.remove('visible');}
+        // Only do full sign-in flow if this is a new user or account switch
         if(!currentUser||currentUser.id!==s.user.id){
           await handleSignedIn(s.user,s);
         }else{
           _updateUserUI(s.user,s.user.user_metadata?.full_name||s.user.email?.split('@')[0]);
         }
       }
-      else if(event==='SIGNED_OUT')handleSignedOut();
+      else if(event==='SIGNED_OUT'){
+        handleSignedOut();
+      }
       else if(event==='TOKEN_REFRESHED'&&s?.user&&currentUser){
         _updateUserUI(s.user,s.user.user_metadata?.full_name||s.user.email?.split('@')[0]);
       }
