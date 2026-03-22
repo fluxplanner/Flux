@@ -1015,9 +1015,7 @@
           <div style="font-weight:800;font-size:.95rem;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Flux AI</div>
           <div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;-webkit-text-fill-color:var(--muted)">Groq · Llama 3.3 70B</div>
         </div>
-        <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.75rem;color:var(--muted2);flex-shrink:0">
-          📷 <input type="file" accept="image/*" id="aiImgUpload" style="display:none;width:auto;margin:0" onchange="handleAIImg(event)">
-        </label>
+
         <button onclick="clearAIChat()" style="padding:5px 10px;font-size:.72rem;background:transparent;border:1px solid var(--border2);color:var(--muted2);flex-shrink:0">Clear</button>
       </div>
       <!-- Messages — scrollable -->
@@ -1030,6 +1028,9 @@
       <!-- Input -->
       <div style="padding:10px 14px 12px;flex-shrink:0;border-top:1px solid var(--border)">
         <div class="ai-irow">
+          <label id="aiImgBtn" title="Attach image" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:1.1rem;transition:all .15s;align-self:flex-end;margin-bottom:1px">
+            +<input type="file" accept="image/*" id="aiImgUpload" style="display:none" onchange="handleAIImg(event)">
+          </label>
           <textarea id="aiInput" rows="1" placeholder="Ask anything — tutoring, flashcards, exam prep..."
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
             oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
@@ -1046,6 +1047,7 @@
         <button class="stab" onclick="switchStab('notifications',this)">Alerts</button>
         <button class="stab" onclick="switchStab('account',this)">Account</button>
         <button class="stab" onclick="switchStab('tabs',this)">Tabs</button>
+        <button class="stab" onclick="switchStab('data',this)">Data</button>
         <button class="stab" onclick="switchStab('about',this)">About</button>
       </div>
       <div class="spane active" id="spane-appearance">
@@ -1067,8 +1069,7 @@
         <div class="card">
           <h3>Accent Color</h3>
           <div class="swatches" id="swatches" style="margin-bottom:12px">
-            <div class="swatch active" style="background:#00bfff" onclick="setAccent('#00bfff','0,191,255',this)" title="Flux Cyan (default)"></div>
-            <div class="swatch" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
+            <div class="swatch active" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
             <div class="swatch" style="background:#3b82f6" onclick="setAccent('#3b82f6','59,130,246',this)"></div>
             <div class="swatch" style="background:#a78bfa" onclick="setAccent('#a78bfa','167,139,250',this)"></div>
             <div class="swatch" style="background:#10d9a0" onclick="setAccent('#10d9a0','16,217,160',this)"></div>
@@ -1182,6 +1183,15 @@
           <button onclick="resetTabs()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset to defaults</button>
         </div>
       </div>
+      <div class="spane" id="spane-data">
+        <div class="card">
+          <h3>Export</h3>
+          <div class="srow"><div><div class="slabel">Export to iCal</div><div class="ssub">Download tasks as .ics</div></div><button onclick="exportToICal()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
+          <div class="srow" style="border:none"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
+        </div>
+        <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, grades, notes, habits</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
+      </div>
+
       <!-- ABOUT TAB -->
       <div class="spane" id="spane-about">
         <!-- Developer Card -->
@@ -1258,12 +1268,6 @@
           <h3>Your Flux Stats</h3>
           <div id="aboutStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
         </div>
-        <div class="card">
-          <h3>Export & Data</h3>
-          <div class="srow"><div><div class="slabel">Export to iCal</div><div class="ssub">Download tasks as .ics</div></div><button onclick="exportToICal()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
-          <div class="srow"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
-          <div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all local data</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear</button></div>
-        </div>
       </div>
     </div>
 
@@ -1288,7 +1292,7 @@
       <button onclick="fabAddTask()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--accent);border:none;color:#fff;font-size:.8rem;font-weight:700;box-shadow:0 4px 20px rgba(var(--accent-rgb),.4);white-space:nowrap">+ New Task</button>
     </div>
     <!-- FAB Button -->
-    <button id="fabBtn" style="width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;font-weight:300;line-height:1;box-shadow:0 6px 24px rgba(var(--accent-rgb),.45);transition:all .2s var(--ease-spring);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer"><span style="display:block;width:24px;height:24px;line-height:24px;text-align:center;margin:0;padding:0">+</span></button>
+    <button id="fabBtn" style="width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:1.5rem;font-weight:300;box-shadow:0 6px 24px rgba(var(--accent-rgb),.45);transition:all .2s var(--ease-spring);display:flex;align-items:center;justify-content:center;cursor:pointer">+</button>
   </div>
 
   <!-- ── KEYBOARD HINT ── -->
