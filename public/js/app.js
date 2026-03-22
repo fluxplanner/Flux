@@ -2123,16 +2123,22 @@ async function syncFromCloud(){
       settings={...settings,...d.settings};
       save('flux_settings',settings);
     }
-    // Restore synced colors
+    // Restore synced colors — write to localStorage FIRST so applyTheme reads correct values
     const syncAccent=d.accent||'#00bfff';
     const syncRgb=d.accentRgb||'0,191,255';
     localStorage.setItem('flux_accent',syncAccent);
     localStorage.setItem('flux_accent_rgb',syncRgb);
-    if(d.theme){localStorage.setItem('flux_theme',d.theme);applyTheme(d.theme);}
-    // applyTheme already applies accent, but force it again to be safe
+    if(d.theme)localStorage.setItem('flux_theme',d.theme);
+    // Now apply theme (it will read the accent we just wrote above)
+    applyTheme(localStorage.getItem('flux_theme')||'dark');
+    // Force apply accent one more time to be 100% sure
     document.documentElement.style.setProperty('--accent',syncAccent);
     document.documentElement.style.setProperty('--accent-rgb',syncRgb);
     updateLogoColor(syncAccent);
+    // Mark active swatch
+    document.querySelectorAll('.swatch').forEach(s=>{
+      s.classList.toggle('active', s.style.background===syncAccent||s.getAttribute('onclick')?.includes(syncAccent));
+    });
     
     if(d.onboarded)save('flux_onboarded',true);
     // Load devAccounts — owner's list syncs to all dev accounts too
