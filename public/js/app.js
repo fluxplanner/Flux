@@ -1396,13 +1396,8 @@ function loadTheme(){
   const savedRgb=localStorage.getItem('flux_accent_rgb')||'0,191,255';
   document.documentElement.style.setProperty('--accent',savedAccent);
   document.documentElement.style.setProperty('--accent-rgb',savedRgb);
-  // Apply logo gradient on load
-  const logoGrad=`linear-gradient(135deg,${savedAccent},${savedAccent}bb)`;
-  setTimeout(()=>{
-    document.querySelectorAll('.sidebar-logo,.mob-drawer-logo,.login-logo,.topbar-left').forEach(el=>{
-      if(el){el.style.background=logoGrad;el.style.webkitBackgroundClip='text';el.style.webkitTextFillColor='transparent';el.style.backgroundClip='text';}
-    });
-  },100);
+  // Update logo with saved accent
+  setTimeout(()=>updateLogoColor(savedAccent),150);
 }
 
 function applyCustomVar(varName,value){
@@ -1416,6 +1411,27 @@ function resetCustomColors(){
   const key=localStorage.getItem('flux_theme')||'dark';
   applyTheme(key);
   const b=event?.target;if(b){b.textContent='✓ Reset!';setTimeout(()=>b.textContent='↺ Reset colors',1500);}
+}
+function updateLogoColor(hex){
+  if(!hex)return;
+  // Update SVG logo circle/line colors
+  document.querySelectorAll('.sidebar-logo svg circle, .sidebar-logo svg line, .sidebar-logo svg path').forEach(el=>{
+    if(el.getAttribute('stroke')&&el.getAttribute('stroke')!=='none')el.setAttribute('stroke',hex);
+    if(el.getAttribute('fill')&&el.getAttribute('fill')!=='none'&&el.getAttribute('fill')!=='white'&&!el.getAttribute('fill').startsWith('url'))el.setAttribute('fill',hex);
+  });
+  // Update SVG gradient stops
+  document.querySelectorAll('#fluxWG stop, #fluxCG stop').forEach((stop,i)=>{
+    if(i===0)stop.setAttribute('stop-color','#ffffff');
+    else stop.setAttribute('stop-color',hex);
+  });
+  // Update text logo gradients
+  const logoGrad=`linear-gradient(135deg,#fff 0%,${hex} 60%,${hex}aa 100%)`;
+  document.querySelectorAll('.sidebar-logo,.mob-drawer-logo,.login-logo,.topbar-left').forEach(el=>{
+    if(el&&!el.querySelector('svg')){
+      el.style.background=logoGrad;el.style.webkitBackgroundClip='text';
+      el.style.webkitTextFillColor='transparent';el.style.backgroundClip='text';
+    }
+  });
 }
 function setAccent(hex,rgb,el){
   document.documentElement.style.setProperty('--accent',hex);
@@ -1446,6 +1462,7 @@ function setAccent(hex,rgb,el){
   save('flux_accent',hex);
   save('flux_accent_rgb',rgb);
   syncKey('accent',{accent:hex,accentRgb:rgb});
+  updateLogoColor(hex);
 }
 function applyCustomColor(){
   const hex=document.getElementById('customColor').value;
@@ -2027,9 +2044,9 @@ function setSyncStatus(status){
 function getCloudPayload(){
   // Include colors in sync now — user wants same colors everywhere
   return{
-    accent:localStorage.getItem('flux_accent')||'',
-    accentRgb:localStorage.getItem('flux_accent_rgb')||'',
-    theme:localStorage.getItem('flux_theme')||'',
+    accent:localStorage.getItem('flux_accent')||'#00bfff',
+    accentRgb:localStorage.getItem('flux_accent_rgb')||'0,191,255',
+    theme:localStorage.getItem('flux_theme')||'dark',
     tasks,
     grades,
     weightedRows,
@@ -2118,10 +2135,26 @@ async function syncFromCloud(){
       settings={...settings,...d.settings};
       save('flux_settings',settings);
     }
-    // Restore synced colors
-    if(d.accent){localStorage.setItem('flux_accent',d.accent);document.documentElement.style.setProperty('--accent',d.accent);}
-    if(d.accentRgb){localStorage.setItem('flux_accent_rgb',d.accentRgb);document.documentElement.style.setProperty('--accent-rgb',d.accentRgb);}
-    if(d.theme){localStorage.setItem('flux_theme',d.theme);applyThemeByName(d.theme);}
+    // Restore synced colors — always apply, default to cyan
+    if(d.accent){
+      localStorage.setItem('flux_accent',d.accent);
+      document.documentElement.style.setProperty('--accent',d.accent);
+    }
+    if(d.accentRgb){
+      localStorage.setItem('flux_accent_rgb',d.accentRgb);
+      document.documentElement.style.setProperty('--accent-rgb',d.accentRgb);
+    }
+    if(d.theme){
+      localStorage.setItem('flux_theme',d.theme);
+      applyTheme(d.theme);
+    }
+    // Re-apply accent AFTER applyTheme (which would overwrite it)
+    const finalAccent=d.accent||localStorage.getItem('flux_accent')||'#00bfff';
+    const finalRgb=d.accentRgb||localStorage.getItem('flux_accent_rgb')||'0,191,255';
+    document.documentElement.style.setProperty('--accent',finalAccent);
+    document.documentElement.style.setProperty('--accent-rgb',finalRgb);
+    updateLogoColor(finalAccent);
+    
     if(d.onboarded)save('flux_onboarded',true);
     // Load devAccounts — owner's list syncs to all dev accounts too
     if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
