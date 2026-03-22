@@ -1360,24 +1360,19 @@ const THEMES={
 function applyTheme(key){
   const theme=THEMES[key];if(!theme)return;
   const root=document.documentElement;
-  Object.keys(THEMES.dark.vars).forEach(k=>root.style.removeProperty(k));
+  // Remove theme vars but NOT accent (we manage accent separately)
+  Object.keys(THEMES.dark.vars).filter(k=>k!=='--accent'&&k!=='--accent-rgb').forEach(k=>root.style.removeProperty(k));
   Object.entries(theme.vars).forEach(([k,v])=>root.style.setProperty(k,v));
   document.body.setAttribute('data-theme',key);
   localStorage.setItem('flux_theme',key);
   const custom=load('flux_custom_colors',{});
   Object.entries(custom).forEach(([k,v])=>root.style.setProperty(k,v));
-  // Always re-apply saved accent on top of theme (prevents accent from resetting)
+  // Always re-apply saved accent last — overrides everything
   const savedAccent=localStorage.getItem('flux_accent')||'#00bfff';
   const savedRgb=localStorage.getItem('flux_accent_rgb')||'0,191,255';
   root.style.setProperty('--accent',savedAccent);
   root.style.setProperty('--accent-rgb',savedRgb);
-  // Update logos
-  const logoGrad=`linear-gradient(135deg,${savedAccent},${savedAccent}bb)`;
-  setTimeout(()=>{
-    document.querySelectorAll('.sidebar-logo,.mob-drawer-logo,.login-logo,.topbar-left').forEach(el=>{
-      if(el){el.style.background=logoGrad;el.style.webkitBackgroundClip='text';el.style.webkitTextFillColor='transparent';el.style.backgroundClip='text';}
-    });
-  },50);
+  updateLogoColor(savedAccent);
 }
 function themeDark(){applyTheme('dark');}
 function themeCrimson(){applyTheme('ember');}
@@ -1390,14 +1385,7 @@ function applyThemeByName(name){
 }
 function loadTheme(){
   const key=localStorage.getItem('flux_theme')||'dark';
-  applyTheme(key);
-  // Apply saved accent, defaulting to cyan
-  const savedAccent=localStorage.getItem('flux_accent')||'#00bfff';
-  const savedRgb=localStorage.getItem('flux_accent_rgb')||'0,191,255';
-  document.documentElement.style.setProperty('--accent',savedAccent);
-  document.documentElement.style.setProperty('--accent-rgb',savedRgb);
-  // Update logo with saved accent
-  setTimeout(()=>updateLogoColor(savedAccent),150);
+  applyTheme(key); // applyTheme already re-applies saved accent
 }
 
 function applyCustomVar(varName,value){
@@ -2135,25 +2123,16 @@ async function syncFromCloud(){
       settings={...settings,...d.settings};
       save('flux_settings',settings);
     }
-    // Restore synced colors — always apply, default to cyan
-    if(d.accent){
-      localStorage.setItem('flux_accent',d.accent);
-      document.documentElement.style.setProperty('--accent',d.accent);
-    }
-    if(d.accentRgb){
-      localStorage.setItem('flux_accent_rgb',d.accentRgb);
-      document.documentElement.style.setProperty('--accent-rgb',d.accentRgb);
-    }
-    if(d.theme){
-      localStorage.setItem('flux_theme',d.theme);
-      applyTheme(d.theme);
-    }
-    // Re-apply accent AFTER applyTheme (which would overwrite it)
-    const finalAccent=d.accent||localStorage.getItem('flux_accent')||'#00bfff';
-    const finalRgb=d.accentRgb||localStorage.getItem('flux_accent_rgb')||'0,191,255';
-    document.documentElement.style.setProperty('--accent',finalAccent);
-    document.documentElement.style.setProperty('--accent-rgb',finalRgb);
-    updateLogoColor(finalAccent);
+    // Restore synced colors
+    const syncAccent=d.accent||'#00bfff';
+    const syncRgb=d.accentRgb||'0,191,255';
+    localStorage.setItem('flux_accent',syncAccent);
+    localStorage.setItem('flux_accent_rgb',syncRgb);
+    if(d.theme){localStorage.setItem('flux_theme',d.theme);applyTheme(d.theme);}
+    // applyTheme already applies accent, but force it again to be safe
+    document.documentElement.style.setProperty('--accent',syncAccent);
+    document.documentElement.style.setProperty('--accent-rgb',syncRgb);
+    updateLogoColor(syncAccent);
     
     if(d.onboarded)save('flux_onboarded',true);
     // Load devAccounts — owner's list syncs to all dev accounts too
