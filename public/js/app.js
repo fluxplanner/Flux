@@ -1985,12 +1985,12 @@ RULES:
 - g = 10 m/s² for all physics calculations.
 ${getStudyDNAPrompt()}
 
-TASK ACTIONS — output ONLY this block when adding tasks:
+TASK ACTIONS — append this block at the VERY END of your reply. It is hidden from the user automatically:
 \`\`\`actions
-[{"action":"add_task","name":"...","priority":"high","date":"YYYY-MM-DD","type":"test","subject":"SUBJECT_KEY"}]
+[{"action":"add_task","name":"...","priority":"high","date":"YYYY-MM-DD","type":"hw","subject":"SUBJECT_KEY"}]
 \`\`\``;
 }
-function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)```/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
+function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)(?:```|$)/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
 async function sendAI(){
   const input=document.getElementById('aiInput'),btn=document.getElementById('aiSendBtn');
   if(!input||!btn)return;
@@ -2018,10 +2018,12 @@ async function sendAI(){
     thinkEl.remove();
     const ar=execActions(reply);
     // Strip the actions block from the displayed reply
+    // Strip actions block — handle both closed (``` ```) and unclosed versions
     const clean=reply
-      .replace(/```actions[\s\S]*?```/g,'')
-      .replace(/```json[\s\S]*?```/g,'')
-      .replace(/\[\{"action"[\s\S]*?\}\]/g,'')
+      .replace(/```actions[\s\S]*?(?:```|$)/g,'')
+      .replace(/```json[\s\S]*?(?:```|$)/g,'')
+      .replace(/\[\s*\{\s*"action"[\s\S]*?(?:\}\s*\]|$)/g,'')
+      .replace(/\n{3,}/g,'\n\n')
       .trim();
     if(clean){appendMsg('bot',clean);}
     // Show action result as a separate small confirmation below, not inside the bubble
