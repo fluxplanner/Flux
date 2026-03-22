@@ -757,3 +757,6 @@ button:active:not(:disabled){transform:scale(.96) translateY(0)!important}
 @supports(-webkit-touch-callout:none){
   body::before{content:'';display:block;position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:9999}
 }
+/* AI image attach button */
+#aiImgBtn{transition:border-color .15s,color .15s}
+#aiImgBtn:hover{border-color:var(--accent)!important;color:var(--accent)!important}
