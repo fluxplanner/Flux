@@ -872,3 +872,83 @@ button[onclick*="generateStudyRoadmap"]:hover{
   #kanbanOverlay>div{padding:12px!important}
   #kanbanOverlay>div>div:last-child{grid-template-columns:1fr!important}
 }
+
+/* ── DASHBOARD TWO-COLUMN LAYOUT ── */
+.dash-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  align-items:start;
+  margin-bottom:0;
+}
+.dash-col-left,.dash-col-right{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+/* Intelligence card takes right column and goes below grid on mobile */
+#intelCard{margin-bottom:0}
+@media(max-width:900px){
+  .dash-grid{grid-template-columns:1fr}
+  .dash-col-right{display:none}
+  #intelCard{display:block}
+}
+@media(max-width:768px){
+  .dash-grid{gap:10px}
+}
+
+/* ── DASHBOARD TWO-COLUMN LAYOUT ── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.dash-col-left,.dash-col-right{display:flex;flex-direction:column;gap:14px}
+
+/* Intelligence card tabs */
+.intel-tab{
+  padding:4px 10px;font-size:.68rem;border-radius:20px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);cursor:pointer;font-weight:600;
+  transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;
+}
+.intel-tab.active,.intel-tab:hover{
+  background:rgba(var(--accent-rgb),.12)!important;
+  border-color:rgba(var(--accent-rgb),.3)!important;
+  color:var(--accent)!important;
+}
+
+/* Burnout warning */
+#burnoutWarning{
+  background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.2);
+  border-radius:12px;padding:10px 14px;
+  display:flex;gap:10px;align-items:flex-start;
+  font-size:.8rem;animation:floatIn .3s ease;
+}
+
+/* Intelligence card */
+#intelCard{overflow:hidden}
+
+/* Glassmorphic card upgrade */
+.card{transition:border-color .2s,box-shadow .2s,transform .2s!important}
+.card:hover{
+  border-color:rgba(var(--accent-rgb),.18)!important;
+  box-shadow:0 8px 32px rgba(0,0,0,.18)!important;
+  transform:translateY(-1px)!important;
+}
+
+/* Command palette animation */
+@keyframes cmdIn{from{opacity:0;transform:translateY(-12px) scale(.97)}to{opacity:1;transform:none}}
+.cmd-item{transition:background .08s;border-radius:10px;cursor:pointer}
+.cmd-item:hover,.cmd-item.cmd-active{background:rgba(var(--accent-rgb),.1)!important}
+
+/* Deep work overlay */
+#deepWorkOverlay{font-family:'Plus Jakarta Sans',sans-serif}
+
+/* Aurora login bg */
+.login-bg{
+  background:radial-gradient(ellipse at 20% 50%,rgba(var(--accent-rgb),.15) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(192,132,252,.1) 0%,transparent 50%),
+    radial-gradient(ellipse at 60% 80%,rgba(16,217,160,.08) 0%,transparent 50%)!important;
+}
+
+/* Mobile: stack to single column */
+@media(max-width:900px){
+  .dash-grid{grid-template-columns:1fr!important}
+}
