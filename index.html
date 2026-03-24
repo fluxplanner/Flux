@@ -23,7 +23,7 @@
 <div id="splash" style="display:none"></div>
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="loginScreen" style="display:none">
+<div id="loginScreen">
   <div class="login-bg"></div>
   <div class="login-blob login-blob-1"></div>
   <div class="login-blob login-blob-2"></div>
@@ -133,7 +133,7 @@
 </div>
 
 <!-- ══ ONBOARDING FLOW ══ -->
-<div id="onboarding" style="display:none">
+<div id="onboarding">
   <div class="ob-wrap">
     <div class="ob-progress" id="obProgress"></div>
     <div class="ob-card">
@@ -245,39 +245,7 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
     <div class="sidebar-header">
-      <span class="sidebar-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 38" width="148" height="38" aria-label="Flux">
-  <defs>
-    <linearGradient id="fluxWG" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="55%" stop-color="#00d4ff"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
-    </linearGradient>
-    <radialGradient id="fluxCG" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="40%" stop-color="#00e5ff"/>
-      <stop offset="100%" stop-color="#0040ff" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <circle cx="19" cy="19" r="17" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.18"/>
-  <circle cx="19" cy="19" r="13" fill="none" stroke="#00ccff" stroke-width="0.8" opacity="0.28"/>
-  <circle cx="19" cy="19" r="9"  fill="none" stroke="#00ddff" stroke-width="1"   opacity="0.45"/>
-  <circle cx="19" cy="19" r="5.5" fill="none" stroke="#00eeff" stroke-width="1.3" opacity="0.65"/>
-  <path d="M19 2.2A16.8 16.8 0 0 1 31.5 7"  fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
-  <path d="M19 35.8A16.8 16.8 0 0 1 6.5 31" fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
-  <line x1="19" y1="1"  x2="19" y2="5.5"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="19" y1="32.5" x2="19" y2="37" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="1"  y1="19" x2="5.5" y2="19"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="32.5" y1="19" x2="37" y2="19"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <circle cx="19" cy="19" r="9" fill="url(#fluxCG)" opacity="0.4"/>
-  <circle cx="19" cy="19" r="2.5" fill="#00eeff" opacity="0.9"/>
-  <circle cx="19" cy="19" r="1.2" fill="white"/>
-  <text x="46" y="27"
-    font-family="'Plus Jakarta Sans',system-ui,sans-serif"
-    font-size="22"
-    font-weight="800"
-    letter-spacing="-1"
-    fill="url(#fluxWG)">Flux</text>
-</svg></span>
+      <span class="sidebar-logo">Flux Planner</span>
       <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">☰</button>
     </div>
     <div class="sidebar-nav">
@@ -319,39 +287,7 @@
   <div class="mob-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
   <div class="mob-drawer" id="mobDrawer">
     <div class="mob-drawer-header">
-      <span class="mob-drawer-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 38" width="148" height="38" aria-label="Flux">
-  <defs>
-    <linearGradient id="fluxWG2" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="55%" stop-color="#00d4ff"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
-    </linearGradient>
-    <radialGradient id="fluxCG2" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="40%" stop-color="#00e5ff"/>
-      <stop offset="100%" stop-color="#0040ff" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <circle cx="19" cy="19" r="17" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.18"/>
-  <circle cx="19" cy="19" r="13" fill="none" stroke="#00ccff" stroke-width="0.8" opacity="0.28"/>
-  <circle cx="19" cy="19" r="9"  fill="none" stroke="#00ddff" stroke-width="1"   opacity="0.45"/>
-  <circle cx="19" cy="19" r="5.5" fill="none" stroke="#00eeff" stroke-width="1.3" opacity="0.65"/>
-  <path d="M19 2.2A16.8 16.8 0 0 1 31.5 7"  fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
-  <path d="M19 35.8A16.8 16.8 0 0 1 6.5 31" fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
-  <line x1="19" y1="1"  x2="19" y2="5.5"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="19" y1="32.5" x2="19" y2="37" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="1"  y1="19" x2="5.5" y2="19"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <line x1="32.5" y1="19" x2="37" y2="19"  stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
-  <circle cx="19" cy="19" r="9" fill="url(#fluxCG2)" opacity="0.4"/>
-  <circle cx="19" cy="19" r="2.5" fill="#00eeff" opacity="0.9"/>
-  <circle cx="19" cy="19" r="1.2" fill="white"/>
-  <text x="46" y="27"
-    font-family="'Plus Jakarta Sans',system-ui,sans-serif"
-    font-size="22"
-    font-weight="800"
-    letter-spacing="-1"
-    fill="url(#fluxWG2)">Flux</text>
-</svg></span>
+      <span class="mob-drawer-logo">Flux Planner</span>
       <button class="mob-drawer-close" onclick="closeDrawer()">✕</button>
     </div>
     <div class="mob-drawer-nav">
@@ -396,8 +332,6 @@
       </div>
       <div class="topbar-right">
         <div id="panicPill" style="display:none;padding:4px 10px;border-radius:20px;background:rgba(220,38,38,.2);border:1px solid #ef4444;font-size:.68rem;color:#f87171;font-family:'JetBrains Mono',monospace;font-weight:700;cursor:pointer" onclick="nav('dashboard')">🚨 PANIC</div>
-        <div id="topbarTaskPill" style="display:none;padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;font-family:'JetBrains Mono',monospace;cursor:pointer" onclick="nav('dashboard')"></div>
-        <div id="topbarNextClass" style="display:none;padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:600;font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,.06);border:1px solid var(--border2);color:var(--muted2)"></div>
         <div id="topbarEnergy" style="font-size:1.1rem;line-height:1;cursor:pointer" onclick="nav('dashboard')" title="Energy level">😐</div>
         <div class="ab-pill" id="abPill"></div>
         <div class="date-pill" id="datePill"></div>
@@ -421,52 +355,26 @@
       <!-- 3. Dynamic Focus Card -->
       <div id="dynamicFocusCard"></div>
 
-      <!-- DASHBOARD: Stats full-width, then two-column below -->
-      <!-- Stats Row — full width -->
+      <!-- 4. Stats Row -->
       <div class="stats-row" id="statsRow"></div>
 
-      <!-- Two-column grid -->
-      <div class="dash-grid">
-        <!-- LEFT: Focus + Energy -->
-        <div class="dash-col-left">
-          <div class="card" id="smartSugCard" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2);display:none">
-            <h3>✦ What to work on now</h3>
-            <div id="smartSug" style="font-size:.9rem;font-weight:700;margin-bottom:4px"></div>
-            <div id="smartSugSub" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace"></div>
-          </div>
-          <div id="dashEnergyCard" class="card" style="padding:14px 18px">
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap">Energy</div>
-              <input type="range" id="energySlider" min="1" max="5" value="3" style="flex:1;margin:0" oninput="setEnergy(this.value)">
-              <div style="font-size:1.3rem;flex-shrink:0" id="energyEmoji">😐</div>
-              <div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;min-width:44px" id="energyLabel">Neutral</div>
-            </div>
-          </div>
-          <div id="gradeBufferCard"></div>
+      <!-- 5. Smart Suggestion -->
+      <div class="card" id="smartSugCard" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2);display:none">
+        <h3>✦ What to work on now</h3>
+        <div id="smartSug" style="font-size:.9rem;font-weight:700;margin-bottom:4px"></div>
+        <div id="smartSugSub" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace"></div>
+      </div>
+
+      <!-- 6. Energy + Quick Add (side by side on desktop) -->
+      <div id="dashEnergyCard" class="card" style="padding:14px 18px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap">Energy</div>
+          <input type="range" id="energySlider" min="1" max="5" value="3" style="flex:1;margin:0" oninput="setEnergy(this.value)">
+          <div style="font-size:1.3rem;flex-shrink:0" id="energyEmoji">😐</div>
+          <div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;min-width:44px" id="energyLabel">Neutral</div>
         </div>
-        <!-- RIGHT: Intelligence -->
-        <div class="dash-col-right">
-          <div class="card" id="intelCard">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <h3 style="margin:0">✦ Intelligence</h3>
-              <div style="display:flex;gap:4px">
-                <button class="intel-tab active" onclick="switchIntelTab('workload',this)">Workload</button>
-                <button class="intel-tab" onclick="switchIntelTab('subjects',this)">Subjects</button>
-                <button class="intel-tab" onclick="switchIntelTab('gaps',this)">Gaps</button>
-              </div>
-            </div>
-            <div id="burnoutWarning" style="display:none;margin-bottom:10px"></div>
-            <div id="intelPane-workload"><div id="workloadForecast"></div></div>
-            <div id="intelPane-subjects" style="display:none"><div id="subjectHealth"></div></div>
-            <div id="intelPane-gaps" style="display:none"><div id="gapFiller"></div></div>
-          </div>
-          <div class="card" id="countdownCard" style="display:none">
-            <h3>⏰ Test Countdown</h3>
-            <div id="countdownLabel" style="font-size:.85rem;font-weight:700;margin-bottom:12px"></div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="countdownGrid"></div>
-          </div>
-        </div>
-      </div><!-- /dash-grid -->
+      </div>
+
       <!-- 7. Quick-Add Task Bar -->
       <div id="dashQuickAdd" class="quick-add">
         <span style="font-size:1rem;color:var(--muted)">+</span>
@@ -652,20 +560,6 @@
           </div>
         </div>
         <div style="margin-top:8px"><label style="font-size:.7rem;color:var(--muted)">Room / Notes (optional)</label><input type="text" id="classRoom" placeholder="e.g. Room 204" style="margin-bottom:0"></div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
-          <label style="font-size:.7rem;color:var(--muted);flex-shrink:0">Class Color</label>
-          <input type="color" id="classColor" value="#3b82f6" style="width:44px;height:36px;margin:0;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)">
-          <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <div style="width:24px;height:24px;border-radius:6px;background:#3b82f6;cursor:pointer;border:2px solid transparent" onclick="document.getElementById('classColor').value='#3b82f6'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#f43f5e;cursor:pointer" onclick="document.getElementById('classColor').value='#f43f5e'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#10d9a0;cursor:pointer" onclick="document.getElementById('classColor').value='#10d9a0'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#fbbf24;cursor:pointer" onclick="document.getElementById('classColor').value='#fbbf24'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#a78bfa;cursor:pointer" onclick="document.getElementById('classColor').value='#a78bfa'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#fb923c;cursor:pointer" onclick="document.getElementById('classColor').value='#fb923c'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#e879f9;cursor:pointer" onclick="document.getElementById('classColor').value='#e879f9'"></div>
-            <div style="width:24px;height:24px;border-radius:6px;background:#22d3ee;cursor:pointer" onclick="document.getElementById('classColor').value='#22d3ee'"></div>
-          </div>
-        </div>
       </div>
       <div class="card">
         <h3>📷 Import Schedule from Photo</h3>
@@ -959,16 +853,6 @@
           <button onclick="addCollege()">+</button>
         </div>
       </div>
-      <div class="card">
-        <h3>🏆 Activities, Awards & Achievements</h3>
-        <div id="extrasList" style="margin-bottom:10px"></div>
-        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;flex-wrap:wrap">
-          <div><label style="font-size:.7rem;color:var(--muted)">Name</label><input type="text" id="extraName" placeholder="e.g. Varsity Soccer, Honor Roll..." style="margin:0"></div>
-          <div><label style="font-size:.7rem;color:var(--muted)">Type</label><select id="extraType" style="margin:0"><option value="activity">Activity</option><option value="award">Award</option><option value="achievement">Achievement</option><option value="leadership">Leadership</option><option value="sport">Sport</option><option value="art">Art / Music</option><option value="volunteer">Volunteer</option></select></div>
-          <div><label style="font-size:.7rem;color:var(--muted)">Year</label><input type="text" id="extraYear" placeholder="2025" style="margin:0;width:72px"></div>
-          <button onclick="addExtra()" style="align-self:end;padding:10px 14px">+</button>
-        </div>
-      </div>
     </div>
 
     <!-- ─── HABITS ─── -->
@@ -1073,7 +957,6 @@
         <button class="stab" onclick="switchStab('account',this)">Account</button>
         <button class="stab" onclick="switchStab('tabs',this)">Tabs</button>
         <button class="stab" onclick="switchStab('data',this)">Data</button>
-        <button class="stab" onclick="switchStab('about',this)">About</button>
       </div>
       <div class="spane active" id="spane-appearance">
         <!-- Theme presets -->
@@ -1094,8 +977,7 @@
         <div class="card">
           <h3>Accent Color</h3>
           <div class="swatches" id="swatches" style="margin-bottom:12px">
-            <div class="swatch active" style="background:#00bfff" onclick="setAccent('#00bfff','0,191,255',this)" title="Flux Cyan"></div>
-            <div class="swatch" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
+            <div class="swatch active" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
             <div class="swatch" style="background:#3b82f6" onclick="setAccent('#3b82f6','59,130,246',this)"></div>
             <div class="swatch" style="background:#a78bfa" onclick="setAccent('#a78bfa','167,139,250',this)"></div>
             <div class="swatch" style="background:#10d9a0" onclick="setAccent('#10d9a0','16,217,160',this)"></div>
@@ -1215,85 +1097,8 @@
           <div class="srow"><div><div class="slabel">Export to iCal</div><div class="ssub">Download tasks as .ics</div></div><button onclick="exportToICal()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
           <div class="srow" style="border:none"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
         </div>
-        <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, grades, notes, habits</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
-      </div>
-
-      <!-- ABOUT TAB -->
-      <div class="spane" id="spane-about">
-        <!-- Developer Card -->
-        <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">✦</div>
-            <div>
-              <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px">Flux Planner</div>
-              <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">v2.0 · Your AI-powered school planner</div>
-            </div>
-          </div>
-          <div style="font-size:.82rem;color:var(--muted2);line-height:1.8">
-            Flux is a student-built, student-focused productivity tool designed to make school less overwhelming and more organized. Built with love for high school students everywhere.
-          </div>
-        </div>
-
-        <!-- Developer Info -->
-        <div class="card">
-          <h3>Developer</h3>
-          <div class="srow" style="border:none">
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;color:#fff;flex-shrink:0">AM</div>
-              <div>
-                <div style="font-size:.92rem;font-weight:700">Azfer Mohammed</div>
-                <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">International Academy East · Class of 2028</div>
-                <a href="/cdn-cgi/l/email-protection#e382998586918e8c8b828e8e8687d1d2a3848e828a8fcd808c8e" style="font-size:.7rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-decoration:none"><span class="__cf_email__" data-cfemail="2c4d564a495e4143444d414149481e1d6c4b414d4540024f4341">[email&#160;protected]</span></a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tech Stack -->
-        <div class="card">
-          <h3>Tech Stack</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">AI Engine</div>
-              <div style="font-size:.82rem;font-weight:600">Groq · Llama 3.3 70B</div>
-            </div>
-            <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Vision AI</div>
-              <div style="font-size:.82rem;font-weight:600">Groq · Llama 4 Scout</div>
-            </div>
-            <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Auth & Sync</div>
-              <div style="font-size:.82rem;font-weight:600">Supabase</div>
-            </div>
-            <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Integrations</div>
-              <div style="font-size:.82rem;font-weight:600">Google · Canvas LMS</div>
-            </div>
-          </div>
-          <div style="margin-top:10px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center">g = 10 m/s² · Physics is non-negotiable</div>
-        </div>
-
-        <!-- Privacy & Legal -->
-        <div class="card">
-          <h3>Privacy &amp; Legal</h3>
-          <div class="srow">
-            <div><div class="slabel">Privacy Policy</div><div class="ssub">How we handle your data</div></div>
-            <a href="privacy.html" target="_blank" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a>
-          </div>
-          <div class="srow" style="border:none">
-            <div>
-              <div class="slabel">Terms of Service</div>
-              <div class="ssub">Your agreement to use Flux Planner</div>
-            </div>
-            <button onclick="showTOS()" class="btn-sec" style="padding:6px 14px;font-size:.78rem">View →</button>
-          </div>
-        </div>
-
-        <!-- Quick Stats -->
-        <div class="card">
-          <h3>Your Flux Stats</h3>
-          <div id="aboutStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-        </div>
+        <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--gold)">Clear</button></div></div>
+        <div class="card"><h3>About</h3><div style="font-size:.78rem;color:var(--muted2);line-height:2.2;font-family:'JetBrains Mono',monospace"><div>Flux Planner v2.0</div><div>AI: Groq · Llama 3.3 70B · Gemini Vision</div><div>Auth: Supabase · g = 10 m/s²</div></div></div>
       </div>
     </div>
 
@@ -1312,11 +1117,8 @@
   <!-- ── FAB — FLOATING ACTION BUTTON ── -->
   <div id="fabContainer" style="position:fixed;bottom:86px;right:20px;z-index:300;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
     <!-- FAB Menu -->
-    <div id="fabMenu" style="display:none;flex-direction:column;gap:6px;align-items:flex-end;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .18s var(--ease),transform .2s var(--ease-spring)">
+    <div id="fabMenu" style="display:none;flex-direction:column;gap:6px;align-items:flex-end;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .18s var(--ease),transform .2s var(--ease-spring);pointer-events:none">
       <button onclick="fabFocus()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">⏱ Focus Session</button>
-      <button onclick="startPresentMode()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid rgba(192,132,252,.3);color:var(--purple);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">✦ Present Mode</button>
-      <button onclick="startDeepWork()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid rgba(16,217,160,.3);color:var(--green);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">🎯 Deep Work</button>
-      <button onclick="showKanban()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📋 Kanban</button>
       <button onclick="fabAddGrade()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📊 Add Grade</button>
       <button onclick="fabAddTask()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--accent);border:none;color:#fff;font-size:.8rem;font-weight:700;box-shadow:0 4px 20px rgba(var(--accent-rgb),.4);white-space:nowrap">+ New Task</button>
     </div>
@@ -1345,8 +1147,7 @@
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow"><label>Sub-tasks (one per line)</label><textarea id="editSubtasks" style="min-height:70px" placeholder="Sub-task 1&#10;Sub-task 2"></textarea></div>
-    <div class="mrow"><label>Notes</label><div style="margin-bottom:8px"><button onclick="generateStudyRoadmap(editingId);closeEdit()" style="width:100%;padding:8px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent);border-radius:8px;cursor:pointer">📚 Generate Study Roadmap for this task</button></div>
-          <textarea id="editNotes" style="min-height:60px"></textarea></div>
+    <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
     <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
@@ -1357,8 +1158,6 @@
     <div class="modal-title">Update Goal Progress</div>
     <div class="mrow"><label>Current Progress</label><input type="number" id="goalProgressInput" min="0" max="9999" step="0.1"></div>
     <div id="goalProgressLabel" style="font-size:.78rem;color:var(--muted2);margin-bottom:10px"></div>
-    <div class="mactions"><button onclick="closeGoalModal()" class="btn-sec">Cancel</button><button onclick="saveGoalProgress()">Save</button>
-</div>
     <div class="mactions"><button onclick="closeGoalModal()" class="btn-sec">Cancel</button><button onclick="saveGoalProgress()">Save</button></div>
   </div>
 </div>
