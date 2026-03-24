@@ -448,6 +448,32 @@
         <span style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">↵ Enter</span>
       </div>
 
+      <!-- WORKLOAD FORECAST -->
+      <div class="card" id="workloadCard">
+        <h3>📈 7-Day Workload</h3>
+        <div id="workloadForecast"></div>
+      </div>
+      
+      <!-- BURNOUT WARNING -->
+      <div id="burnoutWarning" style="display:none;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);border-radius:14px;padding:12px 16px;display:none;gap:10px;align-items:flex-start"></div>
+      
+      <!-- SUBJECT HEALTH -->
+      <div class="card" id="subjectHealthCard">
+        <h3>📊 Subject Health</h3>
+        <div id="subjectHealth"></div>
+      </div>
+      
+      <!-- GAP FILLER -->
+      <div id="gapFiller" style="display:none;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.2);border-radius:12px;padding:12px 16px"></div>
+      
+      <!-- QUICK ACTIONS ROW -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="showKanban()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">📋 Kanban View</button>
+        <button onclick="startDeepWork()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(16,217,160,.08);border:1px solid rgba(16,217,160,.2);color:var(--green)">🎯 Deep Work</button>
+        <button onclick="startPresentMode()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(192,132,252,.08);border:1px solid rgba(192,132,252,.2);color:var(--purple)">✦ Present Mode</button>
+        <button onclick="openCommandPalette()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">⌘ Commands</button>
+      </div>
+
       <!-- 8. Full Add Task (collapsible) -->
       <details class="card" style="padding:0">
         <summary style="padding:14px 18px;cursor:pointer;font-size:.78rem;font-weight:700;color:var(--muted2);list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
@@ -1013,9 +1039,11 @@
         <div class="ai-orb" style="width:28px;height:28px;flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:800;font-size:.95rem;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Flux AI</div>
-          <div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;-webkit-text-fill-color:var(--muted)">Groq · Llama 3.3 70B · Scout Vision</div>
+          <div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;-webkit-text-fill-color:var(--muted)">Groq · Llama 3.3 70B</div>
         </div>
-
+        <label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.75rem;color:var(--muted2);flex-shrink:0">
+          📷 <input type="file" accept="image/*" id="aiImgUpload" style="display:none;width:auto;margin:0" onchange="handleAIImg(event)">
+        </label>
         <button onclick="clearAIChat()" style="padding:5px 10px;font-size:.72rem;background:transparent;border:1px solid var(--border2);color:var(--muted2);flex-shrink:0">Clear</button>
       </div>
       <!-- Messages — scrollable -->
@@ -1028,9 +1056,6 @@
       <!-- Input -->
       <div style="padding:10px 14px 12px;flex-shrink:0;border-top:1px solid var(--border)">
         <div class="ai-irow">
-          <label id="aiImgBtn" title="Attach image" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:1.1rem;transition:all .15s;align-self:flex-end;margin-bottom:1px">
-            +<input type="file" accept="image/*" id="aiImgUpload" style="display:none" onchange="handleAIImg(event)">
-          </label>
           <textarea id="aiInput" rows="1" placeholder="Ask anything — tutoring, flashcards, exam prep..."
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
             oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
@@ -1230,7 +1255,7 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
               <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">AI Engine</div>
-              <div style="font-size:.82rem;font-weight:600">Groq · Llama 3.3 70B · Scout Vision</div>
+              <div style="font-size:.82rem;font-weight:600">Groq · Llama 3.3 70B</div>
             </div>
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
               <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Vision AI</div>
@@ -1317,7 +1342,10 @@
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow"><label>Sub-tasks (one per line)</label><textarea id="editSubtasks" style="min-height:70px" placeholder="Sub-task 1&#10;Sub-task 2"></textarea></div>
-    <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
+    <div class="mrow"><label>Notes</label><div style="margin-bottom:8px">
+          <button onclick="generateStudyRoadmap(editingId);closeEdit()" style="width:100%;padding:8px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">📚 Generate Study Roadmap</button>
+        </div>
+        <textarea id="editNotes" style="min-height:60px"></textarea></div>
     <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
