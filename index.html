@@ -421,57 +421,58 @@
       <!-- 3. Dynamic Focus Card -->
       <div id="dynamicFocusCard"></div>
 
-      <!-- 4. Stats Row -->
-      <div class="stats-row" id="statsRow"></div>
-
-      <!-- 5. Smart Suggestion -->
-      <div class="card" id="smartSugCard" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2);display:none">
-        <h3>✦ What to work on now</h3>
-        <div id="smartSug" style="font-size:.9rem;font-weight:700;margin-bottom:4px"></div>
-        <div id="smartSugSub" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace"></div>
-      </div>
-
-      <!-- 6. Energy + Quick Add (side by side on desktop) -->
-      <div id="dashEnergyCard" class="card" style="padding:14px 18px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap">Energy</div>
-          <input type="range" id="energySlider" min="1" max="5" value="3" style="flex:1;margin:0" oninput="setEnergy(this.value)">
-          <div style="font-size:1.3rem;flex-shrink:0" id="energyEmoji">😐</div>
-          <div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;min-width:44px" id="energyLabel">Neutral</div>
+      <!-- DASHBOARD TWO-COLUMN GRID -->
+      <div class="dash-grid">
+        <div class="dash-col-left">
+          <!-- 4. Stats Row -->
+          <div class="stats-row" id="statsRow"></div>
+          <!-- 5. Smart Suggestion -->
+          <div class="card" id="smartSugCard" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2);display:none">
+            <h3>✦ What to work on now</h3>
+            <div id="smartSug" style="font-size:.9rem;font-weight:700;margin-bottom:4px"></div>
+            <div id="smartSugSub" style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace"></div>
+          </div>
+          <!-- 6. Energy -->
+          <div id="dashEnergyCard" class="card" style="padding:14px 18px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap">Energy</div>
+              <input type="range" id="energySlider" min="1" max="5" value="3" style="flex:1;margin:0" oninput="setEnergy(this.value)">
+              <div style="font-size:1.3rem;flex-shrink:0" id="energyEmoji">😐</div>
+              <div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;min-width:44px" id="energyLabel">Neutral</div>
+            </div>
+          </div>
+          <!-- Grade Buffer -->
+          <div id="gradeBufferCard" class="card"><h3>🎓 Grade Buffer</h3></div>
         </div>
-      </div>
-
+        <div class="dash-col-right">
+          <!-- Intelligence Card -->
+          <div class="card" id="intelCard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <h3 style="margin:0">✦ Intelligence</h3>
+              <div style="display:flex;gap:4px">
+                <button class="intel-tab active" onclick="switchIntelTab('workload',this)">Workload</button>
+                <button class="intel-tab" onclick="switchIntelTab('subjects',this)">Subjects</button>
+                <button class="intel-tab" onclick="switchIntelTab('gaps',this)">Gaps</button>
+              </div>
+            </div>
+            <div id="burnoutWarning" style="display:none;margin-bottom:10px"></div>
+            <div id="intelPane-workload"><div id="workloadForecast"></div></div>
+            <div id="intelPane-subjects" style="display:none"><div id="subjectHealth"></div></div>
+            <div id="intelPane-gaps" style="display:none"><div id="gapFiller"></div></div>
+          </div>
+          <!-- Countdown -->
+          <div class="card" id="countdownCard" style="display:none">
+            <h3>⏰ Test Countdown</h3>
+            <div id="countdownLabel" style="font-size:.85rem;font-weight:700;margin-bottom:12px"></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="countdownGrid"></div>
+          </div>
+        </div>
+      </div><!-- /dash-grid -->
       <!-- 7. Quick-Add Task Bar -->
       <div id="dashQuickAdd" class="quick-add">
         <span style="font-size:1rem;color:var(--muted)">+</span>
         <input id="quickAddInput" placeholder="Quick add task... (type 'high', 'low', 'today', 'tomorrow' for smart tagging)" />
         <span style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">↵ Enter</span>
-      </div>
-
-      <!-- WORKLOAD FORECAST -->
-      <div class="card" id="workloadCard">
-        <h3>📈 7-Day Workload</h3>
-        <div id="workloadForecast"></div>
-      </div>
-      
-      <!-- BURNOUT WARNING -->
-      <div id="burnoutWarning" style="display:none;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);border-radius:14px;padding:12px 16px;display:none;gap:10px;align-items:flex-start"></div>
-      
-      <!-- SUBJECT HEALTH -->
-      <div class="card" id="subjectHealthCard">
-        <h3>📊 Subject Health</h3>
-        <div id="subjectHealth"></div>
-      </div>
-      
-      <!-- GAP FILLER -->
-      <div id="gapFiller" style="display:none;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.2);border-radius:12px;padding:12px 16px"></div>
-      
-      <!-- QUICK ACTIONS ROW -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="showKanban()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">📋 Kanban View</button>
-        <button onclick="startDeepWork()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(16,217,160,.08);border:1px solid rgba(16,217,160,.2);color:var(--green)">🎯 Deep Work</button>
-        <button onclick="startPresentMode()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(192,132,252,.08);border:1px solid rgba(192,132,252,.2);color:var(--purple)">✦ Present Mode</button>
-        <button onclick="openCommandPalette()" style="flex:1;min-width:120px;padding:10px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">⌘ Commands</button>
       </div>
 
       <!-- 8. Full Add Task (collapsible) -->
@@ -1094,7 +1095,7 @@
         <div class="card">
           <h3>Accent Color</h3>
           <div class="swatches" id="swatches" style="margin-bottom:12px">
-            <div class="swatch active" style="background:#00bfff" onclick="setAccent('#00bfff','0,191,255',this)" title="Flux Cyan (default)"></div>
+            <div class="swatch active" style="background:#00bfff" onclick="setAccent('#00bfff','0,191,255',this)" title="Flux Cyan"></div>
             <div class="swatch" style="background:#6366f1" onclick="setAccent('#6366f1','99,102,241',this)"></div>
             <div class="swatch" style="background:#3b82f6" onclick="setAccent('#3b82f6','59,130,246',this)"></div>
             <div class="swatch" style="background:#a78bfa" onclick="setAccent('#a78bfa','167,139,250',this)"></div>
@@ -1314,6 +1315,9 @@
     <!-- FAB Menu -->
     <div id="fabMenu" style="display:none;flex-direction:column;gap:6px;align-items:flex-end;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .18s var(--ease),transform .2s var(--ease-spring)">
       <button onclick="fabFocus()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">⏱ Focus Session</button>
+      <button onclick="startPresentMode()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid rgba(192,132,252,.3);color:var(--purple);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">✦ Present Mode</button>
+      <button onclick="startDeepWork()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid rgba(16,217,160,.3);color:var(--green);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">🎯 Deep Work</button>
+      <button onclick="showKanban()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📋 Kanban</button>
       <button onclick="fabAddGrade()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📊 Add Grade</button>
       <button onclick="fabAddTask()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--accent);border:none;color:#fff;font-size:.8rem;font-weight:700;box-shadow:0 4px 20px rgba(var(--accent-rgb),.4);white-space:nowrap">+ New Task</button>
     </div>
@@ -1342,10 +1346,8 @@
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow"><label>Sub-tasks (one per line)</label><textarea id="editSubtasks" style="min-height:70px" placeholder="Sub-task 1&#10;Sub-task 2"></textarea></div>
-    <div class="mrow"><label>Notes</label><div style="margin-bottom:8px">
-          <button onclick="generateStudyRoadmap(editingId);closeEdit()" style="width:100%;padding:8px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent)">📚 Generate Study Roadmap</button>
-        </div>
-        <textarea id="editNotes" style="min-height:60px"></textarea></div>
+    <div class="mrow"><label>Notes</label><div style="margin-bottom:8px"><button onclick="generateStudyRoadmap(editingId);closeEdit()" style="width:100%;padding:8px;font-size:.78rem;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent);border-radius:8px;cursor:pointer">📚 Generate Study Roadmap for this task</button></div>
+          <textarea id="editNotes" style="min-height:60px"></textarea></div>
     <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
