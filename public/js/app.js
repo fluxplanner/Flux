@@ -424,7 +424,7 @@ function nav(id,btn){
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();},calendar:()=>{renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),habits:()=>{renderHabitList();renderHeatmap();},goals:()=>{renderGoalsList();renderCollegeList();if(typeof renderExtrasList==='function')renderExtrasList();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();},gmail:()=>loadGmail()};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();},calendar:()=>{renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),habits:()=>{renderHabitList();renderHeatmap();},goals:()=>{renderGoalsList();renderCollegeList();if(typeof renderExtrasList==='function')renderExtrasList();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();},gmail:()=>loadGmail()};
   fns[id]?.();
 }
 function navMob(id){closeDrawer();nav(id);}
@@ -535,7 +535,7 @@ function addTask(){
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
 }
-function toggleTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;if(t.done){t.completedAt=Date.now();spawnConfetti();}save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);}
+function toggleTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;if(t.done){t.completedAt=Date.now();spawnConfetti();if(t.estTime)setTimeout(()=>promptEffortTracking(id),500);}save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);}
 function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);}
 function setFilter(f,el){taskFilter=f;document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTasks();}
 // ── TOPBAR TASK COUNT PILL ──────────────────────────────────
@@ -2492,7 +2492,13 @@ function fabFocus(){
 // ══ KEYBOARD SHORTCUTS ══
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
-    // Don't fire when typing in inputs
+    // Cmd+K / Ctrl+K — Command Palette (works from anywhere)
+    if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCommandPalette();return;}
+    // Cmd+D — Deep Work mode
+    if((e.metaKey||e.ctrlKey)&&e.key==='d'){e.preventDefault();startDeepWork();return;}
+    // Cmd+P — Present Mode
+    if((e.metaKey||e.ctrlKey)&&e.key==='p'){e.preventDefault();startPresentMode();return;}
+    // Don't fire letter shortcuts when typing in inputs
     const tag=document.activeElement?.tagName;
     if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
     if(e.metaKey||e.ctrlKey||e.altKey)return;
@@ -2514,13 +2520,136 @@ function initKeyboardShortcuts(){
         e.preventDefault();nav('grades');break;
       case 'c': case 'C':
         e.preventDefault();nav('calendar');break;
+      case 'k': case 'K':
+        e.preventDefault();openCommandPalette();break;
       case 'Escape':
-        // Close any open modal
         document.querySelectorAll('.modal-overlay').forEach(m=>{if(m.style.display!=='none')closeModal(m.id);});
+        closeCommandPalette();closeKanban();
         break;
     }
   });
 }
+
+// ══ CMD+K COMMAND PALETTE ══
+let _cpOpen = false;
+function openCommandPalette(){
+  if(_cpOpen)return;
+  _cpOpen=true;
+  const overlay=document.createElement('div');
+  overlay.id='cmdPalette';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding-top:15vh;background:rgba(0,0,0,.6);backdrop-filter:blur(8px)';
+  overlay.innerHTML=`
+    <div style="width:100%;max-width:580px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:18px;box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(var(--accent-rgb),.1);overflow:hidden;animation:cmdIn .15s ease">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">
+        <span style="color:var(--accent);font-size:1rem">⌘</span>
+        <input id="cmdInput" placeholder="Search tasks, navigate, add task..." style="flex:1;background:none;border:none;outline:none;font-size:.95rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif" autocomplete="off">
+        <kbd style="font-size:.65rem;padding:2px 6px;background:var(--card2);border:1px solid var(--border2);border-radius:4px;color:var(--muted)">ESC</kbd>
+      </div>
+      <div id="cmdResults" style="max-height:380px;overflow-y:auto;padding:8px"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeCommandPalette();});
+  const input=document.getElementById('cmdInput');
+  input.focus();
+  input.addEventListener('input',renderCmdResults);
+  input.addEventListener('keydown',handleCmdKey);
+  renderCmdResults();
+}
+function closeCommandPalette(){
+  const el=document.getElementById('cmdPalette');
+  if(el)el.remove();
+  _cpOpen=false;
+}
+let _cmdIdx=0;
+function handleCmdKey(e){
+  const items=document.querySelectorAll('.cmd-item');
+  if(e.key==='ArrowDown'){e.preventDefault();_cmdIdx=Math.min(_cmdIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_cmdIdx=Math.max(_cmdIdx-1,0);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
+  else if(e.key==='Enter'){e.preventDefault();const active=document.querySelector('.cmd-active');if(active)active.click();}
+  else if(e.key==='Escape'){closeCommandPalette();}
+}
+function renderCmdResults(){
+  const q=(document.getElementById('cmdInput')?.value||'').toLowerCase().trim();
+  _cmdIdx=0;
+  const res=document.getElementById('cmdResults');if(!res)return;
+  
+  // Build commands
+  const cmds=[];
+  
+  // Navigation
+  const navItems=[
+    {icon:'⚡',label:'Dashboard',action:()=>{nav('dashboard');closeCommandPalette();}},
+    {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
+    {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
+    {icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}},
+    {icon:'📊',label:'Grades',action:()=>{nav('grades');closeCommandPalette();}},
+    {icon:'📝',label:'Notes',action:()=>{nav('notes');closeCommandPalette();}},
+    {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
+    {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
+    {icon:'🔥',label:'Habits',action:()=>{nav('habits');closeCommandPalette();}},
+    {icon:'😊',label:'Mood',action:()=>{nav('mood');closeCommandPalette();}},
+    {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
+  ];
+  navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
+  
+  // Task search
+  const matchTasks=tasks.filter(t=>!t.done&&t.name.toLowerCase().includes(q)).slice(0,5);
+  matchTasks.forEach(t=>cmds.push({icon:'✓',label:t.name,sub:t.date?'Due '+t.date:'',cat:'Tasks',action:()=>{nav('dashboard');closeCommandPalette();setTimeout(()=>{const el=document.querySelector('[data-task-id="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth'});},300);}}));
+  
+  // Add task shortcut
+  if(q&&!q.startsWith('/')){
+    cmds.unshift({icon:'＋',label:'Add task: "'+q+'"',cat:'Actions',action:()=>{
+      const t={id:Date.now(),name:q,date:'',subject:'',priority:'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now()};
+      t.urgencyScore=calcUrgency(t);tasks.unshift(t);save('tasks',tasks);
+      renderStats();renderTasks();renderCalendar();syncKey('tasks',tasks);
+      showToast('✓ Task added');closeCommandPalette();
+    }});
+  }
+  
+  // Actions
+  const actions=[
+    {icon:'🔄',label:'Force Sync',cat:'Actions',action:()=>{closeCommandPalette();forceSyncNow();}},
+    {icon:'🎯',label:'Start Deep Work Mode',cat:'Actions',action:()=>{closeCommandPalette();startDeepWork();}},
+    {icon:'📊',label:'Open Kanban View',cat:'Actions',action:()=>{closeCommandPalette();nav('dashboard');setTimeout(()=>showKanban(),200);}},
+  ];
+  actions.forEach(a=>{if(!q||a.label.toLowerCase().includes(q))cmds.push(a);});
+  
+  if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
+  
+  // Group by cat
+  const cats={};
+  cmds.forEach(c=>{if(!cats[c.cat])cats[c.cat]=[];cats[c.cat].push(c);});
+  let html='';let idx=0;
+  Object.entries(cats).forEach(([cat,items])=>{
+    html+=`<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);padding:8px 12px 4px;font-family:'JetBrains Mono',monospace">${cat}</div>`;
+    items.forEach(item=>{
+      const isFirst=idx===0;
+      html+=`<div class="cmd-item${isFirst?' cmd-active':''}" data-idx="${idx}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;transition:background .1s">
+        <span style="font-size:.95rem;width:20px;text-align:center;flex-shrink:0">${item.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.label)}</div>
+          ${item.sub?`<div style="font-size:.7rem;color:var(--muted)">${esc(item.sub)}</div>`:''}
+        </div>
+        <span style="font-size:.65rem;color:var(--muted);flex-shrink:0">${item.cat}</span>
+      </div>`;
+      // Store action
+      idx++;
+    });
+  });
+  res.innerHTML=html;
+  
+  // Attach click handlers
+  const allCmds=[];
+  Object.values(cats).forEach(items=>items.forEach(i=>allCmds.push(i)));
+  res.querySelectorAll('.cmd-item').forEach((el,i)=>{
+    el.addEventListener('click',()=>allCmds[i]?.action());
+    el.addEventListener('mouseenter',()=>{
+      _cmdIdx=i;
+      res.querySelectorAll('.cmd-item').forEach((e2,j)=>e2.classList.toggle('cmd-active',i===j));
+    });
+  });
+}
+
 
 // Keyboard hint tooltip
 function showKeyHint(){
@@ -3362,3 +3491,506 @@ function addEmailAsTask(id){
 }
 
 function renderGmail(){loadGmail();}
+
+// ══ KANBAN VIEW ══
+let _kanbanOpen=false;
+function showKanban(){
+  if(_kanbanOpen)return;
+  _kanbanOpen=true;
+  const overlay=document.createElement('div');
+  overlay.id='kanbanOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:800;background:var(--bg);overflow:auto;animation:fadeIn .2s ease';
+  const cols=['todo','inprogress','done'];
+  const colLabels={'todo':'📋 To Do','inprogress':'⚡ In Progress','done':'✅ Done'};
+  const colColors={'todo':'var(--accent)','inprogress':'var(--gold)','done':'var(--green)'};
+  
+  // Assign kanban col to tasks
+  const tasksWithCol=tasks.map(t=>({...t,kanbanCol:t.kanbanCol||(t.done?'done':'todo')}));
+  
+  function renderKanban(){
+    const cols2=['todo','inprogress','done'];
+    cols2.forEach(col=>{
+      const el=document.getElementById('kcol-'+col);
+      if(!el)return;
+      const colTasks=tasksWithCol.filter(t=>t.kanbanCol===col&&!t.done||col==='done'&&t.done);
+      const subjs=getSubjects();
+      el.innerHTML=colTasks.map(t=>{
+        const s=subjs[t.subject];
+        const c=s?s.color:'var(--accent)';
+        const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+        return`<div class="kanban-card" draggable="true" data-id="${t.id}" style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${c};border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:grab;transition:all .15s">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:4px;line-height:1.3">${esc(t.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${s?`<span style="font-size:.62rem;padding:2px 7px;border-radius:20px;background:${c}22;color:${c}">${s.short}</span>`:''}
+            ${due?`<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${due}</span>`:''}
+            ${t.priority==='high'?'<span style="font-size:.6rem;color:var(--red)">●</span>':''}
+            ${t.estTime?`<span style="font-size:.62rem;color:var(--muted)">~${t.estTime}m</span>`:''}
+          </div>
+        </div>`;
+      }).join('')||`<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem;border:1px dashed var(--border);border-radius:10px">Drop tasks here</div>`;
+    });
+    // Drag handlers
+    document.querySelectorAll('.kanban-card').forEach(card=>{
+      card.addEventListener('dragstart',e=>{e.dataTransfer.setData('taskId',card.dataset.id);card.style.opacity='.5';});
+      card.addEventListener('dragend',e=>{card.style.opacity='1';});
+    });
+    document.querySelectorAll('.kanban-col-body').forEach(col=>{
+      col.addEventListener('dragover',e=>{e.preventDefault();col.style.background='rgba(var(--accent-rgb),.06)';});
+      col.addEventListener('dragleave',()=>{col.style.background='';});
+      col.addEventListener('drop',e=>{
+        e.preventDefault();col.style.background='';
+        const id=parseInt(e.dataTransfer.getData('taskId'));
+        const colId=col.dataset.col;
+        const t=tasksWithCol.find(x=>x.id===id);
+        if(t){
+          t.kanbanCol=colId;
+          if(colId==='done'&&!t.done){t.done=true;t.completedAt=Date.now();}
+          if(colId!=='done'&&t.done){t.done=false;delete t.completedAt;}
+          // Update in tasks array
+          const orig=tasks.find(x=>x.id===id);
+          if(orig){orig.kanbanCol=colId;orig.done=t.done;if(orig.done)orig.completedAt=t.completedAt;else delete orig.completedAt;}
+          save('tasks',tasks);renderKanban();
+          renderStats();renderTasks();
+        }
+      });
+    });
+  }
+  
+  overlay.innerHTML=`
+    <div style="max-width:1200px;margin:0 auto;padding:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <button onclick="closeKanban()" style="background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;font-size:.8rem;cursor:pointer">← Back</button>
+        <div style="font-size:1.1rem;font-weight:800">Kanban Board</div>
+        <div style="font-size:.75rem;color:var(--muted)">Drag tasks between columns</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+        ${['todo','inprogress','done'].map(col=>`
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="width:8px;height:8px;border-radius:50%;background:${colColors[col]}"></div>
+              <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px">${colLabels[col].split(' ').slice(1).join(' ')}</div>
+              <div style="margin-left:auto;font-size:.7rem;color:var(--muted)" id="kcount-${col}"></div>
+            </div>
+            <div class="kanban-col-body" data-col="${col}" id="kcol-${col}" style="min-height:200px;padding:4px;border-radius:12px;transition:background .15s"></div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderKanban();
+  // Update counts
+  ['todo','inprogress','done'].forEach(col=>{
+    const el=document.getElementById('kcount-'+col);
+    if(el)el.textContent=tasksWithCol.filter(t=>t.kanbanCol===col||col==='done'&&t.done).length;
+  });
+}
+function closeKanban(){
+  const el=document.getElementById('kanbanOverlay');
+  if(el)el.remove();
+  _kanbanOpen=false;
+  renderTasks();renderStats();
+}
+
+// ══ WORKLOAD FORECASTING ══
+function renderWorkloadForecast(){
+  const el=document.getElementById('workloadForecast');if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const days=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(now);d.setDate(now.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const dayTasks=tasks.filter(t=>!t.done&&t.date===ds);
+    const mins=dayTasks.reduce((s,t)=>s+(t.estTime||20),0);
+    const label=i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'});
+    days.push({label,mins,count:dayTasks.length,date:ds,tasks:dayTasks});
+  }
+  const maxMins=Math.max(...days.map(d=>d.mins),60);
+  const html=`
+    <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:8px">
+      ${days.map(d=>{
+        const h=Math.max(4,Math.round((d.mins/maxMins)*76));
+        const color=d.mins>180?'var(--red)':d.mins>90?'var(--gold)':'var(--green)';
+        const isToday=d.label==='Today';
+        return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+          ${d.mins>180?'<span style="font-size:.55rem;color:var(--red)">⚠</span>':'<span style="font-size:.55rem;opacity:0">·</span>'}
+          <div title="${d.count} tasks · ${d.mins}min" style="width:100%;background:${color};border-radius:4px 4px 0 0;height:${h}px;opacity:${isToday?1:.7};transition:height .3s;cursor:pointer;position:relative" onclick="showDayTasksPopup('${d.date}')">
+            ${d.count?`<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:.55rem;color:var(--muted);white-space:nowrap">${d.count}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:6px">
+      ${days.map(d=>`<div style="flex:1;text-align:center;font-size:.58rem;color:${d.label==='Today'?'var(--accent)':'var(--muted)'};font-family:'JetBrains Mono',monospace;font-weight:${d.label==='Today'?700:400}">${d.label}</div>`).join('')}
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;font-size:.65rem;color:var(--muted)">
+      <span>🟢 <60min</span><span>🟡 60-3h</span><span>🔴 >3h</span>
+    </div>`;
+  el.innerHTML=html;
+  
+  // Burnout detection
+  const heavyDays=days.filter(d=>d.mins>180).length;
+  const overdueTasks=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
+  const burnoutEl=document.getElementById('burnoutWarning');
+  if(burnoutEl){
+    if(heavyDays>=3||overdueTasks>=4){
+      burnoutEl.style.display='block';
+      burnoutEl.innerHTML=`<span style="font-size:.85rem">⚠️</span> <div><div style="font-weight:700;font-size:.82rem">Burnout Risk Detected</div><div style="font-size:.72rem;color:var(--muted2);margin-top:2px">${heavyDays>=3?`${heavyDays} heavy days this week`:''}${heavyDays>=3&&overdueTasks>=4?' · ':''}${overdueTasks>=4?`${overdueTasks} overdue tasks`:''} — consider redistributing</div></div>`;
+    } else {
+      burnoutEl.style.display='none';
+    }
+  }
+}
+function showDayTasksPopup(dateStr){
+  const dayTasks=tasks.filter(t=>!t.done&&t.date===dateStr);
+  if(!dayTasks.length)return;
+  const d=new Date(dateStr+'T12:00:00');
+  const label=d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+  const subjs=getSubjects();
+  const m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML=`<div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:70vh;overflow:auto">
+    <div style="font-weight:800;margin-bottom:12px">${label}</div>
+    ${dayTasks.map(t=>{const s=subjs[t.subject];return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${s?s.color:'var(--accent)'}"></div>
+      <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
+      ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
+    </div>`}).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;margin-top:12px;padding:8px">Close</button>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+
+// ══ DEEP WORK MODE ══
+let _dwTimer=null,_dwSecs=0,_dwTask=null;
+function startDeepWork(taskId){
+  const task=taskId?tasks.find(t=>t.id===taskId):tasks.filter(t=>!t.done).sort((a,b)=>(b.urgencyScore||0)-(a.urgencyScore||0))[0];
+  if(!task){showToast('No tasks to focus on!');return;}
+  _dwTask=task;
+  _dwSecs=(task.estTime||25)*60;
+  const overlay=document.createElement('div');
+  overlay.id='deepWorkOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:8000;background:#000810;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;animation:fadeIn .3s ease';
+  const sub=getSubjects()[task.subject];
+  const color=sub?sub.color:'var(--accent)';
+  overlay.innerHTML=`
+    <div style="text-align:center;max-width:480px;padding:20px">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:4px;color:rgba(255,255,255,.3);margin-bottom:20px;font-family:'JetBrains Mono',monospace">Deep Work Mode</div>
+      <div style="font-size:clamp(1.2rem,4vw,1.8rem);font-weight:800;color:#fff;margin-bottom:8px;line-height:1.3">${esc(task.name)}</div>
+      ${sub?`<div style="font-size:.8rem;color:${color};margin-bottom:24px">${sub.name}</div>`:'<div style="margin-bottom:24px"></div>'}
+      <div id="dwTime" style="font-size:clamp(3rem,12vw,6rem);font-weight:800;font-family:'JetBrains Mono',monospace;color:${color};letter-spacing:-2px;margin-bottom:8px">--:--</div>
+      <div id="dwProgress" style="width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:0 auto 28px">
+        <div id="dwProgressFill" style="height:100%;background:${color};border-radius:2px;transition:width 1s linear;width:100%"></div>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button id="dwPauseBtn" onclick="toggleDWTimer()" style="padding:12px 28px;border-radius:50px;background:${color};border:none;color:#fff;font-weight:700;font-size:.9rem;cursor:pointer">Pause</button>
+        <button onclick="endDeepWork(true)" style="padding:12px 28px;border-radius:50px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer">✓ Done</button>
+        <button onclick="endDeepWork(false)" style="padding:12px 16px;border-radius:50px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);font-size:.8rem;cursor:pointer">ESC</button>
+      </div>
+      <div style="margin-top:20px;font-size:.72rem;color:rgba(255,255,255,.2);font-family:'JetBrains Mono',monospace">Press ESC to exit · Stay focused</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown',_dwKeyHandler);
+  startDWTimer();
+  updateDWDisplay();
+}
+function _dwKeyHandler(e){if(e.key==='Escape')endDeepWork(false);}
+let _dwPaused=false;
+function startDWTimer(){
+  _dwTimer=setInterval(()=>{
+    if(_dwPaused)return;
+    _dwSecs--;
+    updateDWDisplay();
+    if(_dwSecs<=0){clearInterval(_dwTimer);endDeepWork(true);}
+  },1000);
+}
+function toggleDWTimer(){
+  _dwPaused=!_dwPaused;
+  const btn=document.getElementById('dwPauseBtn');
+  if(btn)btn.textContent=_dwPaused?'Resume':'Pause';
+}
+function updateDWDisplay(){
+  const el=document.getElementById('dwTime');if(!el)return;
+  const m=Math.floor(_dwSecs/60),s=_dwSecs%60;
+  el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  const total=(_dwTask?.estTime||25)*60;
+  const fill=document.getElementById('dwProgressFill');
+  if(fill)fill.style.width=Math.max(0,(_dwSecs/total*100))+'%';
+}
+function endDeepWork(completed){
+  clearInterval(_dwTimer);_dwTimer=null;
+  document.removeEventListener('keydown',_dwKeyHandler);
+  const overlay=document.getElementById('deepWorkOverlay');
+  if(overlay){overlay.style.opacity='0';overlay.style.transition='opacity .3s';setTimeout(()=>overlay.remove(),300);}
+  if(completed&&_dwTask){
+    const t=tasks.find(x=>x.id===_dwTask.id);
+    if(t&&!t.done){t.done=true;t.completedAt=Date.now();spawnConfetti();save('tasks',tasks);renderStats();renderTasks();syncKey('tasks',tasks);}
+    showToast('🎯 Session complete! Great work.');
+  }
+  _dwTask=null;_dwSecs=0;_dwPaused=false;
+}
+
+// ══ SUBJECT HEALTH DASHBOARD ══
+function renderSubjectHealth(){
+  const el=document.getElementById('subjectHealth');if(!el)return;
+  const subjs=getSubjects();
+  if(!Object.keys(subjs).length&&!Object.keys(grades).length){el.innerHTML='';return;}
+  
+  const now=new Date();now.setHours(0,0,0,0);
+  const health=Object.entries(subjs).map(([k,s])=>{
+    const subTasks=tasks.filter(t=>t.subject===k);
+    const overdue=subTasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
+    const pending=subTasks.filter(t=>!t.done).length;
+    const done=subTasks.filter(t=>t.done).length;
+    const rate=done+pending>0?Math.round(done/(done+pending)*100):100;
+    const grade=grades[s.name]||grades[k];
+    const gradeN=grade?parseFloat(grade):null;
+    let status='good';
+    if(overdue>=2||rate<40||(gradeN!==null&&gradeN<70))status='danger';
+    else if(overdue>=1||rate<60||(gradeN!==null&&gradeN<80))status='warning';
+    return{key:k,s,overdue,pending,done,rate,grade:gradeN,status};
+  }).filter(h=>h.pending+h.done>0||h.grade!==null).slice(0,6);
+  
+  if(!health.length){el.innerHTML='';return;}
+  
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+    ${health.map(h=>{
+      const statusColor=h.status==='good'?'var(--green)':h.status==='warning'?'var(--gold)':'var(--red)';
+      return`<div style="background:var(--card2);border:1px solid ${h.status!=='good'?statusColor+'44':'var(--border)'};border-radius:12px;padding:12px;position:relative">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${h.s.color};flex-shrink:0"></div>
+          <div style="font-size:.72rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.s.short)}</div>
+          <div style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:${statusColor}"></div>
+        </div>
+        ${h.grade!==null?`<div style="font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${statusColor}">${h.grade.toFixed(1)}%</div>`:''}
+        <div style="font-size:.65rem;color:var(--muted);margin-top:4px">${h.pending} pending${h.overdue?` · <span style="color:var(--red)">${h.overdue} overdue</span>`:''}</div>
+        <div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px">
+          <div style="height:100%;background:${statusColor};border-radius:2px;width:${h.rate}%;transition:width .5s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ══ PREDICTIVE GAP FILLER ══
+function renderGapFiller(){
+  const el=document.getElementById('gapFiller');if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const gaps=[];
+  for(let i=1;i<=7;i++){
+    const d=new Date(now);d.setDate(now.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const dayCount=tasks.filter(t=>!t.done&&t.date===ds).length;
+    if(dayCount===0){
+      const label=i===1?'tomorrow':d.toLocaleDateString('en-US',{weekday:'long'});
+      gaps.push({label,date:ds,d});
+    }
+  }
+  if(!gaps.length){el.style.display='none';return;}
+  
+  // Find a task that could be moved
+  const moveable=tasks.filter(t=>!t.done&&(!t.date||new Date(t.date+'T00:00:00')>now)).slice(0,3);
+  if(!moveable.length){el.style.display='none';return;}
+  
+  el.style.display='block';
+  const gap=gaps[0];
+  const suggestion=moveable[0];
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:1rem">💡</span>
+    <div style="flex:1;font-size:.78rem">
+      <span style="color:var(--muted2)">Free time ${gap.label} —</span> 
+      <strong>${esc(suggestion.name)}</strong> 
+      <span style="color:var(--muted)">could move here</span>
+    </div>
+    <button onclick="moveTaskToDate(${suggestion.id},'${gap.date}')" style="padding:4px 10px;font-size:.7rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);border-radius:6px;cursor:pointer;white-space:nowrap">Move →</button>
+    <button onclick="document.getElementById('gapFiller').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px">✕</button>
+  </div>`;
+}
+function moveTaskToDate(id,date){
+  const t=tasks.find(x=>x.id===id);
+  if(!t)return;
+  t.date=date;t.urgencyScore=calcUrgency(t);
+  save('tasks',tasks);renderTasks();renderCalendar();renderWorkloadForecast();renderGapFiller();
+  syncKey('tasks',tasks);showToast('✓ Task moved');
+  document.getElementById('gapFiller').style.display='none';
+}
+
+// ══ EFFORT TRACKER ══
+function promptEffortTracking(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t||!t.estTime)return;
+  const m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML=`<div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center">
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">⏱ How long did it take?</div>
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:16px">Estimated: ${t.estTime} min</div>
+    <input type="number" id="actualTimeInput" placeholder="Actual minutes" min="1" style="width:100%;margin-bottom:12px;text-align:center;font-size:1.1rem" value="${t.estTime}">
+    <div style="display:flex;gap:8px">
+      <button onclick="saveEffort(${taskId})" style="flex:1">Save</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" class="btn-sec" style="flex:1">Skip</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+  setTimeout(()=>document.getElementById('actualTimeInput')?.focus(),100);
+}
+function saveEffort(taskId){
+  const actual=parseInt(document.getElementById('actualTimeInput')?.value);
+  if(!actual||actual<1)return;
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t)return;
+  t.actualTime=actual;
+  const est=t.estTime||0;
+  if(est>0){
+    const acc=Math.round((Math.min(est,actual)/Math.max(est,actual))*100);
+    t.effortAccuracy=acc;
+  }
+  save('tasks',tasks);
+  document.querySelector('[style*="fixed"][style*="rgba(0,0,0,.5)"]')?.remove();
+  showToast(actual>=(t.estTime||0)?'Took longer than expected 📊':'Done faster than expected ⚡');
+}
+
+// ══ STUDY ROADMAP GENERATOR ══
+function generateStudyRoadmap(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t||!t.date)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const due=new Date(t.date+'T00:00:00');
+  const daysUntil=Math.floor((due-now)/86400000);
+  if(daysUntil<2){showToast('Not enough time for a roadmap');return;}
+  
+  const sessions=Math.min(daysUntil-1,5);
+  const created=[];
+  for(let i=1;i<=sessions;i++){
+    const d=new Date(now);d.setDate(now.getDate()+Math.floor(i*(daysUntil-1)/sessions));
+    const ds=d.toISOString().slice(0,10);
+    const sessionNames=['Review notes','Practice problems','Make flashcards','Past paper','Final review'];
+    const newTask={
+      id:Date.now()+i,
+      name:`${sessionNames[(i-1)%5]} — ${t.name}`,
+      date:ds,subject:t.subject,priority:'high',type:'study',
+      estTime:30,difficulty:t.difficulty||3,notes:'Auto-generated study session',
+      subtasks:[],done:false,rescheduled:0,createdAt:Date.now()
+    };
+    newTask.urgencyScore=calcUrgency(newTask);
+    tasks.push(newTask);
+    created.push(newTask);
+  }
+  save('tasks',tasks);renderTasks();renderCalendar();renderWorkloadForecast();
+  syncKey('tasks',tasks);
+  showToast(`✓ Created ${sessions} study sessions for "${t.name}"`);
+}
+
+// ══ PRESENT MODE (Teacher Demo) ══
+function startPresentMode(){
+  const overlay=document.createElement('div');
+  overlay.id='presentMode';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9500;background:var(--bg);overflow:auto;animation:fadeIn .3s ease';
+  
+  const now=new Date();
+  const name=localStorage.getItem('flux_user_name')||'Student';
+  const gpa=calcGPA(grades);
+  const totalTasks=tasks.filter(t=>!t.done).length;
+  const doneTasks=tasks.filter(t=>t.done).length;
+  const rate=totalTasks+doneTasks>0?Math.round(doneTasks/(totalTasks+doneTasks)*100):0;
+  const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
+  const subjs=getSubjects();
+  const upcoming=tasks.filter(t=>!t.done&&t.date).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
+  
+  // Workload next 7 days
+  const days7=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(now);d.setDate(now.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const count=tasks.filter(t=>!t.done&&t.date===ds).length;
+    days7.push({label:i===0?'Today':d.toLocaleDateString('en-US',{weekday:'short'}),count});
+  }
+  const maxC=Math.max(...days7.map(d=>d.count),1);
+  
+  overlay.innerHTML=`
+    <div style="max-width:900px;margin:0 auto;padding:40px 24px">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px">
+        <div>
+          <div style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Flux Planner</div>
+          <div style="font-size:.85rem;color:var(--muted);margin-top:4px">${name} · ${now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+        </div>
+        <button onclick="document.getElementById('presentMode').remove()" style="padding:8px 20px;border-radius:50px;background:var(--card2);border:1px solid var(--border2)">✕ Exit</button>
+      </div>
+      
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+        ${[
+          [gpa!==null?gpa.toFixed(4):'—','GPA','var(--accent)'],
+          [rate+'%','Completion','var(--green)'],
+          [totalTasks,'Pending','var(--gold)'],
+          [overdue,'Overdue','var(--red)']
+        ].map(([v,l,c])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center">
+          <div style="font-size:1.8rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${v}</div>
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:6px">${l}</div>
+        </div>`).join('')}
+      </div>
+      
+      <!-- Two columns -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <!-- Upcoming tasks -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px">Upcoming Tasks</div>
+          ${upcoming.length?upcoming.map(t=>{
+            const s=subjs[t.subject];const c=s?s.color:'var(--accent)';
+            const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+            return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+              <div style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0"></div>
+              <div style="flex:1;font-size:.82rem;font-weight:600">${esc(t.name)}</div>
+              <div style="font-size:.7rem;color:var(--muted)">${due}</div>
+            </div>`;
+          }).join(''):'<div style="color:var(--muted);font-size:.82rem">All caught up! 🎉</div>'}
+        </div>
+        
+        <!-- Workload chart -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px">7-Day Workload</div>
+          <div style="display:flex;align-items:flex-end;gap:8px;height:80px;margin-bottom:8px">
+            ${days7.map(d=>{
+              const h=Math.max(4,Math.round((d.count/maxC)*76));
+              return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="width:100%;background:var(--accent);border-radius:4px 4px 0 0;height:${h}px;opacity:${d.label==='Today'?1:.6}"></div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="display:flex;gap:8px">
+            ${days7.map(d=>`<div style="flex:1;text-align:center;font-size:.58rem;color:${d.label==='Today'?'var(--accent)':'var(--muted)'};font-family:'JetBrains Mono',monospace">${d.label}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Subject health -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px">
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px">Subject Overview</div>
+        <div id="presentSubjectHealth"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  
+  // Render subject health inside present mode
+  const el=document.getElementById('presentSubjectHealth');
+  if(el){
+    const healthData=Object.entries(subjs).map(([k,s])=>{
+      const g=grades[s.name]||grades[k];
+      const gn=g?parseFloat(g):null;
+      const pending=tasks.filter(t=>!t.done&&t.subject===k).length;
+      return{s,gn,pending,k};
+    }).filter(h=>h.gn!==null||h.pending>0).slice(0,6);
+    if(healthData.length){
+      el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px">
+        ${healthData.map(h=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
+          <div style="width:8px;height:8px;border-radius:50%;background:${h.s.color}"></div>
+          <div style="font-size:.82rem;font-weight:600">${h.s.name}</div>
+          ${h.gn!==null?`<div style="font-size:.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent)">${h.gn.toFixed(1)}%</div>`:''}
+          ${h.pending?`<div style="font-size:.7rem;color:var(--muted)">${h.pending} tasks</div>`:''}
+        </div>`).join('')}
+      </div>`;
+    } else {
+      el.innerHTML='<div style="color:var(--muted);font-size:.82rem">Add grades and tasks to see subject overview</div>';
+    }
+  }
+}
