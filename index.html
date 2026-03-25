@@ -444,8 +444,11 @@
       <!-- 7. Quick-Add Task Bar -->
       <div id="dashQuickAdd" class="quick-add">
         <span style="font-size:1rem;color:var(--muted)">+</span>
-        <input id="quickAddInput" placeholder="Quick add task... (type 'high', 'low', 'today', 'tomorrow' for smart tagging)" />
+        <input id="quickAddInput" placeholder="Add task... e.g. &quot;Physics lab due Tuesday high 30min&quot;" />
         <span style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">↵ Enter</span>
+      </div>
+      <div id="qaHint" style="display:none;font-size:.68rem;color:var(--muted2);padding:4px 14px;font-family:'JetBrains Mono',monospace">
+        💡 Try: "Math test due Friday high 45min" · "Chemistry lab tomorrow"
       </div>
 
       <!-- 8. Full Add Task (collapsible) -->
@@ -473,6 +476,15 @@
         </div>
       </details>
 
+      <!-- View toggles + filter -->
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <button class="view-btn tmode-btn active" data-view="list" onclick="switchView('list')" title="List view">☰ List</button>
+        <button class="view-btn tmode-btn" data-view="kanban" onclick="switchView('kanban')" title="Kanban board">⬜ Board</button>
+        <button class="view-btn tmode-btn" data-view="timeline" onclick="switchView('timeline')" title="Timeline">📅 Timeline</button>
+        <button onclick="openAdvancedFilter()" class="tmode-btn" style="margin-left:auto" title="Advanced filter">🔍 Filter <span id="filterBadge" style="display:none;font-size:.6rem;background:var(--accent);color:#fff;padding:1px 5px;border-radius:6px;margin-left:3px">●</span></button>
+        <button onclick="generateTimeBlocks()" class="tmode-btn" title="Auto-schedule today">⏰ Schedule</button>
+      </div>
+
       <!-- 9. Task Filters -->
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="filterChips">
         <button onclick="setFilter('all',this)" class="tmode-btn active">All</button>
@@ -481,6 +493,17 @@
         <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
         <button onclick="setFilter('today',this)" class="tmode-btn">Today</button>
         <button onclick="setFilter('high',this)" class="tmode-btn">High Pri</button>
+      </div>
+
+      <!-- Resume card -->
+      <div id="resumeCard" style="display:none;align-items:center;gap:12px;padding:12px 16px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;margin-bottom:10px">
+        <span style="font-size:1rem">↩</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;font-weight:700;margin-bottom:2px">Resume where you left off</div>
+          <div style="font-size:.72rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="resumeTaskName"></div>
+        </div>
+        <button onclick="resumeTask()" style="padding:5px 12px;font-size:.75rem;background:var(--accent);border:none;color:#fff;border-radius:8px;cursor:pointer;flex-shrink:0">Resume</button>
+        <button onclick="dismissResume()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;transform:none;box-shadow:none">✕</button>
       </div>
 
       <!-- 10. Task List -->
@@ -838,6 +861,10 @@
         <div id="subjectBudget"></div>
       </div>
       <div class="card"><h3>Weekly Focus Heatmap</h3><div id="focusHeatmap" style="display:flex;gap:4px;justify-content:space-between"></div></div>
+      <div class="card" style="margin-top:14px">
+        <h3>📊 Session History</h3>
+        <div id="sessionStatsCard"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No sessions yet</div><div class="empty-sub">Press S or use the FAB to start tracking</div></div></div>
+      </div>
     </div>
 
     <!-- ─── PROFILE ─── -->
@@ -1286,6 +1313,8 @@
   <div id="fabContainer" style="position:fixed;bottom:86px;right:20px;z-index:300;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
     <!-- FAB Menu -->
     <div id="fabMenu" style="display:none;flex-direction:column;gap:6px;align-items:flex-end;opacity:0;transform:translateY(8px) scale(.97);transition:opacity .18s var(--ease),transform .2s var(--ease-spring);pointer-events:none">
+      <button onclick="openPhysicsSandbox()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:rgba(0,180,255,.12);border:1px solid rgba(0,180,255,.3);color:rgba(0,200,255,.9);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">⚛️ Physics Sandbox</button>
+      <button onclick="_sessionStart?endSession():startSession()" id="fabSessionBtn" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📍 Start Session</button>
       <button onclick="fabFocus()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">⏱ Focus Session</button>
       <button onclick="fabAddGrade()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:.8rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.35);white-space:nowrap">📊 Add Grade</button>
       <button onclick="fabAddTask()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:20px;background:var(--accent);border:none;color:#fff;font-size:.8rem;font-weight:700;box-shadow:0 4px 20px rgba(var(--accent-rgb),.4);white-space:nowrap">+ New Task</button>
@@ -1296,7 +1325,7 @@
 
   <!-- ── KEYBOARD HINT ── -->
   <div id="keyHint" style="display:none;position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:8px 16px;font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;z-index:200;gap:12px;align-items:center;box-shadow:var(--shadow-card);white-space:nowrap">
-    <span style="color:var(--accent)">N</span> new task &nbsp;·&nbsp; <span style="color:var(--accent)">/</span> AI &nbsp;·&nbsp; <span style="color:var(--accent)">G</span> grades &nbsp;·&nbsp; <span style="color:var(--accent)">C</span> calendar &nbsp;·&nbsp; <span style="color:var(--accent)">Esc</span> close
+    <span style="color:var(--accent)">N</span> task &nbsp;·&nbsp; <span style="color:var(--accent)">P</span> physics &nbsp;·&nbsp; <span style="color:var(--accent)">B</span> schedule &nbsp;·&nbsp; <span style="color:var(--accent)">F</span> filter &nbsp;·&nbsp; <span style="color:var(--accent)">S</span> session &nbsp;·&nbsp; <span style="color:var(--accent)">1-6</span> sections
   </div>
 
 </div><!-- /app -->
