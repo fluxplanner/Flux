@@ -2358,6 +2358,9 @@ function getCloudPayload(){
     noHWDays:load('flux_no_hw_days',[]),
     events:load('flux_events',[]),
     settings:settings,
+    extras,
+    ecSchools,
+    ecGoals,
     ...(isOwner()?{devAccounts:load('flux_dev_accounts',[]),ownerEmail:OWNER_EMAIL}:{}),
   };
 }
@@ -2423,6 +2426,9 @@ async function syncFromCloud(){
     if(d.studyDNA){studyDNA=d.studyDNA;save('flux_dna',studyDNA);}
     if(d.confidences){confidences=d.confidences;save('flux_conf',confidences);}
     if(d.sessionLog){sessionLog=d.sessionLog;save('flux_session_log',sessionLog);}
+    if(d.extras){extras=d.extras;save('flux_extras',extras);}
+    if(d.ecSchools){ecSchools=d.ecSchools;save('flux_ec_schools',ecSchools);}
+    if(d.ecGoals){ecGoals=d.ecGoals;save('flux_ec_goals',ecGoals);}
     if(d.noHWDays){save('flux_no_hw_days',d.noHWDays);}
     if(d.events){save('flux_events',d.events);}
     if(d.settings){
