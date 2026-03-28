@@ -402,29 +402,6 @@ if(!window.runSplash){
 }
 
 // ══ LOGIN FEATURE PILLS ══
-function initLoginFeaturePills(){
-  const pills=[
-    {icon:'✦',text:'Flux AI Tutor'},
-    {icon:'📷',text:'Vision Import'},
-    {icon:'📊',text:'GPA Tracker'},
-    {icon:'⏱',text:'Pomodoro Timer'},
-    {icon:'📅',text:'Smart Calendar'},
-    {icon:'☁️',text:'Cloud Sync'},
-    {icon:'🃏',text:'Flashcard Gen'},
-    {icon:'📧',text:'Gmail Tasks'},
-    {icon:'🎯',text:'Goal Tracker'},
-    {icon:'🔥',text:'Habit Streaks'},
-    {icon:'📝',text:'Rich Notes'},
-    {icon:'😊',text:'Mood Check-In'},
-    {icon:'🏫',text:'Canvas Sync'},
-    {icon:'🧠',text:'Study DNA'},
-  ];
-  const el=document.getElementById('featPills');
-  if(!el)return;
-  // Duplicate for seamless infinite scroll
-  const doubled=[...pills,...pills];
-  el.innerHTML=doubled.map(p=>`<div class="feat-pill"><span class="fp-icon">${p.icon}</span>${p.text}</div>`).join('');
-}
 
 // ══ NAV ══
 function nav(id,btn){
@@ -3295,12 +3272,27 @@ function initFeaturePills(){
     {label:'🚨 Panic Mode',c:'#f43f5e'},
     {label:'📧 Gmail Tasks',c:'#fb923c'},
     {label:'📝 Smart Notes',c:'#6366f1'},
-    {label:'🎯 Goal Tracker',c:'#fbbf24'},
-    {label:'🔥 Habit Streaks',c:'#fb923c'},
+    {label:'🎯 Extracurriculars',c:'#fbbf24'},
+    {label:'⚛️ Physics Sandbox',c:'#fb923c'},
   ];
-  // Duplicate for seamless scroll
   const all=[...pills,...pills];
   wrap.innerHTML=all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+}
+
+// ══ LOGIN FEATURE CARDS — interactive color theming ══
+function initLoginFeatureCards(){
+  document.querySelectorAll('.login-feature-card').forEach(card=>{
+    const rgb=card.dataset.color||'99,102,241';
+    card.style.setProperty('--fc-color',rgb);
+    const icon=card.querySelector('.login-feature-icon');
+    if(icon){
+      icon.style.background=`rgba(${rgb},.1)`;
+      icon.style.border=`1px solid rgba(${rgb},.2)`;
+    }
+    card.addEventListener('mouseenter',()=>{
+      card.style.setProperty('--fc-color',rgb);
+    });
+  });
 }
 
 // ══ ITEM 4 — TOPBAR FULL IMPLEMENTATION ══
@@ -3497,6 +3489,7 @@ function initDashboardFeatures(){
   updateTDisplay();renderTDots();updateTStats();
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
+  initLoginFeatureCards();
   renderSidebars();
   populateSubjectSelects();
   initSidebarResize();

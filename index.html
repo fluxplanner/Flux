@@ -26,43 +26,69 @@
 <!-- ══ LOGIN SCREEN ══ -->
 <div id="loginScreen" style="display:none">
   <div class="login-bg"></div>
-  <div class="login-blob login-blob-1"></div>
-  <div class="login-blob login-blob-2"></div>
-  <div class="login-blob login-blob-3"></div>
+  <div class="login-grid-pattern"></div>
+  <div class="login-glow login-glow-1"></div>
+  <div class="login-glow login-glow-2"></div>
+  <div class="login-glow login-glow-3"></div>
 
   <div class="login-2col">
 
     <!-- LEFT SIDE — showcase -->
     <div class="login-left">
       <div class="login-left-inner">
-        <div class="login-left-headline">Your school life,<br>organized.</div>
-        <div class="login-left-sub">AI-powered planner for students.<br>Tasks · Grades · Notes · Calendar · Extracurriculars</div>
+        <div class="login-badge">✦ AI-Powered Student Planner</div>
+        <div class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></div>
+        <div class="login-left-sub">The all-in-one workspace for tasks, grades, notes, calendar, and extracurriculars — powered by AI.</div>
 
-        <!-- Mini feature list -->
-        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:40px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">✦</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">Flux AI Tutor</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">Study plans, flashcards, exam prep</div></div>
+        <!-- Interactive feature cards -->
+        <div class="login-features" id="loginFeatures">
+          <div class="login-feature-card" data-color="99,102,241">
+            <div class="login-feature-icon">✦</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Flux AI Tutor</div>
+              <div class="login-feature-desc">Study plans, flashcards, exam prep</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(16,217,160,.12);border:1px solid rgba(16,217,160,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">📷</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">Vision Import</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">Snap your schedule — AI reads it</div></div>
+          <div class="login-feature-card" data-color="16,217,160">
+            <div class="login-feature-icon">📷</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Vision Import</div>
+              <div class="login-feature-desc">Snap your schedule — AI reads it</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">📊</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">GPA Tracker</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">4-decimal precision, weighted calc</div></div>
+          <div class="login-feature-card" data-color="251,191,36">
+            <div class="login-feature-icon">📊</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">GPA Tracker</div>
+              <div class="login-feature-desc">4-decimal precision, weighted calculator</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">📅</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">Smart Calendar</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">Tasks, events, Google Calendar sync</div></div>
+          <div class="login-feature-card" data-color="59,130,246">
+            <div class="login-feature-icon">📅</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Smart Calendar</div>
+              <div class="login-feature-desc">Tasks, events, Google Calendar sync</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(251,146,60,.12);border:1px solid rgba(251,146,60,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🔥</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">Extracurriculars</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">Activities, school fit, AI suggestions</div></div>
+          <div class="login-feature-card" data-color="251,146,60">
+            <div class="login-feature-icon">🎯</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Extracurriculars</div>
+              <div class="login-feature-desc">Activities, school fit, AI suggestions</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(192,132,252,.12);border:1px solid rgba(192,132,252,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">☁️</div>
-            <div><div style="font-size:.85rem;font-weight:700;color:#eef0f7">Cloud Sync</div><div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace">All devices, one Google account</div></div>
+          <div class="login-feature-card" data-color="192,132,252">
+            <div class="login-feature-icon">☁️</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Cloud Sync</div>
+              <div class="login-feature-desc">All devices, one Google account</div>
+            </div>
+            <div class="login-feature-arrow">→</div>
           </div>
         </div>
 
@@ -112,19 +138,21 @@
         <span class="login-skip" onclick="skipLogin()">Continue without signing in</span>
         <div class="login-note">Sign in to sync your data across all devices.</div>
 
-        <!-- Stats row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:20px">
-          <div style="text-align:center;padding:10px 6px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid var(--border)">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--accent)">AI</div>
-            <div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Powered</div>
+        <!-- Trust badges -->
+        <div class="login-trust">
+          <div class="login-trust-item">
+            <span class="login-trust-icon">✦</span>
+            <span class="login-trust-label">AI Powered</span>
           </div>
-          <div style="text-align:center;padding:10px 6px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid var(--border)">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--green)">Free</div>
-            <div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Forever</div>
+          <div class="login-trust-sep"></div>
+          <div class="login-trust-item">
+            <span class="login-trust-icon" style="color:var(--green)">∞</span>
+            <span class="login-trust-label">Free Forever</span>
           </div>
-          <div style="text-align:center;padding:10px 6px;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid var(--border)">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--purple)">Sync</div>
-            <div style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px">All devices</div>
+          <div class="login-trust-sep"></div>
+          <div class="login-trust-item">
+            <span class="login-trust-icon" style="color:#c084fc">⇅</span>
+            <span class="login-trust-label">Cloud Sync</span>
           </div>
         </div>
       </div>

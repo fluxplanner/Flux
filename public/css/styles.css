@@ -457,13 +457,6 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .theme-btn{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text);transition:var(--transition);font-size:.82rem;padding:10px 8px}
 .theme-btn:hover{border-color:var(--accent);background:rgba(var(--accent-rgb),.08);transform:translateY(-1px);box-shadow:0 4px 14px rgba(var(--accent-rgb),.15)}
 
-/* Feat pills login */
-.feat-pills-wrap{overflow:hidden;margin-top:20px;position:relative}
-.feat-pills-wrap::before,.feat-pills-wrap::after{content:'';position:absolute;top:0;bottom:0;width:40px;z-index:1;pointer-events:none}
-.feat-pills-wrap::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
-.feat-pills-wrap::after{right:0;background:linear-gradient(-90deg,var(--bg),transparent)}
-.feat-pills{display:flex;gap:8px;animation:pillScroll 28s linear infinite;width:max-content}
-.feat-pill{padding:7px 16px;border-radius:20px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--muted2);font-size:.76rem;white-space:nowrap}
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
 .feat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;transition:var(--transition)}
 .feat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
@@ -659,8 +652,6 @@ button:active:not(:disabled){transform:scale(.97)!important}
 /* ══ KEYBOARD HINT ══ */
 #keyHint{animation:slideUp .3s var(--ease-spring)}
 
-/* ══ EMAIL AUTH FORM ══ */
-.login-email-form input{margin-top:0!important;margin-bottom:8px!important}
 
 /* ══ TOPBAR PILLS ══ */
 #topbarTaskPill {
@@ -874,12 +865,6 @@ button:active:not(:disabled){transform:scale(.97)!important}
 /* Effort tracking modal */
 #actualTimeInput{text-align:center;font-size:1.4rem!important;font-weight:700!important;font-family:'JetBrains Mono',monospace!important}
 
-/* Aurora glow on login */
-.login-bg{
-  background:radial-gradient(ellipse at 20% 50%,rgba(var(--accent-rgb),.15) 0%,transparent 60%),
-             radial-gradient(ellipse at 80% 20%,rgba(192,132,252,.1) 0%,transparent 50%),
-             radial-gradient(ellipse at 60% 80%,rgba(16,217,160,.08) 0%,transparent 50%)!important;
-}
 
 /* Present mode stats */
 #presentMode .card{border-radius:16px!important}
@@ -991,12 +976,6 @@ button[onclick*="generateStudyRoadmap"]:hover{
 /* Deep work overlay */
 #deepWorkOverlay{font-family:'Plus Jakarta Sans',sans-serif}
 
-/* Aurora login bg */
-.login-bg{
-  background:radial-gradient(ellipse at 20% 50%,rgba(var(--accent-rgb),.15) 0%,transparent 60%),
-    radial-gradient(ellipse at 80% 20%,rgba(192,132,252,.1) 0%,transparent 50%),
-    radial-gradient(ellipse at 60% 80%,rgba(16,217,160,.08) 0%,transparent 50%)!important;
-}
 
 /* Mobile: stack to single column */
 @media(max-width:900px){
