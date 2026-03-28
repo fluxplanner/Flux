@@ -1,6 +1,6 @@
 /* ── FLUX PLANNER · Service Worker — network-first fix ── */
 const CACHE = 'flux-v' + Date.now(); // Force new cache on every deploy
-const STATIC = 'flux-static-v7';
+const STATIC = 'flux-static-v8';
 
 const PRECACHE = [
   '/Fluxplanner/',

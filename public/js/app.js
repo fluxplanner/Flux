@@ -284,7 +284,7 @@ function SUBJECTS_GET(){return getSubjects();}
 const SUBJECTS={};  // kept for compat, real data via getSubjects()
 const noHomeworkDays=load('flux_no_hw_days',[]);
 const AFFIRMATIONS=["You are capable of amazing things.","Every expert was once a beginner.","Progress, not perfection.","Hard work compounds. Keep going.","Your future self is grateful for today's effort.","Difficult roads lead to beautiful destinations.","You've got this, one step at a time.","Consistency beats intensity. Show up today.","Your potential is limitless.","Rest is part of the process too."];
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',profile:'Profile',goals:'Goals',habits:'Habits',mood:'Mood',ai:'Flux AI',gmail:'Gmail',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',gmail:'Gmail',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -319,8 +319,7 @@ const DEFAULT_TABS=[
   {id:'notes',icon:'📝',label:'Notes',visible:true},
   {id:'timer',icon:'⏱',label:'Focus Timer',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
-  {id:'goals',icon:'🎯',label:'Goals',visible:true},
-  {id:'habits',icon:'🔥',label:'Habits',visible:true},
+  {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
   {id:'gmail',icon:'📧',label:'Gmail',visible:true},
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
@@ -439,7 +438,7 @@ function nav(id,btn){
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();},calendar:()=>{renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),habits:()=>{renderHabitList();renderHeatmap();},goals:()=>{renderGoalsList();renderCollegeList();if(typeof renderExtrasList==='function')renderExtrasList();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();},gmail:()=>loadGmail()};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();},calendar:()=>{renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();},mood:()=>{renderMoodHistory();renderAffirmation();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();},gmail:()=>loadGmail()};
   fns[id]?.();
 }
 function navMob(id){closeDrawer();nav(id);}
@@ -462,7 +461,7 @@ function renderSidebars(){
   const groups=[
     {label:'Main',ids:['dashboard','calendar','ai']},
     {label:'School',ids:['school','grades','notes','timer']},
-    {label:'Me',ids:['profile','goals','habits','mood','gmail','settings']},
+    {label:'Me',ids:['profile','goals','mood','gmail','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   // Build nav HTML for both sidebar and drawer
@@ -1116,17 +1115,20 @@ function calcFinal(){const cur=parseFloat(document.getElementById('finalCurrent'
 // ══ NOTES ══
 function setNoteFilter(f,el){noteFilter=f;document.querySelectorAll('#notes .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');renderNotesList();}
 
-// ══ EXTRACURRICULARS, AWARDS & ACHIEVEMENTS ══
+// ══ EXTRACURRICULARS SYSTEM ══
 let extras = load('flux_extras', []);
+let ecSchools = load('flux_ec_schools', []);
+let ecGoals = load('flux_ec_goals', []);
+
 function addExtra(){
   const name = document.getElementById('extraName')?.value.trim();
   const type = document.getElementById('extraType')?.value || 'activity';
-  const year = document.getElementById('extraYear')?.value.trim();
+  const hours = parseInt(document.getElementById('extraHours')?.value) || 0;
+  const desc = document.getElementById('extraDesc')?.value.trim() || '';
   if(!name) return;
-  extras.push({id: Date.now(), name, type, year});
+  extras.push({id: Date.now(), name, type, hours, desc, createdAt: Date.now()});
   save('flux_extras', extras);
-  const ni = document.getElementById('extraName'); if(ni) ni.value = '';
-  const yi = document.getElementById('extraYear'); if(yi) yi.value = '';
+  ['extraName','extraHours','extraDesc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderExtrasList();
 }
 function removeExtra(id){
@@ -1136,21 +1138,131 @@ function removeExtra(id){
 }
 function renderExtrasList(){
   const el = document.getElementById('extrasList'); if(!el) return;
-  if(!extras.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem">No activities added yet.</div>'; return; }
-  const tc = {activity:'var(--accent)',award:'var(--gold)',achievement:'var(--green)',leadership:'var(--purple)',sport:'var(--red)',art:'#e879f9',volunteer:'#10d9a0'};
+  if(!extras.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">No activities added yet. Add your first one below!</div>'; return; }
+  const tc = {activity:'var(--accent)',award:'var(--gold)',achievement:'var(--green)',leadership:'var(--purple)',sport:'var(--red)',art:'#e879f9',volunteer:'#10d9a0',research:'var(--accent)',work:'var(--orange)'};
   el.innerHTML = extras.map(e => {
     const c = tc[e.type] || 'var(--accent)';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
         <div style="font-size:.88rem;font-weight:600">${esc(e.name)}</div>
-        <div style="display:flex;gap:6px;margin-top:2px;align-items:center">
-          <span style="font-size:.62rem;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;background:${c}18;padding:2px 7px;border-radius:10px;border:1px solid ${c}33">${e.type}</span>
-          ${e.year ? `<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(e.year)}</span>` : ''}
+        <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:.6rem;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;background:${c}18;padding:2px 7px;border-radius:10px;border:1px solid ${c}33">${e.type}</span>
+          ${e.hours ? `<span style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${e.hours} hrs/wk</span>` : ''}
         </div>
+        ${e.desc ? `<div style="font-size:.75rem;color:var(--muted2);margin-top:3px;line-height:1.4">${esc(e.desc)}</div>` : ''}
       </div>
-      <button onclick="removeExtra(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button>
+      <button onclick="removeExtra(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0">✕</button>
     </div>`;
   }).join('');
+}
+
+// ══ TARGET SCHOOLS ══
+function addSchool(){
+  const name = document.getElementById('schoolName')?.value.trim();
+  const tier = document.getElementById('schoolTier')?.value || 'target';
+  if(!name) return;
+  ecSchools.push({id: Date.now(), name, tier});
+  save('flux_ec_schools', ecSchools);
+  document.getElementById('schoolName').value = '';
+  renderSchoolsList();
+}
+function removeSchool(id){
+  ecSchools = ecSchools.filter(s => s.id !== id);
+  save('flux_ec_schools', ecSchools);
+  renderSchoolsList();
+}
+function renderSchoolsList(){
+  const el = document.getElementById('schoolsList'); if(!el) return;
+  if(!ecSchools.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">No target schools yet.</div>'; return; }
+  const tc = {reach:'var(--red)',target:'var(--gold)',safety:'var(--green)'};
+  el.innerHTML = ecSchools.map(s => {
+    const c = tc[s.tier] || 'var(--accent)';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><span style="font-size:.88rem;font-weight:600">${esc(s.name)}</span></div>
+      <span style="font-size:.6rem;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;background:${c}18;padding:2px 8px;border-radius:10px;border:1px solid ${c}33">${s.tier}</span>
+      <button onclick="removeSchool(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ══ EC GOALS ══
+function addECGoal(){
+  const title = document.getElementById('ecGoalTitle')?.value.trim();
+  const deadline = document.getElementById('ecGoalDeadline')?.value || '';
+  if(!title) return;
+  ecGoals.push({id: Date.now(), title, deadline, done: false});
+  save('flux_ec_goals', ecGoals);
+  document.getElementById('ecGoalTitle').value = '';
+  document.getElementById('ecGoalDeadline').value = '';
+  renderECGoals();
+}
+function toggleECGoal(id){
+  const g = ecGoals.find(x=>x.id===id); if(!g) return;
+  g.done = !g.done;
+  save('flux_ec_goals', ecGoals);
+  renderECGoals();
+}
+function removeECGoal(id){
+  ecGoals = ecGoals.filter(g=>g.id!==id);
+  save('flux_ec_goals', ecGoals);
+  renderECGoals();
+}
+function renderECGoals(){
+  const el = document.getElementById('ecGoalsList'); if(!el) return;
+  if(!ecGoals.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">No goals yet.</div>'; return; }
+  el.innerHTML = ecGoals.map(g => {
+    const days = g.deadline ? Math.max(0, Math.floor((new Date(g.deadline+'T00:00:00') - new Date())/86400000)) : null;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);${g.done?'opacity:.5':''}">
+      <button onclick="toggleECGoal(${g.id})" style="width:22px;height:22px;border-radius:7px;border:1.5px solid ${g.done?'var(--green)':'var(--border2)'};background:${g.done?'var(--green)':'transparent'};cursor:pointer;font-size:11px;color:${g.done?'#080a0f':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</button>
+      <div style="flex:1">
+        <div style="font-size:.88rem;font-weight:600;${g.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(g.title)}</div>
+        ${days!==null ? `<div style="font-size:.68rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px">${days} days left</div>` : ''}
+      </div>
+      <button onclick="removeECGoal(${g.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ══ EC AI — SUGGEST ACTIVITIES & ANALYZE SCHOOL FIT ══
+async function ecAISuggest(){
+  const resEl = document.getElementById('ecAIResult');
+  resEl.style.display = 'block';
+  resEl.innerHTML = '<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';
+  const activitiesList = extras.map(e=>`${e.name} (${e.type}${e.hours?' '+e.hours+'hrs/wk':''})`).join(', ') || 'None added yet';
+  const schoolsList = ecSchools.map(s=>`${s.name} (${s.tier})`).join(', ') || 'None added yet';
+  const prompt = `I'm a high school student. Here are my current extracurricular activities: ${activitiesList}.\n\nMy target schools: ${schoolsList}.\n\nBased on these, suggest 5-8 additional extracurricular activities I should consider. For each, explain WHY it would strengthen my profile (e.g. shows leadership, fills a gap, aligns with likely major). Be specific and actionable — not generic. Format each as a bullet with the activity name in bold.`;
+  try {
+    const res = await fetch(API.ai, {method:'POST', headers:API_HEADERS, body:JSON.stringify({system:'You are an expert college admissions counselor. Give specific, actionable extracurricular suggestions.', messages:[{role:'user', content:prompt}]})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Could not generate suggestions.';
+    resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
+  } catch(e) {
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+  }
+}
+
+async function ecAIAnalyze(){
+  const resEl = document.getElementById('ecAIResult');
+  if(!ecSchools.length){
+    resEl.style.display = 'block';
+    resEl.innerHTML = '<div style="color:var(--muted2);font-size:.82rem">Add at least one target school first.</div>';
+    return;
+  }
+  resEl.style.display = 'block';
+  resEl.innerHTML = '<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';
+  const activitiesList = extras.map(e=>`${e.name} (${e.type}${e.hours?' '+e.hours+'hrs/wk':''}${e.desc?': '+e.desc:''})`).join('\n- ') || 'None';
+  const schoolsList = ecSchools.map(s=>`${s.name} (${s.tier})`).join(', ');
+  const prompt = `Analyze my extracurricular profile for college admissions.\n\nMy activities:\n- ${activitiesList}\n\nTarget schools: ${schoolsList}\n\nFor EACH school, give:\n1. A fit score (Weak / Moderate / Strong / Excellent)\n2. What my profile is missing for that school specifically\n3. One concrete activity I should add to improve my chances\n\nAlso give an overall assessment of my profile's strengths and gaps. Be honest but constructive.`;
+  try {
+    const res = await fetch(API.ai, {method:'POST', headers:API_HEADERS, body:JSON.stringify({system:'You are an expert college admissions counselor with deep knowledge of what top universities look for in applicants. Be specific and honest in your analysis.', messages:[{role:'user', content:prompt}]})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Could not generate analysis.';
+    resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
+  } catch(e) {
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+  }
 }
 
 function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
@@ -1173,24 +1285,7 @@ function flipFC(){fcFlipped=!fcFlipped;renderFC();}
 function nextFC(){fcIndex=(fcIndex+1)%flashcards.length;fcFlipped=false;renderFC();}
 function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlipped=false;renderFC();}
 
-// ══ HABITS ══
-function addHabit(){const name=document.getElementById('habitName').value.trim();if(!name)return;const icon=document.getElementById('habitIcon').value||'✅';const cat=document.getElementById('habitCat').value;habits.push({id:Date.now(),name,icon,cat,log:[],streak:0,bestStreak:0});save('flux_habits',habits);document.getElementById('habitName').value='';document.getElementById('habitIcon').value='';renderHabitList();renderHeatmap();}
-function toggleHabitDay(id,day){const h=habits.find(x=>x.id===id);if(!h)return;const idx=h.log.indexOf(day);if(idx>=0)h.log.splice(idx,1);else h.log.push(day);h.streak=calcHabitStreak(h);h.bestStreak=Math.max(h.bestStreak||0,h.streak);save('flux_habits',habits);renderHabitList();}
-function calcHabitStreak(h){let s=0,d=new Date(TODAY);while(true){const ds=d.toISOString().slice(0,10);if(h.log.includes(ds))s++;else break;d.setDate(d.getDate()-1);}return s;}
-function deleteHabit(id){habits=habits.filter(h=>h.id!==id);save('flux_habits',habits);renderHabitList();}
-function renderHabitList(){const el=document.getElementById('habitList');if(!el)return;if(!habits.length){el.innerHTML='<div class="empty">No habits yet. Add one above!</div>';return;}const td=todayStr();el.innerHTML=habits.map(h=>{const done=h.log.includes(td);const pct=Math.min(Math.round(h.log.length/90*100),100);return`<div class="card" style="padding:14px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:1.4rem;width:38px;text-align:center">${h.icon}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(h.name)}</div><div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">🔥 ${h.streak} streak · Best: ${h.bestStreak} · ${h.cat}</div></div><button onclick="toggleHabitDay(${h.id},'${td}')" style="padding:7px 14px;border-radius:20px;${done?'background:var(--green);color:#080a0f':'background:transparent;border:1px solid var(--border2);color:var(--muted2)'}">${done?'✓ Done':'Mark Done'}</button><button onclick="deleteHabit(${h.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div><div class="cas-bar" style="margin-top:8px"><div class="cas-fill" style="width:${pct}%"></div></div></div>`;}).join('');document.getElementById('heatmapCard').style.display='block';}
-function renderHeatmap(){const el=document.getElementById('heatmapGrid');if(!el||!habits.length)return;const allLogs=new Set(habits.flatMap(h=>h.log));let html='<div style="display:flex;gap:2px;flex-wrap:nowrap">';const start=new Date(TODAY);start.setDate(TODAY.getDate()-90);for(let d=new Date(start);d<=TODAY;d.setDate(d.getDate()+1)){const ds=d.toISOString().slice(0,10);html+=`<div title="${ds}" style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${allLogs.has(ds)?'var(--green)':'var(--border)'}"></div>`;}el.innerHTML=html+'</div>';}
-
-// ══ GOALS ══
-function addGoal(){const title=document.getElementById('goalTitle').value.trim();if(!title)return;goals.push({id:Date.now(),title,cat:document.getElementById('goalCat').value,deadline:document.getElementById('goalDeadline').value,target:parseFloat(document.getElementById('goalTarget').value)||100,progress:0,createdAt:Date.now()});save('flux_goals',goals);document.getElementById('goalTitle').value='';document.getElementById('goalTarget').value='';renderGoalsList();syncKey('goals',goals);}
-function deleteGoal(id){goals=goals.filter(g=>g.id!==id);save('flux_goals',goals);renderGoalsList();}
-function openGoalModal(id){editingGoalId=id;const g=goals.find(x=>x.id===id);if(!g)return;document.getElementById('goalProgressInput').value=g.progress||0;document.getElementById('goalProgressLabel').textContent='Target: '+g.target;document.getElementById('goalModal').style.display='flex';}
-function closeGoalModal(){document.getElementById('goalModal').style.display='none';editingGoalId=null;}
-function saveGoalProgress(){const g=goals.find(x=>x.id===editingGoalId);if(!g)return;g.progress=parseFloat(document.getElementById('goalProgressInput').value)||0;save('flux_goals',goals);closeGoalModal();renderGoalsList();}
-function renderGoalsList(){const el=document.getElementById('goalsList');if(!el)return;if(!goals.length){el.innerHTML='<div class="empty">No goals yet. Set one above!</div>';return;}const catColors={academic:'var(--accent)',gpa:'var(--gold)',habit:'var(--green)',extracurricular:'var(--purple)',college:'var(--red)',personal:'var(--orange)'};el.innerHTML=goals.map(g=>{const pct=Math.min(Math.round(g.progress/g.target*100),100);const days=g.deadline?Math.max(0,Math.floor((new Date(g.deadline+'T00:00:00')-new Date())/86400000)):null;const c=catColors[g.cat]||'var(--accent)';return`<div class="goal-item"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="badge" style="background:${c}18;color:${c};border:1px solid ${c}33;padding:2px 6px;font-size:.6rem">${g.cat}</span><span style="font-size:.9rem;font-weight:700">${esc(g.title)}</span></div>${days!==null?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">📅 ${days} days left</div>`:''}</div><div style="display:flex;gap:5px"><button onclick="openGoalModal(${g.id})" class="btn-sm">✎</button><button onclick="deleteGoal(${g.id})" class="btn-sm btn-del">✕</button></div></div><div style="font-size:.72rem;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent);margin-top:8px">${g.progress} / ${g.target} (${pct}%)</div><div class="goal-progress"><div class="goal-prog-fill" style="width:${pct}%"></div></div></div>`;}).join('');}
-function addCollege(){const n=document.getElementById('cName').value.trim();if(!n)return;colleges.push({id:Date.now(),name:n,deadline:document.getElementById('cDeadline').value,status:document.getElementById('cStatus').value});save('flux_colleges',colleges);document.getElementById('cName').value='';renderCollegeList();}
-function removeCollege(id){colleges=colleges.filter(c=>c.id!==id);save('flux_colleges',colleges);renderCollegeList();}
-function renderCollegeList(){const el=document.getElementById('collegeList');if(!el)return;if(!colleges.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No schools added yet.</div>';return;}const sc={researching:{c:'var(--muted)',l:'Researching'},'in-progress':{c:'var(--gold)',l:'In Progress'},submitted:{c:'var(--accent)',l:'Submitted'},accepted:{c:'var(--green)',l:'Accepted ✓'},rejected:{c:'var(--red)',l:'Rejected'}};el.innerHTML=colleges.map(c=>{const s=sc[c.status]||sc.researching;return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:.88rem;font-weight:600">${esc(c.name)}</div>${c.deadline?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">📅 ${c.deadline}</div>`:''}</div><span style="font-size:.72rem;font-weight:700;color:${s.c};font-family:'JetBrains Mono',monospace">${s.l}</span><button onclick="removeCollege(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;}).join('');}
+// (Old habits/goals/college functions removed — replaced by extracurriculars system above)
 
 // ══ MOOD ══
 function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');localStorage.setItem('flux_mood_today',val);}
@@ -1628,14 +1723,14 @@ function resetTabs(){
   renderSidebars();
   const b=event?.target;if(b){b.textContent='✓ Reset!';setTimeout(()=>b.textContent='↺ Reset to defaults',1500);}
 }
-function exportData(){const data={tasks,grades,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux-data.json';a.click();URL.revokeObjectURL(url);}
+function exportData(){const data={tasks,grades,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,extras,ecSchools,ecGoals,exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux-data.json';a.click();URL.revokeObjectURL(url);}
 function exportToICal(){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Flux Planner//EN'];tasks.filter(t=>t.date&&!t.done).forEach(t=>{const d=t.date.replace(/-/g,'');lines.push('BEGIN:VEVENT','DTSTART;VALUE=DATE:'+d,'SUMMARY:'+t.name,'END:VEVENT');});lines.push('END:VCALENDAR');const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux.ics';a.click();URL.revokeObjectURL(url);}
 function clearCache(){
   const inp=prompt('Type DELETE to confirm wiping all planner data. This cannot be undone.');
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=['flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name'];
   Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
-  tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];
+  tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
   renderStats();renderTasks();
   showToast('All planner data cleared.','info');
 }
@@ -1754,7 +1849,7 @@ function openModPanel(){
 
       ${(isOwner()||myPerms.includes('feature_flags'))?`
       <div style="margin-top:14px;margin-bottom:6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">Feature Flags</div>
-      ${['ai','gmail','calendar','grades','goals','habits','mood','timer','notes'].map(f=>{
+      ${['ai','gmail','calendar','grades','goals','mood','timer','notes'].map(f=>{
         const enabled=load('flux_feat_'+f,true);
         return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:.85rem;font-weight:500">${f.charAt(0).toUpperCase()+f.slice(1)}</span>
@@ -1825,12 +1920,13 @@ function toggleFeatureFlag(feature,btn){
 
 function clearMyPlannerData(){
   if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
-  tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];weightedRows=[];
+  tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];weightedRows=[];extras=[];ecSchools=[];ecGoals=[];
   save('tasks',tasks);save('flux_grades',grades);save('flux_notes',notes);
   save('flux_habits',habits);save('flux_goals',goals);save('flux_colleges',colleges);
   save('flux_mood',moodHistory);save('flux_weighted',weightedRows);
+  save('flux_extras',extras);save('flux_ec_schools',ecSchools);save('flux_ec_goals',ecGoals);
   renderStats();renderTasks();renderGradeInputs();renderNotesList();
-  renderHabitList();renderGoalsList();renderMoodHistory();
+  renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   if(currentUser)syncToCloud();
   document.getElementById('modPanel')?.remove();
   const n=document.createElement('div');
@@ -2127,7 +2223,7 @@ async function sendAI(){
 }
 
 // ══ SUPABASE SYNC ══
-const SYNC_KEYS=['tasks','grades','notes','habits','goals','colleges','moodHistory','schoolInfo','classes','teacherNotes','profile'];
+const SYNC_KEYS=['tasks','grades','notes','habits','goals','colleges','moodHistory','schoolInfo','classes','teacherNotes','profile','flux_extras','flux_ec_schools','flux_ec_goals'];
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
@@ -2202,7 +2298,7 @@ async function forceSyncNow(){
   // Re-render everything so pulled data appears immediately without refresh
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();renderGradeInputs();renderGradeOverview();renderNotesList();
-  renderHabitList();renderGoalsList();renderCollegeList();renderMoodHistory();
+  renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   renderSchool();updateTStats();populateSubjectSelects();
   // Re-apply accent AFTER all renders (renderSidebars rebuilds SVG logo)
   updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
@@ -2266,7 +2362,7 @@ async function syncFromCloud(){
     setSyncStatus('synced');
     const hasCloudData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0||!!load('profile',{}).name||d.onboarded;
     if(hasCloudData)save('flux_onboarded',true);
-    renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();renderNotesList();renderHabitList();renderGoalsList();renderCollegeList();renderMoodHistory();renderSchool();updateTStats();
+    renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();renderSchool();updateTStats();
     populateSubjectSelects();
     // Re-apply accent after renders in case sidebar was rebuilt
     updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
@@ -2974,7 +3070,7 @@ function showApp(){
   initDashboardFeatures();
   renderStats();renderTasks();renderCalendar();renderCountdown();
   renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();
-  renderNotesList();renderHabitList();renderGoalsList();renderMoodHistory();
+  renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   renderSchool();updateTStats();
   // Update user card now that #app is visible
   if(currentUser){
@@ -2998,7 +3094,7 @@ async function handleSignedIn(user,session){
     localStorage.clear();
     Object.entries(survived).forEach(([k,v])=>localStorage.setItem(k,v));
     // Reset all in-memory state
-    tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];
+    tasks=[];grades={};notes=[];habits=[];goals=[];colleges=[];extras=[];ecSchools=[];ecGoals=[];
     moodHistory=[];schoolInfo={};classes=[];teacherNotes=[];
     sessionLog=[];studyDNA=[];confidences={};weightedRows=[];
     aiChats=[];aiHistory=[];
@@ -3294,7 +3390,7 @@ function initDashboardFeatures(){
   setEnergy(document.getElementById('energySlider')?.value||3);
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();
   renderProfile();renderGradeInputs();renderGradeOverview();renderWeightedRows();
-  renderNotesList();renderHabitList();renderGoalsList();renderCollegeList();
+  renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();
   renderMoodHistory();renderAffirmation();renderAISugs();renderSchool();
   renderSubjectBudget();renderFocusHeatmap();
   updateTDisplay();renderTDots();updateTStats();
@@ -5463,7 +5559,7 @@ setInterval(saveResumptionState,60000);
 function initIntelligenceEngine(){
   currentView=load('flux_view','list');
   initFullKeyboardNav();
-  initListControls();
+  // initListControls removed
   checkResumption();
   renderSessionStats();
   // Restore view toggle state
@@ -5536,43 +5632,7 @@ function showWorkloadDayDetail(dateStr){
   }).join('');
 }
 
-// ══ LIST DENSITY + WIDTH ══
-let _listDensity='normal';
-let _listWidth='wide';
-
-function setListDensity(d){
-  _listDensity=d;save('flux_list_density',d);
-  document.querySelectorAll('.task-item').forEach(el=>el.classList.toggle('compact',d==='compact'));
-  document.querySelectorAll('[data-density]').forEach(b=>b.classList.toggle('active',b.dataset.density===d));
-}
-
-function setListWidth(w){
-  _listWidth=w;save('flux_list_width',w);
-  const el=document.getElementById('taskList');
-  if(el){el.classList.remove('narrow','wide');el.classList.add(w);}
-  document.querySelectorAll('[data-width]').forEach(b=>b.classList.toggle('active',b.dataset.width===w));
-}
-
-function initListControls(){
-  _listDensity=load('flux_list_density','normal');
-  _listWidth=load('flux_list_width','wide');
-  const tl=document.getElementById('taskList');if(tl)tl.classList.add(_listWidth);
-  // Inject density + width controls into the view toggle bar
-  const viewRow=document.querySelector('.view-btn')?.parentElement;
-  if(!viewRow||document.getElementById('listDensityCtrl'))return;
-  const ctrl=document.createElement('div');
-  ctrl.id='listDensityCtrl';
-  ctrl.style.cssText='display:flex;gap:3px;align-items:center;padding:2px 6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:20px;margin-left:4px';
-  ctrl.innerHTML=`
-    <button data-density="normal" onclick="setListDensity('normal')" class="${_listDensity==='normal'?'active':''}" title="Normal view" style="background:none;border:none;font-size:.72rem;cursor:pointer;padding:3px 6px;border-radius:14px;color:var(--muted2);transition:all .15s;transform:none;box-shadow:none">≡</button>
-    <button data-density="compact" onclick="setListDensity('compact')" class="${_listDensity==='compact'?'active':''}" title="Compact view" style="background:none;border:none;font-size:.72rem;cursor:pointer;padding:3px 6px;border-radius:14px;color:var(--muted2);transition:all .15s;transform:none;box-shadow:none">⊟</button>
-    <span style="width:1px;height:12px;background:var(--border);display:inline-block;margin:0 2px"></span>
-    <button data-width="wide" onclick="setListWidth('wide')" class="${_listWidth==='wide'?'active':''}" title="Full width" style="background:none;border:none;font-size:.72rem;cursor:pointer;padding:3px 6px;border-radius:14px;color:var(--muted2);transition:all .15s;transform:none;box-shadow:none">⬛</button>
-    <button data-width="narrow" onclick="setListWidth('narrow')" class="${_listWidth==='narrow'?'active':''}" title="Narrow width" style="background:none;border:none;font-size:.72rem;cursor:pointer;padding:3px 6px;border-radius:14px;color:var(--muted2);transition:all .15s;transform:none;box-shadow:none">▪</button>`;
-  viewRow.appendChild(ctrl);
-  // Style active buttons
-  ctrl.querySelectorAll('button.active').forEach(b=>{b.style.background='rgba(var(--accent-rgb),.15)';b.style.color='var(--accent)';});
-}
+// (Density/width controls removed)
 
 
 // ══════════════════════════════════════════════════════════════
