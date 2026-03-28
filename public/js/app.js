@@ -371,6 +371,7 @@ function getSB(){
 }
 
 // ══ HELPERS ══
+const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
 const isBreak=d=>noHomeworkDays.includes(d);
 const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -543,13 +544,27 @@ function closeDrawer(){document.getElementById('drawerOverlay').classList.remove
 function calcUrgency(task){const now=new Date();now.setHours(0,0,0,0);const days=task.date?Math.max(0,Math.floor((new Date(task.date+'T00:00:00')-now)/86400000)):99;const pMap={high:3,med:2,low:1};return(pMap[task.priority]||2)*(task.difficulty||3)/Math.max(days,0.5);}
 function addTask(){
   const name=document.getElementById('taskName').value.trim();if(!name)return;
-  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:document.getElementById('taskSubject').value,priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now()};
-  task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);
+  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:document.getElementById('taskSubject').value,priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false};
+  task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject)setTimeout(()=>injectGhostDraft(task),1500);
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
 }
-function toggleTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;if(t.done){t.completedAt=Date.now();spawnConfetti();if(t.estTime)setTimeout(()=>promptEffortTracking(id),500);}save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);}
+function toggleTask(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  snapshotTasks();
+  t.done=!t.done;
+  if(t.done){
+    t.completedAt=Date.now();
+    spawnConfetti();
+    addMomentum();
+    if(t.estTime)setTimeout(()=>promptEffortTracking(id),600);
+    if(t.srsEnabled)setTimeout(()=>generateSRSReviews(t),800);
+    showUndoSnackbar('Task completed','undoLastChange');
+    setTimeout(showAutoNext,1200);
+  }
+  save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);
+}
 function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);}
 function setFilter(f,el){taskFilter=f;document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTasks();}
 // ── TOPBAR TASK COUNT PILL ──────────────────────────────────
@@ -727,7 +742,7 @@ function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next
 function setEnergy(v){localStorage.setItem('flux_energy',v);const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[v];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[v];renderSmartSug();}
 function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';document.getElementById('editModal').style.display='flex';}
 function closeEdit(){document.getElementById('editModal').style.display='none';editingId=null;}
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#6366f1','#10d9a0','#fbbf24','#c084fc','#f43f5e','#fb923c'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
@@ -1182,7 +1197,9 @@ function toggleTimer(){tRunning?pauseTimer():startTimer();}
 function startTimer(){tRunning=true;document.getElementById('timerBtn').textContent='⏸ Pause';tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Resume';}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').textContent='▶ Start';updateTDisplay();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub});save('flux_session_log',sessionLog);if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
+function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub});save('flux_session_log',sessionLog);if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+showSessionRecap(sub,TM.pomodoro.mins);
+setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;document.getElementById('tDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}}
 function renderTDots(){const el=document.getElementById('timerDots');if(!el)return;const c=Math.min((tDone%4)||(tDone>0?4:0),4);el.innerHTML=[0,1,2,3].map(i=>`<div class="t-dot ${i<c?'done':''}"></div>`).join('');const lbl=document.getElementById('tSessionLbl');if(lbl)lbl.textContent=`Session ${(tDone%4)+1} of 4`;}
 function updateTStats(){const a=document.getElementById('tSessions'),b=document.getElementById('tMinutes'),c=document.getElementById('tStreak');if(a)a.textContent=tDone;if(b)b.textContent=tMins;if(c)c.textContent=tStreak;}
@@ -1200,8 +1217,8 @@ function renderSubjectBudget(){
   }).join('');
 }
 function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=d.toISOString().slice(0,10);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/120,1);const isToday=ds===todayStr();return`<div style="flex:1;text-align:center"><div style="height:40px;border-radius:8px;background:rgba(var(--accent-rgb),${intensity.toFixed(2)});border:1px solid ${isToday?'var(--accent)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--text);font-weight:700">${mins>0?mins+'m':''}</div><div style="font-size:.58rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
-function playAmbient(type,btn){stopAmbient();document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');try{ambientCtx=new(window.AudioContext||window.webkitAudioContext)();const buf=ambientCtx.createBuffer(1,ambientCtx.sampleRate*2,ambientCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(type==='white'?0.15:0.08);const src=ambientCtx.createBufferSource();src.buffer=buf;src.loop=true;const g=ambientCtx.createGain();g.gain.value=0.4;if(type==='rain'){const f=ambientCtx.createBiquadFilter();f.type='bandpass';f.frequency.value=1200;src.connect(f);f.connect(g);}else src.connect(g);g.connect(ambientCtx.destination);src.start();}catch(e){}}
-function stopAmbient(){if(ambientCtx){try{ambientCtx.close();}catch(e){}ambientCtx=null;}document.querySelectorAll('#timer .card .tmode-btn').forEach(b=>b.classList.remove('active'));}
+function playAmbient(type,btn){stopAmbient();startAmbientVisualizer();document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');try{ambientCtx=new(window.AudioContext||window.webkitAudioContext)();const buf=ambientCtx.createBuffer(1,ambientCtx.sampleRate*2,ambientCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(type==='white'?0.15:0.08);const src=ambientCtx.createBufferSource();src.buffer=buf;src.loop=true;const g=ambientCtx.createGain();g.gain.value=0.4;if(type==='rain'){const f=ambientCtx.createBiquadFilter();f.type='bandpass';f.frequency.value=1200;src.connect(f);f.connect(g);}else src.connect(g);g.connect(ambientCtx.destination);src.start();}catch(e){}}
+function stopAmbient(){stopAmbientVisualizer();if(ambientCtx){try{ambientCtx.close();}catch(e){}ambientCtx=null;}document.querySelectorAll('#timer .card .tmode-btn').forEach(b=>b.classList.remove('active'));}
 
 // ══ PROFILE ══
 function saveProfile(){
@@ -3210,8 +3227,20 @@ function initDashboardFeatures(){
   renderDynamicFocus();
   checkTimePoverty();
   renderGradeBuffer();
-  setInterval(()=>{renderDynamicFocus();checkTimePoverty();},60000);
+  setInterval(()=>{renderDynamicFocus();checkTimePoverty();updateCognitiveLoadMeter();},60000);
   initIntelligenceEngine();
+  // New systems
+  initPomodoroVisibilityPause();
+  initTaskSwipeGestures();
+  initQuickJumpPills();
+  applyCollapsedSections();
+  applyHighContrast();
+  renderSavedViewsDropdown();
+  updateCognitiveLoadMeter();setInterval(updateCognitiveLoadMeter,5*60*1000);
+  renderEffortReport();
+  renderSubjectEfficiencyHeatmap();
+  // First-time tour (delayed so app renders first)
+  setTimeout(startOnboardingTour,2000);
 }
 
 // ══ INIT ══
@@ -3262,6 +3291,632 @@ function initDashboardFeatures(){
       afterSplash();
     }
   },30);
+
+// ══ SPACED REPETITION SYSTEM ══════════════════════════════════
+function generateSRSReviews(originalTask){
+  if(!originalTask.srsEnabled)return;
+  const intervals=[1,7,30];
+  const base=new Date(originalTask.date||todayStr()+'T00:00:00');
+  intervals.forEach(days=>{
+    const d=new Date(base);d.setDate(d.getDate()+days);
+    const review={
+      id:Date.now()+Math.random(),
+      name:'🔄 Review: '+originalTask.name,
+      subject:originalTask.subject||'',
+      priority:'low',
+      type:'study',
+      date:d.toISOString().slice(0,10),
+      estTime:Math.round((originalTask.estTime||30)*0.5),
+      difficulty:Math.max(1,(originalTask.difficulty||3)-1),
+      notes:'SRS review — original task: '+originalTask.name,
+      srsReview:true,cogLoadWeight:0.5,
+      done:false,rescheduled:0,createdAt:Date.now()
+    };
+    review.urgencyScore=calcUrgency(review);
+    tasks.push(review);
+  });
+  save('tasks',tasks);
+  showToast('🔄 3 spaced reviews scheduled (1d, 7d, 30d)','success');
+  syncKey('tasks',tasks);
+}
+
+
+// ══ GHOST DRAFT INJECTOR ══════════════════════════════════════
+async function injectGhostDraft(task){
+  if(!currentUser||!task.subject)return;
+  const subj=getSubjects()[task.subject];
+  if(!subj)return;
+  const isPhysics=/physics|kinematics|mechanics|motion|force|energy/i.test(subj.name);
+  const prompt=isPhysics
+    ?`For a student task "${task.name}" in ${subj.name}: give 3-5 starting points. Use g = ${G.toFixed(4)} m/s² for all physics. Show all calculations to 4 decimal places. Be concise bullet points.`
+    :`For a student task "${task.name}" in ${subj.name}: give 3-5 helpful starting points, key concepts, or formulas to begin. Concise bullet points only.`;
+  try{
+    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,
+      body:JSON.stringify({system:'You are a helpful study assistant. Be brief and practical.',
+        messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const txt=(data.content?.[0]?.text||'').replace(/```actions[\s\S]*?```/g,'').trim();
+    if(!txt)return;
+    const t=tasks.find(x=>x.id===task.id);
+    if(t){t.ghostDraft=txt;save('tasks',tasks);renderTasks();}
+  }catch(e){console.warn('Ghost draft failed:',e);}
+}
+
+
+// ══ CONTEXT SWITCH WARNING ════════════════════════════════════
+const HEAVY_SUBJECTS=/math|physics|chemistry|calculus|bio|science|language|spanish|french|latin|chinese/i;
+function checkContextSwitches(blocks){
+  for(let i=0;i<blocks.length-1;i++){
+    const a=blocks[i],b=blocks[i+1];
+    const aHeavy=HEAVY_SUBJECTS.test(a.subject||'');
+    const bHeavy=HEAVY_SUBJECTS.test(b.subject||'');
+    if(aHeavy&&bHeavy&&a.subject!==b.subject){
+      showToast('⚠ Context switch: '+a.subject+' → '+b.subject+'. Consider a 10min break.','warning');
+      return true;
+    }
+  }
+  return false;
+}
+
+
+// ══ FRICTION TRACKER — task aging ════════════════════════════
+function getFrictionStyle(task){
+  const r=task.rescheduled||0;
+  if(r===0)return{border:'',glow:''};
+  if(r===1)return{border:'3px solid rgba(251,191,36,.5)',glow:''};
+  if(r===2)return{border:'3px solid rgba(251,146,60,.7)',glow:'0 0 8px rgba(251,146,60,.25)'};
+  return{border:'3px solid rgba(244,63,94,.8)',glow:'0 0 14px rgba(244,63,94,.3)'};
+}
+async function checkFrictionIntervention(task){
+  if((task.rescheduled||0)>=3&&!task.frictionHandled){
+    task.frictionHandled=true;save('tasks',tasks);
+    showToast('⚠ "'+task.name.slice(0,30)+'" rescheduled 3×. Breaking it down...','warning');
+    await breakItDown(task.id);
+  }
+}
+
+
+// ══ DAILY SHUTDOWN PROTOCOL ══════════════════════════════════
+async function dailyShutdown(){
+  const existing=document.getElementById('shutdownPanel');
+  if(existing){existing.remove();return;}
+  const today=todayStr();
+  const completed=tasks.filter(t=>t.done&&t.completedAt&&new Date(t.completedAt).toISOString().slice(0,10)===today);
+  const planned=tasks.filter(t=>t.date===today);
+  const eff=planned.length?Math.round((completed.length/planned.length)*100):100;
+  const totalMins=sessionLog.filter(s=>s.date===today).reduce((sum,s)=>sum+s.mins,0);
+  const panel=document.createElement('div');
+  panel.id='shutdownPanel';
+  panel.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(12px)';
+  panel.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:24px;max-width:480px;width:100%;padding:28px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.6)">
+      <div style="font-size:2rem;margin-bottom:8px">🌙</div>
+      <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px;margin-bottom:4px">Daily Shutdown</div>
+      <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:20px">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div style="background:var(--card2);border-radius:12px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--green)">${completed.length}</div><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Completed</div></div>
+        <div style="background:var(--card2);border-radius:12px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--accent)">${eff}%</div><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Efficiency</div></div>
+        <div style="background:var(--card2);border-radius:12px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:var(--gold)">${totalMins}m</div><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Focus Time</div></div>
+      </div>
+      <div id="shutdownSummary" style="font-size:.8rem;color:var(--muted2);text-align:left;background:var(--card2);border-radius:12px;padding:14px;margin-bottom:18px;line-height:1.7;min-height:60px">
+        <span style="color:var(--muted);font-size:.72rem;font-family:'JetBrains Mono',monospace">✦ Generating summary...</span>
+      </div>
+      <button onclick="document.getElementById('shutdownPanel').remove()" style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;font-weight:700;font-size:.9rem;cursor:pointer">Good night ✓</button>
+    </div>`;
+  document.body.appendChild(panel);
+  panel.onclick=e=>{if(e.target===panel)panel.remove();};
+  // Generate AI summary
+  try{
+    const taskNames=completed.map(t=>t.name).slice(0,6).join(', ')||'nothing specific';
+    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,
+      body:JSON.stringify({system:'You are a supportive academic coach. Be warm and brief (2-3 sentences max).',
+        messages:[{role:'user',content:`Student completed today: ${taskNames}. Efficiency: ${eff}%. Focus time: ${totalMins} minutes. Write a brief motivating shutdown summary.`}]})});
+    const data=await res.json();
+    const txt=(data.content?.[0]?.text||'').replace(/```actions[\s\S]*?```/g,'').trim();
+    const el=document.getElementById('shutdownSummary');
+    if(el&&txt)el.textContent=txt;
+  }catch(e){
+    const el=document.getElementById('shutdownSummary');
+    if(el)el.textContent=completed.length?'Great work today! '+completed.length+' task'+(completed.length>1?'s':'')+'  completed. Rest well.':'Tomorrow is a new day. Rest up and start fresh.';
+  }
+}
+
+
+// ══ AUTO-NEXT TASK SUGGESTION ═════════════════════════════════
+let _autoNextTimer=null;
+function showAutoNext(){
+  const existing=document.getElementById('autoNextBar');if(existing)existing.remove();
+  const next=smartSortTasks(tasks.filter(t=>!t.done&&t.date)).slice(0,1)[0]||tasks.filter(t=>!t.done).slice(0,1)[0];
+  if(!next)return;
+  const bar=document.createElement('div');
+  bar.id='autoNextBar';
+  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3000;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideUp .3s var(--ease-spring);max-width:400px;width:90%';
+  bar.innerHTML=`
+    <div style="flex:1;min-width:0">
+      <div style="font-size:.65rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:1px">Up next</div>
+      <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(next.name)}</div>
+    </div>
+    <button onclick="document.getElementById('autoNextBar').remove();nav('dashboard');setTimeout(()=>startDeepWork(${next.id}),200)" style="padding:6px 14px;border-radius:10px;font-size:.75rem;font-weight:700;background:var(--accent);border:none;color:#fff;cursor:pointer;white-space:nowrap">Start →</button>
+    <button onclick="document.getElementById('autoNextBar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>`;
+  document.body.appendChild(bar);
+  clearTimeout(_autoNextTimer);
+  _autoNextTimer=setTimeout(()=>{const el=document.getElementById('autoNextBar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},8000);
+}
+
+
+// ══ JUST START MODE ═══════════════════════════════════════════
+let justStartActive=load('flux_just_start',false);
+function toggleJustStart(){
+  justStartActive=!justStartActive;
+  save('flux_just_start',justStartActive);
+  const btn=document.getElementById('justStartBtn');
+  if(btn){btn.textContent=justStartActive?'⚡ Just Start: ON':'⚡ Just Start';
+    btn.style.background=justStartActive?'rgba(var(--accent-rgb),.2)':'';
+    btn.style.borderColor=justStartActive?'rgba(var(--accent-rgb),.4)':'';
+    btn.style.color=justStartActive?'var(--accent)':'';
+  }
+  if(justStartActive)activateJustStart();
+}
+function activateJustStart(){
+  const next=smartSortTasks(tasks.filter(t=>!t.done))[0];
+  if(!next){showToast('No tasks to start!','info');return;}
+  showToast('⚡ Starting: '+next.name,'success');
+  nav('dashboard');
+  setTimeout(()=>startDeepWork(next.id),300);
+}
+
+
+// ══ TASK TEMPLATES ════════════════════════════════════════════
+const TASK_TEMPLATES=[
+  {name:'Homework',type:'hw',estTime:30,difficulty:2,priority:'med',icon:'📝'},
+  {name:'Study Session',type:'study',estTime:60,difficulty:3,priority:'med',icon:'📖'},
+  {name:'Essay',type:'essay',estTime:120,difficulty:4,priority:'high',icon:'✍'},
+  {name:'Lab Report',type:'lab',estTime:90,difficulty:4,priority:'high',icon:'🧪'},
+  {name:'Project Milestone',type:'project',estTime:60,difficulty:3,priority:'high',icon:'🎯'},
+  {name:'Test Prep',type:'test',estTime:45,difficulty:4,priority:'high',icon:'📋'},
+  {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:'📚'},
+  {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:'🔢'},
+];
+function showTemplateMenu(){
+  const existing=document.getElementById('templateMenu');if(existing){existing.remove();return;}
+  const menu=document.createElement('div');
+  menu.id='templateMenu';
+  menu.style.cssText='position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  menu.innerHTML=`<div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;max-width:440px;width:100%;padding:24px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:.95rem;font-weight:800">Task Templates</div>
+      <button onclick="document.getElementById('templateMenu').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${TASK_TEMPLATES.map(t=>`
+        <button onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:1.2rem;margin-bottom:4px">${t.icon}</div>
+          <div style="font-size:.82rem;font-weight:700">${t.name}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${t.estTime}min · Diff ${t.difficulty}</div>
+        </button>`).join('')}
+    </div>
+  </div>`;
+  document.body.appendChild(menu);
+  menu.onclick=e=>{if(e.target===menu)menu.remove();};
+}
+function applyTemplate(tpl){
+  document.getElementById('templateMenu')?.remove();
+  const ni=document.getElementById('taskName');const ti=document.getElementById('taskType');
+  const ei=document.getElementById('taskEstTime');const di=document.getElementById('taskDifficulty');
+  const pi=document.getElementById('taskPriority');
+  if(ni)ni.value=tpl.name;
+  if(ti)ti.value=tpl.type;
+  if(ei)ei.value=tpl.estTime;
+  if(di)di.value=tpl.difficulty;
+  if(pi)pi.value=tpl.priority;
+  if(ni)ni.focus();
+  showToast('Template applied: '+tpl.name,'info');
+}
+
+
+// ══ VOICE INPUT ═══════════════════════════════════════════════
+function startVoiceInput(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast('Voice input not supported in this browser','error');return;}
+  const btn=document.getElementById('voiceBtn');
+  const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;
+  r.onstart=()=>{if(btn){btn.textContent='🎙 Listening...';btn.style.color='var(--red)';}};
+  r.onresult=e=>{
+    const text=e.results[0][0].transcript;
+    const qa=document.getElementById('taskName')||document.getElementById('quickAddInput');
+    if(qa){qa.value=text;qa.focus();}
+    const parsed=parseNLTask(text);
+    if(parsed.date){const di=document.getElementById('taskDate');if(di)di.value=parsed.date;}
+    if(parsed.priority){const pi=document.getElementById('taskPriority');if(pi)pi.value=parsed.priority;}
+    if(parsed.type){const ti=document.getElementById('taskType');if(ti)ti.value=parsed.type;}
+    if(parsed.estTime){const ei=document.getElementById('taskEstTime');if(ei)ei.value=parsed.estTime;}
+    showToast('🎙 "'+text+'"','info');
+  };
+  r.onerror=()=>showToast('Voice input error','error');
+  r.onend=()=>{if(btn){btn.textContent='🎙';btn.style.color='';}};
+  r.start();
+}
+
+
+// ══ POMODORO AUTO-PAUSE + DISTRACTION TRACKING ═══════════════
+let _pomDistractions=0;
+function initPomodoroVisibilityPause(){
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden&&tRunning){
+      pauseTimer();
+      _pomDistractions++;
+      const el=document.getElementById('distractionCount');
+      if(el)el.textContent=_pomDistractions+' distraction'+(+_pomDistractions!==1?'s':'');
+      showToast('⏸ Pomodoro paused — tab switch detected','warning');
+    }
+  });
+}
+
+function showSessionRecap(subject,mins){
+  const existing=document.getElementById('sessionRecap');if(existing)existing.remove();
+  const recap=document.createElement('div');
+  recap.id='sessionRecap';
+  recap.style.cssText='position:fixed;bottom:90px;right:20px;z-index:3000;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:14px;padding:12px 16px;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideUp .3s var(--ease-spring);max-width:280px';
+  recap.innerHTML=`
+    <div style="font-size:.65rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Session Complete ✓</div>
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${mins} min${subject?' · '+esc(getSubjects()[subject]?.name||subject):''}${_pomDistractions?' · '+_pomDistractions+' distraction'+(+_pomDistractions!==1?'s':''):''}</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="document.getElementById('sessionRecap').remove()" style="flex:1;padding:5px;font-size:.72rem;border-radius:8px;background:var(--card2);border:1px solid var(--border)">Dismiss</button>
+    </div>`;
+  document.body.appendChild(recap);
+  setTimeout(()=>{const el=document.getElementById('sessionRecap');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},10000);
+  _pomDistractions=0;
+}
+
+
+// ══ VERSION HISTORY + UNDO ════════════════════════════════════
+let _taskHistory=[];
+function snapshotTasks(){
+  _taskHistory.push(JSON.parse(JSON.stringify(tasks)));
+  if(_taskHistory.length>10)_taskHistory.shift();
+}
+function undoLastChange(){
+  if(!_taskHistory.length){showToast('Nothing to undo','info');return;}
+  tasks=_taskHistory.pop();
+  save('tasks',tasks);
+  renderStats();renderTasks();renderCalendar();renderCountdown();
+  syncKey('tasks',tasks);
+  showToast('↩ Change undone','info');
+}
+function showUndoSnackbar(msg,undoFn){
+  const existing=document.getElementById('undoSnackbar');if(existing)existing.remove();
+  const bar=document.createElement('div');
+  bar.id='undoSnackbar';
+  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUp .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
+  bar.innerHTML=`<span style="color:var(--text)">${esc(msg)}</span><button onclick="undoLastChange();document.getElementById('undoSnackbar')?.remove()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo</button><button onclick="this.closest('#undoSnackbar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
+  document.body.appendChild(bar);
+  setTimeout(()=>{const el=document.getElementById('undoSnackbar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},5000);
+}
+
+
+// ══ COGNITIVE LOAD METER ══════════════════════════════════════
+function calcCognitiveLoad(){
+  const now=new Date();const h=now.getHours();
+  const ts=todayStr();
+  const active=tasks.filter(t=>!t.done);
+  const overdue=active.filter(t=>t.date&&new Date(t.date+'T00:00:00')<new Date(now.toDateString()));
+  const todayTasks=active.filter(t=>t.date===ts);
+  const highPri=active.filter(t=>t.priority==='high');
+  const srsWeight=active.filter(t=>t.srsReview).length*0.5;
+  const tf=h>=10&&h<=14?1.2:h>=20?0.6:1.0;
+  return Math.min(100,Math.round((overdue.length*15+todayTasks.length*8+highPri.length*10-srsWeight)*tf));
+}
+function updateCognitiveLoadMeter(){
+  const bar=document.getElementById('cogLoadBar');
+  const lbl=document.getElementById('cogLoadLabel');
+  const wrap=document.getElementById('cogLoadWrap');
+  if(!bar)return;
+  const load=calcCognitiveLoad();
+  const color=load>=85?'var(--red)':load>=60?'var(--gold)':'var(--green)';
+  const text=load>=85?'High':load>=60?'Med':'Low';
+  bar.style.width=load+'%';bar.style.background=color;
+  if(lbl){lbl.textContent=text+' '+load+'%';lbl.style.color=color;}
+  if(wrap)wrap.title='Cognitive Load: '+load+'% — based on overdue, today density, time of day';
+  if(load>=85)showToast('⚠ High cognitive load ('+load+'%). Consider a break.','warning');
+}
+
+
+// ══ MOMENTUM SYSTEM ═══════════════════════════════════════════
+let _momentum=0,_momentumTimer=null;
+function addMomentum(){
+  _momentum++;
+  clearTimeout(_momentumTimer);
+  _momentumTimer=setTimeout(()=>{_momentum=0;updateMomentumUI();},10*60*1000);
+  updateMomentumUI();
+  if(_momentum>=3)showToast('🔥 '+_momentum+'× Momentum! Keep going!','success');
+  if(_momentum>=5)spawnConfetti();
+}
+function updateMomentumUI(){
+  const el=document.getElementById('momentumPill');if(!el)return;
+  if(_momentum>=2){
+    el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
+    el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
+    el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
+    el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
+  }else{el.style.display='none';}
+}
+
+
+// ══ EFFORT ACCURACY SYSTEM ════════════════════════════════════
+let _effortLog=load('flux_effort_log',[]);
+function logEffort(taskId,actualMins,el){
+  const t=tasks.find(x=>x.id===taskId);
+  if(t){
+    _effortLog.push({taskId,subject:t.subject||'',estimated:t.estTime||0,actual:actualMins,date:todayStr()});
+    if(_effortLog.length>300)_effortLog=_effortLog.slice(-300);
+    save('flux_effort_log',_effortLog);
+    showToast('Effort logged: '+actualMins+'m','success');
+  }
+  if(el)el.remove();
+}
+function renderEffortReport(){
+  const el=document.getElementById('effortReport');if(!el)return;
+  if(!_effortLog.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">Complete tasks with time estimates to see accuracy data.</div>';return;}
+  const bySubject={};
+  _effortLog.forEach(e=>{
+    if(!e.subject)return;
+    if(!bySubject[e.subject])bySubject[e.subject]={est:[],act:[]};
+    bySubject[e.subject].est.push(e.estimated);
+    bySubject[e.subject].act.push(e.actual);
+  });
+  const subjs=getSubjects();
+  el.innerHTML=Object.entries(bySubject).map(([k,data])=>{
+    const avgEst=data.est.reduce((a,b)=>a+b,0)/data.est.length;
+    const avgAct=data.act.reduce((a,b)=>a+b,0)/data.act.length;
+    const acc=Math.round((Math.min(avgEst,avgAct)/Math.max(avgEst,avgAct,1))*100);
+    const trend=avgAct>avgEst?'⬆ Over':'⬇ Under';
+    const c=acc>=80?'var(--green)':acc>=60?'var(--gold)':'var(--red)';
+    const s=subjs[k];
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:.82rem;font-weight:600">${esc(s?s.name:k)}</span>
+        <span style="font-size:.72rem;font-weight:700;color:${c};font-family:'JetBrains Mono',monospace">${acc}% accurate</span>
+      </div>
+      <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">Est ${Math.round(avgEst)}m · Actual ${Math.round(avgAct)}m · ${trend}estimating</div>
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:.82rem">Log effort on subject-tagged tasks to see data.</div>';
+}
+
+
+// ══ CUSTOM SAVED VIEWS ════════════════════════════════════════
+let _savedViews=load('flux_saved_views',[]);
+function saveCurrentView(){
+  const name=prompt('Name this view (e.g. "Exam Week"):');if(!name)return;
+  const cur=load('flux_view_mode','list');
+  _savedViews.push({id:Date.now(),name,view:cur,createdAt:Date.now()});
+  save('flux_saved_views',_savedViews);
+  renderSavedViewsDropdown();
+  showToast('View "'+name+'" saved','success');
+}
+function loadSavedView(id){
+  const v=_savedViews.find(x=>x.id===id);if(!v)return;
+  switchView(v.view);
+  showToast('Loaded: '+v.name,'info');
+}
+function deleteSavedView(id){
+  _savedViews=_savedViews.filter(x=>x.id!==id);
+  save('flux_saved_views',_savedViews);
+  renderSavedViewsDropdown();
+}
+function renderSavedViewsDropdown(){
+  const el=document.getElementById('savedViewsList');if(!el)return;
+  const sec=document.getElementById('savedViewsSection');
+  if(!_savedViews.length){if(sec)sec.style.display='none';return;}
+  if(sec)sec.style.display='block';
+  el.innerHTML=_savedViews.map(v=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <button onclick="loadSavedView(${v.id})" style="flex:1;text-align:left;background:none;border:none;color:var(--text);font-size:.82rem;cursor:pointer">${esc(v.name)}</button>
+      <span style="font-size:.6rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${v.view}</span>
+      <button onclick="deleteSavedView(${v.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem">✕</button>
+    </div>`).join('');
+}
+
+
+// ══ SUBJECT EFFICIENCY HEATMAP ════════════════════════════════
+function renderSubjectEfficiencyHeatmap(){
+  const el=document.getElementById('subjectEffHeatmap');if(!el)return;
+  const subjs=getSubjects();const keys=Object.keys(subjs);
+  if(!keys.length||!sessionLog.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:.82rem">Complete focus sessions by subject to see efficiency.</div>';return;
+  }
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const grid={};keys.forEach(k=>{grid[k]=new Array(7).fill(0);});
+  sessionLog.forEach(s=>{
+    if(!s.subject||!grid[s.subject])return;
+    const d=new Date(s.date+'T00:00:00');
+    const dow=(d.getDay()+6)%7;
+    grid[s.subject][dow]+=s.mins;
+  });
+  const maxVal=Math.max(...keys.flatMap(k=>grid[k]),1);
+  el.innerHTML=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.68rem;width:100%">
+    <thead><tr><th style="text-align:left;padding:3px 8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.6rem"></th>
+    ${days.map(d=>`<th style="padding:3px 5px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;font-size:.6rem">${d}</th>`).join('')}</tr></thead>
+    <tbody>${keys.map(k=>{
+      const s=subjs[k];
+      return`<tr><td style="padding:3px 8px;white-space:nowrap;color:${s.color};font-weight:600;font-size:.7rem">${s.name.slice(0,12)}</td>
+      ${grid[k].map(mins=>{
+        const i=mins/maxVal;
+        const bg=i>0.7?'var(--green)':i>0.3?'var(--accent)':i>0?'rgba(var(--accent-rgb),.25)':'var(--card2)';
+        return`<td style="padding:2px"><div title="${mins}m" style="width:26px;height:20px;border-radius:4px;background:${bg};margin:auto;cursor:default"></div></td>`;
+      }).join('')}</tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+
+// ══ COLLAPSIBLE SECTIONS ══════════════════════════════════════
+const _collapsedSections=load('flux_collapsed_sections',{});
+function toggleSection(sectionId){
+  _collapsedSections[sectionId]=!_collapsedSections[sectionId];
+  save('flux_collapsed_sections',_collapsedSections);
+  applyCollapsedSections();
+}
+function applyCollapsedSections(){
+  Object.entries(_collapsedSections).forEach(([id,collapsed])=>{
+    const content=document.getElementById('section-content-'+id);
+    const icon=document.getElementById('section-chevron-'+id);
+    if(content){content.style.display=collapsed?'none':'block';}
+    if(icon){icon.textContent=collapsed?'▸':'▾';}
+  });
+}
+
+
+// ══ PROGRESSIVE ONBOARDING TOUR ══════════════════════════════
+function startOnboardingTour(){
+  if(load('flux_tour_done',false))return;
+  const steps=[
+    {sel:'[data-tab="school"]',title:'Import Your Schedule',body:'Upload a photo of your schedule and AI will extract all your classes automatically.',side:'right'},
+    {sel:'[data-tab="timer"]',title:'Focus Timer',body:'Use the Pomodoro timer to study in focused 25-minute sessions with breaks.',side:'right'},
+    {sel:'[data-tab="ai"]',title:'Flux AI',body:'Ask anything — study plans, explanations, flashcards. Type / to open it.',side:'right'},
+    {sel:'.view-btn',title:'Multiple Views',body:'Switch between List, Board, Timeline, and Workload views for your tasks.',side:'bottom'},
+  ];
+  let step=0;
+  function showStep(){
+    document.querySelectorAll('.tour-tooltip').forEach(e=>e.remove());
+    if(step>=steps.length){save('flux_tour_done',true);return;}
+    const s=steps[step];
+    const target=document.querySelector(s.sel);
+    if(!target){step++;showStep();return;}
+    const rect=target.getBoundingClientRect();
+    const tip=document.createElement('div');
+    tip.className='tour-tooltip';
+    tip.style.cssText=`position:fixed;z-index:9000;background:var(--card);border:1px solid rgba(var(--accent-rgb),.4);border-radius:14px;padding:16px;max-width:260px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:slideUp .3s var(--ease-spring)`;
+    tip.style.top=(rect.bottom+12)+'px';
+    tip.style.left=Math.min(rect.left,window.innerWidth-280)+'px';
+    tip.innerHTML=`<div style="font-size:.82rem;font-weight:800;margin-bottom:4px">${step+1}/${steps.length} · ${s.title}</div>
+      <div style="font-size:.75rem;color:var(--muted2);line-height:1.6;margin-bottom:10px">${s.body}</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="document.querySelectorAll('.tour-tooltip').forEach(e=>e.remove());save('flux_tour_done',true)" style="flex:1;padding:5px;font-size:.72rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;cursor:pointer">Skip tour</button>
+        <button onclick="window._tourStep();this.closest('.tour-tooltip').remove()" style="flex:1;padding:5px;font-size:.72rem;background:var(--accent);border:none;color:#fff;border-radius:8px;cursor:pointer">${step<steps.length-1?'Next →':'Done ✓'}</button>
+      </div>`;
+    document.body.appendChild(tip);
+    target.scrollIntoView({behavior:'smooth',block:'center'});
+    target.style.outline='2px solid rgba(var(--accent-rgb),.6)';
+    target.style.outlineOffset='3px';
+    setTimeout(()=>target.style.outline='',3000);
+  }
+  window._tourStep=()=>{step++;showStep();};
+  setTimeout(showStep,1500);
+}
+
+
+// ══ HIGH CONTRAST MODE ════════════════════════════════════════
+let _highContrast=load('flux_high_contrast',false);
+function toggleHighContrast(){
+  _highContrast=!_highContrast;
+  save('flux_high_contrast',_highContrast);
+  applyHighContrast();
+  const btn=document.getElementById('highContrastBtn');
+  if(btn){btn.textContent=_highContrast?'High Contrast: ON':'High Contrast: OFF';
+    btn.style.background=_highContrast?'rgba(var(--accent-rgb),.15)':'';}
+}
+function applyHighContrast(){
+  if(_highContrast){
+    document.documentElement.style.setProperty('--text','#ffffff');
+    document.documentElement.style.setProperty('--muted','#aaaaaa');
+    document.documentElement.style.setProperty('--muted2','#bbbbbb');
+    document.documentElement.style.setProperty('--border','rgba(255,255,255,.3)');
+    document.documentElement.style.setProperty('--border2','rgba(255,255,255,.5)');
+  }else{
+    ['--text','--muted','--muted2','--border','--border2'].forEach(v=>document.documentElement.style.removeProperty(v));
+  }
+}
+
+
+// ══ AMBIENT SOUND VISUALIZER ══════════════════════════════════
+let _ambVisAnim=null;
+function startAmbientVisualizer(){
+  stopAmbientVisualizer();
+  const el=document.getElementById('ambientViz');if(!el)return;
+  let frame=0;
+  function draw(){
+    frame++;
+    const bars=el.querySelectorAll('.amb-bar');
+    bars.forEach((b,i)=>{
+      const h=30+Math.sin(frame*0.08+i*0.8)*20+Math.random()*10;
+      b.style.height=h+'%';
+    });
+    _ambVisAnim=requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopAmbientVisualizer(){
+  if(_ambVisAnim)cancelAnimationFrame(_ambVisAnim);_ambVisAnim=null;
+  const el=document.getElementById('ambientViz');
+  if(el)el.querySelectorAll('.amb-bar').forEach(b=>b.style.height='20%');
+}
+
+
+// ══ TASK SWIPE GESTURES ═══════════════════════════════════════
+function initTaskSwipeGestures(){
+  const list=document.getElementById('taskList');if(!list)return;
+  let _touchStartX=0,_touchEl=null;
+  list.addEventListener('touchstart',e=>{
+    _touchEl=e.target.closest('[data-task-id]');
+    if(_touchEl)_touchStartX=e.touches[0].clientX;
+  },{passive:true});
+  list.addEventListener('touchmove',e=>{
+    if(!_touchEl)return;
+    const dx=e.touches[0].clientX-_touchStartX;
+    if(Math.abs(dx)>10){
+      _touchEl.style.transform=`translateX(${Math.sign(dx)*Math.min(Math.abs(dx),80)}px)`;
+      _touchEl.style.transition='none';
+      _touchEl.style.opacity=String(1-Math.abs(dx)/200);
+    }
+  },{passive:true});
+  list.addEventListener('touchend',e=>{
+    if(!_touchEl)return;
+    const dx=e.changedTouches[0].clientX-_touchStartX;
+    _touchEl.style.transition='transform .3s var(--ease-spring),opacity .3s';
+    if(dx>60){
+      // Swipe right → complete
+      const id=parseInt(_touchEl.dataset.taskId);
+      _touchEl.style.transform='translateX(100vw)';_touchEl.style.opacity='0';
+      setTimeout(()=>toggleTask(id),300);
+    }else if(dx<-60){
+      // Swipe left → show reschedule
+      const id=parseInt(_touchEl.dataset.taskId);
+      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
+      openEdit(id);
+    }else{
+      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
+    }
+    _touchEl=null;
+  },{passive:true});
+}
+
+
+// ══ LOADING SKELETONS ═════════════════════════════════════════
+function showSkeleton(containerId,rows=3,height=36){
+  const el=document.getElementById(containerId);if(!el)return;
+  el.innerHTML=Array(rows).fill(0).map(()=>
+    `<div style="height:${height}px;background:linear-gradient(90deg,var(--card2) 25%,var(--card3,var(--card)) 50%,var(--card2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;margin-bottom:6px"></div>`
+  ).join('');
+}
+
+
+// ══ QUICK-JUMP PILLS ══════════════════════════════════════════
+function initQuickJumpPills(){
+  const el=document.getElementById('quickJumpPills');if(!el)return;
+  const jumps=[
+    {label:'Tasks',id:'taskListCard'},
+    {label:'Timer',tab:'timer'},
+    {label:'Grades',tab:'grades'},
+    {label:'AI',tab:'ai'},
+    {label:'Goals',tab:'goals'},
+    {label:'Habits',tab:'habits'},
+  ];
+  el.innerHTML=jumps.map(j=>`
+    <button onclick="${j.tab?`nav('${j.tab}')`:`document.getElementById('${j.id}')?.scrollIntoView({behavior:'smooth'})`}" 
+      style="padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;background:var(--card2);border:1px solid var(--border);color:var(--muted2);cursor:pointer;white-space:nowrap;transition:all .15s">
+      ${j.label}
+    </button>`).join('');
+}
+
 })();
 
 // ══ IMAGE IMPORT FEATURES ══
