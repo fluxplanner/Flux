@@ -2252,10 +2252,11 @@ RULES:
 - g = 10 m/s² for all physics calculations.
 ${getStudyDNAPrompt()}
 
-TASK ACTIONS — append this block at the VERY END of your reply. It is hidden from the user automatically:
+TASK ACTIONS — ONLY when the user asks you to add, complete, or delete tasks, append this hidden block at the very end:
 \`\`\`actions
 [{"action":"add_task","name":"...","priority":"high","date":"YYYY-MM-DD","type":"hw","subject":"SUBJECT_KEY"}]
-\`\`\``;
+\`\`\`
+Do NOT include the actions block if there are no actions to perform. Never output an empty actions block.`;
 }
 function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)(?:```|$)/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
 async function sendAI(){
@@ -2284,14 +2285,17 @@ async function sendAI(){
     const reply=data.content?.[0]?.text||"I didn't get a response — try again.";
     thinkEl.remove();
     const ar=execActions(reply);
-    // Strip the actions block from the displayed reply
-    // Strip ALL action/code blocks before displaying
     let clean=reply;
-    // Remove ```actions...``` blocks (closed or unclosed)
-    clean=clean.replace(/`{3}actions[\s\S]*?`{3}/g,'');
-    clean=clean.replace(/`{3}actions[\s\S]*/g,'');  // unclosed
-    // Remove any remaining JSON action arrays
+    // Strip ```actions ... ``` blocks (closed)
+    clean=clean.replace(/`{3,}actions[\s\S]*?`{3,}/gi,'');
+    // Strip unclosed ```actions blocks (at end of reply)
+    clean=clean.replace(/`{3,}actions[\s\S]*$/gi,'');
+    // Strip standalone empty arrays that might leak through
+    clean=clean.replace(/```\s*\[\s*\]\s*```/g,'');
+    // Strip any remaining JSON action arrays with "action" key
     clean=clean.replace(/\[\s*\{[\s\S]*?"action"[\s\S]*?\}\s*\]/g,'');
+    // Strip bare empty arrays at end of message
+    clean=clean.replace(/\s*\[\s*\]\s*$/,'');
     // Clean up extra whitespace
     clean=clean.replace(/\n{3,}/g,'\n\n').trim();
     if(clean){appendMsg('bot',clean);}
