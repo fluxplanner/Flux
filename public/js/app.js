@@ -3461,17 +3461,27 @@ function confirmGuestLogin(){
   const modal=document.getElementById('guestModal');if(modal)modal.remove();
   save('flux_was_guest',true);
   document.getElementById('loginScreen').classList.remove('visible');
-  const onboarded=load('flux_onboarded',false);
-  const hasData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0;
-  if(!onboarded&&!hasData){
-    showOnboarding();
+  document.getElementById('loginScreen').style.display='none';
+  const splash=document.getElementById('splash');
+  if(splash)splash.style.display='block';
+  const finishGuestEntry=()=>{
+    const onboarded=load('flux_onboarded',false);
+    const hasData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0;
+    if(!onboarded&&!hasData){
+      showOnboarding();
+    }else{
+      save('flux_tour_completed',true);
+      save('flux_tour_done',true);
+      document.getElementById('app').classList.add('visible');
+      renderSidebars();
+    }
+    setSyncStatus('offline');
+  };
+  if(typeof window.runSplash==='function'){
+    window.runSplash(finishGuestEntry,true);
   }else{
-    save('flux_tour_completed',true);
-    save('flux_tour_done',true);
-    document.getElementById('app').classList.add('visible');
-    renderSidebars();
+    finishGuestEntry();
   }
-  setSyncStatus('offline');
 }
 
 // Wait for PKCE code exchange / hash parsing — getSession() can briefly return null on redirect

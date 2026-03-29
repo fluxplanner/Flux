@@ -1,175 +1,318 @@
-/* ── FLUX PLANNER · splash.js ── */
+/* ── FLUX PLANNER · splash.js — short loader + cinematic first-time / guest intro ── */
 
-// Short splash for returning users (~1.2s)
+function prefersReducedMotion(){
+  try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){return false;}
+}
+
+function isLikelyLowEndDevice(){
+  try{
+    const c=navigator.hardwareConcurrency||4;
+    const mem=navigator.deviceMemory;
+    if(c<=2)return true;
+    if(mem!=null&&mem<=2)return true;
+  }catch(_){}
+  return false;
+}
+
+/** Returning users: Flux ring + wordmark only (no emoji, no secondary bar). */
 function runShortSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
-  splash.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#0B0F1A,#121826);z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden';
+  splash.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#0B0F1A 0%,#121826 45%,#0d1528 100%);z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden';
   splash.innerHTML=`
-    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
-      ${Array.from({length:18},(_,i)=>`<span style="position:absolute;left:${8+i*5}%;top:${(i*7)%100}%;width:4px;height:4px;border-radius:50%;
-        background:rgba(0,194,255,${.15+.03*(i%5)});animation:splashFloat ${3+i*.2}s ease-in-out ${i*.08}s infinite alternate"></span>`).join('')}
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:splashFadeIn .55s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:1">
-      <div style="position:relative;width:100px;height:100px">
-        <svg viewBox="0 0 100 100" width="100" height="100" style="transform:rotate(-90deg);filter:drop-shadow(0 0 12px rgba(0,194,255,.4))">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6" pathLength="100"/>
-          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#ssg)" stroke-width="6" stroke-linecap="round" pathLength="100"
-            stroke-dasharray="0 100" style="animation:splashRing 1s cubic-bezier(.34,1.56,.64,1) .15s forwards"/>
-          <defs><linearGradient id="ssg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;animation:splashFadeIn .5s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:1">
+      <div style="position:relative;width:104px;height:104px">
+        <svg viewBox="0 0 100 100" width="104" height="104" style="transform:rotate(-90deg);filter:drop-shadow(0 0 16px rgba(0,194,255,.45))">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" pathLength="100"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#fluxSplashGrad)" stroke-width="5" stroke-linecap="round" pathLength="100"
+            stroke-dasharray="0 100" style="animation:splashRing .95s cubic-bezier(.34,1.56,.64,1) .12s forwards"/>
+          <defs><linearGradient id="fluxSplashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#00C2FF"/><stop offset="50%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#22FF88"/>
           </linearGradient></defs>
         </svg>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.85rem;animation:splashLogoPop .7s cubic-bezier(.34,1.56,.64,1) .35s both">⚡</div>
       </div>
-      <div style="font-family:'Inter','Plus Jakarta Sans',system-ui,sans-serif;font-size:2.35rem;font-weight:800;letter-spacing:-0.04em;
+      <div style="font-family:'Inter','Plus Jakarta Sans',system-ui,sans-serif;font-size:2.25rem;font-weight:800;letter-spacing:-0.04em;
         background:linear-gradient(135deg,#fff 0%,#00C2FF 50%,#7C5CFF 100%);
         -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-        filter:drop-shadow(0 0 22px rgba(0,194,255,.45));animation:splashTitle .75s cubic-bezier(.22,1,.36,1) .2s both">Flux</div>
-      <div style="width:132px;height:3px;background:rgba(0,194,255,.18);border-radius:2px;overflow:hidden">
-        <div style="height:100%;background:linear-gradient(90deg,#00C2FF,#22FF88);border-radius:2px;animation:splashBar .85s cubic-bezier(.22,1,.36,1) .35s both"></div>
+        filter:drop-shadow(0 0 20px rgba(0,194,255,.4));animation:splashTitle .7s cubic-bezier(.22,1,.36,1) .18s both">Flux</div>
+    </div>
+    <style>
+      @keyframes splashFadeIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+      @keyframes splashRing{to{stroke-dasharray:88 100}}
+      @keyframes splashTitle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    </style>`;
+  setTimeout(()=>{
+    splash.style.transition='opacity .32s ease';
+    splash.style.opacity='0';
+    setTimeout(()=>{splash.style.display='none';splash.innerHTML='';callback();},320);
+  },1050);
+}
+
+/** ~3s War Robots–inspired Flux intro: hyperspace → rings → logo → handoff */
+function runCinematicSplash(callback){
+  const splash=document.getElementById('splash');
+  if(!splash){callback();return;}
+  if(prefersReducedMotion()||isLikelyLowEndDevice()){
+    runShortSplash(callback);
+    return;
+  }
+  const metaTheme=document.querySelector('meta[name="theme-color"]');
+  if(metaTheme)metaTheme.setAttribute('content','#0B0F1A');
+
+  const T_HYPER=800,T_RINGS=1800,T_LOGO=2500,T_END=3000;
+  splash.style.cssText='position:fixed;inset:0;z-index:9999;overflow:hidden;display:block;background:#070512';
+
+  splash.innerHTML=`
+    <canvas id="fluxCinCanvas" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+    <div id="fluxCinVignette" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 70% at 50% 50%,transparent 0%,rgba(5,8,20,.25) 55%,rgba(2,4,14,.92) 100%);z-index:1"></div>
+    <div id="fluxCinLogo" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3;pointer-events:none;opacity:0">
+      <div id="fluxCinWord" style="position:relative;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:clamp(2.4rem,11vw,4rem);font-weight:800;letter-spacing:-0.04em;text-align:center;
+        background:linear-gradient(135deg,#fff 0%,#00C2FF 42%,#7C5CFF 78%,#22FF88 100%);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+        filter:drop-shadow(0 0 28px rgba(0,194,255,.5));transform:scale(.88)">Flux</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:clamp(.55rem,2vw,.75rem);letter-spacing:5px;text-transform:uppercase;color:rgba(0,194,255,.55);margin-top:10px">Planner</div>
+      <div id="fluxCinSweep" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-55%);width:min(88vw,380px);height:clamp(3rem,12vw,4.5rem);pointer-events:none;overflow:hidden;border-radius:4px;opacity:0">
+        <div style="position:absolute;inset:0;background:linear-gradient(105deg,transparent 0%,transparent 42%,rgba(255,255,255,.35) 50%,transparent 58%,transparent 100%);width:200%;animation:fluxSweep 1.1s ease-in-out 1.85s forwards"></div>
       </div>
     </div>
     <style>
-      @keyframes splashFadeIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
-      @keyframes splashFloat{0%{transform:translate(0,0) scale(1)}100%{transform:translate(10px,-14px) scale(1.2)}}
-      @keyframes splashRing{to{stroke-dasharray:88 100}}
-      @keyframes splashLogoPop{from{opacity:0;transform:scale(.3) rotate(-25deg)}to{opacity:1;transform:scale(1) rotate(0)}}
-      @keyframes splashTitle{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-      @keyframes splashBar{from{width:0}to{width:100%}}
+      @keyframes fluxSweep{0%{transform:translateX(-12%)}100%{transform:translateX(38%)}}
     </style>`;
-  setTimeout(()=>{
-    splash.style.transition='opacity .3s ease';
-    splash.style.opacity='0';
-    setTimeout(()=>{splash.style.display='none';splash.innerHTML='';callback();},300);
-  },1100);
-}
 
-// Full orbital laser splash for first-time users
-function runFullSplash(callback){
-  const splash=document.getElementById('splash');
-  if(!splash){callback();return;}
-  const metaTheme=document.querySelector('meta[name="theme-color"]');
-  if(metaTheme)metaTheme.setAttribute('content','#0B0F1A');
-  splash.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#0B0F1A,#121826);z-index:9999;overflow:hidden;display:block';
-  splash.innerHTML=`
-    <canvas id="orbCanvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
-    <div id="orbLogo" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;opacity:0;transition:opacity .6s ease;pointer-events:none">
-      <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:clamp(2.8rem,10vw,4.2rem);font-weight:800;letter-spacing:-0.04em;text-align:center;
-        background:linear-gradient(135deg,#fff 0%,#00C2FF 45%,#7C5CFF 100%);
-        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-        filter:drop-shadow(0 0 30px rgba(0,194,255,.55))">Flux</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:clamp(.55rem,2vw,.8rem);letter-spacing:4px;text-transform:uppercase;color:rgba(0,194,255,.65);margin-top:8px;text-align:center">Planner</div>
-    </div>`;
-  const canvas=document.getElementById('orbCanvas');
+  const canvas=document.getElementById('fluxCinCanvas');
   const ctx=canvas.getContext('2d');
-  let W,H,cx,cy,animId,tick=0;
-  const PH={ORBIT_START:50,CONVERGE_START:110,FLASH_START:145,LOGO_START:158,EXIT_START:198};
+  const logoEl=document.getElementById('fluxCinLogo');
+  const wordEl=document.getElementById('fluxCinWord');
+  const sweepEl=document.getElementById('fluxCinSweep');
+  let W,H,cx,cy;
+  let prevFrame=performance.now();
+  let raf;
+
+  const stars=[];
+  const STAR_N=160;
+  function initStars(){
+    stars.length=0;
+    for(let i=0;i<STAR_N;i++){
+      stars.push({
+        a:Math.random()*Math.PI*2,
+        r:Math.random()*Math.min(W,H)*0.55,
+        v:120+Math.random()*340,
+        w:0.4+Math.random()*1.4,
+        tw:Math.random()*Math.PI*2
+      });
+    }
+  }
+
   const RINGS=[
-    {rx:.38,ry:.14,tilt:0,phase:0,speed:.008,alpha:.18,color:[0,194,255]},
-    {rx:.30,ry:.20,tilt:55,phase:1.2,speed:-.006,alpha:.14,color:[124,92,255]},
-    {rx:.46,ry:.10,tilt:-30,phase:2.4,speed:.005,alpha:.12,color:[34,255,136]},
-    {rx:.22,ry:.22,tilt:80,phase:3.8,speed:-.009,alpha:.10,color:[100,160,255]},
-    {rx:.52,ry:.08,tilt:15,phase:.7,speed:.004,alpha:.09,color:[0,194,255]},
+    {rx:.42,ry:.13,tilt:12,phase:0,spd:.65,alpha:.22,co:[0,194,255]},
+    {rx:.34,ry:.18,tilt:58,phase:1.1,spd:-.52,alpha:.16,co:[124,92,255]},
+    {rx:.48,ry:.11,tilt:-28,phase:2.3,spd:.42,alpha:.14,co:[34,255,136]},
+    {rx:.26,ry:.2,tilt:82,phase:3.5,spd:-.58,alpha:.12,co:[100,180,255]},
+    {rx:.52,ry:.09,tilt:5,spd:.38,alpha:.1,co:[0,194,255]},
   ];
-  let beamAngle=0,beamBrightness=0,beamSnapTarget=null,lastSnapTick=0,sparks=[];
-  const bri=0;
-  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;cx=W/2;cy=H/2;}
-  resize();window.addEventListener('resize',resize);
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-  function easeIn(t){return t*t;}
+  let sparks=[];
+
+  function resize(){
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    W=window.innerWidth;
+    H=window.innerHeight;
+    canvas.width=Math.floor(W*dpr);
+    canvas.height=Math.floor(H*dpr);
+    canvas.style.width=W+'px';
+    canvas.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=W/2;cy=H/2;
+  }
+  resize();
+  initStars();
+  const onResize=()=>{resize();initStars();};
+  window.addEventListener('resize',onResize);
+
+  function easeOutCubic(t){return 1-Math.pow(1-t,3);}
+  function easeInOut(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
   function getEP(ring,angle){
     const tr=ring.tilt*Math.PI/180;
-    const px=Math.cos(angle)*ring.rx*Math.min(W,H);
-    const py=Math.sin(angle)*ring.ry*Math.min(W,H);
-    const projX=px*Math.cos(tr*.4)-py*Math.sin(tr*.4)*.3;
-    const projY=px*Math.sin(tr*.15)+py*Math.cos(tr*.4);
-    return{x:cx+projX,y:cy+projY,depth:.5+.5*Math.sin(angle-ring.phase)};
+    const m=Math.min(W,H);
+    const px=Math.cos(angle)*ring.rx*m;
+    const py=Math.sin(angle)*ring.ry*m;
+    const projX=px*Math.cos(tr*.42)-py*Math.sin(tr*.35);
+    const projY=px*Math.sin(tr*.18)+py*Math.cos(tr*.38);
+    return{x:cx+projX,y:cy+projY,depth:.5+.5*Math.sin(angle*2+ring.phase)};
   }
-  function drawRing(ring,ga){
-    for(let i=0;i<80;i++){
-      const a0=(i/80)*Math.PI*2,a1=((i+1)/80)*Math.PI*2;
-      const p0=getEP(ring,a0),p1=getEP(ring,a1);
-      const d=(p0.depth+p1.depth)/2;
-      const [r,g,b]=ring.color;
-      ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);
-      ctx.strokeStyle=`rgba(${r},${g},${b},${ring.alpha*ga*d*(.4+.6*d)})`;ctx.lineWidth=d*1.2;ctx.stroke();
-    }
+
+  function drawSpaceBg(elapsed){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'#140a28');
+    g.addColorStop(.35,'#0c1228');
+    g.addColorStop(.7,'#081420');
+    g.addColorStop(1,'#040810');
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+    const pulse=0.55+0.45*Math.sin(elapsed*0.004);
+    const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*0.65);
+    rg.addColorStop(0,`rgba(40,20,90,${0.22*pulse})`);
+    rg.addColorStop(.45,'rgba(8,20,60,0.08)');
+    rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg;
+    ctx.fillRect(0,0,W,H);
   }
-  function drawBeam(ring,angle,bright,alpha){
-    const pt=getEP(ring,angle),ptP=getEP(ring,angle-.4);
-    const front=pt.depth>.5;
-    const total=bright*( front?pt.depth:pt.depth*.35)*alpha;
-    if(total<.02)return;
-    [30,16,8,4].forEach((blur,i)=>{
-      ctx.save();ctx.globalAlpha=total*[.07,.14,.28,.65][i];ctx.shadowBlur=blur;ctx.shadowColor='rgba(0,210,255,1)';
-      ctx.beginPath();ctx.arc(pt.x,pt.y,[12,7,4,2.5][i],0,Math.PI*2);ctx.fillStyle='rgba(0,210,255,1)';ctx.fill();ctx.restore();
+
+  function drawHyperspace(elapsed,pPhase,dt){
+    const warp=1+0.018*Math.sin(elapsed*0.006);
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.scale(warp,warp);
+    ctx.translate(-cx,-cy);
+    const fade=0.35+0.65*easeOutCubic(Math.min(1,pPhase));
+    stars.forEach(s=>{
+      s.r+=s.v*dt*(0.9+fade*0.5);
+      s.tw+=dt*2.2;
+      const maxR=Math.max(W,H)*0.72;
+      if(s.r>maxR){s.r=8+Math.random()*40;s.a=Math.random()*Math.PI*2;}
+      const len=10+s.r*0.055;
+      const x1=cx+Math.cos(s.a)*s.r;
+      const y1=cy+Math.sin(s.a)*s.r;
+      const x0=cx+Math.cos(s.a)*(s.r-len);
+      const y0=cy+Math.sin(s.a)*(s.r-len);
+      const tw=0.5+0.5*Math.sin(s.tw);
+      ctx.strokeStyle=`rgba(230,245,255,${fade*s.w*0.09*tw})`;
+      ctx.lineWidth=s.w;
+      ctx.beginPath();
+      ctx.moveTo(x0,y0);
+      ctx.lineTo(x1,y1);
+      ctx.stroke();
     });
-    if(front){
-      ctx.save();ctx.globalAlpha=total*.7;
-      const grad=ctx.createLinearGradient(ptP.x,ptP.y,pt.x,pt.y);
-      grad.addColorStop(0,'rgba(0,210,255,0)');grad.addColorStop(1,'rgba(0,210,255,1)');
-      ctx.beginPath();ctx.moveTo(ptP.x,ptP.y);ctx.lineTo(pt.x,pt.y);
-      ctx.strokeStyle=grad;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.shadowBlur=10;ctx.shadowColor='rgba(0,210,255,.8)';ctx.stroke();ctx.restore();
-    }
-    if(front&&Math.random()<.4*bright)sparks.push({x:pt.x,y:pt.y,vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3-1,life:1,decay:.04+Math.random()*.06,size:Math.random()*2+.5});
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha=0.12+0.08*Math.sin(elapsed*0.008);
+    ctx.strokeStyle='rgba(160,200,255,0.35)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.arc(cx,cy,42+Math.sin(elapsed*0.01)*14,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
   }
-  function updateSparks(){
+
+  function drawRingSeg(ring,ga,shrink){
+    const sm=1-shrink*0.88;
+    for(let i=0;i<72;i++){
+      const a0=(i/72)*Math.PI*2+ring.phase,a1=((i+1)/72)*Math.PI*2+ring.phase;
+      const r={...ring,rx:ring.rx*sm,ry:ring.ry*sm};
+      const p0=getEP(r,a0),p1=getEP(r,a1);
+      const d=(p0.depth+p1.depth)/2;
+      const [r0,g,b]=ring.co;
+      ctx.beginPath();
+      ctx.moveTo(p0.x,p0.y);
+      ctx.lineTo(p1.x,p1.y);
+      ctx.strokeStyle=`rgba(${r0},${g},${b},${ring.alpha*ga*d*(0.45+0.55*d)})`;
+      ctx.lineWidth=1.1*d+0.6;
+      ctx.stroke();
+    }
+  }
+
+  function tickSparks(){
     sparks=sparks.filter(s=>s.life>0);
-    sparks.forEach(s=>{s.x+=s.vx;s.y+=s.vy;s.vy+=.08;s.life-=s.decay;ctx.save();ctx.globalAlpha=s.life*.8;ctx.beginPath();ctx.arc(s.x,s.y,s.size,0,Math.PI*2);ctx.fillStyle='rgba(0,210,255,1)';ctx.shadowBlur=6;ctx.shadowColor='rgba(0,210,255,.8)';ctx.fill();ctx.restore();});
+    sparks.forEach(s=>{
+      s.x+=s.vx;s.y+=s.vy;s.vy+=0.06;s.life-=s.dec;
+      ctx.save();
+      ctx.globalAlpha=s.life*0.85;
+      ctx.fillStyle='rgba(180,230,255,1)';
+      ctx.shadowBlur=8;
+      ctx.shadowColor='rgba(0,210,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.sz,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
   }
-  function drawCore(intensity){
-    if(intensity<=0)return;
-    const r=Math.min(W,H)*.04*intensity;
-    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r*6);
-    g.addColorStop(0,`rgba(0,220,255,${intensity*.9})`);g.addColorStop(.3,`rgba(0,150,255,${intensity*.4})`);g.addColorStop(1,'rgba(0,30,80,0)');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    ctx.save();ctx.globalAlpha=intensity;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.9)';ctx.shadowBlur=20;ctx.shadowColor='rgba(0,200,255,1)';ctx.fill();ctx.restore();
-  }
-  let logoShown=false;
-  function frame(){
-    tick++;const t=tick;
-    ctx.clearRect(0,0,W,H);ctx.fillStyle='#0B0F1A';ctx.fillRect(0,0,W,H);
-    const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*.5);
-    bg.addColorStop(0,'rgba(0,20,60,.8)');bg.addColorStop(1,'rgba(0,2,12,0)');
-    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-    if(t<PH.ORBIT_START){
-      const p=t/PH.ORBIT_START;RINGS.forEach(r=>drawRing(r,easeIn(p)*.7));
-      beamBrightness=easeIn(p)*.5;beamAngle+=RINGS[0].speed*.5;drawBeam(RINGS[0],beamAngle,beamBrightness,1);drawCore(p*.3);
-    }else if(t<PH.CONVERGE_START){
-      const p=(t-PH.ORBIT_START)/(PH.CONVERGE_START-PH.ORBIT_START);
-      RINGS.forEach(r=>drawRing(r,1));beamBrightness=clamp(beamBrightness+.04,0,1);
-      if(t-lastSnapTick>20&&Math.random()<.02){beamSnapTarget=beamAngle+(Math.random()>.5?.3:-.3);lastSnapTick=t;}
-      if(beamSnapTarget!==null){const diff=beamSnapTarget-beamAngle;beamAngle+=diff*.3;if(Math.abs(diff)<.01)beamSnapTarget=null;}
-      else beamAngle+=RINGS[0].speed*(1+p*.5);
-      RINGS.forEach(r=>{r.phase+=r.speed;});drawBeam(RINGS[0],beamAngle,beamBrightness,1);updateSparks();drawCore(.15+.1*Math.sin(t*.15));
-    }else if(t<PH.FLASH_START){
-      const p=(t-PH.CONVERGE_START)/(PH.FLASH_START-PH.CONVERGE_START);const shrink=easeIn(p);
-      RINGS.forEach(r=>{const cr={...r,rx:r.rx*(1-shrink*.9),ry:r.ry*(1-shrink*.9)};drawRing(cr,1-shrink*.3);});
-      beamAngle+=RINGS[0].speed*(1+p*8);
-      const cr={...RINGS[0],rx:RINGS[0].rx*(1-shrink*.9),ry:RINGS[0].ry*(1-shrink*.9)};
-      drawBeam(cr,beamAngle,beamBrightness,1-shrink*.3);updateSparks();drawCore(.2+shrink*.8);
-    }else if(t<PH.LOGO_START){
-      const p=(t-PH.FLASH_START)/(PH.LOGO_START-PH.FLASH_START);const fp=p<.4?p/.4:1-(p-.4)/.6;
-      ctx.fillStyle=`rgba(0,210,255,${fp*.6})`;ctx.fillRect(0,0,W,H);ctx.fillStyle=`rgba(255,255,255,${fp*.35})`;ctx.fillRect(0,0,W,H);
-      drawCore(fp);if(!logoShown&&p>.5){logoShown=true;document.getElementById('orbLogo').style.opacity='1';}
-    }else if(t<PH.EXIT_START){
-      if(!logoShown){logoShown=true;document.getElementById('orbLogo').style.opacity='1';}
-      drawCore(.08+.04*Math.sin(t*.2));
-    }else{
-      window.removeEventListener('resize',resize);cancelAnimationFrame(animId);
-      splash.style.transition='opacity .45s ease';splash.style.opacity='0';
-      setTimeout(()=>{splash.style.display='none';splash.innerHTML='';callback();},450);return;
+
+  const start=performance.now();
+  prevFrame=start;
+
+  function frame(now){
+    let dt=Math.min(0.05,(now-prevFrame)/1000);
+    if(dt>0.08)dt=1/60;
+    prevFrame=now;
+    const elapsed=now-start;
+    if(elapsed>=T_END){
+      window.removeEventListener('resize',onResize);
+      cancelAnimationFrame(raf);
+      splash.style.transition='opacity .48s cubic-bezier(.22,1,.36,1)';
+      splash.style.opacity='0';
+      setTimeout(()=>{
+        splash.style.display='none';
+        splash.innerHTML='';
+        splash.style.opacity='1';
+        callback();
+      },480);
+      return;
     }
-    animId=requestAnimationFrame(frame);
+
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    drawSpaceBg(elapsed);
+
+    if(elapsed<T_HYPER){
+      const p=elapsed/T_HYPER;
+      drawHyperspace(elapsed,p,dt);
+    }else if(elapsed<T_RINGS){
+      const seg=(elapsed-T_HYPER)/(T_RINGS-T_HYPER);
+      const conv=easeInOut(seg);
+      ctx.globalAlpha=0.55+0.45*(1-conv*0.5);
+      drawHyperspace(elapsed,0.85,dt);
+      ctx.globalAlpha=1;
+      RINGS.forEach((r,i)=>{
+        r.phase+=r.spd*dt*(1+seg);
+        drawRingSeg(r,0.75+0.25*conv,conv*(0.65+0.08*i));
+        if(Math.random()<0.18*conv){
+          const ang=Math.random()*Math.PI*2;
+          const rr=RINGS[i%RINGS.length];
+          const p=getEP(rr,ang+rr.phase);
+          sparks.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*2.2,vy:(Math.random()-0.5)*2.2-1,sz:0.6+Math.random()*1.4,life:1,dec:0.035+Math.random()*0.04});
+        }
+      });
+      tickSparks();
+    }else if(elapsed<T_LOGO){
+      const seg=(elapsed-T_RINGS)/(T_LOGO-T_RINGS);
+      const fade=1-seg;
+      RINGS.forEach((r,i)=>{
+        r.phase+=r.spd*dt*0.85;
+        drawRingSeg(r,fade*0.5,fade*0.92);
+      });
+      tickSparks();
+      logoEl.style.opacity=String(Math.min(1,seg*1.6));
+      const sc=0.88+0.12*easeOutCubic(Math.min(1,seg*1.25));
+      wordEl.style.transform=`scale(${sc})`;
+      sweepEl.style.opacity=String(seg>0.15?Math.min(1,(seg-0.15)*2):0);
+    }else{
+      const seg=(elapsed-T_LOGO)/(T_END-T_LOGO);
+      drawSpaceBg(elapsed);
+      ctx.fillStyle=`rgba(5,8,18,${seg*0.55})`;
+      ctx.fillRect(0,0,W,H);
+      logoEl.style.opacity='1';
+      wordEl.style.transform='scale(1)';
+      wordEl.style.filter=`drop-shadow(0 0 ${24+seg*20}px rgba(0,194,255,${0.45+seg*0.25}))`;
+      sweepEl.style.opacity=String((1-seg)*0.9);
+    }
+
+    raf=requestAnimationFrame(frame);
   }
-  animId=requestAnimationFrame(frame);
+
+  raf=requestAnimationFrame(frame);
 }
 
-// Main entry point — decides which splash to show
-window.runSplash=function(callback,isFirstTime){
-  if(isFirstTime){
-    runFullSplash(callback);
+window.runSplash=function(callback,useCinematic){
+  if(prefersReducedMotion()&&useCinematic){
+    runShortSplash(callback);
+    return;
+  }
+  if(useCinematic){
+    runCinematicSplash(callback);
   }else{
     runShortSplash(callback);
   }
