@@ -141,14 +141,15 @@
 }
 @keyframes loginCardIn{from{opacity:0;transform:translateY(28px) scale(.96)}to{opacity:1;transform:none}}
 .login-card::before{
-  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-  background:linear-gradient(135deg,rgba(99,102,241,.05) 0%,transparent 50%,rgba(0,217,163,.03) 100%);
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:0;
+  background:linear-gradient(135deg,rgba(var(--accent-rgb),.14) 0%,transparent 48%,rgba(var(--purple-rgb),.08) 100%);
 }
 .login-card::after{
   content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;
-  pointer-events:none;
-  background:conic-gradient(from 0deg,transparent,rgba(99,102,241,.04),transparent,rgba(0,217,163,.03),transparent);
-  animation:loginCardShine 8s linear infinite;
+  pointer-events:none;z-index:0;
+  background:conic-gradient(from 0deg,transparent,rgba(var(--accent-rgb),.12),transparent,rgba(var(--purple-rgb),.08),transparent,rgba(var(--accent-rgb),.06),transparent);
+  animation:loginCardShine 10s linear infinite;
+  mix-blend-mode:soft-light;opacity:.85;
 }
 @keyframes loginCardShine{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
@@ -156,10 +157,10 @@
 .login-logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:8px;position:relative;z-index:1}
 .login-logo{
   font-size:3rem;font-weight:800;letter-spacing:-2px;
-  background:linear-gradient(135deg,#fff,#00C2FF 45%,#7C5CFF);
+  background:linear-gradient(135deg,#fff,var(--accent) 42%,var(--purple));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
   line-height:1;display:block;text-align:center;
-  filter:drop-shadow(0 2px 16px rgba(0,194,255,.35));
+  filter:drop-shadow(0 2px 20px rgba(var(--accent-rgb),.4));
 }
 .login-tagline{
   font-size:.62rem;color:rgba(255,255,255,.3);

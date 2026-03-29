@@ -15,8 +15,15 @@
   transform:translateZ(0);
 }
 .dash-hero::before{
-  content:'';position:absolute;inset:-40%;background:radial-gradient(circle at 30% 20%,rgba(var(--accent-rgb),.12),transparent 45%);
+  content:'';position:absolute;inset:-40%;background:radial-gradient(circle at 30% 20%,rgba(var(--accent-rgb),.18),transparent 45%);
   pointer-events:none;animation:dashHeroSheen 14s ease-in-out infinite alternate;
+}
+.dash-hero::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;
+  background:linear-gradient(118deg,transparent 25%,rgba(var(--accent-rgb),.22) 48%,rgba(var(--accent-rgb),.1) 52%,transparent 72%);
+  background-size:220% 100%;
+  animation:accentGlassSweep 12s ease-in-out infinite;
+  mix-blend-mode:soft-light;opacity:.55;
 }
 @keyframes dashHeroSheen{
   0%{transform:translate(0,0) rotate(0deg)}
@@ -248,8 +255,8 @@
   animation:fabIdleGlow 4s ease-in-out infinite!important;
 }
 @keyframes fabIdleGlow{
-  0%,100%{box-shadow:0 8px 32px rgba(var(--accent-rgb),.45),0 0 0 1px rgba(255,255,255,.1) inset,0 0 36px rgba(var(--accent-rgb),.2)}
-  50%{box-shadow:0 10px 40px rgba(var(--accent-rgb),.55),0 0 0 1px rgba(255,255,255,.14) inset,0 0 52px rgba(var(--purple-rgb),.2)}
+  0%,100%{box-shadow:0 8px 36px rgba(var(--accent-rgb),.52),0 0 0 1px rgba(255,255,255,.12) inset,0 0 48px rgba(var(--accent-rgb),.38),0 0 80px rgba(var(--accent-rgb),.15)}
+  50%{box-shadow:0 12px 48px rgba(var(--accent-rgb),.68),0 0 0 1px rgba(255,255,255,.16) inset,0 0 64px rgba(var(--accent-rgb),.5),0 0 100px rgba(var(--accent-rgb),.22)}
 }
 .fab-trigger.open{animation:none!important}
 
@@ -309,10 +316,100 @@ button:not(:disabled):active{transform:scale(.97)!important}
   opacity:.9;
 }
 
+/* ══ Accent-tinted glass: moving shine + rim lights (follows user accent) ══ */
+@keyframes accentGlassSweep{
+  0%{background-position:130% 0}
+  100%{background-position:-130% 0}
+}
+@keyframes accentLineSweep{
+  0%{background-position:0 0}
+  100%{background-position:200% 0}
+}
+@keyframes accentSidebarMist{
+  0%,100%{transform:translate(0,0) scale(1);opacity:.42}
+  50%{transform:translate(3%,-2%) scale(1.04);opacity:.68}
+}
+
+.card::before,.stat::before,.note-card::before,.goal-item::before,.gmail-item::before,
+.feat-card::before,.info-tile::before,.ob-card::before,.modal-card::before,.user-card::before,
+.search-box::before,.ai-bub.bot::before,.ai-irow::before,.quick-add::before,.quick-add-panel::before,.dash-workspace::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:42%;pointer-events:none;border-radius:inherit;
+  background-image:linear-gradient(105deg,transparent 0%,rgba(var(--accent-rgb),0) 36%,rgba(var(--accent-rgb),.32) 50%,rgba(var(--accent-rgb),0) 64%,transparent 100%);
+  background-size:240% 100%;
+  animation:accentGlassSweep 11s ease-in-out infinite;
+  mix-blend-mode:soft-light;opacity:.62;z-index:0;
+}
+.card,.stat,.note-card,.goal-item,.gmail-item,.feat-card,.info-tile,.ob-card,.modal-card,.user-card,
+.search-box,.ai-bub.bot,.ai-irow,.quick-add,.quick-add-panel,.dash-workspace{position:relative;overflow:hidden}
+.quick-add-panel::before{border-radius:0}
+.task-item::after{
+  content:'';position:absolute;left:0;right:0;top:0;height:44%;pointer-events:none;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;
+  background-image:linear-gradient(105deg,transparent 0%,rgba(var(--accent-rgb),0) 38%,rgba(var(--accent-rgb),.28) 50%,rgba(var(--accent-rgb),0) 62%,transparent 100%);
+  background-size:240% 100%;
+  animation:accentGlassSweep 12.5s ease-in-out infinite;
+  mix-blend-mode:soft-light;opacity:.5;z-index:0;
+}
+
+.sidebar::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 75% 55% at -8% 12%,rgba(var(--accent-rgb),.2),transparent 58%),
+    radial-gradient(ellipse 60% 50% at 108% 88%,rgba(var(--accent-rgb),.12),transparent 55%);
+  animation:accentSidebarMist 24s ease-in-out infinite alternate;
+  opacity:.55;
+}
+.sidebar>.sidebar-resize-handle{z-index:12}
+.sidebar-header,.sidebar-nav,.sidebar-footer{position:relative;z-index:1}
+
+.topbar::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:2px;pointer-events:none;z-index:5;
+  background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.2),rgba(var(--accent-rgb),.55),rgba(var(--accent-rgb),.2),transparent);
+  background-size:220% 100%;
+  animation:accentLineSweep 10s linear infinite;
+  opacity:.65;
+}
+.topbar{position:relative}
+
+.bottom-nav::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.45),rgba(var(--accent-rgb),.75),rgba(var(--accent-rgb),.45),transparent);
+  background-size:200% 100%;
+  animation:accentLineSweep 14s linear infinite reverse;
+  opacity:.75;
+}
+.bottom-nav{position:relative}
+
+.mob-drawer::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 65% 50% at 0% 35%,rgba(var(--accent-rgb),.16),transparent 60%);
+  animation:accentSidebarMist 20s ease-in-out infinite alternate-reverse;
+  opacity:.5;
+}
+.mob-drawer-header,.mob-drawer-nav,.mob-drawer-footer{position:relative;z-index:1}
+
+.fab-menu .fab-action{overflow:hidden!important;position:relative!important}
+.fab-menu .fab-action::before{
+  content:'';position:absolute;inset:-1px;pointer-events:none;border-radius:inherit;z-index:0;
+  background:linear-gradient(110deg,transparent 40%,rgba(var(--accent-rgb),.2) 50%,transparent 60%);
+  background-size:220% 100%;
+  animation:accentGlassSweep 9s ease-in-out infinite;
+  opacity:.45;
+}
+.fab-menu .fab-action.fab-action-primary::before{
+  opacity:.58;
+  background:linear-gradient(110deg,transparent 35%,rgba(var(--accent-rgb),.35) 50%,rgba(255,255,255,.12) 50.5%,rgba(var(--accent-rgb),.3) 51%,transparent 65%);
+}
+
 /* ── Reduced motion: strip decorative loops, keep short fades ── */
 @media(prefers-reduced-motion:reduce){
-  .dash-hero::before,.fab-trigger{animation:none!important}
+  .dash-hero::before,.dash-hero::after,.fab-trigger{animation:none!important}
   body::before{animation:none!important}
   .fab-menu,.fab-menu .fab-action{transition-duration:.01ms!important}
   .dash-streak-progress{transition-duration:.01ms!important}
+  .card::before,.stat::before,.note-card::before,.goal-item::before,.gmail-item::before,
+  .feat-card::before,.info-tile::before,.ob-card::before,.modal-card::before,.user-card::before,
+  .search-box::before,.ai-bub.bot::before,.ai-irow::before,.quick-add::before,.quick-add-panel::before,.dash-workspace::before,
+  .task-item::after,.sidebar::before,.topbar::after,.bottom-nav::before,.mob-drawer::before,
+  .fab-menu .fab-action::before{animation:none!important;opacity:.35!important}
 }

@@ -19,7 +19,8 @@
   --sidebar-w:276px; --sidebar-collapsed:72px;
   --glass:blur(44px) saturate(200%);
   --glass-soft:blur(28px) saturate(175%);
-  --glass-tint:linear-gradient(155deg,rgba(255,255,255,.1) 0%,rgba(255,255,255,.02) 42%,rgba(255,255,255,.06) 100%);
+  /* Sheen follows user accent (--accent-rgb updated by theme picker) */
+  --glass-tint:linear-gradient(155deg,rgba(var(--accent-rgb),.16) 0%,rgba(255,255,255,.05) 38%,rgba(var(--accent-rgb),.1) 100%);
   --liquid-edge:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.12);
   --shadow-sm:0 2px 12px rgba(0,0,0,.28);
   --shadow-card:0 8px 32px rgba(0,0,0,.38),var(--liquid-edge);
