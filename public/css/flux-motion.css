@@ -7,9 +7,9 @@
 .dash-hero{
   display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
   margin-bottom:20px;padding:22px 24px;border-radius:var(--r-lg);
-  background:linear-gradient(135deg,rgba(var(--accent-rgb),.08) 0%,rgba(var(--purple-rgb),.06) 45%,rgba(var(--green-rgb),.04) 100%);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 8px 40px rgba(0,0,0,.35),0 0 0 1px rgba(var(--accent-rgb),.06) inset,0 0 48px rgba(var(--accent-rgb),.06);
+  background:linear-gradient(135deg,rgba(var(--accent-rgb),.12) 0%,rgba(var(--purple-rgb),.08) 45%,rgba(var(--green-rgb),.05) 100%);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 12px 48px rgba(0,0,0,.38),var(--liquid-edge),0 0 56px rgba(var(--accent-rgb),.1);
   backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);
   position:relative;overflow:hidden;
   transform:translateZ(0);
@@ -59,12 +59,14 @@
 .dash-energy{
   display:flex;align-items:center;gap:14px;flex-wrap:wrap;
   padding:14px 18px;border-radius:var(--r);
-  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  background:linear-gradient(145deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.02) 100%);
+  border:1px solid var(--border2);
   margin-bottom:14px;
-  box-shadow:0 0 24px rgba(var(--accent-rgb),.04);
+  backdrop-filter:var(--glass-soft);-webkit-backdrop-filter:var(--glass-soft);
+  box-shadow:0 4px 28px rgba(0,0,0,.25),var(--liquid-edge),0 0 32px rgba(var(--accent-rgb),.06);
   transition:box-shadow var(--t-slow) var(--ease),border-color var(--t-slow) var(--ease),transform var(--t-base) var(--ease);
 }
-.dash-energy:hover{border-color:rgba(var(--accent-rgb),.15);box-shadow:0 4px 28px rgba(var(--accent-rgb),.08)}
+.dash-energy:hover{border-color:rgba(var(--accent-rgb),.2);box-shadow:0 8px 36px rgba(0,0,0,.3),var(--liquid-edge),0 0 40px rgba(var(--accent-rgb),.1)}
 .dash-energy-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:600}
 .dash-energy input[type=range]{
   flex:1;min-width:120px;height:8px;border-radius:999px;
@@ -83,7 +85,7 @@
 
 /* ── Glass cards + lift ── */
 .card,.focus-card{
-  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);
+  backdrop-filter:var(--glass-soft);-webkit-backdrop-filter:var(--glass-soft);
   border-radius:var(--r-lg)!important;
 }
 .card.card-interactive:hover,.focus-card:hover{
@@ -92,10 +94,10 @@
   border-color:rgba(var(--accent-rgb),.18)!important;
 }
 
-/* ── Sidebar: active glow ── */
+/* ── Sidebar: active glow (liquid glass; base layer in styles.css) ── */
 .sidebar{
-  background:linear-gradient(180deg,rgba(18,24,38,.94) 0%,rgba(11,15,26,.92) 100%);
-  border-right-color:rgba(var(--accent-rgb),.08);
+  background:linear-gradient(195deg,rgba(22,30,48,.58) 0%,rgba(10,14,24,.48) 100%)!important;
+  border-right-color:rgba(255,255,255,.08)!important;
   transition:width var(--t-slow) cubic-bezier(.22,1,.36,1),min-width var(--t-slow) cubic-bezier(.22,1,.36,1),box-shadow var(--t-slow) ease;
 }
 .nav-item{
@@ -132,7 +134,7 @@
 /* ── Task row: glass + completion burst hook ── */
 .task-item{
   border-radius:var(--r-sm)!important;
-  backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);
+  backdrop-filter:var(--glass-soft)!important;-webkit-backdrop-filter:var(--glass-soft)!important;
   transition:transform var(--t-base) var(--ease-spring),box-shadow var(--t-base) ease,border-color var(--t-base) ease!important;
 }
 .task-item:not(.task-done):hover{
@@ -282,10 +284,11 @@
 
 /* ── Topbar glass ── */
 .topbar{
-  background:rgba(11,15,26,.78)!important;
-  backdrop-filter:blur(24px) saturate(160%)!important;
-  -webkit-backdrop-filter:blur(24px) saturate(160%)!important;
-  border-bottom-color:rgba(var(--accent-rgb),.08)!important;
+  background:linear-gradient(180deg,rgba(16,20,36,.65) 0%,rgba(8,10,20,.52) 100%)!important;
+  backdrop-filter:var(--glass)!important;
+  -webkit-backdrop-filter:var(--glass)!important;
+  border-bottom-color:rgba(255,255,255,.08)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 12px 48px rgba(0,0,0,.25)!important;
 }
 
 /* ── Parallax scroll (subtle) ── */
