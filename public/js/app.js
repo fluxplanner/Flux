@@ -3046,6 +3046,7 @@ function confirmGuestLogin(){
   if(!onboarded&&!hasData){
     showOnboarding();
   }else{
+    if(!load('flux_tour_done',false))save('flux_tour_done',true);
     document.getElementById('app').classList.add('visible');
     renderSidebars();
   }
@@ -3214,6 +3215,8 @@ async function handleSignedIn(user,session){
   if(isFirstTime){
     if(ob)ob.classList.add('visible');
   }else{
+    // Returning user — skip the tour
+    if(!load('flux_tour_done',false))save('flux_tour_done',true);
     if(ob)ob.classList.remove('visible');
     showApp();
     // Call _updateUserUI AFTER showApp() so DOM elements are visible
