@@ -2159,23 +2159,7 @@ body::before{opacity:.5!important}
   50%{box-shadow:0 6px 24px rgba(var(--accent-rgb),.4),0 0 0 6px rgba(var(--accent-rgb),.06)}
 }
 
-/* ── FAB MENU ITEMS: STAGGER IN ── */
-.fab-menu .fab-action{
-  opacity:0;transform:translateY(8px) translateX(12px) scale(.85);
-  transition:opacity .25s ease,transform .3s cubic-bezier(.34,1.56,.64,1),border-color .15s ease,box-shadow .2s ease,background .15s ease!important;
-}
-.fab-menu.open .fab-action{opacity:1;transform:translateY(0) translateX(0) scale(1)}
-.fab-menu.open .fab-action:nth-child(1){transition-delay:.03s}
-.fab-menu.open .fab-action:nth-child(2){transition-delay:.07s}
-.fab-menu.open .fab-action:nth-child(3){transition-delay:.11s}
-.fab-menu.open .fab-action:nth-child(4){transition-delay:.15s}
-.fab-menu.open .fab-action:nth-child(5){transition-delay:.19s}
-.fab-menu.open .fab-action:hover{
-  transform:translateX(-8px) scale(1.04)!important;
-  border-color:rgba(var(--accent-rgb),.35);
-  box-shadow:0 8px 28px rgba(0,0,0,.45),0 0 12px rgba(var(--accent-rgb),.15);
-}
-.fab-menu.open .fab-action:active{transform:translateX(-3px) scale(.95)!important}
+/* FAB menu motion + layout: public/css/flux-motion.css */
 
 /* ── FILTER CHIPS: PRESS EFFECT ── */
 .dash-filters .tmode-btn{transition:all .15s var(--ease-spring)!important}
