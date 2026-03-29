@@ -14,38 +14,63 @@ function isLikelyLowEndDevice(){
   return false;
 }
 
-/** Returning users: Flux ring + wordmark only (no emoji, no secondary bar). */
+/** Returning users: gradient bar loader + wordmark (no circle ring). */
 function runShortSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
+  const reduce=prefersReducedMotion();
   splash.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#0B0F1A 0%,#121826 45%,#0d1528 100%);z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden';
+  const barAnim=reduce
+    ? 'splashBarFill .38s cubic-bezier(.22,1,.36,1) forwards'
+    : 'splashBarFill 0.92s cubic-bezier(.22,1,.36,1) 0.14s forwards, splashBarSheen 2.2s linear infinite';
   splash.innerHTML=`
-    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;animation:splashFadeIn .5s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:1">
-      <div style="position:relative;width:104px;height:104px">
-        <svg viewBox="0 0 100 100" width="104" height="104" style="transform:rotate(-90deg);filter:drop-shadow(0 0 16px rgba(0,194,255,.45))">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" pathLength="100"/>
-          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#fluxSplashGrad)" stroke-width="5" stroke-linecap="round" pathLength="100"
-            stroke-dasharray="0 100" style="animation:splashRing .95s cubic-bezier(.34,1.56,.64,1) .12s forwards"/>
-          <defs><linearGradient id="fluxSplashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#00C2FF"/><stop offset="50%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#22FF88"/>
-          </linearGradient></defs>
-        </svg>
+    <div class="splash-veil" style="position:absolute;inset:0;pointer-events:none;background:
+      radial-gradient(ellipse 85% 55% at 50% -10%,rgba(0,194,255,.14) 0%,transparent 52%),
+      radial-gradient(ellipse 70% 50% at 100% 100%,rgba(124,92,255,.1) 0%,transparent 55%),
+      radial-gradient(ellipse 50% 40% at 0% 90%,rgba(34,255,136,.06) 0%,transparent 50%);
+      animation:${reduce?'none':'splashVeilDrift 4.5s ease-in-out infinite alternate'};opacity:.95"></div>
+    <div class="splash-grid" style="position:absolute;inset:0;pointer-events:none;opacity:.22;
+      background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+      background-size:24px 24px;mask-image:radial-gradient(ellipse 75% 65% at 50% 50%,#000 15%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 50%,#000 15%,transparent 75%)"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:22px;animation:splashFadeIn .5s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:2;width:min(320px,82vw)">
+      <div style="position:relative;width:100%;max-width:280px">
+        <div class="splash-bar-glow" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:110%;height:28px;pointer-events:none;
+          background:radial-gradient(ellipse 55% 90% at 50% 50%,rgba(0,194,255,.35),transparent 72%);
+          filter:blur(12px);opacity:.75;animation:${reduce?'none':'splashGlowPulse 1.4s ease-in-out infinite alternate'}"></div>
+        <div style="height:7px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;position:relative;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 24px rgba(0,0,0,.35)">
+          <div class="splash-bar-fill" style="height:100%;width:100%;transform-origin:left center;transform:scaleX(0);
+            background:linear-gradient(90deg,#00C2FF 0%,#5B9DFF 35%,#7C5CFF 68%,#22FF88 100%);
+            background-size:200% 100%;border-radius:999px;
+            animation:${barAnim};
+            box-shadow:0 0 18px rgba(0,194,255,.55),0 0 32px rgba(124,92,255,.25)"></div>
+          <div class="splash-bar-glint" style="position:absolute;inset:0;pointer-events:none;border-radius:inherit;overflow:hidden">
+            <div style="position:absolute;top:0;bottom:0;width:42%;left:-20%;
+              background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+              animation:${reduce?'none':'splashGlint 1.1s ease-in-out infinite'};opacity:.5"></div>
+          </div>
+        </div>
       </div>
-      <div style="font-family:'Inter','Plus Jakarta Sans',system-ui,sans-serif;font-size:2.25rem;font-weight:800;letter-spacing:-0.04em;
+      <div style="font-family:'Inter','Plus Jakarta Sans',system-ui,sans-serif;font-size:2.25rem;font-weight:800;letter-spacing:-0.04em;text-align:center;
         background:linear-gradient(135deg,#fff 0%,#00C2FF 50%,#7C5CFF 100%);
         -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-        filter:drop-shadow(0 0 20px rgba(0,194,255,.4));animation:splashTitle .7s cubic-bezier(.22,1,.36,1) .18s both">Flux</div>
+        filter:drop-shadow(0 0 20px rgba(0,194,255,.4));animation:splashTitle .72s cubic-bezier(.22,1,.36,1) .2s both">Flux</div>
     </div>
     <style>
-      @keyframes splashFadeIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
-      @keyframes splashRing{to{stroke-dasharray:88 100}}
-      @keyframes splashTitle{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+      @keyframes splashFadeIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+      @keyframes splashTitle{from{opacity:0;transform:translateY(8px);letter-spacing:0.02em}to{opacity:1;transform:none;letter-spacing:-0.04em}}
+      @keyframes splashBarFill{to{transform:scaleX(1)}}
+      @keyframes splashBarSheen{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+      @keyframes splashGlint{0%{transform:translateX(-30%) skewX(-12deg)}100%{transform:translateX(340%) skewX(-12deg)}}
+      @keyframes splashGlowPulse{0%{opacity:.45;filter:blur(12px)}100%{opacity:.85;filter:blur(14px)}}
+      @keyframes splashVeilDrift{0%{transform:scale(1) translate(0,0)}100%{transform:scale(1.04) translate(-1%,1%)}}
     </style>`;
+  const dur=reduce?560:1100;
   setTimeout(()=>{
     splash.style.transition='opacity .32s ease';
     splash.style.opacity='0';
     setTimeout(()=>{splash.style.display='none';splash.innerHTML='';callback();},320);
-  },1050);
+  },dur);
 }
 
 /** ~3s War Robots–inspired Flux intro: hyperspace → rings → logo → handoff */
