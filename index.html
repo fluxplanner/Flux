@@ -577,6 +577,27 @@
     <!-- ─── CALENDAR ─── -->
     <div id="calendar" class="panel">
       <div class="cal-layout">
+        <div class="card cal-hero-card">
+          <div class="cal-nav-row">
+            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+            <div class="cal-month-label" id="calMonthLabel"></div>
+            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend-bar">
+            <span>🟦 A Day</span><span>🟩 B Day</span><span>📵 No-HW</span><span>🔴 Overdue</span>
+          </div>
+          <div class="cal-selected-integrated" id="calDayCard">
+            <div class="cal-selected-header">
+              <div class="cal-day-title" id="calDayTitle">Select a day</div>
+              <div class="cal-selected-actions">
+                <button type="button" id="calAddBtn" onclick="openAddForDate()" class="cal-add-btn" style="display:none">+ Task</button>
+                <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Event</button>
+              </div>
+            </div>
+            <div id="calDayTasks"></div>
+          </div>
+        </div>
         <div class="card cal-schedule-setup">
           <h3 style="margin:0 0 12px">Cycle days &amp; weekly schedule</h3>
           <p style="font-size:.78rem;color:var(--muted2);margin:0 0 14px;line-height:1.45">Set how <strong>A / B</strong> (or longer) days rotate, and add activities that repeat every week (e.g. Taekwondo on Mon, Wed, Thu) without re-entering them.</p>
@@ -615,27 +636,6 @@
             </div>
             <button type="button" onclick="addWeeklyRule()" style="padding:9px 16px;font-size:.82rem;margin-bottom:14px">+ Add weekly activity</button>
             <div id="weeklyRulesList" style="font-size:.82rem"></div>
-          </div>
-        </div>
-        <div class="card cal-hero-card">
-          <div class="cal-nav-row">
-            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-            <div class="cal-month-label" id="calMonthLabel"></div>
-            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(1)">›</button>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
-          <div class="cal-legend-bar">
-            <span>🟦 A Day</span><span>🟩 B Day</span><span>📵 No-HW</span><span>🔴 Overdue</span>
-          </div>
-          <div class="cal-selected-integrated" id="calDayCard">
-            <div class="cal-selected-header">
-              <div class="cal-day-title" id="calDayTitle">Select a day</div>
-              <div class="cal-selected-actions">
-                <button type="button" id="calAddBtn" onclick="openAddForDate()" class="cal-add-btn" style="display:none">+ Task</button>
-                <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Event</button>
-              </div>
-            </div>
-            <div id="calDayTasks"></div>
           </div>
         </div>
         <div class="cal-bottom-row">
