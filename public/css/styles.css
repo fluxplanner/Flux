@@ -124,7 +124,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .main-content{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden}
 
 .topbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(7,8,15,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:30;gap:12px}
-.topbar-left{font-weight:800;font-size:1.05rem;letter-spacing:-.3px;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transition:background .3s ease}
+.topbar-left.topbar-title{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  font-weight:800;
+  font-size:clamp(1.05rem,1.8vw,1.22rem);
+  letter-spacing:-.04em;
+  line-height:1.2;
+  color:var(--accent)!important;
+  -webkit-text-fill-color:var(--accent)!important;
+  background:none!important;
+  -webkit-background-clip:unset!important;
+  background-clip:unset!important;
+  transition:color .25s ease;
+}
 .topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
 .date-pill{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);white-space:nowrap}
 .ab-pill{padding:4px 12px;border-radius:20px;font-size:.68rem;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px;display:none;white-space:nowrap}
@@ -352,6 +364,13 @@ details.dash-new-task-compact .dash-nt-body{padding:0 10px 12px}
 }
 .flux-page-header--compact .flux-page-sub{
   font-size:.82rem;max-width:52ch;
+}
+/* Title lives in topbar; optional one-line lead under it */
+.flux-page-header--lead{
+  margin-bottom:16px;padding-bottom:14px;
+}
+.flux-page-header--lead .flux-page-sub{
+  margin:0;max-width:52ch;
 }
 .flux-stack{
   display:flex;flex-direction:column;gap:18px;
@@ -1540,7 +1559,10 @@ button:focus-visible,.nav-item:focus-visible,.tmode-btn:focus-visible,.check:foc
   border-bottom:1px solid rgba(255,255,255,.05)!important;
   min-height:56px!important;
 }
-.topbar-left{font-size:1.15rem!important;font-weight:700!important;letter-spacing:-.3px!important}
+.topbar-left.topbar-title{
+  font-size:1.15rem!important;font-weight:800!important;letter-spacing:-.04em!important;
+  color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;
+}
 .topbar-right{gap:8px!important}
 .topbar-right>.date-pill{padding:4px 12px;font-size:.72rem}
 .btn-icon{
@@ -1953,7 +1975,7 @@ input[type=text],input[type=date],input[type=email],input[type=password],input[t
   .quick-add-panel{padding:12px 16px}
   .search-box{margin:0 12px;max-width:none}
   .topbar{padding:8px 16px!important}
-  .topbar-left{font-size:.92rem!important}
+  .topbar-left.topbar-title{font-size:.92rem!important}
   .stat-n{font-size:1.3rem!important}
   .focus-time{font-size:1.5rem!important}
   .mob-drawer{width:280px!important}

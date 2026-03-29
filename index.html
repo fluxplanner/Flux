@@ -421,7 +421,7 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
         <button class="mob-menu-btn" onclick="openDrawer()">☰</button>
-        <span class="topbar-left" id="topbarTitle">Dashboard</span>
+        <span class="topbar-left topbar-title" id="topbarTitle">Dashboard</span>
       </div>
       <div class="topbar-right">
         <button class="btn-icon" onclick="openGlobalSearch()" title="Search (⌘K)">🔍</button>
@@ -577,8 +577,7 @@
 
     <!-- ─── CALENDAR ─── -->
     <div id="calendar" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Calendar</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Month view, cycle days, weekly activities, and what’s ahead.</p>
       </header>
       <div class="cal-layout flux-stack">
@@ -704,8 +703,7 @@
 
     <!-- ─── SCHOOL INFO ─── -->
     <div id="school" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">School</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Locker, classes, schedule import, and private teacher notes.</p>
       </header>
       <div class="flux-stack">
@@ -798,8 +796,7 @@
 
     <!-- ─── GRADES ─── -->
     <div id="grades" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Grades</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Import, GPA, weights, what-if finals, and your safety buffer.</p>
       </header>
       <div class="flux-stack">
@@ -871,8 +868,7 @@
 
     <!-- ─── NOTES ─── -->
     <div id="notes" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Notes</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Search, rich text, flashcards, and AI summaries.</p>
       </header>
       <div class="flux-stack">
@@ -930,8 +926,7 @@
 
     <!-- ─── TIMER ─── -->
     <div id="timer" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Focus timer</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Pomodoro, ambient sound, streaks, and where your time goes.</p>
       </header>
       <div class="flux-stack">
@@ -1022,8 +1017,7 @@
 
     <!-- ─── PROFILE ─── -->
     <div id="profile" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Profile</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Identity, study style, stats, badges, and Canvas.</p>
       </header>
       <div class="flux-stack">
@@ -1098,8 +1092,7 @@
 
     <!-- ─── EXTRACURRICULARS ─── -->
     <div id="goals" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Extracurriculars</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Activities, target schools, goals, AI advisor, and college chat.</p>
       </header>
       <div class="flux-stack">
@@ -1181,8 +1174,7 @@
 
     <!-- ─── MOOD ─── -->
     <div id="mood" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Mood</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Daily check-in, history, affirmations, and breathing.</p>
       </header>
       <div class="flux-stack">
@@ -1217,8 +1209,7 @@
 
     <!-- ─── GMAIL ─── -->
     <div id="gmail" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Gmail</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">School messages in one place — refresh to load and add to tasks.</p>
       </header>
       <div class="flux-stack">
@@ -1235,10 +1226,6 @@
     <!-- ─── AI ─── -->
     <div id="ai" class="panel flux-page" style="display:none;flex-direction:column;height:calc(100vh - 60px);padding:0;max-width:none">
       <div class="flux-ai-top">
-      <header class="flux-page-header flux-page-header--compact" style="margin:0;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06)">
-        <h1 class="flux-page-title">Flux AI</h1>
-        <p class="flux-page-sub">Tutoring, plans, and flashcards — Groq · Llama 3.3 70B</p>
-      </header>
       <!-- Chat tabs bar -->
       <div style="display:flex;align-items:center;gap:6px;padding:8px 14px 0;overflow-x:auto;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
         <div id="aiChatTabs" style="display:flex;gap:6px;flex:1;overflow-x:auto"></div>
@@ -1278,8 +1265,7 @@
 
     <!-- ─── SETTINGS ─── -->
     <div id="settings" class="panel flux-page">
-      <header class="flux-page-header">
-        <h1 class="flux-page-title">Settings</h1>
+      <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Theme, alerts, account, tabs, data, and about.</p>
       </header>
       <div class="flux-stack">
