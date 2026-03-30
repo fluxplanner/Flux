@@ -107,12 +107,12 @@ function checkTimePoverty(){
   if(totalEstMin>freeMin&&freeMin>0&&todayTasks.length>0){
     banner.classList.add('on');
     const over=Math.round(totalEstMin-freeMin);
-    banner.innerHTML=`<span style="font-size:1.2rem">⚠️</span>
-      <div style="flex:1">
-        <div style="font-size:.85rem;font-weight:700;color:var(--gold)">Time Poverty Alert</div>
-        <div style="font-size:.75rem;color:rgba(255,255,255,.7)">You have ${Math.round(totalEstMin)}min of tasks but only ~${Math.round(freeMin)}min free today. You're <strong>${over}min over</strong>.</div>
+    banner.innerHTML=`<span class="time-poverty-banner__icon" aria-hidden="true">⚠</span>
+      <div class="time-poverty-banner__body">
+        <div class="time-poverty-banner__title">Today may not fit your free time</div>
+        <div class="time-poverty-banner__detail">~${Math.round(totalEstMin)} min of work estimated vs ~${Math.round(freeMin)} min free (about <strong>${over} min short</strong>). Consider moving something or trimming estimates.</div>
       </div>
-      <button onclick="this.parentElement.classList.remove('on')" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:1rem;padding:0;transform:none;box-shadow:none">✕</button>`;
+      <button type="button" class="time-poverty-banner__dismiss" onclick="this.parentElement.classList.remove('on')" aria-label="Dismiss">✕</button>`;
   } else {
     banner.classList.remove('on');
   }
@@ -454,7 +454,13 @@ function refreshAIContext(){
 function quietHours(){if(!settings.quiet)return false;const now=new Date(),h=now.getHours(),m=now.getMinutes(),cur=h*60+m;const[sh,sm]=(settings.dndStart||'07:50').split(':').map(Number);const[eh,em]=(settings.dndEnd||'14:30').split(':').map(Number);return cur>=sh*60+sm&&cur<=eh*60+em;}
 function panicCheck(task){if(!settings.panic||quietHours())return;const now=new Date(),due=new Date((task.date||'')+'T23:59:00');if((due-now)/3600000<12&&(due-now)>0)checkAllPanic();}
 function checkAllPanic(){if(!settings.panic||quietHours()){hidePanic();return;}const now=new Date(),in12=new Date(now.getTime()+12*3600000);const urgent=tasks.filter(t=>{if(!t.done&&t.date){const d=new Date(t.date+'T23:59:00');return d>now&&d<=in12;}return false;});if(urgent.length)showPanic(urgent);else hidePanic();}
-function showPanic(list){document.getElementById('panicBanner').classList.add('on');const pp=document.getElementById('panicPill');if(pp)pp.style.display='flex';document.getElementById('panicList').textContent=list.map(t=>t.name).join(' · ');}
+function showPanic(list){
+  const banner=document.getElementById('panicBanner');if(banner)banner.classList.add('on');
+  const pp=document.getElementById('panicPill');if(pp)pp.style.display='flex';
+  const title=document.getElementById('panicTitle');
+  if(title)title.textContent=list.length===1?'Due in the next 12 hours':`Due in the next 12 hours (${list.length})`;
+  const pl=document.getElementById('panicList');if(pl)pl.textContent=list.map(t=>t.name).join(' · ');
+}
 function hidePanic(){document.getElementById('panicBanner').classList.remove('on');const pp=document.getElementById('panicPill');if(pp)pp.style.display='none';}
 
 // ══ SPLASH ══
@@ -800,7 +806,38 @@ function spawnTaskBurstFromEl(el){
     setTimeout(()=>p.remove(),500);
   }
 }
+function renderDashWeekStrip(){
+  const el=document.getElementById('dashWeekStrip');if(!el)return;
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  const counts=days.map(day=>{
+    const ds=day.toISOString().slice(0,10);
+    return tasks.filter(t=>{
+      if(!t.done)return false;
+      if(t.completedAt)return new Date(t.completedAt).toISOString().slice(0,10)===ds;
+      return false;
+    }).length;
+  });
+  const total=counts.reduce((a,b)=>a+b,0);
+  const max=Math.max(1,...counts);
+  const label=days.map(d=>d.toLocaleDateString('en-US',{weekday:'short'}));
+  el.innerHTML=`<div class="dash-week-strip-inner">
+    <div class="dash-week-head"><span class="dash-week-kicker">Last 7 days</span><span class="dash-week-total">${total} done</span></div>
+    <div class="dash-week-bars" role="img" aria-label="Completions per day: ${counts.join(', ')}">${counts.map((c,i)=>{
+      const h=Math.round(Math.max(14,(c/max)*40));
+      const tip=`${label[i]} ${days[i].getMonth()+1}/${days[i].getDate()}: ${c} completed`.replace(/"/g,'&quot;');
+      return`<div class="dash-week-col" title="${tip}"><div class="dash-week-bar" style="height:${h}px"></div><span class="dash-week-daylbl">${label[i].slice(0,1)}</span>${c>0?`<span class="dash-week-num">${c}</span>`:''}</div>`;
+    }).join('')}</div>
+    <p class="dash-week-footnote">By completion date when available.</p>
+  </div>`;
+}
 function renderStats(){const now=new Date();now.setHours(0,0,0,0);const dueToday=tasks.filter(t=>!t.done&&t.date&&t.date===todayStr()).length,done=tasks.filter(t=>t.done).length,over=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length,active=tasks.filter(t=>!t.done).length;document.getElementById('statsRow').innerHTML=`<div class="stat" onclick="setFilter('today',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--accent)">${dueToday}</div><div class="stat-l">Due Today</div></div><div class="stat" onclick="setFilter('active',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--text)">${active}</div><div class="stat-l">Active</div></div><div class="stat" onclick="setFilter('overdue',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:${over>0?'var(--red)':'var(--muted)'}">${over}</div><div class="stat-l">Overdue</div></div><div class="stat" onclick="setFilter('done',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--green)">${done}</div><div class="stat-l">Completed</div></div>`;
+  renderDashWeekStrip();
   if(typeof updateTopbarStats==='function')updateTopbarStats();
   updateDashHero();
 }
@@ -827,7 +864,7 @@ function renderTasks(){
   const el=document.getElementById('taskList');
   if(!list.length){
     const msgs={active:'All clear — nothing to do right now',done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet'};
-    el.innerHTML=`<div class="empty"><div class="empty-icon">✓</div><div class="empty-title">${msgs[taskFilter]||msgs.all}</div><div class="empty-sub">Press <span class="kbd-hint">+</span> or <span class="kbd-hint">⌘K</span> to add a task</div></div>`;
+    el.innerHTML=`<div class="empty"><div class="empty-icon">✓</div><div class="empty-title">${msgs[taskFilter]||msgs.all}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or quick add — <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
     return;
   }
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},other:{l:'Other',c:'var(--muted)'}};
@@ -854,8 +891,8 @@ function renderTasks(){
     return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" draggable="true" style="${blockedStyle}">
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
-<div class="task-text ${t.done?'done':''}">${esc(t.name)} ${depBadge}</div>
-<div class="task-tags">
+<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)} ${depBadge}</div>
+<div class="task-tags task-meta-line">
 ${sub?`<span class="task-chip task-chip-subject">${sub.short}</span>`:''}
 ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}">${ds}${isNP?' 📵':''}</span>`:''}
@@ -883,7 +920,45 @@ ${stBar}${procras}
   }
   el.innerHTML=html;
 }
-function renderSmartSug(){const active=tasks.filter(t=>!t.done).sort((a,b)=>(b.urgencyScore||0)-(a.urgencyScore||0));const card=document.getElementById('smartSugCard');if(!active.length){card.style.display='none';return;}card.style.display='block';const top=active[0];const sub=getSubjects()[top.subject];const energy=parseInt(localStorage.getItem('flux_energy')||'3');const tip=energy<=2?'(low energy — try a short review)':energy>=4?'(high energy — tackle this first!)':'';document.getElementById('smartSug').textContent=top.name+(sub?' · '+sub.short:'');document.getElementById('smartSugSub').textContent=(top.type||'hw').toUpperCase()+(top.date?' · due '+new Date(top.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'')+' '+tip;}
+function buildSmartSugWhy(t,energy){
+  const bits=[];
+  const now=new Date();
+  if(t.date){
+    const due=new Date(t.date+'T23:59:59');
+    const h=(due-now)/3600000;
+    if(h>0&&h<=12)bits.push('due within 12h');
+    else if(h>12&&h<=36)bits.push('due in ~1–2 days');
+    else if(h>36)bits.push('deadline approaching');
+  }
+  if(t.priority==='high')bits.push('high priority');
+  if((t.rescheduled||0)>=2)bits.push('rescheduled often');
+  if(energy<=2)bits.push('fits a low-energy block');
+  else if(energy>=4)bits.push('good for harder work now');
+  if(!bits.length)bits.push('top of your urgency sort');
+  return bits.slice(0,3).join(' · ');
+}
+function renderSmartSug(){
+  const active=tasks.filter(t=>!t.done).sort((a,b)=>(b.urgencyScore||0)-(a.urgencyScore||0));
+  const card=document.getElementById('smartSugCard');
+  const whyEl=document.getElementById('smartSugWhy');
+  if(!active.length){
+    if(card)card.style.display='none';
+    if(whyEl){whyEl.textContent='';whyEl.hidden=true;}
+    return;
+  }
+  if(card)card.style.display='block';
+  const top=active[0];
+  const sub=getSubjects()[top.subject];
+  const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+  const su=document.getElementById('smartSug');if(su)su.textContent=top.name+(sub?' · '+sub.short:'');
+  const subEl=document.getElementById('smartSugSub');
+  if(subEl)subEl.textContent=(top.type||'hw').toUpperCase()+(top.date?' · Due '+new Date(top.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'');
+  if(whyEl){
+    const line=buildSmartSugWhy(top,energy);
+    whyEl.textContent=line?'Why this first: '+line+'.':'';
+    whyEl.hidden=!line;
+  }
+}
 function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];const card=document.getElementById('countdownCard');if(!next){card.style.display='none';return;}card.style.display='block';const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));const sub=getSubjects()[next.subject];const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';document.getElementById('countdownLabel').textContent=next.name+(sub?' · '+sub.short:'');document.getElementById('countdownGrid').innerHTML=[[diff,'Days','var(--accent)'],[Math.floor(diff/7),'Weeks','var(--accent)'],[new Date(next.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),'Date','var(--accent)'],[diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC]].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`).join('');}
 function setEnergy(v){localStorage.setItem('flux_energy',v);const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[v];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[v];renderSmartSug();}
 function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';
@@ -2811,7 +2886,7 @@ const SYNC_KEYS=['tasks','grades','notes','habits','goals','colleges','moodHisto
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
-  if(status==='synced'){el.className='sync-badge synced';el.textContent='✓ Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced">✓ Synced</span>';}
+  if(status==='synced'){el.className='sync-badge synced sync-badge--quiet';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
   else if(status==='syncing'){el.className='sync-badge syncing';el.textContent='↑ Syncing...';if(sl)sl.textContent='Syncing...';}
   else{el.className='sync-badge offline';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
   el.style.display=currentUser?'flex':'none';
@@ -3353,8 +3428,13 @@ function fabFocus(){
 // ══ KEYBOARD SHORTCUTS ══
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
-    // Cmd+K / Ctrl+K — Command Palette (works from anywhere)
-    if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCommandPalette();return;}
+    // ⌘⇧K / Ctrl+Shift+K — Global search · ⌘K / Ctrl+K — Command palette
+    if((e.metaKey||e.ctrlKey)&&e.key?.toLowerCase()==='k'){
+      e.preventDefault();
+      if(e.shiftKey)openGlobalSearch();
+      else openCommandPalette();
+      return;
+    }
     // Cmd+D — Deep Work mode
     if((e.metaKey||e.ctrlKey)&&e.key==='d'){e.preventDefault();startDeepWork();return;}
     // Cmd+P — Present Mode
@@ -3403,15 +3483,16 @@ function openCommandPalette(){
   _cpOpen=true;
   const overlay=document.createElement('div');
   overlay.id='cmdPalette';
-  overlay.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding-top:15vh;background:rgba(0,0,0,.6);backdrop-filter:blur(8px)';
+  overlay.className='cmd-palette-overlay';
   overlay.innerHTML=`
-    <div style="width:100%;max-width:580px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:18px;box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(var(--accent-rgb),.1);overflow:hidden;animation:cmdIn .15s ease">
+    <div class="cmd-palette-dialog" role="dialog" aria-modal="true" aria-label="Command palette" style="width:100%;max-width:580px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:18px;box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(var(--accent-rgb),.1);overflow:hidden;animation:cmdIn .15s ease">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">
-        <span style="color:var(--accent);font-size:1rem">⌘</span>
-        <input id="cmdInput" placeholder="Search tasks, navigate, add task..." style="flex:1;background:none;border:none;outline:none;font-size:.95rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif" autocomplete="off">
-        <kbd style="font-size:.65rem;padding:2px 6px;background:var(--card2);border:1px solid var(--border2);border-radius:4px;color:var(--muted)">ESC</kbd>
+        <span style="color:var(--accent);font-size:1rem" aria-hidden="true">⌘</span>
+        <input id="cmdInput" placeholder="Search tasks, navigate, add task…" style="flex:1;background:none;border:none;outline:none;font-size:.95rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif" autocomplete="off" aria-label="Filter commands">
+        <kbd style="font-size:.65rem;padding:2px 6px;background:var(--card2);border:1px solid var(--border2);border-radius:4px;color:var(--muted)">Esc</kbd>
       </div>
       <div id="cmdResults" style="max-height:380px;overflow-y:auto;padding:8px"></div>
+      <div class="cmd-palette-footer">⌘⇧K / Ctrl+Shift+K search · ↑↓ choose · Enter run · Esc close</div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeCommandPalette();});
@@ -3441,6 +3522,7 @@ function renderCmdResults(){
   
   // Build commands
   const cmds=[];
+  cmds.push({icon:'🔍',label:'Search tasks & notes',cat:'Actions',action:()=>{closeCommandPalette();openGlobalSearch();}});
   
   // Navigation
   const navItems=[
@@ -3976,27 +4058,14 @@ function reorderDashboard(){
 }
 
 // ══ ITEM 22 — QUICK-ADD TASK BAR ══
+// Enter is handled globally → submitQuickAdd() (unified NL parse). Esc closes the floating panel.
 function initQuickAdd(){
   const qa=document.getElementById('quickAddInput');if(!qa)return;
   qa.addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey){
-      e.preventDefault();
-      const val=qa.value.trim();if(!val)return;
-      const priority=val.includes(' high')?'high':val.includes(' low')?'low':'med';
-      const name=val.replace(/ high| low| med/g,'').trim();
-      let date='';
-      const tmr=new Date(TODAY);tmr.setDate(TODAY.getDate()+1);
-      if(val.toLowerCase().includes('tomorrow'))date=tmr.toISOString().slice(0,10);
-      else if(val.toLowerCase().includes('today'))date=TODAY.toISOString().slice(0,10);
-      const task={id:Date.now()+Math.random(),name,priority,date,type:'hw',done:false,rescheduled:0,createdAt:Date.now(),urgencyScore:0,estTime:0,difficulty:3};
-      task.urgencyScore=calcUrgency(task);
-      tasks.unshift(task);save('tasks',tasks);
-      qa.value='';
-      renderStats();renderTasks();renderCalendar();renderCountdown();
-      checkAllPanic();syncKey('tasks',tasks);
-      showToast('✓ Task added');panicCheck(task);
+    if(e.key==='Escape'){
+      closeQuickAdd();
+      qa.blur();
     }
-    if(e.key==='Escape')qa.blur();
   });
 }
 
@@ -5628,25 +5697,6 @@ function addTaskFromNL(text){
   return true;
 }
 
-// Wire NL to quick-add (override initQuickAdd to support NL)
-function initQuickAddNL(){
-  const qa=document.getElementById('quickAddInput');if(!qa)return;
-  const hint=document.getElementById('qaHint');
-  qa.addEventListener('input',()=>{
-    if(hint){const v=qa.value.trim();hint.style.display=v?'block':'none';}
-  });
-  qa.addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey){
-      e.preventDefault();
-      const val=qa.value.trim();if(!val)return;
-      const ok=addTaskFromNL(val);
-      if(ok)qa.value='';
-      if(hint)hint.style.display='none';
-    }
-    if(e.key==='Escape')qa.blur();
-  });
-}
-
 // ══ 2. DEADLINE RISK PREDICTOR ══
 function calcDeadlineRisk(task){
   if(!task.date||task.done)return 0;
@@ -6354,6 +6404,7 @@ function initV4Systems(){
 
 // ── GLOBAL SEARCH ──
 function openGlobalSearch(){
+  closeCommandPalette();
   const overlay=document.getElementById('searchOverlay');
   if(!overlay)return;
   overlay.classList.add('open');
@@ -6404,46 +6455,93 @@ function openQuickAdd(){
   const panel=document.getElementById('quickAddPanel');
   if(!panel)return;
   panel.classList.add('open');
+  panel.setAttribute('role','dialog');
+  panel.setAttribute('aria-modal','true');
+  panel.setAttribute('aria-label','Quick add task');
   const input=document.getElementById('quickAddInput');
   if(input){input.value='';input.focus();}
   updateQuickAddPreview('');
 }
 function closeQuickAdd(){
   const panel=document.getElementById('quickAddPanel');
-  if(panel)panel.classList.remove('open');
+  if(panel){
+    panel.classList.remove('open');
+    panel.removeAttribute('role');
+    panel.removeAttribute('aria-modal');
+    panel.removeAttribute('aria-label');
+  }
   updateQuickAddPreview('');
+}
+function resolveQuickAddParse(raw){
+  if(!raw||!String(raw).trim())return null;
+  const s=String(raw).trim();
+  const nl=parseNLTask(s);
+  if(nl&&nl.name&&nl.name.trim()){
+    return{
+      name:nl.name.trim(),
+      priority:nl.priority||'med',
+      date:nl.date||'',
+      type:nl.type||'hw',
+      subject:nl.subject||'',
+      estTime:nl.estTime||0,
+      difficulty:3
+    };
+  }
+  const p=parseNaturalTask(s);
+  let est=0;
+  const tm=s.match(/(\d+)\s*(min(?:utes?)?|h(?:ours?)?|hr\b)/i);
+  if(tm)est=/h/i.test(tm[2])?parseInt(tm[1],10)*60:parseInt(tm[1],10);
+  return{
+    name:p.name,
+    priority:p.priority,
+    date:p.date,
+    type:p.type,
+    subject:p.subject||'',
+    estTime:est,
+    difficulty:3
+  };
 }
 function updateQuickAddPreview(raw){
   const el=document.getElementById('quickAddParsed');
+  const titleEl=document.getElementById('quickAddPreviewTitle');
   if(!el)return;
-  if(!raw.trim()){el.innerHTML='';return;}
-  const p=parseNaturalTask(raw);
+  if(!raw.trim()){el.innerHTML='';if(titleEl)titleEl.textContent='';return;}
+  const parsed=resolveQuickAddParse(raw);
+  if(!parsed){el.innerHTML='';if(titleEl)titleEl.textContent='';return;}
   let chips='';
-  if(p.subject){const s=getSubjects()[p.subject];chips+=`<span class="task-chip task-chip-subject">${s?s.short:p.subject}</span>`;}
-  if(p.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${p.priority}">${p.priority}</span>`;
-  if(p.date)chips+=`<span class="task-chip task-chip-due">${new Date(p.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
-  if(p.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted);border:1px solid rgba(255,255,255,.05)">${p.type}</span>`;
+  if(parsed.subject){const sub=getSubjects()[parsed.subject];chips+=`<span class="task-chip task-chip-subject">${sub?sub.short:parsed.subject}</span>`;}
+  if(parsed.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${parsed.priority}">${parsed.priority}</span>`;
+  if(parsed.date)chips+=`<span class="task-chip task-chip-due">${new Date(parsed.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
+  if(parsed.type&&parsed.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted2);border:1px solid rgba(255,255,255,.06)">${parsed.type}</span>`;
+  if(parsed.estTime){
+    const tl=parsed.estTime>=60?`${Math.round(parsed.estTime/60)}h`:`${parsed.estTime}m`;
+    chips+=`<span class="task-chip task-chip-time">~${tl}</span>`;
+  }
   el.innerHTML=chips;
+  if(titleEl)titleEl.textContent=parsed.name?`“${parsed.name}”`:'';
 }
 function submitQuickAdd(){
   const input=document.getElementById('quickAddInput');
   if(!input)return;
   const raw=input.value.trim();
   if(!raw)return;
-  const parsed=parseNaturalTask(raw);
+  const parsed=resolveQuickAddParse(raw);
+  if(!parsed||!parsed.name)return;
   const t={
     id:Date.now()+Math.random(),name:parsed.name,
     subject:parsed.subject||'',priority:parsed.priority||'med',
     date:parsed.date||'',type:parsed.type||'hw',
+    estTime:parsed.estTime||0,difficulty:parsed.difficulty||3,
     done:false,rescheduled:0,createdAt:Date.now()
   };
   t.urgencyScore=calcUrgency(t);
   tasks.unshift(t);save('tasks',tasks);
   input.value='';input.focus();
   updateQuickAddPreview('');
-  renderStats();renderTasks();
+  renderStats();renderTasks();renderCalendar();renderCountdown();
+  checkAllPanic();
   showToast('Added: '+t.name,'success');
-  syncKey('tasks',tasks);
+  syncKey('tasks',tasks);panicCheck(t);
 }
 function parseNaturalTask(raw){
   let name=raw,date='',priority='med',type='hw',subject='';
@@ -6487,17 +6585,10 @@ function parseNaturalTask(raw){
   return{name,date,priority,type,subject};
 }
 
-// ── KEYBOARD SHORTCUTS FOR SEARCH + QUICK-ADD ──
+// ── ESC closes search / quick-add (⌘K is command palette — initKeyboardShortcuts) ──
 document.addEventListener('keydown',function(e){
-  if((e.metaKey||e.ctrlKey)&&e.key==='k'){
-    e.preventDefault();
-    const overlay=document.getElementById('searchOverlay');
-    if(overlay?.classList.contains('open'))closeGlobalSearch();
-    else openGlobalSearch();
-    return;
-  }
   if(e.key==='Escape'){
-    closeGlobalSearch();closeQuickAdd();return;
+    closeGlobalSearch();closeQuickAdd();closeCommandPalette();
   }
 });
 

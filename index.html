@@ -424,10 +424,11 @@
         <span class="topbar-left topbar-title" id="topbarTitle">Dashboard</span>
       </div>
       <div class="topbar-right">
-        <button class="btn-icon" onclick="openGlobalSearch()" title="Search (⌘K)">🔍</button>
+        <button type="button" class="btn-icon topbar-search-btn" onclick="openGlobalSearch()" title="Search tasks, notes, and classes (⌘⇧K or Ctrl+Shift+K)">🔍</button>
+        <button type="button" class="btn-icon btn-icon--subtle topbar-cmd-btn" onclick="openCommandPalette()" title="Command palette — ⌘K / Ctrl+K (⌘⇧K / Ctrl+Shift+K = search)" aria-label="Command palette">⌘</button>
         <div class="date-pill" id="datePill"></div>
         <div id="syncIndicator" class="sync-badge offline" style="display:none">○ Local</div>
-        <button class="btn-icon" onclick="dailyShutdown()" title="Daily Shutdown">🌙</button>
+        <button type="button" class="btn-icon btn-icon--subtle" onclick="dailyShutdown()" title="Wind down — review today">🌙</button>
       </div>
       <!-- Hidden elements still needed by JS -->
       <div id="panicPill" style="display:none"></div>
@@ -449,9 +450,12 @@
       </header>
 
       <div class="dash-alerts dash-v2-alerts">
-        <div class="panic-banner" id="panicBanner">
-          <span style="font-size:1.2rem">🚨</span>
-          <div style="flex:1"><div style="font-weight:800;font-size:.88rem;color:#fca5a5">PANIC MODE — Tasks due within 12 hours!</div><div id="panicList" style="font-size:.75rem;color:#fca5a5;margin-top:3px;font-family:'JetBrains Mono',monospace"></div></div>
+        <div class="panic-banner" id="panicBanner" role="status" aria-live="polite">
+          <span class="panic-banner__icon" aria-hidden="true">⏱</span>
+          <div class="panic-banner__body">
+            <div class="panic-banner__title" id="panicTitle">Due in the next 12 hours</div>
+            <div class="panic-banner__list mono" id="panicList"></div>
+          </div>
         </div>
         <div class="time-poverty-banner" id="timePovertyBanner"></div>
       </div>
@@ -478,6 +482,7 @@
           </div>
           <div class="stats-row dash-v2-stats" id="statsRow"></div>
         </div>
+        <div id="dashWeekStrip" class="dash-week-strip" aria-label="Last 7 days — tasks completed"></div>
         <div class="dash-energy dash-v2-energy" id="dashEnergyCard">
           <span class="dash-energy-label">Energy today</span>
           <input type="range" id="energySlider" min="1" max="5" value="3" oninput="setEnergy(this.value)">
@@ -493,6 +498,7 @@
             <div class="dash-v2-suggest-kicker">Next up</div>
             <div id="smartSug" class="dash-v2-suggest-title"></div>
             <div id="smartSugSub" class="dash-v2-suggest-meta"></div>
+            <p id="smartSugWhy" class="dash-v2-suggest-why" hidden></p>
           </div>
         </div>
       </section>
@@ -1528,7 +1534,7 @@
 
   <!-- ── KEYBOARD HINT ── -->
   <div id="keyHint" style="display:none;position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:8px 16px;font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;z-index:200;gap:12px;align-items:center;box-shadow:var(--shadow-card);white-space:nowrap">
-    <span style="color:var(--accent)">N</span> task &nbsp;·&nbsp; <span style="color:var(--accent)">S</span> session &nbsp;·&nbsp; <span style="color:var(--accent)">⌘K</span> palette &nbsp;·&nbsp; <span style="color:var(--accent)">1-6</span> sections
+    <span style="color:var(--accent)">N</span> task &nbsp;·&nbsp; <span style="color:var(--accent)">S</span> session &nbsp;·&nbsp; <span style="color:var(--accent)">⌘⇧K</span> search &nbsp;·&nbsp; <span style="color:var(--accent)">⌘K</span> palette &nbsp;·&nbsp; <span style="color:var(--accent)">1-6</span> sections
   </div>
 
 </div><!-- /app -->
@@ -1569,8 +1575,9 @@
     <input type="text" id="quickAddInput" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
     <button onclick="submitQuickAdd()" id="quickAddSubmit">Add</button>
   </div>
+  <div id="quickAddPreviewTitle" class="quick-add-preview-title" aria-live="polite"></div>
   <div id="quickAddParsed" class="quick-add-parsed"></div>
-  <div class="quick-add-hint">Enter to add · Esc to close · Understands dates, priorities, subjects, and task types</div>
+  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Natural language</span> — dates, priorities, subjects, types, and “30min” estimates</div>
 </div>
 
 <!-- Load scripts -->
