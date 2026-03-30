@@ -857,8 +857,73 @@ function renderDashWeekStrip(){
     <p class="dash-week-footnote">By completion date when available.</p>
   </div>`;
 }
+/** Avg estimated minutes for completed tasks in this subject (history-based hint). */
+function avgEstMinutesForSubject(subjectKey){
+  if(!subjectKey)return null;
+  const done=tasks.filter(t=>t.done&&t.subject===subjectKey&&(t.estTime||0)>0);
+  if(done.length<2)return null;
+  return Math.round(done.reduce((a,t)=>a+(t.estTime||0),0)/done.length);
+}
+function renderWeeklyInsight(){
+  const el=document.getElementById('dashWeeklyInsight');
+  if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
+  const dueToday=tasks.filter(t=>!t.done&&t.date===todayStr()).length;
+  const doneToday=tasks.filter(t=>t.done&&t.completedAt&&new Date(t.completedAt).toISOString().slice(0,10)===todayStr()).length;
+  const openM=tasks.filter(t=>!t.done).reduce((s,t)=>s+(t.estTime||30),0);
+  const lastMood=moodHistory&&moodHistory.length?moodHistory[moodHistory.length-1]:null;
+  const stress=lastMood&&lastMood.stress!=null?parseInt(lastMood.stress,10):3;
+  let burn='Workload looks balanced for the next few days.';
+  if(overdue>=5||(stress>=8&&overdue>=2))burn='Burnout risk: high — drop or defer something non-urgent today.';
+  else if(overdue>=3||stress>=7)burn='Burnout risk: elevated — add a short break and one small win.';
+  else if(overdue>=1)burn='You have overdue work — pick one item to close the loop.';
+  const goalMin=(settings.dailyGoalHrs||2)*60;
+  const feas=openM<=goalMin*2?'If you start soon, clearing urgent work this week is realistic.':'Rough open workload ~'+Math.round(openM/60*10)/10+'h — trim scope or extend dates where possible.';
+  el.innerHTML=`<div class="dash-weekly-insight-inner card">
+    <div class="dash-weekly-insight-kicker">Weekly insight</div>
+    <p class="dash-weekly-insight-body">${burn}</p>
+    <p class="dash-weekly-insight-meta">Today: <strong>${dueToday}</strong> due · <strong>${doneToday}</strong> done · <strong>${overdue}</strong> overdue. ${feas}</p>
+    <div class="dash-weekly-insight-actions">
+      <button type="button" class="btn-sec btn-sm" onclick="openScheduleOptimizerAI()">Fix my schedule (AI)</button>
+    </div>
+  </div>`;
+  el.style.display='block';
+}
+function openScheduleOptimizerAI(){
+  nav('ai');
+  setTimeout(()=>{
+    const inp=document.getElementById('aiInput');
+    if(!inp)return;
+    let ctx='';
+    if(typeof buildFullPlannerContextForAI==='function'){
+      try{ctx=buildFullPlannerContextForAI({maxTotalChars:6500});}catch(e){ctx='';}
+    }
+    inp.value='Optimize my student schedule for the next 7 days. Use this planner context:\n\n'+ctx+'\n\nReply with: (1) ordered list of what to do first, (2) what to defer, (3) one “minimum viable day” if I\'m overwhelmed. Short bullets.';
+    inp.focus();
+    if(typeof showToast==='function')showToast('Flux AI — schedule optimizer','info');
+  },280);
+}
+function autoSplitEditSubtasks(){
+  const title=(document.getElementById('editText')?.value||'').trim();
+  const ta=document.getElementById('editSubtasks');
+  if(!ta||!title){if(typeof showToast==='function')showToast('Add a task title first','warning');return;}
+  let parts=title.split(/[.;]\s+/).map(s=>s.trim()).filter(Boolean);
+  if(parts.length<2){
+    const halves=title.split(/\s+(?:and|&|\+)\s+/i);
+    if(halves.length>=2)parts=halves.map(s=>s.trim()).filter(Boolean);
+  }
+  if(parts.length<2){
+    const words=title.split(/\s+/);
+    const mid=Math.ceil(words.length/2);
+    parts=[words.slice(0,mid).join(' '),words.slice(mid).join(' ')].filter(Boolean);
+  }
+  ta.value=parts.slice(0,12).join('\n');
+  if(typeof showToast==='function')showToast('Subtasks drafted — edit lines as needed','success');
+}
 function renderStats(){const now=new Date();now.setHours(0,0,0,0);const dueToday=tasks.filter(t=>!t.done&&t.date&&t.date===todayStr()).length,done=tasks.filter(t=>t.done).length,over=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length,active=tasks.filter(t=>!t.done).length;document.getElementById('statsRow').innerHTML=`<div class="stat" onclick="setFilter('today',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--accent)">${dueToday}</div><div class="stat-l">Due Today</div></div><div class="stat" onclick="setFilter('active',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--text)">${active}</div><div class="stat-l">Active</div></div><div class="stat" onclick="setFilter('overdue',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:${over>0?'var(--red)':'var(--muted)'}">${over}</div><div class="stat-l">Overdue</div></div><div class="stat" onclick="setFilter('done',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--green)">${done}</div><div class="stat-l">Completed</div></div>`;
   renderDashWeekStrip();
+  renderWeeklyInsight();
   if(typeof updateTopbarStats==='function')updateTopbarStats();
   updateDashHero();
 }
@@ -909,6 +974,8 @@ function renderTasks(){
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
     const sch=fluxEventScope(t)==='school';
+    const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
+    const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" draggable="true" style="${blockedStyle}">
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -917,7 +984,7 @@ function renderTasks(){
 ${sub?`<span class="task-chip task-chip-subject">${sub.short}</span>`:''}
 ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}">${ds}${isNP?' 📵':''}</span>`:''}
-${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}
+${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
 ${stBar}${procras}
