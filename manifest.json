@@ -1,7 +1,7 @@
 {
   "name": "Flux Planner",
   "short_name": "Flux",
-  "description": "Your AI-powered student school planner",
+  "description": "Your AI-powered student school planner. Built by Azfer Mohammed.",
   "start_url": "/Fluxplanner/",
   "display": "standalone",
   "background_color": "#0c0d12",

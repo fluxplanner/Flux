@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Flux">
 <meta name="description" content="Your AI-powered student school planner">
+<meta name="author" content="Azfer Mohammed">
 <title>Flux Planner</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -157,6 +158,7 @@
             <span class="login-trust-label">Cloud Sync</span>
           </div>
         </div>
+        <p class="login-dev-credit">Azfer Mohammed</p>
       </div>
     </div>
 
@@ -1441,6 +1443,32 @@
         </div>
       </div>
       <div class="spane" id="spane-data">
+        <!-- Developer & about — first in Data & info -->
+        <div class="card">
+          <h3>Developer</h3>
+          <div class="srow" style="border:none">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;color:#fff;flex-shrink:0">AM</div>
+              <div>
+                <div style="font-size:.92rem;font-weight:700">Azfer Mohammed</div>
+                <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">International Academy East · Class of 2028</div>
+                <a href="/cdn-cgi/l/email-protection#e382998586918e8c8b828e8e8687d1d2a3848e828a8fcd808c8e" style="font-size:.7rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-decoration:none"><span class="__cf_email__" data-cfemail="2c4d564a495e4143444d414149481e1d6c4b414d4540024f4341">[email&#160;protected]</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">✦</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px">Flux Planner</div>
+              <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">v2.0 · Your AI-powered school planner</div>
+            </div>
+          </div>
+          <div style="font-size:.82rem;color:var(--muted2);line-height:1.8">
+            Flux is a student-built, student-focused productivity tool designed to make school less overwhelming and more organized. Built with love for high school students everywhere.
+          </div>
+        </div>
         <div class="card">
           <h3>Planner tour</h3>
           <div class="srow" style="border:none">
@@ -1470,36 +1498,6 @@
           <div class="srow" style="border:none"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
         </div>
         <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, grades, notes, extracurriculars</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
-
-        <!-- About (same tab as export / danger) -->
-        <!-- Developer Card -->
-        <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">✦</div>
-            <div>
-              <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px">Flux Planner</div>
-              <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">v2.0 · Your AI-powered school planner</div>
-            </div>
-          </div>
-          <div style="font-size:.82rem;color:var(--muted2);line-height:1.8">
-            Flux is a student-built, student-focused productivity tool designed to make school less overwhelming and more organized. Built with love for high school students everywhere.
-          </div>
-        </div>
-
-        <!-- Developer Info -->
-        <div class="card">
-          <h3>Developer</h3>
-          <div class="srow" style="border:none">
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;color:#fff;flex-shrink:0">AM</div>
-              <div>
-                <div style="font-size:.92rem;font-weight:700">Azfer Mohammed</div>
-                <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">International Academy East · Class of 2028</div>
-                <a href="/cdn-cgi/l/email-protection#e382998586918e8c8b828e8e8687d1d2a3848e828a8fcd808c8e" style="font-size:.7rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-decoration:none"><span class="__cf_email__" data-cfemail="2c4d564a495e4143444d414149481e1d6c4b414d4540024f4341">[email&#160;protected]</span></a>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Tech Stack -->
         <div class="card">
