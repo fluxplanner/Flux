@@ -1424,6 +1424,22 @@
       </div>
       <div class="spane" id="spane-data">
         <div class="card">
+          <h3>Planner tour</h3>
+          <div class="srow" style="border:none">
+            <div><div class="slabel">Guided walkthrough</div><div class="ssub">Replay the first-time panel tour (dashboard, calendar, AI, settings, …)</div></div>
+            <button type="button" onclick="resetPlannerTour()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Replay tour</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Keyboard</h3>
+          <div style="font-size:.78rem;color:var(--muted2);line-height:1.75;font-family:'JetBrains Mono',monospace">
+            <div><span style="color:var(--accent)">⌘⇧K</span> / Ctrl+Shift+K — Search everywhere</div>
+            <div><span style="color:var(--accent)">⌘K</span> / Ctrl+K — Command palette</div>
+            <div><span style="color:var(--accent)">N</span> or <span style="color:var(--accent)">T</span> — Focus quick add (from dashboard)</div>
+            <div><span style="color:var(--accent)">Esc</span> — Close search, quick add, palette, modals</div>
+          </div>
+        </div>
+        <div class="card">
           <h3>Export</h3>
           <div class="srow"><div><div class="slabel">Export to iCal</div><div class="ssub">Download tasks as .ics</div></div><button onclick="exportToICal()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
           <div class="srow" style="border:none"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
@@ -1577,7 +1593,7 @@
   </div>
   <div id="quickAddPreviewTitle" class="quick-add-preview-title" aria-live="polite"></div>
   <div id="quickAddParsed" class="quick-add-parsed"></div>
-  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Natural language</span> — dates, priorities, subjects, types, and “30min” estimates</div>
+  <div class="quick-add-hint">Enter to add · Esc to close · <span class="quick-add-hint-strong">Natural language</span> — dates, priorities, subjects, types, “30min” · <span class="quick-add-hint-strong">⌘⇧K</span> search · <span class="quick-add-hint-strong">⌘K</span> palette</div>
 </div>
 
 <!-- Load scripts -->

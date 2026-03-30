@@ -375,6 +375,27 @@ let schoolInfo=load('flux_school',{locker:'',combo:'',counselor:'',studentID:''}
 let classes=load('flux_classes',[]);
 let teacherNotes=load('flux_teacher_notes',[]);
 
+/** Done tasks missing completedAt get a best-effort timestamp (streaks, week strip, AI actions). Safe to run often. */
+function migrateCompletedAtBackfill(){
+  let changed=false;
+  const infer=t=>{
+    if(t.updatedAt)return t.updatedAt;
+    if(t.createdAt)return t.createdAt;
+    if(t.date){
+      const d=fluxParseLocalYMD(t.date);
+      if(d){d.setHours(17,0,0,0);return d.getTime();}
+    }
+    if(typeof t.id==='number'&&t.id>1e12)return t.id;
+    return Date.now();
+  };
+  tasks.forEach(t=>{
+    if(!t.done||t.completedAt)return;
+    t.completedAt=infer(t);
+    changed=true;
+  });
+  if(changed){save('tasks',tasks);syncKey('tasks',tasks);}
+}
+
 // Tab config — each tab has id, icon, label, visible flag
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
@@ -2804,7 +2825,7 @@ TASK ACTIONS — ONLY when the user asks you to add, complete, or delete tasks, 
 \`\`\`
 Do NOT include the actions block if there are no actions to perform. Never output an empty actions block.`;
 }
-function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)(?:```|$)/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
+function execActions(reply){const match=reply.match(/```actions\s*([\s\S]*?)(?:```|$)/);if(!match)return null;let actions;try{actions=JSON.parse(match[1].trim());}catch(e){return null;}if(!Array.isArray(actions))return null;let results=[],changed=false;actions.forEach(a=>{if(a.action==='add_task'){const t={id:Date.now()+Math.random(),name:a.name||'Task',subject:a.subject||'',priority:a.priority||'med',date:a.date||'',type:a.type||'hw',done:false,rescheduled:0,createdAt:Date.now()};t.urgencyScore=calcUrgency(t);tasks.unshift(t);results.push('✓ Added: '+a.name);changed=true;}else if(a.action==='delete_done'){const c=tasks.filter(t=>t.done).length;tasks=tasks.filter(t=>!t.done);results.push('✓ Removed '+c+' done tasks');changed=true;}else if(a.action==='mark_done'){const t=tasks.find(x=>x.name?.toLowerCase().includes((a.name||'').toLowerCase()));if(t){t.done=true;t.completedAt=Date.now();results.push('✓ Done: '+t.name);changed=true;}}});if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;}
 async function sendAI(){
   const input=document.getElementById('aiInput'),btn=document.getElementById('aiSendBtn');
   if(!input||!btn)return;
@@ -2880,6 +2901,14 @@ function markTourCompleted(){
     window._tourSyncT=setTimeout(()=>syncToCloud(),400);
   }
 }
+function resetPlannerTour(){
+  save('flux_tour_completed',false);
+  save('flux_tour_done',false);
+  if(currentUser)syncToCloud();
+  showToast('Starting planner tour…');
+  nav('dashboard');
+  setTimeout(()=>startOnboardingTour(),500);
+}
 
 // ══ SUPABASE SYNC ══
 const SYNC_KEYS=['tasks','grades','notes','habits','goals','colleges','moodHistory','schoolInfo','classes','teacherNotes','profile','flux_extras','flux_ec_schools','flux_ec_goals'];
@@ -2890,6 +2919,14 @@ function setSyncStatus(status){
   else if(status==='syncing'){el.className='sync-badge syncing';el.textContent='↑ Syncing...';if(sl)sl.textContent='Syncing...';}
   else{el.className='sync-badge offline';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
   el.style.display=currentUser?'flex':'none';
+  if(currentUser){
+    if(status==='syncing')el.title='Syncing with cloud…';
+    else if(status==='offline')el.title='Not connected — changes stay on this device';
+    else{
+      const ts=load('flux_last_sync',0);
+      el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+    }
+  }else el.removeAttribute('title');
   // Show guest banner in account settings if guest
   const guestBanner=document.getElementById('guestAccountBanner');
   const signedOutMsg=document.getElementById('accountSignedOutMsg');
@@ -3081,7 +3118,7 @@ async function syncFromCloud(){
     const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
     if(error||!data){setSyncStatus('offline');return;}
     const d=data.data;
-    if(d.tasks){tasks=d.tasks;save('tasks',tasks);}
+    if(d.tasks){tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();}
     if(d.grades){grades=d.grades;save('flux_grades',grades);}
     if(d.weightedRows){weightedRows=d.weightedRows;save('flux_weighted',weightedRows);}
     if(d.notes){notes=d.notes;save('flux_notes',notes);}
@@ -3468,10 +3505,6 @@ function initKeyboardShortcuts(){
         e.preventDefault();nav('calendar');break;
       case 'k': case 'K':
         e.preventDefault();openCommandPalette();break;
-      case 'Escape':
-        document.querySelectorAll('.modal-overlay').forEach(m=>{if(m.style.display!=='none')closeModal(m.id);});
-        closeCommandPalette();closeKanban();
-        break;
     }
   });
 }
@@ -4061,12 +4094,6 @@ function reorderDashboard(){
 // Enter is handled globally → submitQuickAdd() (unified NL parse). Esc closes the floating panel.
 function initQuickAdd(){
   const qa=document.getElementById('quickAddInput');if(!qa)return;
-  qa.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){
-      closeQuickAdd();
-      qa.blur();
-    }
-  });
 }
 
 // ══ ITEM 24 — DRAG TO REORDER TASKS ══
@@ -4192,6 +4219,7 @@ function initDashboardFeatures(){
 // ══ INIT ══
 (function init(){
   loadTheme();
+  migrateCompletedAtBackfill();
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
   document.getElementById('datePill').textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -6416,10 +6444,16 @@ function closeGlobalSearch(){
   const overlay=document.getElementById('searchOverlay');
   if(overlay)overlay.classList.remove('open');
 }
+let _globalSearchDebounce=null;
 function handleGlobalSearch(q){
   const el=document.getElementById('globalSearchResults');if(!el)return;
-  q=q.trim().toLowerCase();
-  if(!q){el.innerHTML='';return;}
+  const t=(q||'').trim();
+  if(!t){clearTimeout(_globalSearchDebounce);el.innerHTML='';return;}
+  clearTimeout(_globalSearchDebounce);
+  _globalSearchDebounce=setTimeout(()=>runGlobalSearch(t.toLowerCase()),100);
+}
+function runGlobalSearch(q){
+  const el=document.getElementById('globalSearchResults');if(!el)return;
   let results=[];
   tasks.forEach(t=>{
     if(t.name.toLowerCase().includes(q)){
@@ -6585,10 +6619,26 @@ function parseNaturalTask(raw){
   return{name,date,priority,type,subject};
 }
 
-// ── ESC closes search / quick-add (⌘K is command palette — initKeyboardShortcuts) ──
+// ── Global Escape (search, quick-add, palette, modals) + quick-add Enter ──
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    closeGlobalSearch();closeQuickAdd();closeCommandPalette();
+    const pal=document.getElementById('cmdPalette');
+    const qa=document.getElementById('quickAddPanel');
+    const so=document.getElementById('searchOverlay');
+    const qOpen=qa?.classList.contains('open');
+    const sOpen=so?.classList.contains('open');
+    if(pal||qOpen||sOpen)e.preventDefault();
+    closeGlobalSearch();
+    closeQuickAdd();
+    closeCommandPalette();
+    document.querySelectorAll('.modal-overlay').forEach(m=>{
+      if(m.style.display!=='none'&&m.id)closeModal(m.id);
+    });
+    if(typeof closeKanban==='function')closeKanban();
+    return;
+  }
+  if(e.key==='Enter'&&document.activeElement?.id==='quickAddInput'){
+    e.preventDefault();submitQuickAdd();
   }
 });
 
@@ -6598,13 +6648,3 @@ if(typeof fabAddTask==='function'){
   const _origFabAddTask=fabAddTask;
   window.fabAddTask=function(){openQuickAdd();};
 }
-
-// Quick-add Enter key
-document.addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&document.activeElement?.id==='quickAddInput'){
-    e.preventDefault();submitQuickAdd();
-  }
-  if(e.key==='Escape'&&document.getElementById('quickAddPanel')?.classList.contains('open')){
-    e.preventDefault();closeQuickAdd();
-  }
-});
