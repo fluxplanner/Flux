@@ -827,34 +827,51 @@ function spawnTaskBurstFromEl(el){
     setTimeout(()=>p.remove(),500);
   }
 }
+/** Next 7 days: estimated workload from open tasks (by due date; overdue rolled into today). */
 function renderDashWeekStrip(){
   const el=document.getElementById('dashWeekStrip');if(!el)return;
+  const goalMin=Math.max(30,(settings.dailyGoalHrs||2)*60);
   const days=[];
-  for(let i=6;i>=0;i--){
+  for(let i=0;i<7;i++){
     const d=new Date();
     d.setHours(0,0,0,0);
-    d.setDate(d.getDate()-i);
+    d.setDate(d.getDate()+i);
     days.push(d);
   }
-  const counts=days.map(day=>{
+  const weekStart=days[0].toISOString().slice(0,10);
+  const estMins=t=>{
+    const m=parseInt(t.estTime,10);
+    return Number.isFinite(m)&&m>0?m:30;
+  };
+  const effectiveDue=t=>{
+    if(t.done||!t.date)return null;
+    return t.date<weekStart?weekStart:t.date;
+  };
+  const byDay=days.map(day=>{
     const ds=day.toISOString().slice(0,10);
-    return tasks.filter(t=>{
-      if(!t.done)return false;
-      if(t.completedAt)return new Date(t.completedAt).toISOString().slice(0,10)===ds;
-      return false;
-    }).length;
+    let mins=0,n=0;
+    tasks.forEach(t=>{
+      if(effectiveDue(t)!==ds)return;
+      mins+=estMins(t);n++;
+    });
+    return{ds,mins,n};
   });
-  const total=counts.reduce((a,b)=>a+b,0);
-  const max=Math.max(1,...counts);
+  const totalMins=byDay.reduce((a,x)=>a+x.mins,0);
+  const totalTasks=byDay.reduce((a,x)=>a+x.n,0);
+  const maxM=Math.max(1,...byDay.map(x=>x.mins));
   const label=days.map(d=>d.toLocaleDateString('en-US',{weekday:'short'}));
-  el.innerHTML=`<div class="dash-week-strip-inner">
-    <div class="dash-week-head"><span class="dash-week-kicker">Last 7 days</span><span class="dash-week-total">${total} done</span></div>
-    <div class="dash-week-bars" role="img" aria-label="Completions per day: ${counts.join(', ')}">${counts.map((c,i)=>{
-      const h=Math.round(Math.max(14,(c/max)*40));
-      const tip=`${label[i]} ${days[i].getMonth()+1}/${days[i].getDate()}: ${c} completed`.replace(/"/g,'&quot;');
-      return`<div class="dash-week-col" title="${tip}"><div class="dash-week-bar" style="height:${h}px"></div><span class="dash-week-daylbl">${label[i].slice(0,1)}</span>${c>0?`<span class="dash-week-num">${c}</span>`:''}</div>`;
+  const totalLabel=totalMins>=60?`~${(totalMins/60).toFixed(1)}h est`:`~${totalMins}m est`;
+  el.innerHTML=`<div class="dash-week-strip-inner dash-workload-strip-inner">
+    <div class="dash-week-head"><span class="dash-week-kicker">Next 7 days</span><span class="dash-week-total">${totalLabel}${totalTasks?` · ${totalTasks} task${totalTasks===1?'':'s'}`:''}</span></div>
+    <div class="dash-week-bars" role="img" aria-label="Estimated minutes per day: ${byDay.map(x=>x.mins).join(', ')}">${byDay.map((row,i)=>{
+      const {mins,n}=row;
+      const h=Math.round(Math.max(14,(mins/maxM)*40));
+      const heavy=mins>goalMin;
+      const tip=`${label[i]} ${days[i].getMonth()+1}/${days[i].getDate()}: ~${mins}m${n?` (${n} task${n===1?'':'s'})`:''}${heavy?' — over typical day goal':''}`.replace(/"/g,'&quot;');
+      const num=mins>=60?`${(mins/60).toFixed(1)}h`:`${mins}m`;
+      return`<div class="dash-week-col" title="${tip}"><div class="dash-week-bar ${heavy?'dash-week-bar--heavy':''}" style="height:${h}px"></div><span class="dash-week-daylbl">${label[i].slice(0,1)}</span>${mins>0?`<span class="dash-week-num">${num}</span>`:''}</div>`;
     }).join('')}</div>
-    <p class="dash-week-footnote">By completion date when available.</p>
+    <p class="dash-week-footnote">Open tasks by due date · overdue counts toward today · default ~30m when no estimate</p>
   </div>`;
 }
 /** Avg estimated minutes for completed tasks in this subject (history-based hint). */

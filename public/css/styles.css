@@ -507,8 +507,13 @@ details.dash-new-task-compact .dash-nt-body{padding:0 10px 12px}
 .dash-week-bar{
   width:100%;max-width:28px;margin:0 auto;border-radius:6px 6px 2px 2px;
   background:linear-gradient(180deg,rgba(var(--accent-rgb),.55),rgba(var(--purple-rgb),.25));
-  min-height:14px;transition:height .2s var(--ease);
+  min-height:14px;transition:height .2s var(--ease),filter .2s var(--ease);
 }
+.dash-week-bar--heavy{
+  background:linear-gradient(180deg,rgba(251,191,36,.65),rgba(244,63,94,.35));
+  box-shadow:0 0 12px rgba(251,191,36,.12);
+}
+.dash-workload-strip-inner .dash-week-num{font-size:.52rem;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .dash-week-daylbl{font-size:.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase}
 .dash-week-num{font-size:.58rem;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace}
 .dash-week-footnote{
