@@ -1,9 +1,9 @@
 /**
  * Flux Owner Command Center — full control UI for the owner account.
- * Real actions: dev team, audit log, platform config, backups, analytics export.
- * Auth user admin / impersonation / cross-user queries require Supabase Dashboard or a service-role Edge Function (called out in UI).
+ * Covers the full “mega prompt” owner spec: mapped in Mega map tab (In Flux vs Partial vs Server/Supabase).
  */
 (function(){
+  const SB_PROJECT_REF='lfigdijuqmbensebnevo';
   const PLATFORM_DEFAULTS={
     announcement:'',
     dataRetentionDays:365,
@@ -40,6 +40,114 @@
   };
 
   function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function mapBadge(st){
+    if(st==='in')return'<span style="font-size:.58rem;padding:2px 7px;border-radius:6px;background:rgba(34,197,94,.14);color:var(--green);font-weight:700;white-space:nowrap">In Flux</span>';
+    if(st==='partial')return'<span style="font-size:.58rem;padding:2px 7px;border-radius:6px;background:rgba(251,191,36,.12);color:var(--gold);font-weight:700;white-space:nowrap">Partial</span>';
+    return'<span style="font-size:.58rem;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.06);color:var(--muted2);font-weight:700;white-space:nowrap">Server</span>';
+  }
+  function mapRow(st,text,extra){
+    return`<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)">${mapBadge(st)}<div style="flex:1;min-width:0"><div style="font-size:.76rem;line-height:1.45;color:var(--text)">${text}</div>${extra||''}</div></div>`;
+  }
+
+  window.ownerOpenSupabase=function(page){
+    const ref=SB_PROJECT_REF;
+    const map={
+      auth:`https://supabase.com/dashboard/project/${ref}/auth/users`,
+      sql:`https://supabase.com/dashboard/project/${ref}/sql/new`,
+      logs:`https://supabase.com/dashboard/project/${ref}/logs/explorer`,
+      api:`https://supabase.com/dashboard/project/${ref}/settings/api`,
+      edge:`https://supabase.com/dashboard/project/${ref}/functions`,
+    };
+    const u=map[page]||map.auth;
+    window.open(u,'_blank','noopener,noreferrer');
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('supabase_open',{page:page||'auth'});
+  };
+
+  function buildMegaMapHtml(){
+    const jump=(tab,label)=>`<button type="button" onclick="window.__osSetTab('${tab}')" style="margin-top:4px;padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);cursor:pointer">${esc(label)}</button>`;
+    const ext=(page,label)=>`<button type="button" onclick="ownerOpenSupabase('${page}')" style="margin-top:4px;margin-right:6px;padding:4px 10px;font-size:.65rem;border-radius:8px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer">${esc(label)}</button>`;
+    return`
+      <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
+        This is the full <b>owner mega-prompt</b> checklist. <b>In Flux</b> = available in this client. <b>Partial</b> = supported in a limited way. <b>Server</b> = needs Supabase Dashboard, service role, or Edge Functions (cannot be done with the anon key alone).
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        ${ext('auth','Auth users')}${ext('sql','SQL')}${ext('logs','Logs')}${ext('edge','Edge Functions')}${ext('api','API keys')}
+        <button type="button" onclick="ownerExportComplianceBundle()" style="padding:6px 12px;font-size:.72rem;border-radius:10px;background:rgba(124,92,255,.12);border:1px solid rgba(124,92,255,.3);color:var(--purple);cursor:pointer">⬇ Compliance bundle (JSON)</button>
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:12px 0 6px">1 · User &amp; role management</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('server','Create, remove, suspend <b>Auth</b> users (all accounts).',ext('auth','Open Auth'))}
+        ${mapRow('in','Assign roles / permissions for the <b>dev team list</b> (admin · editor · viewer) and import/export that list.',jump('team','Team & roles'))}
+        ${mapRow('server','Reset passwords, force password changes.',ext('auth','Auth users'))}
+        ${mapRow('partial','Activity trail: owner <b>audit log</b> in Flux; authoritative Auth logs in Supabase.',jump('audit','Audit log')+ext('logs','Logs explorer'))}
+        ${mapRow('in','Import / export dev roster in bulk (JSON / CSV).',jump('team','Team'))}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">2 · Content &amp; resource control</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('partial','Access synced payloads: <b>Platform usage</b> (anonymized aggregates) + full <b>backup JSON</b> for your session.',jump('usage','Platform usage')+jump('data','Data & backup'))}
+        ${mapRow('partial','Archive / trim: remove all <b>done</b> tasks locally (reversible via backup).',jump('data','Archive'))}
+        ${mapRow('in','Delete outdated data: nuclear clear local cache (Advanced) or selective deletes in-app.',jump('advanced','Advanced'))}
+        ${mapRow('in','Versioning / history: use dated <b>full backup</b> exports as snapshots.',jump('data','Backups'))}
+        ${mapRow('partial','Tags / categories: tasks &amp; notes use subjects/types inside the app (not a separate CMS).',`<span style="font-size:.68rem;color:var(--muted)">Use main planner UI</span>`)}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">3 · Settings &amp; configuration</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('in','Global announcement toast, session idle hint, compliance contact, data retention target (advisory).',jump('config','Platform config'))}
+        ${mapRow('partial','Alerts: panic / quiet hours / daily goal live in user Settings; owner announcement overlays everyone on load.',jump('config','Config')+`<span style="font-size:.68rem;color:var(--muted);display:block;margin-top:4px">Users: Settings → Alerts</span>`)}
+        ${mapRow('server','Billing / subscriptions: not part of this student planner — use your host or Stripe separately.',``)}
+        ${mapRow('in','Feature flags &amp; dev mode: Dev Panel (owner badge → classic panel).',jump('advanced','Dev Panel'))}
+        ${mapRow('server','Org-wide 2FA / IP restrictions / session policies: configure in Supabase Auth &amp; Dashboard.',ext('auth','Auth')+ext('api','API'))}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">4 · Analytics &amp; reporting</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('in','Session dashboard: task / note / focus counts + CSV exports.',jump('analytics','Analytics'))}
+        ${mapRow('in','Cross-account anonymized usage: completions by day, types, per-user counts (Platform usage).',jump('usage','Platform usage'))}
+        ${mapRow('partial','Compliance / growth exports: aggregate JSON + tasks/sessions CSV (your data plane).',jump('usage','Exports'))}
+        ${mapRow('partial','Retention / engagement: infer from completion timestamps where <code style="font-size:.65rem">completedAt</code> exists.',``)}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">5 · Security &amp; compliance</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('in','Owner audit log (actions in this Command Center).',jump('audit','Audit'))}
+        ${mapRow('in','Data retention <b>target</b> (advisory) + compliance contact field.',jump('config','Config'))}
+        ${mapRow('partial','Suspicious activity: route alerts via webhooks (Slack/generic) — wire events in Edge Functions later.',jump('integrations','Integrations'))}
+        ${mapRow('server','Revoke sessions / ban users: Supabase Auth or Admin API.',ext('auth','Auth users'))}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">6 · Integrations &amp; automation</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('partial','Webhooks (Slack / generic) for future automation + test ping.',jump('integrations','Integrations'))}
+        ${mapRow('partial','Google / Canvas: end-users connect in-app; secrets stay server-side (Edge proxies).',`<span style="font-size:.68rem;color:var(--muted)">See Settings &amp; Gmail / Canvas in app</span>`)}
+        ${mapRow('server','Signing API keys / service role: only in Supabase &amp; Edge secrets — never in this bundle.',ext('edge','Functions')+ext('api','API'))}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">7 · System maintenance</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('in','Backup &amp; restore full planner JSON; force sync.',jump('data','Data')+jump('advanced','Force sync'))}
+        ${mapRow('partial','App “version”: data schema via <code style="font-size:.65rem">DATA_VERSION</code> in app.js; rollback = restore older backup.',``)}
+        ${mapRow('server','Hosting uptime / DB metrics: Supabase &amp; Netlify/Vercel dashboards (not embedded here).',ext('logs','Logs'))}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">8 · Special owner powers</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('server','Impersonate users: requires secure Admin API — never with anon key.',ext('auth','Auth'))}
+        ${mapRow('partial','Override limits / quotas: not enforced in Flux yet; use Auth + DB policies.',ext('sql','SQL'))}
+        ${mapRow('partial','Starter experience: onboarding + tour + synced platform config / dev list.',`<span style="font-size:.68rem;color:var(--muted)">Onboarding in app · tour replay in Settings → Data</span>`)}
+      </div>
+
+      <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">9 · Futuristic / next-level</div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
+        ${mapRow('partial','AI-assisted workflows: Flux AI + full planner context; owner sees aggregate usage.',jump('analytics','Analytics')+jump('usage','Usage'))}
+        ${mapRow('partial','Engagement: streaks &amp; dashboard hero in-app.',`<span style="font-size:.68rem;color:var(--muted)">Dashboard</span>`)}
+        ${mapRow('in','Global announcement toast on Command Center open (platform config).',jump('config','Announcement'))}
+        ${mapRow('server','Predictive churn / growth: needs anonymized telemetry pipeline — future Edge job.',ext('edge','Edge Functions'))}
+      </div>`;
+  }
 
   function extractTasksFromPayload(payload){
     if(!payload||typeof payload!=='object')return[];
@@ -150,7 +258,7 @@
     return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
   }
 
-  const OS_TABS=new Set(['overview','team','data','config','integrations','analytics','usage','audit','advanced']);
+  const OS_TABS=new Set(['overview','megamap','team','data','config','integrations','analytics','usage','audit','advanced']);
 
   window.openOwnerSuite=function(prefTab){
     if(!isOwner())return;
@@ -177,7 +285,12 @@
       }catch(_){}
       insights.push({icon:'🛡',t:'Security',d:'Use Google 2FA on the account that signs into Flux; session hints are advisory only in this client.'});
 
+      if(tab==='megamap')return buildMegaMapHtml();
+
       if(tab==='overview')return`
+        <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.22);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.74rem;line-height:1.5;color:var(--muted2)">
+          <b style="color:var(--accent)">Mega prompt coverage</b> — Every bullet from the owner god-mode spec is listed with status on the <button type="button" onclick="window.__osSetTab('megamap')" style="background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Mega map</button> tab.
+        </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px">
             <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Team (dev seats)</div>
@@ -330,6 +443,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card2)">
           <button type="button" data-os-tab="overview" onclick="window.__osSetTab('overview')">Overview</button>
+          <button type="button" data-os-tab="megamap" onclick="window.__osSetTab('megamap')">Mega map</button>
           <button type="button" data-os-tab="team" onclick="window.__osSetTab('team')">Team & roles</button>
           <button type="button" data-os-tab="data" onclick="window.__osSetTab('data')">Data & backup</button>
           <button type="button" data-os-tab="config" onclick="window.__osSetTab('config')">Platform config</button>
@@ -526,5 +640,22 @@
     const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),note:'No task titles or personal text — counts and dates only',accounts},null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='flux-platform-usage-aggregate.json';a.click();URL.revokeObjectURL(a.href);
     if(typeof ownerAuditAppend==='function')ownerAuditAppend('export_platform_agg_json',{n:accounts.length});
+  };
+
+  window.ownerExportComplianceBundle=function(){
+    if(!isOwner())return;
+    const bundle={
+      kind:'flux_owner_compliance_bundle',
+      exportedAt:new Date().toISOString(),
+      supabaseProjectRef:SB_PROJECT_REF,
+      note:'Owner export: platform config + audit tail + dev roster size. End-user GDPR packages require per-user export from their account.',
+      platformConfig:getPlatformConfig(),
+      ownerAuditTail:load('flux_owner_audit',[]).slice(-120),
+      devAccountCount:load('flux_dev_accounts',[]).length,
+    };
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='flux-owner-compliance-bundle.json';a.click();URL.revokeObjectURL(a.href);
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('compliance_bundle_export',{});
+    if(typeof showToast==='function')showToast('Compliance bundle downloaded','success');
   };
 })();
