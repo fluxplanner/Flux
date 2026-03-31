@@ -5862,6 +5862,7 @@ function getRiskLabel(r){
 let currentView='list'; // list | kanban | timeline
 
 function switchView(view){
+  if(view==='workload')view='list';
   currentView=view;
   save('flux_view',view);
   document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
@@ -5878,7 +5879,6 @@ function switchView(view){
 function renderCurrentView(){
   if(currentView==='kanban')renderKanban();
   else if(currentView==='timeline')renderTimeline();
-  else if(currentView==='workload')renderWorkloadView();
   else renderTasks();
 }
 
@@ -6213,78 +6213,13 @@ setInterval(saveResumptionState,60000);
 // Init all new systems on app start
 function initIntelligenceEngine(){
   currentView=load('flux_view','list');
+  if(currentView==='workload'){currentView='list';save('flux_view','list');}
   initFullKeyboardNav();
   // initListControls removed
   checkResumption();
   renderSessionStats();
   // Restore view toggle state
   document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
-}
-
-// ══ WORKLOAD VIEW ══
-function renderWorkloadView(){
-  const el=document.getElementById('taskList');if(!el)return;
-  el.style.display='block';el.style.gridTemplateColumns='';el.style.gap='';el.style.alignItems='';
-  const now=new Date();now.setHours(0,0,0,0);
-  const days=[];
-  for(let i=0;i<7;i++){
-    const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
-    const dayTasks=tasks.filter(t=>!t.done&&t.date===ds);
-    const totalMin=dayTasks.reduce((s,t)=>s+(t.estTime||30),0);
-    days.push({date:ds,d,label:i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'}),dayNum:d.getDate(),tasks:dayTasks,totalMin});
-  }
-  const maxMin=Math.max(...days.map(d=>d.totalMin),120);
-  el.innerHTML=`
-    <div style="padding:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-size:.78rem;font-weight:700;color:var(--text)">7-Day Workload</div>
-        <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace">bars = est. minutes · click to expand</div>
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:6px;height:120px">
-        ${days.map(day=>{
-          const pct=maxMin>0?(day.totalMin/maxMin)*100:0;
-          const color=day.totalMin>180?'var(--red)':day.totalMin>90?'var(--gold)':'var(--green)';
-          const isToday=day.label==='Today';
-          return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="showWorkloadDayDetail('${day.date}')" title="${day.tasks.length} tasks">
-            <div style="font-size:.58rem;color:${day.totalMin>0?color:'var(--muted)'};font-family:'JetBrains Mono',monospace">${day.totalMin>0?day.totalMin+'m':''}</div>
-            <div style="width:100%;border-radius:6px 6px 0 0;overflow:hidden;background:rgba(255,255,255,.05);height:100px;display:flex;flex-direction:column-reverse;border:1px solid ${isToday?'rgba(var(--accent-rgb),.4)':'transparent'};transition:all .2s" onmouseenter="this.style.filter='brightness(1.2)'" onmouseleave="this.style.filter=''">
-              <div style="width:100%;height:${pct}%;background:${color};opacity:${isToday?1:.7};transition:height .5s cubic-bezier(.34,1.56,.64,1)"></div>
-            </div>
-            <div style="font-size:.65rem;color:${isToday?'var(--accent)':'var(--muted)'};font-family:'JetBrains Mono',monospace;font-weight:${isToday?700:400}">${day.label}</div>
-          </div>`;
-        }).join('')}
-      </div>
-      <div style="display:flex;gap:14px;margin-top:12px;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted)">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green);margin-right:4px"></span>&lt;90min</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--gold);margin-right:4px"></span>90-180min</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red);margin-right:4px"></span>&gt;180min</span>
-      </div>
-    </div>
-    <div id="workloadDayDetail"></div>`;
-}
-
-function showWorkloadDayDetail(dateStr){
-  const el=document.getElementById('workloadDayDetail');if(!el)return;
-  const dayTasks=tasks.filter(t=>t.date===dateStr&&!t.done);
-  const d=new Date(dateStr+'T00:00');
-  const label=d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
-  const subjs=getSubjects();
-  if(!dayTasks.length){el.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Nothing due</div><div class="empty-sub">${label} is free</div></div>`;return;}
-  el.innerHTML=`<div style="font-size:.72rem;font-weight:700;color:var(--muted2);margin-bottom:8px">${label} · ${dayTasks.reduce((s,t)=>s+(t.estTime||30),0)}min total</div>`+
-  dayTasks.sort((a,b)=>(b.urgencyScore||0)-(a.urgencyScore||0)).map(t=>{
-    const sub=subjs[t.subject];const risk=calcDeadlineRisk(t);const rl=getRiskLabel(risk);
-    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;transition:all .2s" onmouseenter="this.style.borderColor='rgba(var(--accent-rgb),.25)';this.style.transform='translateX(2px)'" onmouseleave="this.style.borderColor='';this.style.transform=''">
-      <div style="width:3px;border-radius:2px;min-height:32px;align-self:stretch;background:${t.priority==='high'?'var(--red)':t.priority==='low'?'var(--green)':'var(--gold)'}"></div>
-      <div style="flex:1;min-width:0"><div style="font-size:.85rem;font-weight:600">${esc(t.name)}</div>
-      <div style="display:flex;gap:5px;margin-top:3px;flex-wrap:wrap">
-        ${sub?`<span style="font-size:.65rem;padding:1px 7px;border-radius:5px;background:${sub.color}22;color:${sub.color}">${sub.short}</span>`:''}
-        ${t.estTime?`<span style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">⏱${t.estTime}m</span>`:''}
-        ${rl?`<span style="font-size:.65rem;padding:1px 7px;border-radius:5px;background:${rl.bg};color:${rl.color};font-weight:700">${rl.label}</span>`:''}
-      </div></div>
-      <button onclick="toggleTask(${t.id})" style="font-size:.7rem;padding:4px 10px;background:rgba(var(--green-rgb),.1);border:1px solid rgba(var(--green-rgb),.25);color:var(--green);border-radius:8px;cursor:pointer;flex-shrink:0;transform:none;box-shadow:none">Done</button>
-    </div>`;
-  }).join('');
 }
 
 // (Density/width controls removed)
