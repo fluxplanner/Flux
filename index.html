@@ -2,6 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* GitHub Pages: relative hrefs like public/css/styles.css break if the URL has no trailing slash.
+   Set <base> to this app’s directory so CSS/JS/icons always load. */
+(function(){
+  try{
+    var path=location.pathname||'/';
+    if(/\/[^/]+\.html$/i.test(path))path=path.slice(0,path.lastIndexOf('/')+1);
+    else if(!path.endsWith('/'))path+='/';
+    var b=document.createElement('base');
+    b.href=location.origin+path.replace(/\/{2,}/g,'/');
+    var m=document.querySelector('meta[charset]');
+    if(m)m.insertAdjacentElement('afterend',b);
+    else document.head.prepend(b);
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0B0F1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
