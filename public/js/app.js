@@ -38,6 +38,16 @@ if('serviceWorker' in navigator){
 function renderDynamicFocus(){
   const el=document.getElementById('dynamicFocusCard');if(!el)return;
   const now=new Date();
+  const todayStr=now.toISOString().slice(0,10);
+  if(typeof isBreak==='function'&&isBreak(todayStr)){
+    const rk=typeof restDayKind==='function'?restDayKind(todayStr):'lazy';
+    const restHtml=`<div class="focus-card flux-focus-rest">
+      <div class="focus-label">${rk==='sick'?'🤒 Sick day':'🛋 Lazy day'}</div>
+      <div style="font-size:.86rem;color:var(--muted2);margin-top:6px;line-height:1.45">No mandatory school-work block today — Flux treats this as recovery. Tasks are optional; use <strong>AI Command Center → Fix my schedule</strong> to push work forward.</div>
+    </div>`;
+    el.innerHTML=(typeof FluxIntel!=='undefined'&&FluxIntel.appendFocusHtml)?FluxIntel.appendFocusHtml(restHtml):restHtml;
+    return;
+  }
   const todayDay=now.toLocaleDateString('en-US',{weekday:'short'});
   const nowMin=now.getHours()*60+now.getMinutes();
 
@@ -52,7 +62,6 @@ function renderDynamicFocus(){
   });
 
   // Find soonest due task
-  const todayStr=now.toISOString().slice(0,10);
   const urgent=tasks.filter(t=>!t.done&&t.date===todayStr).sort((a,b)=>(b.priority==='high'?1:0)-(a.priority==='high'?1:0))[0];
 
   // Contextual task suggestion: task that fits in the gap before next class
@@ -89,7 +98,7 @@ function renderDynamicFocus(){
       <div style="font-size:.75rem;color:var(--muted2);margin-top:4px">Due today${urgent.estTime?' · ~'+urgent.estTime+'min':''}</div>
     </div>`;
   }
-  el.innerHTML=html;
+  el.innerHTML=(typeof FluxIntel!=='undefined'&&FluxIntel.appendFocusHtml)?FluxIntel.appendFocusHtml(html):html;
 }
 
 // ══ TIME POVERTY DETECTOR ══
@@ -97,6 +106,20 @@ function checkTimePoverty(){
   const banner=document.getElementById('timePovertyBanner');if(!banner)return;
   const now=new Date();
   const todayStr=now.toISOString().slice(0,10);
+
+  if(typeof isBreak==='function'&&isBreak(todayStr)){
+    const rk=typeof restDayKind==='function'?restDayKind(todayStr):'lazy';
+    banner.classList.add('on');
+    banner.classList.add('time-poverty-banner--rest');
+    banner.innerHTML=`<span class="time-poverty-banner__icon" aria-hidden="true">${rk==='sick'?'🤒':'🛋'}</span>
+      <div class="time-poverty-banner__body">
+        <div class="time-poverty-banner__title">${rk==='sick'?'Sick day':'Lazy day'} — no school-work plan</div>
+        <div class="time-poverty-banner__detail">Flux won’t treat today as a crunch day. Tasks still listed are optional — use <strong>Fix my schedule</strong> in AI Command Center to push them forward.</div>
+      </div>
+      <button type="button" class="time-poverty-banner__dismiss" onclick="this.parentElement.classList.remove('on');this.parentElement.classList.remove('time-poverty-banner--rest')" aria-label="Dismiss">✕</button>`;
+    return;
+  }
+  banner.classList.remove('time-poverty-banner--rest');
 
   // Total est minutes of tasks due today
   const todayTasks=tasks.filter(t=>!t.done&&t.date===todayStr);
@@ -323,7 +346,7 @@ async function exportEncryptedBackup(){
   if(!window.crypto?.subtle){showToast('Encrypted export needs a secure (HTTPS) context','error');return;}
   const pw=prompt('Choose a passphrase (min 8 characters). You will need it to decrypt.');
   if(!pw||pw.length<8){showToast('Passphrase too short','warning');return;}
-  const data={tasks,grades,gpaPrior,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,extras,ecSchools,ecGoals,flux_cycle_config:load('flux_cycle_config',null),flux_weekly_events:load('flux_weekly_events',[]),flux_events:load('flux_events',[]),exportDate:new Date().toISOString(),encrypted:true};
+  const data={tasks,grades,gpaPrior,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,extras,ecSchools,ecGoals,flux_cycle_config:load('flux_cycle_config',null),flux_weekly_events:load('flux_weekly_events',[]),flux_events:load('flux_events',[]),flux_rest_days_v1:loadRestDaysList(),exportDate:new Date().toISOString(),encrypted:true};
   const raw=JSON.stringify(data);
   try{
     const enc=await fluxEncryptPayload(raw,pw);
@@ -374,6 +397,7 @@ function applyImportedPayloadMerge(d){
   save('flux_school',schoolInfo);
   if(Array.isArray(d.classes)&&d.classes.length)classes=[...classes,...d.classes.filter(c=>!classes.find(x=>x.id===c.id))];
   save('flux_classes',classes);
+  if(Array.isArray(d.flux_rest_days_v1)&&d.flux_rest_days_v1.length)saveRestDaysList(d.flux_rest_days_v1.filter(x=>x&&x.date));
   showToast('Merged backup data','success');
   renderStats();renderTasks();renderCalendar();renderCountdown();renderGradeInputs();renderGradeOverview();populateSubjectSelects();
   if(currentUser)syncToCloud();
@@ -483,8 +507,60 @@ function SUBJECTS_GET(){return getSubjects();}
 // Compat shim — returns current subjects object
 // SUBJECTS: always call getSubjects() directly — Proxy removed to prevent recursion
 const SUBJECTS={};  // kept for compat, real data via getSubjects()
-const noHomeworkDays=load('flux_no_hw_days',[]);
-const AFFIRMATIONS=["You are capable of amazing things.","Every expert was once a beginner.","Progress, not perfection.","Hard work compounds. Keep going.","Your future self is grateful for today's effort.","Difficult roads lead to beautiful destinations.","You've got this, one step at a time.","Consistency beats intensity. Show up today.","Your potential is limitless.","Rest is part of the process too."];
+const REST_DAYS_KEY='flux_rest_days_v1';
+function loadRestDaysList(){
+  let arr=load(REST_DAYS_KEY,null);
+  if(!Array.isArray(arr))arr=[];
+  if(arr.length===0){
+    const old=load('flux_no_hw_days',[]);
+    if(Array.isArray(old)&&old.length){
+      arr=old.map(d=>(typeof d==='string'?{date:d,kind:'lazy'}:{date:d.date||d,kind:d.kind==='sick'?'sick':'lazy'}));
+      save(REST_DAYS_KEY,arr);
+    }
+  }
+  return arr.filter(r=>r&&r.date&&/^\d{4}-\d{2}-\d{2}$/.test(r.date));
+}
+function saveRestDaysList(arr){save(REST_DAYS_KEY,arr);}
+function isBreak(d){return loadRestDaysList().some(r=>r.date===d);}
+function restDayKind(d){const r=loadRestDaysList().find(x=>x.date===d);return r?r.kind:null;}
+function nextNonRestForward(ds){
+  let d=new Date(ds+'T12:00:00');
+  for(let i=0;i<56;i++){
+    d.setDate(d.getDate()+1);
+    const s=d.toISOString().slice(0,10);
+    if(!isBreak(s))return s;
+  }
+  return ds;
+}
+function prevNonRestBackward(ds){
+  let d=new Date(ds+'T12:00:00');
+  for(let i=0;i<56;i++){
+    d.setDate(d.getDate()-1);
+    const s=d.toISOString().slice(0,10);
+    if(!isBreak(s))return s;
+  }
+  return ds;
+}
+/** Move tasks dated on sick/lazy days to the next working day. */
+function flushTasksOffRestDays(){
+  if(typeof tasks==='undefined'||!Array.isArray(tasks))return 0;
+  let n=0;
+  tasks.forEach(t=>{
+    if(t.done||!t.date||!isBreak(t.date))return;
+    t.date=nextNonRestForward(t.date);
+    if(typeof calcUrgency==='function')t.urgencyScore=calcUrgency(t);
+    n++;
+  });
+  if(n){
+    save('tasks',tasks);
+    if(typeof syncKey==='function')syncKey('tasks',tasks);
+    if(typeof renderTasks==='function')renderTasks();
+    if(typeof renderCalendar==='function')renderCalendar();
+    if(typeof renderDashWeekStrip==='function')renderDashWeekStrip();
+    if(typeof showToast==='function')showToast(`Moved ${n} task(s) off rest day(s)`,'success');
+  }
+  return n;
+}
 const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux Agent',gmail:'Gmail',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
@@ -627,7 +703,7 @@ let gmailEmails=[];
 let gmailToken=sessionStorage.getItem('flux_gmail_token')||null;
 let calYear=TODAY.getFullYear(),calMonth=TODAY.getMonth(),calSelected=TODAY.getDate();
 let currentNoteId=null,noteFilter='all',flashcards=[],fcIndex=0,fcFlipped=false;
-let ambientCtx=null,ambientBufferSource=null,ambientGainNode=null,breathingActive=false,breathTimer=null;
+let breathingActive=false,breathTimer=null;
 let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 
 // ══ SUPABASE + API ══
@@ -662,7 +738,6 @@ function getSB(){
 // ══ HELPERS ══
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
-const isBreak=d=>noHomeworkDays.includes(d);
 const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const strip=html=>html.replace(/<[^>]+>/g,'').slice(0,120);
 const todayStr=()=>TODAY.toISOString().slice(0,10);
@@ -676,7 +751,7 @@ function refreshAIContext(){
 }
 function quietHours(){if(!settings.quiet)return false;const now=new Date(),h=now.getHours(),m=now.getMinutes(),cur=h*60+m;const[sh,sm]=(settings.dndStart||'07:50').split(':').map(Number);const[eh,em]=(settings.dndEnd||'14:30').split(':').map(Number);return cur>=sh*60+sm&&cur<=eh*60+em;}
 function panicCheck(task){if(!settings.panic||quietHours())return;const now=new Date(),due=new Date((task.date||'')+'T23:59:00');if((due-now)/3600000<12&&(due-now)>0)checkAllPanic();}
-function checkAllPanic(){if(!settings.panic||quietHours()){hidePanic();return;}const now=new Date(),in12=new Date(now.getTime()+12*3600000);const urgent=tasks.filter(t=>{if(!t.done&&t.date){const d=new Date(t.date+'T23:59:00');return d>now&&d<=in12;}return false;});if(urgent.length)showPanic(urgent);else hidePanic();}
+function checkAllPanic(){if(!settings.panic||quietHours()){hidePanic();return;}const now=new Date(),in12=new Date(now.getTime()+12*3600000),ts=todayStr();const urgent=tasks.filter(t=>{if(!t.done&&t.date){if(t.date===ts&&typeof isBreak==='function'&&isBreak(ts))return false;const d=new Date(t.date+'T23:59:00');return d>now&&d<=in12;}return false;});if(urgent.length)showPanic(urgent);else hidePanic();}
 function showPanic(list){
   const banner=document.getElementById('panicBanner');if(banner)banner.classList.add('on');
   const pp=document.getElementById('panicPill');if(pp)pp.style.display='flex';
@@ -722,8 +797,9 @@ function nav(id,btn){
   const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
   updateNavAriaCurrent(id);
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();},calendar:()=>{loadCalScheduleUI();renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},gmail:()=>loadGmail()};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderDailySummary();FluxIntel.renderWeeklyInsights();FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxMega){FluxMega.init();FluxMega.render();}if(window.FluxPersonal){FluxPersonal.renderPatternsPanel();FluxPersonal.applyDashboardOrder();}},calendar:()=>{loadCalScheduleUI();renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},gmail:()=>loadGmail()};
   fns[id]?.();
+  if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
 }
 function navMob(id){closeDrawer();nav(id);}
 
@@ -851,6 +927,7 @@ function toggleTask(id){
     }
     spawnConfetti();
     addMomentum();
+    if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
     if(t.estTime)setTimeout(()=>promptEffortTracking(id),600);
     if(t.srsEnabled)setTimeout(()=>generateSRSReviews(t),800);
     showUndoSnackbar('Task completed','undoLastChange');
@@ -863,7 +940,7 @@ function toggleTask(id){
   }
   save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);
 }
-function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);}
+function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);}
 function setFilter(f,el){taskFilter=f;document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTasks();}
 function toggleCompletedTasks(){
   const show=!load('flux_show_completed',false);
@@ -1042,14 +1119,16 @@ function renderDashWeekStrip(){
     if(t.done||!t.date)return null;
     return t.date<weekStart?weekStart:t.date;
   };
-  const byDay=days.map(day=>{
+    const byDay=days.map(day=>{
     const ds=day.toISOString().slice(0,10);
     let mins=0,n=0;
     tasks.forEach(t=>{
       if(effectiveDue(t)!==ds)return;
       mins+=estMins(t);n++;
     });
-    return{ds,mins,n};
+    const rest=typeof isBreak==='function'&&isBreak(ds);
+    const rk=rest&&typeof restDayKind==='function'?restDayKind(ds):null;
+    return{ds,mins,n,rest,rk};
   });
   const totalMins=byDay.reduce((a,x)=>a+x.mins,0);
   const totalTasks=byDay.reduce((a,x)=>a+x.n,0);
@@ -1059,14 +1138,16 @@ function renderDashWeekStrip(){
   el.innerHTML=`<div class="dash-week-strip-inner dash-workload-strip-inner">
     <div class="dash-week-head"><span class="dash-week-kicker">Next 7 days</span><span class="dash-week-total">${totalLabel}${totalTasks?` · ${totalTasks} task${totalTasks===1?'':'s'}`:''}</span></div>
     <div class="dash-week-bars" role="img" aria-label="Estimated minutes per day: ${byDay.map(x=>x.mins).join(', ')}">${byDay.map((row,i)=>{
-      const {mins,n}=row;
+      const {mins,n,rest,rk}=row;
       const h=Math.round(Math.max(14,(mins/maxM)*40));
-      const heavy=mins>goalMin;
-      const tip=`${label[i]} ${days[i].getMonth()+1}/${days[i].getDate()}: ~${mins}m${n?` (${n} task${n===1?'':'s'})`:''}${heavy?' — over typical day goal':''}`.replace(/"/g,'&quot;');
+      const heavy=!rest&&mins>goalMin;
+      const restNote=rest?` · ${rk==='sick'?'Sick day':'Lazy day'} (rest)`:'';
+      const tip=`${label[i]} ${days[i].getMonth()+1}/${days[i].getDate()}: ~${mins}m${n?` (${n} task${n===1?'':'s'})`:''}${restNote}${!rest&&heavy?' — over typical day goal':''}`.replace(/"/g,'&quot;');
       const num=mins>=60?`${(mins/60).toFixed(1)}h`:`${mins}m`;
-      return`<div class="dash-week-col" title="${tip}"><div class="dash-week-bar ${heavy?'dash-week-bar--heavy':''}" style="height:${h}px"></div><span class="dash-week-daylbl">${label[i].slice(0,1)}</span>${mins>0?`<span class="dash-week-num">${num}</span>`:''}</div>`;
+      const restBadge=rest?`<span class="dash-week-rest" title="${rk==='sick'?'Sick day':'Lazy day'}">${rk==='sick'?'🤒':'🛋'}</span>`:'';
+      return`<div class="dash-week-col ${rest?'dash-week-col--rest':''}" title="${tip}">${restBadge}<div class="dash-week-bar ${heavy?'dash-week-bar--heavy':''} ${rest?'dash-week-bar--rest':''}" style="height:${h}px"></div><span class="dash-week-daylbl">${label[i].slice(0,1)}</span>${mins>0&&!rest?`<span class="dash-week-num">${num}</span>`:rest?`<span class="dash-week-num dash-week-num--muted">—</span>`:''}</div>`;
     }).join('')}</div>
-    <p class="dash-week-footnote">Open tasks by due date · overdue counts toward today · default ~30m when no estimate</p>
+    <p class="dash-week-footnote">Open tasks by due date · sick/lazy days marked · default ~30m when no estimate</p>
   </div>`;
 }
 /** Avg estimated minutes for completed tasks in this subject (history-based hint). */
@@ -1074,7 +1155,12 @@ function avgEstMinutesForSubject(subjectKey){
   if(!subjectKey)return null;
   const done=tasks.filter(t=>t.done&&t.subject===subjectKey&&(t.estTime||0)>0);
   if(done.length<2)return null;
-  return Math.round(done.reduce((a,t)=>a+(t.estTime||0),0)/done.length);
+  let avg=Math.round(done.reduce((a,t)=>a+(t.estTime||0),0)/done.length);
+  if(window.FluxEstimateLearn){
+    const adj=FluxEstimateLearn.suggestedEstForSubject(subjectKey,avg);
+    if(typeof adj==='number'&&adj>0)avg=adj;
+  }
+  return avg;
 }
 function autoSplitEditSubtasks(){
   const title=(document.getElementById('editText')?.value||'').trim();
@@ -1114,19 +1200,24 @@ function renderTasks(){
     if(taskFilter!=='all')list=list.filter(t=>!isTaskSnoozed(t));
   }
   const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+  let moodStress=5;
+  try{const mh=moodHistory&&moodHistory.length?moodHistory[moodHistory.length-1]:null;if(mh&&mh.stress!=null)moodStress=parseInt(mh.stress,10);}catch(e){}
   list.sort((a,b)=>{
     if(a.done!==b.done)return a.done?1:-1;
     if(fluxScopeSortKey(a)!==fluxScopeSortKey(b))return fluxScopeSortKey(a)-fluxScopeSortKey(b);
     if(energy<=2){const da=(a.difficulty||3),db=(b.difficulty||3);if(da!==db)return da-db;}
     else if(energy>=4){const heavy=['project','essay','lab'];const ha=heavy.includes(a.type||'')?0:1,hb=heavy.includes(b.type||'')?0:1;if(ha!==hb)return ha-hb;}
+    if(moodStress>=8){const da=(a.difficulty||3),db=(b.difficulty||3);if(da!==db)return da-db;}
     if((b.urgencyScore||0)!==(a.urgencyScore||0))return(b.urgencyScore||0)-(a.urgencyScore||0);
+    const da=window.FluxPersonal&&FluxPersonal.dnaFit?FluxPersonal.dnaFit(a):0,db=window.FluxPersonal&&FluxPersonal.dnaFit?FluxPersonal.dnaFit(b):0;
+    if(db!==da)return db-da;
     if(a.date&&b.date)return new Date(a.date)-new Date(b.date);
     return 0;
   });
   const el=document.getElementById('taskList');
   if(!list.length){
-    const msgs={active:'All clear — nothing to do right now',done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',reading:'No reading tasks — add one with type Reading',snoozed:'Nothing snoozed',all:'No tasks yet'};
-    el.innerHTML=`<div class="empty"><div class="empty-icon">✓</div><div class="empty-title">${msgs[taskFilter]||msgs.all}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or quick add — <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
+    const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',reading:'No reading tasks — add one with type Reading',snoozed:'Nothing snoozed',all:'No tasks yet — press T to quick add'};
+    el.innerHTML=`<div class="empty flux-empty-smart"><div class="empty-icon">✓</div><div class="empty-title">${msgs[taskFilter]||msgs.all}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
     return;
   }
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},reading:{l:'Reading',c:'var(--blue)'},other:{l:'Other',c:'var(--muted)'}};
@@ -1138,6 +1229,7 @@ function renderTasks(){
     const isOver=t.date&&new Date(t.date+'T00:00:00')<now&&!t.done;
     const isToday=t.date&&t.date===todayS&&!t.done;
     const isNP=t.date&&isBreak(t.date);
+    const restEmoji=isNP?(restDayKind(t.date)==='sick'?'🤒':'🛋'):'';
     const ds=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
     const ti=tm[t.type]||tm.other;
     const priClass=t.priority==='high'?'priority-high':t.priority==='med'?'priority-med':'priority-low';
@@ -1154,6 +1246,7 @@ function renderTasks(){
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
+    const recChip=t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'';
     const snz=isTaskSnoozed(t)?`<span class="task-chip" style="background:rgba(251,191,36,.12);color:var(--gold)">Snoozed</span>`:'';
     return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
@@ -1163,9 +1256,10 @@ ${bulk}
 <div class="task-tags task-meta-line">
 ${sub?`<span class="task-chip task-chip-subject">${sub.short}</span>`:''}
 ${priChip}
-${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}">${ds}${isNP?' 📵':''}</span>`:''}
+${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}">${ds}${isNP?' '+restEmoji:''}</span>`:''}
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
-${waitChip}${snz}
+${waitChip}${recChip}${snz}
+${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
 ${stBar}${procras}
@@ -1173,6 +1267,7 @@ ${stBar}${procras}
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();snoozeTask(${t.id},1)" title="Snooze 1 day">⏸</button>`:''}
+${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
 </div>
@@ -1189,6 +1284,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
     html+=`<div id="completedTasksWrap" style="${showDone?'':'display:none'}">${done.map(renderCard).join('')}</div>`;
   }
   el.innerHTML=html;
+  if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
 }
 function renderSmartSug(){}
 function openDashAddTaskModal(){
@@ -1277,14 +1373,15 @@ function renderCalendar(){
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
   for(let i=first-1;i>=0;i--)html+=`<div class="cal-day other"><div class="cal-dn">${prevDays-i}</div></div>`;
-  for(let d=1;d<=days;d++){const dt=new Date(calYear,calMonth,d),ds=fluxLocalYMD(dt);const isToday=dt.getTime()===now.getTime(),isNP=isBreak(ds),ab=getCycleDayLabel(ds);const rawT=tMap[d]||[],rawE=evMap[d]||[];const tlist=[...rawT].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));const elist=[...rawE].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));// Task bars — school items first
+  for(let d=1;d<=days;d++){const dt=new Date(calYear,calMonth,d),ds=fluxLocalYMD(dt);const isToday=dt.getTime()===now.getTime(),isNP=isBreak(ds),rk=isNP?restDayKind(ds)||'lazy':null,ab=getCycleDayLabel(ds);const rawT=tMap[d]||[],rawE=evMap[d]||[];const tlist=[...rawT].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));const elist=[...rawE].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));// Task bars — school items first
 const taskBars=tlist.slice(0,3).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';const out=fluxEventScope(t)==='outside';return`<div class="cal-task-bar" style="background:${c}22;border-left:2px solid ${c};opacity:${out?0.75:(t.done?0.5:1)};text-decoration:${t.done?'line-through':'none'}">${esc(t.name)}</div>`;}).join('');
 const eventBars=elist.slice(0,2).map(e=>{const out=fluxEventScope(e)==='outside';const wk=e._weekly;const bg=wk?(out?'rgba(148,163,184,.1)':'rgba(0,194,255,.12)'):(out?'rgba(148,163,184,.12)':'rgba(192,132,252,.15)');const br=wk?(out?'var(--border2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<div class="cal-task-bar" style="background:${bg};border-left:2px solid ${br}">${esc(e.title||'Event')}</div>`;}).join('');
-const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abCol=ab==='A'?'var(--accent)':ab==='B'?'var(--green)':ab?'var(--gold)':'var(--muted)';const abLabel=ab?`<div style="font-size:${ab.length>2?'.4rem':'.45rem'};font-family:'JetBrains Mono',monospace;color:${abCol};line-height:1;margin-top:1px;max-width:100%;text-overflow:ellipsis;overflow:hidden">${esc(ab)}</div>`:'';const overFlag=tlist.some(t=>!t.done&&new Date(t.date+'T00:00:00')<now)?'<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--red)"></div>':'';const countBadge=allCount>3?`<div class="cal-day-count">+${allCount-3}</div>`:'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${isNP?'no-hw':''}" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${countBadge}</div>`;}
+const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abCol=ab==='A'?'var(--accent)':ab==='B'?'var(--green)':ab?'var(--gold)':'var(--muted)';const abLabel=ab?`<div style="font-size:${ab.length>2?'.4rem':'.45rem'};font-family:'JetBrains Mono',monospace;color:${abCol};line-height:1;margin-top:1px;max-width:100%;text-overflow:ellipsis;overflow:hidden">${esc(ab)}</div>`:'';const overFlag=tlist.some(t=>!t.done&&new Date(t.date+'T00:00:00')<now)?'<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--red)"></div>':'';const countBadge=allCount>3?`<div class="cal-day-count">+${allCount-3}</div>`:'';const restCls=isNP?` no-hw ${rk==='sick'?'rest-sick':'rest-lazy'}`:'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}" ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${countBadge}</div>`;}
   document.getElementById('calGrid').innerHTML=html;
   renderCalDay();
   renderCalToday();
   renderCalUpcoming();
+  if(typeof fluxAfterRenderCalendar==='function')fluxAfterRenderCalendar();
 }
 
 function renderCalDay(){
@@ -2000,11 +2097,15 @@ function initEcCollegeChatListeners(){
 }
 function renderEcChatMessages(){
   const box=document.getElementById('ecChatMessages');if(!box)return;
+  const inp=document.getElementById('ecChatInput');
   const {messages}=loadEcCollegeChat();
+  if(inp)inp.style.minHeight=messages.length?'48px':'120px';
   if(!messages.length){
-    box.innerHTML='<div style="color:var(--muted);font-size:.8rem;line-height:1.5">Ask about extracurriculars, how a school weighs activities, or what to build before you apply. Flux loads web + forum context for the college you pick before answering.</div>';
+    box.innerHTML='';
+    box.style.display='none';
     return;
   }
+  box.style.display='block';
   box.innerHTML=messages.map(m=>{
     const isUser=m.role==='user';
     return`<div style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:${isUser?'rgba(var(--accent-rgb),.1)':'var(--card)'};border:1px solid var(--border2)">
@@ -2086,7 +2187,7 @@ async function sendEcCollegeChat(){
   }
 }
 
-function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
+function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
@@ -2111,9 +2212,9 @@ function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlip
 // ══ MOOD ══
 function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');localStorage.setItem('flux_mood_today',val);}
 function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;localStorage.setItem('flux_stress_today',v);}
-function saveMoodEntry(){const mood=parseInt(localStorage.getItem('flux_mood_today')||'3');const stress=parseInt(document.getElementById('stressSlider').value||'3');const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();}
+function saveMoodEntry(){const mood=parseInt(localStorage.getItem('flux_mood_today')||'3');const stress=parseInt(document.getElementById('stressSlider').value||'3');const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
-function renderAffirmation(){const el=document.getElementById('affirmation');if(!el)return;el.textContent='"'+AFFIRMATIONS[TODAY.getDate()%AFFIRMATIONS.length]+'"';}
+function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
 function startBreathing(){if(breathingActive){clearInterval(breathTimer);breathingActive=false;document.getElementById('breathBtn').textContent='Start';document.getElementById('breathCircle').style.transform='scale(1)';document.getElementById('breathCircle').textContent='START';return;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];document.getElementById('breathCircle').textContent=p.label+'\n'+countdown;document.getElementById('breathCircle').style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
 
 // ══ TIMER ══
@@ -2127,7 +2228,7 @@ function toggleTimer(){tRunning?pauseTimer():startTimer();}
 function startTimer(){tRunning=true;document.getElementById('timerBtn').textContent='⏸ Pause';tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Resume';}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').textContent='▶ Start';updateTDisplay();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub});save('flux_session_log',sessionLog);if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;document.getElementById('tDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}}
@@ -2138,100 +2239,15 @@ function renderSubjectBudget(){
   const subjs=getSubjects();
   const entries=Object.entries(subjs);
   if(!entries.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">Add classes in School Info to see subject budgets.</div>';return;}
-  el.innerHTML=entries.map(([k,s])=>{
+  el.innerHTML='<div class="flux-subject-budget-list">'+entries.map(([k,s])=>{
     const done=parseFloat((subjectBudgets[k]||0).toFixed(1));
     const target=2; // default 2h/week per subject
     const pct=Math.min(Math.round(done/target*100),100);
     const c=pct>=100?'var(--green)':pct>=60?'var(--accent)':'var(--gold)';
-    return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.8rem;font-weight:600">${s.short}</span></div><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:${c}">${done} / ${target}h</span></div><div class="budget-bar"><div class="budget-fill" style="width:${pct}%;background:${s.color}"></div></div></div>`;
-  }).join('');
+    return`<div class="flux-subject-budget-row" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.8rem;font-weight:600">${s.short}</span></div><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:${c}">${done}h / ${target}h</span></div><div class="budget-bar flux-budget-bar"><div class="budget-fill" style="width:${pct}%;background:linear-gradient(90deg,${s.color},rgba(var(--accent-rgb),.85))"></div></div></div>`;
+  }).join('')+'</div>';
 }
-function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=d.toISOString().slice(0,10);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/120,1);const isToday=ds===todayStr();return`<div style="flex:1;text-align:center"><div style="height:40px;border-radius:8px;background:rgba(var(--accent-rgb),${intensity.toFixed(2)});border:1px solid ${isToday?'var(--accent)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--text);font-weight:700">${mins>0?mins+'m':''}</div><div style="font-size:.58rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
-function ambientSoundUrl(name){
-  try{return new URL(`public/audio/ambient/${name}.wav`,window.location.href).href;}
-  catch(_){return`public/audio/ambient/${name}.wav`;}
-}
-function playAmbientSynthFallback(type,btn){
-  try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
-    const d=buf.getChannelData(0);
-    const amp=type==='white'?0.12:0.07;
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*amp;
-    const src=ctx.createBufferSource();
-    src.buffer=buf;
-    src.loop=true;
-    const g=ctx.createGain();
-    g.gain.value=type==='white'?0.35:0.38;
-    if(type==='rain'){
-      const f=ctx.createBiquadFilter();
-      f.type='bandpass';
-      f.frequency.value=1200;
-      f.Q.value=0.55;
-      src.connect(f);
-      f.connect(g);
-    }else src.connect(g);
-    g.connect(ctx.destination);
-    src.start(0);
-    ambientCtx=ctx;
-    ambientBufferSource=src;
-    ambientGainNode=g;
-  }catch(e){showToast('Audio unavailable in this browser','warning');}
-}
-async function playAmbient(type,btn){
-  stopAmbient();
-  startAmbientVisualizer();
-  document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  const allowed=new Set(['rain','cafe','ocean','fire','white']);
-  if(!allowed.has(type))return;
-  let ctx=null;
-  try{
-    ctx=new(window.AudioContext||window.webkitAudioContext)();
-    if(ctx.state==='suspended')await ctx.resume();
-    const res=await fetch(ambientSoundUrl(type));
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const arr=await res.arrayBuffer();
-    const decoded=await ctx.decodeAudioData(arr.slice(0));
-    const src=ctx.createBufferSource();
-    src.buffer=decoded;
-    src.loop=true;
-    const g=ctx.createGain();
-    g.gain.value=type==='white'?0.28:0.36;
-    src.connect(g);
-    g.connect(ctx.destination);
-    src.start(0);
-    ambientCtx=ctx;
-    ambientBufferSource=src;
-    ambientGainNode=g;
-  }catch(e){
-    console.warn('Ambient sample failed, synth fallback',e);
-    try{if(ctx){await ctx.close();}}catch(_){}
-    ambientCtx=null;
-    ambientBufferSource=null;
-    ambientGainNode=null;
-    playAmbientSynthFallback(type,btn);
-  }
-}
-function stopAmbient(){
-  stopAmbientVisualizer();
-  try{
-    if(ambientBufferSource){
-      try{ambientBufferSource.stop(0);}catch(_){}
-      try{ambientBufferSource.disconnect();}catch(_){}
-      ambientBufferSource=null;
-    }
-    if(ambientGainNode){
-      try{ambientGainNode.disconnect();}catch(_){}
-      ambientGainNode=null;
-    }
-    if(ambientCtx){
-      try{ambientCtx.close();}catch(_){}
-      ambientCtx=null;
-    }
-  }catch(_){}
-  document.querySelectorAll('#timer .card .tmode-btn').forEach(b=>b.classList.remove('active'));
-}
+function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=d.toISOString().slice(0,10);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
 
 // ══ PROFILE ══
 function saveProfile(){
@@ -2291,6 +2307,7 @@ function renderProfile(){
   const pic=localStorage.getItem('flux_profile_pic');
   const av=document.getElementById('pAvatar');
   if(av)av.innerHTML=(pic?`<img src="${pic}">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
+  if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const gpa=calcGPA(grades);
   const done=tasks.filter(t=>t.done).length;
@@ -2307,9 +2324,6 @@ function renderProfile(){
   const ps=document.getElementById('profileStats');
   if(ps)ps.innerHTML=[[gpa!==null?precise(gpa):'—','GPA (4dp)','var(--accent)'],[done,'Done','var(--green)'],[tasks.filter(t=>!t.done).length,'Active','var(--gold)'],[notes.length,'Notes','var(--purple)']].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:12px"><div style="font-size:1.4rem;font-weight:800;color:${c}">${n}</div><div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div></div>`).join('');
 
-  // Program tracker
-  renderProgramTracker(p);
-
   // Confidence sliders — now use dynamic subjects from user's classes
   const confEl=document.getElementById('confidenceSliders');
   const subjs=getSubjects();
@@ -2323,49 +2337,8 @@ function renderProfile(){
   renderCanvasStatus();
 }
 
-function renderProgramTracker(p){
-  const el=document.getElementById('programTracker');if(!el)return;
-  const grade=parseInt(p?.grade)||0;
-  const program=p?.program||'';
-  const isIB=program.includes('IB');
-  if(!isIB){el.style.display='none';return;}
-  el.style.display='block';
-  const isDP=program==='IB DP';
-  const isMYP=program==='IB MYP';
-  // MYP: grades 6-10 | DP: grades 11-12
-  const dpItems=[
-    {key:'tok',label:'Theory of Knowledge',desc:'TOK Essay + Exhibition',done:load('flux_pt_tok',false)},
-    {key:'ee',label:'Extended Essay',desc:'4000-word independent research',done:load('flux_pt_ee',false)},
-    {key:'cas',label:'CAS',desc:'Creativity, Activity, Service',done:load('flux_pt_cas',false)},
-  ];
-  const mypItems=[
-    {key:'pp',label:'Personal Project',desc:'Self-directed project (Grade 10)',done:load('flux_pt_pp',false)},
-    {key:'comm',label:'Community Project',desc:'Community service (Grade 9)',done:load('flux_pt_comm',false)},
-  ];
-  const items=isDP?dpItems:mypItems;
-  el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <div style="flex:1">
-        <div style="font-size:.88rem;font-weight:700">${program} Progress Tracker</div>
-        <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px">Grade ${grade||'?'} · ${isDP?'Diploma Programme':'Middle Years Programme'}</div>
-      </div>
-      ${isMYP&&grade>=10?`<div style="font-size:.72rem;padding:4px 10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);border-radius:10px;color:var(--accent)">→ DP eligible at Grade 11</div>`:''}
-    </div>
-    ${items.map(item=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <button type="button" onclick="togglePT('${item.key}')" style="width:22px;height:22px;border-radius:7px;padding:0;flex-shrink:0;background:${item.done?'var(--green)':'transparent'};border:2px solid ${item.done?'var(--green)':'var(--border2)'};color:#080a0f;font-size:11px">${item.done?'✓':''}</button>
-        <div style="flex:1"><div style="font-size:.87rem;font-weight:600;${item.done?'text-decoration:line-through;opacity:.6':''}">${item.label}</div><div style="font-size:.7rem;color:var(--muted)">${item.desc}</div></div>
-      </div>`).join('')}`;
-}
-function togglePT(key){
-  const sk='flux_pt_'+key;
-  const current=!!load(sk,false);
-  save(sk,!current);
-  syncKey('ibProgram',!current);
-  renderProfile();
-}
-function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}"><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;};r.readAsDataURL(file);}
-function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');}
+function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}"><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
+function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();if(window.FluxIntel&&FluxIntel.renderAiInsightStrip)FluxIntel.renderAiInsightStrip();if(window.FluxPersonal&&FluxPersonal.renderPatternsPanel)FluxPersonal.renderPatternsPanel();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
 // ══ THEMES ══
@@ -2595,6 +2568,8 @@ function loadSettingsUI(){
     else if(Notification.permission==='denied')ns.textContent='Blocked in browser settings — enable for this site to get reminders.';
     else ns.textContent='Optional — tap Enable to allow due-soon reminders.';
   }
+  renderNoHWList();
+  if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();
 }
 function requestFluxNotifications(){
   if(!('Notification' in window)){showToast('Notifications not supported here','warning');return;}
@@ -2606,21 +2581,44 @@ function requestFluxNotifications(){
 }
 function renderNoHWList(){
   const el=document.getElementById('noHWList');if(!el)return;
-  const days=load('flux_no_hw_days',[]);
-  if(!days.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem">No days added yet.</div>';return;}
-  const sorted=[...days].sort();
-  el.innerHTML=sorted.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0"><span>📵 ${new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><button onclick="removeNoHWDay('${d}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px">✕</button></div>`).join('');
+  const days=loadRestDaysList();
+  if(!days.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem">No rest days yet.</div>';return;}
+  const sorted=[...days].sort((a,b)=>a.date.localeCompare(b.date));
+  el.innerHTML=sorted.map(r=>{
+    const lab=r.kind==='sick'?'🤒 Sick':'🛋 Lazy';
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span><strong style="font-size:.72rem;color:var(--muted2)">${lab}</strong> · ${new Date(r.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><button type="button" onclick="removeRestDay('${r.date}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px" aria-label="Remove">✕</button></div>`;
+  }).join('');
 }
-function addNoHWDay(){
-  const inp=document.getElementById('noHWInput');if(!inp||!inp.value)return;
-  const days=load('flux_no_hw_days',[]);
-  if(!days.includes(inp.value))days.push(inp.value);
-  save('flux_no_hw_days',days);inp.value='';renderNoHWList();
+function addRestDay(){
+  const inp=document.getElementById('noHWInput');
+  const kindEl=document.getElementById('restDayKind');
+  if(!inp||!inp.value)return;
+  const kind=(kindEl&&kindEl.value==='sick')?'sick':'lazy';
+  const days=loadRestDaysList().filter(x=>x.date!==inp.value);
+  days.push({date:inp.value,kind});
+  saveRestDaysList(days);
+  inp.value='';
+  renderNoHWList();
+  if(typeof renderCalendar==='function')renderCalendar();
+  if(typeof renderDashWeekStrip==='function')renderDashWeekStrip();
+  if(typeof checkTimePoverty==='function')checkTimePoverty();
+  if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  if(window.FluxMega&&FluxMega.render)FluxMega.render();
+  if(currentUser&&typeof syncToCloud==='function')syncToCloud();
 }
-function removeNoHWDay(d){
-  const days=load('flux_no_hw_days',[]).filter(x=>x!==d);
-  save('flux_no_hw_days',days);renderNoHWList();
+function removeRestDay(d){
+  const days=loadRestDaysList().filter(x=>x.date!==d);
+  saveRestDaysList(days);
+  renderNoHWList();
+  if(typeof renderCalendar==='function')renderCalendar();
+  if(typeof renderDashWeekStrip==='function')renderDashWeekStrip();
+  if(typeof checkTimePoverty==='function')checkTimePoverty();
+  if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  if(window.FluxMega&&FluxMega.render)FluxMega.render();
+  if(currentUser&&typeof syncToCloud==='function')syncToCloud();
 }
+function addNoHWDay(){addRestDay();}
+function removeNoHWDay(d){removeRestDay(d);}
 
 function renderTabCustomizer(){
   const el=document.getElementById('tabCustomizerList');if(!el)return;
@@ -3109,7 +3107,7 @@ function buildAIPrompt(){
   const gpa=calcGPA(grades);
   const mood=moodHistory.slice(-1)[0];
   const subjs=getSubjects();
-  const fmt=t=>{const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?' [NO-HW]':'';const s=subjs[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};
+  const fmt=t=>{const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?` [REST ${restDayKind(t.date)==='sick'?'SICK':'LAZY'}]`:'';const s=subjs[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};
 
   // Calendar context — upcoming events + classes
   const today=todayStr();
@@ -3350,7 +3348,7 @@ function buildFullPlannerContextForAI(opts){
   add('Calendar events',clip(JSON.stringify(load('flux_events',[]).slice(0,70)),4000));
   add('Weekly repeating activities',clip(JSON.stringify(load('flux_weekly_events',[])),2000));
   add('Cycle day config',clip(JSON.stringify(load('flux_cycle_config',null)),800));
-  add('No-homework days',clip(JSON.stringify(noHomeworkDays),500));
+  add('Rest days (sick/lazy)',clip(JSON.stringify(loadRestDaysList()),800));
   add('App settings',clip(JSON.stringify(settings),1400));
 
   add('Enabled app tabs (goals = Extracurriculars in UI)',tabConfig.filter(t=>t.visible).map(t=>t.id).join(', '));
@@ -3384,7 +3382,11 @@ function getCloudPayload(){
     confidences,
     sessionLog,
     onboarded:!!load('flux_onboarded',false),
-    noHWDays:load('flux_no_hw_days',[]),
+    noHWDays:loadRestDaysList().map(r=>r.date),
+    restDays:loadRestDaysList(),
+    flux_ui_density:load('flux_ui_density','comfortable'),
+    flux_mood_tint_enabled:load('flux_mood_tint_enabled',true),
+    flux_nav_counts_v1:load('flux_nav_counts_v1',{}),
     events:load('flux_events',[]),
     cycleConfig:load('flux_cycle_config',null),
     weeklyEvents:load('flux_weekly_events',[]),
@@ -3443,6 +3445,7 @@ async function forceSyncNow(){
   renderSchool();updateTStats();populateSubjectSelects();
   // Re-apply accent AFTER all renders (renderSidebars rebuilds SVG logo)
   updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
+  if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
   if(btn){btn.textContent='✓ Synced';setTimeout(()=>{btn.textContent='Force Sync Now';btn.disabled=false;},2000);}
   showToast('✓ Data synced');
 }
@@ -3483,7 +3486,11 @@ async function syncFromCloud(){
         if(typeof d.ibProgramProgress[k]==='boolean')save('flux_pt_'+k,d.ibProgramProgress[k]);
       });
     }
-    if(d.noHWDays){save('flux_no_hw_days',d.noHWDays);}
+    if(Array.isArray(d.restDays)&&d.restDays.length){saveRestDaysList(d.restDays.filter(x=>x&&x.date));}
+    else if(d.noHWDays&&Array.isArray(d.noHWDays)){saveRestDaysList(d.noHWDays.map(x=>typeof x==='string'?{date:x,kind:'lazy'}:x));}
+    if(d.flux_ui_density)save('flux_ui_density',d.flux_ui_density);
+    if(d.flux_mood_tint_enabled!==undefined)save('flux_mood_tint_enabled',d.flux_mood_tint_enabled);
+    if(d.flux_nav_counts_v1&&typeof d.flux_nav_counts_v1==='object')save('flux_nav_counts_v1',d.flux_nav_counts_v1);
     if(d.events){save('flux_events',d.events);}
     if(d.cycleConfig!==undefined)save('flux_cycle_config',d.cycleConfig);
     if(Array.isArray(d.weeklyEvents)){save('flux_weekly_events',d.weeklyEvents);}
@@ -3533,6 +3540,7 @@ async function syncFromCloud(){
     populateSubjectSelects();
     // Re-apply accent after renders in case sidebar was rebuilt
     updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
+    if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
 }
 const syncDebounceTimers={};
@@ -3961,11 +3969,7 @@ function initKeyboardShortcuts(){
     switch(e.key){
       case 'n': case 'N': case 't': case 'T':
         e.preventDefault();
-        nav('dashboard');
-        setTimeout(()=>{
-          const qa=document.getElementById('quickAddInput');
-          if(qa){qa.focus();qa.scrollIntoView({behavior:'smooth',block:'center'});}
-        },100);
+        if(typeof openQuickAdd==='function')openQuickAdd();
         break;
       case '/':
         e.preventDefault();
@@ -5328,31 +5332,6 @@ function applyHighContrast(){
   }
 }
 
-
-// ══ AMBIENT SOUND VISUALIZER ══════════════════════════════════
-let _ambVisAnim=null;
-function startAmbientVisualizer(){
-  stopAmbientVisualizer();
-  const el=document.getElementById('ambientViz');if(!el)return;
-  let frame=0;
-  function draw(){
-    frame++;
-    const bars=el.querySelectorAll('.amb-bar');
-    bars.forEach((b,i)=>{
-      const h=30+Math.sin(frame*0.08+i*0.8)*20+Math.random()*10;
-      b.style.height=h+'%';
-    });
-    _ambVisAnim=requestAnimationFrame(draw);
-  }
-  draw();
-}
-function stopAmbientVisualizer(){
-  if(_ambVisAnim)cancelAnimationFrame(_ambVisAnim);_ambVisAnim=null;
-  const el=document.getElementById('ambientViz');
-  if(el)el.querySelectorAll('.amb-bar').forEach(b=>b.style.height='20%');
-}
-
-
 // ══ TASK SWIPE GESTURES ═══════════════════════════════════════
 function initTaskSwipeGestures(){
   const list=document.getElementById('taskList');if(!list)return;
@@ -5998,6 +5977,7 @@ function saveEffort(taskId){
     t.effortAccuracy=acc;
   }
   save('tasks',tasks);
+  if(window.FluxEstimateLearn&&t.subject)FluxEstimateLearn.record(t.subject,t.estTime||0,actual);
   document.querySelector('[style*="fixed"][style*="rgba(0,0,0,.5)"]')?.remove();
   showToast(actual>=(t.estTime||0)?'Took longer than expected 📊':'Done faster than expected ⚡');
 }

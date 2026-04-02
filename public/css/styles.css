@@ -346,6 +346,8 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .time-poverty-banner__detail{font-size:.74rem;color:var(--muted2);line-height:1.5}
 .time-poverty-banner__dismiss{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:2px 4px;align-self:flex-start;opacity:.55;transition:opacity .15s ease}
 .time-poverty-banner__dismiss:hover{opacity:1;color:var(--text)}
+.time-poverty-banner--rest{background:rgba(var(--purple-rgb),.08);border-color:rgba(var(--purple-rgb),.22)}
+.time-poverty-banner--rest .time-poverty-banner__title{color:var(--purple)}
 
 .focus-card{background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(var(--purple-rgb),.05));border:1px solid rgba(var(--accent-rgb),.18);border-radius:var(--r);padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
 .focus-card::before{content:'';position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:radial-gradient(circle,rgba(var(--accent-rgb),.1),transparent 70%);pointer-events:none}
@@ -570,6 +572,10 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .dash-workload-strip-inner .dash-week-num{font-size:.52rem;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .dash-week-daylbl{font-size:.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase}
 .dash-week-num{font-size:.58rem;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace}
+.dash-week-num--muted{color:var(--muted)!important;font-weight:500!important}
+.dash-week-rest{font-size:.62rem;line-height:1;display:block;margin-bottom:2px}
+.dash-week-bar--rest{opacity:.35;filter:grayscale(.25)}
+.dash-week-col--rest .dash-week-daylbl{opacity:.85}
 .dash-week-footnote{
   margin:8px 0 0;font-size:.58rem;color:var(--muted);line-height:1.4;opacity:.85;
 }
@@ -695,7 +701,10 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .cal-day.today{background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)}
 .cal-day.selected{background:var(--accent);box-shadow:0 4px 14px rgba(var(--accent-rgb),.4)}
 .cal-day.selected .cal-dn{color:#fff}
-.cal-day.no-hw{opacity:.4}.cal-day.no-hw .cal-dn{text-decoration:line-through}
+.cal-day.no-hw{opacity:.95}
+.cal-day.no-hw.rest-sick{background:rgba(244,63,94,.1);outline:1px solid rgba(244,63,94,.28)}
+.cal-day.no-hw.rest-lazy{background:rgba(251,191,36,.08);outline:1px solid rgba(251,191,36,.25)}
+.cal-day.no-hw .cal-dn{font-size:.65rem}
 .cal-day.other .cal-dn{color:var(--border2)}
 .cal-dn{font-size:.72rem;font-weight:600;line-height:1}
 .cal-dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:3px}
@@ -1457,14 +1466,6 @@ button[onclick*="generateStudyRoadmap"]:hover{
   font-family:'JetBrains Mono',monospace;
   display:none;align-items:center;
   transition:all .3s;cursor:default;
-}
-
-/* Ambient visualizer bars */
-.amb-bar{
-  flex:1;min-width:3px;
-  background:rgba(var(--accent-rgb),.35);
-  border-radius:2px 2px 0 0;
-  transition:height .08s linear;
 }
 
 /* Tour tooltip */

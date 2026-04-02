@@ -1,0 +1,99 @@
+/* Flux Planner — additive UI polish (hover, gradients, sticky focus, dashboard intel cards) */
+
+.dash-hero-row{display:flex;align-items:center;flex-wrap:wrap;gap:12px 16px}
+.flux-streak-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:.72rem;font-weight:700;font-family:'JetBrains Mono',monospace;
+  background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(244,63,94,.08));border:1px solid rgba(251,191,36,.25);color:var(--gold)}
+.flux-streak-icon{font-size:.9rem}
+
+.flux-sticky-focus{position:sticky;top:0;z-index:40;margin:0 -8px 10px;padding:8px 12px;
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.12),rgba(0,0,0,.15));border-bottom:1px solid rgba(var(--accent-rgb),.2);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.flux-sticky-focus[hidden]{display:none!important}
+.flux-sticky-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1100px;margin:0 auto}
+.flux-sticky-kicker{font-size:.58rem;text-transform:uppercase;letter-spacing:.14em;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+.flux-sticky-title{flex:1;min-width:0;font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flux-sticky-actions{display:flex;gap:6px;flex-wrap:wrap}
+.flux-sticky-actions button{padding:5px 10px;font-size:.72rem;border-radius:8px;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent);cursor:pointer;font-weight:600}
+.flux-sticky-actions button:hover{filter:brightness(1.08)}
+
+.flux-dash-intel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:720px){.flux-dash-intel-grid{grid-template-columns:1fr}}
+.flux-dash-card-inner{background:linear-gradient(165deg,rgba(var(--accent-rgb),.07),rgba(var(--purple-rgb),.04));border:1px solid rgba(var(--accent-rgb),.15);border-radius:var(--r-md);padding:14px 16px}
+.flux-dash-card-kicker{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:8px}
+.flux-daily-stats{display:flex;gap:20px;margin-bottom:8px}
+.flux-daily-num{display:block;font-size:1.35rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)}
+.flux-daily-lbl{display:block;font-size:.62rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em}
+.flux-daily-insight{font-size:.82rem;color:var(--muted2);line-height:1.45;margin:0 0 10px}
+.flux-daily-actions{display:flex;gap:8px;flex-wrap:wrap}
+.flux-week-line{font-size:.82rem;color:var(--text2);line-height:1.45;margin:0 0 6px}
+.flux-muted{font-size:.82rem;color:var(--muted)}
+
+.flux-ai-insight-strip{margin-bottom:10px}
+.flux-ai-strip-inner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--r-sm);
+  background:linear-gradient(90deg,rgba(var(--purple-rgb),.1),rgba(var(--accent-rgb),.06));border:1px solid rgba(var(--purple-rgb),.2);font-size:.8rem;line-height:1.45;color:var(--text2)}
+.flux-ai-strip-icon{flex-shrink:0;opacity:.85}
+
+.flux-overdue-wrap{margin-bottom:10px}
+.flux-overdue-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:var(--r-sm);
+  background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);font-size:.82rem}
+
+.flux-next-best-card{margin-top:10px}
+.flux-nb-title{font-size:1rem;font-weight:800;margin-top:6px}
+.flux-nb-meta{font-size:.75rem;color:var(--muted2);margin-top:4px}
+.flux-nb-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.flux-pill-btn{padding:6px 12px;font-size:.72rem;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-weight:600}
+.flux-pill-btn:hover{border-color:rgba(var(--accent-rgb),.4);color:var(--accent)}
+.flux-pill-accent{background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.35);color:var(--accent)}
+
+.task-chip-recurring{background:rgba(59,130,246,.1)!important;border-color:rgba(59,130,246,.25)!important;color:var(--accent)!important}
+
+/* Priority: low = cool blue (additive override) */
+.task-item.priority-low::before{background:linear-gradient(180deg,#38bdf8,#3b82f6)!important;box-shadow:0 0 6px rgba(59,130,246,.25)}
+
+.cal-day-drag-hover{outline:2px dashed var(--accent);outline-offset:2px;background:rgba(var(--accent-rgb),.06)!important}
+.task-dragging{opacity:.55}
+.flux-inline-task-input{width:100%;font:inherit;font-weight:700;padding:4px 8px;border-radius:8px;border:1px solid var(--accent);background:var(--card);color:var(--text)}
+
+.flux-focus-heatmap{gap:6px!important}
+.flux-fh-block{transition:transform .2s var(--ease),box-shadow .2s}
+.flux-fh-cell:hover .flux-fh-block{transform:translateY(-2px)}
+
+.flux-subject-budget-list .flux-budget-bar{height:8px;border-radius:4px;overflow:hidden;background:var(--border2)}
+
+.flux-empty-smart .empty-title{max-width:42ch}
+
+button, .nav-item, .bnav-item, .btn-sec, .tmode-btn, .task-action-btn, .view-btn{
+  transition:transform .12s ease,box-shadow .15s ease,border-color .15s ease,filter .15s ease;
+}
+button:active, .nav-item:active, .bnav-item:active{transform:scale(.98)}
+.task-action-btn:hover, .view-btn:hover, .topbar-new-task-btn:hover{filter:brightness(1.06)}
+
+.panel.active{transition:opacity .35s ease}
+
+[data-theme="light"] .flux-sticky-focus{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(248,250,255,.88))}
+
+/* Flux AI Command Center */
+.flux-ai-mega-host{margin-bottom:14px}
+.flux-mega-card{margin-bottom:0}
+.flux-mega-title{font-size:1.05rem;letter-spacing:-.02em;margin:0 0 6px}
+.flux-mega-sub{font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 14px}
+.flux-mega-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.flux-mega-btn{font-size:.72rem!important;padding:7px 12px!important}
+.flux-mega-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.flux-mega-block{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.flux-mega-wide{grid-column:1/-1}
+.flux-mega-kicker{font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:6px;font-weight:700}
+.flux-mega-p,.flux-mega-mini{font-size:.8rem;color:var(--text2);line-height:1.5;margin:0}
+.flux-mega-mini{margin-top:6px;font-size:.72rem;color:var(--muted)}
+.flux-mega-ol{margin:8px 0 0;padding-left:18px;font-size:.82rem;line-height:1.55}
+.flux-mega-ol .flux-mega-why{color:var(--muted);font-weight:500}
+.flux-mega-ul{margin:6px 0 0;padding-left:18px;font-size:.78rem;line-height:1.5;color:var(--text2)}
+.flux-mega-details{margin-top:8px;font-size:.78rem}
+.flux-mega-pre{white-space:pre-wrap;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted2);background:var(--card);padding:10px;border-radius:8px;margin:8px 0 0;max-height:160px;overflow:auto}
+.flux-mega-airow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.flux-mega-toggle{display:flex;gap:4px}
+.flux-mega-toggle button{padding:6px 12px;font-size:.72rem;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-weight:600}
+.flux-mega-toggle button.active{background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.35);color:var(--accent)}
+.flux-mega-out{margin-top:10px;font-size:.82rem;line-height:1.55}
+.flux-mega-aiout{color:var(--text2)}
+.flux-muted{color:var(--muted)}

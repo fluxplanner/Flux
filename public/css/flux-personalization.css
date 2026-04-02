@@ -1,0 +1,37 @@
+/* UI density */
+[data-flux-density="minimal"]{--flux-density-pad:18px;--flux-density-gap:14px;--flux-task-pad:12px;}
+[data-flux-density="comfortable"]{--flux-density-pad:14px;--flux-density-gap:12px;--flux-task-pad:10px;}
+[data-flux-density="dense"]{--flux-density-pad:10px;--flux-density-gap:8px;--flux-task-pad:7px;}
+[data-flux-density="minimal"] #dashboard .card{padding:var(--flux-density-pad)}
+[data-flux-density="dense"] #dashboard .card{padding:var(--flux-density-pad)}
+[data-flux-density="minimal"] .flux-dash-intel-grid{gap:14px}
+[data-flux-density="dense"] .flux-dash-intel-grid{gap:8px}
+[data-flux-density="dense"] .task-item{padding-top:var(--flux-task-pad);padding-bottom:var(--flux-task-pad)}
+
+/* Mood tint (subtle; works on top of theme) */
+[data-mood-tint="calm"]{--mood-tint-a:4;--mood-tint-b:12;}
+[data-mood-tint="warm"]{--mood-tint-a:14;--mood-tint-b:4;}
+[data-mood-tint="neutral"]{--mood-tint-a:0;--mood-tint-b:0;}
+html[data-mood-tint="calm"] body::before,
+html[data-mood-tint="warm"] body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  opacity:.07;
+  background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(var(--accent-rgb),calc(.35 + var(--mood-tint-a,0) * .01)),transparent 55%);
+}
+
+/* Dashboard section reorder */
+.flux-dash-sections{display:flex;flex-direction:column;gap:0}
+
+/* Patterns card */
+.flux-patterns-host{margin-bottom:12px}
+.flux-patterns-card{margin-bottom:0}
+.flux-patterns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.flux-pat-k{font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;color:var(--muted);font-weight:700;margin-bottom:6px}
+.flux-pat-p{font-size:.78rem;color:var(--text2);line-height:1.45;margin:0}
+
+/* Profile avatar evolution rings */
+.p-avatar.flux-avatar--evo-1{border-width:2px}
+.p-avatar.flux-avatar--evo-2{border-width:3px;box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25)}
+.p-avatar.flux-avatar--evo-3{border-width:3px;box-shadow:0 0 0 2px rgba(var(--gold-rgb),.3),0 0 12px rgba(var(--accent-rgb),.15)}
+.p-avatar.flux-avatar--evo-4{border-width:3px;box-shadow:0 0 0 2px rgba(var(--purple-rgb),.35),0 0 16px rgba(var(--accent-rgb),.2)}
+.p-avatar.flux-avatar--evo-5{border-width:3px;box-shadow:0 0 0 3px rgba(var(--gold-rgb),.4),0 0 20px rgba(var(--accent-rgb),.25)}

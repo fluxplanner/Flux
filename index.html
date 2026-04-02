@@ -50,6 +50,8 @@
 <link rel="stylesheet" href="public/css/styles.css">
 <link rel="stylesheet" href="public/css/login.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
+<link rel="stylesheet" href="public/css/flux-ui-polish.css">
+<link rel="stylesheet" href="public/css/flux-personalization.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -508,12 +510,16 @@
       <div id="abPill" style="display:none"></div>
       <div id="topbarClock" style="display:none"></div>
     </div>
+    <div id="fluxStickyFocus" class="flux-sticky-focus" hidden></div>
 
     <!-- ─── DASHBOARD ─── -->
     <div id="dashboard" class="panel active dash-v2 flux-page">
 
       <header class="dash-v2-greet" id="dashHero">
+        <div class="dash-hero-row">
         <h1 class="dash-v2-greet-title" id="dashGreeting">Good evening 👋</h1>
+        <span id="fluxStreakBadge" class="flux-streak-badge" style="display:none" aria-live="polite"></span>
+        </div>
       </header>
 
       <div class="dash-alerts dash-v2-alerts">
@@ -528,8 +534,17 @@
       </div>
 
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
+      <div id="fluxAiInsightStrip" class="flux-ai-insight-strip" style="display:none"></div>
+      <div id="fluxOverdueBanner" class="flux-overdue-wrap" style="display:none"></div>
+      <div id="fluxDashSections" class="flux-dash-sections">
+      <div class="flux-dash-intel-grid" data-flux-section="intel">
+        <div id="fluxDailySummary"></div>
+        <div id="fluxWeeklyInsights"></div>
+      </div>
+      <div id="fluxPatternsPanel" data-flux-section="patterns" class="flux-patterns-host"></div>
+      <div id="fluxAiMegaPanel" class="flux-ai-mega-host" data-flux-section="mega"></div>
 
-      <section class="dash-v2-pulse" aria-label="Today at a glance">
+      <section class="dash-v2-pulse" aria-label="Today at a glance" data-flux-section="pulse">
         <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
         <div class="dash-energy dash-v2-energy" id="dashEnergyCard">
           <span class="dash-energy-label">Energy today</span>
@@ -539,11 +554,11 @@
         </div>
       </section>
 
-      <section class="dash-v2-insight" aria-label="Focus">
+      <section class="dash-v2-insight" aria-label="Focus" data-flux-section="focus">
         <div id="dynamicFocusCard" class="dash-v2-focus-slot"></div>
       </section>
 
-      <div id="countdownCard" class="dash-v2-countdown" style="display:none">
+      <div id="countdownCard" class="dash-v2-countdown" style="display:none" data-flux-section="countdown">
         <div class="card dash-v2-countdown-card">
           <div class="dash-v2-countdown-kicker">Assessment</div>
           <h3 class="dash-v2-countdown-heading">Next exam countdown</h3>
@@ -552,7 +567,7 @@
         </div>
       </div>
 
-      <section class="dash-workspace dash-v2-workspace" aria-label="Tasks">
+      <section class="dash-workspace dash-v2-workspace" aria-label="Tasks" data-flux-section="tasks">
         <div class="dash-v2-work-head">
           <h2 class="dash-v2-work-title">Tasks</h2>
           <div class="dash-toolbar">
@@ -592,6 +607,7 @@
           <div id="savedViewsList"></div>
         </div>
       </section>
+      </div>
 
     </div>
 
@@ -962,7 +978,7 @@
     <!-- ─── TIMER ─── -->
     <div id="timer" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Pomodoro, ambient sound, streaks, and where your time goes.</p>
+        <p class="flux-page-sub">Pomodoro, streaks, and where your time goes.</p>
       </header>
       <div class="flux-stack">
       <div class="card" style="text-align:center;padding:24px 16px">
@@ -1003,32 +1019,6 @@
             <div id="distractionCount" style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;margin-top:4px"></div>
         <div style="display:flex;gap:6px;justify-content:center" id="timerDots"></div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace" id="tSessionLbl">Session 1 of 4</div>
-      </div>
-      <div class="card">
-        <h3>Ambient Sounds</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="playAmbient('rain',this)" class="tmode-btn">🌧 Rain</button>
-          <button onclick="playAmbient('cafe',this)" class="tmode-btn">☕ Café</button>
-          <button onclick="playAmbient('ocean',this)" class="tmode-btn">🌊 Ocean</button>
-          <button onclick="playAmbient('fire',this)" class="tmode-btn">🔥 Fire</button>
-          <button onclick="playAmbient('white',this)" class="tmode-btn">〰 White</button>
-          <button onclick="stopAmbient()" class="tmode-btn">⏹ Stop</button>
-        </div>
-        <!-- Ambient sound visualizer -->
-        <div id="ambientViz" style="display:flex;align-items:flex-end;gap:2px;height:24px;margin-top:10px;padding:0 2px">
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:20%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:40%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:60%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:35%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:55%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:25%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:70%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:45%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:30%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:65%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:50%;transition:height .08s"></div>
-          <div class="amb-bar" style="flex:1;background:rgba(var(--accent-rgb),.35);border-radius:2px 2px 0 0;height:38%;transition:height .08s"></div>
-        </div>
       </div>
       <div class="card">
         <h3>Today's Focus</h3>
@@ -1072,13 +1062,6 @@
             <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Set up your profile</div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px" id="profileBadges"></div>
           </div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">CAS Progress</div>
-            
-          </div>
-          <div id="programTracker"></div>
         </div>
       </div>
       <div class="card">
@@ -1201,9 +1184,9 @@
           <input type="text" id="ecChatCollegeCustom" placeholder="Or type any college…" style="margin:0;flex:1;min-width:160px;font-size:.8rem">
         </div>
         <div id="ecChatMeta" style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px;min-height:1em"></div>
-        <div id="ecChatMessages" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--card2);margin-bottom:10px;font-size:.82rem;line-height:1.5;min-height:140px"></div>
+        <div id="ecChatMessages" style="display:none;flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--card2);margin-bottom:10px;font-size:.82rem;line-height:1.5;min-height:80px"></div>
         <div style="display:flex;gap:8px;align-items:flex-end">
-          <textarea id="ecChatInput" placeholder="e.g. What extracurriculars should I emphasize for engineering at this school?" rows="2" style="flex:1;margin:0;resize:vertical;min-height:48px;font-size:.82rem"></textarea>
+          <textarea id="ecChatInput" placeholder="Ask about extracurriculars, how a school weighs activities, or what to build before you apply. Flux loads web + forum context for the college you pick before answering. e.g. What extracurriculars should I emphasize for engineering at this school?" rows="4" style="flex:1;margin:0;resize:vertical;min-height:120px;font-size:.82rem"></textarea>
           <button type="button" onclick="sendEcCollegeChat()" id="ecChatSendBtn" style="padding:10px 16px;flex-shrink:0;font-size:.78rem;font-weight:700">Send</button>
         </div>
         <div style="font-size:.65rem;color:var(--muted);margin-top:8px">Enter to send · Shift+Enter for new line</div>
@@ -1357,6 +1340,22 @@
             <button onclick="applyTheme('candy')" class="theme-btn" data-theme="candy">🍬 Candy</button>
           </div>
         </div>
+        <div class="card">
+          <h3>Personalization</h3>
+          <div style="font-size:.75rem;color:var(--muted2);margin-bottom:12px;line-height:1.55">UI density, mood-based tint, and “My patterns” use these settings.</div>
+          <div class="srow" style="border:none;padding:0 0 10px">
+            <div style="flex:1"><div class="slabel">UI density</div><div class="ssub">Minimal = more whitespace · Dense = more on screen</div></div>
+            <select id="fluxDensitySelect" style="margin:0;min-width:140px;font-size:.82rem">
+              <option value="minimal">Minimal</option>
+              <option value="comfortable" selected>Comfortable</option>
+              <option value="dense">Dense</option>
+            </select>
+          </div>
+          <div class="srow" style="border:none;padding:0">
+            <div><div class="slabel">Mood-tinted UI</div><div class="ssub">Subtle accent shift from your last check-in (calm vs warm)</div></div>
+            <button type="button" class="toggle on" id="fluxMoodTintToggle" title="Toggle mood tint"></button>
+          </div>
+        </div>
         <!-- Accent color -->
         <div class="card">
           <h3>Accent Color</h3>
@@ -1466,12 +1465,16 @@
           </div>
         </div>
         <div class="card">
-          <h3>No-Homework Days</h3>
-          <div style="font-size:.78rem;color:var(--muted2);margin-bottom:10px">Days when no homework is assigned (holidays, breaks).</div>
+          <h3>Sick &amp; lazy days</h3>
+          <div style="font-size:.78rem;color:var(--muted2);margin-bottom:10px;line-height:1.55">Mark days you won’t do school work. Flux treats them as <strong>rest</strong> (no crunch-time math, panic, or “time poverty”), moves tasks off them when you use <strong>Fix my schedule</strong>, and won’t schedule new work onto them.</div>
           <div id="noHWList" style="margin-bottom:10px"></div>
-          <div style="display:flex;gap:8px">
-            <input type="date" id="noHWInput" style="flex:1;margin:0">
-            <button onclick="addNoHWDay()" style="padding:8px 14px">+ Add</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="date" id="noHWInput" style="flex:1;min-width:140px;margin:0">
+            <select id="restDayKind" style="margin:0;min-width:120px;font-size:.82rem">
+              <option value="sick">🤒 Sick (recovery)</option>
+              <option value="lazy">🛋 Lazy (off day)</option>
+            </select>
+            <button type="button" onclick="addRestDay()" style="padding:8px 14px">+ Add</button>
           </div>
         </div>
       </div>
@@ -1493,7 +1496,6 @@
               <div>
                 <div style="font-size:.92rem;font-weight:700">Azfer Mohammed</div>
                 <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">International Academy East · Class of 2028</div>
-                <a href="/cdn-cgi/l/email-protection#e382998586918e8c8b828e8e8687d1d2a3848e828a8fcd808c8e" style="font-size:.7rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-decoration:none"><span class="__cf_email__" data-cfemail="2c4d564a495e4143444d414149481e1d6c4b414d4540024f4341">[email&#160;protected]</span></a>
               </div>
             </div>
           </div>
@@ -1745,6 +1747,11 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
 <script defer src="public/js/app.js"></script>
+<script defer src="public/js/flux-personalization.js"></script>
+<script defer src="public/js/flux-estimate-learn.js"></script>
+<script defer src="public/js/flux-intelligence.js"></script>
+<script defer src="public/js/flux-task-ux.js"></script>
+<script defer src="public/js/flux-ai-mega.js"></script>
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
 </body>
