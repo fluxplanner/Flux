@@ -986,42 +986,19 @@ function renderAboutStats(){
   if(typeof renderStorageMeter==='function')renderStorageMeter();
 }
 
-function computeTaskCompletionStreak(){
-  const days=new Set();
-  tasks.forEach(t=>{
-    if(t.done&&t.completedAt)days.add(new Date(t.completedAt).toISOString().slice(0,10));
-  });
-  let d=new Date(TODAY);
-  if(!days.has(todayStr()))d.setDate(d.getDate()-1);
-  let streak=0;
-  for(;;){
-    const k=d.toISOString().slice(0,10);
-    if(days.has(k)){streak++;d.setDate(d.getDate()-1);}else break;
-  }
-  return streak;
-}
 function updateDashHero(){
   const greet=document.getElementById('dashGreeting');
-  const sub=document.getElementById('dashGreetingSub');
-  const nEl=document.getElementById('dashStreakN');
-  const arc=document.getElementById('dashStreakArc');
   if(!greet)return;
   const raw=(localStorage.getItem('flux_user_name')||'there').trim()||'there';
   const first=raw.split(/\s+/)[0];
   const h=new Date().getHours();
   const part=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-  greet.textContent=`${part}, ${first} 👋`;
-  if(sub){
-    const left=tasks.filter(t=>!t.done).length;
-    sub.textContent=left?`${left} open task${left===1?'':'s'} · Stay on your streak`:'All caught up — momentum looks great';
-  }
-  const streak=computeTaskCompletionStreak();
-  if(nEl)nEl.textContent=String(Math.min(streak,999));
-  if(arc){
-    const p=Math.min(streak/21,1);
-    const a=p*100;
-    arc.style.strokeDasharray=`${a} ${100-a}`;
-  }
+  greet.textContent='';
+  const grad=document.createElement('span');
+  grad.className='dash-v2-greet-gradient';
+  grad.textContent=`${part}, ${first}`;
+  greet.appendChild(grad);
+  greet.appendChild(document.createTextNode(' 👋'));
 }
 function spawnTaskBurstFromEl(el){
   if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -1099,43 +1076,6 @@ function avgEstMinutesForSubject(subjectKey){
   if(done.length<2)return null;
   return Math.round(done.reduce((a,t)=>a+(t.estTime||0),0)/done.length);
 }
-function renderWeeklyInsight(){
-  const el=document.getElementById('dashWeeklyInsight');
-  if(!el)return;
-  const now=new Date();now.setHours(0,0,0,0);
-  const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
-  const dueToday=tasks.filter(t=>!t.done&&t.date===todayStr()).length;
-  const doneToday=tasks.filter(t=>t.done&&t.completedAt&&new Date(t.completedAt).toISOString().slice(0,10)===todayStr()).length;
-  const openM=tasks.filter(t=>!t.done).reduce((s,t)=>s+(t.estTime||30),0);
-  const lastMood=moodHistory&&moodHistory.length?moodHistory[moodHistory.length-1]:null;
-  const stress=lastMood&&lastMood.stress!=null?parseInt(lastMood.stress,10):3;
-  let burn='Workload looks balanced for the next few days.';
-  if(overdue>=5||(stress>=8&&overdue>=2))burn='Burnout risk: high — drop or defer something non-urgent today.';
-  else if(overdue>=3||stress>=7)burn='Burnout risk: elevated — add a short break and one small win.';
-  else if(overdue>=1)burn='You have overdue work — pick one item to close the loop.';
-  const goalMin=(settings.dailyGoalHrs||2)*60;
-  const feas=openM<=goalMin*2?'If you start soon, clearing urgent work this week is realistic.':'Rough open workload ~'+Math.round(openM/60*10)/10+'h — trim scope or extend dates where possible.';
-  el.innerHTML=`<div class="dash-weekly-insight-inner card">
-    <div class="dash-weekly-insight-kicker">Weekly insight</div>
-    <p class="dash-weekly-insight-body">${burn}</p>
-    <p class="dash-weekly-insight-meta">Today: <strong>${dueToday}</strong> due · <strong>${doneToday}</strong> done · <strong>${overdue}</strong> overdue. ${feas}</p>
-    <div class="dash-weekly-insight-actions">
-      <button type="button" class="btn-sec btn-sm" onclick="openScheduleOptimizerAI()">Fix my schedule (AI)</button>
-    </div>
-  </div>`;
-  el.style.display='block';
-}
-function openScheduleOptimizerAI(){
-  nav('ai');
-  setTimeout(()=>{
-    const inp=document.getElementById('aiInput');
-    if(!inp)return;
-    // Full planner data is already attached server-side via buildAIPrompt() → system message; keep the visible prompt short.
-    inp.value='Help me optimize my schedule for the next 7 days. What should I do first, what can I defer, and what’s a realistic “minimum viable” day if I’m overwhelmed? Short bullets.';
-    inp.focus();
-    if(typeof sendAI==='function')sendAI();
-  },320);
-}
 function autoSplitEditSubtasks(){
   const title=(document.getElementById('editText')?.value||'').trim();
   const ta=document.getElementById('editSubtasks');
@@ -1153,9 +1093,8 @@ function autoSplitEditSubtasks(){
   ta.value=parts.slice(0,12).join('\n');
   if(typeof showToast==='function')showToast('Subtasks drafted — edit lines as needed','success');
 }
-function renderStats(){const now=new Date();now.setHours(0,0,0,0);const dueToday=tasks.filter(t=>!t.done&&t.date&&t.date===todayStr()).length,done=tasks.filter(t=>t.done).length,over=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length,active=tasks.filter(t=>!t.done).length;document.getElementById('statsRow').innerHTML=`<div class="stat" onclick="setFilter('today',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--accent)">${dueToday}</div><div class="stat-l">Due Today</div></div><div class="stat" onclick="setFilter('active',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--text)">${active}</div><div class="stat-l">Active</div></div><div class="stat" onclick="setFilter('overdue',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:${over>0?'var(--red)':'var(--muted)'}">${over}</div><div class="stat-l">Overdue</div></div><div class="stat" onclick="setFilter('done',document.querySelector('#filterChips .tmode-btn'))" title="Click to filter"><div class="stat-n" style="color:var(--green)">${done}</div><div class="stat-l">Completed</div></div>`;
+function renderStats(){
   renderDashWeekStrip();
-  renderWeeklyInsight();
   if(typeof updateTopbarStats==='function')updateTopbarStats();
   updateDashHero();
 }
