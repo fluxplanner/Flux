@@ -2887,7 +2887,7 @@ input:focus,select:focus,textarea:focus{
   color:var(--text)!important;
 }
 
-/* ── Connectivity · weekly review ── */
+/* ── Connectivity banner ── */
 .connectivity-banner{
   display:none;align-items:center;gap:10px;padding:8px 14px;font-size:.75rem;
   background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.22);
@@ -2896,29 +2896,6 @@ input:focus,select:focus,textarea:focus{
 .connectivity-banner[data-state="syncfail"]{
   background:rgba(244,63,94,.08);border-bottom-color:rgba(244,63,94,.22);color:var(--red);
 }
-.weekly-review-card{
-  margin:0 0 16px;padding:14px 16px;background:var(--card2);
-  border:1px solid var(--border);border-radius:14px;
-}
-.weekly-review-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
-.weekly-review-title{font-size:.9rem;font-weight:800;letter-spacing:-.02em}
-.weekly-review-hint{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
-.weekly-review-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}
-.weekly-review-pill{
-  font-size:.65rem;padding:3px 8px;border-radius:999px;
-  background:rgba(var(--accent-rgb),.12);color:var(--accent);font-family:'JetBrains Mono',monospace;
-}
-.weekly-review-pill--hi{background:rgba(244,63,94,.12);color:var(--red)}
-.weekly-review-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:.78rem}
-.weekly-review-list li{display:grid;grid-template-columns:72px 52px 1fr;gap:8px;align-items:start}
-.wr-date{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.65rem}
-.wr-type{text-transform:capitalize;font-size:.62rem;color:var(--muted2)}
-.wr-name{font-weight:600;line-height:1.35}
-.weekly-review-empty,.weekly-review-more{font-size:.78rem;color:var(--muted2);line-height:1.5}
-@media (max-width:520px){
-  .weekly-review-list li{grid-template-columns:64px 44px 1fr}
-}
-
 .skip-link{
   position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;
 }

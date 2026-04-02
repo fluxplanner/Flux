@@ -14,76 +14,74 @@ function isLikelyLowEndDevice(){
   return false;
 }
 
-/** Returning users: aurora field + glass stack + orbital ring (cinematic intro unchanged). */
+/** Returning visits: refined loader — soft gradients, shimmer bar, crisp typography. */
 function runShortSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
   const reduce=prefersReducedMotion();
-  splash.style.cssText='position:fixed;inset:0;background:#050814;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden';
-  const auroraAnim=reduce?'none':'splashAurora1 9s ease-in-out infinite alternate, splashAurora2 11s ease-in-out infinite alternate';
-  const ringAnim=reduce?'none':'splashRingSpin 1.35s linear infinite';
-  const pulseAnim=reduce?'none':'splashCorePulse 2.4s ease-in-out infinite';
+  splash.style.cssText='position:fixed;inset:0;background:#03050d;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden';
+  const drift=reduce?'none':'splashDrift 14s ease-in-out infinite alternate';
+  const barAnim=reduce?'none':'splashBar 1.1s ease-in-out infinite';
   splash.innerHTML=`
-    <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 120% 80% at 50% 100%,rgba(8,12,28,.9) 0%,#03050c 55%)"></div>
-    <div class="splash-blob splash-b1" style="position:absolute;width:140%;height:90%;left:-20%;top:-35%;pointer-events:none;opacity:.85;
-      background:radial-gradient(ellipse 50% 45% at 40% 40%,rgba(0,194,255,.35),transparent 62%);
-      filter:blur(56px);animation:${auroraAnim}"></div>
-    <div class="splash-blob splash-b2" style="position:absolute;width:120%;height:100%;right:-35%;bottom:-20%;pointer-events:none;opacity:.75;
-      background:radial-gradient(ellipse 45% 40% at 70% 60%,rgba(124,92,255,.32),transparent 58%);
-      filter:blur(52px);animation:${reduce?'none':'splashAurora3 8s ease-in-out infinite alternate'}"></div>
-    <div style="position:absolute;inset:0;pointer-events:none;opacity:.18;
-      background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
-      background-size:32px 32px;mask-image:radial-gradient(ellipse 70% 60% at 50% 45%,#000 25%,transparent 72%);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 45%,#000 25%,transparent 72%)"></div>
-    <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.45) 100%)"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;background:
+      radial-gradient(ellipse 90% 70% at 50% -10%,rgba(0,120,200,.22),transparent 55%),
+      radial-gradient(ellipse 60% 50% at 85% 75%,rgba(110,70,255,.16),transparent 50%),
+      radial-gradient(ellipse 50% 45% at 12% 60%,rgba(0,200,160,.1),transparent 48%),
+      #03050d"></div>
+    <div style="position:absolute;width:min(120vw,900px);height:min(120vw,900px);left:50%;top:42%;transform:translate(-50%,-50%);pointer-events:none;opacity:.9;animation:${drift};
+      background:conic-gradient(from 200deg at 50% 50%,rgba(0,194,255,.15),rgba(124,92,255,.12),rgba(34,255,136,.08),rgba(0,194,255,.15));
+      filter:blur(64px)"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;opacity:.07;
+      background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+      background-size:40px 40px;mask-image:radial-gradient(ellipse 75% 65% at 50% 42%,#000 18%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 42%,#000 18%,transparent 70%)"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 35%,rgba(0,0,0,.5) 100%)"></div>
 
-    <div style="display:flex;flex-direction:column;align-items:center;gap:0;animation:splashFadeIn .55s cubic-bezier(.22,1,.36,1) both;position:relative;z-index:2;width:min(340px,88vw)">
-      <div style="position:relative;padding:28px 32px 26px;border-radius:22px;
-        background:linear-gradient(155deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 48%,rgba(0,0,0,.15) 100%);
-        border:1px solid rgba(255,255,255,.12);
-        box-shadow:0 24px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.14),0 0 0 1px rgba(0,194,255,.08);
-        backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%)">
-        <div style="position:absolute;inset:0;border-radius:inherit;pointer-events:none;overflow:hidden;border-radius:22px">
-          <div style="position:absolute;top:-40%;left:-20%;width:70%;height:70%;
-            background:radial-gradient(circle,rgba(0,194,255,.12),transparent 65%);animation:${pulseAnim}"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:18px;position:relative">
-          <div style="position:relative;width:76px;height:76px">
-            <div style="position:absolute;inset:-3px;border-radius:50%;padding:3px;z-index:1;
-              background:conic-gradient(from 210deg,#00C2FF,#5B9DFF,#7C5CFF,#22FF88,#00C2FF);
-              animation:${ringAnim};
-              box-shadow:0 0 32px rgba(0,194,255,.35)">
-              <div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(165deg,#0a0e1a 0%,#121826 100%);
-                box-shadow:inset 0 0 24px rgba(0,0,0,.5)"></div>
+    <div class="splash-loader-card" style="position:relative;z-index:2;width:min(360px,90vw);padding:2px;border-radius:24px;
+      background:linear-gradient(135deg,rgba(0,194,255,.45),rgba(124,92,255,.35),rgba(34,255,136,.25));
+      box-shadow:0 32px 100px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06) inset;
+      animation:splashFadeIn .6s cubic-bezier(.22,1,.36,1) both">
+      <div style="border-radius:22px;padding:32px 28px 28px;
+        background:linear-gradient(165deg,rgba(12,16,28,.94) 0%,rgba(6,8,16,.98) 100%);
+        backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.08)">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+              background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.02));
+              border:1px solid rgba(255,255,255,.12);
+              box-shadow:0 8px 32px rgba(0,194,255,.15),inset 0 1px 0 rgba(255,255,255,.12)">
+              <span style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:1.5rem;font-weight:800;
+                background:linear-gradient(135deg,#fff,#7ae8ff 50%,#c4b5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ƒ</span>
             </div>
-            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;font-size:1.35rem;font-weight:800;font-family:'Plus Jakarta Sans',system-ui,sans-serif;
-              background:linear-gradient(135deg,#fff 0%,#7cdbff 45%,#c4b5ff 100%);
-              -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.03em">ƒ</div>
+            <div>
+              <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:1.65rem;font-weight:800;letter-spacing:-.04em;line-height:1.1;
+                background:linear-gradient(135deg,#fff 0%,#9ee8ff 40%,#c8b8ff 85%);
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Flux</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:3.5px;text-transform:uppercase;color:rgba(140,160,195,.55);margin-top:4px">Planner</div>
+            </div>
           </div>
-          <div>
-            <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:2rem;font-weight:800;letter-spacing:-0.045em;text-align:center;line-height:1;
-              background:linear-gradient(135deg,#fff 0%,#7ae8ff 38%,#b8a6ff 72%,#7dffc8 100%);
-              -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-              filter:drop-shadow(0 0 24px rgba(0,194,255,.35));animation:splashTitle .75s cubic-bezier(.22,1,.36,1) .12s both">Flux</div>
-            <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:3px;text-transform:uppercase;text-align:center;
-              color:rgba(180,195,220,.55)">Preparing workspace</div>
+          <div style="width:100%">
+            <div style="height:3px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;position:relative">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:42%;border-radius:999px;
+                background:linear-gradient(90deg,#00C2FF,#5B8CFF,#7C5CFF,#22FF88);
+                animation:${barAnim};
+                box-shadow:0 0 16px rgba(0,194,255,.45)"></div>
+            </div>
+            <div style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:2px;text-align:center;color:rgba(160,180,210,.5)">Loading workspace</div>
           </div>
         </div>
       </div>
     </div>
     <style>
-      @keyframes splashFadeIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-      @keyframes splashTitle{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-      @keyframes splashRingSpin{to{transform:rotate(360deg)}}
-      @keyframes splashCorePulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
-      @keyframes splashAurora1{0%{transform:translate(0,0) scale(1)}100%{transform:translate(4%,3%) scale(1.06)}}
-      @keyframes splashAurora2{0%{transform:translate(0,0)}100%{transform:translate(-3%,5%) rotate(-2deg)}}
-      @keyframes splashAurora3{0%{opacity:.55;transform:translate(0,0)}100%{opacity:.85;transform:translate(-2%,-2%)}}
+      @keyframes splashFadeIn{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:none}}
+      @keyframes splashDrift{0%{transform:translate(-50%,-50%) rotate(0deg) scale(1)}100%{transform:translate(-50%,-50%) rotate(12deg) scale(1.08)}}
+      @keyframes splashBar{0%{transform:translateX(-100%)}45%{transform:translateX(35%)}100%{transform:translateX(220%)}}
     </style>`;
-  const dur=reduce?560:1100;
+  const dur=reduce?520:980;
   setTimeout(()=>{
-    splash.style.transition='opacity .32s ease';
+    splash.style.transition='opacity .38s cubic-bezier(.22,1,.36,1)';
     splash.style.opacity='0';
-    setTimeout(()=>{splash.style.display='none';splash.innerHTML='';callback();},320);
+    setTimeout(()=>{splash.style.display='none';splash.innerHTML='';splash.style.opacity='1';callback();},380);
   },dur);
 }
 

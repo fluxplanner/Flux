@@ -722,7 +722,7 @@ function nav(id,btn){
   const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
   updateNavAriaCurrent(id);
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderWeeklyReview();renderExamConflictBanner();},calendar:()=>{loadCalScheduleUI();renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},gmail:()=>loadGmail()};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();},calendar:()=>{loadCalScheduleUI();renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},gmail:()=>loadGmail()};
   fns[id]?.();
 }
 function navMob(id){closeDrawer();nav(id);}
@@ -3444,7 +3444,7 @@ function getCloudPayload(){
     studyDNA,
     confidences,
     sessionLog,
-    onboarded:true,
+    onboarded:!!load('flux_onboarded',false),
     noHWDays:load('flux_no_hw_days',[]),
     events:load('flux_events',[]),
     cycleConfig:load('flux_cycle_config',null),
@@ -3569,6 +3569,10 @@ async function syncFromCloud(){
     });
     
     if(d.onboarded)save('flux_onboarded',true);
+    else{
+      const legacyDone=tasks.length>0||notes.length>0||classes.length>0||Object.keys(grades).length>0;
+      if(legacyDone)save('flux_onboarded',true);
+    }
     // Load devAccounts — owner's list syncs to all dev accounts too
     if(d.devAccounts)save('flux_dev_accounts',d.devAccounts);
     if(isOwner()){
@@ -3586,8 +3590,6 @@ async function syncFromCloud(){
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
-    const hasCloudData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0||!!load('profile',{}).name||d.onboarded;
-    if(hasCloudData)save('flux_onboarded',true);
     renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();renderSchool();updateTStats();
     populateSubjectSelects();
     // Re-apply accent after renders in case sidebar was rebuilt
@@ -4434,7 +4436,6 @@ function showApp(){
   renderSmartSug();renderProfile();renderGradeInputs();renderGradeOverview();
   renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   renderSchool();updateTStats();
-  renderWeeklyReview();
   renderExamConflictBanner();
   applyFontScale();
   applyReduceMotion();
@@ -4498,8 +4499,8 @@ async function handleSignedIn(user,session){
 
   const onboarded=load('flux_onboarded',false);
   const hasLocalData=tasks.length>0||notes.length>0||Object.keys(grades).length>0||classes.length>0;
-  const hasProfile=!!load('profile',{}).name;
-  const isFirstTime=!onboarded&&!hasLocalData&&!hasProfile;
+  // Do not use profile.name here — step 1 saves name before flux_onboarded; excluding profile blocked resume
+  const isFirstTime=!onboarded&&!hasLocalData;
 
   if(isFirstTime){
     showOnboarding();
@@ -5006,7 +5007,7 @@ function applyExamWeekPack(){
   push('Practice test / past paper','','test',60,'high');
   push('Exam week: Sleep & light review',t0,'hw',25,'med');
   save('tasks',tasks);
-  renderStats();renderTasks();renderCalendar();renderCountdown();renderWeeklyReview();checkAllPanic();
+  renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();
   syncKey('tasks',tasks);
   showToast('Added 3 exam-week starter tasks — edit dates as needed','success');
 }
@@ -5021,7 +5022,7 @@ function applyProjectMilestonePack(){
   push('Project: First draft','essay',90,'high');
   push('Project: Revise & final','project',75,'high');
   save('tasks',tasks);
-  renderStats();renderTasks();renderCalendar();renderCountdown();renderWeeklyReview();checkAllPanic();
+  renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();
   syncKey('tasks',tasks);
   showToast('Added 3 project milestone tasks','success');
 }
@@ -5919,35 +5920,6 @@ function endDeepWork(completed){
     showToast('🎯 Session complete! Great work.');
   }
   _dwTask=null;_dwSecs=0;_dwPaused=false;
-}
-
-// ══ WEEKLY REVIEW (dashboard) ══
-function renderWeeklyReview(){
-  const el=document.getElementById('weeklyReviewBody');if(!el)return;
-  const now=new Date();now.setHours(0,0,0,0);
-  const weekEnd=new Date(now);weekEnd.setDate(weekEnd.getDate()+7);
-  const upcoming=tasks.filter(t=>{
-    if(t.done||!t.date)return false;
-    const d=new Date(t.date+'T00:00:00');
-    return d>=now&&d<weekEnd;
-  }).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const tests=upcoming.filter(t=>['test','quiz'].includes(t.type));
-  const high=upcoming.filter(t=>t.priority==='high');
-  if(!upcoming.length){
-    el.innerHTML='<div class="weekly-review-empty">Nothing due in the next 7 days — add tasks or enjoy the calm.</div>';
-    return;
-  }
-  const fmt=d=>new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-  el.innerHTML=`
-    <div class="weekly-review-stats">
-      <span>${upcoming.length} due</span>
-      ${tests.length?`<span class="weekly-review-pill">${tests.length} test/quiz</span>`:''}
-      ${high.length?`<span class="weekly-review-pill weekly-review-pill--hi">${high.length} high priority</span>`:''}
-    </div>
-    <ul class="weekly-review-list">
-      ${upcoming.slice(0,12).map(t=>`<li><span class="wr-date">${fmt(t.date)}</span><span class="wr-type">${esc(t.type||'hw')}</span><span class="wr-name">${esc(t.name)}</span></li>`).join('')}
-    </ul>
-    ${upcoming.length>12?'<div class="weekly-review-more">…and more on the calendar</div>':''}`;
 }
 
 // ══ SUBJECT HEALTH DASHBOARD ══
