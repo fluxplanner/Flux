@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Resolve CSS/JS for any GitHub Pages project path (repo name & casing differ). */
+(function(){
+  try{
+    var p=location.pathname||'/';
+    if(/\/[^/]+\.html$/i.test(p))p=p.slice(0,p.lastIndexOf('/')+1);
+    else if(!p.endsWith('/'))p+='/';
+    var b=document.createElement('base');
+    b.href=location.origin+p.replace(/\/{2,}/g,'/');
+    var m=document.querySelector('meta[charset]');
+    if(m)m.insertAdjacentElement('afterend',b);
+    else document.head.prepend(b);
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0B0F1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,19 +36,20 @@
   try{
     var m=document.createElement('meta');
     m.setAttribute('property','og:image');
-    m.setAttribute('content', location.origin + '/Fluxplanner/icons/icon-512.png');
+    var root=document.querySelector('base');
+    m.setAttribute('content', new URL('icons/icon-512.png', root&&root.href?root.href:location.href).href);
     document.head.appendChild(m);
   }catch(e){}
 })();
 </script>
-<link rel="manifest" href="/Fluxplanner/manifest.json">
-<link rel="icon" href="/Fluxplanner/favicon.ico" sizes="any">
-<link rel="icon" href="/Fluxplanner/icons/icon-192.png" sizes="192x192" type="image/png">
-<link rel="apple-touch-icon" href="/Fluxplanner/icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
-<link rel="stylesheet" href="/Fluxplanner/public/css/styles.css">
-<link rel="stylesheet" href="/Fluxplanner/public/css/login.css">
-<link rel="stylesheet" href="/Fluxplanner/public/css/flux-motion.css">
+<link rel="stylesheet" href="public/css/styles.css">
+<link rel="stylesheet" href="public/css/login.css">
+<link rel="stylesheet" href="public/css/flux-motion.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1575,8 +1591,8 @@
           <div class="srow" style="border:none"><div><div class="slabel">Export all data</div><div class="ssub">Download as JSON</div></div><button onclick="exportData()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export</button></div>
           <div class="srow" style="border:none"><div><div class="slabel">Encrypted backup</div><div class="ssub">Password-protected JSON (Web Crypto)</div></div><button type="button" onclick="exportEncryptedBackup()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Export encrypted</button></div>
           <div class="srow" style="border:none"><div><div class="slabel">Import encrypted backup</div><div class="ssub">Merge tasks, grades &amp; notes — passphrase required</div></div><button type="button" onclick="document.getElementById('importEncryptedFile').click()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Choose file</button></div>
-          <div class="srow" style="border:none"><div><div class="slabel">Improvement catalog</div><div class="ssub">Roadmap status for 100+ ideas</div></div><a href="/Fluxplanner/IMPROVEMENTS.md" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a></div>
-          <div class="srow" style="border:none"><div><div class="slabel">Changelog</div><div class="ssub">Recent releases</div></div><a href="/Fluxplanner/CHANGELOG.md" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a></div>
+          <div class="srow" style="border:none"><div><div class="slabel">Improvement catalog</div><div class="ssub">Roadmap status for 100+ ideas</div></div><a href="IMPROVEMENTS.md" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a></div>
+          <div class="srow" style="border:none"><div><div class="slabel">Changelog</div><div class="ssub">Recent releases</div></div><a href="CHANGELOG.md" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a></div>
         </div>
         <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, grades, notes, extracurriculars</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
 
@@ -1615,7 +1631,7 @@
           <h3>Privacy &amp; Legal</h3>
           <div class="srow">
             <div><div class="slabel">Privacy Policy</div><div class="ssub">How we handle your data</div></div>
-            <a href="/Fluxplanner/privacy.html" target="_blank" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a>
+            <a href="privacy.html" target="_blank" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">View →</a>
           </div>
           <div class="srow" style="border:none">
             <div>
@@ -1753,10 +1769,10 @@
 
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts (deferred — order preserved) -->
-<script defer src="/Fluxplanner/public/js/splash.js"></script>
-<script defer src="/Fluxplanner/public/js/login-motion.js"></script>
-<script defer src="/Fluxplanner/public/js/app.js"></script>
-<script defer src="/Fluxplanner/public/js/flux-master-backlog.js"></script>
-<script defer src="/Fluxplanner/public/js/owner-suite.js"></script>
+<script defer src="public/js/splash.js"></script>
+<script defer src="public/js/login-motion.js"></script>
+<script defer src="public/js/app.js"></script>
+<script defer src="public/js/flux-master-backlog.js"></script>
+<script defer src="public/js/owner-suite.js"></script>
 </body>
 </html>

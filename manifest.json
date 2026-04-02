@@ -2,20 +2,20 @@
   "name": "Flux Planner",
   "short_name": "Flux",
   "description": "Your AI-powered student school planner. Built by Azfer Mohammed.",
-  "start_url": "/Fluxplanner/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0c0d12",
   "theme_color": "#0c0d12",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/Fluxplanner/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/Fluxplanner/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -27,7 +27,7 @@
   ],
   "screenshots": [
     {
-      "src": "/Fluxplanner/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
@@ -39,19 +39,19 @@
       "name": "New task",
       "short_name": "Task",
       "description": "Open quick add for a new task",
-      "url": "/Fluxplanner/?quick=task",
-      "icons": [{ "src": "/Fluxplanner/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "./?quick=task",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Flux AI",
       "short_name": "AI",
       "description": "Open Flux AI chat",
-      "url": "/Fluxplanner/?quick=ai",
-      "icons": [{ "src": "/Fluxplanner/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "./?quick=ai",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {
-    "action": "/Fluxplanner/",
+    "action": "./",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
