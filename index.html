@@ -1655,6 +1655,13 @@
     <button class="bnav-item" onclick="openDrawer()" id="moreBtn"><span class="bni">☰</span>More</button>
   </div>
 
+  <!-- Ambient: cursor glow + Flux AI chip (shown while #app.visible) -->
+  <div id="appCursorGlow" class="app-cursor-glow" aria-hidden="true"></div>
+  <div class="app-ai-corner" id="appAiCorner" aria-hidden="true">
+    <span class="app-ai-corner__label">Flux AI</span>
+    <button type="button" class="app-ai-corner__orb" onclick="nav('ai',document.querySelector('.sidebar-nav [data-tab=ai]')||document.querySelector('[data-tab=ai]'))" title="Open Flux AI" aria-label="Open Flux AI">✦</button>
+  </div>
+
   <!-- ── FAB — FLOATING ACTION BUTTON ── -->
   <div id="fabContainer" class="fab-container">
     <div id="fabMenu" class="fab-menu">
