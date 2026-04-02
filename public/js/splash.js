@@ -45,20 +45,36 @@ function runShortSplash(callback){
         backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
         box-shadow:inset 0 1px 0 rgba(255,255,255,.08)">
         <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
-          <div style="display:flex;align-items:center;gap:14px">
-            <div style="width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-              background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.02));
-              border:1px solid rgba(255,255,255,.12);
-              box-shadow:0 8px 32px rgba(0,194,255,.15),inset 0 1px 0 rgba(255,255,255,.12)">
-              <span style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:1.5rem;font-weight:800;
-                background:linear-gradient(135deg,#fff,#7ae8ff 50%,#c4b5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ƒ</span>
-            </div>
-            <div>
-              <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:1.65rem;font-weight:800;letter-spacing:-.04em;line-height:1.1;
-                background:linear-gradient(135deg,#fff 0%,#9ee8ff 40%,#c8b8ff 85%);
-                -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Flux</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:3.5px;text-transform:uppercase;color:rgba(140,160,195,.55);margin-top:4px">Planner</div>
-            </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 38" width="248" height="64" aria-label="Flux" style="max-width:min(248px,82vw);height:auto;display:block;filter:drop-shadow(0 8px 24px rgba(0,194,255,.2))">
+              <defs>
+                <linearGradient id="fluxWGSplash" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="55%" stop-color="#00d4ff"/>
+                  <stop offset="100%" stop-color="#3b82f6"/>
+                </linearGradient>
+                <radialGradient id="fluxCGSplash" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="40%" stop-color="#00e5ff"/>
+                  <stop offset="100%" stop-color="#0040ff" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <circle cx="19" cy="19" r="17" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.18"/>
+              <circle cx="19" cy="19" r="13" fill="none" stroke="#00ccff" stroke-width="0.8" opacity="0.28"/>
+              <circle cx="19" cy="19" r="9" fill="none" stroke="#00ddff" stroke-width="1" opacity="0.45"/>
+              <circle cx="19" cy="19" r="5.5" fill="none" stroke="#00eeff" stroke-width="1.3" opacity="0.65"/>
+              <path d="M19 2.2A16.8 16.8 0 0 1 31.5 7" fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+              <path d="M19 35.8A16.8 16.8 0 0 1 6.5 31" fill="none" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+              <line x1="19" y1="1" x2="19" y2="5.5" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+              <line x1="19" y1="32.5" x2="19" y2="37" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+              <line x1="1" y1="19" x2="5.5" y2="19" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+              <line x1="32.5" y1="19" x2="37" y2="19" stroke="#00d4ff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+              <circle cx="19" cy="19" r="9" fill="url(#fluxCGSplash)" opacity="0.4"/>
+              <circle cx="19" cy="19" r="2.5" fill="#00eeff" opacity="0.9"/>
+              <circle cx="19" cy="19" r="1.2" fill="white"/>
+              <text x="46" y="27" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="22" font-weight="800" letter-spacing="-1" fill="url(#fluxWGSplash)">Flux</text>
+            </svg>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:3.5px;text-transform:uppercase;color:rgba(140,160,195,.55)">Planner</div>
           </div>
           <div style="width:100%">
             <div style="height:3px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;position:relative">
