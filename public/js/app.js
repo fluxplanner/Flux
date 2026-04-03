@@ -561,7 +561,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux Agent',gmail:'Gmail',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',gmail:'Gmail',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -678,7 +678,7 @@ function migrateCompletedAtBackfill(){
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
-  {id:'ai',icon:'✦',label:'Flux Agent',visible:true},
+  {id:'ai',icon:'✦',label:'Flux AI',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
   {id:'grades',icon:'📊',label:'Grades',visible:true},
   {id:'notes',icon:'📝',label:'Notes',visible:true},
@@ -3126,7 +3126,7 @@ function buildAIPrompt(){
   const calEvents=calEvAi.map(e=>`- [EVENT|${e.date}${e.time?' '+e.time:''}|${fluxEventScope(e)==='school'?'SCHOOL':'OUT'}]: ${e.title}`).join('\n')||'None';
   const todayClasses=classes.filter(c=>c.name).map(c=>`P${c.period}: ${c.name}${c.teacher?' ('+c.teacher+')':''}`).join(', ')||'Not set up';
 
-  return`You are Flux Agent — a brilliant, warm AI tutor and planner assistant built into Flux Planner.
+  return`You are Flux AI — a brilliant, warm AI tutor and planner assistant built into Flux Planner.
 Student: ${name}${grade?' · Grade '+grade:''}${program?' · '+program:''}
 Today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
 ${mood?`Latest mood check-in: ${mood.mood}/5, stress ${mood.stress}/10, sleep ${mood.sleep}h`:''}
@@ -3146,7 +3146,7 @@ ${buildFullPlannerContextForAI({maxTotalChars:24000})}
 ---
 
 RULES:
-- You have a comprehensive planner snapshot above (tasks, grades, notes, mood, timer, school, ECs, IB flags, settings, linked integrations flags, etc.). Use it to answer questions about ANY area of the planner — Dashboard, Calendar, Flux Agent (this chat), School, Grades, Notes, Focus timer, Profile, Extracurriculars, Mood, Gmail (if linked), Settings, command palette, quick-add, and navigation. There is no topic off-limits as long as it helps the student use Flux or their school life. Reference specific items when helpful.
+- You have a comprehensive planner snapshot above (tasks, grades, notes, mood, timer, school, ECs, IB flags, settings, linked integrations flags, etc.). Use it to answer questions about ANY area of the planner — Dashboard, Calendar, Flux AI (this chat), School, Grades, Notes, Focus timer, Profile, Extracurriculars, Mood, Gmail (if linked), Settings, command palette, quick-add, and navigation. There is no topic off-limits as long as it helps the student use Flux or their school life. Reference specific items when helpful.
 - The **Extracurriculars** sidebar tab is labeled in the snapshot as **Extracurriculars tab** / **My activities** / **EC target schools** (the app’s internal panel id is \`goals\`).
 - Google Calendar events from the user's Google account load live in the Calendar tab and are not fully mirrored in this export; custom Flux calendar entries appear under "Calendar events" in the snapshot.
 - Be warm, concise, and helpful. Call the student by name naturally.
@@ -3891,12 +3891,12 @@ async function handleEmailAuth(){
   }
 }
 
-/** Open Flux Agent (AI tab) with optional prefill. Agent has full planner context via buildAIPrompt. */
+/** Open Flux AI tab with optional prefill. Full planner context via buildAIPrompt. */
 function openFluxAgent(opts){
   opts=opts||{};
   const aiBtn=document.querySelector('.sidebar-nav [data-tab=ai]')||document.querySelector('[data-tab=ai]');
   nav('ai',aiBtn);
-  const placeholder=opts.placeholder||'Ask Flux Agent anything — tasks, grades, calendar, notes, timer, school, ECs, Gmail, settings…';
+  const placeholder=opts.placeholder||'Ask Flux AI anything — tasks, grades, calendar, notes, timer, school, ECs, Gmail, settings…';
   const delay=typeof opts.delay==='number'?opts.delay:140;
   setTimeout(()=>{
     const inp=document.getElementById('aiInput');
@@ -4047,7 +4047,7 @@ function renderCmdResults(){
   const navItems=[
     {icon:'⚡',label:'Dashboard',action:()=>{nav('dashboard');closeCommandPalette();}},
     {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
-    {icon:'✦',label:'Flux Agent',action:()=>{nav('ai');closeCommandPalette();}},
+    {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
     {icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}},
     {icon:'📊',label:'Grades',action:()=>{nav('grades');closeCommandPalette();}},
     {icon:'📝',label:'Notes',action:()=>{nav('notes');closeCommandPalette();}},
@@ -5263,7 +5263,7 @@ function startOnboardingTour(){
     {nav:'grades',sel:'[data-tab="grades"]',title:'Grades & GPA',body:'Weighted GPA, categories, and grade import from screenshots when you need it.'},
     {nav:'notes',sel:'[data-tab="notes"]',title:'Notes & flashcards',body:'Subject notes with flashcard mode for cram sessions before tests.'},
     {nav:'timer',sel:'[data-tab="timer"]',title:'Focus timer',body:'Pomodoro-style sessions, subject budgets, and a weekly focus heatmap.'},
-    {nav:'ai',sel:'[data-tab="ai"]',title:'Flux Agent',body:'Ask anything about your planner — study help, scheduling, grades, and more. Full context from your snapshot.'},
+    {nav:'ai',sel:'[data-tab="ai"]',title:'Flux AI',body:'Ask anything about your planner — study help, scheduling, grades, and more. Full context from your snapshot.'},
     {nav:'dashboard',sel:'.view-btn[data-view="list"]',title:'Task views',body:'Switch List, Board, or Timeline on the dashboard to match how you like to work.'},
     {nav:'goals',sel:'[data-tab="goals"]',title:'Extracurriculars',body:'Activities, college list, and milestones — IB/AP progress lives here too when relevant.'},
     {nav:'profile',sel:'[data-tab="profile"]',title:'Profile',body:'Academic snapshot, study DNA, and habits — keep it updated for better AI hints.'},

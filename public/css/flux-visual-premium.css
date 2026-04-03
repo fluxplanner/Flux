@@ -251,7 +251,7 @@ html::after{
   box-shadow:0 0 24px rgba(var(--accent-rgb),.35),0 0 0 2px rgba(255,255,255,.15)!important;
 }
 
-/* ═══ Flux Agent chat ═══ */
+/* ═══ Flux AI chat ═══ */
 .ai-msg{
   animation:aiMsgIn .42s var(--flux-ease-out-expo) both;
 }
