@@ -17,7 +17,9 @@ html[data-mood-tint="warm"] body::before{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   opacity:.07;
   background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(var(--accent-rgb),calc(.35 + var(--mood-tint-a,0) * .01)),transparent 55%);
+  transition:opacity .75s cubic-bezier(0.16,1,0.3,1),background .75s cubic-bezier(0.16,1,0.3,1);
 }
+html[data-mood-tint]{transition:color .4s ease}
 
 /* Dashboard section reorder */
 .flux-dash-sections{display:flex;flex-direction:column;gap:0}

@@ -1,0 +1,355 @@
+/**
+ * Flux Planner — Visual Premium Layer (additive only)
+ * Loads last. Enhances depth, glass, motion, and micro-interactions without layout changes.
+ */
+
+:root{
+  --flux-ease-out-expo:cubic-bezier(0.16,1,0.3,1);
+  --flux-ease-spring-soft:cubic-bezier(0.34,1.3,0.64,1);
+  --flux-blur-card:blur(36px) saturate(185%);
+  --flux-blur-strong:blur(44px) saturate(195%);
+}
+
+/* ═══ Secondary ambient + grain (does not replace body background) ═══ */
+html{
+  --flux-cursor-x:50%;
+  --flux-cursor-y:42%;
+}
+html::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  opacity:.55;
+  background:
+    radial-gradient(ellipse 120% 90% at 80% 10%,rgba(var(--purple-rgb),.07),transparent 52%),
+    radial-gradient(ellipse 90% 70% at 12% 88%,rgba(var(--accent-rgb),.06),transparent 50%);
+  animation:fluxPremiumAmbient 38s ease-in-out infinite alternate;
+}
+@keyframes fluxPremiumAmbient{
+  0%{opacity:.45;transform:scale(1) translate(0,0)}
+  100%{opacity:.62;transform:scale(1.02) translate(-1.5%,1%)}
+}
+
+/* Grain + faint dot grid (html::after paints above body — very low opacity film) */
+html::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:2;
+  opacity:.045;
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:200px 200px,14px 14px;
+  mix-blend-mode:overlay;
+}
+
+/* Cursor-follow ambient (element #fluxCursorAmbient from flux-visual-layer.js) */
+#fluxCursorAmbient{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  opacity:.055;
+  mix-blend-mode:soft-light;
+  transition:opacity .4s var(--flux-ease-out-expo);
+  background:radial-gradient(ellipse 55% 48% at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.85),transparent 62%);
+}
+@media (prefers-reduced-motion:reduce){
+  html::before,html::after{animation:none!important;opacity:.28}
+  #fluxCursorAmbient{opacity:0!important}
+}
+
+/* ═══ Glass: cards, stats, notes surfaces ═══ */
+.card,.stat,.flux-page .note-card,.cal-hero-card,
+.flux-dash-card-inner,.flux-ai-strip-inner,.flux-mega-card,.flux-patterns-card,
+#flux100IntelHub,.dash-v2-pulse,.dash-v2-insight .dash-v2-focus-slot,.dash-v2-countdown-card{
+  background:
+    linear-gradient(165deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 42%,rgba(0,0,0,.06) 100%),
+    var(--glass-tint),var(--card)!important;
+  border-color:rgba(255,255,255,.09)!important;
+  box-shadow:
+    0 4px 28px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -1px 0 rgba(0,0,0,.12),
+    0 0 0 1px rgba(var(--accent-rgb),.04)!important;
+  backdrop-filter:var(--flux-blur-card)!important;
+  -webkit-backdrop-filter:var(--flux-blur-card)!important;
+  transition:
+    border-color .35s var(--flux-ease-out-expo),
+    box-shadow .35s var(--flux-ease-out-expo),
+    transform .35s var(--flux-ease-out-expo),
+    filter .35s ease!important;
+}
+.card:hover,.stat:hover,.flux-page .note-card:hover,.cal-hero-card:hover,
+.flux-dash-card-inner:hover,.flux-ai-strip-inner:hover,.flux-mega-card:hover{
+  border-color:rgba(255,255,255,.14)!important;
+  box-shadow:
+    0 12px 44px rgba(0,0,0,.38),
+    0 0 48px rgba(var(--accent-rgb),.08),
+    inset 0 1px 0 rgba(255,255,255,.14)!important;
+  filter:brightness(1.03);
+}
+
+/* Slow highlight sweep on intel / mega cards */
+.flux-dash-card-inner,.flux-mega-card,#flux100IntelHub,.flux-ai-strip-inner{
+  position:relative;
+  overflow:hidden;
+}
+.flux-dash-card-inner::after,.flux-mega-card::after,#flux100IntelHub::after,.flux-ai-strip-inner::after{
+  content:'';
+  position:absolute;
+  inset:-40% -30%;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.04) 48%,transparent 56%);
+  animation:fluxSheen 22s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes fluxSheen{
+  0%,90%{transform:translateX(-12%) translateY(0);opacity:0}
+  95%{opacity:.5}
+  100%{transform:translateX(12%) translateY(0);opacity:0}
+}
+
+/* ═══ Sidebar polish ═══ */
+.sidebar{
+  position:relative;
+}
+.sidebar::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.12) 0%,transparent 35%,transparent 65%,rgba(0,0,0,.2) 100%);
+  mix-blend-mode:soft-light;
+  opacity:.5;
+}
+.sidebar-logo svg circle:nth-child(-n+4){
+  animation:fluxOrbPulse 10s ease-in-out infinite;
+}
+.sidebar-logo svg circle:nth-child(3){animation-delay:1.2s}
+.sidebar-logo svg circle:nth-child(4){animation-delay:2.4s}
+@keyframes fluxOrbPulse{
+  0%,100%{opacity:.35}
+  50%{opacity:.85}
+}
+.nav-item.active::before{
+  transition:height .35s var(--flux-ease-out-expo),box-shadow .35s ease!important;
+  height:22px!important;
+  box-shadow:0 0 16px rgba(var(--accent-rgb),.55)!important;
+}
+
+/* ═══ Dashboard greeting ═══ */
+.dash-v2-greet{
+  animation:dashGreetEnter .85s var(--flux-ease-out-expo) both;
+}
+@keyframes dashGreetEnter{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:none}
+}
+#dashGreeting.dash-v2-greet-title{
+  text-shadow:0 0 40px rgba(var(--accent-rgb),.15);
+}
+
+/* Pulse strip: today column */
+.dash-week-col:first-child .dash-week-bar{
+  box-shadow:0 0 16px rgba(var(--accent-rgb),.28);
+  animation:fluxTodayPulse 4s ease-in-out infinite;
+}
+@keyframes fluxTodayPulse{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.12)}
+}
+#energySlider{
+  transition:filter .25s ease;
+}
+#energySlider:active{
+  filter:drop-shadow(0 0 8px rgba(var(--accent-rgb),.35));
+}
+
+/* Focus card emphasis */
+#dynamicFocusCard,.flux-next-best-card{
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.35),
+    0 0 0 1px rgba(var(--accent-rgb),.2),
+    0 0 36px rgba(var(--accent-rgb),.12)!important;
+}
+#dynamicFocusCard:not(:empty){
+  animation:focusCardPulse 5s ease-in-out infinite;
+}
+@keyframes focusCardPulse{
+  0%,100%{box-shadow:0 8px 40px rgba(0,0,0,.35),0 0 0 1px rgba(var(--accent-rgb),.18),0 0 28px rgba(var(--accent-rgb),.1)}
+  50%{box-shadow:0 10px 48px rgba(0,0,0,.4),0 0 0 1px rgba(var(--accent-rgb),.28),0 0 44px rgba(var(--accent-rgb),.16)}
+}
+
+/* Countdown */
+#countdownCard .dash-v2-countdown-card{
+  animation:countdownGlow 3.2s ease-in-out infinite;
+}
+@keyframes countdownGlow{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.06)}
+}
+
+/* ═══ Task rows ═══ */
+.task-item:not(.task-done){
+  transition:
+    transform .32s var(--flux-ease-spring-soft),
+    box-shadow .32s var(--flux-ease-out-expo),
+    border-color .28s ease,
+    filter .28s ease!important;
+}
+.task-item:not(.task-done):hover{
+  transform:translateX(3px) translateY(-2px)!important;
+  box-shadow:
+    0 10px 32px rgba(0,0,0,.38),
+    0 0 0 1px rgba(var(--accent-rgb),.12),
+    0 0 28px rgba(var(--accent-rgb),.06)!important;
+}
+.task-item.priority-high::before{
+  box-shadow:0 0 12px rgba(var(--red-rgb),.45)!important;
+}
+.task-item.priority-med::before{
+  box-shadow:0 0 10px rgba(var(--gold-rgb),.35)!important;
+}
+.task-item.priority-low::before{
+  box-shadow:0 0 10px rgba(var(--green-rgb),.3)!important;
+}
+.check:not(.done):hover{
+  transform:scale(1.06);
+}
+.check.done{
+  animation:checkPop .45s var(--flux-ease-spring-soft) both!important;
+}
+@keyframes checkPop{
+  0%{transform:scale(.88)}
+  60%{transform:scale(1.08)}
+  100%{transform:scale(1)}
+}
+.task-prog-fill{
+  transition:width .55s var(--flux-ease-out-expo)!important;
+}
+
+/* ═══ Calendar days ═══ */
+.cal-day{
+  transition:transform .22s var(--flux-ease-out-expo),box-shadow .22s ease,background .22s ease,border-color .22s ease!important;
+}
+.cal-day:hover{
+  transform:scale(1.03);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.cal-day.today{
+  animation:calTodayPulse 3.5s ease-in-out infinite;
+}
+@keyframes calTodayPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.25)}
+  50%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12)}
+}
+.cal-day.selected{
+  box-shadow:0 0 24px rgba(var(--accent-rgb),.35),0 0 0 2px rgba(255,255,255,.15)!important;
+}
+
+/* ═══ Flux Agent chat ═══ */
+.ai-msg{
+  animation:aiMsgIn .42s var(--flux-ease-out-expo) both;
+}
+@keyframes aiMsgIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:none}
+}
+.ai-bub.bot{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 4px 24px rgba(0,0,0,.2),
+    0 0 0 1px rgba(var(--accent-rgb),.06)!important;
+  border-left:2px solid rgba(var(--accent-rgb),.35);
+}
+.ai-think span{
+  animation:aiDot 1.15s ease-in-out infinite;
+}
+.ai-think span:nth-child(2){animation-delay:.18s}
+.ai-think span:nth-child(3){animation-delay:.36s}
+@keyframes aiDot{
+  0%,80%,100%{opacity:.35;transform:translateY(0)}
+  40%{opacity:1;transform:translateY(-3px)}
+}
+#aiInput,.ai-irow{
+  transition:box-shadow .35s var(--flux-ease-out-expo),border-color .25s ease!important;
+}
+.ai-irow:focus-within{
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12),0 8px 32px rgba(0,0,0,.25)!important;
+  border-color:rgba(var(--accent-rgb),.4)!important;
+}
+
+/* ═══ Panel enter (refine existing motion) ═══ */
+@keyframes fluxPanelEnter{
+  from{opacity:0;transform:translateY(14px) scale(.988)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.panel.active.flux-panel-enter{
+  animation-duration:.58s!important;
+}
+
+/* ═══ Topbar & buttons (micro-interactions) ═══ */
+.topbar-new-task-btn:hover,.btn-icon:hover,.tmode-btn:hover,.view-btn:hover{
+  transform:scale(1.02);
+}
+.topbar-new-task-btn:active,.btn-icon:active,.tmode-btn:active{
+  transform:scale(.97);
+}
+button,.btn-sec{
+  transition:transform .18s var(--flux-ease-spring-soft),box-shadow .22s ease,filter .2s ease!important;
+}
+button:hover{transform:translateY(-1px) scale(1.01)}
+button:active{transform:scale(.97)!important}
+
+input:focus,select:focus,textarea:focus{
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14),0 4px 20px rgba(var(--accent-rgb),.08)!important;
+  transition:box-shadow .3s var(--flux-ease-out-expo),border-color .25s ease!important;
+}
+
+/* ═══ Mobile drawer ═══ */
+.mob-drawer{
+  transition:transform .42s var(--flux-ease-out-expo)!important;
+}
+.mob-drawer-overlay{
+  transition:opacity .35s ease!important;
+}
+
+/* ═══ Streak badge pulse when visible ═══ */
+.flux-streak-badge:not([style*='display: none']){
+  animation:streakSoft 2.8s ease-in-out infinite;
+}
+@keyframes streakSoft{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.08)}
+}
+
+/* ═══ Confetti (softer fall) ═══ */
+@keyframes confettiFall{
+  0%{transform:translateY(-12px) rotate(0deg);opacity:1}
+  100%{transform:translateY(100vh) rotate(540deg);opacity:0}
+}
+.confetti-piece{
+  border-radius:4px!important;
+  filter:blur(.2px) saturate(1.1);
+}
+
+/* ═══ Loading skeleton (opt-in class) ═══ */
+.flux-skeleton{
+  background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.1) 50%,rgba(255,255,255,.04) 100%)!important;
+  background-size:200% 100%!important;
+  animation:fluxSkeleton 1.2s ease-in-out infinite!important;
+  border-radius:10px!important;
+}
+@keyframes fluxSkeleton{
+  0%{background-position:100% 0}
+  100%{background-position:-100% 0}
+}
+
+/* ═══ Density transitions ═══ */
+html[data-flux-density] .task-item,html[data-flux-density] .card{
+  transition:padding .35s var(--flux-ease-out-expo),gap .35s ease;
+}
