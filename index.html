@@ -52,6 +52,7 @@
 <link rel="stylesheet" href="public/css/flux-motion.css">
 <link rel="stylesheet" href="public/css/flux-ui-polish.css">
 <link rel="stylesheet" href="public/css/flux-personalization.css">
+<link rel="stylesheet" href="public/css/flux-enhancements-v100.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -540,6 +541,8 @@
       <div class="flux-dash-intel-grid" data-flux-section="intel">
         <div id="fluxDailySummary"></div>
         <div id="fluxWeeklyInsights"></div>
+        <div id="flux100Top3" class="flux100-top3-host" aria-label="Today's top priorities"></div>
+        <div id="flux100IntelHub" class="flux100-intel-host" aria-label="Flux 100 intelligence"></div>
       </div>
       <div id="fluxPatternsPanel" data-flux-section="patterns" class="flux-patterns-host"></div>
       <div id="fluxAiMegaPanel" class="flux-ai-mega-host" data-flux-section="mega"></div>
@@ -1709,6 +1712,7 @@
     <div class="mrow"><label>Sub-tasks (one per line)</label>
       <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
         <textarea id="editSubtasks" style="min-height:70px;flex:1;min-width:200px;margin:0" placeholder="Sub-task 1&#10;Sub-task 2"></textarea>
+        <button type="button" class="btn-sec" onclick="completeAllSubtasksInEdit()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap" title="Mark all subtasks complete">All ✓</button>
         <button type="button" class="btn-sec" onclick="autoSplitEditSubtasks()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap">Auto-split</button>
       </div>
     </div>
@@ -1752,6 +1756,7 @@
 <script defer src="public/js/flux-intelligence.js"></script>
 <script defer src="public/js/flux-task-ux.js"></script>
 <script defer src="public/js/flux-ai-mega.js"></script>
+<script defer src="public/js/flux-enhancements-v100.js"></script>
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
 </body>

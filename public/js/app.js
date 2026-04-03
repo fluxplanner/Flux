@@ -800,6 +800,7 @@ function nav(id,btn){
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();renderDynamicFocus();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderDailySummary();FluxIntel.renderWeeklyInsights();FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxMega){FluxMega.init();FluxMega.render();}if(window.FluxPersonal){FluxPersonal.renderPatternsPanel();FluxPersonal.applyDashboardOrder();}},calendar:()=>{loadCalScheduleUI();renderCalendar();renderCalToday();renderCalUpcoming();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},gmail:()=>loadGmail()};
   fns[id]?.();
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
+  if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
 }
 function navMob(id){closeDrawer();nav(id);}
 
@@ -907,6 +908,7 @@ function addTask(){
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:document.getElementById('taskSubject').value,priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringWeekly:!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined};
   task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject)setTimeout(()=>injectGhostDraft(task),1500);
+  if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
@@ -1311,6 +1313,13 @@ function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id
   }
   document.getElementById('editModal').style.display='flex';}
 function closeEdit(){document.getElementById('editModal').style.display='none';editingId=null;}
+function completeAllSubtasksInEdit(){
+  const t=tasks.find(x=>x.id===editingId);if(!t)return;
+  const lines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  t.subtasks=lines.map(s=>({text:s,done:true}));
+  document.getElementById('editSubtasks').value=lines.join('\n');
+  showToast('All subtasks marked complete','success');
+}
 function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();t.recurringWeekly=!!document.getElementById('editRecurringWeekly')?.checked;const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
@@ -4075,7 +4084,9 @@ function renderCmdResults(){
     {icon:'🔐',label:'Import encrypted backup',cat:'Actions',action:()=>{closeCommandPalette();document.getElementById('importEncryptedFile')?.click();}},
   ];
   actions.forEach(a=>{if(!q||a.label.toLowerCase().includes(q))cmds.push(a);});
-  
+  if(window.Flux100&&typeof Flux100.getExtraCommands==='function'){
+    try{Flux100.getExtraCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+  }
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
   // Group by cat
@@ -6899,6 +6910,9 @@ function handleGlobalSearch(q){
   _globalSearchDebounce=setTimeout(()=>runGlobalSearch(t.toLowerCase()),100);
 }
 function runGlobalSearch(q){
+  if(window.Flux100&&typeof Flux100.runGlobalSearch==='function'){
+    try{Flux100.runGlobalSearch(q);return;}catch(e){console.warn(e);}
+  }
   const el=document.getElementById('globalSearchResults');if(!el)return;
   let results=[];
   tasks.forEach(t=>{
