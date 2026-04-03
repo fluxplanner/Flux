@@ -539,20 +539,6 @@
       <div id="fluxAiInsightStrip" class="flux-ai-insight-strip" style="display:none"></div>
       <div id="fluxOverdueBanner" class="flux-overdue-wrap" style="display:none"></div>
       <div id="fluxDashSections" class="flux-dash-sections">
-      <section class="dash-v2-pulse" aria-label="Today at a glance" data-flux-section="pulse">
-        <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
-        <div class="dash-energy dash-v2-energy" id="dashEnergyCard">
-          <span class="dash-energy-label">Energy today</span>
-          <input type="range" id="energySlider" min="1" max="5" value="3" oninput="setEnergy(this.value)">
-          <span id="energyEmoji" class="dash-energy-emoji">😐</span>
-          <span id="energyLabel" class="dash-energy-level">Neutral</span>
-        </div>
-      </section>
-
-      <section class="dash-v2-insight" aria-label="Focus" data-flux-section="focus">
-        <div id="dynamicFocusCard" class="dash-v2-focus-slot"></div>
-      </section>
-
       <div id="countdownCard" class="dash-v2-countdown" style="display:none" data-flux-section="countdown">
         <div class="card dash-v2-countdown-card">
           <div class="dash-v2-countdown-kicker">Assessment</div>
@@ -562,7 +548,7 @@
         </div>
       </div>
 
-      <section class="dash-workspace dash-v2-workspace" aria-label="Tasks" data-flux-section="tasks">
+      <div class="dash-workspace dash-v2-workspace" role="region" aria-label="Tasks" data-flux-section="tasks">
         <div class="dash-v2-work-head">
           <h2 class="dash-v2-work-title">Tasks</h2>
           <div class="dash-toolbar">
@@ -601,7 +587,7 @@
           </div>
           <div id="savedViewsList"></div>
         </div>
-      </section>
+      </div>
       </div>
 
     </div>

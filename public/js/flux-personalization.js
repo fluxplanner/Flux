@@ -170,15 +170,14 @@
     if(!wrap)return;
     const c=loadNavCounts();
     const weight=name=>{
-      const base={pulse:8,focus:7,countdown:6,tasks:11};
+      const base={countdown:6,tasks:11};
       const b=base[name]||8;
       let w=b;
-      if(name==='pulse')w+=Math.min(4,(c.calendar||0)*0.15);
-      if(name==='focus'||name==='countdown')w+=Math.min(5,(c.timer||0)*0.2);
+      if(name==='countdown')w+=Math.min(5,(c.timer||0)*0.2);
       if(name==='tasks')w+=Math.min(6,(c.dashboard||0)*0.12);
       return w;
     };
-    ['pulse','focus','countdown','tasks'].forEach(name=>{
+    ['countdown','tasks'].forEach(name=>{
       const child=wrap.querySelector('[data-flux-section="'+name+'"]');
       if(child)child.style.order=String(Math.round(24-weight(name)));
     });
