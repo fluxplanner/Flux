@@ -107,14 +107,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .sidebar.collapsed{width:var(--sidebar-collapsed);min-width:var(--sidebar-collapsed)}
 .sidebar-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 14px 13px;margin:12px 10px 0;flex-shrink:0;
+  padding:14px 14px 16px;margin:12px 10px 0;flex-shrink:0;
   background:linear-gradient(165deg,rgba(var(--accent-rgb),.14) 0%,rgba(255,255,255,.08) 38%,rgba(255,255,255,.03) 100%);
   border:1px solid rgba(var(--accent-rgb),.18);
   border-radius:14px;
   backdrop-filter:blur(28px) saturate(185%);-webkit-backdrop-filter:blur(28px) saturate(185%);
   box-shadow:var(--liquid-edge),0 8px 32px rgba(0,0,0,.2),0 0 40px rgba(var(--accent-rgb),.07);
+  overflow:visible;
 }
-.sidebar-logo{font-size:1.18rem;font-weight:800;letter-spacing:-.6px;background:linear-gradient(135deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;overflow:hidden}
+.sidebar-logo{font-size:1.18rem;font-weight:800;letter-spacing:-.6px;background:linear-gradient(135deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;overflow:visible}
 .sidebar-logo svg,.mob-drawer-logo svg{display:block;vertical-align:middle}
 .sidebar.collapsed .sidebar-logo{opacity:0;width:0}
 .sidebar-toggle{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:8px;flex-shrink:0;font-size:1rem;transition:var(--transition)}
@@ -1835,6 +1836,7 @@ button:focus-visible,.nav-item:focus-visible,.tmode-btn:focus-visible,.check:foc
   backdrop-filter:blur(22px) saturate(155%)!important;-webkit-backdrop-filter:blur(22px) saturate(155%)!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 8px 28px rgba(0,0,0,.05),0 0 28px rgba(var(--accent-rgb),.08)!important;
 }
+[data-theme="light"] .flux-logo-svg text:last-child{fill:#5a6a7e!important;opacity:.92!important}
 [data-theme="light"] .sidebar-nav{
   background:linear-gradient(180deg,rgba(var(--accent-rgb),.08) 0%,rgba(255,255,255,.62) 45%,rgba(245,246,252,.74) 100%)!important;
   border-color:rgba(var(--accent-rgb),.14)!important;
