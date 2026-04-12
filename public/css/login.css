@@ -196,7 +196,7 @@
 .login-logo:has(svg){
   background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important;
 }
-.login-logo svg{display:block;margin:0 auto;width:100%;max-width:min(236px,100%);height:auto}
+.login-logo svg{display:block;margin:0 auto;width:100%;max-width:min(236px,100%);height:auto;overflow:visible;vertical-align:top}
 
 .login-tagline{
   font-size:.78rem;color:rgba(255,255,255,.42);

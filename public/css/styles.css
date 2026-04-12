@@ -122,7 +122,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   flex:1;min-width:0;max-width:100%;white-space:normal;display:flex;align-items:center;overflow:hidden;
 }
 .sidebar-logo:has(svg) svg{width:100%;max-width:min(168px,100%);height:auto;flex-shrink:1}
-.sidebar-logo svg,.mob-drawer-logo svg{display:block;vertical-align:middle;overflow:visible}
+.sidebar-logo svg,.mob-drawer-logo svg{display:block;vertical-align:top;overflow:visible}
+.flux-logo-svg{overflow:visible;text-rendering:geometricPrecision}
 .sidebar.collapsed .sidebar-logo{opacity:0;width:0}
 .sidebar-toggle{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:8px;flex-shrink:0;font-size:1rem;transition:var(--transition)}
 .sidebar-toggle:hover{color:var(--text);background:var(--card2);transform:none;box-shadow:none}
