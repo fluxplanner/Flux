@@ -1,0 +1,12 @@
+<svg width="680" height="680" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flux AI mark">
+<!-- Same lemniscate stroke as flux-planner-logo.svg, background removed for inline use -->
+<defs>
+  <linearGradient id="fluxAiMarkStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.05"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.05"/>
+  </linearGradient>
+</defs>
+<g transform="translate(392,340)">
+  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+    fill="none" stroke="url(#fluxAiMarkStroke)" stroke-width="14" stroke-linecap="round"/>
+</g>
+</svg>

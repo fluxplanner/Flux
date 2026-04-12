@@ -1,0 +1,12 @@
+Flux AI — plain-text / keyboard symbols (optional; app UI unchanged)
+
+  Shape match (lemniscate / loop):  ∞  Unicode U+221E INFINITY
+    • macOS (US): Option + 5
+    • Windows: Alt + 236 on numeric keypad (with Num Lock), or insert from Character Map
+    • HTML entity: &infin;
+
+  Already used in Flux for AI accents (not the same shape as the logo):  ✦  U+2726
+
+Assets (no UI edits required):
+  • Tab / favicon / PWA / social preview: public/flux-planner-logo.svg
+  • Transparent mark only (paste into designs or future UI): public/flux-ai-mark.svg

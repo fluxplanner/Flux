@@ -1,70 +1,17 @@
 <svg width="680" height="680" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flux Planner">
 <defs>
-  <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-    <stop offset="0%" stop-color="#0F1729"/>
-    <stop offset="100%" stop-color="#090D17"/>
+  <linearGradient id="fluxAppTileBg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#0D1424"/><stop offset="100%" stop-color="#080C14"/>
   </linearGradient>
-  <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#1B4A7A" stop-opacity="0"/>
-    <stop offset="18%" stop-color="#1B6FAA"/>
-    <stop offset="42%" stop-color="#00C2FF"/>
-    <stop offset="100%" stop-color="#00C2FF" stop-opacity="0"/>
+  <linearGradient id="fluxAppStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.05"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.05"/>
   </linearGradient>
-  <linearGradient id="fluxGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#5BBFEA"/>
-    <stop offset="100%" stop-color="#00C2FF"/>
-  </linearGradient>
-  <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
-    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.9"/>
-    <stop offset="60%" stop-color="#00C2FF" stop-opacity="0.3"/>
-    <stop offset="100%" stop-color="#00C2FF" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="ambientGlow" cx="50%" cy="45%" r="65%">
-    <stop offset="0%" stop-color="#0057A8" stop-opacity="0.32"/>
-    <stop offset="100%" stop-color="#090D17" stop-opacity="0"/>
-  </radialGradient>
-  <clipPath id="tileClip">
-    <rect width="680" height="680" rx="152"/>
-  </clipPath>
 </defs>
 
-<!-- Full-bleed tile: no transparent margin (stops white “box” in Arc / dock / PWAs) -->
-<rect width="680" height="680" rx="152" fill="url(#bg)"/>
-<rect width="680" height="680" rx="152" fill="url(#ambientGlow)"/>
-<rect width="680" height="680" rx="152" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.09"/>
+<rect x="40" y="40" width="600" height="600" rx="88" fill="url(#fluxAppTileBg)"/>
 
-<g clip-path="url(#tileClip)">
-  <ellipse cx="340" cy="384" rx="34" ry="34" fill="url(#dotGlow)"/>
-  <rect x="44" y="376" width="592" height="9" rx="4.5" fill="url(#lineGrad)"/>
-  <circle cx="70" cy="380.5" r="8.5" fill="#00C2FF"/>
-  <circle cx="70" cy="380.5" r="4.5" fill="#FFFFFF"/>
-
-  <text x="340" y="372"
-    font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif"
-    font-weight="800"
-    font-size="152"
-    letter-spacing="-5"
-    fill="url(#fluxGrad)"
-    text-anchor="middle">Flux</text>
-
-  <text x="340" y="432"
-    font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif"
-    font-weight="500"
-    font-size="34"
-    letter-spacing="11"
-    fill="#FFFFFF"
-    fill-opacity="0.94"
-    text-anchor="middle">Planner</text>
-
-  <line x1="44" y1="474" x2="636" y2="474" stroke="#FFFFFF" stroke-width="0.6" stroke-opacity="0.12"/>
-
-  <text x="340" y="520"
-    font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif"
-    font-weight="500"
-    font-size="18"
-    letter-spacing="4.5"
-    fill="#FFFFFF"
-    fill-opacity="0.78"
-    text-anchor="middle">YOUR SMART SCHOOL PLANNER</text>
+<g transform="translate(392,340)">
+  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+    fill="none" stroke="url(#fluxAppStroke)" stroke-width="14" stroke-linecap="round"/>
 </g>
 </svg>
