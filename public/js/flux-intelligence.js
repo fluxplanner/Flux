@@ -181,28 +181,7 @@
   }
 
   function appendFocusHtml(baseHtml){
-    const nb=pickNextBestTask();
-    if(!nb)return baseHtml;
-    const estRaw=nb.estTime||(typeof FluxEstimateLearn!=='undefined'?FluxEstimateLearn.suggestedEstForSubject(nb.subject,30):30);
-    const est=window.FluxMega&&FluxMega.predictedEst?FluxMega.predictedEst(nb):estRaw;
-    const sub=typeof getSubjects==='function'?getSubjects()[nb.subject]:null;
-    let whyLine='';
-    if(window.FluxMega&&FluxMega.studyOrderWithReasons){
-      const row=FluxMega.studyOrderWithReasons(24).find(o=>o.task.id===nb.id);
-      if(row)whyLine=`<div class="flux-nb-why" style="font-size:.72rem;color:var(--muted2);margin-top:6px;line-height:1.45">Why this pick: ${esc(row.why)}</div>`;
-    }
-    const extra=`<div class="focus-card flux-next-best-card">
-      <div class="focus-label">Next best task</div>
-      <div class="flux-nb-title">${esc(nb.name)}</div>
-      <div class="flux-nb-meta">${sub?esc(sub.short)+' · ':''}${esc(nb.priority||'med')} · ~${est}m predicted</div>
-      ${whyLine}
-      <div class="flux-nb-actions">
-        <button type="button" class="flux-pill-btn" onclick="event.preventDefault();FluxIntel.doWhatNow()">What should I do now?</button>
-        <button type="button" class="flux-pill-btn flux-pill-accent" onclick="event.preventDefault();typeof startDeepWork==='function'&&startDeepWork(${nb.id})">Deep work</button>
-        <button type="button" class="flux-pill-btn" onclick="event.preventDefault();typeof startTimerFromTask==='function'&&startTimerFromTask(${nb.id})">Timer</button>
-      </div>
-    </div>`;
-    return baseHtml+extra;
+    return baseHtml;
   }
 
   function doWhatNow(){
