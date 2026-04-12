@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<style>
+/* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
+#app{display:none!important}
+#app.visible{display:flex!important;min-height:100vh}
+@media(max-width:768px){
+  #app.visible{display:block!important;min-height:100vh!important}
+}
+</style>
 <script>
 (function(){
   try{
@@ -223,6 +231,20 @@
         <div class="login-demo-wrap login-demo-wrap--card" aria-live="polite">
           <div class="login-demo-label">What Flux can do</div>
           <p class="login-demo-line" id="loginDemoLineCard"></p>
+        </div>
+
+        <div class="login-feat-bar login-feat-bar--card" aria-label="Included features">
+          <div class="login-feat-bar-label">Included in Flux</div>
+          <div class="feat-pills-wrap feat-pills-wrap--loginCard">
+            <div class="feat-pills" id="featPillsLoginCard"></div>
+          </div>
+        </div>
+
+        <div class="login-spotlight-grid" aria-label="Planner highlights">
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
         </div>
 
         <button class="login-google-btn" onclick="signInWithGoogle()">

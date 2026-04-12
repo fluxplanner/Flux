@@ -16,7 +16,7 @@
     opacity: 0.028 !important;
   }
 
-  #app {
+  #app.visible {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
   }
 

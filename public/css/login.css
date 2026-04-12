@@ -188,12 +188,15 @@
 }
 
 /* ── LOGO ── */
-.login-logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:8px;position:relative;z-index:1}
+.login-logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:8px;position:relative;z-index:1;width:100%;max-width:100%;min-width:0}
 .login-logo{
-  line-height:1;display:block;text-align:center;
+  line-height:1;display:block;text-align:center;width:100%;max-width:100%;min-width:0;
   filter:drop-shadow(0 2px 14px rgba(var(--accent-rgb),.28));
 }
-.login-logo svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.login-logo:has(svg){
+  background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important;
+}
+.login-logo svg{display:block;margin:0 auto;width:100%;max-width:min(236px,100%);height:auto}
 
 /* ── Flux AI examples (sign-in left column) ── */
 .login-flux-ai-demo{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07)}
@@ -321,8 +324,49 @@
 }
 .feat-pill:hover{transform:translateY(-2px);filter:brightness(1.2)}
 
+/* ── Sign-in card: rotating feature bar (shown when left column is hidden ≤900px) ── */
+.login-feat-bar--card{
+  display:none;width:100%;margin:0 0 16px;position:relative;z-index:1;
+  text-align:left;
+}
+.login-feat-bar-label{
+  font-size:.58rem;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.38);
+  font-family:'JetBrains Mono',monospace;font-weight:700;margin:0 0 8px;
+}
+.feat-pills-wrap--loginCard{
+  margin-top:0;
+  animation:loginFadeUp .55s cubic-bezier(.16,1,.3,1) .2s both;
+}
+.feat-pills-wrap--loginCard .feat-pills{
+  animation-duration:32s;
+}
+
+/* ── Sign-in card: compact highlight grid (all breakpoints) ── */
+.login-spotlight-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px 10px;
+  width:100%;
+  margin:0 0 18px;
+  position:relative;z-index:1;
+  text-align:left;
+}
+.login-spotlight-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:8px 10px;border-radius:12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:.68rem;font-weight:600;color:rgba(225,232,255,.82);
+  line-height:1.35;
+  font-family:'Plus Jakarta Sans',sans-serif;
+}
+.login-spotlight-ico{
+  flex-shrink:0;font-size:.95rem;line-height:1.2;opacity:.95;
+}
+
 /* ── RESPONSIVE ── */
 @media(max-width:900px){
+  .login-feat-bar--card{display:block}
   .login-2col{grid-template-columns:1fr;position:relative;min-height:100vh;min-height:100dvh}
   .login-left{display:none}
   .login-right{
@@ -353,7 +397,8 @@
 @media(prefers-reduced-motion:reduce){
   .login-bg{animation:none!important}
   .login-glow{animation:none!important}
-  .login-feature-card,.login-badge,.login-left-headline,.login-left-sub,.login-demo-wrap,.feat-pills-wrap{animation:none!important;opacity:1!important;transform:none!important}
+  .login-feature-card,.login-badge,.login-left-headline,.login-left-sub,.login-demo-wrap,.feat-pills-wrap,.feat-pills-wrap--loginCard{animation:none!important;opacity:1!important;transform:none!important}
+  .feat-pills{animation:none!important}
   .login-card{animation:none!important;opacity:1!important;transform:none!important}
   #loginScreen.visible .login-logo-wrap,#loginScreen.visible .login-google-btn,#loginScreen.visible .login-divider,
   #loginScreen.visible #loginEmailSection,#loginScreen.visible .login-skip,#loginScreen.visible .login-trust{animation:none!important;opacity:1!important;transform:none!important}

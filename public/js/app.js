@@ -2529,7 +2529,7 @@ function loadTheme(){
   localStorage.setItem('flux_accent_rgb',rgb);
   document.documentElement.style.setProperty('--accent',acc);
   document.documentElement.style.setProperty('--accent-rgb',rgb);
-  setTimeout(()=>updateLogoColor(acc),0);
+  setTimeout(()=>{updateLogoColor(acc);clearSvgLogoGradientStyles();},0);
 }
 
 function applyCustomVar(varName,value){
@@ -2596,16 +2596,26 @@ function hexToRgb(hex){
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
   return isNaN(r)?'0,191,255':`${r},${g},${b}`;
 }
+function clearSvgLogoGradientStyles(){
+  document.querySelectorAll('.sidebar-logo,.mob-drawer-logo,.login-logo,.login-logo-wrap').forEach(el=>{
+    if(!el||!el.querySelector('svg'))return;
+    el.style.removeProperty('background');
+    el.style.removeProperty('-webkit-background-clip');
+    el.style.removeProperty('-webkit-text-fill-color');
+    el.style.removeProperty('background-clip');
+  });
+}
 function setAccent(hex,rgb,el){
   // Use updateLogoColor which injects persistent <style> tag
   applyCustomVar('--accent',hex);
   applyCustomVar('--accent-rgb',rgb);
   document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
   if(el)el.classList.add('active');
-  // Update logo gradient to match new accent
+  clearSvgLogoGradientStyles();
+  // Text-gradient logos only — SVG wordmarks break if background-clip:text is applied
   const logoGrad=`linear-gradient(135deg,${hex},${hex}bb)`;
   document.querySelectorAll('.sidebar-logo,.mob-drawer-logo,.login-logo,[class*="logo"]').forEach(logoEl=>{
-    if(!logoEl||logoEl.querySelector('img.flux-brand-logo'))return;
+    if(!logoEl||logoEl.querySelector('img.flux-brand-logo')||logoEl.querySelector('svg'))return;
     logoEl.style.background=logoGrad;
     logoEl.style.webkitBackgroundClip='text';
     logoEl.style.webkitTextFillColor='transparent';
@@ -4779,6 +4789,7 @@ function showApp(){
   }
   updateMasterBacklogCardVisibility();
   syncFluxAIModeButtons();
+  clearSvgLogoGradientStyles();
 }
 
 async function handleSignedIn(user,session){
@@ -4900,24 +4911,37 @@ function handleSignedOut(){
   window.location.replace(getRedirectURL());
 }
 
-// ══ FEATURE PILLS — injected into login screen ══
-function initFeaturePills(){
-  const wrap=document.getElementById('featPills');if(!wrap)return;
+// ══ FEATURE PILLS — scrolling bar(s) on login screen (left column + sign-in card) ══
+function buildFeatPillsHtml(){
   const pills=[
     {label:'✦ Flux AI Tutor',c:'#6366f1'},
-    {label:'📷 Gemini Vision Import',c:'#10d9a0'},
-    {label:'📊 4-Decimal GPA',c:'#fbbf24'},
-    {label:'⏱ Pomodoro Timer',c:'#a78bfa'},
-    {label:'📅 Smart Calendar',c:'#3b82f6'},
-    {label:'☁️ Cloud Sync',c:'#10d9a0'},
-    {label:'🃏 AI Flashcards',c:'#e879f9'},
-    {label:'🚨 Panic Mode',c:'#f43f5e'},
-    {label:'📧 Gmail Tasks',c:'#fb923c'},
-    {label:'📝 Smart Notes',c:'#6366f1'},
+    {label:'📷 Vision Import',c:'#10d9a0'},
+    {label:'📊 4-decimal GPA',c:'#fbbf24'},
+    {label:'⏱ Focus timer',c:'#a78bfa'},
+    {label:'📅 Smart calendar',c:'#3b82f6'},
+    {label:'☁️ Cloud sync',c:'#10d9a0'},
+    {label:'🃏 AI flashcards',c:'#e879f9'},
+    {label:'🚨 Panic mode',c:'#f43f5e'},
+    {label:'📧 Gmail → tasks',c:'#fb923c'},
+    {label:'📝 Tagged notes',c:'#6366f1'},
     {label:'🎯 Extracurriculars',c:'#fbbf24'},
+    {label:'🧠 Cognitive load',c:'#22c55e'},
+    {label:'📛 Exam conflicts',c:'#f472b6'},
+    {label:'🌙 Themes & accent',c:'#38bdf8'},
+    {label:'📈 Grade what-if',c:'#eab308'},
+    {label:'🎓 Canvas & Gmail',c:'#94a3b8'},
+    {label:'😊 Mood check-ins',c:'#fb7185'},
+    {label:'🔗 iCal / Google',c:'#34d399'},
   ];
   const all=[...pills,...pills];
-  wrap.innerHTML=all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+  return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
+}
+function initFeaturePills(){
+  const html=buildFeatPillsHtml();
+  ['featPills','featPillsLoginCard'].forEach(id=>{
+    const wrap=document.getElementById(id);
+    if(wrap)wrap.innerHTML=html;
+  });
 }
 
 // ══ LOGIN FEATURE CARDS — interactive color theming ══
