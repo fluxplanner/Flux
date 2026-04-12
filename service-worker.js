@@ -1,5 +1,5 @@
 /* ── FLUX PLANNER · Service Worker — network-first fix ── */
-const STATIC = 'flux-static-v36';
+const STATIC = 'flux-static-v37';
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
 const APP_ORIGIN = self.location.origin;
@@ -38,9 +38,19 @@ self.addEventListener('activate', e => {
   );
 });
 
+function isCacheableScheme(url) {
+  try {
+    return /^https?:$/i.test(new URL(url).protocol);
+  } catch (_) {
+    return false;
+  }
+}
+
 // Fetch strategy: NETWORK FIRST for app files, cache only as fallback
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+  // Cache API only supports http(s). Skip chrome-extension:, chrome:, blob:, etc.
+  if (!isCacheableScheme(url)) return;
 
   // Never intercept: API calls, Supabase, Groq, Google, POST requests
   if (
@@ -66,9 +76,11 @@ self.addEventListener('fetch', e => {
       fetch(e.request, { cache: 'no-store' })
         .then(res => {
           // Cache the fresh response
-          if (res && res.status === 200) {
+          if (res && res.status === 200 && isCacheableScheme(url)) {
             const clone = res.clone();
-            caches.open(STATIC).then(c => c.put(e.request, clone));
+            caches.open(STATIC).then(c =>
+              c.put(e.request, clone).catch(() => {})
+            );
           }
           return res;
         })
@@ -86,9 +98,11 @@ self.addEventListener('fetch', e => {
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
-        if (res && res.status === 200) {
+        if (res && res.status === 200 && isCacheableScheme(url)) {
           const clone = res.clone();
-          caches.open(STATIC).then(c => c.put(e.request, clone));
+          caches.open(STATIC).then(c =>
+            c.put(e.request, clone).catch(() => {})
+          );
         }
         return res;
       }).catch(() => caches.match(INDEX_HTML));
