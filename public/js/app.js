@@ -8519,11 +8519,11 @@ function openShortcutOverlay(){
     <div class="shortcut-grid">
       <div class="shortcut-section">
         <div class="shortcut-section-title">Navigation</div>
-        ${[['⌘K / Ctrl+K','Command palette'],['⌘⇧K / Ctrl+Shift+K','Search everywhere'],['G','Grades tab'],['C','Calendar tab'],['/','Flux AI tab'],['?','This shortcuts overlay']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
+        ${[['⌘K / Ctrl+K','Command palette'],['⌘⇧K / Ctrl+Shift+K','Search everywhere'],['G','Grades tab'],['C','Calendar tab'],['/','Flux AI tab'],['↑/↓ or J/K','Navigate tasks'],['?','This shortcuts overlay']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
       </div>
       <div class="shortcut-section">
         <div class="shortcut-section-title">Tasks & Tools</div>
-        ${[['N or T','Quick add task'],['Esc','Close / dismiss'],['⌘D','Deep Work mode'],['⌘P','Present mode'],['⌘Z','Undo last change'],['⏱ button','Start focus timer on task'],['✎ button','Edit task · change date']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
+        ${[['N or T','Quick add task'],['+','Quick add overlay'],['F','Focus mode (zen)'],['Esc','Close / dismiss / exit focus'],['Space / Enter','Toggle focused task'],['E','Edit focused task'],['P','Pin focused task'],['⌘D','Deep Work mode'],['⌘Z','Undo last change'],['Right-click','Task context menu']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
       </div>
     </div>
     <div style="font-size:.7rem;color:var(--muted);text-align:center;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">Press <kbd class="shortcut-kbd" style="font-size:.65rem">?</kbd> or <kbd class="shortcut-kbd" style="font-size:.65rem">Esc</kbd> to close</div>

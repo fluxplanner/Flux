@@ -1,0 +1,399 @@
+/* ════════════════════════════════════════════════════════════════
+   FLUX PRO — Premium feature layer
+   Adds: focus mode, achievements, year heatmap, magnetic buttons,
+   cursor spotlight, pinned task, card lift, skeleton loaders,
+   progress rings, view transitions, density modes, polished bg.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Safe variable fallbacks (keep flux-pro independent if other layers are off) ── */
+:root{
+  --flux-cursor-x:50vw;
+  --flux-cursor-y:50vh;
+}
+/* These provide defaults; any earlier or later override (e.g. flux-personalization.css) wins by source order */
+html{
+  --ease: cubic-bezier(.4,0,.2,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+  --ease-cinematic: cubic-bezier(.16,1,.3,1);
+  --liquid-edge: inset 0 1px 0 rgba(255,255,255,.08);
+  --red-rgb: 244,63,94;
+}
+@media(hover:hover) and (min-width:769px){
+  body[data-flux-cursor="on"]::after{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(450px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.06),transparent 50%);
+    transition:background .18s ease;
+  }
+}
+
+/* ── Polished gradient mesh background (multilayer, animated) ── */
+/* Only adds a slow drift animation atop the existing mesh in styles.css */
+body[data-flux-mesh="on"]::before{
+  animation:fluxMeshDrift 26s ease-in-out infinite alternate;
+}
+@keyframes fluxMeshDrift{
+  0%{opacity:1;transform:translate3d(0,0,0)}
+  50%{opacity:.78;transform:translate3d(2%,-1%,0)}
+  100%{opacity:.92;transform:translate3d(-1%,2%,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-flux-mesh="on"]::before{animation:none}
+}
+
+/* ── Magnetic helper class for opt-in lift ── */
+.flux-magnetic{transition:transform .25s var(--ease-spring),box-shadow .25s var(--ease)}
+.flux-magnetic:hover{transform:translateY(-2px) scale(1.012);box-shadow:0 12px 32px rgba(var(--accent-rgb),.18)}
+.flux-magnetic:active{transform:translateY(0) scale(.985);transition-duration:.08s}
+
+/* Subtle press feedback for the topbar new-task button */
+.topbar-new-task-btn{transition:transform .2s var(--ease-spring),box-shadow .2s var(--ease)}
+.topbar-new-task-btn:active{transform:scale(.96)}
+
+@media(prefers-reduced-motion:reduce){
+  .flux-magnetic:hover,.topbar-new-task-btn:hover{transform:none!important}
+}
+
+/* ── Card hover lift (gentle, only for top-level dashboard/section cards; skips deeply nested ones) ── */
+@media(hover:hover){
+  .panel > .card,
+  .panel > section .card.flux-daily-ring-card,
+  .panel > section .card.flux-streak-card,
+  .panel > section .card.flux-achievements-card,
+  .panel > section > .card,
+  #dashboard > .card,
+  #dashboard > section > .card{
+    transition:transform .3s var(--ease-cinematic),box-shadow .3s var(--ease),border-color .25s ease;
+  }
+  .panel > .card:hover,
+  .panel > section > .card:hover,
+  #dashboard > .card:hover,
+  #dashboard > section > .card:hover,
+  .flux-daily-ring-card:hover,
+  .flux-streak-card:hover,
+  .flux-achievements-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 36px rgba(0,0,0,.35),var(--liquid-edge);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .card:hover{transform:none}
+}
+
+/* ── Focus mode (zen single-task view) ── */
+body[data-flux-focus-mode="on"] .sidebar,
+body[data-flux-focus-mode="on"] .topbar,
+body[data-flux-focus-mode="on"] .bottom-nav,
+body[data-flux-focus-mode="on"] .fab-container,
+body[data-flux-focus-mode="on"] .notices-subbar,
+body[data-flux-focus-mode="on"] .dash-alerts,
+body[data-flux-focus-mode="on"] #weeklyReviewBanner,
+body[data-flux-focus-mode="on"] .dash-v2-greet,
+body[data-flux-focus-mode="on"] #dashClassScheduleWrap,
+body[data-flux-focus-mode="on"] #countdownCard,
+body[data-flux-focus-mode="on"] #fluxDashSections > section,
+body[data-flux-focus-mode="on"] .dash-toolbar,
+body[data-flux-focus-mode="on"] .dash-filters,
+body[data-flux-focus-mode="on"] .dash-v2-saved-views,
+body[data-flux-focus-mode="on"] #savedViewsSection,
+body[data-flux-focus-mode="on"] #fluxPinnedTaskHost,
+body[data-flux-focus-mode="on"] #fluxDailyRingHost,
+body[data-flux-focus-mode="on"] #fluxReflectHost,
+body[data-flux-focus-mode="on"] .dash-v2-work-head{display:none!important}
+
+body[data-flux-focus-mode="on"] .main-content{margin:0!important;padding:0!important;width:100%!important}
+body[data-flux-focus-mode="on"] #flux-main{padding-left:0!important}
+body[data-flux-focus-mode="on"] #dashboard{padding:80px 40px 40px!important;max-width:760px;margin:0 auto}
+body[data-flux-focus-mode="on"] .task-item{padding:18px 20px!important;font-size:1.04rem!important}
+body[data-flux-focus-mode="on"] .task-text{font-size:1.06rem!important;font-weight:600}
+
+#fluxFocusBar{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:9000;
+  display:none;align-items:center;gap:14px;
+  padding:9px 18px 9px 14px;border-radius:999px;
+  background:rgba(15,20,35,.85);backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(var(--accent-rgb),.3);
+  box-shadow:0 12px 36px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);
+  font-size:.78rem;font-weight:600;color:var(--text2);
+  animation:fadeIn .2s ease;
+}
+body[data-flux-focus-mode="on"] #fluxFocusBar{display:flex}
+#fluxFocusBar .ffx-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:focusPulse 1.6s ease-in-out infinite}
+@keyframes focusPulse{50%{opacity:.4;transform:scale(.85)}}
+#fluxFocusBar button{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:8px;transition:all .15s}
+#fluxFocusBar button:hover{background:rgba(255,255,255,.06);color:var(--text)}
+#fluxFocusBar .ffx-exit{color:var(--accent)}
+
+/* ── Achievement badges (toast-style popup) ── */
+.flux-achievement{
+  position:fixed;top:80px;right:20px;z-index:9500;
+  display:flex;align-items:center;gap:14px;
+  padding:14px 18px 14px 14px;
+  background:linear-gradient(135deg,rgba(var(--accent-rgb),.18) 0%,rgba(124,92,255,.14) 100%);
+  border:1px solid rgba(var(--accent-rgb),.4);
+  border-radius:18px;backdrop-filter:blur(24px) saturate(170%);
+  -webkit-backdrop-filter:blur(24px) saturate(170%);
+  box-shadow:0 16px 48px rgba(0,0,0,.45),0 0 0 1px rgba(var(--accent-rgb),.15);
+  min-width:280px;max-width:380px;
+  animation:achievementIn .55s var(--ease-spring);
+  cursor:pointer;
+}
+.flux-achievement-icon{
+  width:48px;height:48px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(145deg,var(--accent),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;
+  box-shadow:0 6px 20px rgba(var(--accent-rgb),.4);
+  animation:achievementBob 1.8s ease-in-out infinite;
+}
+.flux-achievement-content{flex:1;min-width:0}
+.flux-achievement-kicker{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;margin-bottom:2px}
+.flux-achievement-title{font-size:.92rem;font-weight:800;letter-spacing:-.01em;color:var(--text);margin-bottom:1px}
+.flux-achievement-desc{font-size:.72rem;color:var(--muted2);line-height:1.4}
+@keyframes achievementIn{
+  0%{opacity:0;transform:translateX(120%) scale(.85)}
+  60%{opacity:1;transform:translateX(-6px) scale(1.04)}
+  100%{opacity:1;transform:translateX(0) scale(1)}
+}
+@keyframes achievementBob{50%{transform:translateY(-3px) rotate(-3deg)}}
+.flux-achievement.leaving{animation:achievementOut .35s ease forwards}
+@keyframes achievementOut{to{opacity:0;transform:translateX(120%) scale(.9)}}
+@media(max-width:600px){
+  .flux-achievement{top:auto;bottom:90px;right:12px;left:12px;min-width:0}
+}
+
+/* ── Year contribution heatmap ── */
+.flux-year-heatmap{
+  display:flex;flex-direction:column;gap:4px;padding:14px 16px;
+  background:var(--card2);border-radius:14px;border:1px solid var(--border);
+  overflow-x:auto;
+}
+.flux-year-heatmap-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;
+}
+.flux-year-heatmap-title{font-size:.78rem;font-weight:700;letter-spacing:-.01em}
+.flux-year-heatmap-stats{font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.flux-year-heatmap-grid{
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,11px);gap:3px;
+  padding-bottom:4px;
+}
+.flux-yh-cell{
+  width:11px;height:11px;border-radius:2.5px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.02);
+  transition:transform .12s ease,box-shadow .12s ease;cursor:pointer;
+}
+.flux-yh-cell[data-l="1"]{background:rgba(var(--accent-rgb),.25)}
+.flux-yh-cell[data-l="2"]{background:rgba(var(--accent-rgb),.5)}
+.flux-yh-cell[data-l="3"]{background:rgba(var(--accent-rgb),.75)}
+.flux-yh-cell[data-l="4"]{background:var(--accent);box-shadow:0 0 6px rgba(var(--accent-rgb),.4)}
+.flux-yh-cell:hover{transform:scale(1.5);box-shadow:0 0 0 1.5px var(--accent)}
+.flux-yh-cell.today{outline:1.5px solid var(--accent);outline-offset:1px}
+.flux-year-heatmap-legend{display:flex;align-items:center;gap:6px;font-size:.62rem;color:var(--muted);margin-top:8px;justify-content:flex-end}
+.flux-year-heatmap-legend .flux-yh-cell{cursor:default}
+.flux-year-heatmap-legend .flux-yh-cell:hover{transform:none}
+
+/* ── Pinned task card ── */
+.flux-pinned-task{
+  background:linear-gradient(135deg,rgba(var(--accent-rgb),.1) 0%,rgba(124,92,255,.06) 100%);
+  border:1px solid rgba(var(--accent-rgb),.3);
+  border-radius:18px;padding:16px 18px;margin-bottom:14px;
+  display:flex;align-items:center;gap:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 28px rgba(var(--accent-rgb),.08);
+}
+.flux-pinned-task::before{
+  content:'';position:absolute;left:0;top:0;width:3px;height:100%;
+  background:linear-gradient(180deg,var(--accent),var(--purple));
+}
+.flux-pin-icon{
+  width:40px;height:40px;border-radius:12px;flex-shrink:0;
+  background:rgba(var(--accent-rgb),.15);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+  color:var(--accent);
+}
+.flux-pin-body{flex:1;min-width:0}
+.flux-pin-kicker{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;margin-bottom:1px}
+.flux-pin-name{font-size:.95rem;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+.flux-pin-meta{font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.flux-pin-actions{display:flex;gap:6px;flex-shrink:0}
+.flux-pin-btn{
+  background:none;border:1px solid var(--border2);color:var(--muted2);
+  padding:6px 10px;border-radius:8px;font-size:.7rem;font-weight:600;cursor:pointer;
+  transition:all .15s;
+}
+.flux-pin-btn:hover{background:rgba(var(--accent-rgb),.1);border-color:rgba(var(--accent-rgb),.3);color:var(--accent)}
+.flux-pin-btn.unpin{font-size:.85rem;padding:4px 8px}
+
+/* ── Skeleton loaders w/ shimmer ── */
+.flux-skel{
+  display:block;border-radius:8px;background:rgba(255,255,255,.04);position:relative;overflow:hidden;
+}
+.flux-skel::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.07) 50%,transparent 100%);
+  animation:fluxShimmer 1.4s ease-in-out infinite;
+}
+@keyframes fluxShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.flux-skel-line{height:.85em;margin:6px 0}
+.flux-skel-line.lg{height:1.2em}
+.flux-skel-line.short{width:55%}
+.flux-skel-line.medium{width:80%}
+@media(prefers-reduced-motion:reduce){
+  .flux-skel::after{animation:none}
+}
+
+/* ── Progress ring (daily goal) ── */
+.flux-prog-ring{display:inline-block;position:relative;flex-shrink:0}
+.flux-prog-ring svg{display:block;transform:rotate(-90deg)}
+.flux-prog-ring .ring-bg{stroke:rgba(255,255,255,.08);fill:none}
+.flux-prog-ring .ring-fg{stroke:var(--accent);fill:none;stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease-cinematic)}
+.flux-prog-ring-label{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;
+}
+.flux-prog-ring-num{font-size:1.05rem;font-weight:800;color:var(--text);line-height:1}
+.flux-prog-ring-cap{font-size:.55rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:2px}
+
+/* ── Smooth view transitions between tabs ── */
+.panel.flux-panel-enter{
+  animation:fluxPanelIn .42s var(--ease-cinematic) both;
+}
+@keyframes fluxPanelIn{
+  0%{opacity:0;transform:translateY(8px) scale(.992)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .panel.flux-panel-enter{animation:none}
+}
+
+/* ── Right-click context menu for tasks ── */
+.flux-ctx-menu{
+  position:fixed;z-index:9990;min-width:200px;
+  background:var(--card);border:1px solid var(--border2);border-radius:12px;
+  padding:6px;
+  box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.06);
+  backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%);
+  animation:ctxIn .12s ease;
+  font-size:.82rem;
+}
+@keyframes ctxIn{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+.flux-ctx-item{
+  display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;
+  cursor:pointer;color:var(--text2);transition:background .1s ease,color .1s ease;
+  user-select:none;
+}
+.flux-ctx-item:hover{background:rgba(var(--accent-rgb),.12);color:var(--text)}
+.flux-ctx-item.danger:hover{background:rgba(var(--red-rgb),.12);color:var(--red)}
+.flux-ctx-icon{font-size:.92rem;width:18px;text-align:center;opacity:.85}
+.flux-ctx-shortcut{margin-left:auto;font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.flux-ctx-divider{height:1px;background:var(--border);margin:4px 6px}
+
+/* ── Arrow-key navigation focus ring ── */
+.task-item.flux-kbd-focus{
+  outline:2px solid var(--accent)!important;outline-offset:-1px;
+  box-shadow:0 0 0 4px rgba(var(--accent-rgb),.15);
+  transition:box-shadow .15s ease;
+}
+
+/* ── Density toggle ── */
+body[data-flux-density="compact"] .task-item{padding:8px 12px!important;font-size:.84rem}
+body[data-flux-density="compact"] .task-item .task-text{font-size:.84rem}
+body[data-flux-density="compact"] .card{padding:12px 14px!important}
+body[data-flux-density="compact"] .dash-week-strip-inner{padding:8px 10px!important}
+body[data-flux-density="compact"] h3{margin-bottom:6px!important}
+body[data-flux-density="compact"] .nav-item{padding:6px 12px!important}
+
+body[data-flux-density="comfy"] .task-item{padding:18px 18px!important}
+body[data-flux-density="comfy"] .card{padding:24px!important}
+
+/* ── Daily reflection banner ── */
+.flux-reflect-banner{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 16px;margin-bottom:14px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(124,92,255,.12) 0%,rgba(244,63,94,.08) 100%);
+  border:1px solid rgba(124,92,255,.25);
+}
+.flux-reflect-icon{font-size:1.4rem}
+.flux-reflect-body{flex:1;min-width:0}
+.flux-reflect-title{font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:2px}
+.flux-reflect-sub{font-size:.7rem;color:var(--muted2)}
+.flux-reflect-banner button{padding:7px 14px;font-size:.78rem;font-weight:700;border-radius:10px;cursor:pointer;flex-shrink:0;border:none;background:linear-gradient(135deg,var(--purple),#a78bfa);color:#fff}
+.flux-reflect-banner .flux-reflect-x{background:none;border:none;color:var(--muted);font-size:1rem;padding:4px 6px;cursor:pointer}
+
+/* ── Improved typography scale ── */
+.dash-v2-greet-title{font-feature-settings:"ss01","cv01";letter-spacing:-.025em}
+h1{letter-spacing:-.022em;font-feature-settings:"ss01"}
+h2{letter-spacing:-.018em}
+h3{letter-spacing:-.012em}
+.task-text{font-feature-settings:"ss02","cv11";letter-spacing:-.005em}
+
+/* ── Task completion celebration overlay ── */
+.flux-celebrate-overlay{
+  position:fixed;inset:0;pointer-events:none;z-index:9988;
+  display:flex;align-items:center;justify-content:center;
+  font-size:5rem;opacity:0;
+}
+.flux-celebrate-overlay.show{
+  animation:celebrateBurst .9s var(--ease-spring) forwards;
+}
+@keyframes celebrateBurst{
+  0%{opacity:0;transform:scale(.4)}
+  35%{opacity:1;transform:scale(1.25)}
+  60%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.4)}
+}
+@media(prefers-reduced-motion:reduce){
+  .flux-celebrate-overlay.show{animation-duration:.2s}
+}
+
+/* ── FAB cluster polish ── */
+.fab-trigger{
+  background:linear-gradient(135deg,var(--accent) 0%,var(--purple) 100%)!important;
+  box-shadow:0 8px 24px rgba(var(--accent-rgb),.4),inset 0 1px 0 rgba(255,255,255,.18)!important;
+  transition:transform .25s var(--ease-spring),box-shadow .25s var(--ease)!important;
+}
+.fab-trigger:hover{transform:scale(1.06) translateY(-2px)!important;box-shadow:0 12px 32px rgba(var(--accent-rgb),.55)!important}
+.fab-trigger:active{transform:scale(.96)!important}
+
+/* ── Topbar new task button — additional polish ── */
+.topbar-new-task-btn{position:relative;overflow:hidden}
+.topbar-new-task-btn::after{
+  content:'';position:absolute;inset:0;border-radius:999px;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(var(--accent-rgb),.25) 0%,transparent 60%);
+  opacity:0;transition:opacity .18s ease;pointer-events:none;
+}
+.topbar-new-task-btn:hover::after{opacity:1}
+
+/* ── Sidebar nav-item left accent on active ── */
+.nav-item.active{position:relative}
+.nav-item.active::before{
+  content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;
+  background:linear-gradient(180deg,var(--accent),var(--purple));
+  box-shadow:0 0 8px rgba(var(--accent-rgb),.5);
+}
+
+/* ── Glass surface improvements (only adds a very subtle accent shimmer overlay; doesn't override card base styles) ── */
+.card{position:relative}
+.card.flux-shimmer-overlay::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(155deg,rgba(255,255,255,.03) 0%,transparent 18%,transparent 82%,rgba(var(--accent-rgb),.04) 100%);
+}
+
+/* ── Light theme refinements ── */
+[data-theme="light"] .flux-pin-icon{background:rgba(var(--accent-rgb),.1)}
+[data-theme="light"] .flux-skel{background:rgba(0,0,0,.04)}
+[data-theme="light"] .flux-skel::after{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.05) 50%,transparent 100%)}
+[data-theme="light"] .flux-yh-cell{background:rgba(0,0,0,.04)}
+[data-theme="light"] body[data-flux-cursor="on"]::after{
+  background:radial-gradient(450px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.08),transparent 50%);
+}
+[data-theme="light"] #fluxFocusBar{background:rgba(255,255,255,.92);border-color:rgba(var(--accent-rgb),.3)}
+
+/* ── Print: hide our pro decorations ── */
+@media print{
+  body[data-flux-cursor="on"]::after,
+  .flux-celebrate-overlay,
+  .flux-achievement,
+  #fluxFocusBar,
+  .flux-ctx-menu{display:none!important}
+}

@@ -92,6 +92,7 @@
 <link rel="stylesheet" href="public/css/flux-mobile-premium.css">
 <link rel="stylesheet" href="public/css/flux-ai-orchestrator.css">
 <link rel="stylesheet" href="public/css/flux-performance.css">
+<link rel="stylesheet" href="public/css/flux-pro.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1365,6 +1366,29 @@
             </div>
             <button type="button" class="toggle" id="fluxPerfSnappyToggle" aria-label="Snappy mode" aria-pressed="false"></button>
           </div>
+          <div class="srow" style="border:none;padding-top:0">
+            <div>
+              <div class="slabel">Cursor spotlight</div>
+              <div class="ssub">A subtle radial glow follows your cursor on desktop. Adds depth without distraction.</div>
+            </div>
+            <button type="button" class="toggle" id="fluxCursorSpotlightToggle" aria-label="Cursor spotlight" aria-pressed="true"></button>
+          </div>
+          <div class="srow" style="border:none;padding-top:0">
+            <div>
+              <div class="slabel">Animated mesh background</div>
+              <div class="ssub">Slow-shifting accent gradient mesh behind the app. Off for a flatter look.</div>
+            </div>
+            <button type="button" class="toggle" id="fluxMeshBgToggle" aria-label="Animated mesh background" aria-pressed="true"></button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Density</h3>
+          <div class="ssub" style="font-size:.75rem;color:var(--muted2);margin-bottom:10px;line-height:1.55">How tight or roomy lists, cards, and tasks feel. Compact fits more on screen; comfy is calmer.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <button class="btn-sec" data-density="compact" onclick="window.fluxSetDensity&&window.fluxSetDensity('compact')">Compact</button>
+            <button class="btn-sec" data-density="normal" onclick="window.fluxSetDensity&&window.fluxSetDensity('normal')">Normal</button>
+            <button class="btn-sec" data-density="comfy" onclick="window.fluxSetDensity&&window.fluxSetDensity('comfy')">Comfy</button>
+          </div>
         </div>
         <div class="card">
           <h3>Class schedule on dashboard</h3>
@@ -1851,5 +1875,6 @@
 <script defer src="public/js/flux-visual-layer.js"></script>
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
+<script defer src="public/js/flux-pro.js"></script>
 </body>
 </html>
