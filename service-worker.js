@@ -29,11 +29,11 @@ self.addEventListener('install', e => {
   );
 });
 
-// On activate — delete ALL old caches immediately, claim all clients
+// On activate — delete old caches (not the current one), claim all clients
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== STATIC).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

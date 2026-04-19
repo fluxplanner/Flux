@@ -102,8 +102,8 @@ function getAchievementStats(){
     undone:       tasks.filter(t=>!t.done).length,
     todayDone:    todayTasks.filter(t=>t.done).length,
     todayUndone:  todayTasks.filter(t=>!t.done).length,
-    streak:       parseInt(localStorage.getItem('flux_streak_count')||'0',10) || 0,
-    totalFocusMin:parseInt(localStorage.getItem('flux_total_focus_min')||'0',10) || 0,
+    streak:       parseInt(localStorage.getItem('flux_task_streak_n')||'0',10) || 0,
+    totalFocusMin:parseInt(localStorage.getItem('t_minutes')||'0',10) || 0,
     aiMessages:   parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10) || 0,
     gradeCount:   Object.keys((window.grades)||{}).length,
     lateNight:    localStorage.getItem('flux_milestone_late_night')==='1',
@@ -704,7 +704,7 @@ window.fluxStartReflection = function(){
   const todayStr = new Date().toISOString().slice(0,10);
   localStorage.setItem('flux_reflect_last_shown', todayStr);
   document.getElementById('fluxReflectBanner')?.remove();
-  if(typeof window.nav === 'function') try{ window.nav('flux-ai'); }catch(e){}
+  if(typeof window.nav === 'function') try{ window.nav('ai'); }catch(e){}
   setTimeout(()=>{
     const input = document.getElementById('fluxAIInput') || document.getElementById('aiInput');
     if(input){

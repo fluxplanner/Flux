@@ -352,8 +352,9 @@ function toggleReduceMotion(){
 }
 function snoozeTask(){showToast('Snooze is no longer available','info');}
 function toggleTaskBulkMode(_force){
-  _taskBulkMode=false;
-  _bulkIds.clear();
+  _taskBulkMode=typeof _force==='boolean'?_force:!_taskBulkMode;
+  if(!_taskBulkMode)_bulkIds.clear();
+  renderTasks();
 }
 function toggleBulkOne(id,on){if(on)_bulkIds.add(id);else _bulkIds.delete(id);const el=document.getElementById('bulkCount');if(el)el.textContent=_bulkIds.size+' selected';}
 function bulkCompleteSelected(){
@@ -3432,6 +3433,7 @@ async function sendAI(){
   const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
   const userMsg=text||(imgSnapshot?'Please analyze this image.':'');
   aiHistory.push({role:'user',content:userMsg});
+  try{const c=parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10)||0;localStorage.setItem('flux_ai_msg_count',String(c+1));}catch(e){}
   saveCurrentChat(); // save user message immediately
   input.value='';input.style.height='auto';btn.disabled=true;
   const thinkEl=appendMsg('bot','',true);
@@ -4427,7 +4429,7 @@ function renderCmdResults(){
     {icon:'📝',label:'Notes',action:()=>{nav('notes');closeCommandPalette();}},
     {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
-    {icon:'🔥',label:'Habits',action:()=>{nav('habits');closeCommandPalette();}},
+    {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'😊',label:'Mood',action:()=>{nav('mood');closeCommandPalette();}},
     {icon:'🎓',label:'Canvas & Gmail',action:()=>{nav('canvas');closeCommandPalette();}},
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},

@@ -1482,6 +1482,14 @@
             <div><div class="slabel">Reduce motion</div><div class="ssub">Minimize animations (also respects system setting)</div></div>
             <button type="button" class="toggle" id="reduceMotionToggle" onclick="toggleReduceMotion()"></button>
           </div>
+          <div class="srow" style="border:none;margin-top:8px;flex-direction:column;align-items:stretch;gap:6px">
+            <div><div class="slabel">UI density</div><div class="ssub">Control spacing and padding throughout the app</div></div>
+            <select id="fluxDensitySelect" style="margin:0;width:100%">
+              <option value="minimal">Minimal — more breathing room</option>
+              <option value="comfortable" selected>Comfortable — default</option>
+              <option value="dense">Dense — compact layout</option>
+            </select>
+          </div>
         </div>
         <div class="card">
           <h3>Panel layout</h3>
