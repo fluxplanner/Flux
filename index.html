@@ -480,6 +480,7 @@
       </div>
     </div>
     <div class="sidebar-footer">
+      <div id="sidebarMiniStats" class="sidebar-mini-stats" style="display:none"></div>
       <div class="user-card" id="sidebarUserCard" onclick="nav('settings',document.querySelector('[data-tab=settings]'))">
         <div class="uc-av" id="sidebarAv">?</div>
         <div class="uc-info">
@@ -597,6 +598,12 @@
         </div>
       </header>
 
+      <div id="weeklyReviewBanner" style="display:none;align-items:center;gap:12px;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(var(--accent-rgb),.12),rgba(var(--purple-rgb),.1));border:1px solid rgba(var(--accent-rgb),.25);border-radius:14px;flex-wrap:wrap" role="banner">
+        <span style="font-size:1.1rem">📊</span>
+        <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:700;color:var(--text)">Sunday review time</div><div style="font-size:.72rem;color:var(--muted2)">Reflect on your week and plan ahead with Flux AI</div></div>
+        <button type="button" onclick="startWeeklyReview()" style="padding:7px 14px;font-size:.78rem;font-weight:700;background:var(--accent);color:#000;border:none;border-radius:10px;cursor:pointer;flex-shrink:0">Start Review</button>
+        <button type="button" onclick="document.getElementById('weeklyReviewBanner').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0" aria-label="Dismiss">✕</button>
+      </div>
       <div class="dash-alerts dash-v2-alerts">
         <div class="panic-banner" id="panicBanner" role="status" aria-live="polite">
           <span class="panic-banner__icon" aria-hidden="true">⏱</span>
@@ -1770,12 +1777,12 @@
       <input type="checkbox" id="taskSRS" style="width:14px;height:14px;margin:0;flex-shrink:0">
       🔄 Spaced Repetition — auto-schedule review tasks at 1, 7 &amp; 30 days
     </label>
-    <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted2);cursor:pointer;padding:4px 0;margin-bottom:8px">
-      <input type="checkbox" id="taskRecurringWeekly" style="width:14px;height:14px;margin:0;flex-shrink:0">
-      🔁 Repeat weekly — clone next due when you complete
-    </label>
+    <div class="irow modal-labeled-row" style="margin-bottom:8px">
+      <div style="flex:1"><label class="modal-micro-label" for="taskRecurringType">Repeat</label><select id="taskRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">🔁 Weekly</option><option value="biweekly">🔁 Biweekly</option><option value="monthly">🔁 Monthly</option></select></div>
+    </div>
+    <label style="display:none"><input type="checkbox" id="taskRecurringWeekly"></label>
     <div class="mrow" style="margin-bottom:8px"><label>Waiting on (optional)</label><input type="text" id="taskWaitingOn" placeholder="e.g. teacher reply, group member" style="margin:0"></div>
-    <div class="mactions"><button type="button" onclick="closeDashAddTaskModal()" class="btn-sec">Cancel</button><button type="button" onclick="addTask()">+ Add Task</button></div>
+    <div class="mactions"><button type="button" onclick="closeDashAddTaskModal()" class="btn-sec">Cancel</button><button type="button" onclick="askFluxAIAboutTask()" class="btn-sec" style="color:var(--accent);border-color:rgba(var(--accent-rgb),.3)">✦ AI Help</button><button type="button" onclick="addTask()">+ Add Task</button></div>
   </div>
 </div>
 
@@ -1800,12 +1807,11 @@
       </div>
     </div>
     <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted2);cursor:pointer;padding:4px 0;margin-bottom:8px">
-      <input type="checkbox" id="editRecurringWeekly" style="width:14px;height:14px;margin:0;flex-shrink:0"> 🔁 Repeat weekly on complete
-    </label>
+    <label style="display:none"><input type="checkbox" id="editRecurringWeekly"></label>
     <div class="mrow"><label>Waiting on</label><input type="text" id="editWaitingOn" placeholder="Optional" style="margin:0"></div>
     <div class="mrow"><label>Blocked By</label><div id="editDeps" style="max-height:140px;overflow-y:auto"></div></div>
-    <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
+    <div class="mrow" style="margin-bottom:8px"><label class="modal-micro-label" for="editRecurringType">Repeat</label><select id="editRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">🔁 Weekly</option><option value="biweekly">🔁 Biweekly</option><option value="monthly">🔁 Monthly</option></select></div>
+    <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button type="button" onclick="askFluxAIAboutTask()" class="btn-sec" style="color:var(--accent);border-color:rgba(var(--accent-rgb),.3)">✦ Ask AI</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
 
