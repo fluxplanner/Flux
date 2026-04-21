@@ -1,0 +1,33 @@
+{
+  "name": "flux-planner",
+  "version": "1.0.0",
+  "description": "Flux Planner — AI-powered student planner",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js",
+    "cap:add:ios": "npm run build && npx cap add ios",
+    "cap:add:android": "npm run build && npx cap add android",
+    "sync": "npm run build && npx cap sync",
+    "sync:ios": "npm run build && npx cap sync ios",
+    "sync:android": "npm run build && npx cap sync android",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "run:ios": "npm run sync:ios && npx cap run ios",
+    "run:android": "npm run sync:android && npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/local-notifications": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

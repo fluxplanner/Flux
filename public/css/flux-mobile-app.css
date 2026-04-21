@@ -1,0 +1,238 @@
+/* ════════════════════════════════════════════════════════════════
+   FLUX MOBILE / NATIVE APP CSS
+   Safe-area handling, bottom-sheet "More" overlay, native polish.
+   Loaded everywhere; mobile-only rules are gated by media queries.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Safe-area variables (read on web; populated by iOS in WebView) */
+:root{
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --bnav-height: 56px;
+  --keyboard-height: 0px;
+}
+
+/* iOS native: more breathing room above the bottom nav for the home indicator */
+body.flux-native-ios{
+  --bnav-height: calc(56px + var(--sa-bottom));
+}
+
+/* Native shell-only behaviors */
+body.flux-native{
+  overscroll-behavior-y: contain;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body.flux-native input,
+body.flux-native textarea,
+body.flux-native [contenteditable="true"],
+body.flux-native .selectable,
+body.flux-native .ai-msg,
+body.flux-native .note-content,
+body.flux-native .ai-textbox{
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Status-bar safe area pushes the topbar / login down on iOS notch devices */
+@media (max-width: 768px){
+  .topbar{
+    padding-top: max(8px, var(--sa-top));
+  }
+  body.flux-native .topbar{
+    padding-top: calc(var(--sa-top) + 4px);
+  }
+  body.flux-native #loginScreen{
+    padding-top: calc(var(--sa-top) + 8px);
+  }
+  /* Bottom nav already handles env(safe-area-inset-bottom) in styles.css; just be sure
+     the chrome-area underneath isn't hidden behind the home indicator on iPhone */
+  .bottom-nav{
+    padding-bottom: max(env(safe-area-inset-bottom), 6px);
+  }
+  /* Push the main panel above the bottom nav so the last task isn't covered */
+  body{
+    padding-bottom: max(var(--bnav-height) + 12px, calc(var(--bnav-height) + var(--sa-bottom)));
+  }
+}
+
+/* When the keyboard is open in the native shell, lift the AI composer above it */
+body.keyboard-open{
+  padding-bottom: var(--keyboard-height);
+}
+body.keyboard-open .bottom-nav{ display: none !important; }
+body.keyboard-open #fluxAiInputCard,
+body.keyboard-open .ai-textbox-wrap,
+body.keyboard-open #addTaskModal .modal-card,
+body.keyboard-open #editModal .modal-card{
+  transform: translateY(calc(-1 * var(--keyboard-height) * 0.5));
+  transition: transform .22s ease;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   "MORE" BOTTOM SHEET (mobile only)
+   Replaces the side drawer for the More button. Slides up from
+   the bottom and presents Notes, Focus, School, Canvas, Mood,
+   Goals, Profile, Settings as a tap grid.
+   ════════════════════════════════════════════════════════════════ */
+.more-sheet-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(5,8,16,.55);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
+}
+.more-sheet-overlay.open{ opacity: 1; pointer-events: auto; }
+
+.more-sheet{
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 999;
+  background: linear-gradient(180deg, rgba(20,24,38,.96) 0%, rgba(12,16,28,.98) 100%);
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-radius: 22px 22px 0 0;
+  padding: 14px 18px calc(28px + var(--sa-bottom));
+  box-shadow: 0 -20px 60px rgba(0,0,0,.55), 0 -1px 0 rgba(255,255,255,.06) inset;
+  transform: translateY(110%);
+  transition: transform .28s cubic-bezier(.2,.85,.3,1);
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.more-sheet.open{ transform: translateY(0); }
+
+.more-sheet-handle{
+  width: 42px; height: 4px;
+  background: rgba(255,255,255,.18);
+  border-radius: 99px;
+  margin: 0 auto 14px;
+}
+
+.more-sheet-title{
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--text);
+  margin: 2px 4px 14px;
+}
+
+.more-sheet-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.more-sheet-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .14s ease, background .14s ease, border-color .14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.more-sheet-item:active{
+  transform: scale(.96);
+  background: rgba(var(--accent-rgb,0,191,255),.12);
+  border-color: rgba(var(--accent-rgb,0,191,255),.28);
+}
+.more-sheet-icon{
+  font-size: 1.45rem;
+  line-height: 1;
+}
+.more-sheet-label{
+  font-size: .76rem;
+  letter-spacing: -.005em;
+  opacity: .92;
+}
+
+.more-sheet-section{
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.more-sheet-section-title{
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px 4px;
+}
+
+.more-sheet-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+  margin-bottom: 8px;
+}
+.more-sheet-row .lbl{ flex: 1; font-size: .88rem; font-weight: 600; }
+
+/* Light theme adjustments for the bottom sheet */
+[data-theme="light"] .more-sheet{
+  background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.99) 100%);
+  border-top-color: rgba(0,0,0,.08);
+}
+[data-theme="light"] .more-sheet-handle{ background: rgba(0,0,0,.18); }
+[data-theme="light"] .more-sheet-item{
+  background: rgba(0,0,0,.02);
+  border-color: rgba(0,0,0,.07);
+}
+[data-theme="light"] .more-sheet-section{ border-top-color: rgba(0,0,0,.07); }
+[data-theme="light"] .more-sheet-row{ background: rgba(0,0,0,.02); }
+[data-theme="light"] .more-sheet-overlay{ background: rgba(0,0,0,.35); }
+
+/* Hide the bottom sheet completely on tablet/desktop */
+@media (min-width: 769px){
+  .more-sheet,
+  .more-sheet-overlay{ display: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Bottom-nav refinements (works alongside existing styles in styles.css)
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px){
+  .bottom-nav .bnav-item{
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .14s ease, color .14s ease;
+  }
+  .bottom-nav .bnav-item:active{ transform: scale(.94); }
+  .bottom-nav .bnav-item.active{
+    color: var(--accent);
+  }
+  .bottom-nav .bnav-item.active .bni{
+    transform: translateY(-2px) scale(1.08);
+    transition: transform .22s cubic-bezier(.2,.85,.3,1.2);
+  }
+}
+
+/* Mobile: hide left FAB column to give chat more room when keyboard is open */
+@media (max-width: 768px){
+  body.keyboard-open #fabContainer{ display: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Print: never show the sheet
+   ════════════════════════════════════════════════════════════════ */
+@media print{
+  .more-sheet,
+  .more-sheet-overlay{ display: none !important; }
+}

@@ -51,11 +51,13 @@
   }catch(e){}
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0B0F1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Flux">
+<meta name="format-detection" content="telephone=no">
 <meta name="description" content="Your AI-powered student school planner — tasks, grades, calendar, notes, focus, and Flux AI.">
 <meta name="author" content="Azfer Mohammed">
 <meta property="og:title" content="Flux Planner — AI-powered student planner">
@@ -93,6 +95,7 @@
 <link rel="stylesheet" href="public/css/flux-ai-orchestrator.css">
 <link rel="stylesheet" href="public/css/flux-performance.css">
 <link rel="stylesheet" href="public/css/flux-pro.css">
+<link rel="stylesheet" href="public/css/flux-mobile-app.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1739,14 +1742,13 @@
 
   </div><!-- /main-content -->
 
-  <!-- ── MOBILE BOTTOM NAV ── -->
-  <div class="bottom-nav">
-    <button class="bnav-item active" onclick="nav('dashboard',this)" data-tab="dashboard"><span class="bni">⚡</span>Dashboard</button>
-    <button class="bnav-item" onclick="nav('calendar',this)" data-tab="calendar"><span class="bni">📅</span>Calendar</button>
-    <button class="bnav-item" onclick="nav('school',this)" data-tab="school"><span class="bni">🏫</span>School</button>
-    <button class="bnav-item" onclick="nav('ai',this)" data-tab="ai"><span class="bni">✦</span>AI</button>
-    <button class="bnav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="bni">🎓</span>Canvas</button>
-    <button class="bnav-item" onclick="openDrawer()" id="moreBtn"><span class="bni">☰</span>More</button>
+  <!-- ── MOBILE BOTTOM NAV (5 tabs: Home · Calendar · AI · Grades · More) ── -->
+  <div class="bottom-nav" role="navigation" aria-label="Primary mobile navigation">
+    <button class="bnav-item active" onclick="nav('dashboard',this)" data-tab="dashboard" aria-label="Home"><span class="bni">⚡</span>Home</button>
+    <button class="bnav-item" onclick="nav('calendar',this)" data-tab="calendar" aria-label="Calendar"><span class="bni">📅</span>Calendar</button>
+    <button class="bnav-item" onclick="nav('ai',this)" data-tab="ai" aria-label="Flux AI"><span class="bni">✦</span>AI</button>
+    <button class="bnav-item" onclick="nav('grades',this)" data-tab="grades" aria-label="Grades"><span class="bni">📊</span>Grades</button>
+    <button class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More"><span class="bni">☰</span>More</button>
   </div>
 
   <!-- ── FAB — Flux AI + quick actions ── -->
@@ -1875,5 +1877,62 @@
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
 <script defer src="public/js/flux-pro.js"></script>
+<script defer src="public/js/flux-native.js"></script>
+
+<!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
+<div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
+<div class="more-sheet" id="moreSheet" role="dialog" aria-modal="true" aria-labelledby="moreSheetTitle" aria-hidden="true">
+  <div class="more-sheet-handle" aria-hidden="true"></div>
+  <div class="more-sheet-title" id="moreSheetTitle">More</div>
+
+  <div class="more-sheet-grid">
+    <button type="button" class="more-sheet-item" onclick="navMob('school')">
+      <span class="more-sheet-icon">🏫</span><span class="more-sheet-label">School Info</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('canvas')">
+      <span class="more-sheet-icon">🎓</span><span class="more-sheet-label">Canvas &amp; Gmail</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('notes')">
+      <span class="more-sheet-icon">📝</span><span class="more-sheet-label">Notes</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('timer')">
+      <span class="more-sheet-icon">⏱</span><span class="more-sheet-label">Focus Timer</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('mood')">
+      <span class="more-sheet-icon">😊</span><span class="more-sheet-label">Mood</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('goals')">
+      <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('profile')">
+      <span class="more-sheet-icon">👤</span><span class="more-sheet-label">Profile</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('settings')">
+      <span class="more-sheet-icon">⚙</span><span class="more-sheet-label">Settings</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="closeMobileSheet();window.fluxOpenAchievements&&fluxOpenAchievements()">
+      <span class="more-sheet-icon">🏆</span><span class="more-sheet-label">Achievements</span>
+    </button>
+  </div>
+
+  <div class="more-sheet-section">
+    <div class="more-sheet-section-title">Quick actions</div>
+    <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.fluxOpenQuickAdd&&fluxOpenQuickAdd()">
+      <span class="more-sheet-icon" style="font-size:1.15rem">＋</span>
+      <span class="lbl">Quick add</span>
+      <span style="opacity:.5;font-size:.8rem">space</span>
+    </button>
+    <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.openCommandPalette&&openCommandPalette()">
+      <span class="more-sheet-icon" style="font-size:1.15rem">⌘</span>
+      <span class="lbl">Command palette</span>
+      <span style="opacity:.5;font-size:.8rem">⌘K</span>
+    </button>
+    <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.toggleTheme&&toggleTheme()">
+      <span class="more-sheet-icon" style="font-size:1.15rem">🎨</span>
+      <span class="lbl">Toggle theme</span>
+    </button>
+  </div>
+</div>
+
 </body>
 </html>

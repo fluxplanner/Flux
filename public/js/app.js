@@ -863,7 +863,66 @@ function nav(id,btn){
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
 }
-function navMob(id){closeDrawer();nav(id);}
+function navMob(id){closeDrawer();closeMobileSheet();nav(id);}
+
+// ── Mobile "More" bottom sheet ──
+function openMobileSheet(){
+  const ov=document.getElementById('moreSheetOverlay');
+  const sh=document.getElementById('moreSheet');
+  if(!ov||!sh)return;
+  ov.classList.add('open');
+  sh.classList.add('open');
+  ov.setAttribute('aria-hidden','false');
+  sh.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  if(window.Native&&Native.haptic)Native.haptic('light');
+}
+function closeMobileSheet(){
+  const ov=document.getElementById('moreSheetOverlay');
+  const sh=document.getElementById('moreSheet');
+  if(!ov||!sh)return;
+  ov.classList.remove('open');
+  sh.classList.remove('open');
+  ov.setAttribute('aria-hidden','true');
+  sh.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+}
+window.openMobileSheet=openMobileSheet;
+window.closeMobileSheet=closeMobileSheet;
+// Close sheet on Escape
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const sh=document.getElementById('moreSheet');
+    if(sh&&sh.classList.contains('open'))closeMobileSheet();
+  }
+});
+// Swipe-down to dismiss the sheet
+(function(){
+  let startY=0,curY=0,dragging=false;
+  document.addEventListener('touchstart',e=>{
+    const sh=document.getElementById('moreSheet');
+    if(!sh||!sh.classList.contains('open'))return;
+    if(!sh.contains(e.target))return;
+    if(sh.scrollTop>0)return;
+    startY=e.touches[0].clientY;dragging=true;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!dragging)return;
+    curY=e.touches[0].clientY;
+    const dy=curY-startY;
+    const sh=document.getElementById('moreSheet');
+    if(sh&&dy>0)sh.style.transform=`translateY(${dy}px)`;
+  },{passive:true});
+  document.addEventListener('touchend',()=>{
+    if(!dragging)return;
+    dragging=false;
+    const sh=document.getElementById('moreSheet');
+    if(!sh)return;
+    const dy=curY-startY;
+    sh.style.transform='';
+    if(dy>90)closeMobileSheet();
+  });
+})();
 
 // ══ SIDEBAR ══
 // ── Populate subject dropdowns dynamically from user's classes ──
@@ -4300,6 +4359,7 @@ function initFAB(){
   }
   fab.addEventListener('click',e=>{
     e.stopPropagation();
+    if(window.Native&&Native.haptic)Native.haptic('light');
     setOpen(!open);
   });
   menu.addEventListener('click',()=>setOpen(false));
