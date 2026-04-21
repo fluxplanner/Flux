@@ -3138,10 +3138,6 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 #inlineDatePicker{animation:slideUp .18s var(--ease-spring)}
 
 /* ── Sidebar mini-stats ── */
-.sidebar-mini-stats{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--border);align-items:center}
-.smstat{font-size:.68rem;font-weight:700;font-family:'JetBrains Mono',monospace;padding:3px 7px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--muted2);white-space:nowrap}
-.smstat-red{background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.2);color:var(--red)}
-.smstat-green{background:rgba(var(--green-rgb),.1);border-color:rgba(var(--green-rgb),.2);color:var(--green)}
 
 /* ── Animated empty states ── */
 .flux-empty-animated{animation:fadeIn .35s ease}

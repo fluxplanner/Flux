@@ -8607,19 +8607,7 @@ function askFluxAIAboutTask(taskId){
 }
 
 // ── Feature: Sidebar mini-stats strip ──
-function renderSidebarMiniStats(){
-  const el=document.getElementById('sidebarMiniStats');if(!el)return;
-  const now=new Date();now.setHours(0,0,0,0);
-  const todayCount=tasks.filter(t=>!t.done&&t.date===todayStr()).length;
-  const overdueCount=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
-  const streak=load('t_streak',0);
-  const parts=[];
-  if(todayCount>0)parts.push(`<span class="smstat" title="${todayCount} due today">📋 ${todayCount}</span>`);
-  if(overdueCount>0)parts.push(`<span class="smstat smstat-red" title="${overdueCount} overdue">⚠ ${overdueCount}</span>`);
-  if(streak>0)parts.push(`<span class="smstat smstat-green" title="${streak}-day focus streak">🔥 ${streak}d</span>`);
-  el.innerHTML=parts.join('');
-  el.style.display=parts.length?'flex':'none';
-}
+function renderSidebarMiniStats(){}
 
 // ── Feature: Record grade history for sparklines ──
 function recordGradeHistory(){
