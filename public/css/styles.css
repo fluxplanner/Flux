@@ -487,13 +487,22 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
   margin-bottom:0;
 }
 #dashGreeting .dash-v2-greet-gradient{
-  background:linear-gradient(90deg,#ffffff 0%,#00d4ff 55%,#3b82f6 100%);
+  /* Gradient tracks the user's chosen accent color so changing accent
+     actually re-colors the greeting. Endpoint is a darker mix of the
+     accent for depth. */
+  background:linear-gradient(90deg,
+    var(--text) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 65%, #000) 100%);
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
 }
 [data-theme="light"] #dashGreeting .dash-v2-greet-gradient{
-  background:linear-gradient(90deg,#0f172a 0%,#00d4ff 55%,#3b82f6 100%);
+  background:linear-gradient(90deg,
+    var(--text) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 55%, #000) 100%);
   -webkit-background-clip:text;
   background-clip:text;
 }
