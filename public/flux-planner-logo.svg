@@ -1,17 +1,92 @@
-<svg width="680" height="680" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flux Planner">
+<svg width="100%" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" role="img" style="">
+<title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Flux Planner Logo</title>
+<desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Enhanced Flux Planner logo featuring a lemniscate curve with cyan-to-purple gradient on a dark rounded square background</desc>
 <defs>
-  <linearGradient id="fluxAppTileBg" x1="0%" y1="0%" x2="100%" y2="100%">
-    <stop offset="0%" stop-color="#0D1424"/><stop offset="100%" stop-color="#080C14"/>
+  <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#0f1220"/>
+    <stop offset="100%" stop-color="#080c14"/>
   </linearGradient>
-  <linearGradient id="fluxAppStroke" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.05"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.05"/>
+  <linearGradient id="bgSheen" x1="0%" y1="0%" x2="60%" y2="100%">
+    <stop offset="0%" stop-color="#1a2040" stop-opacity="0.6"/>
+    <stop offset="100%" stop-color="#080c14" stop-opacity="0"/>
   </linearGradient>
+  <linearGradient id="lemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.0"/>
+    <stop offset="22%" stop-color="#00C2FF" stop-opacity="1"/>
+    <stop offset="50%" stop-color="#A78BFF" stop-opacity="1"/>
+    <stop offset="78%" stop-color="#7C5CFF" stop-opacity="1"/>
+    <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.0"/>
+  </linearGradient>
+  <linearGradient id="lemGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.0"/>
+    <stop offset="22%" stop-color="#00C2FF" stop-opacity="0.35"/>
+    <stop offset="50%" stop-color="#A78BFF" stop-opacity="0.35"/>
+    <stop offset="78%" stop-color="#7C5CFF" stop-opacity="0.35"/>
+    <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.0"/>
+  </linearGradient>
+  <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF"/>
+    <stop offset="55%" stop-color="#A78BFF"/>
+    <stop offset="100%" stop-color="#7C5CFF"/>
+  </linearGradient>
+  <linearGradient id="tagGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.55"/>
+    <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.55"/>
+  </linearGradient>
+  <radialGradient id="coreDot" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+    <stop offset="45%" stop-color="#60d0ff" stop-opacity="0.8"/>
+    <stop offset="100%" stop-color="#00C2FF" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.18"/>
+    <stop offset="100%" stop-color="#00C2FF" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="innerSheen" cx="30%" cy="20%" r="60%">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.04"/>
+    <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="softBlur"><feGaussianBlur stdDeviation="2.5"/></filter>
+  <filter id="glowBlur"><feGaussianBlur stdDeviation="6"/></filter>
 </defs>
 
-<rect x="40" y="40" width="600" height="600" rx="88" fill="url(#fluxAppTileBg)"/>
+<rect x="40" y="40" width="600" height="600" rx="108" fill="url(#bgGrad)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="40" y="40" width="600" height="600" rx="108" fill="url(#bgSheen)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="40" y="40" width="600" height="600" rx="108" fill="url(#innerSheen)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="40" y="40" width="600" height="600" rx="108" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5" style="fill:none;stroke:rgba(255, 255, 255, 0.07);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="40" y="40" width="600" height="600" rx="108" fill="none" stroke="url(#lemGrad)" stroke-width="1" stroke-opacity="0.25" style="fill:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
 
-<g transform="translate(392,340)">
-  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
-    fill="none" stroke="url(#fluxAppStroke)" stroke-width="14" stroke-linecap="round"/>
+<!-- Glow bloom -->
+<g filter="url(#glowBlur)" opacity="0.55" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.55;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" transform="translate(392,270)" fill="none" stroke="url(#lemGrad2)" stroke-width="18" stroke-linecap="round" style="fill:none;color:rgb(255, 255, 255);stroke-width:18px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
 </g>
+
+<!-- Secondary lemniscate -->
+<g transform="translate(392,270)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+  <path d="M0,0 C22,-64 168,-64 168,0 C168,64 22,64 0,0 C-60,-126 -284,-126 -284,0 C-284,126 -60,126 0,0 Z" fill="none" stroke="url(#lemGrad2)" stroke-width="5" stroke-linecap="round" style="fill:none;color:rgb(255, 255, 255);stroke-width:5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+</g>
+
+<!-- Primary lemniscate -->
+<g transform="translate(392,270)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#lemGrad)" stroke-width="14" stroke-linecap="round" style="fill:none;color:rgb(255, 255, 255);stroke-width:14px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+</g>
+
+<!-- Core glow + dot -->
+<circle cx="392" cy="270" r="48" fill="url(#coreGlow)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="392" cy="270" r="9" fill="url(#coreDot)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- Orbital accent dot -->
+<circle cx="526" cy="224" r="5" fill="#00C2FF" opacity="0.85" style="fill:rgb(0, 194, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="526" cy="224" r="9" fill="#00C2FF" opacity="0.15" filter="url(#softBlur)" style="fill:rgb(0, 194, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.15;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- "Flux" wordmark — moved down -->
+<text x="340" y="476" text-anchor="middle" font-family="'SF Pro Display', 'Helvetica Neue', Arial, system-ui, sans-serif" font-size="96" font-weight="800" letter-spacing="-2" fill="url(#textGrad)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;SF Pro Display&quot;, &quot;Helvetica Neue&quot;, Arial, system-ui, sans-serif;font-size:96px;font-weight:800;text-anchor:middle;dominant-baseline:auto">Flux</text>
+
+<!-- Divider rule -->
+<rect x="240" y="494" width="200" height="1.5" rx="1" fill="url(#tagGrad)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- "Planner" tagline — moved down -->
+<text x="340" y="534" text-anchor="middle" font-family="'SF Pro Display', 'Helvetica Neue', Arial, system-ui, sans-serif" font-size="26" font-weight="500" letter-spacing="9" fill="rgba(255,255,255,0.38)" style="fill:rgba(255, 255, 255, 0.38);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;SF Pro Display&quot;, &quot;Helvetica Neue&quot;, Arial, system-ui, sans-serif;font-size:26px;font-weight:500;text-anchor:middle;dominant-baseline:auto">PLANNER</text>
+
+<circle cx="340" cy="340" r="296" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="1" style="fill:none;stroke:rgba(255, 255, 255, 0.024);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
 </svg>

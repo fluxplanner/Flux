@@ -1436,6 +1436,25 @@ button:active:not(:disabled){transform:scale(.97)!important}
 .cal-task-bar{font-size:.52rem;font-weight:600;padding:1px 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.4}
 @media(max-width:480px){.cal-task-bar{display:none}.cal-day{min-height:36px}}
 
+/* Compact per-task dots visible on phones only — lets users see at a glance
+   which days have tasks when the full bars are hidden. */
+.cal-dots-mobile{display:none}
+.cal-dot-compact{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.cal-dot-compact.cal-dot-more{width:auto;height:auto;padding:0 3px;font-size:.48rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--muted);background:transparent!important;box-shadow:none;border-radius:0;line-height:1;align-self:center}
+@media(max-width:480px){
+  .cal-dots{display:none}
+  .cal-dots-mobile{
+    display:flex;gap:3px;justify-content:center;align-items:center;
+    flex-wrap:wrap;max-width:100%;margin-top:auto;margin-bottom:3px;
+    padding:0 2px;line-height:0;
+  }
+  .cal-day.selected .cal-dot-compact{box-shadow:0 0 0 1px rgba(255,255,255,.55)}
+  .cal-day.selected .cal-dot-compact.cal-dot-more{color:#fff}
+  /* Dashboard hero calendar on phones — same compact-dots treatment */
+  .cal-hero-card .cal-dots-mobile{margin-bottom:4px}
+  .cal-hero-card .cal-day{justify-content:space-between}
+}
+
 /* Hide keyboard shortcut bar on mobile */
 @media(max-width:768px){
   #quickAddBar,.quick-add-bar,.shortcut-bar,[id*="shortcut"],[class*="shortcut-bar"]{display:none!important}
@@ -3150,3 +3169,72 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 
 /* ── Weekly review banner (light theme) ── */
 [data-theme="light"] #weeklyReviewBanner{background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.06))!important}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE OVERLAP FIXES — task-actions & topbar on phone viewports
+   ══════════════════════════════════════════════════════════════ */
+
+/* Keep the topbar right cluster tight and non-shrinking on tight widths so
+   the left cluster (title + "+ New task") can flex/shrink first instead of
+   colliding with the date pill. */
+@media(max-width:900px){
+  .topbar-right{flex-shrink:0}
+  .topbar-left-cluster{min-width:0;flex:1 1 auto}
+}
+
+/* Phone width: drop the decorative date pill entirely (date is already shown
+   on the dashboard and in the sidebar), and let the topbar settle on one row. */
+@media(max-width:640px){
+  .date-pill{display:none!important}
+  .topbar{flex-wrap:nowrap!important}
+  .topbar-left-cluster{min-width:0;flex:1 1 auto;gap:6px}
+  .topbar-title-wrap{padding:3px 10px 3px 4px!important;min-height:34px!important}
+  .topbar-new-task-btn{padding:7px 12px!important;font-size:.78rem!important;gap:6px!important;flex-shrink:0}
+}
+
+/* Very narrow phones: collapse "+ New task" to an icon-only pill. */
+@media(max-width:420px){
+  .topbar-new-task-label{display:none}
+  .topbar-new-task-btn{padding:8px 11px!important;gap:0!important;min-width:38px;justify-content:center}
+  .topbar-new-task-icon{font-size:1.2rem!important}
+}
+
+/* Task card actions — on phone viewports, flow them below the title/chips
+   instead of absolutely positioning them on top of the content. This
+   prevents overlap between the ⏱ ✎ ✦ ✕ buttons and the task text. */
+@media(max-width:640px){
+  .task-item{
+    flex-wrap:wrap;
+    row-gap:6px;
+    padding:12px 12px 10px!important;
+  }
+  .task-item > .task-body{
+    flex:1 1 calc(100% - 40px);
+    min-width:0;
+  }
+  .task-item > .task-actions{
+    position:static!important;
+    top:auto!important;right:auto!important;
+    opacity:1!important;
+    order:99;
+    flex-basis:100%;
+    width:100%;
+    display:flex;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    gap:6px;
+    padding-top:8px;
+    margin-top:2px;
+    border-top:1px dashed rgba(255,255,255,.06);
+  }
+  .task-item > .task-actions .task-action-btn{
+    width:38px;height:38px;min-height:38px!important;
+    border-radius:10px;font-size:.95rem;
+  }
+  .task-item > .task-actions .scope-pill.mini{
+    padding:0 12px;font-size:.72rem;min-height:38px;
+    display:inline-flex;align-items:center;line-height:1;
+  }
+  /* Light theme parity for the dashed separator */
+  [data-theme="light"] .task-item > .task-actions{border-top-color:rgba(0,0,0,.08)}
+}
