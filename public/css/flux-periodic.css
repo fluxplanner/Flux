@@ -210,8 +210,13 @@
 /* ── Table grid ───────────────────────────────────────────────── */
 .pt-wrap{
   overflow-x: auto;
+  /* overflow-x:auto implicitly clips the Y axis per CSS spec, so we need
+     breathing room inside the wrap for the hover box-shadow glow on
+     elements that sit on the edges of the grid (columns 1/18, rows 1/7).
+     Without this, the halogen/noble-gas column and top-row elements get
+     their hover glow cut off visually. */
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 6px;
+  padding: 24px 22px 14px;
 }
 .pt-grid{
   display: grid;
@@ -232,7 +237,7 @@
   padding: 5px 5px 4px;
   background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 4px;
+  border-radius: 2px;
   color: var(--text);
   cursor: pointer;
   transition:

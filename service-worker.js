@@ -1,5 +1,5 @@
 /* ── FLUX PLANNER · Service Worker — network-first fix ── */
-const STATIC = 'flux-static-v60';
+const STATIC = 'flux-static-v61';
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
 const APP_ORIGIN = self.location.origin;
