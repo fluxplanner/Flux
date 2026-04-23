@@ -96,6 +96,7 @@
 <link rel="stylesheet" href="public/css/flux-performance.css">
 <link rel="stylesheet" href="public/css/flux-pro.css">
 <link rel="stylesheet" href="public/css/flux-mobile-app.css">
+<link rel="stylesheet" href="public/css/flux-periodic.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1282,6 +1283,44 @@
       </div>
     </div>
 
+    <!-- ─── PERIODIC TABLE ─── -->
+    <div id="periodic" class="panel flux-page">
+      <div class="pt-top">
+        <h1 class="pt-title">Periodic Table <span class="pt-sub">— all 118 elements · click any cell</span></h1>
+        <div class="pt-tools">
+          <input type="text" id="ptSearch" placeholder="Search element, symbol or #" autocomplete="off">
+          <div class="pt-temp">
+            <span class="pt-temp-label">T</span>
+            <input type="range" id="ptTempSlider" min="-273" max="6000" value="25" step="1" aria-label="Temperature">
+            <span id="ptTempVal">25°C</span>
+          </div>
+          <button type="button" id="ptPhaseToggle" class="pt-phase-toggle" title="Color cells by phase at the slider temperature">Phase mode</button>
+        </div>
+      </div>
+
+      <div id="ptCats" class="pt-cats" role="toolbar" aria-label="Filter by category"></div>
+
+      <div class="pt-wrap">
+        <div id="ptGrid" class="pt-grid" role="grid" aria-label="Periodic table grid"></div>
+      </div>
+
+      <aside id="ptDetail" class="pt-detail" role="dialog" aria-modal="false" aria-hidden="true" aria-label="Element details"></aside>
+
+      <div class="pt-legend" aria-hidden="true">
+        <span><span class="pt-chip-dot" data-cat="alkali"></span>Alkali</span>
+        <span><span class="pt-chip-dot" data-cat="alkaline"></span>Alkaline earth</span>
+        <span><span class="pt-chip-dot" data-cat="transition"></span>Transition</span>
+        <span><span class="pt-chip-dot" data-cat="post-transition"></span>Post-transition</span>
+        <span><span class="pt-chip-dot" data-cat="metalloid"></span>Metalloid</span>
+        <span><span class="pt-chip-dot" data-cat="nonmetal"></span>Nonmetal</span>
+        <span><span class="pt-chip-dot" data-cat="halogen"></span>Halogen</span>
+        <span><span class="pt-chip-dot" data-cat="noble"></span>Noble gas</span>
+        <span><span class="pt-chip-dot" data-cat="lanthanide"></span>Lanthanide</span>
+        <span><span class="pt-chip-dot" data-cat="actinide"></span>Actinide</span>
+        <span><span class="pt-chip-dot" data-cat="unknown"></span>Unknown</span>
+      </div>
+    </div>
+
     <!-- ─── AI ─── -->
     <div id="ai" class="panel flux-page" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
       <div class="flux-ai-top">
@@ -1877,6 +1916,7 @@
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
 <script defer src="public/js/flux-pro.js"></script>
+<script defer src="public/js/flux-periodic.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
@@ -1899,6 +1939,9 @@
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('mood')">
       <span class="more-sheet-icon">😊</span><span class="more-sheet-label">Mood</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('periodic')">
+      <span class="more-sheet-icon">⚗</span><span class="more-sheet-label">Periodic Table</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('goals')">
       <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
