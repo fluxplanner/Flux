@@ -97,6 +97,7 @@
 <link rel="stylesheet" href="public/css/flux-pro.css">
 <link rel="stylesheet" href="public/css/flux-mobile-app.css">
 <link rel="stylesheet" href="public/css/flux-periodic.css">
+<link rel="stylesheet" href="public/css/flux-toolbox.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1321,6 +1322,9 @@
       </div>
     </div>
 
+    <!-- ─── TOOLBOX (cross-subject study tools) ─── -->
+    <div id="toolbox" class="panel flux-page"></div>
+
     <!-- ─── AI ─── -->
     <div id="ai" class="panel flux-page" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
       <div class="flux-ai-top">
@@ -1917,6 +1921,7 @@
 <script defer src="public/js/owner-suite.js"></script>
 <script defer src="public/js/flux-pro.js"></script>
 <script defer src="public/js/flux-periodic.js"></script>
+<script defer src="public/js/flux-toolbox.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
@@ -1942,6 +1947,9 @@
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('periodic')">
       <span class="more-sheet-icon">⚗</span><span class="more-sheet-label">Periodic Table</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('toolbox')">
+      <span class="more-sheet-icon">🧰</span><span class="more-sheet-label">Toolbox</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('goals')">
       <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
