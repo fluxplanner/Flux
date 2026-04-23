@@ -360,7 +360,7 @@
   .login-2col{grid-template-columns:1fr;position:relative;min-height:100vh;min-height:100dvh}
   .login-left{display:none}
   .login-right{
-    padding:max(32px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-left)) max(48px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-right));
+    padding:max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-left)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right));
     align-items:flex-start;justify-content:center;
   }
   .login-card{max-width:100%}
@@ -373,6 +373,112 @@
 }
 @media(min-width:1400px){
   .login-left-inner{max-width:520px}
+}
+
+/* ── PHONE REFINEMENTS ── */
+@media(max-width:640px){
+  /* Kill heavy decorations that cost paint on mobile */
+  .login-glow-3{display:none}
+  .login-glow-1{width:380px;height:380px;top:-140px;left:-100px;opacity:.55}
+  .login-glow-2{width:320px;height:320px;bottom:-120px;right:-80px;opacity:.55}
+  .login-particles{opacity:.5}
+  .login-grid-pattern{opacity:.55}
+
+  .login-right{padding:max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-right))}
+
+  /* Card — slightly lighter blur for better scroll perf on mobile */
+  .login-card{
+    padding:26px 20px;
+    border-radius:20px;
+    box-shadow:0 18px 48px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.1);
+    backdrop-filter:blur(22px) saturate(170%);
+    -webkit-backdrop-filter:blur(22px) saturate(170%);
+  }
+  .login-google-btn{
+    backdrop-filter:blur(14px) saturate(150%);
+    -webkit-backdrop-filter:blur(14px) saturate(150%);
+  }
+
+  /* Logo + tagline — tighter rhythm */
+  .login-logo-wrap{margin-bottom:6px}
+  .login-logo svg{max-width:min(200px,100%)}
+  .login-tagline{font-size:.68rem;margin-bottom:16px;letter-spacing:.12em}
+
+  /* "What Flux can do" demo card inside login card */
+  .login-demo-wrap--card{padding:10px 12px;border-radius:12px;margin-bottom:14px}
+  .login-demo-label{font-size:.54rem;margin-bottom:4px}
+  .login-demo-line{font-size:.74rem;line-height:1.5;min-height:2.3em}
+
+  /* Rotating pills bar */
+  .login-feat-bar--card{margin:0 0 12px}
+  .login-feat-bar-label{font-size:.54rem;margin-bottom:6px;letter-spacing:.14em}
+  .feat-pills-wrap{margin-top:0}
+  .feat-pill{font-size:.66rem;padding:5px 11px}
+
+  /* Highlight grid — stays 2-col but smaller */
+  .login-spotlight-grid{gap:6px 8px;margin-bottom:14px}
+  .login-spotlight-item{padding:7px 9px;font-size:.66rem;border-radius:10px;gap:7px}
+  .login-spotlight-ico{font-size:.88rem}
+
+  /* Google button */
+  .login-google-btn{padding:12px;font-size:.84rem;border-radius:12px;gap:10px}
+  .login-google-btn svg{width:18px;height:18px}
+
+  /* Dividers tighter */
+  .login-divider{margin:12px 0;font-size:.64rem}
+
+  /* Email form */
+  .login-email-form input{
+    padding:12px 14px!important;
+    font-size:16px;               /* prevents iOS zoom on focus */
+    margin-bottom:7px!important;
+  }
+  .login-email-btn{padding:12px;font-size:.85rem;border-radius:12px}
+  .login-auth-toggle{font-size:.72rem;margin-top:10px}
+  .login-auth-error{font-size:.7rem;padding:7px 10px}
+
+  /* Skip + note */
+  .login-skip{font-size:.72rem;margin-bottom:10px}
+  .login-note{font-size:.6rem;line-height:1.6}
+
+  /* Trust row */
+  .login-trust{gap:10px;margin-top:16px;padding-top:14px;flex-wrap:wrap}
+  .login-trust-icon{font-size:.8rem}
+  .login-trust-label{font-size:.56rem}
+  .login-dev-credit{padding-top:12px;font-size:.56rem}
+}
+
+/* Narrow phones: iPhone SE-ish (~375px and below) */
+@media(max-width:420px){
+  .login-card{padding:22px 18px}
+  .login-logo svg{max-width:min(188px,100%)}
+  .login-tagline{margin-bottom:14px}
+
+  /* Keep highlight grid at 2 columns but slightly more compact */
+  .login-spotlight-item{font-size:.64rem;padding:6px 8px}
+  .login-spotlight-ico{font-size:.82rem}
+
+  .login-trust{gap:8px}
+  .login-trust-sep{width:2px;height:2px}
+}
+
+/* Very small phones (≤360px) — drop to single column highlights */
+@media(max-width:360px){
+  .login-card{padding:20px 16px}
+  .login-spotlight-grid{grid-template-columns:1fr;gap:5px}
+  .login-spotlight-item{padding:6px 9px}
+}
+
+/* Short viewports (small landscape phones): trim vertical rhythm */
+@media(max-height:720px) and (max-width:900px){
+  .login-card{padding-top:20px;padding-bottom:20px}
+  .login-logo-wrap{margin-bottom:4px}
+  .login-tagline{margin-bottom:12px}
+  .login-demo-wrap--card{margin-bottom:10px}
+  .login-feat-bar--card{margin-bottom:10px}
+  .login-spotlight-grid{margin-bottom:10px}
+  .login-divider{margin:8px 0}
+  .login-trust{margin-top:12px;padding-top:10px}
 }
 
 /* ── REDUCED MOTION ── */
