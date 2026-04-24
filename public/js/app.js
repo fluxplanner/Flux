@@ -649,7 +649,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas & Gmail',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Toolbox',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas & Gmail',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Toolbox',references:'References',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -2855,6 +2855,15 @@ function themeDark(){applyTheme('dark');}
 function themeCrimson(){applyTheme('ember');}
 function themeFocus(){applyTheme('forest');}
 function themeSepia(){applyTheme('rose');}
+function toggleTheme(){
+  const cur=localStorage.getItem('flux_theme')||'dark';
+  applyTheme(cur==='light'?'dark':'light');
+  if(typeof showToast==='function'){
+    const next=localStorage.getItem('flux_theme')||'dark';
+    showToast('Theme: '+(THEMES[next]?.label||next),'info');
+  }
+}
+window.toggleTheme=toggleTheme;
 
 function applyThemeByName(name){
   document.body.classList.remove('crimson','focus','sepia','cloud','aurora','ember','forest','rose','deep-ocean','candy');
@@ -3563,10 +3572,9 @@ function renderAIChatTabs(){
   const el=document.getElementById('aiChatTabs');if(!el)return;
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
-    <div onclick="loadAIChat('${c.id}')" style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:.75rem;transition:all .15s;flex-shrink:0;
-      ${c.id===aiCurrentChatId?'background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)':'background:var(--card2);border:1px solid var(--border);color:var(--muted2)'}">
-      <span>${c.title||'Chat'}</span>
-      <span onclick="deleteAIChat('${c.id}',event)" style="opacity:.5;font-size:.7rem;padding:0 2px;cursor:pointer" title="Delete">✕</span>
+    <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
+      <span class="flux-ai-tab__title">${c.title||'Chat'}</span>
+      <span class="flux-ai-tab__close" onclick="deleteAIChat('${c.id}',event)" title="Delete">×</span>
     </div>`).join('');
 }
 
@@ -4543,6 +4551,34 @@ async function analyzeScheduleImg(){
   }finally{
     if(analyzing)analyzing.style.display='none';
   }
+}
+function renderObExtractedClasses(){
+  const el=document.getElementById('obExtractedClasses');
+  if(!el)return;
+  if(!obExtractedClasses.length){el.innerHTML='';el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ '+obExtractedClasses.length+' class'+(obExtractedClasses.length===1?'':'es')+'</div>'+
+    obExtractedClasses.map((c,i)=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div><button type="button" class="ob-class-del" aria-label="Remove" onclick="removeObClass(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px">×</button></div>`).join('');
+}
+function addObClass(){
+  const pEl=document.getElementById('obManualPeriod');
+  const nEl=document.getElementById('obManualName');
+  const tEl=document.getElementById('obManualTeacher');
+  const name=(nEl?.value||'').trim();
+  if(!name){if(nEl){nEl.focus();}if(typeof showToast==='function')showToast('Enter a class name','info');return;}
+  const period=parseInt(pEl?.value||'',10)||(obExtractedClasses.length+1);
+  const teacher=(tEl?.value||'').trim();
+  obExtractedClasses.push({id:Date.now()+obExtractedClasses.length,period,name:cleanClassName(name),teacher,room:''});
+  if(pEl)pEl.value='';
+  if(nEl)nEl.value='';
+  if(tEl)tEl.value='';
+  if(nEl)nEl.focus();
+  renderObExtractedClasses();
+}
+function removeObClass(idx){
+  if(idx<0||idx>=obExtractedClasses.length)return;
+  obExtractedClasses.splice(idx,1);
+  renderObExtractedClasses();
 }
 
 // ══ AUTH ══

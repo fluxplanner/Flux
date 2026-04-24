@@ -220,12 +220,16 @@
 }
 .pt-grid{
   display: grid;
-  grid-template-columns: repeat(18, minmax(54px, 1fr));
-  /* Row min equals column min so cells are true squares; `auto` keeps a safety
-     net if content happens to need a hair more vertical space. */
-  grid-template-rows: repeat(7, minmax(54px, auto)) 14px minmax(54px, auto) minmax(54px, auto);
+  grid-template-columns: repeat(18, minmax(0, 1fr));
+  /* Rows use `1fr` so their height is driven by the grid's aspect-ratio —
+     this guarantees every cell is a true square regardless of container
+     width. Change `aspect-ratio` below if you retune padding/gaps. */
+  grid-template-rows: repeat(7, minmax(0, 1fr)) 14px repeat(2, minmax(0, 1fr));
   gap: 4px;
   min-width: 1020px; /* overflow-x: auto on .pt-wrap handles narrower screens */
+  /* 18 cols × cell + 17 gaps(4px) : 9 cells × cell + 8 gaps(4px) + 14px mid-row */
+  /* At cell=54 → 1040×532 ≈ 1.955 — cells come out perfectly square. */
+  aspect-ratio: 1040 / 532;
   margin: 0 auto;
 }
 
@@ -236,10 +240,10 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 4px 4px 3px;
+  padding: 3px 3px 2px;
   background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 6px;
+  border-radius: 3px;
   color: var(--text);
   cursor: pointer;
   transition:
@@ -248,7 +252,8 @@
     border-color .18s ease,
     background .18s ease,
     opacity .2s ease;
-  aspect-ratio: 1 / 1;
+  min-width: 0;
+  min-height: 0;
   text-align: left;
   font-family: inherit;
   overflow: hidden;
@@ -611,11 +616,14 @@
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 960px){
   .pt-grid{
-    grid-template-columns: repeat(18, minmax(50px, 1fr));
-    grid-template-rows: repeat(7, minmax(50px, auto)) 12px minmax(50px, auto) minmax(50px, auto);
+    grid-template-columns: repeat(18, minmax(0, 1fr));
+    grid-template-rows: repeat(7, minmax(0, 1fr)) 12px repeat(2, minmax(0, 1fr));
     gap: 3px;
+    /* Recalc aspect for 3px gap: (18·50 + 17·3):(9·50 + 8·3 + 12) = 951:486 */
+    aspect-ratio: 951 / 486;
+    min-width: 951px;
   }
-  .pt-el{ padding: 3px 3px 2px; border-radius: 5px; }
+  .pt-el{ padding: 2px 2px 1px; border-radius: 3px; }
   .pt-el-n{ font-size: .52rem; }
   .pt-el-s{ font-size: .92rem; margin-top: 1px; }
   .pt-el-name{ font-size: .46rem; margin-top: 1px; display: block; }
@@ -626,8 +634,10 @@
     grid-template-columns: repeat(18, 46px);
     grid-template-rows: repeat(7, 46px) 10px 46px 46px;
     gap: 2px;
+    aspect-ratio: auto;
+    min-width: calc(18 * 46px + 17 * 2px);
   }
-  .pt-el{ padding: 2px 2px 1px; border-radius: 5px; }
+  .pt-el{ padding: 2px 2px 1px; border-radius: 3px; aspect-ratio: 1 / 1; }
   .pt-el-n{ font-size: .48rem; }
   .pt-el-s{ font-size: .82rem; margin-top: 1px; }
   .pt-el-name{ font-size: .42rem; margin-top: 1px; display: block; }
@@ -640,8 +650,9 @@
   .pt-grid{
     grid-template-columns: repeat(18, 40px);
     grid-template-rows: repeat(7, 40px) 10px 40px 40px;
+    min-width: calc(18 * 40px + 17 * 2px);
   }
-  .pt-el{ border-radius: 4px; }
+  .pt-el{ border-radius: 2px; }
   .pt-el-name{ display: none; }
 }
 

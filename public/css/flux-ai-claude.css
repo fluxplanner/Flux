@@ -1,0 +1,718 @@
+/* ════════════════════════════════════════════════════════════════
+   FLUX AI — Claude-style chat surface
+   Warm paper, centered thread, soft bubbles, minimal chrome.
+   Loaded after other app CSS; scoped to #ai.flux-ai-claude
+   ════════════════════════════════════════════════════════════════ */
+
+#ai.flux-ai-claude{
+  --fa-paper: #f4f0e8;
+  --fa-elevated: #fffcf7;
+  --fa-ink: #1c1b19;
+  --fa-ink2: #3d3a36;
+  --fa-muted: #6f6b64;
+  --fa-hair: #e2ddd4;
+  --fa-hair2: #d4cfc4;
+  --fa-user: #e8e2d8;
+  --fa-user-ink: #1c1b19;
+  --fa-assistant: #f7f2ea;
+  --fa-anthropic: #c9754d;
+  --fa-anthropic-dim: #a85d3a;
+  --fa-pill: #f0ebe2;
+  --fa-pill-ink: #2a2825;
+  --fa-shade: rgba(28, 27, 25, 0.06);
+  --fa-modes-pad: 10px 20px 12px;
+  font-family: "Inter", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="dark"] #ai.flux-ai-claude{
+  --fa-paper: #141312;
+  --fa-elevated: #1b1a18;
+  --fa-ink: #f2efe9;
+  --fa-ink2: #c9c3ba;
+  --fa-muted: #9a948a;
+  --fa-hair: #2a2825;
+  --fa-hair2: #3a3632;
+  --fa-user: #2a2622;
+  --fa-user-ink: #f2efe9;
+  --fa-assistant: #1f1d1b;
+  --fa-anthropic: #e07a4f;
+  --fa-anthropic-dim: #f2a07c;
+  --fa-pill: #252220;
+  --fa-pill-ink: #f2efe9;
+  --fa-shade: rgba(0,0,0,.4);
+}
+
+#ai.flux-ai-claude,
+#ai.flux-ai-claude *{
+  -webkit-tap-highlight-color: transparent;
+}
+
+#ai.flux-ai-claude .flux-ai-canvas{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--fa-paper);
+  color: var(--fa-ink);
+}
+
+/* —— Top: tabs + title + modes —— */
+#ai.flux-ai-claude .flux-ai-top{
+  flex-shrink: 0;
+  background: var(--fa-elevated);
+  border-bottom: 1px solid var(--fa-hair);
+  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+}
+
+#ai.flux-ai-claude .flux-ai-tabs-row{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+#ai.flux-ai-claude #aiChatTabs,
+#ai.flux-ai-claude .flux-ai-tabs-track{
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 0 8px;
+}
+#ai.flux-ai-claude #aiChatTabs::-webkit-scrollbar,
+#ai.flux-ai-claude .flux-ai-tabs-track::-webkit-scrollbar{ display: none; }
+
+#ai.flux-ai-claude .flux-ai-newchat{
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fa-pill-ink);
+  background: var(--fa-pill);
+  border: 1px solid var(--fa-hair2);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+#ai.flux-ai-claude .flux-ai-newchat:hover{
+  background: var(--fa-elevated);
+  box-shadow: 0 1px 3px var(--fa-shade);
+}
+[data-theme="dark"] #ai.flux-ai-claude .flux-ai-newchat:hover{
+  background: #2e2b28;
+}
+
+#ai.flux-ai-claude .flux-ai-tab{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 12rem;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  border: 1px solid var(--fa-hair2);
+  background: var(--fa-pill);
+  color: var(--fa-ink2);
+  font-family: inherit;
+  line-height: 1.2;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+#ai.flux-ai-claude .flux-ai-tab:hover{
+  background: var(--fa-elevated);
+  color: var(--fa-ink);
+}
+#ai.flux-ai-claude .flux-ai-tab--active{
+  background: var(--fa-elevated);
+  color: var(--fa-ink);
+  border-color: color-mix(in srgb, var(--fa-anthropic) 45%, var(--fa-hair2));
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--fa-shade);
+}
+#ai.flux-ai-claude .flux-ai-tab__title{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+#ai.flux-ai-claude .flux-ai-tab__close{
+  opacity: 0.4;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0 1px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+#ai.flux-ai-claude .flux-ai-tab__close:hover{
+  opacity: 1;
+  color: var(--fa-ink);
+  background: rgba(0,0,0,0.06);
+}
+[data-theme="dark"] #ai.flux-ai-claude .flux-ai-tab__close:hover{ background: rgba(255,255,255,0.08); }
+
+#ai.flux-ai-claude .flux-ai-head{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 20px 12px;
+  border: none;
+  background: transparent;
+  flex-wrap: wrap;
+}
+
+#ai.flux-ai-claude .ai-orb.flux-ai-mark,
+#ai.flux-ai-claude .flux-ai-mark{
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+  background:
+    conic-gradient(from 210deg at 50% 50%,
+      #f0a060 0deg,
+      #e87850 60deg,
+      #d4628c 120deg,
+      #9b7ed9 200deg,
+      #6bb8d9 280deg,
+      #f0a060 360deg
+    );
+  box-shadow: 0 2px 8px var(--fa-shade);
+  animation: none;
+  flex-shrink: 0;
+}
+
+#ai.flux-ai-claude .flux-ai-titleblock{
+  flex: 1;
+  min-width: 0;
+}
+#ai.flux-ai-claude .flux-ai-title{
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--fa-ink);
+  background: none;
+  -webkit-text-fill-color: var(--fa-ink);
+}
+#ai.flux-ai-claude .flux-ai-sub{
+  margin: 3px 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--fa-muted);
+  font-family: inherit;
+}
+
+#ai.flux-ai-claude .flux-ai-head-actions{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+#ai.flux-ai-claude .flux-ai-toolbtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--fa-hair2);
+  background: var(--fa-elevated);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+#ai.flux-ai-claude .flux-ai-toolbtn:hover{
+  background: var(--fa-pill);
+  box-shadow: 0 1px 2px var(--fa-shade);
+}
+#ai.flux-ai-claude .flux-ai-toolbtn input{
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+#ai.flux-ai-claude .flux-ai-pillbtn{
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fa-ink2);
+  background: transparent;
+  border: 1px solid var(--fa-hair2);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+#ai.flux-ai-claude .flux-ai-pillbtn:hover{
+  background: var(--fa-pill);
+  color: var(--fa-ink);
+}
+#ai.flux-ai-claude .flux-ai-pillbtn--strong{
+  color: #fff;
+  background: var(--fa-anthropic-dim);
+  border-color: transparent;
+  box-shadow: 0 1px 0 rgba(255,255,255,.1) inset;
+}
+#ai.flux-ai-claude .flux-ai-pillbtn--strong:hover{
+  background: var(--fa-anthropic);
+  color: #fff;
+}
+
+#ai.flux-ai-claude .flux-ai-modes{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: var(--fa-modes-pad);
+  border: none;
+  border-top: 1px solid var(--fa-hair);
+  background: color-mix(in srgb, var(--fa-paper) 80%, #fff0);
+}
+[data-theme="dark"] #ai.flux-ai-claude .flux-ai-modes{
+  background: rgba(0,0,0,.12);
+}
+#ai.flux-ai-claude .flux-ai-modes-label{
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fa-muted);
+  font-family: inherit;
+  margin-right: 4px;
+}
+#ai.flux-ai-claude .flux-ai-mode{
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fa-ink2);
+  background: var(--fa-elevated);
+  border: 1px solid var(--fa-hair2);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, box-shadow 0.12s, color 0.12s, border-color 0.12s;
+}
+#ai.flux-ai-claude .flux-ai-mode:hover{
+  border-color: color-mix(in srgb, var(--fa-anthropic) 45%, var(--fa-hair2));
+  color: var(--fa-ink);
+}
+#ai.flux-ai-claude .flux-ai-mode.active{
+  color: #fff;
+  background: var(--fa-pill-ink);
+  border-color: var(--fa-pill-ink);
+  box-shadow: 0 1px 0 rgba(255,255,255,.12) inset;
+}
+[data-theme="light"] #ai.flux-ai-claude .flux-ai-mode.active{
+  color: #fffef9;
+  background: #2a2825;
+  border-color: #2a2825;
+}
+
+/* —— Message column —— */
+#ai.flux-ai-claude .flux-ai-scroll{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: var(--fa-paper);
+  padding: 0;
+  display: block;
+}
+#ai.flux-ai-claude .flux-ai-thread{
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 20px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-sizing: border-box;
+}
+@media (min-width: 900px){
+  #ai.flux-ai-claude .flux-ai-thread{ padding: 28px 32px 40px; }
+}
+
+#ai.flux-ai-claude .ai-sugs{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+#ai.flux-ai-claude .ai-sug{
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fa-ink2);
+  background: var(--fa-elevated);
+  border: 1px solid var(--fa-hair2);
+  border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s, transform 0.12s;
+}
+#ai.flux-ai-claude .ai-sug:hover{
+  border-color: var(--fa-anthropic);
+  color: var(--fa-ink);
+  box-shadow: 0 2px 8px var(--fa-shade);
+  transform: translateY(-1px);
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-sug{ box-shadow: none; }
+
+#ai.flux-ai-claude .ai-msgs{
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin: 0;
+  min-height: 40px;
+}
+
+#ai.flux-ai-claude .ai-msg{
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 100%;
+  animation: faMsgIn 0.35s ease both;
+}
+@keyframes faMsgIn{
+  from{ opacity: 0; transform: translateY(6px); }
+  to{ opacity: 1; transform: none; }
+}
+#ai.flux-ai-claude .ai-msg.user{ flex-direction: row-reverse; }
+#ai.flux-ai-claude .ai-msg .ai-av{ margin-top: 2px; }
+
+#ai.flux-ai-claude .ai-av{
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--fa-hair2);
+  box-shadow: 0 1px 2px var(--fa-shade);
+}
+#ai.flux-ai-claude .ai-av.me{
+  background: var(--fa-user);
+  color: var(--fa-user-ink);
+}
+#ai.flux-ai-claude .ai-av.bot{
+  background: var(--fa-elevated);
+  color: var(--fa-anthropic);
+  font-size: 0.6rem;
+  font-weight: 800;
+  border-color: var(--fa-hair2);
+  background-clip: padding-box;
+  background: linear-gradient(145deg, #fff8, transparent), var(--fa-elevated);
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-av.bot{
+  background: var(--fa-elevated);
+}
+
+#ai.flux-ai-claude .ai-bub{
+  max-width: min(100%, 38rem);
+  padding: 12px 16px 14px;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  border-radius: 18px;
+  font-family: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+}
+#ai.flux-ai-claude .ai-bub.bot{
+  color: var(--fa-ink);
+  border: none;
+  border-top-left-radius: 4px;
+  border-left: 3px solid color-mix(in srgb, var(--fa-anthropic) 55%, var(--fa-hair)) !important;
+  padding-left: 16px;
+  background: var(--fa-assistant) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset !important;
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-bub.bot{
+  background: #22201e;
+  box-shadow: none;
+  border-left-color: var(--fa-anthropic);
+}
+#ai.flux-ai-claude .ai-bub.user{
+  color: var(--fa-user-ink);
+  background: var(--fa-user);
+  border-top-right-radius: 4px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.2) inset;
+}
+#ai.flux-ai-claude .ai-link{ color: var(--fa-anthropic-dim); }
+[data-theme="dark"] #ai.flux-ai-claude .ai-link{ color: var(--fa-anthropic); }
+#ai.flux-ai-claude .ai-code-block{
+  background: rgba(0,0,0,0.45);
+  border: 1px solid var(--fa-hair);
+  border-radius: 10px;
+  color: #f0ebe3;
+  font-size: 0.8rem;
+}
+#ai.flux-ai-claude .ai-inline-code{
+  background: rgba(0,0,0,0.08);
+  color: var(--fa-ink2);
+  border: 1px solid var(--fa-hair2);
+  border-radius: 5px;
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-inline-code{
+  background: rgba(255,255,255,0.06);
+  color: #e8e2da;
+}
+#ai.flux-ai-claude .ai-think{ padding: 8px 0; }
+#ai.flux-ai-claude .ai-think span{
+  width: 7px;
+  height: 7px;
+  background: var(--fa-muted);
+}
+
+#ai.flux-ai-claude .flux-tool-bub,
+#ai.flux-ai-claude .ai-msg.flux-tool-card-wrap .ai-bub{
+  background: var(--fa-elevated) !important;
+  border: 1px solid var(--fa-hair2) !important;
+  border-left: 3px solid var(--fa-anthropic) !important;
+  border-top-left-radius: 4px !important;
+  box-shadow: 0 4px 18px var(--fa-shade) !important;
+}
+#ai.flux-ai-claude .flux-tool-card-h{ color: var(--fa-anthropic) !important; }
+#ai.flux-ai-claude .flux-ai-think-log{
+  font-size: 0.68rem;
+  color: var(--fa-muted);
+  border-color: var(--fa-hair);
+}
+#ai.flux-ai-claude .flux-agent-scratch{
+  margin: 0 0 12px !important;
+  border: 1px solid var(--fa-hair2) !important;
+  background: var(--fa-elevated) !important;
+  border-radius: 14px !important;
+}
+#ai.flux-ai-claude .flux-agent-scratch-head{ color: var(--fa-muted) !important; }
+#ai.flux-ai-claude #fluxAiScratchTa{
+  background: var(--fa-paper) !important;
+  border: 1px solid var(--fa-hair2) !important;
+  color: var(--fa-ink) !important;
+  border-radius: 12px !important;
+}
+
+/* —— Image preview —— */
+#ai.flux-ai-claude .flux-ai-img-preview{
+  flex-shrink: 0;
+  padding: 0 20px 8px;
+  max-width: 44rem;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* —— Composer —— */
+#ai.flux-ai-claude .flux-ai-composer-foot{
+  flex-shrink: 0;
+  padding: 0 0 calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--fa-paper);
+  border: none;
+  border-top: 1px solid var(--fa-hair);
+  box-shadow: 0 -4px 24px var(--fa-shade);
+}
+#ai.flux-ai-claude .flux-ai-composer-pill{
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 10px 16px 0;
+  box-sizing: border-box;
+}
+
+#ai.flux-ai-claude .ai-irow--claude,
+#ai.flux-ai-claude .ai-irow{
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--fa-elevated);
+  border: 1px solid var(--fa-hair2);
+  border-radius: 20px;
+  padding: 6px 6px 6px 10px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.45) inset, 0 2px 12px var(--fa-shade);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-irow{ box-shadow: 0 2px 12px rgba(0,0,0,.35); }
+#ai.flux-ai-claude .ai-irow:focus-within{
+  border-color: color-mix(in srgb, var(--fa-anthropic) 40%, var(--fa-hair2));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fa-anthropic) 18%, transparent), 0 2px 12px var(--fa-shade);
+}
+
+#ai.flux-ai-claude .ai-irow--claude .ai-attach{ order: 0; }
+#ai.flux-ai-claude .ai-irow--claude #aiInput{ order: 1; }
+#ai.flux-ai-claude .ai-irow--claude .ai-send{ order: 2; }
+
+#ai.flux-ai-claude .ai-attach{
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--fa-hair2);
+  background: var(--fa-pill);
+  color: var(--fa-ink2);
+  font-size: 1.2rem;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 0 2px;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+#ai.flux-ai-claude .ai-attach:hover{
+  background: var(--fa-elevated);
+  color: var(--fa-ink);
+}
+#ai.flux-ai-claude #aiInput{
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--fa-ink);
+  background: transparent;
+  border: none;
+  resize: none;
+  font-family: inherit;
+}
+#ai.flux-ai-claude .ai-irow--claude .ai-send,
+#ai.flux-ai-claude .ai-send{
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 12px;
+  background: #2a2825;
+  color: #fff;
+  font-size: 0;
+  line-height: 0;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,.12) inset;
+  margin: 0 0 2px;
+  transition: background 0.12s, transform 0.12s, opacity 0.12s;
+  flex-shrink: 0;
+}
+#ai.flux-ai-claude .ai-send__arrow{
+  display: block;
+  line-height: 1;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+#ai.flux-ai-claude .ai-send:disabled{ opacity: 0.4; }
+#ai.flux-ai-claude .ai-send:hover:not(:disabled){
+  background: #3a3632;
+  transform: scale(1.02);
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-send{
+  background: #e8e2d8;
+  color: #1c1b19;
+}
+[data-theme="dark"] #ai.flux-ai-claude .ai-send:hover:not(:disabled){
+  background: #fff8;
+}
+
+#ai.flux-ai-claude .flux-ai-hint{
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--fa-muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+#ai.flux-ai-claude .flux-ai-hint__kbd{ color: var(--fa-ink2); font-weight: 600; }
+
+/* Override app chrome for this panel */
+#ai.flux-ai-claude.flux-page.panel.active{ background: var(--fa-paper) !important; }
+#ai.flux-ai-claude .flux-ai-top{ background: var(--fa-elevated) !important; }
+
+[data-theme="light"] #ai.flux-ai-claude.flux-page .flux-ai-top{
+  background: var(--fa-elevated) !important;
+  border-bottom: 1px solid var(--fa-hair) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.35) inset !important;
+}
+
+/* —— Mobile —— */
+@media (max-width: 768px){
+  #ai.flux-ai-claude .flux-ai-modes{
+    display: flex !important;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding: 8px 12px 10px;
+    border-top: 1px solid var(--fa-hair);
+  }
+  #ai.flux-ai-claude .flux-ai-modes-label{ flex-shrink: 0; }
+  #ai.flux-ai-claude .flux-ai-mode{ flex-shrink: 0; }
+
+  #ai.flux-ai-claude .flux-ai-thread{
+    padding: 12px 14px 24px;
+  }
+  #ai.flux-ai-claude .ai-bub{
+    font-size: 0.9rem;
+  }
+  #ai.flux-ai-claude .flux-ai-composer-pill{ padding: 8px 12px 0; }
+
+  #ai.flux-ai-claude .flux-ai-composer-foot{
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #ai.flux-ai-claude .ai-irow--claude #aiInput{
+    min-height: 44px;
+    order: 1;
+    font-size: 0.95rem;
+    border-radius: 0;
+    background: transparent !important;
+    border: none !important;
+  }
+  #ai.flux-ai-claude .ai-irow--claude .ai-send{
+    order: 2;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 12px;
+  }
+  #ai.flux-ai-claude .ai-irow--claude .ai-attach{ order: 0; }
+  #ai.flux-ai-claude .flux-ai-hint{ display: none; }
+}

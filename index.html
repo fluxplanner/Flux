@@ -96,6 +96,7 @@
 <link rel="stylesheet" href="public/css/flux-performance.css">
 <link rel="stylesheet" href="public/css/flux-pro.css">
 <link rel="stylesheet" href="public/css/flux-mobile-app.css">
+<link rel="stylesheet" href="public/css/flux-ai-claude.css">
 <link rel="stylesheet" href="public/css/flux-periodic.css">
 <link rel="stylesheet" href="public/css/flux-toolbox.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -476,6 +477,8 @@
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
+        <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Toolbox</span></button>
+        <button class="nav-item" onclick="nav('references',this)" data-tab="references"><span class="ni">📚</span><span class="nl">References</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">Me</div>
@@ -540,6 +543,8 @@
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
+        <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Toolbox</span></button>
+        <button class="nav-item" onclick="navMob('references')"><span class="ni">📚</span><span class="nl">References</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">Me</div>
@@ -631,27 +636,6 @@
         </div>
       </header>
 
-      <!-- ═══ DAILY PROGRESS RING + STREAK ROW (shown when dashboard loads) ═══ -->
-      <section class="flux-progress-row" id="fluxProgressRow" aria-label="Today's progress">
-        <div class="flux-progress-ring-wrap" id="fluxProgressRingWrap" aria-live="polite">
-          <svg class="flux-progress-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
-            <circle class="flux-progress-ring-bg"  cx="60" cy="60" r="52" stroke-width="10" fill="none"></circle>
-            <circle class="flux-progress-ring-fg"  cx="60" cy="60" r="52" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
-          </svg>
-          <div class="flux-progress-inside">
-            <div class="flux-progress-frac"><span id="fluxProgressDone">0</span><span class="flux-progress-slash">/</span><span id="fluxProgressTotal">0</span></div>
-            <div class="flux-progress-label" id="fluxProgressLabel">today</div>
-          </div>
-        </div>
-        <div class="flux-progress-side">
-          <div class="flux-progress-micro" id="fluxProgressMicro">Let's get started.</div>
-          <div class="flux-streak-wrap" id="fluxStreakWrap" aria-label="7-day streak">
-            <div class="flux-streak-row" id="fluxStreakRow"></div>
-            <div class="flux-streak-label"><span id="fluxStreakCount">0</span>-day streak</div>
-          </div>
-        </div>
-      </section>
-
       <!-- ═══ MOBILE-ONLY DASHBOARD STACK ═══════════════════════════════════ -->
       <div class="dash-mob-stack" aria-hidden="false">
         <!-- Stats chips (horizontal scroll on overflow) -->
@@ -702,6 +686,10 @@
       </div>
 
       <div id="fluxDashSections" class="flux-dash-sections">
+      <section class="dash-v2-pulse dash-workload-compact card" aria-label="Next 7 days workload" data-flux-section="pulse" style="margin-bottom:0">
+        <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
+      </section>
+
       <div id="countdownCard" class="dash-v2-countdown" style="display:none" data-flux-section="countdown">
         <div class="card dash-v2-countdown-card">
           <div class="dash-v2-countdown-kicker">Assessment</div>
@@ -710,10 +698,6 @@
           <div class="dash-v2-countdown-grid" id="countdownGrid"></div>
         </div>
       </div>
-
-      <section class="dash-v2-pulse dash-workload-compact card" aria-label="Next 7 days workload" data-flux-section="pulse" style="margin-bottom:0">
-        <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
-      </section>
 
       <div id="dashClassScheduleWrap" class="dash-class-schedule-wrap" data-flux-section="schedule" style="display:none" aria-live="polite">
         <div id="dynamicFocusCard" class="dash-dynamic-focus-inner"></div>
@@ -1436,53 +1420,59 @@
       <div class="ref-grid" id="refGrid" aria-live="polite"></div>
     </div>
 
-    <!-- ─── AI ─── -->
-    <div id="ai" class="panel flux-page" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
+    <!-- ─── AI (Claude-inspired layout) ─── -->
+    <div id="ai" class="panel flux-page flux-ai-claude" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
+      <div class="flux-ai-canvas">
       <div class="flux-ai-top">
-      <!-- Chat tabs bar -->
-      <div class="flux-ai-tabs-row" style="display:flex;align-items:center;gap:6px;padding:6px 10px 0;overflow-x:auto;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
-        <div id="aiChatTabs" style="display:flex;gap:6px;flex:1;overflow-x:auto;min-width:0"></div>
-        <button onclick="newAIChat()" style="flex-shrink:0;padding:4px 10px;font-size:.72rem;border-radius:20px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent)">+ New</button>
+      <div class="flux-ai-tabs-row">
+        <div id="aiChatTabs" class="flux-ai-tabs-track"></div>
+        <button type="button" class="flux-ai-newchat" onclick="newAIChat()">+ New chat</button>
       </div>
-      <!-- Toolbar -->
-      <div class="flux-ai-head" style="padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <div class="ai-orb" style="width:24px;height:24px;flex-shrink:0"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:.88rem;background:linear-gradient(90deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2">Flux AI</div>
-          <div style="font-size:.58rem;color:var(--muted);font-family:'JetBrains Mono',monospace;-webkit-text-fill-color:var(--muted);line-height:1.25">Planner context · learning help (no homework answers)</div>
+      <div class="flux-ai-head">
+        <div class="ai-orb flux-ai-mark" aria-hidden="true"></div>
+        <div class="flux-ai-titleblock">
+          <div class="flux-ai-title">Flux AI</div>
+          <p class="flux-ai-sub">Planner context · learning help (no direct homework answers)</p>
         </div>
-        <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.7rem;color:var(--muted2);flex-shrink:0">
-          📷 <input type="file" accept="image/*" id="aiImgUpload" style="display:none;width:auto;margin:0" onchange="handleAIImg(event)">
-        </label>
-        <button type="button" onclick="clearAIChat()" style="padding:4px 8px;font-size:.68rem;background:transparent;border:1px solid var(--border2);color:var(--muted2);flex-shrink:0">Clear</button>
-        <button type="button" onclick="explainMyWeek()" title="Summarize the week with your planner context" style="padding:4px 8px;font-size:.65rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);border-radius:8px;flex-shrink:0;white-space:nowrap">Week</button>
+        <div class="flux-ai-head-actions">
+          <label class="flux-ai-toolbtn" title="Attach image">
+            <input type="file" accept="image/*" id="aiImgUpload" onchange="handleAIImg(event)">
+            <span class="flux-ai-toolbtn__glyph" aria-hidden="true">📎</span>
+            <span class="visually-hidden">Attach image</span>
+          </label>
+          <button type="button" class="flux-ai-pillbtn" onclick="clearAIChat()">Clear</button>
+          <button type="button" class="flux-ai-pillbtn flux-ai-pillbtn--strong" onclick="explainMyWeek()" title="Summarize the week with your planner context">This week</button>
+        </div>
       </div>
-      <div class="flux-ai-modes" role="radiogroup" aria-label="AI mode">
-        <span class="flux-ai-modes-label">Mode</span>
+      <div class="flux-ai-modes" role="radiogroup" aria-label="Style">
+        <span class="flux-ai-modes-label">Style</span>
         <button type="button" class="flux-ai-mode active" data-mode="default" onclick="setFluxAIMode('default',this)" title="Default planner help">Balanced</button>
         <button type="button" class="flux-ai-mode" data-mode="research" onclick="setFluxAIMode('research',this)" title="Sources &amp; links for research">Research</button>
         <button type="button" class="flux-ai-mode" data-mode="deep" onclick="setFluxAIMode('deep',this)" title="Careful, accuracy-focused">Deep think</button>
         <button type="button" class="flux-ai-mode" data-mode="overtime" onclick="setFluxAIMode('overtime',this)" title="Fast, urgent execution focus">Overtime</button>
       </div>
       </div>
-      <!-- Messages — scrollable -->
-      <div id="aiMsgsWrap" style="flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:0">
-        <div class="ai-sugs" id="aiSugs"></div>
-        <div class="ai-msgs" id="aiMsgs"></div>
+      <div id="aiMsgsWrap" class="flux-ai-scroll">
+        <div class="flux-ai-thread">
+          <div class="ai-sugs" id="aiSugs"></div>
+          <div class="ai-msgs" id="aiMsgs"></div>
+        </div>
       </div>
-      <!-- Image preview -->
-      <div id="aiImgPreview" style="display:none;padding:0 14px 6px;flex-shrink:0"></div>
-      <!-- Input — send on left so it stays clear of the FAB -->
-      <div class="flux-ai-composer-foot" style="padding:8px 12px 10px;flex-shrink:0;border-top:1px solid var(--border);padding-right:max(12px,calc(12px + env(safe-area-inset-right)))">
-        <div class="ai-irow ai-irow--send-left">
-          <!-- Mobile-only attach (+) button; reuses the existing image input handler -->
-          <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image" title="Attach image">＋</button>
-          <button type="button" class="ai-send" id="aiSendBtn" onclick="sendAI()" title="Send (Enter)">↑</button>
-          <textarea id="aiInput" rows="1" placeholder="Ask Flux AI…"
+      <div id="aiImgPreview" class="flux-ai-img-preview" style="display:none"></div>
+      <footer class="flux-ai-composer-foot">
+        <div class="flux-ai-composer-pill">
+        <div class="ai-irow ai-irow--claude">
+          <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image" title="Attach image">+</button>
+          <textarea id="aiInput" rows="1" placeholder="How can I help you today?"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
             oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+          <button type="button" class="ai-send" id="aiSendBtn" onclick="sendAI()" title="Send (Enter)">
+            <span class="ai-send__arrow" aria-hidden="true">↑</span>
+          </button>
         </div>
-        <div style="font-size:.52rem;color:var(--muted);text-align:center;padding:3px 0 0;font-family:'JetBrains Mono',monospace;line-height:1.35"><strong style="color:var(--muted2)">/plan</strong> · <strong style="color:var(--muted2)">/optimize</strong> · <strong style="color:var(--muted2)">/fix</strong> · ⌘K</div>
+        </div>
+        <p class="flux-ai-hint"><span class="flux-ai-hint__kbd">/plan</span> · <span class="flux-ai-hint__kbd">/optimize</span> · <span class="flux-ai-hint__kbd">/fix</span> · <span class="flux-ai-hint__kbd">⌘K</span></p>
+      </footer>
       </div>
     </div>
 
@@ -2075,20 +2065,20 @@
     <button type="button" class="more-sheet-item" onclick="navMob('goals')">
       <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
     </button>
-    <button type="button" class="more-sheet-item" id="moreSheetHabits" onclick="closeMobileSheet();window.showToast&&showToast('Habits live with your Goals panel','info');navMob('goals')">
-      <span class="more-sheet-icon">🔥</span><span class="more-sheet-label">Habits</span>
-    </button>
     <button type="button" class="more-sheet-item" onclick="navMob('mood')">
       <span class="more-sheet-icon">😊</span><span class="more-sheet-label">Mood</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('canvas')">
-      <span class="more-sheet-icon">📧</span><span class="more-sheet-label">Gmail</span>
+      <span class="more-sheet-icon">🎓</span><span class="more-sheet-label">Canvas</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('toolbox')">
+      <span class="more-sheet-icon">🧰</span><span class="more-sheet-label">Toolbox</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('references')">
+      <span class="more-sheet-icon">📚</span><span class="more-sheet-label">References</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('settings')">
       <span class="more-sheet-icon">⚙</span><span class="more-sheet-label">Settings</span>
-    </button>
-    <button type="button" class="more-sheet-item" id="moreSheetReferences" onclick="closeMobileSheet();if(window.navMob&&document.getElementById('references')){navMob('references');}else{window.showToast&&showToast('References is coming soon','info');}">
-      <span class="more-sheet-icon">📚</span><span class="more-sheet-label">References</span>
     </button>
   </div>
 

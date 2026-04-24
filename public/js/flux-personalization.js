@@ -10,7 +10,9 @@
   const KEY_LAYOUT_CAL='flux_layout_calendar_v1';
   const KEY_LIQUID_GLASS='flux_liquid_glass';
   const KEY_PERF_SNAPPY='flux_perf_snappy';
-  const DEFAULT_DASH_ORDER=['countdown','pulse','schedule','tasks'];
+  const DEFAULT_DASH_ORDER=['pulse','countdown','schedule','tasks'];
+  /** Previous factory default (before pulse-first). Used to one-time-migrate users who never customized. */
+  const PREVIOUS_DEFAULT_DASH_ORDER=['countdown','pulse','schedule','tasks'];
   const DEFAULT_CAL_ORDER=['hero','schedule'];
   const DASH_LABELS={countdown:'Exam countdown',pulse:'Next 7 days (workload)',schedule:'Today schedule & focus (above tasks)',tasks:'Tasks'};
   const CAL_LABELS={hero:'Month, day detail & Google sync',schedule:'Cycle & weekly schedule'};
@@ -226,6 +228,11 @@
           norm=norm.filter(x=>x!=='schedule');
           norm.splice(ti,0,'schedule');
           save(KEY_LAYOUT_DASH,norm);
+        }
+        if(norm.length===PREVIOUS_DEFAULT_DASH_ORDER.length
+          &&norm.every((x,i)=>x===PREVIOUS_DEFAULT_DASH_ORDER[i])){
+          norm=DEFAULT_DASH_ORDER.slice();
+          try{ save(KEY_LAYOUT_DASH,norm); }catch(e){}
         }
         return norm;
       }
