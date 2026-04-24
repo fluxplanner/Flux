@@ -96,63 +96,8 @@
     top: calc(50px + env(safe-area-inset-top, 0px)) !important;
   }
 
-  /* Floating dock — premium feel vs full-bleed bar */
-  .bottom-nav {
-    left: 10px !important;
-    right: 10px !important;
-    width: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 58px !important;
-    padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-    margin: 0 auto !important;
-    bottom: 0 !important;
-    border-radius: 22px 22px 0 0 !important;
-    border: 1px solid rgba(255, 255, 255, 0.09) !important;
-    border-bottom: none !important;
-    box-shadow:
-      0 -4px 40px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
-    justify-content: space-between !important;
-    align-items: stretch !important;
-    gap: 2px !important;
-  }
-
-  [data-theme="light"] .bottom-nav {
-    border-color: rgba(0, 0, 0, 0.08) !important;
-    box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.08) !important;
-  }
-
-  .bnav-item {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    min-height: 52px !important;
-    padding: 8px 4px 10px !important;
-    border-radius: 14px !important;
-    font-size: 0.5rem !important;
-    letter-spacing: 0.14em !important;
-    gap: 4px !important;
-    justify-content: center !important;
-    color: var(--muted2) !important;
-    transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out) !important;
-  }
-
-  .bnav-item .bni {
-    font-size: 1.2rem !important;
-    line-height: 1 !important;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
-  }
-
-  .bnav-item.active {
-    color: var(--accent) !important;
-    background: rgba(var(--accent-rgb), 0.12) !important;
-    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.22) !important;
-  }
-
-  .bnav-item.active .bni {
-    transform: scale(1.08) !important;
-  }
+  /* Bottom nav styling is owned by flux-mobile-app.css (rebuilt spec:
+     full-width, icon-only, accent-pill active). Intentionally no overrides here. */
 
   /* FAB — tucked toward bottom-right corner, still clear of floating dock + safe area */
   #fabContainer {

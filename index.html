@@ -385,7 +385,7 @@
           <div style="font-size:.72rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">Screenshot, photo, PDF screenshot</div>
         </div>
         <div class="schedule-preview" id="schedulePreview">
-          <img id="schedulePreviewImg" src="" alt="Schedule preview">
+          <img id="schedulePreviewImg" src="" alt="Schedule preview" loading="lazy" decoding="async">
         </div>
         <div id="obAnalyzing" style="display:none" class="ob-analyzing">
           <div class="ob-spin"></div>
@@ -561,7 +561,8 @@
   <div class="main-content" id="flux-main" role="main">
     <!-- Topbar -->
     <div class="topbar">
-      <div class="topbar-left-cluster">
+      <!-- Desktop/tablet content (hidden on mobile) -->
+      <div class="topbar-left-cluster topbar-desktop-only">
         <div class="topbar-title-wrap">
           <button type="button" class="mob-menu-btn" onclick="openDrawer()" aria-label="Open menu">☰</button>
           <span class="topbar-title" id="topbarTitle">Dashboard</span>
@@ -571,9 +572,30 @@
           <span class="topbar-new-task-label">New task</span>
         </button>
       </div>
+      <!-- Mobile brand cluster (hidden on desktop) — taps go to dashboard -->
+      <button type="button" class="topbar-mob-brand" onclick="navMob('dashboard')" aria-label="Flux Planner home">
+        <svg class="topbar-mob-brand-mark" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="fluxTopbarMark" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.1"/>
+              <stop offset="40%" stop-color="#00C2FF"/>
+              <stop offset="60%" stop-color="#7C5CFF"/>
+              <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.1"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(392,340)">
+            <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+                  fill="none" stroke="url(#fluxTopbarMark)" stroke-width="22" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <span class="topbar-mob-brand-text">Flux</span>
+      </button>
       <div class="topbar-right">
-        <div class="date-pill" id="datePill"></div>
-        <div id="syncIndicator" class="sync-badge offline" style="display:none">○ Local</div>
+        <div class="date-pill topbar-desktop-only" id="datePill"></div>
+        <div id="syncIndicator" class="sync-badge offline topbar-desktop-only" style="display:none">○ Local</div>
+        <button type="button" class="topbar-mob-av" id="topbarMobAv" onclick="navMob('profile')" aria-label="Your profile">
+          <span id="topbarMobAvInitial">F</span>
+        </button>
       </div>
       <!-- Hidden elements still needed by JS -->
       <div id="topbarCenterNotices" style="display:none"></div>
@@ -602,7 +624,65 @@
         <h1 class="dash-v2-greet-title" id="dashGreeting">Good evening 👋</h1>
         <span id="fluxStreakBadge" class="flux-streak-badge" style="display:none" aria-live="polite"></span>
         </div>
+        <!-- MOBILE-ONLY date + A/B pill strip (below the greeting) -->
+        <div class="dash-mob-date-row">
+          <span id="dashMobDate" class="dash-mob-date"></span>
+          <span id="dashMobAB" class="dash-mob-ab-pill" style="display:none"></span>
+        </div>
       </header>
+
+      <!-- ═══ DAILY PROGRESS RING + STREAK ROW (shown when dashboard loads) ═══ -->
+      <section class="flux-progress-row" id="fluxProgressRow" aria-label="Today's progress">
+        <div class="flux-progress-ring-wrap" id="fluxProgressRingWrap" aria-live="polite">
+          <svg class="flux-progress-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+            <circle class="flux-progress-ring-bg"  cx="60" cy="60" r="52" stroke-width="10" fill="none"></circle>
+            <circle class="flux-progress-ring-fg"  cx="60" cy="60" r="52" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
+          </svg>
+          <div class="flux-progress-inside">
+            <div class="flux-progress-frac"><span id="fluxProgressDone">0</span><span class="flux-progress-slash">/</span><span id="fluxProgressTotal">0</span></div>
+            <div class="flux-progress-label" id="fluxProgressLabel">today</div>
+          </div>
+        </div>
+        <div class="flux-progress-side">
+          <div class="flux-progress-micro" id="fluxProgressMicro">Let's get started.</div>
+          <div class="flux-streak-wrap" id="fluxStreakWrap" aria-label="7-day streak">
+            <div class="flux-streak-row" id="fluxStreakRow"></div>
+            <div class="flux-streak-label"><span id="fluxStreakCount">0</span>-day streak</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ MOBILE-ONLY DASHBOARD STACK ═══════════════════════════════════ -->
+      <div class="dash-mob-stack" aria-hidden="false">
+        <!-- Stats chips (horizontal scroll on overflow) -->
+        <div class="dash-mob-stats" id="dashMobStats" role="list" aria-label="Today's stats">
+          <div class="dash-mob-stat" data-kind="tasks" role="listitem"><span class="dash-mob-stat-num" id="dashMobStatTasks">0</span><span class="dash-mob-stat-lbl">Tasks</span></div>
+          <div class="dash-mob-stat" data-kind="done" role="listitem"><span class="dash-mob-stat-num" id="dashMobStatDone">0</span><span class="dash-mob-stat-lbl">Done</span></div>
+          <div class="dash-mob-stat" data-kind="overdue" role="listitem"><span class="dash-mob-stat-num" id="dashMobStatOverdue">0</span><span class="dash-mob-stat-lbl">Overdue</span></div>
+          <div class="dash-mob-stat" data-kind="high" role="listitem"><span class="dash-mob-stat-num" id="dashMobStatHigh">0</span><span class="dash-mob-stat-lbl">High</span></div>
+        </div>
+
+        <!-- Do This Now -->
+        <div class="dash-mob-donow" id="dashMobDoNow" style="display:none">
+          <div class="dash-mob-donow-kicker">Do this now</div>
+          <div class="dash-mob-donow-title" id="dashMobDoNowTitle"></div>
+          <div class="dash-mob-donow-meta" id="dashMobDoNowMeta"></div>
+          <button class="dash-mob-donow-cta" id="dashMobDoNowCta" type="button">Start →</button>
+        </div>
+        <div class="dash-mob-donow-empty" id="dashMobDoNowEmpty" style="display:none">
+          <div class="dash-mob-donow-kicker">Do this now</div>
+          <div class="dash-mob-empty-copy">Nothing urgent. Get ahead on tomorrow?</div>
+        </div>
+
+        <!-- Today's tasks -->
+        <section class="dash-mob-today" aria-label="Today's tasks">
+          <div class="dash-mob-today-head">
+            <div class="dash-mob-today-title">Today <span class="dash-mob-today-count" id="dashMobTodayCount">0</span></div>
+            <button type="button" class="dash-mob-see-all" id="dashMobSeeAll" onclick="fluxToggleDashSeeAll()" aria-expanded="false">See all</button>
+          </div>
+          <div class="dash-mob-today-list" id="dashMobTodayList" aria-live="polite"></div>
+        </section>
+      </div>
 
       <div id="weeklyReviewBanner" style="display:none;align-items:center;gap:12px;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(var(--accent-rgb),.12),rgba(var(--purple-rgb),.1));border:1px solid rgba(var(--accent-rgb),.25);border-radius:14px;flex-wrap:wrap" role="banner">
         <span style="font-size:1.1rem">📊</span>
@@ -650,15 +730,34 @@
           </div>
         </div>
 
-        <div class="dash-filters" id="filterChips">
-          <button onclick="setFilter('active',this)" class="tmode-btn active">Active</button>
-          <button onclick="setFilter('all',this)" class="tmode-btn">All</button>
-          <button onclick="setFilter('today',this)" class="tmode-btn">Due Today</button>
-          <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
-          <button onclick="setFilter('high',this)" class="tmode-btn">High</button>
+        <div class="dash-filters-row">
+          <div class="dash-filters" id="filterChips">
+            <button onclick="setFilter('active',this)" class="tmode-btn active">Active</button>
+            <button onclick="setFilter('all',this)" class="tmode-btn">All</button>
+            <button onclick="setFilter('today',this)" class="tmode-btn">Due Today</button>
+            <button onclick="setFilter('overdue',this)" class="tmode-btn">Overdue</button>
+            <button onclick="setFilter('high',this)" class="tmode-btn">High</button>
+          </div>
+          <button type="button" class="dash-select-btn" id="dashSelectBtn" onclick="fluxEnterBulkMode()" aria-label="Enter select mode">☑ Select</button>
         </div>
 
-        <div id="taskList"></div>
+        <div id="taskList"><!-- First-paint skeleton; replaced by renderTasks() once data is ready -->
+          <div id="fluxBootSkel" class="flux-dash-skel" aria-hidden="true" style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
+            <div class="flux-skel flux-skel-block" style="height:56px;border-radius:12px"></div>
+            <div class="flux-skel flux-skel-block" style="height:56px;border-radius:12px"></div>
+            <div class="flux-skel flux-skel-block" style="height:56px;border-radius:12px"></div>
+          </div>
+        </div>
+
+        <!-- Bulk select action bar (shown when bulk mode is on) -->
+        <div id="taskBulkBar" class="task-bulk-bar" role="toolbar" aria-label="Bulk task actions" style="display:none">
+          <button type="button" class="bulk-btn bulk-btn-cancel" onclick="fluxExitBulkMode()" aria-label="Cancel selection">✕</button>
+          <div class="bulk-count" id="bulkCount" aria-live="polite">0 selected</div>
+          <button type="button" class="bulk-btn" onclick="fluxBulkSelectAll()">Select all</button>
+          <button type="button" class="bulk-btn bulk-btn-primary" onclick="bulkCompleteSelected()">Complete</button>
+          <button type="button" class="bulk-btn" onclick="fluxBulkReschedule()">Reschedule</button>
+          <button type="button" class="bulk-btn bulk-btn-danger" onclick="bulkDeleteSelected()">Delete</button>
+        </div>
 
         <div id="savedViewsSection" class="dash-v2-saved-views" style="display:none">
           <div class="dash-v2-saved-head">
@@ -1325,6 +1424,18 @@
     <!-- ─── TOOLBOX (cross-subject study tools) ─── -->
     <div id="toolbox" class="panel flux-page"></div>
 
+    <!-- ─── REFERENCES (per-class study tools + reference library) ─── -->
+    <div id="references" class="panel flux-page">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Study tools, formula sheets, and quick references organized by your classes.</p>
+      </header>
+      <div class="ref-search-row">
+        <input type="text" id="refSearchInput" class="ref-search-input" placeholder="Search references, formulas, tools…" autocomplete="off" />
+      </div>
+      <div class="ref-class-chips" id="refClassChips" role="tablist" aria-label="Filter by class"></div>
+      <div class="ref-grid" id="refGrid" aria-live="polite"></div>
+    </div>
+
     <!-- ─── AI ─── -->
     <div id="ai" class="panel flux-page" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
       <div class="flux-ai-top">
@@ -1364,6 +1475,8 @@
       <!-- Input — send on left so it stays clear of the FAB -->
       <div class="flux-ai-composer-foot" style="padding:8px 12px 10px;flex-shrink:0;border-top:1px solid var(--border);padding-right:max(12px,calc(12px + env(safe-area-inset-right)))">
         <div class="ai-irow ai-irow--send-left">
+          <!-- Mobile-only attach (+) button; reuses the existing image input handler -->
+          <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image" title="Attach image">＋</button>
           <button type="button" class="ai-send" id="aiSendBtn" onclick="sendAI()" title="Send (Enter)">↑</button>
           <textarea id="aiInput" rows="1" placeholder="Ask Flux AI…"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
@@ -1547,6 +1660,23 @@
                 <input type="time" id="dndEnd" value="14:30" style="width:auto;padding:5px 8px;margin:0;flex:1;min-width:90px">
                 <button onclick="saveDND()" style="padding:6px 12px;font-size:.78rem">Save</button>
               </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Google Calendar sync</h3>
+          <div class="srow">
+            <div>
+              <div class="slabel">📅 Auto-push new tasks</div>
+              <div class="ssub">When on, new tasks are added to your Google Calendar automatically</div>
+            </div>
+            <button type="button" class="toggle" id="gcalAutoToggle" onclick="fluxToggleGCalAutoPush(this)" aria-pressed="false"></button>
+          </div>
+          <div class="srow" style="border:none">
+            <div style="flex:1">
+              <div class="slabel">Write access</div>
+              <div class="ssub" id="gcalWriteStatusLine">Requires the <code>calendar.events</code> scope. If pushing fails, reconnect below.</div>
+              <button type="button" class="btn-sec" style="margin-top:8px;padding:6px 12px;font-size:.76rem" onclick="window.fluxReconnectGoogleCalendarWrite&&fluxReconnectGoogleCalendarWrite()">Connect Google Calendar (write)</button>
             </div>
           </div>
         </div>
@@ -1752,11 +1882,27 @@
 
   <!-- ── MOBILE BOTTOM NAV (5 tabs: Home · Calendar · AI · Grades · More) ── -->
   <div class="bottom-nav" role="navigation" aria-label="Primary mobile navigation">
-    <button class="bnav-item active" onclick="nav('dashboard',this)" data-tab="dashboard" aria-label="Home"><span class="bni">⚡</span>Home</button>
-    <button class="bnav-item" onclick="nav('calendar',this)" data-tab="calendar" aria-label="Calendar"><span class="bni">📅</span>Calendar</button>
-    <button class="bnav-item" onclick="nav('ai',this)" data-tab="ai" aria-label="Flux AI"><span class="bni">✦</span>AI</button>
-    <button class="bnav-item" onclick="nav('grades',this)" data-tab="grades" aria-label="Grades"><span class="bni">📊</span>Grades</button>
-    <button class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More"><span class="bni">☰</span>More</button>
+    <button class="bnav-item active" onclick="nav('dashboard',this)" data-tab="dashboard" aria-label="Home">
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg></span>
+      <span class="bnl">Home</span>
+      <span class="bnav-dot" aria-hidden="true"></span>
+    </button>
+    <button class="bnav-item" onclick="nav('calendar',this)" data-tab="calendar" aria-label="Calendar">
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+      <span class="bnl">Calendar</span>
+    </button>
+    <button class="bnav-item" onclick="nav('ai',this)" data-tab="ai" aria-label="Flux AI">
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+      <span class="bnl">AI</span>
+    </button>
+    <button class="bnav-item" onclick="nav('grades',this)" data-tab="grades" aria-label="Grades">
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></span>
+      <span class="bnl">Grades</span>
+    </button>
+    <button class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More">
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="19" cy="18" r="1.6"/></svg></span>
+      <span class="bnl">More</span>
+    </button>
   </div>
 
   <!-- ── FAB — Flux AI + quick actions ── -->
@@ -1879,6 +2025,19 @@
 <script defer src="public/js/flux-estimate-learn.js"></script>
 <script defer src="public/js/flux-intelligence.js"></script>
 <script defer src="public/js/flux-task-ux.js"></script>
+<script defer src="public/js/flux-mobile-swipe.js"></script>
+<script defer src="public/js/flux-task-context.js"></script>
+<script defer src="public/js/flux-gcal-push.js"></script>
+<script defer src="public/js/flux-references.js"></script>
+<script defer src="public/js/flux-reference-tools.js"></script>
+<script defer src="public/js/flux-progress-streak.js"></script>
+<script defer src="public/js/flux-perf-boot.js"></script>
+<script defer src="public/js/flux-reftool-chem.js"></script>
+<script defer src="public/js/flux-reftool-bio.js"></script>
+<script defer src="public/js/flux-reftool-history.js"></script>
+<script defer src="public/js/flux-reftool-lang.js"></script>
+<script defer src="public/js/flux-reftool-units.js"></script>
+<script defer src="public/js/flux-reftool-cs.js"></script>
 <script defer src="public/js/flux-ai-mega.js"></script>
 <script defer src="public/js/flux-ai-orchestrator.js"></script>
 <script defer src="public/js/flux-enhancements-v100.js"></script>
@@ -1892,39 +2051,44 @@
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
 <div class="more-sheet" id="moreSheet" role="dialog" aria-modal="true" aria-labelledby="moreSheetTitle" aria-hidden="true">
-  <div class="more-sheet-handle" aria-hidden="true"></div>
-  <div class="more-sheet-title" id="moreSheetTitle">More</div>
+  <div class="more-sheet-head">
+    <div class="more-sheet-handle" aria-hidden="true"></div>
+    <div class="more-sheet-title-row">
+      <div class="more-sheet-title" id="moreSheetTitle">More</div>
+      <button type="button" class="more-sheet-close" onclick="closeMobileSheet()" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+  </div>
 
   <div class="more-sheet-grid">
-    <button type="button" class="more-sheet-item" onclick="navMob('school')">
-      <span class="more-sheet-icon">🏫</span><span class="more-sheet-label">School Info</span>
-    </button>
-    <button type="button" class="more-sheet-item" onclick="navMob('canvas')">
-      <span class="more-sheet-icon">🎓</span><span class="more-sheet-label">Canvas &amp; Gmail</span>
-    </button>
     <button type="button" class="more-sheet-item" onclick="navMob('notes')">
       <span class="more-sheet-icon">📝</span><span class="more-sheet-label">Notes</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('timer')">
-      <span class="more-sheet-icon">⏱</span><span class="more-sheet-label">Focus Timer</span>
+      <span class="more-sheet-icon">⏱</span><span class="more-sheet-label">Timer</span>
     </button>
-    <button type="button" class="more-sheet-item" onclick="navMob('mood')">
-      <span class="more-sheet-icon">😊</span><span class="more-sheet-label">Mood</span>
-    </button>
-    <button type="button" class="more-sheet-item" onclick="navMob('toolbox')">
-      <span class="more-sheet-icon">🧰</span><span class="more-sheet-label">Toolbox</span>
-    </button>
-    <button type="button" class="more-sheet-item" onclick="navMob('goals')">
-      <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
+    <button type="button" class="more-sheet-item" onclick="navMob('school')">
+      <span class="more-sheet-icon">🏫</span><span class="more-sheet-label">School</span>
     </button>
     <button type="button" class="more-sheet-item" onclick="navMob('profile')">
       <span class="more-sheet-icon">👤</span><span class="more-sheet-label">Profile</span>
     </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('goals')">
+      <span class="more-sheet-icon">🎯</span><span class="more-sheet-label">Goals</span>
+    </button>
+    <button type="button" class="more-sheet-item" id="moreSheetHabits" onclick="closeMobileSheet();window.showToast&&showToast('Habits live with your Goals panel','info');navMob('goals')">
+      <span class="more-sheet-icon">🔥</span><span class="more-sheet-label">Habits</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('mood')">
+      <span class="more-sheet-icon">😊</span><span class="more-sheet-label">Mood</span>
+    </button>
+    <button type="button" class="more-sheet-item" onclick="navMob('canvas')">
+      <span class="more-sheet-icon">📧</span><span class="more-sheet-label">Gmail</span>
+    </button>
     <button type="button" class="more-sheet-item" onclick="navMob('settings')">
       <span class="more-sheet-icon">⚙</span><span class="more-sheet-label">Settings</span>
     </button>
-    <button type="button" class="more-sheet-item" onclick="closeMobileSheet();window.fluxOpenAchievements&&fluxOpenAchievements()">
-      <span class="more-sheet-icon">🏆</span><span class="more-sheet-label">Achievements</span>
+    <button type="button" class="more-sheet-item" id="moreSheetReferences" onclick="closeMobileSheet();if(window.navMob&&document.getElementById('references')){navMob('references');}else{window.showToast&&showToast('References is coming soon','info');}">
+      <span class="more-sheet-icon">📚</span><span class="more-sheet-label">References</span>
     </button>
   </div>
 
@@ -1943,6 +2107,10 @@
     <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.toggleTheme&&toggleTheme()">
       <span class="more-sheet-icon" style="font-size:1.15rem">🎨</span>
       <span class="lbl">Toggle theme</span>
+    </button>
+    <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.fluxOpenAchievements&&fluxOpenAchievements()">
+      <span class="more-sheet-icon" style="font-size:1.15rem">🏆</span>
+      <span class="lbl">Achievements</span>
     </button>
   </div>
 </div>

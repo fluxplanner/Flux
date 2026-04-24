@@ -3258,7 +3258,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .shortcut-dialog{background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:22px;padding:24px;box-shadow:0 32px 80px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.1);width:100%;max-width:560px;animation:cmdIn .15s ease}
 .shortcut-header{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .shortcut-title{font-size:1rem;font-weight:800;letter-spacing:-.3px}
-.shortcut-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.shortcut-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
 @media(max-width:500px){.shortcut-grid{grid-template-columns:1fr}}
 .shortcut-section{}
 .shortcut-section-title{font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}

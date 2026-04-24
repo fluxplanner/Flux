@@ -312,18 +312,29 @@ function maskPrivateField(el,value){
 // ══ TOAST NOTIFICATIONS ══
 function showToast(msg,type='success'){
   const live=document.getElementById('toastLive');if(live)live.textContent=msg;
+  // Ensure toast stack container exists — newest toast is prepended so it sits on top
+  let stack=document.getElementById('fluxToastStack');
+  if(!stack){
+    stack=document.createElement('div');
+    stack.id='fluxToastStack';
+    stack.setAttribute('aria-live','polite');
+    stack.setAttribute('aria-atomic','false');
+    const isMob=window.innerWidth<768;
+    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:${isMob?'calc(16px + var(--bnav-height,62px) + var(--sa-bottom,0px))':'20px'};z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
+    document.body.appendChild(stack);
+  }
   const t=document.createElement('div');
   const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)'};
   const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f'};
   const reduce=document.documentElement.classList.contains('flux-reduce-motion');
-  t.style.cssText=`position:fixed;bottom:${window.innerWidth<768?'80':'20'}px;left:50%;transform:translateX(-50%);
-    background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
-    padding:10px 20px;border-radius:12px;font-size:.82rem;font-weight:700;z-index:9999;
-    ${reduce?'':'animation:slideUpToast .3s cubic-bezier(.34,1.56,.64,1);'}white-space:nowrap;
+  t.style.cssText=`pointer-events:auto;background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
+    padding:10px 20px;border-radius:12px;font-size:.82rem;font-weight:700;max-width:100%;
+    ${reduce?'':'animation:slideUpToast .3s cubic-bezier(.34,1.56,.64,1);'}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     box-shadow:0 4px 20px rgba(0,0,0,.4);`;
   t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .2s';setTimeout(()=>t.remove(),200);},2800);
+  // Prepend so newest sits visually on top of column-reverse stack
+  stack.prepend(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(()=>t.remove(),220);},3000);
 }
 
 // ══ ACCESSIBILITY · SNOOZE · BULK · EXAM CONFLICTS ══
@@ -354,8 +365,69 @@ function snoozeTask(){showToast('Snooze is no longer available','info');}
 function toggleTaskBulkMode(_force){
   _taskBulkMode=typeof _force==='boolean'?_force:!_taskBulkMode;
   if(!_taskBulkMode)_bulkIds.clear();
+  // Toggle the UI bar and the select button state
+  const bar=document.getElementById('taskBulkBar');
+  if(bar)bar.style.display=_taskBulkMode?'flex':'none';
+  const selBtn=document.getElementById('dashSelectBtn');
+  if(selBtn)selBtn.classList.toggle('on',_taskBulkMode);
+  document.body.classList.toggle('flux-bulk-mode',_taskBulkMode);
+  const countEl=document.getElementById('bulkCount');
+  if(countEl)countEl.textContent=_bulkIds.size+' selected';
   renderTasks();
 }
+function fluxEnterBulkMode(){ toggleTaskBulkMode(true); }
+function fluxExitBulkMode(){ toggleTaskBulkMode(false); }
+function fluxBulkSelectAll(){
+  const active=tasks.filter(t=>!t.done);
+  if(_bulkIds.size>=active.length){
+    _bulkIds.clear();
+  } else {
+    active.forEach(t=>_bulkIds.add(t.id));
+  }
+  const el=document.getElementById('bulkCount');
+  if(el)el.textContent=_bulkIds.size+' selected';
+  renderTasks();
+}
+function fluxBulkReschedule(){
+  if(!_bulkIds.size){ showToast('Nothing selected','info'); return; }
+  // Simple prompt-based date entry; leverages existing date inputs elsewhere if needed
+  const today=new Date(); today.setHours(0,0,0,0);
+  const iso=today.toISOString().slice(0,10);
+  const input=prompt('Reschedule selected tasks to (YYYY-MM-DD):', iso);
+  if(!input)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(input)){ showToast('Invalid date format','error'); return; }
+  _bulkIds.forEach(id=>{
+    const t=tasks.find(x=>x.id===id);
+    if(!t||t.done)return;
+    t.date=input;
+    if(typeof calcUrgency==='function')t.urgencyScore=calcUrgency(t);
+  });
+  save('tasks',tasks);
+  if(typeof syncKey==='function')syncKey('tasks',tasks);
+  showToast('Rescheduled','success');
+  toggleTaskBulkMode(false);
+  renderStats();renderTasks();renderCalendar();if(typeof renderCountdown==='function')renderCountdown();
+}
+try{ window.fluxEnterBulkMode=fluxEnterBulkMode; window.fluxExitBulkMode=fluxExitBulkMode; window.fluxBulkSelectAll=fluxBulkSelectAll; window.fluxBulkReschedule=fluxBulkReschedule; }catch(e){}
+
+function fluxToggleGCalAutoPush(btn){
+  if(!window.fluxGCalAutoPush)return;
+  const on=window.fluxGCalAutoPush.toggle();
+  if(btn){
+    btn.classList.toggle('on',on);
+    btn.setAttribute('aria-pressed',on?'true':'false');
+  }
+  if(typeof showToast==='function') showToast(on?'Auto-push enabled':'Auto-push disabled','info');
+}
+function fluxInitGCalAutoPushToggle(){
+  const btn=document.getElementById('gcalAutoToggle');
+  if(!btn||!window.fluxGCalAutoPush)return;
+  const on=window.fluxGCalAutoPush.enabled();
+  btn.classList.toggle('on',on);
+  btn.setAttribute('aria-pressed',on?'true':'false');
+}
+try{ window.fluxToggleGCalAutoPush=fluxToggleGCalAutoPush; window.fluxInitGCalAutoPushToggle=fluxInitGCalAutoPushToggle; }catch(e){}
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(fluxInitGCalAutoPushToggle,400); });
 function toggleBulkOne(id,on){if(on)_bulkIds.add(id);else _bulkIds.delete(id);const el=document.getElementById('bulkCount');if(el)el.textContent=_bulkIds.size+' selected';}
 function bulkCompleteSelected(){
   _bulkIds.forEach(id=>{const t=tasks.find(x=>x.id===id);if(t&&!t.done){t.done=true;t.completedAt=Date.now();}});
@@ -723,6 +795,7 @@ const DEFAULT_TABS=[
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
   {id:'toolbox',icon:'🧰',label:'Toolbox',visible:true},
+  {id:'references',icon:'📚',label:'References',visible:true},
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
@@ -837,7 +910,14 @@ function nav(id,btn){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll(`[data-tab="${id}"]`).forEach(b=>b.classList.add('active'));
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
-  const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);if(bni)bni.classList.add('active');
+  const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);
+  if(bni){bni.classList.add('active');}
+  else{
+    // Target panel isn't one of the 5 primary tabs — light up the More button
+    // so the user still gets a sense of where they are in the bottom nav.
+    const moreBtn=document.getElementById('moreBtn');
+    if(moreBtn)moreBtn.classList.add('active');
+  }
   updateNavAriaCurrent(id);
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},toolbox:()=>{if(typeof renderToolbox==='function')renderToolbox();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel()};
@@ -919,10 +999,20 @@ function populateSubjectSelects(){
   });
 }
 
+// Inline SVG icons for the 5 mobile bottom-nav tabs. Keep spec-accurate:
+// Home, Calendar, AI (sparkle), Grades (bar chart), More (grid of dots).
+const BNAV_ICONS={
+  dashboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg>`,
+  calendar:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  ai:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg>`,
+  grades:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>`,
+  more:`<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="19" cy="18" r="1.6"/></svg>`,
+};
+
 function renderSidebars(){
   const groups=[
     {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['school','grades','notes','timer','canvas','toolbox']},
+    {label:'School',ids:['school','grades','notes','timer','canvas','toolbox','references']},
     {label:'Me',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
@@ -943,13 +1033,22 @@ function renderSidebars(){
   const drawerNav=document.querySelector('.mob-drawer-nav');
   if(drawerNav)drawerNav.innerHTML=buildNav('navMob');
 
-  // Bottom nav — show first 5 visible tabs
+  // Mobile bottom nav is always the same 5 spec tabs:
+  // Home · Calendar · AI · Grades · More (opens bottom sheet, not drawer).
+  // Keep the More button wired to openMobileSheet so it matches the spec.
   const bnav=document.querySelector('.bottom-nav');
   if(bnav){
-    const visible=tabConfig.filter(t=>t.visible);
-    const first5=visible.slice(0,5);
-    bnav.innerHTML=first5.map(t=>`<button type="button" class="bnav-item" onclick="nav('${t.id}',this)" data-tab="${t.id}" aria-label="${esc(t.label)}"><span class="bni" aria-hidden="true">${t.icon}</span>${t.label}</button>`).join('')
-      +`<button type="button" class="bnav-item" onclick="openDrawer()" id="moreBtn" aria-label="More navigation"><span class="bni" aria-hidden="true">☰</span>More</button>`;
+    const tabs=[
+      {id:'dashboard',label:'Home',icon:BNAV_ICONS.dashboard,extra:'<span class="bnav-dot" aria-hidden="true"></span>'},
+      {id:'calendar',label:'Calendar',icon:BNAV_ICONS.calendar},
+      {id:'ai',label:'Flux AI',icon:BNAV_ICONS.ai},
+      {id:'grades',label:'Grades',icon:BNAV_ICONS.grades},
+    ];
+    bnav.innerHTML=tabs.map(t=>{
+      const lab=esc(t.label);
+      return`<button type="button" class="bnav-item" onclick="nav('${t.id}',this)" data-tab="${t.id}" aria-label="${lab}"><span class="bni" aria-hidden="true">${t.icon}</span><span class="bnl">${lab}</span>${t.extra||''}</button>`;
+    }).join('')
+      +`<button type="button" class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More"><span class="bni" aria-hidden="true">${BNAV_ICONS.more}</span><span class="bnl">More</span></button>`;
   }
 }
 function toggleSidebar(){
@@ -1015,6 +1114,7 @@ function addTask(){
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
+  if(typeof window.fluxGCalAutoPushTask==='function')try{window.fluxGCalAutoPushTask(task);}catch(e){}
 }
 function toggleTask(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
@@ -1296,6 +1396,155 @@ function autoSplitEditSubtasks(){
   ta.value=parts.slice(0,12).join('\n');
   if(typeof showToast==='function')showToast('Subtasks drafted — edit lines as needed','success');
 }
+// ══ MOBILE DASHBOARD RENDER ═══════════════════════════════════════════
+// Populates the mobile-only dashboard stack (date strip, 4 stat chips,
+// Do-This-Now card, and Today's tasks list up to 5). No effect on desktop
+// — the mobile stack is hidden via CSS at >=769px.
+function fluxRenderDashMob(){
+  const dateEl=document.getElementById('dashMobDate');
+  if(!dateEl)return; // only present on new mobile scaffold
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  const todayStr=today.toISOString().slice(0,10);
+  // Date strip: "Friday, Apr 24"
+  try{
+    dateEl.textContent=today.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+  }catch(e){ dateEl.textContent=todayStr; }
+  // A/B pill (if schedule data indicates today as A or B day)
+  const abEl=document.getElementById('dashMobAB');
+  if(abEl){
+    const ab=(typeof getABDayLabel==='function')?getABDayLabel(today):'';
+    if(ab&&/^[AB]/.test(ab)){ abEl.textContent=ab; abEl.style.display='inline-flex'; }
+    else{ abEl.style.display='none'; }
+  }
+  // Stats chips
+  const activeTasks=tasks.filter(t=>!t.done);
+  const doneToday=tasks.filter(t=>t.done&&t.completedAt&&String(t.completedAt).slice(0,10)===todayStr).length;
+  const overdue=activeTasks.filter(t=>t.date&&t.date<todayStr).length;
+  const high=activeTasks.filter(t=>t.priority==='high').length;
+  const setN=(id,n)=>{ const el=document.getElementById(id); if(el)el.textContent=String(n); };
+  setN('dashMobStatTasks',activeTasks.length);
+  setN('dashMobStatDone',doneToday);
+  setN('dashMobStatOverdue',overdue);
+  setN('dashMobStatHigh',high);
+
+  // Do This Now — pick the most important actionable task
+  const doNowCandidate=(()=>{
+    const sorted=activeTasks.slice().sort((a,b)=>{
+      const pRank={high:0,med:1,low:2};
+      const pa=pRank[a.priority||'med'],pb=pRank[b.priority||'med'];
+      if(pa!==pb)return pa-pb;
+      const da=a.date||'9999-12-31',db=b.date||'9999-12-31';
+      if(da!==db)return da<db?-1:1;
+      return 0;
+    });
+    // prefer overdue, then due-today, then high-priority upcoming
+    return sorted.find(t=>t.date&&t.date<todayStr)
+        ||sorted.find(t=>t.date===todayStr)
+        ||sorted.find(t=>t.priority==='high')
+        ||sorted[0]
+        ||null;
+  })();
+  const doNow=document.getElementById('dashMobDoNow');
+  const doNowEmpty=document.getElementById('dashMobDoNowEmpty');
+  if(doNow&&doNowEmpty){
+    if(doNowCandidate){
+      doNow.style.display='block';
+      doNowEmpty.style.display='none';
+      const t=doNowCandidate;
+      const subs=(typeof getSubjects==='function')?getSubjects():{};
+      const sub=t.subject?subs[t.subject]:null;
+      const title=document.getElementById('dashMobDoNowTitle');
+      if(title)title.textContent=t.name||'Untitled task';
+      const meta=document.getElementById('dashMobDoNowMeta');
+      if(meta){
+        const chips=[];
+        if(sub)chips.push(`<span class="mob-meta-chip" style="background:${sub.color||'rgba(255,255,255,.05)'}20;color:${sub.color||'var(--text)'};border-color:${sub.color||'rgba(255,255,255,.1)'}40">${esc(sub.short||t.subject)}</span>`);
+        if(t.priority==='high')chips.push(`<span class="mob-meta-chip" style="background:rgba(255,79,94,.12);color:#ff4f5e;border-color:rgba(255,79,94,.3)">High</span>`);
+        if(t.date){
+          const due=new Date(t.date+'T00:00:00');
+          const diffDays=Math.round((due-today)/86400000);
+          let label='';
+          if(diffDays<0)label=`${Math.abs(diffDays)}d overdue`;
+          else if(diffDays===0)label='Due today';
+          else if(diffDays===1)label='Due tomorrow';
+          else label=`Due in ${diffDays}d`;
+          chips.push(`<span class="mob-meta-chip">${label}</span>`);
+        }
+        if(t.estTime)chips.push(`<span class="mob-meta-chip">${esc(String(t.estTime))}m</span>`);
+        meta.innerHTML=chips.join('');
+      }
+      const cta=document.getElementById('dashMobDoNowCta');
+      if(cta){
+        cta.onclick=()=>{
+          try{ localStorage.setItem('flux_timer_subject_prefill',t.subject||''); }catch(e){}
+          if(typeof nav==='function')nav('timer');
+        };
+      }
+    } else {
+      doNow.style.display='none';
+      doNowEmpty.style.display='block';
+    }
+  }
+
+  // Today's tasks — up to 5 compact rows
+  const todayList=document.getElementById('dashMobTodayList');
+  const todayCount=document.getElementById('dashMobTodayCount');
+  if(todayList){
+    const todaysTasks=activeTasks
+      .filter(t=>t.date===todayStr||(t.date&&t.date<todayStr))
+      .sort((a,b)=>{
+        const pRank={high:0,med:1,low:2};
+        return (pRank[a.priority||'med'])-(pRank[b.priority||'med']);
+      })
+      .slice(0,5);
+    if(todayCount)todayCount.textContent=String(todaysTasks.length);
+    if(!todaysTasks.length){
+      todayList.innerHTML=`<div class="dash-mob-task-empty">Nothing due today. Enjoy the breathing room.</div>`;
+    } else {
+      const subs=(typeof getSubjects==='function')?getSubjects():{};
+      todayList.innerHTML=todaysTasks.map(t=>{
+        const sub=t.subject?subs[t.subject]:null;
+        const isOverdue=t.date&&t.date<todayStr;
+        const pri=`priority-${t.priority||'med'}`;
+        let time='';
+        if(isOverdue){
+          const due=new Date(t.date+'T00:00:00');
+          const days=Math.round((today-due)/86400000);
+          time=`${days}d late`;
+        } else if(t.estTime){
+          time=`${t.estTime}m`;
+        } else {
+          time='Today';
+        }
+        return `<div class="dash-mob-task ${pri}${isOverdue?' overdue':''}" data-task-id="${t.id}" onclick="event.stopPropagation();openEdit(${t.id})">
+          <span class="dash-mob-task-dot" aria-hidden="true"></span>
+          <span class="dash-mob-task-name">${esc(t.name||'')}</span>
+          ${sub?`<span class="dash-mob-task-sub">${esc(sub.short||t.subject)}</span>`:''}
+          <span class="dash-mob-task-time">${time}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+// Toggles the mobile "See all" full task list below the compact Today list
+function fluxToggleDashSeeAll(){
+  const showing=document.body.classList.toggle('dash-mob-show-all');
+  const btn=document.getElementById('dashMobSeeAll');
+  if(btn){
+    btn.setAttribute('aria-expanded',showing?'true':'false');
+    btn.textContent=showing?'Hide all':'See all';
+  }
+  if(showing){
+    setTimeout(()=>{
+      const el=document.getElementById('taskList');
+      if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});
+    },60);
+  }
+}
+try{ window.fluxRenderDashMob=fluxRenderDashMob; window.fluxToggleDashSeeAll=fluxToggleDashSeeAll; }catch(e){}
+
 function renderStats(){
   renderDashWeekStrip();
   if(typeof updateTopbarStats==='function')updateTopbarStats();
@@ -1304,6 +1553,7 @@ function renderStats(){
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
   updateDocTitle();
   renderSidebarMiniStats();
+  fluxRenderDashMob();
   // Belt-and-suspenders: keep the "due in 12h" banner in sync with current task state
   if(typeof checkAllPanic==='function')checkAllPanic();
 }
@@ -1387,6 +1637,7 @@ ${stBar}${procras}
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
+${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar">📅</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
@@ -1405,6 +1656,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   }
   el.innerHTML=html;
   if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
+  if(typeof fluxRenderDashMob==='function')fluxRenderDashMob();
 }
 function renderSmartSug(){}
 function openDashAddTaskModal(){
@@ -1442,7 +1694,33 @@ function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const o
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
-function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function changeMonth(d){
+  const grid=document.getElementById('calGrid');
+  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const animate=grid&&!reduced&&window.innerWidth<=900;
+  const outCls=d>0?'cal-grid-slide-out-l':'cal-grid-slide-out-r';
+  const inCls=d>0?'cal-grid-slide-in-l':'cal-grid-slide-in-r';
+  const apply=()=>{
+    calMonth+=d;
+    if(calMonth>11){calMonth=0;calYear++;}
+    if(calMonth<0){calMonth=11;calYear--;}
+    renderCalendar();
+    if(animate){
+      const g=document.getElementById('calGrid');
+      if(g){
+        g.classList.remove('cal-grid-slide-out-l','cal-grid-slide-out-r');
+        g.classList.add(inCls);
+        setTimeout(()=>g.classList.remove(inCls),300);
+      }
+    }
+  };
+  if(animate){
+    grid.classList.add(outCls);
+    setTimeout(apply,200);
+  } else {
+    apply();
+  }
+}
 function selectDay(d){calSelected=d;renderCalendar();document.getElementById('calAddBtn').style.display='inline-flex';}
 function openAddForDate(){
   const dateStr=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
@@ -2478,7 +2756,7 @@ function renderProfile(){
 
   const pic=localStorage.getItem('flux_profile_pic');
   const av=document.getElementById('pAvatar');
-  if(av)av.innerHTML=(pic?`<img src="${pic}">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
+  if(av)av.innerHTML=(pic?`<img src="${pic}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const gpa=calcGPA(grades);
@@ -2508,7 +2786,7 @@ function renderProfile(){
   studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});
 }
 
-function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}"><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
+function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
 function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();if(window.FluxIntel&&FluxIntel.renderAiInsightStrip)FluxIntel.renderAiInsightStrip();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
@@ -4513,7 +4791,22 @@ function renderCmdResults(){
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
   navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
-  
+
+  const refTools=[
+    {icon:'📚',label:'References panel',action:()=>{nav('references');closeCommandPalette();}},
+    {icon:'📐',label:'Math Formula Sheet',action:()=>{closeCommandPalette();window.openMathFormulas&&window.openMathFormulas();}},
+    {icon:'⚗️',label:'Chemistry Reference',action:()=>{closeCommandPalette();window.openChemReference&&window.openChemReference();}},
+    {icon:'🧬',label:'Biology Codon Table',action:()=>{closeCommandPalette();window.openCodonTable&&window.openCodonTable();}},
+    {icon:'🗺️',label:'History Map',action:()=>{closeCommandPalette();window.openHistoryMap&&window.openHistoryMap();}},
+    {icon:'🇪🇸',label:'Spanish Conjugator',action:()=>{closeCommandPalette();window.openSpanishConjugator&&window.openSpanishConjugator();}},
+    {icon:'🇫🇷',label:'French Conjugator',action:()=>{closeCommandPalette();window.openFrenchConjugator&&window.openFrenchConjugator();}},
+    {icon:'🔁',label:'Unit Converter',action:()=>{closeCommandPalette();window.openUnitConverter&&window.openUnitConverter();}},
+    {icon:'💻',label:'CS Reference',action:()=>{closeCommandPalette();window.openCSReference&&window.openCSReference();}},
+    {icon:'🧪',label:'Periodic Table',action:()=>{closeCommandPalette();if(typeof window.openPeriodicTableModal==='function')window.openPeriodicTableModal();else if(typeof window.openPeriodicTable==='function')window.openPeriodicTable();else nav('toolbox');}},
+    {icon:'🪐',label:'Physics Formula Sheet',action:()=>{closeCommandPalette();if(typeof window.openPhysicsSandbox==='function')window.openPhysicsSandbox();else nav('toolbox');}},
+  ];
+  refTools.forEach(r=>{if(!q||r.label.toLowerCase().includes(q))cmds.push({...r,cat:'References'});});
+
   // Task search
   const matchTasks=tasks.filter(t=>!t.done&&t.name.toLowerCase().includes(q)).slice(0,5);
   matchTasks.forEach(t=>cmds.push({icon:'✓',label:t.name,sub:t.date?'Due '+t.date:'',cat:'Tasks',action:()=>{nav('dashboard');closeCommandPalette();setTimeout(()=>{const el=document.querySelector('[data-task-id="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth'});},300);}}));
@@ -5093,6 +5386,14 @@ function _updateUserUI(user,name){
   const asi=document.getElementById('accountSignedIn');if(asi)asi.style.display='block';
   const emailEl=document.getElementById('accountEmail');if(emailEl)emailEl.textContent=user.email||'';
   const topUser=document.getElementById('topbarUser');if(topUser)topUser.textContent=firstName;
+  // Mobile topbar avatar chip (rebuilt mobile UI)
+  const topMobAv=document.getElementById('topbarMobAv');
+  if(topMobAv){
+    const initial=firstName.charAt(0).toUpperCase();
+    topMobAv.innerHTML=avatarUrl
+      ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" alt="${esc(firstName)}">`
+      :`<span id="topbarMobAvInitial">${initial}</span>`;
+  }
   // Re-call after DOM fully ready in case elements weren't present
   setTimeout(()=>{
     ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.innerHTML.includes(firstName.charAt(0))&&!el.querySelector('img'))el.innerHTML=avatarHTML;});
@@ -8625,20 +8926,53 @@ function openShortcutOverlay(){
   const overlay=document.createElement('div');
   overlay.id='shortcutOverlay';
   overlay.className='shortcut-overlay';
+  const groups = [
+    { title:'Navigation', items:[
+      ['⌘K / Ctrl+K','Command palette'],
+      ['⌘⇧K / Ctrl+Shift+K','Search everywhere'],
+      ['G','Grades tab'],
+      ['C','Calendar tab'],
+      ['/','Flux AI tab'],
+      ['↑/↓ or J/K','Navigate tasks'],
+    ] },
+    { title:'Tasks', items:[
+      ['N or T','Quick add task'],
+      ['+','Quick add overlay'],
+      ['Space / Enter','Toggle focused task'],
+      ['E','Edit focused task'],
+      ['P','Pin focused task'],
+      ['⌘Z','Undo last change'],
+      ['Right-click','Task context menu'],
+    ] },
+    { title:'Views', items:[
+      ['F','Focus mode (zen)'],
+      ['⌘D','Deep Work mode'],
+      ['Esc','Close / dismiss / exit focus'],
+      ['?','This shortcuts overlay'],
+    ] },
+    { title:'Reference tools', items:[
+      ['M','Math formula sheet'],
+      ['H','Chemistry reference'],
+      ['U','Unit converter'],
+      ['X','CS reference'],
+    ] },
+    { title:'AI', items:[
+      ['/','Open Flux AI'],
+      ['⌘↵','Send message (in AI input)'],
+      ['⌘⇧N','New AI chat'],
+    ] },
+  ];
+  const col = (g) => `<div class="shortcut-section">
+    <div class="shortcut-section-title">${g.title}</div>
+    ${g.items.map(([k,d]) => `<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
+  </div>`;
   overlay.innerHTML=`<div class="shortcut-dialog" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
     <div class="shortcut-header">
       <span class="shortcut-title">Keyboard Shortcuts</span>
-      <button onclick="document.getElementById('shortcutOverlay').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
+      <button type="button" onclick="document.getElementById('shortcutOverlay').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
     </div>
     <div class="shortcut-grid">
-      <div class="shortcut-section">
-        <div class="shortcut-section-title">Navigation</div>
-        ${[['⌘K / Ctrl+K','Command palette'],['⌘⇧K / Ctrl+Shift+K','Search everywhere'],['G','Grades tab'],['C','Calendar tab'],['/','Flux AI tab'],['↑/↓ or J/K','Navigate tasks'],['?','This shortcuts overlay']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
-      </div>
-      <div class="shortcut-section">
-        <div class="shortcut-section-title">Tasks & Tools</div>
-        ${[['N or T','Quick add task'],['+','Quick add overlay'],['F','Focus mode (zen)'],['Esc','Close / dismiss / exit focus'],['Space / Enter','Toggle focused task'],['E','Edit focused task'],['P','Pin focused task'],['⌘D','Deep Work mode'],['⌘Z','Undo last change'],['Right-click','Task context menu']].map(([k,d])=>`<div class="shortcut-row"><kbd class="shortcut-kbd">${k}</kbd><span>${d}</span></div>`).join('')}
-      </div>
+      ${groups.map(col).join('')}
     </div>
     <div style="font-size:.7rem;color:var(--muted);text-align:center;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">Press <kbd class="shortcut-kbd" style="font-size:.65rem">?</kbd> or <kbd class="shortcut-kbd" style="font-size:.65rem">Esc</kbd> to close</div>
   </div>`;
