@@ -258,7 +258,7 @@
     return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
   }
 
-  const OS_TABS=new Set(['overview','megamap','team','release','data','config','integrations','analytics','usage','audit','advanced']);
+  const OS_TABS=new Set(['overview','megamap','team','testers','release','data','config','integrations','analytics','usage','audit','advanced']);
 
   window.openOwnerSuite=function(prefTab){
     if(!isOwner())return;
@@ -284,6 +284,24 @@
         if((sessionLog||[]).length>=5)insights.push({icon:'⏱',t:'Focus',d:Math.round((sessionLog||[]).reduce((a,s)=>a+(s.mins||0),0)/60)+'h logged in focus sessions.'});
       }catch(_){}
       insights.push({icon:'🛡',t:'Security',d:'Use Google 2FA on the account that signs into Flux; session hints are advisory only in this client.'});
+
+      if(tab==='testers'){
+        const testers=load('flux_tester_emails',[]);
+        const rows=Array.isArray(testers)?testers:[];
+        return`
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
+          Accounts on this list get <b>tester mode</b> after sign-in: treated as <b>Pro</b> while payment flags stay off. Stored in <code style="font-size:.65rem">flux_tester_emails</code> (localStorage). Re-open the Command Center after edits; testers may need to refresh if already signed in.
+        </div>
+        ${rows.length?rows.map((em,i)=>`
+          <div style="display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+            <span style="font-size:.8rem;font-weight:600;flex:1;word-break:break-all">${esc(em)}</span>
+            <button type="button" onclick="ownerRemoveTesterEmail(${i})" style="padding:6px 10px;font-size:.72rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Remove</button>
+          </div>`).join(''):'<div style="color:var(--muted);font-size:.82rem;margin-bottom:10px">No tester emails yet.</div>'}
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <input type="email" id="osTesterEmail" placeholder="student@school.edu" style="flex:1;min-width:200px;margin:0;padding:8px 12px;font-size:.8rem;border-radius:10px">
+          <button type="button" onclick="ownerAddTesterEmail()" style="padding:8px 14px;font-size:.78rem">+ Add tester</button>
+        </div>`;
+      }
 
       if(tab==='megamap')return buildMegaMapHtml();
 
@@ -484,6 +502,7 @@
           <button type="button" data-os-tab="overview" onclick="window.__osSetTab('overview')">Overview</button>
           <button type="button" data-os-tab="megamap" onclick="window.__osSetTab('megamap')">Mega map</button>
           <button type="button" data-os-tab="team" onclick="window.__osSetTab('team')">Team & roles</button>
+          <button type="button" data-os-tab="testers" onclick="window.__osSetTab('testers')">Testers</button>
           <button type="button" data-os-tab="release" onclick="window.__osSetTab('release')">Release</button>
           <button type="button" data-os-tab="data" onclick="window.__osSetTab('data')">Data & backup</button>
           <button type="button" data-os-tab="config" onclick="window.__osSetTab('config')">Platform config</button>
@@ -698,5 +717,35 @@
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='flux-owner-compliance-bundle.json';a.click();URL.revokeObjectURL(a.href);
     if(typeof ownerAuditAppend==='function')ownerAuditAppend('compliance_bundle_export',{});
     if(typeof showToast==='function')showToast('Compliance bundle downloaded','success');
+  };
+
+  window.ownerAddTesterEmail=function(){
+    if(typeof isOwner!=='function'||!isOwner())return;
+    const inp=document.getElementById('osTesterEmail');
+    const em=(inp?.value||'').trim().toLowerCase();
+    if(!em||!em.includes('@')){alert('Enter a valid email.');return;}
+    const arr=Array.isArray(load('flux_tester_emails',[]))?load('flux_tester_emails',[]).slice():[];
+    if(arr.some(x=>String(x||'').toLowerCase().trim()===em)){alert('Already on the list.');return;}
+    arr.push(em);
+    save('flux_tester_emails',arr);
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('tester_add',{email:em});
+    if(inp)inp.value='';
+    openOwnerSuite('testers');
+    if(typeof checkTesterMode==='function')checkTesterMode();
+    if(typeof renderTesterBadge==='function')renderTesterBadge();
+  };
+
+  window.ownerRemoveTesterEmail=function(idx){
+    if(typeof isOwner!=='function'||!isOwner())return;
+    const arr=Array.isArray(load('flux_tester_emails',[]))?load('flux_tester_emails',[]).slice():[];
+    if(idx<0||idx>=arr.length)return;
+    const removed=arr.splice(idx,1)[0];
+    save('flux_tester_emails',arr);
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('tester_remove',{email:removed});
+    openOwnerSuite('testers');
+    if(typeof currentUser!=='undefined'&&currentUser&&String(currentUser.email||'').toLowerCase().trim()===String(removed||'').toLowerCase().trim()){
+      if(typeof checkTesterMode==='function')checkTesterMode();
+      if(typeof renderTesterBadge==='function')renderTesterBadge();
+    }
   };
 })();

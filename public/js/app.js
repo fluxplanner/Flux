@@ -16,6 +16,138 @@ const DATA_VERSION=3;
   }
 })();
 
+// ══ APP VERSION — bump for release notes / error payloads (Part 4) ══
+const APP_VERSION='1.0.0';
+
+// ══ FEATURE FLAGS — payments & gates (off until launch; see production hardening spec) ══
+const FLUX_FLAGS={
+  PAYMENTS_ENABLED:false,
+  SHOW_PRICING_PAGE:false,
+  SHOW_UPGRADE_PROMPTS:false,
+  ENFORCE_AI_LIMITS:false,
+  ENFORCE_TASK_LIMITS:false,
+  ENFORCE_CANVAS_GATE:false,
+  ENFORCE_SCHEDULE_IMPORT_GATE:false,
+  SHOW_PRO_BADGE:false,
+  TESTER_MODE:false,
+};
+
+/** Plan catalog: boolean values false = feature not included on that tier (requires upgrade when payments on). */
+const FLUX_PLANS={
+  free:{
+    name:'Free',
+    aiPremiumModel:false,
+    imageAnalysis:false,
+    canvasSync:false,
+    schedulePhotoImport:false,
+    exportPdf:false,
+  },
+  pro:{
+    name:'Student Pro',
+    aiPremiumModel:true,
+    imageAnalysis:true,
+    canvasSync:true,
+    schedulePhotoImport:true,
+    exportPdf:true,
+  },
+  school:{
+    name:'School License',
+    aiPremiumModel:true,
+    imageAnalysis:true,
+    canvasSync:true,
+    schedulePhotoImport:true,
+    exportPdf:true,
+  },
+};
+
+/** When payments are off or tester mode is on, everyone is treated as Pro. */
+function getUserPlan(){
+  if (!FLUX_FLAGS.PAYMENTS_ENABLED) return 'pro';
+  if (FLUX_FLAGS.TESTER_MODE) return 'pro';
+  // Part 2: read from Supabase subscriptions; until then default free for signed-in users
+  if (currentUser) return 'free';
+  return 'free';
+}
+
+function requiresPro(feature){
+  if (!FLUX_FLAGS.PAYMENTS_ENABLED) return false;
+  if (FLUX_FLAGS.TESTER_MODE) return false;
+  const plan = getUserPlan();
+  return FLUX_PLANS[plan]?.[feature] === false;
+}
+
+function showUpgradePrompt(feature, reason){
+  if (!FLUX_FLAGS.PAYMENTS_ENABLED || !FLUX_FLAGS.SHOW_UPGRADE_PROMPTS) return;
+  void feature; void reason;
+  // Part 2: full upgrade modal
+  if (typeof showToast === 'function') showToast('Upgrade prompts are not enabled yet.','info');
+}
+
+async function startCheckout(plan, period){
+  void plan; void period;
+  if (!FLUX_FLAGS.PAYMENTS_ENABLED){
+    if (typeof showToast === 'function') showToast('Payments coming soon — stay tuned!','info');
+    return;
+  }
+  // Part 2: Stripe Checkout via Edge Function
+  if (typeof showToast === 'function') showToast('Checkout is not wired yet.','info');
+}
+
+function showPricingPage(){
+  if (!FLUX_FLAGS.PAYMENTS_ENABLED || !FLUX_FLAGS.SHOW_PRICING_PAGE) return;
+  // Part 2: full-screen pricing overlay
+}
+
+function checkTesterMode(){
+  FLUX_FLAGS.TESTER_MODE = false;
+  if (!currentUser || !currentUser.email) return;
+  const list = load('flux_tester_emails', []);
+  if (!Array.isArray(list) || !list.length) return;
+  const email = String(currentUser.email).toLowerCase().trim();
+  if (list.some(e => String(e || '').toLowerCase().trim() === email)){
+    FLUX_FLAGS.TESTER_MODE = true;
+    try{ console.log('[Flux] Tester mode active for', currentUser.email); }catch(_){}
+  }
+}
+
+function renderTesterBadge(){
+  document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
+  if (!FLUX_FLAGS.TESTER_MODE || !currentUser) return;
+  const style = 'font-size:.62rem;font-weight:700;color:var(--muted2);letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;margin-top:8px;text-align:center;border:1px solid var(--border2);border-radius:8px;background:rgba(255,255,255,.04);font-family:JetBrains Mono,monospace';
+  const side = document.querySelector('.sidebar-footer');
+  if (side){
+    const d = document.createElement('div');
+    d.className = 'flux-tester-badge';
+    d.setAttribute('aria-label', 'Tester account — full access for QA');
+    d.textContent = 'Tester';
+    d.style.cssText = style;
+    side.appendChild(d);
+  }
+  const ac = document.getElementById('accountSignedIn');
+  if (ac){
+    const d = document.createElement('div');
+    d.className = 'flux-tester-badge';
+    d.setAttribute('aria-label', 'Tester account');
+    d.textContent = 'Tester';
+    d.style.cssText = style + ';max-width:220px';
+    const firstBtn = ac.querySelector('button');
+    if (firstBtn) ac.insertBefore(d, firstBtn);
+    else ac.appendChild(d);
+  }
+}
+
+try{
+  window.FLUX_FLAGS = FLUX_FLAGS;
+  window.APP_VERSION = APP_VERSION;
+  window.getUserPlan = getUserPlan;
+  window.requiresPro = requiresPro;
+  window.showUpgradePrompt = showUpgradePrompt;
+  window.startCheckout = startCheckout;
+  window.showPricingPage = showPricingPage;
+  window.checkTesterMode = checkTesterMode;
+  window.renderTesterBadge = renderTesterBadge;
+}catch(_){}
+
 // ══ PWA — register service worker (path follows current app URL, not hardcoded /Fluxplanner/) ══
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
@@ -5472,7 +5604,9 @@ async function handleSignedIn(user,session){
     stopLoginDemoRotator();
     const appEl=document.getElementById('app');
     if(appEl&&!appEl.classList.contains('visible'))showApp();
+    checkTesterMode();
     _updateUserUI(user,user.user_metadata?.full_name||user.email?.split('@')[0]||'');
+    renderTesterBadge();
     return;
   }
   // ── ACCOUNT SWITCH: wipe previous user's data ──────────────
@@ -5501,6 +5635,7 @@ async function handleSignedIn(user,session){
   // ────────────────────────────────────────────────────────────
 
   currentUser=user;
+  checkTesterMode();
   save('flux_was_guest',false);
   if(session?.provider_token){
     gmailToken=session.provider_token;
@@ -5546,6 +5681,7 @@ async function handleSignedIn(user,session){
     // Call _updateUserUI AFTER showApp() so DOM elements are visible
     _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
   }
+  renderTesterBadge();
   // Full cloud push every minute while logged in (faster cross-device; debounced typing still uses syncKey)
   if(!window._syncInterval)window._syncInterval=setInterval(()=>{ if(currentUser)void syncToCloud(); },60*1000);
 }
@@ -5582,6 +5718,8 @@ function _updateUserUI(user,name){
 }
 
 function handleSignedOut(){
+  FLUX_FLAGS.TESTER_MODE = false;
+  document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
   currentUser=null;gmailToken=null;
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
   sessionStorage.clear();
