@@ -3021,14 +3021,14 @@ function updateStudySearchUI(){
   const sections = $('stSections');
   const strip = $('stClassChips');
   const filterBar = $('stFilterBar');
-  const sticky = $('stStickyHeader');
+  const tbPanel = $('toolbox');
   if (clr) clr.hidden = !q;
   if (!q){
     if (results){ results.hidden = true; results.innerHTML = ''; }
     if (sections) sections.hidden = false;
     if (strip) strip.hidden = false;
     if (filterBar && getFluxUserClasses().length > 6) filterBar.hidden = false;
-    if (sticky) sticky.classList.remove('st-sticky--search');
+    if (tbPanel) tbPanel.classList.remove('st-panel--study-search');
     const fid = focusedUnifiedSectionId && UNIFIED_LAYOUT.some(s => s.id === focusedUnifiedSectionId)
       ? focusedUnifiedSectionId : 'science';
     focusedUnifiedSectionId = fid;
@@ -3036,7 +3036,7 @@ function updateStudySearchUI(){
     refreshSectionToolUI(fid);
     return;
   }
-  if (sticky) sticky.classList.add('st-sticky--search');
+  if (tbPanel) tbPanel.classList.add('st-panel--study-search');
   if (sections) sections.hidden = true;
   if (strip) strip.hidden = true;
   if (filterBar) filterBar.hidden = true;

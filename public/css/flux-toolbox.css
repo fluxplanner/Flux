@@ -23,27 +23,12 @@
   flex-direction: column;
   min-height: 0;
 }
-.st-sticky{
-  position: relative;
-  z-index: 4;
+/* Search row: safe-area top only (no sticky bar — avoids clipping scroll content) */
+#toolbox.st-panel > .st-search-wrap:first-child{
   padding-top: max(8px, var(--sa-top, 0px));
-  padding-bottom: 12px;
-  margin-bottom: 4px;
-  background: var(--bg, #0e1118);
-  border-bottom: 1px solid rgba(255,255,255,.06);
 }
-[data-theme="light"] .st-sticky{
-  background: var(--bg, #fff);
-  border-bottom-color: rgba(0,0,0,.08);
-}
-@media (min-width: 900px){
-  .st-sticky{
-    position: sticky;
-    top: 0;
-  }
-}
-.st-sticky--search .st-class-strip,
-.st-sticky--search .st-filter-bar{
+#toolbox.st-panel--study-search .st-class-strip,
+#toolbox.st-panel--study-search .st-filter-bar{
   display: none !important;
 }
 .st-search-wrap{
@@ -101,6 +86,7 @@
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
+  margin-bottom: 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
@@ -1494,7 +1480,7 @@
   .mx-box input{ font-size: .75rem; padding: 4px 2px; }
 }
 @media (max-width: 600px){
-  .st-sticky{ padding-top: max(10px, var(--sa-top, 0px)); }
+  #toolbox.st-panel > .st-search-wrap:first-child{ padding-top: max(10px, var(--sa-top, 0px)); }
 }
 
 /* Reduced motion */
