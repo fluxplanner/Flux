@@ -7,30 +7,7 @@
    binary/hex.
    ════════════════════════════════════════════════════════════════ */
 
-/* ── Panel + base ───────────────────────────────────────────── */
-#toolbox.flux-page,
-#toolbox{
-  max-width: min(1200px, 100%);
-  padding: 18px clamp(10px, 2vw, 28px);
-}
-
-/* Unified Study Tools shell */
-#toolbox.st-panel{
-  max-width: min(1200px, 100%);
-  margin: 0 auto;
-  padding: 0 clamp(10px, 2vw, 24px) max(24px, var(--sa-bottom, 0px));
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-/* Search row: safe-area top only (no sticky bar — avoids clipping scroll content) */
-#toolbox.st-panel > .st-search-wrap:first-child{
-  padding-top: max(8px, var(--sa-top, 0px));
-}
-#toolbox.st-panel--study-search .st-class-strip,
-#toolbox.st-panel--study-search .st-filter-bar{
-  display: none !important;
-}
+/* ── Panel + base (hub #toolbox removed — tool chrome lives in modals) ── */
 .st-search-wrap{
   display: flex;
   align-items: center;
@@ -1463,7 +1440,6 @@
 
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 640px){
-  #toolbox, #toolbox.st-panel{ padding: 12px max(12px, var(--sa-left, 0)) max(12px, var(--sa-bottom, 0)) max(12px, var(--sa-right, 0)); }
   .st-search-results-inner{ grid-template-columns: 1fr; }
   .st-class-strip{ scrollbar-width: none; }
   .st-class-strip::-webkit-scrollbar{ display: none; }
@@ -1479,10 +1455,6 @@
   .mx-grid{ grid-template-columns: 1fr; }
   .mx-box input{ font-size: .75rem; padding: 4px 2px; }
 }
-@media (max-width: 600px){
-  #toolbox.st-panel > .st-search-wrap:first-child{ padding-top: max(10px, var(--sa-top, 0px)); }
-}
-
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce){
   .tb-subject-btn, .tb-tool-btn, .tr-swap, .fs-copy, .st-section-body, .st-section-chevron{ transition: none !important; }

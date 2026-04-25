@@ -757,8 +757,6 @@
   /* Day grid + cells */
   #calendar .cal-grid{
     gap: 4px !important;
-    /* Slide animation target: applied when month changes */
-    will-change: transform, opacity;
   }
   #calendar .cal-hero-card .cal-day{
     min-height: 48px !important;
@@ -934,6 +932,11 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 64px;
 }
+/* Perf: per-row backdrop-filter forces expensive repaints on long lists */
+#flux-main .task-item{
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
 
 /* ════════════════════════════════════════════════════════════════
    PANEL TRANSITION ANIMATIONS (fade + slide 200ms)
@@ -944,7 +947,6 @@
 }
 .panel.active{
   animation: fluxPanelIn .2s cubic-bezier(.2,.85,.3,1) both;
-  will-change: transform, opacity;
 }
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
@@ -999,9 +1001,8 @@ body.flux-panic .task-card.flux-task-urgent{
 }
 
 /* ════════════════════════════════════════════════════════════════
-   Study tools panel (unified #toolbox.st-panel) — legacy ref-* kept for modals
+   Reference / study tool modals (ref-*) — inline hub removed
    ════════════════════════════════════════════════════════════════ */
-#toolbox.st-panel{ max-width: 1240px; margin: 0 auto; }
 
 .ref-search-row{ margin: 0 0 14px; }
 .ref-search-input{
@@ -1166,12 +1167,6 @@ body.flux-panic .task-card.flux-task-urgent{
   border-radius: 14px;
   background: rgba(255,255,255,.02);
   border: 1px dashed rgba(255,255,255,.1);
-}
-
-@media (max-width: 768px){
-  #toolbox.st-panel{
-    padding: 12px max(14px, var(--sa-left)) max(120px, calc(92px + var(--sa-bottom))) max(14px, var(--sa-right)) !important;
-  }
 }
 
 /* ════════════════════════════════════════════════════════════════

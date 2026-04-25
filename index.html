@@ -478,7 +478,6 @@
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
-        <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">Me</div>
@@ -543,7 +542,6 @@
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
-        <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">Me</div>
@@ -1408,20 +1406,6 @@
       </div>
     </div>
 
-    <!-- Study tools — unified: search, classes, subject sections with tool chips -->
-    <div id="toolbox" class="panel flux-page st-panel">
-        <div class="st-search-wrap">
-          <input type="search" id="stSearchInput" class="st-search-input" placeholder="Search tools, formulas, subjects…" autocomplete="off" aria-label="Search study tools" />
-          <button type="button" id="stSearchClear" class="st-search-clear" aria-label="Clear search" hidden>×</button>
-        </div>
-        <div class="st-filter-bar" id="stFilterBar" hidden>
-          <label class="st-filter-mode-label"><input type="checkbox" id="stFilterMode" /> Filter to matching section only</label>
-        </div>
-        <div class="st-class-strip" id="stClassChips" role="tablist" aria-label="Your classes"></div>
-      <div id="stSearchResults" class="st-search-results" hidden aria-live="polite"></div>
-      <div id="stSections" class="st-sections" aria-label="Study tools by subject"></div>
-    </div>
-
     <!-- ─── AI (Claude-inspired layout) ─── -->
     <div id="ai" class="panel flux-page flux-ai-panel" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
       <div class="flux-ai-canvas">
@@ -2087,9 +2071,6 @@
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="canvas" onclick="navMob('canvas')">
       <span class="more-sheet-icon" aria-hidden="true">🎓</span><span class="more-sheet-label">Canvas</span>
-    </button>
-    <button type="button" class="more-sheet-item" data-nav-tab="toolbox" onclick="navMob('toolbox')">
-      <span class="more-sheet-icon" aria-hidden="true">🧰</span><span class="more-sheet-label">Study tools</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="settings" onclick="navMob('settings')">
       <span class="more-sheet-icon" aria-hidden="true">⚙</span><span class="more-sheet-label">Settings</span>

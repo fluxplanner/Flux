@@ -45,13 +45,72 @@
     { id:'cs-ref', emoji:'💻', name:'CS Reference', desc:'Binary/hex, ASCII, Big-O, logic gates.', subjects:['cs','math'], fn:'openCSReference', shortcut:'X' },
   ];
 
-  function openToolboxTool(subjectId, toolId){
+  function fluxStudyOverlayEsc(e){
+    if (e.key !== 'Escape') return;
+    if (typeof window.closeFluxStudyToolOverlay === 'function') window.closeFluxStudyToolOverlay();
+  }
+
+  function closeFluxStudyToolOverlay(){
+    const ov = document.getElementById('fluxStudyOverlay');
+    if (!ov) return;
+    document.removeEventListener('keydown', fluxStudyOverlayEsc, true);
+    const body = ov.querySelector('.flux-study-ov-body');
+    const periodicEl = document.getElementById('periodic');
+    if (periodicEl && body && body.contains(periodicEl)){
+      let stash = document.getElementById('periodicStash');
+      if (!stash){
+        stash = document.createElement('div');
+        stash.id = 'periodicStash';
+        stash.hidden = true;
+        document.body.appendChild(stash);
+      }
+      stash.appendChild(periodicEl);
+      periodicEl.hidden = true;
+    }
+    if (body) body.innerHTML = '';
+    ov.remove();
+  }
+
+  /** secOrSub: unified section id (e.g. science) or SUBJECTS id; chipOrTid: unified chip id or SUBJECTS tool id */
+  function openToolboxTool(secOrSub, chipOrTid){
     try{
+      let subjectId = secOrSub;
+      let toolId = chipOrTid;
+      const layout = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT;
+      if (layout && secOrSub && chipOrTid){
+        const sec = layout.find(s => s.id === secOrSub);
+        const chip = sec && sec.tools.find(t => t.id === chipOrTid);
+        if (chip && chip.mode === 'inline'){
+          subjectId = chip.sub;
+          toolId = chip.tid;
+        }
+      }
       if (typeof window.activateStudyTool === 'function') window.activateStudyTool(subjectId, toolId);
-      if (typeof window.nav === 'function') window.nav('toolbox');
-      setTimeout(() => {
-        if (typeof window.renderToolbox === 'function') window.renderToolbox();
-      }, 30);
+      closeFluxStudyToolOverlay();
+      const rtb = window.fluxToolbox && typeof window.fluxToolbox.renderToolIntoBody === 'function';
+      if (!rtb){
+        if (typeof window.showToast === 'function') window.showToast('Study tools are still loading — try again in a moment.', 'info');
+        return;
+      }
+      const ov = document.createElement('div');
+      ov.id = 'fluxStudyOverlay';
+      ov.className = 'ref-tool-overlay ref-overlay--wide';
+      ov.innerHTML = '<div class="ref-tool-modal" role="dialog" aria-modal="true" aria-labelledby="fluxStudyOVTitle">'+
+        '<div class="ref-tool-head">'+
+        '<span class="ref-tool-emoji" aria-hidden="true">🧰</span>'+
+        '<div class="ref-tool-title" id="fluxStudyOVTitle">Study tool</div>'+
+        '<button type="button" class="ref-tool-close" aria-label="Close">✕</button>'+
+        '</div>'+
+        '<div class="ref-tool-body flux-study-ov-body" style="max-height:min(88vh,900px);overflow:auto;padding:12px 14px 18px"></div>'+
+        '</div>';
+      document.body.appendChild(ov);
+      const body = ov.querySelector('.flux-study-ov-body');
+      const closeBtn = ov.querySelector('.ref-tool-close');
+      window.fluxToolbox.renderToolIntoBody(body, subjectId, toolId);
+      const onClose = () => closeFluxStudyToolOverlay();
+      if (closeBtn) closeBtn.addEventListener('click', onClose);
+      ov.addEventListener('click', (e) => { if (e.target === ov) onClose(); });
+      document.addEventListener('keydown', fluxStudyOverlayEsc, true);
     }catch(e){ console.warn(e); }
   }
 
@@ -68,6 +127,7 @@
     window.fluxRefsClassify = classifyClass;
     window.fluxRefsTools = TOOLS;
     window.openToolboxTool = openToolboxTool;
+    window.closeFluxStudyToolOverlay = closeFluxStudyToolOverlay;
   }catch(e){}
 
   ['openMathFormulas','openChemReference','openCodonTable','openHistoryMap',

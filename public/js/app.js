@@ -781,7 +781,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas & Gmail',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas & Gmail',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',references:'Study Tools',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -932,11 +932,10 @@ const DEFAULT_TABS=[
   {id:'profile',icon:'👤',label:'Profile',visible:true},
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
-  {id:'toolbox',icon:'🧰',label:'Study tools',visible:true},
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
-tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references');
+tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references'&&t.id!=='toolbox');
 // Ensure new tabs get added if missing
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
 // Legacy tab label (older builds / stored flux_tabs)
@@ -1049,7 +1048,7 @@ function updateNavAriaCurrent(tabId){
   });
 }
 function nav(id,btn,navOpt){
-  if(id==='references'){ id='toolbox'; }
+  if(id==='references'){ id='dashboard'; }
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
   if(tc&&!tc.visible){nav('dashboard');return;}
@@ -1072,7 +1071,7 @@ function nav(id,btn,navOpt){
   }
   updateNavAriaCurrent(id);
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{ if(typeof window.renderToolbox==='function') window.renderToolbox(); }};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel()};
   fns[id]?.();
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
@@ -1163,7 +1162,6 @@ const NAV_TAB_SVGS={
   notes:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>`,
   timer:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="7"/><path d="M12 7V4"/><path d="M9 2h6"/><path d="M12 14l1.5-1.2"/></svg>`,
   canvas:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5Z"/><path d="M6 12v5c0 1.1 1.8 2 4 2s4-.9 4-2v-5"/></svg>`,
-  toolbox:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/></svg>`,
   profile:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>`,
   goals:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2"/></svg>`,
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
@@ -1182,7 +1180,7 @@ const BNAV_ICONS={
 
 /** Sidebar / drawer / More: SVG when defined; else emoji from tabConfig. */
 function getNavIconHtml(tabId,variant){
-  const key=tabId==='references'?'toolbox':tabId;
+  const key=tabId==='references'?'notes':tabId;
   const svg=NAV_TAB_SVGS[key]||null;
   if(svg){
     const wrap=variant==='moreSheet'?'ms-svg-wrap':'ni-svg-wrap';
@@ -1203,7 +1201,7 @@ function syncMoreSheetNavIcons(){
 function renderSidebars(){
   const groups=[
     {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['school','grades','notes','timer','canvas','toolbox']},
+    {label:'School',ids:['school','grades','notes','timer','canvas']},
     {label:'Me',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
@@ -5105,7 +5103,6 @@ function renderCmdResults(){
   navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
 
   const refTools=[
-    {icon:'📚',label:'Study Tools',action:()=>{nav('toolbox');closeCommandPalette();}},
     {icon:'📐',label:'Math Formula Sheet',action:()=>{closeCommandPalette();window.openMathFormulas&&window.openMathFormulas();}},
     {icon:'⚗️',label:'Chemistry Reference',action:()=>{closeCommandPalette();window.openChemReference&&window.openChemReference();}},
     {icon:'🧬',label:'Biology Codon Table',action:()=>{closeCommandPalette();window.openCodonTable&&window.openCodonTable();}},
@@ -5114,8 +5111,8 @@ function renderCmdResults(){
     {icon:'🇫🇷',label:'French Conjugator',action:()=>{closeCommandPalette();window.openFrenchConjugator&&window.openFrenchConjugator();}},
     {icon:'🔁',label:'Unit Converter',action:()=>{closeCommandPalette();window.openUnitConverter&&window.openUnitConverter();}},
     {icon:'💻',label:'CS Reference',action:()=>{closeCommandPalette();window.openCSReference&&window.openCSReference();}},
-    {icon:'🧪',label:'Periodic Table',action:()=>{closeCommandPalette();if(typeof window.openPeriodicTableModal==='function')window.openPeriodicTableModal();else if(typeof window.openPeriodicTable==='function')window.openPeriodicTable();else nav('toolbox');}},
-    {icon:'🪐',label:'Physics Formula Sheet',action:()=>{closeCommandPalette();if(typeof window.openPhysicsSandbox==='function')window.openPhysicsSandbox();else nav('toolbox');}},
+    {icon:'🧪',label:'Periodic Table',action:()=>{closeCommandPalette();if(typeof window.openPeriodicTableModal==='function')window.openPeriodicTableModal();else if(typeof window.openPeriodicTable==='function')window.openPeriodicTable();else if(typeof window.openToolboxTool==='function')window.openToolboxTool('science','periodic-tbl');}},
+    {icon:'🪐',label:'Physics Formula Sheet',action:()=>{closeCommandPalette();if(typeof window.openPhysicsSandbox==='function')window.openPhysicsSandbox();else if(typeof window.openToolboxTool==='function')window.openToolboxTool('science','formulas-sci');}},
   ];
   refTools.forEach(r=>{if(!q||r.label.toLowerCase().includes(q))cmds.push({...r,cat:'Study Tools'});});
 
@@ -5218,8 +5215,15 @@ function calcGPAWhatIf(){
 
 // ══ PANIC GLOW (task-level) ══
 function applyPanicGlow(){
+  if(document.hidden)return;
+  if(!settings.panic)return;
   const now=new Date();
   const in12h=new Date(now.getTime()+12*60*60*1000);
+  const anySoon=tasks.some(t=>{
+    if(t.done||!t.date)return false;
+    try{const due=new Date(t.date+'T23:59:00');return due<=in12h&&due>=now;}catch(_){return false;}
+  });
+  if(!anySoon)return;
   document.querySelectorAll('[data-task-id]').forEach(el=>{
     const id=parseInt(el.dataset.taskId);
     const t=tasks.find(x=>x.id===id);

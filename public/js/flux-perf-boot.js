@@ -23,14 +23,13 @@
     setTimeout(killBootSkel, 1800);
   });
 
-  // ─── will-change hints for frequently-animated elements ─────────
-  // Applied after first paint so they don't fight the initial layout.
-  // Re-applied after major re-renders via requestIdleCallback.
+  // ─── will-change hints (narrow + debounced) ────────────────────
+  // Never hint .panel: dozens of full-screen panels → each promoted to
+  // its own compositor layer → GPU churn and scroll jank. Same for .ai-bub
+  // (many bubbles). Re-running on every renderTasks was especially costly.
   function hintWillChange(){
-    /* Omit .task-item: will-change + springy hover caused a harsh “snap”; rows animate smoothly without it. */
-    var sels = '.bnav, .more-sheet, .more-sheet-overlay, .panel, '
-             + '.modal-overlay .modal, .toast, #fluxToastStack, '
-             + '.ai-bub, .ref-tool-modal';
+    var sels = '.bnav, .more-sheet, .more-sheet-overlay, '
+             + '.modal-overlay .modal, .toast, #fluxToastStack, .ref-tool-modal';
     var els = document.querySelectorAll(sels);
     for (var i=0; i<els.length; i++){
       try {
@@ -42,6 +41,19 @@
     setTimeout(hintWillChange, 400);
   });
 
+  var _hintDebounce = null;
+  function scheduleHintWillChange(){
+    clearTimeout(_hintDebounce);
+    _hintDebounce = setTimeout(function(){
+      _hintDebounce = null;
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(hintWillChange, { timeout: 1800 });
+      } else {
+        setTimeout(hintWillChange, 400);
+      }
+    }, 800);
+  }
+
   ['renderTasks','renderCalendar','renderStats'].forEach(function(n){
     var wait = setInterval(function(){
       if (typeof window[n] !== 'function') return;
@@ -49,11 +61,7 @@
       var orig = window[n];
       window[n] = function(){
         var r = orig.apply(this, arguments);
-        if (typeof requestIdleCallback === 'function') {
-          requestIdleCallback(hintWillChange, {timeout: 500});
-        } else {
-          setTimeout(hintWillChange, 120);
-        }
+        scheduleHintWillChange();
         return r;
       };
     }, 180);
