@@ -9,7 +9,11 @@ const DATA_VERSION=3;
 (function checkDataVersion(){
   const stored=parseInt(localStorage.getItem('flux_data_version')||'0');
   if(stored<DATA_VERSION){
-    const keep=['flux_data_version','flux_splash_shown'];
+    const keep=[
+      'flux_data_version','flux_splash_shown',
+      'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+      'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    ];
     Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
     localStorage.setItem('flux_data_version',String(DATA_VERSION));
     console.log('✓ Flux data wiped for version',DATA_VERSION);
@@ -3387,7 +3391,11 @@ function exportToICal(){
 function clearCache(){
   const inp=prompt('Type DELETE to confirm wiping all planner data. This cannot be undone.');
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
-  const keep=['flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name'];
+  const keep=[
+    'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
+    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+  ];
   Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
   tasks=[];grades={};gpaPrior={prevGpa:'',prevCredits:''};notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
   renderStats();renderTasks();

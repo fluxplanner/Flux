@@ -15,10 +15,19 @@
   try{
     var raw=localStorage.getItem('flux_liquid_glass');
     var narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-    var on=raw===null?narrow:JSON.parse(raw)===true;
+    var p=null;
+    if(raw!==null&&raw!==''){
+      try{
+        var v=JSON.parse(raw);
+        if(v===true)p=true;
+        else if(v===false)p=false;
+      }catch(e2){}
+    }
+    var on=p!==null?p:narrow;
     document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
   }catch(e){
-    document.documentElement.setAttribute('data-flux-glass','off');
+    var n=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
+    document.documentElement.setAttribute('data-flux-glass',n?'on':'off');
   }
 })();
 </script>
@@ -1411,12 +1420,25 @@
           <input type="search" id="stSearchInput" class="st-search-input" placeholder="Search tools, formulas, subjects…" autocomplete="off" aria-label="Search study tools" />
           <button type="button" id="stSearchClear" class="st-search-clear" aria-label="Clear search" hidden>×</button>
         </div>
+        <div class="st-layout-row" id="stLayoutRow" role="group" aria-label="Study tools view">
+          <span class="st-layout-kicker">View</span>
+          <div class="st-layout-toggle">
+            <button type="button" class="st-layout-btn" id="stLayoutSubject" data-st-layout="subject" aria-pressed="true">By subject</button>
+            <button type="button" class="st-layout-btn" id="stLayoutClass" data-st-layout="class" aria-pressed="false">By class</button>
+          </div>
+        </div>
         <div class="st-filter-bar" id="stFilterBar" hidden>
           <label class="st-filter-mode-label"><input type="checkbox" id="stFilterMode" /> Filter to matching section only</label>
         </div>
         <div class="st-class-strip" id="stClassChips" role="tablist" aria-label="Your classes"></div>
       <div id="stSearchResults" class="st-search-results" hidden aria-live="polite"></div>
-      <div id="stSections" class="st-sections" aria-label="Study tools by subject"></div>
+      <div id="stSections" class="st-sections" aria-label="Study tools">
+        <div id="stSubjectHost" class="st-subject-host"></div>
+        <div id="stClassHost" class="st-class-host" hidden>
+          <div id="stClassBlocks" class="st-class-blocks"></div>
+          <div id="stClassInlineMount" class="st-class-inline-mount" aria-live="polite"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ─── AI (Claude-inspired layout) ─── -->

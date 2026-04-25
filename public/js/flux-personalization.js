@@ -60,6 +60,18 @@
     save(KEY_MOOD_TINT,!!on);
     applyMoodTint();
   }
+  /** true / false = explicit user choice; null = unset (viewport default for glass). */
+  function readLiquidGlassPref(){
+    const raw=localStorage.getItem(KEY_LIQUID_GLASS);
+    if(raw===null||raw==='')return null;
+    try{
+      const v=JSON.parse(raw);
+      if(v===true)return true;
+      if(v===false)return false;
+    }catch(e){}
+    return null;
+  }
+
   function applyMoodTint(){
     const on=load(KEY_MOOD_TINT,true);
     document.documentElement.removeAttribute('data-mood-tint');
@@ -74,19 +86,9 @@
   }
 
   function applyLiquidGlass(){
-    let on=true;
-    try{
-      const raw=localStorage.getItem(KEY_LIQUID_GLASS);
-      if(raw!==null)on=JSON.parse(raw)===true;
-      else{
-        const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-        on=narrow;
-      }
-    }catch(e){
-      try{
-        on=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-      }catch(_){on=false;}
-    }
+    const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
+    const p=readLiquidGlassPref();
+    const on=p!==null?p:narrow;
     document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
   }
   function setLiquidGlassEnabled(on){
@@ -340,15 +342,9 @@
     }
     const lg=document.getElementById('fluxLiquidGlassToggle');
     if(lg){
-      let en=true;
-      try{
-        const raw=localStorage.getItem(KEY_LIQUID_GLASS);
-        if(raw!==null)en=JSON.parse(raw)===true;
-        else{
-          const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-          en=narrow;
-        }
-      }catch(e){en=true;}
+      const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
+      const p=readLiquidGlassPref();
+      const en=p!==null?p:narrow;
       lg.classList.toggle('on',en);
       lg.setAttribute('aria-pressed',en?'true':'false');
       lg.onclick=()=>{

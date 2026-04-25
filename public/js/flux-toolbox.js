@@ -2962,6 +2962,164 @@ function getActiveChipId(sec){
   return sec.tools[0]?.id || null;
 }
 
+const LS_ST_LAYOUT = 'flux_study_tools_layout';
+
+function getStudyLayoutMode(){
+  try{
+    const v = localStorage.getItem(LS_ST_LAYOUT);
+    return v === 'class' ? 'class' : 'subject';
+  }catch(e){ return 'subject'; }
+}
+
+function setStudyLayoutMode(mode){
+  const m = mode === 'class' ? 'class' : 'subject';
+  try{ localStorage.setItem(LS_ST_LAYOUT, m); }catch(e){}
+  syncStudyLayoutToggleUI();
+  applyStudyLayoutModeToDom();
+}
+
+function syncStudyLayoutToggleUI(){
+  const mode = getStudyLayoutMode();
+  const bSub = $('stLayoutSubject');
+  const bCls = $('stLayoutClass');
+  if (bSub){
+    bSub.classList.toggle('active', mode === 'subject');
+    bSub.setAttribute('aria-pressed', mode === 'subject' ? 'true' : 'false');
+  }
+  if (bCls){
+    bCls.classList.toggle('active', mode === 'class');
+    bCls.setAttribute('aria-pressed', mode === 'class' ? 'true' : 'false');
+  }
+}
+
+/** Move every inline tool body back under its subject accordion (needed before rebuilding By-class UI). */
+function rehomeAllStudyToolBodies(){
+  UNIFIED_LAYOUT.forEach(sec => {
+    const body = document.getElementById('st-tool-body-'+sec.id);
+    const slot = document.querySelector('#st-section-'+sec.id+' .st-section-body');
+    if (body && slot) slot.appendChild(body);
+  });
+}
+
+function placeStudyToolBodyForLayout(secId){
+  const body = document.getElementById('st-tool-body-'+secId);
+  if (!body) return;
+  if (getStudyLayoutMode() === 'class'){
+    const mount = $('stClassInlineMount');
+    if (mount && body.parentElement !== mount) mount.appendChild(body);
+  } else {
+    const slot = document.querySelector('#st-section-'+secId+' .st-section-body');
+    if (slot && body.parentElement !== slot) slot.appendChild(body);
+  }
+}
+
+function getToolboxSectionHosts(){
+  const wrap = $('stSections');
+  if (wrap && !$('stSubjectHost')){
+    wrap.innerHTML = '<div id="stSubjectHost" class="st-subject-host"></div><div id="stClassHost" class="st-class-host" hidden><div id="stClassBlocks" class="st-class-blocks"></div><div id="stClassInlineMount" class="st-class-inline-mount" aria-live="polite"></div></div>';
+  }
+  return { wrap, subject: $('stSubjectHost'), classHost: $('stClassHost'), blocks: $('stClassBlocks'), mount: $('stClassInlineMount') };
+}
+
+function syncStudyPanelHostVisibility(){
+  const mode = getStudyLayoutMode();
+  const { subject, classHost } = getToolboxSectionHosts();
+  if (subject) subject.hidden = mode !== 'subject';
+  if (classHost) classHost.hidden = mode !== 'class';
+  const strip = $('stClassChips');
+  if (strip) strip.hidden = mode === 'class';
+}
+
+function sortClassesForStudyBlocks(cls){
+  return [...cls].sort((a, b) => {
+    const pa = parseInt(a.period, 10);
+    const pb = parseInt(b.period, 10);
+    const aOk = !isNaN(pa);
+    const bOk = !isNaN(pb);
+    if (aOk && bOk && pa !== pb) return pa - pb;
+    if (aOk && !bOk) return -1;
+    if (!aOk && bOk) return 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+  });
+}
+
+function syncClassBlockChipsActive(secId, chipId){
+  document.querySelectorAll('.st-class-host .st-tool-chip').forEach(b => {
+    const sid = b.getAttribute('data-sec');
+    const cid = b.getAttribute('data-chip');
+    b.classList.toggle('active', sid === secId && cid === chipId);
+  });
+}
+
+function renderStudyClassBlocks(){
+  const { blocks } = getToolboxSectionHosts();
+  if (!blocks) return;
+  const cls = getFluxUserClasses();
+  rehomeAllStudyToolBodies();
+  if (!cls.length){
+    blocks.innerHTML = `<div class="st-class-empty tb-card">
+      <p class="st-class-empty-title">No classes yet</p>
+      <p class="tb-sub">Add classes in <strong>School Info</strong> so Study tools can match tools to your schedule.</p>
+      <div class="st-class-empty-actions">
+        <button type="button" class="tb-btn" onclick="nav('school')">Open School Info</button>
+        <button type="button" class="btn-sec" onclick="setStudyLayoutMode('subject')">View by subject</button>
+      </div>
+    </div>`;
+    return;
+  }
+  const sorted = sortClassesForStudyBlocks(cls);
+  blocks.innerHTML = sorted.map(c => {
+    const secId = primarySectionForTags(c.tags);
+    const sec = secId ? UNIFIED_LAYOUT.find(s => s.id === secId) : null;
+    const col = c.color ? ` style="--stcb-col:${esc(c.color)}"` : '';
+    const meta = c.period != null && String(c.period) !== '' ? `<span class="st-class-block-meta">P${esc(String(c.period))}</span>` : '';
+    if (!sec){
+      return `<article class="st-class-block tb-card st-class-block--unknown"${col}>
+        <header class="st-class-block-head"><span class="st-class-block-name">${esc(c.name)}</span>${meta}</header>
+        <p class="tb-sub st-class-block-hint">This class name doesn’t match a subject area yet. Adjust the name in School Info or use By subject.</p>
+        <button type="button" class="btn-sec st-class-block-fallback" data-st-fallback="subject">Browse by subject</button>
+      </article>`;
+    }
+    const chips = sec.tools.map(t => `
+      <button type="button" class="st-tool-chip" data-sec="${esc(sec.id)}" data-chip="${esc(t.id)}" role="tab">${t.icon ? `<span class="st-tool-chip-ic" aria-hidden="true">${t.icon}</span>` : ''}<span>${esc(t.label)}</span></button>
+    `).join('');
+    return `<article class="st-class-block tb-card"${col}>
+      <header class="st-class-block-head">
+        <span class="st-class-block-name">${esc(c.name)}</span>
+        ${meta}
+        <span class="st-class-block-sec">${esc(sec.name)}</span>
+      </header>
+      <div class="st-tool-chips st-tool-chips--in-card" role="tablist">${chips}</div>
+    </article>`;
+  }).join('');
+  blocks.querySelectorAll('.st-tool-chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const sid = btn.getAttribute('data-sec');
+      const id = btn.getAttribute('data-chip');
+      if (!sid || !id) return;
+      setLsStudyTool(sid, id);
+      refreshSectionToolUI(sid);
+    });
+  });
+  blocks.querySelectorAll('[data-st-fallback="subject"]').forEach(b => {
+    b.addEventListener('click', () => { setStudyLayoutMode('subject'); });
+  });
+}
+
+function applyStudyLayoutModeToDom(){
+  syncStudyPanelHostVisibility();
+  const fb = $('stFilterBar');
+  const ncls = getFluxUserClasses().length;
+  if (fb) fb.hidden = getStudyLayoutMode() === 'class' || ncls <= 6;
+  if (getStudyLayoutMode() === 'class') renderStudyClassBlocks();
+  else rehomeAllStudyToolBodies();
+  const fid = focusedUnifiedSectionId && UNIFIED_LAYOUT.some(s => s.id === focusedUnifiedSectionId)
+    ? focusedUnifiedSectionId
+    : 'science';
+  refreshSectionToolUI(fid);
+}
+
 function renderToolContentForChip(body, chip){
   if (chip.mode === 'inline') renderToolIntoBody(body, chip.sub, chip.tid);
   else if (chip.mode === 'modal') renderModalPreview(body, chip.label, chip.desc, chip.fn, 'Open '+chip.label);
@@ -2976,7 +3134,13 @@ function scrollToStudySection(secId, pulse){
   const hdr = wrap.querySelector('.st-section-header');
   if (inner){ inner.classList.remove('collapsed'); inner.style.maxHeight = '2000px'; }
   if (hdr){ hdr.setAttribute('aria-expanded','true'); hdr.querySelector('.st-section-chevron')?.classList.remove('collapsed'); }
-  wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+  if (getStudyLayoutMode() !== 'class'){
+    wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+  } else {
+    const blk = document.querySelector('.st-class-blocks .st-tool-chip[data-sec="'+secId+'"]')?.closest('.st-class-block');
+    if (blk) blk.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    $('stClassInlineMount')?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
   if (pulse && hdr){
     hdr.classList.add('st-section--pulse');
     setTimeout(() => hdr.classList.remove('st-section--pulse'), 1400);
@@ -3026,8 +3190,9 @@ function updateStudySearchUI(){
   if (!q){
     if (results){ results.hidden = true; results.innerHTML = ''; }
     if (sections) sections.hidden = false;
-    if (strip) strip.hidden = false;
-    if (filterBar && getFluxUserClasses().length > 6) filterBar.hidden = false;
+    syncStudyPanelHostVisibility();
+    const ncls = getFluxUserClasses().length;
+    if (filterBar) filterBar.hidden = getStudyLayoutMode() === 'class' || ncls <= 6;
     if (tbPanel) tbPanel.classList.remove('st-panel--study-search');
     const fid = focusedUnifiedSectionId && UNIFIED_LAYOUT.some(s => s.id === focusedUnifiedSectionId)
       ? focusedUnifiedSectionId : 'science';
@@ -3095,7 +3260,7 @@ function refreshSectionToolUI(secId){
       b.classList.toggle('active', id === getActiveChipId(s));
     });
   });
-  const body = wrap.querySelector('.st-tool-content');
+  const body = document.getElementById('st-tool-body-'+secId);
   if (!body) return;
   const chip = sec.tools.find(t => t.id === chipId) || sec.tools[0];
   if (!chip) return;
@@ -3104,6 +3269,8 @@ function refreshSectionToolUI(secId){
     state.tool = chip.tid;
   }
   renderToolContentForChip(body, chip);
+  placeStudyToolBodyForLayout(secId);
+  syncClassBlockChipsActive(secId, chipId);
 }
 
 function wireStudyUnifiedOnce(){
@@ -3132,6 +3299,8 @@ function wireStudyUnifiedOnce(){
       updateStudySearchUI();
     });
   }
+  $('stLayoutSubject')?.addEventListener('click', () => { setStudyLayoutMode('subject'); });
+  $('stLayoutClass')?.addEventListener('click', () => { setStudyLayoutMode('class'); });
 }
 
 function activateStudyTool(subjectId, toolId){
@@ -3152,8 +3321,9 @@ function activateStudyTool(subjectId, toolId){
 
 function renderUnifiedStudyTools(){
   const root = $('toolbox');
-  const host = $('stSections');
-  if (!root || !host) return;
+  getToolboxSectionHosts();
+  const subjectHost = $('stSubjectHost');
+  if (!root || !subjectHost) return;
   wireStudyUnifiedOnce();
 
   let activeClass = 'all';
@@ -3161,7 +3331,7 @@ function renderUnifiedStudyTools(){
 
   if (!root._stSectionsBuilt){
     root._stSectionsBuilt = 1;
-    host.innerHTML = UNIFIED_LAYOUT.map(sec => {
+    subjectHost.innerHTML = UNIFIED_LAYOUT.map(sec => {
       const collapsed = lsStudyCollapsed(sec.id);
       const pills = classPillsHtml(sec);
       const sid = sec.id;
@@ -3183,7 +3353,7 @@ function renderUnifiedStudyTools(){
       </section>`;
     }).join('');
 
-    host.querySelectorAll('.st-section').forEach(secEl => {
+    subjectHost.querySelectorAll('.st-section').forEach(secEl => {
       const sid = secEl.getAttribute('data-section');
       secEl.querySelector('.st-section-header')?.addEventListener('click', () => {
         const body = secEl.querySelector('.st-section-body');
@@ -3276,6 +3446,17 @@ function renderUnifiedStudyTools(){
     }
   });
 
+  syncStudyLayoutToggleUI();
+  syncStudyPanelHostVisibility();
+  const ncls2 = getFluxUserClasses().length;
+  const fb2 = $('stFilterBar');
+  if (fb2) fb2.hidden = getStudyLayoutMode() === 'class' || ncls2 <= 6;
+  const classListSig = getFluxUserClasses().map(c => String(c.id) + ':' + (c.name || '')).join('|');
+  if (getStudyLayoutMode() === 'class' && root._stClassSig !== classListSig){
+    root._stClassSig = classListSig;
+    renderStudyClassBlocks();
+  }
+
   updateStudySearchUI();
 }
 
@@ -3288,6 +3469,7 @@ function renderToolboxCompat(){
 window.renderToolbox = renderToolboxCompat;
 window.renderStudyTools = renderToolboxCompat;
 window.activateStudyTool = activateStudyTool;
+window.setStudyLayoutMode = setStudyLayoutMode;
 window.fluxToolbox = { render: renderToolboxCompat, SUBJECTS, state, activateStudyTool, renderToolIntoBody, UNIFIED_LAYOUT };
 
 })();
