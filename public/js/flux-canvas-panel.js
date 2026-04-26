@@ -994,8 +994,9 @@
     const cv = document.getElementById("canvas");
     if (cv && !on) {
       cv.style.flex = "";
-      cv.style.overflowY = "";
       cv.style.minWidth = "";
+      /* Do not clear overflow-y here — syncPanelScrollLayout re-applies it; clearing can briefly
+         re-enable .panel{overflow-y:auto!important} before sync runs. */
     }
     const ai = document.getElementById("ai");
     if (ai) {
@@ -1015,46 +1016,6 @@
       }
     }
     if (typeof syncPanelScrollLayout === "function") syncPanelScrollLayout();
-    // #region agent log
-    try {
-      const c = document.getElementById("canvas");
-      const a = document.getElementById("ai");
-      const act = document.querySelector(".main-content > .panel.active");
-      fetch("http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7bd113" },
-        body: JSON.stringify({
-          sessionId: "7bd113",
-          runId: "post-fix",
-          location: "flux-canvas-panel.js:fluxApplyCanvasSplitLayout",
-          hypothesisId: "H1-H5",
-          message: "post-sync layout snapshot",
-          data: {
-            splitOn: !!on,
-            splitLs: typeof load === "function" ? !!load("flux_canvas_split", false) : null,
-            bodySplit: document.body.classList.contains("flux-canvas-ai-split"),
-            w: typeof innerWidth === "number" ? innerWidth : 0,
-            activePanelId: act ? act.id : null,
-            canvasActive: !!(c && c.classList.contains("active")),
-            aiActive: !!(a && a.classList.contains("active")),
-            aiSplitVis: !!(a && a.classList.contains("flux-ai-split-visible")),
-            aiDisplay: a ? a.style.display : "",
-            cvFlex: c ? c.style.flex : "",
-            cvOverflowY: c ? c.style.overflowY : "",
-            mainH: main ? main.offsetHeight : 0,
-            canvasH: c ? c.offsetHeight : 0,
-            canvasScrollH: c ? c.scrollHeight : 0,
-            cvOverflowYComputed: c ? getComputedStyle(c).overflowY : "",
-            wrap: (() => {
-              const w = document.getElementById("fluxCanvasPanelWrap");
-              return w ? { h: w.offsetHeight, minH: getComputedStyle(w).minHeight } : null;
-            })(),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    } catch (_) {}
-    // #endregion
   };
 
   window.addEventListener("resize", function () {
@@ -1264,26 +1225,6 @@
     CanvasState.cache.clear();
     CanvasState._shellReady = false;
     if (typeof renderSchool === "function") renderSchool();
-    // #region agent log
-    try {
-      fetch("http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7bd113" },
-        body: JSON.stringify({
-          sessionId: "7bd113",
-          runId: "post-fix",
-          location: "flux-canvas-panel.js:fluxCanvasConnectSubmit",
-          hypothesisId: "H-connect",
-          message: "before __fluxRenderCanvasPanel after connect",
-          data: {
-            activeId: (document.querySelector(".main-content > .panel.active") || {})?.id,
-            canvasActive: !!document.getElementById("canvas")?.classList.contains("active"),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    } catch (_) {}
-    // #endregion
     window.__fluxRenderCanvasPanel();
     CanvasViews.navigate("dashboard", {});
   };
