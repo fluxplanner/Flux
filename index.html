@@ -1482,6 +1482,16 @@
         <button type="button" class="flux-ai-mode" data-mode="deep" onclick="setFluxAIMode('deep',this)" title="Careful, accuracy-focused">Deep think</button>
         <button type="button" class="flux-ai-mode" data-mode="overtime" onclick="setFluxAIMode('overtime',this)" title="Fast, urgent execution focus">Overtime</button>
       </div>
+      <div class="flux-ai-engine-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:.72rem;color:var(--muted2)">
+        <label for="fluxAiEngineSelect" style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+          <span style="font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em;font-size:.62rem;color:var(--muted)">Engine</span>
+          <select id="fluxAiEngineSelect" onchange="setFluxAIEngine(this.value)" title="AI provider (keys on server)" style="font:inherit;font-size:.78rem;padding:5px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);max-width:min(100%,220px)">
+            <option value="groq">Groq · Llama</option>
+            <option value="anthropic">Anthropic · Claude</option>
+          </select>
+        </label>
+        <span style="opacity:.9;line-height:1.35">Claude uses our server key (Pro/School). JSON tools still use Groq.</span>
+      </div>
       <div id="aiDailyUsageBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--card2);border-bottom:1px solid var(--border)">
         <div style="flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden">
           <div class="ai-usage-fill" style="height:100%;width:0%;transition:width .3s var(--ease);border-radius:2px"></div>

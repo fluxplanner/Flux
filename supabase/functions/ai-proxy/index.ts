@@ -1,5 +1,10 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
-import { getEntitlement, checkAILimit, incrementAIUsage } from "../_shared/plan.ts";
+import {
+  type Entitlement,
+  getEntitlement,
+  checkAILimit,
+  incrementAIUsage,
+} from "../_shared/plan.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 
@@ -34,6 +39,8 @@ Deno.serve(async (req) => {
     systemPrompt?: string;
     /** When set, Groq returns a single JSON object (requires "json" in messages per API rules). */
     responseFormat?: "json_object";
+    /** Groq (OpenAI-compatible) or Anthropic Messages API — server enforces Pro for Anthropic when billing on. */
+    provider?: "groq" | "anthropic";
   };
   try {
     body = await req.json();
@@ -47,8 +54,9 @@ Deno.serve(async (req) => {
 
   const hasImage = !!body.imageBase64;
 
+  let entitlement: Entitlement | null = null;
   if (PAYMENTS_ENABLED && userId) {
-    const entitlement = await getEntitlement(userId);
+    entitlement = await getEntitlement(userId);
 
     if (hasImage && !entitlement.imageAnalysis) {
       return json({
@@ -83,10 +91,32 @@ Deno.serve(async (req) => {
     body.model = "llama-3.3-70b-versatile";
   }
 
+  const wantsJson = body.responseFormat === "json_object";
+  let provider: "groq" | "anthropic" = wantsJson
+    ? "groq"
+    : (body.provider === "anthropic" ? "anthropic" : "groq");
+
+  if (PAYMENTS_ENABLED && userId && provider === "anthropic" && entitlement) {
+    if (entitlement.plan === "free") {
+      return json(
+        {
+          error: "feature_requires_pro",
+          feature: "claude_engine",
+          message: "Claude (Anthropic) is available on Flux Pro and School plans.",
+          upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
+        },
+        403,
+        origin,
+      );
+    }
+  }
+
   let text: string;
   try {
     if (hasImage) {
       text = await callGemini(body);
+    } else if (provider === "anthropic") {
+      text = await callAnthropic(body);
     } else {
       text = await callGroq(body);
     }
@@ -151,6 +181,83 @@ async function callGroq(body: {
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
+}
+
+/** OpenAI-style chat → Anthropic Messages (https://docs.anthropic.com/en/api/messages) */
+function openAiMessagesToAnthropic(
+  messages: Array<{ role: string; content: unknown }>,
+  systemFromBody?: string,
+): { system: string; messages: Array<{ role: "user" | "assistant"; content: string }> } {
+  let system = (systemFromBody ?? "").trim();
+  const out: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const m of messages) {
+    const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
+    if (m.role === "system") {
+      system = system ? `${system}\n\n${text}` : text;
+      continue;
+    }
+    if (m.role !== "user" && m.role !== "assistant") continue;
+    const r = m.role as "user" | "assistant";
+    const last = out[out.length - 1];
+    if (last && last.role === r) last.content = `${last.content}\n\n${text}`;
+    else out.push({ role: r, content: text });
+  }
+  return { system, messages: out };
+}
+
+async function callAnthropic(body: {
+  messages?: Array<{ role: string; content: unknown }>;
+  message?: string;
+  model?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<string> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) throw new Error("ANTHROPIC_API_KEY not set on server");
+
+  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
+  if (raw.length === 0) {
+    raw.push({ role: "user", content: body.message ?? "" });
+  }
+  const sysHint = body.system ?? body.systemPrompt;
+  const { system, messages } = openAiMessagesToAnthropic(raw, sysHint);
+  if (messages.length === 0) {
+    throw new Error("No user/assistant messages for Anthropic");
+  }
+
+  const model =
+    body.model && String(body.model).startsWith("claude")
+      ? body.model
+      : (Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514");
+
+  const payload: Record<string, unknown> = {
+    model,
+    max_tokens: 2048,
+    messages,
+    temperature: 0.7,
+  };
+  if (system) payload.system = system;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  const blocks = data.content;
+  if (!Array.isArray(blocks)) return "";
+  const textBlock = blocks.find((b: { type?: string }) => b?.type === "text");
+  return typeof textBlock?.text === "string" ? textBlock.text : "";
 }
 
 async function callGemini(body: {

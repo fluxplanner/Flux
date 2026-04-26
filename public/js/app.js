@@ -196,6 +196,7 @@ function showAILimitReached(){
 function showUpgradePrompt(feature,reason){
   if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.SHOW_UPGRADE_PROMPTS)return;
   const featureLabels={
+    claude_engine:'Claude (Anthropic) engine',
     imageAnalysis:'AI Image Analysis',
     canvasSync:'Canvas LMS Sync',
     schedulePhotoImport:'Schedule Photo Import',
@@ -327,7 +328,7 @@ function showPricingPage(){
           ['What happens when my trial ends?','You automatically move to the Free plan. No charges, no surprises. Your data is never deleted.'],
           ['Is $2.99 the student price?','Yes — this is already the student price. No discount code needed.'],
           ['What happens to my data if I downgrade?','All your tasks, grades, and notes stay intact forever. You just hit Free plan limits for new additions.'],
-          ['Which AI model does Flux use?','Pro users get Llama 3.3 70B (fast, smart). Free users get Llama 3.1 8B (still great for most questions).'],
+          ['Which AI model does Flux use?','Pick **Engine** in Flux AI: Groq runs Llama (Pro gets 70B, free gets 8B). Pro/School can use **Anthropic Claude** through our server. Image analysis uses Google Gemini.'],
         ].map(([q,a])=>`
           <div style="padding:14px 0;border-bottom:1px solid var(--border)">
             <div style="font-size:.87rem;font-weight:600;margin-bottom:5px">${q}</div>
@@ -418,6 +419,7 @@ function updatePlanUI(){
   }else if(aiUsageBar){
     aiUsageBar.style.display='none';
   }
+  try{if(typeof syncFluxAIEngineUI==='function')syncFluxAIEngineUI();}catch(e){}
 }
 
 function checkTrialExpiry(){
@@ -1398,6 +1400,7 @@ async function fluxAiSimple(system, userMessage, opts){
   messages.push({ role:'user', content:userMessage });
   const body={ messages };
   if(opts&&opts.responseFormat==='json_object')body.responseFormat='json_object';
+  attachFluxAIProviderToBody(body);
   let res;
   try{
     res=await fetch(API.ai,{ method:'POST', headers:await fluxAuthHeaders(), body:JSON.stringify(body) });
@@ -1417,6 +1420,41 @@ async function fluxAiSimple(system, userMessage, opts){
   return data.content?.[0]?.text||'';
 }
 try{ window.fluxAiSimple=fluxAiSimple; }catch(e){}
+
+/** Pro/School can route chat to Anthropic Claude via ai-proxy (server holds ANTHROPIC_API_KEY). */
+function fluxAiHasPayingPlan(){
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.ENFORCE_AI_LIMITS)return true;
+  if(FLUX_FLAGS.TESTER_MODE)return true;
+  const p=_entitlement&&_entitlement.plan;
+  return p==='pro'||p==='school';
+}
+function attachFluxAIProviderToBody(body){
+  const want=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
+  const provider=want==='anthropic'&&fluxAiHasPayingPlan()?'anthropic':'groq';
+  body.provider=provider;
+  if(provider==='anthropic'){
+    const m=load('flux_ai_anthropic_model','');
+    if(m&&String(m).startsWith('claude'))body.model=m;
+    else delete body.model;
+  }
+}
+function syncFluxAIEngineUI(){
+  const sel=document.getElementById('fluxAiEngineSelect');
+  if(!sel)return;
+  const paying=fluxAiHasPayingPlan();
+  const optA=sel.querySelector('option[value="anthropic"]');
+  if(optA){
+    optA.disabled=!paying;
+    optA.title=paying?'Anthropic Claude (server-side key)':'Upgrade to Pro or School for Claude';
+  }
+  const saved=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
+  sel.value=paying&&saved==='anthropic'?'anthropic':'groq';
+}
+function setFluxAIEngine(v){
+  save('flux_ai_provider',v==='anthropic'?'anthropic':'groq');
+  syncFluxAIEngineUI();
+  showToast(v==='anthropic'?'Engine: Claude (Anthropic)':'Engine: Groq (Llama)','info');
+}
 
 let _sb=null,currentUser=null;
 function getSB(){
@@ -4226,6 +4264,7 @@ function initAIChats(){
   else loadAIChat(aiChats[0].id);
   renderAIChatTabs();
   if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
+  syncFluxAIEngineUI();
 }
 
 function newAIChat(){
@@ -4539,6 +4578,7 @@ async function sendAI(){
     const baseSys=buildAIPrompt();
     const system=(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)?FluxOrchestrator.augmentSystemPrompt(baseSys,text):baseSys;
     const body={system,messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))};
+    attachFluxAIProviderToBody(body);
     // If image attached, send it for Gemini vision via the ai-proxy
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
@@ -4555,7 +4595,11 @@ async function sendAI(){
         return;
       }
       if(errData.error==='feature_requires_pro'){
-        showUpgradePrompt('imageAnalysis','Upgrade to Flux Pro for image analysis');
+        if(errData.feature==='claude_engine'){
+          showUpgradePrompt('claude_engine',errData.message||'Claude is available on Flux Pro and School plans. Switch Engine to Groq or upgrade.');
+        }else{
+          showUpgradePrompt('imageAnalysis','Upgrade to Flux Pro for image analysis');
+        }
         thinkEl.remove();
         btn.disabled=false;input.focus();
         return;
