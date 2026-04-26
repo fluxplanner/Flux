@@ -328,7 +328,7 @@ function showPricingPage(){
           ['What happens when my trial ends?','You automatically move to the Free plan. No charges, no surprises. Your data is never deleted.'],
           ['Is $2.99 the student price?','Yes — this is already the student price. No discount code needed.'],
           ['What happens to my data if I downgrade?','All your tasks, grades, and notes stay intact forever. You just hit Free plan limits for new additions.'],
-          ['Which AI model does Flux use?','Pick **Engine** in Flux AI: Groq runs Llama (Pro gets 70B, free gets 8B). Pro/School can use **Anthropic Claude** through our server. Image analysis uses Google Gemini.'],
+          ['Which AI model does Flux use?','Pick **Engine** in Flux AI: **Groq** runs Llama (Pro gets 70B, free gets 8B). The second engine uses server secrets: **Anthropic Claude** (Pro/School) or an **OpenAI-compatible** URL (Gemini, OpenRouter, DeepSeek — see `docs/ai-proxy-backends.md`). Image analysis uses Gemini.'],
         ].map(([q,a])=>`
           <div style="padding:14px 0;border-bottom:1px solid var(--border)">
             <div style="font-size:.87rem;font-weight:600;margin-bottom:5px">${q}</div>
@@ -1421,34 +1421,25 @@ async function fluxAiSimple(system, userMessage, opts){
 }
 try{ window.fluxAiSimple=fluxAiSimple; }catch(e){}
 
-/** Pro/School can route chat to Anthropic Claude via ai-proxy (server holds ANTHROPIC_API_KEY). */
-function fluxAiHasPayingPlan(){
-  if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.ENFORCE_AI_LIMITS)return true;
-  if(FLUX_FLAGS.TESTER_MODE)return true;
-  const p=_entitlement&&_entitlement.plan;
-  return p==='pro'||p==='school';
-}
+/** Second engine uses ai-proxy “anthropic” channel: native Claude (Pro+) or OpenAI-compat URL e.g. Gemini (server env). */
 function attachFluxAIProviderToBody(body){
-  const want=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
-  const provider=want==='anthropic'&&fluxAiHasPayingPlan()?'anthropic':'groq';
+  const provider=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
   body.provider=provider;
   if(provider==='anthropic'){
     const m=load('flux_ai_anthropic_model','');
-    if(m&&String(m).startsWith('claude'))body.model=m;
+    if(m&&(String(m).startsWith('claude')||String(m).includes('gemini')))body.model=m;
     else delete body.model;
   }
 }
 function syncFluxAIEngineUI(){
   const sel=document.getElementById('fluxAiEngineSelect');
   if(!sel)return;
-  const paying=fluxAiHasPayingPlan();
   const optA=sel.querySelector('option[value="anthropic"]');
   if(optA){
-    optA.disabled=!paying;
-    optA.title=paying?'Anthropic Claude (server-side key)':'Upgrade to Pro or School for Claude';
+    optA.disabled=false;
+    optA.title='Uses server secrets: official Claude, or Gemini via ANTHROPIC_BASE_URL + Google API key';
   }
-  const saved=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
-  sel.value=paying&&saved==='anthropic'?'anthropic':'groq';
+  sel.value=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
 }
 function setFluxAIEngine(v){
   save('flux_ai_provider',v==='anthropic'?'anthropic':'groq');

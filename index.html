@@ -1490,7 +1490,7 @@
             <option value="anthropic">Anthropic · Claude</option>
           </select>
         </label>
-        <span style="opacity:.9;line-height:1.35">Claude uses our server key (Pro/School). JSON tools still use Groq.</span>
+        <span style="opacity:.9;line-height:1.35">Second engine: official Claude (Pro+) or OpenAI-compat backends on the server — Gemini shim, <strong>OpenRouter</strong>, or <strong>DeepSeek</strong> via <code style="font-size:.65rem">ANTHROPIC_BASE_URL</code> + <code style="font-size:.65rem">ANTHROPIC_API_KEY</code> + <code style="font-size:.65rem">ANTHROPIC_MODEL</code>. See <code style="font-size:.65rem">docs/ai-proxy-backends.md</code>. JSON tools still use Groq.</span>
       </div>
       <div id="aiDailyUsageBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--card2);border-bottom:1px solid var(--border)">
         <div style="flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden">

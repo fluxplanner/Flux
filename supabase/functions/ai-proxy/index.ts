@@ -8,6 +8,12 @@ import {
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 
+/** OpenAI-compatible `…/chat/completions` base: Gemini shim, OpenRouter, DeepSeek, LiteLLM, etc. See `docs/ai-proxy-backends.md`. */
+function anthropicOpenAICompatBase(): string | null {
+  const b = Deno.env.get("ANTHROPIC_BASE_URL")?.trim();
+  return b || null;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
 
@@ -96,13 +102,17 @@ Deno.serve(async (req) => {
     ? "groq"
     : (body.provider === "anthropic" ? "anthropic" : "groq");
 
-  if (PAYMENTS_ENABLED && userId && provider === "anthropic" && entitlement) {
+  /* Native api.anthropic.com → Pro/School only. OpenAI-compat (ANTHROPIC_BASE_URL e.g. Gemini) is operator-hosted — allow all plans. */
+  if (
+    PAYMENTS_ENABLED && userId && provider === "anthropic" && entitlement &&
+    !anthropicOpenAICompatBase()
+  ) {
     if (entitlement.plan === "free") {
       return json(
         {
           error: "feature_requires_pro",
           feature: "claude_engine",
-          message: "Claude (Anthropic) is available on Flux Pro and School plans.",
+          message: "Anthropic Claude (official API) is on Flux Pro and School. For a free-tier backend, set ANTHROPIC_BASE_URL to an OpenAI-compatible endpoint (see Flux docs).",
           upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
         },
         403,
@@ -136,6 +146,95 @@ Deno.serve(async (req) => {
   return json({ content: [{ type: "text", text }] }, 200, origin);
 });
 
+function buildOpenAIChatPayload(
+  body: {
+    messages?: Array<{ role: string; content: unknown }>;
+    message?: string;
+    model?: string;
+    system?: string;
+    systemPrompt?: string;
+    responseFormat?: "json_object";
+  },
+  model: string,
+): Record<string, unknown> {
+  const system = body.system ?? body.systemPrompt;
+  let messages = Array.isArray(body.messages) ? [...body.messages] : [];
+  if (system && !messages.some((m) => m.role === "system")) {
+    messages = [{ role: "system", content: system }, ...messages];
+  }
+  if (messages.length === 0) {
+    messages = [{ role: "user", content: body.message ?? "" }];
+  }
+  const jsonMode = body.responseFormat === "json_object";
+  const payload: Record<string, unknown> = {
+    model,
+    messages,
+    max_tokens: jsonMode ? 1024 : 2048,
+    temperature: jsonMode ? 0.2 : 0.7,
+  };
+  if (jsonMode) payload.response_format = { type: "json_object" };
+  return payload;
+}
+
+/** OpenRouter asks for Referer + app title on chat completions. */
+function extraOpenAICompatHeaders(endpointUrl: string): Record<string, string> {
+  const u = endpointUrl.toLowerCase();
+  if (!u.includes("openrouter.ai")) return {};
+  const referer = Deno.env.get("OPENROUTER_HTTP_REFERER")?.trim() ||
+    "https://github.com/fluxplanner/Flux";
+  const title = Deno.env.get("OPENROUTER_APP_TITLE")?.trim() || "Flux Planner";
+  return {
+    "HTTP-Referer": referer,
+    "X-Title": title,
+  };
+}
+
+async function postOpenAIChatCompletion(
+  endpointUrl: string,
+  bearer: string,
+  payload: Record<string, unknown>,
+  label: string,
+): Promise<string> {
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${bearer}`,
+    "Content-Type": "application/json",
+    ...extraOpenAICompatHeaders(endpointUrl),
+  };
+  const res = await fetch(endpointUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`${label} error ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+function openAICompatChatUrl(base: string): string {
+  const b = base.trim();
+  if (b.includes("chat/completions")) return b;
+  return `${b.replace(/\/+$/, "")}/chat/completions`;
+}
+
+/** Model for ANTHROPIC_BASE_URL OpenAI-compat channel (ignore Groq llama defaults on body). */
+function pickAnthropicCompatModel(body: { model?: string }): string {
+  const env = Deno.env.get("ANTHROPIC_MODEL")?.trim();
+  if (env) return env;
+  const bm = body.model ? String(body.model) : "";
+  if (bm && !bm.includes("llama")) return bm;
+  const base = (Deno.env.get("ANTHROPIC_BASE_URL") || "").toLowerCase();
+  if (base.includes("openrouter.ai")) {
+    return "google/gemini-2.0-flash-exp:free";
+  }
+  if (base.includes("deepseek.com")) {
+    return "deepseek-chat";
+  }
+  return "gemini-2.0-flash";
+}
+
 async function callGroq(body: {
   messages?: Array<{ role: string; content: unknown }>;
   message?: string;
@@ -146,41 +245,14 @@ async function callGroq(body: {
 }): Promise<string> {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
   if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
-
-  const system = body.system ?? body.systemPrompt;
-  let messages = Array.isArray(body.messages) ? [...body.messages] : [];
-  if (system && !messages.some((m) => m.role === "system")) {
-    messages = [{ role: "system", content: system }, ...messages];
-  }
-  if (messages.length === 0) {
-    messages = [{ role: "user", content: body.message ?? "" }];
-  }
-
-  const jsonMode = body.responseFormat === "json_object";
-  const payload: Record<string, unknown> = {
-    model: body.model ?? "llama-3.3-70b-versatile",
-    messages,
-    max_tokens: jsonMode ? 1024 : 2048,
-    temperature: jsonMode ? 0.2 : 0.7,
-  };
-  if (jsonMode) payload.response_format = { type: "json_object" };
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${GROQ_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Groq error ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  const model = body.model ?? "llama-3.3-70b-versatile";
+  const payload = buildOpenAIChatPayload(body, model);
+  return await postOpenAIChatCompletion(
+    "https://api.groq.com/openai/v1/chat/completions",
+    GROQ_API_KEY,
+    payload,
+    "Groq",
+  );
 }
 
 /** OpenAI-style chat → Anthropic Messages (https://docs.anthropic.com/en/api/messages) */
@@ -211,9 +283,18 @@ async function callAnthropic(body: {
   model?: string;
   system?: string;
   systemPrompt?: string;
+  responseFormat?: "json_object";
 }): Promise<string> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set on server");
+
+  const compatBase = anthropicOpenAICompatBase();
+  if (compatBase) {
+    const url = openAICompatChatUrl(compatBase);
+    const model = pickAnthropicCompatModel(body);
+    const payload = buildOpenAIChatPayload(body, model);
+    return await postOpenAIChatCompletion(url, key, payload, "ANTHROPIC_BASE_URL");
+  }
 
   const raw = Array.isArray(body.messages) ? [...body.messages] : [];
   if (raw.length === 0) {
