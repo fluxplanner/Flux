@@ -5833,13 +5833,14 @@ function syncPanelScrollLayout(){
   if(document.body.classList.contains('flux-canvas-ai-split')){
     mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
       panel.style.flex='';
-      panel.style.overflowY='';
+      panel.style.removeProperty('overflow-y');
     });
     const cv=document.getElementById('canvas');
     const ai=document.getElementById('ai');
     if(cv&&cv.classList.contains('active')){
       cv.style.flex='1 1 55%';
-      cv.style.overflowY='auto';
+      /* Inner .canvas-content scrolls; panel-level auto fights nested layout */
+      cv.style.setProperty('overflow-y','hidden','important');
       cv.style.minWidth='0';
     }
     if(ai&&ai.classList.contains('flux-ai-split-visible')){
@@ -5857,16 +5858,22 @@ function syncPanelScrollLayout(){
   }
   mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
     panel.style.flex='';
-    panel.style.overflowY='';
+    panel.style.removeProperty('overflow-y');
     panel.style.overscrollBehavior='';
     panel.style.webkitOverflowScrolling='';
   });
   const active=mainContent.querySelector(':scope > .panel.active');
   if(active){
     active.style.flex='1 1 0%';
-    active.style.overflowY='auto';
-    active.style.overscrollBehavior='contain';
-    active.style.webkitOverflowScrolling='touch';
+    if(active.id==='canvas'){
+      active.style.setProperty('overflow-y','hidden','important');
+      active.style.overscrollBehavior='contain';
+      active.style.webkitOverflowScrolling='touch';
+    }else{
+      active.style.overflowY='auto';
+      active.style.overscrollBehavior='contain';
+      active.style.webkitOverflowScrolling='touch';
+    }
   }
   const aiPanel=document.getElementById('ai');
   if(aiPanel&&aiPanel.classList.contains('active')){
