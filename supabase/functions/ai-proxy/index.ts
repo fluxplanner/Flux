@@ -8,12 +8,6 @@ import {
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 
-/** OpenAI-compatible `…/chat/completions` base: Gemini shim, OpenRouter, DeepSeek, LiteLLM, etc. See `docs/ai-proxy-backends.md`. */
-function anthropicOpenAICompatBase(): string | null {
-  const b = Deno.env.get("ANTHROPIC_BASE_URL")?.trim();
-  return b || null;
-}
-
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
 
@@ -43,10 +37,8 @@ Deno.serve(async (req) => {
     model?: string;
     system?: string;
     systemPrompt?: string;
-    /** When set, Groq returns a single JSON object (requires "json" in messages per API rules). */
+    /** Groq returns a single JSON object (requires "json" in messages per API rules). */
     responseFormat?: "json_object";
-    /** Groq (OpenAI-compatible) or Anthropic Messages API — server enforces Pro for Anthropic when billing on. */
-    provider?: "groq" | "anthropic";
   };
   try {
     body = await req.json();
@@ -97,36 +89,10 @@ Deno.serve(async (req) => {
     body.model = "llama-3.3-70b-versatile";
   }
 
-  const wantsJson = body.responseFormat === "json_object";
-  let provider: "groq" | "anthropic" = wantsJson
-    ? "groq"
-    : (body.provider === "anthropic" ? "anthropic" : "groq");
-
-  /* Native api.anthropic.com → Pro/School only. OpenAI-compat (ANTHROPIC_BASE_URL e.g. Gemini) is operator-hosted — allow all plans. */
-  if (
-    PAYMENTS_ENABLED && userId && provider === "anthropic" && entitlement &&
-    !anthropicOpenAICompatBase()
-  ) {
-    if (entitlement.plan === "free") {
-      return json(
-        {
-          error: "feature_requires_pro",
-          feature: "claude_engine",
-          message: "Anthropic Claude (official API) is on Flux Pro and School. For a free-tier backend, set ANTHROPIC_BASE_URL to an OpenAI-compatible endpoint (see Flux docs).",
-          upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
-        },
-        403,
-        origin,
-      );
-    }
-  }
-
   let text: string;
   try {
     if (hasImage) {
       text = await callGemini(body);
-    } else if (provider === "anthropic") {
-      text = await callAnthropic(body);
     } else {
       text = await callGroq(body);
     }
@@ -176,63 +142,25 @@ function buildOpenAIChatPayload(
   return payload;
 }
 
-/** OpenRouter asks for Referer + app title on chat completions. */
-function extraOpenAICompatHeaders(endpointUrl: string): Record<string, string> {
-  const u = endpointUrl.toLowerCase();
-  if (!u.includes("openrouter.ai")) return {};
-  const referer = Deno.env.get("OPENROUTER_HTTP_REFERER")?.trim() ||
-    "https://github.com/fluxplanner/Flux";
-  const title = Deno.env.get("OPENROUTER_APP_TITLE")?.trim() || "Flux Planner";
-  return {
-    "HTTP-Referer": referer,
-    "X-Title": title,
-  };
-}
-
-async function postOpenAIChatCompletion(
-  endpointUrl: string,
-  bearer: string,
+async function postGroqChatCompletion(
   payload: Record<string, unknown>,
-  label: string,
 ): Promise<string> {
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${bearer}`,
-    "Content-Type": "application/json",
-    ...extraOpenAICompatHeaders(endpointUrl),
-  };
-  const res = await fetch(endpointUrl, {
+  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers,
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`${label} error ${res.status}: ${err}`);
+    throw new Error(`Groq error ${res.status}: ${err}`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
-}
-
-function openAICompatChatUrl(base: string): string {
-  const b = base.trim();
-  if (b.includes("chat/completions")) return b;
-  return `${b.replace(/\/+$/, "")}/chat/completions`;
-}
-
-/** Model for ANTHROPIC_BASE_URL OpenAI-compat channel (ignore Groq llama defaults on body). */
-function pickAnthropicCompatModel(body: { model?: string }): string {
-  const env = Deno.env.get("ANTHROPIC_MODEL")?.trim();
-  if (env) return env;
-  const bm = body.model ? String(body.model) : "";
-  if (bm && !bm.includes("llama")) return bm;
-  const base = (Deno.env.get("ANTHROPIC_BASE_URL") || "").toLowerCase();
-  if (base.includes("openrouter.ai")) {
-    return "google/gemini-2.0-flash-exp:free";
-  }
-  if (base.includes("deepseek.com")) {
-    return "deepseek-chat";
-  }
-  return "gemini-2.0-flash";
 }
 
 async function callGroq(body: {
@@ -243,102 +171,9 @@ async function callGroq(body: {
   systemPrompt?: string;
   responseFormat?: "json_object";
 }): Promise<string> {
-  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
   const model = body.model ?? "llama-3.3-70b-versatile";
   const payload = buildOpenAIChatPayload(body, model);
-  return await postOpenAIChatCompletion(
-    "https://api.groq.com/openai/v1/chat/completions",
-    GROQ_API_KEY,
-    payload,
-    "Groq",
-  );
-}
-
-/** OpenAI-style chat → Anthropic Messages (https://docs.anthropic.com/en/api/messages) */
-function openAiMessagesToAnthropic(
-  messages: Array<{ role: string; content: unknown }>,
-  systemFromBody?: string,
-): { system: string; messages: Array<{ role: "user" | "assistant"; content: string }> } {
-  let system = (systemFromBody ?? "").trim();
-  const out: Array<{ role: "user" | "assistant"; content: string }> = [];
-  for (const m of messages) {
-    const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
-    if (m.role === "system") {
-      system = system ? `${system}\n\n${text}` : text;
-      continue;
-    }
-    if (m.role !== "user" && m.role !== "assistant") continue;
-    const r = m.role as "user" | "assistant";
-    const last = out[out.length - 1];
-    if (last && last.role === r) last.content = `${last.content}\n\n${text}`;
-    else out.push({ role: r, content: text });
-  }
-  return { system, messages: out };
-}
-
-async function callAnthropic(body: {
-  messages?: Array<{ role: string; content: unknown }>;
-  message?: string;
-  model?: string;
-  system?: string;
-  systemPrompt?: string;
-  responseFormat?: "json_object";
-}): Promise<string> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) throw new Error("ANTHROPIC_API_KEY not set on server");
-
-  const compatBase = anthropicOpenAICompatBase();
-  if (compatBase) {
-    const url = openAICompatChatUrl(compatBase);
-    const model = pickAnthropicCompatModel(body);
-    const payload = buildOpenAIChatPayload(body, model);
-    return await postOpenAIChatCompletion(url, key, payload, "ANTHROPIC_BASE_URL");
-  }
-
-  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
-  if (raw.length === 0) {
-    raw.push({ role: "user", content: body.message ?? "" });
-  }
-  const sysHint = body.system ?? body.systemPrompt;
-  const { system, messages } = openAiMessagesToAnthropic(raw, sysHint);
-  if (messages.length === 0) {
-    throw new Error("No user/assistant messages for Anthropic");
-  }
-
-  const model =
-    body.model && String(body.model).startsWith("claude")
-      ? body.model
-      : (Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514");
-
-  const payload: Record<string, unknown> = {
-    model,
-    max_tokens: 2048,
-    messages,
-    temperature: 0.7,
-  };
-  if (system) payload.system = system;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic error ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-  const blocks = data.content;
-  if (!Array.isArray(blocks)) return "";
-  const textBlock = blocks.find((b: { type?: string }) => b?.type === "text");
-  return typeof textBlock?.text === "string" ? textBlock.text : "";
+  return await postGroqChatCompletion(payload);
 }
 
 async function callGemini(body: {

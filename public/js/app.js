@@ -196,7 +196,6 @@ function showAILimitReached(){
 function showUpgradePrompt(feature,reason){
   if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.SHOW_UPGRADE_PROMPTS)return;
   const featureLabels={
-    claude_engine:'Claude (Anthropic) engine',
     imageAnalysis:'AI Image Analysis',
     canvasSync:'Canvas LMS Sync',
     schedulePhotoImport:'Schedule Photo Import',
@@ -328,7 +327,7 @@ function showPricingPage(){
           ['What happens when my trial ends?','You automatically move to the Free plan. No charges, no surprises. Your data is never deleted.'],
           ['Is $2.99 the student price?','Yes — this is already the student price. No discount code needed.'],
           ['What happens to my data if I downgrade?','All your tasks, grades, and notes stay intact forever. You just hit Free plan limits for new additions.'],
-          ['Which AI model does Flux use?','Pick **Engine** in Flux AI: **Groq** runs Llama (Pro gets 70B, free gets 8B). The second engine uses server secrets: **Anthropic Claude** (Pro/School) or an **OpenAI-compatible** URL (Gemini, OpenRouter, DeepSeek — see `docs/ai-proxy-backends.md`). Image analysis uses Gemini.'],
+          ['Which AI model does Flux use?','Flux AI uses **Groq** (Llama): Pro gets 70B, free gets 8B. Image analysis uses **Google Gemini** on the server.'],
         ].map(([q,a])=>`
           <div style="padding:14px 0;border-bottom:1px solid var(--border)">
             <div style="font-size:.87rem;font-weight:600;margin-bottom:5px">${q}</div>
@@ -419,7 +418,6 @@ function updatePlanUI(){
   }else if(aiUsageBar){
     aiUsageBar.style.display='none';
   }
-  try{if(typeof syncFluxAIEngineUI==='function')syncFluxAIEngineUI();}catch(e){}
 }
 
 function checkTrialExpiry(){
@@ -1400,7 +1398,6 @@ async function fluxAiSimple(system, userMessage, opts){
   messages.push({ role:'user', content:userMessage });
   const body={ messages };
   if(opts&&opts.responseFormat==='json_object')body.responseFormat='json_object';
-  attachFluxAIProviderToBody(body);
   let res;
   try{
     res=await fetch(API.ai,{ method:'POST', headers:await fluxAuthHeaders(), body:JSON.stringify(body) });
@@ -1420,32 +1417,6 @@ async function fluxAiSimple(system, userMessage, opts){
   return data.content?.[0]?.text||'';
 }
 try{ window.fluxAiSimple=fluxAiSimple; }catch(e){}
-
-/** Second engine uses ai-proxy “anthropic” channel: native Claude (Pro+) or OpenAI-compat URL e.g. Gemini (server env). */
-function attachFluxAIProviderToBody(body){
-  const provider=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
-  body.provider=provider;
-  if(provider==='anthropic'){
-    const m=load('flux_ai_anthropic_model','');
-    if(m&&(String(m).startsWith('claude')||String(m).includes('gemini')))body.model=m;
-    else delete body.model;
-  }
-}
-function syncFluxAIEngineUI(){
-  const sel=document.getElementById('fluxAiEngineSelect');
-  if(!sel)return;
-  const optA=sel.querySelector('option[value="anthropic"]');
-  if(optA){
-    optA.disabled=false;
-    optA.title='Uses server secrets: official Claude, or Gemini via ANTHROPIC_BASE_URL + Google API key';
-  }
-  sel.value=load('flux_ai_provider','groq')==='anthropic'?'anthropic':'groq';
-}
-function setFluxAIEngine(v){
-  save('flux_ai_provider',v==='anthropic'?'anthropic':'groq');
-  syncFluxAIEngineUI();
-  showToast(v==='anthropic'?'Engine: Claude (Anthropic)':'Engine: Groq (Llama)','info');
-}
 
 let _sb=null,currentUser=null;
 function getSB(){
@@ -4255,7 +4226,6 @@ function initAIChats(){
   else loadAIChat(aiChats[0].id);
   renderAIChatTabs();
   if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
-  syncFluxAIEngineUI();
 }
 
 function newAIChat(){
@@ -4569,7 +4539,6 @@ async function sendAI(){
     const baseSys=buildAIPrompt();
     const system=(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)?FluxOrchestrator.augmentSystemPrompt(baseSys,text):baseSys;
     const body={system,messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))};
-    attachFluxAIProviderToBody(body);
     // If image attached, send it for Gemini vision via the ai-proxy
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
@@ -4586,11 +4555,7 @@ async function sendAI(){
         return;
       }
       if(errData.error==='feature_requires_pro'){
-        if(errData.feature==='claude_engine'){
-          showUpgradePrompt('claude_engine',errData.message||'Claude is available on Flux Pro and School plans. Switch Engine to Groq or upgrade.');
-        }else{
-          showUpgradePrompt('imageAnalysis','Upgrade to Flux Pro for image analysis');
-        }
+        showUpgradePrompt('imageAnalysis',errData.message||'Upgrade to Flux Pro for image analysis');
         thinkEl.remove();
         btn.disabled=false;input.focus();
         return;

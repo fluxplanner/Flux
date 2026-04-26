@@ -1460,9 +1460,18 @@
             </g>
           </svg>
         </div>
-        <div class="flux-ai-titleblock">
-          <div class="flux-ai-title">Flux AI</div>
-          <p class="flux-ai-sub">Planner context · learning help (no direct homework answers)</p>
+        <div class="flux-ai-title-row">
+          <div class="flux-ai-titleblock">
+            <div class="flux-ai-title">Flux AI</div>
+            <p class="flux-ai-sub">Planner context · learning help (no direct homework answers)</p>
+          </div>
+          <div class="flux-ai-modes" role="radiogroup" aria-label="Style">
+            <span class="flux-ai-modes-label">Style</span>
+            <button type="button" class="flux-ai-mode active" data-mode="default" onclick="setFluxAIMode('default',this)" title="Default planner help">Balanced</button>
+            <button type="button" class="flux-ai-mode" data-mode="research" onclick="setFluxAIMode('research',this)" title="Sources &amp; links for research">Research</button>
+            <button type="button" class="flux-ai-mode" data-mode="deep" onclick="setFluxAIMode('deep',this)" title="Careful, accuracy-focused">Deep think</button>
+            <button type="button" class="flux-ai-mode" data-mode="overtime" onclick="setFluxAIMode('overtime',this)" title="Fast, urgent execution focus">Overtime</button>
+          </div>
         </div>
         <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
         <div class="flux-ai-head-actions">
@@ -1474,23 +1483,6 @@
           <button type="button" class="flux-ai-pillbtn" onclick="clearAIChat()">Clear</button>
           <button type="button" class="flux-ai-pillbtn flux-ai-pillbtn--strong" onclick="explainMyWeek()" title="Summarize the week with your planner context">This week</button>
         </div>
-      </div>
-      <div class="flux-ai-modes" role="radiogroup" aria-label="Style">
-        <span class="flux-ai-modes-label">Style</span>
-        <button type="button" class="flux-ai-mode active" data-mode="default" onclick="setFluxAIMode('default',this)" title="Default planner help">Balanced</button>
-        <button type="button" class="flux-ai-mode" data-mode="research" onclick="setFluxAIMode('research',this)" title="Sources &amp; links for research">Research</button>
-        <button type="button" class="flux-ai-mode" data-mode="deep" onclick="setFluxAIMode('deep',this)" title="Careful, accuracy-focused">Deep think</button>
-        <button type="button" class="flux-ai-mode" data-mode="overtime" onclick="setFluxAIMode('overtime',this)" title="Fast, urgent execution focus">Overtime</button>
-      </div>
-      <div class="flux-ai-engine-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:.72rem;color:var(--muted2)">
-        <label for="fluxAiEngineSelect" style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
-          <span style="font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em;font-size:.62rem;color:var(--muted)">Engine</span>
-          <select id="fluxAiEngineSelect" onchange="setFluxAIEngine(this.value)" title="AI provider (keys on server)" style="font:inherit;font-size:.78rem;padding:5px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);max-width:min(100%,220px)">
-            <option value="groq">Groq · Llama</option>
-            <option value="anthropic">Anthropic · Claude</option>
-          </select>
-        </label>
-        <span style="opacity:.9;line-height:1.35">Second engine: official Claude (Pro+) or OpenAI-compat backends on the server — Gemini shim, <strong>OpenRouter</strong>, or <strong>DeepSeek</strong> via <code style="font-size:.65rem">ANTHROPIC_BASE_URL</code> + <code style="font-size:.65rem">ANTHROPIC_API_KEY</code> + <code style="font-size:.65rem">ANTHROPIC_MODEL</code>. See <code style="font-size:.65rem">docs/ai-proxy-backends.md</code>. JSON tools still use Groq.</span>
       </div>
       <div id="aiDailyUsageBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--card2);border-bottom:1px solid var(--border)">
         <div style="flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden">
