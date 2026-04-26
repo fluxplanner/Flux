@@ -41,25 +41,28 @@ export function serviceClient() {
   );
 }
 
-/** Origins allowed to call Edge Functions from the browser (must echo exact Origin for credentialed fetches). */
+/**
+ * Echo a safe Origin for Access-Control-Allow-Origin.
+ * Browsers require an exact match with the page origin; a fixed fallback breaks
+ * GitHub Pages project URLs, custom domains, previews, etc.
+ * The anon key is already public in static bundles — broad http(s) echo is acceptable here.
+ */
 function resolveCorsOrigin(origin: string): string {
   const trimmed = (origin || "").trim();
-  const exact = new Set([
-    "https://azfermohammed.github.io",
-    "https://fluxplanner.github.io",
-    "http://localhost:3000",
-    "http://localhost:5500",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5500",
-  ]);
-  if (exact.has(trimmed)) return trimmed;
-  // Any user/org GitHub Pages site (https://<name>.github.io)
+  if (!trimmed) return "https://azfermohammed.github.io";
+  // Opaque / file origins — some browsers send the literal string "null"
+  if (trimmed === "null") return "null";
   try {
     const u = new URL(trimmed);
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return "https://azfermohammed.github.io";
+    }
+    const host = u.hostname;
     if (
-      u.protocol === "https:" && !u.port &&
-      /\.github\.io$/i.test(u.hostname) &&
-      u.hostname.length > ".github.io".length
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".localhost") ||
+      host.includes(".")
     ) {
       return trimmed;
     }
@@ -71,12 +74,14 @@ function resolveCorsOrigin(origin: string): string {
 
 export function corsHeaders(origin: string) {
   const o = resolveCorsOrigin(origin);
-  return {
+  const h: Record<string, string> = {
     "Access-Control-Allow-Origin": o,
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Vary": "Origin",
   };
+  return h;
 }
 
 export function json(data: unknown, status = 200, origin = "") {

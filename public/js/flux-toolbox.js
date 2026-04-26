@@ -2971,15 +2971,12 @@ function getActiveChipId(sec){
 const LS_ST_LAYOUT = 'flux_study_tools_layout';
 
 function getStudyLayoutMode(){
-  try{
-    const v = localStorage.getItem(LS_ST_LAYOUT);
-    return v === 'class' ? 'class' : 'subject';
-  }catch(e){ return 'subject'; }
+  return 'subject';
 }
 
 function setStudyLayoutMode(mode){
-  const m = mode === 'class' ? 'class' : 'subject';
-  try{ localStorage.setItem(LS_ST_LAYOUT, m); }catch(e){}
+  if (mode === 'class') return;
+  try{ localStorage.setItem(LS_ST_LAYOUT, 'subject'); }catch(e){}
   syncStudyLayoutToggleUI();
   applyStudyLayoutModeToDom();
 }
@@ -3032,8 +3029,6 @@ function syncStudyPanelHostVisibility(){
   const { subject, classHost } = getToolboxSectionHosts();
   if (subject) subject.hidden = mode !== 'subject';
   if (classHost) classHost.hidden = mode !== 'class';
-  const strip = $('stClassChips');
-  if (strip) strip.hidden = mode === 'class';
 }
 
 function sortClassesForStudyBlocks(cls){
@@ -3115,9 +3110,6 @@ function renderStudyClassBlocks(){
 
 function applyStudyLayoutModeToDom(){
   syncStudyPanelHostVisibility();
-  const fb = $('stFilterBar');
-  const ncls = getFluxUserClasses().length;
-  if (fb) fb.hidden = getStudyLayoutMode() === 'class' || ncls <= 6;
   if (getStudyLayoutMode() === 'class') renderStudyClassBlocks();
   else rehomeAllStudyToolBodies();
   const fid = focusedUnifiedSectionId && UNIFIED_LAYOUT.some(s => s.id === focusedUnifiedSectionId)
@@ -3153,22 +3145,6 @@ function scrollToStudySection(secId, pulse){
   }
 }
 
-function refreshClassChipsUI(activeKey){
-  const host = $('stClassChips');
-  if (!host) return;
-  const cls = getFluxUserClasses();
-  const mk = (key, label, col) => {
-    const on = activeKey === key ? ' active' : '';
-    const st = col ? ` style="--chip-col:${esc(col)}"` : '';
-    return `<button type="button" class="st-class-chip${on}" data-class="${esc(key)}"${st} role="tab" aria-selected="${activeKey===key}">${esc(label)}</button>`;
-  };
-  const parts = [mk('all', 'All', null)];
-  cls.forEach(c => parts.push(mk(c.id, c.name, c.color)));
-  host.innerHTML = parts.join('');
-  const filterBar = $('stFilterBar');
-  if (filterBar) filterBar.hidden = cls.length <= 6;
-}
-
 function buildStudySearchIndex(){
   const rows = [];
   UNIFIED_LAYOUT.forEach(sec => {
@@ -3189,16 +3165,12 @@ function updateStudySearchUI(){
   const clr = $('stSearchClear');
   const results = $('stSearchResults');
   const sections = $('stSections');
-  const strip = $('stClassChips');
-  const filterBar = $('stFilterBar');
   const tbPanel = $('toolbox');
   if (clr) clr.hidden = !q;
   if (!q){
     if (results){ results.hidden = true; results.innerHTML = ''; }
     if (sections) sections.hidden = false;
     syncStudyPanelHostVisibility();
-    const ncls = getFluxUserClasses().length;
-    if (filterBar) filterBar.hidden = getStudyLayoutMode() === 'class' || ncls <= 6;
     if (tbPanel) tbPanel.classList.remove('st-panel--study-search');
     const fid = focusedUnifiedSectionId && UNIFIED_LAYOUT.some(s => s.id === focusedUnifiedSectionId)
       ? focusedUnifiedSectionId : 'science';
@@ -3209,8 +3181,6 @@ function updateStudySearchUI(){
   }
   if (tbPanel) tbPanel.classList.add('st-panel--study-search');
   if (sections) sections.hidden = true;
-  if (strip) strip.hidden = true;
-  if (filterBar) filterBar.hidden = true;
   if (!results) return;
   const idx = buildStudySearchIndex().filter(r => r.hay.includes(q));
   results.hidden = false;
@@ -3305,8 +3275,6 @@ function wireStudyUnifiedOnce(){
       updateStudySearchUI();
     });
   }
-  $('stLayoutSubject')?.addEventListener('click', () => { setStudyLayoutMode('subject'); });
-  $('stLayoutClass')?.addEventListener('click', () => { setStudyLayoutMode('class'); });
 }
 
 function activateStudyTool(subjectId, toolId){
@@ -3331,9 +3299,6 @@ function renderUnifiedStudyTools(){
   const subjectHost = $('stSubjectHost');
   if (!root || !subjectHost) return;
   wireStudyUnifiedOnce();
-
-  let activeClass = 'all';
-  try{ activeClass = localStorage.getItem('flux_ref_class') || 'all'; }catch(e){}
 
   if (!root._stSectionsBuilt){
     root._stSectionsBuilt = 1;
@@ -3385,64 +3350,13 @@ function renderUnifiedStudyTools(){
       });
     });
 
-    const chipsHost = $('stClassChips');
-    function applyClassSelection(key){
-      try{ localStorage.setItem('flux_ref_class', key); }catch(err){}
-      refreshClassChipsUI(key);
-      const filterMode = $('stFilterMode')?.checked;
-      if (key === 'all'){
-        UNIFIED_LAYOUT.forEach(s => { document.getElementById('st-section-'+s.id)?.classList.remove('st-section--filtered-out'); });
-        root.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      const cls = getFluxUserClasses().find(c => c.id === key);
-      const secId = cls ? primarySectionForTags(cls.tags) : null;
-      if (filterMode && secId){
-        UNIFIED_LAYOUT.forEach(s => {
-          const el = document.getElementById('st-section-'+s.id);
-          if (!el) return;
-          el.classList.toggle('st-section--filtered-out', s.id !== secId);
-        });
-        scrollToStudySection(secId, true);
-        refreshSectionToolUI(secId);
-      } else {
-        UNIFIED_LAYOUT.forEach(s => { document.getElementById('st-section-'+s.id)?.classList.remove('st-section--filtered-out'); });
-        if (secId) scrollToStudySection(secId, true);
-      }
-    }
-    chipsHost?.addEventListener('click', e => {
-      const b = e.target.closest('.st-class-chip');
-      if (!b) return;
-      const key = b.getAttribute('data-class') || 'all';
-      applyClassSelection(key);
-    });
-
-    $('stFilterMode')?.addEventListener('change', () => {
-      let key = 'all';
-      try{ key = localStorage.getItem('flux_ref_class') || 'all'; }catch(e){}
-      applyClassSelection(key);
-    });
-
     focusedUnifiedSectionId = 'science';
-  }
-
-  refreshClassChipsUI(activeClass);
-  const filterMode = $('stFilterMode')?.checked;
-  if (filterMode && activeClass !== 'all'){
-    const cls = getFluxUserClasses().find(c => c.id === activeClass);
-    const secId = cls ? primarySectionForTags(cls.tags) : null;
-    UNIFIED_LAYOUT.forEach(s => {
-      const el = document.getElementById('st-section-'+s.id);
-      if (!el) return;
-      el.classList.toggle('st-section--filtered-out', secId ? s.id !== secId : false);
-    });
-  } else {
-    UNIFIED_LAYOUT.forEach(s => { document.getElementById('st-section-'+s.id)?.classList.remove('st-section--filtered-out'); });
   }
 
   UNIFIED_LAYOUT.forEach(sec => {
     const wrap = document.getElementById('st-section-'+sec.id);
     if (!wrap) return;
+    wrap.classList.remove('st-section--filtered-out');
     const pills = classPillsHtml(sec);
     const tagHost = wrap.querySelector('.st-class-tags');
     if (tagHost) tagHost.innerHTML = pills;
@@ -3454,14 +3368,6 @@ function renderUnifiedStudyTools(){
 
   syncStudyLayoutToggleUI();
   syncStudyPanelHostVisibility();
-  const ncls2 = getFluxUserClasses().length;
-  const fb2 = $('stFilterBar');
-  if (fb2) fb2.hidden = getStudyLayoutMode() === 'class' || ncls2 <= 6;
-  const classListSig = getFluxUserClasses().map(c => String(c.id) + ':' + (c.name || '')).join('|');
-  if (getStudyLayoutMode() === 'class' && root._stClassSig !== classListSig){
-    root._stClassSig = classListSig;
-    renderStudyClassBlocks();
-  }
 
   updateStudySearchUI();
 }

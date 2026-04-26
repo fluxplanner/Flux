@@ -1391,7 +1391,8 @@ async function fluxAiSimple(system, userMessage, opts){
   }catch(e){
     const msg=String(e&&e.message||e);
     if(/failed to fetch|networkerror|load failed/i.test(msg)){
-      throw new Error('Network blocked the AI request. If you use GitHub Pages, ensure the latest CORS config is deployed on Supabase, or try another network.');
+      console.warn('[Flux AI] fetch failed', e);
+      throw new Error('Could not reach Flux AI (network or browser blocked the request). Try: disable VPN/ad-block for this site, use a normal browser tab, or redeploy Supabase functions after updating CORS. Your page origin must be allowed by the ai-proxy Edge function.');
     }
     throw e;
   }
