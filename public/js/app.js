@@ -4736,6 +4736,7 @@ function getCloudPayload(){
     restDays:loadRestDaysList(),
     flux_ui_density:load('flux_ui_density','comfortable'),
     flux_mood_tint_enabled:load('flux_mood_tint_enabled',true),
+    flux_liquid_glass:load('flux_liquid_glass',null),
     flux_nav_counts_v1:load('flux_nav_counts_v1',{}),
     events:load('flux_events',[]),
     cycleConfig:load('flux_cycle_config',null),
@@ -4840,6 +4841,7 @@ async function syncFromCloud(){
     else if(d.noHWDays&&Array.isArray(d.noHWDays)){saveRestDaysList(d.noHWDays.map(x=>typeof x==='string'?{date:x,kind:'lazy'}:x));}
     if(d.flux_ui_density)save('flux_ui_density',d.flux_ui_density);
     if(d.flux_mood_tint_enabled!==undefined)save('flux_mood_tint_enabled',d.flux_mood_tint_enabled);
+    if(d.flux_liquid_glass===true||d.flux_liquid_glass===false)save('flux_liquid_glass',d.flux_liquid_glass);
     if(d.flux_nav_counts_v1&&typeof d.flux_nav_counts_v1==='object')save('flux_nav_counts_v1',d.flux_nav_counts_v1);
     if(d.events){save('flux_events',d.events);}
     if(d.cycleConfig!==undefined)save('flux_cycle_config',d.cycleConfig);
@@ -6294,7 +6296,11 @@ function handleSignedOut(){
   currentUser=null;gmailToken=null;
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
   sessionStorage.clear();
-  const keysToKeep=['flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb'];
+  const keysToKeep=[
+    'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
+    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+  ];
   const kept={};
   keysToKeep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)kept[k]=v;});
   localStorage.clear();
