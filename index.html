@@ -494,6 +494,10 @@
         <button class="nav-item" onclick="nav('settings',this)" data-tab="settings"><span class="ni">⚙</span><span class="nl">Settings</span></button>
       </div>
     </div>
+    <div id="sidebarUpgradeCTA" style="display:none;margin:8px 10px;padding:12px;background:linear-gradient(135deg,rgba(var(--accent-rgb),.12),rgba(var(--accent-rgb),.06));border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;cursor:pointer" onclick="showPricingPage()">
+      <div style="font-size:.78rem;font-weight:700;margin-bottom:2px">Upgrade to Pro ✦</div>
+      <div style="font-size:.68rem;color:var(--muted2)">$2.99/month • 30-day free trial</div>
+    </div>
     <div class="sidebar-footer">
       <div class="user-card" id="sidebarUserCard" onclick="nav('settings',document.querySelector('[data-tab=settings]'))">
         <div class="uc-av" id="sidebarAv">?</div>
@@ -1208,7 +1212,7 @@
             <input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">
           </div>
           <div>
-            <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px" id="profileName">Your Name</div>
+            <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px"><span id="profileName">Your Name</span><span id="proPlanBadge" style="display:none;background:var(--accent);color:#fff;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px">Pro</span></div>
             <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Set up your profile</div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px" id="profileBadges"></div>
           </div>
@@ -1487,6 +1491,12 @@
         <button type="button" class="flux-ai-mode" data-mode="deep" onclick="setFluxAIMode('deep',this)" title="Careful, accuracy-focused">Deep think</button>
         <button type="button" class="flux-ai-mode" data-mode="overtime" onclick="setFluxAIMode('overtime',this)" title="Fast, urgent execution focus">Overtime</button>
       </div>
+      <div id="aiDailyUsageBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--card2);border-bottom:1px solid var(--border)">
+        <div style="flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden">
+          <div class="ai-usage-fill" style="height:100%;width:0%;transition:width .3s var(--ease);border-radius:2px"></div>
+        </div>
+        <span class="ai-usage-label" style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0"></span>
+      </div>
       </div>
       <div id="aiMsgsWrap" class="flux-ai-scroll">
         <div class="flux-ai-thread">
@@ -1735,6 +1745,11 @@
             <div class="srow" style="border:none"><div><div class="slabel">Sync Status</div><div class="ssub" id="syncStatus">—</div></div><div id="syncBadgeHolder"></div></div>
             <button onclick="forceSyncNow()" style="width:100%;margin-top:10px;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">⟳ Force Sync Now</button>
             <button onclick="signOut()" class="btn-sec" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red)">Sign Out</button>
+          </div>
+        </div>
+        <div id="subscriptionSection" style="display:none">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">Subscription</div>
+          <div id="subscriptionStatusCard" class="card" style="padding:14px">
           </div>
         </div>
         <div class="card">

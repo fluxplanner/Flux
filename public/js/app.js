@@ -23,7 +23,7 @@ const DATA_VERSION=3;
 // ══ APP VERSION — bump for release notes / error payloads (Part 4) ══
 const APP_VERSION='1.0.0';
 
-// ══ FEATURE FLAGS — payments & gates (off until launch; see production hardening spec) ══
+// ══ FEATURE FLAGS — payments & gates (off until launch) ══
 const FLUX_FLAGS={
   PAYMENTS_ENABLED:false,
   SHOW_PRICING_PAGE:false,
@@ -32,85 +32,473 @@ const FLUX_FLAGS={
   ENFORCE_TASK_LIMITS:false,
   ENFORCE_CANVAS_GATE:false,
   ENFORCE_SCHEDULE_IMPORT_GATE:false,
+  ENFORCE_EXPORT_GATE:false,
+  ENFORCE_GCAL_PUSH_GATE:false,
   SHOW_PRO_BADGE:false,
+  TRIAL_ENABLED:false,
   TESTER_MODE:false,
 };
 
-/** Plan catalog: boolean values false = feature not included on that tier (requires upgrade when payments on). */
 const FLUX_PLANS={
   free:{
     name:'Free',
+    price:0,
     aiPremiumModel:false,
+    aiDailyMessages:10,
+    aiMonthlyMessages:50,
     imageAnalysis:false,
+    maxActiveTasks:50,
     canvasSync:false,
     schedulePhotoImport:false,
+    gmailSync:true,
+    googleCalendarPush:false,
+    exportJson:true,
+    exportCsv:false,
+    exportIcal:false,
     exportPdf:false,
+    cloudSync:true,
+    maxClasses:6,
+    supportLevel:'community',
+    trialDays:30,
   },
   pro:{
     name:'Student Pro',
+    price:2.99,
+    billingPeriod:'monthly',
+    stripePriceId:null,
     aiPremiumModel:true,
+    aiDailyMessages:200,
+    aiMonthlyMessages:6000,
     imageAnalysis:true,
+    maxActiveTasks:Infinity,
     canvasSync:true,
     schedulePhotoImport:true,
+    gmailSync:true,
+    googleCalendarPush:true,
+    exportJson:true,
+    exportCsv:true,
+    exportIcal:true,
     exportPdf:true,
+    cloudSync:true,
+    maxClasses:Infinity,
+    supportLevel:'email',
+    trialDays:0,
   },
   school:{
     name:'School License',
+    price:0,
+    billingPeriod:'yearly',
+    stripePriceId:null,
     aiPremiumModel:true,
+    aiDailyMessages:200,
+    aiMonthlyMessages:6000,
     imageAnalysis:true,
+    maxActiveTasks:Infinity,
     canvasSync:true,
     schedulePhotoImport:true,
+    gmailSync:true,
+    googleCalendarPush:true,
+    exportJson:true,
+    exportCsv:true,
+    exportIcal:true,
     exportPdf:true,
+    cloudSync:true,
+    maxClasses:Infinity,
+    supportLevel:'email',
+    trialDays:0,
   },
 };
 
-/** When payments are off or tester mode is on, everyone is treated as Pro. */
+const FLUX_FREE_LIMITS={
+  AI_DAILY_MESSAGES:10,
+  AI_MONTHLY_MESSAGES:50,
+  MAX_ACTIVE_TASKS:50,
+  MAX_CLASSES:6,
+};
+
+let _entitlement={
+  plan:'free',
+  status:'trialing',
+  isTrialing:true,
+  trialEndsAt:null,
+  currentPeriodEnd:null,
+  cancelAtPeriodEnd:false,
+  aiDailyMessages:FLUX_FREE_LIMITS.AI_DAILY_MESSAGES,
+  aiMonthlyMessages:FLUX_FREE_LIMITS.AI_MONTHLY_MESSAGES,
+  imageAnalysis:false,
+  canvasSync:false,
+  schedulePhotoImport:false,
+  usage:{
+    daily_used:0,
+    daily_limit:FLUX_FREE_LIMITS.AI_DAILY_MESSAGES,
+    monthly_used:0,
+    monthly_limit:FLUX_FREE_LIMITS.AI_MONTHLY_MESSAGES,
+  },
+};
+let _entitlementFetchedAt=0;
+const ENTITLEMENT_CACHE_MS=5*60*1000;
+
 function getUserPlan(){
-  if (!FLUX_FLAGS.PAYMENTS_ENABLED) return 'pro';
-  if (FLUX_FLAGS.TESTER_MODE) return 'pro';
-  // Part 2: read from Supabase subscriptions; until then default free for signed-in users
-  if (currentUser) return 'free';
-  return 'free';
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED)return'pro';
+  if(FLUX_FLAGS.TESTER_MODE)return'pro';
+  return _entitlement.plan||'free';
 }
 
 function requiresPro(feature){
-  if (!FLUX_FLAGS.PAYMENTS_ENABLED) return false;
-  if (FLUX_FLAGS.TESTER_MODE) return false;
-  const plan = getUserPlan();
-  return FLUX_PLANS[plan]?.[feature] === false;
-}
-
-function showUpgradePrompt(feature, reason){
-  if (!FLUX_FLAGS.PAYMENTS_ENABLED || !FLUX_FLAGS.SHOW_UPGRADE_PROMPTS) return;
-  void feature; void reason;
-  // Part 2: full upgrade modal
-  if (typeof showToast === 'function') showToast('Upgrade prompts are not enabled yet.','info');
-}
-
-async function startCheckout(plan, period){
-  void plan; void period;
-  if (!FLUX_FLAGS.PAYMENTS_ENABLED){
-    if (typeof showToast === 'function') showToast('Payments coming soon — stay tuned!','info');
-    return;
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED)return false;
+  if(FLUX_FLAGS.TESTER_MODE)return false;
+  const plan=_entitlement.plan;
+  const planConfig=FLUX_PLANS[plan];
+  if(!planConfig)return false;
+  if(planConfig[feature]===false)return true;
+  if(feature==='maxActiveTasks'){
+    const max=planConfig.maxActiveTasks??Infinity;
+    return max!==Infinity&&tasks.filter(t=>!t.done).length>=max;
   }
-  // Part 2: Stripe Checkout via Edge Function
-  if (typeof showToast === 'function') showToast('Checkout is not wired yet.','info');
+  if(feature==='maxClasses'){
+    const max=planConfig.maxClasses??Infinity;
+    return max!==Infinity&&classes.length>=max;
+  }
+  return false;
+}
+
+function showAILimitReached(){
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED)return;
+  const daily=_entitlement.usage?.daily_used??0;
+  const dailyLimit=_entitlement.usage?.daily_limit??FLUX_FREE_LIMITS.AI_DAILY_MESSAGES;
+  const plan=_entitlement.plan;
+  const isTrialing=_entitlement.isTrialing;
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:420px;text-align:center;box-shadow:var(--shadow-float)">
+      <div style="font-size:2rem;margin-bottom:12px">🤖</div>
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Daily AI limit reached</div>
+      <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
+        You've used ${daily} of ${dailyLimit} AI messages today on the ${plan==='free'?'Free':'Pro'} plan.
+        ${isTrialing?'<br><br>Your trial gives you full Pro access. Subscribe to keep it after your trial ends.':'<br><br>Upgrade to Pro for 200 messages per day.'}
+      </div>
+      <div style="background:var(--card2);border-radius:12px;padding:14px;margin-bottom:20px;font-size:.8rem;color:var(--muted)">
+        Resets at midnight • Current usage: ${daily}/${dailyLimit}
+      </div>
+      ${FLUX_FLAGS.SHOW_PRICING_PAGE?`
+        <button onclick="this.closest('[style*=fixed]').remove();showPricingPage()" style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;margin-bottom:10px">
+          ${isTrialing?'Subscribe — $2.99/month':'Upgrade to Flux Pro'}
+        </button>`:''}
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);font-size:.85rem;cursor:pointer">
+        OK, I'll wait until tomorrow
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+}
+
+function showUpgradePrompt(feature,reason){
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.SHOW_UPGRADE_PROMPTS)return;
+  const featureLabels={
+    imageAnalysis:'AI Image Analysis',
+    canvasSync:'Canvas LMS Sync',
+    schedulePhotoImport:'Schedule Photo Import',
+    maxActiveTasks:'Unlimited Tasks',
+    maxClasses:'Unlimited Classes',
+    exportCsv:'CSV Export',
+    exportPdf:'PDF Export',
+    googleCalendarPush:'Google Calendar Sync',
+    exportIcal:'iCal Export',
+  };
+  const label=featureLabels[feature]||feature;
+  const isTrialing=_entitlement.isTrialing;
+  const trialEnd=_entitlement.trialEndsAt
+    ?new Date(_entitlement.trialEndsAt).toLocaleDateString('en-US',{month:'long',day:'numeric'})
+    :null;
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:20px;padding:28px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.5)">
+      <div style="font-size:1.8rem;text-align:center;margin-bottom:10px">✦</div>
+      <div style="font-size:1rem;font-weight:800;text-align:center;margin-bottom:6px">${label}</div>
+      <div style="font-size:.82rem;color:var(--muted2);text-align:center;line-height:1.6;margin-bottom:18px">${reason}</div>
+      ${isTrialing&&trialEnd?`
+        <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:10px;padding:10px 14px;font-size:.78rem;color:var(--accent);text-align:center;margin-bottom:14px">
+          Your free trial ends ${trialEnd}. Subscribe to keep access.
+        </div>`:''}
+      <div style="margin-bottom:16px">
+        ${['Unlimited AI messages','Image & photo analysis','Canvas LMS sync','Schedule photo import','CSV & iCal export','Google Calendar push'].map(f=>
+          `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem">
+            <span style="color:var(--green)">✓</span>${f}
+          </div>`
+        ).join('')}
+      </div>
+      ${FLUX_FLAGS.SHOW_PRICING_PAGE?`
+        <button onclick="this.closest('[style*=fixed]').remove();showPricingPage()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:700;margin-bottom:8px;cursor:pointer;font-size:.9rem">
+          Upgrade — $2.99/month
+        </button>`:`
+        <div style="text-align:center;font-size:.8rem;color:var(--muted2);padding:10px;margin-bottom:8px">
+          Subscriptions opening soon — you'll be the first to know!
+        </div>`}
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--muted2);font-size:.82rem;cursor:pointer">
+        Maybe later
+      </button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
 }
 
 function showPricingPage(){
-  if (!FLUX_FLAGS.PAYMENTS_ENABLED || !FLUX_FLAGS.SHOW_PRICING_PAGE) return;
-  // Part 2: full-screen pricing overlay
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED||!FLUX_FLAGS.SHOW_PRICING_PAGE)return;
+  const isTrialing=_entitlement.isTrialing;
+  const currentPlan=_entitlement.plan;
+  const trialEnd=_entitlement.trialEndsAt
+    ?new Date(_entitlement.trialEndsAt).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+    :null;
+  const overlay=document.createElement('div');
+  overlay.id='pricingOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:9500;overflow-y:auto;animation:fadeIn .2s var(--ease)';
+  overlay.innerHTML=`
+    <div style="max-width:860px;margin:0 auto;padding:40px 20px 80px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:40px">
+        <div style="font-size:1.4rem;font-weight:800">Flux Planner</div>
+        <button onclick="document.getElementById('pricingOverlay').remove()" style="background:var(--card2);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;color:var(--muted2);transform:none;box-shadow:none">✕</button>
+      </div>
+      <div style="text-align:center;margin-bottom:40px">
+        <div style="font-size:2rem;font-weight:800;margin-bottom:8px">Simple, honest pricing</div>
+        <div style="font-size:1rem;color:var(--muted2)">30-day free trial • No credit card required • Cancel anytime</div>
+        ${isTrialing&&trialEnd?`
+          <div style="margin-top:12px;display:inline-block;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.3);border-radius:20px;padding:6px 16px;font-size:.82rem;color:var(--accent)">
+            Your free trial ends ${trialEnd}
+          </div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:40px">
+        <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:24px">
+          <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">Free</div>
+          <div style="font-size:2rem;font-weight:800;margin-bottom:4px">$0</div>
+          <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px">Forever free</div>
+          <div style="margin-bottom:20px">
+            ${[
+              `${FLUX_FREE_LIMITS.AI_DAILY_MESSAGES} AI messages/day`,
+              `Up to ${FLUX_FREE_LIMITS.MAX_ACTIVE_TASKS} active tasks`,
+              `Up to ${FLUX_FREE_LIMITS.MAX_CLASSES} classes`,
+              'Cloud sync',
+              'Calendar & notes',
+              'Mood tracking',
+              'Focus timer',
+            ].map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem;color:var(--muted2)"><span style="color:var(--green)">✓</span>${f}</div>`).join('')}
+            ${[
+              'AI image analysis',
+              'Canvas sync',
+              'Schedule import',
+              'CSV/iCal export',
+            ].map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem;color:var(--muted);opacity:.5"><span>✕</span>${f}</div>`).join('')}
+          </div>
+          <button disabled style="width:100%;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);font-size:.85rem;cursor:default">
+            ${currentPlan==='free'&&!isTrialing?'Current Plan':'Free Forever'}
+          </button>
+        </div>
+        <div style="background:var(--card);border:2px solid var(--accent);border-radius:18px;padding:24px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:14px;right:14px;background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px">MOST POPULAR</div>
+          <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px">Student Pro</div>
+          <div style="font-size:2rem;font-weight:800;margin-bottom:4px">$2.99<span style="font-size:1rem;font-weight:400;color:var(--muted2)">/month</span></div>
+          <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px">30-day free trial</div>
+          <div style="margin-bottom:20px">
+            ${[
+              '200 AI messages/day',
+              'Unlimited tasks & classes',
+              'AI image analysis',
+              'Canvas LMS sync',
+              'Schedule photo import',
+              'Google Calendar push',
+              'CSV & iCal export',
+              'Email support',
+            ].map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem"><span style="color:var(--green)">✓</span>${f}</div>`).join('')}
+          </div>
+          <button id="checkoutBtn" onclick="startCheckout('pro','monthly')"
+            style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;box-shadow:0 4px 16px rgba(var(--accent-rgb),.4)">
+            ${isTrialing?'Subscribe — $2.99/month':'Start Free Trial'}
+          </button>
+          <div style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:8px">
+            ${isTrialing?'Cancel anytime from Settings':'No credit card required for trial'}
+          </div>
+        </div>
+      </div>
+      <div style="max-width:600px;margin:0 auto">
+        <div style="font-size:1rem;font-weight:700;margin-bottom:16px;text-align:center">Common questions</div>
+        ${[
+          ['Can I cancel anytime?','Yes. Cancel from Settings → Account → Manage Subscription at any time. You keep Pro access until the end of your billing period.'],
+          ['What happens when my trial ends?','You automatically move to the Free plan. No charges, no surprises. Your data is never deleted.'],
+          ['Is $2.99 the student price?','Yes — this is already the student price. No discount code needed.'],
+          ['What happens to my data if I downgrade?','All your tasks, grades, and notes stay intact forever. You just hit Free plan limits for new additions.'],
+          ['Which AI model does Flux use?','Pro users get Llama 3.3 70B (fast, smart). Free users get Llama 3.1 8B (still great for most questions).'],
+        ].map(([q,a])=>`
+          <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:.87rem;font-weight:600;margin-bottom:5px">${q}</div>
+            <div style="font-size:.8rem;color:var(--muted2);line-height:1.6">${a}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function startCheckout(plan,period){
+  void period;
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED){
+    showToast('Payments are not yet active — check back soon!','info');
+    return;
+  }
+  if(!currentUser){
+    showToast('Please sign in to subscribe','error');
+    return;
+  }
+  const btn=document.getElementById('checkoutBtn');
+  if(btn){btn.disabled=true;btn.textContent='Loading...';}
+  try{
+    const session=await getSB().auth.getSession();
+    const token=session?.data?.session?.access_token;
+    const res=await fetch(`${SB_URL}/functions/v1/stripe-checkout`,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+(token||SB_ANON),
+        'apikey':SB_ANON,
+        'Content-Type':'application/json',
+      },
+      body:JSON.stringify({plan:plan||'pro',period:period||'monthly'}),
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Failed to start checkout');
+    window.location.href=data.url;
+  }catch(e){
+    showToast('Failed to open checkout: '+e.message,'error');
+    if(btn){btn.disabled=false;btn.textContent='Start Student Pro';}
+  }
+}
+
+async function openBillingPortal(){
+  if(!currentUser)return;
+  try{
+    const session=await getSB().auth.getSession();
+    const token=session?.data?.session?.access_token;
+    const res=await fetch(`${SB_URL}/functions/v1/stripe-portal`,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+(token||SB_ANON),
+        'apikey':SB_ANON,
+        'Content-Type':'application/json',
+      },
+    });
+    const data=await res.json();
+    if(data.url)window.open(data.url,'_blank');
+  }catch(e){
+    showToast('Failed to open billing portal','error');
+  }
+}
+
+function updatePlanUI(){
+  const plan=_entitlement.plan;
+  const isTrialing=_entitlement.isTrialing;
+  const isFree=plan==='free'&&!isTrialing;
+  const upgradeCTA=document.getElementById('sidebarUpgradeCTA');
+  if(upgradeCTA){
+    upgradeCTA.style.display=(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.SHOW_PRO_BADGE&&isFree)?'block':'none';
+  }
+  const proBadge=document.getElementById('proPlanBadge');
+  if(proBadge){
+    proBadge.style.display=(FLUX_FLAGS.PAYMENTS_ENABLED&&plan==='pro')?'inline-flex':'none';
+    proBadge.textContent=isTrialing?'Trial':'Pro';
+  }
+  const aiUsageBar=document.getElementById('aiDailyUsageBar');
+  if(aiUsageBar&&FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
+    const used=_entitlement.usage?.daily_used??0;
+    const limit=_entitlement.usage?.daily_limit??FLUX_FREE_LIMITS.AI_DAILY_MESSAGES;
+    const pct=Math.min(100,(used/limit)*100);
+    aiUsageBar.style.display='flex';
+    const bar=aiUsageBar.querySelector('.ai-usage-fill');
+    const label=aiUsageBar.querySelector('.ai-usage-label');
+    if(bar)bar.style.width=pct+'%';
+    if(bar)bar.style.background=pct>=90?'var(--red)':pct>=70?'var(--gold)':'var(--green)';
+    if(label)label.textContent=`${used}/${limit} messages today`;
+  }else if(aiUsageBar){
+    aiUsageBar.style.display='none';
+  }
+}
+
+function checkTrialExpiry(){
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED)return;
+  if(!_entitlement.isTrialing||!_entitlement.trialEndsAt)return;
+  const daysLeft=Math.ceil(
+    (new Date(_entitlement.trialEndsAt)-new Date())/(1000*60*60*24)
+  );
+  if(daysLeft>7)return;
+  const bannerId='trialExpiryBanner';
+  if(document.getElementById(bannerId))return;
+  const dismissed=load('flux_trial_banner_dismissed',null);
+  if(dismissed===_entitlement.trialEndsAt)return;
+  const banner=document.createElement('div');
+  banner.id=bannerId;
+  banner.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(var(--accent-rgb),.4);border-radius:14px;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-float);z-index:500;max-width:420px;width:calc(100% - 40px);animation:slideUp .3s var(--ease-spring)';
+  banner.innerHTML=`
+    <span style="font-size:1.2rem">⏳</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:.82rem;font-weight:700">${daysLeft===1?'Trial ends tomorrow':`Trial ends in ${daysLeft} days`}</div>
+      <div style="font-size:.72rem;color:var(--muted2)">Subscribe to keep Pro access</div>
+    </div>
+    ${FLUX_FLAGS.SHOW_PRICING_PAGE?`<button onclick="document.getElementById('${bannerId}').remove();showPricingPage()" style="padding:6px 14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;flex-shrink:0;transform:none;box-shadow:none">Subscribe</button>`:''}
+    <button onclick="save('flux_trial_banner_dismissed','${_entitlement.trialEndsAt}');document.getElementById('${bannerId}').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;font-size:.9rem;flex-shrink:0;transform:none;box-shadow:none">✕</button>`;
+  document.body.appendChild(banner);
+}
+
+function renderSubscriptionCard(){
+  const el=document.getElementById('subscriptionStatusCard');
+  if(!el)return;
+  const section=document.getElementById('subscriptionSection');
+  if(section)section.style.display=FLUX_FLAGS.PAYMENTS_ENABLED?'block':'none';
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED)return;
+  const plan=_entitlement.plan;
+  const status=_entitlement.status;
+  const isTrialing=_entitlement.isTrialing;
+  const trialEnd=_entitlement.trialEndsAt
+    ?new Date(_entitlement.trialEndsAt).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+    :null;
+  const periodEnd=_entitlement.currentPeriodEnd
+    ?new Date(_entitlement.currentPeriodEnd).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+    :null;
+  const cancelAtEnd=_entitlement.cancelAtPeriodEnd;
+  let statusLine='';
+  if(isTrialing&&trialEnd)statusLine=`Free trial ends ${trialEnd}`;
+  else if(plan==='pro'&&cancelAtEnd&&periodEnd)statusLine=`Cancels ${periodEnd}`;
+  else if(plan==='pro'&&periodEnd)statusLine=`Renews ${periodEnd}`;
+  else if(status==='past_due')statusLine='Payment past due';
+  else statusLine='Free plan';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div style="font-size:.9rem;font-weight:700">${isTrialing?'Free Trial':plan==='pro'?'Student Pro':'Free'}</div>
+        <div style="font-size:.75rem;color:var(--muted2);margin-top:2px">${statusLine}</div>
+      </div>
+      <span style="font-size:.65rem;padding:3px 10px;border-radius:10px;background:${plan==='pro'?'rgba(var(--accent-rgb),.15)':'var(--card2)'};color:${plan==='pro'?'var(--accent)':'var(--muted2)'};font-weight:700">
+        ${plan==='pro'?(isTrialing?'TRIAL':'PRO'):'FREE'}
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${plan==='free'&&!isTrialing&&FLUX_FLAGS.SHOW_PRICING_PAGE?`
+        <button onclick="showPricingPage()" style="padding:8px 16px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer">
+          Upgrade to Pro
+        </button>`:''}
+      ${(plan==='pro'||isTrialing)?`
+        <button onclick="openBillingPortal()" style="padding:8px 16px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.8rem;cursor:pointer;transform:none;box-shadow:none">
+          Manage Subscription
+        </button>`:''}
+    </div>`;
 }
 
 function checkTesterMode(){
-  FLUX_FLAGS.TESTER_MODE = false;
-  if (!currentUser || !currentUser.email) return;
-  const list = load('flux_tester_emails', []);
-  if (!Array.isArray(list) || !list.length) return;
-  const email = String(currentUser.email).toLowerCase().trim();
-  if (list.some(e => String(e || '').toLowerCase().trim() === email)){
-    FLUX_FLAGS.TESTER_MODE = true;
-    try{ console.log('[Flux] Tester mode active for', currentUser.email); }catch(_){}
+  FLUX_FLAGS.TESTER_MODE=false;
+  if(!currentUser||!currentUser.email)return;
+  const list=load('flux_tester_emails',[]);
+  if(!Array.isArray(list)||!list.length)return;
+  const email=String(currentUser.email).toLowerCase().trim();
+  if(list.some(e=>String(e||'').toLowerCase().trim()===email)){
+    FLUX_FLAGS.TESTER_MODE=true;
+    _entitlement.plan='pro';
+    try{console.log('[Flux] Tester mode active for',currentUser.email);}catch(_){}
   }
 }
 
@@ -147,6 +535,7 @@ try{
   window.requiresPro = requiresPro;
   window.showUpgradePrompt = showUpgradePrompt;
   window.startCheckout = startCheckout;
+  window.openBillingPortal = openBillingPortal;
   window.showPricingPage = showPricingPage;
   window.checkTesterMode = checkTesterMode;
   window.renderTesterBadge = renderTesterBadge;
@@ -649,6 +1038,10 @@ function applyImportedPayloadMerge(d){
   if(currentUser)syncToCloud();
 }
 function exportGradesCSV(){
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_EXPORT_GATE&&requiresPro('exportCsv')){
+    showUpgradePrompt('exportCsv','Export grades to CSV with Flux Pro');
+    return;
+  }
   const rows=[['Subject','Grade %']];
   Object.entries(grades).forEach(([k,v])=>rows.push([k,String(v)]));
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
@@ -974,12 +1367,20 @@ const API={
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
 };
-// Headers for Supabase Edge Functions (AI + Canvas)
-const API_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${SB_ANON}`};
+
+async function fluxAuthHeaders(){
+  try{
+    const s=await getSB()?.auth?.getSession();
+    const t=s?.data?.session?.access_token||SB_ANON;
+    return{'Content-Type':'application/json','Authorization':'Bearer '+t,'apikey':SB_ANON};
+  }catch(e){
+    return{'Content-Type':'application/json','Authorization':'Bearer '+SB_ANON,'apikey':SB_ANON};
+  }
+}
 
 /** One-shot call to the same Supabase AI proxy as chat (for reference tools, JSON extraction, etc.). */
 async function fluxAiSimple(system, userMessage){
-  const res=await fetch(API.ai,{ method:'POST', headers:API_HEADERS, body:JSON.stringify({ system, messages:[{ role:'user', content:userMessage }] }) });
+  const res=await fetch(API.ai,{ method:'POST', headers:await fluxAuthHeaders(), body:JSON.stringify({ system, messages:[{ role:'user', content:userMessage }] }) });
   if(!res.ok){
     const err=await res.json().catch(()=>({ error:'HTTP '+res.status }));
     throw new Error(err.error||'AI request failed');
@@ -988,8 +1389,6 @@ async function fluxAiSimple(system, userMessage){
   return data.content?.[0]?.text||'';
 }
 try{ window.fluxAiSimple=fluxAiSimple; }catch(e){}
-// Gemini proxy doesn't need Authorization header - it uses the server-side key
-const GEMINI_HEADERS={'Content-Type':'application/json','Authorization':`Bearer ${SB_ANON}`};
 
 let _sb=null,currentUser=null;
 function getSB(){
@@ -1004,6 +1403,34 @@ function getSB(){
     });
   }
   return _sb;
+}
+
+async function fetchAndCacheEntitlement(){
+  if(!currentUser||!FLUX_FLAGS.PAYMENTS_ENABLED)return;
+  if(Date.now()-_entitlementFetchedAt<ENTITLEMENT_CACHE_MS)return;
+  try{
+    const session=await getSB().auth.getSession();
+    const token=session?.data?.session?.access_token;
+    if(!token)return;
+    const res=await fetch(`${SB_URL}/functions/v1/get-entitlement`,{
+      method:'GET',
+      headers:{
+        'Authorization':'Bearer '+token,
+        'apikey':SB_ANON,
+        'Content-Type':'application/json',
+      },
+    });
+    if(!res.ok){
+      console.warn('[Flux] Failed to fetch entitlement:',res.status);
+      return;
+    }
+    _entitlement=await res.json();
+    _entitlementFetchedAt=Date.now();
+    updatePlanUI();
+    checkTrialExpiry();
+  }catch(e){
+    console.warn('[Flux] Entitlement fetch error:',e);
+  }
 }
 
 // ══ HELPERS ══
@@ -1163,18 +1590,23 @@ const NAV_TAB_SVGS={
   calendar:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
   ai:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg>`,
   grades:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>`,
-  more:`<svg class="nt-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="19" cy="18" r="1.6"/></svg>`,
+  /* Horizontal “more” — not a 3×3 grid (avoid clash with app tiles / periodic) */
+  more:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
   school:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v9"/><path d="M20 10v9"/><path d="M2 20h20"/><path d="m4 10 8-3 8 3"/><path d="M9 20v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/></svg>`,
   notes:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>`,
-  timer:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="7"/><path d="M12 7V4"/><path d="M9 2h6"/><path d="M12 14l1.5-1.2"/></svg>`,
-  canvas:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5Z"/><path d="M6 12v5c0 1.1 1.8 2 4 2s4-.9 4-2v-5"/></svg>`,
+  timer:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 6V3"/><path d="M9 2h6"/><path d="M12 12l3.5-2.5"/></svg>`,
+  /* LMS window + envelope — Canvas + Gmail at a glance */
+  canvas:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12.5" y="4" width="9" height="7" rx="1"/><path d="M12.5 6.5h9"/><path d="M17 11v2.5"/><path d="M15 16.5h4"/><path d="M2.5 9.5h8a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 1 18v-7a1.5 1.5 0 0 1 1.5-1.5Z"/><path d="m2.5 9.5 4 3 4-3"/></svg>`,
   toolbox:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/></svg>`,
   profile:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>`,
-  goals:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2"/></svg>`,
+  /* People / clubs — not concentric rings (was too close to old AI look) */
+  goals:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
-  settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`,
+  /* Sliders — distinct from Flux AI sunburst */
+  settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 3v5"/><path d="M20 21v-5"/><path d="M20 8V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 14h4"/></svg>`,
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+  gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
 };
 // Bottom bar primary five (Home, Calendar, AI, Grades, More) — alias for existing code paths.
 const BNAV_ICONS={
@@ -1187,8 +1619,7 @@ const BNAV_ICONS={
 
 /** Sidebar / drawer / More: SVG when defined; else emoji from tabConfig. */
 function getNavIconHtml(tabId,variant){
-  const key=tabId==='references'?'toolbox':tabId;
-  const svg=NAV_TAB_SVGS[key]||null;
+  const svg=NAV_TAB_SVGS[tabId]||null;
   if(svg){
     const wrap=variant==='moreSheet'?'ms-svg-wrap':'ni-svg-wrap';
     return`<span class="${wrap}" aria-hidden="true">${svg}</span>`;
@@ -1305,6 +1736,14 @@ function addTask(){
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
   const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:document.getElementById('taskSubject').value,priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringType:_recTypeAdd!=='none'?_recTypeAdd:undefined,recurringWeekly:_recTypeAdd==='weekly'||!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined};
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_TASK_LIMITS){
+    const activeTasks=tasks.filter(t=>!t.done).length;
+    const maxTasks=FLUX_PLANS[_entitlement.plan]?.maxActiveTasks??Infinity;
+    if(activeTasks>=maxTasks&&maxTasks!==Infinity){
+      showUpgradePrompt('maxActiveTasks',`You have ${activeTasks} active tasks. Flux Pro removes task limits.`);
+      return;
+    }
+  }
   task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject)setTimeout(()=>injectGhostDraft(task),1500);
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
@@ -2277,6 +2716,13 @@ function addClass(){
   const timeEnd=document.getElementById('classTimeEnd').value;
   const color=document.getElementById('classColor')?.value||'';
   if(!name)return;
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_TASK_LIMITS){
+    const maxClasses=FLUX_PLANS[_entitlement.plan]?.maxClasses??Infinity;
+    if(classes.length>=maxClasses&&maxClasses!==Infinity){
+      showUpgradePrompt('maxClasses',`Free plan supports up to ${FLUX_FREE_LIMITS.MAX_CLASSES} classes. Upgrade to add more.`);
+      return;
+    }
+  }
   const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
   const cleanedName=cleanClassName(name);
   classes.push({id:Date.now(),period,name:cleanedName,teacher,room,days,timeStart,timeEnd,color:color||COLORS[classes.length%COLORS.length]});
@@ -2682,7 +3128,7 @@ async function ecAISuggest(){
   const schoolsList = ecSchools.map(s=>`${s.name} (${s.tier})`).join(', ') || 'None added yet';
   const prompt = `I'm a high school student. Here are my current extracurricular activities: ${activitiesList}.\n\nMy target schools: ${schoolsList}.\n\nBased on these, suggest 5-8 additional extracurricular activities I should consider. For each, explain WHY it would strengthen my profile (e.g. shows leadership, fills a gap, aligns with likely major). Be specific and actionable — not generic. Format each as a bullet with the activity name in bold.`;
   try {
-    const res = await fetch(API.ai, {method:'POST', headers:API_HEADERS, body:JSON.stringify({system:'You are an expert college admissions counselor. Give specific, actionable extracurricular suggestions.', messages:[{role:'user', content:prompt}]})});
+    const res = await fetch(API.ai, {method:'POST', headers:await fluxAuthHeaders(), body:JSON.stringify({system:'You are an expert college admissions counselor. Give specific, actionable extracurricular suggestions.', messages:[{role:'user', content:prompt}]})});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     const reply = data.content?.[0]?.text || 'Could not generate suggestions.';
@@ -2705,7 +3151,7 @@ async function ecAIAnalyze(){
   const schoolsList = ecSchools.map(s=>`${s.name} (${s.tier})`).join(', ');
   const prompt = `Analyze my extracurricular profile for college admissions.\n\nMy activities:\n- ${activitiesList}\n\nTarget schools: ${schoolsList}\n\nFor EACH school, give:\n1. A fit score (Weak / Moderate / Strong / Excellent)\n2. What my profile is missing for that school specifically\n3. One concrete activity I should add to improve my chances\n\nAlso give an overall assessment of my profile's strengths and gaps. Be honest but constructive.`;
   try {
-    const res = await fetch(API.ai, {method:'POST', headers:API_HEADERS, body:JSON.stringify({system:'You are an expert college admissions counselor with deep knowledge of what top universities look for in applicants. Be specific and honest in your analysis.', messages:[{role:'user', content:prompt}]})});
+    const res = await fetch(API.ai, {method:'POST', headers:await fluxAuthHeaders(), body:JSON.stringify({system:'You are an expert college admissions counselor with deep knowledge of what top universities look for in applicants. Be specific and honest in your analysis.', messages:[{role:'user', content:prompt}]})});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     const reply = data.content?.[0]?.text || 'Could not generate analysis.';
@@ -2794,7 +3240,7 @@ async function sendEcCollegeChat(){
   try{
     const res=await fetch(API.ecCollegeChat,{
       method:'POST',
-      headers:API_HEADERS,
+      headers:await fluxAuthHeaders(),
       body:JSON.stringify({
         collegeName,
         messages:apiMsgs,
@@ -2843,8 +3289,8 @@ function fmt(cmd){document.execCommand(cmd,false,null);}
 function insHeading(){document.execCommand('formatBlock',false,'<h3>');}
 function insBullet(){document.execCommand('insertUnorderedList',false,null);}
 function insCode(){document.execCommand('insertHTML',false,'<code style="background:var(--border);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:.82em">code</code>');}
-async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${e.message}</div>`;}}
-async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});const data=await res.json();let txt=(data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim();const cards=JSON.parse(txt);if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards.</div>`;}}
+async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${e.message}</div>`;}}
+async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});const data=await res.json();let txt=(data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim();const cards=JSON.parse(txt);if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards.</div>`;}}
 function openFlashcards(){if(!flashcards.length)return;fcIndex=0;fcFlipped=false;document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='block';renderFC();}
 function closeFlashcards(){document.getElementById('flashcardView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function renderFC(){if(!flashcards.length)return;const fc=flashcards[fcIndex];document.getElementById('fcProgress').textContent=`Card ${fcIndex+1} / ${flashcards.length}`;document.getElementById('fcText').textContent=fcFlipped?fc.a:fc.q;document.getElementById('fcCard').style.background=fcFlipped?'rgba(var(--accent-rgb),.1)':'var(--card)';}
@@ -3214,6 +3660,7 @@ function switchStab(id,el){
   if(pane)pane.classList.add('active');
   if(id==='appearance'){applyFontScale();applyReduceMotion();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();}
   if(id==='data'&&typeof renderStorageMeter==='function')renderStorageMeter();
+  if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
 }
 function toggleSetting(k,el){settings[k]=!settings[k];el.classList.toggle('on',settings[k]);save('flux_settings',settings);}
 function toggleNotifyBrowser(el){
@@ -3376,6 +3823,10 @@ function resetTabs(){
 }
 function exportData(){const data={tasks,grades,gpaPrior,notes:notes.map(n=>({...n,body:strip(n.body)})),habits,goals,colleges,moodHistory,schoolInfo,classes,settings,extras,ecSchools,ecGoals,flux_cycle_config:load('flux_cycle_config',null),flux_weekly_events:load('flux_weekly_events',[]),flux_events:load('flux_events',[]),exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flux-data.json';a.click();URL.revokeObjectURL(url);}
 function exportToICal(){
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_EXPORT_GATE&&requiresPro('exportIcal')){
+    showUpgradePrompt('exportIcal','Export your tasks to iCal with Flux Pro');
+    return;
+  }
   const esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Flux Planner//EN','CALSCALE:GREGORIAN'];
   tasks.filter(t=>t.date&&!t.done).forEach(t=>{
@@ -3881,6 +4332,11 @@ function handleAIImg(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
+    if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS&&requiresPro('imageAnalysis')){
+      showUpgradePrompt('imageAnalysis','Analyze photos of worksheets, textbooks, and schedules with Flux Pro');
+      const inp=document.getElementById('aiImgUpload');if(inp)inp.value='';
+      return;
+    }
     aiPendingImg={data:e.target.result.split(',')[1],mime:file.type,name:file.name};
     const prev=document.getElementById('aiImgPreview');
     if(prev){
@@ -3986,6 +4442,17 @@ async function sendAI(){
   const text=input.value.trim();
   if(!text&&!aiPendingImg)return;
   if(btn.disabled)return;
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
+    const dailyUsed=_entitlement.usage?.daily_used??0;
+    const dailyLimit=_entitlement.usage?.daily_limit??FLUX_FREE_LIMITS.AI_DAILY_MESSAGES;
+    if(dailyUsed>=dailyLimit){
+      showAILimitReached();
+      return;
+    }
+    if(dailyUsed>=dailyLimit-3){
+      showToast(`${dailyLimit-dailyUsed} AI messages remaining today`,'warning');
+    }
+  }
   document.getElementById('aiSugs').style.display='none';
   const imgSnapshot=aiPendingImg;
   appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
@@ -4009,10 +4476,40 @@ async function sendAI(){
     // If image attached, send it for Gemini vision via the ai-proxy
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
-    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,body:JSON.stringify(body)});
-    if(!res.ok){const err=await res.json().catch(()=>({error:'Unknown error'}));throw new Error(err.error||'HTTP '+res.status);}
+    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify(body)});
+    if(!res.ok){
+      const errData=await res.json().catch(()=>({}));
+      if(errData.error==='daily_limit_reached'){
+        _entitlement.usage=_entitlement.usage||{};
+        _entitlement.usage.daily_used=errData.daily_used;
+        _entitlement.usage.daily_limit=errData.daily_limit;
+        showAILimitReached();
+        thinkEl.remove();
+        btn.disabled=false;input.focus();
+        return;
+      }
+      if(errData.error==='feature_requires_pro'){
+        showUpgradePrompt('imageAnalysis','Upgrade to Flux Pro for image analysis');
+        thinkEl.remove();
+        btn.disabled=false;input.focus();
+        return;
+      }
+      if(String(errData.error||'').includes('Invalid or expired token')||res.status===401){
+        showToast('Session expired. Please sign in again.','error');
+        if(typeof handleSignedOut==='function')handleSignedOut();
+        thinkEl.remove();
+        btn.disabled=false;input.focus();
+        return;
+      }
+      throw new Error(errData.error||'HTTP '+res.status);
+    }
     const data=await res.json();
     const reply=data.content?.[0]?.text||"I didn't get a response — try again.";
+    if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
+      _entitlement.usage=_entitlement.usage||{};
+      _entitlement.usage.daily_used=(_entitlement.usage.daily_used??0)+1;
+      updatePlanUI();
+    }
     const ar=execActions(reply);
     let clean=reply;
     const toolsRun=[];
@@ -4543,6 +5040,12 @@ function handleDeepLinkParams(){
     const shareText=(u.searchParams.get('text')||u.searchParams.get('title')||'').trim();
     const shareUrl=(u.searchParams.get('url')||'').trim();
     const combined=[shareText,shareUrl].filter(Boolean).join(' ').trim();
+    if(u.searchParams.get('upgrade')==='1'){
+      if(FLUX_FLAGS.SHOW_PRICING_PAGE)setTimeout(()=>{if(typeof showPricingPage==='function')showPricingPage();},600);
+      u.searchParams.delete('upgrade');
+      const qs=u.searchParams.toString();
+      history.replaceState({},'',u.pathname+(qs?'?'+qs:'')+u.hash);
+    }
     if(q==='task'){
       nav('dashboard');
       setTimeout(()=>{if(typeof openQuickAdd==='function')openQuickAdd();},400);
@@ -4804,6 +5307,10 @@ function handleScheduleImg(event){
   reader.readAsDataURL(file);
 }
 async function analyzeScheduleImg(){
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_SCHEDULE_IMPORT_GATE&&requiresPro('schedulePhotoImport')){
+    showUpgradePrompt('schedulePhotoImport','Import your class schedule from a photo with Flux Pro');
+    return;
+  }
   if(!obScheduleImgData)return;
   const analyzing=document.getElementById('obAnalyzing');
   const resultEl=document.getElementById('obExtractedClasses');
@@ -4813,7 +5320,7 @@ async function analyzeScheduleImg(){
     const base64=obScheduleImgData.split(',')[1];
     const mime=obScheduleImgData.split(';')[0].split(':')[1];
     const res=await fetch(API.gemini,{
-      method:'POST',headers:GEMINI_HEADERS,
+      method:'POST',headers:await fluxAuthHeaders(),
       body:JSON.stringify({imageBase64:base64,mimeType:mime,
         prompt:'This is a student class schedule image. Extract every class/period. Return ONLY a valid JSON array with no extra text, no markdown, no backticks: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods sequentially if not shown. Empty string for missing fields. ONLY the JSON array.'})
     });
@@ -5622,6 +6129,7 @@ function showApp(){
   // Smart next-day warning
   setTimeout(checkTomorrowLoad,4500);
   setTimeout(checkWeeklyReview,5000);
+  if(typeof updatePlanUI==='function')updatePlanUI();
 }
 
 async function handleSignedIn(user,session){
@@ -5632,6 +6140,19 @@ async function handleSignedIn(user,session){
     const appEl=document.getElementById('app');
     if(appEl&&!appEl.classList.contains('visible'))showApp();
     checkTesterMode();
+    if(FLUX_FLAGS.PAYMENTS_ENABLED){
+      _entitlementFetchedAt=0;
+      fetchAndCacheEntitlement().then(()=>{
+        checkTesterMode();
+        updatePlanUI();
+        renderSubscriptionCard();
+      });
+    }else{
+      _entitlement.plan='pro';
+      _entitlement.imageAnalysis=true;
+      _entitlement.canvasSync=true;
+      _entitlement.schedulePhotoImport=true;
+    }
     _updateUserUI(user,user.user_metadata?.full_name||user.email?.split('@')[0]||'');
     renderTesterBadge();
     return;
@@ -5708,6 +6229,21 @@ async function handleSignedIn(user,session){
     // Call _updateUserUI AFTER showApp() so DOM elements are visible
     _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
   }
+  if(FLUX_FLAGS.PAYMENTS_ENABLED){
+    _entitlementFetchedAt=0;
+    fetchAndCacheEntitlement().then(()=>{
+      checkTesterMode();
+      updatePlanUI();
+      checkTrialExpiry();
+      renderSubscriptionCard();
+    });
+  }else{
+    _entitlement.plan='pro';
+    _entitlement.imageAnalysis=true;
+    _entitlement.canvasSync=true;
+    _entitlement.schedulePhotoImport=true;
+    updatePlanUI();
+  }
   renderTesterBadge();
   // Full cloud push every minute while logged in (faster cross-device; debounced typing still uses syncKey)
   if(!window._syncInterval)window._syncInterval=setInterval(()=>{ if(currentUser)void syncToCloud(); },60*1000);
@@ -5746,6 +6282,14 @@ function _updateUserUI(user,name){
 
 function handleSignedOut(){
   FLUX_FLAGS.TESTER_MODE = false;
+  _entitlementFetchedAt=0;
+  _entitlement.plan='free';
+  _entitlement.status='trialing';
+  _entitlement.isTrialing=true;
+  _entitlement.imageAnalysis=false;
+  _entitlement.canvasSync=false;
+  _entitlement.schedulePhotoImport=false;
+  _entitlement.usage={daily_used:0,daily_limit:FLUX_FREE_LIMITS.AI_DAILY_MESSAGES,monthly_used:0,monthly_limit:FLUX_FREE_LIMITS.AI_MONTHLY_MESSAGES};
   document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
   currentUser=null;gmailToken=null;
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
@@ -5958,8 +6502,65 @@ function initDashboardFeatures(){
   initV4Systems();
 }
 
+function handleCheckoutReturn(){
+  const params=new URLSearchParams(window.location.search);
+  const checkoutStatus=params.get('checkout');
+  if(checkoutStatus==='success'){
+    params.delete('checkout');
+    params.delete('session_id');
+    const qs=params.toString();
+    window.history.replaceState({},'',window.location.pathname+(qs?'?'+qs:'')+window.location.hash);
+    const showSuccess=()=>{
+      if(typeof spawnConfetti==='function')spawnConfetti();
+      const trialEnd=_entitlement.trialEndsAt
+        ?new Date(_entitlement.trialEndsAt).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+        :null;
+      const modal=document.createElement('div');
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+      modal.innerHTML=`
+        <div style="background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:20px;padding:32px;width:100%;max-width:400px;text-align:center;box-shadow:var(--shadow-float)">
+          <div style="font-size:3rem;margin-bottom:14px">🎉</div>
+          <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Welcome to Flux Pro!</div>
+          <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
+            You now have access to all Pro features.
+            ${trialEnd?`Your first charge is on ${trialEnd}.`:'Your subscription is now active.'}
+          </div>
+          <div style="background:var(--card2);border-radius:12px;padding:14px;margin-bottom:20px;text-align:left">
+            ${['200 AI messages/day','Image analysis','Canvas sync','Unlimited tasks'].map(f=>
+              `<div style="display:flex;align-items:center;gap:8px;font-size:.82rem;padding:4px 0"><span style="color:var(--green)">✓</span>${f}</div>`
+            ).join('')}
+          </div>
+          <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">
+            Let's go! ✦
+          </button>
+        </div>`;
+      document.body.appendChild(modal);
+      _entitlementFetchedAt=0;
+      if(FLUX_FLAGS.PAYMENTS_ENABLED)void fetchAndCacheEntitlement();
+    };
+    if(typeof currentUser!=='undefined'&&currentUser){
+      setTimeout(showSuccess,1000);
+    }else{
+      const interval=setInterval(()=>{
+        if(typeof currentUser!=='undefined'&&currentUser){
+          clearInterval(interval);
+          setTimeout(showSuccess,500);
+        }
+      },500);
+      setTimeout(()=>clearInterval(interval),15000);
+    }
+  }
+  if(checkoutStatus==='canceled'){
+    params.delete('checkout');
+    const qs=params.toString();
+    window.history.replaceState({},'',window.location.pathname+(qs?'?'+qs:'')+window.location.hash);
+    setTimeout(()=>showToast('No worries — your free plan is still active','info'),1000);
+  }
+}
+
 // ══ INIT ══
 (function init(){
+  handleCheckoutReturn();
   initOAuthPostMessageListener();
   loadTheme();
   migrateCompletedAtBackfill();
@@ -6050,7 +6651,7 @@ async function injectGhostDraft(task){
     ?`For a student task "${task.name}" in ${subj.name}: give 3-5 starting points. Use g = ${G.toFixed(4)} m/s² for all physics. Show all calculations to 4 decimal places. Be concise bullet points.`
     :`For a student task "${task.name}" in ${subj.name}: give 3-5 helpful starting points, key concepts, or formulas to begin. Concise bullet points only.`;
   try{
-    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,
+    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),
       body:JSON.stringify({system:'You are a helpful study assistant. Be brief and practical.',
         messages:[{role:'user',content:prompt}]})});
     const data=await res.json();
@@ -6127,7 +6728,7 @@ async function dailyShutdown(){
   // Generate AI summary
   try{
     const taskNames=completed.map(t=>t.name).slice(0,6).join(', ')||'nothing specific';
-    const res=await fetch(API.ai,{method:'POST',headers:API_HEADERS,
+    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),
       body:JSON.stringify({system:'You are a supportive academic coach. Be warm and brief (2-3 sentences max).',
         messages:[{role:'user',content:`Student completed today: ${taskNames}. Efficiency: ${eff}%. Focus time: ${totalMins} minutes. Write a brief motivating shutdown summary.`}]})});
     const data=await res.json();
@@ -6582,11 +7183,27 @@ function startOnboardingTour(){
         requestAnimationFrame(()=>tip.classList.add('is-visible'));
       };
       setTimeout(showAt,520);
-      const onScroll=()=>{if(document.body.contains(tip))placeTip(tip,target);};
-      const onResize=()=>{if(document.body.contains(tip))placeTip(tip,target);};
-      window.addEventListener('resize',onResize);
-      window.addEventListener('scroll',onScroll,true);
+      let tipScrollRaf=0;
+      const onScroll=()=>{
+        if(!document.body.contains(tip))return;
+        if(tipScrollRaf)return;
+        tipScrollRaf=requestAnimationFrame(()=>{
+          tipScrollRaf=0;
+          if(document.body.contains(tip))placeTip(tip,target);
+        });
+      };
+      const onResize=()=>{
+        if(!document.body.contains(tip))return;
+        if(tipScrollRaf)return;
+        tipScrollRaf=requestAnimationFrame(()=>{
+          tipScrollRaf=0;
+          if(document.body.contains(tip))placeTip(tip,target);
+        });
+      };
+      window.addEventListener('resize',onResize,{passive:true});
+      window.addEventListener('scroll',onScroll,{capture:true,passive:true});
       const cleanupTip=()=>{
+        if(tipScrollRaf){cancelAnimationFrame(tipScrollRaf);tipScrollRaf=0;}
         window.removeEventListener('resize',onResize);
         window.removeEventListener('scroll',onScroll,true);
         target.style.outline='';
@@ -6686,7 +7303,7 @@ function fileToBase64(file){
 // Generic Gemini vision call via edge function
 async function callGemini(imageBase64,mimeType,prompt){
   const res=await fetch(API.gemini,{
-    method:'POST',headers:GEMINI_HEADERS,
+    method:'POST',headers:await fluxAuthHeaders(),
     body:JSON.stringify({imageBase64,mimeType,prompt})
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Gemini error '+res.status);}
@@ -6740,6 +7357,11 @@ async function importNoteFromPhoto(event){
 
 // Import schedule from photo (school tab)
 async function importScheduleFromPhoto(event,resultElId){
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_SCHEDULE_IMPORT_GATE&&requiresPro('schedulePhotoImport')){
+    showUpgradePrompt('schedulePhotoImport','Import your class schedule from a photo with Flux Pro');
+    if(event.target)event.target.value='';
+    return;
+  }
   const file=event.target.files[0];if(!file)return;
   const resEl=document.getElementById(resultElId||'schoolImgResult');
   if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini AI...</div>';}
@@ -6774,7 +7396,12 @@ async function importScheduleFromPhoto(event,resultElId){
 function gmailListContainer(){return document.getElementById('canvasGmailList')||document.getElementById('gmailList');}
 
 function saveCanvasConfig(){
-  canvasToken=document.getElementById('canvasToken')?.value.trim()||'';
+  const nextTok=document.getElementById('canvasToken')?.value.trim()||'';
+  if(nextTok&&FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_CANVAS_GATE&&requiresPro('canvasSync')){
+    showUpgradePrompt('canvasSync','Pull assignments directly from Canvas into your planner');
+    return;
+  }
+  canvasToken=nextTok;
   canvasUrl=document.getElementById('canvasUrl')?.value.trim()||'';
   save('flux_canvas_token',canvasToken);
   save('flux_canvas_url',canvasUrl);
@@ -6783,11 +7410,15 @@ function saveCanvasConfig(){
 }
 
 async function canvasProxyGet(apiPath){
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_CANVAS_GATE&&requiresPro('canvasSync')){
+    showUpgradePrompt('canvasSync','Pull assignments directly from Canvas into your planner');
+    throw new Error('Canvas sync requires Flux Pro');
+  }
   if(!canvasToken||!canvasUrl)throw new Error('Configure Canvas URL and token first.');
   const base=canvasUrl.replace(/\/+$/,'');
   const path=apiPath.startsWith('/')?apiPath:'/'+apiPath;
   const full=base+'/api/v1'+path;
-  const res=await fetch(`${API.canvas}?url=${encodeURIComponent(full)}&token=${encodeURIComponent(canvasToken)}`,{headers:API_HEADERS});
+  const res=await fetch(`${API.canvas}?url=${encodeURIComponent(full)}&token=${encodeURIComponent(canvasToken)}`,{headers:await fluxAuthHeaders()});
   const text=await res.text();
   let data;try{data=JSON.parse(text);}catch(e){throw new Error('Canvas did not return JSON. Check URL and token.');}
   if(data&&typeof data==='object'&&!Array.isArray(data)&&Array.isArray(data.errors))throw new Error(data.errors.map(x=>x.message).join('; '));
@@ -6801,7 +7432,7 @@ async function canvasProxyPostForm(apiPath,bodyString){
   const full=base+'/api/v1'+(apiPath.startsWith('/')?apiPath:'/'+apiPath);
   const res=await fetch(API.canvas,{
     method:'POST',
-    headers:{...API_HEADERS,'Content-Type':'application/json'},
+    headers:{...await fluxAuthHeaders(),'Content-Type':'application/json'},
     body:JSON.stringify({url:full,token:canvasToken,method:'POST',body:bodyString,contentType:'application/x-www-form-urlencoded'})
   });
   const text=await res.text();

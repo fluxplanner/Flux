@@ -247,6 +247,8 @@
 
 /* Element cell — compact tiles with gentle corner radius */
 .pt-el{
+  container-type: inline-size;
+  container-name: ptcell;
   -webkit-appearance: none;
   appearance: none;
   position: relative;
@@ -318,39 +320,59 @@
 .pt-el[data-cat="unknown"]        { color: var(--pt-unknown); }
 
 .pt-el-n{
-  font-size: .58rem;
+  font-size: clamp(5px, 11cqw, 0.58rem);
   color: var(--muted, #8895a7);
   line-height: 1;
   letter-spacing: .02em;
   font-weight: 700;
+  flex-shrink: 0;
 }
 .pt-el-s{
-  font-size: 1.02rem;
+  font-size: clamp(9px, 28cqw, 1.02rem);
   font-weight: 800;
   color: var(--text);
   line-height: 1;
   margin-top: 2px;
   letter-spacing: -0.01em;
   text-shadow: 0 0 14px color-mix(in srgb, currentColor 30%, transparent);
+  flex-shrink: 0;
 }
 .pt-el-name{
-  font-size: .52rem;
+  /* Scale with tile; wrap so full names stay visible at any zoom / narrow viewport */
+  font-size: clamp(6.5px, 16cqw, 0.55rem);
   color: var(--text2, var(--text));
   opacity: .88;
-  line-height: 1.05;
+  line-height: 1.12;
   margin-top: 2px;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   font-weight: 500;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .pt-el-m{
-  font-size: .5rem;
+  font-size: clamp(5px, 10cqw, 0.5rem);
   color: var(--muted, #8895a7);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-top: auto;
   font-weight: 600;
+  flex-shrink: 0;
+}
+@supports not (container-type: inline-size){
+  .pt-el-n{ font-size: 0.58rem; }
+  .pt-el-s{ font-size: 1.02rem; }
+  .pt-el-name{
+    font-size: 0.52rem;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+  }
+  .pt-el-m{ font-size: 0.5rem; }
 }
 
 /* Filter dim-state */
@@ -659,10 +681,6 @@
     min-width: 951px;
   }
   .pt-el{ padding: 2px; border-radius: 3px; aspect-ratio: 1 / 1; -webkit-appearance: none; appearance: none; }
-  .pt-el-n{ font-size: .52rem; }
-  .pt-el-s{ font-size: .92rem; margin-top: 1px; }
-  .pt-el-name{ font-size: .46rem; margin-top: 1px; display: block; }
-  .pt-el-m{ font-size: .46rem; display: block; }
 }
 @media (max-width: 640px){
   .pt-grid{
@@ -673,10 +691,6 @@
     min-width: calc(18 * 46px + 17 * 2px);
   }
   .pt-el{ padding: 2px; border-radius: 3px; aspect-ratio: 1 / 1; -webkit-appearance: none; appearance: none; }
-  .pt-el-n{ font-size: .48rem; }
-  .pt-el-s{ font-size: .82rem; margin-top: 1px; }
-  .pt-el-name{ font-size: .42rem; margin-top: 1px; display: block; }
-  .pt-el-m{ font-size: .42rem; display: block; }
   #periodic{ padding: 12px; }
   #ptDetail.open{ width: 100%; max-width: 100%; }
   .pt-detail-symbol{ font-size: 3.8rem; }
@@ -688,7 +702,8 @@
     min-width: calc(18 * 40px + 17 * 2px);
   }
   .pt-el{ border-radius: 3px; aspect-ratio: 1 / 1; padding: 2px; -webkit-appearance: none; appearance: none; }
-  .pt-el-name{ display: none; }
+  /* Names stay visible (browser zoom triggers small CSS width — do not hide) */
+  .pt-el-name{ -webkit-line-clamp: 5; line-clamp: 5; }
 }
 
 /* Print: show the table, hide the detail overlay */

@@ -86,6 +86,13 @@
   }
 
   async function pushTaskToGCal(taskId){
+    if(window.FLUX_FLAGS && window.FLUX_FLAGS.PAYMENTS_ENABLED && window.FLUX_FLAGS.ENFORCE_GCAL_PUSH_GATE &&
+        typeof window.requiresPro === 'function' && window.requiresPro('googleCalendarPush')){
+      if(typeof window.showUpgradePrompt === 'function'){
+        window.showUpgradePrompt('googleCalendarPush', 'Push tasks to Google Calendar with Flux Pro');
+      } else { toast('Google Calendar push requires Flux Pro', 'info'); }
+      return;
+    }
     if(!Array.isArray(window.tasks)){ toast('Tasks not loaded', 'error'); return; }
     const t = window.tasks.find(x => x.id === taskId);
     if(!t){ toast('Task not found', 'error'); return; }

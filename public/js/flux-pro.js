@@ -386,7 +386,16 @@ function escapeHtml(s){
 // Right-click context menu for tasks
 // ────────────────────────────────────────────────────────────────
 let _ctxMenuEl = null;
-function closeCtxMenu(){ if(_ctxMenuEl){ _ctxMenuEl.remove(); _ctxMenuEl = null; } }
+function onCtxMenuScrollClose(){
+  if(_ctxMenuEl) closeCtxMenu();
+}
+function closeCtxMenu(){
+  if(_ctxMenuEl){
+    window.removeEventListener('scroll', onCtxMenuScrollClose, true);
+    _ctxMenuEl.remove();
+    _ctxMenuEl = null;
+  }
+}
 function openCtxMenu(x, y, items){
   closeCtxMenu();
   const el = document.createElement('div');
@@ -413,6 +422,7 @@ function openCtxMenu(x, y, items){
   });
   document.body.appendChild(el);
   _ctxMenuEl = el;
+  window.addEventListener('scroll', onCtxMenuScrollClose, {capture:true, passive:true});
   // Keep within viewport
   const r = el.getBoundingClientRect();
   if(r.right > window.innerWidth - 8) el.style.left = (window.innerWidth - r.width - 8) + 'px';
@@ -420,7 +430,6 @@ function openCtxMenu(x, y, items){
 }
 document.addEventListener('click', e=>{ if(_ctxMenuEl && !_ctxMenuEl.contains(e.target)) closeCtxMenu(); });
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && _ctxMenuEl) closeCtxMenu(); });
-document.addEventListener('scroll', ()=>closeCtxMenu(), true);
 
 document.addEventListener('contextmenu', e=>{
   const taskItem = e.target.closest('.task-item, [data-task-id]');

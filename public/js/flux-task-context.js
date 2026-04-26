@@ -15,9 +15,19 @@
     try{ return window.matchMedia('(pointer: coarse)').matches; } catch(e){ return false; }
   }
 
+  function onDismissFromScrollOrResize(){
+    closeMenu();
+  }
+
   function closeMenu(){
     const m = document.getElementById('fluxTaskCtxMenu');
-    if(m){ m.classList.add('flux-ctx-closing'); setTimeout(()=>m.remove(), 120); }
+    if(m){
+      window.removeEventListener('scroll', onDismissFromScrollOrResize, true);
+      window.removeEventListener('blur', onDismissFromScrollOrResize);
+      window.removeEventListener('resize', onDismissFromScrollOrResize);
+      m.classList.add('flux-ctx-closing');
+      setTimeout(()=>{ const el=document.getElementById('fluxTaskCtxMenu'); if(el) el.remove(); }, 120);
+    }
     document.removeEventListener('keydown', onKey, true);
   }
 
@@ -126,16 +136,16 @@
     requestAnimationFrame(()=>m.classList.add('flux-ctx-open'));
 
     document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onDismissFromScrollOrResize, {capture:true, passive:true});
+    window.addEventListener('blur', onDismissFromScrollOrResize);
+    window.addEventListener('resize', onDismissFromScrollOrResize);
   }
 
-  // Global listeners — click outside / scroll to close
+  // Click outside to close (cheap; no scroll listener until menu is open)
   document.addEventListener('click', (e) => {
     const m = document.getElementById('fluxTaskCtxMenu');
     if(m && !m.contains(e.target)) closeMenu();
   }, true);
-  window.addEventListener('scroll', closeMenu, true);
-  window.addEventListener('blur', closeMenu);
-  window.addEventListener('resize', closeMenu);
 
   // Context menu handler attached via delegation
   document.addEventListener('contextmenu', (e) => {

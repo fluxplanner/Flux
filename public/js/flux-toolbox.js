@@ -62,7 +62,11 @@ function setLsStudyTool(sectionId, chipId){
   try{ localStorage.setItem('flux_study_tool_'+sectionId, chipId); }catch(e){}
 }
 function lsStudyCollapsed(sectionId){
-  try{ return localStorage.getItem('flux_study_collapsed_'+sectionId)==='1'; }catch(e){ return false; }
+  try{
+    const v = localStorage.getItem('flux_study_collapsed_'+sectionId);
+    if (v === null || v === '') return true;
+    return v === '1';
+  }catch(e){ return true; }
 }
 function setLsStudyCollapsed(sectionId, collapsed){
   try{ localStorage.setItem('flux_study_collapsed_'+sectionId, collapsed?'1':'0'); }catch(e){}

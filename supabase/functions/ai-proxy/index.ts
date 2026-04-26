@@ -1,81 +1,192 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
+import { getEntitlement, checkAILimit, incrementAIUsage } from "../_shared/plan.ts";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { ...cors, "Content-Type": "application/json" } });
+const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+Deno.serve(async (req) => {
+  const origin = req.headers.get("origin") ?? "";
 
-  try {
-    const { system, messages, imageBase64, mimeType } = await req.json();
-    if (!messages || !Array.isArray(messages)) return json({ error: "Invalid request" }, 400);
-
-    // Image → Gemini 2.0 Flash (same key already used by gemini-proxy)
-    if (imageBase64) {
-      const geminiKey = Deno.env.get("GEMINI_API_KEY");
-      if (!geminiKey) return json({ error: "GEMINI_API_KEY not set" }, 500);
-
-      const lastMsg = messages[messages.length - 1]?.content || "Please analyze this image.";
-      const prompt = (system ? system + "\n\n" : "") + lastMsg;
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inlineData: { mimeType: mimeType || "image/jpeg", data: imageBase64 } },
-                { text: prompt }
-              ]
-            }]
-          })
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return json({ error: `Gemini error: ${err?.error?.message || res.status}` }, 500);
-      }
-
-      const d = await res.json();
-      const text = d.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) return json({ error: "Gemini returned no content" }, 500);
-      return json({ content: [{ type: "text", text }] });
-    }
-
-    // Text → Groq Llama 3.3 70B
-    const groqKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqKey) return json({ error: "GROQ_API_KEY not set" }, 500);
-
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 2048,
-        messages: [...(system ? [{ role: "system", content: system }] : []), ...messages]
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return json({ error: `Groq error: ${err?.error?.message || res.status}` }, 500);
-    }
-
-    const d = await res.json();
-    const text = d.choices?.[0]?.message?.content;
-    if (!text) return json({ error: "Groq returned no content" }, 500);
-    return json({ content: [{ type: "text", text }] });
-
-  } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405, origin);
+  }
+
+  let userId: string | null = null;
+  const auth = await verifyUserJWT(req);
+  if ("error" in auth && auth.error) {
+    if (PAYMENTS_ENABLED) {
+      return json({ error: auth.error }, auth.status, origin);
+    }
+    userId = null;
+  } else {
+    userId = auth.userId;
+  }
+
+  let body: {
+    message?: string;
+    messages?: Array<{ role: string; content: unknown }>;
+    imageBase64?: string;
+    mimeType?: string;
+    model?: string;
+    system?: string;
+    systemPrompt?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400, origin);
+  }
+
+  if (!body.messages || !Array.isArray(body.messages)) {
+    return json({ error: "Invalid request: messages required" }, 400, origin);
+  }
+
+  const hasImage = !!body.imageBase64;
+
+  if (PAYMENTS_ENABLED && userId) {
+    const entitlement = await getEntitlement(userId);
+
+    if (hasImage && !entitlement.imageAnalysis) {
+      return json({
+        error: "feature_requires_pro",
+        feature: "image_analysis",
+        message: "Image analysis requires Flux Pro",
+        upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
+      }, 403, origin);
+    }
+
+    const usage = await checkAILimit(userId, entitlement);
+    if (!usage.allowed) {
+      return json({
+        error: "daily_limit_reached",
+        daily_used: usage.dailyUsed,
+        daily_limit: usage.dailyLimit,
+        monthly_used: usage.monthlyUsed,
+        monthly_limit: usage.monthlyLimit,
+        plan: entitlement.plan,
+        is_trialing: entitlement.isTrialing,
+        trial_ends_at: entitlement.trialEndsAt,
+        upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
+      }, 429, origin);
+    }
+
+    if (entitlement.plan === "free" && !body.model) {
+      body.model = "llama-3.1-8b-instant";
+    }
+  }
+
+  if (!body.model) {
+    body.model = "llama-3.3-70b-versatile";
+  }
+
+  let text: string;
+  try {
+    if (hasImage) {
+      text = await callGemini(body);
+    } else {
+      text = await callGroq(body);
+    }
+  } catch (e) {
+    console.error("AI call failed:", e);
+    return json(
+      { error: "AI service error", details: String(e) },
+      502,
+      origin,
+    );
+  }
+
+  if (PAYMENTS_ENABLED && userId) {
+    incrementAIUsage(userId).catch(console.error);
+  }
+
+  return json({ content: [{ type: "text", text }] }, 200, origin);
 });
+
+async function callGroq(body: {
+  messages?: Array<{ role: string; content: unknown }>;
+  message?: string;
+  model?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<string> {
+  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
+
+  const system = body.system ?? body.systemPrompt;
+  const messages = body.messages ?? [
+    ...(system ? [{ role: "system", content: system }] : []),
+    { role: "user", content: body.message ?? "" },
+  ];
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: body.model ?? "llama-3.3-70b-versatile",
+      messages,
+      max_tokens: 2048,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+async function callGemini(body: {
+  message?: string;
+  messages?: Array<{ role: string; content: unknown }>;
+  imageBase64?: string;
+  mimeType?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+
+  const lastMsg = body.messages?.length
+    ? String(body.messages[body.messages.length - 1]?.content ?? "")
+    : (body.message ?? "");
+  const system = body.system ?? body.systemPrompt ?? "";
+  const prompt = (system ? system + "\n\n" : "") + lastMsg;
+
+  const parts: unknown[] = [];
+  if (body.imageBase64 && body.mimeType) {
+    parts.push({
+      inlineData: { mimeType: body.mimeType, data: body.imageBase64 },
+    });
+  }
+  parts.push({ text: prompt });
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        ...(system
+          ? { systemInstruction: { parts: [{ text: system }] } }
+          : {}),
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
