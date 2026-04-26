@@ -1178,7 +1178,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas & Gmail',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',grades:'Grades',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -1322,10 +1322,10 @@ const DEFAULT_TABS=[
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
   {id:'ai',icon:'✦',label:'Flux AI',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
+  {id:'canvas',icon:'🎓',label:'Canvas',visible:true},
   {id:'grades',icon:'📊',label:'Grades',visible:true},
   {id:'notes',icon:'📝',label:'Notes',visible:true},
   {id:'timer',icon:'⏱',label:'Focus Timer',visible:true},
-  {id:'canvas',icon:'🎓',label:'Canvas & Gmail',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
@@ -1338,6 +1338,19 @@ tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='referen
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
 // Legacy tab label (older builds / stored flux_tabs)
 tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))t.label='Flux AI';});
+tabConfig.forEach(t=>{if(t.id==='canvas'&&/gmail/i.test(String(t.label||'')))t.label='Canvas';});
+(function migrateCanvasTabOrder(){
+  const si=tabConfig.findIndex(t=>t.id==='school');
+  const ci=tabConfig.findIndex(t=>t.id==='canvas');
+  const gi=tabConfig.findIndex(t=>t.id==='grades');
+  if(si<0||ci<0||gi<0)return;
+  if(ci<si||ci>gi){
+    const [row]=tabConfig.splice(ci,1);
+    const nsi=tabConfig.findIndex(t=>t.id==='school');
+    tabConfig.splice(nsi+1,0,row);
+    save('flux_tabs',tabConfig);
+  }
+})();
 save('flux_tabs',tabConfig);
 
 let taskFilter='active',editingId=null,editingGoalId=null;
@@ -1521,6 +1534,7 @@ function nav(id,btn,navOpt){
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderGradeBuffer();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),grades:()=>{renderGradeInputs();renderGradeOverview();renderWeightedRows();calcWeighted();},notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();}};
   fns[id]?.();
+  if(typeof fluxApplyCanvasSplitLayout==='function')fluxApplyCanvasSplitLayout();
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
 }
@@ -1654,7 +1668,7 @@ function syncMoreSheetNavIcons(){
 function renderSidebars(){
   const groups=[
     {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['school','grades','notes','timer','canvas','toolbox']},
+    {label:'School',ids:['school','canvas','grades','notes','timer','toolbox']},
     {label:'Me',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
@@ -2281,7 +2295,7 @@ function renderTasks(){
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
-<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)} ${depBadge}</div>
+<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas">🎓</span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
 ${sub?`<span class="task-chip task-chip-subject">${sub.short}</span>`:''}
 ${priChip}
@@ -2813,7 +2827,34 @@ function renderSchool(){
     if(!teacherNotes.length){tn.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-bottom:8px">No notes yet.</div>';}
     else{tn.innerHTML=teacherNotes.map(n=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:.82rem;font-weight:700">${esc(n.teacher)}</div><div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(n.note)}</div></div><button onclick="deleteTeacherNote(${n.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`).join('');}
   }
+  const canvasSchool=document.getElementById('schoolCanvasLmsRow');
+  if(canvasSchool){
+    const tok=load('flux_canvas_token','');
+    const host=load('flux_canvas_host',null)||(function(){try{const u=new URL((load('flux_canvas_url','')||'').trim().replace(/^([^/]+)$/,'https://$1'));return u.hostname||'';}catch(e){return'';}})();
+    if(tok&&host){
+      canvasSchool.style.display='block';
+      canvasSchool.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div><span style="font-size:.72rem;color:var(--muted)">Canvas LMS</span><div style="font-size:.85rem;font-weight:600;margin-top:4px">Connected to ${esc(host)}</div></div>
+        <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.78rem" onclick="fluxCanvasDisconnectSchool()">Disconnect</button>
+      </div>`;
+    }else{
+      canvasSchool.style.display='none';
+      canvasSchool.innerHTML='';
+    }
+  }
 }
+window.fluxCanvasDisconnectSchool=function(){
+  save('flux_canvas_token',null);
+  save('flux_canvas_host',null);
+  try{canvasToken='';canvasUrl='';}catch(e){}
+  if(window.CanvasState){CanvasState.token=null;CanvasState.host=null;CanvasState.connected=false;}
+  schoolInfo=schoolInfo||{};
+  delete schoolInfo.canvasLmsHost;
+  save('flux_school',schoolInfo);
+  renderSchool();
+  if(typeof renderCanvasHubPanel==='function')renderCanvasHubPanel();
+  showToast('Canvas disconnected on this device','info');
+};
 
 // Edit class inline
 function editClass(id){
@@ -4184,6 +4225,7 @@ function initAIChats(){
   if(!aiChats.length)newAIChat();
   else loadAIChat(aiChats[0].id);
   renderAIChatTabs();
+  if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
 }
 
 function newAIChat(){
@@ -4440,7 +4482,16 @@ NUMBERS: GPA always to 4 decimal places. Physics: g = 10\u2009m/s\u00b2 unless e
 ${getStudyDNAPrompt()}
 ACADEMIC INTEGRITY (absolute): Never write, complete, or provide copy-paste text for graded work \u2014 homework, quizzes, exams, lab reports, essays to be submitted. Teach by explaining concepts, showing strategy, giving parallel examples with different values, and asking self-check questions. If asked for a direct answer to graded work, decline briefly and offer to tutor instead. No exceptions.
 </how_you_work>
-
+${(()=>{
+  try{
+    if(window.CanvasState&&window.CanvasState.pageContext&&window.CanvasState.connected){
+      let s=JSON.stringify(window.CanvasState.pageContext,null,2);
+      if(s.length>3800)s=s.slice(0,3800)+'\n…';
+      return`\n\n## Canvas — What the student is currently viewing\nThe student has the Canvas LMS panel open and is currently looking at:\n${s}\n\nUse this context to give highly specific, relevant help. Reference the actual assignment names, due dates, and course details. Do not be generic.\n`;
+    }
+  }catch(e){}
+  return'';
+})()}
 ${getFluxAIModeInstructions()}
 
 <task_actions>
@@ -5632,7 +5683,7 @@ function renderCmdResults(){
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'😊',label:'Mood',action:()=>{nav('mood');closeCommandPalette();}},
     {icon:'🎓',label:'Canvas & Gmail',action:()=>{nav('canvas');closeCommandPalette();}},
-    {icon:'🪟',label:'Canvas in Flux (embed + reader)',action:()=>{closeCommandPalette();fluxCanvasHubSubTab='canvaswindow';save('flux_canvas_hub_tab','canvaswindow');nav('canvas');}},
+    {icon:'🎓',label:'Canvas LMS panel',action:()=>{closeCommandPalette();nav('canvas');}},
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
   navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
@@ -5779,6 +5830,25 @@ function applyPanicGlow(){
 function syncPanelScrollLayout(){
   const mainContent=document.querySelector('.main-content');
   if(!mainContent)return;
+  if(document.body.classList.contains('flux-canvas-ai-split')){
+    mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
+      panel.style.flex='';
+      panel.style.overflowY='';
+    });
+    const cv=document.getElementById('canvas');
+    const ai=document.getElementById('ai');
+    if(cv&&cv.classList.contains('active')){
+      cv.style.flex='1 1 55%';
+      cv.style.overflowY='auto';
+      cv.style.minWidth='0';
+    }
+    if(ai&&ai.classList.contains('flux-ai-split-visible')){
+      ai.style.flex='1 1 45%';
+      ai.style.overflow='hidden';
+      ai.style.minWidth='0';
+    }
+    return;
+  }
   mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
     panel.style.flex='';
     panel.style.overflowY='';
@@ -7426,8 +7496,26 @@ function saveCanvasConfig(){
   canvasUrl=document.getElementById('canvasUrl')?.value.trim()||'';
   save('flux_canvas_token',canvasToken);
   save('flux_canvas_url',canvasUrl);
+  try{
+    const raw=canvasUrl.trim();
+    if(raw){
+      const u=new URL(raw.includes('://')?raw:'https://'+raw);
+      if(u.hostname)save('flux_canvas_host',u.hostname);
+    }
+  }catch(e){}
   const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}
   renderCanvasHubPanel();
+}
+
+function fluxCanvasProxyHost(){
+  const h=load('flux_canvas_host',null);
+  if(h&&String(h).trim())return String(h).trim();
+  const raw=(canvasUrl||'').trim();
+  if(!raw)return'';
+  try{
+    const u=new URL(raw.includes('://')?raw:'https://'+raw);
+    return u.hostname||'';
+  }catch(e){return'';}
 }
 
 async function canvasProxyGet(apiPath){
@@ -7436,30 +7524,45 @@ async function canvasProxyGet(apiPath){
     throw new Error('Canvas sync requires Flux Pro');
   }
   if(!canvasToken||!canvasUrl)throw new Error('Configure Canvas URL and token first.');
-  const base=canvasUrl.replace(/\/+$/,'');
-  const path=apiPath.startsWith('/')?apiPath:'/'+apiPath;
-  const full=base+'/api/v1'+path;
-  const res=await fetch(`${API.canvas}?url=${encodeURIComponent(full)}&token=${encodeURIComponent(canvasToken)}`,{headers:await fluxAuthHeaders()});
+  const host=fluxCanvasProxyHost();
+  if(!host)throw new Error('Invalid Canvas URL');
+  const p=apiPath.startsWith('/')?apiPath:'/'+apiPath;
+  const fullPath=p.startsWith('/api/v1/')?p:('/api/v1'+p);
+  const res=await fetch(API.canvas,{
+    method:'POST',
+    headers:await fluxAuthHeaders(),
+    body:JSON.stringify({host,path:fullPath,method:'GET',canvasToken:canvasToken})
+  });
   const text=await res.text();
   let data;try{data=JSON.parse(text);}catch(e){throw new Error('Canvas did not return JSON. Check URL and token.');}
   if(data&&typeof data==='object'&&!Array.isArray(data)&&Array.isArray(data.errors))throw new Error(data.errors.map(x=>x.message).join('; '));
-  if(!res.ok)throw new Error((data&&data.error)||(data&&data.message)||('Canvas request failed ('+res.status+')'));
+  if(!res.ok){
+    const err=new Error((data&&data.error)||(data&&data.message)||('Canvas request failed ('+res.status+')'));
+    err.status=res.status;
+    throw err;
+  }
   return data;
 }
 
 async function canvasProxyPostForm(apiPath,bodyString){
   if(!canvasToken||!canvasUrl)throw new Error('Canvas not configured');
-  const base=canvasUrl.replace(/\/+$/,'');
-  const full=base+'/api/v1'+(apiPath.startsWith('/')?apiPath:'/'+apiPath);
+  const host=fluxCanvasProxyHost();
+  if(!host)throw new Error('Invalid Canvas URL');
+  const p=apiPath.startsWith('/')?apiPath:'/'+apiPath;
+  const fullPath=p.startsWith('/api/v1/')?p:('/api/v1'+p);
   const res=await fetch(API.canvas,{
     method:'POST',
-    headers:{...await fluxAuthHeaders(),'Content-Type':'application/json'},
-    body:JSON.stringify({url:full,token:canvasToken,method:'POST',body:bodyString,contentType:'application/x-www-form-urlencoded'})
+    headers:await fluxAuthHeaders(),
+    body:JSON.stringify({host,path:fullPath,method:'POST',canvasToken:canvasToken,body:bodyString,contentType:'application/x-www-form-urlencoded'})
   });
   const text=await res.text();
   let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,400));}
   if(data&&data.errors)throw new Error(data.errors.map(e=>e.message).join('; '));
-  if(!res.ok)throw new Error(data.message||data.error||('HTTP '+res.status));
+  if(!res.ok){
+    const err=new Error(data.message||data.error||('HTTP '+res.status));
+    err.status=res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -7513,6 +7616,11 @@ function clearCanvasPageForAI(){
 }
 
 function openCanvasReaderForAssignment(courseId,assignmentId){
+  if(window.CanvasViews){
+    nav('canvas');
+    CanvasViews.navigate('assignment',{courseId:+courseId,assignmentId:+assignmentId});
+    return;
+  }
   _fluxCanvasReaderPending={cid:+courseId,aid:+assignmentId};
   fluxCanvasHubSubTab='canvaswindow';
   save('flux_canvas_hub_tab','canvaswindow');
@@ -7909,22 +8017,78 @@ function addCanvasAnnouncementToPlanner(announcementId){
   showToast('Added to planner','success');
 }
 
-function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
+function canvasFluxSubjectKeyFromCourseName(courseName){
+  const strip=s=>String(s||'').toLowerCase().replace(/\b(ap|ib|honors|honours)\b/gi,'').replace(/\s+/g,' ').trim();
+  const t=strip(cleanClassName(courseName||''));
+  if(!t)return'';
+  for(const c of classes){
+    if(!c.name)continue;
+    const cn=strip(cleanClassName(c.name));
+    if(!cn)continue;
+    if(cn===t||t.includes(cn)||cn.includes(t))return'CLS'+c.id;
+  }
+  return cleanClassName(courseName||'').slice(0,80);
+}
+function fluxInferCanvasTaskType(a){
+  const st=(a.submission_types||[]).map(x=>String(x).toLowerCase()).join(' ');
+  const n=(a.name||'').toLowerCase();
+  const desc=String(a.description||'').toLowerCase();
+  if(st.includes('online_quiz')||/\bquiz\b/.test(n))return'quiz';
+  if(st.includes('online_text_entry')&&/(essay|paper|report)/.test(desc))return'essay';
+  if(/\blab\b/.test(n))return'lab';
+  if(/\bproject\b/.test(n))return'project';
+  if(/\b(test|exam|final)\b/.test(n))return'test';
+  return'hw';
+}
+function fluxCanvasPriorityForAssignment(a){
+  const due=a.due_at?new Date(a.due_at):null;
+  if(!due||isNaN(+due))return'med';
+  const h=(due-Date.now())/3600000;
+  const done=a.submission&&a.submission.submitted_at;
+  if(h>0&&h<=48&&!done)return'high';
+  return'med';
+}
+async function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
   const silent=opts&&opts.silent;
   const skipRender=opts&&opts.skipRender;
-  const a=fluxCanvasHubData?.assignments?.find(x=>x.course_id===courseId&&x.id===assignmentId);
-  if(!a){if(!silent)showToast('Assignment not found — refresh Canvas','warning');return;}
-  if(canvasAssignmentTaskExists(courseId,assignmentId)){if(!silent)showToast('Already in planner','info');return;}
+  if(canvasAssignmentTaskExists(courseId,assignmentId)){
+    if(!silent)showToast('Already in your planner ✓','info');
+    const existing=tasks.find(x=>x.canvasCourseId===courseId&&x.canvasAssignmentId===assignmentId);
+    if(existing){
+      const el=document.querySelector(`[data-task-id="${existing.id}"]`);
+      if(el){
+        el.classList.add('flux-task-canvas-highlight');
+        setTimeout(()=>el.classList.remove('flux-task-canvas-highlight'),2400);
+      }
+    }
+    return;
+  }
+  let a=fluxCanvasHubData?.assignments?.find(x=>x.course_id===courseId&&x.id===assignmentId);
+  if(!a){
+    try{
+      a=await canvasProxyGet(`/courses/${courseId}/assignments/${assignmentId}`);
+      const co=(fluxCanvasHubData?.courses||[]).find(c=>c.id===courseId)||(window.CanvasState&&window.CanvasState.courses&&window.CanvasState.courses.find(c=>c.id===courseId));
+      a.course_id=courseId;
+      a.course_name=(co&&co.name)||(co&&co.course_code)||'Course';
+      a.html_url=a.html_url||'';
+    }catch(e){
+      if(!silent)showToast(e.message||'Could not load assignment','warning');
+      return;
+    }
+  }
   const due=a.due_at?a.due_at.slice(0,10):'';
   const name=(a.name||'Assignment').slice(0,240);
+  const subKey=canvasFluxSubjectKeyFromCourseName(a.course_name||'');
+  const notesPlain=canvasStripHtml(a.description||'').slice(0,500);
   const t={
     id:Date.now()+Math.random(),
     name,
     date:due,
-    subject:'',
-    priority:'med',
-    type:mapCanvasAssignmentType(a),
-    notes:`Canvas · ${a.course_name||'Course'}\n${a.html_url||''}`,
+    subject:subKey,
+    priority:fluxCanvasPriorityForAssignment(a),
+    type:fluxInferCanvasTaskType(a),
+    notes:notesPlain+(a.html_url?('\n'+a.html_url):''),
+    estTime:60,
     done:false,rescheduled:0,createdAt:Date.now(),
     canvasCourseId:courseId,
     canvasAssignmentId:assignmentId
@@ -7932,7 +8096,7 @@ function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
   t.urgencyScore=calcUrgency(t);
   tasks.unshift(t);save('tasks',tasks);
   if(!skipRender){syncKey('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}
-  if(!silent)showToast('Added to planner','success');
+  if(!silent)showToast(`Added '${name.slice(0,48)}' to your planner ✓`,'success');
 }
 
 function canvasRowKey(c,a){return String(c)+'_'+String(a);}
@@ -7940,21 +8104,18 @@ function canvasRowKey(c,a){return String(c)+'_'+String(a);}
 function canvasToggleSelect(courseId,assignmentId){
   const k=canvasRowKey(courseId,assignmentId);
   if(_canvasHubSel.has(k))_canvasHubSel.delete(k);else _canvasHubSel.add(k);
-  if(fluxCanvasHubSubTab==='assignments')renderCanvasHubPane();
-  else renderCanvasHubPanel();
+  renderCanvasHubPanel();
 }
 
 function canvasSelectAllFilteredAssignments(){
   _canvasHubSel.clear();
   filteredCanvasAssignments().forEach(a=>_canvasHubSel.add(canvasRowKey(a.course_id,a.id)));
-  if(fluxCanvasHubSubTab==='assignments')renderCanvasHubPane();
-  else renderCanvasHubPanel();
+  renderCanvasHubPanel();
 }
 
 function canvasClearSelection(){
   _canvasHubSel.clear();
-  if(fluxCanvasHubSubTab==='assignments')renderCanvasHubPane();
-  else renderCanvasHubPanel();
+  renderCanvasHubPanel();
 }
 
 function addSelectedCanvasAssignmentsToPlanner(){
@@ -8155,348 +8316,8 @@ function fluxCanvasReaderOnCourseChange(){
   sel.innerHTML=list.map(a=>`<option value="${a.id}">${esc(a.name||'Assignment')}</option>`).join('')||'<option value="">No assignments</option>';
 }
 
-function renderCanvasHubPane(){
-  const pane=document.getElementById('canvasHubPane');if(!pane)return;
-  const d=fluxCanvasHubData;
-  const sub=fluxCanvasHubSubTab;
-  const connected=!!(canvasToken&&canvasUrl);
-
-  if(sub==='canvaswindow'){
-    if(!connected){
-      pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Save your Canvas URL and access token in the card above, then open this tab again.</div>';
-      return;
-    }
-    const base=(canvasUrl||'').replace(/\/+$/,'');
-    const saved=(load('flux_canvas_embed_url','')||'').trim();
-    const startUrl=(saved||(base?base+'/':''))||'';
-    const pend=_fluxCanvasReaderPending;
-    _fluxCanvasReaderPending=null;
-    const courseOpts=(fluxCanvasHubData?.courses||[]).map(c=>`<option value="${c.id}">${esc(c.name||c.course_code||'Course')}</option>`).join('')||'<option value="">Refresh hub to load courses</option>';
-    pane.innerHTML=`
-      <div class="card" style="padding:14px 16px;margin-bottom:10px">
-        <h3 style="margin:0 0 8px;font-size:1rem">Canvas in Flux</h3>
-        <p style="font-size:.74rem;color:var(--muted2);line-height:1.55;margin:0 0 12px">Use Canvas inside Flux when your school allows framing (some block iframes — then use <strong>Open in new tab</strong> or the reader below). Flux AI cannot read the iframe directly; it uses the <strong>synced excerpts</strong> plus anything you load in the reader.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-          <input type="text" id="fluxCanvasIframeUrl" placeholder="https://…instructure.com/…" style="flex:1;min-width:200px;margin:0;font-size:.78rem" value="${esc(startUrl)}">
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="fluxCanvasEmbedGo()">Go</button>
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="fluxCanvasEmbedHome()">Home</button>
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="fluxCanvasEmbedOpenExternal()">Open in new tab</button>
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="fluxCanvasEmbedRefresh()">Refresh frame</button>
-        </div>
-        <iframe id="fluxCanvasEmbedFrame" title="Canvas LMS" style="width:100%;min-height:52vh;border:1px solid var(--border2);border-radius:12px;background:var(--card2)" ${startUrl?`src="${esc(startUrl)}"`:''}></iframe>
-      </div>
-      <div class="card" style="padding:14px 16px">
-        <h3 style="margin:0 0 8px;font-size:1rem">Reader → Flux AI</h3>
-        <p style="font-size:.74rem;color:var(--muted2);line-height:1.55;margin:0 0 12px">Loads assignment instructions from Canvas (same API as the hub). Pinned text is included in every Flux AI message until you clear it.</p>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px">
-          <div>
-            <label style="font-size:.68rem;color:var(--muted)">Course</label>
-            <select id="fluxCanvasReaderCourse" style="width:100%;margin:4px 0 0" onchange="fluxCanvasReaderOnCourseChange()">${courseOpts}</select>
-          </div>
-          <div>
-            <label style="font-size:.68rem;color:var(--muted)">Assignment</label>
-            <select id="fluxCanvasReaderAssignment" style="width:100%;margin:4px 0 0"></select>
-          </div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
-          <button type="button" style="padding:8px 14px;font-size:.78rem" onclick="loadCanvasAssignmentIntoReader(parseInt(document.getElementById('fluxCanvasReaderCourse').value,10),parseInt(document.getElementById('fluxCanvasReaderAssignment').value,10))">Load assignment text</button>
-          <label style="font-size:.72rem;color:var(--muted2);display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" id="fluxCanvasReaderAutoPin" checked style="margin:0"> Auto-pin when loaded
-          </label>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="pinReaderTextFromCanvasHub()">Pin editor text for Flux AI</button>
-          <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="clearCanvasPageForAI()">Clear AI pin</button>
-        </div>
-        <div id="fluxCanvasReaderMeta" style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px;min-height:1.2em"></div>
-        <textarea id="fluxCanvasReaderBody" rows="14" style="width:100%;box-sizing:border-box;font-size:.82rem;line-height:1.5;margin:0;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);padding:10px 12px" placeholder="Assignment instructions appear here after you load…"></textarea>
-      </div>`;
-    requestAnimationFrame(()=>{
-      fluxCanvasReaderOnCourseChange();
-      const pendC=pend&&pend.cid;
-      const pendA=pend&&pend.aid;
-      if(pendC&&pendA){
-        const cSel=document.getElementById('fluxCanvasReaderCourse');
-        if(cSel){cSel.value=String(pendC);fluxCanvasReaderOnCourseChange();}
-        const aSel=document.getElementById('fluxCanvasReaderAssignment');
-        if(aSel)aSel.value=String(pendA);
-        loadCanvasAssignmentIntoReader(pendC,pendA,{silent:true});
-      }
-    });
-    return;
-  }
-
-  if(sub==='assignments'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Click <strong>Refresh from Canvas</strong> to load assignments.</div>';return;}
-    const rows=filteredCanvasAssignments().sort((a,b)=>{
-      const da=a.due_at||'',db=b.due_at||'';
-      if(!da&&!db)return 0;
-      if(!da)return 1;
-      if(!db)return-1;
-      return da.localeCompare(db);
-    });
-    pane.innerHTML=`
-      <div class="flux-canvas-toolbar card" style="padding:12px 14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-        <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="canvasSelectAllFilteredAssignments()">Select all (filtered)</button>
-        <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem" onclick="canvasClearSelection()">Clear selection</button>
-        <button type="button" style="padding:7px 12px;font-size:.75rem" onclick="addSelectedCanvasAssignmentsToPlanner()">Add selected to planner</button>
-        <button type="button" class="btn-sec" style="padding:7px 12px;font-size:.75rem;margin-left:auto" onclick="syncCanvas()">Import all filtered (due dates)</button>
-      </div>
-      <div class="flux-canvas-table-wrap">${rows.length?`<div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px">${rows.length} assignments (after time filter)</div>`:''}
-      ${rows.length?rows.map(a=>{
-        const k=canvasRowKey(a.course_id,a.id);
-        const due=a.due_at?a.due_at.slice(0,10):'—';
-        const subm=a.submission;
-        const st=subm?subm.workflow_state:'';
-        const checked=_canvasHubSel.has(k)?' checked':'';
-        return`<div class="flux-canvas-row card" style="padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start">
-          <input type="checkbox" style="margin-top:4px" data-canvas-sel="${esc(k)}"${checked} onchange="canvasToggleSelect(${a.course_id},${a.id})">
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:.88rem">${esc(a.name||'Assignment')}</div>
-            <div style="font-size:.72rem;color:var(--muted2);margin-top:4px;font-family:'JetBrains Mono',monospace">${esc(a.course_name)} · Due ${due}${st?` · ${esc(st)}`:''}</div>
-            ${a.html_url?`<a href="${esc(a.html_url)}" target="_blank" rel="noopener" style="font-size:.68rem;color:var(--accent);margin-top:6px;display:inline-block">Open in Canvas →</a>`:''}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-            <button type="button" class="btn-sec" style="padding:6px 10px;font-size:.72rem;white-space:nowrap" onclick="openCanvasReaderForAssignment(${a.course_id},${a.id})">Reader / AI</button>
-            <button type="button" class="btn-sec" style="padding:6px 10px;font-size:.72rem;white-space:nowrap" onclick="addCanvasAssignmentToPlanner(${a.course_id},${a.id})">+ Planner</button>
-          </div>
-        </div>`;
-      }).join(''):'<div class="empty">No assignments match the time filter.</div>'}</div>`;
-    return;
-  }
-
-  if(sub==='announcements'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas to load announcements.</div>';return;}
-    const rows=filteredCanvasAnnouncements().sort((a,b)=>(b.posted_at||'').localeCompare(a.posted_at||''));
-    pane.innerHTML=rows.length?rows.map(an=>{
-      const msg=String(an.message||'').replace(/<[^>]+>/g,'').slice(0,280);
-      const when=an.posted_at?an.posted_at.slice(0,10):'';
-      const aid=an.id!=null?Number(an.id):NaN;
-      return`<div class="card" style="padding:14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between">
-        <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:.88rem">${esc(an.title||'Announcement')}</div>
-        <div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:4px">${when||'—'}</div>
-        <div style="font-size:.8rem;color:var(--muted2);margin-top:8px;line-height:1.5">${esc(msg)}${(an.message||'').length>280?'…':''}</div>
-        </div>
-        <button type="button" class="btn-sec" style="padding:6px 10px;font-size:.72rem;flex-shrink:0;white-space:nowrap" onclick="addCanvasAnnouncementToPlanner(${Number.isFinite(aid)?aid:'null'})">+ Planner</button>
-      </div>`;
-    }).join(''):'<div class="empty">No announcements in this time window.</div>';
-    return;
-  }
-
-  if(sub==='grades'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas to load grades.</div>';return;}
-    const courseGradeRows=(d.courses||[]).map(c=>{
-      const sc=d.courseScores&&d.courseScores[c.id];
-      if(!sc)return'';
-      const g=sc.final_grade||sc.current_grade||sc.final_score||sc.current_score;
-      if(g==null||g==='')return'';
-      return`<div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-left:3px solid rgba(var(--accent-rgb),.4)">
-        <div><div style="font-weight:700;font-size:.84rem">${esc(c.name||c.course_code||'Course')}</div><div style="font-size:.68rem;color:var(--muted)">Course total (from Canvas enrollment)</div></div>
-        <div style="font-size:1rem;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace">${esc(String(g))}</div>
-      </div>`;
-    }).filter(Boolean).join('');
-    const rows=filteredCanvasAssignments().filter(a=>{
-      const s=a.submission;
-      return s&&(s.entered_grade!=null||s.grade!=null);
-    }).sort((a,b)=>(b.due_at||'').localeCompare(a.due_at||''));
-    const assignBlock=rows.length?`<div style="font-size:.68rem;color:var(--muted);margin:14px 0 8px;font-family:'JetBrains Mono',monospace">Per-assignment grades (from submissions)</div>`+rows.map(a=>{
-      const s=a.submission;
-      const g=s.entered_grade!=null?s.entered_grade:s.grade;
-      const pts=a.points_possible!=null?` / ${a.points_possible}`:'';
-      return`<div class="card" style="padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div><div style="font-weight:600;font-size:.84rem">${esc(a.name||'')}</div><div style="font-size:.72rem;color:var(--muted2)">${esc(a.course_name)}</div></div>
-        <div style="font-size:.9rem;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace">${esc(String(g))}${pts}</div>
-      </div>`;
-    }).join(''):'';
-    const emptyMsg=!courseGradeRows&&!assignBlock?'<div class="empty">No grades in range — try <strong>All time</strong> filter or run <strong>Import everything</strong> to sync course totals into Grades.</div>':'';
-    pane.innerHTML=(courseGradeRows?`<div style="font-size:.68rem;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Course grades</div>${courseGradeRows}`:'')+(assignBlock||'')+(emptyMsg||'');
-    return;
-  }
-
-  if(sub==='discussions'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas to load discussions.</div>';return;}
-    const rows=(d.discussions||[]).slice().sort((a,b)=>(b.updated_at||b.posted_at||'').localeCompare(a.updated_at||a.posted_at||''));
-    pane.innerHTML=rows.length?rows.map(x=>{
-      const snip=canvasStripHtml(x.message||'').slice(0,220);
-      return`<div class="card" style="padding:12px 14px;margin-bottom:8px">
-        <div style="font-weight:700;font-size:.86rem">${esc(x.title||'Discussion')}</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${esc(x.course_name||'')}</div>
-        <div style="font-size:.78rem;color:var(--muted2);margin-top:8px;line-height:1.45">${esc(snip)}${(x.message||'').length>220?'…':''}</div>
-        ${x.html_url?`<a href="${esc(x.html_url)}" target="_blank" rel="noopener" style="font-size:.68rem;color:var(--accent);margin-top:8px;display:inline-block">Thread in Canvas →</a>`:''}
-      </div>`;
-    }).join(''):'<div class="empty">No discussion topics returned (course may restrict API access).</div>';
-    return;
-  }
-
-  if(sub==='calendar'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas to load calendar.</div>';return;}
-    const rows=(d.calendarEvents||[]).slice().sort((a,b)=>(a.start_at||'').localeCompare(b.start_at||''));
-    pane.innerHTML=rows.length?rows.map(ev=>{
-      const when=ev.start_at?ev.start_at.replace('T',' ').slice(0,16):'—';
-      const kind=ev.assignment?'Assignment':(ev.assignment_id?'Linked':'Event');
-      return`<div class="card" style="padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.84rem">${esc(ev.title||'Event')}</div>
-          <div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:4px">${esc(when)} · ${esc(kind)}</div>
-        </div>
-        ${ev.html_url?`<a href="${esc(ev.html_url)}" target="_blank" rel="noopener" style="font-size:.68rem;color:var(--accent);flex-shrink:0">Open →</a>`:''}
-      </div>`;
-    }).join(''):'<div class="empty">No calendar events in the synced window (past month → next year).</div>';
-    return;
-  }
-
-  if(sub==='teachers'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas to load teachers.</div>';return;}
-    const rows=d.teachers||[];
-    pane.innerHTML=rows.length?rows.map(t=>{
-      const cnames=(t.courseIds||[]).map(cid=>{
-        const co=d.courses.find(x=>x.id===cid);
-        return co?co.name||co.course_code:'Course '+cid;
-      }).join(', ');
-      return`<div class="card" style="padding:12px 14px;margin-bottom:8px">
-        <div style="font-weight:700">${esc(t.name)}</div>
-        <div style="font-size:.78rem;color:var(--muted2);margin-top:4px">${t.email?`<a href="mailto:${esc(t.email)}">${esc(t.email)}</a>`:'<span style="color:var(--muted)">Email not visible to this token</span>'}</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:6px">${esc(cnames)}</div>
-      </div>`;
-    }).join(''):'<div class="empty">No teacher enrollments found.</div>';
-    return;
-  }
-
-  if(sub==='courses'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Refresh from Canvas.</div>';return;}
-    pane.innerHTML=(d.courses||[]).map(c=>{
-      const term=c.term?c.term.name||'':'';
-      return`<div class="card" style="padding:12px 14px;margin-bottom:8px">
-        <div style="font-weight:700">${esc(c.name||c.course_code||'Course')}</div>
-        <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:4px">${esc(c.course_code||'')} ${term?'· '+esc(term):''}</div>
-      </div>`;
-    }).join('')||'<div class="empty">No courses.</div>';
-    return;
-  }
-
-  if(sub==='upload'){
-    if(!d){pane.innerHTML='<div class="card" style="padding:20px;color:var(--muted2)">Connect and refresh Canvas first.</div>';return;}
-    const opts=(d.courses||[]).map(c=>`<option value="${c.id}">${esc(c.name||c.course_code)}</option>`).join('');
-    pane.innerHTML=`
-      <div class="card" style="padding:16px">
-        <h3 style="margin:0 0 10px;font-size:1rem">Send text to Canvas</h3>
-        <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">Submits as an <strong>online text entry</strong> where your course allows it. File uploads must be done in Canvas (browser security) — use <em>Open in Canvas</em> on an assignment.</p>
-        <label style="font-size:.72rem;color:var(--muted)">Course</label>
-        <select id="canvasSubmitCourse" style="width:100%;margin-bottom:10px" onchange="onCanvasSubmitCourseChange()">${opts}</select>
-        <label style="font-size:.72rem;color:var(--muted)">Assignment</label>
-        <select id="canvasSubmitAssignment" style="width:100%;margin-bottom:10px"></select>
-        <label style="font-size:.72rem;color:var(--muted)">Text to submit</label>
-        <textarea id="canvasSubmitBody" rows="5" style="width:100%;margin-bottom:12px;font-size:.85rem" placeholder="Write your response…"></textarea>
-        <button type="button" onclick="submitCanvasTextFromHub()" style="width:100%">Submit to Canvas</button>
-      </div>`;
-    onCanvasSubmitCourseChange();
-    return;
-  }
-
-  if(sub==='gmail'){
-    pane.innerHTML=`<div class="card" style="padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div style="font-size:.82rem;font-weight:700">School Gmail</div>
-      <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.75rem" onclick="loadGmail()">↻ Refresh</button>
-    </div><div id="canvasGmailList"></div>`;
-    loadGmail();
-    return;
-  }
-
-  pane.innerHTML='';
-}
-
-function onCanvasSubmitCourseChange(){
-  const cid=parseInt(document.getElementById('canvasSubmitCourse')?.value||'0',10);
-  const sel=document.getElementById('canvasSubmitAssignment');
-  if(!sel||!fluxCanvasHubData)return;
-  const list=(fluxCanvasHubData.assignments||[]).filter(a=>a.course_id===cid);
-  sel.innerHTML=list.map(a=>`<option value="${a.id}">${esc(a.name||'Assignment')}</option>`).join('')||'<option value="">No assignments</option>';
-}
-
-async function submitCanvasTextFromHub(){
-  const cid=parseInt(document.getElementById('canvasSubmitCourse')?.value||'0',10);
-  const aid=parseInt(document.getElementById('canvasSubmitAssignment')?.value||'0',10);
-  const body=document.getElementById('canvasSubmitBody')?.value?.trim()||'';
-  if(!cid||!aid){alert('Choose a course and assignment.');return;}
-  if(!body){alert('Enter text to submit.');return;}
-  const params=new URLSearchParams();
-  params.set('submission[submission_type]','online_text_entry');
-  params.set('submission[body]',body);
-  try{
-    await canvasProxyPostForm(`/courses/${cid}/assignments/${aid}/submissions`,params.toString());
-    showToast('Submitted to Canvas','success');
-    document.getElementById('canvasSubmitBody').value='';
-    await refreshCanvasHubFullFetch();
-  }catch(e){
-    alert('Canvas rejected submission: '+e.message);
-  }
-}
-
 function renderCanvasHubPanel(){
-  const stack=document.getElementById('canvasHubStack');if(!stack)return;
-  const connected=!!(canvasToken&&canvasUrl);
-  if(connected&&!fluxCanvasHubData){
-    try{
-      const cached=load('flux_canvas_hub_cache',null);
-      if(cached&&Array.isArray(cached.courses))fluxCanvasHubData=cached;
-    }catch(e){}
-  }
-  const filterOpts=[
-    {v:30,l:'Last 30 days'},
-    {v:90,l:'Last 90 days'},
-    {v:120,l:'Last ~4 months (120d)'},
-    {v:180,l:'Last ~semester (180d)'},
-    {v:365,l:'Last year'},
-    {v:0,l:'All time (no date filter)'}
-  ];
-  const filterSelect=filterOpts.map(o=>`<option value="${o.v}"${fluxCanvasDueFilterDays===o.v?' selected':''}>${o.l}</option>`).join('');
-  const tabs=['assignments','canvaswindow','announcements','grades','teachers','courses','discussions','calendar','upload','gmail'];
-  const tabHtml=tabs.map(id=>{
-    const labels={assignments:'Assignments',canvaswindow:'In Flux',announcements:'Announcements',grades:'Grades',teachers:'Teachers',courses:'Courses',discussions:'Discussions',calendar:'Calendar',upload:'To Canvas',gmail:'Gmail'};
-    const active=fluxCanvasHubSubTab===id?' active':'';
-    return`<button type="button" class="stab${active}" onclick="setCanvasHubSubTab('${id}')">${labels[id]}</button>`;
-  }).join('');
-
-  stack.innerHTML=`
-    <div class="card">
-      <h3>Canvas LMS</h3>
-      <div id="canvasStatus" style="margin-bottom:12px">${connected?'<div class="sync-badge synced">✓ Connected</div>':'<div class="sync-badge offline">○ Not connected</div>'}</div>
-      <label style="font-size:.72rem;color:var(--muted)">Canvas URL</label>
-      <input type="text" id="canvasUrl" placeholder="e.g. https://school.instructure.com" style="margin-bottom:8px">
-      <label style="font-size:.72rem;color:var(--muted)">Access Token</label>
-      <input type="password" id="canvasToken" placeholder="Paste your Canvas token" style="margin-bottom:8px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" onclick="saveCanvasConfig()" class="btn-sec" style="flex:1;min-width:120px">Save</button>
-      </div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace">Account → Settings → Approved Integrations → New Access Token</div>
-    </div>
-    ${connected?`
-    <div class="card" style="padding:12px 14px">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px">
-        <button type="button" onclick="refreshCanvasHubFullFetch()" style="padding:8px 16px;font-size:.8rem">↻ Refresh from Canvas</button>
-        <button type="button" onclick="importEverythingFromCanvas()" style="padding:8px 16px;font-size:.8rem;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent)">⬇ Import everything into Flux</button>
-        <label style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:8px;margin-left:auto">
-          Hide old by date
-          <select style="margin:0;max-width:200px;font-size:.78rem" onchange="onCanvasDueFilterChange(this.value)">${filterSelect}</select>
-        </label>
-      </div>
-      <p style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin:0 0 12px">One tap pulls <strong>courses, assignments, quizzes, announcements, discussions, teachers, grades, and calendar</strong> into School Info, Grades, Tasks, and Notes — no need to open Canvas for day-to-day planning.</p>
-      <div id="canvasHubFetchStatus" style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;min-height:1.2em"></div>
-      <div class="stabs flux-canvas-stabs" style="margin-bottom:12px;flex-wrap:wrap">${tabHtml}</div>
-      <div id="canvasHubPane"></div>
-    </div>`:''}
-    ${!connected?`
-    <div class="card"><h3>School Gmail</h3><p style="font-size:.78rem;color:var(--muted2)">Sign in with Google from the login screen. Inbox appears here once connected.</p>
-      <button type="button" class="btn-sec" style="margin-bottom:10px;padding:6px 12px;font-size:.75rem" onclick="loadGmail()">↻ Refresh inbox</button>
-      <div id="canvasGmailList"></div></div>`:''}
-  `;
-
-  document.getElementById('canvasUrl').value=canvasUrl||'';
-  document.getElementById('canvasToken').value=canvasToken||'';
-
-  if(connected)renderCanvasHubPane();
-  else loadGmail();
+  if(window.__fluxRenderCanvasPanel)window.__fluxRenderCanvasPanel();
 }
 
 async function syncCanvas(){

@@ -483,7 +483,7 @@
         <button class="nav-item" onclick="nav('grades',this)" data-tab="grades"><span class="ni">📊</span><span class="nl">Grades</span></button>
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
-        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
+        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
         <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
       </div>
       <div class="nav-group">
@@ -552,7 +552,7 @@
         <button class="nav-item" onclick="navMob('grades')"><span class="ni">📊</span><span class="nl">Grades</span></button>
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
-        <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas &amp; Gmail</span></button>
+        <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
         <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
       </div>
       <div class="nav-group">
@@ -902,6 +902,7 @@
         </div>
         <button onclick="saveSchoolInfo()" style="width:100%">Save Info</button>
       </div>
+      <div class="card" id="schoolCanvasLmsRow" style="display:none"></div>
       <div class="card">
         <h3>My Classes</h3>
         <div id="classesList"></div>
@@ -1192,10 +1193,10 @@
       </div>
     </div>
 
-    <!-- ─── CANVAS & GMAIL ─── -->
+    <!-- ─── CANVAS LMS (API mini-browser) ─── -->
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Canvas LMS data, an in-app Canvas window + reader for Flux AI, text submissions, and school Gmail — tie it to your planner.</p>
+        <p class="flux-page-sub">Browse courses, assignments, and grades from Canvas inside Flux — Flux AI can use what you see here. Nothing loads in an iframe; everything uses the Canvas API through a secure proxy.</p>
       </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
@@ -1463,6 +1464,7 @@
           <div class="flux-ai-title">Flux AI</div>
           <p class="flux-ai-sub">Planner context · learning help (no direct homework answers)</p>
         </div>
+        <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
         <div class="flux-ai-head-actions">
           <label class="flux-ai-toolbtn" title="Attach image">
             <input type="file" accept="image/*" id="aiImgUpload" onchange="handleAIImg(event)">
@@ -2050,6 +2052,7 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
 <script defer src="public/js/app.js"></script>
+<script defer src="public/js/flux-canvas-panel.js"></script>
 <script defer src="public/js/flux-release-gate.js"></script>
 <script defer src="public/js/flux-personalization.js"></script>
 <script defer src="public/js/flux-estimate-learn.js"></script>
