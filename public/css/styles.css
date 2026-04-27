@@ -541,6 +541,13 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .flux-page-header--lead .flux-page-sub{
   margin:0;max-width:52ch;
 }
+@media (max-width: 768px) {
+  .flux-page-header--lead .flux-page-sub {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
 .flux-stack{
   display:flex;flex-direction:column;gap:18px;
 }
@@ -1430,6 +1437,12 @@ button:active:not(:disabled){transform:scale(.97)!important}
     box-sizing:border-box!important;
   }
   .panel.active{display:block!important}
+  /* #canvas / #toolbox use column flex + min-height:0 children; block!important breaks layout (search width, hub scroll). */
+  #canvas.panel.flux-page.active,
+  #toolbox.panel.st-panel.active{
+    display:flex!important;
+    flex-direction:column!important;
+  }
   #ai.active{
     display:flex!important;flex-direction:column!important;
     height:calc(100svh - 50px - 62px)!important;

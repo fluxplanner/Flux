@@ -50,6 +50,9 @@
     font-size: 0.8rem !important;
     line-height: 1.5 !important;
     letter-spacing: 0.01em;
+    max-width: 100% !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .card {

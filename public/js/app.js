@@ -2156,16 +2156,23 @@ function fluxRenderDashMob(){
   const todayList=document.getElementById('dashMobTodayList');
   const todayCount=document.getElementById('dashMobTodayCount');
   if(todayList){
-    const todaysTasks=activeTasks
+    const pRank=t=>({high:0,med:1,low:2}[t.priority||'med']??1);
+    const byPriority=(a,b)=>pRank(a)-pRank(b);
+    const dueFirst=activeTasks
       .filter(t=>t.date===todayStr||(t.date&&t.date<todayStr))
-      .sort((a,b)=>{
-        const pRank={high:0,med:1,low:2};
-        return (pRank[a.priority||'med'])-(pRank[b.priority||'med']);
-      })
-      .slice(0,5);
+      .sort(byPriority);
+    const seen=new Set(dueFirst.map(t=>t.id));
+    const rest=activeTasks.filter(t=>!seen.has(t.id)).sort((a,b)=>{
+      const aUnd=!a.date,bUnd=!b.date;
+      if(aUnd&&!bUnd)return-1;
+      if(!aUnd&&bUnd)return 1;
+      if(aUnd&&bUnd)return byPriority(a,b);
+      return String(a.date).localeCompare(String(b.date));
+    });
+    const todaysTasks=[...dueFirst,...rest].slice(0,5);
     if(todayCount)todayCount.textContent=String(todaysTasks.length);
     if(!todaysTasks.length){
-      todayList.innerHTML=`<div class="dash-mob-task-empty">Nothing due today. Enjoy the breathing room.</div>`;
+      todayList.innerHTML=`<div class="dash-mob-task-empty">No open tasks. Add one from the + button.</div>`;
     } else {
       const subs=(typeof getSubjects==='function')?getSubjects():{};
       todayList.innerHTML=todaysTasks.map(t=>{
@@ -2177,6 +2184,12 @@ function fluxRenderDashMob(){
           const due=new Date(t.date+'T00:00:00');
           const days=Math.round((today-due)/86400000);
           time=`${days}d late`;
+        } else if(!t.date){
+          time='Anytime';
+        } else if(t.date>todayStr){
+          const due=new Date(t.date+'T00:00:00');
+          const days=Math.round((due-today)/86400000);
+          time=days===1?'Tomorrow':`in ${days}d`;
         } else if(t.estTime){
           time=`${t.estTime}m`;
         } else {
