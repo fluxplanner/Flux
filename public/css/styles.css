@@ -1443,6 +1443,12 @@ button:active:not(:disabled){transform:scale(.97)!important}
     display:flex!important;
     flex-direction:column!important;
   }
+  /* #canvas / #toolbox set display:flex without !important in their base rules, which beats .panel{display:none}
+     (no !important) — inactive panels stayed visible and blocked other tabs (mobile). */
+  #canvas.panel.flux-page:not(.active),
+  #toolbox.panel.st-panel:not(.active){
+    display:none!important;
+  }
   #ai.active{
     display:flex!important;flex-direction:column!important;
     height:calc(100svh - 50px - 62px)!important;

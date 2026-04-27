@@ -596,7 +596,9 @@
   [data-theme="light"] .dash-mob-donow{ background: rgba(255,255,255,.98); border-color: rgba(0,0,0,.06); }
   [data-theme="light"] .dash-mob-donow-empty{ background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.08); }
 
-  /* Today's tasks compact */
+  /* Today's tasks compact — hidden per product request (use See all / desktop list elsewhere). */
+  #dashboard .dash-mob-today{ display: none !important; }
+
   .dash-mob-today{ margin-top: 2px; }
   .dash-mob-today-head{
     display: flex; align-items: center; justify-content: space-between;
