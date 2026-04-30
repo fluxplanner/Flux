@@ -61,7 +61,7 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 55 | Study budget | Partial — daily goal |
 | 56 | Sleep debt | Roadmap |
 | 57 | Break reminders | Roadmap |
-| 58 | Pomodoro presets | Done — 25 / 45 / 90 min quick-set |
+| 58 | Pomodoro presets | Done — 15 / 25 / 45 min quick-set | add long study |
 | 59 | Distraction log export | Roadmap |
 | 60 | Low-mood recovery | Roadmap |
 | 61 | Journal one-liner | Done — Mood tab, per day |
@@ -104,3 +104,4 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 98 | Template marketplace | Roadmap |
 | 99 | School IT API | Roadmap |
 | 100 | Advisory board form | Roadmap |
+| 101 | Owner pushed updates to all other users | Roadmap |
