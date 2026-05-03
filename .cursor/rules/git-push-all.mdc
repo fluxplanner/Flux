@@ -1,0 +1,15 @@
+---
+description: When the user asks to push, commit and push the entire working tree
+alwaysApply: true
+---
+
+# Git push — full working tree
+
+When the user asks to push (or to commit and push), **do not** limit the commit to only files touched in the current task.
+
+1. Run `git status` and include **all** changes: modified, deleted, and untracked files (`git add -A` from the repo root unless they specify paths).
+2. If they asked to remove or delete something, ensure those deletions are staged.
+3. Use one commit (or follow their explicit split request). Write a commit message that reflects the full set of changes.
+4. Push to the configured remote/branch (usually `git push`).
+
+Only exclude paths from the commit if the user **explicitly** says to leave something out.

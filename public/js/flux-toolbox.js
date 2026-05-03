@@ -766,27 +766,40 @@ function compileExpr(src){
   };
 }
 
-// ── Graphing calculator ─────────────────────────────────────────
-const GRAPH_COLORS = ['#00bfff', '#ff6ec7', '#ffd166', '#8dff6c', '#ff8c42'];
+// ── Graphing calculator (TI-84 inspired shell + LCD) ───────────
+const GRAPH_COLORS = ['#0a1a0e', '#0d2832', '#1a1f42'];
 function renderGraphCalc(body){
   body.innerHTML = `
-    <div class="tb-card">
-      <div class="tb-card-h"><h3>Graphing calculator</h3>
-        <div class="tb-actions">
-          <button type="button" class="tb-btn-sec" id="gcFit">Fit</button>
-          <button type="button" class="tb-btn-sec" id="gcReset">Reset</button>
+    <div class="ti84-calc" aria-label="TI-84 style graphing calculator">
+      <header class="ti84-header">
+        <div class="ti84-brand">
+          <span class="ti84-brand__logo">FLUX</span>
+          <span class="ti84-brand__model">Plus Silver — Grapher</span>
+        </div>
+        <div class="ti84-header__btns">
+          <button type="button" class="ti84-key ti84-key--nav" id="gcFit" title="Fit Y range to visible curves">ZOOM FIT</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcReset" title="Standard window −10…10">ZSTD</button>
+        </div>
+      </header>
+      <div class="ti84-lcd-bezel">
+        <div class="ti84-lcd">
+          <canvas id="gcCanvas" width="900" height="500" aria-label="Graph window"></canvas>
+          <div class="ti84-lcd__scan" aria-hidden="true"></div>
+          <div class="ti84-readout" id="gcCursor"></div>
         </div>
       </div>
-      <div class="gc-inputs" id="gcInputs"></div>
-      <div class="gc-stage">
-        <canvas id="gcCanvas" width="900" height="500" aria-label="Graph"></canvas>
-        <div class="gc-cursor" id="gcCursor"></div>
-      </div>
-      <div class="gc-footer">
-        <span class="gc-range">x: <input type="number" id="gcXmin" step="any"> → <input type="number" id="gcXmax" step="any"></span>
-        <span class="gc-range">y: <input type="number" id="gcYmin" step="any"> → <input type="number" id="gcYmax" step="any"></span>
-        <span class="gc-help">Mouse-drag to pan · scroll to zoom · functions use <code>x</code></span>
-      </div>
+      <section class="ti84-eqns" aria-label="Function editor">
+        <div class="ti84-eqns__cap">Y= editor</div>
+        <div id="gcInputs" class="ti84-eqns__rows"></div>
+      </section>
+      <footer class="ti84-window">
+        <span class="ti84-window__title">WINDOW</span>
+        <label class="ti84-win"><span class="ti84-win__k">Xmin</span><input type="number" id="gcXmin" step="any"></label>
+        <label class="ti84-win"><span class="ti84-win__k">Xmax</span><input type="number" id="gcXmax" step="any"></label>
+        <label class="ti84-win"><span class="ti84-win__k">Ymin</span><input type="number" id="gcYmin" step="any"></label>
+        <label class="ti84-win"><span class="ti84-win__k">Ymax</span><input type="number" id="gcYmax" step="any"></label>
+      </footer>
+      <p class="ti84-hint">Drag graph · scroll to zoom · variable <code>x</code> · <kbd>sin</kbd><kbd>cos</kbd><kbd>ln</kbd><kbd>sqrt</kbd>(<kbd>x</kbd>)</p>
     </div>
   `;
 
@@ -803,10 +816,10 @@ function renderGraphCalc(body){
 
   function writeInputs(){
     $('gcInputs').innerHTML = fns.map((f, i) => `
-      <div class="gc-input" style="--gc-color:${f.color}">
-        <label class="gc-label">f${i+1}(x) =</label>
-        <input type="text" class="gc-expr" data-i="${i}" placeholder="${i === 0 ? 'e.g. sin(x)' : 'add a function'}" value="${attr(f.expr)}" spellcheck="false" autocapitalize="off" autocomplete="off">
-        <button type="button" class="gc-toggle" data-i="${i}" aria-pressed="${f.on}" title="Show/hide">${f.on ? '●' : '○'}</button>
+      <div class="ti84-eqn-row" style="--ti-trace:${f.color}">
+        <span class="ti84-eqn-row__y">Y<sub>${i + 1}</sub>=</span>
+        <input type="text" class="ti84-eqn-row__inp gc-expr" data-i="${i}" placeholder="${i === 0 ? 'sin(x)' : '—'}" value="${attr(f.expr)}" spellcheck="false" autocapitalize="off" autocomplete="off">
+        <button type="button" class="ti84-eqn-row__on gc-toggle" data-i="${i}" aria-pressed="${f.on}" title="Trace on/off">${f.on ? 'On' : 'Off'}</button>
       </div>
     `).join('');
   }
@@ -837,16 +850,26 @@ function renderGraphCalc(body){
     const toSx = x => ((x - view.xMin) / xr) * W;
     const toSy = y => H - ((y - view.yMin) / yr) * H;
 
-    // Clear
+    // TI-style LCD background (sage / gray-green)
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = getCssVar('--bg2') || 'rgba(255,255,255,.02)';
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#b8c9b0');
+    g.addColorStop(0.35, '#9eb89a');
+    g.addColorStop(1, '#8aa68a');
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+    // Subtle scanlines
+    ctx.save();
+    ctx.globalAlpha = 0.045;
+    ctx.fillStyle = '#000';
+    for (let py = 0; py < H; py += 2) ctx.fillRect(0, py, W, 1);
+    ctx.restore();
 
     // Gridlines
     ctx.lineWidth = 1;
-    ctx.strokeStyle = getCssVar('--border') || 'rgba(255,255,255,.08)';
-    ctx.font = '11px ui-monospace, Menlo, monospace';
-    ctx.fillStyle = getCssVar('--muted') || '#8895a7';
+    ctx.strokeStyle = 'rgba(12, 36, 18, 0.12)';
+    ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(14, 42, 22, 0.55)';
 
     const stepX = niceStep(xr / 10);
     const stepY = niceStep(yr / 8);
@@ -862,8 +885,8 @@ function renderGraphCalc(body){
     }
 
     // Axes
-    ctx.strokeStyle = getCssVar('--text') || '#ecf3f8';
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(8, 28, 14, 0.88)';
+    ctx.lineWidth = 1.35;
     if (0 >= view.xMin && 0 <= view.xMax){
       const sx = toSx(0);
       ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke();
@@ -873,13 +896,15 @@ function renderGraphCalc(body){
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke();
     }
 
-    // Curves
+    // Curves (dark ink on LCD)
     fns.forEach(f => {
       if (!f.on || !f.expr.trim()) return;
       let fn;
       try { fn = compileExpr(f.expr); } catch(e){ return; }
       ctx.strokeStyle = f.color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.1;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
       ctx.beginPath();
       let started = false;
       const n = Math.max(200, Math.floor(W));
@@ -923,7 +948,7 @@ function renderGraphCalc(body){
     if (!t) return;
     const state = t.getAttribute('aria-pressed') === 'true';
     t.setAttribute('aria-pressed', String(!state));
-    t.textContent = !state ? '●' : '○';
+    t.textContent = !state ? 'On' : 'Off';
     onInput();
   });
 
@@ -999,7 +1024,7 @@ function renderGraphCalc(body){
     const x = view.xMin + mx * (view.xMax - view.xMin);
     const y = view.yMin + my * (view.yMax - view.yMin);
     const cur = $('gcCursor');
-    if (cur) cur.textContent = `x = ${round(x,3)}   y = ${round(y,3)}`;
+    if (cur) cur.textContent = `X=${round(x, 4)}  Y=${round(y, 4)}`;
   });
 
   redraw();
