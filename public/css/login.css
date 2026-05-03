@@ -24,6 +24,12 @@
 }
 html[data-flux-perf="on"] .login-anime-layer{display:none!important}
 
+/* splitText-style wrappers (flux-anime-motion.js) */
+.flux-anim-word,.flux-anim-char{
+  will-change:transform,opacity;
+}
+.flux-anim-char{display:inline-block;transform-origin:50% 100%}
+
 /* ── BACKGROUND: LAYERED DEPTH ── */
 .login-bg{
   position:fixed;inset:0;pointer-events:none;z-index:0;
