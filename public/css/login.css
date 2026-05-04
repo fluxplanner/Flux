@@ -28,7 +28,9 @@ html[data-flux-perf="on"] .login-anime-layer{display:none!important}
 .flux-anim-word,.flux-anim-char{
   will-change:transform,opacity;
 }
-.flux-anim-char{display:inline-block;transform-origin:50% 100%}
+.flux-anim-char{display:inline-block;transform-origin:50% 100%;vertical-align:baseline}
+/* Per-char gradient headline: tight line-height clips descenders / last line */
+.login-left-headline .flux-anim-char{line-height:1.35;padding-bottom:.06em}
 
 /* ── BACKGROUND: LAYERED DEPTH ── */
 .login-bg{
@@ -90,7 +92,8 @@ html[data-flux-perf="on"] .login-anime-layer{display:none!important}
 }
 .login-left{
   display:flex;align-items:flex-start;justify-content:center;
-  padding:max(48px, calc(env(safe-area-inset-top, 0px) + 28px)) 48px 56px;overflow:hidden;
+  padding:max(48px, calc(env(safe-area-inset-top, 0px) + 28px)) 48px 56px;
+  overflow-x:hidden;overflow-y:visible;
   min-width:0;
 }
 .login-left-inner{max-width:480px;width:100%;min-width:0;padding-top:4px}
@@ -120,12 +123,16 @@ html[data-flux-perf="on"] .login-anime-layer{display:none!important}
 /* ── LEFT SIDE: HEADLINE ── */
 .login-left-headline{
   font-size:clamp(2rem,3.8vw,3.2rem);font-weight:800;letter-spacing:-1.5px;
-  color:#eef0f7;line-height:1.1;margin-bottom:16px;
+  color:#eef0f7;line-height:1.22;margin-bottom:16px;padding-bottom:.08em;
+  overflow:visible;
   animation:loginFadeUp .6s cubic-bezier(.16,1,.3,1) .1s both;
 }
 .login-gradient-text{
   background:linear-gradient(135deg,#00C2FF,#7C5CFF,#22FF88);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  line-height:1.3;padding-bottom:.1em;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;
 }
 .login-left-sub{
   font-size:.88rem;color:rgba(255,255,255,.45);line-height:1.7;margin-bottom:18px;

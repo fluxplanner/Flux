@@ -171,6 +171,13 @@ function initFluxAnimeLogin() {
   if (prefersReducedMotion() || perfSnappy() || !loginRoot?.classList.contains('visible')) return;
 
   teardownFluxAnimeLogin();
+  try {
+    const tagEl = loginRoot.querySelector('.login-tagline');
+    if (tagEl) {
+      tagEl.style.removeProperty('letter-spacing');
+      tagEl.style.removeProperty('opacity');
+    }
+  } catch (_) {}
   const words = wrapWords(loginRoot.querySelector('.login-left-sub'));
   const chars = wrapCharsManual(loginRoot.querySelector('.login-gradient-text'));
 
@@ -234,29 +241,6 @@ function initFluxAnimeLogin() {
   } catch (e) {
     console.warn('flux-animations: login lines', e);
   }
-
-  try {
-    const tag = loginRoot.querySelector('.login-tagline');
-    if (tag) {
-      const growEase = easeSnap;
-      const shrinkEase =
-        typeof eases.inOut === 'function' ? eases.inOut(2) : 'inOutQuad';
-      const tagTl = createTimeline({ loop: true });
-      tagTl.add(tag, {
-        letterSpacing: ['0.14em', '0.34em'],
-        opacity: [0.8, 0.98],
-        duration: 2000,
-        ease: growEase,
-      });
-      tagTl.add(tag, {
-        letterSpacing: ['0.34em', '0.14em'],
-        opacity: [0.98, 0.8],
-        duration: 2000,
-        ease: shrinkEase,
-      });
-      track(loginRevertibles, tagTl);
-    }
-  } catch (_) {}
 
   try {
     const spots = loginRoot.querySelectorAll('.login-spotlight-item');
