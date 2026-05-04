@@ -901,6 +901,31 @@
             </div>
           </div>
         </div>
+        <div class="canvas-hub-strip" id="canvasHubStrip">
+          <div class="canvas-hub-strip-row">
+            <span id="canvasHubFetchStatus" class="canvas-hub-status" aria-live="polite"></span>
+            <button type="button" class="canvas-add-btn" onclick="window.fluxCanvasHubToolbarSync?.()" title="Refresh assignments, grades cache, and planner sync data">Sync hub</button>
+          </div>
+          <details class="canvas-hub-reader-details">
+            <summary>Assignment text for Flux AI</summary>
+            <div class="canvas-hub-reader-grid">
+              <label class="canvas-hub-field">Course
+                <select id="fluxCanvasReaderCourse" onchange="fluxCanvasReaderOnCourseChange()"></select>
+              </label>
+              <label class="canvas-hub-field">Assignment
+                <select id="fluxCanvasReaderAssignment"></select>
+              </label>
+            </div>
+            <div id="fluxCanvasReaderMeta" class="canvas-hub-reader-meta">—</div>
+            <textarea id="fluxCanvasReaderBody" class="canvas-hub-reader-ta" rows="5" placeholder="Pick course and assignment, then Load. Loaded text can be pinned for Flux AI."></textarea>
+            <label class="canvas-hub-pin-row"><input type="checkbox" id="fluxCanvasReaderAutoPin" checked /> Auto-pin loaded text for Flux AI</label>
+            <div class="canvas-hub-reader-actions">
+              <button type="button" class="canvas-add-btn" onclick="(function(){var c=parseInt(document.getElementById('fluxCanvasReaderCourse')?.value||'0',10);var a=parseInt(document.getElementById('fluxCanvasReaderAssignment')?.value||'0',10);if(typeof loadCanvasAssignmentIntoReader==='function')loadCanvasAssignmentIntoReader(c,a,{});})()">Load</button>
+              <button type="button" class="canvas-add-btn" onclick="typeof pinReaderTextFromCanvasHub==='function'?pinReaderTextFromCanvasHub():void 0">Pin text</button>
+              <button type="button" class="canvas-add-btn" onclick="typeof clearCanvasPageForAI==='function'?clearCanvasPageForAI():void 0">Clear AI pin</button>
+            </div>
+          </details>
+        </div>
         <div class="canvas-panel-body">
           <aside class="canvas-sidebar ${CanvasState._sidebarCollapsed ? "collapsed" : ""}" id="canvasSidebar">
             <div class="canvas-sidebar-head">
@@ -1226,6 +1251,16 @@
       load("flux_canvas_host", null) || hostFromStoredUrl(load("flux_canvas_url", ""));
     CanvasState.connected = !!(CanvasState.token && CanvasState.host);
     syncLegacyCanvasGlobals();
+    if (CanvasState.connected) {
+      try {
+        if (typeof fluxCanvasHubData !== "undefined" && !fluxCanvasHubData) {
+          const cached = load("flux_canvas_hub_cache", null);
+          if (cached && Array.isArray(cached.courses) && cached.courses.length) {
+            fluxCanvasHubData = cached;
+          }
+        }
+      } catch (_) {}
+    }
     if (!CanvasState.connected) {
       renderCanvasConnectScreen();
       return;
@@ -1258,6 +1293,9 @@
       silentCanvasSync();
     }
     fluxApplyCanvasSplitLayout();
+    if (typeof window.fluxCanvasPopulateReaderCourses === "function") {
+      window.fluxCanvasPopulateReaderCourses();
+    }
   };
 
   window.__fluxRenderCanvasPanel = function () {

@@ -1508,6 +1508,22 @@ function nav(id,btn,navOpt){
   const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();}};
   fns[id]?.();
+  if(id==='canvas'){
+    try{
+      const pend=_fluxCanvasReaderPending;
+      if(pend&&pend.cid&&pend.aid){
+        _fluxCanvasReaderPending=null;
+        requestAnimationFrame(()=>{
+          const crs=document.getElementById('fluxCanvasReaderCourse');
+          const asn=document.getElementById('fluxCanvasReaderAssignment');
+          if(crs)crs.value=String(pend.cid);
+          if(typeof fluxCanvasReaderOnCourseChange==='function')fluxCanvasReaderOnCourseChange();
+          if(asn)asn.value=String(pend.aid);
+          if(typeof loadCanvasAssignmentIntoReader==='function')loadCanvasAssignmentIntoReader(pend.cid,pend.aid,{});
+        });
+      }
+    }catch(e){}
+  }
   if(typeof fluxApplyCanvasSplitLayout==='function')fluxApplyCanvasSplitLayout();
   if(window.FluxPersonal&&FluxPersonal.bumpNav)FluxPersonal.bumpNav(id);
   if(window.Flux100&&typeof Flux100.onNavAfter==='function')try{Flux100.onNavAfter(id);}catch(e){}
@@ -4841,6 +4857,8 @@ function buildFullPlannerContextForAI(opts){
     }catch(e){}
     const hubSnap=buildCanvasHubAssignmentsAISnapshot(26);
     if(hubSnap)add('Canvas — synced assignments (instruction excerpts)',clip(hubSnap,6200));
+    const hubJson=buildCanvasHubStructuredAIContext(16);
+    if(hubJson)add('Canvas — structured hub (JSON)',clip(hubJson,4500));
   }
 
   let out=`# FULL PLANNER SNAPSHOT (read-only for Flux)\nLocal today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}\n\n`+sections.join('\n\n');
@@ -7663,6 +7681,55 @@ function buildCanvasHubAssignmentsAISnapshot(maxN){
   return [meta,...lines].join('\n');
 }
 
+/** Machine-friendly Canvas hub slice for Flux AI (course ids + due-soon assignments). */
+function buildCanvasHubStructuredAIContext(maxItems){
+  if(!fluxCanvasHubData||!Array.isArray(fluxCanvasHubData.assignments))return'';
+  const n=Math.max(4,Math.min(40,parseInt(maxItems,10)||16));
+  const rows=filteredCanvasAssignments().slice().sort((a,b)=>{
+    const da=a.due_at||'',db=b.due_at||'';
+    if(!da&&!db)return 0;
+    if(!da)return 1;
+    if(!db)return-1;
+    return da.localeCompare(db);
+  }).slice(0,n);
+  const obj={
+    syncedAt:fluxCanvasHubData.fetchedAt||null,
+    courses:(fluxCanvasHubData.courses||[]).map(c=>({id:c.id,name:c.name||c.course_code||''})).slice(0,32),
+    assignmentsDueSoon:rows.map(a=>({
+      id:a.id,
+      course_id:a.course_id,
+      course:a.course_name||'',
+      name:a.name||'',
+      due_at:a.due_at||null,
+      has_description:!!(a.description&&String(a.description).trim()),
+      html_url:a.html_url||null
+    }))
+  };
+  return JSON.stringify(obj);
+}
+
+function fluxCanvasPopulateReaderCourses(){
+  const sel=document.getElementById('fluxCanvasReaderCourse');
+  if(!sel)return;
+  if(!fluxCanvasHubData||!Array.isArray(fluxCanvasHubData.courses)){
+    sel.innerHTML='<option value="">Sync hub first</option>';
+    const asn=document.getElementById('fluxCanvasReaderAssignment');
+    if(asn)asn.innerHTML='<option value="">—</option>';
+    return;
+  }
+  sel.innerHTML=fluxCanvasHubData.courses.map(c=>`<option value="${c.id}">${esc(c.name||c.course_code||'Course')}</option>`).join('')||'<option value="">No courses</option>';
+  fluxCanvasReaderOnCourseChange();
+  const st=document.getElementById('canvasHubFetchStatus');
+  if(st&&fluxCanvasHubData.fetchedAt&&!String(st.textContent||'').trim()){
+    st.textContent='Cached '+new Date(fluxCanvasHubData.fetchedAt).toLocaleString();
+  }
+}
+window.fluxCanvasPopulateReaderCourses=fluxCanvasPopulateReaderCourses;
+window.fluxCanvasHubToolbarSync=async function(){
+  if(typeof refreshCanvasHubFullFetch!=='function')return;
+  await refreshCanvasHubFullFetch({quietSuccessToast:false});
+};
+
 function pinCanvasPageForAI(payload){
   if(!payload||!String(payload.bodyPlain||'').trim()){clearCanvasPageForAI();return;}
   save('flux_canvas_ai_focus',{...payload,bodyPlain:String(payload.bodyPlain).slice(0,120000),updatedAt:Date.now()});
@@ -8345,12 +8412,14 @@ async function refreshCanvasHubFullFetch(opts){
     try{save('flux_canvas_hub_cache',fluxCanvasHubData);}catch(e){}
     setSt('Updated '+new Date().toLocaleTimeString());
     renderCanvasHubPanel();
+    if(typeof window.fluxCanvasPopulateReaderCourses==='function')window.fluxCanvasPopulateReaderCourses();
     if(!quietToast)showToast('Canvas data updated','success');
   }catch(e){
     setSt('');
     showToast(e.message||String(e),'error');
     fluxCanvasHubData=null;
     renderCanvasHubPanel();
+    if(typeof window.fluxCanvasPopulateReaderCourses==='function')window.fluxCanvasPopulateReaderCourses();
   }
 }
 

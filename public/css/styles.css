@@ -3427,6 +3427,19 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .canvas-breadcrumb-seg{background:none;border:none;color:var(--accent);cursor:pointer;font:inherit;padding:0 4px}
 .canvas-breadcrumb-current{color:var(--muted2);font-weight:600}
 .canvas-topbar-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.canvas-hub-strip{flex-shrink:0;border-bottom:1px solid var(--border);background:rgba(var(--accent-rgb),.04);padding:8px 10px 10px;font-size:.78rem}
+.canvas-hub-strip-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.canvas-hub-status{flex:1;min-width:0;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.68rem}
+.canvas-hub-reader-details{margin-top:4px;border-radius:10px;border:1px solid var(--border2);background:var(--card);padding:0 10px 8px}
+.canvas-hub-reader-details>summary{cursor:pointer;font-weight:700;color:var(--text2);padding:8px 0;list-style-position:outside}
+.canvas-hub-reader-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+@media(max-width:520px){.canvas-hub-reader-grid{grid-template-columns:1fr}}
+.canvas-hub-field{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:.68rem}
+.canvas-hub-field select{font:inherit;font-size:.78rem;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);max-width:100%}
+.canvas-hub-reader-meta{font-size:.72rem;color:var(--muted2);margin-bottom:6px;min-height:1.2em}
+.canvas-hub-reader-ta{width:100%;box-sizing:border-box;font:inherit;font-size:.78rem;line-height:1.45;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);resize:vertical;min-height:72px}
+.canvas-hub-pin-row{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted2);margin:8px 0}
+.canvas-hub-reader-actions{display:flex;flex-wrap:wrap;gap:6px}
 .canvas-icon-btn{background:var(--card2);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:.9rem}
 .canvas-icon-btn:disabled{opacity:.35;pointer-events:none}
 .canvas-mob-sidebar-btn{display:none}
