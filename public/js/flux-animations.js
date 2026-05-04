@@ -238,17 +238,23 @@ function initFluxAnimeLogin() {
   try {
     const tag = loginRoot.querySelector('.login-tagline');
     if (tag) {
-      track(
-        loginRevertibles,
-        animate(tag, {
-          letterSpacing: ['0.2em', '0.34em'],
-          opacity: [0.78, 1],
-          duration: 2200,
-          direction: 'alternate',
-          loop: true,
-          ease: easeSnap,
-        })
-      );
+      const growEase = easeSnap;
+      const shrinkEase =
+        typeof eases.inOut === 'function' ? eases.inOut(2) : 'inOutQuad';
+      const tagTl = createTimeline({ loop: true });
+      tagTl.add(tag, {
+        letterSpacing: ['0.14em', '0.34em'],
+        opacity: [0.8, 0.98],
+        duration: 2000,
+        ease: growEase,
+      });
+      tagTl.add(tag, {
+        letterSpacing: ['0.34em', '0.14em'],
+        opacity: [0.98, 0.8],
+        duration: 2000,
+        ease: shrinkEase,
+      });
+      track(loginRevertibles, tagTl);
     }
   } catch (_) {}
 
