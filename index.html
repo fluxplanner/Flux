@@ -93,6 +93,7 @@
 <link rel="stylesheet" href="public/css/styles.css">
 <link rel="stylesheet" href="public/css/login.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
+<link rel="stylesheet" href="public/css/flux-anime-catalog.css">
 <link rel="stylesheet" href="public/css/flux-ui-polish.css">
 <link rel="stylesheet" href="public/css/flux-personalization.css">
 <link rel="stylesheet" href="public/css/flux-enhancements-v100.css">
@@ -141,7 +142,7 @@
         <span class="login-tagline">YOUR SMART SCHOOL PLANNER</span>
       </div>
       <div class="login-topbar-actions">
-        <button type="button" class="login-google-btn login-google-btn--compact" onclick="signInWithGoogle()" title="Continue with Google">
+        <button type="button" class="login-google-btn login-google-btn--compact flux-ac-soft-bounce-hover" onclick="signInWithGoogle()" title="Continue with Google">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="18" height="18">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -164,7 +165,7 @@
                   <label class="login-field-label visually-hidden" for="loginDisplayName">Display name</label>
                   <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name (optional)">
                 </div>
-                <button type="button" class="login-email-btn" id="loginEmailBtn" onclick="handleEmailAuth()">Sign in</button>
+                <button type="button" class="login-email-btn flux-ac-btn-shine flux-ac-focus-ring-ai" id="loginEmailBtn" onclick="handleEmailAuth()">Sign in</button>
               </div>
               <div class="login-auth-toggle">
                 <span id="loginToggleText">Don't have an account?</span>
@@ -182,11 +183,11 @@
   <main class="login-showcase">
 
     <section class="login-scroll-section login-scroll-hero">
-      <div class="login-showcase-inner">
+      <div class="login-showcase-inner flux-ac-hero-mesh">
         <p class="login-eyebrow">Built for students</p>
         <div class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></div>
         <p class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</p>
-        <div class="login-badge login-badge--after-hero">✦ AI-Powered Student Planner</div>
+        <div class="login-badge login-badge--after-hero flux-ac-glass-chip flux-ac-shimmer-bg">✦ AI-Powered Student Planner</div>
 
         <div class="login-hero-demo login-demo-wrap" aria-live="polite">
           <div class="login-demo-label">Live preview</div>
@@ -195,20 +196,11 @@
         </div>
 
         <div class="login-spotlight-grid" aria-label="Planner highlights">
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
+          <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
+          <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
+          <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
+          <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
         </div>
-
-        <section class="login-hover-wrap login-hover-wrap--hero" aria-label="Explore features">
-          <div class="login-hover-wrap-label">Explore</div>
-          <div class="login-hover-narrative login-hover-narrative--desktop" aria-label="What you can do in Flux">
-            <p class="login-hover-lede">Plan smarter with <span class="login-hover-link" data-preview="fluxai">Flux AI Tutor</span>, pull deadlines from a photo with <span class="login-hover-link" data-preview="vision">Vision Import</span>, and keep your <span class="login-hover-link" data-preview="gpa">GPA</span> on track with weighted grades and what-ifs.</p>
-            <p><span class="login-hover-link" data-preview="calendar">Smart calendar</span> syncs tasks and Google; <span class="login-hover-link" data-preview="notes">tagged notes</span> and a <span class="login-hover-link" data-preview="timer">focus timer</span> help you get real work done.</p>
-            <p>Track <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, hook up <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and stay in sync everywhere with <span class="login-hover-link" data-preview="cloud">cloud sync</span>.</p>
-          </div>
-        </section>
 
         <div class="feat-pills-wrap feat-pills-wrap--hero">
           <div class="feat-pills" id="featPills"></div>
@@ -432,13 +424,6 @@
     </footer>
 
   </main>
-  <div id="loginHoverPreviewCard" class="login-hover-preview-card" aria-hidden="true" hidden>
-    <div class="login-hover-preview-card-inner">
-      <div class="login-hover-preview-visual" aria-hidden="true"></div>
-      <div class="login-hover-preview-title"></div>
-      <div class="login-hover-preview-sub"></div>
-    </div>
-  </div>
 </div>
 
 <!-- ══ ONBOARDING FLOW ══ -->
@@ -1564,14 +1549,14 @@
 
     <!-- ─── AI (Claude-inspired layout) ─── -->
     <div id="ai" class="panel flux-page flux-ai-panel" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0;max-width:none">
-      <div class="flux-ai-canvas">
+      <div class="flux-ai-canvas flux-ac-vignette-lite">
       <div class="flux-ai-top">
       <div class="flux-ai-tabs-row">
         <div id="aiChatTabs" class="flux-ai-tabs-track"></div>
         <button type="button" class="flux-ai-newchat" onclick="newAIChat()">+ New chat</button>
       </div>
       <div class="flux-ai-head">
-        <div class="flux-ai-mark" aria-hidden="true">
+        <div class="flux-ai-mark flux-ac-feature-icon-ring" aria-hidden="true">
           <svg class="flux-ai-mark-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true" focusable="false">
             <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
             <path d="M5 3v4M19 17v4M3 5h4M17 19h4"/>
@@ -1609,14 +1594,14 @@
       </div>
       </div>
       <div id="aiMsgsWrap" class="flux-ai-scroll">
-        <div class="flux-ai-thread">
+        <div class="flux-ai-thread flux-ac-message-stack">
           <div class="ai-sugs" id="aiSugs"></div>
           <div class="ai-msgs" id="aiMsgs"></div>
         </div>
       </div>
       <div id="aiImgPreview" class="flux-ai-img-preview" style="display:none"></div>
       <footer class="flux-ai-composer-foot">
-        <div class="flux-ai-composer-pill">
+        <div class="flux-ai-composer-pill flux-ac-prompt-well">
         <div class="ai-irow ai-irow--flux">
           <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image" title="Attach image">+</button>
           <textarea id="aiInput" rows="1" placeholder="How can I help you today?"
@@ -2076,7 +2061,7 @@
       <button type="button" class="fab-action" onclick="closeFAB();fabFocus()"><span class="fab-action-icon">⏱</span><span class="fab-action-text"><span class="fab-action-title">Focus timer</span><span class="fab-action-hint">Open timer tab</span></span></button>
       <button type="button" class="fab-action" onclick="_sessionStart?endSession():startSession()" id="fabSessionBtn"><span class="fab-action-icon">📍</span><span class="fab-action-text"><span class="fab-action-title" id="fabSessionLabel">Class session</span><span class="fab-action-hint">Track this period</span></span></button>
     </div>
-    <button type="button" id="fabBtn" class="fab-trigger" aria-label="Quick actions — Flux AI, new task, timer…" aria-haspopup="true" aria-expanded="false" title="Quick actions">
+    <button type="button" id="fabBtn" class="fab-trigger flux-ac-fab-spin-host flux-ac-soft-bounce-hover" aria-label="Quick actions — Flux AI, new task, timer…" aria-haspopup="true" aria-expanded="false" title="Quick actions">
       <span class="fab-trigger__spark" aria-hidden="true">✦</span>
     </button>
   </div>
@@ -2170,7 +2155,7 @@
 
 <!-- Global Search -->
 <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
-  <div class="search-box">
+  <div class="search-box flux-ac-frosted-strip">
     <input class="search-input" id="globalSearchInput" type="text" placeholder="Search tasks, notes, classes..." autocomplete="off" oninput="handleGlobalSearch(this.value)">
     <div class="search-results" id="globalSearchResults"></div>
   </div>
@@ -2178,7 +2163,7 @@
 
 <!-- Quick Add Panel -->
 <div class="quick-add-panel" id="quickAddPanel">
-  <div class="quick-add-panel-inner">
+  <div class="quick-add-panel-inner flux-ac-ai-chat-shell flux-ac-corner-accents flux-ac-scanline-light">
     <input type="text" id="quickAddInput" list="quickAddHistList" placeholder="Type a task... &quot;Math HW Friday high&quot;" autocomplete="off" oninput="updateQuickAddPreview(this.value)">
     <datalist id="quickAddHistList"></datalist>
     <button onclick="submitQuickAdd()" id="quickAddSubmit">Add</button>
@@ -2189,7 +2174,8 @@
 </div>
 
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
-<!-- Load scripts: ESM animations first, then deferred app bundle -->
+<!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
+<script type="module" src="public/js/flux-anime-catalog.js"></script>
 <script type="module" src="public/js/flux-animations.js"></script>
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
@@ -2198,7 +2184,7 @@
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
 <div id="fluxFeedbackModal" class="flux-feedback-modal" aria-hidden="true" role="dialog" aria-labelledby="fluxFeedbackTitle" aria-modal="true">
   <div class="flux-feedback-modal__overlay" data-flux-feedback-overlay></div>
-  <div class="flux-feedback-modal__panel">
+  <div class="flux-feedback-modal__panel flux-ac-card-glow-hover">
     <button type="button" class="flux-feedback-modal__close" onclick="closeFluxFeedbackModal()" aria-label="Close">×</button>
     <h2 id="fluxFeedbackTitle" class="flux-feedback-modal__title">Send feedback</h2>
     <p class="flux-feedback-modal__desc">Your message is sent securely to the product owner. Include what you were doing and what you expected.</p>
@@ -2250,7 +2236,7 @@
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
-<div class="more-sheet" id="moreSheet" role="dialog" aria-modal="true" aria-labelledby="moreSheetTitle" aria-hidden="true">
+<div class="more-sheet flux-ac-drawer-handle-pulse flux-ac-dock-drop" id="moreSheet" role="dialog" aria-modal="true" aria-labelledby="moreSheetTitle" aria-hidden="true">
   <div class="more-sheet-head">
     <div class="more-sheet-handle" aria-hidden="true"></div>
     <div class="more-sheet-title-row">

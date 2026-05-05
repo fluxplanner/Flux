@@ -234,7 +234,6 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 .login-scroll-section .login-badge,
 .login-scroll-section .login-demo-wrap,
 .login-scroll-section .login-spotlight-grid,
-.login-scroll-section .login-hover-wrap,
 .login-scroll-section .feat-pills-wrap,
 .login-scroll-section .login-trust,
 .login-scroll-section .login-note--footer,
@@ -256,7 +255,6 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 .login-scroll-section--visible .login-badge,
 .login-scroll-section--visible .login-demo-wrap,
 .login-scroll-section--visible .login-spotlight-grid,
-.login-scroll-section--visible .login-hover-wrap,
 .login-scroll-section--visible .feat-pills-wrap,
 .login-scroll-section--visible .login-trust,
 .login-scroll-section--visible .login-note--footer,
@@ -266,8 +264,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 }
 .login-scroll-section--visible .login-showcase-visual{transition-delay:.14s}
 .login-scroll-section--visible .login-spotlight-grid{transition-delay:.08s}
-.login-scroll-section--visible .login-hover-wrap{transition-delay:.12s}
-.login-scroll-section--visible .feat-pills-wrap{transition-delay:.18s}
+.login-scroll-section--visible .feat-pills-wrap{transition-delay:.14s}
 
 .login-showcase-split{
   display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(18px,3.5vw,40px);
@@ -335,18 +332,6 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
   font-size:.72rem;font-weight:600;color:rgba(228,234,255,.9);font-family:'Plus Jakarta Sans',sans-serif;line-height:1.35;
 }
 .login-spotlight-ico{flex-shrink:0;font-size:.95rem}
-
-.login-hover-wrap--hero{margin-bottom:22px;padding:14px 16px;border-radius:var(--r-lg);background:rgba(8,10,18,.4);border:1px solid rgba(255,255,255,.08)}
-.login-hover-wrap-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.36);font-family:'JetBrains Mono',monospace;font-weight:700;margin-bottom:10px}
-.login-hover-narrative p{margin:0 0 .85em;font-size:clamp(.88rem,1.8vw,.98rem);line-height:1.58;color:rgba(255,255,255,.42)}
-.login-hover-narrative p.login-hover-lede{color:rgba(255,255,255,.52);font-size:clamp(.9rem,2vw,1.02rem)}
-.login-hover-narrative p:last-child{margin-bottom:0}
-.login-hover-link{color:#f2f4f8;font-weight:700;font-family:'Syne','Plus Jakarta Sans',sans-serif;cursor:pointer;text-decoration:none;position:relative}
-.login-hover-link::after{
-  content:'';position:absolute;left:0;bottom:-1px;width:0;height:2px;border-radius:1px;
-  background:linear-gradient(90deg,var(--accent),var(--purple));transition:width .3s ease;pointer-events:none;
-}
-.login-hover-link:hover::after{width:100%}
 
 .feat-pills-wrap--hero{margin-top:6px;mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent)}
 .login-anime-pills-host{
@@ -541,18 +526,6 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 .login-trust-sep{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.12)}
 .login-dev-credit{text-align:center;font-size:.58rem;letter-spacing:.08em;color:rgba(255,255,255,.22);margin:10px 0 0;font-family:'JetBrains Mono',monospace}
 
-/* Hover preview tooltip */
-.login-hover-preview-card{position:fixed;pointer-events:none;z-index:130;opacity:0;transform:translateY(10px) scale(.96);transition:opacity .22s ease,transform .26s var(--ease-spring)}
-.login-hover-preview-card.login-hover-preview-card--visible{opacity:1;transform:translateY(0) scale(1)}
-.login-hover-preview-card-inner{
-  background:rgba(16,20,30,.94);border-radius:16px;padding:0;max-width:min(280px,calc(100vw - 24px));
-  box-shadow:0 26px 52px -14px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.1),0 0 48px rgba(var(--login-preview-accent,99,102,241),.14);
-  overflow:hidden;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-}
-.login-hover-preview-visual{height:44px;width:100%;background:linear-gradient(135deg,rgba(99,102,241,.55),rgba(99,102,241,.08))}
-.login-hover-preview-title{padding:11px 14px 4px;font-size:.8rem;color:#f0f3fa;font-weight:700;font-family:'Syne','Plus Jakarta Sans',sans-serif}
-.login-hover-preview-sub{padding:0 14px 12px;font-size:.65rem;line-height:1.48;color:rgba(255,255,255,.44);font-family:'JetBrains Mono',monospace}
-
 html[data-flux-perf="on"] .login-scroll-section .login-showcase-copy,
 html[data-flux-perf="on"] .login-scroll-section .login-showcase-visual{opacity:1;transform:none}
 
@@ -585,7 +558,6 @@ html[data-flux-perf="on"] .login-scroll-section .login-showcase-visual{opacity:1
   .login-scroll-section .login-badge,
   .login-scroll-section .login-demo-wrap,
   .login-scroll-section .login-spotlight-grid,
-  .login-scroll-section .login-hover-wrap,
   .login-scroll-section .feat-pills-wrap,
   .login-scroll-section .login-trust,
   .login-scroll-section .login-note--footer,

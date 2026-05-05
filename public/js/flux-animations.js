@@ -597,6 +597,12 @@ function panelFlash(inEl) {
 
 function modalOpen(overlayEl, cardEl) {
   if (!cardEl) return;
+  try {
+    if (!prefersReducedMotion() && !perfSnappy() && typeof window.FluxAnim?.modalOpenEnhanced === 'function') {
+      window.FluxAnim.modalOpenEnhanced(overlayEl, cardEl);
+      return;
+    }
+  } catch (_) {}
   motion(() => {
     if (overlayEl) {
       animate(overlayEl, { opacity: [0, 1], duration: 180, ease: 'outQuad' });
@@ -649,11 +655,17 @@ function sheetOpen(sheetEl, overlayEl) {
     void overlayEl;
     const items = sheetEl.querySelectorAll('.more-sheet-item');
     if (items.length) {
+      try {
+        if (!prefersReducedMotion() && !perfSnappy() && typeof window.FluxAnim?.sheetItemsEaseStagger === 'function') {
+          window.FluxAnim.sheetItemsEaseStagger(items);
+          return;
+        }
+      } catch (_) {}
       animate(items, {
         opacity: [0.55, 1],
         translateY: [10, 0],
         scale: [0.97, 1],
-        delay: stagger(26, { start: 80 }),
+        delay: stagger(26, { start: 80, ease: 'inOut(3)' }),
         duration: 240,
         ease: 'outExpo',
       });
@@ -810,6 +822,12 @@ function logoDrawIn(svgRoot) {
 
 function toastIn(toastEl) {
   if (!toastEl) return;
+  try {
+    if (!prefersReducedMotion() && !perfSnappy() && window.FluxAnimeCatalog?.toastSpringEnhanced) {
+      window.FluxAnimeCatalog.toastSpringEnhanced(toastEl);
+      return;
+    }
+  } catch (_) {}
   motion(() => {
     animate(toastEl, {
       opacity: [0, 1],
@@ -1348,3 +1366,7 @@ window.fluxAnimeOnTaskComplete = function (el, done) {
   const chk = el?.querySelector?.('.check');
   taskComplete(el, chk, done);
 };
+
+if (typeof window !== 'undefined' && window.FluxAnimeCatalog?.mergeIntoFluxAnim) {
+  window.FluxAnimeCatalog.mergeIntoFluxAnim(window.FluxAnim);
+}

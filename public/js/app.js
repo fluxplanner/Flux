@@ -6933,7 +6933,6 @@ function showLoginScreen(){
   if(app)app.classList.remove('visible');
   initFeaturePills();
   initLoginFeatureCards();
-  initLoginHoverPreview();
   initLoginScrollAnimations();
   setTimeout(()=>{
     if(typeof initLoginAmbient==='function')initLoginAmbient();
@@ -6949,7 +6948,6 @@ function showApp(){
   teardownLoginScrollAnimations();
   stopLoginDemoRotator();
   if(ls){ls.style.display='none';ls.classList.remove('visible');}
-  if(typeof resetLoginHoverPreview==='function')resetLoginHoverPreview();
   if(app)app.classList.add('visible');
   renderSidebars();
   populateSubjectSelects();
@@ -7226,87 +7224,6 @@ function initLoginFeatureCards(){
   });
 }
 
-// ══ LOGIN — hover preview card (Flux features; vanilla port of hover-preview pattern) ══
-const LOGIN_HOVER_PREVIEW_DATA={
-  fluxai:{accent:'99,102,241',title:'Flux AI Tutor',subtitle:'Study plans, flashcards, and exam prep tailored to your courses.'},
-  vision:{accent:'16,217,160',title:'Vision Import',subtitle:'Photograph syllabi and schedules — AI turns them into tasks and dates.'},
-  gpa:{accent:'251,191,36',title:'GPA Tracker',subtitle:'Weighted grades, four-decimal precision, and what-if scenarios.'},
-  calendar:{accent:'59,130,246',title:'Smart Calendar',subtitle:'Tasks and class blocks together, with Google Calendar sync.'},
-  notes:{accent:'139,92,246',title:'Tagged Notes',subtitle:'Organize study material and let Flux AI quiz you from your notes.'},
-  timer:{accent:'167,139,250',title:'Focus Timer',subtitle:'Pomodoro-style focus blocks, streaks, and habit building.'},
-  extracurriculars:{accent:'251,146,60',title:'Extracurriculars',subtitle:'Track clubs and activities with school-fit suggestions.'},
-  canvas:{accent:'94,234,212',title:'Canvas & Gmail',subtitle:'Connect learning tools and turn emails into actionable tasks.'},
-  cloud:{accent:'192,132,252',title:'Cloud Sync',subtitle:'One Google account keeps Flux updated on every device.'},
-};
-let _loginHoverPreviewBound=false;
-function resetLoginHoverPreview(){
-  const card=document.getElementById('loginHoverPreviewCard');
-  if(!card)return;
-  card.classList.remove('login-hover-preview-card--visible');
-  card.setAttribute('hidden','');
-  card.setAttribute('aria-hidden','true');
-}
-function initLoginHoverPreview(){
-  const root=document.getElementById('loginScreen');
-  const card=document.getElementById('loginHoverPreviewCard');
-  if(!root||!card)return;
-  if(_loginHoverPreviewBound)return;
-  _loginHoverPreviewBound=true;
-  const visual=card.querySelector('.login-hover-preview-visual');
-  const titleEl=card.querySelector('.login-hover-preview-title');
-  const subEl=card.querySelector('.login-hover-preview-sub');
-  let visible=false;
-
-  function updatePosition(clientX,clientY){
-    const cardWidth=272;
-    const cardHeight=118;
-    const pad=12;
-    let x=clientX+14;
-    let y=clientY-cardHeight/2;
-    if(x+cardWidth>window.innerWidth-pad)x=clientX-cardWidth-14;
-    if(x<pad)x=pad;
-    if(y<pad)y=pad;
-    if(y+cardHeight>window.innerHeight-pad)y=window.innerHeight-cardHeight-pad;
-    card.style.left=`${x}px`;
-    card.style.top=`${y}px`;
-  }
-
-  function showForKey(key,e){
-    const d=LOGIN_HOVER_PREVIEW_DATA[key];
-    if(!d)return;
-    visible=true;
-    const acc=d.accent||'99,102,241';
-    card.style.setProperty('--login-preview-accent',acc);
-    if(visual){
-      visual.style.background=`linear-gradient(135deg,rgba(${acc},.55),rgba(${acc},.06))`;
-    }
-    if(titleEl)titleEl.textContent=d.title||'';
-    if(subEl)subEl.textContent=d.subtitle||'';
-    card.removeAttribute('hidden');
-    card.setAttribute('aria-hidden','false');
-    updatePosition(e.clientX,e.clientY);
-    requestAnimationFrame(()=>{card.classList.add('login-hover-preview-card--visible');});
-  }
-
-  function hide(){
-    visible=false;
-    card.classList.remove('login-hover-preview-card--visible');
-    card.setAttribute('hidden','');
-    card.setAttribute('aria-hidden','true');
-  }
-
-  root.querySelectorAll('.login-hover-link[data-preview]').forEach(el=>{
-    el.addEventListener('mouseenter',ev=>{
-      const key=el.getAttribute('data-preview');
-      if(key)showForKey(key,ev);
-    });
-    el.addEventListener('mousemove',ev=>{
-      if(visible)updatePosition(ev.clientX,ev.clientY);
-    });
-    el.addEventListener('mouseleave',hide);
-  });
-}
-
 // ══ ITEM 4 — TOPBAR FULL IMPLEMENTATION ══
 function initTopbar(){
   function updateClock(){
@@ -7537,7 +7454,6 @@ function handleCheckoutReturn(){
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
   initLoginFeatureCards();
-  initLoginHoverPreview();
   bindScheduleImportDropzones();
   initFluxFeedbackModal();
   renderSidebars();

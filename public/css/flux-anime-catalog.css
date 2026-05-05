@@ -1,0 +1,604 @@
+/*
+ * Flux anime / UI catalog — CSS utilities inspired by 21st.dev-style patterns
+ * (AI shell, hero blobs, shaders-as-gradient, pricing glow, docks, loaders).
+ * Pair with FluxAnimeCatalog in flux-anime-catalog.js (+ SOURCE_INDEX animejs.com anchors).
+ */
+
+/* ── Loader / shimmer (AI gen, skeleton vibes) ── */
+@keyframes flux-ac-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.flux-ac-shimmer-bg {
+  position: relative;
+  overflow: hidden;
+}
+.flux-ac-shimmer-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 62%
+  );
+  animation: flux-ac-shimmer 1.85s ease-in-out infinite;
+}
+[data-theme='light'] .flux-ac-shimmer-bg::after {
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(var(--accent-rgb), 0.12) 50%,
+    transparent 62%
+  );
+}
+
+.flux-ac-skel-line {
+  height: 11px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+[data-theme='light'] .flux-ac-skel-line {
+  background: rgba(0, 0, 0, 0.06);
+}
+.flux-ac-skel-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  animation: flux-ac-shimmer 1.4s ease-in-out infinite;
+}
+
+.flux-ac-dot-parent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.flux-ac-dot-parent .flux-ac-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.65;
+}
+
+/* ── Ripple host (paired with FluxAnimeCatalog.rippleExpand) ── */
+.flux-ac-ripple {
+  pointer-events: none;
+}
+
+.flux-ac-ping-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(var(--accent-rgb), 0.45);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── AI / chat chrome (animated-input, dock, orb) ── */
+.flux-ac-ai-chat-shell {
+  border-radius: 18px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  background: rgba(8, 10, 20, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 50px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(var(--accent-rgb), 0.08);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.flux-ac-prompt-well {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.flux-ac-prompt-well:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb), 0.12),
+    0 8px 32px rgba(var(--accent-rgb), 0.1);
+}
+
+.flux-ac-message-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@keyframes flux-ac-orb {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: translate(4px, -3px) scale(1.05);
+    filter: hue-rotate(35deg);
+  }
+}
+
+.flux-ac-ai-orb {
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 28%, rgba(0, 194, 255, 0.55), transparent 62%),
+    radial-gradient(circle at 72% 65%, rgba(124, 92, 255, 0.5), transparent 58%),
+    rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 28px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(var(--accent-rgb), 0.25);
+  animation: flux-ac-orb 5.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flux-ac-ai-orb {
+    animation: none;
+  }
+}
+
+/* ── Hero / banner / mesh (21st heroes, featured) ── */
+.flux-ac-hero-mesh {
+  position: relative;
+  overflow: hidden;
+}
+.flux-ac-hero-mesh::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(ellipse at 20% 20%, rgba(var(--accent-rgb), 0.2), transparent 55%),
+    radial-gradient(ellipse at 82% 16%, rgba(124, 92, 255, 0.16), transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(16, 217, 160, 0.12), transparent 55%);
+  animation: flux-ac-mesh-shift 22s linear infinite alternate;
+  opacity: 0.75;
+}
+@keyframes flux-ac-mesh-shift {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(10deg) scale(1.05);
+  }
+}
+
+.flux-ac-blob-bg {
+  position: relative;
+}
+.flux-ac-blob-bg::after {
+  content: '';
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 45% 55% 50% 50%;
+  filter: blur(38px);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22), transparent 70%);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ── Buttons / CTA ── */
+.flux-ac-btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.flux-ac-btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -140%;
+  width: 110%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.18), transparent 70%);
+  transform: skewX(-16deg);
+  transition: transform 0.56s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.flux-ac-btn-shine:hover::after {
+  transform: translateX(260%) skewX(-16deg);
+}
+
+.flux-ac-btn-ghost-pulse:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.35),
+    0 0 24px rgba(var(--accent-rgb), 0.12);
+}
+.flux-ac-soft-bounce-hover {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flux-ac-soft-bounce-hover:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+.flux-ac-soft-bounce-hover:active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* ── Cards / pricing ── */
+.flux-ac-card-glow-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.34s ease,
+    border-color 0.34s ease;
+}
+.flux-ac-card-glow-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--accent-rgb), 0.28);
+  box-shadow:
+    0 12px 42px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(var(--accent-rgb), 0.08),
+    0 0 38px rgba(var(--accent-rgb), 0.12);
+}
+
+.flux-ac-pricing-hot {
+  outline: 1px solid rgba(var(--accent-rgb), 0.35);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.1),
+    0 20px 50px rgba(var(--accent-rgb), 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.flux-ac-dock-drop {
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 -12px 40px rgba(0, 0, 0, 0.42);
+}
+
+/* ── Text / marquee mask ── */
+.flux-ac-gradient-text {
+  background: linear-gradient(120deg, #e8eefc 0%, var(--accent2) 40%, var(--accent) 70%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding-bottom: 0.06em;
+}
+.flux-ac-marquee-mask {
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+
+/* ── Inputs / chrome ── */
+.flux-ac-input-underline:focus-within .flux-ac-uline {
+  transform: scaleX(1);
+  opacity: 1;
+}
+.flux-ac-uline {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  opacity: 0;
+  transform: scaleX(0.2);
+  transform-origin: left center;
+  transition:
+    opacity 0.24s ease,
+    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flux-ac-focus-ring-ai:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.32);
+}
+
+/* ── Testimonial / badges ── */
+.flux-ac-quote-accent {
+  border-left: 3px solid rgba(var(--accent-rgb), 0.55);
+  padding-left: 14px;
+  font-style: italic;
+  opacity: 0.92;
+}
+.flux-ac-pill-live::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  margin-right: 7px;
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(16, 217, 160, 0.55);
+  animation: flux-ac-live 1.2s ease-in-out infinite;
+}
+@keyframes flux-ac-live {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.08);
+  }
+}
+
+/* ── Noise / grain / scanline ── */
+.flux-ac-noise {
+  position: relative;
+}
+.flux-ac-noise::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8'/%3E%3C/filter%3E%3Crect filter='url(%23n)' width='120' height='120'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+.flux-ac-scanline-light {
+  position: relative;
+}
+.flux-ac-scanline-light::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 12px,
+    rgba(255, 255, 255, 0.02) 12px,
+    rgba(255, 255, 255, 0.02) 13px
+  );
+  opacity: 0.65;
+}
+
+/* ── Decorative corners ── */
+.flux-ac-corner-accents {
+  position: relative;
+}
+.flux-ac-corner-accents::before,
+.flux-ac-corner-accents::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+}
+.flux-ac-corner-accents::before {
+  left: -1px;
+  top: -1px;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 10px 0 0 0;
+}
+.flux-ac-corner-accents::after {
+  right: -1px;
+  bottom: -1px;
+  border-left: 0;
+  border-top: 0;
+  border-radius: 0 0 10px 0;
+}
+
+/* ── Nav / FAB / timers ── */
+.flux-ac-nav-dot-glow {
+  position: relative;
+}
+.flux-ac-nav-dot-glow::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 18px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent2), var(--accent));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.flux-ac-nav-dot-glow.is-active::before {
+  opacity: 1;
+}
+
+.flux-ac-fab-spin-host {
+  display: inline-flex;
+  perspective: 800px;
+}
+.flux-ac-drawer-handle-pulse .more-sheet-handle {
+  animation: flux-ac-handle 2.8s ease-in-out infinite;
+}
+@keyframes flux-ac-handle {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.08);
+  }
+}
+
+/* ── Stats / KPI ── */
+.flux-ac-stats-kpi {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  font-feature-settings:
+    'tnum' on,
+    'lnum' on;
+}
+
+.flux-ac-ribbon {
+  clip-path: polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%);
+  padding: 6px 22px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(120deg, rgba(var(--accent-rgb), 0.25), rgba(124, 92, 255, 0.18));
+}
+
+/* ── Frosted strip / CTA arrow ── */
+.flux-ac-frosted-strip {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.flux-ac-cta-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.flux-ac-cta-arrow:hover {
+  transform: translateX(3px);
+}
+
+/* ── Tooltip pop / border gradient ── */
+.flux-ac-tooltip-pop {
+  transform-origin: bottom center;
+  animation: flux-ac-tip 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes flux-ac-tip {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.flux-ac-border-gradient {
+  position: relative;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.45), rgba(124, 92, 255, 0.35), rgba(16, 217, 160, 0.25));
+}
+.flux-ac-border-gradient > * {
+  border-radius: calc(16px - 1px);
+  background: var(--card);
+}
+
+/* ── Stagger children (CSS-only enter delay) ── */
+.flux-ac-stagger-stack > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.flux-ac-stagger-stack > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.flux-ac-stagger-stack > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.flux-ac-stagger-stack > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.flux-ac-stagger-stack > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.flux-ac-stagger-stack > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+@keyframes flux-ac-stack-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.flux-ac-stagger-stack > * {
+  animation: flux-ac-stack-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flux-ac-stagger-stack > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Feature icon ring / grid tile ── */
+.flux-ac-feature-icon-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  background: rgba(var(--accent-rgb), 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.flux-ac-grid-tile {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.2s ease;
+}
+.flux-ac-grid-tile:hover {
+  border-color: rgba(var(--accent-rgb), 0.24);
+}
+
+/* ── Progress / bar ── */
+.flux-ac-progress-indet {
+  position: relative;
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.flux-ac-progress-indet::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.85), transparent);
+  animation: flux-ac-indet 1.05s linear infinite;
+}
+@keyframes flux-ac-indet {
+  to {
+    transform: translateX(320%);
+  }
+}
+
+/* ── Agent plan / checklist row ── */
+.flux-ac-checkrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.flux-ac-checkpill {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+/* ── Additional micro (≥50 utilities total) ── */
+.flux-ac-glass-chip {
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.flux-ac-divider-soft {
+  height: 1px;
+  width: 100%;
+  margin: 10px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+}
+[data-theme='light'] .flux-ac-divider-soft {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.07), transparent);
+}
+.flux-ac-vignette-lite {
+  box-shadow:
+    inset 0 80px 100px rgba(0, 0, 0, 0.18),
+    inset 0 -40px 60px rgba(0, 0, 0, 0.2);
+}
