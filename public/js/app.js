@@ -6998,7 +6998,14 @@ function initLoginScrollAnimations(){
       }
     });
   },{root,threshold:0.1,rootMargin:'0px 0px -8% 0px'});
-  root.querySelectorAll('.login-scroll-section').forEach(sec=>_loginScrollIO.observe(sec));
+  root.querySelectorAll('.login-scroll-section').forEach(sec=>{
+    /** Above-the-fold hero: show immediately — IO used to hide it briefly and left an empty gap under the top bar */
+    if(sec.classList.contains('login-scroll-hero')){
+      sec.classList.add('login-scroll-section--visible');
+      return;
+    }
+    _loginScrollIO.observe(sec);
+  });
 }
 function initLoginDemoRotator(){
   stopLoginDemoRotator();
