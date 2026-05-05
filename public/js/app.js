@@ -4,28 +4,78 @@
 const load=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('Storage full',e);}};
 
-// ══ DATA VERSION — bump this to force-wipe all local data on all devices ══
-const DATA_VERSION=5;
+// ══ DATA VERSION — bump when schema needs pruning; never drop user task/note data ══
+const DATA_VERSION=6;
 (function checkDataVersion(){
-    const stored=parseInt(localStorage.getItem('flux_data_version')||'0');
-    if(stored<DATA_VERSION){
-    const keep=[
-      'flux_data_version','flux_splash_shown',
-      'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
-      'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
-      /* Canvas LMS — device-local connection; do not wipe on app data migrations */
-      'flux_canvas_token','flux_canvas_url','flux_canvas_host',
-      'flux_canvas_last_view','flux_canvas_last_params',
-      'flux_canvas_autosync','flux_canvas_last_sync',
-      'flux_canvas_due_filter','flux_canvas_hub_tab',
-      'flux_canvas_split','flux_canvas_sidebar_collapsed',
-      'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
-      'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
-    ];
-    Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
-    localStorage.setItem('flux_data_version',String(DATA_VERSION));
-    console.log('✓ Flux data wiped for version',DATA_VERSION);
+  const stored=parseInt(localStorage.getItem('flux_data_version')||'0',10);
+  if(stored>=DATA_VERSION)return;
+  const keepExact=new Set([
+    'flux_data_version','flux_splash_shown',
+    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    'flux_canvas_token','flux_canvas_url','flux_canvas_host',
+    'flux_canvas_last_view','flux_canvas_last_params',
+    'flux_canvas_autosync','flux_canvas_last_sync',
+    'flux_canvas_due_filter','flux_canvas_hub_tab',
+    'flux_canvas_split','flux_canvas_sidebar_collapsed',
+    'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
+    'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
+    'tasks',
+  ]);
+  function shouldKeepKey(k){
+    if(!k)return false;
+    if(keepExact.has(k))return true;
+    if(k.startsWith('flux_'))return true;
+    return false;
   }
+  Object.keys(localStorage).forEach(k=>{
+    if(shouldKeepKey(k))return;
+    try{
+      console.warn('[Flux] migration: dropping non-preserved localStorage key:',k);
+    }catch(e){}
+    try{localStorage.removeItem(k);}catch(e){}
+  });
+  localStorage.setItem('flux_data_version',String(DATA_VERSION));
+  console.log('[Flux] Data migration applied → version',DATA_VERSION);
+})();
+
+(function(){
+  function estBytes(){
+    let n=0;
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k)n+=(k.length+(localStorage.getItem(k)||'').length)*2;
+      }
+    }catch(e){}
+    return n;
+  }
+  window.fluxEstimateLocalStorageBytes=estBytes;
+  window.fluxCompactStorageIfNeeded=function(){
+    if(estBytes()<=5*1024*1024)return;
+    try{
+      const raw=localStorage.getItem('flux_notes');
+      if(raw){
+        const notes=JSON.parse(raw);
+        if(Array.isArray(notes)&&notes.length>240)localStorage.setItem('flux_notes',JSON.stringify(notes.slice(-240)));
+      }
+    }catch(e){}
+    try{
+      for(let i=localStorage.length-1;i>=0;i--){
+        const k=localStorage.key(i);
+        if(!k||!k.startsWith('flux_ai_chats'))continue;
+        const arr=JSON.parse(localStorage.getItem(k)||'null');
+        if(!Array.isArray(arr))continue;
+        let dirty=false;
+        for(let j=0;j<arr.length;j++){
+          const ch=arr[j];
+          if(ch&&Array.isArray(ch.messages)&&ch.messages.length>100){ch.messages=ch.messages.slice(-100);dirty=true;}
+        }
+        if(dirty)localStorage.setItem(k,JSON.stringify(arr));
+      }
+    }catch(e){}
+  };
+  window.fluxCompactStorageIfNeeded();
 })();
 
 // ══ APP VERSION — bump for release notes / error payloads (Part 4) ══
@@ -380,6 +430,10 @@ async function startCheckout(plan,period){
 }
 
 async function openBillingPortal(){
+  if(!FLUX_FLAGS.PAYMENTS_ENABLED){
+    showToast('Billing portal is not enabled in this build.','info');
+    return;
+  }
   if(!currentUser)return;
   try{
     const session=await getSB().auth.getSession();
@@ -1217,6 +1271,15 @@ function fluxTaskDueDateMs(t){
   const ms=+new Date(t.date+'T00:00:00');
   return Number.isNaN(ms)?Number.POSITIVE_INFINITY:ms;
 }
+/** True if task has a due date strictly before today (local calendar). */
+function isTaskOverdueDay(t){
+  if(!t||t.done||!t.date)return false;
+  const dms=fluxTaskDueDateMs(t);
+  if(!Number.isFinite(dms)||dms===Number.POSITIVE_INFINITY)return false;
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  return now.getTime()>dms;
+}
 /** Minutes since midnight for calendar ordering; missing time sorts last within the same scope. */
 function fluxTimeSortMinutes(t){
   if(t==null||t==='')return 24*60;
@@ -1473,45 +1536,6 @@ if(!window.runSplash){
 
 // ══ LOGIN FEATURE PILLS ══
 
-// #region agent log
-function _fluxDebugAiLayoutMetrics(){
-  const _ep='http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440';
-  const _log=(hypothesisId,location,message,data)=>{
-    fetch(_ep,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63e9cf'},body:JSON.stringify({sessionId:'63e9cf',hypothesisId,location,message,data,timestamp:Date.now(),runId:'post-fix'})}).catch(()=>{});
-  };
-  const _box=(el)=>{if(!el)return null;const r=el.getBoundingClientRect();return{t:Math.round(r.top),b:Math.round(r.bottom),l:Math.round(r.left),h:Math.round(r.height),w:Math.round(r.width)};};
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      const ai=document.getElementById('ai');
-      const tb=document.querySelector('#ai .ai-topbar');
-      const ms=document.getElementById('aiMsgsWrap');
-      const cp=document.querySelector('#ai .ai-composer');
-      const main=document.querySelector('#ai .ai-main');
-      const stack=document.querySelector('#ai .ai-main-stack');
-      const pane=document.getElementById('fluxAiPaneChat');
-      const imgp=document.getElementById('aiImgPreview');
-      const csMs=ms?getComputedStyle(ms):null;
-      _log('H1','app.js:_fluxDebugAiLayoutMetrics','layout-boxes',{
-        ai:_box(ai),topbar:_box(tb),msgs:_box(ms),composer:_box(cp),main:_box(main),stack:_box(stack),pane:_box(pane),imgPreview:_box(imgp),win:{ih:window.innerHeight,ow:window.outerWidth},
-        msgsDisplay:csMs?csMs.display:null,
-        msgsFlex:csMs?csMs.flex:null
-      });
-      if(tb) _log('H1','topbar-height','scroll-vs-fixed',{scrollH:tb.scrollHeight,clientH:tb.clientHeight,overflows:tb.scrollHeight>tb.clientHeight+1});
-      if(ms&&cp){
-        const m=ms.getBoundingClientRect();
-        const c=cp.getBoundingClientRect();
-        const intersectY=Math.max(0,Math.min(m.bottom,c.bottom)-Math.max(m.top,c.top));
-        _log('H2','msgs-composer',intersectY>2?'OVERLAP_OR_TOUCH':'separate',{intersectY:Math.round(intersectY),msgsBottom:Math.round(m.bottom),compTop:Math.round(c.top)});
-      }
-      if(tb&&stack){
-        const gap=stack.getBoundingClientRect().top-tb.getBoundingClientRect().bottom;
-        _log('H3','topbar-to-stack-gap',{gapPx:Math.round(gap)});
-      }
-    });
-  });
-}
-// #endregion
-
 // ══ NAV ══
 function updateNavAriaCurrent(tabId){
   document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(b=>{
@@ -1557,7 +1581,6 @@ function nav(id,btn,navOpt){
   }
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
-  if(id==='ai'){try{_fluxDebugAiLayoutMetrics();}catch(_){}}
   if(id==='canvas'){
     try{
       const pend=_fluxCanvasReaderPending;
@@ -2244,7 +2267,7 @@ function fluxRenderDashMob(){
     const pRank=t=>({high:0,med:1,low:2}[t.priority||'med']??1);
     const byPriority=(a,b)=>pRank(a)-pRank(b);
     const dueFirst=activeTasks
-      .filter(t=>t.date===todayStr||(t.date&&t.date<todayStr))
+      .filter(t=>t.date===todayStr()||isTaskOverdueDay(t))
       .sort(byPriority);
     const seen=new Set(dueFirst.map(t=>t.id));
     const rest=activeTasks.filter(t=>!seen.has(t.id)).sort((a,b)=>{
@@ -2262,7 +2285,7 @@ function fluxRenderDashMob(){
       const subs=(typeof getSubjects==='function')?getSubjects():{};
       todayList.innerHTML=todaysTasks.map(t=>{
         const sub=t.subject?subs[t.subject]:null;
-        const isOverdue=t.date&&t.date<todayStr;
+        const isOverdue=isTaskOverdueDay(t);
         const pri=`priority-${t.priority||'med'}`;
         let time='';
         if(isOverdue){
@@ -2312,7 +2335,7 @@ function renderTasks(){
   let list=[...tasks];
   if(taskFilter==='active')list=list.filter(t=>!t.done);
   if(taskFilter==='done')list=list.filter(t=>t.done);
-  if(taskFilter==='overdue')list=list.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now);
+  if(taskFilter==='overdue')list=list.filter(t=>isTaskOverdueDay(t));
   if(taskFilter==='today')list=list.filter(t=>t.date&&t.date===todayStr());
   if(taskFilter==='high')list=list.filter(t=>!t.done&&t.priority==='high');
   if(taskFilter==='active'){
@@ -2353,7 +2376,7 @@ function renderTasks(){
   const done=list.filter(t=>t.done);
   const renderCard=t=>{
     const sub=getSubjects()[t.subject];
-    const isOver=t.date&&new Date(t.date+'T00:00:00')<now&&!t.done;
+    const isOver=isTaskOverdueDay(t);
     const isToday=t.date&&t.date===todayS&&!t.done;
     const isNP=t.date&&isBreak(t.date);
     const restEmoji=isNP?(restDayKind(t.date)==='sick'?'🤒':'🛋'):'';
@@ -2683,7 +2706,11 @@ function submitCalTask(dateStr){
   syncKey('tasks',tasks);
   showToast('✓ Task added');
 }
+let _fluxCalRenderBusy=false;
 function renderCalendar(){
+  if(_fluxCalRenderBusy)return;
+  _fluxCalRenderBusy=true;
+  try{
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('calMonthLabel').textContent=months[calMonth]+' '+calYear;
   const first=new Date(calYear,calMonth,1).getDay(),days=new Date(calYear,calMonth+1,0).getDate(),prevDays=new Date(calYear,calMonth,0).getDate();
@@ -2711,6 +2738,7 @@ html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':'
   document.getElementById('calGrid').innerHTML=html;
   renderCalDay();
   if(typeof fluxAfterRenderCalendar==='function')fluxAfterRenderCalendar();
+  }finally{_fluxCalRenderBusy=false;}
 }
 
 function renderCalDay(){
@@ -5053,6 +5081,7 @@ async function sendAI(){
     aiHistory.push({role:'assistant',content:clean});
     if(aiHistory.length>24)aiHistory=aiHistory.slice(-24);
     saveCurrentChat(); // persist to chat tabs
+    try{if(window.FluxAICore&&typeof FluxAICore.afterExchange==='function')FluxAICore.afterExchange(userMsg,clean);}catch(e){}
   }catch(err){
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
@@ -10974,7 +11003,7 @@ if(typeof fabAddTask==='function'){
 function updateDocTitle(){
   try{
     const now=new Date();now.setHours(0,0,0,0);
-    const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now).length;
+    const overdue=tasks.filter(t=>isTaskOverdueDay(t)).length;
     const today=tasks.filter(t=>!t.done&&t.date===todayStr()).length;
     let prefix='';
     if(overdue>0)prefix=`(${overdue}⚠) `;

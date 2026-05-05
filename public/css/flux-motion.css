@@ -318,6 +318,17 @@ button:not(:disabled):active{transform:scale(.97)!important}
   opacity:.9;
 }
 
+/* Timer ring — comfortable hit target + visible stroke on narrow screens */
+@media (max-width: 768px) {
+  #timer .timer-ring {
+    width: 160px;
+    height: 160px;
+  }
+  #timerRing.t-fill {
+    stroke-width: 6;
+  }
+}
+
 /* ── Reduced motion: strip decorative loops, keep short fades ── */
 @media(prefers-reduced-motion:reduce){
   .fab-trigger{animation:none!important}
