@@ -115,39 +115,9 @@
     </div>`;
   }
 
-  function dismissAiInsightStrip(){
-    const ts=typeof todayStr==='function'?todayStr():new Date().toISOString().slice(0,10);
-    if(typeof save==='function')save('flux_ai_insight_strip_dismissed',ts);
-    const el=document.getElementById('fluxAiInsightStrip');
-    if(el){el.style.display='none';el.innerHTML='';}
-  }
+  function dismissAiInsightStrip(){}
 
-  function renderAiInsightStrip(){
-    const el=document.getElementById('fluxAiInsightStrip');
-    if(!el||typeof tasks==='undefined')return;
-    const today=typeof todayStr==='function'?todayStr():new Date().toISOString().slice(0,10);
-    if(typeof load==='function'&&load('flux_ai_insight_strip_dismissed','')===today){
-      el.style.display='none';
-      el.innerHTML='';
-      return;
-    }
-    if(!tasks.filter(t=>!t.done).length){el.style.display='none';el.innerHTML='';return;}
-    const now=new Date();now.setHours(0,0,0,0);
-    const byDow=[0,0,0,0,0,0,0];
-    tasks.filter(t=>!t.done&&t.date).forEach(t=>{
-      const d=new Date(t.date+'T12:00:00');
-      const diff=(d-now)/86400000;
-      if(diff>=0&&diff<14)byDow[d.getDay()]+=(t.estTime||30);
-    });
-    const thu=byDow[4];
-    const max=Math.max(...byDow,1);
-    let msg='';
-    if(thu===max&&thu>120)msg='You may be overloading Thursdays — consider moving something to Wednesday or Friday.';
-    else if(byDow[1]===max&&byDow[1]>120)msg='Mondays carry most estimated work — try front-loading prep on Sunday.';
-    else msg='Workload looks spread — keep an eye on days with back-to-back tests.';
-    el.innerHTML=`<div class="flux-ai-strip-inner"><span class="flux-ai-strip-icon" aria-hidden="true">✦</span><span class="flux-ai-strip-text">${esc(msg)}</span><button type="button" class="flux-ai-strip-close" onclick="FluxIntel.dismissAiInsightStrip()" aria-label="Dismiss insight" title="Dismiss until tomorrow">×</button></div>`;
-    el.style.display=msg?'block':'none';
-  }
+  function renderAiInsightStrip(){}
 
   function renderOverdueBanner(){
     const el=document.getElementById('fluxOverdueBanner');

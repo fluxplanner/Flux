@@ -6873,6 +6873,39 @@ const LOGIN_DEMO_LINES=[
 function stopLoginDemoRotator(){
   if(_loginDemoInterval){clearInterval(_loginDemoInterval);_loginDemoInterval=null;}
 }
+
+let _loginScrollIO=null;
+function teardownLoginScrollAnimations(){
+  if(_loginScrollIO){_loginScrollIO.disconnect();_loginScrollIO=null;}
+}
+function initLoginScrollAnimations(){
+  teardownLoginScrollAnimations();
+  const root=document.getElementById('loginScreen');
+  if(!root)return;
+  root.scrollTop=0;
+  root.querySelectorAll('.login-scroll-section').forEach(s=>s.classList.remove('login-scroll-section--visible'));
+  let reduce=false;
+  try{reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){}
+  if(reduce){
+    root.querySelectorAll('.login-scroll-section').forEach(s=>s.classList.add('login-scroll-section--visible'));
+    return;
+  }
+  try{
+    if(document.documentElement.getAttribute('data-flux-perf')==='on'){
+      root.querySelectorAll('.login-scroll-section').forEach(s=>s.classList.add('login-scroll-section--visible'));
+      return;
+    }
+  }catch(_){}
+  _loginScrollIO=new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{
+      if(en.isIntersecting){
+        en.target.classList.add('login-scroll-section--visible');
+        _loginScrollIO.unobserve(en.target);
+      }
+    });
+  },{root,threshold:0.1,rootMargin:'0px 0px -8% 0px'});
+  root.querySelectorAll('.login-scroll-section').forEach(sec=>_loginScrollIO.observe(sec));
+}
 function initLoginDemoRotator(){
   stopLoginDemoRotator();
   const left=document.getElementById('loginDemoLineLeft');
@@ -6896,11 +6929,12 @@ function showLoginScreen(){
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof teardownFluxAnimeApp==='function')teardownFluxAnimeApp();
-  if(ls){ls.style.display='block';ls.classList.add('visible');}
+  if(ls){ls.style.display='block';ls.classList.add('visible');ls.scrollTop=0;}
   if(app)app.classList.remove('visible');
   initFeaturePills();
   initLoginFeatureCards();
   initLoginHoverPreview();
+  initLoginScrollAnimations();
   setTimeout(()=>{
     if(typeof initLoginAmbient==='function')initLoginAmbient();
     if(typeof initFluxAnimeLogin==='function')initFluxAnimeLogin();
@@ -6912,6 +6946,7 @@ function showApp(){
   const app=document.getElementById('app');
   if(typeof stopLoginAmbient==='function')stopLoginAmbient();
   if(typeof teardownFluxAnimeLogin==='function')teardownFluxAnimeLogin();
+  teardownLoginScrollAnimations();
   stopLoginDemoRotator();
   if(ls){ls.style.display='none';ls.classList.remove('visible');}
   if(typeof resetLoginHoverPreview==='function')resetLoginHoverPreview();
@@ -6964,6 +6999,7 @@ async function handleSignedIn(user,session){
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}
     stopLoginDemoRotator();
+    teardownLoginScrollAnimations();
     const appEl=document.getElementById('app');
     if(appEl&&!appEl.classList.contains('visible'))showApp();
     checkTesterMode();
@@ -7019,6 +7055,7 @@ async function handleSignedIn(user,session){
   // hide login immediately
   const _ls=document.getElementById('loginScreen');if(_ls){_ls.style.display='none';_ls.classList.remove('visible');}
   stopLoginDemoRotator();
+  teardownLoginScrollAnimations();
   const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'Student';
   const firstName=name.split(' ')[0];
   localStorage.setItem('flux_user_name',firstName);

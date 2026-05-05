@@ -2299,7 +2299,11 @@ body.flux-has-release-banner .topbar{top:var(--flux-release-banner-h,34px)!impor
 body.flux-has-release-banner .sidebar{top:var(--flux-release-banner-h,34px)!important;height:calc(100vh - var(--flux-release-banner-h,34px))!important}
 body.flux-has-release-banner #app{padding-top:var(--flux-release-banner-h,34px)}
 @media(max-width:768px){
-  body.flux-has-release-banner #app{padding-top:calc(var(--flux-release-banner-h,34px))}
+  /* Hide owner/dev “Push update” preview strip on mobile — keeps top chrome flush */
+  #fluxReleasePreviewBanner{display:none!important}
+  body.flux-has-release-banner .topbar{top:0!important}
+  body.flux-has-release-banner .sidebar{top:0!important;height:100vh!important}
+  body.flux-has-release-banner #app{padding-top:0!important}
 }
 
 /* ── 6. TASK CARDS ── */

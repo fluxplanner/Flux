@@ -267,7 +267,8 @@ function initFluxAnimeLogin() {
   } catch (_) {}
 
   try {
-    const pills = loginRoot.querySelectorAll('#featPillsLoginCard .feat-pill');
+    let pills = loginRoot.querySelectorAll('#featPillsLoginCard .feat-pill');
+    if (!pills.length) pills = loginRoot.querySelectorAll('#featPills .feat-pill');
     if (pills.length) {
       track(
         loginRevertibles,
@@ -275,7 +276,7 @@ function initFluxAnimeLogin() {
           scale: [0.9, 1],
           opacity: [0.55, 1],
           duration: 520,
-          delay: stagger(26, { from: 'first' }),
+          delay: stagger(22, { from: 'first' }),
           ease: easeSnap,
         })
       );
@@ -283,14 +284,15 @@ function initFluxAnimeLogin() {
   } catch (_) {}
 
   try {
-    const card = loginRoot.querySelector('.login-card');
-    if (card) {
+    const bar = loginRoot.querySelector('.login-topbar');
+    if (bar) {
       track(
         loginRevertibles,
-        animate(card, {
-          scale: [0.97, 1],
-          duration: 900,
-          ease: createSpring({ stiffness: 260, damping: 20 }),
+        animate(bar, {
+          translateY: ['-0.65rem', '0'],
+          opacity: [0.88, 1],
+          duration: 720,
+          ease: createSpring({ stiffness: 280, damping: 22 }),
         })
       );
     }

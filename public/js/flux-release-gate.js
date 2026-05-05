@@ -352,6 +352,9 @@
   function renderPreviewBanner(gate){
     ensureHost();
     if(document.getElementById('fluxReleasePreviewBanner'))return;
+    try{
+      if(typeof window.matchMedia==='function'&&window.matchMedia('(max-width:768px)').matches)return;
+    }catch(_){}
     const releasedLabel=gate&&gate.released?buildLabel(gate.released):'none yet';
     const canPush=canPushReleaseLocal();
     const bar=document.createElement('div');

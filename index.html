@@ -126,35 +126,235 @@
 <div id="loginScreen" style="display:none">
   <canvas id="loginParticles" class="login-particles" aria-hidden="true"></canvas>
   <div id="loginCursorGlow" class="login-cursor-glow" aria-hidden="true"></div>
-  <div class="login-bg"></div>
-  <div class="login-grid-pattern"></div>
-  <div class="login-glow login-glow-1"></div>
-  <div class="login-glow login-glow-2"></div>
-  <div class="login-glow login-glow-3"></div>
+  <div class="login-bg" aria-hidden="true"></div>
+  <div class="login-aurora" aria-hidden="true"></div>
+  <div class="login-grid-pattern" aria-hidden="true"></div>
+  <div class="login-vignette" aria-hidden="true"></div>
+  <div class="login-glow login-glow-1" aria-hidden="true"></div>
+  <div class="login-glow login-glow-2" aria-hidden="true"></div>
+  <div class="login-glow login-glow-3" aria-hidden="true"></div>
 
-  <div class="login-2col">
+  <header class="login-topbar">
+    <div class="login-topbar-inner">
+      <div class="login-topbar-brand">
+        <strong class="login-topbar-mark">Flux</strong>
+        <span class="login-tagline">YOUR SMART SCHOOL PLANNER</span>
+      </div>
+      <div class="login-topbar-actions">
+        <button type="button" class="login-google-btn login-google-btn--compact" onclick="signInWithGoogle()" title="Continue with Google">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="18" height="18">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          <span class="login-google-btn-text">Google</span>
+        </button>
+        <details class="login-email-details">
+          <summary class="login-email-summary">Email</summary>
+          <div class="login-email-popover">
+            <div id="loginEmailSection">
+              <div class="login-auth-error" id="loginAuthError" role="alert"></div>
+              <div class="login-email-form" id="loginEmailForm">
+                <label class="login-field-label visually-hidden" for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" name="loginEmail" autocomplete="email" placeholder="Email address">
+                <label class="login-field-label visually-hidden" for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" name="loginPassword" autocomplete="current-password" placeholder="Password">
+                <div id="loginNameRow" style="display:none">
+                  <label class="login-field-label visually-hidden" for="loginDisplayName">Display name</label>
+                  <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name (optional)">
+                </div>
+                <button type="button" class="login-email-btn" id="loginEmailBtn" onclick="handleEmailAuth()">Sign in</button>
+              </div>
+              <div class="login-auth-toggle">
+                <span id="loginToggleText">Don't have an account?</span>
+                <button type="button" class="login-auth-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
+              </div>
+              <p class="login-note login-note--popover">Sign in to sync your data across devices.</p>
+            </div>
+          </div>
+        </details>
+        <button type="button" class="login-skip login-skip--bar" onclick="skipLogin()">Guest</button>
+      </div>
+    </div>
+  </header>
 
-    <!-- LEFT SIDE — showcase -->
-    <div class="login-left">
-      <div class="login-left-inner">
+  <main class="login-showcase">
+
+    <section class="login-scroll-section login-scroll-hero">
+      <div class="login-showcase-inner">
+        <p class="login-eyebrow">Built for students</p>
         <div class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></div>
-        <div class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</div>
+        <p class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</p>
         <div class="login-badge login-badge--after-hero">✦ AI-Powered Student Planner</div>
+
         <div class="login-hero-demo login-demo-wrap" aria-live="polite">
-          <div class="login-demo-label">What Flux can do</div>
+          <div class="login-demo-label">Live preview</div>
           <p class="login-demo-line" id="loginDemoLineLeft"></p>
+          <p class="login-demo-line visually-hidden" id="loginDemoLineCard" aria-hidden="true"></p>
         </div>
 
-        <div class="login-hover-wrap">
+        <div class="login-spotlight-grid" aria-label="Planner highlights">
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
+          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
+        </div>
+
+        <section class="login-hover-wrap login-hover-wrap--hero" aria-label="Explore features">
           <div class="login-hover-wrap-label">Explore</div>
           <div class="login-hover-narrative login-hover-narrative--desktop" aria-label="What you can do in Flux">
             <p class="login-hover-lede">Plan smarter with <span class="login-hover-link" data-preview="fluxai">Flux AI Tutor</span>, pull deadlines from a photo with <span class="login-hover-link" data-preview="vision">Vision Import</span>, and keep your <span class="login-hover-link" data-preview="gpa">GPA</span> on track with weighted grades and what-ifs.</p>
             <p><span class="login-hover-link" data-preview="calendar">Smart calendar</span> syncs tasks and Google; <span class="login-hover-link" data-preview="notes">tagged notes</span> and a <span class="login-hover-link" data-preview="timer">focus timer</span> help you get real work done.</p>
             <p>Track <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, hook up <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and stay in sync everywhere with <span class="login-hover-link" data-preview="cloud">cloud sync</span>.</p>
           </div>
+        </section>
+
+        <div class="feat-pills-wrap feat-pills-wrap--hero">
+          <div class="feat-pills" id="featPills"></div>
         </div>
 
-        <!-- Interactive feature cards -->
+        <div class="login-anime-pills-host" aria-hidden="true">
+          <div class="feat-pills" id="featPillsLoginCard"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-ai">
+      <div class="login-showcase-inner login-showcase-split">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Flux AI tutor</h2>
+          <p class="login-section-lede">Ask questions in plain English — get study plans, summaries, and quiz-style practice tailored to your courses.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-chat" aria-hidden="true">
+            <div class="login-mock-chat-head"><span class="login-mock-dot"></span><span class="login-mock-dot"></span><span class="login-mock-dot"></span><span class="login-mock-chat-title">Flux AI</span></div>
+            <div class="login-mock-chat-body">
+              <div class="login-mock-msg login-mock-msg--user"><span>Quiz me on cellular respiration — 5 questions, AP Bio style.</span></div>
+              <div class="login-mock-msg login-mock-msg--ai"><span>Sure — starting with glycolysis: Where does it occur in the cell, and what’s the net ATP yield?</span></div>
+              <div class="login-mock-msg login-mock-msg--typing"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-study">
+      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Study tools</h2>
+          <p class="login-section-lede">Flashcards, Pomodoro focus timer, streaks, and habit-aware scheduling — built for deep work between classes.</p>
+        </div>
+        <div class="login-showcase-visual login-showcase-visual--dual">
+          <div class="login-mock login-mock-cardflip" aria-hidden="true">
+            <div class="login-mock-flip">
+              <div class="login-mock-flip-face login-mock-flip-front"><span class="login-mock-flip-label">Front</span><p> photosynthesis</p></div>
+              <div class="login-mock-flip-face login-mock-flip-back"><span class="login-mock-flip-label">Back</span><p>Light reactions + Calvin cycle; converts CO₂ + H₂O → glucose + O₂.</p></div>
+            </div>
+          </div>
+          <div class="login-mock login-mock-timer" aria-hidden="true">
+            <span class="login-mock-timer-label">Focus</span>
+            <div class="login-mock-timer-ring"></div>
+            <span class="login-mock-timer-time">25:00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-cal">
+      <div class="login-showcase-inner login-showcase-split">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Smart calendar</h2>
+          <p class="login-section-lede">Tasks, classes, and exams in one timeline — with Google Calendar sync and conflict-aware hints.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-cal" aria-hidden="true">
+            <div class="login-mock-cal-head">March · Week view</div>
+            <div class="login-mock-cal-grid">
+              <div class="login-mock-cal-day"><span>Mon</span><div class="login-mock-cal-block login-mock-cal-block--class">Chem lab</div></div>
+              <div class="login-mock-cal-day"><span>Tue</span><div class="login-mock-cal-block login-mock-cal-block--task">Essay outline</div></div>
+              <div class="login-mock-cal-day"><span>Wed</span><div class="login-mock-cal-block login-mock-cal-block--exam">Calc midterm</div></div>
+              <div class="login-mock-cal-day"><span>Thu</span><div class="login-mock-cal-block login-mock-cal-block--sync">↻ Synced</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-gpa">
+      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">GPA &amp; grades</h2>
+          <p class="login-section-lede">Weighted GPA to four decimals, what-if scenarios, and course-grade breakdowns so you always know where you stand.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-gpa" aria-hidden="true">
+            <div class="login-mock-gpa-row"><span>Cumulative</span><strong>3.847</strong></div>
+            <div class="login-mock-bar"><i style="width:78%"></i></div>
+            <div class="login-mock-gpa-row login-mock-gpa-row--small"><span>What-if +1 on Calc exam</span><strong>3.871</strong></div>
+            <div class="login-mock-bar login-mock-bar--ghost"><i style="width:82%"></i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-vision">
+      <div class="login-showcase-inner login-showcase-split">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Vision import</h2>
+          <p class="login-section-lede">Snap a syllabus or schedule — Flux reads dates and assignments so you spend less time typing.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-phone" aria-hidden="true">
+            <div class="login-mock-phone-notch"></div>
+            <div class="login-mock-phone-scan"></div>
+            <div class="login-mock-phone-doc">
+              <div class="login-mock-phone-line"></div>
+              <div class="login-mock-phone-line login-mock-phone-line--short"></div>
+              <div class="login-mock-phone-line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-notes">
+      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Notes &amp; extras</h2>
+          <p class="login-section-lede">Tagged notes you can query with AI, plus extracurricular tracking with school-fit context.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-notes" aria-hidden="true">
+            <div class="login-mock-note"><span class="login-mock-tag">#chem</span><p>Equilibrium — Le Châtelier cheat sheet</p></div>
+            <div class="login-mock-note"><span class="login-mock-tag">#essay</span><p>Thesis v2 — trim paragraph 3</p></div>
+            <div class="login-mock-ec"><span class="login-mock-ec-ico">🎯</span><div><strong>Robotics club</strong><small>Officer · 4 hrs/wk</small></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-sync">
+      <div class="login-showcase-inner login-showcase-split">
+        <div class="login-showcase-copy">
+          <h2 class="login-section-title">Canvas, Gmail, cloud</h2>
+          <p class="login-section-lede">Pull tasks from learning tools and inbox, then keep everything synced across devices with one account.</p>
+        </div>
+        <div class="login-showcase-visual">
+          <div class="login-mock login-mock-sync" aria-hidden="true">
+            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">📧</span><span>Gmail → tasks</span><span class="login-mock-sync-pill">live</span></div>
+            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">🎓</span><span>Canvas hub</span><span class="login-mock-sync-pill">live</span></div>
+            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">☁️</span><span>Cloud sync</span><span class="login-mock-sync-pill ok">ok</span></div>
+            <div class="login-mock-sync-arrow">⇅</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-scroll-section login-scroll-grid">
+      <div class="login-showcase-inner">
+        <h2 class="login-section-title login-section-title--center">Everything in one planner</h2>
+        <p class="login-section-lede login-section-lede--center">Tap a capability — same power inside the app.</p>
         <div class="login-features" id="loginFeatures">
           <div class="login-feature-card" data-color="99,102,241">
             <div class="login-feature-icon">✦</div>
@@ -205,122 +405,33 @@
             <div class="login-feature-arrow">→</div>
           </div>
         </div>
-
-        <!-- Scrolling pills -->
-        <div class="feat-pills-wrap" style="margin:0">
-          <div class="feat-pills" id="featPills"></div>
-        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- RIGHT SIDE — login card -->
-    <div class="login-right">
-      <div class="login-card">
-        <div class="login-logo-wrap">
-          <span class="login-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="236" height="56" aria-label="Flux Planner" overflow="visible" text-rendering="geometricPrecision">
-  <defs>
-    <linearGradient id="fluxWG3" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#E8F4FC"/>
-      <stop offset="55%" stop-color="var(--accent)"/>
-      <stop offset="100%" stop-color="var(--accent2)"/>
-    </linearGradient>
-    <radialGradient id="fluxCG3" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="50%" stop-color="var(--accent)"/>
-      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="fluxNodeGlow3" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-  </defs>
-  <text x="0" y="22" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="26" font-weight="800" letter-spacing="-0.04em" fill="url(#fluxWG3)">Flux</text>
-  <g transform="translate(0, 27)" aria-hidden="true">
-    <rect x="8" y="0" width="200" height="5.5" rx="2.75" fill="url(#fluxWG3)"/>
-    <circle cx="4" cy="2.75" r="3.75" fill="url(#fluxCG3)" filter="url(#fluxNodeGlow3)"/>
-  </g>
-  <text x="0" y="46" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="0.16em" fill="#c5d4e8" opacity="0.94">Planner</text>
-</svg></span>
-          <span class="login-tagline">YOUR SMART SCHOOL PLANNER</span>
-        </div>
-        <div class="login-demo-wrap login-demo-wrap--card" aria-live="polite">
-          <div class="login-demo-label">What Flux can do</div>
-          <p class="login-demo-line" id="loginDemoLineCard"></p>
-        </div>
-
-        <div class="login-hover-narrative login-hover-narrative--card" aria-label="What you can do in Flux">
-          <p class="login-hover-lede">Plan with <span class="login-hover-link" data-preview="fluxai">Flux AI</span>, <span class="login-hover-link" data-preview="vision">Vision Import</span>, and <span class="login-hover-link" data-preview="gpa">GPA</span> tracking. Use <span class="login-hover-link" data-preview="calendar">calendar</span>, <span class="login-hover-link" data-preview="notes">notes</span>, and a <span class="login-hover-link" data-preview="timer">focus timer</span>.</p>
-          <p>Manage <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and <span class="login-hover-link" data-preview="cloud">cloud sync</span>. On a laptop or desktop, hover a highlight for a quick preview.</p>
-        </div>
-
-        <div class="login-feat-bar login-feat-bar--card" aria-label="Included features">
-          <div class="login-feat-bar-label">Included in Flux</div>
-          <div class="feat-pills-wrap feat-pills-wrap--loginCard">
-            <div class="feat-pills" id="featPillsLoginCard"></div>
-          </div>
-        </div>
-
-        <div class="login-spotlight-grid" aria-label="Planner highlights">
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
-          <div class="login-spotlight-item"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
-        </div>
-
-        <button class="login-google-btn" onclick="signInWithGoogle()">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          <span>Continue with Google</span>
-        </button>
-
-        <div class="login-divider">or</div>
-
-        <!-- Email/Password Auth -->
-        <div id="loginEmailSection">
-          <div class="login-auth-error" id="loginAuthError"></div>
-          <div class="login-email-form" id="loginEmailForm">
-            <input type="email" id="loginEmail" placeholder="Email address" style="margin-top:0">
-            <input type="password" id="loginPassword" placeholder="Password">
-            <div id="loginNameRow" style="display:none"><input type="text" id="loginDisplayName" placeholder="Your name (optional)"></div>
-            <button class="login-email-btn" id="loginEmailBtn" onclick="handleEmailAuth()">Sign in</button>
-          </div>
-          <div class="login-auth-toggle">
-            <span id="loginToggleText">Don't have an account?</span>
-            <span onclick="toggleAuthMode()"> <span id="loginToggleAction">Sign up</span></span>
-          </div>
-        </div>
-
-        <div class="login-divider">or</div>
-        <span class="login-skip" onclick="skipLogin()">Continue without signing in</span>
-        <div class="login-note">Sign in to sync your data across all devices.</div>
-
-        <!-- Trust badges -->
+    <footer class="login-showcase-footer login-scroll-section login-scroll-foot">
+      <div class="login-showcase-inner">
         <div class="login-trust">
           <div class="login-trust-item">
-            <span class="login-trust-icon">✦</span>
+            <span class="login-trust-icon" aria-hidden="true">✦</span>
             <span class="login-trust-label">AI Powered</span>
           </div>
-          <div class="login-trust-sep"></div>
+          <div class="login-trust-sep" aria-hidden="true"></div>
           <div class="login-trust-item">
-            <span class="login-trust-icon" style="color:var(--green)">∞</span>
+            <span class="login-trust-icon login-trust-icon--green" aria-hidden="true">∞</span>
             <span class="login-trust-label">Free Forever</span>
           </div>
-          <div class="login-trust-sep"></div>
+          <div class="login-trust-sep" aria-hidden="true"></div>
           <div class="login-trust-item">
-            <span class="login-trust-icon" style="color:#c084fc">⇅</span>
+            <span class="login-trust-icon login-trust-icon--purple" aria-hidden="true">⇅</span>
             <span class="login-trust-label">Cloud Sync</span>
           </div>
         </div>
+        <p class="login-note login-note--footer">Sign in from the top bar to sync across devices — or continue as a guest.</p>
         <p class="login-dev-credit">Developed by Azfer Mohammed</p>
       </div>
-    </div>
+    </footer>
 
-  </div>
-
+  </main>
   <div id="loginHoverPreviewCard" class="login-hover-preview-card" aria-hidden="true" hidden>
     <div class="login-hover-preview-card-inner">
       <div class="login-hover-preview-visual" aria-hidden="true"></div>
