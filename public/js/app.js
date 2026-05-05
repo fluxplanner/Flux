@@ -2178,11 +2178,11 @@ function fluxRenderDashMob(){
   if(!dateEl)return; // only present on new mobile scaffold
   const today=new Date();
   today.setHours(0,0,0,0);
-  const todayStr=today.toISOString().slice(0,10);
+  const todayIso=today.toISOString().slice(0,10);
   // Date strip: "Friday, Apr 24"
   try{
     dateEl.textContent=today.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
-  }catch(e){ dateEl.textContent=todayStr; }
+  }catch(e){ dateEl.textContent=todayIso; }
   // A/B pill (if schedule data indicates today as A or B day)
   const abEl=document.getElementById('dashMobAB');
   if(abEl){
@@ -2192,8 +2192,8 @@ function fluxRenderDashMob(){
   }
   // Stats chips
   const activeTasks=tasks.filter(t=>!t.done);
-  const doneToday=tasks.filter(t=>t.done&&t.completedAt&&String(t.completedAt).slice(0,10)===todayStr).length;
-  const overdue=activeTasks.filter(t=>t.date&&t.date<todayStr).length;
+  const doneToday=tasks.filter(t=>t.done&&t.completedAt&&String(t.completedAt).slice(0,10)===todayIso).length;
+  const overdue=activeTasks.filter(t=>t.date&&t.date<todayIso).length;
   const high=activeTasks.filter(t=>t.priority==='high').length;
   const setN=(id,n)=>{ const el=document.getElementById(id); if(el)el.textContent=String(n); };
   setN('dashMobStatTasks',activeTasks.length);
@@ -2212,8 +2212,8 @@ function fluxRenderDashMob(){
       return 0;
     });
     // prefer overdue, then due-today, then high-priority upcoming
-    return sorted.find(t=>t.date&&t.date<todayStr)
-        ||sorted.find(t=>t.date===todayStr)
+    return sorted.find(t=>t.date&&t.date<todayIso)
+        ||sorted.find(t=>t.date===todayIso)
         ||sorted.find(t=>t.priority==='high')
         ||sorted[0]
         ||null;
@@ -2294,7 +2294,7 @@ function fluxRenderDashMob(){
           time=`${days}d late`;
         } else if(!t.date){
           time='Anytime';
-        } else if(t.date>todayStr){
+        } else if(t.date>todayIso){
           const due=new Date(t.date+'T00:00:00');
           const days=Math.round((due-today)/86400000);
           time=days===1?'Tomorrow':`in ${days}d`;
