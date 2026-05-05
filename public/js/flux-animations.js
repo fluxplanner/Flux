@@ -115,7 +115,11 @@ function wrapCharsManual(el) {
 let loginRevertibles = [];
 let appShellRevertibles = [];
 let appPanelRevertibles = [];
+let scrollArtRevertibles = [];
 let appShellAnimated = false;
+
+const scrollPathDrawEase =
+  typeof eases.inOut === 'function' ? eases.inOut(3) : 'inOut(3)';
 
 function track(arr, obj) {
   if (obj && typeof obj.revert === 'function') arr.push(obj);
@@ -229,9 +233,9 @@ function initFluxAnimeLogin() {
       loginRevertibles,
       animate(drawables, {
         draw: ['0 0', '0 1', '1 1'],
-        duration: canScroll ? 5400 : 2800,
-        ease: 'inOutQuad',
-        delay: stagger(55, { from: 'first' }),
+        duration: canScroll ? 4800 : 2800,
+        ease: scrollPathDrawEase,
+        delay: stagger(40, { from: 'first' }),
         loop: !canScroll,
         alternate: !canScroll,
         autoplay: scrollCtl === null ? true : scrollCtl,
@@ -357,6 +361,58 @@ function animateActivePanelCards() {
   } catch (_) {}
 }
 
+/** Decorative SVG paths on the dashboard, drawn in sync with panel scroll (or loop when nothing scrolls). */
+function initMainScrollPathDraw(mainEl) {
+  if (!mainEl || prefersReducedMotion() || perfSnappy()) return;
+  const dash = document.getElementById('dashboard');
+  if (!dash || dash.dataset.fluxScrollPathInit === '1') return;
+  dash.dataset.fluxScrollPathInit = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'flux-dash-scroll-paths';
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" preserveAspectRatio="xMidMax meet" width="100%" height="100%">' +
+    '<path d="M0 180 C200 60 400 300 600 160 S900 260 1200 100" fill="none" stroke="rgba(0,191,255,0.32)" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M0 240 C240 140 480 300 720 180 S1000 80 1200 200" fill="none" stroke="rgba(124,92,255,0.26)" stroke-width="2.5" stroke-linecap="round"/>' +
+    '<path d="M0 300 C300 200 520 340 820 220 S1020 140 1200 260" fill="none" stroke="rgba(34,255,136,0.2)" stroke-width="2" stroke-linecap="round"/>' +
+    '</svg>';
+  dash.insertBefore(wrap, dash.firstChild);
+
+  try {
+    const drawables = svg.createDrawable('.flux-dash-scroll-paths path');
+    let scrollCtl = null;
+    if (dash.scrollHeight > dash.clientHeight + 48) {
+      scrollCtl = onScroll({ target: dash, sync: true });
+    } else if (mainEl.scrollHeight > mainEl.clientHeight + 48) {
+      scrollCtl = onScroll({ target: mainEl, sync: true });
+    }
+    const useLoop = scrollCtl === null;
+    track(
+      scrollArtRevertibles,
+      animate(drawables, {
+        draw: ['0 0', '0 1', '1 1'],
+        delay: stagger(40, { from: 'first' }),
+        ease: scrollPathDrawEase,
+        duration: useLoop ? 2800 : 4200,
+        loop: useLoop,
+        alternate: useLoop,
+        autoplay: useLoop ? true : scrollCtl,
+      })
+    );
+    if (scrollCtl) track(scrollArtRevertibles, scrollCtl);
+  } catch (e) {
+    console.warn('flux-animations: dashboard scroll paths', e);
+  }
+}
+
+function teardownScrollPathArt() {
+  revertAll(scrollArtRevertibles);
+  document.querySelectorAll('.flux-dash-scroll-paths').forEach((n) => n.remove());
+  const dash = document.getElementById('dashboard');
+  if (dash) delete dash.dataset.fluxScrollPathInit;
+}
+
 function initFluxAnimeApp() {
   const app = document.getElementById('app');
   if (prefersReducedMotion() || perfSnappy() || !app?.classList.contains('visible')) return;
@@ -378,11 +434,16 @@ function initFluxAnimeApp() {
     appShellAnimated = true;
   }
   animateActivePanelCards();
+  try {
+    const main = document.getElementById('flux-main');
+    if (main) initMainScrollPathDraw(main);
+  } catch (_) {}
 }
 
 function teardownFluxAnimeApp() {
   revertAll(appShellRevertibles);
   revertAll(appPanelRevertibles);
+  teardownScrollPathArt();
   appShellAnimated = false;
 }
 
@@ -1255,6 +1316,7 @@ window.FluxAnim = {
   initKanbanDrag,
   initTaskLayout,
   initScrollReveal,
+  initMainScrollPathDraw,
   initWorkloadScrollSync,
   initCogLoadMeter,
   updateCogLoad,

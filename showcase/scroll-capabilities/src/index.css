@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 253 238;
+    --foreground: 31 58 75;
+  }
+  body {
+    @apply bg-[#FAFDEE] text-[#1F3A4B];
+  }
+}

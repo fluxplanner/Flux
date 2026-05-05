@@ -485,6 +485,19 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
   max-width:1100px;margin:0 auto;
   padding-bottom:32px;
 }
+/* Scroll-drawn accent paths (anime.js createDrawable + onScroll) — sits behind dashboard content */
+#dashboard.dash-v2.flux-page.panel{position:relative}
+.flux-dash-scroll-paths{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:clamp(100px,18vh,200px);
+  pointer-events:none;
+  z-index:0;
+  opacity:0.55;
+}
+.flux-dash-scroll-paths svg{display:block}
 .dash-v2-greet,.flux-page-header{
   margin-bottom:18px;padding-bottom:18px;
   border-bottom:1px solid rgba(255,255,255,.06);
