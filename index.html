@@ -139,15 +139,19 @@
       <div class="login-left-inner">
         <div class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></div>
         <div class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</div>
-        <div class="login-hover-narrative login-hover-narrative--desktop" aria-label="What you can do in Flux">
-          <p class="login-hover-lede">Plan smarter with <span class="login-hover-link" data-preview="fluxai">Flux AI Tutor</span>, pull deadlines from a photo with <span class="login-hover-link" data-preview="vision">Vision Import</span>, and keep your <span class="login-hover-link" data-preview="gpa">GPA</span> on track with weighted grades and what-ifs.</p>
-          <p><span class="login-hover-link" data-preview="calendar">Smart calendar</span> syncs tasks and Google; <span class="login-hover-link" data-preview="notes">tagged notes</span> and a <span class="login-hover-link" data-preview="timer">focus timer</span> help you get real work done.</p>
-          <p>Track <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, hook up <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and stay in sync everywhere with <span class="login-hover-link" data-preview="cloud">cloud sync</span>.</p>
-        </div>
         <div class="login-badge login-badge--after-hero">✦ AI-Powered Student Planner</div>
         <div class="login-hero-demo login-demo-wrap" aria-live="polite">
           <div class="login-demo-label">What Flux can do</div>
           <p class="login-demo-line" id="loginDemoLineLeft"></p>
+        </div>
+
+        <div class="login-hover-wrap">
+          <div class="login-hover-wrap-label">Explore</div>
+          <div class="login-hover-narrative login-hover-narrative--desktop" aria-label="What you can do in Flux">
+            <p class="login-hover-lede">Plan smarter with <span class="login-hover-link" data-preview="fluxai">Flux AI Tutor</span>, pull deadlines from a photo with <span class="login-hover-link" data-preview="vision">Vision Import</span>, and keep your <span class="login-hover-link" data-preview="gpa">GPA</span> on track with weighted grades and what-ifs.</p>
+            <p><span class="login-hover-link" data-preview="calendar">Smart calendar</span> syncs tasks and Google; <span class="login-hover-link" data-preview="notes">tagged notes</span> and a <span class="login-hover-link" data-preview="timer">focus timer</span> help you get real work done.</p>
+            <p>Track <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, hook up <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and stay in sync everywhere with <span class="login-hover-link" data-preview="cloud">cloud sync</span>.</p>
+          </div>
         </div>
 
         <!-- Interactive feature cards -->
@@ -319,7 +323,7 @@
 
   <div id="loginHoverPreviewCard" class="login-hover-preview-card" aria-hidden="true" hidden>
     <div class="login-hover-preview-card-inner">
-      <img class="login-hover-preview-img" alt="" width="280" height="180" decoding="async">
+      <div class="login-hover-preview-visual" aria-hidden="true"></div>
       <div class="login-hover-preview-title"></div>
       <div class="login-hover-preview-sub"></div>
     </div>
@@ -692,7 +696,6 @@
     <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
-      <div id="fluxAiInsightStrip" class="flux-ai-insight-strip" style="display:none"></div>
       <div id="fluxOverdueBanner" class="flux-overdue-wrap" style="display:none"></div>
     </div>
 

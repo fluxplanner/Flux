@@ -1515,7 +1515,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3640,7 +3640,7 @@ function renderProfile(){
 }
 
 function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
-function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();if(window.FluxIntel&&FluxIntel.renderAiInsightStrip)FluxIntel.renderAiInsightStrip();}
+function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
 // ══ THEMES ══
@@ -7191,15 +7191,15 @@ function initLoginFeatureCards(){
 
 // ══ LOGIN — hover preview card (Flux features; vanilla port of hover-preview pattern) ══
 const LOGIN_HOVER_PREVIEW_DATA={
-  fluxai:{image:'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=560&h=320&fit=crop',title:'Flux AI Tutor',subtitle:'Study plans, flashcards, and exam prep tailored to your courses.'},
-  vision:{image:'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=560&h=320&fit=crop',title:'Vision Import',subtitle:'Photograph syllabi and schedules — AI turns them into tasks and dates.'},
-  gpa:{image:'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=560&h=320&fit=crop',title:'GPA Tracker',subtitle:'Weighted grades, four-decimal precision, and what-if scenarios.'},
-  calendar:{image:'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=560&h=320&fit=crop',title:'Smart Calendar',subtitle:'Tasks and class blocks together, with Google Calendar sync.'},
-  notes:{image:'https://images.unsplash.com/photo-1517842645767-c96b2f72379b?w=560&h=320&fit=crop',title:'Tagged Notes',subtitle:'Organize study material and let Flux AI quiz you from your notes.'},
-  timer:{image:'https://images.unsplash.com/photo-1501139083538-0139583c060f?w=560&h=320&fit=crop',title:'Focus Timer',subtitle:'Pomodoro-style focus blocks, streaks, and habit building.'},
-  extracurriculars:{image:'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=560&h=320&fit=crop',title:'Extracurriculars',subtitle:'Track clubs and activities with school-fit suggestions.'},
-  canvas:{image:'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=560&h=320&fit=crop',title:'Canvas & Gmail',subtitle:'Connect learning tools and turn emails into actionable tasks.'},
-  cloud:{image:'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=560&h=320&fit=crop',title:'Cloud Sync',subtitle:'One Google account keeps Flux updated on every device.'},
+  fluxai:{accent:'99,102,241',title:'Flux AI Tutor',subtitle:'Study plans, flashcards, and exam prep tailored to your courses.'},
+  vision:{accent:'16,217,160',title:'Vision Import',subtitle:'Photograph syllabi and schedules — AI turns them into tasks and dates.'},
+  gpa:{accent:'251,191,36',title:'GPA Tracker',subtitle:'Weighted grades, four-decimal precision, and what-if scenarios.'},
+  calendar:{accent:'59,130,246',title:'Smart Calendar',subtitle:'Tasks and class blocks together, with Google Calendar sync.'},
+  notes:{accent:'139,92,246',title:'Tagged Notes',subtitle:'Organize study material and let Flux AI quiz you from your notes.'},
+  timer:{accent:'167,139,250',title:'Focus Timer',subtitle:'Pomodoro-style focus blocks, streaks, and habit building.'},
+  extracurriculars:{accent:'251,146,60',title:'Extracurriculars',subtitle:'Track clubs and activities with school-fit suggestions.'},
+  canvas:{accent:'94,234,212',title:'Canvas & Gmail',subtitle:'Connect learning tools and turn emails into actionable tasks.'},
+  cloud:{accent:'192,132,252',title:'Cloud Sync',subtitle:'One Google account keeps Flux updated on every device.'},
 };
 let _loginHoverPreviewBound=false;
 function resetLoginHoverPreview(){
@@ -7215,20 +7215,21 @@ function initLoginHoverPreview(){
   if(!root||!card)return;
   if(_loginHoverPreviewBound)return;
   _loginHoverPreviewBound=true;
-  const img=card.querySelector('.login-hover-preview-img');
+  const visual=card.querySelector('.login-hover-preview-visual');
   const titleEl=card.querySelector('.login-hover-preview-title');
   const subEl=card.querySelector('.login-hover-preview-sub');
   let visible=false;
 
   function updatePosition(clientX,clientY){
-    const cardWidth=300;
-    const cardHeight=240;
-    const offsetY=18;
-    let x=clientX-cardWidth/2;
-    let y=clientY-cardHeight-offsetY;
-    if(x+cardWidth>window.innerWidth-16)x=window.innerWidth-cardWidth-16;
-    if(x<16)x=16;
-    if(y<16)y=clientY+offsetY;
+    const cardWidth=272;
+    const cardHeight=118;
+    const pad=12;
+    let x=clientX+14;
+    let y=clientY-cardHeight/2;
+    if(x+cardWidth>window.innerWidth-pad)x=clientX-cardWidth-14;
+    if(x<pad)x=pad;
+    if(y<pad)y=pad;
+    if(y+cardHeight>window.innerHeight-pad)y=window.innerHeight-cardHeight-pad;
     card.style.left=`${x}px`;
     card.style.top=`${y}px`;
   }
@@ -7237,9 +7238,10 @@ function initLoginHoverPreview(){
     const d=LOGIN_HOVER_PREVIEW_DATA[key];
     if(!d)return;
     visible=true;
-    if(img){
-      img.alt=d.title||'';
-      img.src=d.image;
+    const acc=d.accent||'99,102,241';
+    card.style.setProperty('--login-preview-accent',acc);
+    if(visual){
+      visual.style.background=`linear-gradient(135deg,rgba(${acc},.55),rgba(${acc},.06))`;
     }
     if(titleEl)titleEl.textContent=d.title||'';
     if(subEl)subEl.textContent=d.subtitle||'';
@@ -7265,12 +7267,6 @@ function initLoginHoverPreview(){
       if(visible)updatePosition(ev.clientX,ev.clientY);
     });
     el.addEventListener('mouseleave',hide);
-  });
-
-  Object.values(LOGIN_HOVER_PREVIEW_DATA).forEach(d=>{
-    const pre=new Image();
-    pre.crossOrigin='anonymous';
-    pre.src=d.image;
   });
 }
 
