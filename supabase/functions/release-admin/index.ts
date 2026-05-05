@@ -96,6 +96,19 @@ async function saveOwnerData(
   if (error) throw error;
 }
 
+function randomTempPassword() {
+  const bytes = crypto.getRandomValues(new Uint8Array(18));
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) {
+    bin += String.fromCharCode(bytes[i]);
+  }
+  const b64 = btoa(bin).replace(/\+/g, "x").replace(/\//g, "z").replace(
+    /=/g,
+    "",
+  );
+  return (b64 + "Ff9").slice(0, 24);
+}
+
 /** Resolve Auth user id by email (paginated; cap pages for safety). */
 async function findUserIdByEmail(
   admin: ReturnType<typeof serviceClient>,
@@ -261,6 +274,206 @@ Deno.serve(async (req) => {
         synced: results,
         okCount: results.filter((r) => r.ok).length,
       }, 200, origin);
+    }
+
+    if (
+      action === "auth_list_users" ||
+      action === "auth_delete_user" ||
+      action === "auth_ban_user" ||
+      action === "auth_create_user" ||
+      action === "auth_set_password" ||
+      action === "auth_send_recovery_link" ||
+      action === "auth_invite_user" ||
+      action === "auth_force_password_rotate" ||
+      action === "auth_revoke_sessions"
+    ) {
+      if (email !== OWNER_EMAIL) {
+        return json({ error: "Only the owner may call Auth Admin actions" }, 403, origin);
+      }
+
+      const adminAuth = db.auth.admin;
+
+      const safeUserSummaries = (users: unknown[]) =>
+        users.map((u) => {
+          const r = u as Record<string, unknown>;
+          return {
+            id: String(r.id ?? ""),
+            email: normEmail(r.email),
+            created_at: (r.created_at as string | null) ?? null,
+            banned: !!(r.banned_until && String(r.banned_until) !== ""),
+          };
+        });
+
+      /** Block destructive actions targeting the owner's identity row. */
+      async function guardNotOwnerIdentity(userId: string) {
+        const trimmed = String(userId || "").trim();
+        if (!trimmed) {
+          throw new Error("userId required");
+        }
+        if (trimmed === auth.userId) {
+          throw new Error("Cannot target your own Auth session from this endpoint");
+        }
+        const res = await adminAuth.getUserById(trimmed);
+        if (res.error || !res.data?.user) {
+          throw new Error(res.error?.message || "Auth user not found");
+        }
+        const ue = normEmail(res.data.user.email);
+        if (ue === OWNER_EMAIL) {
+          throw new Error("Refusing operator on owner email identity");
+        }
+        return res.data.user;
+      }
+
+      if (action === "auth_list_users") {
+        const page = Math.max(1, Math.min(500, Number(body.page ?? 1) || 1));
+        const perPage = Math.max(1, Math.min(200, Number(body.perPage ?? 50) || 50));
+        const { data, error } = await adminAuth.listUsers({ page, perPage });
+        if (error) throw error;
+        const users = data?.users ?? [];
+        return json({
+          ok: true,
+          users: safeUserSummaries(users as unknown[]),
+          nextPage:
+            users.length >= perPage ? page + 1 : null,
+        }, 200, origin);
+      }
+
+      if (action === "auth_delete_user") {
+        const userId = String(body.userId || "").trim();
+        await guardNotOwnerIdentity(userId);
+        const { error } = await adminAuth.deleteUser(userId);
+        if (error) throw error;
+        return json({ ok: true }, 200, origin);
+      }
+
+      if (action === "auth_ban_user") {
+        const userId = String(body.userId || "").trim();
+        const banned = !!(body.banned ?? body.suspend ?? true);
+        await guardNotOwnerIdentity(userId);
+        const { error } = await adminAuth.updateUserById(userId, {
+          ban_duration: banned ? "876000h" : "none",
+        });
+        if (error) throw error;
+        return json({ ok: true, banned }, 200, origin);
+      }
+
+      if (action === "auth_create_user") {
+        const newEmail = normEmail(body.email);
+        if (!newEmail || !newEmail.includes("@")) {
+          return json({ error: "email required" }, 400, origin);
+        }
+        const pwdRaw = typeof body.password === "string"
+          ? String(body.password)
+          : "";
+        if (pwdRaw.trim().length > 0 && pwdRaw.trim().length < 8) {
+          return json({
+            error:
+              "Password must be empty (generated) or at least 8 characters",
+          }, 400, origin);
+        }
+        let password = pwdRaw.trim();
+        let generatedForResponse: string | undefined;
+        if (password.length < 8) {
+          generatedForResponse = randomTempPassword();
+          password = generatedForResponse;
+        }
+        const email_confirm =
+          !!(body.emailConfirm ?? body.email_confirm ?? true);
+        const { data: created, error } = await adminAuth.createUser({
+          email: newEmail,
+          password,
+          email_confirm,
+        });
+        if (error) throw error;
+        const returnTemp = body.returnTemporaryPassword !== false;
+        const outPw = pwdRaw.length >= 8
+          ? undefined
+          : (returnTemp ? generatedForResponse : undefined);
+        return json({
+          ok: true,
+          userId: created.user?.id,
+          email: newEmail,
+          temporaryPasswordReturned: !!outPw,
+          password: outPw,
+        }, 200, origin);
+      }
+
+      if (action === "auth_set_password") {
+        const userId = String(body.userId || "").trim();
+        const password = safeText(body.password, 200);
+        if (!password || password.length < 8) {
+          return json({ error: "password required (min 8 chars)" }, 400, origin);
+        }
+        await guardNotOwnerIdentity(userId);
+        const { error } = await adminAuth.updateUserById(userId, { password });
+        if (error) throw error;
+        return json({ ok: true }, 200, origin);
+      }
+
+      if (action === "auth_send_recovery_link") {
+        const target = normEmail(body.email);
+        if (!target || !target.includes("@")) {
+          return json({ error: "email required" }, 400, origin);
+        }
+        const redirectTo = typeof body.redirectTo === "string"
+          ? String(body.redirectTo).slice(0, 2048)
+          : undefined;
+        const { data, error } = await adminAuth.generateLink({
+          type: "recovery",
+          email: target,
+          options: redirectTo ? { redirectTo } : {},
+        });
+        if (error) throw error;
+        return json({
+          ok: true,
+          action_link: data?.properties?.action_link ?? null,
+          email_otp: data?.properties?.email_otp ?? null,
+        }, 200, origin);
+      }
+
+      if (action === "auth_invite_user") {
+        const target = normEmail(body.email);
+        if (!target || !target.includes("@")) {
+          return json({ error: "email required" }, 400, origin);
+        }
+        const redirectTo = typeof body.redirectTo === "string"
+          ? String(body.redirectTo).slice(0, 2048)
+          : undefined;
+        const opts = redirectTo ? { redirectTo } : {};
+        const { error } = await adminAuth.inviteUserByEmail(target, opts);
+        if (error) throw error;
+        return json({ ok: true }, 200, origin);
+      }
+
+      if (action === "auth_force_password_rotate") {
+        const userId = String(body.userId || "").trim();
+        await guardNotOwnerIdentity(userId);
+        const nonce = crypto.randomUUID();
+        const { data: ures, error: gerr } = await adminAuth.getUserById(userId);
+        if (gerr) throw gerr;
+        const md = asRecord(ures.user?.user_metadata ?? {});
+        md.flux_password_rotate_required_at = Date.now();
+        md.flux_password_rotate_nonce = nonce;
+        const { error } = await adminAuth.updateUserById(userId, {
+          user_metadata: md,
+        });
+        if (error) throw error;
+        return json({
+          ok: true,
+          note:
+            "User metadata flag set; client apps may read flux_password_rotate_required_at and prompt to change password or use Send recovery.",
+        }, 200, origin);
+      }
+
+      if (action === "auth_revoke_sessions") {
+        const userId = String(body.userId || "").trim();
+        await guardNotOwnerIdentity(userId);
+        const { error } = await adminAuth.signOut(userId, "global");
+        if (error) throw error;
+        return json({ ok: true }, 200, origin);
+      }
+
+      return json({ error: "Unhandled auth_admin branch" }, 500, origin);
     }
 
     if (action === "save_preview_access") {

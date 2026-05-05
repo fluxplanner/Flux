@@ -1593,6 +1593,12 @@
         <span class="ai-usage-label" style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0"></span>
       </div>
       </div>
+      <div class="flux-ai-view-bar" role="tablist" aria-label="Flux AI workspace">
+        <button type="button" class="flux-ai-view-tab flux-ai-view-tab--active" id="fluxAiViewBtnChat" role="tab" aria-selected="true" data-flux-ai-view="chat" title="Conversation">Chat</button>
+        <button type="button" class="flux-ai-view-tab" id="fluxAiViewBtnConn" role="tab" aria-selected="false" data-flux-ai-view="connections" title="Apps, models &amp; custom hooks">Connections</button>
+      </div>
+      <div class="flux-ai-view-body">
+      <div class="flux-ai-view-pane flux-ai-view-pane--chat" id="fluxAiPaneChat" role="tabpanel" aria-labelledby="fluxAiViewBtnChat">
       <div id="aiMsgsWrap" class="flux-ai-scroll">
         <div class="flux-ai-thread flux-ac-message-stack">
           <div class="ai-sugs" id="aiSugs"></div>
@@ -1614,6 +1620,9 @@
         </div>
         <p class="flux-ai-hint"><span class="flux-ai-hint__kbd">/plan</span> · <span class="flux-ai-hint__kbd">/optimize</span> · <span class="flux-ai-hint__kbd">/fix</span> · <span class="flux-ai-hint__kbd">⌘K</span></p>
       </footer>
+      </div><!-- flux-ai-pane-chat -->
+      <div class="flux-ai-view-pane flux-ai-view-pane--connections" id="fluxAiPaneConnections" role="tabpanel" aria-labelledby="fluxAiViewBtnConn" aria-hidden="true" hidden></div>
+      </div><!-- flux-ai-view-body -->
       </div>
     </div>
 
@@ -2180,6 +2189,7 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
 <script defer src="public/js/app.js"></script>
+<script defer src="public/js/flux-ai-connections.js"></script>
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
 <div id="fluxFeedbackModal" class="flux-feedback-modal" aria-hidden="true" role="dialog" aria-labelledby="fluxFeedbackTitle" aria-modal="true">

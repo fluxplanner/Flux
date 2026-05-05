@@ -39,6 +39,15 @@ Deno.serve(async (req) => {
     systemPrompt?: string;
     /** Groq returns a single JSON object (requires "json" in messages per API rules). */
     responseFormat?: "json_object";
+    routing?: {
+      mode?: string;
+      openaiCompatible?: {
+        apiKey?: string;
+        baseUrl?: string;
+        model?: string;
+      };
+      anthropic?: { apiKey?: string; model?: string };
+    };
   };
   try {
     body = await req.json();
@@ -51,9 +60,13 @@ Deno.serve(async (req) => {
   }
 
   const hasImage = !!body.imageBase64;
+  const routeMode = body.routing?.mode ?? "";
+  const isBYOK = routeMode === "openai_compatible" ||
+    routeMode === "anthropic_messages";
 
   let entitlement: Entitlement | null = null;
-  if (PAYMENTS_ENABLED && userId) {
+
+  if (PAYMENTS_ENABLED && userId && !isBYOK) {
     entitlement = await getEntitlement(userId);
 
     if (hasImage && !entitlement.imageAnalysis) {
@@ -85,7 +98,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (!body.model) {
+  if (!isBYOK && !hasImage && !body.model) {
     body.model = "llama-3.3-70b-versatile";
   }
 
@@ -93,6 +106,25 @@ Deno.serve(async (req) => {
   try {
     if (hasImage) {
       text = await callGemini(body);
+    } else if (routeMode === "openai_compatible") {
+      const rc = body.routing?.openaiCompatible;
+      if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
+        return json({ error: "routing_incomplete_openai" }, 400, origin);
+      }
+      text = await callOpenAICompatible(body, {
+        apiKey: rc.apiKey.trim(),
+        baseUrl: (rc.baseUrl || "").trim(),
+        model: rc.model.trim(),
+      });
+    } else if (routeMode === "anthropic_messages") {
+      const rc = body.routing?.anthropic;
+      if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
+        return json({ error: "routing_incomplete_anthropic" }, 400, origin);
+      }
+      text = await callAnthropicMessages(body, {
+        apiKey: rc.apiKey.trim(),
+        model: rc.model.trim(),
+      });
     } else {
       text = await callGroq(body);
     }
@@ -105,12 +137,116 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (PAYMENTS_ENABLED && userId) {
+  if (PAYMENTS_ENABLED && userId && !hasImage && !isBYOK) {
     incrementAIUsage(userId).catch(console.error);
   }
 
   return json({ content: [{ type: "text", text }] }, 200, origin);
 });
+
+async function callOpenAICompatible(
+  body: {
+    messages?: Array<{ role: string; content: unknown }>;
+    message?: string;
+    model?: string;
+    system?: string;
+    systemPrompt?: string;
+    responseFormat?: "json_object";
+  },
+  rc: { apiKey: string; baseUrl: string; model: string },
+): Promise<string> {
+  const model = rc.model || body.model || "gpt-4o-mini";
+  const payload = buildOpenAIChatPayload(body, model);
+
+  let base = rc.baseUrl.replace(/\/+$/, "");
+  if (!base) base = "https://api.openai.com/v1";
+  if (!/^https?:\/\/.+/i.test(base)) {
+    throw new Error("OpenAI-compatible base URL must start with http:// or https://");
+  }
+
+  const url = base.endsWith("/chat/completions")
+    ? base
+    : base.endsWith("/v1")
+    ? `${base}/chat/completions`
+    : `${base}/v1/chat/completions`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${rc.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI-compatible error ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+async function callAnthropicMessages(
+  body: {
+    messages?: Array<{ role: string; content: unknown }>;
+    message?: string;
+    system?: string;
+    systemPrompt?: string;
+  },
+  rc: { apiKey: string; model: string },
+): Promise<string> {
+  const systemParts: string[] = [];
+  const topSys = body.system ?? body.systemPrompt;
+  if (topSys) systemParts.push(String(topSys));
+
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+
+  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
+  for (const m of raw) {
+    const roleStr = String(m.role || "");
+    if (roleStr === "system") {
+      systemParts.push(
+        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+      );
+      continue;
+    }
+    const role = roleStr === "assistant" ? "assistant" : "user";
+    messages.push({
+      role,
+      content:
+        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+    });
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": rc.apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: rc.model,
+      max_tokens: 2048,
+      system: systemParts.join("\n\n").slice(0, 200000),
+      messages,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  const blocks = data.content;
+  if (!Array.isArray(blocks)) return "";
+  return blocks
+    .filter((b: { type?: string }) => b && b.type === "text")
+    .map((b: { text?: string }) => b.text ?? "")
+    .join("\n")
+    .trim();
+}
 
 function buildOpenAIChatPayload(
   body: {

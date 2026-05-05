@@ -6,6 +6,7 @@
   const SB_PROJECT_REF='lfigdijuqmbensebnevo';
   const PLATFORM_DEFAULTS={
     announcement:'',
+    announcementRevision:0,
     dataRetentionDays:365,
     sessionIdleWarnMins:60,
     integrations:{slackWebhook:'',genericWebhook:''},
@@ -40,6 +41,26 @@
   };
 
   function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  /** Minimal CSV field parser (handles quoted fields). */
+  function parseCsvLine(line){
+    const out=[];
+    let cur='';
+    let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(inQ){
+        if(c==='"')inQ=false;
+        else cur+=c;
+      }else{
+        if(c==='"')inQ=true;
+        else if(c===','){out.push(cur.trim());cur='';}
+        else cur+=c;
+      }
+    }
+    out.push(cur.trim());
+    return out;
+  }
 
   function mapBadge(st){
     if(st==='in')return'<span style="font-size:.58rem;padding:2px 7px;border-radius:6px;background:rgba(34,197,94,.14);color:var(--green);font-weight:700;white-space:nowrap">In Flux</span>';
@@ -78,9 +99,9 @@
 
       <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:12px 0 6px">1 · User &amp; role management</div>
       <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 14px 2px">
-        ${mapRow('server','Create, remove, suspend <b>Auth</b> users (all accounts).',ext('auth','Open Auth'))}
+        ${mapRow('partial','Create, remove, suspend <b>Auth</b> users (all accounts).',jump('auth','Auth users')+ext('auth','Open dashboard'))}
         ${mapRow('in','Assign roles / permissions for the <b>dev team list</b> (admin · editor · viewer) and import/export that list.',jump('team','Team & roles'))}
-        ${mapRow('server','Reset passwords, force password changes.',ext('auth','Auth users'))}
+        ${mapRow('partial','Reset passwords, force password changes.',jump('auth','Auth users')+ext('auth','Dashboard'))}
         ${mapRow('partial','Activity trail: owner <b>audit log</b> in Flux; authoritative Auth logs in Supabase.',jump('audit','Audit log')+ext('logs','Logs explorer'))}
         ${mapRow('in','Import / export dev roster in bulk (JSON / CSV).',jump('team','Team'))}
       </div>
@@ -116,7 +137,7 @@
         ${mapRow('in','Owner audit log (actions in this Command Center).',jump('audit','Audit'))}
         ${mapRow('in','Data retention <b>target</b> (advisory) + compliance contact field.',jump('config','Config'))}
         ${mapRow('partial','Suspicious activity: route alerts via webhooks (Slack/generic) — wire events in Edge Functions later.',jump('integrations','Integrations'))}
-        ${mapRow('server','Revoke sessions / ban users: Supabase Auth or Admin API.',ext('auth','Auth users'))}
+        ${mapRow('partial','Revoke sessions / ban users: via Auth tab (server) or Supabase Auth Admin.',jump('auth','Auth users')+ext('auth','Dashboard'))}
       </div>
 
       <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:16px 0 6px">6 · Integrations &amp; automation</div>
@@ -258,7 +279,7 @@
     return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
   }
 
-  const OS_TABS=new Set(['overview','megamap','team','testers','release','data','config','integrations','analytics','usage','audit','feedback','advanced']);
+  const OS_TABS=new Set(['overview','megamap','team','testers','release','auth','data','config','integrations','analytics','usage','audit','feedback','advanced']);
 
   window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
@@ -346,7 +367,7 @@
         <div style="background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.25);border-radius:14px;padding:14px;margin-bottom:14px">
           <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">🔐 Platform reality (read this)</div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55">
-            Flux stores each user’s data in their own <b>user_data</b> row. This browser only has your <b>anon</b> Supabase key — it cannot list every Auth user, reset passwords, suspend accounts, or impersonate without a <b>server-side Admin API</b> (Edge Function + service role). Do those in <b>Supabase Dashboard → Authentication</b> or add a secured admin function.
+            Flux stores each user’s data in their own <b>user_data</b> row. <b>Auth administration</b> (list/ban/delete/reset) runs through the owner-only <b>release-admin</b> Edge Function with the service role — open the <button type="button" onclick="window.__osSetTab&&window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);padding:2px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Auth users</button> tab. This browser still ships only the <b>anon</b> key; impersonation and org SSO policies stay in Supabase.
           </div>
         </div>
         <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">AI-style insights (heuristic)</div>
@@ -381,6 +402,7 @@
           <button type="button" onclick="ownerExportDevsJson()" style="margin-right:8px;margin-bottom:8px;padding:8px 12px;font-size:.72rem;border-radius:10px">Export JSON</button>
           <button type="button" onclick="ownerExportDevsCsv()" style="margin-right:8px;margin-bottom:8px;padding:8px 12px;font-size:.72rem;border-radius:10px">Export CSV</button>
           <label style="font-size:.72rem;color:var(--accent);cursor:pointer">Import JSON<input type="file" accept="application/json" style="display:none" onchange="ownerImportDevsFile(event)"></label>
+          <label style="font-size:.72rem;color:var(--accent);cursor:pointer;margin-left:10px">Import CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="ownerImportDevsCsvFile(event)"></label>
         </div>`;
 
       if(tab==='release'){
@@ -445,6 +467,41 @@
           </div>`;
       }
 
+      if(tab==='auth')return`
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:12px">
+          Owner-only <b>Supabase Auth Admin</b> via <code style="font-size:.65rem">release-admin</code> (JWT + <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>). Deploy the function and keep the <b>service role</b> in Edge secrets only. Recovery links are generated here — copy into email or your support flow; invite emails are sent by Supabase when you use <b>Invite</b>.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">
+          <button type="button" onclick="ownerAuthUsersLoad(1)" style="padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);font-weight:700">↻ Refresh list</button>
+          <button type="button" onclick="ownerAuthUsersPrevPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">← Prev page</button>
+          <button type="button" onclick="ownerAuthUsersNextPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">Next page →</button>
+          <button type="button" onclick="ownerOpenSupabase('auth')" style="padding:7px 12px;font-size:.72rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2)">Open Supabase Auth</button>
+        </div>
+        <div id="osAuthMount" style="min-height:120px;margin-bottom:16px;font-size:.78rem;color:var(--muted)">Click <b>Refresh list</b> to load accounts (page size 40).</div>
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Create user</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <input type="email" id="osAuthNewEmail" placeholder="student@school.edu" style="flex:1;min-width:200px;padding:8px 12px;border-radius:10px;font-size:.8rem">
+            <input type="password" id="osAuthNewPw" placeholder="password (optional)" style="width:160px;padding:8px 10px;border-radius:10px;font-size:.78rem">
+            <button type="button" onclick="ownerAuthCreateUser()" style="padding:8px 14px;font-size:.78rem;border-radius:10px;font-weight:700">Create</button>
+          </div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:6px">Leave password blank for a generated temporary password (shown once in a dialog).</div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Recovery link (manual send)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <input type="email" id="osAuthRecoveryEmail" placeholder="account email" style="flex:1;min-width:200px;padding:8px 12px;border-radius:10px;font-size:.8rem">
+            <button type="button" onclick="ownerAuthSendRecovery()" style="padding:8px 14px;font-size:.78rem;border-radius:10px">Generate recovery link</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Invite (email)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <input type="email" id="osAuthInviteEmail" placeholder="invite@school.edu" style="flex:1;min-width:200px;padding:8px 12px;border-radius:10px;font-size:.8rem">
+            <button type="button" onclick="ownerAuthInvite()" style="padding:8px 14px;font-size:.78rem;border-radius:10px">Send invite</button>
+          </div>
+        </div>`;
+
       if(tab==='data')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
           Full <b>backup</b> includes planner payload shape (tasks, notes, grades, dev list, audit tail, platform config). Restoring merges into this browser then syncs if signed in.
@@ -463,8 +520,10 @@
         </div>`;
 
       if(tab==='config')return`
-        <label style="font-size:.72rem;color:var(--muted)">Global announcement (show in toast on load — optional)</label>
-        <input type="text" id="osAnnounce" value="${esc(pc.announcement)}" placeholder="e.g. Maintenance Sunday 2am UTC" style="width:100%;margin:6px 0 14px;padding:10px;border-radius:10px" onblur="savePlatformConfig({announcement:this.value.trim()})">
+        <label style="font-size:.72rem;color:var(--muted)">Global announcement (toast after sync — optional)</label>
+        <input type="text" id="osAnnounce" value="${esc(pc.announcement)}" placeholder="e.g. Maintenance Sunday 2am UTC" style="width:100%;margin:6px 0 10px;padding:10px;border-radius:10px" onblur="savePlatformConfig({announcement:this.value.trim()})">
+        <label style="font-size:.72rem;color:var(--muted)">Announcement revision (integer — bump when you want <b>everyone</b> to dismiss/see toast again)</label>
+        <input type="number" id="osAnnRev" value="${typeof pc.announcementRevision==='number'?pc.announcementRevision:0}" min="0" max="999999" step="1" style="width:100%;margin:6px 0 14px;padding:8px;border-radius:10px" onchange="savePlatformConfig({announcementRevision:Math.max(0,parseInt(this.value)||0)})">
         <label style="font-size:.72rem;color:var(--muted)">Session idle reminder (minutes, advisory)</label>
         <input type="number" id="osSess" value="${pc.sessionIdleWarnMins||60}" min="5" max="480" style="width:100%;margin:6px 0 14px;padding:8px;border-radius:10px" onchange="savePlatformConfig({sessionIdleWarnMins:parseInt(this.value)||60})">
         <label style="font-size:.72rem;color:var(--muted)">Compliance / DPO contact (reference only)</label>
@@ -499,7 +558,10 @@
         <div id="osUsageMount">${typeof window.__ownerUsageHtml==='string'&&window.__ownerUsageHtml?window.__ownerUsageHtml:'<div style="color:var(--muted);font-size:.82rem">Click <b>Refresh from cloud</b> to load cross-account aggregates (requires Supabase to return multiple <code style="font-size:.65rem">user_data</code> rows — see RLS note after load).</div>'}</div>`;
 
       if(tab==='audit')return`
-        <button type="button" onclick="ownerClearAudit()" style="margin-bottom:12px;padding:6px 12px;font-size:.72rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Clear audit log</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <button type="button" onclick="ownerClearAudit()" style="padding:6px 12px;font-size:.72rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Clear audit log</button>
+        <button type="button" onclick="ownerExportAuditCsv()" style="padding:6px 12px;font-size:.72rem;border-radius:8px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2)">⬇ Export CSV</button>
+        </div>
         <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
           ${audit.length?audit.map(e=>`<div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:.72rem">
             <div style="font-family:JetBrains Mono,monospace;color:var(--muted)">${new Date(e.t).toLocaleString()}</div>
@@ -543,7 +605,7 @@
 
       if(tab==='advanced')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:14px">
-          <b>Impersonation</b>, <b>revoke other users’ sessions</b>, and <b>live user activity across tenants</b> need secure server endpoints. Use Supabase Auth admin or build <code style="font-size:.65rem">admin-revoke-session</code> Edge Functions.
+          <b>Impersonation</b> requires a dedicated Admin API workflow — never the anon key. Session revoke / ban flows for arbitrary users live under <button type="button" onclick="window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Auth users</button>.
         </div>
         <button type="button" onclick="document.getElementById('ownerSuite')?.remove();openModPanel();" style="padding:10px 16px;font-size:.78rem;border-radius:12px;margin-bottom:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)">⚡ Open classic Dev Panel</button>
         <button type="button" onclick="forceSyncNow()" style="display:block;width:100%;padding:10px;margin-bottom:8px;font-size:.78rem;border-radius:10px">⟳ Force sync now</button>
@@ -589,6 +651,7 @@
           <button type="button" data-os-tab="team" onclick="window.__osSetTab('team')">Team & roles</button>
           <button type="button" data-os-tab="testers" onclick="window.__osSetTab('testers')">Testers</button>
           <button type="button" data-os-tab="release" onclick="window.__osSetTab('release')">Release</button>
+          <button type="button" data-os-tab="auth" onclick="window.__osSetTab('auth')">Auth users</button>
           <button type="button" data-os-tab="data" onclick="window.__osSetTab('data')">Data & backup</button>
           <button type="button" data-os-tab="config" onclick="window.__osSetTab('config')">Platform config</button>
           <button type="button" data-os-tab="integrations" onclick="window.__osSetTab('integrations')">Integrations</button>
@@ -888,11 +951,240 @@
     if(idx<0||idx>=arr.length)return;
     const removed=arr.splice(idx,1)[0];
     save('flux_tester_emails',arr);
-    if(typeof ownerAuditAppend==='function')    ownerAuditAppend('tester_remove',{email:removed});
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('tester_remove',{email:removed});
     reopenOwnerSuite('testers');
     if(typeof currentUser!=='undefined'&&currentUser&&String(currentUser.email||'').toLowerCase().trim()===String(removed||'').toLowerCase().trim()){
       if(typeof checkTesterMode==='function')checkTesterMode();
       if(typeof renderTesterBadge==='function')renderTesterBadge();
     }
+  };
+
+  window.__fluxAuthPage=1;
+  window.__fluxAuthNextPage=null;
+
+  window.ownerExportAuditCsv=function(){
+    if(!isOwner())return;
+    const log=load('flux_owner_audit',[]);
+    const q=function(s){return'"'+String(s==null?'':s).replace(/"/g,'""')+'"'};
+    const rows=['t,iso_utc,action,detail,by'].concat((log||[]).map(e=>{
+      const iso=new Date(e.t||0).toISOString();
+      return[q(e.t),q(iso),q(e.action),q(e.detail),q(e.by)].join(',');
+    }));
+    const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='flux-owner-audit.csv';a.click();URL.revokeObjectURL(a.href);
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('export_audit_csv',{n:(log||[]).length});
+  };
+
+  window.ownerImportDevsCsvFile=function(ev){
+    const f=ev.target.files?.[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const text=String(r.result||'');
+        const lines=text.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+        if(lines.length<2)throw new Error('Need a header plus at least one row');
+        const header=parseCsvLine(lines[0]).map(x=>String(x||'').toLowerCase().replace(/^\ufeff/,''));
+        const emailIdx=header.findIndex(h=>h==='email'||h.endsWith('email'));
+        if(emailIdx<0)throw new Error('CSV must include an email column');
+        const roleIdx=header.indexOf('role');
+        const permsIdx=header.indexOf('perms');
+        const uidIdx=header.indexOf('userid');
+        const byEmail={};
+        load('flux_dev_accounts',[]).forEach(d=>{
+          if(d&&d.email)byEmail[String(d.email).toLowerCase().trim()]={...d};
+        });
+        for(let li=1;li<lines.length;li++){
+          const cols=parseCsvLine(lines[li]);
+          const emRaw=(cols[emailIdx]||'').trim().toLowerCase();
+          if(!emRaw.includes('@'))continue;
+          let rname='viewer';
+          if(roleIdx>=0&&cols[roleIdx]){
+            const x=String(cols[roleIdx]).trim().toLowerCase();
+            if(['admin','editor','viewer'].includes(x))rname=x;
+          }
+          let perms=[];
+          if(permsIdx>=0&&cols[permsIdx]){
+            perms=String(cols[permsIdx]).split(/[;|]/).map(x=>x.trim()).filter(Boolean);
+          }
+          if(!perms.length)perms=[...(ROLE_PRESETS[rname]||ROLE_PRESETS.viewer)];
+          const prev=byEmail[emRaw]||{};
+          let userId=prev.userId;
+          if(uidIdx>=0&&cols[uidIdx])userId=String(cols[uidIdx]).trim()||userId;
+          byEmail[emRaw]={
+            email:emRaw,
+            role:rname,
+            perms,
+            addedAt:prev.addedAt||Date.now(),
+            ...(userId?{userId}:{}),
+          };
+        }
+        const norm=Object.values(byEmail);
+        save('flux_dev_accounts',norm);
+        if(typeof saveDevAccounts==='function')saveDevAccounts(norm);
+        if(typeof ownerAuditAppend==='function')ownerAuditAppend('import_dev_csv',{count:norm.length});
+        if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('team');
+        if(typeof showToast==='function')showToast('Merged '+norm.length+' dev row(s) from CSV','success');
+      }catch(e){alert('CSV import failed: '+e.message);}
+    };
+    r.readAsText(f);
+    ev.target.value='';
+  };
+
+  window.ownerAuthUsersLoad=async function(page){
+    if(!isOwner())return;
+    const p=Math.max(1,parseInt(page,10)||1);
+    window.__fluxAuthPage=p;
+    const mount=document.getElementById('osAuthMount');
+    if(mount)mount.innerHTML='<div style="color:var(--muted);font-size:.82rem">Loading Auth users…</div>';
+    try{
+      if(typeof FluxRelease==='undefined'||!FluxRelease.invokeOwnerReleaseAdmin){
+        throw new Error('FluxRelease.invokeOwnerReleaseAdmin unavailable');
+      }
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_list_users',page:p,perPage:40});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'List failed');
+      window.__fluxAuthNextPage=data.nextPage;
+      const users=data.users||[];
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_list_users',{page:p,n:users.length});
+      if(!mount)return;
+      if(!users.length){
+        mount.innerHTML='<div style="color:var(--muted);font-size:.82rem">No accounts on this page.</div>';
+        return;
+      }
+      const rows=users.map(u=>{
+        const bannedTag=u.banned?'<span style="font-size:.58rem;color:var(--red);font-weight:700">Banned</span>':'<span style="font-size:.58rem;color:var(--muted)">Active</span>';
+        return'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:.72rem;background:var(--card2)">'+
+          '<span style="font-family:JetBrains Mono,monospace;font-size:.62rem;color:var(--muted2);flex:0 0 260px;word-break:break-all">'+esc(u.id)+'</span>'+
+          '<span style="flex:1;min-width:140px;font-weight:600">'+(esc(u.email)||'—')+'</span>'+
+          bannedTag+
+          '<span style="font-size:.62rem;color:var(--muted)">'+(esc(u.created_at||''))+'</span>'+
+          '<span style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'+
+            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthBan(\''+esc(u.id)+'\','+(u.banned?'false':'true')+')">'+(u.banned?'Unban':'Ban')+'</button>'+
+            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthRevokeSessions(\''+esc(u.id)+'\')">Revoke sessions</button>'+
+            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthForceRotate(\''+esc(u.id)+'\')">Force pwd flag</button>'+
+            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthSetPasswordPrompt(\''+esc(u.id)+'\')">Set password…</button>'+
+            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer;color:var(--red)" onclick="ownerAuthDeleteUser(\''+esc(u.id)+'\')">Delete…</button>'+
+          '</span>'+
+        '</div>';
+      }).join('');
+      mount.innerHTML='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">'+rows+'</div>';
+      if(typeof showToast==='function')showToast('Loaded '+users.length+' user(s) · p.'+p,'success');
+    }catch(e){
+      const msg=e&&e.message?e.message:String(e);
+      if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with the newest Auth handlers and confirm <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> matches your Google account.</div>';
+      if(typeof showToast==='function')showToast(msg,'error');
+    }
+  };
+
+  window.ownerAuthUsersPrevPage=function(){
+    const cur=window.__fluxAuthPage||1;
+    if(cur<=1){if(typeof showToast==='function')showToast('First page','info');return;}
+    ownerAuthUsersLoad(cur-1);
+  };
+  window.ownerAuthUsersNextPage=function(){
+    const np=window.__fluxAuthNextPage;
+    if(!np){if(typeof showToast==='function')showToast('No further pages','info');return;}
+    ownerAuthUsersLoad(np);
+  };
+
+  window.ownerAuthCreateUser=async function(){
+    if(!isOwner())return;
+    const em=(document.getElementById('osAuthNewEmail')?.value||'').trim().toLowerCase();
+    const pw=(document.getElementById('osAuthNewPw')?.value||'').trim();
+    if(!em||!em.includes('@')){alert('Valid email required.');return;}
+    try{
+      const payload={action:'auth_create_user',email:em,returnTemporaryPassword:true};
+      if(pw.length)payload.password=pw;
+      const data=await FluxRelease.invokeOwnerReleaseAdmin(payload);
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Create failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_create_user',{email:em,temp:!!data.temporaryPasswordReturned});
+      let dlg='Created '+em+'.';
+      if(data.password)dlg+='\n\nTemporary password (copy now):\n'+data.password;
+      alert(dlg);
+      if(typeof showToast==='function')showToast('Auth user created','success');
+      ownerAuthUsersLoad(window.__fluxAuthPage||1);
+    }catch(e){alert(e.message||String(e));}
+  };
+
+  window.ownerAuthSendRecovery=async function(){
+    if(!isOwner())return;
+    const em=(document.getElementById('osAuthRecoveryEmail')?.value||'').trim().toLowerCase();
+    if(!em.includes('@')){alert('Email required.');return;}
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_send_recovery_link',email:em});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Recovery failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_recovery_link',{email:em});
+      const link=data.action_link||'(missing link — check Supabase Auth mail settings)';
+      window.prompt('Copy recovery link:',link);
+    }catch(e){alert(e.message||String(e));}
+  };
+
+  window.ownerAuthInvite=async function(){
+    if(!isOwner())return;
+    const em=(document.getElementById('osAuthInviteEmail')?.value||'').trim().toLowerCase();
+    if(!em.includes('@')){alert('Email required.');return;}
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_invite_user',email:em});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Invite failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_invite',{email:em});
+      if(typeof showToast==='function')showToast('Invite queued — requires SMTP/Send in Supabase','success');
+    }catch(e){alert(e.message||String(e));}
+  };
+
+  window.ownerAuthBan=async function(userId,wantBan){
+    if(!isOwner())return;
+    const b=wantBan===true||wantBan==='true';
+    if(!confirm(b?'Suspend / ban this account?':'Unban this account?'))return;
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_ban_user',userId,banned:b});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Ban update failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_ban',{userId,banned:b});
+      ownerAuthUsersLoad(window.__fluxAuthPage||1);
+    }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
+  };
+
+  window.ownerAuthRevokeSessions=async function(userId){
+    if(!isOwner())return;
+    if(!confirm('Revoke every refresh token for this user (global sign-out)?'))return;
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_revoke_sessions',userId});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Revoke failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_revoke_sessions',{userId});
+      if(typeof showToast==='function')showToast('Sessions revoked','success');
+    }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
+  };
+
+  window.ownerAuthForceRotate=async function(userId){
+    if(!isOwner())return;
+    if(!confirm('Stamp user_metadata flux_password_rotate_required_at for this login?'))return;
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_force_password_rotate',userId});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Update failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_force_pw_flag',{userId});
+      if(typeof showToast==='function')showToast('Flag applied','success');
+    }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
+  };
+
+  window.ownerAuthSetPasswordPrompt=async function(userId){
+    if(!isOwner())return;
+    const pw=window.prompt('New password (min 8 chars). Share out-of-band:','');
+    if(!pw||pw.length<8)return;
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_set_password',userId,password:pw});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Password update failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_set_password',{userId});
+      if(typeof showToast==='function')showToast('Password set','success');
+    }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
+  };
+
+  window.ownerAuthDeleteUser=async function(userId){
+    if(!isOwner())return;
+    if(!confirm('Delete this Supabase Auth user? Planner rows are not deleted automatically.'))return;
+    if(!confirm('Irreversible for the Auth identity. Continue?'))return;
+    try{
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_delete_user',userId});
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Delete failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_delete_user',{userId});
+      ownerAuthUsersLoad(window.__fluxAuthPage||1);
+    }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
   };
 })();

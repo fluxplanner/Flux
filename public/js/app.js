@@ -20,6 +20,7 @@ const DATA_VERSION=5;
       'flux_canvas_due_filter','flux_canvas_hub_tab',
       'flux_canvas_split','flux_canvas_sidebar_collapsed',
       'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
+      'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
     ];
     Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
     localStorage.setItem('flux_data_version',String(DATA_VERSION));
@@ -814,7 +815,7 @@ function maskPrivateField(el,value){
 }
 
 // ══ TOAST NOTIFICATIONS ══
-function showToast(msg,type='success'){
+function showToast(msg,type='success',durationMs=3000){
   const live=document.getElementById('toastLive');if(live)live.textContent=msg;
   // Ensure toast stack container exists — newest toast is prepended so it sits on top
   let stack=document.getElementById('fluxToastStack');
@@ -848,7 +849,7 @@ function showToast(msg,type='success'){
     }else{
       t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(out,220);
     }
-  },3000);
+  },durationMs||3000);
 }
 
 // ══ ACCESSIBILITY · SNOOZE · BULK · EXAM CONFLICTS ══
@@ -1515,7 +1516,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -4891,13 +4892,26 @@ async function sendAI(){
   try{thinkAnim=window.FluxAnim?.aiThinking?.(thinkHost);}catch(e){}
   try{
     if(window.FluxOrchestrator&&FluxOrchestrator.beginThinking)FluxOrchestrator.beginThinking(thinkEl);
+    try{if(window.FluxAIConnections&&typeof FluxAIConnections.beforeSend==='function')await FluxAIConnections.beforeSend(text);}catch(e){}
     if(window.FluxOrchestrator&&FluxOrchestrator.handleSlashCommand){
       const slashNote=FluxOrchestrator.handleSlashCommand(text);
       if(slashNote&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Ran /fix — schedule relief applied on-device.');
     }
     const baseSys=buildAIPrompt();
-    const system=(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)?FluxOrchestrator.augmentSystemPrompt(baseSys,text):baseSys;
+    let system=(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)?FluxOrchestrator.augmentSystemPrompt(baseSys,text):baseSys;
+    if(window.FluxAIConnections&&typeof FluxAIConnections.appendToSystem==='function')system=FluxAIConnections.appendToSystem(system);
+    if(window.FluxAIConnections&&typeof FluxAIConnections.isRoutingConfigured==='function'&&!FluxAIConnections.isRoutingConfigured()){
+      showToast('Connections: finish Models & routing (save API key + model) or pick Flux default.','warning');
+      try{thinkAnim?.cancel?.();}catch(e){}
+      thinkEl.remove();
+      btn.disabled=false;input.focus();
+      return;
+    }
     const body={system,messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))};
+    try{
+      const routeExtra=window.FluxAIConnections&&typeof FluxAIConnections.getRoutingPayload==='function'?FluxAIConnections.getRoutingPayload():null;
+      if(routeExtra&&typeof routeExtra==='object')Object.assign(body,routeExtra);
+    }catch(e){}
     // If image attached, send it for Gemini vision via the ai-proxy
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
@@ -5335,6 +5349,7 @@ async function syncFromCloud(){
           const hit=(rows.data||[]).find(r=>r?.data?.ownerEmail===OWNER_EMAIL);
           if(hit)window.__fluxOwnerRowId=hit.id;
           if(hit?.data?.devAccounts)save('flux_dev_accounts',hit.data.devAccounts);
+          if(hit?.data?.platformConfig)savePublicPlatformBroadcastFromOwner(hit.data.platformConfig);
           if(hit?.data?.platformConfig?.releaseGate){
             save('flux_release_gate',hit.data.platformConfig.releaseGate);
           }
@@ -5342,6 +5357,7 @@ async function syncFromCloud(){
           const ownerRes=await sb.from('user_data').select('data').eq('id',window.__fluxOwnerRowId).single();
           const od=ownerRes?.data?.data;
           if(od?.devAccounts)save('flux_dev_accounts',od.devAccounts);
+          if(od?.platformConfig)savePublicPlatformBroadcastFromOwner(od.platformConfig);
           if(od?.platformConfig?.releaseGate)save('flux_release_gate',od.platformConfig.releaseGate);
         }
       }catch(e){}
@@ -5349,6 +5365,7 @@ async function syncFromCloud(){
     if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
       FluxRelease.applyGate();
     }
+    maybeFluxOwnerAnnouncementToast();
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -5359,6 +5376,82 @@ async function syncFromCloud(){
     if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
     updateMasterBacklogCardVisibility();
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
+}
+
+/** Non-sensitive platform strings from owner's row — safe for non-owner clients (announcement toast, advisory hints). */
+function savePublicPlatformBroadcastFromOwner(pc){
+  if(!pc||typeof pc!=='object')return;
+  const merged={
+    announcement:String(pc.announcement||'').trim(),
+    announcementRevision:(typeof pc.announcementRevision==='number'&&!isNaN(pc.announcementRevision))?Math.max(0,Math.floor(pc.announcementRevision)):0,
+    sessionIdleWarnMins:Math.min(480,Math.max(5,parseInt(pc.sessionIdleWarnMins,10)||60)),
+    complianceContact:String(pc.complianceContact||'').trim(),
+    dataRetentionDays:Math.min(3650,Math.max(30,parseInt(pc.dataRetentionDays,10)||365)),
+  };
+  save('flux_platform_broadcast',merged);
+}
+
+function maybeFluxOwnerAnnouncementToast(){
+  try{
+    if(!currentUser||typeof load!=='function'||typeof showToast!=='function')return;
+    const raw=isOwner()?load('flux_platform_config',{}):load('flux_platform_broadcast',{});
+    const ann=String(raw.announcement||'').trim();
+    if(!ann)return;
+    const rev=(typeof raw.announcementRevision==='number'&&!isNaN(raw.announcementRevision))?Math.max(0,Math.floor(raw.announcementRevision)):0;
+    const sig=`${rev}|${ann}`;
+    const seen=load('flux_platform_ann_seen_sig','');
+    if(seen===sig)return;
+    save('flux_platform_ann_seen_sig',sig);
+    showToast(ann,'info',9500);
+  }catch(e){console.warn('[Flux] announcement toast',e);}
+}
+
+let _fluxIdleTimer=null;
+let _fluxActBound=null;
+let _fluxScrollBound=null;
+
+function stopFluxSessionIdleAdvisory(){
+  if(_fluxIdleTimer){clearInterval(_fluxIdleTimer);_fluxIdleTimer=null;}
+  if(_fluxActBound){
+    window.removeEventListener('keydown',_fluxActBound,true);
+    window.removeEventListener('click',_fluxActBound,true);
+    window.removeEventListener('touchstart',_fluxActBound,true);
+  }
+  if(_fluxScrollBound)window.removeEventListener('scroll',_fluxScrollBound);
+  _fluxActBound=null;
+  _fluxScrollBound=null;
+}
+
+function fluxMarkUserActivity(){window._fluxLastActivityMs=Date.now();}
+
+function initFluxSessionIdleAdvisory(){
+  if(typeof currentUser==='undefined'||!currentUser)return;
+  stopFluxSessionIdleAdvisory();
+  window._fluxLastActivityMs=Date.now();
+  _fluxActBound=function(){fluxMarkUserActivity();};
+  _fluxScrollBound=function(){fluxMarkUserActivity();};
+  window.addEventListener('keydown',_fluxActBound,true);
+  window.addEventListener('click',_fluxActBound,true);
+  window.addEventListener('touchstart',_fluxActBound,true);
+  window.addEventListener('scroll',_fluxScrollBound,{passive:true});
+  _fluxIdleTimer=setInterval(function(){
+    try{
+      if(typeof currentUser==='undefined'||!currentUser)return;
+      const raw=isOwner()?load('flux_platform_config',{}):load('flux_platform_broadcast',{});
+      const mins=Math.min(480,Math.max(5,parseInt(raw.sessionIdleWarnMins,10)||60));
+      const rev=(typeof raw.announcementRevision==='number'&&!isNaN(raw.announcementRevision))?raw.announcementRevision:0;
+      const sigKey='flux_idle_'+String(isOwner()?'owner':'all')+'_'+mins+'_'+rev;
+      try{
+        if(sessionStorage.getItem('flux_idle_tip')===sigKey)return;
+      }catch(_){}
+      const last=window._fluxLastActivityMs||Date.now();
+      if((Date.now()-last)<mins*60000)return;
+      const contact=String(raw.complianceContact||'').trim();
+      const msg=contact?('Session idle reminder (~'+mins+'m). Reach out: '+contact):('You\'ve been quiet for ~'+mins+' minutes — stretch, hydrate, then dive back in.');
+      try{sessionStorage.setItem('flux_idle_tip',sigKey);}catch(_){}
+      if(typeof showToast==='function')showToast(msg,'info',6500);
+    }catch(_){/* ignore */}
+  },90000);
 }
 const syncDebounceTimers={};
 const SYNC_DEBOUNCE_MS=600;
@@ -6696,6 +6789,7 @@ async function signInWithGoogle(){
 
 async function signOut(){
   if(!confirm('Sign out?'))return;
+  if(typeof stopFluxSessionIdleAdvisory==='function')stopFluxSessionIdleAdvisory();
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
   const sb=getSB();
   if(sb) await sb.auth.signOut();
@@ -7070,6 +7164,8 @@ async function handleSignedIn(user,session){
 
   await syncFromCloud();
 
+  initFluxSessionIdleAdvisory();
+
   const onboarded=load('flux_onboarded',false);
   const hasLocalData=tasks.length>0||notes.length>0||classes.length>0;
   // Do not use profile.name here — step 1 saves name before flux_onboarded; excluding profile blocked resume
@@ -7167,6 +7263,7 @@ function handleSignedOut(){
     'flux_canvas_due_filter','flux_canvas_hub_tab',
     'flux_canvas_split','flux_canvas_sidebar_collapsed',
     'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
+    'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
   ];
   const kept={};
   keysToKeep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)kept[k]=v;});
@@ -9183,21 +9280,56 @@ async function syncCanvas(){
 
 // ══ GMAIL PANEL ══
 
+async function ensureGmailTokenFromSession(){
+  if(gmailToken)return true;
+  const sb=getSB();
+  if(!sb)return false;
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session?.provider_token){
+      gmailToken=session.provider_token;
+      sessionStorage.setItem('flux_gmail_token',gmailToken);
+      return true;
+    }
+  }catch(e){}
+  return !!gmailToken;
+}
+
+/** Fills global gmailEmails — usable without Gmail list DOM */
+async function refreshGmailEmailsFromApi(){
+  await ensureGmailTokenFromSession();
+  if(!gmailToken)return false;
+  try{
+    const res=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=14&q=in:inbox',{
+      headers:{'Authorization':`Bearer ${gmailToken}`}
+    });
+    if(res.status===401){
+      gmailToken=null;
+      sessionStorage.removeItem('flux_gmail_token');
+      return false;
+    }
+    if(!res.ok)throw new Error('Gmail API error '+res.status);
+    const data=await res.json();
+    if(!data.messages?.length){gmailEmails=[];try{renderGmailList();}catch(e){}return true;}
+    gmailEmails=await Promise.all(data.messages.map(async m=>{
+      try{
+        const detail=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,{
+          headers:{'Authorization':`Bearer ${gmailToken}`}
+        });
+        const d=await detail.json();
+        const headers=d.payload?.headers||[];
+        const get=name=>headers.find(h=>h.name===name)?.value||'';
+        return{id:m.id,subject:get('Subject'),from:get('From'),date:get('Date'),snippet:d.snippet||''};
+      }catch(e){return{id:m.id,subject:'(error)',from:'',date:'',snippet:''};}
+    }));
+    try{renderGmailList();}catch(e){}
+    return true;
+  }catch(e){return false;}
+}
+
 async function loadGmail(){
   const el=gmailListContainer();if(!el)return;
-  // Try to get token from current session if not already stored
-  if(!gmailToken){
-    const sb=getSB();
-    if(sb){
-      try{
-        const{data:{session}}=await sb.auth.getSession();
-        if(session?.provider_token){
-          gmailToken=session.provider_token;
-          sessionStorage.setItem('flux_gmail_token',gmailToken);
-        }
-      }catch(e){}
-    }
-  }
+  await ensureGmailTokenFromSession();
   if(!gmailToken){
     el.innerHTML=`<div class="card" style="text-align:center;padding:28px 20px">
       <div style="font-size:2rem;margin-bottom:12px">📧</div>
@@ -9211,34 +9343,17 @@ async function loadGmail(){
     return;
   }
   el.innerHTML='<div style="color:var(--muted2);font-size:.82rem;padding:16px;font-family:JetBrains Mono,monospace">Loading emails...</div>';
-  try{
-    const res=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=in:inbox',{
-      headers:{'Authorization':`Bearer ${gmailToken}`}
-    });
-    if(res.status===401){
-      // Token expired — clear and prompt re-login
-      gmailToken=null;sessionStorage.removeItem('flux_gmail_token');
-      el.innerHTML=`<div class="card" style="text-align:center;padding:24px"><div style="color:var(--red);font-size:.85rem;margin-bottom:14px">Gmail session expired.</div><button onclick="signInWithGoogle()" style="padding:10px 20px">Re-connect Gmail</button></div>`;
-      return;
-    }
-    if(!res.ok)throw new Error('Gmail API error '+res.status);
-    const data=await res.json();
-    if(!data.messages?.length){el.innerHTML='<div class="empty">No emails found in inbox.</div>';return;}
-    gmailEmails=await Promise.all(data.messages.map(async m=>{
-      try{
-        const detail=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,{
-          headers:{'Authorization':`Bearer ${gmailToken}`}
-        });
-        const d=await detail.json();
-        const headers=d.payload?.headers||[];
-        const get=name=>headers.find(h=>h.name===name)?.value||'';
-        return{id:m.id,subject:get('Subject'),from:get('From'),date:get('Date'),snippet:d.snippet||''};
-      }catch(e){return{id:m.id,subject:'(error)',from:'',date:'',snippet:''};}
-    }));
-    renderGmailList();
-  }catch(e){
-    el.innerHTML=`<div style="color:var(--red);font-size:.82rem;padding:16px">${e.message}<br><br><button onclick="signInWithGoogle()" style="padding:8px 16px;font-size:.8rem;margin-top:8px">Re-connect Gmail</button></div>`;
+  const ok=await refreshGmailEmailsFromApi();
+  if(!gmailToken){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:24px"><div style="color:var(--red);font-size:.85rem;margin-bottom:14px">Gmail session expired.</div><button onclick="signInWithGoogle()" style="padding:10px 20px">Re-connect Gmail</button></div>`;
+    return;
   }
+  if(!ok){
+    el.innerHTML=`<div style="color:var(--red);font-size:.82rem;padding:16px">Could not load Gmail.<br><br><button onclick="signInWithGoogle()" style="padding:8px 16px;font-size:.8rem;margin-top:8px">Re-connect Google</button></div>`;
+    return;
+  }
+  if(!gmailEmails.length){el.innerHTML='<div class="empty">No emails found in inbox.</div>';return;}
+  renderGmailList();
 }
 
 function renderGmailList(){

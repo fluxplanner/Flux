@@ -481,6 +481,17 @@
     return isReleased(getGate());
   }
 
+  async function invokeOwnerReleaseAdmin(payload) {
+    if (!isOwnerLocal()) {
+      throw new Error("Only the platform owner can run this action");
+    }
+    const p = payload && typeof payload === "object" ? payload : {};
+    const action = String(p.action || "");
+    if (!action) throw new Error("action required");
+    const { action: _omit, ...rest } = p;
+    return callReleaseAdmin(action, rest);
+  }
+
   window.FluxRelease={
     FLUX_BUILD_ID,
     REQUIRE_EXPLICIT_RELEASE,
@@ -495,6 +506,7 @@
     fetchOwnerGate,
     applyGate,
     openPushDialog,
+    invokeOwnerReleaseAdmin,
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);

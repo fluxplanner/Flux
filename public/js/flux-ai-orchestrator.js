@@ -418,6 +418,8 @@ ${JSON.stringify(mem)}
     const add=(o)=>cmds.push(o);
     if(!qq||qq.includes('plan')||qq.includes('/plan'))
       add({icon:'🧭',label:'AI: /plan — study plan with tools',cat:'Flux AI',action:()=>{closeCommandPalette();openFluxAgent({prefill:'/plan Help me build a realistic study plan for the next few days using my tasks, energy, and deadlines.'});}});
+    if(!qq||qq.includes('conn')||qq.includes('workspace')||qq.includes('link'))
+      add({icon:'🔗',label:'Flux AI: Connections',cat:'Flux AI',action:()=>{closeCommandPalette();if(window.openFluxConnections)window.openFluxConnections();}});
     if(!qq||qq.includes('optim'))
       add({icon:'⚡',label:'AI: /optimize — workload + suggestions',cat:'Flux AI',action:()=>{closeCommandPalette();openFluxAgent({prefill:'/optimize Analyze my workload and suggest what to move or trim (use tools if needed).'});}});
     if(!qq||qq.includes('fix')||qq.includes('schedule'))
