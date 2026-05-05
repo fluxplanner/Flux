@@ -89,7 +89,7 @@
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" crossorigin>
 <link rel="stylesheet" href="public/css/styles.css">
 <link rel="stylesheet" href="public/css/login.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
@@ -139,6 +139,11 @@
       <div class="login-left-inner">
         <div class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></div>
         <div class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</div>
+        <div class="login-hover-narrative login-hover-narrative--desktop" aria-label="What you can do in Flux">
+          <p class="login-hover-lede">Plan smarter with <span class="login-hover-link" data-preview="fluxai">Flux AI Tutor</span>, pull deadlines from a photo with <span class="login-hover-link" data-preview="vision">Vision Import</span>, and keep your <span class="login-hover-link" data-preview="gpa">GPA</span> on track with weighted grades and what-ifs.</p>
+          <p><span class="login-hover-link" data-preview="calendar">Smart calendar</span> syncs tasks and Google; <span class="login-hover-link" data-preview="notes">tagged notes</span> and a <span class="login-hover-link" data-preview="timer">focus timer</span> help you get real work done.</p>
+          <p>Track <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, hook up <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and stay in sync everywhere with <span class="login-hover-link" data-preview="cloud">cloud sync</span>.</p>
+        </div>
         <div class="login-badge login-badge--after-hero">✦ AI-Powered Student Planner</div>
         <div class="login-hero-demo login-demo-wrap" aria-live="polite">
           <div class="login-demo-label">What Flux can do</div>
@@ -239,6 +244,11 @@
           <p class="login-demo-line" id="loginDemoLineCard"></p>
         </div>
 
+        <div class="login-hover-narrative login-hover-narrative--card" aria-label="What you can do in Flux">
+          <p class="login-hover-lede">Plan with <span class="login-hover-link" data-preview="fluxai">Flux AI</span>, <span class="login-hover-link" data-preview="vision">Vision Import</span>, and <span class="login-hover-link" data-preview="gpa">GPA</span> tracking. Use <span class="login-hover-link" data-preview="calendar">calendar</span>, <span class="login-hover-link" data-preview="notes">notes</span>, and a <span class="login-hover-link" data-preview="timer">focus timer</span>.</p>
+          <p>Manage <span class="login-hover-link" data-preview="extracurriculars">extracurriculars</span>, <span class="login-hover-link" data-preview="canvas">Canvas &amp; Gmail</span>, and <span class="login-hover-link" data-preview="cloud">cloud sync</span>. On a laptop or desktop, hover a highlight for a quick preview.</p>
+        </div>
+
         <div class="login-feat-bar login-feat-bar--card" aria-label="Included features">
           <div class="login-feat-bar-label">Included in Flux</div>
           <div class="feat-pills-wrap feat-pills-wrap--loginCard">
@@ -305,6 +315,14 @@
       </div>
     </div>
 
+  </div>
+
+  <div id="loginHoverPreviewCard" class="login-hover-preview-card" aria-hidden="true" hidden>
+    <div class="login-hover-preview-card-inner">
+      <img class="login-hover-preview-img" alt="" width="280" height="180" decoding="async">
+      <div class="login-hover-preview-title"></div>
+      <div class="login-hover-preview-sub"></div>
+    </div>
   </div>
 </div>
 
@@ -392,15 +410,54 @@
       <div class="ob-step" id="ob-step-4">
         <div style="font-size:2rem;margin-bottom:10px">📋</div>
         <div class="ob-title">Your Schedule</div>
-        <div class="ob-sub">Upload a photo of your schedule and AI will read it automatically. Or skip and add classes manually later.</div>
-        <div class="schedule-drop" id="scheduleDrop">
-          <input type="file" accept="image/*" id="scheduleImg" onchange="handleScheduleImg(event)">
-          <div style="font-size:1.6rem;margin-bottom:8px">📷</div>
-          <div style="font-size:.88rem;font-weight:600">Drop or tap to upload schedule</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">Screenshot, photo, PDF screenshot</div>
+        <div class="ob-sub">Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.</div>
+        <div class="flux-pdf-import" id="obScheduleImportRoot">
+          <div class="flux-pdf-import__blob flux-pdf-import__blob--tr" aria-hidden="true"></div>
+          <div class="flux-pdf-import__blob flux-pdf-import__blob--bl" aria-hidden="true"></div>
+          <div class="flux-pdf-import__layout" id="obScheduleImportLayout">
+            <div class="flux-pdf-import__main">
+              <div class="flux-pdf-import__drop" id="obScheduleDropZone" role="button" tabindex="0" aria-label="Upload schedule file">
+                <input type="file" accept="image/*,application/pdf,.pdf" id="scheduleImg" class="flux-pdf-import__input" onchange="handleScheduleImg(event)">
+                <div class="flux-pdf-import__icon-stack">
+                  <div class="flux-pdf-import__icon-main" aria-hidden="true">
+                    <svg class="flux-pdf-import__svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </div>
+                  <div class="flux-pdf-import__icon-plus" aria-hidden="true">
+                    <svg class="flux-pdf-import__svg flux-pdf-import__svg--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                </div>
+                <h3 class="flux-pdf-import__title" id="obScheduleDropTitle">Drop your PDF or photo here</h3>
+                <p class="flux-pdf-import__sub" id="obScheduleDropSub">or tap to browse — PDF pages appear as previews before AI runs</p>
+              </div>
+              <div class="flux-pdf-import__actions">
+                <button type="button" class="flux-pdf-import__btn flux-pdf-import__btn--primary" id="obSchedulePickBtn" onclick="document.getElementById('scheduleImg').click()">Select file</button>
+                <button type="button" class="flux-pdf-import__btn flux-pdf-import__btn--outline" id="obScheduleClearBtn" style="display:none" onclick="clearObScheduleImport()">Clear all</button>
+              </div>
+              <div class="flux-pdf-import__filepill" id="obScheduleFileMeta" hidden>
+                <div class="flux-pdf-import__filepill-ico" aria-hidden="true">
+                  <svg class="flux-pdf-import__svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75h6.379a2.25 2.25 0 011.591.659l4.121 4.121a2.25 2.25 0 01.659 1.591V18a2.25 2.25 0 01-2.25 2.25h-10.5A2.25 2.25 0 015 18V6a2.25 2.25 0 012.25-2.25z"/></svg>
+                </div>
+                <div class="flux-pdf-import__filepill-text">
+                  <p class="flux-pdf-import__filepill-name" id="obScheduleFileName"></p>
+                  <p class="flux-pdf-import__filepill-meta" id="obScheduleFileDetails"></p>
+                </div>
+              </div>
+              <div class="flux-pdf-import__alert flux-pdf-import__alert--error" id="obScheduleImportError" role="alert" hidden></div>
+            </div>
+            <div class="flux-pdf-import__pages-wrap" id="obSchedulePageCol" hidden>
+              <div class="flux-pdf-import__pages-label">Page previews</div>
+              <div class="flux-pdf-import__pages" id="obSchedulePages"></div>
+            </div>
+          </div>
+          <div class="flux-pdf-import__overlay" id="obSchedulePdfOverlay" hidden aria-live="polite">
+            <div class="flux-pdf-import__overlay-inner">
+              <div class="flux-pdf-import__spinner" aria-hidden="true"></div>
+              <p>Processing PDF pages…</p>
+            </div>
+          </div>
         </div>
         <div class="schedule-preview" id="schedulePreview">
-          <img id="schedulePreviewImg" src="" alt="Schedule preview" loading="lazy" decoding="async">
+          <img id="schedulePreviewImg" alt="Schedule preview" loading="lazy" decoding="async">
         </div>
         <div id="obAnalyzing" style="display:none" class="ob-analyzing">
           <div class="ob-spin"></div>
@@ -780,9 +837,15 @@
         <div class="cal-cal-section" data-flux-cal-section="hero">
         <div class="card cal-hero-card">
           <div class="cal-nav-row">
-            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-            <div class="cal-month-label" id="calMonthLabel"></div>
-            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(1)">›</button>
+            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(-1)" aria-label="Previous month">‹</button>
+            <div class="cal-month-picker-wrap">
+              <button type="button" class="cal-month-open-btn" id="calMonthOpenBtn" onclick="toggleCalGlassDropdown(event)" aria-expanded="false" aria-controls="calGlassDropdown" aria-haspopup="dialog">
+                <span id="calMonthLabel" class="cal-month-label-text"></span>
+                <span class="cal-month-open-chev" aria-hidden="true">▾</span>
+              </button>
+              <div id="calGlassDropdown" class="flux-cal-glass-dropdown" hidden role="dialog" aria-label="Pick a date"></div>
+            </div>
+            <button type="button" class="btn-sec cal-nav-btn" onclick="changeMonth(1)" aria-label="Next month">›</button>
           </div>
           <div class="cal-grid" id="calGrid"></div>
           <div class="cal-selected-integrated" id="calDayCard">
@@ -959,14 +1022,54 @@
           </div>
         </div>
       </div>
-      <div class="card">
-        <h3>📷 Import Schedule from Photo</h3>
-        <div style="font-size:.82rem;color:var(--muted2);margin-bottom:10px">Upload a screenshot — Gemini AI reads it automatically.</div>
-        <label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px dashed var(--border2);border-radius:12px;cursor:pointer;background:var(--card2)">
-          <span style="font-size:1.5rem">📷</span>
-          <div><div style="font-size:.85rem;font-weight:600">Upload schedule photo</div><div style="font-size:.72rem;color:var(--muted)">StudentConnect screenshot · printed schedule</div></div>
-          <input type="file" accept="image/*" style="display:none" onchange="importScheduleFromPhoto(event,'schoolImgResult')">
-        </label>
+      <div class="card flux-pdf-import-card-host">
+        <h3>📷 Import schedule (PDF or photo)</h3>
+        <div style="font-size:.82rem;color:var(--muted2);margin-bottom:12px">Same flow as onboarding: PDF pages render as thumbnails; AI reads the first page for class extraction.</div>
+        <div class="flux-pdf-import flux-pdf-import--compact" id="schoolScheduleImportRoot">
+          <div class="flux-pdf-import__blob flux-pdf-import__blob--tr" aria-hidden="true"></div>
+          <div class="flux-pdf-import__blob flux-pdf-import__blob--bl" aria-hidden="true"></div>
+          <div class="flux-pdf-import__layout" id="schoolScheduleImportLayout">
+            <div class="flux-pdf-import__main">
+              <div class="flux-pdf-import__drop" id="schoolScheduleDropZone" role="button" tabindex="0" aria-label="Upload schedule PDF or photo">
+                <input type="file" accept="image/*,application/pdf,.pdf" id="schoolScheduleFile" class="flux-pdf-import__input" onchange="importScheduleFromPhoto(event,'schoolImgResult')">
+                <div class="flux-pdf-import__icon-stack">
+                  <div class="flux-pdf-import__icon-main" aria-hidden="true">
+                    <svg class="flux-pdf-import__svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </div>
+                  <div class="flux-pdf-import__icon-plus" aria-hidden="true">
+                    <svg class="flux-pdf-import__svg flux-pdf-import__svg--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                </div>
+                <h3 class="flux-pdf-import__title" id="schoolScheduleDropTitle">Drop your PDF or photo here</h3>
+                <p class="flux-pdf-import__sub" id="schoolScheduleDropSub">or tap to browse from your device</p>
+              </div>
+              <div class="flux-pdf-import__actions">
+                <button type="button" class="flux-pdf-import__btn flux-pdf-import__btn--primary" id="schoolSchedulePickBtn" onclick="document.getElementById('schoolScheduleFile').click()">Select file</button>
+                <button type="button" class="flux-pdf-import__btn flux-pdf-import__btn--outline" id="schoolScheduleClearBtn" style="display:none" onclick="clearSchoolScheduleImport()">Clear all</button>
+              </div>
+              <div class="flux-pdf-import__filepill" id="schoolScheduleFileMeta" hidden>
+                <div class="flux-pdf-import__filepill-ico" aria-hidden="true">
+                  <svg class="flux-pdf-import__svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75h6.379a2.25 2.25 0 011.591.659l4.121 4.121a2.25 2.25 0 01.659 1.591V18a2.25 2.25 0 01-2.25 2.25h-10.5A2.25 2.25 0 015 18V6a2.25 2.25 0 012.25-2.25z"/></svg>
+                </div>
+                <div class="flux-pdf-import__filepill-text">
+                  <p class="flux-pdf-import__filepill-name" id="schoolScheduleFileName"></p>
+                  <p class="flux-pdf-import__filepill-meta" id="schoolScheduleFileDetails"></p>
+                </div>
+              </div>
+              <div class="flux-pdf-import__alert flux-pdf-import__alert--error" id="schoolScheduleImportError" role="alert" hidden></div>
+            </div>
+            <div class="flux-pdf-import__pages-wrap" id="schoolSchedulePageCol" hidden>
+              <div class="flux-pdf-import__pages-label">Page previews</div>
+              <div class="flux-pdf-import__pages" id="schoolSchedulePages"></div>
+            </div>
+          </div>
+          <div class="flux-pdf-import__overlay" id="schoolSchedulePdfOverlay" hidden aria-live="polite">
+            <div class="flux-pdf-import__overlay-inner">
+              <div class="flux-pdf-import__spinner" aria-hidden="true"></div>
+              <p>Processing PDF pages…</p>
+            </div>
+          </div>
+        </div>
         <div id="schoolImgResult" style="display:none;margin-top:10px"></div>
       </div>
       <div class="card">
@@ -1357,8 +1460,8 @@
       <div class="flux-ai-head">
         <div class="flux-ai-mark" aria-hidden="true">
           <svg class="flux-ai-mark-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true" focusable="false">
-            <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
-            <circle cx="12" cy="12" r="3.2"/>
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            <path d="M5 3v4M19 17v4M3 5h4M17 19h4"/>
           </svg>
         </div>
         <div class="flux-ai-title-row">
@@ -1414,6 +1517,11 @@
         <p class="flux-ai-hint"><span class="flux-ai-hint__kbd">/plan</span> · <span class="flux-ai-hint__kbd">/optimize</span> · <span class="flux-ai-hint__kbd">/fix</span> · <span class="flux-ai-hint__kbd">⌘K</span></p>
       </footer>
       </div>
+    </div>
+
+    <!-- ─── OWNER / DEV CONTROL (injected from sidebar when role allows) ─── -->
+    <div id="flux_control" class="panel flux-page flux-control-tab">
+      <div id="fluxControlMount" class="flux-control-mount"></div>
     </div>
 
     <!-- ─── SETTINGS ─── -->
@@ -1679,6 +1787,12 @@
         </div>
       </div>
       <div class="spane" id="spane-data">
+        <div class="card">
+          <h3>Send feedback</h3>
+          <p style="font-size:.78rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Bug reports, ideas, or rough edges — goes to the Flux owner inbox when you’re signed in.</p>
+          <button type="button" class="btn-sec" style="width:100%;padding:10px 14px;font-size:.85rem;font-weight:600" onclick="openFluxFeedbackModal()">💬 Open feedback</button>
+        </div>
+
         <!-- Developer & about -->
         <div class="card">
           <h3>Developer</h3>
@@ -1827,7 +1941,7 @@
       <span class="bnl">Calendar</span>
     </button>
     <button class="bnav-item" onclick="nav('ai',this)" data-tab="ai" aria-label="Flux AI">
-      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+      <span class="bni" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4M19 17v4M3 5h4M17 19h4"/></svg></span>
       <span class="bnl">AI</span>
     </button>
     <button class="bnav-item" onclick="nav('toolbox',this)" data-tab="toolbox" aria-label="Study tools">
@@ -1967,6 +2081,31 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
 <script defer src="public/js/app.js"></script>
+
+<!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
+<div id="fluxFeedbackModal" class="flux-feedback-modal" aria-hidden="true" role="dialog" aria-labelledby="fluxFeedbackTitle" aria-modal="true">
+  <div class="flux-feedback-modal__overlay" data-flux-feedback-overlay></div>
+  <div class="flux-feedback-modal__panel">
+    <button type="button" class="flux-feedback-modal__close" onclick="closeFluxFeedbackModal()" aria-label="Close">×</button>
+    <h2 id="fluxFeedbackTitle" class="flux-feedback-modal__title">Send feedback</h2>
+    <p class="flux-feedback-modal__desc">Your message is sent securely to the product owner. Include what you were doing and what you expected.</p>
+    <p id="fluxFeedbackHint" class="flux-feedback-modal__hint" style="display:none">Sign in with Google (or email) to send feedback.</p>
+    <label class="flux-feedback-modal__label" for="fluxFeedbackCategory">Type</label>
+    <select id="fluxFeedbackCategory" class="flux-feedback-modal__select">
+      <option value="general">General</option>
+      <option value="bug">Bug</option>
+      <option value="idea">Idea</option>
+      <option value="other">Other</option>
+    </select>
+    <label class="flux-feedback-modal__label" for="fluxFeedbackText">Message</label>
+    <textarea id="fluxFeedbackText" class="flux-feedback-modal__textarea" rows="5" maxlength="4000" placeholder="What happened? What would make Flux better?" aria-label="Feedback message"></textarea>
+    <div id="fluxFeedbackError" class="flux-feedback-modal__error" style="display:none" role="alert"></div>
+    <div class="flux-feedback-modal__actions">
+      <button type="button" class="btn-sec" onclick="closeFluxFeedbackModal()">Cancel</button>
+      <button type="button" id="fluxFeedbackSubmit" onclick="submitFluxFeedback()">Send feedback</button>
+    </div>
+  </div>
+</div>
 <script defer src="public/js/flux-canvas-panel.js"></script>
 <script defer src="public/js/flux-release-gate.js"></script>
 <script defer src="public/js/flux-personalization.js"></script>
@@ -2008,6 +2147,7 @@
   </div>
 
   <div class="more-sheet-grid">
+    <div id="moreSheetAdminSlot" class="more-sheet-admin-slot" style="display:contents"></div>
     <button type="button" class="more-sheet-item" data-nav-tab="notes" onclick="navMob('notes')">
       <span class="more-sheet-icon" aria-hidden="true">📝</span><span class="more-sheet-label">Notes</span>
     </button>

@@ -485,19 +485,47 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
   max-width:1100px;margin:0 auto;
   padding-bottom:32px;
 }
-/* Scroll-drawn accent paths (anime.js createDrawable + onScroll) — sits behind dashboard content */
-#dashboard.dash-v2.flux-page.panel{position:relative}
+/* Scroll-drawn accent paths — full viewport width behind dashboard, slow drift */
+#dashboard.dash-v2.flux-page.panel{
+  position:relative;
+  overflow-x:hidden;
+}
 .flux-dash-scroll-paths{
   position:absolute;
-  left:0;
-  right:0;
+  left:50%;
   bottom:0;
-  height:clamp(100px,18vh,200px);
+  transform:translateX(-50%);
+  width:100vw;
+  max-width:none;
+  height:clamp(140px,28vh,320px);
   pointer-events:none;
   z-index:0;
-  opacity:0.55;
+  opacity:0.52;
+  overflow:visible;
 }
-.flux-dash-scroll-paths svg{display:block}
+.flux-dash-scroll-paths-mover{
+  width:118%;
+  height:100%;
+  margin-left:-9%;
+  transform-origin:50% 100%;
+  animation:fluxDashLineMove 26s ease-in-out infinite alternate;
+  will-change:transform;
+}
+.flux-dash-scroll-paths-mover svg{
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:visible;
+}
+@keyframes fluxDashLineMove{
+  0%{transform:translateX(-3.5%) translateY(0)}
+  50%{transform:translateX(1%) translateY(-5px)}
+  100%{transform:translateX(3.5%) translateY(2px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .flux-dash-scroll-paths-mover{animation:none!important}
+}
+html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important}
 .dash-v2-greet,.flux-page-header{
   margin-bottom:18px;padding-bottom:18px;
   border-bottom:1px solid rgba(255,255,255,.06);
@@ -797,10 +825,58 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 .grade-buffer-fill.danger{background:linear-gradient(90deg,var(--red),#ff6b6b)}
 
 .cal-layout{display:flex;flex-direction:column;gap:20px;width:100%;align-items:stretch}
-.cal-hero-card{padding:20px 22px 22px;width:100%}
-.cal-nav-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px}
+.cal-hero-card{padding:20px 22px 22px;width:100%;overflow:visible;position:relative}
+.cal-nav-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;overflow:visible;position:relative;z-index:2}
 .cal-nav-btn{padding:8px 18px;font-size:1.05rem;min-width:44px}
-.cal-month-label{font-size:clamp(1rem,2.2vw,1.25rem);font-weight:800;text-align:center;flex:1;color:var(--accent)}
+.cal-month-picker-wrap{position:relative;flex:1;display:flex;justify-content:center;min-width:0;overflow:visible}
+.cal-month-open-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-radius:14px;border:1px solid rgba(var(--accent-rgb),.28);background:rgba(var(--accent-rgb),.1);color:var(--text);font:inherit;cursor:pointer;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;max-width:100%;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.cal-month-open-btn:hover{background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.42)}
+.cal-month-open-btn[aria-expanded="true"]{box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25)}
+.cal-month-label-text{font-size:clamp(1rem,2.2vw,1.25rem);font-weight:800;color:var(--accent)}
+.cal-month-open-chev{font-size:.7rem;opacity:.6;line-height:1}
+
+/* Glass date picker (Calendar month button dropdown) — vanilla port of glass-calendar UX */
+.flux-cal-glass-dropdown{position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%);z-index:720;width:min(360px,calc(100vw - 28px));border-radius:22px;padding:18px 20px 16px;box-shadow:0 24px 64px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08);background:rgba(12,16,28,.42);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,.12);color:var(--text);text-align:left}
+[data-theme="light"] .flux-cal-glass-dropdown{background:rgba(255,255,255,.72);border-color:rgba(0,0,0,.1);box-shadow:0 20px 50px rgba(0,0,0,.12)}
+.flux-cal-glass-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.flux-cal-glass-tabs{display:flex;align-items:center;gap:4px;padding:4px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
+[data-theme="light"] .flux-cal-glass-tabs{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.08)}
+.flux-cal-glass-tabs button{border:none;border-radius:8px;padding:6px 14px;font-size:.68rem;font-weight:700;cursor:pointer;background:transparent;color:var(--muted2);font-family:'Plus Jakarta Sans',sans-serif;transition:color .12s,background .12s}
+.flux-cal-glass-tabs button.on{background:var(--card);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+[data-theme="light"] .flux-cal-glass-tabs button.on{background:#fff;color:#0f172a}
+.flux-cal-glass-iconbtn{width:36px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.15);color:var(--muted2);cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
+.flux-cal-glass-iconbtn:hover{background:rgba(0,0,0,.28);color:var(--text)}
+.flux-cal-glass-monthrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 14px}
+.flux-cal-glass-monthtitle{font-size:clamp(1.5rem,4vw,2rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.flux-cal-glass-chevrow{display:flex;gap:4px}
+.flux-cal-glass-chevrow button{width:34px;height:34px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.12);color:var(--text);font-size:1.1rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .12s}
+.flux-cal-glass-chevrow button:hover{background:rgba(0,0,0,.22)}
+.flux-cal-glass-scroll{overflow-x:auto;margin:0 -20px;padding:4px 20px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+.flux-cal-glass-scroll::-webkit-scrollbar{display:none}
+.flux-cal-glass-scroll-inner{display:flex;gap:14px;align-items:flex-start}
+.flux-cal-glass-day{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;border:none;background:transparent;cursor:pointer;font:inherit;color:inherit}
+.flux-cal-glass-dow{font-size:.62rem;font-weight:800;color:var(--muted2);text-transform:uppercase;letter-spacing:.04em}
+.flux-cal-glass-dn{width:32px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;position:relative;transition:background .15s,transform .12s,color .12s,box-shadow .15s}
+.flux-cal-glass-day:hover .flux-cal-glass-dn{background:rgba(255,255,255,.12)}
+[data-theme="light"] .flux-cal-glass-day:hover .flux-cal-glass-dn{background:rgba(0,0,0,.08)}
+.flux-cal-glass-day.is-selected .flux-cal-glass-dn{background:linear-gradient(135deg,#ec4899,#fb923c);color:#fff;box-shadow:0 6px 18px rgba(236,72,153,.35)}
+.flux-cal-glass-day.is-today:not(.is-selected) .flux-cal-glass-dn::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:999px;background:#f472b6}
+.flux-cal-glass-task-dot{position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(12,16,28,.5)}
+.flux-cal-glass-day.is-selected .flux-cal-glass-task-dot{box-shadow:0 0 0 2px rgba(236,72,153,.6)}
+.flux-cal-glass-divider{height:1px;background:rgba(255,255,255,.15);margin:12px 0 10px}
+[data-theme="light"] .flux-cal-glass-divider{background:rgba(0,0,0,.1)}
+.flux-cal-glass-footer{display:flex;flex-direction:column;gap:10px}
+.flux-cal-glass-taskline{font-size:.72rem;color:var(--muted2);line-height:1.4}
+.flux-cal-glass-taskline strong{color:var(--text);font-weight:700}
+.flux-cal-glass-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;width:100%}
+.flux-cal-glass-actions .flux-cal-glass-notehit{flex:1 1 140px;text-align:left}
+.flux-cal-glass-actions .flux-cal-glass-btn-task{flex:1 1 100px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:11px;border:1px solid rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.18);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s}
+.flux-cal-glass-actions .flux-cal-glass-btn-task:hover{background:rgba(var(--accent-rgb),.28)}
+.flux-cal-glass-actions .flux-cal-glass-btn-ev{flex:1 1 100px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.2);color:var(--text);font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s}
+.flux-cal-glass-actions .flux-cal-glass-btn-ev:hover{background:rgba(0,0,0,.32)}
+[data-theme="light"] .flux-cal-glass-actions .flux-cal-glass-btn-ev{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.1)}
+.flux-cal-glass-notehit{display:inline-flex;align-items:center;gap:6px;padding:6px 0;font-size:.74rem;color:var(--muted2);cursor:pointer;background:none;border:none;font:inherit}
+.flux-cal-glass-notehit:hover{color:var(--accent)}
 .cal-hero-card .cal-grid{gap:8px}
 .cal-hero-card .cal-dow{font-size:.72rem;padding:10px 4px}
 .cal-hero-card .cal-day{min-height:clamp(64px,9.5vw,104px);padding:7px 6px;border-radius:12px}
@@ -2213,13 +2289,10 @@ button:focus-visible,.nav-item:focus-visible,.tmode-btn:focus-visible,.check:foc
   gap:0!important;
 }
 .sidebar.collapsed .uc-av{margin:0 auto}
-.sidebar.collapsed #modBadge{
-  padding:6px 4px!important;
-  justify-content:center!important;
-  gap:0!important;
-  font-size:.85rem!important;
-}
-.sidebar.collapsed #modBadge > span:not(:first-child){display:none!important}
+
+/* Owner / dev control tab (full planner panel) */
+#flux_control.flux-control-tab.panel{padding-top:12px;padding-bottom:110px}
+#flux_control .flux-control-mount{width:100%;min-height:min(60vh,520px)}
 
 /* ── Release preview banner (owner/dev only): push sticky chrome below it ── */
 body.flux-has-release-banner .topbar{top:var(--flux-release-banner-h,34px)!important}
@@ -3545,3 +3618,454 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 .flux-ai-canvas-context{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:3px 8px;border-radius:8px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.2);font-size:.68rem;color:var(--accent);cursor:default}
 .flux-ai-canvas-context button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:0 2px;line-height:1}
+
+/* ── PDF / schedule import (Flux · vanilla port of pdf-preview-page) ── */
+.flux-pdf-import{
+  --pdf-accent:#facc15;
+  --pdf-accent-dim:rgba(250,204,21,.2);
+  position:relative;
+  overflow:hidden;
+  border-radius:var(--r-lg);
+  background:linear-gradient(165deg,rgba(250,250,252,.06) 0%,rgba(22,28,44,.55) 100%);
+  border:1px solid var(--border2);
+  box-shadow:var(--shadow-card);
+  padding:clamp(18px,3vw,30px);
+  margin-top:10px;
+}
+.flux-pdf-import--compact{padding:clamp(14px,2.5vw,22px)}
+.flux-pdf-import__blob{
+  position:absolute;
+  border-radius:50%;
+  background:var(--pdf-accent-dim);
+  pointer-events:none;
+  transition:transform .35s var(--ease-spring);
+}
+.flux-pdf-import:hover .flux-pdf-import__blob{transform:scale(1.08)}
+.flux-pdf-import__blob--tr{width:128px;height:128px;top:-48px;right:-48px}
+.flux-pdf-import__blob--bl{width:96px;height:96px;bottom:-40px;left:-36px}
+.flux-pdf-import__layout{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:20px;
+}
+.flux-pdf-import--has-pages .flux-pdf-import__layout{
+  flex-direction:row;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+.flux-pdf-import__main{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+}
+.flux-pdf-import--has-pages .flux-pdf-import__main{
+  flex:1 1 280px;
+  max-width:100%;
+}
+.flux-pdf-import__drop{
+  position:relative;
+  width:100%;
+  max-width:420px;
+  padding:clamp(22px,4vw,36px);
+  background:rgba(255,255,255,.04);
+  border-radius:var(--r);
+  cursor:pointer;
+  transition:var(--transition),box-shadow var(--t-base) var(--ease);
+  outline:none;
+}
+.flux-pdf-import__drop:focus-visible{
+  box-shadow:0 0 0 2px rgba(250,204,21,.45);
+}
+.flux-pdf-import__drop::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  border:2px dashed var(--border3);
+  pointer-events:none;
+  transition:border-color var(--t-base) var(--ease);
+}
+.flux-pdf-import__drop:hover::before,.flux-pdf-import__drop--active::before{border-color:var(--pdf-accent)}
+.flux-pdf-import__input{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  cursor:pointer;
+  width:100%;
+  height:100%;
+  font-size:0;
+}
+.flux-pdf-import__icon-stack{
+  position:relative;
+  width:80px;
+  height:80px;
+  margin:0 auto 10px;
+}
+.flux-pdf-import__icon-main{
+  width:80px;height:80px;
+  border-radius:18px;
+  background:var(--pdf-accent);
+  color:#0a0a0a;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transform:rotate(12deg);
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  transition:transform .3s var(--ease-spring);
+}
+.flux-pdf-import__drop:hover .flux-pdf-import__icon-main{transform:rotate(0)}
+.flux-pdf-import__icon-plus{
+  position:absolute;
+  right:-6px;bottom:-6px;
+  width:32px;height:32px;
+  border-radius:50%;
+  background:#0a0a0a;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 6px 16px rgba(0,0,0,.4);
+  transition:transform .2s var(--ease-spring);
+}
+.flux-pdf-import__drop:hover .flux-pdf-import__icon-plus{transform:scale(1.08)}
+.flux-pdf-import__svg{width:40px;height:40px}
+.flux-pdf-import__svg--sm{width:18px;height:18px}
+.flux-pdf-import__title{
+  text-align:center;
+  font-size:clamp(1.05rem,2.4vw,1.25rem);
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:6px;
+  letter-spacing:-.02em;
+}
+.flux-pdf-import__sub{
+  text-align:center;
+  font-size:.8rem;
+  color:var(--muted2);
+  line-height:1.5;
+  max-width:34ch;
+  margin:0 auto;
+}
+.flux-pdf-import__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  justify-content:center;
+  width:100%;
+}
+.flux-pdf-import__btn{
+  font-family:inherit;
+  font-size:.88rem;
+  font-weight:600;
+  padding:12px 22px;
+  border-radius:12px;
+  border:none;
+  cursor:pointer;
+  min-width:148px;
+  transition:transform .2s var(--ease-spring),box-shadow var(--t-base) var(--ease),opacity .15s;
+}
+.flux-pdf-import__btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.flux-pdf-import__btn--primary{
+  background:#0a0a0a;
+  color:#fafafa;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.flux-pdf-import__btn--primary:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 12px 32px rgba(0,0,0,.45);
+}
+.flux-pdf-import__btn--outline{
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  border:2px solid var(--border3);
+}
+.flux-pdf-import__btn--outline:hover{
+  background:rgba(255,255,255,.09);
+  transform:translateY(-2px);
+}
+.flux-pdf-import__filepill{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  width:100%;
+  max-width:420px;
+  padding:16px 18px;
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  box-shadow:var(--shadow-sm);
+}
+.flux-pdf-import__filepill-ico{
+  flex-shrink:0;
+  width:52px;height:52px;
+  border-radius:12px;
+  background:var(--pdf-accent-dim);
+  color:var(--pdf-accent);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.flux-pdf-import__filepill-text{min-width:0;flex:1}
+.flux-pdf-import__filepill-name{
+  font-size:.84rem;
+  font-weight:700;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.flux-pdf-import__filepill-meta{
+  font-size:.72rem;
+  color:var(--muted2);
+  font-family:'JetBrains Mono',monospace;
+  margin-top:4px;
+}
+.flux-pdf-import__pages-wrap{
+  flex:1 1 260px;
+  min-width:0;
+  max-height:min(520px,62vh);
+  overflow:auto;
+  padding-right:4px;
+}
+.flux-pdf-import__pages-label{
+  font-size:.62rem;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  font-family:'JetBrains Mono',monospace;
+  color:var(--muted);
+  margin-bottom:10px;
+  font-weight:700;
+}
+.flux-pdf-import__pages{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.flux-pdf-import__thumb{
+  position:relative;
+  border-radius:12px;
+  overflow:hidden;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.03);
+  box-shadow:var(--shadow-sm);
+}
+.flux-pdf-import__thumb img{
+  display:block;
+  width:100%;
+  height:auto;
+  vertical-align:top;
+}
+.flux-pdf-import__thumb-badge{
+  position:absolute;
+  top:8px;left:8px;
+  z-index:2;
+  font-size:.65rem;
+  font-weight:600;
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(15,18,28,.82);
+  border:1px solid var(--border2);
+  backdrop-filter:blur(8px);
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  color:var(--text2);
+}
+.flux-pdf-import__thumb-badge::before{
+  content:'';
+  width:6px;height:6px;border-radius:50%;
+  background:var(--pdf-accent);
+}
+.flux-pdf-import__overlay{
+  position:absolute;
+  inset:0;
+  z-index:10;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,10,18,.72);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border-radius:inherit;
+}
+.flux-pdf-import__overlay-inner{text-align:center;color:var(--text)}
+.flux-pdf-import__overlay-inner p{margin-top:14px;font-size:.9rem;font-weight:600}
+.flux-pdf-import__spinner{
+  width:44px;height:44px;
+  margin:0 auto;
+  border:4px solid var(--pdf-accent-dim);
+  border-top-color:var(--pdf-accent);
+  border-radius:50%;
+  animation:fluxPdfSpin .75s linear infinite;
+}
+@keyframes fluxPdfSpin{to{transform:rotate(360deg)}}
+.flux-pdf-import__alert{
+  width:100%;
+  max-width:420px;
+  padding:12px 14px;
+  border-radius:12px;
+  font-size:.82rem;
+  line-height:1.45;
+}
+.flux-pdf-import__alert--error{
+  background:rgba(var(--red-rgb),.1);
+  border:1px solid rgba(var(--red-rgb),.28);
+  color:var(--red);
+}
+.flux-pdf-import-card-host .flux-pdf-import{margin-top:0}
+@media(max-width:720px){
+  .flux-pdf-import--has-pages .flux-pdf-import__layout{flex-direction:column}
+  .flux-pdf-import__pages-wrap{max-height:45vh}
+}
+@media(prefers-reduced-motion:reduce){
+  .flux-pdf-import:hover .flux-pdf-import__blob{transform:none}
+  .flux-pdf-import__drop:hover .flux-pdf-import__icon-main{transform:rotate(12deg)}
+  .flux-pdf-import__spinner{animation:none;border-top-color:var(--pdf-accent)}
+}
+
+/* ── Feedback modal (dialog-style) ── */
+.flux-feedback-modal{
+  position:fixed;
+  inset:0;
+  z-index:9960;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  pointer-events:none;
+  visibility:hidden;
+  opacity:0;
+  transition:opacity .2s var(--ease),visibility .2s;
+}
+.flux-feedback-modal.flux-feedback-modal--open{
+  pointer-events:auto;
+  visibility:visible;
+  opacity:1;
+}
+.flux-feedback-modal__overlay{
+  position:absolute;
+  inset:0;
+  background:rgba(4,6,12,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.flux-feedback-modal__panel{
+  position:relative;
+  width:100%;
+  max-width:420px;
+  max-height:min(90vh,640px);
+  overflow-y:auto;
+  background:linear-gradient(165deg,rgba(26,35,53,.98) 0%,rgba(18,24,38,.98) 100%);
+  border:1px solid var(--border2);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-float);
+  padding:22px 20px 18px;
+  transform:scale(.96) translateY(8px);
+  transition:transform .22s var(--ease-spring);
+}
+.flux-feedback-modal--open .flux-feedback-modal__panel{
+  transform:scale(1) translateY(0);
+}
+.flux-feedback-modal__close{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:36px;
+  height:36px;
+  border:none;
+  border-radius:10px;
+  background:rgba(255,255,255,.06);
+  color:var(--muted2);
+  font-size:1.35rem;
+  line-height:1;
+  cursor:pointer;
+  transition:background .15s,color .15s;
+}
+.flux-feedback-modal__close:hover{
+  background:rgba(255,255,255,.1);
+  color:var(--text);
+}
+.flux-feedback-modal__title{
+  font-size:1.15rem;
+  font-weight:800;
+  letter-spacing:-.02em;
+  margin:0 36px 8px 0;
+  color:var(--text);
+}
+.flux-feedback-modal__desc{
+  font-size:.78rem;
+  color:var(--muted2);
+  line-height:1.55;
+  margin:0 0 12px;
+}
+.flux-feedback-modal__hint{
+  font-size:.76rem;
+  color:var(--gold);
+  background:rgba(251,191,36,.1);
+  border:1px solid rgba(251,191,36,.25);
+  border-radius:10px;
+  padding:10px 12px;
+  margin:0 0 14px;
+}
+.flux-feedback-modal__label{
+  display:block;
+  font-size:.65rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+  margin:10px 0 6px;
+}
+.flux-feedback-modal__select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border2);
+  background:var(--card2);
+  color:var(--text);
+  font-size:.85rem;
+  font-family:inherit;
+}
+.flux-feedback-modal__textarea{
+  width:100%;
+  min-height:100px;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid var(--border2);
+  background:rgba(0,0,0,.2);
+  color:var(--text);
+  font-size:.85rem;
+  line-height:1.5;
+  font-family:inherit;
+  resize:vertical;
+  box-sizing:border-box;
+}
+.flux-feedback-modal__textarea:focus{
+  outline:none;
+  border-color:rgba(var(--accent-rgb),.45);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12);
+}
+.flux-feedback-modal__error{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:.78rem;
+  background:rgba(var(--red-rgb),.1);
+  border:1px solid rgba(var(--red-rgb),.25);
+  color:var(--red);
+}
+.flux-feedback-modal__actions{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:16px;
+  flex-wrap:wrap;
+}
+@media(prefers-reduced-motion:reduce){
+  .flux-feedback-modal,.flux-feedback-modal__panel{transition:none}
+}

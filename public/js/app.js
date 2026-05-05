@@ -1154,7 +1154,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control'};
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -1350,6 +1350,7 @@ const API={
   gemini:`${SB_URL}/functions/v1/gemini-proxy`,
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
+  userFeedback:`${SB_URL}/functions/v1/user-feedback`,
 };
 
 async function fluxAuthHeaders(){
@@ -1480,6 +1481,10 @@ function updateNavAriaCurrent(tabId){
 }
 function nav(id,btn,navOpt){
   if(id==='references'){ id='toolbox'; }
+  if(id==='flux_control'){
+    const r=getMyRole();
+    if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
+  }
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
   if(tc&&!tc.visible){nav('dashboard');return;}
@@ -1505,8 +1510,12 @@ function nav(id,btn,navOpt){
   }
   updateNavAriaCurrent(id);
   syncPanelScrollLayout();
-  const tTitle=document.getElementById('topbarTitle');if(tTitle)tTitle.textContent=PANEL_TITLES[id]||id;
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();}};
+  const tTitle=document.getElementById('topbarTitle');
+  if(tTitle){
+    if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
+    else tTitle.textContent=PANEL_TITLES[id]||id;
+  }
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderAiInsightStrip();FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -1619,7 +1628,7 @@ function populateSubjectSelects(){
 const NAV_TAB_SVGS={
   dashboard:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg>`,
   calendar:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
-  ai:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg>`,
+  ai:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>`,
   /* Horizontal “more” — not a 3×3 grid (avoid clash with app tiles / periodic) */
   more:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
   school:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v9"/><path d="M20 10v9"/><path d="M2 20h20"/><path d="m4 10 8-3 8 3"/><path d="M9 20v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/></svg>`,
@@ -1632,8 +1641,9 @@ const NAV_TAB_SVGS={
   /* People / clubs — not concentric rings (was too close to old AI look) */
   goals:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   mood:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h.01M16 10h.01"/><path d="M8.2 15a4 4 0 0 0 7.6 0"/></svg>`,
-  /* Sliders — distinct from Flux AI sunburst */
+  /* Sliders — distinct from Flux AI sparkles */
   settings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 3v5"/><path d="M20 21v-5"/><path d="M20 8V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 14h4"/></svg>`,
+  flux_control:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>`,
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
@@ -1689,6 +1699,25 @@ function renderSidebars(){
 
   const drawerNav=document.querySelector('.mob-drawer-nav');
   if(drawerNav)drawerNav.innerHTML=buildNav('navMob');
+
+  const role=getMyRole();
+  if(role==='owner'||role==='dev'){
+    const lab=role==='owner'?'Owner control':'Dev panel';
+    const adminGroup=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="nav('flux_control',this)" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
+    const adminGroupMob=`<div class="nav-group"><div class="nav-group-label">Admin</div><button type="button" class="nav-item" onclick="navMob('flux_control')" data-tab="flux_control" aria-label="${lab}"><span class="ni">${getNavIconHtml('flux_control')}</span><span class="nl">${lab}</span></button></div>`;
+    if(sidebarNav)sidebarNav.insertAdjacentHTML('beforeend',adminGroup);
+    if(drawerNav)drawerNav.insertAdjacentHTML('beforeend',adminGroupMob);
+  }
+
+  const adminSlot=document.getElementById('moreSheetAdminSlot');
+  if(adminSlot){
+    if(role==='owner'||role==='dev'){
+      const lab=role==='owner'?'Owner control':'Dev panel';
+      adminSlot.innerHTML=`<button type="button" class="more-sheet-item" data-nav-tab="flux_control" onclick="navMob('flux_control')"><span class="more-sheet-icon" aria-hidden="true">${getNavIconHtml('flux_control','moreSheet')}</span><span class="more-sheet-label">${lab}</span></button>`;
+    }else{
+      adminSlot.innerHTML='';
+    }
+  }
 
   // Mobile bottom nav is always the same 5 spec tabs:
   // Home · Calendar · AI · Study · More (opens bottom sheet, not drawer).
@@ -2421,6 +2450,8 @@ function changeMonth(d){
     if(calMonth>11){calMonth=0;calYear++;}
     if(calMonth<0){calMonth=11;calYear--;}
     renderCalendar();
+    const gdd=document.getElementById('calGlassDropdown');
+    if(gdd&&!gdd.hidden&&typeof renderCalGlassDropdown==='function')renderCalGlassDropdown();
     if(animate){
       const g=document.getElementById('calGrid');
       if(g){
@@ -2438,6 +2469,142 @@ function changeMonth(d){
   }
 }
 function selectDay(d){calSelected=d;renderCalendar();document.getElementById('calAddBtn').style.display='inline-flex';}
+
+// ── Calendar glass date picker (month title dropdown; task-focused) ──
+let calGlassMode='month';
+function calGlassOpenTasksOn(y,m,d){
+  const ds=fluxLocalYMD(new Date(y,m,d));
+  return tasks.filter(t=>t.date===ds&&!t.done).length;
+}
+function toggleCalGlassDropdown(ev){
+  if(ev&&typeof ev.stopPropagation==='function')ev.stopPropagation();
+  const dd=document.getElementById('calGlassDropdown');
+  const btn=document.getElementById('calMonthOpenBtn');
+  if(!dd||!btn)return;
+  if(!dd.hidden){closeCalGlassDropdown();return;}
+  dd.hidden=false;
+  btn.setAttribute('aria-expanded','true');
+  renderCalGlassDropdown();
+  setTimeout(()=>{document.addEventListener('click',calGlassOutsideClose,true);},0);
+}
+function closeCalGlassDropdown(){
+  const dd=document.getElementById('calGlassDropdown');
+  const btn=document.getElementById('calMonthOpenBtn');
+  if(dd)dd.hidden=true;
+  if(btn)btn.setAttribute('aria-expanded','false');
+  document.removeEventListener('click',calGlassOutsideClose,true);
+}
+function calGlassOutsideClose(e){
+  const dd=document.getElementById('calGlassDropdown');
+  const btn=document.getElementById('calMonthOpenBtn');
+  if(!dd||dd.hidden)return;
+  if(dd.contains(e.target)||btn&&btn.contains(e.target))return;
+  closeCalGlassDropdown();
+}
+function calGlassSetMode(mode){
+  calGlassMode=mode==='week'?'week':'month';
+  renderCalGlassDropdown();
+}
+function calGlassScrollToSchedule(){
+  closeCalGlassDropdown();
+  const el=document.querySelector('[data-flux-cal-section="schedule"]');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function calGlassSelectDay(d){
+  selectDay(d);
+  closeCalGlassDropdown();
+}
+function calGlassSelectDayFromDate(y,ma,d){
+  calYear=y;calMonth=ma;calSelected=d;
+  renderCalendar();
+  closeCalGlassDropdown();
+}
+function calGlassNoteQuick(){
+  const ds=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+  closeCalGlassDropdown();
+  nav('notes');
+  if(typeof showToast==='function')showToast('Notes — capture something for '+ds,'info');
+}
+function renderCalGlassDropdown(){
+  const dd=document.getElementById('calGlassDropdown');
+  if(!dd||dd.hidden)return;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const now=new Date();now.setHours(0,0,0,0);
+  const y=calYear,m=calMonth;
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const selStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+  let daysHtml='';
+  if(calGlassMode==='month'){
+    for(let d=1;d<=daysInMonth;d++){
+      const dt=new Date(y,m,d);
+      const isToday=dt.getTime()===now.getTime();
+      const isSel=fluxLocalYMD(dt)===selStr;
+      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
+      const cnt=calGlassOpenTasksOn(y,m,d);
+      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDay(${d})" aria-pressed="${isSel?'true':'false'}" aria-label="${months[m]} ${d}, ${cnt} open tasks">
+        <span class="flux-cal-glass-dow">${wk}</span>
+        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${d}</span>
+      </button>`;
+    }
+  }else{
+    const ref=new Date(y,m,calSelected);
+    const dow=ref.getDay();
+    const start=new Date(ref);
+    start.setDate(ref.getDate()-dow);
+    for(let i=0;i<7;i++){
+      const dt=new Date(start);
+      dt.setDate(start.getDate()+i);
+      const dy=dt.getDate(),dm=dt.getMonth(),dyy=dt.getFullYear();
+      const isToday=dt.getTime()===now.getTime();
+      const isSel=fluxLocalYMD(dt)===selStr;
+      const wk=dt.toLocaleDateString('en-US',{weekday:'short'}).charAt(0);
+      const cnt=calGlassOpenTasksOn(dyy,dm,dy);
+      daysHtml+=`<button type="button" class="flux-cal-glass-day${isSel?' is-selected':''}${isToday?' is-today':''}" onclick="calGlassSelectDayFromDate(${dyy},${dm},${dy})" aria-pressed="${isSel?'true':'false'}">
+        <span class="flux-cal-glass-dow">${wk}</span>
+        <span class="flux-cal-glass-dn">${cnt>0?`<span class="flux-cal-glass-task-dot" aria-hidden="true"></span>`:''}${dy}</span>
+      </button>`;
+    }
+  }
+  const selDs=selStr;
+  const openTasks=tasks.filter(t=>t.date===selDs&&!t.done).length;
+  const evList=load('flux_events',[]);
+  const dayEv=(Array.isArray(evList)?evList:[]).filter(e=>e.date===selDs).length;
+  let summary=`${openTasks} open task${openTasks===1?'':'s'}`;
+  if(dayEv)summary+=` · ${dayEv} event${dayEv===1?'':'s'}`;
+  summary+=` · <strong>${selDs}</strong>`;
+  dd.innerHTML=`
+    <div class="flux-cal-glass-inner">
+      <div class="flux-cal-glass-top">
+        <div class="flux-cal-glass-tabs" role="tablist">
+          <button type="button" role="tab" class="${calGlassMode==='week'?'on':''}" onclick="calGlassSetMode('week')">Weekly</button>
+          <button type="button" role="tab" class="${calGlassMode==='month'?'on':''}" onclick="calGlassSetMode('month')">Monthly</button>
+        </div>
+        <button type="button" class="flux-cal-glass-iconbtn" onclick="calGlassScrollToSchedule()" title="Cycle &amp; weekly schedule">⚙</button>
+      </div>
+      <div class="flux-cal-glass-monthrow">
+        <span class="flux-cal-glass-monthtitle">${months[m]} ${y}</span>
+        <div class="flux-cal-glass-chevrow">
+          <button type="button" aria-label="Previous month" onclick="changeMonth(-1)">‹</button>
+          <button type="button" aria-label="Next month" onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div class="flux-cal-glass-scroll"><div class="flux-cal-glass-scroll-inner">${daysHtml}</div></div>
+      <div class="flux-cal-glass-divider" aria-hidden="true"></div>
+      <div class="flux-cal-glass-footer">
+        <div class="flux-cal-glass-taskline" role="status">${summary}</div>
+        <div class="flux-cal-glass-actions">
+          <button type="button" class="flux-cal-glass-notehit" onclick="calGlassNoteQuick()">✎ Add a note…</button>
+          <button type="button" class="flux-cal-glass-btn-task" onclick="closeCalGlassDropdown();openAddForDate();">＋ Task</button>
+          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();setAddEventType('event');openAddEventModal();">＋ Event</button>
+        </div>
+      </div>
+    </div>`;
+}
+document.addEventListener('keydown',e=>{
+  const dd=document.getElementById('calGlassDropdown');
+  if(dd&&!dd.hidden&&e.key==='Escape'){e.preventDefault();closeCalGlassDropdown();}
+});
+
 function openAddForDate(){
   const dateStr=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
   // Show inline add-task modal in calendar instead of navigating away
@@ -3949,6 +4116,71 @@ function hasDevPerm(perm){
   if(isOwner())return true;
   return getMyDevPerms().includes(perm);
 }
+
+/** Sections the owner can show/hide on ⚡ Dev Panel for dev accounts (owner always sees all + this editor). */
+const DEV_PANEL_SECTION_META=[
+  {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
+  {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
+  {id:'actions',label:'Clear & sync',desc:'Clear my data and force cloud sync'},
+  {id:'stagedRollout',label:'Staged rollout',desc:'Build preview and push to all users'},
+];
+function getDevPanelSectionsMap(){
+  const pc=load('flux_platform_config',{})||{};
+  const raw=pc.devPanelSections&&typeof pc.devPanelSections==='object'?pc.devPanelSections:{};
+  const out={};
+  DEV_PANEL_SECTION_META.forEach(s=>{out[s.id]=raw[s.id]!==false;});
+  return out;
+}
+function devPanelShowsSection(sectionId){
+  if(isOwner())return true;
+  if(getMyRole()!=='dev')return false;
+  return getDevPanelSectionsMap()[sectionId]===true;
+}
+function saveDevPanelSectionsMap(map){
+  const next={...getDevPanelSectionsMap(),...map};
+  if(typeof savePlatformConfig==='function'){
+    savePlatformConfig({devPanelSections:next});
+  }else{
+    const pc=load('flux_platform_config',{})||{};
+    pc.devPanelSections=next;
+    save('flux_platform_config',pc);
+  }
+  try{if(typeof syncKey==='function')syncKey('platform',1);}catch(_){}
+  try{if(isOwner()&&typeof syncToCloud==='function')void syncToCloud();}catch(_){}
+  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('dev_panel_layout',JSON.stringify(next));}catch(_){}
+}
+function renderDevPanelLayoutEditorHtml(){
+  if(!isOwner())return'';
+  const map=getDevPanelSectionsMap();
+  return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
+    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
+    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in ⚡ Dev Panel. You always see every section.</div>
+    ${DEV_PANEL_SECTION_META.map(s=>{
+      const on=map[s.id];
+      return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
+        <input type="checkbox" data-dev-panel-section="${s.id}" ${on?'checked':''} style="margin-top:3px;width:15px;height:15px;flex-shrink:0">
+        <span><b>${esc(s.label)}</b><br><span style="font-size:.68rem;color:var(--muted2)">${esc(s.desc)}</span></span>
+      </label>`;
+    }).join('')}
+    <button type="button" onclick="saveDevPanelSectionsFromCheckboxes(this)" style="margin-top:12px;width:100%;padding:9px;font-size:.78rem;font-weight:700;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);cursor:pointer">Save layout for devs</button>
+  </div>`;
+}
+window.saveDevPanelSectionsFromCheckboxes=function(anchor){
+  if(!isOwner())return;
+  const wrap=anchor&&anchor.closest?anchor.closest('.dev-panel-layout-editor-wrap'):null;
+  const scope=wrap||document;
+  const next={};
+  scope.querySelectorAll('[data-dev-panel-section]').forEach(cb=>{
+    next[cb.getAttribute('data-dev-panel-section')]=cb.checked;
+  });
+  saveDevPanelSectionsMap(next);
+  if(typeof showToast==='function')showToast('Dev panel layout saved','success');
+  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function')renderFluxControlTab();
+  else if(document.getElementById('modPanel'))openModPanel();
+  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('team');
+};
+window.renderDevPanelLayoutEditorHtml=renderDevPanelLayoutEditorHtml;
+
 function isDevMode(){return load('flux_dev_mode',false);}
 
 // Load dev accounts from cloud (stored under owner's Supabase row)
@@ -3970,34 +4202,25 @@ async function saveDevAccounts(devAccounts){
 }
 
 function initModFeatures(){
-  const role=getMyRole();
-  if(role==='user')return;
-  const footer=document.querySelector('.sidebar-footer');
-  if(!footer||document.getElementById('modBadge'))return;
-  const badge=document.createElement('div');
-  badge.id='modBadge';
-  const isOwnerAcc=role==='owner';
-  badge.style.cssText=`padding:6px 10px;margin-bottom:6px;background:${isOwnerAcc?'linear-gradient(135deg,rgba(251,191,36,.2),rgba(249,115,22,.15))':'linear-gradient(135deg,rgba(var(--accent-rgb),.15),rgba(192,132,252,.1))'};border:1px solid ${isOwnerAcc?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:10px;font-size:.68rem;font-family:JetBrains Mono,monospace;color:${isOwnerAcc?'var(--gold)':'var(--accent)'};display:flex;align-items:center;gap:6px;cursor:pointer`;
-  badge.innerHTML=`<span>${isOwnerAcc?'👑':'⚡'}</span><span>${isOwnerAcc?'Owner':'Dev Account'}</span><span style="margin-left:auto;opacity:.6">${isDevMode()?'DEV':'LIVE'}</span>`;
-  badge.onclick=()=>{
-    if(isOwnerAcc&&typeof openOwnerSuite==='function')openOwnerSuite();
-    else openModPanel();
-  };
-  footer.insertBefore(badge,footer.firstChild);
+  /* Owner / dev tools: sidebar → Admin → Owner control or Dev panel (full planner tab). */
 }
 
-function openModPanel(){
+function buildModPanelCardHtml(embed){
   const role=getMyRole();
-  if(role==='user')return;
-  const existing=document.getElementById('modPanel');if(existing)existing.remove();
-  const panel=document.createElement('div');
-  panel.id='modPanel';
-  panel.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);overflow-y:auto';
-
   const devMode=isDevMode();
   const devAccounts=load('flux_dev_accounts',[]);
   const allPerms=['clear_data','feature_flags','dev_mode','manage_devs','view_users'];
   const permLabels={clear_data:'Clear Data',feature_flags:'Feature Flags',dev_mode:'Dev Mode Toggle',manage_devs:'Manage Dev Accounts',view_users:'View Users'};
+  const myPerms=getMyDevPerms();
+  const showDevModeBlock=devPanelShowsSection('devMode')&&(isOwner()||myPerms.includes('dev_mode'));
+  const showFlagsBlock=devPanelShowsSection('featureFlags')&&(isOwner()||myPerms.includes('feature_flags'));
+  const showActionsBlock=devPanelShowsSection('actions');
+  const showClearBtn=showActionsBlock&&(isOwner()||myPerms.includes('clear_data'));
+  const showForceSync=showActionsBlock;
+  const showStagedBlock=devPanelShowsSection('stagedRollout');
+  const devPanelEmpty=!isOwner()&&!showDevModeBlock&&!showFlagsBlock&&!showActionsBlock&&!showStagedBlock;
+  const dismissClick=embed?`onclick="nav('dashboard')"`:`onclick="document.getElementById('modPanel')?.remove()"`;
+  const cardScroll=embed?'max-height:none;overflow:visible':'max-height:90vh;overflow-y:auto';
 
   const devAccountsHTML=isOwner()?`
     <div style="margin-top:18px">
@@ -4020,10 +4243,8 @@ function openModPanel(){
       </div>
     </div>`:'';
 
-  const myPerms=getMyDevPerms();
-
-  panel.innerHTML=`
-    <div style="background:var(--card);border:1px solid ${role==='owner'?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:22px;padding:24px;width:100%;max-width:500px;box-shadow:0 32px 80px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto">
+  return`
+    <div style="background:var(--card);border:1px solid ${role==='owner'?'rgba(251,191,36,.4)':'rgba(var(--accent-rgb),.3)'};border-radius:22px;padding:24px;width:100%;max-width:500px;box-shadow:${embed?'0 8px 40px rgba(0,0,0,.2)':'0 32px 80px rgba(0,0,0,.6)'};${cardScroll}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
         <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
         <div>
@@ -4031,18 +4252,22 @@ function openModPanel(){
           <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${currentUser?.email}</div>
         </div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()}</span>
-          <button onclick="document.getElementById('modPanel').remove()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0">✕</button>
+          <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
+          <button type="button" ${dismissClick} style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0" aria-label="${embed?'Back to planner':'Close'}">✕</button>
         </div>
       </div>
 
-      ${(isOwner()||myPerms.includes('dev_mode'))?`
+      ${isOwner()?renderDevPanelLayoutEditorHtml():''}
+
+      ${devPanelEmpty?`<div style="padding:14px 12px;margin-bottom:8px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;font-size:.78rem;color:var(--muted2);line-height:1.5">No sections are enabled for dev accounts on this panel. Ask the owner to turn sections on in <b>Dev Panel</b> or <b>Owner Suite → Team &amp; roles</b>.</div>`:''}
+
+      ${showDevModeBlock?`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
         <div><div style="font-size:.87rem;font-weight:700">🧪 Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
         <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
       </div>`:''}
 
-      ${(isOwner()||myPerms.includes('feature_flags'))?`
+      ${showFlagsBlock?`
       <div style="margin-top:14px;margin-bottom:6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">Feature Flags</div>
       ${['ai','canvas','calendar','goals','mood','timer','notes'].map(f=>{
         const enabled=load('flux_feat_'+f,true);
@@ -4052,12 +4277,12 @@ function openModPanel(){
         </div>`;
       }).join('')}`:''}
 
-      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${(isOwner()||myPerms.includes('clear_data'))?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">🗑 Clear My Data</button>`:''}
-        <button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>
-      </div>
+      ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">🗑 Clear My Data</button>`:''}
+        ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
+      </div>`:''}
 
-      ${(()=>{
+      ${showStagedBlock?(()=>{
         const buildId=(typeof FLUX_BUILD_ID!=='undefined'&&FLUX_BUILD_ID)||(window.FLUX_BUILD_ID||'unknown');
         const gate=(typeof FluxRelease!=='undefined'&&FluxRelease.getGate())||null;
         const released=gate&&gate.released?String(gate.released).replace(/^build-/,''):'— none yet';
@@ -4070,17 +4295,62 @@ function openModPanel(){
             <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
           </div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?.6:1}">${isLive?'✓ Build already released':'🚀 Push this build to all users'}</button>
+          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'🚀 Push this build to all users'}</button>
         </div>`;
-      })()}
+      })():''}
 
       ${devAccountsHTML}
     </div>`;
+}
+
+function refreshFluxControlIfActive(){
+  const p=document.getElementById('flux_control');
+  if(p&&p.classList.contains('active')&&typeof renderFluxControlTab==='function'){
+    renderFluxControlTab();
+    return true;
+  }
+  return false;
+}
+
+function renderFluxControlTab(){
+  const mount=document.getElementById('fluxControlMount');
+  if(!mount)return;
+  document.getElementById('modPanel')?.remove();
+  document.getElementById('ownerSuite')?.remove();
+  const role=getMyRole();
+  if(role==='owner'&&typeof openOwnerSuite==='function'){
+    const pref=window.__fluxOwnerPrefTab;
+    window.__fluxOwnerPrefTab=null;
+    openOwnerSuite(pref,{mount,skipNav:true});
+  }else if(role==='dev'){
+    openModPanel({mount});
+  }
+}
+window.renderFluxControlTab=renderFluxControlTab;
+
+function openModPanel(opts){
+  opts=opts||{};
+  const role=getMyRole();
+  if(role==='user')return;
+  if(opts.mount){
+    opts.mount.innerHTML=`<div class="flux-mod-panel-embed" style="max-width:520px;margin:0 auto">${buildModPanelCardHtml(true)}</div>`;
+    return;
+  }
+  const existing=document.getElementById('modPanel');if(existing)existing.remove();
+  const panel=document.createElement('div');
+  panel.id='modPanel';
+  panel.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9800;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);overflow-y:auto';
+  panel.innerHTML=buildModPanelCardHtml(false);
   document.body.appendChild(panel);
 }
 
 function refreshDevAccountUI(){
-  if(document.getElementById('ownerSuite')&&typeof openOwnerSuite==='function')openOwnerSuite();
+  if(document.getElementById('flux_control')?.classList.contains('active')&&typeof renderFluxControlTab==='function'){
+    renderFluxControlTab();
+    return;
+  }
+  if(typeof reopenOwnerSuite==='function'&&document.getElementById('ownerSuite'))reopenOwnerSuite();
+  else if(document.getElementById('ownerSuite')&&typeof openOwnerSuite==='function')openOwnerSuite(undefined,{overlay:true});
   else openModPanel();
 }
 
@@ -4121,8 +4391,7 @@ function toggleDevPerm(idx,perm,btn){
 function toggleDevMode(){
   const cur=isDevMode();
   save('flux_dev_mode',!cur);
-  openModPanel();
-  initModFeatures();
+  if(!refreshFluxControlIfActive())openModPanel();
 }
 
 function toggleFeatureFlag(feature,btn){
@@ -4148,6 +4417,7 @@ function clearMyPlannerData(){
   renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   if(currentUser)syncToCloud();
   document.getElementById('modPanel')?.remove();
+  refreshFluxControlIfActive();
   const n=document.createElement('div');
   n.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green);color:#080a0f;padding:10px 20px;border-radius:10px;font-size:.82rem;font-weight:700;z-index:9999';
   n.textContent='✓ Planner data cleared';
@@ -4906,6 +5176,7 @@ function getCloudPayload(){
       ownerEmail:OWNER_EMAIL,
       platformConfig:load('flux_platform_config',{}),
       ownerAuditLog:load('flux_owner_audit',[]),
+      feedbackInbox:load('flux_feedback_inbox',[]),
     }:{}),
   };
 }
@@ -4914,7 +5185,29 @@ async function syncToCloud(){
   const sb=getSB();if(!sb)return;
   setSyncStatus('syncing');
   try{
-    const payload=getCloudPayload();
+    let payload=getCloudPayload();
+    if(isOwner()){
+      try{
+        const {data:row}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
+        const remote=row?.data?.feedbackInbox;
+        const local=load('flux_feedback_inbox',[]);
+        const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+        const mergedMap=new Map();
+        if(Array.isArray(remote)){
+          remote.forEach(x=>{
+            if(x&&x.id&&!tomb.has(String(x.id)))mergedMap.set(x.id,x);
+          });
+        }
+        if(Array.isArray(local)){
+          local.forEach(x=>{
+            if(x&&x.id&&!tomb.has(String(x.id)))mergedMap.set(x.id,x);
+          });
+        }
+        const merged=[...mergedMap.values()].sort((a,b)=>(a.t||0)-(b.t||0)).slice(-300);
+        save('flux_feedback_inbox',merged);
+        payload.feedbackInbox=merged;
+      }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
+    }
     const{error}=await sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:new Date().toISOString()},{onConflict:'id'});
     if(error){
       console.error('Sync error:',error);
@@ -5027,6 +5320,11 @@ async function syncFromCloud(){
     if(isOwner()){
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
+      if(Array.isArray(d.feedbackInbox)){
+        const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+        const next=d.feedbackInbox.filter(x=>x&&x.id&&!tomb.has(String(x.id)));
+        save('flux_feedback_inbox',next.slice(-300));
+      }
     }
     // Dev accounts + release gate: fetch from owner's row (single source of truth).
     // Owner's row also hosts platformConfig.releaseGate which controls staged rollout.
@@ -5131,6 +5429,116 @@ function syncKey(key,val){
   const delay=key==='tasks'?SYNC_DEBOUNCE_TASKS_MS:SYNC_DEBOUNCE_MS;
   syncDebounceTimers[key]=setTimeout(()=>{ void syncToCloud(); },delay);
 }
+
+// ══ USER FEEDBACK → owner cloud inbox (Edge Function user-feedback) ══
+function openFluxFeedbackModal(){
+  const m=document.getElementById('fluxFeedbackModal');
+  if(!m)return;
+  m.classList.add('flux-feedback-modal--open');
+  m.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  const ta=document.getElementById('fluxFeedbackText');
+  if(ta){ta.value='';ta.focus();}
+  const hint=document.getElementById('fluxFeedbackHint');
+  if(hint)hint.style.display=currentUser?'none':'block';
+  const sub=document.getElementById('fluxFeedbackSubmit');
+  if(sub)sub.disabled=!currentUser;
+}
+function closeFluxFeedbackModal(){
+  const m=document.getElementById('fluxFeedbackModal');
+  if(!m)return;
+  m.classList.remove('flux-feedback-modal--open');
+  m.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+}
+async function submitFluxFeedback(){
+  const ta=document.getElementById('fluxFeedbackText');
+  const cat=document.getElementById('fluxFeedbackCategory');
+  const err=document.getElementById('fluxFeedbackError');
+  const sub=document.getElementById('fluxFeedbackSubmit');
+  if(err){err.textContent='';err.style.display='none';}
+  if(!currentUser){
+    if(typeof showToast==='function')showToast('Sign in to send feedback','info');
+    return;
+  }
+  const msg=(ta?.value||'').trim();
+  if(!msg){
+    if(err){err.textContent='Write something first.';err.style.display='block';}
+    return;
+  }
+  if(sub){sub.disabled=true;sub.textContent='Sending…';}
+  try{
+    const session=await getSB()?.auth?.getSession();
+    const token=session?.data?.session?.access_token;
+    if(!token)throw new Error('Session expired — sign in again.');
+    const res=await fetch(API.userFeedback,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SB_ANON},
+      body:JSON.stringify({
+        message:msg,
+        category:(cat?.value||'general'),
+        path:location.pathname+location.search,
+      }),
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+    if(typeof showToast==='function')showToast('Thanks — feedback sent!','success');
+    closeFluxFeedbackModal();
+  }catch(e){
+    if(err){err.textContent=e.message||'Could not send.';err.style.display='block';}
+    if(typeof showToast==='function')showToast('Feedback failed to send','error');
+  }finally{
+    if(sub){sub.disabled=false;sub.textContent='Send feedback';}
+  }
+}
+function initFluxFeedbackModal(){
+  const m=document.getElementById('fluxFeedbackModal');
+  if(!m||m.dataset.bound)return;
+  m.dataset.bound='1';
+  m.querySelector('[data-flux-feedback-overlay]')?.addEventListener('click',closeFluxFeedbackModal);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&m.classList.contains('flux-feedback-modal--open'))closeFluxFeedbackModal();
+  });
+}
+
+window.ownerRefreshFeedbackInbox=async function(){
+  if(typeof isOwner!=='function'||!isOwner())return;
+  try{
+    await syncFromCloud();
+    if(typeof showToast==='function')showToast('Inbox refreshed','success');
+  }catch(e){}
+  const os=document.getElementById('ownerSuite');
+  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
+  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
+};
+
+window.ownerDismissFeedback=function(fid){
+  if(typeof isOwner!=='function'||!isOwner())return;
+  const ts=load('flux_feedback_tombstones',[]);
+  if(fid&&!ts.includes(fid)){
+    ts.push(fid);
+    save('flux_feedback_tombstones',ts.slice(-500));
+  }
+  const arr=(load('flux_feedback_inbox',[])||[]).filter(x=>x&&x.id!==fid);
+  save('flux_feedback_inbox',arr);
+  void syncToCloud();
+  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_dismiss',{id:fid});}catch(_){}
+  const os=document.getElementById('ownerSuite');
+  if(os&&typeof window.__osSetTab==='function')window.__osSetTab('feedback');
+  else if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('feedback');
+};
+
+window.ownerExportFeedbackJson=function(){
+  if(typeof isOwner!=='function'||!isOwner())return;
+  const arr=load('flux_feedback_inbox',[]);
+  const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='flux-feedback-inbox.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  try{if(typeof ownerAuditAppend==='function')ownerAuditAppend('feedback_export',{n:arr.length});}catch(_){}
+};
 
 // ══ OFFLINE BANNER · NOTIFICATIONS · DEEPLINKS ══
 let _fluxConnInit=false;
@@ -5245,6 +5653,9 @@ let obSelectedTrack='';
 let obSelectedFocus='deadlines';
 let obScheduleImgData=null;
 let obExtractedClasses=[];
+let obSchedulePdfPages=[];
+let obScheduleFile=null;
+let schoolSchedulePdfPages=[];
 const OB_TRACK_PRECEDENCE=['IB DP','IB MYP','AP','Honours','General'];
 
 function prefillOnboardingFromProfile(){
@@ -5358,6 +5769,10 @@ function showObStep(n){
   const sb=document.getElementById('obRedoSaveBtn');
   if(gc)gc.style.display=redo?'block':'none';
   if(sb)sb.style.display=redo&&n===2?'block':'none';
+  if(n===4){
+    bindScheduleImportDropzones();
+    ensurePdfJsLoaded().catch(()=>{});
+  }
 }
 function selectObChip(el,key,val){
   el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
@@ -5446,15 +5861,251 @@ function _updateSidebarName(name){
   const sn=document.getElementById('sidebarName');if(sn)sn.textContent=name;
   const mn=document.getElementById('mobName');if(mn)mn.textContent=name;
 }
-function handleScheduleImg(event){
-  const file=event.target.files[0];if(!file)return;
+
+const FLUX_PDFJS_SRC='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+const FLUX_PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+const FLUX_PDF_PREVIEW_MAX_PAGES=28;
+let _fluxPdfJsPromise=null;
+
+function isPdfScheduleFile(file){
+  if(!file)return false;
+  if(file.type==='application/pdf')return true;
+  return /\.pdf$/i.test(file.name||'');
+}
+
+function ensurePdfJsLoaded(){
+  if(typeof window.pdfjsLib!=='undefined'&&window.pdfjsLib){
+    try{window.pdfjsLib.GlobalWorkerOptions.workerSrc=FLUX_PDFJS_WORKER;}catch(e){}
+    return Promise.resolve();
+  }
+  if(_fluxPdfJsPromise)return _fluxPdfJsPromise;
+  const existing=document.querySelector('script[data-flux-pdfjs="1"]');
+  if(existing){
+    _fluxPdfJsPromise=new Promise((resolve,reject)=>{
+      const finish=()=>{
+        try{
+          if(typeof window.pdfjsLib==='undefined'||!window.pdfjsLib){reject(new Error('PDF.js not available'));return;}
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc=FLUX_PDFJS_WORKER;
+          resolve();
+        }catch(err){reject(err);}
+      };
+      if(typeof window.pdfjsLib!=='undefined'&&window.pdfjsLib)finish();
+      else{
+        existing.addEventListener('load',finish);
+        existing.addEventListener('error',()=>reject(new Error('Could not load PDF processor')));
+      }
+    });
+  }else{
+    _fluxPdfJsPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src=FLUX_PDFJS_SRC;
+      s.async=true;
+      s.dataset.fluxPdfjs='1';
+      s.onload=()=>{
+        try{
+          if(typeof window.pdfjsLib==='undefined'||!window.pdfjsLib){reject(new Error('PDF.js not available'));return;}
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc=FLUX_PDFJS_WORKER;
+          resolve();
+        }catch(err){reject(err);}
+      };
+      s.onerror=()=>reject(new Error('Could not load PDF processor'));
+      document.head.appendChild(s);
+    });
+  }
+  _fluxPdfJsPromise=_fluxPdfJsPromise.catch(err=>{_fluxPdfJsPromise=null;throw err;});
+  return _fluxPdfJsPromise;
+}
+
+async function pdfFileToPageScreenshots(file,scale=1.35){
+  await ensurePdfJsLoaded();
+  const buf=await file.arrayBuffer();
+  const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+  const nPages=Math.min(pdf.numPages||0,FLUX_PDF_PREVIEW_MAX_PAGES);
+  const out=[];
+  for(let i=1;i<=nPages;i++){
+    const page=await pdf.getPage(i);
+    const viewport=page.getViewport({scale});
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('Canvas not available');
+    canvas.height=viewport.height;
+    canvas.width=viewport.width;
+    await page.render({canvasContext:ctx,viewport}).promise;
+    out.push({id:`page-${i}`,dataUrl:canvas.toDataURL('image/png'),pageNumber:i});
+  }
+  return out;
+}
+
+function bindScheduleImportDropzones(){
+  if(window._fluxScheduleDropBound)return;
+  window._fluxScheduleDropBound=true;
+  function wire(zoneId,inputId){
+    const z=document.getElementById(zoneId);
+    const inp=document.getElementById(inputId);
+    if(!z||!inp)return;
+    ['dragenter','dragover'].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();z.classList.add('flux-pdf-import__drop--active');}));
+    z.addEventListener('dragleave',e=>{e.preventDefault();e.stopPropagation();z.classList.remove('flux-pdf-import__drop--active');});
+    z.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();z.classList.remove('flux-pdf-import__drop--active');
+      const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+      if(!f)return;
+      const ok=/^image\//.test(f.type)||f.type==='application/pdf'||/\.pdf$/i.test(f.name);
+      if(!ok){if(typeof showToast==='function')showToast('Drop a PDF or image file','info');return;}
+      try{
+        const dt=new DataTransfer();
+        dt.items.add(f);
+        inp.files=dt.files;
+        inp.dispatchEvent(new Event('change',{bubbles:true}));
+      }catch(err){console.error(err);}
+    });
+    z.addEventListener('keydown',ke=>{if(ke.key==='Enter'||ke.key===' '){ke.preventDefault();inp.click();}});
+  }
+  wire('obScheduleDropZone','scheduleImg');
+  wire('schoolScheduleDropZone','schoolScheduleFile');
+}
+
+function renderObSchedulePages(){
+  const col=document.getElementById('obSchedulePageCol');
+  const grid=document.getElementById('obSchedulePages');
+  const clearBtn=document.getElementById('obScheduleClearBtn');
+  const root=document.getElementById('obScheduleImportRoot');
+  if(!col||!grid)return;
+  if(!obSchedulePdfPages.length){
+    col.hidden=true;
+    grid.innerHTML='';
+    if(clearBtn)clearBtn.style.display='none';
+    if(root)root.classList.remove('flux-pdf-import--has-pages');
+    return;
+  }
+  col.hidden=false;
+  if(clearBtn)clearBtn.style.display='inline-flex';
+  if(root)root.classList.add('flux-pdf-import--has-pages');
+  grid.innerHTML=obSchedulePdfPages.map(shot=>`<div class="flux-pdf-import__thumb"><span class="flux-pdf-import__thumb-badge">Page ${shot.pageNumber}</span><img src="${shot.dataUrl}" alt="Page ${shot.pageNumber}" loading="lazy" decoding="async"></div>`).join('');
+}
+
+function updateObFileMeta(file,pageCount){
+  const meta=document.getElementById('obScheduleFileMeta');
+  const nameEl=document.getElementById('obScheduleFileName');
+  const detEl=document.getElementById('obScheduleFileDetails');
+  if(!meta||!nameEl||!detEl||!file)return;
+  meta.hidden=false;
+  nameEl.textContent=file.name;
+  const mb=(file.size/1024/1024).toFixed(2);
+  detEl.textContent=`${mb} MB · ${pageCount} ${pageCount===1?'page':'pages'}`;
+}
+
+function clearObScheduleImport(){
+  obScheduleImgData=null;
+  obSchedulePdfPages=[];
+  obScheduleFile=null;
+  const inp=document.getElementById('scheduleImg');
+  if(inp)inp.value='';
+  const prev=document.getElementById('schedulePreview');
+  const prevImg=document.getElementById('schedulePreviewImg');
+  if(prev)prev.style.display='none';
+  if(prevImg){prevImg.removeAttribute('src');}
+  document.getElementById('obScheduleFileMeta')?.setAttribute('hidden','');
+  const err=document.getElementById('obScheduleImportError');
+  if(err){err.textContent='';err.setAttribute('hidden','');}
+  document.getElementById('obScheduleClearBtn')&&(document.getElementById('obScheduleClearBtn').style.display='none');
+  document.getElementById('obScheduleImportRoot')?.classList.remove('flux-pdf-import--has-pages');
+  renderObSchedulePages();
+}
+
+function renderSchoolSchedulePages(){
+  const col=document.getElementById('schoolSchedulePageCol');
+  const grid=document.getElementById('schoolSchedulePages');
+  const clearBtn=document.getElementById('schoolScheduleClearBtn');
+  const root=document.getElementById('schoolScheduleImportRoot');
+  if(!col||!grid)return;
+  if(!schoolSchedulePdfPages.length){
+    col.hidden=true;
+    grid.innerHTML='';
+    if(clearBtn)clearBtn.style.display='none';
+    if(root)root.classList.remove('flux-pdf-import--has-pages');
+    return;
+  }
+  col.hidden=false;
+  if(clearBtn)clearBtn.style.display='inline-flex';
+  if(root)root.classList.add('flux-pdf-import--has-pages');
+  grid.innerHTML=schoolSchedulePdfPages.map(shot=>`<div class="flux-pdf-import__thumb"><span class="flux-pdf-import__thumb-badge">Page ${shot.pageNumber}</span><img src="${shot.dataUrl}" alt="Page ${shot.pageNumber}" loading="lazy" decoding="async"></div>`).join('');
+}
+
+function updateSchoolFileMeta(file,pageCount){
+  const meta=document.getElementById('schoolScheduleFileMeta');
+  const nameEl=document.getElementById('schoolScheduleFileName');
+  const detEl=document.getElementById('schoolScheduleFileDetails');
+  if(!meta||!nameEl||!detEl||!file)return;
+  meta.hidden=false;
+  nameEl.textContent=file.name;
+  const mb=(file.size/1024/1024).toFixed(2);
+  detEl.textContent=`${mb} MB · ${pageCount} ${pageCount===1?'page':'pages'}`;
+}
+
+function clearSchoolScheduleImport(){
+  schoolSchedulePdfPages=[];
+  const inp=document.getElementById('schoolScheduleFile');
+  if(inp)inp.value='';
+  document.getElementById('schoolScheduleFileMeta')?.setAttribute('hidden','');
+  const err=document.getElementById('schoolScheduleImportError');
+  if(err){err.textContent='';err.setAttribute('hidden','');}
+  document.getElementById('schoolScheduleClearBtn')&&(document.getElementById('schoolScheduleClearBtn').style.display='none');
+  document.getElementById('schoolScheduleImportRoot')?.classList.remove('flux-pdf-import--has-pages');
+  renderSchoolSchedulePages();
+  const res=document.getElementById('schoolImgResult');
+  if(res){res.style.display='none';res.innerHTML='';}
+}
+
+async function handleScheduleImg(event){
+  const file=event.target?.files?.[0];
+  if(!file)return;
+  const errEl=document.getElementById('obScheduleImportError');
+  if(errEl){errEl.textContent='';errEl.setAttribute('hidden','');}
+  const prev=document.getElementById('schedulePreview');
+  const prevImg=document.getElementById('schedulePreviewImg');
+  const overlay=document.getElementById('obSchedulePdfOverlay');
+
+  if(isPdfScheduleFile(file)){
+    if(overlay)overlay.removeAttribute('hidden');
+    try{
+      await ensurePdfJsLoaded();
+      const pages=await pdfFileToPageScreenshots(file);
+      if(!pages.length)throw new Error('No pages found in PDF.');
+      obSchedulePdfPages=pages;
+      obScheduleImgData=pages[0].dataUrl;
+      obScheduleFile=file;
+      if(prev)prev.style.display='none';
+      if(prevImg)prevImg.removeAttribute('src');
+      renderObSchedulePages();
+      updateObFileMeta(file,pages.length);
+    }catch(e){
+      console.error(e);
+      obSchedulePdfPages=[];
+      obScheduleImgData=null;
+      obScheduleFile=null;
+      renderObSchedulePages();
+      if(errEl){errEl.textContent=e.message||'Could not read this PDF.';errEl.removeAttribute('hidden');}
+      if(typeof showToast==='function')showToast('PDF import failed','error');
+    }finally{
+      if(overlay)overlay.setAttribute('hidden','');
+    }
+    if(obScheduleImgData)analyzeScheduleImg();
+    return;
+  }
+
+  obSchedulePdfPages=[];
+  obScheduleFile=file;
   const reader=new FileReader();
   reader.onload=e=>{
     obScheduleImgData=e.target.result;
-    const prev=document.getElementById('schedulePreview');
-    const prevImg=document.getElementById('schedulePreviewImg');
     if(prev)prev.style.display='block';
     if(prevImg)prevImg.src=e.target.result;
+    document.getElementById('obScheduleImportRoot')?.classList.remove('flux-pdf-import--has-pages');
+    renderObSchedulePages();
+    updateObFileMeta(file,1);
+    const cb=document.getElementById('obScheduleClearBtn');
+    if(cb)cb.style.display='inline-flex';
+    document.getElementById('obSchedulePageCol')&&(document.getElementById('obSchedulePageCol').hidden=true);
     analyzeScheduleImg();
   };
   reader.readAsDataURL(file);
@@ -5749,6 +6400,7 @@ function renderCmdResults(){
   // Build commands
   const cmds=[];
   cmds.push({icon:'🔍',label:'Search tasks & notes',cat:'Actions',action:()=>{closeCommandPalette();openGlobalSearch();}});
+  cmds.push({icon:'💬',label:'Send feedback',cat:'Actions',action:()=>{closeCommandPalette();openFluxFeedbackModal();}});
   
   // Navigation
   const navItems=[
@@ -5766,6 +6418,13 @@ function renderCmdResults(){
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
   navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
+
+  const rNav=typeof getMyRole==='function'?getMyRole():'user';
+  if(rNav==='owner'||rNav==='dev'){
+    const pl=rNav==='owner'?'Owner control':'Dev panel';
+    if(!q||pl.toLowerCase().includes(q)||q==='admin'||q==='owner'||q==='dev')
+      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',action:()=>{nav('flux_control');closeCommandPalette();}});
+  }
 
   const refTools=[
     {icon:'📚',label:'Study Tools',action:()=>{nav('toolbox');closeCommandPalette();}},
@@ -6241,6 +6900,7 @@ function showLoginScreen(){
   if(app)app.classList.remove('visible');
   initFeaturePills();
   initLoginFeatureCards();
+  initLoginHoverPreview();
   setTimeout(()=>{
     if(typeof initLoginAmbient==='function')initLoginAmbient();
     if(typeof initFluxAnimeLogin==='function')initFluxAnimeLogin();
@@ -6254,6 +6914,7 @@ function showApp(){
   if(typeof teardownFluxAnimeLogin==='function')teardownFluxAnimeLogin();
   stopLoginDemoRotator();
   if(ls){ls.style.display='none';ls.classList.remove('visible');}
+  if(typeof resetLoginHoverPreview==='function')resetLoginHoverPreview();
   if(app)app.classList.add('visible');
   renderSidebars();
   populateSubjectSelects();
@@ -6528,6 +7189,91 @@ function initLoginFeatureCards(){
   });
 }
 
+// ══ LOGIN — hover preview card (Flux features; vanilla port of hover-preview pattern) ══
+const LOGIN_HOVER_PREVIEW_DATA={
+  fluxai:{image:'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=560&h=320&fit=crop',title:'Flux AI Tutor',subtitle:'Study plans, flashcards, and exam prep tailored to your courses.'},
+  vision:{image:'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=560&h=320&fit=crop',title:'Vision Import',subtitle:'Photograph syllabi and schedules — AI turns them into tasks and dates.'},
+  gpa:{image:'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=560&h=320&fit=crop',title:'GPA Tracker',subtitle:'Weighted grades, four-decimal precision, and what-if scenarios.'},
+  calendar:{image:'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=560&h=320&fit=crop',title:'Smart Calendar',subtitle:'Tasks and class blocks together, with Google Calendar sync.'},
+  notes:{image:'https://images.unsplash.com/photo-1517842645767-c96b2f72379b?w=560&h=320&fit=crop',title:'Tagged Notes',subtitle:'Organize study material and let Flux AI quiz you from your notes.'},
+  timer:{image:'https://images.unsplash.com/photo-1501139083538-0139583c060f?w=560&h=320&fit=crop',title:'Focus Timer',subtitle:'Pomodoro-style focus blocks, streaks, and habit building.'},
+  extracurriculars:{image:'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=560&h=320&fit=crop',title:'Extracurriculars',subtitle:'Track clubs and activities with school-fit suggestions.'},
+  canvas:{image:'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=560&h=320&fit=crop',title:'Canvas & Gmail',subtitle:'Connect learning tools and turn emails into actionable tasks.'},
+  cloud:{image:'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=560&h=320&fit=crop',title:'Cloud Sync',subtitle:'One Google account keeps Flux updated on every device.'},
+};
+let _loginHoverPreviewBound=false;
+function resetLoginHoverPreview(){
+  const card=document.getElementById('loginHoverPreviewCard');
+  if(!card)return;
+  card.classList.remove('login-hover-preview-card--visible');
+  card.setAttribute('hidden','');
+  card.setAttribute('aria-hidden','true');
+}
+function initLoginHoverPreview(){
+  const root=document.getElementById('loginScreen');
+  const card=document.getElementById('loginHoverPreviewCard');
+  if(!root||!card)return;
+  if(_loginHoverPreviewBound)return;
+  _loginHoverPreviewBound=true;
+  const img=card.querySelector('.login-hover-preview-img');
+  const titleEl=card.querySelector('.login-hover-preview-title');
+  const subEl=card.querySelector('.login-hover-preview-sub');
+  let visible=false;
+
+  function updatePosition(clientX,clientY){
+    const cardWidth=300;
+    const cardHeight=240;
+    const offsetY=18;
+    let x=clientX-cardWidth/2;
+    let y=clientY-cardHeight-offsetY;
+    if(x+cardWidth>window.innerWidth-16)x=window.innerWidth-cardWidth-16;
+    if(x<16)x=16;
+    if(y<16)y=clientY+offsetY;
+    card.style.left=`${x}px`;
+    card.style.top=`${y}px`;
+  }
+
+  function showForKey(key,e){
+    const d=LOGIN_HOVER_PREVIEW_DATA[key];
+    if(!d)return;
+    visible=true;
+    if(img){
+      img.alt=d.title||'';
+      img.src=d.image;
+    }
+    if(titleEl)titleEl.textContent=d.title||'';
+    if(subEl)subEl.textContent=d.subtitle||'';
+    card.removeAttribute('hidden');
+    card.setAttribute('aria-hidden','false');
+    updatePosition(e.clientX,e.clientY);
+    requestAnimationFrame(()=>{card.classList.add('login-hover-preview-card--visible');});
+  }
+
+  function hide(){
+    visible=false;
+    card.classList.remove('login-hover-preview-card--visible');
+    card.setAttribute('hidden','');
+    card.setAttribute('aria-hidden','true');
+  }
+
+  root.querySelectorAll('.login-hover-link[data-preview]').forEach(el=>{
+    el.addEventListener('mouseenter',ev=>{
+      const key=el.getAttribute('data-preview');
+      if(key)showForKey(key,ev);
+    });
+    el.addEventListener('mousemove',ev=>{
+      if(visible)updatePosition(ev.clientX,ev.clientY);
+    });
+    el.addEventListener('mouseleave',hide);
+  });
+
+  Object.values(LOGIN_HOVER_PREVIEW_DATA).forEach(d=>{
+    const pre=new Image();
+    pre.crossOrigin='anonymous';
+    pre.src=d.image;
+  });
+}
+
 // ══ ITEM 4 — TOPBAR FULL IMPLEMENTATION ══
 function initTopbar(){
   function updateClock(){
@@ -6758,6 +7504,9 @@ function handleCheckoutReturn(){
   checkAllPanic();setInterval(checkAllPanic,60000);
   initFeaturePills();
   initLoginFeatureCards();
+  initLoginHoverPreview();
+  bindScheduleImportDropzones();
+  initFluxFeedbackModal();
   renderSidebars();
   populateSubjectSelects();
   initSidebarResize();
@@ -7522,29 +8271,60 @@ async function importNoteFromPhoto(event){
   }
 }
 
-// Import schedule from photo (school tab)
+// Import schedule from PDF or photo (school tab)
 async function importScheduleFromPhoto(event,resultElId){
   if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_SCHEDULE_IMPORT_GATE&&requiresPro('schedulePhotoImport')){
     showUpgradePrompt('schedulePhotoImport','Import your class schedule from a photo with Flux Pro');
     if(event.target)event.target.value='';
     return;
   }
-  const file=event.target.files[0];if(!file)return;
+  const file=event.target?.files?.[0];
+  if(!file)return;
+  bindScheduleImportDropzones();
   const resEl=document.getElementById(resultElId||'schoolImgResult');
+  const errBox=document.getElementById('schoolScheduleImportError');
+  const overlay=document.getElementById('schoolSchedulePdfOverlay');
+  if(errBox){errBox.textContent='';errBox.setAttribute('hidden','');}
   if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini AI...</div>';}
+  let base64;
+  let mime;
   try{
-    const base64=await fileToBase64(file);
-    const txt=await callGemini(base64,file.type,
+    if(isPdfScheduleFile(file)){
+      if(overlay)overlay.removeAttribute('hidden');
+      await ensurePdfJsLoaded();
+      schoolSchedulePdfPages=await pdfFileToPageScreenshots(file);
+      if(!schoolSchedulePdfPages.length)throw new Error('No pages in PDF.');
+      renderSchoolSchedulePages();
+      updateSchoolFileMeta(file,schoolSchedulePdfPages.length);
+      base64=schoolSchedulePdfPages[0].dataUrl.split(',')[1];
+      mime='image/png';
+    }else{
+      schoolSchedulePdfPages=[];
+      renderSchoolSchedulePages();
+      updateSchoolFileMeta(file,1);
+      base64=await fileToBase64(file);
+      mime=file.type||'image/jpeg';
+    }
+  }catch(e){
+    console.error(e);
+    schoolSchedulePdfPages=[];
+    renderSchoolSchedulePages();
+    if(errBox){errBox.textContent=e.message||'Could not prepare file.';errBox.removeAttribute('hidden');}
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read file: ${e.message}</div>`;
+    if(overlay)overlay.setAttribute('hidden','');
+    return;
+  }finally{
+    if(overlay)overlay.setAttribute('hidden','');
+  }
+  try{
+    const txt=await callGemini(base64,mime,
       'This is a student class schedule image. Extract every class/period. Return ONLY a valid JSON array with no extra text, no markdown, no backticks: [{"period":1,"name":"Chemistry","teacher":"Mr. Smith","room":"204"}]. Number periods 1,2,3... if not shown. Use empty string for missing fields. Return ONLY the JSON array.');
     if(!txt||!txt.trim()){throw new Error('Gemini returned empty response — check your GEMINI_API_KEY in Supabase secrets');}
-    // Try to extract JSON array from response
     let jsonStr=txt.trim();
-    // Remove markdown code blocks if present
     jsonStr=jsonStr.replace(/```json/g,'').replace(/```/g,'').trim();
-    // Find the first [ and last ]
     const start=jsonStr.indexOf('[');
     const end=jsonStr.lastIndexOf(']');
-    if(start===-1||end===-1)throw new Error('No class list found in response. Try a clearer photo.');
+    if(start===-1||end===-1)throw new Error('No class list found in response. Try a clearer photo or first page of the PDF.');
     jsonStr=jsonStr.slice(start,end+1);
     const parsed=JSON.parse(jsonStr);
     if(!Array.isArray(parsed)||!parsed.length)throw new Error('No classes detected. Try a clearer photo of your schedule.');

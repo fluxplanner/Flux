@@ -15,6 +15,15 @@
   const FLUX_BUILD_ID='build-2026-04-24-01'; // ⬅ BUMP THIS EACH DEPLOY
   window.FLUX_BUILD_ID=FLUX_BUILD_ID;
 
+  /**
+   * When true: a build is "live" for the public only after owner/dev runs
+   * "Push to all users" (releaseGate.released === FLUX_BUILD_ID).
+   * Missing or empty gate = normal signed-in users see "Update under review".
+   * Owner always bypasses; dev access follows previewMode / previewEmails.
+   * Set false only if you intentionally want everyone on latest deploy with no gate.
+   */
+  const REQUIRE_EXPLICIT_RELEASE=true;
+
   const KEY_GATE='flux_release_gate';
   const KEY_FIRST='flux_release_build_first_seen';
   const POLL_MS=60*1000;
@@ -73,14 +82,28 @@
   }
   function hasPreviewAccess(gate){
     if(isOwnerLocal())return true;
+    try{
+      if(typeof currentUser==='undefined'||!currentUser||!currentUser.email)return false;
+    }catch(_){return false;}
     const email=currentEmail();
-    const dev=devRecordLocal(email);
-    if(!dev||dev===true)return false;
+    if(!email||!email.includes('@'))return false;
+
+    let teamDev=false;
+    try{
+      if(typeof getMyRole==='function'){
+        const r=getMyRole();
+        teamDev=r==='dev'||r==='owner';
+      }
+    }catch(_){}
+    const fromList=devRecordLocal(email);
+    const inDevRoster=teamDev||!!(fromList&&fromList!==true);
+    if(!inDevRoster)return false;
+
     const mode=(gate&&gate.previewMode)||'all_devs';
     if(mode==='owner')return false;
     if(mode==='selected'){
       const allowed=Array.isArray(gate&&gate.previewEmails)?gate.previewEmails.map(normEmail):[];
-      return allowed.includes(email);
+      return allowed.includes(normEmail(email));
     }
     return true;
   }
@@ -114,9 +137,12 @@
       }
     }catch(_){}
   }
-  /** No gate ever set → don't block anyone (default-on behavior for fresh deploys). */
   function isReleased(gate){
-    if(!gate||!gate.released)return true;
+    if(!REQUIRE_EXPLICIT_RELEASE){
+      if(!gate||!gate.released)return true;
+      return gate.released===FLUX_BUILD_ID;
+    }
+    if(!gate||!gate.released)return false;
     return gate.released===FLUX_BUILD_ID;
   }
 
@@ -445,10 +471,20 @@
     startPolling();
   }
 
+  function isPreviewAudience(){
+    return hasPreviewAccess(getGate());
+  }
+  function isPublicReleaseLive(){
+    return isReleased(getGate());
+  }
+
   window.FluxRelease={
     FLUX_BUILD_ID,
+    REQUIRE_EXPLICIT_RELEASE,
     getGate,
     hasPreviewAccess,
+    isPreviewAudience,
+    isPublicReleaseLive,
     canPushRelease:canPushReleaseLocal,
     pushUpdate,
     savePreviewAccess,

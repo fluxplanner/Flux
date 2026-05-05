@@ -142,15 +142,15 @@ function ensureLoginSvgLayer(loginRoot) {
   el.id = 'loginAnimeSvg';
   el.setAttribute('class', 'login-anime-layer');
   el.setAttribute('aria-hidden', 'true');
-  el.setAttribute('viewBox', '0 0 1200 800');
+  el.setAttribute('viewBox', '-320 -40 2000 920');
   el.setAttribute('preserveAspectRatio', 'xMidYMid slice');
   const strokes = [
-    { d: 'M-40,420 C180,280 320,520 520,380 S920,200 1240,340', c: 'rgba(0,194,255,0.38)' },
-    { d: 'M60,720 C260,600 400,760 620,620 S980,480 1280,560', c: 'rgba(124,92,255,0.3)' },
-    { d: 'M-20,180 C200,80 380,240 560,120 S880,-40 1180,100', c: 'rgba(34,255,136,0.22)' },
-    { d: 'M200,800 C400,640 540,880 760,700 S1000,620 1220,780', c: 'rgba(0,194,255,0.26)' },
-    { d: 'M-60,560 C140,440 300,600 480,500 S840,360 1160,480', c: 'rgba(192,132,252,0.28)' },
-    { d: 'M400,-20 C520,120 680,80 820,200 S1080,320 1220,140', c: 'rgba(99,102,241,0.32)' },
+    { d: 'M-320,460 C200,260 520,620 920,400 S1680,180 1720,360', c: 'rgba(0,194,255,0.38)' },
+    { d: 'M-280,780 C240,560 520,860 980,640 S1520,420 1720,620', c: 'rgba(124,92,255,0.3)' },
+    { d: 'M-300,200 C220,40 480,320 880,120 S1480,-60 1720,80', c: 'rgba(34,255,136,0.22)' },
+    { d: 'M-200,880 C420,680 720,920 1120,720 S1580,520 1720,780', c: 'rgba(0,194,255,0.26)' },
+    { d: 'M-340,600 C160,400 440,720 840,500 S1380,280 1720,520', c: 'rgba(192,132,252,0.28)' },
+    { d: 'M200,-20 C520,180 820,40 1180,240 S1580,420 1720,120', c: 'rgba(99,102,241,0.32)' },
   ];
   strokes.forEach((s) => {
     const p = document.createElementNS(ns, 'path');
@@ -371,16 +371,19 @@ function initMainScrollPathDraw(mainEl) {
   const wrap = document.createElement('div');
   wrap.className = 'flux-dash-scroll-paths';
   wrap.setAttribute('aria-hidden', 'true');
+  /* Wide viewBox + full-bleed mover so strokes read edge-to-edge and drift slowly */
   wrap.innerHTML =
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" preserveAspectRatio="xMidMax meet" width="100%" height="100%">' +
-    '<path d="M0 180 C200 60 400 300 600 160 S900 260 1200 100" fill="none" stroke="rgba(0,191,255,0.32)" stroke-width="3" stroke-linecap="round"/>' +
-    '<path d="M0 240 C240 140 480 300 720 180 S1000 80 1200 200" fill="none" stroke="rgba(124,92,255,0.26)" stroke-width="2.5" stroke-linecap="round"/>' +
-    '<path d="M0 300 C300 200 520 340 820 220 S1020 140 1200 260" fill="none" stroke="rgba(34,255,136,0.2)" stroke-width="2" stroke-linecap="round"/>' +
-    '</svg>';
+    '<div class="flux-dash-scroll-paths-mover">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-240 0 2880 440" preserveAspectRatio="none" width="100%" height="100%">' +
+    '<path d="M-240 210 C420 40 980 380 1520 150 S2480 320 2640 90" fill="none" stroke="rgba(0,191,255,0.34)" stroke-width="2.8" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+    '<path d="M-200 290 C480 120 1120 400 1680 200 S2360 60 2700 230" fill="none" stroke="rgba(124,92,255,0.28)" stroke-width="2.35" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+    '<path d="M-180 360 C520 200 1080 420 1760 240 S2280 100 2720 300" fill="none" stroke="rgba(34,255,136,0.22)" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+    '<path d="M-220 140 C380 280 900 80 1580 320 S2420 180 2680 40" fill="none" stroke="rgba(0,191,255,0.14)" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+    '</svg></div>';
   dash.insertBefore(wrap, dash.firstChild);
 
   try {
-    const drawables = svg.createDrawable('.flux-dash-scroll-paths path');
+    const drawables = svg.createDrawable('.flux-dash-scroll-paths svg path');
     let scrollCtl = null;
     if (dash.scrollHeight > dash.clientHeight + 48) {
       scrollCtl = onScroll({ target: dash, sync: true });

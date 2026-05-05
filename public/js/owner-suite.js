@@ -99,7 +99,7 @@
         ${mapRow('in','Global announcement toast, session idle hint, compliance contact, data retention target (advisory).',jump('config','Platform config'))}
         ${mapRow('partial','Alerts: panic / quiet hours / daily goal live in user Settings; owner announcement overlays everyone on load.',jump('config','Config')+`<span style="font-size:.68rem;color:var(--muted);display:block;margin-top:4px">Users: Settings → Alerts</span>`)}
         ${mapRow('server','Billing / subscriptions: not part of this student planner — use your host or Stripe separately.',``)}
-        ${mapRow('in','Feature flags &amp; dev mode: Dev Panel (owner badge → classic panel).',jump('advanced','Dev Panel'))}
+        ${mapRow('in','Feature flags &amp; dev mode: <b>Admin → Owner control / Dev panel</b> tab.',jump('advanced','Advanced'))}
         ${mapRow('server','Org-wide 2FA / IP restrictions / session policies: configure in Supabase Auth &amp; Dashboard.',ext('auth','Auth')+ext('api','API'))}
       </div>
 
@@ -258,17 +258,33 @@
     return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
   }
 
-  const OS_TABS=new Set(['overview','megamap','team','testers','release','data','config','integrations','analytics','usage','audit','advanced']);
+  const OS_TABS=new Set(['overview','megamap','team','testers','release','data','config','integrations','analytics','usage','audit','feedback','advanced']);
 
-  window.openOwnerSuite=function(prefTab){
+  window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
+    opts=opts||{};
+    let mountEl=null;
+    if(opts.overlay===true)mountEl=null;
+    else mountEl=opts.mount||document.getElementById('fluxControlMount');
+    let tab=OS_TABS.has(prefTab)?prefTab:(window.__osActiveTab&&OS_TABS.has(window.__osActiveTab)?window.__osActiveTab:'overview');
+    if(mountEl&&!opts.skipNav){
+      const fc=document.getElementById('flux_control');
+      if(!fc||!fc.classList.contains('active')){
+        window.__fluxOwnerPrefTab=tab;
+        if(typeof nav==='function')nav('flux_control');
+        return;
+      }
+    }
     document.getElementById('modPanel')?.remove();
     document.getElementById('ownerSuite')?.remove();
+    const embedUi=!!mountEl;
     const root=document.createElement('div');
     root.id='ownerSuite';
-    root.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.92);z-index:9900;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;backdrop-filter:blur(12px);overflow-y:auto';
-
-    let tab=OS_TABS.has(prefTab)?prefTab:'overview';
+    if(embedUi){
+      root.style.cssText='position:relative;width:100%;min-height:0;margin:0;padding:0;background:transparent;z-index:auto;overflow:visible;display:block';
+    }else{
+      root.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.92);z-index:9900;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;backdrop-filter:blur(12px);overflow-y:auto';
+    }
     function body(){
       const devAccounts=load('flux_dev_accounts',[]);
       const auditRaw=load('flux_owner_audit',[]);
@@ -342,6 +358,7 @@
         <div style="font-size:.72rem;color:var(--muted2);margin-bottom:12px;line-height:1.5">
           <b>Roles</b> map to permission bundles. <b>Admin</b> = all tools. <b>Editor</b> = flags + dev mode + clear + release push (no manage devs). <b>Viewer</b> = read-only panel hooks.
         </div>
+        ${typeof renderDevPanelLayoutEditorHtml==='function'?renderDevPanelLayoutEditorHtml():''}
         ${devAccounts.length?devAccounts.map((d,i)=>`
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
@@ -386,7 +403,7 @@
         }).join(''):'<div style="font-size:.72rem;color:var(--muted);padding:8px 0">No dev accounts yet. Add devs in Team & roles.</div>';
         return`
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
-            Staged rollout: every deploy lands on <b>owner + dev</b> accounts first. Click <b>Push to all users</b> to release the current build to everyone. Normal users see an <i>"Update under review"</i> screen until you push.
+            Staged rollout: bump <code style="font-size:.65rem">FLUX_BUILD_ID</code> each deploy. With <b>strict release</b> on (<code style="font-size:.65rem">REQUIRE_EXPLICIT_RELEASE</code> in <code style="font-size:.65rem">flux-release-gate.js</code>), signed-in users who are <b>not</b> owner/dev preview stay on <i>"Update under review"</i> until someone with permission clicks <b>Push to all users</b> for that build. Owner always sees preview; devs follow the mode below.
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px">
@@ -492,6 +509,38 @@
           </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted)">No events yet.</div>'}
         </div>`;
 
+      if(tab==='feedback'){
+        const inboxRaw=load('flux_feedback_inbox',[]);
+        const inbox=Array.isArray(inboxRaw)?inboxRaw.slice().reverse():[];
+        return`
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
+          User feedback lands in your <b>Supabase</b> <code style="font-size:.65rem">user_data</code> row under <code style="font-size:.65rem">feedbackInbox</code> via the <code style="font-size:.65rem">user-feedback</code> Edge Function (service role). Deploy it from the repo and set secret <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> if it differs from the default.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button type="button" onclick="ownerRefreshFeedbackInbox()" style="padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">↻ Refresh from cloud</button>
+          <button type="button" onclick="ownerExportFeedbackJson()" style="padding:8px 14px;font-size:.78rem;border-radius:10px">⬇ Export JSON</button>
+        </div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">${inbox.length} message${inbox.length===1?'':'s'}</div>
+        <div style="max-height:min(480px,55vh);overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+          ${inbox.length?inbox.map(entry=>{
+            const e=entry&&typeof entry==='object'?entry:{};
+            const id=esc(e.id||'');
+            const when=e.t?new Date(e.t).toLocaleString():'—';
+            return`<div style="padding:12px 14px;border-bottom:1px solid var(--border);font-size:.74rem">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px">
+                <span style="font-family:JetBrains Mono,monospace;color:var(--muted);font-size:.68rem">${esc(when)}</span>
+                <span style="font-size:.58rem;padding:2px 8px;border-radius:6px;background:rgba(var(--accent-rgb),.12);color:var(--accent);font-weight:700">${esc(e.category||'general')}</span>
+                <span style="flex:1"></span>
+                <button type="button" onclick="ownerDismissFeedback('${id}')" style="padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Dismiss</button>
+              </div>
+              <div style="font-size:.68rem;color:var(--muted2);margin-bottom:6px;word-break:break-all"><b>From</b> ${esc(e.fromEmail||'unknown')} <span style="opacity:.7">· ${esc((e.fromUserId||'').slice(0,8))}…</span></div>
+              <div style="color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5">${esc(e.message||'')}</div>
+              ${e.path?`<div style="font-size:.62rem;color:var(--muted);margin-top:8px;font-family:JetBrains Mono,monospace">Path: ${esc(e.path)}</div>`:''}
+            </div>`;
+          }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">No feedback yet. Ask users to use Settings → Data &amp; info → Send feedback (or ⌘K → Send feedback).</div>'}
+        </div>`;
+      }
+
       if(tab==='advanced')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:14px">
           <b>Impersonation</b>, <b>revoke other users’ sessions</b>, and <b>live user activity across tenants</b> need secure server endpoints. Use Supabase Auth admin or build <code style="font-size:.65rem">admin-revoke-session</code> Edge Functions.
@@ -519,15 +568,20 @@
       }
     }
 
+    const cardMax=embedUi?'min(960px,100%)':'760px';
+    const osBodyStyle=embedUi?'padding:20px;max-height:none;overflow-y:visible':'padding:20px;max-height:min(70vh,620px);overflow-y:auto';
+    const headBtn=embedUi
+      ?`<button type="button" onclick="nav('dashboard')" style="background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-size:.72rem;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:10px">← Planner</button>`
+      :`<button type="button" onclick="document.getElementById('ownerSuite')?.remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>`;
     root.innerHTML=`
-      <div style="background:var(--card);border:1px solid rgba(251,191,36,.35);border-radius:22px;width:100%;max-width:760px;box-shadow:0 24px 80px rgba(0,0,0,.55);overflow:hidden">
+      <div style="background:var(--card);border:1px solid rgba(251,191,36,.35);border-radius:22px;width:100%;max-width:${cardMax};box-shadow:${embedUi?'0 12px 48px rgba(0,0,0,.28)':'0 24px 80px rgba(0,0,0,.55)'};overflow:hidden;margin:${embedUi?'0 auto':0}">
         <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(251,191,36,.08),transparent)">
           <span style="font-size:1.6rem">👑</span>
           <div style="flex:1">
             <div style="font-size:1.05rem;font-weight:800">Owner Command Center</div>
             <div style="font-size:.68rem;color:var(--muted);font-family:JetBrains Mono,monospace">${esc(currentUser?.email)} · god-mode for your data plane</div>
           </div>
-          <button type="button" onclick="document.getElementById('ownerSuite')?.remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>
+          ${headBtn}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card2)">
           <button type="button" data-os-tab="overview" onclick="window.__osSetTab('overview')">Overview</button>
@@ -541,17 +595,35 @@
           <button type="button" data-os-tab="analytics" onclick="window.__osSetTab('analytics')">Analytics</button>
           <button type="button" data-os-tab="usage" onclick="window.__osSetTab('usage')">Platform usage</button>
           <button type="button" data-os-tab="audit" onclick="window.__osSetTab('audit')">Audit log</button>
+          <button type="button" data-os-tab="feedback" onclick="window.__osSetTab('feedback')">Feedback inbox</button>
           <button type="button" data-os-tab="advanced" onclick="window.__osSetTab('advanced')">Advanced</button>
         </div>
-        <div id="osBody" style="padding:20px;max-height:min(70vh,620px);overflow-y:auto"></div>
+        <div id="osBody" style="${osBodyStyle}"></div>
       </div>`;
 
-    window.__osSetTab=function(t){tab=t;paint();};
-    document.body.appendChild(root);
+    window.__osSetTab=function(t){
+      tab=t;
+      window.__osActiveTab=t;
+      paint();
+    };
+    if(mountEl){
+      mountEl.innerHTML='';
+      mountEl.appendChild(root);
+    }else{
+      document.body.appendChild(root);
+    }
     paint();
-    ownerAuditAppend('owner_suite_open',{});
+    ownerAuditAppend('owner_suite_open',{embed:!!mountEl});
     const ann=getPlatformConfig().announcement;
-    if(ann)showToast(ann,'info');
+    if(ann&&!embedUi)showToast(ann,'info');
+  };
+
+  window.reopenOwnerSuite=function(prefTab){
+    if(!isOwner())return;
+    const m=document.getElementById('fluxControlMount');
+    const next=OS_TABS.has(prefTab)?prefTab:(window.__osActiveTab&&OS_TABS.has(window.__osActiveTab)?window.__osActiveTab:'overview');
+    if(m)openOwnerSuite(next,{mount:m,skipNav:true});
+    else openOwnerSuite(next,{overlay:true});
   };
 
   window.ownerSetDevRole=function(idx,role){
@@ -562,7 +634,7 @@
     acc.perms=[...(ROLE_PRESETS[role]||ROLE_PRESETS.viewer)];
     saveDevAccounts(devAccounts);
     ownerAuditAppend('dev_role_change',{email:acc.email,role});
-    openOwnerSuite();
+    reopenOwnerSuite();
   };
 
   window.ownerQuickAddDev=function(){
@@ -574,7 +646,7 @@
     devAccounts.push({email,role:'viewer',perms:[...ROLE_PRESETS.viewer],addedAt:Date.now()});
     saveDevAccounts(devAccounts);
     ownerAuditAppend('dev_invite',{email});
-    openOwnerSuite();
+    reopenOwnerSuite();
   };
 
   window.ownerExportDevsJson=function(){
@@ -604,7 +676,7 @@
         save('flux_dev_accounts',norm);
         saveDevAccounts(norm);
         ownerAuditAppend('import_dev_json',{count:norm.length});
-        openOwnerSuite();
+        reopenOwnerSuite();
         showToast('Imported '+norm.length+' dev rows','success');
       }catch(e){alert('Import failed: '+e.message);}
     };
@@ -652,7 +724,7 @@
     if(currentUser)syncToCloud();
     ownerAuditAppend('archive_done_tasks',{removed:n});
     showToast('Archived '+n+' done tasks','info');
-    openOwnerSuite();
+    reopenOwnerSuite();
   };
 
   window.ownerSaveIntegrationWebhooks=function(){
@@ -688,7 +760,7 @@
     if(!confirm('Clear owner audit log?'))return;
     save('flux_owner_audit',[]);
     syncKey('owner_audit',1);
-    openOwnerSuite();
+    reopenOwnerSuite();
   };
 
   window.ownerRefreshPlatformUsage=async function(){
@@ -761,7 +833,7 @@
     });
     const res=await FluxRelease.savePreviewAccess(mode,emails);
     if(!res.ok&&typeof showToast==='function')showToast(res.err||'Save failed','error');
-    openOwnerSuite('release');
+    reopenOwnerSuite('release');
   };
 
   window.ownerSyncPlatformConfigToDevs=async function(){
@@ -791,7 +863,7 @@
       if(typeof showToast==='function')showToast('Synced '+ok+' dev row(s)'+(bad?'; '+bad+' failed':''),'success');
       if(typeof ownerAuditAppend==='function')ownerAuditAppend('platform_sync_devs',{scope,ok,bad});
     }
-    openOwnerSuite('release');
+    reopenOwnerSuite('release');
   };
 
   window.ownerAddTesterEmail=function(){
@@ -805,7 +877,7 @@
     save('flux_tester_emails',arr);
     if(typeof ownerAuditAppend==='function')ownerAuditAppend('tester_add',{email:em});
     if(inp)inp.value='';
-    openOwnerSuite('testers');
+    reopenOwnerSuite('testers');
     if(typeof checkTesterMode==='function')checkTesterMode();
     if(typeof renderTesterBadge==='function')renderTesterBadge();
   };
@@ -816,8 +888,8 @@
     if(idx<0||idx>=arr.length)return;
     const removed=arr.splice(idx,1)[0];
     save('flux_tester_emails',arr);
-    if(typeof ownerAuditAppend==='function')ownerAuditAppend('tester_remove',{email:removed});
-    openOwnerSuite('testers');
+    if(typeof ownerAuditAppend==='function')    ownerAuditAppend('tester_remove',{email:removed});
+    reopenOwnerSuite('testers');
     if(typeof currentUser!=='undefined'&&currentUser&&String(currentUser.email||'').toLowerCase().trim()===String(removed||'').toLowerCase().trim()){
       if(typeof checkTesterMode==='function')checkTesterMode();
       if(typeof renderTesterBadge==='function')renderTesterBadge();

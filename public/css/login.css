@@ -18,7 +18,17 @@
   z-index:1;
   opacity:0.48;
   overflow:visible;
+  transform-origin:50% 45%;
+  animation:loginAnimeLayerFlow 42s ease-in-out infinite alternate;
 }
+@keyframes loginAnimeLayerFlow{
+  0%{transform:translateX(-2.5%) translateY(0) scale(1.04)}
+  100%{transform:translateX(2.5%) translateY(-12px) scale(1.08)}
+}
+@media (prefers-reduced-motion:reduce){
+  .login-anime-layer{animation:none!important}
+}
+html[data-flux-perf="on"] .login-anime-layer{animation:none!important}
 @media (prefers-reduced-motion:reduce){
   .login-anime-layer{display:none!important}
 }
@@ -542,6 +552,129 @@ html[data-flux-perf="on"] .login-anime-layer{display:none!important}
   .login-trust{margin-top:12px;padding-top:10px}
 }
 
+/* ── LOGIN: HOVER FEATURE PREVIEW (Flux features, cursor-follow card) ── */
+.login-hover-narrative{
+  font-family:'Space Grotesk','Plus Jakarta Sans',system-ui,sans-serif;
+  margin:0 0 18px;
+}
+.login-hover-narrative--desktop{display:block}
+.login-hover-narrative--card{display:none}
+@media(max-width:900px){
+  .login-hover-narrative--desktop{display:none!important}
+  .login-hover-narrative--card{display:block}
+}
+.login-hover-narrative p{
+  margin:0 0 1.25em;
+  font-size:clamp(.92rem,2.2vw,1.05rem);
+  line-height:1.62;
+  color:rgba(255,255,255,.42);
+  font-weight:400;
+  letter-spacing:-.015em;
+  opacity:0;
+  animation:loginHoverNarrFade .75s cubic-bezier(.16,1,.3,1) forwards;
+}
+.login-hover-narrative p:last-child{margin-bottom:0}
+.login-hover-narrative p:nth-child(1){animation-delay:.12s}
+.login-hover-narrative p:nth-child(2){animation-delay:.22s}
+.login-hover-narrative p:nth-child(3){animation-delay:.32s}
+@keyframes loginHoverNarrFade{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:none}
+}
+.login-hover-link{
+  color:#f0f2f8;
+  font-weight:700;
+  font-family:'Syne','Plus Jakarta Sans',system-ui,sans-serif;
+  cursor:pointer;
+  position:relative;
+  display:inline;
+  transition:color .2s ease;
+  text-decoration:none;
+  white-space:normal;
+}
+.login-hover-link::after{
+  content:'';
+  position:absolute;
+  left:0;bottom:-1px;
+  width:0;height:2px;
+  border-radius:1px;
+  background:linear-gradient(90deg,#ff6b6b,#feca57,#48dbfb);
+  transition:width .35s cubic-bezier(.25,.46,.45,.94);
+  pointer-events:none;
+}
+.login-hover-link:hover{color:#fff}
+.login-hover-link:hover::after{width:100%}
+.login-hover-narrative--card{
+  margin:0 0 14px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.07);
+  text-align:left;
+}
+.login-hover-narrative--card p{
+  font-size:.76rem;
+  line-height:1.55;
+}
+.login-hover-narrative--card p:nth-child(1){animation-delay:.05s}
+.login-hover-narrative--card p:nth-child(2){animation-delay:.12s}
+.login-hover-preview-card{
+  position:fixed;
+  pointer-events:none;
+  z-index:80;
+  opacity:0;
+  transform:translateY(10px) scale(.96);
+  transition:opacity .22s ease,transform .26s cubic-bezier(.34,1.56,.64,1);
+  will-change:transform,opacity;
+}
+.login-hover-preview-card.login-hover-preview-card--visible{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+.login-hover-preview-card-inner{
+  background:#141820;
+  border-radius:14px;
+  padding:7px;
+  box-shadow:
+    0 22px 44px -12px rgba(0,0,0,.75),
+    0 0 0 1px rgba(255,255,255,.1),
+    0 0 48px rgba(255,107,107,.09);
+  overflow:hidden;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.login-hover-preview-img{
+  width:260px;
+  max-width:min(260px,calc(100vw - 48px));
+  height:auto;
+  border-radius:9px;
+  display:block;
+  vertical-align:top;
+}
+.login-hover-preview-title{
+  padding:10px 7px 5px;
+  font-size:.8rem;
+  color:#eef0f7;
+  font-weight:700;
+  font-family:'Syne','Plus Jakarta Sans',sans-serif;
+  line-height:1.25;
+}
+.login-hover-preview-sub{
+  padding:0 7px 7px;
+  font-size:.68rem;
+  line-height:1.45;
+  color:rgba(255,255,255,.42);
+  font-family:'JetBrains Mono',monospace;
+}
+@media(max-width:900px){
+  .login-hover-preview-img{width:220px;max-width:min(220px,calc(100vw - 40px))}
+}
+html[data-flux-perf="on"] .login-hover-narrative p{
+  animation:none!important;
+  opacity:1!important;
+  transform:none!important;
+}
+
 /* ── REDUCED MOTION ── */
 #loginScreen.visible .login-logo-wrap{animation:loginStaggerIn .9s cubic-bezier(.22,1,.36,1) .08s both}
 #loginScreen.visible .login-google-btn{animation:loginStaggerIn .9s cubic-bezier(.22,1,.36,1) .16s both}
@@ -559,4 +692,6 @@ html[data-flux-perf="on"] .login-anime-layer{display:none!important}
   .login-card{animation:none!important;opacity:1!important;transform:none!important}
   #loginScreen.visible .login-logo-wrap,#loginScreen.visible .login-google-btn,#loginScreen.visible .login-divider,
   #loginScreen.visible #loginEmailSection,#loginScreen.visible .login-skip,#loginScreen.visible .login-trust{animation:none!important;opacity:1!important;transform:none!important}
+  .login-hover-narrative p{animation:none!important;opacity:1!important;transform:none!important}
+  .login-hover-preview-card{transition:none!important}
 }
