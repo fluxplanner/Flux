@@ -1975,30 +1975,13 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    tab bar and respects iPhone home-indicator safe area.
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
-  /* Collapse AI shell: workspace + composer; hide heavy chrome */
-  #ai .flux-ai-shell__brand,
-  #ai .flux-ai-shell__tagline,
-  #ai .flux-ai-shell__prefs{ display: none !important; }
-  #ai .flux-ai-shell__main{
-    padding: 8px 12px !important;
-    gap: 8px !important;
-    border-bottom: 1px solid rgba(255,255,255,.06) !important;
-    background: color-mix(in srgb, var(--card) 80%, transparent);
+  #ai.flux-ai-panel.ai-root .ai-topbar{
+    position: sticky;
+    top: 0;
+    z-index: 3;
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  #ai .flux-ai-shell__sessions{
-    padding: 6px 12px !important;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    border-bottom: 1px solid rgba(255,255,255,.06) !important;
-    background: color-mix(in srgb, var(--card) 70%, transparent);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--card) 85%, transparent) !important;
   }
   /* Messages area takes full remaining height */
   #ai #aiMsgsWrap{
@@ -2018,8 +2001,6 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   #ai .ai-msg.user .ai-bub{ border-top-right-radius: 5px !important; }
   #ai .ai-msg:not(.user) .ai-bub{ border-top-left-radius: 5px !important; }
 
-  /* Pulsing 3-dot indicator for streaming — already styled globally,
-     just tighten on mobile */
   #ai .ai-think{ padding: 10px 14px !important; }
   #ai .ai-think span{
     width: 7px !important; height: 7px !important;
@@ -2029,7 +2010,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     animation-iteration-count: infinite !important;
   }
 
-  /* Input row — pinned to bottom of panel, above tab bar */
+  #ai .ai-composer,
   #ai .flux-ai-composer-foot{
     position: sticky;
     bottom: 0;
@@ -2040,6 +2021,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     border-top: 1px solid rgba(255,255,255,.08) !important;
     z-index: 2;
   }
+  #ai .ai-input-bar,
   #ai .ai-irow{
     display: flex;
     align-items: flex-end;
@@ -2062,7 +2044,8 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   }
   #ai .ai-send:active{ transform: scale(.92); }
   #ai .ai-send:disabled{ opacity: .5; }
-  #ai textarea#aiInput{
+  #ai textarea#aiInput,
+  #ai .ai-input-field{
     order: 1;
     flex: 1;
     min-height: 42px !important;
@@ -2075,17 +2058,16 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     resize: none;
     -webkit-appearance: none;
   }
-  [data-theme="light"] #ai textarea#aiInput{
+  [data-theme="light"] #ai textarea#aiInput,
+  [data-theme="light"] #ai .ai-input-field{
     background: rgba(0,0,0,.03) !important;
     border-color: rgba(0,0,0,.1) !important;
   }
-  /* Attach button (re-style existing 📷 label to + on mobile) */
+  #ai .ai-topbar-attach,
   #ai .flux-ai-head label[for],
-  #ai .flux-ai-head label,
-  #ai .flux-ai-shell__tools label[for],
-  #ai .flux-ai-shell__tools label{ display: none !important; }
+  #ai .flux-ai-head label{ display: none !important; }
 
-  /* Add a floating + attach button INSIDE the composer */
+  #ai .ai-composer .ai-attach,
   #ai .flux-ai-composer-foot .ai-attach{
     display: inline-flex !important;
     flex-shrink: 0;
@@ -2103,8 +2085,9 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     padding: 0;
     order: 0;
   }
+  #ai .ai-composer .ai-attach:active,
   #ai .flux-ai-composer-foot .ai-attach:active{ transform: scale(.92); }
-  /* Hide the slash commands hint line on mobile to save vertical space */
+  #ai .ai-foot-hint,
   #ai .flux-ai-composer-foot > div:last-child{ display: none !important; }
 }
 @keyframes aiThinkPulseMob{

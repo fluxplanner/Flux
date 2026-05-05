@@ -286,7 +286,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 .panel{display:none;padding:24px 28px 110px;animation:panelIn var(--t-base) var(--ease-out)}
 .panel.active{display:block}
-#ai.active{display:flex!important;flex-direction:column;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;padding:0;overflow:hidden}
+#ai.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;padding:0;overflow:hidden}
+#ai.ai-root.active{flex-direction:row!important}
 
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(12,16,28,.78) 0%,rgba(18,22,38,.62) 100%);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -1px 0 rgba(255,255,255,.05) inset,0 -12px 48px rgba(0,0,0,.35);z-index:100;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto}
 .bnav-inner{display:flex;min-width:100%}
@@ -654,14 +655,7 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
   padding:18px;
   box-shadow:0 6px 32px rgba(0,0,0,.18);
 }
-#ai.flux-page .flux-ai-shell{
-  flex-shrink:0;
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.12));
-  border-bottom:1px solid rgba(255,255,255,.08);
-  padding:0;
-}
-#ai.flux-page .flux-ai-shell__sessions #aiChatTabs{padding:2px 0 4px}
-#ai.flux-page .flux-ai-shell__prefs{padding:4px 10px}
+/* #ai layout — see public/css/flux-ai-panel.css (ai-root) */
 #ai .ai-sugs{margin-bottom:8px;gap:5px}
 #ai .ai-sug{padding:5px 11px;font-size:.72rem}
 .flux-ai-modes{
@@ -1438,9 +1432,12 @@ button:active:not(:disabled){transform:scale(.97)!important}
   }
   .panel{flex:1!important;overflow-y:auto!important;height:0!important;overscroll-behavior:contain!important}
   .panel.active{display:block!important}
-  #ai.active{
+  #ai.active:not(.ai-root){
     overflow:hidden!important;min-height:0!important;flex:1 1 auto!important;height:auto!important;
     display:flex!important;flex-direction:column!important;
+  }
+  #ai.ai-root.active{
+    display:flex!important;flex-direction:row!important;overflow:hidden!important;min-height:0!important;flex:1 1 auto!important;height:auto!important;
   }
   #aiMsgsWrap{flex:1!important;min-height:0!important;overflow-y:auto!important}
   .stabs{
@@ -1513,8 +1510,14 @@ button:active:not(:disabled){transform:scale(.97)!important}
   #toolbox.panel.st-panel:not(.active){
     display:none!important;
   }
-  #ai.active{
+  #ai.active:not(.ai-root){
     display:flex!important;flex-direction:column!important;
+    height:calc(100svh - 50px - 62px)!important;
+    overflow:hidden!important;
+    padding:0!important;
+  }
+  #ai.ai-root.active{
+    display:flex!important;flex-direction:row!important;
     height:calc(100svh - 50px - 62px)!important;
     overflow:hidden!important;
     padding:0!important;
@@ -3281,11 +3284,6 @@ input:focus,select:focus,textarea:focus{
   background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,255,.95))!important;
   border:1px solid rgba(0,0,0,.08)!important;
   box-shadow:0 4px 22px rgba(0,0,0,.05)!important;
-}
-
-[data-theme="light"] #ai.flux-page .flux-ai-shell{
-  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.95))!important;
-  border-bottom:1px solid rgba(0,0,0,.08)!important;
 }
 
 [data-theme="light"] .dash-workspace{

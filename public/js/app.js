@@ -4505,6 +4505,7 @@ function initAIChats(){
   if(!aiChats.length)newAIChat();
   else loadAIChat(aiChats[0].id);
   renderAIChatTabs();
+  wireAIComposerInput();
   if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
 }
 
@@ -4675,18 +4676,43 @@ function fmtAI(raw){
 
   return t;
 }
-function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(localStorage.getItem('flux_user_name')||'U').charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
+function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg ai-msg--gpt '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(localStorage.getItem('flux_user_name')||'U').charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
 const msgWrap=document.getElementById('aiMsgsWrap');if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,30);return div;}
 function setFluxAIMode(mode,btn){
   const ok=['default','research','deep','overtime'];
   const m=ok.includes(mode)?mode:'default';
   localStorage.setItem('flux_ai_mode',m);
   document.querySelectorAll('.flux-ai-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  const sel=document.getElementById('aiModeSelect');
+  if(sel)sel.value=m;
   if(btn&&typeof showToast==='function')showToast('AI mode: '+(btn.textContent||'').trim(),'info');
+}
+function setFluxAIModeFromSelect(value){
+  const ok=['default','research','deep','overtime'];
+  const m=ok.includes(value)?value:'default';
+  setFluxAIMode(m,null);
+  const labels={default:'Balanced',research:'Research',deep:'Deep think',overtime:'Overtime'};
+  if(typeof showToast==='function')showToast('AI style: '+(labels[m]||m),'info');
 }
 function syncFluxAIModeButtons(){
   const m=localStorage.getItem('flux_ai_mode')||'default';
   document.querySelectorAll('.flux-ai-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  const sel=document.getElementById('aiModeSelect');
+  if(sel)sel.value=m;
+}
+function openAIConnections(){
+  try{nav('ai');}catch(e){}
+  if(window.FluxAIConnections&&typeof FluxAIConnections.setView==='function')FluxAIConnections.setView('connections');
+}
+function openAIChatWorkspace(){
+  if(window.FluxAIConnections&&typeof FluxAIConnections.setView==='function')FluxAIConnections.setView('chat');
+}
+function wireAIComposerInput(){
+  const inp=document.getElementById('aiInput');
+  if(!inp||inp.dataset.fluxComposerWired)return;
+  inp.dataset.fluxComposerWired='1';
+  inp.addEventListener('input',()=>{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,160)+'px';});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}});
 }
 function getFluxAIModeInstructions(){
   const mode=localStorage.getItem('flux_ai_mode')||'default';
@@ -4876,7 +4902,7 @@ async function sendAI(){
       showToast(`${dailyLimit-dailyUsed} AI messages remaining today`,'warning');
     }
   }
-  document.getElementById('aiSugs').style.display='none';
+  const _aiSugsEl=document.getElementById('aiSugs');if(_aiSugsEl)_aiSugsEl.style.display='none';
   const imgSnapshot=aiPendingImg;
   appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
   aiPendingImg=null;
