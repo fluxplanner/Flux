@@ -654,14 +654,14 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
   padding:18px;
   box-shadow:0 6px 32px rgba(0,0,0,.18);
 }
-#ai.flux-page .flux-ai-top{
+#ai.flux-page .flux-ai-shell{
   flex-shrink:0;
   background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.12));
   border-bottom:1px solid rgba(255,255,255,.08);
   padding:0;
 }
-#ai.flux-page #aiChatTabs{padding:6px 10px 0}
-#ai.flux-page .flux-ai-head{padding:6px 10px}
+#ai.flux-page .flux-ai-shell__sessions #aiChatTabs{padding:2px 0 4px}
+#ai.flux-page .flux-ai-shell__prefs{padding:4px 10px}
 #ai .ai-sugs{margin-bottom:8px;gap:5px}
 #ai .ai-sug{padding:5px 11px;font-size:.72rem}
 .flux-ai-modes{
@@ -3283,7 +3283,7 @@ input:focus,select:focus,textarea:focus{
   box-shadow:0 4px 22px rgba(0,0,0,.05)!important;
 }
 
-[data-theme="light"] #ai.flux-page .flux-ai-top{
+[data-theme="light"] #ai.flux-page .flux-ai-shell{
   background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.95))!important;
   border-bottom:1px solid rgba(0,0,0,.08)!important;
 }

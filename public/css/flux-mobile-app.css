@@ -1975,11 +1975,11 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    tab bar and respects iPhone home-indicator safe area.
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
-  /* Collapse the AI top strip to just chat tabs + New chat */
-  #ai .flux-ai-head{ display: none !important; }
-  #ai .flux-ai-modes{ display: none !important; }
-  /* Make the chat tabs row the top strip */
-  #ai .flux-ai-tabs-row{
+  /* Collapse AI shell: workspace + composer; hide heavy chrome */
+  #ai .flux-ai-shell__brand,
+  #ai .flux-ai-shell__tagline,
+  #ai .flux-ai-shell__prefs{ display: none !important; }
+  #ai .flux-ai-shell__main{
     padding: 8px 12px !important;
     gap: 8px !important;
     border-bottom: 1px solid rgba(255,255,255,.06) !important;
@@ -1990,11 +1990,15 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     top: 0;
     z-index: 2;
   }
-  #ai .flux-ai-tabs-row > button{
-    min-height: 36px !important;
+  #ai .flux-ai-shell__sessions{
     padding: 6px 12px !important;
-    font-size: .74rem !important;
-    border-radius: 999px !important;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 1px solid rgba(255,255,255,.06) !important;
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
   /* Messages area takes full remaining height */
   #ai #aiMsgsWrap{
@@ -2077,7 +2081,9 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   }
   /* Attach button (re-style existing 📷 label to + on mobile) */
   #ai .flux-ai-head label[for],
-  #ai .flux-ai-head label{ display: none !important; }
+  #ai .flux-ai-head label,
+  #ai .flux-ai-shell__tools label[for],
+  #ai .flux-ai-shell__tools label{ display: none !important; }
 
   /* Add a floating + attach button INSIDE the composer */
   #ai .flux-ai-composer-foot .ai-attach{
