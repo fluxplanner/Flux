@@ -211,10 +211,10 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
   padding-right:max(22px, env(safe-area-inset-right));
 }
 
-/* Section reveal — tighter vertical rhythm between capability blocks */
+/* Section reveal — uniform vertical rhythm (content-height + shared padding only) */
 .login-scroll-section{
-  min-height:min(52vh,640px);
-  padding:clamp(28px,5vh,64px) 0;
+  min-height:0;
+  padding:clamp(44px,6vh,76px) 0;
   border-bottom:1px solid rgba(255,255,255,.04);
 }
 .login-scroll-foot{border-bottom:none;min-height:auto;padding:36px 0 44px}
