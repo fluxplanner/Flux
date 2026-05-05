@@ -1473,6 +1473,45 @@ if(!window.runSplash){
 
 // ══ LOGIN FEATURE PILLS ══
 
+// #region agent log
+function _fluxDebugAiLayoutMetrics(){
+  const _ep='http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440';
+  const _log=(hypothesisId,location,message,data)=>{
+    fetch(_ep,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'63e9cf'},body:JSON.stringify({sessionId:'63e9cf',hypothesisId,location,message,data,timestamp:Date.now(),runId:'post-fix'})}).catch(()=>{});
+  };
+  const _box=(el)=>{if(!el)return null;const r=el.getBoundingClientRect();return{t:Math.round(r.top),b:Math.round(r.bottom),l:Math.round(r.left),h:Math.round(r.height),w:Math.round(r.width)};};
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      const ai=document.getElementById('ai');
+      const tb=document.querySelector('#ai .ai-topbar');
+      const ms=document.getElementById('aiMsgsWrap');
+      const cp=document.querySelector('#ai .ai-composer');
+      const main=document.querySelector('#ai .ai-main');
+      const stack=document.querySelector('#ai .ai-main-stack');
+      const pane=document.getElementById('fluxAiPaneChat');
+      const imgp=document.getElementById('aiImgPreview');
+      const csMs=ms?getComputedStyle(ms):null;
+      _log('H1','app.js:_fluxDebugAiLayoutMetrics','layout-boxes',{
+        ai:_box(ai),topbar:_box(tb),msgs:_box(ms),composer:_box(cp),main:_box(main),stack:_box(stack),pane:_box(pane),imgPreview:_box(imgp),win:{ih:window.innerHeight,ow:window.outerWidth},
+        msgsDisplay:csMs?csMs.display:null,
+        msgsFlex:csMs?csMs.flex:null
+      });
+      if(tb) _log('H1','topbar-height','scroll-vs-fixed',{scrollH:tb.scrollHeight,clientH:tb.clientHeight,overflows:tb.scrollHeight>tb.clientHeight+1});
+      if(ms&&cp){
+        const m=ms.getBoundingClientRect();
+        const c=cp.getBoundingClientRect();
+        const intersectY=Math.max(0,Math.min(m.bottom,c.bottom)-Math.max(m.top,c.top));
+        _log('H2','msgs-composer',intersectY>2?'OVERLAP_OR_TOUCH':'separate',{intersectY:Math.round(intersectY),msgsBottom:Math.round(m.bottom),compTop:Math.round(c.top)});
+      }
+      if(tb&&stack){
+        const gap=stack.getBoundingClientRect().top-tb.getBoundingClientRect().bottom;
+        _log('H3','topbar-to-stack-gap',{gapPx:Math.round(gap)});
+      }
+    });
+  });
+}
+// #endregion
+
 // ══ NAV ══
 function updateNavAriaCurrent(tabId){
   document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(b=>{
@@ -1518,6 +1557,7 @@ function nav(id,btn,navOpt){
   }
   const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
+  if(id==='ai'){try{_fluxDebugAiLayoutMetrics();}catch(_){}}
   if(id==='canvas'){
     try{
       const pend=_fluxCanvasReaderPending;

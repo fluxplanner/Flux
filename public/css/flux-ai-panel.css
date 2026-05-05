@@ -1167,12 +1167,14 @@
 }
 #ai.flux-ai-panel.ai-root .ai-topbar{
   flex-shrink: 0;
-  height: 56px;
+  min-height: 56px;
+  height: auto;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--fa-hair);
   background: color-mix(in srgb, var(--fa-paper) 92%, #0000);
 }
@@ -1181,6 +1183,15 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar-logo{
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 1px 0 rgba(255,255,255,.12) inset;
 }
 #ai.flux-ai-panel.ai-root .ai-title{
   font-size: 1rem;
@@ -1270,6 +1281,8 @@
 #ai.flux-ai-panel.ai-root #aiMsgsWrap.ai-chat-area{
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
