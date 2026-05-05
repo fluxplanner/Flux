@@ -4908,6 +4908,7 @@ async function sendAI(){
       return;
     }
     const body={system,messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))};
+    try{if(window.FluxKit?.getAIContext)body.fluxPlannerContext=window.FluxKit.getAIContext();}catch(e){}
     try{
       const routeExtra=window.FluxAIConnections&&typeof FluxAIConnections.getRoutingPayload==='function'?FluxAIConnections.getRoutingPayload():null;
       if(routeExtra&&typeof routeExtra==='object')Object.assign(body,routeExtra);
@@ -11092,3 +11093,14 @@ function startWeeklyReview(){
     if(inp){inp.value=prompt;inp.focus();}
   },200);
 }
+
+// ══ FluxKit (ESM modules in public/js/*) — thin bridges for storage sync + AI context ══
+try{
+  window.__fluxSyncKey=syncKey;
+  window.__fluxSaveNote=saveNote;
+  window.__fluxRenderCalendar=renderCalendar;
+  window.__fluxReloadTasksFromStorage=function(){
+    tasks=load('tasks',[]);
+    renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();
+  };
+}catch(e){}
