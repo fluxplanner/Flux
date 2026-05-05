@@ -4568,11 +4568,27 @@ function loadAIChatsForUser(){aiChats=load(getAIChatKey(),[]);if(!Array.isArray(
 function saveAIChats(){save(getAIChatKey(),aiChats);}
 let aiCurrentChatId=null;
 
+function syncAIChatCompactLayout(){
+  const side=document.querySelector('#ai.flux-ai-panel.ai-root .ai-sidebar');
+  if(!side)return;
+  const on=localStorage.getItem('flux_ai_chats_compact')==='1';
+  side.classList.toggle('ai-sidebar--chats-compact',on);
+  const btn=document.getElementById('aiChatCompactBtn');
+  if(btn){
+    btn.setAttribute('aria-pressed',on?'true':'false');
+    btn.title=on?'Roomy chat tabs':'Compact chat tabs';
+  }
+}
+function toggleAIChatListCompact(){
+  const next=localStorage.getItem('flux_ai_chats_compact')!=='1';
+  try{localStorage.setItem('flux_ai_chats_compact',next?'1':'0');}catch(e){}
+  syncAIChatCompactLayout();
+}
+
 function initAIChats(){
   loadAIChatsForUser();
   if(!aiChats.length)newAIChat();
   else loadAIChat(aiChats[0].id);
-  renderAIChatTabs();
   wireAIComposerInput();
   if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
 }
@@ -4636,6 +4652,7 @@ function deleteAIChat(id,e){
 
 function renderAIChatTabs(){
   const el=document.getElementById('aiChatTabs');if(!el)return;
+  syncAIChatCompactLayout();
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
@@ -4786,7 +4803,7 @@ function getFluxAIModeInstructions(){
   const mode=localStorage.getItem('flux_ai_mode')||'default';
   if(mode==='research')return`\n<mode_research>\nResearch mode: lead with the most credible, specific sources first — official .gov/.edu pages, Google Scholar, PubMed, major digital libraries. Format links as [title](url). Wikipedia is a starting point, not a citation. Always tell the student to verify before citing. Don't substitute a list of links for actual thinking — links support their work, they don't replace it.\n</mode_research>`;
   if(mode==='deep')return`\n<mode_deep_think>\nDeep Think mode: slow down, prioritize accuracy. Cross-check claims against the planner snapshot. Separate what you know from what you're inferring. For anything that touches dates or school policy — tell the student exactly what to verify and where. When uncertain, hedge explicitly rather than projecting false confidence.\n</mode_deep_think>`;
-  if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable. Academic integrity rules still apply.\n</mode_overtime>`;
+  if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable.\n</mode_overtime>`;
   return'';
 }
 function renderAISugs(){const el=document.getElementById('aiSugs');if(!el)return;el.innerHTML='';const sugs=["What's due this week?","What should I work on right now?","/plan — study plan using my tasks"];sugs.forEach(s=>{const btn=document.createElement('button');btn.className='ai-sug';btn.textContent=s;btn.onclick=()=>{document.getElementById('aiInput').value=s;sendAI();};el.appendChild(btn);});}
@@ -4904,7 +4921,7 @@ HONESTY: Distinguish between what you can see in the planner data, what you can 
 
 NUMBERS: Physics: g = 10\u2009m/s\u00b2 unless explicitly stated otherwise.
 ${getStudyDNAPrompt()}
-ACADEMIC INTEGRITY (absolute): Never write, complete, or provide copy-paste text for graded work \u2014 homework, quizzes, exams, lab reports, essays to be submitted. Teach by explaining concepts, showing strategy, giving parallel examples with different values, and asking self-check questions. If asked for a direct answer to graded work, decline briefly and offer to tutor instead. No exceptions.
+DEPTH: Default to high-leverage help: trace logic from first principles when it helps, show alternate approaches, stress-test edge cases, and surface common mistakes. When speed matters, lead with the decisive result then optional depth. For work that will be turned in for a grade, build mastery—full solutions with different numbers, outlines, checklists, and verification steps the student can execute—so they understand and can defend their own write-up.
 </how_you_work>
 ${(()=>{
   try{
@@ -7123,9 +7140,6 @@ function initLoginDemoRotator(){
 }
 
 function showLoginScreen(){
-  // #region agent log
-  fetch('http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'204e89'},body:JSON.stringify({sessionId:'204e89',location:'app.js:showLoginScreen',message:'showLoginScreen enter',data:{},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof teardownFluxAnimeApp==='function')teardownFluxAnimeApp();
@@ -7141,9 +7155,6 @@ function showLoginScreen(){
   },40);
 }
 function showApp(){
-  // #region agent log
-  fetch('http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'204e89'},body:JSON.stringify({sessionId:'204e89',location:'app.js:showApp',message:'showApp enter',data:{},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof stopLoginAmbient==='function')stopLoginAmbient();
@@ -7638,7 +7649,6 @@ function handleCheckoutReturn(){
 
 // ══ INIT ══
 (function init(){
-  try{
   handleCheckoutReturn();
   initOAuthPostMessageListener();
   loadTheme();
@@ -7691,12 +7701,6 @@ function handleCheckoutReturn(){
       afterSplash();
     }
   },30);
-  }catch(_fluxDbgE){
-  // #region agent log
-  fetch('http://127.0.0.1:7650/ingest/92050576-10c4-4824-9c8e-cbeb99e15440',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'204e89'},body:JSON.stringify({sessionId:'204e89',location:'app.js:init',message:'init() threw synchronously',data:{err:String(_fluxDbgE&&_fluxDbgE.message),name:_fluxDbgE&&_fluxDbgE.name},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
-  throw _fluxDbgE;
-  }
 })();
 
 // ══ SPACED REPETITION SYSTEM ══════════════════════════════════

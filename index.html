@@ -1553,7 +1553,13 @@
         <div class="ai-sidebar-top">
           <button type="button" class="ai-new-chat-btn" onclick="newAIChat()">+ New chat</button>
         </div>
-        <div class="ai-chat-list" id="aiChatTabs"></div>
+        <div class="ai-sidebar-chats" aria-label="Chat threads">
+          <div class="ai-chat-list-meta">
+            <span class="ai-chat-list-meta__hint" aria-hidden="true">Threads</span>
+            <button type="button" class="ai-chat-compact-btn" id="aiChatCompactBtn" onclick="toggleAIChatListCompact()" title="Compact chat tabs" aria-pressed="false" aria-label="Toggle compact chat list">▦</button>
+          </div>
+          <div class="ai-chat-list" id="aiChatTabs"></div>
+        </div>
         <div class="ai-sidebar-bottom">
           <button type="button" class="ai-sidebar-chat-btn" onclick="openAIChatWorkspace()">💬 Chat</button>
           <button type="button" class="ai-connections-btn" onclick="openAIConnections()">🔗 Connections</button>
@@ -2023,7 +2029,7 @@
           <ul style="margin:0;padding-left:1.15rem;font-size:.78rem;color:var(--text2);line-height:1.7">
             <li style="margin-bottom:8px"><strong>Voluntary use.</strong> Students choose whether to use it. Teachers and staff are not required to adopt or support it.</li>
             <li style="margin-bottom:8px"><strong>Data.</strong> Planner data can stay on the device (guest) or sync to a signed-in account (cloud). Optional connections (e.g. Google, Canvas) only use what the student authorizes. Details are in the Privacy Policy.</li>
-            <li style="margin-bottom:8px"><strong>AI.</strong> AI features are assistive only—outputs can be wrong and should not be the sole basis for graded work or official decisions.</li>
+            <li style="margin-bottom:8px"><strong>AI.</strong> AI answers can be wrong—double-check anything you rely on.</li>
             <li style="margin-bottom:8px"><strong>Audience.</strong> Built for <strong>high school</strong> students; younger users should use it with a parent or guardian and school policy in mind.</li>
             <li style="margin-bottom:8px"><strong>Accessibility.</strong> Look → High contrast, font scaling, and reduce motion help usability; we welcome feedback on barriers.</li>
             <li style="margin-bottom:8px"><strong>Reliability.</strong> Works best online. Some features need sync or integrations; plan critical deadlines in official school tools too.</li>
@@ -2192,7 +2198,6 @@
 <script type="module" src="public/js/flux-animations.js"></script>
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
-<script defer src="public/js/flux-debug-session.js"></script>
     <script defer src="public/js/app.js"></script>
     <script defer src="public/js/flux-ai-core.js"></script>
 <script type="module" src="public/js/flux-kit-bootstrap.js"></script>
