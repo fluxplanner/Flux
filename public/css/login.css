@@ -294,12 +294,20 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 }
 .login-left-headline{
   font-size:clamp(2.25rem,5vw,3.6rem);font-weight:800;letter-spacing:-.045em;
-  color:#f6f8fd;line-height:1.12;margin-bottom:18px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  color:#f6f8fd;line-height:1.22;margin-bottom:18px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  overflow:visible;
 }
 .login-gradient-text{
   background:linear-gradient(125deg,var(--accent2) 0%,var(--accent) 38%,var(--purple) 72%,var(--green) 118%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  line-height:1.22;padding-bottom:.08em;-webkit-box-decoration-break:clone;box-decoration-break:clone;
+  line-height:1.22;padding-bottom:.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone;
+}
+/* flux-animations splits this span into .flux-anim-char nodes — clip must be on each span or letters stay transparent */
+.login-gradient-text .flux-anim-char{
+  background:linear-gradient(125deg,var(--accent2) 0%,var(--accent) 38%,var(--purple) 72%,var(--green) 118%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
 }
 .login-left-sub{font-size:.95rem;line-height:1.72;color:rgba(255,255,255,.44);margin:0 0 8px;max-width:40ch}
 .login-badge{
