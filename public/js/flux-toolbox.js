@@ -657,6 +657,8 @@ SUBJECTS.push({
    ================================================================ */
 
 // ── Expression parser/evaluator (for the graphing calculator) ───
+/** @type {'rad'|'deg'} synced with graphing UI MODE button */
+let fluxGcAngleMode = 'rad';
 const MATH_FUNCS = {
   sin:Math.sin, cos:Math.cos, tan:Math.tan,
   asin:Math.asin, acos:Math.acos, atan:Math.atan,
@@ -666,13 +668,22 @@ const MATH_FUNCS = {
   floor:Math.floor, ceil:Math.ceil, round:Math.round,
   sign:Math.sign,
 };
-const MATH_CONSTS = { pi: Math.PI, e: Math.E, tau: Math.PI * 2 };
+const MATH_CONSTS = { pi: Math.PI, π: Math.PI, e: Math.E, tau: Math.PI * 2 };
 
 function compileExpr(src){
-  // Tokenize
   let i = 0;
   const S = src.replace(/\s+/g,'');
   function peek(){ return S[i]; }
+  function canImplicitMult(){
+    if (i >= S.length) return false;
+    const c = S[i];
+    const prev = i > 0 ? S[i - 1] : '';
+    if (c === '.' && /[0-9]/.test(prev)) return false;
+    if (c === '(' && (prev === ')' || /[0-9a-zA-Z]/.test(prev))) return true;
+    if (/[a-zA-Z]/.test(c) && (prev === ')' || /[0-9]/.test(prev))) return true;
+    if (/[0-9]/.test(c) && prev === ')') return true;
+    return false;
+  }
   function parseExpr(){ return parseAddSub(); }
   function parseAddSub(){
     let left = parseMulDiv();
@@ -685,10 +696,19 @@ function compileExpr(src){
   }
   function parseMulDiv(){
     let left = parseUnary();
-    while (i < S.length && (S[i] === '*' || S[i] === '/' || S[i] === '%')){
-      const op = S[i++];
-      const right = parseUnary();
-      left = { op, left, right };
+    for (;;){
+      if (i < S.length && (S[i] === '*' || S[i] === '/' || S[i] === '%')){
+        const op = S[i++];
+        const right = parseUnary();
+        left = { op, left, right };
+        continue;
+      }
+      if (canImplicitMult()){
+        const right = parseUnary();
+        left = { op:'*', left, right };
+        continue;
+      }
+      break;
     }
     return left;
   }
@@ -722,6 +742,10 @@ function compileExpr(src){
       while (/[0-9.]/.test(S[i] || '')) n += S[i++];
       return { op:'num', v: parseFloat(n) };
     }
+    if (S[i] === 'π'){
+      i++;
+      return { op:'num', v: Math.PI };
+    }
     if (/[a-zA-Z]/.test(S[i] || '')){
       let name = '';
       while (/[a-zA-Z0-9_]/.test(S[i] || '')) name += S[i++];
@@ -739,8 +763,10 @@ function compileExpr(src){
   const ast = parseExpr();
   if (i < S.length) throw new Error('Parse error near: ' + S.slice(i));
 
-  // Evaluator
   return function(x){
+    const deg = fluxGcAngleMode === 'deg';
+    const rad = t => deg ? t * Math.PI / 180 : t;
+    const back = t => deg ? t * 180 / Math.PI : t;
     function walk(n){
       switch (n.op){
         case 'num':  return n.v;
@@ -756,22 +782,97 @@ function compileExpr(src){
           if (n.name === 'x') return x;
           if (n.name in MATH_CONSTS) return MATH_CONSTS[n.name];
           throw new Error('Unknown: ' + n.name);
-        case 'call':
-          const f = MATH_FUNCS[n.name];
-          if (!f) throw new Error('Unknown fn: ' + n.name);
-          return f(walk(n.arg));
+        case 'call': {
+          const name = n.name;
+          const a = walk(n.arg);
+          if (deg){
+            if (name === 'sin') return Math.sin(rad(a));
+            if (name === 'cos') return Math.cos(rad(a));
+            if (name === 'tan') return Math.tan(rad(a));
+            if (name === 'asin') return back(Math.asin(a));
+            if (name === 'acos') return back(Math.acos(a));
+            if (name === 'atan') return back(Math.atan(a));
+          }
+          const f = MATH_FUNCS[name];
+          if (!f) throw new Error('Unknown fn: ' + name);
+          return f(a);
+        }
+        default: return NaN;
       }
     }
     return walk(ast);
   };
 }
 
+function gcMakeFn(expr){
+  if (!String(expr || '').trim()) return null;
+  try { return compileExpr(expr); } catch (e){ return null; }
+}
+
+function gcEvalY(expr, x){
+  const fn = gcMakeFn(expr);
+  if (!fn) return NaN;
+  try { return fn(x); } catch (e){ return NaN; }
+}
+
+/** Bisection root on [xa,xb] */
+function gcFindZero(expr, xa, xb, steps = 80){
+  let fa = gcEvalY(expr, xa), fb = gcEvalY(expr, xb);
+  if (!isFinite(fa) || !isFinite(fb)) return null;
+  if (fa === 0) return xa;
+  if (fb === 0) return xb;
+  if (fa * fb > 0) return null;
+  let a = xa, b = xb;
+  for (let k = 0; k < steps; k++){
+    const m = (a + b) / 2;
+    const fm = gcEvalY(expr, m);
+    if (!isFinite(fm)) return null;
+    if (Math.abs(b - a) < 1e-10 * (Math.abs(a) + Math.abs(b) + 1)) return m;
+    if (fa * fm <= 0){ b = m; fb = fm; }
+    else { a = m; fa = fm; }
+  }
+  return (a + b) / 2;
+}
+
+/** Golden-section extrema: kind 'min' | 'max' */
+function gcFindExtremum(expr, xa, xb, kind){
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const resphi = 2 - phi;
+  let a = xa, b = xb;
+  let c = a + resphi * (b - a);
+  let d = b - resphi * (b - a);
+  let fc = gcEvalY(expr, c);
+  let fd = gcEvalY(expr, d);
+  const better = kind === 'min'
+    ? (u, v) => u < v
+    : (u, v) => u > v;
+  for (let k = 0; k < 60; k++){
+    if (!isFinite(fc) || !isFinite(fd)) return null;
+    if (better(fc, fd)){
+      b = d; d = c; fd = fc;
+      c = a + resphi * (b - a);
+      fc = gcEvalY(expr, c);
+    } else {
+      a = c; c = d; fc = fd;
+      d = b - resphi * (b - a);
+      fd = gcEvalY(expr, d);
+    }
+    if (Math.abs(b - a) < 1e-9 * (Math.abs(a) + Math.abs(b) + 1)) break;
+  }
+  const x = (a + b) / 2;
+  const y = gcEvalY(expr, x);
+  return isFinite(y) ? { x, y } : null;
+}
+
 // ── Graphing calculator + basic calculator (Flux toolbox styling) ─
 function graphCurveColors(){
   const acc = getCssVar('--accent') || '#7c9eff';
   const hue = typeof window.shiftHueHex === 'function' ? window.shiftHueHex : null;
-  if (hue) return [acc, hue(acc, 28), hue(acc, -38)];
-  return [acc, '#5eead4', '#a78bfa'];
+  const fallback = ['#7c9eff','#5eead4','#a78bfa','#f472b6','#fbbf24','#34d399','#60a5fa','#c084fc'];
+  if (!hue) return fallback;
+  const out = [];
+  for (let j = 0; j < 8; j++) out.push(hue(acc, ((j * 47) % 360) - 180));
+  return out;
 }
 function renderGraphCalc(body){
   const bcKeys = [
@@ -786,6 +887,14 @@ function renderGraphCalc(body){
       : (k === 'AC' || k === '⌫' ? ' flux-basic-key--fn' : '');
     return `<button type="button" class="flux-basic-key${cls}" data-bc="${attr(k)}">${k === '⌫' ? '⌫' : k}</button>`;
   }).join('')).join('');
+  const sciSpec = [
+    [['sin','sin('],['cos','cos('],['tan','tan('],['asin','asin('],['acos','acos('],['atan','atan(']],
+    [['ln','ln('],['log','log('],['√','sqrt('],['|…|','abs('],['eˣ','exp(']],
+    [['(','('],[')',')'],['x','x'],['π','π'],['e','e'],['^','^']],
+  ];
+  const sciHtml = sciSpec.map(row => `<div class="ti84-sci-row">${
+    row.map(([lab, ins]) => `<button type="button" class="ti84-key ti84-key--sci" data-gc-ins="${attr(ins)}">${esc(lab)}</button>`).join('')
+  }</div>`).join('');
   body.innerHTML = `
     <div class="ti84-calc" aria-label="Graphing and basic calculator">
       <div class="flux-calc-grid">
@@ -801,18 +910,69 @@ function renderGraphCalc(body){
           <span class="ti84-brand__logo">Flux</span>
           <span class="ti84-brand__model">Graphing</span>
         </div>
-        <div class="ti84-header__btns">
-          <button type="button" class="ti84-key ti84-key--nav" id="gcFit" title="Fit Y range to visible curves">Zoom fit</button>
-          <button type="button" class="ti84-key ti84-key--nav" id="gcReset" title="Standard window −10…10">ZStd</button>
-        </div>
       </header>
+      <div class="ti84-toolbar">
+        <div class="ti84-toolbar__row">
+          <span class="ti84-toolbar__label">MODE</span>
+          <button type="button" class="ti84-key ti84-key--mode" id="gcModeRad" aria-pressed="true" title="Angles in radians">Rad</button>
+          <button type="button" class="ti84-key ti84-key--mode" id="gcModeDeg" aria-pressed="false" title="Angles in degrees">Deg</button>
+        </div>
+        <div class="ti84-toolbar__row ti84-toolbar__row--wrap">
+          <button type="button" class="ti84-key ti84-key--nav" id="gcReset" title="Standard −10…10">ZStd</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcZDec" title="Decimal window ~4.7×3.1">ZDec</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcZTrig" title="Trig window ±2π">ZTrig</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcZSquare" title="Equal XY scale">ZSquare</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcZoomIn" title="Zoom in">Zoom +</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcZoomOut" title="Zoom out">Zoom −</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcFit" title="Fit Y range to curves">Fit Y</button>
+        </div>
+      </div>
       <div class="ti84-lcd-bezel">
         <div class="ti84-lcd">
           <canvas id="gcCanvas" width="900" height="500" aria-label="Graph window"></canvas>
           <div class="ti84-lcd__scan" aria-hidden="true"></div>
+          <div class="ti84-readout ti84-readout--trace" id="gcTraceReadout"></div>
           <div class="ti84-readout" id="gcCursor"></div>
         </div>
       </div>
+      <section class="ti84-panel" aria-label="Trace">
+        <div class="ti84-panel__cap">Trace</div>
+        <div class="ti84-trace-row">
+          <label class="ti84-trace-field"><span class="ti84-trace-field__k">Y<sub>n</sub></span>
+            <select id="gcTraceY" class="ti84-trace-select"></select>
+          </label>
+          <label class="ti84-trace-field"><span class="ti84-trace-field__k">X</span>
+            <input type="number" id="gcTraceX" class="ti84-trace-num" step="any" />
+          </label>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcTraceLeft" aria-label="Decrease trace X">◀</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcTraceRight" aria-label="Increase trace X">▶</button>
+        </div>
+      </section>
+      <section class="ti84-panel" aria-label="Table">
+        <div class="ti84-panel__cap">Table</div>
+        <div class="ti84-table-controls">
+          <label class="ti84-tbl-lab"><span>TblStart</span><input type="number" id="gcTblStart" value="-2" step="any"></label>
+          <label class="ti84-tbl-lab"><span>ΔTbl</span><input type="number" id="gcTblStep" value="0.5" step="any"></label>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcTblGo">Build</button>
+        </div>
+        <div class="ti84-table-scroll">
+          <table class="ti84-data-table" id="gcTable"><thead id="gcTableHead"></thead><tbody id="gcTableBody"></tbody></table>
+        </div>
+      </section>
+      <section class="ti84-panel" aria-label="Calculate">
+        <div class="ti84-panel__cap">Calc (selected Y<sub>n</sub>)</div>
+        <div class="ti84-calc-actions">
+          <button type="button" class="ti84-key ti84-key--nav" id="gcCalcVal">value</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcCalcZero">zero</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcCalcMin">minimum</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcCalcMax">maximum</button>
+        </div>
+        <div class="ti84-calc-out" id="gcCalcOut"></div>
+      </section>
+      <section class="ti84-panel ti84-panel--sci" aria-label="Scientific keys">
+        <div class="ti84-panel__cap">Insert (Y= or Basic)</div>
+        <div class="ti84-sci-pad">${sciHtml}</div>
+      </section>
       <section class="ti84-eqns" aria-label="Function editor">
         <div class="ti84-eqns__cap">Y= editor</div>
         <div id="gcInputs" class="ti84-eqns__rows"></div>
@@ -824,7 +984,7 @@ function renderGraphCalc(body){
         <label class="ti84-win"><span class="ti84-win__k">Ymin</span><input type="number" id="gcYmin" step="any"></label>
         <label class="ti84-win"><span class="ti84-win__k">Ymax</span><input type="number" id="gcYmax" step="any"></label>
       </footer>
-      <p class="ti84-hint">Drag graph · scroll to zoom · variable <code>x</code> · <kbd>sin</kbd><kbd>cos</kbd><kbd>ln</kbd><kbd>sqrt</kbd>(<kbd>x</kbd>)</p>
+      <p class="ti84-hint">Drag · scroll zoom · MODE Rad/Deg · trace &amp; table · Calc uses current window · implicit multiply (<kbd>2sin</kbd>(<kbd>x</kbd>))</p>
         </div>
       </div>
     </div>
@@ -832,6 +992,12 @@ function renderGraphCalc(body){
 
   const canvas = $('gcCanvas');
   const ctx = canvas.getContext('2d');
+
+  const selTrace = $('gcTraceY');
+  if (selTrace){
+    selTrace.innerHTML = Array.from({ length: 8 }, (_, i) => `<option value="${i}">Y${i + 1}</option>`).join('');
+    selTrace.value = '0';
+  }
 
   let bcExpr = '';
   let bcFresh = true;
@@ -904,30 +1070,130 @@ function renderGraphCalc(body){
     }
   }
 
-  // View port
+  function gcInsert(tok){
+    if (tok == null || tok === '') return;
+    const el = document.activeElement;
+    if (el && el.classList && el.classList.contains('gc-expr')){
+      const a = el.selectionStart ?? el.value.length;
+      const b = el.selectionEnd ?? el.value.length;
+      el.value = el.value.slice(0, a) + tok + el.value.slice(b);
+      const c = a + tok.length;
+      el.setSelectionRange(c, c);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    if (bcExpr === 'Error') bcExpr = '';
+    bcFresh = false;
+    bcExpr += tok;
+    bcSetDisp();
+  }
+
+  let traceYIdx = 0;
+  let traceX = 0;
+
   let view = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
+  traceX = (view.xMin + view.xMax) / 2;
   const palette = graphCurveColors();
-  const fns = [
-    { expr:'sin(x)', color:palette[0], on:true },
-    { expr:'',       color:palette[1], on:true },
-    { expr:'',       color:palette[2], on:true },
-  ];
+  const fns = Array.from({ length: 8 }, (_, i) => ({
+    expr: i === 0 ? 'sin(x)' : '',
+    color: palette[i],
+    on: true,
+  }));
 
   function writeInputs(){
     $('gcInputs').innerHTML = fns.map((f, i) => `
       <div class="ti84-eqn-row" style="--ti-trace:${f.color}">
         <span class="ti84-eqn-row__y">Y<sub>${i + 1}</sub>=</span>
         <input type="text" class="ti84-eqn-row__inp gc-expr" data-i="${i}" placeholder="${i === 0 ? 'sin(x)' : '—'}" value="${attr(f.expr)}" spellcheck="false" autocapitalize="off" autocomplete="off">
-        <button type="button" class="ti84-eqn-row__on gc-toggle" data-i="${i}" aria-pressed="${f.on}" title="Trace on/off">${f.on ? 'On' : 'Off'}</button>
+        <button type="button" class="ti84-eqn-row__on gc-toggle" data-i="${i}" aria-pressed="${f.on}" title="Graph on/off">${f.on ? 'On' : 'Off'}</button>
       </div>
     `).join('');
+  }
+
+  function clampTrace(){
+    traceX = Math.min(view.xMax, Math.max(view.xMin, traceX));
+    const ti = $('gcTraceX');
+    if (ti) ti.value = String(round(traceX, 12));
   }
 
   function setRange(){
     $('gcXmin').value = view.xMin; $('gcXmax').value = view.xMax;
     $('gcYmin').value = view.yMin; $('gcYmax').value = view.yMax;
+    clampTrace();
   }
+
+  function syncModeUI(){
+    const r = $('gcModeRad'), d = $('gcModeDeg');
+    if (!r || !d) return;
+    r.setAttribute('aria-pressed', fluxGcAngleMode === 'rad' ? 'true' : 'false');
+    d.setAttribute('aria-pressed', fluxGcAngleMode === 'deg' ? 'true' : 'false');
+  }
+
+  function traceDx(){
+    return Math.max(1e-9, (view.xMax - view.xMin) / 200);
+  }
+
+  function zoomSquare(){
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W || !H) return;
+    const midX = (view.xMin + view.xMax) / 2;
+    const midY = (view.yMin + view.yMax) / 2;
+    let spanX = view.xMax - view.xMin;
+    let spanY = view.yMax - view.yMin;
+    const dx = spanX / W, dy = spanY / H;
+    if (dx < dy) spanX = spanY * W / H;
+    else spanY = spanX * H / W;
+    view.xMin = midX - spanX / 2;
+    view.xMax = midX + spanX / 2;
+    view.yMin = midY - spanY / 2;
+    view.yMax = midY + spanY / 2;
+  }
+
+  function zoomBy(f){
+    const midX = (view.xMin + view.xMax) / 2;
+    const midY = (view.yMin + view.yMax) / 2;
+    const hx = (view.xMax - view.xMin) / 2 * f;
+    const hy = (view.yMax - view.yMin) / 2 * f;
+    view.xMin = midX - hx;
+    view.xMax = midX + hx;
+    view.yMin = midY - hy;
+    view.yMax = midY + hy;
+  }
+
+  function refreshTable(){
+    const tb = $('gcTableBody'), hd = $('gcTableHead');
+    if (!tb || !hd) return;
+    const start = parseFloat($('gcTblStart').value);
+    const dt = parseFloat($('gcTblStep').value);
+    if (!isFinite(start) || !isFinite(dt) || dt === 0){
+      hd.innerHTML = '';
+      tb.innerHTML = '<tr><td>Enter TblStart and ΔTbl</td></tr>';
+      return;
+    }
+    const cols = fns.map((f, i) => i).filter(i => fns[i].expr.trim());
+    if (!cols.length){
+      hd.innerHTML = '<tr><th>X</th></tr>';
+      tb.innerHTML = '<tr><td>Enter a Y= expression</td></tr>';
+      return;
+    }
+    hd.innerHTML = '<tr><th>X</th>' + cols.map(i => `<th>Y<sub>${i + 1}</sub></th>`).join('') + '</tr>';
+    let x = start;
+    let rows = '';
+    for (let r = 0; r < 12; r++){
+      rows += '<tr><td>' + esc(fmt(x, 5)) + '</td>';
+      for (const j of cols){
+        const y = gcEvalY(fns[j].expr, x);
+        rows += '<td>' + esc(isFinite(y) ? String(round(y, 5)) : '—') + '</td>';
+      }
+      rows += '</tr>';
+      x += dt;
+    }
+    tb.innerHTML = rows;
+  }
+
+  writeInputs();
   setRange();
+  syncModeUI();
 
   function fmtTick(n){
     if (Math.abs(n) < 1e-9) return '0';
@@ -935,12 +1201,10 @@ function renderGraphCalc(body){
   }
 
   function redraw(){
-    const w = canvas.width, h = canvas.height;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     canvas.width  = canvas.clientWidth  * dpr;
     canvas.height = canvas.clientHeight * dpr;
-    const ww = canvas.width, hh = canvas.height;
-    ctx.setTransform(1,0,0,1,0,0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     const W = canvas.clientWidth, H = canvas.clientHeight;
 
@@ -1020,6 +1284,29 @@ function renderGraphCalc(body){
       }
       ctx.stroke();
     });
+
+    const tr = $('gcTraceReadout');
+    const curFn = fns[traceYIdx];
+    if (curFn && curFn.expr.trim() && tr){
+      let ty = NaN;
+      try { ty = gcEvalY(curFn.expr, traceX); } catch(e){ ty = NaN; }
+      if (isFinite(ty)){
+        const sx = toSx(traceX), sy = toSy(ty);
+        ctx.strokeStyle = `rgba(${axRgb},0.82)`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0); ctx.lineTo(sx, H);
+        ctx.moveTo(0, sy); ctx.lineTo(W, sy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = curFn.color;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        tr.textContent = `Y${traceYIdx + 1}  X=${fmt(traceX, 6)}  Y=${fmt(ty, 6)}`;
+      }else if (tr) tr.textContent = `Y${traceYIdx + 1} — undefined at X=${fmt(traceX, 6)}`;
+    }else if (tr) tr.textContent = '';
   }
   function niceStep(x){
     const p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1e-9))));
@@ -1042,13 +1329,25 @@ function renderGraphCalc(body){
     redraw();
   }
 
-  writeInputs();
   bcSetDisp();
-  body.addEventListener('input', e => { if (e.target.matches('.gc-expr')) onInput(); });
+  body.addEventListener('input', e => {
+    if (e.target.matches('.gc-expr')) onInput();
+    if (e.target && e.target.id === 'gcTraceX'){
+      const v = parseFloat($('gcTraceX').value);
+      traceX = isFinite(v) ? v : traceX;
+      clampTrace();
+      redraw();
+    }
+  });
   body.addEventListener('click', e => {
     const bcBtn = e.target.closest('[data-bc]');
     if (bcBtn){
       bcHandle(bcBtn.getAttribute('data-bc') || '');
+      return;
+    }
+    const insBtn = e.target.closest('[data-gc-ins]');
+    if (insBtn){
+      gcInsert(insBtn.getAttribute('data-gc-ins') || '');
       return;
     }
     const t = e.target.closest('.gc-toggle');
@@ -1064,16 +1363,45 @@ function renderGraphCalc(body){
     view.xMax = parseFloat($('gcXmax').value);
     view.yMin = parseFloat($('gcYmin').value);
     view.yMax = parseFloat($('gcYmax').value);
+    clampTrace();
     redraw();
   }
   ['gcXmin','gcXmax','gcYmin','gcYmax'].forEach(id => $(id).addEventListener('change', updateRangeFromInputs));
+
+  $('gcModeRad').addEventListener('click', () => {
+    fluxGcAngleMode = 'rad';
+    syncModeUI();
+    redraw();
+    refreshTable();
+  });
+  $('gcModeDeg').addEventListener('click', () => {
+    fluxGcAngleMode = 'deg';
+    syncModeUI();
+    redraw();
+    refreshTable();
+  });
 
   $('gcReset').addEventListener('click', () => {
     view = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
     setRange(); redraw();
   });
+  $('gcZDec').addEventListener('click', () => {
+    view = { xMin:-4.7, xMax:4.7, yMin:-3.1, yMax:3.1 };
+    setRange(); redraw();
+  });
+  const twopi = 2 * Math.PI;
+  $('gcZTrig').addEventListener('click', () => {
+    view = { xMin:-twopi, xMax:twopi, yMin:-4, yMax:4 };
+    setRange(); redraw();
+  });
+  $('gcZSquare').addEventListener('click', () => {
+    zoomSquare();
+    setRange(); redraw();
+  });
+  $('gcZoomIn').addEventListener('click', () => { zoomBy(1 / 1.4); setRange(); redraw(); });
+  $('gcZoomOut').addEventListener('click', () => { zoomBy(1.4); setRange(); redraw(); });
+
   $('gcFit').addEventListener('click', () => {
-    // Auto-fit: sample each fn across the current x range and pick y bounds
     let lo = Infinity, hi = -Infinity;
     const xr = view.xMax - view.xMin;
     fns.forEach(f => {
@@ -1093,7 +1421,44 @@ function renderGraphCalc(body){
     }
   });
 
-  // Pan / zoom
+  $('gcTraceY').addEventListener('change', () => {
+    traceYIdx = +$('gcTraceY').value || 0;
+    redraw();
+  });
+  $('gcTraceLeft').addEventListener('click', () => { traceX -= traceDx(); clampTrace(); redraw(); });
+  $('gcTraceRight').addEventListener('click', () => { traceX += traceDx(); clampTrace(); redraw(); });
+  $('gcTblGo').addEventListener('click', refreshTable);
+
+  const calcOut = $('gcCalcOut');
+  $('gcCalcVal').addEventListener('click', () => {
+    const ex = fns[traceYIdx]?.expr?.trim();
+    if (!ex){ if (calcOut) calcOut.textContent = 'Choose Yₙ with an expression.'; return; }
+    const y = gcEvalY(ex, traceX);
+    if (calcOut) calcOut.textContent = isFinite(y) ? `Y${traceYIdx + 1}(${fmt(traceX, 6)}) = ${fmt(y, 8)}` : 'Undefined at this X.';
+  });
+  $('gcCalcZero').addEventListener('click', () => {
+    const ex = fns[traceYIdx]?.expr?.trim();
+    if (!ex){ if (calcOut) calcOut.textContent = 'Choose Yₙ with an expression.'; return; }
+    const z = gcFindZero(ex, view.xMin, view.xMax);
+    if (z == null){ if (calcOut) calcOut.textContent = 'No sign change in window (try adjusting Xmin/Xmax).'; return; }
+    const yz = gcEvalY(ex, z);
+    if (calcOut) calcOut.textContent = `Zero ≈ ${fmt(z, 8)}   Y=${fmt(yz, 8)}`;
+  });
+  $('gcCalcMin').addEventListener('click', () => {
+    const ex = fns[traceYIdx]?.expr?.trim();
+    if (!ex){ if (calcOut) calcOut.textContent = 'Choose Yₙ with an expression.'; return; }
+    const r = gcFindExtremum(ex, view.xMin, view.xMax, 'min');
+    if (!r){ if (calcOut) calcOut.textContent = 'Could not find minimum in window.'; return; }
+    if (calcOut) calcOut.textContent = `Min at X≈${fmt(r.x, 8)}  Y=${fmt(r.y, 8)}`;
+  });
+  $('gcCalcMax').addEventListener('click', () => {
+    const ex = fns[traceYIdx]?.expr?.trim();
+    if (!ex){ if (calcOut) calcOut.textContent = 'Choose Yₙ with an expression.'; return; }
+    const r = gcFindExtremum(ex, view.xMin, view.xMax, 'max');
+    if (!r){ if (calcOut) calcOut.textContent = 'Could not find maximum in window.'; return; }
+    if (calcOut) calcOut.textContent = `Max at X≈${fmt(r.x, 8)}  Y=${fmt(r.y, 8)}`;
+  });
+
   let drag = null;
   canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
@@ -1123,7 +1488,6 @@ function renderGraphCalc(body){
     setRange(); redraw();
   }, { passive:false });
 
-  // Mouse cursor readout
   canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left) / rect.width;
@@ -1131,7 +1495,7 @@ function renderGraphCalc(body){
     const x = view.xMin + mx * (view.xMax - view.xMin);
     const y = view.yMin + my * (view.yMax - view.yMin);
     const cur = $('gcCursor');
-    if (cur) cur.textContent = `X=${round(x, 4)}  Y=${round(y, 4)}`;
+    if (cur) cur.textContent = `cursor X=${round(x, 4)}  Y=${round(y, 4)}`;
   });
 
   redraw();

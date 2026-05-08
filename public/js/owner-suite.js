@@ -18,6 +18,130 @@
     viewer:['view_users'],
   };
 
+  /** Curated backlog ideas for Flux (owner reference only; not shipped as product commitments). */
+  const FLUX_PRODUCT_IDEAS=[
+    'Natural-language task capture from voice on mobile with auto-parsed date, subject, and duration.',
+    'Two-way Google Calendar sync with conflict surfacing and “busy block” overlays on the Flux calendar.',
+    'Recurring tasks with exceptions (skip once, shift series, end-after-N) synced reliably to cloud.',
+    'Shared class or study-group spaces: read-only task boards with optional comment threads.',
+    'Apple Calendar / iCal subscribe link export for due dates and focus blocks.',
+    'ICS import for school timetables and blackout dates in one step.',
+    'Offline-first queue visual: pending writes, retry, and per-item sync status.',
+    'Per-subject color themes and icon packs (user-defined, exportable as a theme JSON).',
+    'Command palette (⌘K) actions for every planner surface, with fuzzy search and recent commands.',
+    'Deep links that open a specific task, note, or focus session (`?task=…`, share from mobile).',
+    'Habit chains with “don’t break the chain” heatmaps separate from one-off tasks.',
+    'Mood and energy quick-log tied to completion velocity (optional privacy toggle).',
+    'Spaced-repetition deck mode for notes tagged #review with SM-2–style intervals.',
+    'Flashcard generator from note headings or bullet lists via on-device templates.',
+    'Equation OCR from a photo into LaTeX (with manual correct step) for STEM notes.',
+    'Canvas LMS read-only embed: upcoming assignments list with cached refresh.',
+    'Schoology / Blackboard assignment ingestion via signed connector (org admin setup).',
+    'Email-to-task inbox: forward syllabus deadlines into a staging queue for approval.',
+    'Screenshot snip → task: paste image; Flux extracts text locally where possible.',
+    'White noise / pomodoro presets saved per subject and synced across devices.',
+    'Focus session “intent” note saved with each block for weekly retrospective.',
+    'Meeting mode: collapse distractions, banner-only alerts, optional auto-replies copy.',
+    'Parent / guardian weekly digest email (opt-in, aggregate stats only).',
+    'Teacher dashboard stub: class roster link + assignment push (enterprise track).',
+    'Grade GPA calculator with what-if scenarios and target grade paths per class.',
+    'Rubric-aware project checklist importer (paste rubric → scaffold subtasks).',
+    'Citation graph: notes linked to sources; export bibliography in APA/MLA/Chicago.',
+    'Collaborative flashcards with real-time cursors (WebRTC or CRDT-backed).',
+    'Peer study matching by subject + timezone with safety and reporting tools.',
+    'Public read-only “portfolio week” view for internships or college applications.',
+    'Time-zone aware study groups with fair rotation for presentation leads.',
+    'Noise-cancelling “focus score” based on session length vs interruptions (heuristic).',
+    'Ambient dashboard: live weather + sunset + “best outdoor study window” hint.',
+    'Transit-Aware due reminders (“leave by” based on cached commute overlays).',
+    'Locker or lab-equipment checklist recurring on lab days only.',
+    'Lab safety quiz reminders tied to course tags before certain task types.',
+    'Scientific calculator history tape exportable to notes.',
+    'Graphing calculator saved plots library with PNG/SVG export.',
+    'Unit converter favorites pinned next to the quick-add task field.',
+    'Periodic table quizzes with spaced repetition and wrong-answer review.',
+    'Organic chemistry name-to-structure drills with optional stereochemistry.',
+    'Language conjugation practice from user vocabulary lists.',
+    'Historical timeline builder: events on a zoomable axis with citations.',
+    'Map-based study for geography: pin decks to regions.',
+    'Music practice log with metronome presets and tempo curves.',
+    'Art portfolio milestones: critique deadlines and revision rounds.',
+    'CS code-snippet library with syntax highlight and tag search (local only).',
+    'GitHub issue import for capstone milestones (read-only, PAT in Edge proxy).',
+    'LaTeX live preview split for math-heavy notes (KaTeX or MathJax).',
+    'Handwriting-to-text for stylus devices with on-device model where available.',
+    'Infinite canvas “mind map” layer linked bidirectionally to tasks.',
+    'Bi-directional backlinks between notes (`[[wiki]]` style) with graph overview.',
+    'Full-text search across tasks, notes, and focus logs with keyboard nav.',
+    'Saved searches / smart lists: “overdue STEM”, “no estimate”, “exam prep”.',
+    'Bulk edit: shift dates, retag subjects, set priority by filter.',
+    'Task templates marketplace (curated packs: AP exams, SAT, college apps).',
+    'Syllabus week auto-scaffold: detect week numbers and generate placeholder tasks.',
+    'Exam countdown ribbons with suggested daily minutes per subject.',
+    'Adaptive daily plan: reschedule open work when a sick/lazy day is marked.',
+    'Energy-based scheduling: place hard tasks in user-defined “peak hours”.',
+    'Buffer time auto-inserted before/after events imported from calendar.',
+    'Travel time tasks auto-created between back-to-back off-campus events.',
+    'Location-based reminders (geofence) for “when you reach campus library”.',
+    'Wearable glance: next task and focus timer on Apple Watch / Wear OS.',
+    'Widget for iOS/Android home screen: next 3 tasks + start focus shortcut.',
+    'Lock screen live activity for active focus session with pause controls.',
+    'Shortcuts / Automations hooks: “start Flux focus”, “add task”, URL schemes.',
+    'Optional end-to-end encrypted notes with passphrase (key never leaves device).',
+    'Per-note sharing with expiring links and view-only watermark.',
+    'Audit export for schools: aggregate usage without raw note bodies (policy packs).',
+    'FERPA-friendly admin mode: tenant isolation, data residency flags.',
+    'Role-based access for clubs: officer vs member task visibilities.',
+    'Volunteer hour logger with supervisor signature flow (PDF export).',
+    'Sport practice planner: drills, hydration, and recovery tasks templates.',
+    'Nutrition optional module: meal prep blocks as calendar overlays (non-medical).',
+    'Sleep debt estimator from self-reported sleep logs + gentle scheduling nudges.',
+    'Break coach: stretch timers with accessibility-friendly animations off.',
+    'Dyslexia-friendly reading mode for long notes: spacing, font, contrast presets.',
+    'Screen-reader audits on every modal with actionable fix list in devtools.',
+    'High-contrast themes tested against WCAG AAA for core planner screens.',
+    'Reduced motion parity: no confetti without alternative success cue.',
+    'Locale packs with community translation portal and fallback strings.',
+    'RTL layout polish for Arabic/Hebrew with mirrored timeline views.',
+    'Keyboard-only grade entry flow with visible focus rings everywhere.',
+    'Printer-friendly week planner PDF with ink-save mode.',
+    'Structured data export to Notion / Obsidian (Markdown + front matter).',
+    'Zapier / Make.com triggers: task created, task completed, focus session end.',
+    'Slack/Discord bot: post daily digest to a study server channel.',
+    'Microsoft Teams assignment cards deep link into Flux tasks.',
+    'Linear / Jira bridge for internship task tracking (one-way or two-way).',
+    'Billing and org seats (Stripe Customer Portal) for school pilots.',
+    'Campus SSO via SAML with JIT provisioning into Supabase.',
+    'Device management: revoke other sessions from a trusted devices list.',
+    'Security keys / passkeys as primary auth with backup codes UX.',
+    'Bug report auto-capture: console tail, route, build ID (user consents).',
+    'Feature flag overrides per tester cohort with percentage rollouts.',
+    'Performance budgets in CI: bundle size and LCP guardrails on landing.',
+    'Synthetic monitoring for auth + sync ping from edge regions.',
+    'Owner kill-switch banner for incidents with acknowledgment tracking.',
+    'Gradual rollout of AI models with per-tenant allowlists and cost caps.',
+  ];
+  window.__fluxOwnerProductIdeas=FLUX_PRODUCT_IDEAS;
+
+  window.__fluxProductIdeasFilter=function(q){
+    const ql=String(q||'').toLowerCase().trim();
+    document.querySelectorAll('#osIdeasList li').forEach(li=>{
+      li.style.display=!ql||li.textContent.toLowerCase().includes(ql)?'':'none';
+    });
+  };
+  window.ownerCopyProductIdeasList=function(){
+    const arr=window.__fluxOwnerProductIdeas||[];
+    const text=arr.map((t,i)=>`${i+1}. ${t}`).join('\n');
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>{
+        if(typeof showToast==='function')showToast('Copied '+arr.length+' ideas','success');
+      }).catch(()=>{
+        if(typeof showToast==='function')showToast('Copy blocked — select list manually','warning');
+      });
+    }
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('product_ideas_copy',{n:arr.length});
+  };
+
   window.getPlatformConfig=function(){
     return{...PLATFORM_DEFAULTS,...load('flux_platform_config',{})};
   };
@@ -167,6 +291,7 @@
         ${mapRow('partial','Engagement: streaks &amp; dashboard hero in-app.',`<span style="font-size:.68rem;color:var(--muted)">Dashboard</span>`)}
         ${mapRow('in','Global announcement toast on Command Center open (platform config).',jump('config','Announcement'))}
         ${mapRow('server','Predictive churn / growth: needs anonymized telemetry pipeline — future Edge job.',ext('edge','Edge Functions'))}
+        ${mapRow('in','Curated <b>100 feature ideas</b> backlog for planning (owner-only tab).',jump('ideas','Product ideas'))}
       </div>`;
   }
 
@@ -279,7 +404,7 @@
     return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
   }
 
-  const OS_TABS=new Set(['overview','megamap','team','testers','release','auth','data','config','integrations','analytics','usage','audit','feedback','advanced']);
+  const OS_TABS=new Set(['overview','megamap','team','testers','release','auth','data','config','integrations','analytics','usage','audit','feedback','ideas','advanced']);
 
   window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
@@ -345,6 +470,9 @@
       if(tab==='overview')return`
         <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.22);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.74rem;line-height:1.5;color:var(--muted2)">
           <b style="color:var(--accent)">Mega prompt coverage</b> — Every bullet from the owner god-mode spec is listed with status on the <button type="button" onclick="window.__osSetTab('megamap')" style="background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Mega map</button> tab.
+        </div>
+        <div style="background:rgba(124,92,255,.06);border:1px solid rgba(124,92,255,.22);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.74rem;line-height:1.5;color:var(--muted2)">
+          <b style="color:var(--purple)">Product backlog</b> — <button type="button" onclick="window.__osSetTab('ideas')" style="background:rgba(124,92,255,.14);border:1px solid rgba(124,92,255,.35);color:var(--purple);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">100 feature ideas</button> curated for Flux (filter, copy list).
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px">
@@ -586,14 +714,13 @@
         <div style="max-height:min(480px,55vh);overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
           ${inbox.length?inbox.map(entry=>{
             const e=entry&&typeof entry==='object'?entry:{};
-            const id=esc(e.id||'');
             const when=e.t?new Date(e.t).toLocaleString():'—';
             return`<div style="padding:12px 14px;border-bottom:1px solid var(--border);font-size:.74rem">
               <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px">
                 <span style="font-family:JetBrains Mono,monospace;color:var(--muted);font-size:.68rem">${esc(when)}</span>
                 <span style="font-size:.58rem;padding:2px 8px;border-radius:6px;background:rgba(var(--accent-rgb),.12);color:var(--accent);font-weight:700">${esc(e.category||'general')}</span>
                 <span style="flex:1"></span>
-                <button type="button" onclick="ownerDismissFeedback('${id}')" style="padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Dismiss</button>
+                <button type="button" onclick="ownerDismissFeedback(${JSON.stringify(String(e.id||''))})" style="padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Dismiss</button>
               </div>
               <div style="font-size:.68rem;color:var(--muted2);margin-bottom:6px;word-break:break-all"><b>From</b> ${esc(e.fromEmail||'unknown')} <span style="opacity:.7">· ${esc((e.fromUserId||'').slice(0,8))}…</span></div>
               <div style="color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5">${esc(e.message||'')}</div>
@@ -601,6 +728,21 @@
             </div>`;
           }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">No feedback yet. Ask users to use Settings → Data &amp; info → Send feedback (or ⌘K → Send feedback).</div>'}
         </div>`;
+      }
+
+      if(tab==='ideas'){
+        const n=FLUX_PRODUCT_IDEAS.length;
+        return`
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
+          <b>${n} product ideas</b> you could ship into Flux — brainstorming backlog only (not commitments). Filter or copy the full list for roadmapping.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">
+          <input type="search" id="osIdeasFilter" placeholder="Filter ideas…" autocomplete="off" style="flex:1;min-width:200px;padding:8px 12px;font-size:.82rem;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text)" oninput="window.__fluxProductIdeasFilter&&window.__fluxProductIdeasFilter(this.value)">
+          <button type="button" onclick="ownerCopyProductIdeasList()" style="padding:8px 14px;font-size:.75rem;border-radius:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);font-weight:700">Copy all (${n})</button>
+        </div>
+        <ol id="osIdeasList" style="margin:0;padding-left:1.15rem;max-height:min(520px,58vh);overflow-y:auto;font-size:.76rem;line-height:1.55;color:var(--text)">
+          ${FLUX_PRODUCT_IDEAS.map(t=>`<li style="margin-bottom:10px">${esc(t)}</li>`).join('')}
+        </ol>`;
       }
 
       if(tab==='advanced')return`
@@ -659,6 +801,7 @@
           <button type="button" data-os-tab="usage" onclick="window.__osSetTab('usage')">Platform usage</button>
           <button type="button" data-os-tab="audit" onclick="window.__osSetTab('audit')">Audit log</button>
           <button type="button" data-os-tab="feedback" onclick="window.__osSetTab('feedback')">Feedback inbox</button>
+          <button type="button" data-os-tab="ideas" onclick="window.__osSetTab('ideas')">Product ideas</button>
           <button type="button" data-os-tab="advanced" onclick="window.__osSetTab('advanced')">Advanced</button>
         </div>
         <div id="osBody" style="${osBodyStyle}"></div>
