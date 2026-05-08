@@ -1091,6 +1091,40 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
+/* Desktop: optionally hide entire thread sidebar (wider chat area) */
+@media (min-width: 769px){
+  #ai.flux-ai-panel.ai-root.ai-root--sidebar-hidden .ai-sidebar{
+    display: none !important;
+  }
+}
+#ai.flux-ai-panel.ai-root .ai-sidebar-reveal-btn{
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--fa-hair2);
+  background: var(--fa-elevated);
+  color: var(--fa-ink2);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+#ai.flux-ai-panel.ai-root .ai-sidebar-reveal-btn:hover{
+  background: color-mix(in srgb, var(--fa-paper) 88%, transparent);
+  color: var(--fa-ink);
+}
+@media (min-width: 769px){
+  #ai.flux-ai-panel.ai-root.ai-root--sidebar-hidden .ai-sidebar-reveal-btn{
+    display: inline-flex;
+  }
+}
 #ai.flux-ai-panel.ai-root .ai-sidebar-top{
   padding: 12px;
   flex-shrink: 0;

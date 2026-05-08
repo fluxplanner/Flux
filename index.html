@@ -1556,7 +1556,7 @@
         <div class="ai-sidebar-chats" aria-label="Chat threads">
           <div class="ai-chat-list-meta">
             <span class="ai-chat-list-meta__hint" aria-hidden="true">Threads</span>
-            <button type="button" class="ai-chat-compact-btn" id="aiChatCompactBtn" onclick="toggleAIChatListCompact()" title="Compact chat tabs" aria-pressed="false" aria-label="Toggle compact chat list">▦</button>
+            <button type="button" class="ai-chat-compact-btn" id="aiChatCompactBtn" onclick="toggleAIChatListCompact()" title="Compact tabs — click again to hide sidebar" aria-pressed="false" aria-label="Cycle sidebar layout: full, compact, or hidden">▦</button>
           </div>
           <div class="ai-chat-list" id="aiChatTabs"></div>
         </div>
@@ -1569,6 +1569,7 @@
       <div class="ai-main">
         <header class="ai-topbar">
           <div class="ai-topbar__left">
+            <button type="button" class="ai-sidebar-reveal-btn" id="aiSidebarRevealBtn" onclick="fluxRevealAISidebar()" hidden title="Show chat threads" aria-label="Show chat threads">☰</button>
             <img class="ai-topbar-logo" src="public/flux-planner-logo.png" width="32" height="32" alt="" aria-hidden="true" />
             <span class="ai-title">Flux AI</span>
             <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
@@ -1835,6 +1836,36 @@
             </div>
           </div>
         </div>
+        <div class="card" id="fluxGoogleDocsSettingsCard">
+          <h3>Google Docs (study sync)</h3>
+          <div class="ssub" style="margin-bottom:10px;line-height:1.55">Create docs, replace the body with plain text from Flux, and pull a primary doc into <strong>Flux AI</strong> before each message (toggle <em>Google Docs</em> under AI → Connections). Google still keeps full version history — there is no supported way to hide that you edited a doc.</div>
+          <div class="srow" style="border:none;margin-bottom:8px">
+            <div style="flex:1">
+              <div class="slabel">Docs API access</div>
+              <div class="ssub" id="fluxGoogleDocsStatus">Connect once to add the Google Docs scope alongside Gmail/Calendar.</div>
+              <button type="button" class="btn-sec" style="margin-top:8px;padding:6px 12px;font-size:.76rem" onclick="window.fluxReconnectGoogleDocs&&fluxReconnectGoogleDocs()">Connect Google Docs</button>
+            </div>
+          </div>
+          <div class="srow" style="border:none;margin-bottom:8px">
+            <div style="flex:1;min-width:0">
+              <div class="slabel">Primary doc URL (for Flux AI excerpts)</div>
+              <input type="url" id="fluxDocsPrimaryUrl" placeholder="https://docs.google.com/document/d/…/edit" style="margin:6px 0 0;width:100%">
+              <button type="button" class="btn-sec" style="margin-top:8px;padding:6px 12px;font-size:.76rem" onclick="window.fluxGoogleDocsSavePrimaryUrl&&fluxGoogleDocsSavePrimaryUrl()">Save URL</button>
+            </div>
+          </div>
+          <div class="srow" style="border:none;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+            <input type="text" id="fluxDocsNewTitle" placeholder="Title for new doc" style="flex:1;min-width:160px;margin:0">
+            <button type="button" onclick="window.fluxGoogleDocsCreateAndOpen&&fluxGoogleDocsCreateAndOpen()">Create &amp; open</button>
+            <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.76rem" onclick="window.fluxGoogleDocsPullNow&&fluxGoogleDocsPullNow()">Pull into AI now</button>
+          </div>
+          <div class="srow" style="border:none">
+            <div style="flex:1;min-width:0">
+              <div class="slabel">Replace primary doc body (plain text)</div>
+              <textarea id="fluxDocsPushBody" rows="5" maxlength="480000" placeholder="Paste or draft here, then push to your primary Google Doc…" style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem"></textarea>
+              <button type="button" style="margin-top:8px" onclick="window.fluxGoogleDocsPushFromTextarea&&fluxGoogleDocsPushFromTextarea()">Replace doc body</button>
+            </div>
+          </div>
+        </div>
         <div class="card">
           <h3>Daily Study Goal</h3>
           <div style="display:flex;align-items:center;gap:10px">
@@ -2071,20 +2102,6 @@
     </button>
   </div>
 
-  <!-- ── FAB — Flux AI + quick actions ── -->
-  <div id="fabContainer" class="fab-container">
-    <div id="fabMenu" class="fab-menu">
-      <button type="button" class="fab-action fab-action-agent" onclick="closeFAB();openFluxAgent({})"><span class="fab-action-icon">✦</span><span class="fab-action-text"><span class="fab-action-title">Flux AI</span><span class="fab-action-hint">Ask anything — full planner context</span></span></button>
-      <button type="button" class="fab-action" onclick="closeFAB();openFluxAgent({prefill:'Given my tasks, calendar, classes, and energy, what should I work on right now and for how long?'})"><span class="fab-action-icon">🎯</span><span class="fab-action-text"><span class="fab-action-title">Coach: priorities now</span><span class="fab-action-hint">AI picks your next move</span></span></button>
-      <button type="button" class="fab-action fab-action-primary" onclick="fabAddTask()"><span class="fab-action-icon">＋</span><span class="fab-action-text"><span class="fab-action-title">New task</span><span class="fab-action-hint">Quick add — then ask Flux AI to plan</span></span></button>
-      <button type="button" class="fab-action" onclick="closeFAB();fabFocus()"><span class="fab-action-icon">⏱</span><span class="fab-action-text"><span class="fab-action-title">Focus timer</span><span class="fab-action-hint">Open timer tab</span></span></button>
-      <button type="button" class="fab-action" onclick="_sessionStart?endSession():startSession()" id="fabSessionBtn"><span class="fab-action-icon">📍</span><span class="fab-action-text"><span class="fab-action-title" id="fabSessionLabel">Class session</span><span class="fab-action-hint">Track this period</span></span></button>
-    </div>
-    <button type="button" id="fabBtn" class="fab-trigger flux-ac-fab-spin-host flux-ac-soft-bounce-hover" aria-label="Quick actions — Flux AI, new task, timer…" aria-haspopup="true" aria-expanded="false" title="Quick actions">
-      <span class="fab-trigger__spark" aria-hidden="true">✦</span>
-    </button>
-  </div>
-
   <!-- Floating Pomodoro pill (shown only while a focus session is running) -->
   <button type="button" id="fluxPomoPill" class="flux-pomo-pill" hidden onclick="typeof fluxFocusPomoPill==='function'&&fluxFocusPomoPill()" aria-live="polite" aria-label="Pomodoro running — open focus timer">
     <span class="flux-pomo-pill-ring" aria-hidden="true">
@@ -2236,6 +2253,7 @@
 <script defer src="public/js/flux-mobile-swipe.js"></script>
 <script defer src="public/js/flux-task-context.js"></script>
 <script defer src="public/js/flux-gcal-push.js"></script>
+<script defer src="public/js/flux-google-docs.js"></script>
 <script defer src="public/js/flux-references.js"></script>
 <script defer src="public/js/flux-reference-tools.js"></script>
 <script defer src="public/js/flux-progress-streak.js"></script>

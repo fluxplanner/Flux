@@ -766,19 +766,44 @@ function compileExpr(src){
   };
 }
 
-// ── Graphing calculator (TI-84 inspired shell + LCD) ───────────
-const GRAPH_COLORS = ['#0a1a0e', '#0d2832', '#1a1f42'];
+// ── Graphing calculator + basic calculator (Flux toolbox styling) ─
+function graphCurveColors(){
+  const acc = getCssVar('--accent') || '#7c9eff';
+  const hue = typeof window.shiftHueHex === 'function' ? window.shiftHueHex : null;
+  if (hue) return [acc, hue(acc, 28), hue(acc, -38)];
+  return [acc, '#5eead4', '#a78bfa'];
+}
 function renderGraphCalc(body){
+  const bcKeys = [
+    ['(', ')', '⌫', 'AC'],
+    ['7', '8', '9', '/'],
+    ['4', '5', '6', '*'],
+    ['1', '2', '3', '-'],
+    ['0', '.', '=', '+'],
+  ];
+  const bcPad = bcKeys.map(row => row.map(k => {
+    const cls = k === '=' ? ' flux-basic-key--eq'
+      : (k === 'AC' || k === '⌫' ? ' flux-basic-key--fn' : '');
+    return `<button type="button" class="flux-basic-key${cls}" data-bc="${attr(k)}">${k === '⌫' ? '⌫' : k}</button>`;
+  }).join('')).join('');
   body.innerHTML = `
-    <div class="ti84-calc" aria-label="TI-84 style graphing calculator">
+    <div class="ti84-calc" aria-label="Graphing and basic calculator">
+      <div class="flux-calc-grid">
+        <section class="flux-basic-calc" aria-label="Basic calculator">
+          <h3 class="flux-basic-calc__title">Basic</h3>
+          <input type="text" id="gcBasicDisplay" class="flux-basic-calc__display" readonly value="0" spellcheck="false" autocomplete="off" aria-live="polite">
+          <div class="flux-basic-keys">${bcPad}</div>
+          <p class="flux-basic-calc__sub">Arithmetic and parentheses · same parser as the grapher (e.g. <kbd>sqrt</kbd>(2))</p>
+        </section>
+        <div class="flux-graph-stack">
       <header class="ti84-header">
         <div class="ti84-brand">
-          <span class="ti84-brand__logo">FLUX</span>
-          <span class="ti84-brand__model">Plus Silver — Grapher</span>
+          <span class="ti84-brand__logo">Flux</span>
+          <span class="ti84-brand__model">Graphing</span>
         </div>
         <div class="ti84-header__btns">
-          <button type="button" class="ti84-key ti84-key--nav" id="gcFit" title="Fit Y range to visible curves">ZOOM FIT</button>
-          <button type="button" class="ti84-key ti84-key--nav" id="gcReset" title="Standard window −10…10">ZSTD</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcFit" title="Fit Y range to visible curves">Zoom fit</button>
+          <button type="button" class="ti84-key ti84-key--nav" id="gcReset" title="Standard window −10…10">ZStd</button>
         </div>
       </header>
       <div class="ti84-lcd-bezel">
@@ -793,25 +818,99 @@ function renderGraphCalc(body){
         <div id="gcInputs" class="ti84-eqns__rows"></div>
       </section>
       <footer class="ti84-window">
-        <span class="ti84-window__title">WINDOW</span>
+        <span class="ti84-window__title">Window</span>
         <label class="ti84-win"><span class="ti84-win__k">Xmin</span><input type="number" id="gcXmin" step="any"></label>
         <label class="ti84-win"><span class="ti84-win__k">Xmax</span><input type="number" id="gcXmax" step="any"></label>
         <label class="ti84-win"><span class="ti84-win__k">Ymin</span><input type="number" id="gcYmin" step="any"></label>
         <label class="ti84-win"><span class="ti84-win__k">Ymax</span><input type="number" id="gcYmax" step="any"></label>
       </footer>
       <p class="ti84-hint">Drag graph · scroll to zoom · variable <code>x</code> · <kbd>sin</kbd><kbd>cos</kbd><kbd>ln</kbd><kbd>sqrt</kbd>(<kbd>x</kbd>)</p>
+        </div>
+      </div>
     </div>
   `;
 
   const canvas = $('gcCanvas');
   const ctx = canvas.getContext('2d');
 
+  let bcExpr = '';
+  let bcFresh = true;
+  function bcLastNumHasDot(s){
+    let i = s.length;
+    while (i > 0 && '0123456789.'.includes(s[i - 1])) i--;
+    return s.slice(i).includes('.');
+  }
+  function bcSetDisp(){
+    const el = $('gcBasicDisplay');
+    if (!el) return;
+    el.value = bcExpr === '' ? '0' : (bcExpr === 'Error' ? 'Error' : bcExpr);
+  }
+  function bcHandle(k){
+    if (k === 'AC'){
+      bcExpr = '';
+      bcFresh = true;
+      bcSetDisp();
+      return;
+    }
+    if (k === '⌫'){
+      if (bcExpr === 'Error') bcExpr = '';
+      else bcExpr = bcExpr.slice(0, -1);
+      bcSetDisp();
+      return;
+    }
+    if (k === '='){
+      try{
+        const raw = bcExpr.trim();
+        if (!raw) return;
+        const fn = compileExpr(raw);
+        let v = fn(0);
+        if (!isFinite(v)) throw new Error('NaN');
+        bcExpr = String(round(v, 12));
+        if (/e/i.test(bcExpr)) bcExpr = String(v);
+        bcFresh = true;
+      }catch(_e){
+        bcExpr = 'Error';
+      }
+      bcSetDisp();
+      return;
+    }
+    if (bcExpr === 'Error') bcExpr = '';
+    if (/^[0-9]$/.test(k)){
+      if (bcFresh){
+        bcFresh = false;
+        bcExpr = k;
+      }else{
+        bcExpr += k;
+      }
+      bcSetDisp();
+      return;
+    }
+    if (k === '.'){
+      if (bcFresh){
+        bcFresh = false;
+        bcExpr = '0.';
+      }else if (bcLastNumHasDot(bcExpr)){
+        return;
+      }else{
+        bcExpr += '.';
+      }
+      bcSetDisp();
+      return;
+    }
+    if ('+-*/()'.includes(k)){
+      bcFresh = false;
+      bcExpr += k;
+      bcSetDisp();
+    }
+  }
+
   // View port
   let view = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
+  const palette = graphCurveColors();
   const fns = [
-    { expr:'sin(x)', color:GRAPH_COLORS[0], on:true },
-    { expr:'',       color:GRAPH_COLORS[1], on:true },
-    { expr:'',       color:GRAPH_COLORS[2], on:true },
+    { expr:'sin(x)', color:palette[0], on:true },
+    { expr:'',       color:palette[1], on:true },
+    { expr:'',       color:palette[2], on:true },
   ];
 
   function writeInputs(){
@@ -850,26 +949,29 @@ function renderGraphCalc(body){
     const toSx = x => ((x - view.xMin) / xr) * W;
     const toSy = y => H - ((y - view.yMin) / yr) * H;
 
-    // TI-style LCD background (sage / gray-green)
+    const isLight = document.body && document.body.getAttribute('data-theme') === 'light';
+    const lcdTop = getCssVar('--bg2') || (isLight ? '#eef1f7' : '#0e1424');
+    const lcdMid = getCssVar('--card') || (isLight ? '#f6f8fc' : '#121826');
+    const lcdBot = getCssVar('--bg3') || (isLight ? '#e4e9f2' : '#0a0e18');
     ctx.clearRect(0, 0, W, H);
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#b8c9b0');
-    g.addColorStop(0.35, '#9eb89a');
-    g.addColorStop(1, '#8aa68a');
+    g.addColorStop(0, lcdTop);
+    g.addColorStop(0.45, lcdMid);
+    g.addColorStop(1, lcdBot);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    // Subtle scanlines
     ctx.save();
-    ctx.globalAlpha = 0.045;
-    ctx.fillStyle = '#000';
+    ctx.globalAlpha = isLight ? 0.04 : 0.05;
+    ctx.fillStyle = isLight ? '#000' : '#fff';
     for (let py = 0; py < H; py += 2) ctx.fillRect(0, py, W, 1);
     ctx.restore();
 
-    // Gridlines
+    const gridMajor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)';
+    const tickRgb = isLight ? '0,0,0' : '255,255,255';
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(12, 36, 18, 0.12)';
+    ctx.strokeStyle = gridMajor;
     ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
-    ctx.fillStyle = 'rgba(14, 42, 22, 0.55)';
+    ctx.fillStyle = `rgba(${tickRgb},0.48)`;
 
     const stepX = niceStep(xr / 10);
     const stepY = niceStep(yr / 8);
@@ -884,8 +986,8 @@ function renderGraphCalc(body){
       ctx.fillText(fmtTick(y), 4, sy - 3);
     }
 
-    // Axes
-    ctx.strokeStyle = 'rgba(8, 28, 14, 0.88)';
+    const axRgb = isLight ? '0,0,0' : '255,255,255';
+    ctx.strokeStyle = `rgba(${axRgb},0.72)`;
     ctx.lineWidth = 1.35;
     if (0 >= view.xMin && 0 <= view.xMax){
       const sx = toSx(0);
@@ -896,7 +998,6 @@ function renderGraphCalc(body){
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke();
     }
 
-    // Curves (dark ink on LCD)
     fns.forEach(f => {
       if (!f.on || !f.expr.trim()) return;
       let fn;
@@ -942,8 +1043,14 @@ function renderGraphCalc(body){
   }
 
   writeInputs();
+  bcSetDisp();
   body.addEventListener('input', e => { if (e.target.matches('.gc-expr')) onInput(); });
   body.addEventListener('click', e => {
+    const bcBtn = e.target.closest('[data-bc]');
+    if (bcBtn){
+      bcHandle(bcBtn.getAttribute('data-bc') || '');
+      return;
+    }
     const t = e.target.closest('.gc-toggle');
     if (!t) return;
     const state = t.getAttribute('aria-pressed') === 'true';
@@ -1410,7 +1517,7 @@ function renderGeoRef(body){
 SUBJECTS.push({
   id:'math', label:'Math', icon:'∑',
   tools:[
-    { id:'graphing', label:'Graphing calc',  icon:'📈', render: renderGraphCalc },
+    { id:'graphing', label:'Graph + calc',  icon:'📈', render: renderGraphCalc },
     { id:'matrix',   label:'Matrix calc',    icon:'⊞',  render: renderMatrixCalc },
     { id:'stats',    label:'Statistics',     icon:'𝝈',  render: renderStatsTool },
     { id:'geo-ref',  label:'Geometric formulas', icon:'△', render: renderGeoRef },
@@ -3032,7 +3139,7 @@ const UNIFIED_LAYOUT = [
   { id:'math', name:'Math', icon:'∑', classTags:['math'],
     tools:[
       { id:'math-formulas', label:'Math formula sheet', icon:'📐', desc:'Algebra, trig, calculus, and statistics reference.', mode:'modal', fn:'openMathFormulas' },
-      { id:'graphing', label:'Graphing calculator', icon:'📈', desc:'Plot functions and explore ranges.', mode:'inline', sub:'math', tid:'graphing' },
+      { id:'graphing', label:'Graph + calc', icon:'📈', desc:'Plot functions and use a built-in basic calculator (same math parser).', mode:'inline', sub:'math', tid:'graphing' },
       { id:'matrix', label:'Matrix calculator', icon:'⊞', desc:'Multiply, invert, determinant, and more.', mode:'inline', sub:'math', tid:'matrix' },
       { id:'stats', label:'Statistics toolkit', icon:'𝝈', desc:'Summary stats and z-scores from raw data.', mode:'inline', sub:'math', tid:'stats' },
       { id:'geo-ref', label:'Geometric formulas', icon:'△', desc:'2D and 3D area, surface, and volume.', mode:'inline', sub:'math', tid:'geo-ref' },

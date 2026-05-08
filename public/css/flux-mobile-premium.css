@@ -102,23 +102,6 @@
   /* Bottom nav styling is owned by flux-mobile-app.css (rebuilt spec:
      full-width, icon-only, accent-pill active). Intentionally no overrides here. */
 
-  /* FAB — tucked toward bottom-right corner, still clear of floating dock + safe area */
-  #fabContainer {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
-    right: max(12px, env(safe-area-inset-right, 0px)) !important;
-    z-index: 320 !important;
-  }
-
-  .fab-trigger {
-    width: 56px !important;
-    height: 56px !important;
-    border-radius: 18px !important;
-    box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.45),
-      0 0 0 1px rgba(var(--accent-rgb), 0.35) !important;
-  }
-
-  /* Dashboard: section breathing room */
   #dashboard .card {
     scroll-margin-top: 72px;
   }

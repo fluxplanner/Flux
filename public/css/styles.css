@@ -1260,92 +1260,12 @@ button:active:not(:disabled){transform:scale(.97)!important}
 
 
 
-/* FAB */
-/* ══ FAB — FLOATING ACTION BUTTON ══ */
-.fab-container{
-  position:fixed;
-  bottom:max(22px, env(safe-area-inset-bottom, 0px));
-  right:max(18px, env(safe-area-inset-right, 0px));
-  z-index:300;
-  display:flex;flex-direction:column;align-items:flex-end;gap:10px;
-  /* Let clicks pass through the tall flex box; only trigger + open menu capture */
-  pointer-events:none;
-}
-@media(max-width:768px){
-  .fab-container{bottom:calc(74px + env(safe-area-inset-bottom));right:max(12px, env(safe-area-inset-right))}
-}
-/* Flux AI tab: keep FAB clear of the composer (send is on the left of the input) */
-#flux-main:has(#ai.active) ~ #fabContainer{
-  bottom:calc(92px + env(safe-area-inset-bottom, 0px));
-}
-@media(max-width:768px){
-  #flux-main:has(#ai.active) ~ #fabContainer{
-    bottom:calc(132px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-.fab-trigger{
-  width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
-  background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb),.75));
-  box-shadow:0 6px 24px rgba(var(--accent-rgb),.4),0 0 0 0 rgba(var(--accent-rgb),0);
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease;
-  position:relative;overflow:visible;
-  pointer-events:auto;
-  display:flex;align-items:center;justify-content:center;
-}
-.fab-trigger::before,.fab-trigger::after{display:none}
-.fab-trigger__spark{
-  font-size:1.45rem;line-height:1;color:#fff;text-shadow:0 0 14px rgba(255,255,255,.45);
-  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
-}
-.fab-trigger:hover{
-  transform:scale(1.08);
-  box-shadow:0 8px 32px rgba(var(--accent-rgb),.5),0 0 0 4px rgba(var(--accent-rgb),.12);
-}
-.fab-trigger:active{transform:scale(.92)}
-.fab-trigger.open .fab-trigger__spark{transform:rotate(45deg) scale(.95)}
-.fab-trigger.open:hover{transform:scale(1.08)}
-
-.fab-menu{
-  display:flex;flex-direction:column;gap:6px;align-items:flex-end;
-  opacity:0;transform:translateY(10px) scale(.95);
-  pointer-events:none;visibility:hidden;
-  transition:opacity .2s ease,transform .25s cubic-bezier(.34,1.56,.64,1),visibility 0s .25s;
-}
-.fab-menu.open{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition:opacity .2s ease,transform .25s cubic-bezier(.34,1.56,.64,1),visibility 0s 0s}
-
-.fab-action{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 16px;border-radius:28px;
-  background:var(--glass-tint),var(--card);border:1px solid rgba(255,255,255,.12);
-  color:var(--text);font-size:.8rem;font-weight:600;
-  box-shadow:0 8px 32px rgba(0,0,0,.35),var(--liquid-edge);
-  white-space:normal;cursor:pointer;text-align:left;
-  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
-  backdrop-filter:var(--glass-soft);-webkit-backdrop-filter:var(--glass-soft);
-}
-.fab-action-text{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
-.fab-action-title{font-weight:700;font-size:.82rem;line-height:1.25}
-.fab-action-hint{font-size:.62rem;font-weight:500;color:var(--muted2);font-family:'JetBrains Mono',monospace;line-height:1.3}
-.fab-action-agent{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
-.fab-action-icon{flex-shrink:0;font-size:1rem}
+/* Quick actions FAB removed — use ⌘K palette, quick-add, and sidebar nav */
 .quick-add-agent-link{
   background:none;border:none;color:var(--accent);cursor:pointer;font-size:inherit;font-family:inherit;
   text-decoration:underline;text-underline-offset:2px;padding:0;margin:0;
 }
 .quick-add-agent-link:hover{color:var(--accent2)}
-.fab-action:hover{
-  transform:translateX(-4px);
-  border-color:rgba(var(--accent-rgb),.25);
-  box-shadow:0 6px 24px rgba(0,0,0,.4);
-}
-.fab-action-icon{font-size:.9rem;flex-shrink:0}
-.fab-action-primary{
-  background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb),.8));
-  border:none;color:#fff;font-weight:700;
-  box-shadow:0 4px 20px rgba(var(--accent-rgb),.35);
-}
-.fab-action-primary:hover{box-shadow:0 6px 24px rgba(var(--accent-rgb),.45)}
 
 /* ══ KEYBOARD HINT ══ */
 #keyHint{animation:slideUpToast .3s var(--ease-spring)}
@@ -1535,16 +1455,12 @@ button:active:not(:disabled){transform:scale(.97)!important}
   .stabs{position:sticky!important;top:50px!important;z-index:10!important;background:var(--bg)!important}
   #settings.flux-page .flux-settings-stabs,
   #settings.flux-page > .stabs{top:50px!important;z-index:40!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-  #fabContainer{position:fixed!important;bottom:calc(74px + env(safe-area-inset-bottom))!important;right:max(12px, env(safe-area-inset-right))!important;z-index:300!important}
   .stats-row{grid-template-columns:repeat(2,1fr)!important}
   .irow{flex-direction:column!important}
   .irow>*{width:100%!important}
   .school-info-grid{grid-template-columns:1fr!important}
 }
 
-/* FAB centering — moved to .fab-trigger above */
-
-/* ── CALENDAR TASK BARS ── */
 .cal-day{aspect-ratio:unset;min-height:52px;padding:3px 2px;flex-direction:column;align-items:stretch;justify-content:flex-start;overflow:hidden;min-width:0}
 .cal-dn{font-size:.72rem;font-weight:600;line-height:1;margin-bottom:2px;text-align:center}
 .cal-task-bar{font-size:.52rem;font-weight:600;padding:1px 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.4}

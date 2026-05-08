@@ -3861,7 +3861,6 @@ function updateLogoColor(hex){
     .sidebar-logo svg circle[stroke],.sidebar-logo svg path[stroke]{stroke:${hex}!important}
     #fluxWG stop:nth-child(2),#fluxWG2 stop:nth-child(2),#fluxWG3 stop:nth-child(2),#fluxWGAbout stop:nth-child(2),#fluxCG stop:nth-child(2),#fluxCG2 stop:nth-child(2),#fluxCG3 stop:nth-child(2),#fluxCGAbout stop:nth-child(2){stop-color:${hex}!important}
     #fluxWG stop:nth-child(3),#fluxWG2 stop:nth-child(3),#fluxWG3 stop:nth-child(3),#fluxWGAbout stop:nth-child(3){stop-color:${hex}aa!important}
-    #fabBtn{background:${hex}!important;box-shadow:0 6px 24px rgba(${rgb},.45)!important}
     .bottom-nav .bnav-item.active{color:${hex}!important}
     .nav-item.active{color:${hex}!important;background:rgba(${rgb},.12)!important}
     .nav-item.active::before{background:${hex}!important}
@@ -4012,6 +4011,7 @@ function loadSettingsUI(){
     csd.value=v==='collapsed'||v==='hidden'?v:'full';
   }
   if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();
+  if(typeof window.fluxGoogleDocsLoadSettingsUI==='function')window.fluxGoogleDocsLoadSettingsUI();
   updateMasterBacklogCardVisibility();
 }
 function requestFluxNotifications(){
@@ -4568,22 +4568,47 @@ function loadAIChatsForUser(){aiChats=load(getAIChatKey(),[]);if(!Array.isArray(
 function saveAIChats(){save(getAIChatKey(),aiChats);}
 let aiCurrentChatId=null;
 
-function syncAIChatCompactLayout(){
+function syncAISidebarLayout(){
+  const root=document.querySelector('#ai.flux-ai-panel.ai-root');
   const side=document.querySelector('#ai.flux-ai-panel.ai-root .ai-sidebar');
-  if(!side)return;
-  const on=localStorage.getItem('flux_ai_chats_compact')==='1';
-  side.classList.toggle('ai-sidebar--chats-compact',on);
+  if(!root||!side)return;
+  const hidden=localStorage.getItem('flux_ai_sidebar_hidden')==='1';
+  const compact=!hidden&&localStorage.getItem('flux_ai_chats_compact')==='1';
+  root.classList.toggle('ai-root--sidebar-hidden',hidden);
+  side.classList.toggle('ai-sidebar--chats-compact',compact&&!hidden);
   const btn=document.getElementById('aiChatCompactBtn');
   if(btn){
-    btn.setAttribute('aria-pressed',on?'true':'false');
-    btn.title=on?'Roomy chat tabs':'Compact chat tabs';
+    btn.setAttribute('aria-pressed',compact&&!hidden?'true':'false');
+    btn.title=hidden?'Sidebar hidden — use ☰ in header to show':(compact?'Expand sidebar (roomy tabs)':'Compact tabs — again to hide sidebar');
+    btn.setAttribute('aria-label',hidden?'Sidebar hidden':`Cycle sidebar: ${compact?'compact':'full'}`);
   }
+  const rev=document.getElementById('aiSidebarRevealBtn');
+  if(rev)rev.hidden=!hidden;
+}
+function fluxRevealAISidebar(){
+  try{
+    localStorage.setItem('flux_ai_sidebar_hidden','0');
+    localStorage.setItem('flux_ai_chats_compact','0');
+  }catch(e){}
+  syncAISidebarLayout();
 }
 function toggleAIChatListCompact(){
-  const next=localStorage.getItem('flux_ai_chats_compact')!=='1';
-  try{localStorage.setItem('flux_ai_chats_compact',next?'1':'0');}catch(e){}
-  syncAIChatCompactLayout();
+  const hidden=localStorage.getItem('flux_ai_sidebar_hidden')==='1';
+  const compact=localStorage.getItem('flux_ai_chats_compact')==='1';
+  try{
+    if(!hidden&&!compact){
+      localStorage.setItem('flux_ai_chats_compact','1');
+    }else if(!hidden&&compact){
+      localStorage.setItem('flux_ai_sidebar_hidden','1');
+      localStorage.setItem('flux_ai_chats_compact','0');
+    }else{
+      localStorage.setItem('flux_ai_sidebar_hidden','0');
+      localStorage.setItem('flux_ai_chats_compact','0');
+    }
+  }catch(e){}
+  syncAISidebarLayout();
 }
+try{window.fluxRevealAISidebar=fluxRevealAISidebar;}catch(e){}
 
 function initAIChats(){
   loadAIChatsForUser();
@@ -4591,6 +4616,7 @@ function initAIChats(){
   else loadAIChat(aiChats[0].id);
   wireAIComposerInput();
   if(typeof updateFluxCanvasAIBadge==='function')updateFluxCanvasAIBadge();
+  syncAISidebarLayout();
 }
 
 function newAIChat(){
@@ -4652,7 +4678,7 @@ function deleteAIChat(id,e){
 
 function renderAIChatTabs(){
   const el=document.getElementById('aiChatTabs');if(!el)return;
-  syncAIChatCompactLayout();
+  syncAISidebarLayout();
   if(!aiChats.length){el.innerHTML='';return;}
   el.innerHTML=aiChats.map(c=>`
     <div class="flux-ai-tab${c.id===aiCurrentChatId?' flux-ai-tab--active':''}" role="button" onclick="loadAIChat('${c.id}')">
@@ -6478,28 +6504,6 @@ function openFluxAgent(opts){
   },delay);
 }
 
-// ══ FAB — FLOATING ACTION BUTTON ══
-function initFAB(){
-  const fab=document.getElementById('fabBtn');
-  const menu=document.getElementById('fabMenu');
-  if(!fab||!menu)return;
-  let open=false;
-  function setOpen(v){
-    open=v;
-    fab.classList.toggle('open',open);
-    fab.setAttribute('aria-expanded',open?'true':'false');
-    menu.classList.toggle('open',open);
-  }
-  fab.addEventListener('click',e=>{
-    e.stopPropagation();
-    setOpen(!open);
-  });
-  menu.addEventListener('click',()=>setOpen(false));
-  document.addEventListener('click',e=>{
-    if(open&&!fab.contains(e.target)&&!menu.contains(e.target))setOpen(false);
-  });
-}
-
 function closeFAB(){
   document.getElementById('fabMenu')?.classList.remove('open');
   document.getElementById('fabBtn')?.classList.remove('open');
@@ -7229,6 +7233,15 @@ async function handleSignedIn(user,session){
       _entitlement.schedulePhotoImport=true;
     }
     _updateUserUI(user,user.user_metadata?.full_name||user.email?.split('@')[0]||'');
+    if(session?.provider_token){
+      gmailToken=session.provider_token;
+      sessionStorage.setItem('flux_gmail_token',session.provider_token);
+    }
+    try{
+      if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){
+        FluxAIConnections.renderConnectionsPanel(true);
+      }
+    }catch(e){}
     renderTesterBadge();
     return;
   }
@@ -7264,6 +7277,11 @@ async function handleSignedIn(user,session){
     gmailToken=session.provider_token;
     sessionStorage.setItem('flux_gmail_token',session.provider_token);
   }
+  try{
+    if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){
+      FluxAIConnections.renderConnectionsPanel(true);
+    }
+  }catch(e){}
   // hide login immediately
   const _ls=document.getElementById('loginScreen');if(_ls){_ls.style.display='none';_ls.classList.remove('visible');}
   stopLoginDemoRotator();
@@ -7677,7 +7695,6 @@ function handleCheckoutReturn(){
   populateSubjectSelects();
   initSidebarResize();
   initKeyboardShortcuts();
-  initFAB();
   initScrollLayout();
   showKeyHint();
   setInterval(applyPanicGlow,25000);
@@ -11005,10 +11022,7 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-// ── HOOK FAB TO QUICK-ADD ──
-const _origInitFAB=typeof initFAB==='function'?initFAB:null;
 if(typeof fabAddTask==='function'){
-  const _origFabAddTask=fabAddTask;
   window.fabAddTask=function(){closeFAB();openQuickAdd();};
 }
 
