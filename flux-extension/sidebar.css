@@ -57,6 +57,110 @@ html, body {
 
 .flux-header-right { display: flex; align-items: center; gap: 8px; }
 
+.flux-auth-bar {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10, 12, 22, 0.65);
+}
+.flux-auth-signed-out {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.flux-auth-google-btn {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.flux-auth-google-btn:hover {
+  border-color: rgba(0, 191, 255, 0.35);
+  background: rgba(0, 191, 255, 0.1);
+}
+.flux-auth-micro {
+  margin: 0;
+  font-size: 0.65rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.flux-auth-url-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.flux-redirect-url-field {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text);
+  font-size: 0.62rem;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  line-height: 1.35;
+  resize: vertical;
+  min-height: 2.6em;
+}
+.flux-redirect-url-field:focus {
+  outline: none;
+  border-color: rgba(0, 191, 255, 0.45);
+}
+.flux-auth-copy-url {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.flux-auth-copy-url:hover {
+  border-color: rgba(0, 191, 255, 0.35);
+  background: rgba(0, 191, 255, 0.12);
+}
+.flux-auth-hint {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: #c98;
+}
+.flux-auth-signed-in {
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.flux-auth-email {
+  font-size: 0.75rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.flux-auth-signout {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.flux-auth-signout:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
 .icon-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border);
@@ -107,6 +211,72 @@ html, body {
   color: var(--text);
   line-height: 1.35;
   opacity: 0.95;
+}
+
+.flux-capture-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.capture-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+.capture-btn:hover {
+  border-color: rgba(0, 191, 255, 0.35);
+  background: rgba(0, 191, 255, 0.1);
+}
+
+.vision-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+}
+.vision-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.vision-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+.vision-clear {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.vision-clear:hover {
+  color: var(--text);
+  border-color: rgba(255, 120, 120, 0.35);
 }
 
 .skills-bar {

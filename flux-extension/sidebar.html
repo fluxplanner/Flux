@@ -21,14 +21,41 @@
       <span class="flux-title">Flux</span>
     </div>
     <div class="flux-header-right">
+      <button type="button" id="newChatBtn" class="icon-btn" title="New chat" aria-label="New chat">＋</button>
       <button type="button" id="refreshContextBtn" title="Refresh page context" class="icon-btn">↻</button>
       <div id="pageTypeBadge" class="page-badge"></div>
+    </div>
+  </div>
+
+  <div id="fluxAuthBar" class="flux-auth-bar">
+    <div id="fluxAuthSignedOut" class="flux-auth-signed-out">
+      <button type="button" id="fluxGoogleSignIn" class="flux-auth-google-btn">Continue with Google</button>
+      <p class="flux-auth-micro">One-time Supabase setup: copy the URL below, then in the Supabase dashboard go to <strong>Authentication → URL Configuration → Redirect URLs</strong> and paste it there.</p>
+      <label class="flux-auth-url-label" for="fluxRedirectUrlField">Extension redirect URL</label>
+      <textarea id="fluxRedirectUrlField" class="flux-redirect-url-field" readonly rows="2" spellcheck="false" aria-label="Extension OAuth redirect URL for Supabase"></textarea>
+      <button type="button" id="fluxAuthCopyRedirect" class="flux-auth-copy-url" title="Copy to clipboard">
+        Copy URL
+      </button>
+      <p class="flux-auth-hint" id="fluxAuthHint" role="status"></p>
+    </div>
+    <div id="fluxAuthSignedIn" class="flux-auth-signed-in" style="display: none">
+      <span id="fluxAuthEmail" class="flux-auth-email"></span>
+      <button type="button" id="fluxSignOutBtn" class="flux-auth-signout">Sign out</button>
     </div>
   </div>
 
   <div id="contextBar" class="context-bar">
     <div class="context-domain" id="contextDomain">Loading page context...</div>
     <div class="context-title" id="contextTitle"></div>
+    <div class="flux-capture-row">
+      <button type="button" id="scanTabBtn" class="capture-btn" title="Screenshot what you see in this tab">📷 Scan tab</button>
+      <button type="button" id="shareScreenBtn" class="capture-btn" title="Pick a window or screen to share">🖥 Share screen</button>
+    </div>
+    <div id="visionBar" class="vision-bar" style="display:none" role="status">
+      <img id="visionThumb" class="vision-thumb" alt="" width="44" height="44" />
+      <span id="visionLabel" class="vision-label">Image ready for your next message</span>
+      <button type="button" id="clearVisionBtn" class="vision-clear" title="Remove image">✕</button>
+    </div>
   </div>
 
   <div id="skillsBar" class="skills-bar">
@@ -39,7 +66,7 @@
   <div id="chatMessages" class="chat-messages">
     <div class="flux-welcome">
       <div class="welcome-icon">✦</div>
-      <div class="welcome-text">Open a normal website tab and tap ↻ above. Flux reads that tab — not chrome://, New Tab, or the Web Store. Then ask or use a skill.</div>
+      <div class="welcome-text">Sign in with Google above (same account as Flux on the web). Open a normal website tab, tap ↻, use <strong>Scan tab</strong> or <strong>Share screen</strong> so Flux can see what’s on screen, then ask or use a skill.</div>
     </div>
   </div>
 
@@ -58,6 +85,7 @@
     <div id="sidebarSkillsPanel" class="skills-panel" style="display:none"></div>
   </div>
 </div>
+<script src="auth-google.js"></script>
 <script src="sidebar.js"></script>
 </body>
 </html>

@@ -4,14 +4,29 @@ let currentPageContext = null;
 let selectedText = null;
 const chatHistory = [];
 
+/** { base64, mimeType, sourceLabel } set by Scan tab / Share screen; sent with the next AI call until cleared. */
+let pendingVision = null;
+
+const VISION_MAX_DIM = 1280;
+const VISION_JPEG_QUALITY = 0.82;
+
 /** Side-panel fetch to Supabase is blocked by browser CORS; background worker relays with host permission. */
-function callAiProxyViaBackground(systemPrompt, msgs, token) {
+function callAiProxyViaBackground(systemPrompt, msgs, token, vision) {
   return new Promise((resolve) => {
+    const payload = {
+      system: systemPrompt,
+      messages: msgs,
+      token: token || '',
+    };
+    if (vision?.base64) {
+      payload.imageBase64 = vision.base64;
+      payload.mimeType = vision.mimeType || 'image/jpeg';
+    }
     try {
       chrome.runtime.sendMessage(
         {
           type: 'AI_PROXY_CALL',
-          payload: { system: systemPrompt, messages: msgs, token: token || '' },
+          payload,
         },
         (relay) => {
           if (chrome.runtime.lastError) {
@@ -53,6 +68,133 @@ function fluxRestrictedTabHint(url) {
   if (low.includes('chrome.google.com/webstore')) return 'webstore';
   if (low.includes('microsoftedge.microsoft.com/addons')) return 'webstore';
   return null;
+}
+
+function dataUrlToBase64Parts(dataUrl) {
+  const m = /^data:([^;]+);base64,(.+)$/i.exec(String(dataUrl || ''));
+  if (!m) throw new Error('Invalid image data');
+  return { mimeType: m[1].split(';')[0].trim(), base64: m[2] };
+}
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not decode image'));
+    img.src = dataUrl;
+  });
+}
+
+async function prepareVisionDataUrl(dataUrl) {
+  const img = await loadImageFromDataUrl(dataUrl);
+  const { naturalWidth: width, naturalHeight: height } = img;
+  const max = VISION_MAX_DIM;
+  const scale = Math.min(1, max / Math.max(width, height, 1));
+  const w = Math.max(1, Math.round(width * scale));
+  const h = Math.max(1, Math.round(height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', VISION_JPEG_QUALITY);
+}
+
+function captureVisibleTabViaBackground() {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, (bg) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        if (!bg?.ok) reject(new Error(bg?.error || 'Could not capture tab'));
+        else resolve(bg.dataUrl);
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function updateVisionBar() {
+  const bar = document.getElementById('visionBar');
+  const thumb = document.getElementById('visionThumb');
+  const label = document.getElementById('visionLabel');
+  if (!bar || !thumb || !label) return;
+  if (!pendingVision) {
+    bar.style.display = 'none';
+    thumb.removeAttribute('src');
+    return;
+  }
+  bar.style.display = 'flex';
+  const mime = pendingVision.mimeType || 'image/jpeg';
+  thumb.src = `data:${mime};base64,${pendingVision.base64}`;
+  label.textContent = `Image attached (${pendingVision.sourceLabel || 'snapshot'}) — sent with your next message. Tap ✕ to remove.`;
+}
+
+function clearPendingVision() {
+  pendingVision = null;
+  updateVisionBar();
+}
+
+async function setPendingVisionFromDataUrl(dataUrl, sourceLabel) {
+  try {
+    const prepared = await prepareVisionDataUrl(dataUrl);
+    const { base64, mimeType } = dataUrlToBase64Parts(prepared);
+    pendingVision = { base64, mimeType, sourceLabel };
+    updateVisionBar();
+  } catch (e) {
+    addMessage('ai', `Could not prepare image: ${e.message || e}`);
+  }
+}
+
+async function handleScanTab() {
+  try {
+    let tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tabs?.length) tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    const restricted = fluxRestrictedTabHint(tab?.url || '');
+    if (restricted) {
+      addMessage(
+        'ai',
+        'Scan tab only works on a normal website tab (https://…), not chrome:// pages or the Web Store. Click the page you want, then tap Scan tab again.',
+      );
+      return;
+    }
+    const dataUrl = await captureVisibleTabViaBackground();
+    await setPendingVisionFromDataUrl(dataUrl, 'browser tab');
+  } catch (e) {
+    addMessage('ai', `Scan tab failed: ${e.message || e}`);
+  }
+}
+
+async function handleShareScreen() {
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    addMessage('ai', 'Screen sharing is not available here. Try Scan tab on the page you need.');
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.srcObject = stream;
+    await video.play();
+    await new Promise((r) => requestAnimationFrame(r));
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    if (!canvas.width || !canvas.height) throw new Error('No video size');
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    await setPendingVisionFromDataUrl(canvas.toDataURL('image/png'), 'shared screen');
+  } catch (e) {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    const msg = String(e?.message || e);
+    if (/denied|Permission dismissed|not allowed|canceled|aborted|User canceled/i.test(msg)) return;
+    addMessage('ai', `Screen capture failed: ${msg}`);
+  }
 }
 
 async function fluxGetPageContext(tabId) {
@@ -293,7 +435,10 @@ async function sendToAI(message, skill = null) {
             (selectedText && String(selectedText).trim()) || currentPageContext.selectedText || null,
         }
       : null;
-    const systemPrompt = buildSystemPrompt(liveCtx);
+    let systemPrompt = buildSystemPrompt(liveCtx);
+    if (pendingVision) {
+      systemPrompt += `\n\nA visual snapshot is attached (${pendingVision.sourceLabel || 'image'}). Use the image for anything visible (diagrams, math, questions, video players, UI). Combine with extracted page text when helpful. If the snapshot shows the wrong tab or is blank, say so briefly.`;
+    }
 
     const msgs = chatHistory
       .slice(-6)
@@ -303,7 +448,7 @@ async function sendToAI(message, skill = null) {
       }))
       .concat([{ role: 'user', content: message }]);
 
-    const relay = await callAiProxyViaBackground(systemPrompt, msgs, fluxAuthToken);
+    const relay = await callAiProxyViaBackground(systemPrompt, msgs, fluxAuthToken, pendingVision);
     const rawText = typeof relay.body === 'string' ? relay.body : '';
     let data = {};
     try {
@@ -319,8 +464,8 @@ async function sendToAI(message, skill = null) {
     const aiRaw =
       (typeof piece === 'string' && piece) ||
       (typeof data.response === 'string' && data.response) ||
+      (!response.ok && typeof data.message === 'string' && data.message) ||
       (typeof data.error === 'string' && data.error) ||
-      (typeof data.message === 'string' && data.message) ||
       (!response.ok
         ? `Request failed (${response.status}). Sign in on the Flux site, Settings → Look → Chrome extension → Save & sync. Then reload this extension on chrome://extensions.`
         : '');
@@ -373,6 +518,35 @@ async function executeOnPage(skillId, params) {
     return await chrome.tabs.sendMessage(tab.id, { type: 'EXECUTE_SKILL', skillId, params });
   } catch (e) {
     return { result: { error: e.message } };
+  }
+}
+
+function getWelcomeMarkup() {
+  return `<div class="flux-welcome">
+      <div class="welcome-icon">✦</div>
+      <div class="welcome-text">Sign in with Google above (same account as Flux on the web). Open a normal website tab, tap ↻, use <strong>Scan tab</strong> or <strong>Share screen</strong> so Flux can see what’s on screen, then ask or use a skill.</div>
+    </div>`;
+}
+
+function startNewChat() {
+  chatHistory.length = 0;
+  clearPendingVision();
+  selectedText = null;
+  const bar = document.getElementById('selectedTextBar');
+  const preview = document.getElementById('selectedTextPreview');
+  if (bar) bar.style.display = 'none';
+  if (preview) preview.textContent = '';
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
+  const panel = document.getElementById('sidebarSkillsPanel');
+  if (panel) panel.style.display = 'none';
+  const messages = document.getElementById('chatMessages');
+  if (messages) {
+    messages.innerHTML = getWelcomeMarkup();
+    messages.scrollTop = 0;
   }
 }
 
@@ -485,6 +659,11 @@ document.getElementById('clearSelectionBtn').addEventListener('click', () => {
 });
 
 document.getElementById('refreshContextBtn').addEventListener('click', refreshPageContext);
+document.getElementById('newChatBtn')?.addEventListener('click', startNewChat);
+
+document.getElementById('scanTabBtn')?.addEventListener('click', handleScanTab);
+document.getElementById('shareScreenBtn')?.addEventListener('click', handleShareScreen);
+document.getElementById('clearVisionBtn')?.addEventListener('click', clearPendingVision);
 
 const skillsToggleBtn = document.getElementById('skillsToggleBtn');
 const sidebarSkillsPanel = document.getElementById('sidebarSkillsPanel');
@@ -497,6 +676,19 @@ if (skillsToggleBtn && sidebarSkillsPanel) {
 }
 
 bindMessagesListener();
+
+if (window.FluxExtAuth) {
+  window.FluxExtAuth.init();
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (changes.fluxAuthToken || changes.fluxUserEmail) {
+        window.FluxExtAuth.refreshAuthBar();
+      }
+    });
+  } catch (_) {}
+}
+
 refreshPageContext();
 
 chrome.tabs.onActivated.addListener(refreshPageContext);

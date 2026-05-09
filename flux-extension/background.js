@@ -44,13 +44,40 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }, 400);
 });
 
-/** Extension pages → background (not subject to web CORS the same way as https pages). */
+/** Visible tab pixels (works while the side panel is open — captures the active page, not the panel). */
 chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
+  if (msg?.type === 'CAPTURE_VISIBLE_TAB') {
+    (async () => {
+      try {
+        let tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (!tabs?.length) {
+          tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        }
+        if (tabs[0]?.id == null) {
+          respond({ ok: false, error: 'No active tab' });
+          return;
+        }
+        const dataUrl = await chrome.tabs.captureVisibleTab(undefined, { format: 'png' });
+        respond({ ok: true, dataUrl });
+      } catch (e) {
+        respond({ ok: false, error: String(e?.message || e) });
+      }
+    })();
+    return true;
+  }
+
   if (msg?.type === 'AI_PROXY_CALL') {
-    const { system, messages, token } = msg.payload || {};
+    const { system, messages, token, imageBase64, mimeType } = msg.payload || {};
     const authBearer = (token && String(token).trim()) || SB_ANON;
     (async () => {
       try {
+        const jsonBody = {
+          system,
+          messages,
+          ...(imageBase64
+            ? { imageBase64: String(imageBase64), mimeType: mimeType || 'image/jpeg' }
+            : {}),
+        };
         const res = await fetch(AI_PROXY_URL, {
           method: 'POST',
           headers: {
@@ -58,7 +85,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
             apikey: SB_ANON,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ system, messages }),
+          body: JSON.stringify(jsonBody),
         });
         const text = await res.text();
         respond({ ok: res.ok, status: res.status, body: text });
