@@ -105,10 +105,7 @@ Deno.serve(async (req) => {
   let text: string;
   try {
     if (hasImage) {
-      const geminiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
-      text = geminiKey
-        ? await callGemini(body)
-        : await callGroqVision(body);
+      text = await callVision(body);
     } else if (routeMode === "openai_compatible") {
       const rc = body.routing?.openaiCompatible;
       if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
@@ -374,6 +371,61 @@ async function callGroqVision(body: {
     temperature: 0.3,
     max_tokens: 2048,
   });
+}
+
+function isGeminiQuotaOrRateLimitError(err: unknown): boolean {
+  const s = String(err);
+  if (/\b429\b/.test(s)) return true;
+  if (/RESOURCE_EXHAUSTED/i.test(s)) return true;
+  if (/quota exceeded/i.test(s.toLowerCase())) return true;
+  if (/rate limit/i.test(s.toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * Image / vision: set `AI_PROXY_VISION_PROVIDER=groq` to skip Gemini entirely.
+ * Otherwise tries Gemini when `GEMINI_API_KEY` is set; on 429 / quota errors falls back to Groq if `GROQ_API_KEY` is set.
+ */
+async function callVision(body: {
+  message?: string;
+  messages?: Array<{ role: string; content: unknown }>;
+  imageBase64?: string;
+  mimeType?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<string> {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
+  const groqKey = Deno.env.get("GROQ_API_KEY")?.trim();
+  const forceGroq =
+    Deno.env.get("AI_PROXY_VISION_PROVIDER")?.trim().toLowerCase() === "groq";
+
+  if (forceGroq) {
+    if (!groqKey) {
+      throw new Error(
+        "AI_PROXY_VISION_PROVIDER=groq but GROQ_API_KEY is not set",
+      );
+    }
+    return await callGroqVision(body);
+  }
+
+  if (geminiKey) {
+    try {
+      return await callGemini(body);
+    } catch (e) {
+      if (isGeminiQuotaOrRateLimitError(e) && groqKey) {
+        console.warn(
+          "ai-proxy: Gemini vision failed (quota/rate limit), using Groq",
+        );
+        return await callGroqVision(body);
+      }
+      throw e;
+    }
+  }
+
+  if (!groqKey) {
+    throw new Error("No GEMINI_API_KEY or GROQ_API_KEY for vision");
+  }
+  return await callGroqVision(body);
 }
 
 async function callGemini(body: {
