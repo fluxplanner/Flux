@@ -422,21 +422,6 @@
     tag.textContent = style;
   }
 
-  function initFlipWords() {
-    const mount = document.getElementById('fluxAiFlipWord');
-    if (!mount) return;
-    const words = ['plan', 'study', 'focus', 'achieve', 'organize'];
-    let i = 0;
-    function tick() {
-      const w = words[i % words.length];
-      mount.innerHTML = `<span class="flip-word">${w}</span>`;
-      i++;
-    }
-    tick();
-    if (prefersReduced()) return;
-    setInterval(tick, 2500);
-  }
-
   function decorateHeadings() {
     const topTitle = document.getElementById('topbarTitle');
     if (topTitle) topTitle.classList.remove('shimmer-text');
@@ -448,7 +433,6 @@
 
   function initFluxVisual() {
     decorateHeadings();
-    initFlipWords();
     initCursorSpotlight();
     initRippleEffect();
     init3DTiltCards();

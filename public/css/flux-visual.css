@@ -94,42 +94,6 @@
   }
 }
 
-.flip-words-wrap {
-  display: inline-block;
-  overflow: hidden;
-  height: 1.2em;
-  vertical-align: bottom;
-}
-.flip-word {
-  display: block;
-  animation: flip-in 0.4s ease forwards;
-}
-.flip-word.out {
-  animation: flip-out 0.4s ease forwards;
-}
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes flip-in {
-    from {
-      transform: rotateX(-90deg);
-      opacity: 0;
-    }
-    to {
-      transform: rotateX(0);
-      opacity: 1;
-    }
-  }
-  @keyframes flip-out {
-    from {
-      transform: rotateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: rotateX(90deg);
-      opacity: 0;
-    }
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .panel.active > * {
     animation: blur-fade-in 0.4s ease forwards;
@@ -885,12 +849,18 @@ body[data-flux-mesh='off']::before {
   transform: translateX(16px);
 }
 
-.flux-ai-empty-flip {
+.flux-ai-empty-hint {
   font-size: 0.78rem;
   color: var(--muted2);
   text-align: center;
   padding: 6px 12px 10px;
   line-height: 1.45;
+  margin: 0;
+}
+
+/* Hide empty-state copy once a message exists (same column as #aiMsgs) */
+.flux-ai-thread:has(#aiMsgs .ai-msg) .flux-ai-empty-hint {
+  display: none;
 }
 
 #aiChatScrollBar {
