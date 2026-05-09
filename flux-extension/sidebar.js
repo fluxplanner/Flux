@@ -76,10 +76,10 @@ function formatPageType(type) {
     article: '📰 Article',
     'google-classroom': '🏫 Classroom',
     webpage: '🌐 Web',
+    deltamath: '∑ DeltaMath',
   };
   return labels[type] || '🌐 Web';
 }
-
 const BUILT_IN_SKILLS = [
   {
     id: 'google-docs-write',
@@ -150,7 +150,10 @@ const BUILT_IN_SKILLS = [
 function updateSkillsBar(pageType) {
   const chips = document.getElementById('skillsChips');
   const applicable = BUILT_IN_SKILLS.filter(
-    (s) => s.applicablePages.includes(pageType) || s.applicablePages.includes('webpage')
+    (s) =>
+      s.applicablePages.includes(pageType) ||
+      s.applicablePages.includes('webpage') ||
+      pageType === 'deltamath',
   );
   chips.innerHTML = applicable
     .map(
@@ -211,7 +214,14 @@ async function sendToAI(message, skill = null) {
 
   try {
     const { fluxAuthToken } = await chrome.storage.local.get('fluxAuthToken');
-    const systemPrompt = buildSystemPrompt(currentPageContext);
+    const liveCtx = currentPageContext
+      ? {
+          ...currentPageContext,
+          selectedText:
+            (selectedText && String(selectedText).trim()) || currentPageContext.selectedText || null,
+        }
+      : null;
+    const systemPrompt = buildSystemPrompt(liveCtx);
 
     const msgs = chatHistory
       .slice(-6)
@@ -267,17 +277,21 @@ function buildSystemPrompt(ctx) {
   const gd = ctx.googleDocs;
   const em = ctx.emails;
   const cv = ctx.canvas;
+  const sel = (ctx.selectedText && String(ctx.selectedText).trim()) || '';
+  const vis = ctx.visibleText ? String(ctx.visibleText).slice(0, 9000) : '';
   return `You are Flux, an AI assistant in a student planner Chrome extension.
 
 Current page: ${ctx.title} (${ctx.url})
 Page type: ${ctx.pageType}
 Domain: ${ctx.domain}
+${sel ? `\n=== USER HIGHLIGHTED THIS TEXT ON THE PAGE (treat as the main question to solve — highest priority) ===\n${sel.slice(0, 6000)}\n=== end selection ===\n` : ''}
 ${gd ? `\nGoogle Doc excerpt:\n${String(gd.paragraphs || '').slice(0, 2000)}` : ''}
 ${em ? `\nEmail subject: ${em.subject}\nFrom: ${em.sender}\nBody: ${String(em.body || '').slice(0, 1000)}` : ''}
 ${cv ? `\nCanvas: ${cv.assignmentTitle}\nDue: ${cv.dueDate}\nPoints: ${cv.points}` : ''}
-${ctx.visibleText ? `\nVisible page text (truncated):\n${ctx.visibleText.slice(0, 2000)}` : ''}
+${vis ? `\nVisible page text (may include quiz UI, instructions, or problem text):\n${vis}` : ''}
 
-Be direct and specific. Reference actual on-page content when possible. Do not use filler openers.`;
+When the user asks you to solve a math or quiz problem: use the highlighted selection first if present, otherwise the visible text. If the problem stem or numbers are still missing (e.g. content lives in a cross-origin frame the extension cannot read), say clearly what is missing and ask them to highlight the full question on the page or paste it. Give step-by-step reasoning and the final answer when you have enough information.
+Be direct. Do not claim "JavaScript must be enabled" unless the captured text itself is only a generic noscript banner.`;
 }
 
 async function executeOnPage(skillId, params) {
@@ -383,6 +397,10 @@ sendBtn.addEventListener('click', handleSend);
 async function handleSend() {
   let text = input.value.trim();
   if (!text) return;
+  const sel = (selectedText && selectedText.trim()) || '';
+  if (sel && !text.includes(sel.slice(0, Math.min(48, sel.length)))) {
+    text = `${text}\n\n[Text selected on page]\n${sel}`;
+  }
   input.value = '';
   input.style.height = 'auto';
   addMessage('user', text);

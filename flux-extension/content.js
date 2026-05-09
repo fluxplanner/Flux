@@ -24,6 +24,8 @@ const FluxPageContext = {
 
   detectPageType() {
     const url = window.location.href;
+    const host = window.location.hostname;
+    if (host.includes('deltamath.com')) return 'deltamath';
     if (url.includes('docs.google.com/document')) return 'google-docs';
     if (url.includes('docs.google.com/spreadsheets')) return 'google-sheets';
     if (url.includes('docs.google.com/presentation')) return 'google-slides';
@@ -37,29 +39,99 @@ const FluxPageContext = {
     return 'webpage';
   },
 
+  /** DeltaMath / Desmos-style SPAs: Angular app-root + problem; heavy JS; short per-node text. */
   getVisibleText() {
+    const max = 14000;
+    const chunks = [];
+
+    const pushChunk = (raw) => {
+      const t = String(raw || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[ \t\f\v]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      if (t.length < 4) return;
+      if (!chunks.some((ex) => ex === t || (t.length < ex.length && ex.includes(t)) || (ex.length < t.length && t.includes(ex)))) {
+        chunks.push(t);
+      }
+    };
+
+    const selRoots = [
+      'app-root',
+      'student',
+      'problem',
+      'main',
+      '[role="main"]',
+      '#root',
+      '#app',
+      '.main.container',
+      '[class*="problem"]',
+      '[class*="Problem"]',
+      '[class*="question"]',
+      '[data-testid*="problem"]',
+    ];
+    for (const q of selRoots) {
+      try {
+        const el = document.querySelector(q);
+        if (el) pushChunk(el.innerText);
+      } catch (_) {}
+    }
+
+    try {
+      if (document.body) pushChunk(document.body.innerText);
+    } catch (_) {}
+
+    try {
+      document.querySelectorAll('*').forEach((el) => {
+        if (!el.shadowRoot) return;
+        try {
+          pushChunk(el.shadowRoot.innerText);
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    try {
+      document.querySelectorAll('iframe').forEach((frame) => {
+        try {
+          const doc = frame.contentDocument;
+          if (doc?.body) pushChunk(doc.body.innerText);
+        } catch (_) {}
+      });
+    } catch (_) {}
+
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         const el = node.parentElement;
         if (!el) return NodeFilter.FILTER_REJECT;
+        const tag = el.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return NodeFilter.FILTER_REJECT;
         const style = window.getComputedStyle(el);
         if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
           return NodeFilter.FILTER_REJECT;
         }
         const rect = el.getBoundingClientRect();
-        if (rect.bottom < 0 || rect.top > window.innerHeight * 2) {
+        if (rect.bottom < -400 || rect.top > window.innerHeight * 5) {
           return NodeFilter.FILTER_SKIP;
         }
         return NodeFilter.FILTER_ACCEPT;
       },
     });
-    let text = '';
+    let wText = '';
     let node;
-    while ((node = walker.nextNode()) && text.length < 5000) {
+    while ((node = walker.nextNode()) && wText.length < 6000) {
       const t = node.textContent.trim();
-      if (t.length > 20) text += t + ' ';
+      if (t.length > 0) wText += t + ' ';
     }
-    return text.slice(0, 5000);
+    pushChunk(wText);
+
+    chunks.sort((a, b) => b.length - a.length);
+    let out = '';
+    for (const c of chunks) {
+      if (out.includes(c.slice(0, Math.min(100, c.length)))) continue;
+      out += (out ? '\n\n—\n\n' : '') + c;
+      if (out.length >= max) break;
+    }
+    return out.slice(0, max);
   },
 
   getHeadings() {
