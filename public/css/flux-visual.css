@@ -43,6 +43,21 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Top bar title: solid accent on glass pill — gradient text clip was unreadable */
+#topbarTitle.shimmer-text {
+  background: none;
+  background-size: auto;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: var(--accent);
+  color: var(--accent) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #topbarTitle.shimmer-text:hover {
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .shimmer-text:hover {
     animation: shimmer-sweep 0.8s ease forwards;

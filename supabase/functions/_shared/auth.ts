@@ -52,11 +52,15 @@ function resolveCorsOrigin(origin: string): string {
   if (!trimmed) return "https://azfermohammed.github.io";
   // Opaque / file origins — some browsers send the literal string "null"
   if (trimmed === "null") return "null";
+  // Extension pages: do not rely on URL() — some runtimes mishandle chrome-extension://
+  if (
+    trimmed.startsWith("chrome-extension://") ||
+    trimmed.startsWith("moz-extension://")
+  ) {
+    return trimmed;
+  }
   try {
     const u = new URL(trimmed);
-    if (u.protocol === "chrome-extension:" || u.protocol === "moz-extension:") {
-      return trimmed;
-    }
     if (u.protocol !== "http:" && u.protocol !== "https:") {
       return "https://azfermohammed.github.io";
     }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Flux Planner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Flux AI assistant — sees your screen, helps you plan",
   "permissions": [
     "activeTab",
@@ -15,8 +15,7 @@
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
@@ -30,7 +29,7 @@
     "default_path": "sidebar.html"
   },
   "action": {
-    "default_popup": "popup.html",
+    "default_title": "Open Flux side panel",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
@@ -53,9 +52,12 @@
   "externally_connectable": {
     "matches": [
       "https://azfermohammed.github.io/*",
+      "https://fluxplanner.github.io/*",
       "https://*.github.io/*",
       "http://localhost:*/*",
-      "http://127.0.0.1:*/*"
+      "http://127.0.0.1:*/*",
+      "https://localhost:*/*",
+      "https://127.0.0.1:*/*"
     ]
   }
 }

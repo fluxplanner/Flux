@@ -438,7 +438,9 @@
   }
 
   function decorateHeadings() {
-    document.querySelectorAll('#topbarTitle, .flux-page > header h2, .flux-page h2').forEach((el) => {
+    const topTitle = document.getElementById('topbarTitle');
+    if (topTitle) topTitle.classList.remove('shimmer-text');
+    document.querySelectorAll('.flux-page > header h2, .flux-page h2').forEach((el) => {
       el.classList.add('shimmer-text');
     });
     document.querySelectorAll('.ai-title, .sidebar-logo').forEach((el) => el.classList.add('gradient-animate'));

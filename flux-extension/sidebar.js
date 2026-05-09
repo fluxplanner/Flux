@@ -1,11 +1,41 @@
 /* global chrome */
 
-const SUPABASE_URL = 'https://lfigdijuqmbensebnevo.supabase.co';
-const AI_PROXY_URL = `${SUPABASE_URL}/functions/v1/ai-proxy`;
-
 let currentPageContext = null;
 let selectedText = null;
 const chatHistory = [];
+
+/** Side-panel fetch to Supabase is blocked by browser CORS; background worker relays with host permission. */
+function callAiProxyViaBackground(systemPrompt, msgs, token) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(
+        {
+          type: 'AI_PROXY_CALL',
+          payload: { system: systemPrompt, messages: msgs, token: token || '' },
+        },
+        (relay) => {
+          if (chrome.runtime.lastError) {
+            resolve({
+              ok: false,
+              status: 0,
+              body: chrome.runtime.lastError.message,
+            });
+            return;
+          }
+          resolve(
+            relay || {
+              ok: false,
+              status: 0,
+              body: 'No response from extension background',
+            },
+          );
+        },
+      );
+    } catch (e) {
+      resolve({ ok: false, status: 0, body: String(e?.message || e) });
+    }
+  });
+}
 
 async function refreshPageContext() {
   const badge = document.getElementById('pageTypeBadge');
@@ -191,24 +221,30 @@ async function sendToAI(message, skill = null) {
       }))
       .concat([{ role: 'user', content: message }]);
 
-    const response = await fetch(AI_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${fluxAuthToken || ''}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        system: systemPrompt,
-        messages: msgs,
-      }),
-    });
-
-    const data = await response.json().catch(() => ({}));
+    const relay = await callAiProxyViaBackground(systemPrompt, msgs, fluxAuthToken);
+    const rawText = typeof relay.body === 'string' ? relay.body : '';
+    let data = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = { error: rawText ? rawText.slice(0, 280) : 'Invalid response' };
+    }
     typingEl.remove();
 
+    const response = { ok: relay.ok, status: relay.status };
+
+    const piece = data.content?.[0]?.text;
     const aiRaw =
-      data.content?.[0]?.text || data.response || data.error || (response.ok ? '' : 'No response');
-    const aiText = typeof aiRaw === 'string' ? aiRaw : JSON.stringify(aiRaw);
+      (typeof piece === 'string' && piece) ||
+      (typeof data.response === 'string' && data.response) ||
+      (typeof data.error === 'string' && data.error) ||
+      (typeof data.message === 'string' && data.message) ||
+      (!response.ok
+        ? `Request failed (${response.status}). Sign in on the Flux site, Settings → Look → Chrome extension → Save & sync. Then reload this extension on chrome://extensions.`
+        : '');
+    const aiText =
+      aiRaw ||
+      (response.ok ? 'No text in AI response. Check Supabase function logs.' : 'No response');
 
     chatHistory.push({ role: 'user', content: message });
     chatHistory.push({ role: 'assistant', content: aiText });

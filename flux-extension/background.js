@@ -1,4 +1,9 @@
-// flux-extension/background.js
+// flux-extension/background.js — side panel, menus, auth from Flux site, AI relay (bypasses page CORS)
+
+const AI_PROXY_URL = 'https://lfigdijuqmbensebnevo.supabase.co/functions/v1/ai-proxy';
+/** Public anon key — same as main Flux app (required by Supabase Edge gateway). */
+const SB_ANON =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
 
 try {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -39,14 +44,51 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }, 400);
 });
 
+/** Extension pages → background (not subject to web CORS the same way as https pages). */
+chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
+  if (msg?.type === 'AI_PROXY_CALL') {
+    const { system, messages, token } = msg.payload || {};
+    const authBearer = (token && String(token).trim()) || SB_ANON;
+    (async () => {
+      try {
+        const res = await fetch(AI_PROXY_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authBearer}`,
+            apikey: SB_ANON,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ system, messages }),
+        });
+        const text = await res.text();
+        respond({ ok: res.ok, status: res.status, body: text });
+      } catch (e) {
+        respond({ ok: false, status: 0, body: String(e?.message || e) });
+      }
+    })();
+    return true;
+  }
+  return false;
+});
+
 chrome.runtime.onMessageExternal.addListener((msg, _sender, respond) => {
   if (msg?.type === 'SET_AUTH_TOKEN') {
-    chrome.storage.local.set({
-      fluxAuthToken: msg.token,
-      fluxUserId: msg.userId || '',
-    });
-    respond({ ok: true });
-    return;
+    chrome.storage.local.set(
+      {
+        fluxAuthToken: msg.token,
+        fluxUserId: msg.userId || '',
+      },
+      () => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          respond({ ok: false, error: err.message });
+          return;
+        }
+        respond({ ok: true });
+      },
+    );
+    return true;
   }
   respond({ ok: false });
+  return false;
 });

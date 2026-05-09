@@ -1727,11 +1727,11 @@
         </div>
         <div class="card">
           <h3>Chrome extension</h3>
-          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 10px">Side-panel Flux on any tab. In Chrome go to <strong>chrome://extensions</strong> → find Flux Planner → copy the <strong>ID</strong> (you can ignore “Inspect views”). Paste it below and save so the app can hand your sign-in to the extension.</p>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 10px">Side-panel Flux on any tab. After loading the unpacked extension, click the <strong>Flux toolbar icon</strong> to open the side panel (not a tiny popup). Copy your extension ID from <code style="font-size:.72rem">chrome://extensions</code> → Flux Planner.</p>
           <label class="slabel" for="fluxChromeExtensionIdInput">Extension ID</label>
           <input type="text" id="fluxChromeExtensionIdInput" inputmode="verbatim" autocomplete="off" spellcheck="false" placeholder="e.g. abcdefghijklmnopqrstuvwxyz123456" aria-label="Chrome extension ID" style="width:100%;box-sizing:border-box;padding:10px 12px;margin:6px 0 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:.82rem;font-family:'JetBrains Mono',monospace">
           <button type="button" class="btn-sec" onclick="saveFluxExtensionIdFromSettings()" style="width:100%;margin-bottom:10px">Save &amp; sync to extension</button>
-          <p style="font-size:.72rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Use the same Chrome profile for this site and the extension. If the side panel still says you’re not signed in, open this Settings page again and click Save after signing in.</p>
+          <p style="font-size:.72rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Use the same Chrome profile for this site and the extension. After updates, open <code style="font-size:.72rem">chrome://extensions</code> and click <strong>Reload</strong> on Flux Planner. If AI still fails, open this page again and click <strong>Save &amp; sync</strong> after signing in.</p>
           <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener noreferrer" class="btn-shimmer" style="display:inline-flex;align-items:center;justify-content:center;width:100%;padding:12px;background:var(--accent);color:#06080f;border-radius:12px;font-weight:700;text-decoration:none;font-size:.85rem">Chrome Web Store (coming soon)</a>
         </div>
         <div class="card">
