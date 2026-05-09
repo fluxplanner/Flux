@@ -323,31 +323,39 @@ async function callGemini(body: {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
 
+  /** `gemini-1.5-flash-latest` often 404s as Google rotates IDs; override via secret if needed. */
+  const model = (Deno.env.get("GEMINI_VISION_MODEL") ?? "gemini-2.0-flash")
+    .trim();
+
   const lastMsg = body.messages?.length
     ? String(body.messages[body.messages.length - 1]?.content ?? "")
     : (body.message ?? "");
-  const system = body.system ?? body.systemPrompt ?? "";
-  const prompt = (system ? system + "\n\n" : "") + lastMsg;
+  const systemRaw = body.system ?? body.systemPrompt ?? "";
+  const system = String(systemRaw).trim();
+  const userText = String(lastMsg).trim() || "Answer based on the attached image.";
 
   const parts: unknown[] = [];
   if (body.imageBase64 && body.mimeType) {
+    const data = String(body.imageBase64).replace(/\s/g, "");
     parts.push({
-      inlineData: { mimeType: body.mimeType, data: body.imageBase64 },
+      inlineData: { mimeType: String(body.mimeType), data },
     });
   }
-  parts.push({ text: prompt });
+  parts.push({ text: userText });
+
+  const reqBody: Record<string, unknown> = {
+    contents: [{ parts }],
+  };
+  if (system) {
+    reqBody.systemInstruction = { parts: [{ text: system }] };
+  }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        ...(system
-          ? { systemInstruction: { parts: [{ text: system }] } }
-          : {}),
-      }),
+      body: JSON.stringify(reqBody),
     },
   );
 

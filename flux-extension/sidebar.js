@@ -461,11 +461,17 @@ async function sendToAI(message, skill = null) {
     const response = { ok: relay.ok, status: relay.status };
 
     const piece = data.content?.[0]?.text;
+    const errLabel = typeof data.error === 'string' ? data.error : '';
+    const errDetails = typeof data.details === 'string' ? data.details : '';
+    const combinedErr =
+      errDetails && errLabel
+        ? `${errLabel}\n\n${errDetails}`
+        : errDetails || errLabel;
     const aiRaw =
       (typeof piece === 'string' && piece) ||
       (typeof data.response === 'string' && data.response) ||
       (!response.ok && typeof data.message === 'string' && data.message) ||
-      (typeof data.error === 'string' && data.error) ||
+      (!response.ok && combinedErr) ||
       (!response.ok
         ? `Request failed (${response.status}). Sign in on the Flux site, Settings → Look → Chrome extension → Save & sync. Then reload this extension on chrome://extensions.`
         : '');
