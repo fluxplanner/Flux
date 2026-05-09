@@ -37,6 +37,35 @@ function callAiProxyViaBackground(systemPrompt, msgs, token) {
   });
 }
 
+/** Flux can't inject into chrome://, Web Store, etc. */
+function fluxRestrictedTabHint(url) {
+  if (!url || !String(url).trim()) return 'empty';
+  const u = String(url).trim();
+  const low = u.toLowerCase();
+  try {
+    const proto = new URL(u).protocol.replace(':', '').toLowerCase();
+    if (['chrome', 'edge', 'about', 'devtools', 'chrome-extension', 'moz-extension', 'vivaldi'].includes(proto)) {
+      return 'internal';
+    }
+  } catch {
+    return 'bad-url';
+  }
+  if (low.includes('chrome.google.com/webstore')) return 'webstore';
+  if (low.includes('microsoftedge.microsoft.com/addons')) return 'webstore';
+  return null;
+}
+
+async function fluxGetPageContext(tabId) {
+  return await chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_CONTEXT' });
+}
+
+async function fluxInjectContentScript(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId, allFrames: false },
+    files: ['content.js'],
+  });
+}
+
 async function refreshPageContext() {
   const badge = document.getElementById('pageTypeBadge');
   const domain = document.getElementById('contextDomain');
@@ -44,25 +73,68 @@ async function refreshPageContext() {
 
   badge.textContent = '...';
   badge.className = 'page-badge loading';
+  if (title) title.textContent = '';
 
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT' });
-    currentPageContext = response?.context;
-
-    if (currentPageContext) {
-      domain.textContent = currentPageContext.domain || currentPageContext.url;
-      title.textContent = currentPageContext.title?.slice(0, 72) || '';
-      badge.textContent = formatPageType(currentPageContext.pageType);
-      badge.className = `page-badge type-${currentPageContext.pageType}`;
-      updateSkillsBar(currentPageContext.pageType);
-    }
-  } catch (e) {
-    domain.textContent = 'Cannot access this page';
+  const fail = (line1, line2) => {
+    if (domain) domain.textContent = line1;
+    if (title) title.textContent = line2 || '';
     badge.textContent = '—';
     badge.className = 'page-badge type-unknown';
+    currentPageContext = null;
+    updateSkillsBar('webpage');
+  };
+
+  try {
+    let tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tabs?.length) {
+      tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    }
+    const tab = tabs[0];
+    if (!tab?.id) {
+      fail('No active tab', 'Click a normal website tab, then tap ↻.');
+      return;
+    }
+
+    const restricted = fluxRestrictedTabHint(tab.url || '');
+    if (restricted) {
+      const sub =
+        restricted === 'webstore'
+          ? 'Can’t run on the extensions store. Open a homework or article tab.'
+          : 'Open a real website (https://…). Not chrome://, New Tab, or this panel.';
+      fail('This tab isn’t readable', sub);
+      return;
+    }
+
+    let response;
+    try {
+      response = await fluxGetPageContext(tab.id);
+    } catch {
+      try {
+        await fluxInjectContentScript(tab.id);
+        await new Promise((r) => setTimeout(r, 100));
+        response = await fluxGetPageContext(tab.id);
+      } catch {
+        fail(
+          'Couldn’t attach to this page',
+          'Reload the website once, click it so it’s focused, then tap ↻.',
+        );
+        return;
+      }
+    }
+
+    currentPageContext = response?.context;
+    if (!currentPageContext) {
+      fail('No page data', 'Tap ↻ again after the page finishes loading.');
+      return;
+    }
+
+    if (domain) domain.textContent = currentPageContext.domain || currentPageContext.url;
+    if (title) title.textContent = currentPageContext.title?.slice(0, 72) || '';
+    badge.textContent = formatPageType(currentPageContext.pageType);
+    badge.className = `page-badge type-${currentPageContext.pageType}`;
+    updateSkillsBar(currentPageContext.pageType);
+  } catch (e) {
+    fail('Something went wrong', String(e?.message || e).slice(0, 140));
   }
 }
 

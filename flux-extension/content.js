@@ -1,4 +1,8 @@
 // flux-extension/content.js — page context + skill execution (minimal DOM writes except transient highlights)
+(function () {
+  'use strict';
+  if (globalThis.__FLUX_PLANNER_CONTENT_SCRIPT_V1__) return;
+  globalThis.__FLUX_PLANNER_CONTENT_SCRIPT_V1__ = true;
 
 const FluxPageContext = {
   extract() {
@@ -429,3 +433,4 @@ document.addEventListener(
   },
   { passive: true }
 );
+})();
