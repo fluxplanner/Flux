@@ -105,7 +105,10 @@ Deno.serve(async (req) => {
   let text: string;
   try {
     if (hasImage) {
-      text = await callGemini(body);
+      const geminiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
+      text = geminiKey
+        ? await callGemini(body)
+        : await callGroqVision(body);
     } else if (routeMode === "openai_compatible") {
       const rc = body.routing?.openaiCompatible;
       if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
@@ -312,6 +315,67 @@ async function callGroq(body: {
   return await postGroqChatCompletion(payload);
 }
 
+/** Vision when `GEMINI_API_KEY` is unset — same stack as `gemini-proxy` (Groq + Llama 4 Scout). */
+async function callGroqVision(body: {
+  messages?: Array<{ role: string; content: unknown }>;
+  imageBase64?: string;
+  mimeType?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<string> {
+  const mime = body.mimeType || "image/jpeg";
+  const b64 = String(body.imageBase64 || "").replace(/\s/g, "");
+  if (!b64) throw new Error("Missing image data for vision request");
+
+  const visionModel = (Deno.env.get("GROQ_VISION_MODEL") ??
+    "meta-llama/llama-4-scout-17b-16e-instruct").trim();
+  const dataUrl = `data:${mime};base64,${b64}`;
+
+  const system = String(body.system ?? body.systemPrompt ?? "").trim();
+  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
+  if (raw.length === 0) throw new Error("No messages for vision request");
+
+  const last = raw[raw.length - 1]!;
+  const lastRole = String(last.role || "user");
+  const lastText =
+    typeof last.content === "string"
+      ? last.content
+      : JSON.stringify(last.content ?? "");
+
+  const multimodalContent: unknown[] = [
+    {
+      type: "image_url",
+      image_url: { url: dataUrl },
+    },
+    {
+      type: "text",
+      text: lastText.trim() || "Answer using the image.",
+    },
+  ];
+
+  const history = raw.slice(0, -1).map((m) => {
+    const role = m.role === "assistant" ? "assistant" : "user";
+    const content =
+      typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+    return { role, content };
+  });
+
+  const groqMessages: Array<{ role: string; content: unknown }> = [];
+  if (system) groqMessages.push({ role: "system", content: system });
+  groqMessages.push(...history);
+  groqMessages.push({
+    role: lastRole === "assistant" ? "assistant" : "user",
+    content: multimodalContent,
+  });
+
+  return await postGroqChatCompletion({
+    model: visionModel,
+    messages: groqMessages,
+    temperature: 0.3,
+    max_tokens: 2048,
+  });
+}
+
 async function callGemini(body: {
   message?: string;
   messages?: Array<{ role: string; content: unknown }>;
@@ -321,7 +385,11 @@ async function callGemini(body: {
   systemPrompt?: string;
 }): Promise<string> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "GEMINI_API_KEY not set (caller should use Groq vision when Gemini is disabled)",
+    );
+  }
 
   /** `gemini-1.5-flash-latest` often 404s as Google rotates IDs; override via secret if needed. */
   const model = (Deno.env.get("GEMINI_VISION_MODEL") ?? "gemini-2.0-flash")
