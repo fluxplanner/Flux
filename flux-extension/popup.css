@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  width: 300px;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #07080f;
+  color: #e8ecff;
+}
+.popup-card {
+  padding: 16px;
+}
+.popup-title {
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #00bfff, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.popup-desc {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #8892a8;
+  margin: 0 0 14px;
+}
+.popup-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, #00bfff, #7c5cff);
+  color: #05060a;
+}
+.popup-btn:active { transform: scale(0.98); }

@@ -106,6 +106,7 @@
 <link rel="stylesheet" href="public/css/flux-ai-panel.css">
 <link rel="stylesheet" href="public/css/flux-periodic.css">
 <link rel="stylesheet" href="public/css/flux-toolbox.css">
+<link rel="stylesheet" href="public/css/flux-visual.css">
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
 <script type="importmap">
 {
@@ -128,6 +129,11 @@
   <canvas id="loginParticles" class="login-particles" aria-hidden="true"></canvas>
   <div id="loginCursorGlow" class="login-cursor-glow" aria-hidden="true"></div>
   <div class="login-bg" aria-hidden="true"></div>
+  <div class="login-bg-aurora" aria-hidden="true">
+    <div class="aurora-blob aurora-blob-1"></div>
+    <div class="aurora-blob aurora-blob-2"></div>
+    <div class="aurora-blob aurora-blob-3"></div>
+  </div>
   <div class="login-aurora" aria-hidden="true"></div>
   <div class="login-grid-pattern" aria-hidden="true"></div>
   <div class="login-vignette" aria-hidden="true"></div>
@@ -1608,6 +1614,7 @@
             <div id="aiMsgsWrap" class="ai-chat-area flux-ai-scroll">
               <div class="flux-ai-thread flux-ac-message-stack ai-thread-col">
                 <div class="ai-sugs" id="aiSugs"></div>
+                <p class="flux-ai-empty-flip" id="fluxAiEmptyFlipLine">Turn ideas into <span class="flip-words-wrap"><span id="fluxAiFlipWord" class="flip-word">plan</span></span> — ask in natural language or try the chips above.</p>
                 <div class="ai-msgs" id="aiMsgs"></div>
               </div>
             </div>
@@ -1717,6 +1724,25 @@
             <button onclick="applyTheme('ocean')" class="theme-btn" data-theme="ocean">🌊 Deep Ocean</button>
             <button onclick="applyTheme('candy')" class="theme-btn" data-theme="candy">🍬 Candy</button>
           </div>
+        </div>
+        <div class="card">
+          <h3>Chrome extension</h3>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 10px">Side-panel Flux on any tab. In Chrome go to <strong>chrome://extensions</strong> → find Flux Planner → copy the <strong>ID</strong> (you can ignore “Inspect views”). Paste it below and save so the app can hand your sign-in to the extension.</p>
+          <label class="slabel" for="fluxChromeExtensionIdInput">Extension ID</label>
+          <input type="text" id="fluxChromeExtensionIdInput" inputmode="verbatim" autocomplete="off" spellcheck="false" placeholder="e.g. abcdefghijklmnopqrstuvwxyz123456" aria-label="Chrome extension ID" style="width:100%;box-sizing:border-box;padding:10px 12px;margin:6px 0 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:.82rem;font-family:'JetBrains Mono',monospace">
+          <button type="button" class="btn-sec" onclick="saveFluxExtensionIdFromSettings()" style="width:100%;margin-bottom:10px">Save &amp; sync to extension</button>
+          <p style="font-size:.72rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Use the same Chrome profile for this site and the extension. If the side panel still says you’re not signed in, open this Settings page again and click Save after signing in.</p>
+          <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener noreferrer" class="btn-shimmer" style="display:inline-flex;align-items:center;justify-content:center;width:100%;padding:12px;background:var(--accent);color:#06080f;border-radius:12px;font-weight:700;text-decoration:none;font-size:.85rem">Chrome Web Store (coming soon)</a>
+        </div>
+        <div class="card">
+          <h3>Skills</h3>
+          <div style="font-size:.78rem;color:var(--muted2);margin-bottom:12px;line-height:1.6">
+            Skills let Flux take actions when you chat. Enable the ones you want; the AI can invoke them with a <code style="font-size:.72rem">skill</code> block when relevant.
+          </div>
+          <div id="fluxSettingsSkillsMount"></div>
+          <button type="button" onclick="openAddSkillModal()" style="margin-top:12px;width:100%;padding:10px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;cursor:pointer">
+            + Add Custom Skill
+          </button>
         </div>
         <!-- Accent color -->
         <div class="card">
@@ -2216,6 +2242,8 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
     <script defer src="public/js/app.js"></script>
+    <script defer src="public/js/flux-visual.js"></script>
+    <script defer src="public/js/flux-extension-bridge.js"></script>
     <script defer src="public/js/flux-ai-core.js"></script>
 <script type="module" src="public/js/flux-kit-bootstrap.js"></script>
 <script defer src="public/js/flux-ai-connections.js"></script>

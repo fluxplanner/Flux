@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flux</title>
+<link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+<div id="fluxSidebar">
+  <div class="flux-header">
+    <div class="flux-logo-wrap">
+      <svg width="22" height="22" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <path d="M30,30 C33,8 52,8 52,30 C52,52 33,52 30,30 C27,52 8,52 8,30 C8,8 27,8 30,30 Z"
+          stroke="url(#lg)" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="var(--accent-start)"/>
+          <stop offset="100%" stop-color="var(--accent-end)"/>
+        </linearGradient></defs>
+      </svg>
+      <span class="flux-title">Flux</span>
+    </div>
+    <div class="flux-header-right">
+      <button type="button" id="refreshContextBtn" title="Refresh page context" class="icon-btn">↻</button>
+      <div id="pageTypeBadge" class="page-badge"></div>
+    </div>
+  </div>
+
+  <div id="contextBar" class="context-bar">
+    <div class="context-domain" id="contextDomain">Loading page context...</div>
+    <div class="context-title" id="contextTitle"></div>
+  </div>
+
+  <div id="skillsBar" class="skills-bar">
+    <div class="skills-label">Skills</div>
+    <div class="skills-chips" id="skillsChips"></div>
+  </div>
+
+  <div id="chatMessages" class="chat-messages">
+    <div class="flux-welcome">
+      <div class="welcome-icon">✦</div>
+      <div class="welcome-text">I can see what's on this page. Ask me anything about it or use a skill to take action.</div>
+    </div>
+  </div>
+
+  <div id="selectedTextBar" class="selected-bar" style="display:none">
+    <span class="selected-label">Selected:</span>
+    <span id="selectedTextPreview" class="selected-preview"></span>
+    <button type="button" id="clearSelectionBtn" class="clear-btn">✕</button>
+  </div>
+
+  <div class="chat-input-wrap">
+    <div class="input-row">
+      <button type="button" id="skillsToggleBtn" class="skill-toggle-btn" title="Focus input" aria-label="Focus">⚡</button>
+      <textarea id="chatInput" placeholder="Ask about this page..." rows="1"></textarea>
+      <button type="button" id="sendBtn" class="send-btn">↑</button>
+    </div>
+    <div id="sidebarSkillsPanel" class="skills-panel" style="display:none"></div>
+  </div>
+</div>
+<script src="sidebar.js"></script>
+</body>
+</html>

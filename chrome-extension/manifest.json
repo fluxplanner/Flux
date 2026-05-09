@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Flux Planner",
+  "version": "1.0.0",
+  "description": "Full Flux planner in the side panel with AI that can read the Flux UI, your browser tab, or a shared screen.",
+  "icons": {
+    "192": "icons/icon-192.png",
+    "512": "icons/icon-512.png"
+  },
+  "permissions": ["sidePanel", "storage", "activeTab", "tabs", "scripting"],
+  "host_permissions": [
+    "https://*.github.io/*",
+    "https://github.io/*",
+    "https://*.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Flux",
+    "default_icon": {
+      "192": "icons/icon-192.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

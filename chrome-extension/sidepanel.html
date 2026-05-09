@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flux</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Flux</h1>
+    <input type="url" id="fluxUrl" placeholder="https://…/Flux/" title="Deployed Flux URL (save & reload frame)">
+    <button type="button" id="saveUrl" title="Save URL">Save</button>
+    <button type="button" id="reloadFrame" title="Reload">⟳</button>
+  </header>
+  <div class="layout">
+    <iframe id="fluxFrame" title="Flux Planner" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
+    <aside class="copilot">
+      <div class="toolbar">
+        <button type="button" id="btnSnapshot" title="Send a text outline of the Flux UI into the next question">Flux UI snapshot</button>
+        <button type="button" class="secondary" id="btnTab" title="Screenshot the currently focused browser tab">Capture tab</button>
+        <button type="button" class="secondary" id="btnScreen" title="Pick a screen, window, or tab to share">Share screen</button>
+      </div>
+      <div id="contextHint">Sign in to Flux in the frame. Use snapshot / capture / screen, then ask a question.</div>
+      <div id="chatLog" aria-live="polite"></div>
+      <form id="chatForm">
+        <textarea id="question" placeholder="What do you see? What should I do next?" rows="3"></textarea>
+        <button type="submit" id="askBtn">Ask Flux AI</button>
+      </form>
+    </aside>
+  </div>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

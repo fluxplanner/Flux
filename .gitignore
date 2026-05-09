@@ -2,6 +2,7 @@
 supabase/.temp/
 
 # OS / editor
+.cursor/
 .DS_Store
 *.log
 

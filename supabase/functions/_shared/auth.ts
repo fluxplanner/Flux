@@ -54,6 +54,9 @@ function resolveCorsOrigin(origin: string): string {
   if (trimmed === "null") return "null";
   try {
     const u = new URL(trimmed);
+    if (u.protocol === "chrome-extension:" || u.protocol === "moz-extension:") {
+      return trimmed;
+    }
     if (u.protocol !== "http:" && u.protocol !== "https:") {
       return "https://azfermohammed.github.io";
     }

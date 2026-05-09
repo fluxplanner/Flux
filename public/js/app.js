@@ -883,14 +883,21 @@ function showToast(msg,type='success',durationMs=3000){
     document.body.appendChild(stack);
   }
   const t=document.createElement('div');
+  t.className='toast-item';
   const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)'};
   const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f'};
   const reduce=document.documentElement.classList.contains('flux-reduce-motion');
-  t.style.cssText=`pointer-events:auto;background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
-    padding:10px 20px;border-radius:12px;font-size:.82rem;font-weight:700;max-width:100%;
-    ${reduce?'':'animation:fluxToastIn .3s cubic-bezier(.34,1.56,.64,1) both;'}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  t.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:stretch;pointer-events:auto;background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
+    border-radius:12px;font-size:.82rem;font-weight:700;max-width:100%;
+    ${reduce?'':'animation:fluxToastIn .3s cubic-bezier(.34,1.56,.64,1) both;'}overflow:hidden;
     box-shadow:0 4px 20px rgba(0,0,0,.4);`;
-  t.textContent=msg;
+  const msgRow=document.createElement('div');
+  msgRow.style.cssText='padding:10px 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  msgRow.textContent=msg;
+  const prog=document.createElement('div');
+  prog.className='toast-progress';
+  t.appendChild(msgRow);
+  t.appendChild(prog);
   // Prepend so newest sits visually on top of column-reverse stack
   stack.prepend(t);
   try{
@@ -1453,6 +1460,14 @@ async function fluxAiSimple(system, userMessage, opts){
   return data.content?.[0]?.text||'';
 }
 try{ window.fluxAiSimple=fluxAiSimple; }catch(e){}
+try{
+  window.__FluxExtensionAPI={
+    fluxAuthHeaders,
+    fluxAiSimple,
+    API,
+    SB_ANON,
+  };
+}catch(e){}
 
 let _sb=null,currentUser=null;
 function getSB(){
@@ -1573,6 +1588,13 @@ function nav(id,btn,navOpt){
     if(moreBtn)moreBtn.classList.add('active');
   }
   updateNavAriaCurrent(id);
+  try{document.dispatchEvent(new CustomEvent('flux-nav',{detail:{panel:id}}));}catch(e){}
+  try{
+    if(window.FluxVisual&&typeof FluxVisual.animateNavIndicator==='function'){
+      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`);
+      if(tabBtn)FluxVisual.animateNavIndicator(tabBtn);
+    }
+  }catch(e){}
   syncPanelScrollLayout();
   const tTitle=document.getElementById('topbarTitle');
   if(tTitle){
@@ -2066,6 +2088,12 @@ function updateDashHero(){
   grad.textContent=`${part}, ${first}`;
   greet.appendChild(grad);
   greet.appendChild(document.createTextNode(' 👋'));
+  try{
+    if(!window.matchMedia||!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      grad.classList.add('dash-v2-greet-typewriter');
+      setTimeout(()=>grad.classList.remove('dash-v2-greet-typewriter'),3200);
+    }
+  }catch(e){}
 }
 function spawnTaskBurstFromEl(el){
   if(!el||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -2398,7 +2426,7 @@ function renderTasks(){
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
     const recChip=t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'';
     const snz='';
-    return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -3590,7 +3618,7 @@ function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mi
 function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
-function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
+function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
 function syncFluxPomoPill(){const pill=document.getElementById('fluxPomoPill');if(!pill)return;const show=!!(tRunning&&tMode==='pomodoro');if(show!==_fluxPomoPillVisible){_fluxPomoPillVisible=show;if(show){pill.hidden=false;pill.setAttribute('aria-hidden','false');try{if(window.FluxAnim?.pillAppear)FluxAnim.pillAppear(pill);else{pill.style.display='flex';}}catch(e){pill.style.display='flex';}}else{try{if(window.FluxAnim?.pillDisappear)FluxAnim.pillDisappear(pill,()=>{pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');});else{pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');}}catch(e){pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');}}}else if(show){pill.hidden=false;if(pill.style.display==='none'||!pill.style.display)pill.style.display='flex';}}
 function fluxFocusPomoPill(){try{if(typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches){if(typeof navMob==='function'){navMob('timer');return;}}const tab=document.querySelector('[data-tab="timer"]');if(typeof nav==='function')nav('timer',tab);}catch(e){if(typeof nav==='function')nav('timer');}}
 try{window.fluxFocusPomoPill=fluxFocusPomoPill;}catch(e){}
@@ -3944,6 +3972,7 @@ function setAccent(hex,rgb,el){
   localStorage.setItem('flux_accent_rgb',rgb);
   syncKey('accent',{accent:hex,accentRgb:rgb});
   updateLogoColor(hex);
+  try{if(window.FluxVisual&&typeof FluxVisual.updateNavSquiggle==='function')FluxVisual.updateNavSquiggle(hex);}catch(e){}
 }
 function applyCustomColor(){
   const hex=document.getElementById('customColor').value;
@@ -4858,6 +4887,443 @@ function handleAIImg(event){
   reader.readAsDataURL(file);
 }
 
+/* ══ FLUX SKILLS (injected before buildAIPrompt) ══ */
+const FluxSkills = {
+  registry: new Map(),
+  enabled: new Set(),
+
+  register(skill) {
+    this.registry.set(skill.id, skill);
+    const saved = load('flux_skill_' + skill.id, skill.enabledByDefault !== false);
+    if (saved) this.enabled.add(skill.id);
+  },
+
+  enable(skillId) {
+    this.enabled.add(skillId);
+    save('flux_skill_' + skillId, true);
+    if (typeof renderSkillsPanel === 'function') renderSkillsPanel();
+  },
+
+  disable(skillId) {
+    this.enabled.delete(skillId);
+    save('flux_skill_' + skillId, false);
+    if (typeof renderSkillsPanel === 'function') renderSkillsPanel();
+  },
+
+  getEnabled() {
+    return [...this.enabled].map((id) => this.registry.get(id)).filter(Boolean);
+  },
+
+  buildSkillContext() {
+    const enabled = this.getEnabled();
+    if (!enabled.length) return '';
+    const lines = enabled.map(
+      (s) =>
+        `- **${s.name}** (\`${s.id}\`): ${s.description}\n  Usage: \`\`\`skill\n{"skill":"${s.id}","params":{${s.paramDocs || ''}}}\n\`\`\``
+    );
+    return `\n\n## Available Skills\nYou have access to these skills. Use them when relevant by outputting a \`\`\`skill\`\`\` code block:\n\n${lines.join('\n')}`;
+  },
+
+  parseSkillCalls(responseText) {
+    const calls = [];
+    const regex = /```skill\s*([\s\S]*?)```/g;
+    let match;
+    while ((match = regex.exec(responseText)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        calls.push(parsed);
+      } catch (e) {
+        /* skip */
+      }
+    }
+    return calls;
+  },
+
+  async execute(skillCall) {
+    const skill = this.registry.get(skillCall.skill);
+    if (!skill) return { error: 'Unknown skill: ' + skillCall.skill };
+    if (!this.enabled.has(skillCall.skill)) return { error: 'Skill not enabled: ' + skillCall.skill };
+    try {
+      return await skill.execute(skillCall.params || {});
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+};
+window.FluxSkills = FluxSkills;
+
+FluxSkills.register({
+  id: 'add-task',
+  name: 'Add Task',
+  icon: '📌',
+  description: 'Add a task to the planner',
+  category: 'planner',
+  enabledByDefault: true,
+  paramDocs: '"name":"task name","date":"YYYY-MM-DD","priority":"high|med|low","subject":"subject key","estTime":30',
+  async execute({ name, date, priority, subject, estTime, notes }) {
+    if (!name) return { error: 'Task name required' };
+    const task = {
+      id: Date.now() + Math.random(),
+      name,
+      date: date || '',
+      priority: priority || 'med',
+      subject: subject || '',
+      estTime: estTime || 0,
+      notes: notes || '',
+      done: false,
+      type: 'hw',
+      createdAt: Date.now(),
+    };
+    task.urgencyScore = calcUrgency(task);
+    tasks.unshift(task);
+    save('tasks', tasks);
+    renderStats();
+    renderTasks();
+    renderCalendar();
+    syncKey('tasks', tasks);
+    return { ok: true, taskId: task.id, message: `Task "${name}" added to your planner` };
+  },
+});
+
+FluxSkills.register({
+  id: 'read-emails',
+  name: 'Read Emails',
+  icon: '📧',
+  description: 'Read recent Gmail emails',
+  category: 'integrations',
+  enabledByDefault: false,
+  paramDocs: '"count":10,"filter":"unread|all"',
+  async execute({ count = 10, filter = 'all' }) {
+    if (typeof fetchGmailMessages !== 'function') return { error: 'Gmail helpers not loaded.' };
+    if (!window.gmailToken) return { error: 'Gmail not connected. Connect Google in the app first.' };
+    try {
+      const result = await fetchGmailMessages(count, filter);
+      return { ok: true, emails: result, message: `Fetched ${result.length} emails` };
+    } catch (e) {
+      return { error: 'Gmail fetch failed: ' + e.message };
+    }
+  },
+});
+
+FluxSkills.register({
+  id: 'draft-email-reply',
+  name: 'Draft Reply',
+  icon: '↩',
+  description: 'Draft an email reply in your style (from recent sent mail)',
+  category: 'integrations',
+  enabledByDefault: false,
+  paramDocs: '"emailId":"id","tone":"professional|casual|brief"',
+  async execute({ emailId, tone = 'casual' }) {
+    if (typeof fetchSentEmails !== 'function') return { error: 'Gmail helpers not loaded.' };
+    if (!window.gmailToken) return { error: 'Gmail not connected.' };
+    const sentEmails = await fetchSentEmails(5);
+    const styleContext = (sentEmails || []).map((e) => (e.body || e.snippet || '').slice(0, 500)).join('\n---\n');
+    return {
+      ok: true,
+      requiresAI: true,
+      prompt: `Write an email reply${emailId ? ' (thread id: ' + emailId + ')' : ''}. Match this writing style (from sent mail samples):\n${styleContext}\n\nTone: ${tone}. Keep it substantive and concise.`,
+      message: 'Analyzing your writing style…',
+    };
+  },
+});
+
+FluxSkills.register({
+  id: 'web-search',
+  name: 'Web Search',
+  icon: '🔍',
+  description: 'Search the web (DuckDuckGo instant answer)',
+  category: 'research',
+  enabledByDefault: true,
+  paramDocs: '"query":"search query"',
+  async execute({ query }) {
+    if (!query) return { error: 'Search query required' };
+    try {
+      const res = await fetch(
+        `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
+      );
+      const data = await res.json();
+      const results = {
+        abstract: data.Abstract || data.AbstractText,
+        source: data.AbstractSource,
+        url: data.AbstractURL,
+        relatedTopics: (data.RelatedTopics || []).slice(0, 5).map((t) => ({
+          text: t.Text,
+          url: t.FirstURL,
+        })),
+        answer: data.Answer,
+        definition: data.Definition,
+      };
+      return { ok: true, results, message: `Web search completed for: ${query}` };
+    } catch (e) {
+      return { error: 'Search failed: ' + e.message };
+    }
+  },
+});
+
+FluxSkills.register({
+  id: 'create-study-plan',
+  name: 'Study Plan',
+  icon: '📚',
+  description: 'Create a multi-day study plan as tasks',
+  category: 'planner',
+  enabledByDefault: true,
+  paramDocs: '"subject":"name","testDate":"YYYY-MM-DD","topics":["a","b"]',
+  async execute({ subject, testDate, topics = [] }) {
+    if (!subject || !testDate) return { error: 'Subject and test date required' };
+    const test = new Date(testDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((test - today) / 86400000);
+    if (daysLeft <= 0) return { error: 'Test date must be in the future' };
+    const sessionsPerTopic = Math.max(1, Math.floor(daysLeft / Math.max(topics.length, 1)));
+    const addedTasks = [];
+    topics.forEach((topic, i) => {
+      for (let day = 0; day < sessionsPerTopic; day++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i * sessionsPerTopic + day);
+        if (d >= test) break;
+        const task = {
+          id: Date.now() + Math.random(),
+          name: `Study: ${topic}`,
+          subject,
+          date: d.toISOString().slice(0, 10),
+          priority: daysLeft <= 3 ? 'high' : 'med',
+          estTime: 45,
+          type: 'study',
+          done: false,
+          createdAt: Date.now(),
+        };
+        task.urgencyScore = calcUrgency(task);
+        tasks.push(task);
+        addedTasks.push(task);
+      }
+    });
+    save('tasks', tasks);
+    renderStats();
+    renderTasks();
+    renderCalendar();
+    syncKey('tasks', tasks);
+    return { ok: true, tasksAdded: addedTasks.length, message: `Created ${addedTasks.length} study sessions for ${subject}` };
+  },
+});
+
+FluxSkills.register({
+  id: 'add-event',
+  name: 'Add Event',
+  icon: '📅',
+  description: 'Add an event to the Flux calendar list',
+  category: 'planner',
+  enabledByDefault: true,
+  paramDocs: '"title":"name","date":"YYYY-MM-DD","time":"HH:MM","notes":"details"',
+  async execute({ title, date, time, notes }) {
+    if (!title || !date) return { error: 'Title and date required' };
+    const ev = {
+      id: Date.now() + Math.random(),
+      title,
+      date,
+      time: time || '',
+      notes: notes || '',
+      type: 'event',
+      createdAt: Date.now(),
+    };
+    const events = load('flux_events', []);
+    events.push(ev);
+    save('flux_events', events);
+    syncKey('flux_events', events);
+    renderCalendar();
+    return { ok: true, message: `Event "${title}" added for ${date}` };
+  },
+});
+
+FluxSkills.register({
+  id: 'summarize-note',
+  name: 'Summarize Note',
+  icon: '✏️',
+  description: 'Summarize a saved note',
+  category: 'notes',
+  enabledByDefault: true,
+  paramDocs: '"noteId":"id"',
+  async execute({ noteId }) {
+    const note = notes?.find((n) => String(n.id) === String(noteId) || n.id === parseInt(noteId, 10));
+    if (!note) return { error: 'Note not found' };
+    const plain = String(note.body || '')
+      .replace(/<[^>]*>/g, '')
+      .slice(0, 3000);
+    return {
+      ok: true,
+      requiresAI: true,
+      prompt: `Summarize this note into key points and a short study guide.\n\nTitle: ${note.title}\n\n${plain}`,
+      message: 'Summarizing note…',
+    };
+  },
+});
+
+FluxSkills.register({
+  id: 'export-to-gcal',
+  name: 'Push to Google Cal',
+  icon: '📆',
+  description: 'Push upcoming tasks to Google Calendar (per-task)',
+  category: 'integrations',
+  enabledByDefault: false,
+  paramDocs: '"days":7',
+  async execute({ days = 7 }) {
+    if (typeof window.fluxPushTaskToGCal !== 'function') {
+      return { error: 'Google Calendar push not available. Sign in with Google and enable Calendar scope.' };
+    }
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() + days);
+    const upcoming = tasks.filter((t) => {
+      if (t.done || !t.date) return false;
+      const d = new Date(t.date + 'T00:00:00');
+      return d <= cutoff && d >= now;
+    });
+    let pushed = 0;
+    for (const task of upcoming) {
+      try {
+        await window.fluxPushTaskToGCal(task.id);
+        pushed++;
+      } catch (e) {}
+    }
+    return { ok: true, message: `Pushed ${pushed} tasks toward (${days}d window)` };
+  },
+});
+
+function renderSkillsPanel() {
+  const el = document.getElementById('fluxSettingsSkillsMount');
+  if (!el) return;
+  const categories = {};
+  FluxSkills.registry.forEach((skill) => {
+    if (!categories[skill.category]) categories[skill.category] = [];
+    categories[skill.category].push(skill);
+  });
+  el.innerHTML = Object.entries(categories)
+    .map(
+      ([cat, sks]) => `
+    <div style="margin-bottom:16px">
+      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px">${cat}</div>
+      ${sks
+        .map(
+          (skill) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">
+          <span style="font-size:1.2rem;flex-shrink:0">${skill.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.85rem;font-weight:600">${skill.name}</div>
+            <div style="font-size:.72rem;color:var(--muted2)">${skill.description}</div>
+          </div>
+          <label class="toggle-wrap" style="flex-shrink:0">
+            <input type="checkbox" ${FluxSkills.enabled.has(skill.id) ? 'checked' : ''}
+              data-flux-skill-id="${skill.id}">
+            <span class="toggle-track"></span>
+          </label>
+        </div>`
+        )
+        .join('')}
+    </div>`
+    )
+    .join('');
+  el.querySelectorAll('input[data-flux-skill-id]').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      const id = inp.getAttribute('data-flux-skill-id');
+      if (inp.checked) FluxSkills.enable(id);
+      else FluxSkills.disable(id);
+    });
+  });
+}
+
+function openAddSkillModal() {
+  const modal = document.createElement('div');
+  modal.id = 'fluxCustomSkillModal';
+  modal.style.cssText =
+    'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:26px;width:100%;max-width:440px;box-shadow:var(--shadow-float)">
+      <div style="font-size:1rem;font-weight:800;margin-bottom:4px">Add Custom Skill</div>
+      <div style="font-size:.78rem;color:var(--muted2);margin-bottom:16px">Define what Flux can do when this skill is triggered</div>
+      <div class="mrow"><label>Skill Name</label><input id="customSkillName" placeholder="e.g. Create Flashcards"></div>
+      <div class="mrow"><label>Icon (emoji)</label><input id="customSkillIcon" placeholder="📚" maxlength="4"></div>
+      <div class="mrow"><label>Description</label><input id="customSkillDesc" placeholder="What this skill does"></div>
+      <div class="mrow"><label>Instructions for AI</label><textarea id="customSkillPrompt" style="min-height:80px" placeholder="When this skill is used…"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button type="button" id="fluxCustomSkillSave" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Add Skill</button>
+        <button type="button" id="fluxCustomSkillCancel" style="padding:12px 18px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  document.getElementById('fluxCustomSkillCancel').onclick = () => modal.remove();
+  document.getElementById('fluxCustomSkillSave').onclick = () => saveCustomSkill();
+}
+
+function saveCustomSkill() {
+  const name = document.getElementById('customSkillName')?.value.trim();
+  const icon = document.getElementById('customSkillIcon')?.value.trim() || '⚡';
+  const desc = document.getElementById('customSkillDesc')?.value.trim();
+  const prompt = document.getElementById('customSkillPrompt')?.value.trim();
+  if (!name || !desc) {
+    showToast('Name and description required', 'error');
+    return;
+  }
+  const id = 'custom-' + name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+  FluxSkills.register({
+    id,
+    name,
+    icon,
+    description: desc,
+    category: 'custom',
+    enabledByDefault: true,
+    customPrompt: prompt,
+    async execute(params) {
+      return {
+        ok: true,
+        requiresAI: true,
+        prompt: `${prompt}\n\nContext: ${JSON.stringify(params)}`,
+        message: `Running skill: ${name}`,
+      };
+    },
+  });
+  FluxSkills.enable(id);
+  const customSkills = load('flux_custom_skills', []);
+  customSkills.push({ id, name, icon, description: desc, category: 'custom', customPrompt: prompt });
+  save('flux_custom_skills', customSkills);
+  document.getElementById('fluxCustomSkillModal')?.remove();
+  renderSkillsPanel();
+  showToast(`Skill "${name}" added`);
+}
+
+function loadCustomSkills() {
+  const customSkills = load('flux_custom_skills', []);
+  customSkills.forEach((s) => {
+    FluxSkills.register({
+      id: s.id,
+      name: s.name,
+      icon: s.icon,
+      description: s.description,
+      category: s.category || 'custom',
+      customPrompt: s.customPrompt,
+      enabledByDefault: true,
+      async execute(params) {
+        return {
+          ok: true,
+          requiresAI: true,
+          prompt: `${s.customPrompt}\n\nContext: ${JSON.stringify(params)}`,
+          message: `Running skill: ${s.name}`,
+        };
+      },
+    });
+    if (load('flux_skill_' + s.id, true)) FluxSkills.enable(s.id);
+  });
+}
+window.openAddSkillModal = openAddSkillModal;
+window.saveCustomSkill = saveCustomSkill;
+window.renderSkillsPanel = renderSkillsPanel;
+window.loadCustomSkills = loadCustomSkills;
+
+loadCustomSkills();
+
 function buildAIPrompt(){
   const ctx=refreshAIContext();
   const name=localStorage.getItem('flux_user_name')||'Student';
@@ -4966,7 +5432,7 @@ When the student asks you to add, complete, or delete tasks, append ONLY this bl
 \`\`\`actions
 [{"action":"add_task","name":"...","priority":"high","date":"YYYY-MM-DD","type":"hw","subject":"SUBJECT_KEY"}]
 \`\`\`
-</task_actions>`
+</task_actions>${typeof FluxSkills!=='undefined'&&FluxSkills.buildSkillContext?FluxSkills.buildSkillContext():''}`
 }
 function execActions(reply){
   const match=reply.match(/```actions\s*([\s\S]*?)(?:```|$)/);
@@ -4996,11 +5462,18 @@ function execActions(reply){
   if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();}
   return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;
 }
-async function sendAI(){
+async function sendAI(optionalUserText, depth){
+  const d=typeof depth==='number'?depth:0;
+  if(d>5){
+    showToast('Skill chain stopped (too many nested steps).','warning');
+    return;
+  }
   const input=document.getElementById('aiInput'),btn=document.getElementById('aiSendBtn');
   if(!input||!btn)return;
-  const text=input.value.trim();
-  if(!text&&!aiPendingImg)return;
+  const nested=typeof optionalUserText==='string'&&optionalUserText.length>0;
+  const text=nested?optionalUserText.trim():input.value.trim();
+  if(!nested&&!text&&!aiPendingImg)return;
+  if(nested&&!text)return;
   if(btn.disabled)return;
   if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
     const dailyUsed=_entitlement.usage?.daily_used??0;
@@ -5014,15 +5487,20 @@ async function sendAI(){
     }
   }
   const _aiSugsEl=document.getElementById('aiSugs');if(_aiSugsEl)_aiSugsEl.style.display='none';
-  const imgSnapshot=aiPendingImg;
-  appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
-  aiPendingImg=null;
-  const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
-  const userMsg=text||(imgSnapshot?'Please analyze this image.':'');
+  const imgSnapshot=nested?null:aiPendingImg;
+  if(!nested){
+    appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
+    aiPendingImg=null;
+    const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
+  }else{
+    appendMsg('user',text);
+  }
+  const userMsg=nested?text:(text||(imgSnapshot?'Please analyze this image.':''));
   aiHistory.push({role:'user',content:userMsg});
-  try{const c=parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10)||0;localStorage.setItem('flux_ai_msg_count',String(c+1));}catch(e){}
-  saveCurrentChat(); // save user message immediately
-  input.value='';input.style.height='auto';btn.disabled=true;
+  if(!nested){try{const c=parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10)||0;localStorage.setItem('flux_ai_msg_count',String(c+1));}catch(e){}}
+  saveCurrentChat();
+  if(!nested){input.value='';input.style.height='auto';}
+  btn.disabled=true;
   let thinkAnim=null;
   const thinkEl=appendMsg('bot','',true);
   const thinkHost=document.getElementById('aiThinkingIndicator')||thinkEl;
@@ -5030,7 +5508,7 @@ async function sendAI(){
   try{
     if(window.FluxOrchestrator&&FluxOrchestrator.beginThinking)FluxOrchestrator.beginThinking(thinkEl);
     try{if(window.FluxAIConnections&&typeof FluxAIConnections.beforeSend==='function')await FluxAIConnections.beforeSend(text);}catch(e){}
-    if(window.FluxOrchestrator&&FluxOrchestrator.handleSlashCommand){
+    if(!nested&&window.FluxOrchestrator&&FluxOrchestrator.handleSlashCommand){
       const slashNote=FluxOrchestrator.handleSlashCommand(text);
       if(slashNote&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Ran /fix — schedule relief applied on-device.');
     }
@@ -5050,7 +5528,6 @@ async function sendAI(){
       const routeExtra=window.FluxAIConnections&&typeof FluxAIConnections.getRoutingPayload==='function'?FluxAIConnections.getRoutingPayload():null;
       if(routeExtra&&typeof routeExtra==='object')Object.assign(body,routeExtra);
     }catch(e){}
-    // If image attached, send it for Gemini vision via the ai-proxy
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
     const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify(body)});
@@ -5090,6 +5567,16 @@ async function sendAI(){
       _entitlement.usage.daily_used=(_entitlement.usage.daily_used??0)+1;
       updatePlanUI();
     }
+    const skillFollowUps=[];
+    if(window.FluxSkills&&typeof FluxSkills.parseSkillCalls==='function'&&FluxSkills.getEnabled().length){
+      const skillCalls=FluxSkills.parseSkillCalls(reply);
+      for(const call of skillCalls){
+        const result=await FluxSkills.execute(call);
+        if(result&&result.error)showToast('Skill failed: '+result.error,'error');
+        else if(result&&result.message)showToast('✓ '+result.message,'success');
+        if(result&&result.requiresAI&&result.prompt)skillFollowUps.push(result.prompt);
+      }
+    }
     const ar=execActions(reply);
     let clean=reply;
     const toolsRun=[];
@@ -5100,20 +5587,15 @@ async function sendAI(){
     }
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
-    // Strip ```actions ... ``` blocks (closed)
     clean=clean.replace(/`{3,}actions[\s\S]*?`{3,}/gi,'');
-    // Strip unclosed ```actions blocks (at end of reply)
     clean=clean.replace(/`{3,}actions[\s\S]*$/gi,'');
-    // Strip standalone empty arrays that might leak through
+    clean=clean.replace(/```skill[\s\S]*?```/g,'');
     clean=clean.replace(/```\s*\[\s*\]\s*```/g,'');
-    // Strip any remaining JSON action arrays with "action" key
     clean=clean.replace(/\[\s*\{[\s\S]*?"action"[\s\S]*?\}\s*\]/g,'');
-    // Strip bare empty arrays at end of message
     clean=clean.replace(/\s*\[\s*\]\s*$/,'');
     clean=clean.replace(/\n{3,}/g,'\n\n').trim();
     clean=filterAIResponse(clean);
     if(clean){appendMsg('bot',clean);}
-    // Show action result as a separate small confirmation below, not inside the bubble
     if(ar){
       const confDiv=document.createElement('div');
       confDiv.style.cssText='font-size:.78rem;padding:6px 10px;margin-top:-4px;margin-bottom:8px;opacity:.8';
@@ -5123,8 +5605,11 @@ async function sendAI(){
     }
     aiHistory.push({role:'assistant',content:clean});
     if(aiHistory.length>24)aiHistory=aiHistory.slice(-24);
-    saveCurrentChat(); // persist to chat tabs
+    saveCurrentChat();
     try{if(window.FluxAICore&&typeof FluxAICore.afterExchange==='function')FluxAICore.afterExchange(userMsg,clean);}catch(e){}
+    for(const p of skillFollowUps){
+      if(typeof p==='string'&&p.trim())await sendAI(p.trim(),d+1);
+    }
   }catch(err){
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
@@ -5164,9 +5649,9 @@ const SYNC_KEYS=['tasks','notes','habits','goals','colleges','moodHistory','scho
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
-  if(status==='synced'){el.className='sync-badge synced sync-badge--quiet';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
-  else if(status==='syncing'){el.className='sync-badge syncing';el.textContent='↑ Syncing...';if(sl)sl.textContent='Syncing...';}
-  else{el.className='sync-badge offline';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
+  if(status==='synced'){el.className='sync-badge synced sync-badge--quiet sync-dot';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
+  else if(status==='syncing'){el.className='sync-badge syncing sync-dot';el.textContent='↑ Syncing...';if(sl)sl.textContent='Syncing...';}
+  else{el.className='sync-badge offline sync-dot';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
   el.style.display=currentUser?'flex':'none';
   if(currentUser){
     if(status==='syncing')el.title='Syncing with cloud…';
@@ -7208,6 +7693,45 @@ function showApp(){
   setTimeout(checkTomorrowLoad,4500);
   setTimeout(checkWeeklyReview,5000);
   if(typeof updatePlanUI==='function')updatePlanUI();
+  try{if(typeof renderSkillsPanel==='function')renderSkillsPanel();}catch(e){}
+  try{if(typeof initFluxExtensionIdSettings==='function')initFluxExtensionIdSettings();}catch(e){}
+}
+
+function initFluxExtensionIdSettings(){
+  const inp=document.getElementById('fluxChromeExtensionIdInput');
+  if(!inp)return;
+  var v='';
+  try{v=(localStorage.getItem('flux_chrome_extension_id')||window.FLUX_CHROME_EXTENSION_ID||'').trim();}catch(e){v=(window.FLUX_CHROME_EXTENSION_ID||'').trim();}
+  inp.value=v;
+}
+function saveFluxExtensionIdFromSettings(){
+  const inp=document.getElementById('fluxChromeExtensionIdInput');
+  if(!inp)return;
+  const id=String(inp.value||'').trim().replace(/\s+/g,'');
+  if(!id){if(typeof showToast==='function')showToast('Paste your extension ID first','error');return;}
+  if(!/^[a-p]{32}$/.test(id)){if(typeof showToast==='function')showToast('That does not look like a Chrome extension ID (32 letters a–p).','error');return;}
+  try{localStorage.setItem('flux_chrome_extension_id',id);}catch(e){}
+  window.FLUX_CHROME_EXTENSION_ID=id;
+  if(typeof syncTokenToExtension==='function')syncTokenToExtension();
+  if(typeof showToast==='function')showToast('Extension linked — session synced','success');
+}
+window.initFluxExtensionIdSettings=initFluxExtensionIdSettings;
+window.saveFluxExtensionIdFromSettings=saveFluxExtensionIdFromSettings;
+
+window.FLUX_CHROME_EXTENSION_ID=window.FLUX_CHROME_EXTENSION_ID||'';
+function syncTokenToExtension(){
+  if(!currentUser||typeof chrome==='undefined'||!chrome.runtime?.sendMessage)return;
+  const extId=(typeof localStorage!=='undefined'&&localStorage.getItem('flux_chrome_extension_id'))||window.FLUX_CHROME_EXTENSION_ID;
+  if(!extId||!String(extId).trim())return;
+  const sb=getSB();
+  if(!sb)return;
+  sb.auth.getSession().then(({data})=>{
+    const token=data?.session?.access_token;
+    if(!token)return;
+    try{
+      chrome.runtime.sendMessage(String(extId).trim(),{type:'SET_AUTH_TOKEN',token,userId:currentUser.id},()=>{try{void chrome.runtime.lastError;}catch(e){}});
+    }catch(e){}
+  });
 }
 
 async function handleSignedIn(user,session){
@@ -7243,6 +7767,7 @@ async function handleSignedIn(user,session){
       }
     }catch(e){}
     renderTesterBadge();
+    syncTokenToExtension();
     return;
   }
   // ── ACCOUNT SWITCH: wipe previous user's data ──────────────
@@ -7341,6 +7866,7 @@ async function handleSignedIn(user,session){
     updatePlanUI();
   }
   renderTesterBadge();
+  syncTokenToExtension();
   // Full cloud push every minute while logged in (faster cross-device; debounced typing still uses syncKey)
   if(!window._syncInterval)window._syncInterval=setInterval(()=>{ if(currentUser)void syncToCloud(); },60*1000);
 }
@@ -7402,6 +7928,7 @@ function handleSignedOut(){
     'flux_canvas_split','flux_canvas_sidebar_collapsed',
     'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
     'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
+    'flux_chrome_extension_id',
   ];
   const kept={};
   keysToKeep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)kept[k]=v;});
@@ -9464,6 +9991,46 @@ async function refreshGmailEmailsFromApi(){
   }catch(e){return false;}
 }
 
+async function fetchGmailMessages(count=10,filter='all'){
+  await ensureGmailTokenFromSession();
+  if(!gmailToken)throw new Error('No Gmail token');
+  const q=filter==='unread'?'in:inbox is:unread':'in:inbox';
+  const res=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(30,count)}&q=${encodeURIComponent(q)}`,{headers:{'Authorization':`Bearer ${gmailToken}`}});
+  if(res.status===401){gmailToken=null;sessionStorage.removeItem('flux_gmail_token');throw new Error('Gmail session expired');}
+  if(!res.ok)throw new Error('Gmail API '+res.status);
+  const data=await res.json();
+  if(!data.messages?.length)return [];
+  return Promise.all(data.messages.map(async m=>{
+    try{
+      const detail=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,{headers:{'Authorization':`Bearer ${gmailToken}`}});
+      const d=await detail.json();
+      const headers=d.payload?.headers||[];
+      const get=n=>headers.find(h=>h.name===n)?.value||'';
+      return {id:m.id,subject:get('Subject'),from:get('From'),snippet:d.snippet||''};
+    }catch(e){return {id:m.id,subject:'',from:'',snippet:''};}
+  }));
+}
+
+async function fetchSentEmails(n=5){
+  await ensureGmailTokenFromSession();
+  if(!gmailToken)return [];
+  const res=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(15,n)}&q=in:sent`,{headers:{'Authorization':`Bearer ${gmailToken}`}});
+  if(!res.ok)return [];
+  const data=await res.json();
+  if(!data.messages?.length)return [];
+  return Promise.all(data.messages.map(async m=>{
+    try{
+      const detail=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject`,{headers:{'Authorization':`Bearer ${gmailToken}`}});
+      const d=await detail.json();
+      const sub=(d.payload?.headers||[]).find(h=>h.name==='Subject')?.value||'';
+      const sn=d.snippet||'';
+      return {id:m.id,subject:sub,snippet:sn,body:sn};
+    }catch(e){return {id:m.id,subject:'',snippet:'',body:''};}
+  }));
+}
+window.fetchGmailMessages=fetchGmailMessages;
+window.fetchSentEmails=fetchSentEmails;
+
 async function loadGmail(){
   const el=gmailListContainer();if(!el)return;
   await ensureGmailTokenFromSession();
@@ -9567,8 +10134,8 @@ function showKanban(){
     });
     // Drag handlers
     document.querySelectorAll('.kanban-card').forEach(card=>{
-      card.addEventListener('dragstart',e=>{e.dataTransfer.setData('taskId',card.dataset.id);card.style.opacity='.5';});
-      card.addEventListener('dragend',e=>{card.style.opacity='1';});
+      card.addEventListener('dragstart',e=>{e.dataTransfer.setData('taskId',card.dataset.id);card.setAttribute('data-dragging','true');card.style.opacity='.5';});
+      card.addEventListener('dragend',e=>{card.removeAttribute('data-dragging');card.style.opacity='1';});
     });
     document.querySelectorAll('.kanban-col-body').forEach(col=>{
       col.addEventListener('dragover',e=>{e.preventDefault();col.style.background='rgba(var(--accent-rgb),.06)';});
@@ -9718,6 +10285,7 @@ function startDeepWork(taskId){
   _dwSecs=(task.estTime||25)*60;
   const overlay=document.createElement('div');
   overlay.id='deepWorkOverlay';
+  overlay.className='deep-work-bg';
   overlay.style.cssText='position:fixed;inset:0;z-index:8000;background:#000810;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;animation:fadeIn .3s ease';
   const sub=getSubjects()[task.subject];
   const color=sub?sub.color:'var(--accent)';
@@ -10720,6 +11288,7 @@ function checkAchievement(id){
   el.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:3500;padding:10px 18px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:.8rem;display:flex;align-items:center;gap:10px;animation:slideUpToast .3s var(--ease-spring);backdrop-filter:blur(12px)';
   el.innerHTML=`<span style="font-size:1.2rem">${a.icon}</span><div><div style="font-weight:700;font-size:.78rem;color:var(--accent)">${a.title}</div><div style="font-size:.68rem;color:var(--muted2)">${a.desc}</div></div>`;
   document.body.appendChild(el);
+  try{if(window.FluxVisual&&typeof FluxVisual.spawnAchievementConfetti==='function')FluxVisual.spawnAchievementConfetti(el);}catch(e){}
   setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .5s';setTimeout(()=>el.remove(),500);},3500);
 }
 
