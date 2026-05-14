@@ -119,6 +119,38 @@
     return (c && (c.course_color || c.color)) || "#3b82f6";
   }
 
+  /** ISO-ish locale code Canvas accepts in `session_locale` (default English). */
+  function fluxCanvasPreferredSessionLocale() {
+    let loc = "en";
+    try {
+      const o = load("flux_canvas_session_locale", null);
+      if (o !== null && o !== undefined && String(o).trim()) {
+        loc = String(o).trim().split(/[^a-zA-Z_-]/)[0].slice(0, 12) || "en";
+      }
+    } catch (_) {}
+    return loc;
+  }
+
+  /**
+   * Canvas chooses UI language from the signed-in account, course locale, and
+   * the browser. Opening a deep link in a new tab can briefly (or fully) pick
+   * the wrong language when Accept-Language prefers a locale the user did not
+   * expect (e.g. Arabic). Canvas honors `?session_locale=` to seed the session.
+   * Optional: save('flux_canvas_session_locale','es') for a different ISO code.
+   */
+  function fluxCanvasOutboundHref(raw) {
+    if (!raw || typeof raw !== "string") return "";
+    const loc = fluxCanvasPreferredSessionLocale();
+    try {
+      const u = new URL(String(raw).trim());
+      if (!/^https?:$/i.test(u.protocol)) return String(raw).trim();
+      if (!u.searchParams.has("session_locale")) u.searchParams.set("session_locale", loc);
+      return u.href;
+    } catch (_) {
+      return String(raw).trim();
+    }
+  }
+
   function isConnected() {
     try { return !!(canvasToken && canvasUrl); } catch { return false; }
   }
@@ -623,7 +655,11 @@
        they'll see "New Access Token" right there. We can't auto-receive the key
        because Canvas doesn't post it back, but we DO detect when the popup is
        closed and bump the user to the paste step. */
-    const url = "https://" + host + "/profile/settings#access_tokens_holder";
+    const loc = fluxCanvasPreferredSessionLocale();
+    const u = new URL("https://" + host + "/profile/settings");
+    u.searchParams.set("session_locale", loc);
+    u.hash = "access_tokens_holder";
+    const url = u.href;
     const w = 540, h = 720;
     const left = (window.screen.width - w) / 2;
     const top = (window.screen.height - h) / 2;
@@ -828,7 +864,7 @@
         ${exists
           ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In planner</button>`
           : addBtn("assignment", { id: a.id, course_id: a.course_id, course_name: a.course_name })}
-        ${a.html_url ? `<a href="${esc(a.html_url)}" target="_blank" rel="noopener noreferrer" class="cv-row__open" title="Open in Canvas">↗</a>` : ""}
+        ${a.html_url ? `<a href="${esc(fluxCanvasOutboundHref(a.html_url))}" target="_blank" rel="noopener noreferrer" class="cv-row__open" title="Open in Canvas" hreflang="${esc(fluxCanvasPreferredSessionLocale())}">↗</a>` : ""}
       </article>
     `;
   }
@@ -861,7 +897,7 @@
               ${saved
                 ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In notes</button>`
                 : addBtn("announcement", { id: a.id, title: a.title, message: a.message, course_name: c.name })}
-              ${a.html_url ? `<a class="cv-row__open" href="${esc(a.html_url)}" target="_blank" rel="noopener noreferrer">↗ Open</a>` : ""}
+              ${a.html_url ? `<a class="cv-row__open" href="${esc(fluxCanvasOutboundHref(a.html_url))}" target="_blank" rel="noopener noreferrer" hreflang="${esc(fluxCanvasPreferredSessionLocale())}">↗ Open</a>` : ""}
             </div>
           </article>`;
         }).join("")}</div>`
@@ -936,7 +972,7 @@
         ${exists
           ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In planner</button>`
           : addBtn("module-item", data)}
-        ${it.html_url ? `<a class="cv-row__open" href="${esc(it.html_url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+        ${it.html_url ? `<a class="cv-row__open" href="${esc(fluxCanvasOutboundHref(it.html_url))}" target="_blank" rel="noopener noreferrer" hreflang="${esc(fluxCanvasPreferredSessionLocale())}">↗</a>` : ""}
       </div>
     `;
   }
@@ -966,7 +1002,7 @@
               description: e.description, course_id: cid, course_name: c.name,
               assignment_id: e.assignment ? e.assignment.id : null,
             })}
-            ${e.html_url ? `<a class="cv-row__open" href="${esc(e.html_url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+            ${e.html_url ? `<a class="cv-row__open" href="${esc(fluxCanvasOutboundHref(e.html_url))}" target="_blank" rel="noopener noreferrer" hreflang="${esc(fluxCanvasPreferredSessionLocale())}">↗</a>` : ""}
           </article>`;
         }).join("")}</div>`
       : emptyState("No events in the next 60 days.");
@@ -1030,7 +1066,7 @@
                 ${saved
                   ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ Saved</button>`
                   : addBtn("file", { id: f.id, display_name: f.display_name, filename: f.filename, url: f.url, course_name: g.course.name })}
-                ${f.url ? `<a class="cv-row__open" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+                ${f.url ? `<a class="cv-row__open" href="${esc(fluxCanvasOutboundHref(f.url))}" target="_blank" rel="noopener noreferrer" hreflang="${esc(fluxCanvasPreferredSessionLocale())}">↗</a>` : ""}
               </article>`;
             }).join("")}</div>
           </section>`;
