@@ -1,35 +1,57 @@
 /**
- * Flux Canvas LMS panel — API-driven mini browser (loaded after app.js).
- * Expects globals: load, save, esc, showToast, getSB, SB_URL, SB_ANON, tasks, classes,
- * canvasToken, canvasUrl, nav, openFluxAgent, calcUrgency, syncKey,
- * renderStats, renderTasks, renderCalendar, renderCountdown, cleanClassName,
- * FLUX_FLAGS, requiresPro, showUpgradePrompt, canvasProxyPostForm, refreshCanvasHubFullFetch
+ * Flux Canvas LMS panel — v3, clean tabbed UI.
+ *
+ * The previous version was a mini-browser with per-course drilldowns and a
+ * dedicated CanvasAPI class that duplicated logic from app.js. This rewrite
+ * removes that entire layer and replaces it with a flat tabbed hub:
+ *
+ *   [Announcements] [Assignments] [Modules] [Calendar] [Inbox] [Files]
+ *
+ * Every row in every tab has an "Add to Flux" button:
+ *   - Assignment   -> task   (addCanvasAssignmentToPlanner)
+ *   - Announcement -> note   (addCanvasAnnouncementAsNoteIfNew)
+ *   - Module item  -> task or note depending on the item type
+ *   - Calendar evt -> task with due_at
+ *   - Inbox msg    -> note
+ *   - File         -> note (with link to file)
+ *
+ * Data fetching reuses the existing canvasProxyGet / canvasProxyGetPaged
+ * helpers from app.js so we don't ship a second copy of the API surface.
+ *
+ * Globals expected from app.js: load, save, esc, showToast, syncKey, tasks,
+ * notes, classes, canvasToken, canvasUrl, canvasProxyGet, canvasProxyGetPaged,
+ * canvasStripHtml, canvasAssignmentTaskExists, addCanvasAssignmentToPlanner,
+ * addCanvasAnnouncementAsNoteIfNew, canvasFluxSubjectKeyFromCourseName,
+ * fluxCanvasProxyHost, renderStats, renderTasks, renderCalendar,
+ * renderCountdown, renderNotesList, calcUrgency.
  */
 (function () {
-  const CanvasState = {
-    token: null,
-    host: null,
+  const CV = {
     connected: false,
-    history: [],
-    historyIndex: -1,
-    currentView: null,
-    currentParams: {},
-    currentTitle: "",
-    cache: new Map(),
-    CACHE_TTL: 3 * 60 * 1000,
-    pageContext: null,
-    loading: false,
-    error: null,
+    host: "",
     courses: [],
-    announcementCache: new Map(),
-    _shellReady: false,
-    _sidebarCollapsed: load("flux_canvas_sidebar_collapsed", false),
-    _inboxThread: null,
-    /** 'back' | 'forward' | null — consumed by navigate() for FluxAnim */
-    navAnim: null,
+    activeTab: load("flux_canvas_v3_tab", "assignments"),
+    selectedCourseId: load("flux_canvas_v3_course", "all"),
+    loading: false,
+    /** per-tab cache: { fetchedAt, data } */
+    cache: {},
+    CACHE_MS: 2 * 60 * 1000,
   };
 
-  function hostFromStoredUrl(url) {
+  /** Tab definitions — id, label, icon, fetcher, renderer. */
+  const TABS = [
+    { id: "assignments",   label: "Assignments",   icon: "📝" },
+    { id: "announcements", label: "Announcements", icon: "📢" },
+    { id: "modules",       label: "Modules",       icon: "📚" },
+    { id: "calendar",      label: "Calendar",      icon: "📅" },
+    { id: "inbox",         label: "Inbox",         icon: "✉" },
+    { id: "files",         label: "Files",         icon: "📎" },
+  ];
+
+  // ────────────────────────────────────────────────────────────────
+  // Small utilities
+  // ────────────────────────────────────────────────────────────────
+  function hostFromUrl(url) {
     if (!url) return "";
     try {
       const u = String(url).trim().includes("://")
@@ -41,1394 +63,835 @@
     }
   }
 
-  function syncLegacyCanvasGlobals() {
-    try {
-      canvasToken = CanvasState.token || "";
-      canvasUrl = CanvasState.host ? "https://" + CanvasState.host : "";
-    } catch (_) {}
+  function ymd(s) {
+    if (!s) return "";
+    try { return String(s).slice(0, 10); } catch { return ""; }
   }
 
-  function truncateJsonContext(obj, max) {
-    const s = JSON.stringify(obj, null, 2);
-    if (s.length <= max) return s;
-    return s.slice(0, max - 20) + "\n…(truncated)";
+  function due(d) {
+    if (!d) return "muted";
+    const x = new Date(d), n = new Date();
+    if (isNaN(+x)) return "muted";
+    if (x < n) return "red";
+    if (x.toDateString() === n.toDateString()) return "gold";
+    return "green";
   }
-
-  function updateAICanvasContextBadge() {
-    const el = document.getElementById("fluxAiCanvasContextBadge");
-    if (!el) return;
-    const on =
-      CanvasState.pageContext &&
-      CanvasState.connected &&
-      typeof CanvasState.pageContext === "object";
-    el.style.display = on ? "inline-flex" : "none";
-    if (on) el.setAttribute("title", "Flux AI can see your Canvas page");
-  }
-
-  window.clearFluxCanvasPageContext = function () {
-    CanvasState.pageContext = null;
-    updateAICanvasContextBadge();
-    showToast("Canvas context cleared from AI", "info");
-  };
-
-  const CanvasAPI = {
-    async fetch(path, options) {
-      options = options || {};
-      if (!CanvasState.token || !CanvasState.host) {
-        throw new Error("Canvas not connected. Add your Canvas token in School Info.");
-      }
-      if (FLUX_FLAGS.PAYMENTS_ENABLED &&
-        FLUX_FLAGS.ENFORCE_CANVAS_GATE &&
-        typeof requiresPro === "function" &&
-        requiresPro("canvasSync")) {
-        if (typeof showUpgradePrompt === "function") {
-          showUpgradePrompt("canvasSync", "Pull assignments directly from Canvas into your planner");
-        }
-        throw new Error("Canvas sync requires Flux Pro");
-      }
-      const cacheKey = `${path}:${JSON.stringify(options.params || {})}`;
-      const cached = CanvasState.cache.get(cacheKey);
-      if (cached && Date.now() - cached.fetchedAt < CanvasState.CACHE_TTL) {
-        return cached.data;
-      }
-      let fullPath = path;
-      if (options.params) {
-        const qs = new URLSearchParams(options.params).toString();
-        fullPath = `${path}${path.includes("?") ? "&" : "?"}${qs}`;
-      }
-      const session = await getSB().auth.getSession();
-      const token = session?.data?.session?.access_token || SB_ANON;
-      const res = await fetch(`${SB_URL}/functions/v1/canvas-proxy`, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
-          apikey: SB_ANON,
-        },
-        body: JSON.stringify({
-          host: CanvasState.host,
-          path: fullPath,
-          method: options.method || "GET",
-          canvasToken: CanvasState.token,
-        }),
-      });
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error("Canvas did not return JSON");
-      }
-      if (!res.ok) {
-        const err = data && (data.error || data.message);
-        const e = new Error(err || "Canvas API error: " + res.status);
-        e.status = res.status;
-        throw e;
-      }
-      CanvasState.cache.set(cacheKey, { data, fetchedAt: Date.now() });
-      return data;
-    },
-    getCourses() {
-      return this.fetch("/api/v1/courses", {
-        params: {
-          enrollment_state: "active",
-          "include[]": ["course_image", "term", "favorites"],
-          per_page: 50,
-        },
-      });
-    },
-    getAssignments(courseId, options) {
-      options = options || {};
-      return this.fetch(`/api/v1/courses/${courseId}/assignments`, {
-        params: Object.assign(
-          {
-            per_page: 50,
-            order_by: "due_at",
-            "include[]": ["submission", "overrides"],
-            bucket: options.bucket || "future",
-          },
-          options.params || {},
-        ),
-      });
-    },
-    getAssignment(courseId, assignmentId) {
-      return this.fetch(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {
-        params: { "include[]": ["submission", "rubric_assessment"] },
-      });
-    },
-    getAnnouncements(courseIds) {
-      const codes = (courseIds || []).map((id) => `course_${id}`);
-      if (!codes.length) return Promise.resolve([]);
-      return this.fetch("/api/v1/announcements", {
-        params: {
-          "context_codes[]": codes,
-          per_page: 20,
-          start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      });
-    },
-    getModules(courseId) {
-      return this.fetch(`/api/v1/courses/${courseId}/modules`, {
-        params: { "include[]": ["items", "content_details"], per_page: 50 },
-      });
-    },
-    getCalendarEvents(startDate, endDate) {
-      return this.fetch("/api/v1/calendar_events", {
-        params: {
-          type: "assignment",
-          start_date: startDate,
-          end_date: endDate,
-          per_page: 100,
-        },
-      });
-    },
-    getUserProfile() {
-      return this.fetch("/api/v1/users/self/profile");
-    },
-    getInbox() {
-      return this.fetch("/api/v1/conversations", {
-        params: { scope: "inbox", per_page: 20 },
-      });
-    },
-  };
 
   function courseColor(c) {
-    return c.course_color || c.color || "#3b82f6";
+    return (c && (c.course_color || c.color)) || "#3b82f6";
   }
 
-  function stripHtml(s) {
-    return String(s || "")
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+  function isConnected() {
+    try { return !!(canvasToken && canvasUrl); } catch { return false; }
   }
 
-  function sanitizeCanvasHtml(html) {
-    const tpl = document.createElement("template");
-    tpl.innerHTML = String(html || "");
-    const walk = (root) => {
-      const all = root.querySelectorAll("*");
-      all.forEach((el) => {
-        const tag = el.tagName.toLowerCase();
-        const allowed = new Set([
-          "p", "br", "b", "i", "strong", "em", "u", "ul", "ol", "li",
-          "a", "h1", "h2", "h3", "h4", "div", "span", "blockquote", "img",
-        ]);
-        if (!allowed.has(tag)) {
-          const p = document.createElement("span");
-          p.textContent = el.textContent || "";
-          el.replaceWith(p);
-          return;
-        }
-        [...el.attributes].forEach((at) => {
-          const n = at.name.toLowerCase();
-          if (tag === "a" && n === "href") {
-            const v = at.value;
-            if (!/^https?:\/\//i.test(v)) el.removeAttribute(at.name);
-          } else if (tag === "img" && (n === "src" || n === "alt")) {
-            if (n === "src" && !/^https?:\/\//i.test(at.value)) {
-              el.removeAttribute("src");
-            }
-          } else if (!["class", "href", "src", "alt", "target", "rel"].includes(n)) {
-            el.removeAttribute(at.name);
-          }
-        });
-        if (tag === "a") {
-          el.setAttribute("target", "_blank");
-          el.setAttribute("rel", "noopener noreferrer");
-        }
-      });
+  function rememberTab(id) {
+    CV.activeTab = id;
+    save("flux_canvas_v3_tab", id);
+  }
+  function rememberCourse(id) {
+    CV.selectedCourseId = id;
+    save("flux_canvas_v3_course", id);
+  }
+
+  /** Returns cached data if fresh, else null. */
+  function cacheGet(key) {
+    const c = CV.cache[key];
+    if (c && Date.now() - c.fetchedAt < CV.CACHE_MS) return c.data;
+    return null;
+  }
+  function cachePut(key, data) {
+    CV.cache[key] = { data, fetchedAt: Date.now() };
+  }
+  function cacheBust() { CV.cache = {}; }
+
+  // ────────────────────────────────────────────────────────────────
+  // Data loaders (thin wrappers around the existing canvasProxyGet helpers)
+  // ────────────────────────────────────────────────────────────────
+  async function loadCourses(force) {
+    if (!force) {
+      const c = cacheGet("courses");
+      if (c) return c;
+    }
+    const data = await canvasProxyGetPaged(
+      "/courses?enrollment_state=active&include[]=course_image&include[]=term&per_page=100",
+      3,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    CV.courses = arr;
+    cachePut("courses", arr);
+    return arr;
+  }
+
+  async function loadAnnouncements(courseIds) {
+    const ids = (courseIds || []).filter(Boolean).slice(0, 24);
+    if (!ids.length) return [];
+    const key = "ann:" + ids.join(",");
+    const c = cacheGet(key);
+    if (c) return c;
+    const startDate = new Date(Date.now() - 60 * 86400000)
+      .toISOString();
+    const qs = ids.map((id) => "context_codes[]=course_" + id).join("&");
+    const data = await canvasProxyGet(
+      `/announcements?${qs}&per_page=40&start_date=${encodeURIComponent(startDate)}`,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  async function loadAssignments(courseId) {
+    const key = "asg:" + courseId;
+    const c = cacheGet(key);
+    if (c) return c;
+    const data = await canvasProxyGetPaged(
+      `/courses/${courseId}/assignments?order_by=due_at&include[]=submission&include[]=overrides`,
+      4,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  async function loadModules(courseId) {
+    const key = "mod:" + courseId;
+    const c = cacheGet(key);
+    if (c) return c;
+    const data = await canvasProxyGet(
+      `/courses/${courseId}/modules?include[]=items&include[]=content_details&per_page=50`,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  async function loadCalendarEvents() {
+    const key = "cal";
+    const c = cacheGet(key);
+    if (c) return c;
+    const start = new Date(), end = new Date();
+    end.setDate(end.getDate() + 60);
+    const sd = start.toISOString().slice(0, 10);
+    const ed = end.toISOString().slice(0, 10);
+    const ctxs = (CV.courses || []).slice(0, 20).map((c) => "context_codes[]=course_" + c.id).join("&");
+    const data = await canvasProxyGet(
+      `/calendar_events?type=assignment&start_date=${sd}&end_date=${ed}&per_page=100${ctxs ? "&" + ctxs : ""}`,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  async function loadInbox() {
+    const key = "inbox";
+    const c = cacheGet(key);
+    if (c) return c;
+    const data = await canvasProxyGet(
+      "/conversations?scope=inbox&per_page=30",
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  async function loadFiles(courseId) {
+    const key = "files:" + courseId;
+    const c = cacheGet(key);
+    if (c) return c;
+    const data = await canvasProxyGet(
+      `/courses/${courseId}/files?per_page=50&sort=updated_at&order=desc`,
+    );
+    const arr = Array.isArray(data) ? data : [];
+    cachePut(key, arr);
+    return arr;
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // "Add to Flux" — one consistent button across tabs
+  // ────────────────────────────────────────────────────────────────
+  /** Render the right Add-to-Flux button for the given content type. */
+  function addBtn(kind, data) {
+    const safe = encodeURIComponent(JSON.stringify(data || {}));
+    return `<button type="button" class="cv-add-btn" data-cv-kind="${esc(kind)}" data-cv-data="${safe}" onclick="window.fluxCanvasAddToFlux(this)">＋ Add to Flux</button>`;
+  }
+
+  /** Build a generic note from any Canvas item; used by announcements, inbox, files, etc. */
+  function pushNote(title, body, key, val) {
+    if (key && val != null && notes.some((n) => n[key] === val)) {
+      return { ok: false, reason: "exists" };
+    }
+    const note = {
+      id: Date.now() + Math.random(),
+      title: String(title || "Canvas item").slice(0, 200),
+      body: String(body || "").slice(0, 12000),
+      subject: "",
+      starred: false,
+      flashcards: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
-    walk(tpl);
-    return tpl.innerHTML;
+    if (key && val != null) note[key] = val;
+    notes.unshift(note);
+    save("flux_notes", notes);
+    if (typeof syncKey === "function") syncKey("notes", notes);
+    if (typeof renderNotesList === "function") renderNotesList();
+    return { ok: true, note };
   }
 
-  function renderCanvasSkeleton(kind) {
-    const card = `<div class="canvas-card canvas-skeleton"><div class="skeleton" style="height:14px;width:60%;margin-bottom:10px"></div><div class="skeleton" style="height:40px"></div></div>`;
-    const row = `<div class="canvas-assignment-row canvas-skeleton"><div class="skeleton" style="height:36px;width:100%"></div></div>`;
-    if (kind === "course") {
-      return `<div class="canvas-tab-bar">${[1, 2, 3, 4, 5].map(() => `<div class="skeleton" style="height:28px;width:72px;display:inline-block;margin-right:8px"></div>`).join("")}</div>${row}${row}${row}`;
-    }
-    return `${card}${card}${row}${row}${row}${row}${row}<div class="canvas-course-grid">${[1, 2, 3, 4].map(() => `<div class="canvas-card canvas-skeleton"><div class="skeleton" style="height:80px"></div></div>`).join("")}</div>`;
+  /** Build a task directly (used for module items / calendar events that aren't full assignments). */
+  function pushTask(name, dateStr, opts) {
+    opts = opts || {};
+    const t = {
+      id: Date.now() + Math.random(),
+      name: String(name || "Canvas item").slice(0, 240),
+      date: dateStr || "",
+      subject: opts.subject || "",
+      priority: opts.priority || "medium",
+      type: opts.type || "task",
+      notes: opts.notes || "",
+      estTime: opts.estTime || 45,
+      done: false, rescheduled: 0, createdAt: Date.now(),
+    };
+    if (opts.canvasCourseId) t.canvasCourseId = opts.canvasCourseId;
+    if (opts.canvasModuleItemId) t.canvasModuleItemId = opts.canvasModuleItemId;
+    if (opts.canvasCalendarEventId) t.canvasCalendarEventId = opts.canvasCalendarEventId;
+    try { t.urgencyScore = calcUrgency(t); } catch (_) {}
+    tasks.unshift(t);
+    save("tasks", tasks);
+    if (typeof syncKey === "function") syncKey("tasks", tasks);
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderTasks === "function") renderTasks();
+    if (typeof renderCalendar === "function") renderCalendar();
+    if (typeof renderCountdown === "function") renderCountdown();
+    return { ok: true, task: t };
   }
 
-  function renderCanvasError(msg, status) {
-    const content = document.getElementById("canvasContent");
-    if (!content) return;
-    let hint = msg;
-    let extra = "";
-    if (status === 401 || /401|Unauthorized|invalid access token/i.test(msg)) {
-      hint =
-        "Your Canvas token has expired. Go to Canvas → Account → Settings to generate a new token.";
-      extra = `<button type="button" class="btn-sec" onclick="fluxCanvasTokenUpdatePrompt()">Update token</button>`;
-    } else if (status === 403 || /403|Forbidden/i.test(msg)) {
-      hint =
-        "You don't have permission to view this. It may have been removed by your teacher.";
-    } else if (status === 404 || /404|not found/i.test(msg)) {
-      hint = "This content no longer exists in Canvas.";
-    } else if (/Host not allowed|host not allowed/i.test(msg)) {
-      hint =
-        "Your Canvas URL is not supported. Contact Flux support.";
-    } else if (/network|fetch|timed out|timeout/i.test(msg)) {
-      hint =
-        "Couldn't reach Canvas. Check your internet connection.";
-      extra = `<button type="button" class="btn-sec" onclick="CanvasViews.navigate(CanvasState.currentView, CanvasState.currentParams, {noHistory:true})">Try again</button>`;
-    }
-    content.innerHTML = `<div class="canvas-card" style="padding:20px">
-      <div style="font-weight:700;margin-bottom:8px">Something went wrong</div>
-      <div style="font-size:.85rem;color:var(--muted2);margin-bottom:14px">${esc(hint)}</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button type="button" class="btn-sec" onclick="CanvasViews.back()">← Go back</button>
-        ${extra}
-        <button type="button" onclick="CanvasViews.navigate(CanvasState.currentView, CanvasState.currentParams, {noHistory:true})">Try again</button>
-      </div></div>`;
-  }
+  /** The single dispatcher. Called by every "+ Add to Flux" row button. */
+  window.fluxCanvasAddToFlux = async function (btn) {
+    if (!btn) return;
+    const kind = btn.getAttribute("data-cv-kind") || "";
+    let data = {};
+    try { data = JSON.parse(decodeURIComponent(btn.getAttribute("data-cv-data") || "")) || {}; } catch (_) {}
 
-  window.fluxCanvasTokenUpdatePrompt = function () {
-    const tok = prompt("Paste new Canvas access token:");
-    if (!tok || !tok.trim()) return;
-    CanvasState.token = tok.trim();
-    save("flux_canvas_token", CanvasState.token);
-    try {
-      canvasToken = CanvasState.token;
-    } catch (_) {}
-    CanvasViews.navigate(CanvasState.currentView || "dashboard", CanvasState.currentParams || {}, {
-      noHistory: true,
-    });
-  };
+    const courseName = data.course_name || "Course";
 
-  function renderCanvasChrome() {
-    /* v2 chrome: no back/forward, no breadcrumb. Just title + quick-tab active state. */
-    const hero = document.getElementById("canvasHeroTitle");
-    if (hero) {
-      hero.textContent = CanvasState.currentTitle && CanvasState.currentView !== "dashboard"
-        ? CanvasState.currentTitle
-        : "Canvas";
-    }
-    const conn = document.getElementById("canvasHeroConn");
-    if (conn) {
-      if (CanvasState.connected) {
-        conn.innerHTML = `<span class="canvas-hero-conn__dot"></span>Connected · ${esc(CanvasState.host || "")}`;
-        conn.className = "canvas-hero-conn canvas-hero-conn--ok";
-      } else {
-        conn.innerHTML = `Not connected`;
-        conn.className = "canvas-hero-conn canvas-hero-conn--off";
-      }
-    }
-    /* Highlight the right quick-tab */
-    document.querySelectorAll(".canvas-quick-tabs [data-canvas-quick]").forEach((btn) => {
-      const id = btn.getAttribute("data-canvas-quick");
-      let on = false;
-      const v = CanvasState.currentView;
-      if (id === "dashboard")     on = v === "dashboard";
-      else if (id === "upcoming") on = v === "upcomingAll";
-      else if (id === "announcements") on = v === "announcementsAll" || v === "announcement";
-      else if (id === "calendar") on = v === "calendar";
-      else if (id === "inbox")    on = v === "inbox";
-      btn.classList.toggle("active", !!on);
-    });
-    const splitBtn = document.getElementById("canvasSplitBtn");
-    if (splitBtn) {
-      splitBtn.style.display = window.innerWidth >= 1200 ? "" : "none";
-    }
-    updateAICanvasContextBadge();
-  }
-
-  function persistLastView() {
-    if (CanvasState.currentView) {
-      save("flux_canvas_last_view", CanvasState.currentView);
-      save("flux_canvas_last_params", CanvasState.currentParams || {});
-    }
-  }
-
-  const CanvasViews = {
-    async navigate(view, params, options) {
-      options = options || {};
-      if (view === "grades") view = "dashboard";
-      if (!options.noHistory) {
-        CanvasState.history = CanvasState.history.slice(0, CanvasState.historyIndex + 1);
-        CanvasState.history.push({ view, params, title: "" });
-        CanvasState.historyIndex = CanvasState.history.length - 1;
-      }
-      CanvasState.currentView = view;
-      CanvasState.currentParams = Object.assign({}, params || {});
-      CanvasState.loading = true;
-      CanvasState.error = null;
-      renderCanvasChrome();
-      const content = document.getElementById("canvasContent");
-      const dir = CanvasState.navAnim || "forward";
-      CanvasState.navAnim = null;
-
-      const runMid = async () => {
-        if (content) {
-          content.innerHTML = renderCanvasSkeleton(view === "course" ? "course" : "dash");
-        }
-        try {
-          const renderer = this[view];
-          if (!renderer) throw new Error("Unknown view: " + view);
-          await renderer.call(this, CanvasState.currentParams);
-          persistLastView();
-        } catch (e) {
-          CanvasState.error = e.message || String(e);
-          renderCanvasError(CanvasState.error, e.status);
-        }
-      };
-
+    if (kind === "assignment") {
       try {
-        const prm =
-          typeof matchMedia !== "undefined" &&
-          matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const perf = document.documentElement.getAttribute("data-flux-perf") === "on";
-        const FA = window.FluxAnim;
-        if (content && FA && typeof FA.canvasNavForward === "function" && !prm && !perf) {
-          if (dir === "back" && typeof FA.canvasNavBack === "function") {
-            await FA.canvasNavBack(content, runMid);
-          } else {
-            await FA.canvasNavForward(content, runMid);
-          }
-        } else {
-          await runMid();
-        }
-      } finally {
-        CanvasState.loading = false;
+        await addCanvasAssignmentToPlanner(Number(data.course_id), Number(data.id));
+      } catch (e) {
+        showToast(e.message || "Could not add assignment", "warning");
       }
-    },
-    /* Back/forward no-ops kept for API compatibility — old links still call these.
-       The chrome no longer surfaces these buttons (v2 isn't a mini-browser). */
-    back() {
-      if (CanvasState.historyIndex > 0) {
-        CanvasState.historyIndex--;
-        const h = CanvasState.history[CanvasState.historyIndex];
-        this.navigate(h.view, h.params, { noHistory: true });
-      } else {
-        this.navigate("dashboard", {}, { noHistory: true });
-      }
-    },
-    forward() {
-      if (CanvasState.historyIndex < CanvasState.history.length - 1) {
-        CanvasState.historyIndex++;
-        const h = CanvasState.history[CanvasState.historyIndex];
-        this.navigate(h.view, h.params, { noHistory: true });
-      }
-    },
-    async dashboard() {
-      const courses = await CanvasAPI.getCourses();
-      CanvasState.courses = Array.isArray(courses) ? courses : [];
-      const courseIds = CanvasState.courses.slice(0, 8).map((c) => c.id);
-      let announcements = [];
-      if (courseIds.length) {
-        try {
-          announcements = await CanvasAPI.getAnnouncements(courseIds);
-        } catch (_) {}
-      }
-      if (!Array.isArray(announcements)) announcements = [];
-      announcements.forEach((a) => {
-        if (a.id != null) CanvasState.announcementCache.set(Number(a.id), a);
-      });
-      const profileName = localStorage.getItem("flux_user_name") || "there";
-      const in7 = new Date();
-      in7.setDate(in7.getDate() + 7);
-      const upcoming = [];
-      for (const c of CanvasState.courses.slice(0, 12)) {
-        try {
-          const list = await CanvasAPI.getAssignments(c.id, { bucket: "future" });
-          if (!Array.isArray(list)) continue;
-          list.forEach((a) => {
-            if (!a.due_at) return;
-            const d = new Date(a.due_at);
-            if (d <= in7) {
-              upcoming.push(
-                Object.assign({}, a, {
-                  course_name: c.name || c.course_code,
-                  course_color: courseColor(c),
-                  course_id: c.id,
-                }),
-              );
-            }
-          });
-        } catch (_) {}
-      }
-      upcoming.sort((a, b) => (a.due_at || "").localeCompare(b.due_at || ""));
-      CanvasState.currentTitle = "Dashboard";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = "Dashboard";
-      }
-      const content = document.getElementById("canvasContent");
-      const urgency = (due) => {
-        if (!due) return "muted";
-        const d = new Date(due);
-        const now = new Date();
-        if (d < now) return "red";
-        if (d.toDateString() === now.toDateString()) return "gold";
-        return "green";
-      };
-      const subChip = (a) => {
-        const sub = a.submission;
-        const done = !!(sub && sub.submitted_at) || !!a.has_submitted_attachments;
-        if (done) return `<span class="canvas-status-chip submitted">Submitted ✓</span>`;
-        if (sub && sub.workflow_state === "graded") {
-          return `<span class="canvas-status-chip submitted">Graded</span>`;
-        }
-        if (a.late) return `<span class="canvas-status-chip late">Late</span>`;
-        return `<span class="canvas-status-chip unsubmitted">Not submitted</span>`;
-      };
-      content.innerHTML = `
-        <div class="canvas-card" style="margin-bottom:16px">
-          <div style="font-size:1.1rem;font-weight:800">Welcome back, ${esc(profileName)}</div>
-          <div style="font-size:.8rem;color:var(--muted2)">Here's what's happening in Canvas.</div>
-        </div>
-        <h3 class="canvas-section-title">Recent announcements</h3>
-        ${announcements.slice(0, 6).length ? announcements.slice(0, 6).map((a) => {
-          const prev = stripHtml(a.message || "").slice(0, 200);
-          const cid = (a.context_code || "").replace("course_", "");
-          return `<div class="canvas-card" style="border-left-color:${esc(courseColor(CanvasState.courses.find((x) => String(x.id) === String(cid)) || {}))}">
-            <div style="font-weight:700">${esc(a.title || "Announcement")}</div>
-            <div style="font-size:.72rem;color:var(--muted)">${esc(a.posted_at || "")} · ${esc(a.context_name || "")}</div>
-            <div style="font-size:.82rem;color:var(--muted2);margin-top:8px">${esc(prev)}${(a.message || "").length > 200 ? "…" : ""}
-              <button type="button" class="canvas-linkish" onclick="CanvasViews.navigate('announcement',{announcementId:${Number(a.id)}, courseId:${Number(cid)}})">Read more</button>
-            </div></div>`;
-        }).join("") : `<div class="canvas-card muted">No recent announcements.</div>`}
-        <h3 class="canvas-section-title">Upcoming assignments (7 days)</h3>
-        ${upcoming.length ? upcoming.slice(0, 12).map((a) => `
-          <div class="canvas-assignment-row" style="border-left-color:${esc(a.course_color)}">
-            <span class="canvas-dot" style="background:${esc(a.course_color)}"></span>
-            <div style="flex:1;min-width:0">
-              <button type="button" class="canvas-link-title" onclick="CanvasViews.navigate('assignment',{courseId:${a.course_id}, assignmentId:${a.id}})">${esc(a.name)}</button>
-              <div style="font-size:.72rem;color:var(--muted)">${esc(a.course_name)}</div>
-            </div>
-            <span class="canvas-due-badge ${urgency(a.due_at)}">${esc((a.due_at || "").slice(0, 10))}</span>
-            <span style="font-size:.72rem;font-family:JetBrains Mono,monospace;color:var(--muted)">${a.points_possible != null ? esc(String(a.points_possible)) + " pts" : ""}</span>
-            ${subChip(a)}
-          </div>`).join("") : `<div class="canvas-card muted">No assignments due in the next week.</div>`}
-        <h3 class="canvas-section-title">My courses</h3>
-        <div class="canvas-course-grid">
-          ${CanvasState.courses.map((c) => `
-            <button type="button" class="canvas-card canvas-course-tile" style="border-top:3px solid ${esc(courseColor(c))}" onclick="CanvasViews.navigate('course',{courseId:${c.id}, tab:'overview'})">
-              <div style="font-weight:700;text-align:left">${esc(c.name || c.course_code)}</div>
-              <div style="font-size:.72rem;color:var(--muted);text-align:left">${esc(c.course_code || "")}</div>
-            </button>`).join("")}
-        </div>`;
-      renderCanvasSidebar();
-      CanvasState.pageContext = {
-        view: "dashboard",
-        summary: "Canvas Dashboard — " + CanvasState.courses.length + " enrolled courses",
-        upcomingAssignments: upcoming.slice(0, 10).map((a) => ({
-          name: a.name,
-          courseName: a.course_name,
-          dueDate: a.due_at,
-          pointsPossible: a.points_possible,
-          submitted: !!(a.submission && a.submission.submitted_at) || !!a.has_submitted_attachments,
-        })),
-        recentAnnouncements: announcements.slice(0, 5).map((a) => ({
-          title: a.title,
-          courseName: a.context_name,
-          postedAt: a.posted_at,
-          preview: stripHtml(a.message || "").slice(0, 200),
-        })),
-      };
-      updateAICanvasContextBadge();
-    },
-    async course(params) {
-      const courseId = params.courseId;
-      let tab = params.tab || "overview";
-      if (tab === "grades") tab = "overview";
-      const c = CanvasState.courses.find((x) => String(x.id) === String(courseId)) || {};
-      const [future, overdue, modules, ann] = await Promise.all([
-        CanvasAPI.getAssignments(courseId, { bucket: "future" }).catch(() => []),
-        CanvasAPI.getAssignments(courseId, { bucket: "overdue" }).catch(() => []),
-        CanvasAPI.getModules(courseId).catch(() => []),
-        CanvasAPI.getAnnouncements([courseId]).catch(() => []),
-      ]);
-      const fu = Array.isArray(future) ? future : [];
-      const ov = Array.isArray(overdue) ? overdue : [];
-      const mo = Array.isArray(modules) ? modules : [];
-      const an = Array.isArray(ann) ? ann : [];
-      an.forEach((a) => {
-        if (a.id != null) CanvasState.announcementCache.set(Number(a.id), a);
-      });
-      CanvasState.currentTitle = c.name || c.course_code || "Course";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = CanvasState.currentTitle;
-      }
-      const content = document.getElementById("canvasContent");
-      const tabs = [
-        ["overview", "Overview"],
-        ["assignments", "Assignments"],
-        ["modules", "Modules"],
-        ["announcements", "Announcements"],
-      ];
-      const tabBar = tabs.map(([id, lab]) => `
-        <button type="button" class="canvas-tab ${tab === id ? "active" : ""}" onclick="CanvasViews.navigate('course',Object.assign({}, CanvasState.currentParams, {tab:'${id}'}))">${lab}</button>`).join("");
-      let inner = "";
-      if (tab === "overview") {
-        const top = fu.filter((a) => a.due_at).sort((a, b) => (a.due_at || "").localeCompare(b.due_at || "")).slice(0, 5);
-        inner = `<div class="canvas-card" style="border-left:4px solid ${esc(courseColor(c))}">
-            <h2 style="margin:0 0 8px">${esc(c.name || "Course")}</h2>
-            <div style="font-size:.82rem;color:var(--muted2)">${esc(c.course_code || "")}</div>
-            ${c.teachers && c.teachers[0] ? `<div style="margin-top:8px;font-size:.85rem">Instructor: ${esc(c.teachers[0].display_name || "")}</div>` : ""}
-            ${c.public_description ? `<div style="margin-top:12px;font-size:.85rem;color:var(--muted2)">${sanitizeCanvasHtml(c.public_description).slice(0, 4000)}</div>` : ""}
-          </div>
-          <h3 class="canvas-section-title">Next up</h3>
-          ${top.map((a) => `<div class="canvas-assignment-row" style="border-left-color:${esc(courseColor(c))}">
-            <button type="button" class="canvas-link-title" onclick="CanvasViews.navigate('assignment',{courseId:${courseId}, assignmentId:${a.id}})">${esc(a.name)}</button>
-            <span class="canvas-due-badge gold">${esc((a.due_at || "").slice(0, 10))}</span>
-          </div>`).join("") || `<div class="canvas-card muted">No upcoming due dates.</div>`}`;
-      } else if (tab === "assignments") {
-        const byWeek = {};
-        fu.forEach((a) => {
-          if (!a.due_at) return;
-          const wk = new Date(a.due_at);
-          wk.setDate(wk.getDate() - wk.getDay());
-          const key = wk.toISOString().slice(0, 10);
-          if (!byWeek[key]) byWeek[key] = [];
-          byWeek[key].push(a);
-        });
-        inner = `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-            <button type="button" class="canvas-add-btn" onclick="fluxCanvasBulkAddConfirm()">Add all to Planner</button>
-          </div>`;
-        inner += Object.keys(byWeek).sort().map((wk) => {
-          const rows = byWeek[wk].sort((a, b) => (a.due_at || "").localeCompare(b.due_at || ""));
-          return `<div style="margin-bottom:18px"><div class="canvas-week-head">Week of ${esc(wk)}</div>
-            ${rows.map((a) => fluxCanvasAssignmentRowHtml(courseId, a, c)).join("")}</div>`;
-        }).join("");
-        if (!inner.includes("canvas-assignment-row")) {
-          inner += `<div class="canvas-card muted">No upcoming assignments in this bucket.</div>`;
-        }
-      } else if (tab === "modules") {
-        inner = mo.length
-          ? mo.map((m, idx) => `
-            <details class="canvas-card" ${idx < 2 ? "open" : ""}>
-              <summary style="font-weight:700;cursor:pointer">${esc(m.name || "Module")}</summary>
-              <div style="margin-top:10px">
-                ${(m.items || []).map((it) => {
-                  const icon = it.type === "Assignment" ? "📝" : it.type === "Quiz" ? "📊" : it.type === "ExternalUrl" ? "🔗" : it.type === "Page" ? "📄" : "📌";
-                  const u = encodeURIComponent(it.html_url || "");
-                  return `<div class="canvas-mod-item">
-                    <span>${icon}</span>
-                    <button type="button" class="canvas-link-title" data-mod-type="${esc(String(it.type || ""))}" data-mod-cid="${it.content_id != null ? esc(String(it.content_id)) : ""}" data-mod-url="${u}" onclick="fluxOpenCanvasModuleItem(${courseId},this)">${esc(it.title || "Item")}</button>
-                    ${it.completion_requirement && it.completion_requirement.completed ? "✓" : ""}
-                  </div>`;
-                }).join("") || "<div style='color:var(--muted)'>No items</div>"}
-              </div>
-            </details>`).join("")
-          : `<div class="canvas-card muted">No modules visible.</div>`;
-      } else if (tab === "announcements") {
-        inner = an.length
-          ? an.map((a) => {
-            const body = stripHtml(a.message || "").slice(0, 400);
-            return `<div class="canvas-card">
-                <div style="font-weight:700">${esc(a.title || "")}</div>
-                <div style="font-size:.72rem;color:var(--muted)">${esc(a.posted_at || "")}</div>
-                <div style="margin-top:8px;font-size:.85rem;color:var(--muted2)">${esc(body)}…</div>
-                <button type="button" class="canvas-linkish" onclick="CanvasViews.navigate('announcement',{announcementId:${Number(a.id)}, courseId:${courseId}})">Read full announcement</button>
-              </div>`;
-          }).join("")
-          : `<div class="canvas-card muted">No announcements.</div>`;
-      }
-      content.innerHTML = `<div class="canvas-tab-bar">${tabBar}</div>${inner}`;
-      CanvasState.pageContext = {
-        view: "course",
-        courseName: c.name,
-        courseCode: c.course_code,
-        currentTab: tab,
-        overdueAssignments: ov.slice(0, 20).map((a) => ({
-          name: a.name,
-          dueDate: a.due_at,
-          points: a.points_possible,
-        })),
-        upcomingAssignments: fu.slice(0, 10).map((a) => ({
-          name: a.name,
-          dueDate: a.due_at,
-          points: a.points_possible,
-          submitted: !!(a.submission && a.submission.submitted_at),
-        })),
-      };
-      updateAICanvasContextBadge();
-    },
-    async assignment(params) {
-      const { courseId, assignmentId } = params;
-      const assignment = await CanvasAPI.getAssignment(courseId, assignmentId);
-      const course = CanvasState.courses.find((x) => String(x.id) === String(courseId)) || {};
-      CanvasState.currentTitle = assignment.name || "Assignment";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = CanvasState.currentTitle;
-      }
-      const due = assignment.due_at ? new Date(assignment.due_at) : null;
-      const now = new Date();
-      let dueClass = "green";
-      if (due && due < now && !assignment.submission?.submitted_at) dueClass = "red";
-      else if (due && due.toDateString() === now.toDateString()) dueClass = "gold";
-      const descHtml = sanitizeCanvasHtml(assignment.description || "");
-      let rubricHtml = "";
-      const rub = assignment.rubric;
-      if (rub && Array.isArray(rub.criteria)) {
-        rubricHtml = `<h3 class="canvas-section-title">Rubric</h3><table class="canvas-grade-table"><tbody>${rub.criteria.map((c) => `<tr><td>${esc(c.description || "")}</td><td>${esc(String(c.points || ""))}</td></tr>`).join("")}</tbody></table>`;
-      }
-      const content = document.getElementById("canvasContent");
-      content.innerHTML = `
-        <div class="canvas-card">
-          <h2 style="margin:0 0 10px">${esc(assignment.name || "")}</h2>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-            <span class="canvas-due-badge ${dueClass}">Due: ${assignment.due_at ? esc(assignment.due_at.slice(0, 16).replace("T", " ")) : "—"}</span>
-            <span style="font-size:.82rem;color:var(--muted2)">${assignment.points_possible != null ? esc(String(assignment.points_possible)) + " pts" : ""}</span>
-            <span style="font-size:.82rem;color:var(--muted2)">${esc((assignment.submission_types || []).join(", ") || "")}</span>
-          </div>
-          ${assignment.submission && assignment.submission.submitted_at ? `<div class="canvas-banner ok">Submitted ✓ ${esc(assignment.submission.submitted_at || "")}${assignment.submission.grade ? " · Grade: " + esc(String(assignment.submission.grade)) : ""}</div>` : ""}
-          ${assignment.submission && assignment.submission.late ? `<div class="canvas-banner bad">Late</div>` : ""}
-          <div class="canvas-html-body" style="margin-top:14px">${descHtml || "<span style='color:var(--muted)'>No description.</span>"}</div>
-          ${rubricHtml}
-          <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
-            <button type="button" class="canvas-add-btn" data-canvas-cid="${Number(courseId)}" data-canvas-aid="${Number(assignmentId)}" style="padding:10px 18px;border-radius:12px;background:var(--accent);color:#000;font-weight:700;border:none;cursor:pointer" onclick="addCanvasAssignmentToPlanner(${Number(courseId)}, ${Number(assignmentId)})">Add to Planner</button>
-            <button type="button" class="btn-sec" onclick="window.open(${JSON.stringify(assignment.html_url || "")},'_blank','noopener,noreferrer')">Open in Canvas</button>
-          </div>
-        </div>`;
-      CanvasState.pageContext = {
-        view: "assignment",
-        assignmentName: assignment.name,
-        courseName: course.name || course.course_code,
-        dueDate: assignment.due_at,
-        pointsPossible: assignment.points_possible,
-        submissionType: assignment.submission_types,
-        submitted: !!assignment.submission?.submitted_at,
-        grade: assignment.submission?.grade,
-        description: stripHtml(assignment.description || "").slice(0, 2000),
-        rubric: Array.isArray(rub?.criteria)
-          ? rub.criteria.map((c) => ({
-            description: c.description,
-            points: c.points,
-            longDescription: c.long_description,
-          }))
-          : [],
-        isOverdue: !!(due && due < now && !assignment.submission?.submitted_at),
-      };
-      updateAICanvasContextBadge();
-    },
-    async announcement(params) {
-      const aid = Number(params.announcementId);
-      const courseId = params.courseId;
-      let an = CanvasState.announcementCache.get(aid);
-      if (!an) {
-        const list = await CanvasAPI.getAnnouncements([courseId]);
-        an = (list || []).find((x) => Number(x.id) === aid);
-      }
-      if (!an) throw new Error("Announcement not found");
-      const course = CanvasState.courses.find((x) => String(x.id) === String(courseId)) || {};
-      CanvasState.currentTitle = an.title || "Announcement";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = CanvasState.currentTitle;
-      }
-      document.getElementById("canvasContent").innerHTML = `
-        <div class="canvas-card">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span class="canvas-dot" style="background:${esc(courseColor(course))}"></span>
-            <span style="font-weight:700">${esc(course.name || "")}</span>
-          </div>
-          <h2 style="margin:0 0 8px">${esc(an.title || "")}</h2>
-          <div style="font-size:.78rem;color:var(--muted)">${esc(an.posted_at || "")}</div>
-          <div class="canvas-html-body" style="margin-top:14px">${sanitizeCanvasHtml(an.message || "")}</div>
-        </div>`;
-      CanvasState.pageContext = {
-        view: "announcement",
-        title: an.title,
-        courseName: course.name || course.course_code,
-        postedAt: an.posted_at,
-        fullText: stripHtml(an.message || "").slice(0, 3000),
-      };
-      updateAICanvasContextBadge();
-    },
-    async upcomingAll() {
-      const courses = CanvasState.courses && CanvasState.courses.length
-        ? CanvasState.courses
-        : (await CanvasAPI.getCourses().catch(() => [])) || [];
-      CanvasState.courses = Array.isArray(courses) ? courses : [];
-      const horizon = new Date();
-      horizon.setDate(horizon.getDate() + 60);
-      const all = [];
-      for (const c of CanvasState.courses.slice(0, 20)) {
-        try {
-          const list = await CanvasAPI.getAssignments(c.id, { bucket: "future" });
-          if (!Array.isArray(list)) continue;
-          list.forEach((a) => {
-            if (!a.due_at) return;
-            const d = new Date(a.due_at);
-            if (d > horizon) return;
-            all.push(Object.assign({}, a, {
-              course_name: c.name || c.course_code,
-              course_color: courseColor(c),
-              course_id: c.id,
-            }));
-          });
-        } catch (_) {}
-      }
-      all.sort((a, b) => (a.due_at || "").localeCompare(b.due_at || ""));
-      CanvasState.currentTitle = "All assignments";
-      const urgency = (due) => {
-        if (!due) return "muted";
-        const d = new Date(due);
-        const now = new Date();
-        if (d < now) return "red";
-        if (d.toDateString() === now.toDateString()) return "gold";
-        return "green";
-      };
-      const importPendingCount = all.filter((a) =>
-        typeof canvasAssignmentTaskExists === "function"
-          ? !canvasAssignmentTaskExists(a.course_id, a.id)
-          : true
-      ).length;
-      document.getElementById("canvasContent").innerHTML = `
-        <div class="canvas-card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:1.05rem;font-weight:800" class="flux-color-title">All upcoming assignments</div>
-            <div style="font-size:.78rem;color:var(--muted2)">${all.length} due in the next 60 days · ${importPendingCount} not yet in your planner</div>
-          </div>
-          <button type="button" class="canvas-quick-sync" onclick="fluxCanvasBulkAddConfirm()" title="Add all unplanned assignments to Flux">⬇ Add ${importPendingCount} to planner</button>
-        </div>
-        ${all.length ? all.map((a) => {
-          const exists = typeof canvasAssignmentTaskExists === "function" && canvasAssignmentTaskExists(a.course_id, a.id);
-          return `<div class="canvas-assignment-row" style="border-left-color:${esc(a.course_color)}">
-            <span class="canvas-dot" style="background:${esc(a.course_color)}"></span>
-            <div style="flex:1;min-width:0">
-              <button type="button" class="canvas-link-title" onclick="CanvasViews.navigate('assignment',{courseId:${a.course_id}, assignmentId:${a.id}})">${esc(a.name)}</button>
-              <div style="font-size:.72rem;color:var(--muted)">${esc(a.course_name)}</div>
-            </div>
-            <span class="canvas-due-badge ${urgency(a.due_at)}">${esc((a.due_at || "").slice(0, 10))}</span>
-            <span style="font-size:.72rem;font-family:JetBrains Mono,monospace;color:var(--muted)">${a.points_possible != null ? esc(String(a.points_possible)) + " pts" : ""}</span>
-            ${exists
-              ? `<span class="canvas-status-chip submitted">In planner ✓</span>`
-              : `<button type="button" class="canvas-add-btn" data-canvas-cid="${a.course_id}" data-canvas-aid="${a.id}" onclick="addCanvasAssignmentToPlanner(${a.course_id}, ${a.id})">+ Add</button>`}
-          </div>`;
-        }).join("") : `<div class="canvas-card muted">No upcoming assignments found.</div>`}`;
-      CanvasState.pageContext = {
-        view: "upcomingAll",
-        summary: `${all.length} upcoming Canvas assignments`,
-        upcomingAssignments: all.slice(0, 40).map((a) => ({
-          name: a.name,
-          courseName: a.course_name,
-          dueDate: a.due_at,
-          pointsPossible: a.points_possible,
-        })),
-      };
-      updateAICanvasContextBadge();
-    },
-    async announcementsAll() {
-      const courses = CanvasState.courses && CanvasState.courses.length
-        ? CanvasState.courses
-        : (await CanvasAPI.getCourses().catch(() => [])) || [];
-      CanvasState.courses = Array.isArray(courses) ? courses : [];
-      const courseIds = CanvasState.courses.slice(0, 20).map((c) => c.id);
-      let announcements = [];
-      try {
-        announcements = courseIds.length ? await CanvasAPI.getAnnouncements(courseIds) : [];
-      } catch (_) {
-        announcements = [];
-      }
-      const list = Array.isArray(announcements) ? announcements : [];
-      list.forEach((a) => {
-        if (a.id != null) CanvasState.announcementCache.set(Number(a.id), a);
-      });
-      CanvasState.currentTitle = "All announcements";
-      const courseById = new Map(CanvasState.courses.map((c) => [String(c.id), c]));
-      document.getElementById("canvasContent").innerHTML = `
-        <div class="canvas-card" style="margin-bottom:14px">
-          <div style="font-size:1.05rem;font-weight:800" class="flux-color-title">Recent announcements</div>
-          <div style="font-size:.78rem;color:var(--muted2)">Latest posts across your ${CanvasState.courses.length} enrolled courses.</div>
-        </div>
-        ${list.length ? list.map((a) => {
-          const cid = (a.context_code || "").replace("course_", "");
-          const c = courseById.get(cid) || {};
-          const col = courseColor(c);
-          const prev = stripHtml(a.message || "").slice(0, 320);
-          return `<div class="canvas-card" style="margin-bottom:10px;border-left:3px solid ${esc(col)}">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <div style="font-weight:700;flex:1;min-width:0">${esc(a.title || "Announcement")}</div>
-              <span style="font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${esc((a.posted_at || "").slice(0, 16))}</span>
-            </div>
-            <div style="font-size:.72rem;color:var(--muted);margin:4px 0 8px">${esc(a.context_name || c.name || c.course_code || "Course")}</div>
-            <div style="font-size:.84rem;color:var(--text);line-height:1.55">${esc(prev)}${(a.message || "").length > 320 ? "…" : ""}
-              <button type="button" class="canvas-linkish" onclick="CanvasViews.navigate('announcement',{announcementId:${Number(a.id)}, courseId:${Number(cid)}})">Read more</button>
-            </div>
-          </div>`;
-        }).join("") : `<div class="canvas-card muted">No announcements yet — they’ll show here as your teachers post.</div>`}`;
-      CanvasState.pageContext = {
-        view: "announcementsAll",
-        announcementCount: list.length,
-        recentAnnouncements: list.slice(0, 12).map((a) => ({
-          title: a.title,
-          courseName: a.context_name,
-          postedAt: a.posted_at,
-          preview: stripHtml(a.message || "").slice(0, 240),
-        })),
-      };
-      updateAICanvasContextBadge();
-    },
-    async inbox() {
-      CanvasState._inboxThread = null;
-      const conversations = await CanvasAPI.getInbox();
-      const list = Array.isArray(conversations) ? conversations : [];
-      CanvasState.currentTitle = "Inbox";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = "Inbox";
-      }
-      document.getElementById("canvasContent").innerHTML = `
-        <div class="canvas-card muted" style="margin-bottom:10px">Tap a message to read. Replying works best in Canvas.</div>
-        ${list.map((c) => {
-          const unread = c.workflow_state === "unread";
-          const initials = (c.participants && c.participants[0] && c.participants[0].name)
-            ? c.participants[0].name.charAt(0).toUpperCase()
-            : "?";
-          return `<div class="canvas-inbox-row ${unread ? "unread" : ""}" onclick="fluxCanvasOpenInboxThread(${c.id})">
-            <div class="canvas-inbox-av">${esc(initials)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:${unread ? "800" : "600"}">${esc(c.subject || "(no subject)")}</div>
-              <div style="font-size:.78rem;color:var(--muted2)">${esc((c.last_message || "").slice(0, 120))}</div>
-            </div>
-            <div style="font-size:.68rem;color:var(--muted)">${esc((c.last_message_at || "").slice(0, 10))}</div>
-          </div>`;
-        }).join("") || `<div class="canvas-card muted">No conversations.</div>`}
-      `;
-      CanvasState.pageContext = {
-        view: "inbox",
-        messageCount: list.length,
-        unreadCount: list.filter((c) => c.workflow_state === "unread").length,
-        recentMessages: list.slice(0, 5).map((c) => ({
-          subject: c.subject,
-          lastMessage: (c.last_message || "").slice(0, 200),
-          participants: (c.participants || []).map((p) => p.name),
-          date: c.last_message_at,
-        })),
-      };
-      updateAICanvasContextBadge();
-    },
-    async calendar() {
-      const start = new Date();
-      const end = new Date();
-      end.setDate(end.getDate() + 21);
-      const sd = start.toISOString().slice(0, 10);
-      const ed = end.toISOString().slice(0, 10);
-      const ev = await CanvasAPI.getCalendarEvents(sd, ed);
-      const list = Array.isArray(ev) ? ev : [];
-      CanvasState.currentTitle = "Calendar";
-      if (CanvasState.history[CanvasState.historyIndex]) {
-        CanvasState.history[CanvasState.historyIndex].title = "Calendar";
-      }
-      document.getElementById("canvasContent").innerHTML = `
-        <div class="canvas-card muted" style="margin-bottom:10px">Assignments from Canvas calendar (${sd} → ${ed}).</div>
-        ${list.map((e) => `<div class="canvas-assignment-row">
-            <div><strong>${esc(e.title || "")}</strong><div style="font-size:.72rem;color:var(--muted)">${esc(e.start_at || "")}</div></div>
-            ${e.html_url ? `<button type="button" class="btn-sec" onclick="window.open('${esc(e.html_url)}','_blank')">Open</button>` : ""}
-          </div>`).join("") || `<div class="canvas-card muted">No events.</div>`}`;
-      CanvasState.pageContext = { view: "calendar", eventCount: list.length };
-      updateAICanvasContextBadge();
-    },
-  };
-
-  window.fluxOpenCanvasModuleItem = function (courseId, el) {
-    const type = el && el.getAttribute("data-mod-type");
-    const contentId = parseInt((el && el.getAttribute("data-mod-cid")) || "", 10);
-    const url = decodeURIComponent((el && el.getAttribute("data-mod-url")) || "");
-    if (type === "Assignment" && contentId) {
-      CanvasViews.navigate("assignment", { courseId, assignmentId: contentId });
+      btn.disabled = true;
+      btn.textContent = "✓ In planner";
+      btn.classList.add("cv-add-btn--done");
       return;
     }
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-      showToast("Opened in a new tab — quizzes and some pages only work in Canvas.", "info");
-      return;
-    }
-    showToast("Open this item in Canvas.", "info");
-  };
 
-  window.fluxCanvasOpenExternal = function (url) {
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  window.fluxCanvasOpenInboxThread = async function (id) {
-    try {
-      const session = await getSB().auth.getSession();
-      const token = session?.data?.session?.access_token || SB_ANON;
-      const res = await fetch(`${SB_URL}/functions/v1/canvas-proxy`, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
-          apikey: SB_ANON,
-        },
-        body: JSON.stringify({
-          host: CanvasState.host,
-          path: `/api/v1/conversations/${id}`,
-          method: "GET",
-          canvasToken: CanvasState.token,
-        }),
+    if (kind === "announcement") {
+      const ok = addCanvasAnnouncementAsNoteIfNew({
+        id: data.id,
+        title: data.title,
+        message: data.message || data.body,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      const html = (data.messages || []).map((m) => `<div style="margin-bottom:10px;padding:8px;background:var(--card2);border-radius:8px"><div style="font-size:.72rem;color:var(--muted)">${esc(m.created_at || "")}</div><div>${sanitizeCanvasHtml(m.body || "")}</div></div>`).join("");
-      document.getElementById("canvasContent").innerHTML = `<div class="canvas-card"><button type="button" class="btn-sec" onclick="CanvasViews.inbox({})">← Back</button>
-        <h3 style="margin:12px 0">${esc(data.subject || "Thread")}</h3>${html}
-        <button type="button" class="btn-sec" style="margin-top:12px" onclick="window.open('${esc(String(data.html_url || ""))}','_blank')">Reply in Canvas</button></div>`;
-    } catch (e) {
-      showToast(e.message || "Could not load thread", "error");
-    }
-  };
-
-  function fluxCanvasAssignmentRowHtml(courseId, a, course) {
-    const col = courseColor(course);
-    const sub = a.submission;
-    const done = !!(sub && sub.submitted_at);
-    const chip = done
-      ? `<span class="canvas-status-chip submitted">Submitted ✓</span>`
-      : `<span class="canvas-status-chip unsubmitted">Not submitted</span>`;
-    return `<div class="canvas-assignment-row" style="border-left-color:${esc(col)}">
-      <button type="button" class="canvas-link-title" onclick="CanvasViews.navigate('assignment',{courseId:${courseId}, assignmentId:${a.id}})">${esc(a.name)}</button>
-      <span class="canvas-due-badge gold">${esc((a.due_at || "").slice(0, 10))}</span>
-      <span style="font-size:.72rem">${a.points_possible != null ? esc(String(a.points_possible)) + " pts" : ""}</span>
-      ${chip}
-      <button type="button" class="canvas-add-btn" data-canvas-cid="${courseId}" data-canvas-aid="${a.id}" onclick="addCanvasAssignmentToPlanner(${courseId}, ${a.id})">Add +</button>
-    </div>`;
-  }
-
-  window.fluxCanvasBulkAddConfirm = function () {
-    const rows = document.querySelectorAll("#canvasContent .canvas-add-btn[data-canvas-aid]");
-    if (!rows.length) {
-      showToast("No assignments to add", "info");
+      save("flux_notes", notes);
+      if (typeof syncKey === "function") syncKey("notes", notes);
+      if (typeof renderNotesList === "function") renderNotesList();
+      showToast(ok ? "Announcement saved as note ✓" : "Already in notes", ok ? "success" : "info");
+      btn.disabled = true;
+      btn.textContent = ok ? "✓ Saved" : "Already saved";
+      btn.classList.add("cv-add-btn--done");
       return;
     }
-    if (!confirm("Add " + rows.length + " upcoming assignments to your planner? Duplicates will be skipped.")) return;
-    let added = 0;
-    let skipped = 0;
-    rows.forEach((btn) => {
-      const cid = parseInt(btn.getAttribute("data-canvas-cid"), 10);
-      const aid = parseInt(btn.getAttribute("data-canvas-aid"), 10);
-      if (!cid || !aid) return;
-      if (typeof canvasAssignmentTaskExists === "function" && canvasAssignmentTaskExists(cid, aid)) {
-        skipped++;
+
+    if (kind === "module-item") {
+      // Assignment module item: defer to the planner helper (which dedupes by canvasAssignmentId).
+      if (data.assignmentId && data.course_id) {
+        try {
+          await addCanvasAssignmentToPlanner(Number(data.course_id), Number(data.assignmentId));
+          btn.disabled = true; btn.textContent = "✓ In planner";
+          btn.classList.add("cv-add-btn--done");
+        } catch (e) { showToast(e.message || "Could not add", "warning"); }
         return;
       }
-      added++;
-      addCanvasAssignmentToPlanner(cid, aid, { silent: true, skipRender: true });
-    });
-    save("tasks", tasks);
-    syncKey("tasks", tasks);
-    renderStats();
-    renderTasks();
-    renderCalendar();
-    renderCountdown();
-    showToast("Added " + added + " assignments, skipped " + skipped + " duplicates", "success");
-  };
-
-  function ensureCanvasShell() {
-    const stack = document.getElementById("canvasHubStack");
-    if (!stack || CanvasState._shellReady) return;
-    CanvasState._shellReady = true;
-    /* v2 shell: clean, no mini-browser. Pure data hub.
-       Top header = connection chip + title + primary actions.
-       Quick-section tabs (in-page, no history navigation).
-       Left sidebar holds course shortcuts only (no Back/Forward). */
-    stack.innerHTML = `
-      <div class="canvas-panel-wrap canvas-panel-wrap--v2" id="fluxCanvasPanelWrap">
-        <div class="canvas-topbar canvas-topbar--v2" id="canvasTopbar">
-          <div class="canvas-topbar-row canvas-topbar-hero">
-            <button type="button" class="canvas-icon-btn canvas-mob-sidebar-btn" onclick="fluxCanvasToggleMobileSidebar()" aria-label="Menu">☰</button>
-            <div class="canvas-hero-title flux-color-title" id="canvasHeroTitle">Canvas</div>
-            <span class="canvas-hero-conn" id="canvasHeroConn"></span>
-            <div class="canvas-topbar-actions">
-              <button type="button" class="canvas-icon-btn" onclick="CanvasViews.navigate(CanvasState.currentView, CanvasState.currentParams, {noHistory:true})" title="Refresh">↻</button>
-              <button type="button" class="canvas-icon-btn" id="canvasSplitBtn" onclick="fluxCanvasToggleSplit()" title="Split with Flux AI (1200px+)" style="display:none">⧉</button>
-              <button type="button" class="canvas-ask-ai" onclick="fluxCanvasAskAI()" title="Ask Flux AI about this page">✦ Ask Flux AI</button>
-              <button type="button" class="canvas-icon-btn" onclick="(function(){if(confirm('Disconnect Canvas account from Flux? Your tasks won\\'t be touched.')){save('flux_canvas_token',null);CanvasState.token=null;CanvasState.connected=false;CanvasState._shellReady=false;window.__fluxRenderCanvasPanel();}})()" title="Disconnect" aria-label="Disconnect Canvas">⏻</button>
-            </div>
-          </div>
-          <div class="canvas-quick-tabs" id="canvasQuickTabs" role="tablist" aria-label="Canvas sections">
-            <button type="button" data-canvas-quick="dashboard" onclick="CanvasViews.navigate('dashboard',{})"  role="tab"><span>🏠</span> Hub</button>
-            <button type="button" data-canvas-quick="upcoming"  onclick="window.fluxCanvasShowUpcoming&&window.fluxCanvasShowUpcoming()" role="tab"><span>📌</span> Assignments</button>
-            <button type="button" data-canvas-quick="announcements" onclick="window.fluxCanvasShowAnnouncements&&window.fluxCanvasShowAnnouncements()" role="tab"><span>📢</span> Announcements</button>
-            <button type="button" data-canvas-quick="calendar" onclick="CanvasViews.calendar({})" role="tab"><span>📅</span> Calendar</button>
-            <button type="button" data-canvas-quick="inbox"    onclick="CanvasViews.inbox({})" role="tab"><span>✉</span> Inbox</button>
-            <span style="flex:1"></span>
-            <button type="button" class="canvas-quick-sync" onclick="window.fluxCanvasSyncModal&&window.fluxCanvasSyncModal()" title="Pull assignments into the planner">⟳ Import to planner</button>
-          </div>
-        </div>
-        <div class="canvas-panel-body">
-          <aside class="canvas-sidebar ${CanvasState._sidebarCollapsed ? "collapsed" : ""}" id="canvasSidebar">
-            <div class="canvas-sidebar-head">
-              <span>My courses</span>
-              <button type="button" class="canvas-sidebar-collapse" onclick="fluxCanvasToggleSidebarCollapse()" title="Collapse">‹</button>
-            </div>
-            <div id="canvasSidebarCourses"></div>
-          </aside>
-          <div class="canvas-sidebar-backdrop" id="canvasSidebarBackdrop" onclick="fluxCanvasCloseMobileSidebar()"></div>
-          <main class="canvas-content" id="canvasContent"></main>
-        </div>
-      </div>`;
-  }
-  /** Reusable filters for the simplified quick sections. */
-  window.fluxCanvasShowUpcoming = function () {
-    if (typeof CanvasViews?.navigate === "function") CanvasViews.navigate("upcomingAll", {});
-  };
-  window.fluxCanvasShowAnnouncements = function () {
-    if (typeof CanvasViews?.navigate === "function") CanvasViews.navigate("announcementsAll", {});
-  };
-
-  window.fluxCanvasToggleMobileSidebar = function () {
-    document.getElementById("canvasSidebar")?.classList.toggle("open");
-    document.getElementById("canvasSidebarBackdrop")?.classList.toggle("open");
-  };
-  window.fluxCanvasCloseMobileSidebar = function () {
-    document.getElementById("canvasSidebar")?.classList.remove("open");
-    document.getElementById("canvasSidebarBackdrop")?.classList.remove("open");
-  };
-
-  window.fluxCanvasToggleSidebarCollapse = function () {
-    CanvasState._sidebarCollapsed = !CanvasState._sidebarCollapsed;
-    save("flux_canvas_sidebar_collapsed", CanvasState._sidebarCollapsed);
-    document.getElementById("canvasSidebar")?.classList.toggle("collapsed", CanvasState._sidebarCollapsed);
-  };
-
-  window.fluxCanvasToggleSplit = function () {
-    if (window.innerWidth < 1200) {
-      showToast("Split view needs a wide screen (1200px+)", "info");
+      // Page / file / external URL -> save as a Flux note with the link.
+      const body = `${courseName}\n\nFrom Canvas module: ${data.module_name || ""}\n\nLink: ${data.html_url || ""}`;
+      pushNote(`📚 ${data.title || "Module item"}`, body, "canvasModuleItemKey", data.itemKey || null);
+      showToast("Module item saved as note ✓", "success");
+      btn.disabled = true; btn.textContent = "✓ Saved";
+      btn.classList.add("cv-add-btn--done");
       return;
     }
-    const on = !load("flux_canvas_split", false);
-    save("flux_canvas_split", on);
-    fluxApplyCanvasSplitLayout();
-    showToast(on ? "Split view on" : "Split view off", "info");
-  };
 
-  window.fluxApplyCanvasSplitLayout = function () {
-    const main = document.querySelector(".main-content");
-    const on =
-      load("flux_canvas_split", false) &&
-      window.innerWidth >= 1200 &&
-      document.getElementById("canvas")?.classList.contains("active");
-    document.body.classList.toggle("flux-canvas-ai-split", !!on);
-    const cv = document.getElementById("canvas");
-    if (cv && !on) {
-      cv.style.flex = "";
-      cv.style.minWidth = "";
-      /* Do not clear overflow-y here — syncPanelScrollLayout re-applies it; clearing can briefly
-         re-enable .panel{overflow-y:auto!important} before sync runs. */
-    }
-    const ai = document.getElementById("ai");
-    if (ai) {
-      ai.classList.toggle("flux-ai-split-visible", !!on);
-      if (on) {
-        ai.classList.add("active");
-        ai.style.removeProperty("display");
-        if (typeof initAIChats === "function") initAIChats();
+    if (kind === "calendar-event") {
+      // If it points to a real Canvas assignment, route through the planner helper.
+      if (data.assignment_id && data.course_id) {
+        try {
+          await addCanvasAssignmentToPlanner(Number(data.course_id), Number(data.assignment_id));
+        } catch (e) { showToast(e.message || "Could not add", "warning"); }
       } else {
-        ai.classList.remove("flux-ai-split-visible");
-        ai.style.flex = "";
-        ai.style.minWidth = "";
-        const aiTabActive = !!document.querySelector('.bnav-item[data-tab="ai"].active,.nav-item[data-tab="ai"].active');
-        if (!aiTabActive) {
-          ai.classList.remove("active");
-          ai.style.removeProperty("display");
-        }
+        pushTask(data.title || "Canvas event", ymd(data.start_at), {
+          subject: canvasFluxSubjectKeyFromCourseName(courseName),
+          priority: "medium",
+          type: "event",
+          notes: data.description ? canvasStripHtml(data.description).slice(0, 500) : "",
+          canvasCalendarEventId: data.id,
+        });
       }
+      btn.disabled = true; btn.textContent = "✓ In planner";
+      btn.classList.add("cv-add-btn--done");
+      return;
     }
-    if (typeof syncPanelScrollLayout === "function") syncPanelScrollLayout();
+
+    if (kind === "inbox-message") {
+      const body = (data.participants || []).map((p) => p.name).join(", ") +
+        "\n\n" + canvasStripHtml(data.last_message || "");
+      pushNote(`✉ ${data.subject || "(no subject)"}`, body, "canvasConversationId", data.id);
+      btn.disabled = true; btn.textContent = "✓ Saved";
+      btn.classList.add("cv-add-btn--done");
+      return;
+    }
+
+    if (kind === "file") {
+      const body = `${courseName}\n\n${data.display_name || data.filename || "File"}\n\n${data.url || ""}`;
+      pushNote(`📎 ${data.display_name || data.filename || "File"}`, body, "canvasFileId", data.id);
+      btn.disabled = true; btn.textContent = "✓ Saved";
+      btn.classList.add("cv-add-btn--done");
+      return;
+    }
   };
 
-  window.addEventListener("resize", function () {
-    fluxApplyCanvasSplitLayout();
-    const splitBtn = document.getElementById("canvasSplitBtn");
-    if (splitBtn) splitBtn.style.display = window.innerWidth >= 1200 ? "" : "none";
-  });
-
-  window.fluxCanvasOpenInCanvas = function () {
-    const host = CanvasState.host;
-    if (!host) return;
-    let path = "/";
-    const v = CanvasState.currentView;
-    const p = CanvasState.currentParams || {};
-    if (v === "assignment" && p.courseId && p.assignmentId) {
-      path = `/courses/${p.courseId}/assignments/${p.assignmentId}`;
-    } else if (v === "course" && p.courseId) {
-      path = `/courses/${p.courseId}`;
-    }
-    window.open("https://" + host + path, "_blank", "noopener,noreferrer");
-  };
-
-  window.fluxCanvasAskAI = function () {
-    const v = CanvasState.currentView;
-    const p = CanvasState.currentParams || {};
-    let pre = "";
-    if (v === "assignment" && CanvasState.pageContext && CanvasState.pageContext.assignmentName) {
-      const ctx = CanvasState.pageContext;
-      const desc = (ctx.description || "").slice(0, 1000);
-      pre = `I'm looking at the assignment '${ctx.assignmentName}' for ${ctx.courseName}, due ${ctx.dueDate || "TBD"}. Here are the instructions: ${desc}. Can you help me understand what's expected and create a study plan?`;
-    } else if (CanvasState.pageContext) {
-      pre = "Help me with what I'm viewing in Canvas: " + stripHtml(JSON.stringify(CanvasState.pageContext)).slice(0, 800);
-    }
-    if (typeof openFluxAgent === "function") {
-      openFluxAgent({ prefill: pre, clearInput: false });
-    } else {
-      nav("ai");
-    }
-    fluxApplyCanvasSplitLayout();
-  };
-
-  window.fluxCanvasSyncModal = async function () {
-    /* minimal: reuse hub fetch if available */
-    try {
-      if (typeof refreshCanvasHubFullFetch === "function") {
-        await refreshCanvasHubFullFetch({ quietSuccessToast: true });
-      }
-    } catch (_) {}
-    const missing = [];
-    if (typeof fluxCanvasHubData !== "undefined" && fluxCanvasHubData && Array.isArray(fluxCanvasHubData.assignments)) {
-      fluxCanvasHubData.assignments.forEach((a) => {
-        if (!a.due_at) return;
-        if (typeof canvasAssignmentTaskExists === "function" && !canvasAssignmentTaskExists(a.course_id, a.id)) {
-          missing.push(a);
-        }
-      });
-    }
-    const ov = document.createElement("div");
-    ov.id = "fluxCanvasSyncOverlay";
-    ov.style.cssText =
-      "position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px";
-    ov.innerHTML = `<div class="canvas-card" style="max-width:420px;width:100%;max-height:80vh;overflow:auto;padding:18px">
-        <div style="font-weight:800;margin-bottom:8px">Sync from Canvas</div>
-        <div style="font-size:.78rem;color:var(--muted2);margin-bottom:12px">Last synced: ${esc(String(load("flux_canvas_last_sync", "—")))}</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-bottom:12px">
-          <input type="checkbox" id="fluxCanvasAutosyncToggle" ${load("flux_canvas_autosync", false) ? "checked" : ""}/> Auto-sync on open
-        </label>
-        <div id="fluxCanvasSyncList" style="margin-bottom:12px"></div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" class="btn-sec" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
-          <button type="button" onclick="fluxCanvasSyncSelected(this)">Sync selected</button>
-        </div></div>`;
-    document.body.appendChild(ov);
-    const list = ov.querySelector("#fluxCanvasSyncList");
-    list.innerHTML = missing.slice(0, 40).map((a, i) => `<label style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-        <input type="checkbox" checked data-cid="${a.course_id}" data-aid="${a.id}"/>
-        <span style="font-size:.82rem">${esc(a.name)} <span style="color:var(--muted)">· ${esc(a.due_at || "").slice(0, 10)}</span></span>
-      </label>`).join("") || "<div style='color:var(--muted)'>Nothing new to sync.</div>";
-    ov.querySelector("#fluxCanvasAutosyncToggle").onchange = function () {
-      save("flux_canvas_autosync", !!this.checked);
-    };
-    ov.addEventListener("click", function (e) {
-      if (e.target === ov) ov.remove();
-    });
-  };
-
-  window.fluxCanvasSyncSelected = function (btn) {
-    const ov = document.getElementById("fluxCanvasSyncOverlay");
-    const boxes = ov.querySelectorAll("input[type=checkbox][data-aid]:checked");
-    let n = 0;
-    boxes.forEach((b) => {
-      if (b.id === "fluxCanvasAutosyncToggle") return;
-      const cid = parseInt(b.getAttribute("data-cid"), 10);
-      const aid = parseInt(b.getAttribute("data-aid"), 10);
-      addCanvasAssignmentToPlanner(cid, aid, { silent: true, skipRender: true });
-      n++;
-    });
-    save("tasks", tasks);
-    syncKey("tasks", tasks);
-    renderStats();
-    renderTasks();
-    renderCalendar();
-    renderCountdown();
-    save("flux_canvas_last_sync", new Date().toISOString());
-    showToast(n ? `Synced ${n} assignments` : "Nothing selected", "success");
-    ov.remove();
-  };
-
-  async function silentCanvasSync() {
-    if (!CanvasState.connected) return;
-    try {
-      if (typeof refreshCanvasHubFullFetch === "function") {
-        await refreshCanvasHubFullFetch({ quietSuccessToast: true });
-      }
-      let n = 0;
-      if (typeof fluxCanvasHubData !== "undefined" && fluxCanvasHubData && Array.isArray(fluxCanvasHubData.assignments)) {
-        for (const a of fluxCanvasHubData.assignments) {
-          if (!a.due_at) continue;
-          if (typeof canvasAssignmentTaskExists === "function" && !canvasAssignmentTaskExists(a.course_id, a.id)) {
-            addCanvasAssignmentToPlanner(a.course_id, a.id, { silent: true, skipRender: true });
-            n++;
-          }
-        }
-      }
-      if (n) showToast(n + " new assignments added from Canvas", "success");
-      save("flux_canvas_last_sync", new Date().toISOString());
-      if (typeof renderStats === "function") {
-        renderStats();
-        renderTasks();
-        renderCalendar();
-        renderCountdown();
-      }
-    } catch (_) {}
-  }
-
-  function renderCanvasConnectScreen() {
-    CanvasState._shellReady = false;
+  // ────────────────────────────────────────────────────────────────
+  // UI shell
+  // ────────────────────────────────────────────────────────────────
+  function renderShell() {
     const stack = document.getElementById("canvasHubStack");
     if (!stack) return;
+
+    if (!isConnected()) {
+      stack.innerHTML = renderConnectScreen();
+      requestAnimationFrame(() => {
+        const h = document.getElementById("cvConnHost");
+        if (h && !h.value) h.value = load("flux_canvas_host", "") || hostFromUrl(load("flux_canvas_url", ""));
+        const t = document.getElementById("cvConnToken");
+        if (t && !t.value) t.value = load("flux_canvas_token", "") || "";
+      });
+      return;
+    }
+
+    CV.host = hostFromUrl(canvasUrl);
+    CV.connected = true;
+
     stack.innerHTML = `
-      <div class="canvas-connect card" style="padding:28px;max-width:440px;margin:0 auto;text-align:center">
-        <div style="width:72px;height:72px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;background:#e72429;border-radius:50%">
-          <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><text x="50%" y="54%" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui">C</text></svg>
+      <div class="cv-wrap">
+        <header class="cv-head">
+          <div class="cv-head__left">
+            <div class="cv-head__title flux-color-title">Canvas</div>
+            <div class="cv-head__conn"><span class="cv-conn-dot"></span>Connected · ${esc(CV.host || "")}</div>
+          </div>
+          <div class="cv-head__actions">
+            <select id="cvCourseSelect" class="cv-course-select" onchange="window.fluxCanvasOnCourseChange(this.value)">
+              <option value="all">All courses</option>
+              ${(CV.courses || []).map((c) =>
+                `<option value="${c.id}" ${String(CV.selectedCourseId) === String(c.id) ? "selected" : ""}>${esc(c.name || c.course_code || "Course")}</option>`,
+              ).join("")}
+            </select>
+            <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasRefresh()" title="Refresh">↻ Refresh</button>
+            <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasDisconnect()" title="Disconnect">⏻</button>
+          </div>
+        </header>
+
+        <nav class="cv-tabs" role="tablist" aria-label="Canvas sections">
+          ${TABS.map((t) =>
+            `<button type="button" role="tab" data-cv-tab="${t.id}" class="cv-tab ${CV.activeTab === t.id ? "active" : ""}" onclick="window.fluxCanvasSetTab('${t.id}')">
+              <span class="cv-tab__ico" aria-hidden="true">${t.icon}</span>
+              <span>${esc(t.label)}</span>
+            </button>`,
+          ).join("")}
+        </nav>
+
+        <section class="cv-body" id="cvBody">
+          <div class="cv-loading">Loading…</div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderConnectScreen() {
+    return `
+      <div class="cv-connect">
+        <div class="cv-connect__logo">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <rect width="40" height="40" rx="9" fill="#e72429"/>
+            <text x="50%" y="55%" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui">C</text>
+          </svg>
         </div>
-        <h2 style="margin-bottom:8px">Connect Canvas LMS</h2>
-        <p style="font-size:.85rem;color:var(--muted2);margin-bottom:20px;line-height:1.5">See assignments, announcements, and course updates from Canvas inside Flux.</p>
-        <label style="text-align:left;font-size:.72rem;color:var(--muted)">Canvas host</label>
-        <input type="text" id="fluxCanvasConnectHost" placeholder="yourschool.instructure.com" style="width:100%;margin-bottom:12px">
-        <label style="text-align:left;font-size:.72rem;color:var(--muted)">Access token</label>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input type="password" id="fluxCanvasConnectToken" placeholder="Paste token" style="flex:1;margin:0">
-          <button type="button" class="btn-sec" onclick="fluxCanvasToggleConnectPw()">👁</button>
+        <h2 class="cv-connect__title flux-color-title">Connect Canvas</h2>
+        <p class="cv-connect__sub">See your assignments, announcements, modules, and more — and pull anything into Flux with one click.</p>
+
+        <label class="cv-connect__label">Canvas host</label>
+        <input type="text" id="cvConnHost" placeholder="yourschool.instructure.com" class="cv-connect__input">
+
+        <label class="cv-connect__label">Access token</label>
+        <div class="cv-connect__row">
+          <input type="password" id="cvConnToken" placeholder="Paste your token" class="cv-connect__input">
+          <button type="button" class="cv-btn cv-btn--ghost" onclick="(function(e){const i=document.getElementById('cvConnToken');if(i)i.type=i.type==='password'?'text':'password';})()">👁</button>
         </div>
-        <details style="text-align:left;font-size:.75rem;color:var(--muted2);margin-bottom:14px">
-          <summary style="cursor:pointer;color:var(--accent)">How to get a token</summary>
-          <ol style="margin:8px 0 0 18px;line-height:1.55">
-            <li>Log in to Canvas in a new tab</li>
-            <li>Account → Settings → New Access Token</li>
-            <li>Name it "Flux Planner", expiry 1 year</li>
-            <li>Copy the token here</li>
+
+        <details class="cv-connect__help">
+          <summary>How do I get a Canvas access token?</summary>
+          <ol>
+            <li>Open Canvas → Account → Settings</li>
+            <li>Scroll to "Approved Integrations" → New Access Token</li>
+            <li>Name it "Flux Planner", set an expiry, click Generate</li>
+            <li>Paste it here. Tokens stay on this device.</li>
           </ol>
-          <p style="margin-top:8px">Tokens stay on this device only.</p>
         </details>
-        <button type="button" style="width:100%;padding:12px" onclick="fluxCanvasConnectSubmit()">Connect Canvas</button>
-        <div id="fluxCanvasConnectErr" style="color:var(--red);font-size:.8rem;margin-top:10px"></div>
-      </div>`;
-    requestAnimationFrame(() => {
-      try {
-        const hostInp = document.getElementById("fluxCanvasConnectHost");
-        const tokInp = document.getElementById("fluxCanvasConnectToken");
-        const h =
-          load("flux_canvas_host", null) || hostFromStoredUrl(load("flux_canvas_url", ""));
-        const t = load("flux_canvas_token", null);
-        if (hostInp && h) hostInp.value = h;
-        if (tokInp && typeof t === "string" && t.trim()) tokInp.value = t.trim();
-      } catch (_) {}
-    });
+
+        <button type="button" class="cv-btn cv-btn--primary cv-connect__cta" onclick="window.fluxCanvasConnect()">Connect Canvas</button>
+        <div id="cvConnErr" class="cv-connect__err"></div>
+      </div>
+    `;
   }
 
-  window.fluxCanvasToggleConnectPw = function () {
-    const el = document.getElementById("fluxCanvasConnectToken");
-    if (!el) return;
-    el.type = el.type === "password" ? "text" : "password";
-  };
-
-  window.fluxCanvasConnectSubmit = async function () {
-    const err = document.getElementById("fluxCanvasConnectErr");
-    if (err) err.textContent = "";
-    const hostRaw = document.getElementById("fluxCanvasConnectHost")?.value?.trim() || "";
-    const tok = document.getElementById("fluxCanvasConnectToken")?.value?.trim() || "";
-    const host = hostFromStoredUrl(hostRaw);
-    if (!host || !tok) {
-      if (err) err.textContent = "Host and token are required.";
-      return;
-    }
-    CanvasState.token = tok;
-    CanvasState.host = host;
+  // ────────────────────────────────────────────────────────────────
+  // Tab renderers
+  // ────────────────────────────────────────────────────────────────
+  async function renderActiveTab() {
+    const body = document.getElementById("cvBody");
+    if (!body) return;
+    body.innerHTML = renderSkeleton();
+    CV.loading = true;
     try {
-      await CanvasAPI.getUserProfile();
+      switch (CV.activeTab) {
+        case "assignments":   await renderAssignmentsTab(body); break;
+        case "announcements": await renderAnnouncementsTab(body); break;
+        case "modules":       await renderModulesTab(body); break;
+        case "calendar":      await renderCalendarTab(body); break;
+        case "inbox":         await renderInboxTab(body); break;
+        case "files":         await renderFilesTab(body); break;
+        default:
+          rememberTab("assignments");
+          return renderActiveTab();
+      }
     } catch (e) {
-      CanvasState.token = null;
-      CanvasState.host = null;
-      if (err) err.textContent = e.message || "Connection failed";
-      return;
+      body.innerHTML = renderError(e);
+    } finally {
+      CV.loading = false;
     }
-    save("flux_canvas_token", CanvasState.token);
-    save("flux_canvas_host", CanvasState.host);
-    save("flux_canvas_url", "https://" + CanvasState.host);
-    try {
-      canvasToken = CanvasState.token;
-      canvasUrl = "https://" + CanvasState.host;
-    } catch (_) {}
-    schoolInfo = schoolInfo || {};
-    schoolInfo.canvasLmsHost = CanvasState.host;
-    save("flux_school", schoolInfo);
-    if (typeof syncKey === "function") syncKey("school", schoolInfo);
-    CanvasState.connected = true;
-    CanvasState.cache.clear();
-    CanvasState._shellReady = false;
-    if (typeof renderSchool === "function") renderSchool();
-    window.__fluxRenderCanvasPanel();
-    CanvasViews.navigate("dashboard", {});
-  };
-
-  function renderCanvasSidebar() {
-    const el = document.getElementById("canvasSidebarCourses");
-    if (!el) return;
-    el.innerHTML = (CanvasState.courses || [])
-      .map(
-        (c) =>
-          `<button type="button" class="canvas-course-chip" onclick="CanvasViews.navigate('course',{courseId:${c.id}, tab:'overview'})">
-          <span class="canvas-dot" style="background:${esc(courseColor(c))}"></span>
-          <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name || c.course_code)}</span>
-          <span style="font-size:.65rem;color:var(--muted);font-family:JetBrains Mono,monospace">${esc(c.course_code || "")}</span>
-        </button>`,
-      )
-      .join("");
   }
 
-  window.initCanvasPanel = function () {
-    CanvasState.token = load("flux_canvas_token", null);
-    if (typeof CanvasState.token === "string" && !CanvasState.token.trim()) {
-      CanvasState.token = null;
-    }
-    CanvasState.host =
-      load("flux_canvas_host", null) || hostFromStoredUrl(load("flux_canvas_url", ""));
-    CanvasState.connected = !!(CanvasState.token && CanvasState.host);
-    syncLegacyCanvasGlobals();
-    if (CanvasState.connected) {
+  function renderSkeleton() {
+    return `
+      <div class="cv-skel cv-skel--row"></div>
+      <div class="cv-skel cv-skel--row"></div>
+      <div class="cv-skel cv-skel--row"></div>
+      <div class="cv-skel cv-skel--row"></div>
+    `;
+  }
+
+  function renderError(e) {
+    const msg = (e && (e.message || String(e))) || "Something went wrong";
+    return `
+      <div class="cv-error">
+        <div class="cv-error__icon">⚠</div>
+        <div class="cv-error__title">Couldn't load this tab</div>
+        <div class="cv-error__msg">${esc(msg)}</div>
+        <button type="button" class="cv-btn cv-btn--ghost" onclick="window.fluxCanvasRefresh()">Try again</button>
+      </div>
+    `;
+  }
+
+  function emptyState(label) {
+    return `<div class="cv-empty">${esc(label)}</div>`;
+  }
+
+  function filteredCourses() {
+    if (CV.selectedCourseId === "all") return CV.courses || [];
+    return (CV.courses || []).filter((c) => String(c.id) === String(CV.selectedCourseId));
+  }
+
+  // ── Assignments tab ────────────────────────────────────────────
+  async function renderAssignmentsTab(body) {
+    const courses = filteredCourses();
+    const ids = courses.map((c) => c.id);
+    const all = [];
+    for (const c of courses.slice(0, 14)) {
       try {
-        if (typeof fluxCanvasHubData !== "undefined" && !fluxCanvasHubData) {
-          const cached = load("flux_canvas_hub_cache", null);
-          if (cached && Array.isArray(cached.courses) && cached.courses.length) {
-            fluxCanvasHubData = cached;
-          }
-        }
+        const list = await loadAssignments(c.id);
+        list.forEach((a) =>
+          all.push(Object.assign({}, a, {
+            course_id: c.id, course_name: c.name || c.course_code,
+            course_color: courseColor(c),
+          })),
+        );
+      } catch (_) { /* skip course on error */ }
+    }
+    all.sort((a, b) => (a.due_at || "").localeCompare(b.due_at || ""));
+    const upcoming = all.filter((a) => a.due_at && new Date(a.due_at) >= new Date(Date.now() - 86400000));
+    const undated = all.filter((a) => !a.due_at);
+    const counts = upcoming.length + " upcoming · " + undated.length + " undated";
+    const pending = upcoming.filter((a) =>
+      typeof canvasAssignmentTaskExists === "function" ? !canvasAssignmentTaskExists(a.course_id, a.id) : true,
+    );
+
+    body.innerHTML = `
+      <div class="cv-toolbar">
+        <div class="cv-toolbar__meta">${counts}</div>
+        <button type="button" class="cv-btn cv-btn--primary" onclick="window.fluxCanvasBulkAddAssignments()">
+          ⬇ Add ${pending.length} to Flux
+        </button>
+      </div>
+      ${upcoming.length
+        ? `<div class="cv-list">${upcoming.slice(0, 80).map(rowAssignment).join("")}</div>`
+        : emptyState("No upcoming assignments.")}
+      ${undated.length
+        ? `<details class="cv-section"><summary>Undated (${undated.length})</summary>
+            <div class="cv-list">${undated.slice(0, 40).map(rowAssignment).join("")}</div>
+           </details>`
+        : ""}
+    `;
+  }
+
+  function rowAssignment(a) {
+    const exists = typeof canvasAssignmentTaskExists === "function" && canvasAssignmentTaskExists(a.course_id, a.id);
+    const dueCls = due(a.due_at);
+    return `
+      <article class="cv-row" style="--row-color:${esc(a.course_color || "#3b82f6")}">
+        <div class="cv-row__line"></div>
+        <div class="cv-row__main">
+          <div class="cv-row__title">${esc(a.name || "Assignment")}</div>
+          <div class="cv-row__meta">
+            <span class="cv-meta__course">${esc(a.course_name || "Course")}</span>
+            <span class="cv-meta__sep">·</span>
+            <span class="cv-meta__due cv-meta__due--${dueCls}">${a.due_at ? esc(a.due_at.slice(0, 16).replace("T", " ")) : "No due date"}</span>
+            ${a.points_possible != null ? `<span class="cv-meta__sep">·</span><span class="cv-meta__pts">${esc(String(a.points_possible))} pts</span>` : ""}
+          </div>
+        </div>
+        ${exists
+          ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In planner</button>`
+          : addBtn("assignment", { id: a.id, course_id: a.course_id, course_name: a.course_name })}
+        ${a.html_url ? `<a href="${esc(a.html_url)}" target="_blank" rel="noopener noreferrer" class="cv-row__open" title="Open in Canvas">↗</a>` : ""}
+      </article>
+    `;
+  }
+
+  // ── Announcements tab ──────────────────────────────────────────
+  async function renderAnnouncementsTab(body) {
+    const courses = filteredCourses();
+    const list = await loadAnnouncements(courses.map((c) => c.id));
+    const byId = new Map(CV.courses.map((c) => [String(c.id), c]));
+    list.sort((a, b) => (b.posted_at || "").localeCompare(a.posted_at || ""));
+    body.innerHTML = list.length
+      ? `<div class="cv-list cv-list--cards">${list.slice(0, 60).map((a) => {
+          const cid = (a.context_code || "").replace("course_", "");
+          const c = byId.get(cid) || {};
+          const color = courseColor(c);
+          const preview = canvasStripHtml(a.message || "").slice(0, 320);
+          const saved = (notes || []).some((n) => n.canvasAnnouncementId === a.id);
+          return `<article class="cv-card" style="--row-color:${esc(color)}">
+            <div class="cv-card__line"></div>
+            <div class="cv-card__head">
+              <div class="cv-card__title">${esc(a.title || "Announcement")}</div>
+              <div class="cv-card__meta">
+                <span>${esc(c.name || a.context_name || "Course")}</span>
+                <span class="cv-meta__sep">·</span>
+                <span>${esc((a.posted_at || "").slice(0, 16).replace("T", " "))}</span>
+              </div>
+            </div>
+            <div class="cv-card__body">${esc(preview)}${(a.message || "").length > 320 ? "…" : ""}</div>
+            <div class="cv-card__actions">
+              ${saved
+                ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In notes</button>`
+                : addBtn("announcement", { id: a.id, title: a.title, message: a.message, course_name: c.name })}
+              ${a.html_url ? `<a class="cv-row__open" href="${esc(a.html_url)}" target="_blank" rel="noopener noreferrer">↗ Open</a>` : ""}
+            </div>
+          </article>`;
+        }).join("")}</div>`
+      : emptyState("No recent announcements.");
+  }
+
+  // ── Modules tab ────────────────────────────────────────────────
+  async function renderModulesTab(body) {
+    const courses = filteredCourses();
+    if (!courses.length) { body.innerHTML = emptyState("Pick a course to see modules."); return; }
+    const groups = [];
+    for (const c of courses.slice(0, 6)) {
+      try {
+        const mods = await loadModules(c.id);
+        groups.push({ course: c, modules: mods });
       } catch (_) {}
     }
-    if (!CanvasState.connected) {
-      renderCanvasConnectScreen();
+    body.innerHTML = groups.length
+      ? groups.map((g) => {
+          const color = courseColor(g.course);
+          return `<section class="cv-mod-group" style="--row-color:${esc(color)}">
+            <header class="cv-mod-group__head">
+              <span class="cv-mod-group__dot" style="background:${esc(color)}"></span>
+              <span>${esc(g.course.name || g.course.course_code || "Course")}</span>
+              <span class="cv-mod-group__count">${g.modules.length} modules</span>
+            </header>
+            ${g.modules.length
+              ? g.modules.map((m, i) => `
+                <details class="cv-mod" ${i < 2 ? "open" : ""}>
+                  <summary>${esc(m.name || "Module")} <span class="cv-mod__count">${(m.items || []).length}</span></summary>
+                  <div class="cv-mod__items">
+                    ${(m.items || []).map((it) => rowModuleItem(g.course, m, it)).join("")
+                      || `<div class="cv-empty cv-empty--inline">No items.</div>`}
+                  </div>
+                </details>`).join("")
+              : `<div class="cv-empty cv-empty--inline">No modules visible in this course.</div>`}
+          </section>`;
+        }).join("")
+      : emptyState("No modules found.");
+  }
+
+  function rowModuleItem(course, mod, it) {
+    const t = String(it.type || "");
+    const icon =
+      t === "Assignment" ? "📝" :
+      t === "Quiz" ? "📊" :
+      t === "Page" ? "📄" :
+      t === "ExternalUrl" ? "🔗" :
+      t === "File" ? "📎" :
+      t === "Discussion" ? "💬" :
+      t === "SubHeader" ? "·" : "📌";
+    if (t === "SubHeader") {
+      return `<div class="cv-mod-sub">${esc(it.title || "")}</div>`;
+    }
+    const data = {
+      itemKey: course.id + ":" + mod.id + ":" + it.id,
+      course_id: course.id,
+      course_name: course.name,
+      module_name: mod.name,
+      title: it.title,
+      html_url: it.html_url,
+    };
+    if (t === "Assignment" && it.content_id) data.assignmentId = it.content_id;
+    const exists = data.assignmentId
+      ? (typeof canvasAssignmentTaskExists === "function" && canvasAssignmentTaskExists(course.id, data.assignmentId))
+      : false;
+    return `
+      <div class="cv-mod-item">
+        <span class="cv-mod-item__ico">${icon}</span>
+        <div class="cv-mod-item__title">${esc(it.title || "Item")}</div>
+        <span class="cv-mod-item__type">${esc(t || "Item")}</span>
+        ${exists
+          ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ In planner</button>`
+          : addBtn("module-item", data)}
+        ${it.html_url ? `<a class="cv-row__open" href="${esc(it.html_url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+      </div>
+    `;
+  }
+
+  // ── Calendar tab ───────────────────────────────────────────────
+  async function renderCalendarTab(body) {
+    const evs = await loadCalendarEvents();
+    const byId = new Map(CV.courses.map((c) => [String(c.id), c]));
+    evs.sort((a, b) => (a.start_at || "").localeCompare(b.start_at || ""));
+    body.innerHTML = evs.length
+      ? `<div class="cv-list">${evs.slice(0, 100).map((e) => {
+          const cid = (e.context_code || "").replace("course_", "");
+          const c = byId.get(cid) || {};
+          const dueCls = due(e.start_at);
+          return `<article class="cv-row" style="--row-color:${esc(courseColor(c))}">
+            <div class="cv-row__line"></div>
+            <div class="cv-row__main">
+              <div class="cv-row__title">${esc(e.title || "Event")}</div>
+              <div class="cv-row__meta">
+                <span>${esc(c.name || "Course")}</span>
+                <span class="cv-meta__sep">·</span>
+                <span class="cv-meta__due cv-meta__due--${dueCls}">${esc((e.start_at || "").slice(0, 16).replace("T", " ") || "No date")}</span>
+              </div>
+            </div>
+            ${addBtn("calendar-event", {
+              id: e.id, title: e.title, start_at: e.start_at,
+              description: e.description, course_id: cid, course_name: c.name,
+              assignment_id: e.assignment ? e.assignment.id : null,
+            })}
+            ${e.html_url ? `<a class="cv-row__open" href="${esc(e.html_url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+          </article>`;
+        }).join("")}</div>`
+      : emptyState("No events in the next 60 days.");
+  }
+
+  // ── Inbox tab ──────────────────────────────────────────────────
+  async function renderInboxTab(body) {
+    const list = await loadInbox();
+    body.innerHTML = list.length
+      ? `<div class="cv-list cv-list--cards">${list.slice(0, 60).map((c) => {
+          const unread = c.workflow_state === "unread";
+          const who = (c.participants && c.participants[0] && c.participants[0].name) || "";
+          const initials = (who.charAt(0) || "?").toUpperCase();
+          const saved = (notes || []).some((n) => n.canvasConversationId === c.id);
+          return `<article class="cv-card cv-card--inbox ${unread ? "unread" : ""}">
+            <div class="cv-card__avatar">${esc(initials)}</div>
+            <div class="cv-card__body cv-card__body--inbox">
+              <div class="cv-card__head">
+                <div class="cv-card__title">${esc(c.subject || "(no subject)")}</div>
+                <div class="cv-card__meta">${esc((c.last_message_at || "").slice(0, 16).replace("T", " "))}</div>
+              </div>
+              <div class="cv-card__preview">${esc((c.last_message || "").slice(0, 220))}</div>
+              <div class="cv-card__participants">${esc((c.participants || []).map((p) => p.name).slice(0, 3).join(", "))}</div>
+            </div>
+            ${saved
+              ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ Saved</button>`
+              : addBtn("inbox-message", { id: c.id, subject: c.subject, last_message: c.last_message, participants: c.participants })}
+          </article>`;
+        }).join("")}</div>`
+      : emptyState("Inbox is empty.");
+  }
+
+  // ── Files tab ──────────────────────────────────────────────────
+  async function renderFilesTab(body) {
+    const courses = filteredCourses();
+    if (!courses.length) { body.innerHTML = emptyState("Pick a course to see files."); return; }
+    const groups = [];
+    for (const c of courses.slice(0, 6)) {
+      try { groups.push({ course: c, files: await loadFiles(c.id) }); } catch (_) {}
+    }
+    body.innerHTML = groups.length && groups.some((g) => g.files.length)
+      ? groups.map((g) => {
+          if (!g.files.length) return "";
+          return `<section class="cv-mod-group" style="--row-color:${esc(courseColor(g.course))}">
+            <header class="cv-mod-group__head">
+              <span class="cv-mod-group__dot" style="background:${esc(courseColor(g.course))}"></span>
+              <span>${esc(g.course.name || g.course.course_code || "Course")}</span>
+              <span class="cv-mod-group__count">${g.files.length} files</span>
+            </header>
+            <div class="cv-list">${g.files.slice(0, 40).map((f) => {
+              const saved = (notes || []).some((n) => n.canvasFileId === f.id);
+              return `<article class="cv-row">
+                <div class="cv-row__main">
+                  <div class="cv-row__title">${esc(f.display_name || f.filename || "File")}</div>
+                  <div class="cv-row__meta">
+                    <span>${esc(f["content-type"] || f.content_type || "file")}</span>
+                    <span class="cv-meta__sep">·</span>
+                    <span>${esc((f.updated_at || "").slice(0, 10))}</span>
+                  </div>
+                </div>
+                ${saved
+                  ? `<button type="button" class="cv-add-btn cv-add-btn--done" disabled>✓ Saved</button>`
+                  : addBtn("file", { id: f.id, display_name: f.display_name, filename: f.filename, url: f.url, course_name: g.course.name })}
+                ${f.url ? `<a class="cv-row__open" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""}
+              </article>`;
+            }).join("")}</div>
+          </section>`;
+        }).join("")
+      : emptyState("No files visible.");
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Public entry points used by the rest of the app
+  // ────────────────────────────────────────────────────────────────
+  window.fluxCanvasSetTab = function (id) {
+    if (!TABS.some((t) => t.id === id)) return;
+    rememberTab(id);
+    document.querySelectorAll(".cv-tab").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-cv-tab") === id);
+    });
+    renderActiveTab();
+  };
+
+  window.fluxCanvasOnCourseChange = function (val) {
+    rememberCourse(val);
+    cacheBust();
+    renderActiveTab();
+  };
+
+  window.fluxCanvasRefresh = function () {
+    cacheBust();
+    loadCourses(true).catch(() => {}).finally(renderActiveTab);
+  };
+
+  window.fluxCanvasBulkAddAssignments = function () {
+    const buttons = document.querySelectorAll('#cvBody .cv-add-btn[data-cv-kind="assignment"]:not(.cv-add-btn--done)');
+    if (!buttons.length) { showToast("Nothing left to add ✓", "info"); return; }
+    if (!confirm("Add " + buttons.length + " upcoming assignments to Flux?")) return;
+    let n = 0;
+    buttons.forEach((b) => { b.click(); n++; });
+    showToast("Adding " + n + " assignments…", "success");
+  };
+
+  window.fluxCanvasDisconnect = function () {
+    if (!confirm("Disconnect Canvas from Flux? Your existing tasks and notes won't be touched.")) return;
+    try {
+      save("flux_canvas_token", null);
+      save("flux_canvas_host", null);
+      save("flux_canvas_url", null);
+      try { canvasToken = ""; canvasUrl = ""; } catch (_) {}
+    } catch (_) {}
+    CV.connected = false;
+    cacheBust();
+    renderShell();
+  };
+
+  window.fluxCanvasConnect = async function () {
+    const errEl = document.getElementById("cvConnErr");
+    const host = (document.getElementById("cvConnHost")?.value || "").trim();
+    const tok = (document.getElementById("cvConnToken")?.value || "").trim();
+    if (errEl) errEl.textContent = "";
+    if (!host || !tok) {
+      if (errEl) errEl.textContent = "Host and token are both required.";
       return;
     }
-    ensureCanvasShell();
-    if (CanvasState.courses.length === 0) {
-      CanvasAPI.getCourses()
-        .then((courses) => {
-          CanvasState.courses = Array.isArray(courses) ? courses : [];
-          renderCanvasSidebar();
-        })
-        .catch((e) => console.warn("[Canvas] courses", e));
-    } else {
-      renderCanvasSidebar();
+    const hostnameOnly = hostFromUrl(host);
+    if (!hostnameOnly) {
+      if (errEl) errEl.textContent = "That host doesn't look right.";
+      return;
     }
-    const lastView = load("flux_canvas_last_view", null);
-    const lastParams = load("flux_canvas_last_params", {});
-    if (lastView && CanvasState.history.length === 0) {
-      CanvasViews.navigate(lastView, lastParams);
-    } else if (CanvasState.history.length > 0) {
-      CanvasViews.navigate(
-        CanvasState.history[CanvasState.historyIndex].view,
-        CanvasState.history[CanvasState.historyIndex].params,
-        { noHistory: true },
-      );
-    } else {
-      CanvasViews.navigate("dashboard", {});
-    }
-    if (load("flux_canvas_autosync", false)) {
-      silentCanvasSync();
-    }
-    fluxApplyCanvasSplitLayout();
-    if (typeof window.fluxCanvasPopulateReaderCourses === "function") {
-      window.fluxCanvasPopulateReaderCourses();
+    try {
+      // Verify token by hitting /users/self/profile through the existing proxy.
+      try { canvasToken = tok; canvasUrl = "https://" + hostnameOnly; } catch (_) {}
+      save("flux_canvas_token", tok);
+      save("flux_canvas_host", hostnameOnly);
+      save("flux_canvas_url", "https://" + hostnameOnly);
+      await canvasProxyGet("/users/self/profile");
+      cacheBust();
+      await loadCourses(true);
+      renderShell();
+      renderActiveTab();
+      showToast("Canvas connected ✓", "success");
+    } catch (e) {
+      try { canvasToken = ""; canvasUrl = ""; } catch (_) {}
+      save("flux_canvas_token", null);
+      if (errEl) errEl.textContent = e.message || "Connection failed.";
     }
   };
 
-  window.__fluxRenderCanvasPanel = function () {
-    initCanvasPanel();
+  /** Called by app.js whenever the user navigates to the Canvas tab. */
+  window.__fluxRenderCanvasPanel = async function () {
+    renderShell();
+    if (!isConnected()) return;
+    try {
+      if (!CV.courses.length) await loadCourses();
+      renderShell();
+    } catch (_) {}
+    renderActiveTab();
   };
 
-  window.CanvasViews = CanvasViews;
-  window.CanvasState = CanvasState;
-  window.CanvasAPI = CanvasAPI;
-  window.updateFluxCanvasAIBadge = updateAICanvasContextBadge;
+  // Legacy aliases — some places in app.js still call these names.
+  window.initCanvasPanel = window.__fluxRenderCanvasPanel;
+
+  // Provide a no-op stub for any leftover references to the old API surface.
+  // (Old code paths that called CanvasViews.navigate now just refresh the panel.)
+  window.CanvasViews = {
+    navigate: function () { window.__fluxRenderCanvasPanel(); },
+    back: function () { window.__fluxRenderCanvasPanel(); },
+    forward: function () { window.__fluxRenderCanvasPanel(); },
+  };
+  // Expose minimal state shape for legacy callers that read window.CanvasState
+  // (e.g. AI prompt builder, school panel disconnect). Updated by renderShell().
+  Object.defineProperty(CV, "token", { get(){ try{return canvasToken||"";}catch{return "";} } });
+  Object.defineProperty(CV, "pageContext", { value: null, writable: true });
+  window.CanvasState = CV;
+
+  // Stubs for legacy mobile-sidebar / split-layout helpers that app.js calls.
+  // The new hub is a single column, no split mode, no mobile drawer — these
+  // exist purely to avoid "is not a function" warnings on nav transitions.
+  if (typeof window.fluxCanvasCloseMobileSidebar !== "function") {
+    window.fluxCanvasCloseMobileSidebar = function () {};
+  }
+  if (typeof window.fluxApplyCanvasSplitLayout !== "function") {
+    window.fluxApplyCanvasSplitLayout = function () {};
+  }
 })();
