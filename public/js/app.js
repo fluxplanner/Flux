@@ -1601,7 +1601,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.renderOverdueBanner();FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -4861,7 +4861,32 @@ function getFluxAIModeInstructions(){
   if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable.\n</mode_overtime>`;
   return'';
 }
-function renderAISugs(){const el=document.getElementById('aiSugs');if(!el)return;el.innerHTML='';const sugs=["What's due this week?","What should I work on right now?","/plan — study plan using my tasks"];sugs.forEach(s=>{const btn=document.createElement('button');btn.className='ai-sug';btn.textContent=s;btn.onclick=()=>{document.getElementById('aiInput').value=s;sendAI();};el.appendChild(btn);});}
+function renderAISugs(){
+  const el=document.getElementById('aiSugs');
+  if(!el)return;
+  el.innerHTML='';
+  const sugs=[
+    {ico:'📅', label:"What's due this week?",        prompt:"What's due this week?"},
+    {ico:'⚡', label:"What should I work on now?",   prompt:"What should I work on right now?"},
+    {ico:'🧭', label:"Plan my week",                 prompt:"/plan — study plan using my tasks"},
+    {ico:'📊', label:"How am I doing overall?",      prompt:"How am I doing overall? Summarize my progress and what to focus on."},
+    {ico:'🎯', label:"Optimize my schedule",         prompt:"/optimize — review my plan and suggest improvements."},
+    {ico:'🛠', label:"Fix overdue items",            prompt:"/fix — help me catch up on overdue work."},
+  ];
+  sugs.forEach(s=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='ai-sug';
+    btn.innerHTML=`<span class="ai-sug__ico" aria-hidden="true">${s.ico}</span><span class="ai-sug__lbl">${s.label}</span>`;
+    btn.setAttribute('aria-label',s.label);
+    btn.onclick=()=>{
+      const inp=document.getElementById('aiInput');
+      if(inp){inp.value=s.prompt;try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}}
+      sendAI();
+    };
+    el.appendChild(btn);
+  });
+}
 function handleAIImg(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -11799,3 +11824,1255 @@ try{
     renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();
   };
 }catch(e){}
+
+// ════════════════════════════════════════════════════════════════════
+// EDUCATOR PLATFORM — role select, staff signup, teacher/counselor
+// dashboards, counselor booking, FluxMessaging, role routing.
+// ════════════════════════════════════════════════════════════════════
+
+// Panel titles for the new dashboards
+try{
+  PANEL_TITLES.teacherDashboard='Teacher Dashboard';
+  PANEL_TITLES.counselorDashboard='Counselor Dashboard';
+}catch(_){}
+
+// Cached role + counselor record once we know who the user is.
+window._userRole=window._userRole||null;
+window._counselorRecord=null;
+
+function getTimeOfDay(){
+  const h=new Date().getHours();
+  if(h<12)return 'morning';
+  if(h<18)return 'afternoon';
+  return 'evening';
+}
+
+// ── First-visit gate: show role select before login ───────────────
+function showRoleSelectOrLogin(){
+  const hasVisited=(()=>{try{return localStorage.getItem('flux_has_visited');}catch(_){return null;}})();
+  if(hasVisited){
+    showLoginScreen();
+    return;
+  }
+  const rs=document.getElementById('roleSelectScreen');
+  if(rs){rs.style.display='block';rs.classList.add('visible');}
+  else showLoginScreen();
+}
+window.showRoleSelectOrLogin=showRoleSelectOrLogin;
+
+function selectRole(role){
+  try{
+    localStorage.setItem('flux_onboarding_role',role);
+    localStorage.setItem('flux_has_visited','1');
+  }catch(_){}
+  const rs=document.getElementById('roleSelectScreen');
+  if(rs){rs.style.display='none';rs.classList.remove('visible');}
+  if(role==='staff'){
+    showStaffOnboarding();
+  }else{
+    showLoginScreen();
+  }
+}
+window.selectRole=selectRole;
+
+// Patch showLoginScreen so it always hides the role-select screen too
+(function patchShowLoginScreen(){
+  const orig=window.showLoginScreen||showLoginScreen;
+  if(!orig||orig.__fluxEduPatched)return;
+  const wrapped=function(){
+    const rs=document.getElementById('roleSelectScreen');
+    if(rs){rs.style.display='none';rs.classList.remove('visible');}
+    return orig.apply(this,arguments);
+  };
+  wrapped.__fluxEduPatched=true;
+  try{window.showLoginScreen=wrapped;}catch(_){}
+})();
+
+// Patch showLoginOrApp to gate on first-visit role select
+(function patchShowLoginOrApp(){
+  if(typeof showLoginOrApp!=='function')return;
+  if(showLoginOrApp.__fluxEduPatched)return;
+  const orig=showLoginOrApp;
+  const wrapped=function(){
+    const onboarded=load('flux_onboarded',false);
+    const hasData=tasks.length>0||notes.length>0||classes.length>0;
+    const wasGuest=load('flux_was_guest',false);
+    const hasVisited=(()=>{try{return localStorage.getItem('flux_has_visited');}catch(_){return null;}})();
+    // If a returning guest with data → keep existing behavior (show app)
+    if(wasGuest&&(onboarded||hasData))return orig.apply(this,arguments);
+    if(!hasVisited){showRoleSelectOrLogin();return;}
+    return orig.apply(this,arguments);
+  };
+  wrapped.__fluxEduPatched=true;
+  try{window.showLoginOrApp=wrapped;showLoginOrApp=wrapped;}catch(_){}
+})();
+
+// ── Staff signup flow ─────────────────────────────────────────────
+// NOTE: codes are validated client-side as a placeholder. Production
+// should call a Supabase Edge Function that checks a secure list.
+const FLUX_STAFF_CODES={
+  TEACHER2025:'teacher',
+  COUNSELOR2025:'counselor',
+  STAFF2025:'staff',
+  ADMIN2025:'admin',
+};
+
+function showStaffOnboarding(){
+  if(document.getElementById('staffOnboarding'))return;
+  const overlay=document.createElement('div');
+  overlay.id='staffOnboarding';
+  overlay.innerHTML=`
+    <div style="max-width:480px;width:100%">
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-size:1.8rem;font-weight:800;margin-bottom:8px">Staff sign up</div>
+        <div style="font-size:.85rem;color:var(--muted2)">Create your educator account</div>
+      </div>
+      <div class="mrow"><label for="staffRoleSelect">Your role</label>
+        <select id="staffRoleSelect">
+          <option value="teacher">Teacher</option>
+          <option value="counselor">Counselor</option>
+          <option value="staff">Staff / Admin</option>
+        </select>
+      </div>
+      <div class="mrow"><label for="staffName">Full name</label>
+        <input id="staffName" type="text" placeholder="e.g. Ms. Johnson">
+      </div>
+      <div class="mrow" id="staffSubjectRow"><label for="staffSubject">Subject</label>
+        <input id="staffSubject" type="text" placeholder="e.g. AP Chemistry, Math 10">
+      </div>
+      <div class="mrow"><label for="staffEmail">School email</label>
+        <input id="staffEmail" type="email" placeholder="your@school.edu" autocomplete="email">
+      </div>
+      <div class="mrow"><label for="staffPassword">Password</label>
+        <input id="staffPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="mrow"><label for="staffCode">Staff verification code</label>
+        <input id="staffCode" type="text" placeholder="Ask your administrator">
+        <div style="font-size:.72rem;color:var(--muted2);margin-top:4px">Your school's administrator can provide this code.</div>
+      </div>
+      <div id="staffSignupError" style="display:none;font-size:.78rem;color:var(--red);padding:10px 14px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
+      <button id="staffSignupBtn" style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:14px;color:#0a0d18;font-weight:700;font-size:.95rem;cursor:pointer">Create staff account</button>
+      <div style="text-align:center;margin-top:16px;font-size:.8rem;color:var(--muted2)">
+        Already have an account?
+        <span id="staffBackToLogin" style="color:var(--accent);cursor:pointer">Sign in</span>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const roleSel=document.getElementById('staffRoleSelect');
+  const subjectRow=document.getElementById('staffSubjectRow');
+  roleSel?.addEventListener('change',function(){
+    if(subjectRow)subjectRow.style.display=this.value==='teacher'?'block':'none';
+  });
+  document.getElementById('staffSignupBtn')?.addEventListener('click',submitStaffSignup);
+  document.getElementById('staffBackToLogin')?.addEventListener('click',()=>{
+    overlay.remove();
+    showLoginScreen();
+  });
+}
+window.showStaffOnboarding=showStaffOnboarding;
+
+async function submitStaffSignup(){
+  const errEl=document.getElementById('staffSignupError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  const role=document.getElementById('staffRoleSelect')?.value||'teacher';
+  const name=(document.getElementById('staffName')?.value||'').trim();
+  const subject=(document.getElementById('staffSubject')?.value||'').trim();
+  const email=(document.getElementById('staffEmail')?.value||'').trim();
+  const password=document.getElementById('staffPassword')?.value||'';
+  const code=String(document.getElementById('staffCode')?.value||'').trim().toUpperCase();
+
+  if(!name||!email||!password){setErr('Please fill out all required fields');return;}
+  if(password.length<8){setErr('Password must be at least 8 characters');return;}
+  const expectedRole=FLUX_STAFF_CODES[code];
+  if(!expectedRole){setErr('Invalid staff verification code — contact your administrator.');return;}
+
+  const btn=document.getElementById('staffSignupBtn');
+  if(btn){btn.disabled=true;btn.textContent='Creating account…';}
+
+  try{
+    const sb=getSB();
+    if(!sb)throw new Error('Auth not available right now');
+    // Cache so detectUserRoleAndRoute can upsert on first sign-in even if
+    // the project requires email confirmation (no session at signup time).
+    try{
+      localStorage.setItem('flux_pending_staff_role',expectedRole);
+      localStorage.setItem('flux_pending_staff_name',name);
+      if(subject)localStorage.setItem('flux_pending_staff_subject',subject);
+    }catch(_){}
+    const {data,error}=await sb.auth.signUp({
+      email,password,
+      options:{data:{full_name:name,role:expectedRole}},
+    });
+    if(error)throw error;
+    const user=data?.user;
+    if(!user)throw new Error('Account creation failed');
+    if(data?.session){
+      await sb.from('user_roles').upsert({
+        user_id:user.id,
+        role:expectedRole,
+        display_name:name,
+        subject:subject||null,
+        updated_at:new Date().toISOString(),
+      });
+      if(expectedRole==='counselor'){
+        const lastName=name.split(' ').filter(Boolean).pop();
+        if(lastName){
+          try{
+            await sb.from('counselors').update({user_id:user.id})
+              .ilike('name','%'+lastName+'%')
+              .is('user_id',null);
+          }catch(_){}
+        }
+      }
+      try{
+        localStorage.removeItem('flux_pending_staff_role');
+        localStorage.removeItem('flux_pending_staff_name');
+        localStorage.removeItem('flux_pending_staff_subject');
+      }catch(_){}
+      document.getElementById('staffOnboarding')?.remove();
+      showToast(`Welcome, ${name}! Your ${expectedRole} account is ready.`);
+    }else{
+      document.getElementById('staffOnboarding')?.remove();
+      showToast('Account created — check your email for a confirmation link, then sign in.','info',6000);
+      showLoginScreen();
+    }
+  }catch(e){
+    setErr(String(e.message||e));
+    if(btn){btn.disabled=false;btn.textContent='Create staff account';}
+  }
+}
+window.submitStaffSignup=submitStaffSignup;
+
+// ── Role detection + routing after sign-in ────────────────────────
+async function detectUserRoleAndRoute(){
+  if(!currentUser)return 'student';
+  const sb=getSB();
+  if(!sb)return 'student';
+  let role='student';
+  let counselorRow=null;
+  let displayName=null;
+  try{
+    const {data}=await sb.from('user_roles')
+      .select('role,display_name')
+      .eq('user_id',currentUser.id)
+      .maybeSingle();
+    if(data?.role)role=data.role;
+    if(data?.display_name)displayName=data.display_name;
+  }catch(_){}
+
+  // First sign-in after email-confirm staff signup: apply pending role now
+  if(role==='student'){
+    let pendingRole='',pendingName='',pendingSubject='';
+    try{
+      pendingRole=localStorage.getItem('flux_pending_staff_role')||'';
+      pendingName=localStorage.getItem('flux_pending_staff_name')||'';
+      pendingSubject=localStorage.getItem('flux_pending_staff_subject')||'';
+    }catch(_){}
+    if(pendingRole&&['teacher','counselor','staff','admin'].includes(pendingRole)){
+      try{
+        await sb.from('user_roles').upsert({
+          user_id:currentUser.id,
+          role:pendingRole,
+          display_name:pendingName||displayName||null,
+          subject:pendingSubject||null,
+          updated_at:new Date().toISOString(),
+        });
+        role=pendingRole;
+        if(pendingRole==='counselor'&&pendingName){
+          const lastName=pendingName.split(' ').filter(Boolean).pop();
+          if(lastName){
+            try{
+              await sb.from('counselors').update({user_id:currentUser.id})
+                .ilike('name','%'+lastName+'%')
+                .is('user_id',null);
+            }catch(_){}
+          }
+        }
+        try{
+          localStorage.removeItem('flux_pending_staff_role');
+          localStorage.removeItem('flux_pending_staff_name');
+          localStorage.removeItem('flux_pending_staff_subject');
+        }catch(_){}
+      }catch(_){}
+    }
+  }
+  // If counselor, pull their counselor record
+  if(role==='counselor'){
+    try{
+      const {data:cr}=await sb.from('counselors')
+        .select('*')
+        .eq('user_id',currentUser.id)
+        .maybeSingle();
+      counselorRow=cr||null;
+    }catch(_){}
+  }
+  window._userRole=role;
+  window._counselorRecord=counselorRow;
+
+  // Hide student-only sidebar items for staff accounts
+  if(role==='teacher'||role==='counselor'||role==='staff'||role==='admin'){
+    document.querySelectorAll('.sidebar .nav-item[data-tab],.mob-drawer .nav-item').forEach((el)=>{
+      const tab=el.dataset?.tab||'';
+      if(['mood','goals','habits'].includes(tab))el.style.display='none';
+    });
+  }
+
+  if(role==='teacher'||role==='staff'||role==='admin'){
+    nav('teacherDashboard');
+    renderTeacherDashboard();
+  }else if(role==='counselor'){
+    nav('counselorDashboard');
+    renderCounselorDashboard();
+  }else{
+    setTimeout(()=>{
+      try{renderMyCounselorSection();}catch(_){}
+      try{loadTeacherAssignments();}catch(_){}
+    },500);
+  }
+  return role;
+}
+window.detectUserRoleAndRoute=detectUserRoleAndRoute;
+
+// Patch handleSignedIn so role routing runs after the existing flow
+(function patchHandleSignedIn(){
+  if(typeof handleSignedIn!=='function')return;
+  if(handleSignedIn.__fluxEduPatched)return;
+  const orig=handleSignedIn;
+  const wrapped=async function(user,session){
+    const out=await orig.call(this,user,session);
+    try{await detectUserRoleAndRoute();}catch(e){console.warn('[Flux] role routing failed',e);}
+    return out;
+  };
+  wrapped.__fluxEduPatched=true;
+  try{window.handleSignedIn=wrapped;handleSignedIn=wrapped;}catch(_){}
+})();
+
+// ── Teacher dashboard ─────────────────────────────────────────────
+async function renderTeacherDashboard(){
+  const host=document.getElementById('teacherDashboardBody');
+  if(!host||!currentUser)return;
+  const sb=getSB();if(!sb)return;
+  host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>';
+
+  let classesRows=[];let recentCompletions=[];let unreadMessages=[];
+  try{
+    const {data:cls}=await sb.from('teacher_classes')
+      .select('*,teacher_assignments(id,title,due_date,visible)')
+      .eq('teacher_id',currentUser.id)
+      .eq('active',true);
+    classesRows=cls||[];
+    const assignmentIds=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>a.id));
+    if(assignmentIds.length){
+      const {data:rc}=await sb.from('student_completions')
+        .select('id,status,submitted_at,assignment_id,student_id,grade,teacher_assignments(title)')
+        .in('assignment_id',assignmentIds)
+        .order('submitted_at',{ascending:false,nullsFirst:false})
+        .limit(20);
+      recentCompletions=rc||[];
+    }
+    const {data:um}=await sb.from('flux_messages')
+      .select('id,content,sender_id,thread_id,created_at')
+      .eq('recipient_id',currentUser.id)
+      .eq('read',false)
+      .order('created_at',{ascending:false})
+      .limit(10);
+    unreadMessages=um||[];
+  }catch(e){console.warn('[Flux teacher] load failed',e);}
+
+  const teacherFirst=(currentUser.user_metadata?.full_name||currentUser.email||'Teacher').split(' ')[0];
+  const totalAssignments=classesRows.reduce((s,c)=>s+((c.teacher_assignments||[]).length||0),0);
+  const submittedPending=recentCompletions.filter(c=>c.status==='submitted').length;
+
+  host.innerHTML=`
+    <div class="teacher-dashboard">
+      <div class="teacher-header">
+        <div>
+          <div class="teacher-greeting">Welcome back, ${esc(teacherFirst)}</div>
+          <div class="teacher-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+        </div>
+        <div class="teacher-header-actions">
+          <button class="btn-primary" data-action="new-assignment">+ New assignment</button>
+          <button data-action="new-class">+ New class</button>
+        </div>
+      </div>
+
+      <div class="teacher-stats">
+        <div class="teacher-stat-card">
+          <div class="stat-number">${classesRows.length}</div>
+          <div class="stat-label">Active classes</div>
+        </div>
+        <div class="teacher-stat-card">
+          <div class="stat-number">${totalAssignments}</div>
+          <div class="stat-label">Assignments posted</div>
+        </div>
+        <div class="teacher-stat-card">
+          <div class="stat-number">${submittedPending}</div>
+          <div class="stat-label">Pending review</div>
+        </div>
+        <div class="teacher-stat-card">
+          <div class="stat-number">${unreadMessages.length}</div>
+          <div class="stat-label">Unread messages</div>
+        </div>
+      </div>
+
+      <div class="teacher-grid">
+        <div class="teacher-section">
+          <div class="section-header"><h3>Your classes</h3><button class="btn-sm" data-action="new-class">+ Add</button></div>
+          ${classesRows.length
+            ? classesRows.map(c=>renderTeacherClassCard(c)).join('')
+            : '<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No classes yet</div><div class="empty-sub">Create your first class to get started.</div></div>'}
+        </div>
+        <div class="teacher-section">
+          <div class="section-header"><h3>Recent submissions</h3></div>
+          ${recentCompletions.length
+            ? recentCompletions.slice(0,8).map(c=>`
+              <div class="submission-row" data-completion-id="${esc(c.id)}">
+                <div class="submission-avatar">S</div>
+                <div class="submission-info">
+                  <div class="submission-student">Student ${esc(String(c.student_id).slice(0,6))}</div>
+                  <div class="submission-task">${esc(c.teacher_assignments?.title||'Assignment')}</div>
+                </div>
+                <div class="submission-status status-${esc(c.status)}">${esc(c.status)}</div>
+              </div>`).join('')
+            : '<div style="font-size:.82rem;color:var(--muted2);padding:12px 0">No submissions yet</div>'}
+
+          ${unreadMessages.length?`
+            <div class="section-header" style="margin-top:20px"><h3>Messages (${unreadMessages.length})</h3></div>
+            ${unreadMessages.slice(0,5).map(m=>`
+              <div class="message-preview-row" data-message-sender="${esc(m.sender_id)}">
+                <div class="msg-avatar">S</div>
+                <div class="msg-info">
+                  <div class="msg-sender">Student ${esc(String(m.sender_id).slice(0,6))}</div>
+                  <div class="msg-preview">${esc((m.content||'').slice(0,60))}</div>
+                </div>
+                <div class="msg-unread-dot" aria-hidden="true"></div>
+              </div>`).join('')}
+          `:''}
+        </div>
+      </div>
+    </div>`;
+
+  // Wire actions (avoids inline onclick — keeps CSP friendly)
+  host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',openCreateAssignmentModal));
+  host.querySelectorAll('[data-action="new-class"]').forEach(b=>b.addEventListener('click',openCreateClassModal));
+  host.querySelectorAll('[data-message-sender]').forEach(row=>{
+    row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
+  });
+  host.querySelectorAll('.teacher-class-card[data-class-id]').forEach(card=>{
+    card.addEventListener('click',()=>openTeacherClassView(card.dataset.classId));
+  });
+}
+window.renderTeacherDashboard=renderTeacherDashboard;
+
+function renderTeacherClassCard(cls){
+  const assignmentCount=(cls.teacher_assignments||[]).length;
+  return `
+    <button type="button" class="teacher-class-card" data-class-id="${esc(cls.id)}">
+      <div class="class-color-stripe"></div>
+      <div class="class-card-body">
+        <div class="class-name">${esc(cls.class_name)}</div>
+        <div class="class-meta">${esc(cls.subject||'')}${cls.period?' · Period '+esc(cls.period):''}</div>
+        <div class="class-stats">
+          <span>${assignmentCount} assignment${assignmentCount===1?'':'s'}</span>
+          <span class="class-code">Code: ${esc(cls.class_code)}</span>
+        </div>
+      </div>
+      <div class="class-card-arrow" aria-hidden="true">›</div>
+    </button>`;
+}
+
+function openTeacherClassView(classId){
+  // Lightweight view: scroll to top + toast for now. Full view can be wired later.
+  showToast(`Class ${String(classId).slice(0,6)} — full view coming soon`,'info',2500);
+}
+window.openTeacherClassView=openTeacherClassView;
+
+// ── Create class modal ────────────────────────────────────────────
+function openCreateClassModal(){
+  if(document.getElementById('createClassModal'))return;
+  const modal=buildEduModal('createClassModal',`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:1rem;font-weight:800">New class</h3>
+      <button type="button" class="edu-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="mrow"><label>Class name *</label><input id="cls_name" placeholder="e.g. AP Chemistry — Period 3"></div>
+    <div class="mrow"><label>Subject</label><input id="cls_subject" placeholder="e.g. Chemistry"></div>
+    <div class="mrow"><label>Period</label><input id="cls_period" placeholder="e.g. 3"></div>
+    <div class="mrow"><label>Description</label><textarea id="cls_desc" placeholder="Optional" style="min-height:60px"></textarea></div>
+    <div id="clsError" class="edu-modal-error" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="cls_submit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Create class</button>
+      <button class="edu-modal-close" style="padding:12px 18px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
+    </div>`);
+  modal.querySelector('#cls_submit')?.addEventListener('click',submitCreateClass);
+}
+window.openCreateClassModal=openCreateClassModal;
+
+async function submitCreateClass(){
+  const sb=getSB();if(!sb)return;
+  const name=document.getElementById('cls_name')?.value.trim();
+  const subject=document.getElementById('cls_subject')?.value.trim();
+  const period=document.getElementById('cls_period')?.value.trim();
+  const desc=document.getElementById('cls_desc')?.value.trim();
+  const errEl=document.getElementById('clsError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  if(!name){setErr('Class name is required');return;}
+  const code=generateClassCode();
+  const {error}=await sb.from('teacher_classes').insert({
+    teacher_id:currentUser.id,
+    class_name:name,
+    class_code:code,
+    subject:subject||null,
+    period:period||null,
+    description:desc||null,
+    active:true,
+  });
+  if(error){setErr(error.message);return;}
+  document.getElementById('createClassModal')?.remove();
+  showToast(`✓ Class "${name}" created · code ${code}`);
+  renderTeacherDashboard();
+}
+window.submitCreateClass=submitCreateClass;
+
+function generateClassCode(){
+  // 6-character base36 — readable, low collision risk for small schools
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out='';
+  for(let i=0;i<6;i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+
+// ── Create assignment modal ──────────────────────────────────────
+function openCreateAssignmentModal(){
+  if(document.getElementById('createAsgnModal'))return;
+  const sb=getSB();if(!sb)return;
+  const modal=buildEduModal('createAsgnModal',`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:1rem;font-weight:800">Post new assignment</h3>
+      <button type="button" class="edu-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="mrow"><label>Title *</label><input id="asgn_title" placeholder="e.g. Chapter 5 reading"></div>
+    <div class="irow modal-labeled-row">
+      <div style="flex:1"><label>Class *</label><select id="asgn_class" style="margin:0;width:100%"><option value="">Loading…</option></select></div>
+      <div style="flex:1"><label>Type</label>
+        <select id="asgn_type" style="margin:0;width:100%">
+          <option value="homework">Homework</option>
+          <option value="quiz">Quiz</option>
+          <option value="test">Test</option>
+          <option value="project">Project</option>
+          <option value="essay">Essay</option>
+          <option value="lab">Lab</option>
+          <option value="reading">Reading</option>
+        </select>
+      </div>
+    </div>
+    <div class="irow modal-labeled-row">
+      <div style="flex:1"><label>Due date</label><input id="asgn_due_date" type="date" style="margin:0"></div>
+      <div style="flex:1"><label>Due time</label><input id="asgn_due_time" type="time" value="23:59" style="margin:0"></div>
+    </div>
+    <div class="irow modal-labeled-row">
+      <div style="flex:1"><label>Points</label><input id="asgn_points" type="number" value="100" min="0" style="margin:0"></div>
+      <div style="flex:1"><label>Est. minutes</label><input id="asgn_time" type="number" value="30" min="5" style="margin:0"></div>
+    </div>
+    <div class="mrow"><label>Priority</label>
+      <div style="display:flex;gap:14px;font-size:.85rem">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="asgn_pri" value="high"> High</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="asgn_pri" value="med" checked> Medium</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="asgn_pri" value="low"> Low</label>
+      </div>
+    </div>
+    <div class="mrow"><label>Description / instructions</label>
+      <textarea id="asgn_desc" placeholder="Any details, instructions, or resources…" style="min-height:80px"></textarea>
+    </div>
+    <div id="asgnError" class="edu-modal-error" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="asgn_submit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Post assignment</button>
+      <button class="edu-modal-close" style="padding:12px 18px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
+    </div>`);
+
+  sb.from('teacher_classes').select('id,class_name,class_code').eq('teacher_id',currentUser.id).eq('active',true)
+    .then(({data})=>{
+      const sel=document.getElementById('asgn_class');
+      if(!sel)return;
+      if(!data||!data.length){
+        sel.innerHTML='<option value="">No classes — create a class first</option>';
+      }else{
+        sel.innerHTML=data.map(c=>`<option value="${esc(c.id)}">${esc(c.class_name)} · ${esc(c.class_code)}</option>`).join('');
+      }
+    });
+  modal.querySelector('#asgn_submit')?.addEventListener('click',submitCreateAssignment);
+}
+window.openCreateAssignmentModal=openCreateAssignmentModal;
+
+async function submitCreateAssignment(){
+  const sb=getSB();if(!sb)return;
+  const title=document.getElementById('asgn_title')?.value.trim();
+  const classId=document.getElementById('asgn_class')?.value;
+  const type=document.getElementById('asgn_type')?.value||'homework';
+  const dueDate=document.getElementById('asgn_due_date')?.value||null;
+  const dueTime=document.getElementById('asgn_due_time')?.value||'23:59:00';
+  const points=parseInt(document.getElementById('asgn_points')?.value)||100;
+  const estMin=parseInt(document.getElementById('asgn_time')?.value)||30;
+  const desc=document.getElementById('asgn_desc')?.value.trim();
+  const priority=document.querySelector('input[name="asgn_pri"]:checked')?.value||'med';
+  const errEl=document.getElementById('asgnError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  if(!title||!classId){setErr('Title and class are required');return;}
+
+  const {data:cls}=await sb.from('teacher_classes').select('class_code').eq('id',classId).maybeSingle();
+  const {error}=await sb.from('teacher_assignments').insert({
+    teacher_id:currentUser.id,
+    class_id:classId,
+    class_code:cls?.class_code||null,
+    title,
+    type,
+    description:desc||null,
+    due_date:dueDate||null,
+    due_time:dueTime||'23:59:00',
+    points_possible:points,
+    estimated_minutes:estMin,
+    priority,
+    visible:true,
+  });
+  if(error){setErr(error.message);return;}
+  document.getElementById('createAsgnModal')?.remove();
+  showToast(`✓ "${title}" posted to your class`);
+  renderTeacherDashboard();
+}
+window.submitCreateAssignment=submitCreateAssignment;
+
+// ── Counselor dashboard ───────────────────────────────────────────
+async function renderCounselorDashboard(){
+  const host=document.getElementById('counselorDashboardBody');
+  if(!host||!currentUser)return;
+  const sb=getSB();if(!sb)return;
+  host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>';
+
+  let counselorRow=window._counselorRecord;
+  if(!counselorRow){
+    try{
+      const {data}=await sb.from('counselors')
+        .select('*').eq('user_id',currentUser.id).maybeSingle();
+      counselorRow=data||null;
+      window._counselorRecord=counselorRow;
+    }catch(_){}
+  }
+  if(!counselorRow){
+    host.innerHTML=`
+      <div class="empty">
+        <div class="empty-icon">⚠</div>
+        <div class="empty-title">Counselor record not found</div>
+        <div class="empty-sub">Ask the system administrator to link your account to a counselor profile.</div>
+      </div>`;
+    return;
+  }
+
+  const today=new Date().toISOString().slice(0,10);
+  let appointments=[];let messages=[];
+  try{
+    const {data:appts}=await sb.from('counselor_appointments')
+      .select('*')
+      .eq('counselor_id',counselorRow.id)
+      .gte('date',today)
+      .order('date',{ascending:true})
+      .order('time_slot',{ascending:true})
+      .limit(30);
+    appointments=appts||[];
+    const {data:msgs}=await sb.from('flux_messages')
+      .select('id,content,sender_id,thread_id,created_at')
+      .eq('recipient_id',currentUser.id)
+      .eq('read',false)
+      .order('created_at',{ascending:false})
+      .limit(15);
+    messages=msgs||[];
+  }catch(e){console.warn('[Flux counselor] load failed',e);}
+
+  const todayAppts=appointments.filter(a=>a.date===today);
+  const upcomingAppts=appointments.filter(a=>a.date>today);
+
+  host.innerHTML=`
+    <div class="counselor-dashboard">
+      <div class="teacher-header">
+        <div>
+          <div class="teacher-greeting">Good ${getTimeOfDay()}, ${esc(counselorRow.name||'Counselor')}</div>
+          <div class="teacher-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+        </div>
+      </div>
+
+      <div class="teacher-stats">
+        <div class="teacher-stat-card">
+          <div class="stat-number">${todayAppts.length}</div>
+          <div class="stat-label">Today's appointments</div>
+        </div>
+        <div class="teacher-stat-card">
+          <div class="stat-number">${upcomingAppts.length}</div>
+          <div class="stat-label">Upcoming</div>
+        </div>
+        <div class="teacher-stat-card">
+          <div class="stat-number">${messages.length}</div>
+          <div class="stat-label">Unread messages</div>
+        </div>
+      </div>
+
+      <div class="teacher-grid">
+        <div class="teacher-section">
+          <div class="section-header"><h3>Today's schedule</h3></div>
+          ${todayAppts.length?todayAppts.map(a=>`
+            <div class="appointment-row">
+              <div class="appt-time">${esc(a.time_slot)}</div>
+              <div class="appt-student">Student ${esc(String(a.student_id).slice(0,6))}</div>
+              <div class="appt-reason">${esc((a.reason||'').slice(0,40)||'No reason given')}</div>
+              <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
+            </div>`).join('')
+            :'<div style="font-size:.82rem;color:var(--muted2);padding:12px 0">No appointments today</div>'}
+          ${upcomingAppts.length?`
+            <div class="section-header" style="margin-top:20px"><h3>Upcoming (${upcomingAppts.length})</h3></div>
+            ${upcomingAppts.slice(0,8).map(a=>`
+              <div class="appointment-row">
+                <div class="appt-time">${new Date(a.date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${esc(a.time_slot)}</div>
+                <div class="appt-student">Student ${esc(String(a.student_id).slice(0,6))}</div>
+                <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
+              </div>`).join('')}
+          `:''}
+        </div>
+        <div class="teacher-section">
+          <div class="section-header"><h3>Messages${messages.length?` (${messages.length})`:''}</h3></div>
+          ${messages.length?messages.slice(0,8).map(m=>`
+            <div class="message-preview-row" data-message-sender="${esc(m.sender_id)}">
+              <div class="msg-avatar">S</div>
+              <div class="msg-info">
+                <div class="msg-sender">Student ${esc(String(m.sender_id).slice(0,6))}</div>
+                <div class="msg-preview">${esc((m.content||'').slice(0,55))}</div>
+              </div>
+              <div class="msg-unread-dot" aria-hidden="true"></div>
+            </div>`).join('')
+            :'<div style="font-size:.82rem;color:var(--muted2);padding:12px 0">No unread messages</div>'}
+        </div>
+      </div>
+    </div>`;
+
+  host.querySelectorAll('[data-message-sender]').forEach(row=>{
+    row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
+  });
+}
+window.renderCounselorDashboard=renderCounselorDashboard;
+
+// ── Student "My Counselor" section (rendered into profile panel) ──
+async function renderMyCounselorSection(){
+  const host=document.getElementById('myCounselorSection');
+  if(!host||!currentUser)return;
+  const sb=getSB();if(!sb)return;
+
+  // Hide for non-students
+  if(window._userRole&&window._userRole!=='student'){host.innerHTML='';return;}
+
+  let counselor=null;
+  try{
+    const {data:sc}=await sb.from('student_counselors')
+      .select('counselor_id,counselors(*)')
+      .eq('student_id',currentUser.id)
+      .maybeSingle();
+    counselor=sc?.counselors||null;
+  }catch(_){}
+
+  if(!counselor){
+    host.innerHTML=`
+      <div class="card">
+        <h3>School counselor</h3>
+        <div class="empty">
+          <div class="empty-icon">💬</div>
+          <div class="empty-title">No counselor selected</div>
+          <div class="empty-sub">Pick your counselor to book appointments and send messages.</div>
+        </div>
+        <button id="pickCounselorBtn" style="width:100%;margin-top:12px">Select counselor</button>
+      </div>`;
+    host.querySelector('#pickCounselorBtn')?.addEventListener('click',openCounselorSelectModal);
+    return;
+  }
+
+  const today=new Date().toISOString().slice(0,10);
+  let upcoming=[];
+  try{
+    const {data}=await sb.from('counselor_appointments')
+      .select('id,date,time_slot,reason,status')
+      .eq('student_id',currentUser.id)
+      .eq('counselor_id',counselor.id)
+      .gte('date',today)
+      .order('date',{ascending:true})
+      .limit(5);
+    upcoming=data||[];
+  }catch(_){}
+
+  host.innerHTML=`
+    <div class="card">
+      <h3>My counselor</h3>
+      <div class="counselor-profile-row">
+        <div class="counselor-avatar-lg" style="background:${esc(counselor.avatar_color||'#7c5cff')}">${esc(counselor.avatar_initial||(counselor.name||'?')[0])}</div>
+        <div>
+          <div class="counselor-name">${esc(counselor.name)}</div>
+          <div class="counselor-bio">${esc((counselor.bio||'').slice(0,120))}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin:14px 0">
+        <button id="bookApptBtn" style="flex:1;padding:10px;font-size:.82rem">📅 Book appointment</button>
+        <button id="msgCounselorBtn" style="flex:1;padding:10px;font-size:.82rem">💬 Message</button>
+      </div>
+      ${upcoming.length?`
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Upcoming appointments</div>
+        ${upcoming.map(a=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">
+            <div style="font-size:.82rem;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--accent)">
+              ${new Date(a.date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${esc(a.time_slot)}
+            </div>
+            <div style="flex:1;font-size:.78rem;color:var(--muted2)">${esc((a.reason||'').slice(0,40)||'No reason')}</div>
+            <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
+          </div>`).join('')}
+      `:'<div style="font-size:.78rem;color:var(--muted2)">No upcoming appointments</div>'}
+    </div>`;
+  host.querySelector('#bookApptBtn')?.addEventListener('click',()=>openBookAppointmentModal(counselor.id));
+  host.querySelector('#msgCounselorBtn')?.addEventListener('click',()=>openMessageComposer(counselor.user_id,counselor.name));
+}
+window.renderMyCounselorSection=renderMyCounselorSection;
+
+function openCounselorSelectModal(){
+  if(document.getElementById('counselorPickModal'))return;
+  const sb=getSB();if(!sb)return;
+  const modal=buildEduModal('counselorPickModal',`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:1rem;font-weight:800">Pick your counselor</h3>
+      <button type="button" class="edu-modal-close" aria-label="Close">✕</button>
+    </div>
+    <div id="counselorList" class="counselor-select-list">
+      <div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>
+    </div>`);
+  sb.from('counselors').select('*').eq('active',true).then(({data})=>{
+    const list=document.getElementById('counselorList');
+    if(!list)return;
+    if(!data?.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤷</div><div class="empty-title">No counselors available</div></div>';return;}
+    list.innerHTML=data.map(c=>`
+      <button type="button" class="counselor-select-card" data-counselor-id="${esc(c.id)}">
+        <div class="counselor-avatar" style="background:${esc(c.avatar_color||'#7c5cff')}">${esc(c.avatar_initial||(c.name||'?')[0])}</div>
+        <div class="counselor-info">
+          <div class="counselor-name">${esc(c.name)}</div>
+          <div class="counselor-bio">${esc((c.bio||'').slice(0,140))}</div>
+        </div>
+        <div class="counselor-select-check">○</div>
+      </button>`).join('');
+    list.querySelectorAll('[data-counselor-id]').forEach(card=>{
+      card.addEventListener('click',async()=>{
+        const id=card.dataset.counselorId;
+        await sb.from('student_counselors').upsert({student_id:currentUser.id,counselor_id:id});
+        document.getElementById('counselorPickModal')?.remove();
+        showToast('✓ Counselor selected');
+        renderMyCounselorSection();
+      });
+    });
+  });
+}
+window.openCounselorSelectModal=openCounselorSelectModal;
+
+// ── Appointment booking ───────────────────────────────────────────
+let _selectedApptDate=null,_selectedApptTime=null;
+
+function openBookAppointmentModal(counselorId){
+  if(document.getElementById('bookApptModal'))return;
+  const sb=getSB();if(!sb)return;
+  _selectedApptDate=null;_selectedApptTime=null;
+  const days=[];
+  for(let i=1;i<=14;i++){
+    const d=new Date();d.setDate(d.getDate()+i);
+    const dow=d.getDay();
+    if(dow===0||dow===6)continue;
+    days.push({
+      date:d.toISOString().slice(0,10),
+      label:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
+      dayName:d.toLocaleDateString('en-US',{weekday:'long'}).toLowerCase(),
+    });
+  }
+  const modal=buildEduModal('bookApptModal',`
+    <div id="bookApptHeader" style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div id="bookApptAvatar" style="width:40px;height:40px;border-radius:50%;background:#7c5cff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0">C</div>
+      <div>
+        <div style="font-size:1rem;font-weight:800" id="bookApptTitle">Book appointment</div>
+        <div style="font-size:.75rem;color:var(--muted2)">30-minute meeting</div>
+      </div>
+      <button type="button" class="edu-modal-close" style="margin-left:auto" aria-label="Close">✕</button>
+    </div>
+    <div class="mrow"><label>Reason for meeting</label>
+      <select id="appt_reason">
+        <option>Academic check-in</option>
+        <option>Course planning</option>
+        <option>College planning</option>
+        <option>Personal concern</option>
+        <option>Schedule change</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="mrow"><label>Additional notes (optional)</label>
+      <textarea id="appt_notes" placeholder="Any context you'd like to share…" style="min-height:60px"></textarea>
+    </div>
+    <div style="font-size:.75rem;font-weight:700;color:var(--muted2);margin-bottom:10px">Select a date</div>
+    <div id="dateChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      ${days.map(d=>`<button type="button" class="date-chip" data-date="${esc(d.date)}" data-dayname="${esc(d.dayName)}">${esc(d.label)}</button>`).join('')}
+    </div>
+    <div id="timeSlotContainer" style="display:none">
+      <div style="font-size:.75rem;font-weight:700;color:var(--muted2);margin-bottom:10px">Select a time</div>
+      <div id="timeSlots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+    <div id="apptError" class="edu-modal-error" style="display:none;margin-top:12px"></div>
+    <button id="confirmApptBtn" style="display:none;width:100%;margin-top:16px;padding:13px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Confirm appointment</button>
+  `);
+  sb.from('counselors').select('name,avatar_color,avatar_initial,availability').eq('id',counselorId).maybeSingle()
+    .then(({data:c})=>{
+      if(!c)return;
+      document.getElementById('bookApptTitle').textContent=`Book with ${c.name}`;
+      const av=document.getElementById('bookApptAvatar');
+      if(av){
+        av.style.background=c.avatar_color||'#7c5cff';
+        av.textContent=c.avatar_initial||(c.name||'?')[0];
+      }
+    });
+  modal.querySelectorAll('[data-date]').forEach(btn=>{
+    btn.addEventListener('click',()=>selectAppointmentDate(btn,counselorId));
+  });
+  modal.querySelector('#confirmApptBtn')?.addEventListener('click',()=>confirmAppointment(counselorId));
+}
+window.openBookAppointmentModal=openBookAppointmentModal;
+
+async function selectAppointmentDate(btn,counselorId){
+  const sb=getSB();if(!sb)return;
+  _selectedApptDate=btn.dataset.date;
+  _selectedApptTime=null;
+  const dayName=btn.dataset.dayname;
+  document.querySelectorAll('#dateChips .date-chip').forEach(b=>{
+    b.style.background='';b.style.borderColor='';b.style.color='';
+  });
+  btn.style.background='rgba(var(--accent-rgb),.15)';
+  btn.style.borderColor='var(--accent)';
+  btn.style.color='var(--accent)';
+
+  let availability=[];
+  try{
+    const {data:c}=await sb.from('counselors').select('availability').eq('id',counselorId).maybeSingle();
+    availability=c?.availability?.[dayName]||[];
+  }catch(_){}
+  let booked=new Set();
+  try{
+    const {data:b}=await sb.from('counselor_appointments')
+      .select('time_slot,status')
+      .eq('counselor_id',counselorId)
+      .eq('date',_selectedApptDate);
+    booked=new Set((b||[]).filter(x=>x.status!=='cancelled').map(x=>x.time_slot));
+  }catch(_){}
+
+  const container=document.getElementById('timeSlotContainer');
+  const slotsEl=document.getElementById('timeSlots');
+  if(!container||!slotsEl)return;
+  if(!availability.length){
+    slotsEl.innerHTML='<div style="font-size:.8rem;color:var(--muted2)">No availability on this day</div>';
+  }else{
+    slotsEl.innerHTML=availability.map(slot=>{
+      const isBooked=booked.has(slot);
+      return `<button type="button" class="time-chip ${isBooked?'booked':''}" data-slot="${esc(slot)}" ${isBooked?'disabled':''}>${esc(slot)}${isBooked?' ✓':''}</button>`;
+    }).join('');
+    slotsEl.querySelectorAll('.time-chip:not(.booked)').forEach(b=>{
+      b.addEventListener('click',()=>selectApptTime(b,b.dataset.slot));
+    });
+  }
+  container.style.display='block';
+  document.getElementById('confirmApptBtn').style.display='none';
+}
+window.selectAppointmentDate=selectAppointmentDate;
+
+function selectApptTime(btn,slot){
+  _selectedApptTime=slot;
+  document.querySelectorAll('.time-chip:not(.booked)').forEach(b=>{
+    b.style.background='';b.style.borderColor='';b.style.color='';
+  });
+  btn.style.background='rgba(var(--accent-rgb),.15)';
+  btn.style.borderColor='var(--accent)';
+  btn.style.color='var(--accent)';
+  const c=document.getElementById('confirmApptBtn');
+  if(c)c.style.display='block';
+}
+window.selectApptTime=selectApptTime;
+
+async function confirmAppointment(counselorId){
+  if(!_selectedApptDate||!_selectedApptTime)return;
+  const sb=getSB();if(!sb)return;
+  const reason=document.getElementById('appt_reason')?.value||'General check-in';
+  const notes=document.getElementById('appt_notes')?.value.trim();
+  const errEl=document.getElementById('apptError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  const {error}=await sb.from('counselor_appointments').insert({
+    counselor_id:counselorId,
+    student_id:currentUser.id,
+    date:_selectedApptDate,
+    time_slot:_selectedApptTime,
+    reason,
+    notes:notes||null,
+    status:'pending',
+    duration_minutes:30,
+  });
+  if(error){setErr(error.message);return;}
+  document.getElementById('bookApptModal')?.remove();
+  showToast(`✅ Booked for ${_selectedApptDate} at ${_selectedApptTime}`);
+  _selectedApptDate=null;_selectedApptTime=null;
+  renderMyCounselorSection();
+}
+window.confirmAppointment=confirmAppointment;
+
+// ── Realtime messaging ────────────────────────────────────────────
+const FluxMessaging={
+  _subscription:null,
+  _activeThread:null,
+
+  async openThread(otherUserId,otherName){
+    if(!otherUserId||otherUserId==='undefined'){
+      showToast('That counselor has not yet activated their Flux account','error');
+      return;
+    }
+    const sb=getSB();if(!sb||!currentUser)return;
+    const myId=currentUser.id;
+    let thread=null;
+    try{
+      const {data}=await sb.from('flux_threads')
+        .select('*')
+        .or(`and(participant_1.eq.${myId},participant_2.eq.${otherUserId}),and(participant_1.eq.${otherUserId},participant_2.eq.${myId})`)
+        .limit(1)
+        .maybeSingle();
+      thread=data||null;
+    }catch(_){}
+    if(!thread){
+      try{
+        const {data:nt}=await sb.from('flux_threads').insert({
+          participant_1:myId,
+          participant_2:otherUserId,
+          subject:`Message with ${otherName||'user'}`,
+        }).select().single();
+        thread=nt;
+      }catch(e){
+        showToast('Could not open message thread','error');
+        return;
+      }
+    }
+    if(!thread)return;
+    this._activeThread=thread;
+    this.renderMessageModal(thread,otherName||'User',otherUserId);
+    this.subscribeToThread(thread.id);
+  },
+
+  async openThreadById(otherUserId){
+    if(!otherUserId)return;
+    const sb=getSB();if(!sb)return;
+    let displayName='User';
+    try{
+      const {data}=await sb.from('user_roles').select('display_name').eq('user_id',otherUserId).maybeSingle();
+      if(data?.display_name)displayName=data.display_name;
+    }catch(_){}
+    this.openThread(otherUserId,displayName);
+  },
+
+  renderMessageModal(thread,otherName,otherUserId){
+    document.getElementById('messageModal')?.remove();
+    const modal=document.createElement('div');
+    modal.id='messageModal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+    modal.innerHTML=`
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;width:100%;max-width:500px;height:80vh;display:flex;flex-direction:column;box-shadow:var(--shadow-float,0 12px 40px rgba(0,0,0,.5))">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0a0d18;flex-shrink:0">${esc((otherName||'?')[0])}</div>
+          <div style="flex:1">
+            <div style="font-size:.9rem;font-weight:700">${esc(otherName)}</div>
+            <div style="font-size:.7rem;color:var(--muted2)">Direct message</div>
+          </div>
+          <button id="msgModalClose" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0">✕</button>
+        </div>
+        <div id="messageList" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px"></div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px">
+          <textarea id="messageInput" placeholder="Write a message…" rows="1" style="flex:1;resize:none;background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;font-family:inherit;font-size:.85rem;color:var(--text);min-height:44px;max-height:100px;overflow-y:auto"></textarea>
+          <button id="messageSendBtn" style="padding:10px 14px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer;align-self:flex-end">Send</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    const closeAll=()=>{modal.remove();this.unsubscribe();};
+    modal.addEventListener('click',e=>{if(e.target===modal)closeAll();});
+    document.getElementById('msgModalClose')?.addEventListener('click',closeAll);
+    document.getElementById('messageSendBtn')?.addEventListener('click',()=>this.sendMessage(otherUserId));
+    document.getElementById('messageInput')?.addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.sendMessage(otherUserId);}
+    });
+    this.loadMessages(thread.id);
+  },
+
+  async loadMessages(threadId){
+    const sb=getSB();if(!sb)return;
+    let messages=[];
+    try{
+      const {data}=await sb.from('flux_messages')
+        .select('*')
+        .eq('thread_id',threadId)
+        .order('created_at',{ascending:true})
+        .limit(50);
+      messages=data||[];
+    }catch(_){}
+    const list=document.getElementById('messageList');
+    if(!list)return;
+    list.innerHTML=messages.map(m=>this.renderMessage(m)).join('');
+    list.scrollTop=list.scrollHeight;
+    try{
+      await sb.from('flux_messages')
+        .update({read:true,read_at:new Date().toISOString()})
+        .eq('thread_id',threadId)
+        .eq('recipient_id',currentUser.id)
+        .eq('read',false);
+    }catch(_){}
+  },
+
+  renderMessage(msg){
+    const isMe=msg.sender_id===currentUser?.id;
+    const time=new Date(msg.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return `
+      <div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'}">
+        <div style="max-width:80%;padding:9px 13px;border-radius:${isMe?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isMe?'rgba(var(--accent-rgb),.18)':'var(--card2)'};border:1px solid ${isMe?'rgba(var(--accent-rgb),.25)':'var(--border2)'};font-size:.84rem;line-height:1.5;word-break:break-word">
+          ${esc(msg.content)}
+        </div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace">${time}</div>
+      </div>`;
+  },
+
+  async sendMessage(recipientId){
+    const input=document.getElementById('messageInput');
+    const content=input?.value?.trim();
+    if(!content||!this._activeThread)return;
+    const sb=getSB();if(!sb)return;
+    input.value='';
+    const {error}=await sb.from('flux_messages').insert({
+      thread_id:this._activeThread.id,
+      sender_id:currentUser.id,
+      recipient_id:recipientId,
+      content,
+    });
+    if(!error){
+      sb.from('flux_threads').update({
+        last_message_at:new Date().toISOString(),
+        last_message_preview:content.slice(0,80),
+      }).eq('id',this._activeThread.id);
+    }
+  },
+
+  subscribeToThread(threadId){
+    this.unsubscribe();
+    const sb=getSB();if(!sb)return;
+    try{
+      this._subscription=sb.channel(`thread_${threadId}`)
+        .on('postgres_changes',{
+          event:'INSERT',schema:'public',table:'flux_messages',
+          filter:`thread_id=eq.${threadId}`,
+        },payload=>{
+          const list=document.getElementById('messageList');
+          if(!list)return;
+          const wrap=document.createElement('div');
+          wrap.innerHTML=this.renderMessage(payload.new);
+          if(wrap.firstElementChild)list.appendChild(wrap.firstElementChild);
+          list.scrollTop=list.scrollHeight;
+        })
+        .subscribe();
+    }catch(e){console.warn('[Flux msg] subscribe failed',e);}
+  },
+
+  unsubscribe(){
+    if(!this._subscription)return;
+    try{getSB()?.removeChannel(this._subscription);}catch(_){}
+    this._subscription=null;
+  },
+};
+window.FluxMessaging=FluxMessaging;
+
+function openMessageComposer(userId,name){
+  FluxMessaging.openThread(userId,name);
+}
+window.openMessageComposer=openMessageComposer;
+window.openMessageThread=function(userId){FluxMessaging.openThreadById(userId);};
+
+// ── Pull teacher-posted assignments into student's task list ──────
+async function loadTeacherAssignments(){
+  if(!currentUser)return;
+  if(window._userRole&&window._userRole!=='student')return;
+  const sb=getSB();if(!sb)return;
+  // Use whatever class codes the student has on their schedule
+  const myClassCodes=(Array.isArray(classes)?classes:[])
+    .map(c=>c?.code||c?.classCode||null)
+    .filter(Boolean);
+  if(!myClassCodes.length)return;
+
+  let assignments=[];
+  try{
+    const {data}=await sb.from('teacher_assignments')
+      .select('id,title,description,type,priority,due_date,due_time,estimated_minutes,points_possible,class_code,created_at,teacher_id')
+      .in('class_code',myClassCodes)
+      .eq('visible',true)
+      .gte('due_date',new Date().toISOString().slice(0,10));
+    assignments=data||[];
+  }catch(_){}
+  if(!assignments.length)return;
+
+  let added=0;
+  assignments.forEach(ta=>{
+    if(tasks.find(t=>t.teacherAssignmentId===ta.id))return;
+    tasks.push({
+      id:`teacher_${ta.id}`,
+      teacherAssignmentId:ta.id,
+      name:ta.title,
+      subject:ta.class_code||'',
+      type:ta.type||'hw',
+      date:ta.due_date,
+      priority:ta.priority||'med',
+      estTime:ta.estimated_minutes||30,
+      notes:(ta.description||'').slice(0,500),
+      done:false,
+      fromTeacher:true,
+      pointsPossible:ta.points_possible||100,
+      createdAt:ta.created_at?new Date(ta.created_at).getTime():Date.now(),
+    });
+    added++;
+  });
+  if(added){
+    save('tasks',tasks);
+    try{renderTasks();}catch(_){}
+    try{renderCalendar();}catch(_){}
+  }
+}
+window.loadTeacherAssignments=loadTeacherAssignments;
+
+// ── Tiny modal builder used by all educator modals ────────────────
+function buildEduModal(id,innerHTML){
+  const modal=document.createElement('div');
+  modal.id=id;
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:26px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-float,0 16px 48px rgba(0,0,0,.5))">
+      ${innerHTML}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  modal.querySelectorAll('.edu-modal-close').forEach(b=>b.addEventListener('click',()=>modal.remove()));
+  return modal;
+}
+
+// Inject scoped CSS once (for edu-modal-error + error states)
+(function injectEduModalCSS(){
+  if(document.getElementById('flux-edu-modal-css'))return;
+  const style=document.createElement('style');
+  style.id='flux-edu-modal-css';
+  style.textContent=`
+    .edu-modal-error{font-size:.78rem;color:var(--red);padding:8px 12px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)}
+    #createClassModal label,#createAsgnModal label,#bookApptModal label,#counselorPickModal label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:4px}
+    #createClassModal input,#createClassModal textarea,#createAsgnModal input,#createAsgnModal textarea,#createAsgnModal select,#bookApptModal select,#bookApptModal textarea{
+      width:100%;background:var(--card2);border:1px solid var(--border2);
+      border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.85rem;margin:0;
+    }
+    #createClassModal .mrow,#createAsgnModal .mrow,#bookApptModal .mrow{margin-bottom:10px}
+  `;
+  document.head.appendChild(style);
+})();

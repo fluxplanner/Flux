@@ -1,17 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Flux Planner",
-  "version": "1.0.8",
-  "description": "Flux AI assistant — sees your screen, helps you plan",
+  "version": "1.2.0",
+  "description": "Flux AI — automatically understands every page you visit",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "sidePanel",
     "tabs",
+    "windows",
     "contextMenus",
     "identity",
-    "notifications"
+    "notifications",
+    "webNavigation"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -21,15 +23,16 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": [],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "side_panel": {
     "default_path": "sidebar.html"
   },
   "action": {
-    "default_title": "Open Flux side panel",
+    "default_popup": "popup.html",
+    "default_title": "Flux Planner",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
@@ -45,7 +48,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["sidebar.html", "sidebar.js", "sidebar.css"],
+      "resources": ["sidebar.html", "sidebar.js", "sidebar.css", "auth-google.js", "icons/*"],
       "matches": ["<all_urls>"]
     }
   ],

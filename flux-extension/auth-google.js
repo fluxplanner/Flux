@@ -63,6 +63,64 @@
     }
   }
 
+  /** @returns {number} JWT exp in ms, or 0 if missing */
+  function decodeJwtExpMs(token) {
+    if (!token || typeof token !== 'string') return 0;
+    try {
+      const p = token.split('.')[1];
+      const pad = p.length % 4 === 0 ? '' : '='.repeat(4 - (p.length % 4));
+      const json = JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/') + pad));
+      return typeof json.exp === 'number' ? json.exp * 1000 : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Supabase access tokens expire (~1h). Refresh using fluxRefreshToken so Edge getUser() stops returning Invalid JWT.
+   */
+  async function refreshSessionIfNeeded() {
+    const store = await chrome.storage.local.get([
+      'fluxAuthToken',
+      'fluxRefreshToken',
+      'fluxUserId',
+      'fluxUserEmail',
+    ]);
+    let { fluxAuthToken, fluxRefreshToken, fluxUserId, fluxUserEmail } = store;
+    if (!fluxRefreshToken) return;
+
+    const expMs = decodeJwtExpMs(fluxAuthToken || '');
+    const skewMs = 120000;
+    const needsRefresh = !fluxAuthToken || !expMs || Date.now() >= expMs - skewMs;
+    if (!needsRefresh) return;
+
+    const tokenRes = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SB_ANON },
+      body: JSON.stringify({ refresh_token: fluxRefreshToken }),
+    });
+    const tokenJson = await tokenRes.json().catch(() => ({}));
+    if (!tokenRes.ok) {
+      const msg =
+        tokenJson.error_description ||
+        tokenJson.msg ||
+        tokenJson.message ||
+        tokenJson.error ||
+        `Session refresh failed (${tokenRes.status})`;
+      throw new Error(String(msg));
+    }
+    const access_token = tokenJson.access_token;
+    const refresh_token = tokenJson.refresh_token || fluxRefreshToken;
+    const user = tokenJson.user;
+    const email = user?.email || jwtEmail(access_token || '') || fluxUserEmail || '';
+    await chrome.storage.local.set({
+      fluxAuthToken: access_token,
+      fluxRefreshToken: refresh_token,
+      fluxUserId: user?.id || fluxUserId || '',
+      fluxUserEmail: email,
+    });
+  }
+
   async function refreshAuthBar() {
     const out = document.getElementById('fluxAuthSignedOut');
     const inn = document.getElementById('fluxAuthSignedIn');
@@ -234,6 +292,7 @@
   window.FluxExtAuth = {
     init,
     refreshAuthBar,
+    refreshSessionIfNeeded,
     signInWithGoogleExtension,
     copyRedirectUrl,
     signOutExtension,

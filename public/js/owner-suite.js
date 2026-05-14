@@ -401,10 +401,52 @@
   }
 
   function tabStyle(active){
-    return`padding:8px 12px;font-size:.72rem;font-weight:600;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.4)':'var(--border2)'};background:${active?'rgba(var(--accent-rgb),.12)':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit`;
+    return`display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;font-size:.78rem;font-weight:650;text-align:left;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.32)':'transparent'};background:${active?'linear-gradient(135deg,rgba(var(--accent-rgb),.16),rgba(var(--purple-rgb,124,92,255),.08))':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit;transition:background .12s,color .12s,border-color .12s;letter-spacing:.005em`;
   }
 
-  const OS_TABS=new Set(['overview','megamap','team','testers','release','auth','data','config','integrations','analytics','usage','audit','feedback','ideas','advanced']);
+  /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
+  const OS_TAB_DEFS={
+    overview:    {label:'Overview',         icon:'📊', group:'home'},
+    release:     {label:'Release & push',   icon:'🚀', group:'home'},
+    team:        {label:'Team & roles',     icon:'👥', group:'people'},
+    testers:     {label:'Testers',          icon:'🧪', group:'people'},
+    auth:        {label:'Auth users',       icon:'🔐', group:'people'},
+    analytics:   {label:'My analytics',     icon:'📈', group:'insights'},
+    usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
+    feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
+    config:      {label:'Platform config',  icon:'⚙️', group:'build'},
+    integrations:{label:'Integrations',     icon:'🔌', group:'build'},
+    megamap:     {label:'Mega map',         icon:'🗺',  group:'build'},
+    ideas:       {label:'Product ideas',    icon:'💡', group:'build'},
+    audit:       {label:'Audit log',        icon:'📜', group:'safety'},
+    data:        {label:'Data & backup',    icon:'💾', group:'safety'},
+    advanced:    {label:'Advanced',         icon:'🛠', group:'safety'},
+  };
+  const OS_TABS=new Set(Object.keys(OS_TAB_DEFS));
+  const OS_GROUPS=[
+    {id:'home',     label:'Command'},
+    {id:'people',   label:'People'},
+    {id:'insights', label:'Insights'},
+    {id:'build',    label:'Build'},
+    {id:'safety',   label:'Safety'},
+  ];
+
+  /** Build the sidebar nav HTML.  Uses tabStyle() for active/inactive look. */
+  function buildOsSidebarHtml(activeTab){
+    return OS_GROUPS.map(g=>{
+      const items=Object.entries(OS_TAB_DEFS).filter(([_,def])=>def.group===g.id);
+      if(!items.length)return'';
+      const rows=items.map(([id,def])=>`
+        <button type="button" data-os-tab="${id}" onclick="window.__osSetTab('${id}')" style="${tabStyle(id===activeTab)}">
+          <span style="font-size:.95rem;line-height:1">${def.icon}</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(def.label)}</span>
+        </button>`).join('');
+      return`<div style="margin-bottom:14px">
+        <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-family:JetBrains Mono,monospace;padding:6px 12px 4px;font-weight:700">${esc(g.label)}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+  }
 
   window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
@@ -665,15 +707,87 @@
         <button type="button" onclick="ownerTestWebhookPing()" style="padding:8px 14px;font-size:.75rem;border-radius:10px">Send test ping</button>
         <p style="font-size:.68rem;color:var(--muted);margin-top:12px">API keys with service role must never ship in the browser. Use Edge Functions.</p>`;
 
-      if(tab==='analytics')return`
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:1.3rem;font-weight:800;color:var(--accent)">${(tasks||[]).length}</div><div style="font-size:.65rem;color:var(--muted)">Tasks total</div></div>
-          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:1.3rem;font-weight:800;color:var(--green)">${(tasks||[]).filter(t=>t.done).length}</div><div style="font-size:.65rem;color:var(--muted)">Completed</div></div>
-          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:1.3rem;font-weight:800;color:var(--gold)">${(notes||[]).length}</div><div style="font-size:.65rem;color:var(--muted)">Notes</div></div>
-          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:1.3rem;font-weight:800;color:var(--purple)">${(sessionLog||[]).length}</div><div style="font-size:.65rem;color:var(--muted)">Focus logs</div></div>
+      if(tab==='analytics'){
+        const allTasks=Array.isArray(tasks)?tasks:[];
+        const done=allTasks.filter(t=>t.done);
+        const open=allTasks.filter(t=>!t.done);
+        const todayKey=new Date().toDateString();
+        const overdue=open.filter(t=>t.date&&new Date(t.date+'T00:00:00')<new Date(todayKey)).length;
+        const dueToday=open.filter(t=>t.date===new Date().toISOString().slice(0,10)).length;
+        const compRate=allTasks.length?Math.round(done.length*100/allTasks.length):0;
+        const sLog=Array.isArray(sessionLog)?sessionLog:[];
+        const focusMins=sLog.reduce((a,s)=>a+(parseInt(s.mins,10)||0),0);
+        const focusHrs=Math.round(focusMins/60*10)/10;
+        const focusWeek=(()=>{
+          const cutoff=Date.now()-7*864e5;
+          return sLog.filter(s=>(s.t||s.timestamp||0)>=cutoff).reduce((a,s)=>a+(parseInt(s.mins,10)||0),0);
+        })();
+        const subjectsAgg={};
+        allTasks.forEach(t=>{const k=(t.subject||t.class||'(none)')+'';subjectsAgg[k]=(subjectsAgg[k]||0)+1;});
+        const subjectRows=Object.entries(subjectsAgg).sort((a,b)=>b[1]-a[1]).slice(0,8);
+        const subjectMax=subjectRows.length?Math.max(...subjectRows.map(r=>r[1])):1;
+        const last30=(()=>{
+          const out=[];
+          for(let i=29;i>=0;i--){
+            const d=new Date();d.setDate(d.getDate()-i);
+            const key=d.toISOString().slice(0,10);
+            const n=done.filter(t=>(t.doneAt||'').slice(0,10)===key||(t.completedAt||'').slice(0,10)===key||(t.date||'')===key).length;
+            out.push({key,n,label:d.getDate()+'/'+(d.getMonth()+1)});
+          }
+          return out;
+        })();
+        const last30Max=Math.max(1,...last30.map(d=>d.n));
+        const noteCount=Array.isArray(notes)?notes.length:0;
+        const goalCount=Array.isArray(window.extraGoals)?window.extraGoals.length:0;
+        const streakBest=parseInt(localStorage.getItem('flux_streak_best')||'0',10)||0;
+        const streakCur=parseInt(localStorage.getItem('flux_streak_current')||'0',10)||0;
+        const feedbackCount=(load('flux_feedback_inbox',[])||[]).length;
+        const sparkBars=last30.map(d=>`<div title="${esc(d.key)}: ${d.n}" style="flex:1;height:${Math.max(4,(d.n/last30Max)*48)}px;background:linear-gradient(180deg,var(--accent) 0%, color-mix(in srgb, var(--accent) 40%, transparent) 100%);border-radius:3px 3px 0 0;opacity:${d.n?0.95:0.25}"></div>`).join('');
+        return`
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px">
+          <h3 class="flux-color-title" style="margin:0;font-size:1.05rem;font-weight:800">My analytics</h3>
+          <span style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace">Local snapshot · ${esc(new Date().toLocaleString())}</span>
+          <span style="flex:1"></span>
+          <button type="button" onclick="ownerExportTasksCsv()" class="btn-sec" style="padding:7px 12px;font-size:.7rem;border-radius:10px">⬇ Tasks CSV</button>
+          <button type="button" onclick="ownerExportSessionsCsv()" class="btn-sec" style="padding:7px 12px;font-size:.7rem;border-radius:10px">⬇ Sessions CSV</button>
+          <button type="button" onclick="window.__osSetTab&&window.__osSetTab('usage')" style="padding:7px 12px;font-size:.7rem;border-radius:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-weight:700">Cross-user usage →</button>
         </div>
-        <button type="button" onclick="ownerExportTasksCsv()" style="padding:10px 16px;font-size:.78rem;border-radius:10px;margin-right:8px">Export tasks CSV</button>
-        <button type="button" onclick="ownerExportSessionsCsv()" style="padding:10px 16px;font-size:.78rem;border-radius:10px">Export sessions CSV</button>`;
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px">
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace">Tasks total</div><div style="font-size:1.6rem;font-weight:900;color:var(--accent);margin-top:4px">${allTasks.length}</div><div style="font-size:.68rem;color:var(--muted2);margin-top:2px">${done.length} done · ${open.length} open</div></div>
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace">Completion rate</div><div style="font-size:1.6rem;font-weight:900;color:var(--green);margin-top:4px">${compRate}%</div><div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${compRate}%;height:100%;background:linear-gradient(90deg,var(--green),var(--accent));border-radius:3px"></div></div></div>
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace">Overdue</div><div style="font-size:1.6rem;font-weight:900;color:${overdue?'var(--red)':'var(--muted)'};margin-top:4px">${overdue}</div><div style="font-size:.68rem;color:var(--muted2);margin-top:2px">${dueToday} due today</div></div>
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace">Focus logged</div><div style="font-size:1.6rem;font-weight:900;color:var(--purple);margin-top:4px">${focusHrs}h</div><div style="font-size:.68rem;color:var(--muted2);margin-top:2px">${Math.round(focusWeek)}m this week · ${sLog.length} sessions</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)">
+            <div style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-family:JetBrains Mono,monospace;margin-bottom:10px">Completions · last 30 days</div>
+            <div style="display:flex;align-items:flex-end;gap:3px;height:60px;padding:0 2px">${sparkBars}</div>
+            <div style="display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);font-family:JetBrains Mono,monospace;margin-top:6px;padding:0 4px"><span>30d ago</span><span>today</span></div>
+          </div>
+          <div style="background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--border)">
+            <div style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-family:JetBrains Mono,monospace;margin-bottom:10px">Top subjects</div>
+            ${subjectRows.length?subjectRows.map(([s,n])=>`
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <div style="flex:0 0 120px;font-size:.72rem;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</div>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:${(n/subjectMax)*100}%;background:linear-gradient(90deg,var(--accent),var(--purple))"></div></div>
+                <div style="flex:0 0 28px;font-size:.7rem;color:var(--muted2);font-family:JetBrains Mono,monospace;text-align:right">${n}</div>
+              </div>`).join(''):'<div style="font-size:.78rem;color:var(--muted)">No subjects yet.</div>'}
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px">
+          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Notes</div><div style="font-size:1.2rem;font-weight:800;color:var(--gold);margin-top:2px">${noteCount}</div></div>
+          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Goals</div><div style="font-size:1.2rem;font-weight:800;color:var(--accent);margin-top:2px">${goalCount}</div></div>
+          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Streak (cur · best)</div><div style="font-size:1.2rem;font-weight:800;color:var(--accent2,var(--accent));margin-top:2px">${streakCur} · ${streakBest}</div></div>
+          <div style="background:var(--card2);border-radius:12px;padding:12px;border:1px solid var(--border)"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Feedback (cached)</div><div style="font-size:1.2rem;font-weight:800;color:var(--purple);margin-top:2px">${feedbackCount}</div><button type="button" onclick="window.__osSetTab&&window.__osSetTab('feedback')" style="margin-top:4px;font-size:.62rem;background:none;border:none;color:var(--accent);padding:0;cursor:pointer;text-decoration:underline">Open inbox →</button></div>
+        </div>
+
+        <div style="font-size:.66rem;color:var(--muted);line-height:1.55;padding:12px 14px;background:rgba(var(--accent-rgb),.04);border:1px dashed rgba(var(--accent-rgb),.24);border-radius:10px">
+          Numbers above reflect <b>your local browser</b>. For aggregate user analytics across the platform (anonymous task/focus counts), open <b>Platform usage</b> in the sidebar.
+        </div>`;
+      }
 
       if(tab==='usage')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:12px">
@@ -702,15 +816,29 @@
       if(tab==='feedback'){
         const inboxRaw=load('flux_feedback_inbox',[]);
         const inbox=Array.isArray(inboxRaw)?inboxRaw.slice().reverse():[];
+        const catAgg={};
+        inbox.forEach(e=>{const c=(e&&e.category)||'general';catAgg[c]=(catAgg[c]||0)+1;});
+        const catRows=Object.entries(catAgg).sort((a,b)=>b[1]-a[1]);
+        const last7=inbox.filter(e=>e&&e.t&&(Date.now()-Number(e.t||0))<7*864e5).length;
+        const last24=inbox.filter(e=>e&&e.t&&(Date.now()-Number(e.t||0))<864e5).length;
         return`
-        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
-          User feedback lands in your <b>Supabase</b> <code style="font-size:.65rem">user_data</code> row under <code style="font-size:.65rem">feedbackInbox</code> via the <code style="font-size:.65rem">user-feedback</code> Edge Function (service role). Deploy it from the repo and set secret <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> if it differs from the default.
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px">
+          <h3 class="flux-color-title" style="margin:0;font-size:1.05rem;font-weight:800">Feedback inbox</h3>
+          <span style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace">${inbox.length} cached locally</span>
+          <span style="flex:1"></span>
+          <button type="button" onclick="ownerRefreshFeedbackInbox()" style="padding:8px 14px;font-size:.74rem;font-weight:700;border-radius:10px;background:linear-gradient(135deg,rgba(var(--accent-rgb),.18),rgba(124,92,255,.12));border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent)">↻ Refresh from cloud</button>
+          <button type="button" onclick="ownerExportFeedbackJson()" class="btn-sec" style="padding:7px 12px;font-size:.7rem;border-radius:10px">⬇ Export JSON</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-          <button type="button" onclick="ownerRefreshFeedbackInbox()" style="padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">↻ Refresh from cloud</button>
-          <button type="button" onclick="ownerExportFeedbackJson()" style="padding:8px 14px;font-size:.78rem;border-radius:10px">⬇ Export JSON</button>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px">
+          <div style="background:var(--card2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Last 24h</div><div style="font-size:1.2rem;font-weight:800;color:var(--accent);margin-top:2px">${last24}</div></div>
+          <div style="background:var(--card2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Last 7 days</div><div style="font-size:1.2rem;font-weight:800;color:var(--gold);margin-top:2px">${last7}</div></div>
+          <div style="background:var(--card2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">All-time</div><div style="font-size:1.2rem;font-weight:800;color:var(--purple);margin-top:2px">${inbox.length}</div></div>
+          <div style="background:var(--card2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:JetBrains Mono,monospace">Top topic</div><div style="font-size:1.05rem;font-weight:800;color:var(--text);margin-top:2px">${catRows[0]?esc(catRows[0][0]):'—'}</div></div>
         </div>
-        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">${inbox.length} message${inbox.length===1?'':'s'}</div>
+        ${catRows.length>1?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${catRows.map(([c,n])=>`<span style="font-size:.66rem;padding:4px 10px;border-radius:8px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.22);color:var(--accent);font-weight:700">${esc(c)} · ${n}</span>`).join('')}</div>`:''}
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.55;margin-bottom:10px">
+          Stored in <b>Supabase</b> (your <code style="font-size:.6rem">user_data.feedbackInbox</code>) via <code style="font-size:.6rem">user-feedback</code> Edge Function.
+        </div>
         <div style="max-height:min(480px,55vh);overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
           ${inbox.length?inbox.map(entry=>{
             const e=entry&&typeof entry==='object'?entry:{};
@@ -759,6 +887,8 @@
     function paint(){
       const bodyEl=root.querySelector('#osBody');
       if(bodyEl)bodyEl.innerHTML=body();
+      const sb=root.querySelector('#osSidebar');
+      if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
       root.querySelectorAll('[data-os-tab]').forEach(b=>{
         b.style.cssText=tabStyle(b.getAttribute('data-os-tab')===tab);
       });
@@ -772,39 +902,53 @@
       }
     }
 
-    const cardMax=embedUi?'min(960px,100%)':'760px';
-    const osBodyStyle=embedUi?'padding:20px;max-height:none;overflow-y:visible':'padding:20px;max-height:min(70vh,620px);overflow-y:auto';
-    const headBtn=embedUi
-      ?`<button type="button" onclick="nav('dashboard')" style="background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-size:.72rem;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:10px">← Planner</button>`
-      :`<button type="button" onclick="document.getElementById('ownerSuite')?.remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>`;
+    const cardMax=embedUi?'min(1180px,100%)':'min(1100px,100%)';
+    const osBodyStyle=embedUi?'padding:22px 24px;max-height:none;overflow-y:visible':'padding:22px 24px;max-height:min(74vh,720px);overflow-y:auto';
+    const closeBtn=embedUi
+      ?`<button type="button" onclick="nav('dashboard')" class="os-head-btn" title="Back to planner">← Planner</button>`
+      :`<button type="button" onclick="document.getElementById('ownerSuite')?.remove()" class="os-head-btn" title="Close" aria-label="Close">✕</button>`;
+
+    /* Current release state — show "live build" badge in header and "Push update" button */
+    let __buildLabel='unknown';
+    let __isLive=false;
+    try{
+      const __bid=(typeof FLUX_BUILD_ID!=='undefined'&&FLUX_BUILD_ID)||(window.FLUX_BUILD_ID||'unknown');
+      const __gate=(typeof FluxRelease!=='undefined'&&FluxRelease.getGate&&FluxRelease.getGate())||getPlatformConfig().releaseGate||null;
+      __buildLabel=String(__bid).replace(/^build-/,'');
+      __isLive=__gate&&__gate.released===__bid;
+    }catch(_){}
+    const pushBtnHeader=`
+      <button type="button" id="osHeaderPushBtn" onclick="window.__osSetTab&&window.__osSetTab('release')" class="os-head-push" title="${__isLive?'This build is live — open Release panel':'Open Release panel to push this build'}">
+        <span class="os-head-push__icon" aria-hidden="true">🚀</span>
+        <span class="os-head-push__text">
+          <span class="os-head-push__lbl">${__isLive?'Build live':'Push update'}</span>
+          <span class="os-head-push__sub">${esc(__buildLabel)}</span>
+        </span>
+        ${__isLive?'<span class="os-head-push__dot os-head-push__dot--live" title="Live"></span>':'<span class="os-head-push__dot" title="Not pushed"></span>'}
+      </button>`;
+
     root.innerHTML=`
-      <div style="background:var(--card);border:1px solid rgba(251,191,36,.35);border-radius:22px;width:100%;max-width:${cardMax};box-shadow:${embedUi?'0 12px 48px rgba(0,0,0,.28)':'0 24px 80px rgba(0,0,0,.55)'};overflow:hidden;margin:${embedUi?'0 auto':0}">
-        <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(251,191,36,.08),transparent)">
-          <span style="font-size:1.6rem">👑</span>
-          <div style="flex:1">
-            <div style="font-size:1.05rem;font-weight:800">Owner Command Center</div>
-            <div style="font-size:.68rem;color:var(--muted);font-family:JetBrains Mono,monospace">${esc(currentUser?.email)} · god-mode for your data plane</div>
+      <div class="owner-suite-card owner-suite-card--v2" style="max-width:${cardMax};${embedUi?'margin:0 auto;':''}">
+        <header class="os-head">
+          <div class="os-head__title">
+            <span class="os-head__crown" aria-hidden="true">👑</span>
+            <div>
+              <div class="os-head__name flux-color-title">Owner Command Center</div>
+              <div class="os-head__meta">${esc(currentUser?.email||'')} · god-mode for your data plane</div>
+            </div>
           </div>
-          ${headBtn}
+          <div class="os-head__actions">
+            ${pushBtnHeader}
+            <button type="button" id="osHeaderQuickSyncBtn" onclick="(function(){try{forceSyncNow&&forceSyncNow();if(typeof showToast==='function')showToast('Sync requested','info');}catch(e){}})()" class="os-head-btn" title="Force sync">⟳</button>
+            ${closeBtn}
+          </div>
+        </header>
+        <div class="os-layout">
+          <aside class="os-sidebar" id="osSidebar" aria-label="Owner sections">
+            ${buildOsSidebarHtml(tab)}
+          </aside>
+          <main class="os-main" id="osBody" style="${osBodyStyle}"></main>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card2)">
-          <button type="button" data-os-tab="overview" onclick="window.__osSetTab('overview')">Overview</button>
-          <button type="button" data-os-tab="megamap" onclick="window.__osSetTab('megamap')">Mega map</button>
-          <button type="button" data-os-tab="team" onclick="window.__osSetTab('team')">Team & roles</button>
-          <button type="button" data-os-tab="testers" onclick="window.__osSetTab('testers')">Testers</button>
-          <button type="button" data-os-tab="release" onclick="window.__osSetTab('release')">Release</button>
-          <button type="button" data-os-tab="auth" onclick="window.__osSetTab('auth')">Auth users</button>
-          <button type="button" data-os-tab="data" onclick="window.__osSetTab('data')">Data & backup</button>
-          <button type="button" data-os-tab="config" onclick="window.__osSetTab('config')">Platform config</button>
-          <button type="button" data-os-tab="integrations" onclick="window.__osSetTab('integrations')">Integrations</button>
-          <button type="button" data-os-tab="analytics" onclick="window.__osSetTab('analytics')">Analytics</button>
-          <button type="button" data-os-tab="usage" onclick="window.__osSetTab('usage')">Platform usage</button>
-          <button type="button" data-os-tab="audit" onclick="window.__osSetTab('audit')">Audit log</button>
-          <button type="button" data-os-tab="feedback" onclick="window.__osSetTab('feedback')">Feedback inbox</button>
-          <button type="button" data-os-tab="ideas" onclick="window.__osSetTab('ideas')">Product ideas</button>
-          <button type="button" data-os-tab="advanced" onclick="window.__osSetTab('advanced')">Advanced</button>
-        </div>
-        <div id="osBody" style="${osBodyStyle}"></div>
       </div>`;
 
     window.__osSetTab=function(t){
@@ -1330,4 +1474,120 @@
       ownerAuthUsersLoad(window.__fluxAuthPage||1);
     }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
   };
+
+  /* ═══ Owner Command Center v2 — chrome / sidebar / header styling ═══ */
+  (function injectOwnerSuiteCSS(){
+    if(document.getElementById('owner-suite-v2-css'))return;
+    const s=document.createElement('style');
+    s.id='owner-suite-v2-css';
+    s.textContent=`
+      .owner-suite-card.owner-suite-card--v2{
+        background:var(--card);
+        border:1px solid color-mix(in srgb, var(--gold,#fbbf24) 28%, var(--border));
+        border-radius:22px;
+        width:100%;
+        box-shadow:0 24px 80px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.04) inset;
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+      }
+      .os-head{
+        display:flex;align-items:center;gap:12px;
+        padding:14px 18px;
+        border-bottom:1px solid var(--border);
+        background:linear-gradient(135deg, rgba(var(--accent-rgb),.07), rgba(124,92,255,.05) 60%, transparent);
+        flex-shrink:0;
+      }
+      .os-head__title{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+      .os-head__crown{font-size:1.6rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+      .os-head__name{font-size:1.05rem;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+      .os-head__meta{font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46ch}
+      .os-head__actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+      .os-head-btn{
+        background:var(--card2);
+        border:1px solid var(--border2);
+        color:var(--muted2);
+        font-size:.72rem;font-weight:650;font-family:inherit;
+        cursor:pointer;
+        padding:7px 12px;
+        height:36px;
+        border-radius:10px;
+        transition:background .12s, border-color .12s, color .12s, transform .12s;
+      }
+      .os-head-btn:hover{background:var(--card);border-color:rgba(var(--accent-rgb),.3);color:var(--text)}
+      .os-head-push{
+        display:inline-flex;align-items:center;gap:10px;
+        padding:7px 14px 7px 12px;
+        height:38px;
+        border-radius:12px;
+        cursor:pointer;
+        background:linear-gradient(135deg, #fbbf24 0%, #f59e0b 65%);
+        color:#080a0f;
+        border:1px solid rgba(251,191,36,.5);
+        font-family:inherit;font-weight:800;
+        box-shadow:0 6px 20px rgba(251,191,36,.28), inset 0 1px 0 rgba(255,255,255,.5);
+        transition:transform .12s, box-shadow .12s, filter .12s;
+      }
+      .os-head-push:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(251,191,36,.36), inset 0 1px 0 rgba(255,255,255,.6);filter:brightness(1.05)}
+      .os-head-push:active{transform:translateY(0)}
+      .os-head-push__icon{font-size:1.08rem;line-height:1}
+      .os-head-push__text{display:flex;flex-direction:column;align-items:flex-start;gap:1px;line-height:1.05;text-align:left}
+      .os-head-push__lbl{font-size:.78rem;font-weight:800;letter-spacing:.01em}
+      .os-head-push__sub{font-size:.6rem;font-weight:700;opacity:.66;font-family:JetBrains Mono,monospace;letter-spacing:.04em}
+      .os-head-push__dot{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.55);box-shadow:0 0 0 2px rgba(255,255,255,.3) inset}
+      .os-head-push__dot--live{background:#10b981;box-shadow:0 0 0 2px rgba(255,255,255,.4) inset, 0 0 0 0 rgba(16,185,129,.6); animation:os-live-pulse 2s ease-out infinite}
+      @keyframes os-live-pulse{0%{box-shadow:0 0 0 2px rgba(255,255,255,.4) inset, 0 0 0 0 rgba(16,185,129,.6)}80%{box-shadow:0 0 0 2px rgba(255,255,255,.4) inset, 0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 2px rgba(255,255,255,.4) inset, 0 0 0 0 rgba(16,185,129,0)}}
+
+      .os-layout{display:flex;min-height:0;flex:1 1 auto}
+      .os-sidebar{
+        flex:0 0 220px;
+        max-width:220px;
+        padding:14px 10px;
+        border-right:1px solid var(--border);
+        background:linear-gradient(180deg, var(--card2) 0%, color-mix(in srgb, var(--card2) 60%, var(--card)) 100%);
+        overflow-y:auto;
+        overscroll-behavior:contain;
+      }
+      .os-sidebar::-webkit-scrollbar{width:6px}
+      .os-sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+      .os-main{flex:1 1 0%;min-width:0;background:var(--card)}
+      .os-main::-webkit-scrollbar{width:8px}
+      .os-main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+      /* Sidebar nav buttons hover state */
+      .os-sidebar [data-os-tab]:hover{
+        background:color-mix(in srgb, var(--accent) 6%, var(--card2)) !important;
+        color:var(--text) !important;
+      }
+
+      /* Compact owner suite on tighter screens (overlay also lands here) */
+      @media (max-width: 880px){
+        .os-layout{flex-direction:column}
+        .os-sidebar{
+          flex:0 0 auto;max-width:none;width:100%;
+          border-right:none;border-bottom:1px solid var(--border);
+          padding:10px 10px 4px;
+          display:flex;flex-wrap:wrap;gap:6px;
+          background:var(--card2);
+        }
+        .os-sidebar > div{margin:0 !important;display:contents}
+        .os-sidebar > div > div{display:none !important} /* hide section labels */
+        .os-sidebar [data-os-tab]{width:auto !important;padding:7px 11px !important;font-size:.72rem !important}
+        .os-head{flex-wrap:wrap;gap:10px}
+        .os-head__meta{font-size:.6rem}
+        .os-head-push__sub{display:none}
+      }
+      @media (max-width: 520px){
+        .os-head{padding:11px 14px}
+        .os-head__crown{font-size:1.35rem}
+        .os-head__name{font-size:.95rem}
+        .os-head-push{padding:6px 11px;height:34px}
+        .os-head-push__icon{font-size:.95rem}
+        .os-head-push__lbl{font-size:.7rem}
+        .os-head-btn{padding:6px 10px;height:34px;font-size:.66rem}
+        .os-main{padding:16px !important}
+      }
+    `;
+    document.head.appendChild(s);
+  })();
 })();

@@ -28,7 +28,11 @@ export async function verifyUserJWT(
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
-    return { error: "Invalid or expired token", status: 401 };
+    const msg = error?.message?.trim();
+    return {
+      error: msg || "Invalid or expired token",
+      status: 401,
+    };
   }
   return { userId: user.id, email: user.email ?? "" };
 }

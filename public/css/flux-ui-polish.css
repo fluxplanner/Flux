@@ -41,10 +41,6 @@
 .flux-ai-strip-close:hover{color:var(--text);background:rgba(255,255,255,.08)}
 .flux-ai-strip-close:focus-visible{outline:2px solid rgba(var(--accent-rgb),.5);outline-offset:1px}
 
-.flux-overdue-wrap{margin-bottom:10px}
-.flux-overdue-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:var(--r-sm);
-  background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);font-size:.82rem}
-
 .flux-next-best-card{margin-top:10px}
 .flux-nb-title{font-size:1rem;font-weight:800;margin-top:6px}
 .flux-nb-meta{font-size:.75rem;color:var(--muted2);margin-top:4px}

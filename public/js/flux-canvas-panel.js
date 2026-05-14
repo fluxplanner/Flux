@@ -298,26 +298,35 @@
   };
 
   function renderCanvasChrome() {
-    const back = document.getElementById("canvasNavBack");
-    const fwd = document.getElementById("canvasNavFwd");
-    if (back) {
-      back.disabled = CanvasState.historyIndex <= 0;
+    /* v2 chrome: no back/forward, no breadcrumb. Just title + quick-tab active state. */
+    const hero = document.getElementById("canvasHeroTitle");
+    if (hero) {
+      hero.textContent = CanvasState.currentTitle && CanvasState.currentView !== "dashboard"
+        ? CanvasState.currentTitle
+        : "Canvas";
     }
-    if (fwd) {
-      fwd.disabled = CanvasState.historyIndex >= CanvasState.history.length - 1;
-    }
-    const bc = document.getElementById("canvasBreadcrumb");
-    if (bc) {
-      const parts = [];
-      parts.push(
-        `<button type="button" class="canvas-breadcrumb-seg" onclick="CanvasViews.navigate('dashboard',{})">Canvas</button>`,
-      );
-      const t = CanvasState.currentTitle || "";
-      if (t) {
-        parts.push(`<span class="canvas-breadcrumb-sep">→</span><span class="canvas-breadcrumb-current">${esc(t)}</span>`);
+    const conn = document.getElementById("canvasHeroConn");
+    if (conn) {
+      if (CanvasState.connected) {
+        conn.innerHTML = `<span class="canvas-hero-conn__dot"></span>Connected · ${esc(CanvasState.host || "")}`;
+        conn.className = "canvas-hero-conn canvas-hero-conn--ok";
+      } else {
+        conn.innerHTML = `Not connected`;
+        conn.className = "canvas-hero-conn canvas-hero-conn--off";
       }
-      bc.innerHTML = parts.join("");
     }
+    /* Highlight the right quick-tab */
+    document.querySelectorAll(".canvas-quick-tabs [data-canvas-quick]").forEach((btn) => {
+      const id = btn.getAttribute("data-canvas-quick");
+      let on = false;
+      const v = CanvasState.currentView;
+      if (id === "dashboard")     on = v === "dashboard";
+      else if (id === "upcoming") on = v === "upcomingAll";
+      else if (id === "announcements") on = v === "announcementsAll" || v === "announcement";
+      else if (id === "calendar") on = v === "calendar";
+      else if (id === "inbox")    on = v === "inbox";
+      btn.classList.toggle("active", !!on);
+    });
     const splitBtn = document.getElementById("canvasSplitBtn");
     if (splitBtn) {
       splitBtn.style.display = window.innerWidth >= 1200 ? "" : "none";
@@ -384,17 +393,19 @@
         CanvasState.loading = false;
       }
     },
+    /* Back/forward no-ops kept for API compatibility — old links still call these.
+       The chrome no longer surfaces these buttons (v2 isn't a mini-browser). */
     back() {
       if (CanvasState.historyIndex > 0) {
-        CanvasState.navAnim = "back";
         CanvasState.historyIndex--;
         const h = CanvasState.history[CanvasState.historyIndex];
         this.navigate(h.view, h.params, { noHistory: true });
+      } else {
+        this.navigate("dashboard", {}, { noHistory: true });
       }
     },
     forward() {
       if (CanvasState.historyIndex < CanvasState.history.length - 1) {
-        CanvasState.navAnim = "forward";
         CanvasState.historyIndex++;
         const h = CanvasState.history[CanvasState.historyIndex];
         this.navigate(h.view, h.params, { noHistory: true });
@@ -725,6 +736,131 @@
       };
       updateAICanvasContextBadge();
     },
+    async upcomingAll() {
+      const courses = CanvasState.courses && CanvasState.courses.length
+        ? CanvasState.courses
+        : (await CanvasAPI.getCourses().catch(() => [])) || [];
+      CanvasState.courses = Array.isArray(courses) ? courses : [];
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 60);
+      const all = [];
+      for (const c of CanvasState.courses.slice(0, 20)) {
+        try {
+          const list = await CanvasAPI.getAssignments(c.id, { bucket: "future" });
+          if (!Array.isArray(list)) continue;
+          list.forEach((a) => {
+            if (!a.due_at) return;
+            const d = new Date(a.due_at);
+            if (d > horizon) return;
+            all.push(Object.assign({}, a, {
+              course_name: c.name || c.course_code,
+              course_color: courseColor(c),
+              course_id: c.id,
+            }));
+          });
+        } catch (_) {}
+      }
+      all.sort((a, b) => (a.due_at || "").localeCompare(b.due_at || ""));
+      CanvasState.currentTitle = "All assignments";
+      const urgency = (due) => {
+        if (!due) return "muted";
+        const d = new Date(due);
+        const now = new Date();
+        if (d < now) return "red";
+        if (d.toDateString() === now.toDateString()) return "gold";
+        return "green";
+      };
+      const importPendingCount = all.filter((a) =>
+        typeof canvasAssignmentTaskExists === "function"
+          ? !canvasAssignmentTaskExists(a.course_id, a.id)
+          : true
+      ).length;
+      document.getElementById("canvasContent").innerHTML = `
+        <div class="canvas-card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:1.05rem;font-weight:800" class="flux-color-title">All upcoming assignments</div>
+            <div style="font-size:.78rem;color:var(--muted2)">${all.length} due in the next 60 days · ${importPendingCount} not yet in your planner</div>
+          </div>
+          <button type="button" class="canvas-quick-sync" onclick="fluxCanvasBulkAddConfirm()" title="Add all unplanned assignments to Flux">⬇ Add ${importPendingCount} to planner</button>
+        </div>
+        ${all.length ? all.map((a) => {
+          const exists = typeof canvasAssignmentTaskExists === "function" && canvasAssignmentTaskExists(a.course_id, a.id);
+          return `<div class="canvas-assignment-row" style="border-left-color:${esc(a.course_color)}">
+            <span class="canvas-dot" style="background:${esc(a.course_color)}"></span>
+            <div style="flex:1;min-width:0">
+              <button type="button" class="canvas-link-title" onclick="CanvasViews.navigate('assignment',{courseId:${a.course_id}, assignmentId:${a.id}})">${esc(a.name)}</button>
+              <div style="font-size:.72rem;color:var(--muted)">${esc(a.course_name)}</div>
+            </div>
+            <span class="canvas-due-badge ${urgency(a.due_at)}">${esc((a.due_at || "").slice(0, 10))}</span>
+            <span style="font-size:.72rem;font-family:JetBrains Mono,monospace;color:var(--muted)">${a.points_possible != null ? esc(String(a.points_possible)) + " pts" : ""}</span>
+            ${exists
+              ? `<span class="canvas-status-chip submitted">In planner ✓</span>`
+              : `<button type="button" class="canvas-add-btn" data-canvas-cid="${a.course_id}" data-canvas-aid="${a.id}" onclick="addCanvasAssignmentToPlanner(${a.course_id}, ${a.id})">+ Add</button>`}
+          </div>`;
+        }).join("") : `<div class="canvas-card muted">No upcoming assignments found.</div>`}`;
+      CanvasState.pageContext = {
+        view: "upcomingAll",
+        summary: `${all.length} upcoming Canvas assignments`,
+        upcomingAssignments: all.slice(0, 40).map((a) => ({
+          name: a.name,
+          courseName: a.course_name,
+          dueDate: a.due_at,
+          pointsPossible: a.points_possible,
+        })),
+      };
+      updateAICanvasContextBadge();
+    },
+    async announcementsAll() {
+      const courses = CanvasState.courses && CanvasState.courses.length
+        ? CanvasState.courses
+        : (await CanvasAPI.getCourses().catch(() => [])) || [];
+      CanvasState.courses = Array.isArray(courses) ? courses : [];
+      const courseIds = CanvasState.courses.slice(0, 20).map((c) => c.id);
+      let announcements = [];
+      try {
+        announcements = courseIds.length ? await CanvasAPI.getAnnouncements(courseIds) : [];
+      } catch (_) {
+        announcements = [];
+      }
+      const list = Array.isArray(announcements) ? announcements : [];
+      list.forEach((a) => {
+        if (a.id != null) CanvasState.announcementCache.set(Number(a.id), a);
+      });
+      CanvasState.currentTitle = "All announcements";
+      const courseById = new Map(CanvasState.courses.map((c) => [String(c.id), c]));
+      document.getElementById("canvasContent").innerHTML = `
+        <div class="canvas-card" style="margin-bottom:14px">
+          <div style="font-size:1.05rem;font-weight:800" class="flux-color-title">Recent announcements</div>
+          <div style="font-size:.78rem;color:var(--muted2)">Latest posts across your ${CanvasState.courses.length} enrolled courses.</div>
+        </div>
+        ${list.length ? list.map((a) => {
+          const cid = (a.context_code || "").replace("course_", "");
+          const c = courseById.get(cid) || {};
+          const col = courseColor(c);
+          const prev = stripHtml(a.message || "").slice(0, 320);
+          return `<div class="canvas-card" style="margin-bottom:10px;border-left:3px solid ${esc(col)}">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="font-weight:700;flex:1;min-width:0">${esc(a.title || "Announcement")}</div>
+              <span style="font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${esc((a.posted_at || "").slice(0, 16))}</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin:4px 0 8px">${esc(a.context_name || c.name || c.course_code || "Course")}</div>
+            <div style="font-size:.84rem;color:var(--text);line-height:1.55">${esc(prev)}${(a.message || "").length > 320 ? "…" : ""}
+              <button type="button" class="canvas-linkish" onclick="CanvasViews.navigate('announcement',{announcementId:${Number(a.id)}, courseId:${Number(cid)}})">Read more</button>
+            </div>
+          </div>`;
+        }).join("") : `<div class="canvas-card muted">No announcements yet — they’ll show here as your teachers post.</div>`}`;
+      CanvasState.pageContext = {
+        view: "announcementsAll",
+        announcementCount: list.length,
+        recentAnnouncements: list.slice(0, 12).map((a) => ({
+          title: a.title,
+          courseName: a.context_name,
+          postedAt: a.posted_at,
+          preview: stripHtml(a.message || "").slice(0, 240),
+        })),
+      };
+      updateAICanvasContextBadge();
+    },
     async inbox() {
       CanvasState._inboxThread = null;
       const conversations = await CanvasAPI.getInbox();
@@ -884,66 +1020,54 @@
     const stack = document.getElementById("canvasHubStack");
     if (!stack || CanvasState._shellReady) return;
     CanvasState._shellReady = true;
+    /* v2 shell: clean, no mini-browser. Pure data hub.
+       Top header = connection chip + title + primary actions.
+       Quick-section tabs (in-page, no history navigation).
+       Left sidebar holds course shortcuts only (no Back/Forward). */
     stack.innerHTML = `
-      <div class="canvas-panel-wrap" id="fluxCanvasPanelWrap">
-        <div class="canvas-topbar" id="canvasTopbar">
-          <div class="canvas-topbar-row canvas-topbar-nav">
-            <button type="button" class="canvas-icon-btn" id="canvasNavBack" onclick="CanvasViews.back()" aria-label="Back">←</button>
-            <button type="button" class="canvas-icon-btn" id="canvasNavFwd" onclick="CanvasViews.forward()" aria-label="Forward">→</button>
+      <div class="canvas-panel-wrap canvas-panel-wrap--v2" id="fluxCanvasPanelWrap">
+        <div class="canvas-topbar canvas-topbar--v2" id="canvasTopbar">
+          <div class="canvas-topbar-row canvas-topbar-hero">
             <button type="button" class="canvas-icon-btn canvas-mob-sidebar-btn" onclick="fluxCanvasToggleMobileSidebar()" aria-label="Menu">☰</button>
-            <div class="canvas-breadcrumb" id="canvasBreadcrumb"></div>
+            <div class="canvas-hero-title flux-color-title" id="canvasHeroTitle">Canvas</div>
+            <span class="canvas-hero-conn" id="canvasHeroConn"></span>
             <div class="canvas-topbar-actions">
               <button type="button" class="canvas-icon-btn" onclick="CanvasViews.navigate(CanvasState.currentView, CanvasState.currentParams, {noHistory:true})" title="Refresh">↻</button>
-              <button type="button" class="canvas-icon-btn" onclick="fluxCanvasSyncModal()" title="Sync from Canvas">⟳</button>
-              <button type="button" class="canvas-icon-btn" id="canvasSplitBtn" onclick="fluxCanvasToggleSplit()" title="Split with AI" style="display:none">⧉</button>
-              <button type="button" class="canvas-icon-btn" onclick="fluxCanvasOpenInCanvas()" title="Open in Canvas">↗</button>
-              <button type="button" class="canvas-ask-ai" onclick="fluxCanvasAskAI()" title="Ask Flux AI">✦ Ask AI</button>
+              <button type="button" class="canvas-icon-btn" id="canvasSplitBtn" onclick="fluxCanvasToggleSplit()" title="Split with Flux AI (1200px+)" style="display:none">⧉</button>
+              <button type="button" class="canvas-ask-ai" onclick="fluxCanvasAskAI()" title="Ask Flux AI about this page">✦ Ask Flux AI</button>
+              <button type="button" class="canvas-icon-btn" onclick="(function(){if(confirm('Disconnect Canvas account from Flux? Your tasks won\\'t be touched.')){save('flux_canvas_token',null);CanvasState.token=null;CanvasState.connected=false;CanvasState._shellReady=false;window.__fluxRenderCanvasPanel();}})()" title="Disconnect" aria-label="Disconnect Canvas">⏻</button>
             </div>
           </div>
-        </div>
-        <div class="canvas-hub-strip" id="canvasHubStrip">
-          <div class="canvas-hub-strip-row">
-            <span id="canvasHubFetchStatus" class="canvas-hub-status" aria-live="polite"></span>
-            <button type="button" class="canvas-add-btn" onclick="window.fluxCanvasHubToolbarSync?.()" title="Refresh assignments, grades cache, and planner sync data">Sync hub</button>
+          <div class="canvas-quick-tabs" id="canvasQuickTabs" role="tablist" aria-label="Canvas sections">
+            <button type="button" data-canvas-quick="dashboard" onclick="CanvasViews.navigate('dashboard',{})"  role="tab"><span>🏠</span> Hub</button>
+            <button type="button" data-canvas-quick="upcoming"  onclick="window.fluxCanvasShowUpcoming&&window.fluxCanvasShowUpcoming()" role="tab"><span>📌</span> Assignments</button>
+            <button type="button" data-canvas-quick="announcements" onclick="window.fluxCanvasShowAnnouncements&&window.fluxCanvasShowAnnouncements()" role="tab"><span>📢</span> Announcements</button>
+            <button type="button" data-canvas-quick="calendar" onclick="CanvasViews.calendar({})" role="tab"><span>📅</span> Calendar</button>
+            <button type="button" data-canvas-quick="inbox"    onclick="CanvasViews.inbox({})" role="tab"><span>✉</span> Inbox</button>
+            <span style="flex:1"></span>
+            <button type="button" class="canvas-quick-sync" onclick="window.fluxCanvasSyncModal&&window.fluxCanvasSyncModal()" title="Pull assignments into the planner">⟳ Import to planner</button>
           </div>
-          <details class="canvas-hub-reader-details">
-            <summary>Assignment text for Flux AI</summary>
-            <div class="canvas-hub-reader-grid">
-              <label class="canvas-hub-field">Course
-                <select id="fluxCanvasReaderCourse" onchange="fluxCanvasReaderOnCourseChange()"></select>
-              </label>
-              <label class="canvas-hub-field">Assignment
-                <select id="fluxCanvasReaderAssignment"></select>
-              </label>
-            </div>
-            <div id="fluxCanvasReaderMeta" class="canvas-hub-reader-meta">—</div>
-            <textarea id="fluxCanvasReaderBody" class="canvas-hub-reader-ta" rows="5" placeholder="Pick course and assignment, then Load. Loaded text can be pinned for Flux AI."></textarea>
-            <label class="canvas-hub-pin-row"><input type="checkbox" id="fluxCanvasReaderAutoPin" checked /> Auto-pin loaded text for Flux AI</label>
-            <div class="canvas-hub-reader-actions">
-              <button type="button" class="canvas-add-btn" onclick="(function(){var c=parseInt(document.getElementById('fluxCanvasReaderCourse')?.value||'0',10);var a=parseInt(document.getElementById('fluxCanvasReaderAssignment')?.value||'0',10);if(typeof loadCanvasAssignmentIntoReader==='function')loadCanvasAssignmentIntoReader(c,a,{});})()">Load</button>
-              <button type="button" class="canvas-add-btn" onclick="typeof pinReaderTextFromCanvasHub==='function'?pinReaderTextFromCanvasHub():void 0">Pin text</button>
-              <button type="button" class="canvas-add-btn" onclick="typeof clearCanvasPageForAI==='function'?clearCanvasPageForAI():void 0">Clear AI pin</button>
-            </div>
-          </details>
         </div>
         <div class="canvas-panel-body">
           <aside class="canvas-sidebar ${CanvasState._sidebarCollapsed ? "collapsed" : ""}" id="canvasSidebar">
             <div class="canvas-sidebar-head">
-              <span>Navigation</span>
+              <span>My courses</span>
               <button type="button" class="canvas-sidebar-collapse" onclick="fluxCanvasToggleSidebarCollapse()" title="Collapse">‹</button>
             </div>
-            <div class="canvas-sidebar-section-title">My courses</div>
             <div id="canvasSidebarCourses"></div>
-            <div class="canvas-sidebar-section-title">Quick links</div>
-            <button type="button" class="canvas-course-chip" onclick="CanvasViews.navigate('dashboard',{})">Dashboard</button>
-            <button type="button" class="canvas-course-chip" onclick="CanvasViews.calendar({})">Calendar</button>
-            <button type="button" class="canvas-course-chip" onclick="CanvasViews.inbox({})">Inbox</button>
           </aside>
           <div class="canvas-sidebar-backdrop" id="canvasSidebarBackdrop" onclick="fluxCanvasCloseMobileSidebar()"></div>
           <main class="canvas-content" id="canvasContent"></main>
         </div>
       </div>`;
   }
+  /** Reusable filters for the simplified quick sections. */
+  window.fluxCanvasShowUpcoming = function () {
+    if (typeof CanvasViews?.navigate === "function") CanvasViews.navigate("upcomingAll", {});
+  };
+  window.fluxCanvasShowAnnouncements = function () {
+    if (typeof CanvasViews?.navigate === "function") CanvasViews.navigate("announcementsAll", {});
+  };
 
   window.fluxCanvasToggleMobileSidebar = function () {
     document.getElementById("canvasSidebar")?.classList.toggle("open");
@@ -990,15 +1114,16 @@
       ai.classList.toggle("flux-ai-split-visible", !!on);
       if (on) {
         ai.classList.add("active");
-        ai.style.display = "flex";
+        ai.style.removeProperty("display");
         if (typeof initAIChats === "function") initAIChats();
       } else {
         ai.classList.remove("flux-ai-split-visible");
         ai.style.flex = "";
         ai.style.minWidth = "";
-        if (!document.querySelector('[data-tab="ai"]')?.classList.contains("active")) {
+        const aiTabActive = !!document.querySelector('.bnav-item[data-tab="ai"].active,.nav-item[data-tab="ai"].active');
+        if (!aiTabActive) {
           ai.classList.remove("active");
-          ai.style.display = "";
+          ai.style.removeProperty("display");
         }
       }
     }

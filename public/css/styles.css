@@ -227,10 +227,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   padding:6px 14px;font-size:.72rem;border-radius:10px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);color:var(--accent);
   display:inline-flex;align-items:center;gap:8px;
 }
-.notices-subbar .flux-overdue-banner{
-  padding:5px 12px;font-size:.72rem;border-radius:10px;background:rgba(var(--red-rgb),.1);border:1px solid rgba(var(--red-rgb),.25);color:var(--red);
-  display:inline-flex;align-items:center;gap:10px;
-}
 @media(max-width:700px){
   .topbar{flex-wrap:wrap;align-items:center;padding-bottom:8px}
   .topbar-left-cluster{order:1}
@@ -288,6 +284,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .panel.active{display:block}
 #ai.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;padding:0;overflow:hidden}
 #ai.ai-root.active{flex-direction:row!important}
+
+/* Hard rule: any panel without .active must never be shown.
+   Defends against inline style="display:..." leftovers and JS that
+   forgot to restore the inline state (e.g. canvas split toggle).
+   The flux-ai-split-visible exception keeps split-view working on desktop. */
+.main-content > .panel:not(.active){
+  display:none!important;
+}
+body.flux-canvas-ai-split .main-content > #ai.panel.flux-ai-split-visible{
+  display:flex!important;
+}
 
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(12,16,28,.78) 0%,rgba(18,22,38,.62) 100%);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -1px 0 rgba(255,255,255,.05) inset,0 -12px 48px rgba(0,0,0,.35);z-index:100;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto}
 .bnav-inner{display:flex;min-width:100%}
@@ -803,8 +810,58 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 }
 .dash-v2-work-title{
   font-family:'Plus Jakarta Sans',system-ui,sans-serif;
-  font-size:1.15rem;font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.2;
-  color:var(--accent);
+  font-size:1.18rem;font-weight:900;letter-spacing:-.02em;margin:0;line-height:1.2;
+  background:linear-gradient(120deg,
+    var(--accent) 0%,
+    var(--purple,#a78bfa) 55%,
+    var(--accent2,var(--accent)) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  background-size:200% 100%;
+  background-position:0% 50%;
+  animation:flux-title-flow 9s ease-in-out infinite alternate;
+}
+@keyframes flux-title-flow{
+  from{ background-position: 0% 50%; }
+  to  { background-position: 100% 50%; }
+}
+@media (prefers-reduced-motion: reduce){
+  .dash-v2-work-title{ animation: none; }
+}
+/* Apply a similar treatment to other section headers across the planner */
+.flux-page-title,
+.dash-v2-greet-title,
+.canvas-section-title.flux-colorful,
+.today-section-title{
+  background:linear-gradient(120deg,
+    var(--accent) 0%,
+    var(--purple,#a78bfa) 55%,
+    var(--accent2,var(--accent)) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  background-size:200% 100%;
+  background-position:0% 50%;
+}
+[data-theme="light"] .dash-v2-work-title,
+[data-theme="light"] .flux-page-title,
+[data-theme="light"] .dash-v2-greet-title,
+[data-theme="light"] .today-section-title{
+  background:linear-gradient(120deg,
+    color-mix(in srgb,var(--accent) 90%,#0a0a0a) 0%,
+    color-mix(in srgb,var(--purple,#a78bfa) 90%,#0a0a0a) 55%,
+    color-mix(in srgb,var(--accent2,var(--accent)) 90%,#0a0a0a) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+/* Utility you can add to any heading to get the same treatment */
+.flux-color-title{
+  background:linear-gradient(120deg,
+    var(--accent) 0%,
+    var(--purple,#a78bfa) 50%,
+    var(--accent2,var(--accent)) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  background-size:200% 100%;
 }
 .dash-v2-workspace .dash-toolbar{margin-bottom:0}
 .dash-v2-saved-views{
@@ -3997,3 +4054,325 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 @media(prefers-reduced-motion:reduce){
   .flux-feedback-modal,.flux-feedback-modal__panel{transition:none}
 }
+
+/* ════════════════════════════════════════════════════════════
+   EDUCATOR PLATFORM — role select, teacher/counselor dashboards,
+   counselor booking & messaging.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Role-select screen (first visit) ── */
+#roleSelectScreen{
+  position:fixed;inset:0;background:var(--bg);
+  z-index:1001;overflow-y:auto;
+}
+#roleSelectScreen.visible{display:block!important}
+.role-select-bg{
+  position:fixed;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 20%, rgba(var(--accent-rgb),.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 70% 80%, rgba(108,99,255,.05) 0%, transparent 60%);
+}
+.role-select-wrap{
+  position:relative;z-index:1;max-width:560px;margin:0 auto;
+  padding:60px 24px 40px;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+}
+.role-select-logo{display:flex;align-items:center;gap:12px;margin-bottom:40px}
+.role-logo-text{
+  font-size:1.6rem;font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,#00bfff,#7c5cff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.role-select-heading{font-size:2.2rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px;text-align:center}
+.role-select-sub{font-size:.9rem;color:var(--muted2);margin-bottom:36px;text-align:center}
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;margin-bottom:28px}
+@media(max-width:500px){ .role-cards{grid-template-columns:1fr} }
+.role-card{
+  position:relative;background:var(--card);
+  border:1.5px solid var(--border2);border-radius:20px;
+  padding:28px 22px;cursor:pointer;transition:all .25s var(--ease,ease);
+  overflow:hidden;display:flex;flex-direction:column;gap:8px;
+  text-align:left;font-family:inherit;color:var(--text);
+}
+.role-card:hover,.role-card:focus-visible{
+  border-color:rgba(var(--accent-rgb),.4);transform:translateY(-4px);
+  box-shadow:0 16px 48px rgba(0,0,0,.4), 0 0 0 1px rgba(var(--accent-rgb),.15);
+  background:linear-gradient(135deg, rgba(var(--accent-rgb),.05), var(--card));
+}
+.role-card-staff:hover,.role-card-staff:focus-visible{
+  border-color:rgba(108,99,255,.4);
+  box-shadow:0 16px 48px rgba(0,0,0,.4), 0 0 0 1px rgba(108,99,255,.15);
+  background:linear-gradient(135deg, rgba(108,99,255,.05), var(--card));
+}
+.role-card-icon{font-size:2.4rem;line-height:1}
+.role-card-title{font-size:1.2rem;font-weight:800}
+.role-card-desc{font-size:.78rem;color:var(--muted2);line-height:1.6;flex:1}
+.role-card-arrow{font-size:1.2rem;color:var(--accent);font-weight:700;margin-top:4px;transition:transform .2s}
+.role-card:hover .role-card-arrow{transform:translateX(4px)}
+.role-card-subroles{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.role-card-subroles span{
+  font-size:.65rem;padding:2px 8px;border-radius:10px;
+  background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.2);
+  color:rgba(180,170,255,.9);font-family:'JetBrains Mono',monospace;
+}
+.role-already-have{font-size:.82rem;color:var(--muted2);text-align:center}
+.role-login-link{color:var(--accent);text-decoration:underline;cursor:pointer}
+
+/* ── Staff onboarding overlay (built from JS) ── */
+#staffOnboarding{
+  position:fixed;inset:0;background:var(--bg);z-index:1002;
+  overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:40px 20px;
+}
+#staffOnboarding .mrow{margin-bottom:10px}
+#staffOnboarding label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:4px}
+#staffOnboarding input,#staffOnboarding select{
+  width:100%;background:var(--card2);border:1px solid var(--border2);
+  border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.85rem;
+}
+
+/* ── Teacher / counselor dashboards ── */
+.flux-edu-panel{padding:0}
+.teacher-dashboard,.counselor-dashboard{padding:20px}
+.teacher-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.teacher-greeting{font-size:1.3rem;font-weight:800}
+.teacher-date{font-size:.8rem;color:var(--muted2);margin-top:2px}
+.teacher-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.teacher-header-actions .btn-primary{
+  padding:9px 14px;background:var(--accent);border:none;border-radius:12px;
+  color:#0a0d18;font-weight:700;cursor:pointer;font-family:inherit;font-size:.82rem;
+}
+.teacher-header-actions button{
+  padding:9px 14px;background:var(--card2);border:1px solid var(--border2);
+  border-radius:12px;color:var(--text);font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;
+}
+.teacher-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;
+}
+@media(max-width:768px){ .teacher-stats{grid-template-columns:repeat(2,1fr)} }
+.teacher-stat-card{
+  background:var(--card);border:1px solid var(--border2);border-radius:14px;
+  padding:16px;text-align:center;
+}
+.teacher-stat-card .stat-number{
+  font-size:1.8rem;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace;line-height:1;
+}
+.teacher-stat-card .stat-label{
+  font-size:.7rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.8px;margin-top:6px;
+}
+.teacher-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){ .teacher-grid{grid-template-columns:1fr} }
+.teacher-section{
+  background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:16px;
+}
+.teacher-section .section-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+}
+.teacher-section .section-header h3{font-size:.9rem;font-weight:700;margin:0}
+.teacher-section .section-header .btn-sm{
+  padding:5px 10px;border-radius:8px;background:var(--card2);
+  border:1px solid var(--border2);color:var(--text);
+  font-size:.7rem;font-weight:600;cursor:pointer;font-family:inherit;
+}
+
+.teacher-class-card{
+  display:flex;align-items:center;background:var(--card2);
+  border:1px solid var(--border);border-radius:12px;margin-bottom:8px;
+  cursor:pointer;overflow:hidden;transition:all .2s;text-align:left;width:100%;
+  font-family:inherit;color:inherit;
+}
+.teacher-class-card:hover{border-color:rgba(var(--accent-rgb),.3);transform:translateX(2px)}
+.class-color-stripe{width:4px;height:60px;flex-shrink:0;background:var(--accent)}
+.class-card-body{flex:1;padding:10px 12px}
+.class-name{font-size:.88rem;font-weight:700}
+.class-meta{font-size:.72rem;color:var(--muted2)}
+.class-stats{display:flex;gap:10px;font-size:.7rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace}
+.class-code{color:var(--accent)}
+.class-card-arrow{font-size:1.2rem;color:var(--muted2);padding:0 12px}
+
+.submission-row,.appointment-row,.message-preview-row{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;
+  cursor:pointer;transition:background .15s;margin-bottom:4px;
+}
+.submission-row:hover,.appointment-row:hover,.message-preview-row:hover{
+  background:rgba(255,255,255,.04);
+}
+.submission-avatar,.msg-avatar{
+  width:28px;height:28px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#0a0d18;flex-shrink:0;
+}
+.msg-avatar{background:#7c5cff;color:#fff}
+.submission-info,.msg-info{flex:1;min-width:0}
+.submission-student,.msg-sender{font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.submission-task,.msg-preview{font-size:.72rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+.submission-status,.appt-status-badge{
+  font-size:.65rem;padding:2px 7px;border-radius:8px;
+  font-family:'JetBrains Mono',monospace;flex-shrink:0;text-transform:lowercase;
+}
+.status-submitted{background:rgba(0,217,163,.12);color:var(--green)}
+.status-pending{background:rgba(245,166,35,.12);color:var(--gold)}
+.status-confirmed{background:rgba(0,217,163,.12);color:var(--green)}
+.status-graded{background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+.status-missing{background:rgba(255,77,109,.12);color:var(--red)}
+.status-late{background:rgba(255,100,0,.12);color:#ff6400}
+.status-cancelled{background:rgba(255,77,109,.12);color:var(--red)}
+.status-completed{background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+.status-no_show{background:rgba(255,77,109,.12);color:var(--red)}
+.status-in_progress{background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+
+.appt-time{font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);min-width:80px}
+.appt-student{font-size:.84rem;font-weight:600;flex:1}
+.appt-reason{font-size:.72rem;color:var(--muted2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Counselor profile section in student profile ── */
+.my-counselor-section .card{padding:14px 16px;margin-bottom:14px}
+.counselor-profile-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.counselor-avatar{
+  width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;font-weight:800;color:#fff;flex-shrink:0;
+}
+.counselor-avatar-lg{
+  width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;font-weight:800;color:#fff;flex-shrink:0;
+}
+.counselor-name{font-size:.9rem;font-weight:700}
+.counselor-bio{font-size:.75rem;color:var(--muted2);line-height:1.5}
+
+.counselor-select-list{display:flex;flex-direction:column;gap:8px}
+.counselor-select-card{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;
+  background:var(--card2);border:1.5px solid var(--border2);border-radius:14px;
+  cursor:pointer;transition:all .2s;font-family:inherit;text-align:left;width:100%;color:inherit;
+}
+.counselor-select-card:hover,
+.counselor-select-card.selected{
+  border-color:var(--accent);background:rgba(var(--accent-rgb),.06);
+}
+.counselor-select-check{font-size:1.1rem;color:var(--accent);flex-shrink:0}
+.counselor-info{flex:1}
+
+/* ── Appointment booking modal date/time chips ── */
+.date-chip,.time-chip{
+  padding:6px 12px;border-radius:10px;border:1px solid var(--border2);
+  background:var(--card2);font-size:.78rem;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;color:var(--text);transition:all .15s;
+}
+.date-chip:hover{border-color:rgba(var(--accent-rgb),.4)}
+.time-chip:hover:not(.booked){border-color:rgba(var(--accent-rgb),.4)}
+.time-chip.booked{opacity:.4;cursor:not-allowed}
+
+/* Empty-state inside educator panels */
+.flux-edu-panel .empty{
+  padding:32px 16px;text-align:center;color:var(--muted2);
+}
+.flux-edu-panel .empty-icon{font-size:2.4rem;margin-bottom:8px}
+.flux-edu-panel .empty-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.flux-edu-panel .empty-sub{font-size:.78rem}
+
+/* ════════════════════════════════════════════════════════════
+   CANVAS v2 — simplified hub chrome (no mini-browser).
+   Header hero · connection chip · quick-tabs · clean shell.
+   ════════════════════════════════════════════════════════════ */
+.canvas-panel-wrap--v2{ display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden }
+.canvas-topbar--v2{
+  position:sticky;top:0;z-index:10;
+  display:flex;flex-direction:column;
+  padding:0;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 8%, transparent),
+    color-mix(in srgb, var(--card) 92%, transparent));
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  flex-shrink:0;
+  height:auto;
+}
+.canvas-topbar-hero{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px 8px;
+  width:100%;min-width:0;
+}
+.canvas-hero-title{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  font-size:1.18rem;font-weight:900;letter-spacing:-.02em;
+  margin:0;line-height:1.15;
+  flex:0 0 auto;
+  min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.canvas-hero-conn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px;border-radius:999px;
+  font-size:.66rem;font-weight:700;letter-spacing:.02em;
+  font-family:'JetBrains Mono',monospace;
+  background:var(--card2);border:1px solid var(--border2);color:var(--muted2);
+}
+.canvas-hero-conn--ok{
+  background:color-mix(in srgb, var(--green) 12%, var(--card2));
+  border-color:color-mix(in srgb, var(--green) 35%, var(--border2));
+  color:var(--green);
+}
+.canvas-hero-conn--off{
+  background:color-mix(in srgb, var(--muted) 12%, var(--card2));
+  color:var(--muted);
+}
+.canvas-hero-conn__dot{
+  width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 8px var(--green);
+}
+.canvas-topbar--v2 .canvas-topbar-actions{
+  display:flex;align-items:center;gap:6px;
+  margin-left:auto;flex-shrink:0;
+}
+.canvas-quick-tabs{
+  display:flex;align-items:center;gap:4px;
+  padding:6px 10px 8px;
+  border-top:1px solid color-mix(in srgb, var(--accent) 8%, var(--border));
+  background:color-mix(in srgb, var(--card2) 60%, transparent);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.canvas-quick-tabs::-webkit-scrollbar{display:none}
+.canvas-quick-tabs > button:not(.canvas-quick-sync){
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 12px;
+  border-radius:10px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--muted2);
+  font-family:inherit;font-weight:650;font-size:.76rem;
+  cursor:pointer;white-space:nowrap;
+  transition:background .12s, color .12s, border-color .12s;
+}
+.canvas-quick-tabs > button:not(.canvas-quick-sync):hover{
+  background:color-mix(in srgb, var(--accent) 8%, transparent);
+  color:var(--text);
+}
+.canvas-quick-tabs > button.active{
+  background:color-mix(in srgb, var(--accent) 16%, var(--card2));
+  border-color:rgba(var(--accent-rgb),.3);
+  color:var(--accent);
+}
+.canvas-quick-tabs > button.active > span:first-child{filter:saturate(1.4) drop-shadow(0 0 6px rgba(var(--accent-rgb),.35))}
+.canvas-quick-sync{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;
+  border-radius:10px;
+  background:linear-gradient(135deg, var(--accent), var(--accent2,var(--accent)));
+  border:1px solid rgba(var(--accent-rgb),.4);
+  color:#080a0f;
+  font-family:inherit;font-weight:800;font-size:.74rem;letter-spacing:.01em;
+  cursor:pointer;white-space:nowrap;
+  box-shadow:0 4px 14px rgba(var(--accent-rgb),.28);
+  transition:transform .12s, box-shadow .12s, filter .12s;
+}
+.canvas-quick-sync:hover{transform:translateY(-1px);filter:brightness(1.05);box-shadow:0 8px 22px rgba(var(--accent-rgb),.35)}
+.canvas-quick-sync:active{transform:translateY(0)}
+@media (max-width: 768px){
+  .canvas-hero-title{ font-size:1.05rem }
+  .canvas-hero-conn{ font-size:.6rem;padding:3px 8px }
+  .canvas-quick-tabs > button:not(.canvas-quick-sync){ padding:6px 10px;font-size:.7rem }
+  .canvas-quick-sync{ padding:6px 11px;font-size:.7rem }
+}
+

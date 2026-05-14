@@ -124,6 +124,56 @@
 <!-- Built dynamically by splash.js, just needs the container -->
 <div id="splash" style="display:none"></div>
 
+<!-- ══ ROLE SELECT SCREEN (first-visit) ══ -->
+<div id="roleSelectScreen" style="display:none">
+  <div class="role-select-bg" aria-hidden="true"></div>
+  <div class="role-select-wrap">
+    <div class="role-select-logo">
+      <svg width="48" height="28" viewBox="0 0 60 32" fill="none" aria-hidden="true">
+        <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
+          fill="none" stroke="url(#rsg)" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
+        <defs>
+          <linearGradient id="rsg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
+            <stop offset="25%" stop-color="#00bfff"/>
+            <stop offset="75%" stop-color="#7c5cff"/>
+            <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span class="role-logo-text">Flux Planner</span>
+    </div>
+
+    <h1 class="role-select-heading">I am a…</h1>
+    <p class="role-select-sub">Choose your role to get started</p>
+
+    <div class="role-cards">
+      <button type="button" class="role-card" onclick="selectRole('student')" aria-label="Student account">
+        <div class="role-card-icon" aria-hidden="true">🎒</div>
+        <div class="role-card-title">Student</div>
+        <div class="role-card-desc">Manage assignments, study plans, and connect with your teachers and counselor.</div>
+        <div class="role-card-arrow" aria-hidden="true">→</div>
+      </button>
+
+      <button type="button" class="role-card role-card-staff" onclick="selectRole('staff')" aria-label="Staff account">
+        <div class="role-card-icon" aria-hidden="true">🏫</div>
+        <div class="role-card-title">Staff</div>
+        <div class="role-card-desc">Post assignments, view student progress, and communicate with your class.</div>
+        <div class="role-card-arrow" aria-hidden="true">→</div>
+        <div class="role-card-subroles">
+          <span>Teacher</span><span>Counselor</span><span>Admin</span>
+        </div>
+      </button>
+    </div>
+
+    <div class="role-already-have">
+      Already have an account?
+      <span class="role-login-link" onclick="showLoginScreen()" role="button" tabindex="0">Sign in</span>
+    </div>
+  </div>
+</div>
+
 <!-- ══ LOGIN SCREEN ══ -->
 <div id="loginScreen" style="display:none">
   <canvas id="loginParticles" class="login-particles" aria-hidden="true"></canvas>
@@ -797,7 +847,6 @@
     <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
-      <div id="fluxOverdueBanner" class="flux-overdue-wrap" style="display:none"></div>
     </div>
 
     <!-- ─── DASHBOARD ─── -->
@@ -1326,11 +1375,28 @@
     </div>
 
     <!-- ─── PROFILE ─── -->
+    <!-- ─── TEACHER DASHBOARD (visible only for teacher accounts) ─── -->
+    <div id="teacherDashboard" class="panel flux-page flux-edu-panel" data-edu-role="teacher">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Classes, assignments, submissions, and messages.</p>
+      </header>
+      <div id="teacherDashboardBody"></div>
+    </div>
+
+    <!-- ─── COUNSELOR DASHBOARD (visible only for counselor accounts) ─── -->
+    <div id="counselorDashboard" class="panel flux-page flux-edu-panel" data-edu-role="counselor">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Today's appointments, upcoming sessions, and messages.</p>
+      </header>
+      <div id="counselorDashboardBody"></div>
+    </div>
+
     <div id="profile" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Identity, study style, stats, and badges.</p>
       </header>
       <div class="flux-stack">
+      <div id="myCounselorSection" class="my-counselor-section"></div>
       <div class="profile-hero">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
           <div class="p-avatar" id="pAvatar" onclick="document.getElementById('picUpload').click()">?
@@ -1580,20 +1646,20 @@
             <span class="ai-title">Flux AI</span>
             <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
           </div>
-          <div class="ai-topbar__right ai-controls">
+          <div class="ai-topbar__right ai-controls" role="toolbar" aria-label="Flux AI controls">
             <select id="aiModeSelect" class="ai-mode-select" aria-label="AI style" onchange="setFluxAIModeFromSelect(this.value)">
-              <option value="default">Balanced</option>
-              <option value="research">Research</option>
-              <option value="deep">Deep think</option>
-              <option value="overtime">Overtime</option>
+              <option value="default">⚡ Balanced</option>
+              <option value="research">🔬 Research</option>
+              <option value="deep">🧠 Deep think</option>
+              <option value="overtime">⏱ Overtime</option>
             </select>
             <label class="ai-topbar-attach" title="Attach image">
               <input type="file" accept="image/*" id="aiImgUpload" onchange="handleAIImg(event)">
               <span class="ai-topbar-attach__ico" aria-hidden="true">📎</span>
               <span class="visually-hidden">Attach image</span>
             </label>
-            <button type="button" class="ai-topbar-btn" onclick="clearAIChat()">Clear</button>
-            <button type="button" class="ai-topbar-btn ai-topbar-btn--accent" onclick="explainMyWeek()" title="Summarize the week with your planner context">This week</button>
+            <button type="button" class="ai-topbar-btn" onclick="clearAIChat()" title="Clear this chat thread" aria-label="Clear chat">Clear</button>
+            <button type="button" class="ai-topbar-btn ai-topbar-btn--accent" onclick="explainMyWeek()" title="Summarize the week with your planner context" aria-label="Summarize this week">✦ Week</button>
           </div>
         </header>
 
@@ -1613,8 +1679,12 @@
           <div class="flux-ai-view-pane flux-ai-view-pane--chat ai-pane ai-pane--chat" id="fluxAiPaneChat" role="tabpanel" aria-labelledby="fluxAiViewBtnChat">
             <div id="aiMsgsWrap" class="ai-chat-area flux-ai-scroll">
               <div class="flux-ai-thread flux-ac-message-stack ai-thread-col">
+                <div class="flux-ai-greeting" id="fluxAiGreeting" aria-hidden="true">
+                  <h1 class="flux-ai-greeting__head">How can I help you today?</h1>
+                  <p class="flux-ai-greeting__sub">Ask anything — I can read your tasks, calendar, notes, and Canvas when it helps.</p>
+                </div>
                 <div class="ai-sugs" id="aiSugs"></div>
-                <p class="flux-ai-empty-hint" id="fluxAiEmptyHint" role="status">Ask in plain language, or tap a suggestion chip above. Flux can use your tasks, calendar, and notes when it helps answer you.</p>
+                <p class="flux-ai-empty-hint" id="fluxAiEmptyHint" role="status">Tap a suggestion or type below. Use <kbd>/plan</kbd>, <kbd>/optimize</kbd>, or <kbd>/fix</kbd> for quick actions.</p>
                 <div class="ai-msgs" id="aiMsgs"></div>
               </div>
             </div>

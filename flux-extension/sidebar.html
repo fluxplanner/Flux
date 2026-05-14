@@ -4,58 +4,81 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
 <div id="fluxSidebar">
+
   <div class="flux-header">
     <div class="flux-logo-wrap">
-      <svg width="22" height="22" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-        <path d="M30,30 C33,8 52,8 52,30 C52,52 33,52 30,30 C27,52 8,52 8,30 C8,8 27,8 30,30 Z"
-          stroke="url(#lg)" stroke-width="4" stroke-linecap="round" fill="none"/>
-        <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="var(--accent-start)"/>
-          <stop offset="100%" stop-color="var(--accent-end)"/>
-        </linearGradient></defs>
+      <svg class="flux-logo-svg" width="24" height="14" viewBox="0 0 60 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
+          fill="none" stroke="url(#flux-grad)" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="30" cy="16" r="2.5" fill="url(#flux-grad-dot)"/>
+        <defs>
+          <linearGradient id="flux-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
+            <stop offset="25%" stop-color="#00bfff"/>
+            <stop offset="75%" stop-color="#7c5cff"/>
+            <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
+          </linearGradient>
+          <radialGradient id="flux-grad-dot" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#00bfff"/>
+          </radialGradient>
+        </defs>
       </svg>
       <span class="flux-title">Flux</span>
     </div>
     <div class="flux-header-right">
       <button type="button" id="newChatBtn" class="icon-btn" title="New chat" aria-label="New chat">＋</button>
-      <button type="button" id="refreshContextBtn" title="Refresh page context" class="icon-btn">↻</button>
-      <div id="pageTypeBadge" class="page-badge"></div>
+      <div id="liveDot" class="live-dot" title="Live page context"></div>
+      <div id="pageTypeBadge" class="page-badge">🌐 Web</div>
+      <div id="visionModeIndicator" class="vision-badge" style="display:none" role="status" aria-live="polite">
+        <span>👁 Vision</span>
+        <button type="button" id="stopVisionBtn" class="stop-btn" title="Stop vision loop" aria-label="Stop vision loop">■</button>
+      </div>
+      <button type="button" id="refreshContextBtn" class="icon-btn" title="Refresh page context" aria-label="Refresh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
     </div>
   </div>
 
   <div id="fluxAuthBar" class="flux-auth-bar">
     <div id="fluxAuthSignedOut" class="flux-auth-signed-out">
       <button type="button" id="fluxGoogleSignIn" class="flux-auth-google-btn">Continue with Google</button>
-      <p class="flux-auth-micro">One-time Supabase setup: copy the URL below, then in the Supabase dashboard go to <strong>Authentication → URL Configuration → Redirect URLs</strong> and paste it there.</p>
+      <p class="flux-auth-micro">Add the <strong>Extension redirect URL</strong> below in Supabase → Authentication → URL Configuration → Redirect URLs.</p>
       <label class="flux-auth-url-label" for="fluxRedirectUrlField">Extension redirect URL</label>
-      <textarea id="fluxRedirectUrlField" class="flux-redirect-url-field" readonly rows="2" spellcheck="false" aria-label="Extension OAuth redirect URL for Supabase"></textarea>
-      <button type="button" id="fluxAuthCopyRedirect" class="flux-auth-copy-url" title="Copy to clipboard">
-        Copy URL
-      </button>
+      <textarea id="fluxRedirectUrlField" class="flux-redirect-url-field" readonly rows="2" spellcheck="false"></textarea>
+      <button type="button" id="fluxAuthCopyRedirect" class="flux-auth-copy-url">Copy URL</button>
       <p class="flux-auth-hint" id="fluxAuthHint" role="status"></p>
     </div>
-    <div id="fluxAuthSignedIn" class="flux-auth-signed-in" style="display: none">
+    <div id="fluxAuthSignedIn" class="flux-auth-signed-in" style="display:none">
       <span id="fluxAuthEmail" class="flux-auth-email"></span>
       <button type="button" id="fluxSignOutBtn" class="flux-auth-signout">Sign out</button>
     </div>
   </div>
 
-  <div id="contextBar" class="context-bar">
-    <div class="context-domain" id="contextDomain">Loading page context...</div>
+  <div class="context-bar">
+    <div class="context-domain-wrap">
+      <span class="context-domain" id="contextDomain">Waiting for page…</span>
+    </div>
     <div class="context-title" id="contextTitle"></div>
     <div class="flux-capture-row">
-      <button type="button" id="scanTabBtn" class="capture-btn" title="Screenshot what you see in this tab">📷 Scan tab</button>
-      <button type="button" id="shareScreenBtn" class="capture-btn" title="Pick a window or screen to share">🖥 Share screen</button>
+      <button type="button" id="scanTabBtn" class="capture-btn">📷 Scan tab</button>
+      <button type="button" id="shareScreenBtn" class="capture-btn">🖥 Share screen</button>
     </div>
     <div id="visionBar" class="vision-bar" style="display:none" role="status">
-      <img id="visionThumb" class="vision-thumb" alt="" width="44" height="44" />
-      <span id="visionLabel" class="vision-label">Image ready for your next message</span>
-      <button type="button" id="clearVisionBtn" class="vision-clear" title="Remove image">✕</button>
+      <img id="visionThumb" class="vision-thumb" alt="" width="44" height="44"/>
+      <span id="visionLabel" class="vision-label"></span>
+      <button type="button" id="clearVisionBtn" class="vision-clear">✕</button>
     </div>
+  </div>
+
+  <div class="suggestions-wrap">
+    <div class="suggestions" id="suggestions"></div>
   </div>
 
   <div id="skillsBar" class="skills-bar">
@@ -65,24 +88,43 @@
 
   <div id="chatMessages" class="chat-messages">
     <div class="flux-welcome">
-      <div class="welcome-icon">✦</div>
-      <div class="welcome-text">Sign in with Google above (same account as Flux on the web). Open a normal website tab, tap ↻, use <strong>Scan tab</strong> or <strong>Share screen</strong> so Flux can see what’s on screen, then ask or use a skill.</div>
+      <div class="welcome-header">
+        <svg width="32" height="18" viewBox="0 0 60 32" fill="none" aria-hidden="true">
+          <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z" fill="none" stroke="url(#wg)" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
+          <defs>
+            <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
+              <stop offset="30%" stop-color="#00bfff"/>
+              <stop offset="70%" stop-color="#7c5cff"/>
+              <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="welcome-title">Flux is watching</span>
+      </div>
+      <p class="welcome-text">This tab’s content updates automatically. Sign in with Google to chat. Use <strong>Scan tab</strong> if you need vision. On Canvas quizzes, ask me to solve or explain.</p>
     </div>
   </div>
 
   <div id="selectedTextBar" class="selected-bar" style="display:none">
-    <span class="selected-label">Selected:</span>
+    <span class="selected-icon">✂</span>
     <span id="selectedTextPreview" class="selected-preview"></span>
-    <button type="button" id="clearSelectionBtn" class="clear-btn">✕</button>
+    <button type="button" id="clearSelectionBtn" class="clear-btn" title="Clear">✕</button>
   </div>
 
-  <div class="chat-input-wrap">
+  <div class="chat-input-area">
+    <div class="input-tools">
+      <button type="button" id="skillsToggleBtn" class="skill-toggle-btn" title="Skills">⚡</button>
+    </div>
     <div class="input-row">
-      <button type="button" id="skillsToggleBtn" class="skill-toggle-btn" title="Focus input" aria-label="Focus">⚡</button>
-      <textarea id="chatInput" placeholder="Ask about this page..." rows="1"></textarea>
-      <button type="button" id="sendBtn" class="send-btn">↑</button>
+      <textarea id="chatInput" placeholder="Ask about this page…" rows="1" autocomplete="off" spellcheck="true"></textarea>
+      <button type="button" id="sendBtn" class="send-btn" title="Send (Enter)" aria-label="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
     <div id="sidebarSkillsPanel" class="skills-panel" style="display:none"></div>
+    <div class="input-footer"><span class="input-hint">Enter to send · Shift+Enter new line</span></div>
   </div>
 </div>
 <script src="auth-google.js"></script>

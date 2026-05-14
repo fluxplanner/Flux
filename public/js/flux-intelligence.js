@@ -119,18 +119,7 @@
 
   function renderAiInsightStrip(){}
 
-  function renderOverdueBanner(){
-    const el=document.getElementById('fluxOverdueBanner');
-    if(!el||typeof tasks==='undefined')return;
-    const now=new Date();now.setHours(0,0,0,0);
-    const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<now);
-    if(!overdue.length){el.innerHTML='';el.style.display='none';return;}
-    el.style.display='block';
-    el.innerHTML=`<div class="flux-overdue-banner">
-      <span>${overdue.length} overdue — move to next open day?</span>
-      <button type="button" class="btn-sec btn-sm" onclick="FluxIntel.rollOverdueForward()">Reschedule</button>
-    </div>`;
-  }
+  function renderOverdueBanner(){}
 
   function rollOverdueForward(){
     if(typeof tasks==='undefined')return;
@@ -151,7 +140,6 @@
     if(typeof renderStats==='function')renderStats();
     if(typeof renderTasks==='function')renderTasks();
     if(typeof renderCalendar==='function')renderCalendar();
-    renderOverdueBanner();
   }
 
   function refreshStreakBadge(){
