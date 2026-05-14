@@ -36,7 +36,45 @@
     /** per-tab cache: { fetchedAt, data } */
     cache: {},
     CACHE_MS: 2 * 60 * 1000,
+    /** Connect-flow state: 'host' | 'signin' | 'paste' */
+    connectStep: "host",
+    connectHostDraft: "",
+    /** Popup window handle so we can detect when the user returns. */
+    _authPopup: null,
+    _authPoll: null,
   };
+
+  /* Common Canvas host patterns we can suggest from an email domain.
+     Schools either use {short}.instructure.com (most common), a vanity domain
+     like canvas.{domain}, or canvas.{root-domain}. We surface a few options
+     and let the user pick / edit. */
+  function fluxCanvasGuessHosts() {
+    const out = new Set();
+    // From school info that already stored a host:
+    try {
+      const stored = (schoolInfo && schoolInfo.canvasLmsHost) || load("flux_canvas_host", "");
+      if (stored) out.add(String(stored).replace(/^https?:\/\//, "").replace(/\/.*$/, ""));
+    } catch (_) {}
+    // From the signed-in Google account's email domain:
+    try {
+      const email = (currentUser && currentUser.email) || localStorage.getItem("flux_user_email") || "";
+      const at = email.indexOf("@");
+      if (at > 0) {
+        const domain = email.slice(at + 1).toLowerCase();
+        const parts = domain.split(".");
+        // Strip the public TLD parts so "students.foo.edu" → "foo"
+        const root = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+        const short = parts[0].replace(/^(student|students|stu|s)$/i, root) || root;
+        if (short && short.length < 40) {
+          out.add(short + ".instructure.com");
+          out.add(root + ".instructure.com");
+          out.add("canvas." + domain.replace(/^students?\./, ""));
+          out.add("canvas." + root + ".edu");
+        }
+      }
+    } catch (_) {}
+    return Array.from(out).filter(Boolean).slice(0, 6);
+  }
 
   /** Tab definitions — id, label, icon, fetcher, renderer. */
   const TABS = [
@@ -370,10 +408,31 @@
     if (!isConnected()) {
       stack.innerHTML = renderConnectScreen();
       requestAnimationFrame(() => {
-        const h = document.getElementById("cvConnHost");
-        if (h && !h.value) h.value = load("flux_canvas_host", "") || hostFromUrl(load("flux_canvas_url", ""));
-        const t = document.getElementById("cvConnToken");
-        if (t && !t.value) t.value = load("flux_canvas_token", "") || "";
+        // Auto-focus the current step's primary input
+        if (CV.connectStep === "host") {
+          const h = document.getElementById("cvOnbHost");
+          if (h) {
+            if (!h.value) h.value = CV.connectHostDraft || "";
+            h.focus();
+            h.addEventListener("keydown", function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                window.fluxCanvasOnboardConfirmHost();
+              }
+            });
+          }
+        } else if (CV.connectStep === "paste") {
+          const t = document.getElementById("cvOnbToken");
+          if (t) {
+            t.focus();
+            t.addEventListener("keydown", function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                window.fluxCanvasFinishConnect();
+              }
+            });
+          }
+        }
       });
       return;
     }
@@ -417,41 +476,240 @@
   }
 
   function renderConnectScreen() {
-    return `
-      <div class="cv-connect">
-        <div class="cv-connect__logo">
-          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-            <rect width="40" height="40" rx="9" fill="#e72429"/>
-            <text x="50%" y="55%" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui">C</text>
+    const step = CV.connectStep || "host";
+    const guesses = fluxCanvasGuessHosts();
+    const draft = CV.connectHostDraft || guesses[0] || "";
+    const hostNorm = hostFromUrl(draft);
+    const stepIdx = step === "host" ? 0 : step === "signin" ? 1 : 2;
+
+    const stepDots = `
+      <div class="cv-onb-steps" aria-label="Sign-in steps">
+        ${[0,1,2].map((i) => `<span class="cv-onb-dot ${i === stepIdx ? "active" : ""} ${i < stepIdx ? "done" : ""}"></span>`).join("")}
+      </div>`;
+
+    const header = `
+      <div class="cv-onb-head">
+        <div class="cv-onb-logo" aria-hidden="true">
+          <svg width="44" height="44" viewBox="0 0 40 40">
+            <rect width="40" height="40" rx="10" fill="#e0061f"/>
+            <text x="50%" y="56%" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui,-apple-system">C</text>
           </svg>
         </div>
-        <h2 class="cv-connect__title flux-color-title">Connect Canvas</h2>
-        <p class="cv-connect__sub">See your assignments, announcements, modules, and more — and pull anything into Flux with one click.</p>
+        <h2 class="cv-onb-title flux-color-title">Sign in to Canvas</h2>
+        <p class="cv-onb-sub">Flux uses your school's own Canvas login — so if your school signs in with Google, you'll see the Google button on Canvas's page. No new password, no API keys to manage.</p>
+        ${stepDots}
+      </div>`;
 
-        <label class="cv-connect__label">Canvas host</label>
-        <input type="text" id="cvConnHost" placeholder="yourschool.instructure.com" class="cv-connect__input">
-
-        <label class="cv-connect__label">Access token</label>
-        <div class="cv-connect__row">
-          <input type="password" id="cvConnToken" placeholder="Paste your token" class="cv-connect__input">
-          <button type="button" class="cv-btn cv-btn--ghost" onclick="(function(e){const i=document.getElementById('cvConnToken');if(i)i.type=i.type==='password'?'text':'password';})()">👁</button>
+    if (step === "host") {
+      return `
+        <div class="cv-onb">
+          ${header}
+          <div class="cv-onb-card">
+            <div class="cv-onb-step-label">Step 1 of 3</div>
+            <div class="cv-onb-step-title">What's your school's Canvas address?</div>
+            <input type="text" id="cvOnbHost" class="cv-onb-input" placeholder="yourschool.instructure.com" value="${esc(draft)}" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url">
+            ${guesses.length ? `
+              <div class="cv-onb-suggestions">
+                <span class="cv-onb-suggestions__label">Suggestions:</span>
+                ${guesses.map((g) => `<button type="button" class="cv-onb-chip" onclick="window.fluxCanvasPickHostSuggestion('${esc(g)}')">${esc(g)}</button>`).join("")}
+              </div>` : ""}
+            <button type="button" class="cv-onb-cta" onclick="window.fluxCanvasOnboardConfirmHost()">Continue →</button>
+            <div id="cvOnbErr" class="cv-onb-err"></div>
+            <details class="cv-onb-help">
+              <summary>Don't know your Canvas address?</summary>
+              <p>Open your school's Canvas in another tab, then copy the address from your browser's URL bar — only the part before the first slash (e.g. <code>myschool.instructure.com</code>).</p>
+            </details>
+          </div>
         </div>
+      `;
+    }
 
-        <details class="cv-connect__help">
-          <summary>How do I get a Canvas access token?</summary>
-          <ol>
-            <li>Open Canvas → Account → Settings</li>
-            <li>Scroll to "Approved Integrations" → New Access Token</li>
-            <li>Name it "Flux Planner", set an expiry, click Generate</li>
-            <li>Paste it here. Tokens stay on this device.</li>
-          </ol>
-        </details>
+    if (step === "signin") {
+      return `
+        <div class="cv-onb">
+          ${header}
+          <div class="cv-onb-card">
+            <div class="cv-onb-step-label">Step 2 of 3</div>
+            <div class="cv-onb-step-title">Sign in at <span style="color:var(--accent)">${esc(hostNorm)}</span></div>
+            <p class="cv-onb-line">We'll open a small Canvas window where you can sign in (with Google, if that's how your school does it). After signing in, you'll see a "New Access Token" button — click it and copy what Canvas gives you.</p>
+            <button type="button" class="cv-onb-cta cv-onb-cta--canvas" onclick="window.fluxCanvasOpenAuthPopup()">
+              <span class="cv-onb-cta__ico" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#fff"/><text x="50%" y="56%" text-anchor="middle" fill="#e0061f" font-size="22" font-weight="800" font-family="system-ui">C</text></svg>
+              </span>
+              <span>Sign in to Canvas</span>
+            </button>
+            <div class="cv-onb-row">
+              <button type="button" class="cv-onb-back" onclick="window.fluxCanvasOnboardBack()">← Use a different address</button>
+              <button type="button" class="cv-onb-skip" onclick="window.fluxCanvasOnboardSkipToPaste()">I already have a key →</button>
+            </div>
+            <div id="cvOnbErr" class="cv-onb-err"></div>
+          </div>
+        </div>
+      `;
+    }
 
-        <button type="button" class="cv-btn cv-btn--primary cv-connect__cta" onclick="window.fluxCanvasConnect()">Connect Canvas</button>
-        <div id="cvConnErr" class="cv-connect__err"></div>
+    // step === 'paste'
+    return `
+      <div class="cv-onb">
+        ${header}
+        <div class="cv-onb-card">
+          <div class="cv-onb-step-label">Step 3 of 3</div>
+          <div class="cv-onb-step-title">Paste your access key</div>
+          <p class="cv-onb-line">Canvas gave you a long string after you generated a new access token. Paste it below — it stays on this device only.</p>
+          <div class="cv-onb-paste-row">
+            <input type="password" id="cvOnbToken" class="cv-onb-input" placeholder="Paste your Canvas access key" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button type="button" class="cv-onb-eye" onclick="(function(){const i=document.getElementById('cvOnbToken');if(i)i.type=i.type==='password'?'text':'password';})()" title="Show / hide">👁</button>
+          </div>
+          <button type="button" class="cv-onb-cta" onclick="window.fluxCanvasFinishConnect()">Connect to Canvas</button>
+          <div class="cv-onb-row">
+            <button type="button" class="cv-onb-back" onclick="window.fluxCanvasOnboardOpenAgain()">← Back to Canvas</button>
+            <button type="button" class="cv-onb-back" onclick="window.fluxCanvasOnboardBack(true)">Start over</button>
+          </div>
+          <div id="cvOnbErr" class="cv-onb-err"></div>
+        </div>
       </div>
     `;
   }
+
+  // ── Onboarding handlers ────────────────────────────────────────
+  function fluxCanvasOnbErr(msg) {
+    const e = document.getElementById("cvOnbErr");
+    if (e) e.textContent = msg || "";
+  }
+
+  window.fluxCanvasPickHostSuggestion = function (h) {
+    CV.connectHostDraft = h;
+    const i = document.getElementById("cvOnbHost");
+    if (i) i.value = h;
+    fluxCanvasOnbErr("");
+  };
+
+  window.fluxCanvasOnboardConfirmHost = function () {
+    const i = document.getElementById("cvOnbHost");
+    const raw = (i && i.value || "").trim();
+    const host = hostFromUrl(raw);
+    if (!host || !/\./.test(host)) {
+      fluxCanvasOnbErr("That doesn't look like a Canvas address.");
+      return;
+    }
+    CV.connectHostDraft = host;
+    CV.connectStep = "signin";
+    renderShell();
+  };
+
+  window.fluxCanvasOnboardBack = function (toStart) {
+    if (toStart) CV.connectHostDraft = "";
+    CV.connectStep = "host";
+    fluxCanvasClosePopup();
+    renderShell();
+  };
+
+  window.fluxCanvasOnboardSkipToPaste = function () {
+    CV.connectStep = "paste";
+    renderShell();
+  };
+
+  function fluxCanvasClosePopup() {
+    try { if (CV._authPopup && !CV._authPopup.closed) CV._authPopup.close(); } catch (_) {}
+    if (CV._authPoll) { clearInterval(CV._authPoll); CV._authPoll = null; }
+    CV._authPopup = null;
+  }
+
+  window.fluxCanvasOpenAuthPopup = function () {
+    const host = hostFromUrl(CV.connectHostDraft);
+    if (!host) { fluxCanvasOnbErr("Pick a Canvas address first."); return; }
+    fluxCanvasClosePopup();
+    /* Open Canvas's own profile page — once they're logged in (Google SSO included),
+       they'll see "New Access Token" right there. We can't auto-receive the key
+       because Canvas doesn't post it back, but we DO detect when the popup is
+       closed and bump the user to the paste step. */
+    const url = "https://" + host + "/profile/settings#access_tokens_holder";
+    const w = 540, h = 720;
+    const left = (window.screen.width - w) / 2;
+    const top = (window.screen.height - h) / 2;
+    try {
+      CV._authPopup = window.open(
+        url, "fluxCanvasAuth",
+        `width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,status=no`,
+      );
+    } catch (_) {}
+    if (!CV._authPopup) {
+      // Pop-up was blocked — fall back to a new tab.
+      try { window.open(url, "_blank", "noopener,noreferrer"); } catch (_) {}
+    }
+    // Watch for the popup to close → assume the user has their key and
+    // automatically advance them to the paste step.
+    if (CV._authPopup) {
+      CV._authPoll = setInterval(() => {
+        try {
+          if (!CV._authPopup || CV._authPopup.closed) {
+            clearInterval(CV._authPoll); CV._authPoll = null;
+            CV._authPopup = null;
+            CV.connectStep = "paste";
+            renderShell();
+            requestAnimationFrame(() => {
+              const f = document.getElementById("cvOnbToken");
+              if (f) f.focus();
+            });
+          }
+        } catch (_) {}
+      }, 700);
+    }
+    // Even if we can't watch the popup, surface the paste step immediately
+    // so the user always has an obvious next action.
+    CV.connectStep = "paste";
+    renderShell();
+  };
+
+  window.fluxCanvasOnboardOpenAgain = function () {
+    CV.connectStep = "signin";
+    renderShell();
+  };
+
+  window.fluxCanvasFinishConnect = async function () {
+    const host = hostFromUrl(CV.connectHostDraft);
+    const tok = (document.getElementById("cvOnbToken")?.value || "").trim();
+    if (!host) { fluxCanvasOnboardBack(); return; }
+    if (!tok) { fluxCanvasOnbErr("Paste the access key Canvas gave you."); return; }
+    fluxCanvasOnbErr("");
+    try {
+      try { canvasToken = tok; canvasUrl = "https://" + host; } catch (_) {}
+      save("flux_canvas_token", tok);
+      save("flux_canvas_host", host);
+      save("flux_canvas_url", "https://" + host);
+      await canvasProxyGet("/users/self/profile");
+      try {
+        schoolInfo = schoolInfo || {};
+        schoolInfo.canvasLmsHost = host;
+        save("flux_school", schoolInfo);
+        if (typeof syncKey === "function") syncKey("school", schoolInfo);
+      } catch (_) {}
+      cacheBust();
+      CV.connectStep = "host";
+      CV.connectHostDraft = "";
+      await loadCourses(true);
+      renderShell();
+      renderActiveTab();
+      showToast("Canvas signed in ✓", "success");
+    } catch (e) {
+      try { canvasToken = ""; canvasUrl = ""; } catch (_) {}
+      save("flux_canvas_token", null);
+      const msg = String(e && (e.message || e)) || "Sign-in failed.";
+      let hint = msg;
+      if (/401|unauthorized|invalid/i.test(msg)) {
+        hint = "That key didn't work. Make sure you copied the whole thing — it usually starts with a long number and tilde, then a long random string.";
+      } else if (/network|fetch|cors/i.test(msg)) {
+        hint = "Couldn't reach Canvas. Check the address you entered.";
+      }
+      fluxCanvasOnbErr(hint);
+    }
+  };
+
+  // Legacy entry-point kept so older code paths still work; routes to the new flow.
+  window.fluxCanvasConnect = function () {
+    CV.connectStep = "host";
+    renderShell();
+  };
 
   // ────────────────────────────────────────────────────────────────
   // Tab renderers
