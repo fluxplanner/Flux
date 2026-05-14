@@ -6015,6 +6015,8 @@ async function syncFromCloud(){
       FluxRelease.applyGate();
     }
     maybeFluxOwnerAnnouncementToast();
+    try{fluxRenderMaintenanceOverlay();}catch(_){}
+    try{maybeFluxBroadcastPopup();}catch(_){}
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -6036,6 +6038,12 @@ function savePublicPlatformBroadcastFromOwner(pc){
     sessionIdleWarnMins:Math.min(480,Math.max(5,parseInt(pc.sessionIdleWarnMins,10)||60)),
     complianceContact:String(pc.complianceContact||'').trim(),
     dataRetentionDays:Math.min(3650,Math.max(30,parseInt(pc.dataRetentionDays,10)||365)),
+    // Nuke-control broadcast fields:
+    maintenanceMode:!!pc.maintenanceMode,
+    maintenanceMessage:String(pc.maintenanceMessage||'').trim(),
+    signInPopup:String(pc.signInPopup||'').trim(),
+    signInPopupTitle:String(pc.signInPopupTitle||'').trim(),
+    signInPopupRevision:(typeof pc.signInPopupRevision==='number'&&!isNaN(pc.signInPopupRevision))?Math.max(0,Math.floor(pc.signInPopupRevision)):0,
   };
   save('flux_platform_broadcast',merged);
 }
@@ -6054,6 +6062,82 @@ function maybeFluxOwnerAnnouncementToast(){
     showToast(ann,'info',9500);
   }catch(e){console.warn('[Flux] announcement toast',e);}
 }
+
+/* ── Owner-broadcast sign-in popup ──────────────────────────────────
+   Shown to every user on their next sign-in / page load when the owner
+   sets a popup in the Nuke Controls tab. Tracks per-revision to avoid
+   nagging the same person twice for the same broadcast. */
+function fluxShowSignInPopup(opts){
+  opts=opts||{};
+  const existing=document.getElementById('fluxBroadcastPopup');
+  if(existing)existing.remove();
+  const ov=document.createElement('div');
+  ov.id='fluxBroadcastPopup';
+  ov.style.cssText='position:fixed;inset:0;z-index:10070;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,8,16,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)';
+  const titleSafe=String(opts.title||'A message from Flux').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+  const bodySafe=String(opts.body||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]).replace(/\n/g,'<br>');
+  ov.innerHTML=`
+    <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:26px;box-shadow:0 28px 80px rgba(0,0,0,.55);position:relative">
+      <div style="font-size:.66rem;color:var(--accent);text-transform:uppercase;letter-spacing:.18em;font-family:JetBrains Mono,monospace;font-weight:700;margin-bottom:8px">${opts.preview?'PREVIEW · NOT BROADCAST':'BROADCAST'}</div>
+      <h2 style="margin:0 0 12px;font-size:1.4rem;font-weight:900;letter-spacing:-.02em">${titleSafe}</h2>
+      <div style="font-size:.92rem;line-height:1.55;color:var(--muted2);margin-bottom:22px;max-height:50vh;overflow-y:auto">${bodySafe||'<i style="color:var(--muted)">(empty)</i>'}</div>
+      <button type="button" id="fluxBroadcastClose" style="width:100%;padding:12px;font-size:.9rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Got it</button>
+    </div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  document.getElementById('fluxBroadcastClose')?.addEventListener('click',close);
+  ov.addEventListener('click',(e)=>{if(e.target===ov)close();});
+}
+window.fluxShowSignInPopup=fluxShowSignInPopup;
+
+function maybeFluxBroadcastPopup(){
+  try{
+    if(!currentUser)return;
+    const raw=isOwner()?load('flux_platform_config',{}):load('flux_platform_broadcast',{});
+    const body=String(raw.signInPopup||'').trim();
+    if(!body)return;
+    const rev=(typeof raw.signInPopupRevision==='number')?Math.max(0,Math.floor(raw.signInPopupRevision)):0;
+    const title=String(raw.signInPopupTitle||'A message from Flux');
+    const sig=`${rev}|${body}`;
+    const seen=load('flux_platform_signin_popup_seen_sig','');
+    if(seen===sig)return;
+    save('flux_platform_signin_popup_seen_sig',sig);
+    setTimeout(()=>fluxShowSignInPopup({title,body}),900);
+  }catch(e){console.warn('[Flux] broadcast popup',e);}
+}
+window.maybeFluxBroadcastPopup=maybeFluxBroadcastPopup;
+
+/* ── Maintenance ("Flux under update") overlay ──────────────────────
+   When the owner toggles maintenanceMode ON, every non-owner client
+   renders a full-screen overlay until the owner toggles it off.  The
+   owner themselves never gets blocked (so they can disable it). */
+function fluxRenderMaintenanceOverlay(){
+  try{
+    const raw=isOwner()?load('flux_platform_config',{}):load('flux_platform_broadcast',{});
+    const on=!!raw.maintenanceMode&&!isOwner();
+    const existing=document.getElementById('fluxMaintOverlay');
+    if(!on){if(existing)existing.remove();return;}
+    const msg=String(raw.maintenanceMessage||'Flux is undergoing an update. We\'ll be back shortly.');
+    if(existing){
+      const t=existing.querySelector('[data-maint-msg]');
+      if(t)t.textContent=msg;
+      return;
+    }
+    const ov=document.createElement('div');
+    ov.id='fluxMaintOverlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:10080;background:radial-gradient(circle at 50% 35%,#101a30 0%,#06080f 70%);color:#e6edf6;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;text-align:center';
+    ov.innerHTML=`
+      <div style="max-width:480px">
+        <div style="font-size:3rem;margin-bottom:14px">🛠</div>
+        <div style="font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;font-family:JetBrains Mono,monospace;color:#fbbf24;margin-bottom:10px">Flux is under update</div>
+        <h1 style="margin:0 0 12px;font-size:1.8rem;font-weight:900;letter-spacing:-.02em">Just a moment…</h1>
+        <p data-maint-msg style="margin:0 0 24px;font-size:1rem;line-height:1.55;color:#8a93a7">${String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c])}</p>
+        <button type="button" onclick="location.reload()" style="padding:11px 20px;font-size:.85rem;font-weight:800;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e6edf6;cursor:pointer">Try again</button>
+      </div>`;
+    document.body.appendChild(ov);
+  }catch(e){console.warn('[Flux] maintenance overlay',e);}
+}
+window.fluxRenderMaintenanceOverlay=fluxRenderMaintenanceOverlay;
 
 let _fluxIdleTimer=null;
 let _fluxActBound=null;
@@ -11848,30 +11932,123 @@ function getTimeOfDay(){
 }
 
 // ── First-visit gate: show role select before login ───────────────
+/* ── Role-select screen is no longer the FIRST screen ──
+   The classic login screen is the entry point again. After successful
+   sign-in (Google or email), if the user has no role row in user_roles,
+   we surface the "I am a Student / Staff" picker as part of onboarding
+   (handled in detectUserRoleAndRoute → maybeShowPostLoginRoleSelect). */
 function showRoleSelectOrLogin(){
-  const hasVisited=(()=>{try{return localStorage.getItem('flux_has_visited');}catch(_){return null;}})();
-  if(hasVisited){
-    showLoginScreen();
-    return;
-  }
-  const rs=document.getElementById('roleSelectScreen');
-  if(rs){rs.style.display='block';rs.classList.add('visible');}
-  else showLoginScreen();
+  // Legacy alias — always falls through to the login screen now.
+  showLoginScreen();
 }
 window.showRoleSelectOrLogin=showRoleSelectOrLogin;
 
+/** Render the "I am a…" picker AS AN OVERLAY after sign-in (post-login).
+ *  Used by detectUserRoleAndRoute when the user has no role yet. */
+function showPostLoginRolePicker(opts){
+  return new Promise((resolve)=>{
+    if(document.getElementById('postLoginRolePicker'))return resolve(null);
+    const ov=document.createElement('div');
+    ov.id='postLoginRolePicker';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML=`
+      <div style="max-width:560px;width:100%">
+        <div style="text-align:center;margin-bottom:8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-family:'JetBrains Mono',monospace">Welcome to Flux</div>
+        <h1 style="text-align:center;margin:0 0 6px;font-size:clamp(1.6rem,4vw,2.1rem);font-weight:900;letter-spacing:-.02em" class="flux-color-title">I am a…</h1>
+        <p style="text-align:center;color:var(--muted2);font-size:.92rem;margin:0 0 26px">Pick your role so Flux sets up the right dashboard for you.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:520px;margin:0 auto">
+          <button type="button" id="plrpStudent" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),rgba(124,92,255,.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
+            <div style="font-size:2rem;margin-bottom:6px">🎒</div>
+            <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Student</div>
+            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Assignments, study plans, AI tutor, and your counselor.</div>
+          </button>
+          <button type="button" id="plrpStaff" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(124,92,255,.08),rgba(var(--accent-rgb),.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
+            <div style="font-size:2rem;margin-bottom:6px">🏫</div>
+            <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Staff</div>
+            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Teacher, counselor, or admin. Post assignments and manage your class.</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+              <span style="font-size:.6rem;padding:2px 7px;border-radius:5px;background:rgba(124,92,255,.16);color:var(--purple, #a78bfa);font-weight:700">Teacher</span>
+              <span style="font-size:.6rem;padding:2px 7px;border-radius:5px;background:rgba(124,92,255,.16);color:var(--purple, #a78bfa);font-weight:700">Counselor</span>
+              <span style="font-size:.6rem;padding:2px 7px;border-radius:5px;background:rgba(124,92,255,.16);color:var(--purple, #a78bfa);font-weight:700">Admin</span>
+            </div>
+          </button>
+        </div>
+        <div style="text-align:center;margin-top:20px;font-size:.74rem;color:var(--muted)">You can change this later in <b>Profile</b>.</div>
+      </div>`;
+    document.body.appendChild(ov);
+    const finish=(role)=>{ov.remove();resolve(role);};
+    document.getElementById('plrpStudent')?.addEventListener('click',()=>finish('student'));
+    document.getElementById('plrpStaff')?.addEventListener('click',()=>finish('staff'));
+  });
+}
+window.showPostLoginRolePicker=showPostLoginRolePicker;
+
+/** Build the staff-detail mini form (role/name/subject/code) as an overlay.
+ *  Resolves to {role,name,subject} or null if cancelled. Email/password are
+ *  taken from the already-signed-in session, not collected here. */
+function showStaffDetailsForm(){
+  return new Promise((resolve)=>{
+    if(document.getElementById('staffDetailsForm'))return resolve(null);
+    const ov=document.createElement('div');
+    ov.id='staffDetailsForm';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML=`
+      <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+        <h1 style="margin:0 0 4px;font-size:1.4rem;font-weight:900" class="flux-color-title">Staff details</h1>
+        <p style="font-size:.85rem;color:var(--muted2);margin:0 0 20px">Just a few details so we can set up your educator dashboard.</p>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Your role</label>
+        <select id="sdfRole" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px">
+          <option value="teacher">Teacher</option>
+          <option value="counselor">Counselor</option>
+          <option value="staff">Staff / Admin</option>
+        </select>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Display name</label>
+        <input id="sdfName" type="text" placeholder="e.g. Ms. Johnson" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box">
+        <div id="sdfSubjectRow"><label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Subject (teacher only)</label>
+        <input id="sdfSubject" type="text" placeholder="e.g. AP Chemistry" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box"></div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Staff verification code</label>
+        <input id="sdfCode" type="text" placeholder="Ask your administrator" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:6px;box-sizing:border-box">
+        <div style="font-size:.66rem;color:var(--muted);line-height:1.4;margin-bottom:14px">Your school's administrator can provide this code. Without a valid code, we'll switch you to a Student account.</div>
+        <div id="sdfError" style="display:none;font-size:.78rem;color:var(--red);padding:8px 12px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
+        <div style="display:flex;gap:10px">
+          <button id="sdfBack" type="button" style="flex:0 0 auto;padding:12px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">← Back</button>
+          <button id="sdfSubmit" type="button" style="flex:1;padding:12px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer;font-size:.92rem">Continue</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const roleSel=document.getElementById('sdfRole');
+    const subRow=document.getElementById('sdfSubjectRow');
+    if(roleSel&&subRow){
+      const sync=()=>{subRow.style.display=roleSel.value==='teacher'?'block':'none';};
+      sync();
+      roleSel.addEventListener('change',sync);
+    }
+    document.getElementById('sdfBack')?.addEventListener('click',()=>{ov.remove();resolve(null);});
+    document.getElementById('sdfSubmit')?.addEventListener('click',()=>{
+      const role=roleSel?.value||'teacher';
+      const name=(document.getElementById('sdfName')?.value||'').trim();
+      const subject=(document.getElementById('sdfSubject')?.value||'').trim();
+      const code=String(document.getElementById('sdfCode')?.value||'').trim().toUpperCase();
+      const err=document.getElementById('sdfError');
+      const setErr=(t)=>{if(err){err.textContent=t;err.style.display='block';}};
+      if(!name){setErr('Please enter your name.');return;}
+      const expectedRole=FLUX_STAFF_CODES[code];
+      if(!expectedRole){setErr('Invalid staff verification code. Ask your administrator.');return;}
+      ov.remove();
+      resolve({role:expectedRole,name,subject});
+    });
+  });
+}
+window.showStaffDetailsForm=showStaffDetailsForm;
+
 function selectRole(role){
-  try{
-    localStorage.setItem('flux_onboarding_role',role);
-    localStorage.setItem('flux_has_visited','1');
-  }catch(_){}
+  // Legacy entry point used by the now-hidden #roleSelectScreen. We keep
+  // it for backwards compat: if someone calls it pre-login it just opens
+  // the login screen with a hint stored locally.
+  try{localStorage.setItem('flux_pref_role',role);}catch(_){}
   const rs=document.getElementById('roleSelectScreen');
   if(rs){rs.style.display='none';rs.classList.remove('visible');}
-  if(role==='staff'){
-    showStaffOnboarding();
-  }else{
-    showLoginScreen();
-  }
+  showLoginScreen();
 }
 window.selectRole=selectRole;
 
@@ -11886,25 +12063,6 @@ window.selectRole=selectRole;
   };
   wrapped.__fluxEduPatched=true;
   try{window.showLoginScreen=wrapped;}catch(_){}
-})();
-
-// Patch showLoginOrApp to gate on first-visit role select
-(function patchShowLoginOrApp(){
-  if(typeof showLoginOrApp!=='function')return;
-  if(showLoginOrApp.__fluxEduPatched)return;
-  const orig=showLoginOrApp;
-  const wrapped=function(){
-    const onboarded=load('flux_onboarded',false);
-    const hasData=tasks.length>0||notes.length>0||classes.length>0;
-    const wasGuest=load('flux_was_guest',false);
-    const hasVisited=(()=>{try{return localStorage.getItem('flux_has_visited');}catch(_){return null;}})();
-    // If a returning guest with data → keep existing behavior (show app)
-    if(wasGuest&&(onboarded||hasData))return orig.apply(this,arguments);
-    if(!hasVisited){showRoleSelectOrLogin();return;}
-    return orig.apply(this,arguments);
-  };
-  wrapped.__fluxEduPatched=true;
-  try{window.showLoginOrApp=wrapped;showLoginOrApp=wrapped;}catch(_){}
 })();
 
 // ── Staff signup flow ─────────────────────────────────────────────
@@ -12061,6 +12219,7 @@ async function detectUserRoleAndRoute(){
   }catch(_){}
 
   // First sign-in after email-confirm staff signup: apply pending role now
+  let hadExplicitRole=false;
   if(role==='student'){
     let pendingRole='',pendingName='',pendingSubject='';
     try{
@@ -12078,6 +12237,7 @@ async function detectUserRoleAndRoute(){
           updated_at:new Date().toISOString(),
         });
         role=pendingRole;
+        hadExplicitRole=true;
         if(pendingRole==='counselor'&&pendingName){
           const lastName=pendingName.split(' ').filter(Boolean).pop();
           if(lastName){
@@ -12095,6 +12255,67 @@ async function detectUserRoleAndRoute(){
         }catch(_){}
       }catch(_){}
     }
+  }else{
+    hadExplicitRole=true;
+  }
+
+  /* Brand-new account flow:
+     If we still have no role row and this user has never picked one, show the
+     post-login "I am a Student / Staff" picker. This is the moved-from-pre-login
+     onboarding step. Student picks just write a 'student' row. Staff picks
+     open the staff detail form to capture name/subject/code.  We only ever
+     show this once per account; subsequent sign-ins skip straight through. */
+  const alreadyPicked=(()=>{try{return localStorage.getItem('flux_role_picked_for_'+currentUser.id);}catch(_){return null;}})();
+  if(!hadExplicitRole&&!alreadyPicked){
+    try{
+      const pick=await showPostLoginRolePicker();
+      if(pick==='student'){
+        try{
+          await sb.from('user_roles').upsert({
+            user_id:currentUser.id,
+            role:'student',
+            display_name:displayName||currentUser.user_metadata?.full_name||null,
+            updated_at:new Date().toISOString(),
+          });
+          role='student';
+        }catch(_){}
+        try{localStorage.setItem('flux_role_picked_for_'+currentUser.id,'student');}catch(_){}
+      }else if(pick==='staff'){
+        const det=await showStaffDetailsForm();
+        if(det&&det.role){
+          try{
+            await sb.from('user_roles').upsert({
+              user_id:currentUser.id,
+              role:det.role,
+              display_name:det.name||displayName||null,
+              subject:det.subject||null,
+              updated_at:new Date().toISOString(),
+            });
+            role=det.role;
+            if(det.role==='counselor'&&det.name){
+              const lastName=det.name.split(' ').filter(Boolean).pop();
+              if(lastName){
+                try{
+                  await sb.from('counselors').update({user_id:currentUser.id})
+                    .ilike('name','%'+lastName+'%')
+                    .is('user_id',null);
+                }catch(_){}
+              }
+            }
+          }catch(_){}
+        }else{
+          // Cancelled — default to student so we don't keep nagging.
+          try{
+            await sb.from('user_roles').upsert({
+              user_id:currentUser.id,role:'student',
+              display_name:displayName||null,updated_at:new Date().toISOString(),
+            });
+            role='student';
+          }catch(_){}
+        }
+        try{localStorage.setItem('flux_role_picked_for_'+currentUser.id,role);}catch(_){}
+      }
+    }catch(e){console.warn('[Flux] post-login role picker error',e);}
   }
   // If counselor, pull their counselor record
   if(role==='counselor'){

@@ -828,9 +828,12 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 @media (prefers-reduced-motion: reduce){
   .dash-v2-work-title{ animation: none; }
 }
-/* Apply a similar treatment to other section headers across the planner */
+/* Apply a similar treatment to other section headers across the planner.
+   NOTE: do NOT include .dash-v2-greet-title — that h1 contains a child
+   .dash-v2-greet-gradient span which already paints the gradient, and
+   stacking another gradient on the parent caused a visible "doubled"
+   greeting because the parent's text-clip also rendered the child's text. */
 .flux-page-title,
-.dash-v2-greet-title,
 .canvas-section-title.flux-colorful,
 .today-section-title{
   background:linear-gradient(120deg,
@@ -844,7 +847,6 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 }
 [data-theme="light"] .dash-v2-work-title,
 [data-theme="light"] .flux-page-title,
-[data-theme="light"] .dash-v2-greet-title,
 [data-theme="light"] .today-section-title{
   background:linear-gradient(120deg,
     color-mix(in srgb,var(--accent) 90%,#0a0a0a) 0%,

@@ -11,6 +11,12 @@
     sessionIdleWarnMins:60,
     integrations:{slackWebhook:'',genericWebhook:''},
     complianceContact:'',
+    // Nuke Controls defaults:
+    maintenanceMode:false,
+    maintenanceMessage:'Flux is undergoing a quick update. We\'ll be right back.',
+    signInPopup:'',
+    signInPopupTitle:'A message from Flux',
+    signInPopupRevision:0,
   };
   const ROLE_PRESETS={
     admin:['clear_data','feature_flags','dev_mode','manage_devs','view_users','release_push'],
@@ -407,6 +413,7 @@
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
     overview:    {label:'Overview',         icon:'📊', group:'home'},
+    nuke:        {label:'Nuke Controls',    icon:'☢️', group:'home'},
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
@@ -508,6 +515,110 @@
       }
 
       if(tab==='megamap')return buildMegaMapHtml();
+
+      if(tab==='nuke'){
+        const nukePc=getPlatformConfig();
+        const maint=!!nukePc.maintenanceMode;
+        const maintMsg=esc(nukePc.maintenanceMessage||'Flux is undergoing an update. We\'ll be back shortly.');
+        const annText=esc(nukePc.announcement||'');
+        const annRev=typeof nukePc.announcementRevision==='number'?nukePc.announcementRevision:0;
+        const popupText=esc(nukePc.signInPopup||'');
+        const popupRev=typeof nukePc.signInPopupRevision==='number'?nukePc.signInPopupRevision:0;
+        const popupTitle=esc(nukePc.signInPopupTitle||'A message from Flux');
+        let releaseInfo='';
+        try{
+          if(window.FluxRelease&&typeof FluxRelease.getGate==='function'){
+            const g=FluxRelease.getGate()||{};
+            const rel=g.released?String(g.released).slice(0,12):'—';
+            const prev=g.preview?String(g.preview).slice(0,12):'—';
+            releaseInfo=`<div style="font-family:JetBrains Mono,monospace;font-size:.66rem;color:var(--muted);margin-top:6px">Released <b style="color:var(--text)">${esc(rel)}</b> · Preview <b style="color:var(--text)">${esc(prev)}</b></div>`;
+          }
+        }catch(_){}
+        return`
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px">
+          <h3 class="flux-color-title" style="margin:0;font-size:1.05rem;font-weight:900">Nuke Controls</h3>
+          <span style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace">⚠ god-mode levers — affect every signed-in Flux user</span>
+        </div>
+
+        <div style="background:linear-gradient(135deg,rgba(251,191,36,.10),rgba(245,158,11,.04));border:1px solid rgba(251,191,36,.32);border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:1.4rem">🚀</span>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:1rem;color:var(--gold,#fbbf24)">Push the current build</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Pushes this preview build to every signed-in user. They'll pick it up on next load or auto-poll.</div>
+              ${releaseInfo}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button type="button" onclick="(function(){try{if(window.FluxRelease&&FluxRelease.openPushDialog){FluxRelease.openPushDialog();}else if(typeof showToast==='function'){showToast('Release gate not ready','warning');}}catch(e){console.error(e);}})()" style="flex:1;min-width:200px;padding:13px 18px;font-size:.9rem;font-weight:900;border:none;border-radius:12px;background:linear-gradient(135deg,#fbbf24 0%,#f59e0b 65%);color:#0a0d18;cursor:pointer;letter-spacing:-.01em;box-shadow:0 8px 24px rgba(251,191,36,.35)">🚀 Push update to all users</button>
+            <button type="button" onclick="window.__osSetTab&&window.__osSetTab('release')" style="padding:13px 16px;font-size:.78rem;border-radius:12px;border:1px solid rgba(251,191,36,.32);background:rgba(251,191,36,.08);color:var(--gold,#fbbf24);font-weight:700;cursor:pointer">Open Release tab →</button>
+          </div>
+        </div>
+
+        <div style="background:${maint?'linear-gradient(135deg,rgba(255,77,109,.10),rgba(255,77,109,.04))':'var(--card2)'};border:1px solid ${maint?'rgba(255,77,109,.4)':'var(--border)'};border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+            <span style="font-size:1.4rem">${maint?'🛑':'🛠'}</span>
+            <div style="flex:1;min-width:220px">
+              <div style="font-weight:800;font-size:1rem;color:${maint?'var(--red,#ff4d6d)':'var(--text)'}">Flux under update screen</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">When enabled, every non-owner client shows a full-screen "Flux is under update" overlay until you disable it.</div>
+            </div>
+            <label class="os-toggle" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="osMaintToggle" ${maint?'checked':''} onchange="ownerToggleMaintenance(this.checked)" style="width:18px;height:18px;cursor:pointer">
+              <span style="font-size:.78rem;font-weight:700;color:${maint?'var(--red,#ff4d6d)':'var(--muted2)'}">${maint?'Maintenance ON':'Maintenance OFF'}</span>
+            </label>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Message shown to users</label>
+          <textarea id="osMaintMsg" placeholder="Flux is undergoing a quick update. We'll be right back." style="width:100%;min-height:60px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box" onchange="ownerSetMaintenanceMessage(this.value)">${maintMsg}</textarea>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:1.4rem">📢</span>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:1rem">Sign-in popup message</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Shown as a pop-up modal the next time each user signs in (or reloads). Each new message bumps the revision so users see it again.</div>
+            </div>
+            <span style="font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">rev ${popupRev}</span>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Title</label>
+          <input type="text" id="osPopupTitle" value="${popupTitle}" placeholder="A message from Flux" style="width:100%;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;margin-bottom:10px;box-sizing:border-box">
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Body</label>
+          <textarea id="osPopupBody" placeholder="Heads up — Flux is launching a brand new Canvas integration. Check it out!" style="width:100%;min-height:80px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:10px">${popupText}</textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" onclick="ownerSaveSignInPopup({bump:true})" style="flex:1;min-width:180px;padding:11px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">📨 Broadcast to all users</button>
+            <button type="button" onclick="ownerPreviewSignInPopup()" style="padding:11px 14px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">👁 Preview</button>
+            <button type="button" onclick="ownerClearSignInPopup()" style="padding:11px 14px;font-size:.76rem;border-radius:12px;background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.28);color:var(--red,#ff4d6d);font-weight:700;cursor:pointer">Clear</button>
+          </div>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:1.4rem">🔔</span>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:1rem">Toast announcement</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Subtle inline banner shown to users on next sign-in (less intrusive than a popup). Useful for ongoing notices.</div>
+            </div>
+            <span style="font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">rev ${annRev}</span>
+          </div>
+          <textarea id="osNukeAnn" placeholder="e.g. Scheduled maintenance Sunday 2am UTC" style="width:100%;min-height:50px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:8px">${annText}</textarea>
+          <div style="display:flex;gap:8px">
+            <button type="button" onclick="ownerSaveAnnouncement({bump:true})" style="flex:1;padding:10px;font-size:.8rem;font-weight:700;border:none;border-radius:10px;background:rgba(var(--accent-rgb),.18);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent);cursor:pointer">Update announcement</button>
+            <button type="button" onclick="ownerSaveAnnouncement({clear:true})" style="padding:10px 14px;font-size:.76rem;border-radius:10px;background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.28);color:var(--red,#ff4d6d);font-weight:700;cursor:pointer">Clear</button>
+          </div>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid rgba(255,77,109,.32);border-radius:16px;padding:18px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="font-size:1.4rem">💣</span>
+            <div style="font-weight:800;font-size:1rem;color:var(--red,#ff4d6d)">Hard reset</div>
+          </div>
+          <div style="font-size:.74rem;color:var(--muted2);line-height:1.5;margin-bottom:12px">These wipe LOCAL state on this device only (Supabase data is untouched).  Use to test the empty-state UX.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" onclick="ownerNukeLocalState()" style="flex:1;min-width:180px;padding:11px;font-size:.8rem;font-weight:700;border:1px solid rgba(255,77,109,.4);background:rgba(255,77,109,.06);color:var(--red,#ff4d6d);border-radius:10px;cursor:pointer">Clear local Flux storage</button>
+            <button type="button" onclick="ownerForceReload()" style="padding:11px 14px;font-size:.78rem;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Force reload this tab</button>
+          </div>
+        </div>`;
+      }
 
       if(tab==='overview')return`
         <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.22);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.74rem;line-height:1.5;color:var(--muted2)">
@@ -708,14 +819,21 @@
         <p style="font-size:.68rem;color:var(--muted);margin-top:12px">API keys with service role must never ship in the browser. Use Edge Functions.</p>`;
 
       if(tab==='analytics'){
-        const allTasks=Array.isArray(tasks)?tasks:[];
+        // Read globals defensively — different script realms can have surprises.
+        let _tasksRef=[];
+        let _notesRef=[];
+        let _sessLogRef=[];
+        try{_tasksRef=(typeof tasks!=='undefined'&&Array.isArray(tasks))?tasks:(Array.isArray(window.tasks)?window.tasks:load('tasks',[]));}catch(_){_tasksRef=load('tasks',[]);}
+        try{_notesRef=(typeof notes!=='undefined'&&Array.isArray(notes))?notes:(Array.isArray(window.notes)?window.notes:load('flux_notes',[]));}catch(_){_notesRef=load('flux_notes',[]);}
+        try{_sessLogRef=(typeof sessionLog!=='undefined'&&Array.isArray(sessionLog))?sessionLog:(Array.isArray(window.sessionLog)?window.sessionLog:load('flux_session_log',[]));}catch(_){_sessLogRef=load('flux_session_log',[]);}
+        const allTasks=Array.isArray(_tasksRef)?_tasksRef:[];
         const done=allTasks.filter(t=>t.done);
         const open=allTasks.filter(t=>!t.done);
         const todayKey=new Date().toDateString();
         const overdue=open.filter(t=>t.date&&new Date(t.date+'T00:00:00')<new Date(todayKey)).length;
         const dueToday=open.filter(t=>t.date===new Date().toISOString().slice(0,10)).length;
         const compRate=allTasks.length?Math.round(done.length*100/allTasks.length):0;
-        const sLog=Array.isArray(sessionLog)?sessionLog:[];
+        const sLog=Array.isArray(_sessLogRef)?_sessLogRef:[];
         const focusMins=sLog.reduce((a,s)=>a+(parseInt(s.mins,10)||0),0);
         const focusHrs=Math.round(focusMins/60*10)/10;
         const focusWeek=(()=>{
@@ -737,7 +855,7 @@
           return out;
         })();
         const last30Max=Math.max(1,...last30.map(d=>d.n));
-        const noteCount=Array.isArray(notes)?notes.length:0;
+        const noteCount=Array.isArray(_notesRef)?_notesRef.length:0;
         const goalCount=Array.isArray(window.extraGoals)?window.extraGoals.length:0;
         const streakBest=parseInt(localStorage.getItem('flux_streak_best')||'0',10)||0;
         const streakCur=parseInt(localStorage.getItem('flux_streak_current')||'0',10)||0;
@@ -886,7 +1004,20 @@
 
     function paint(){
       const bodyEl=root.querySelector('#osBody');
-      if(bodyEl)bodyEl.innerHTML=body();
+      if(bodyEl){
+        let html='';
+        try{html=body();}
+        catch(e){
+          console.error('[OwnerSuite] body('+tab+') threw',e);
+          html=`<div style="padding:18px;background:rgba(255,77,109,.05);border:1px solid rgba(255,77,109,.28);border-radius:12px;color:var(--muted2);font-size:.82rem;line-height:1.55">
+            <div style="color:var(--red,#ff4d6d);font-weight:800;margin-bottom:6px">⚠ Tab failed to render</div>
+            <div style="margin-bottom:8px">An error occurred while building the <b>${esc(tab)}</b> tab. Other tabs still work — pick another from the sidebar.</div>
+            <pre style="font-size:.7rem;background:var(--card2);padding:8px;border-radius:8px;overflow:auto;max-height:160px;color:var(--red,#ff4d6d)">${esc(String(e&&e.stack||e&&e.message||e))}</pre>
+            <button type="button" onclick="window.__osSetTab&&window.__osSetTab('overview')" style="margin-top:10px;padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);font-weight:700;cursor:pointer">Back to Overview</button>
+          </div>`;
+        }
+        bodyEl.innerHTML=html;
+      }
       const sb=root.querySelector('#osSidebar');
       if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
       root.querySelectorAll('[data-os-tab]').forEach(b=>{
@@ -1089,6 +1220,76 @@
     if(!url){showToast('Add a webhook URL first','warning');return;}
     fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'Flux Owner ping',ts:new Date().toISOString()})}).then(()=>showToast('Ping sent','success')).catch(()=>showToast('Ping failed (CORS or URL)','error'));
     ownerAuditAppend('webhook_test',{});
+  };
+
+  // ── Nuke Controls helpers ──────────────────────────────────────────
+  window.ownerToggleMaintenance=function(on){
+    savePlatformConfig({maintenanceMode:!!on,maintenanceUpdatedAt:Date.now()});
+    ownerAuditAppend('maintenance_toggle',{on:!!on});
+    if(typeof showToast==='function')showToast(on?'🛑 Maintenance ON — non-owner clients will see the update screen':'✅ Maintenance OFF — Flux is live for all users',on?'warning':'success');
+    if(window.fluxRenderMaintenanceOverlay)try{window.fluxRenderMaintenanceOverlay();}catch(_){}
+    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke')window.__osSetTab('nuke');
+  };
+  window.ownerSetMaintenanceMessage=function(msg){
+    savePlatformConfig({maintenanceMessage:String(msg||'').trim()});
+    ownerAuditAppend('maintenance_message_set',{len:String(msg||'').length});
+    if(window.fluxRenderMaintenanceOverlay)try{window.fluxRenderMaintenanceOverlay();}catch(_){}
+  };
+  window.ownerSaveSignInPopup=function(opts){
+    opts=opts||{};
+    const title=(document.getElementById('osPopupTitle')?.value||'').trim();
+    const body=(document.getElementById('osPopupBody')?.value||'').trim();
+    if(opts.bump&&!body){if(typeof showToast==='function')showToast('Body is empty — write a message first.','warning');return;}
+    const pc=getPlatformConfig();
+    const nextRev=(typeof pc.signInPopupRevision==='number'?pc.signInPopupRevision:0)+(opts.bump?1:0);
+    savePlatformConfig({
+      signInPopupTitle:title,
+      signInPopup:body,
+      signInPopupRevision:nextRev,
+      signInPopupUpdatedAt:Date.now(),
+    });
+    ownerAuditAppend('signin_popup_save',{rev:nextRev,len:body.length});
+    if(typeof showToast==='function')showToast(opts.bump?'📨 Broadcast queued — every user sees this on next sign-in (rev '+nextRev+')':'Saved (no broadcast yet)','success');
+    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke')window.__osSetTab('nuke');
+  };
+  window.ownerClearSignInPopup=function(){
+    savePlatformConfig({signInPopup:'',signInPopupTitle:''});
+    ownerAuditAppend('signin_popup_clear',{});
+    if(typeof showToast==='function')showToast('Popup cleared (new users won\'t see anything).','info');
+    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke')window.__osSetTab('nuke');
+  };
+  window.ownerPreviewSignInPopup=function(){
+    const title=(document.getElementById('osPopupTitle')?.value||'A message from Flux').trim()||'A message from Flux';
+    const body=(document.getElementById('osPopupBody')?.value||'').trim();
+    if(!body){if(typeof showToast==='function')showToast('Type a body to preview it.','warning');return;}
+    if(typeof window.fluxShowSignInPopup==='function'){window.fluxShowSignInPopup({title,body,preview:true});}
+  };
+  window.ownerSaveAnnouncement=function(opts){
+    opts=opts||{};
+    const txt=opts.clear?'':(document.getElementById('osNukeAnn')?.value||'').trim();
+    const pc=getPlatformConfig();
+    const nextRev=opts.clear?(pc.announcementRevision||0):((pc.announcementRevision||0)+1);
+    savePlatformConfig({announcement:txt,announcementRevision:nextRev});
+    ownerAuditAppend('announcement_save',{rev:nextRev,len:txt.length,clear:!!opts.clear});
+    if(typeof showToast==='function')showToast(opts.clear?'Announcement cleared.':'Announcement broadcast (rev '+nextRev+').','success');
+    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke')window.__osSetTab('nuke');
+  };
+  window.ownerNukeLocalState=function(){
+    if(!confirm('Wipe ALL local Flux state on THIS device? (Supabase cloud data is untouched.) You will be signed out.'))return;
+    try{
+      const keep=['flux_dev_accounts','flux_owner_audit','flux_platform_config'];
+      const stash={};
+      keep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)stash[k]=v;});
+      localStorage.clear();
+      Object.keys(stash).forEach(k=>localStorage.setItem(k,stash[k]));
+      sessionStorage.clear();
+    }catch(_){}
+    ownerAuditAppend('local_nuke',{});
+    location.reload();
+  };
+  window.ownerForceReload=function(){
+    ownerAuditAppend('force_reload',{});
+    location.reload();
   };
 
   window.ownerExportTasksCsv=function(){

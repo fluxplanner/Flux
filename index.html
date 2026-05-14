@@ -124,8 +124,9 @@
 <!-- Built dynamically by splash.js, just needs the container -->
 <div id="splash" style="display:none"></div>
 
-<!-- ══ ROLE SELECT SCREEN (first-visit) ══ -->
-<div id="roleSelectScreen" style="display:none">
+<!-- ══ ROLE SELECT SCREEN (legacy — never shown pre-login now) ══ -->
+<!-- Kept in DOM so any deep-links / legacy onclick="selectRole(...)" still resolve. -->
+<div id="roleSelectScreen" style="display:none !important" aria-hidden="true">
   <div class="role-select-bg" aria-hidden="true"></div>
   <div class="role-select-wrap">
     <div class="role-select-logo">
