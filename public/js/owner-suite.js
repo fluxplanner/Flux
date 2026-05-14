@@ -314,15 +314,28 @@
     arr.forEach(t=>{
       if(t.done){
         done++;
-        if(t.completedAt){
-          const day=new Date(t.completedAt).toISOString().slice(0,10);
-          byDay[day]=(byDay[day]||0)+1;
-        }
+        const doneDay=fluxTaskIsoYmd(t.completedAt||t.doneAt);
+        if(doneDay)byDay[doneDay]=(byDay[doneDay]||0)+1;
         const ty=String(t.type||'other').toLowerCase();
         byType[ty]=(byType[ty]||0)+1;
       }else open++;
     });
     return{done,open,byDay,byType};
+  }
+  /** YYYY-MM-DD from a task completion field (string, number ms/s, Date, etc.). */
+  function fluxTaskIsoYmd(v){
+    if(v==null||v==='')return'';
+    try{
+      if(typeof v==='string'){
+        const m=/^(\d{4}-\d{2}-\d{2})/.exec(v.trim());
+        if(m)return m[1];
+      }
+      let x=v;
+      if(typeof x==='number'&&Number.isFinite(x)&&x>0&&x<1e12)x*=1000;
+      const d=new Date(x);
+      if(isNaN(+d))return'';
+      return d.toISOString().slice(0,10);
+    }catch(_){return'';}
   }
   function anonLabel(id){
     const s=String(id||'');
@@ -849,7 +862,7 @@
           for(let i=29;i>=0;i--){
             const d=new Date();d.setDate(d.getDate()-i);
             const key=d.toISOString().slice(0,10);
-            const n=done.filter(t=>(t.doneAt||'').slice(0,10)===key||(t.completedAt||'').slice(0,10)===key||(t.date||'')===key).length;
+            const n=done.filter(t=>fluxTaskIsoYmd(t.doneAt)===key||fluxTaskIsoYmd(t.completedAt)===key||String(t.date||'').slice(0,10)===key).length;
             out.push({key,n,label:d.getDate()+'/'+(d.getMonth()+1)});
           }
           return out;
