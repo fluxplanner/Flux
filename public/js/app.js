@@ -1306,15 +1306,30 @@ function applyRoleUI(){
   const isPersonal=FluxRole.isPersonalMode();
   const isWork=FluxRole.isWorkMode();
 
-  // Selectors that are STUDENT-ONLY (mood/goals/habits + a couple of legacy classes).
-  // These hide for educators in work mode.
+  // Selectors that are STUDENT-ONLY. Hidden for educators in Work mode so
+  // the teacher / counselor / staff planner reads as a focused workspace
+  // instead of "student app with extra tabs".
+  //
+  // What's removed: study tools (toolbox/timer/canvas), goals/mood/habits,
+  // the locker info section, and the student counselor lookup. What stays:
+  // Dashboard (re-routed to teacherDashboard), Calendar, Flux AI, Notes,
+  // School Info (rendered as the teacher version), Profile, Settings.
   const studentOnlySelectors=[
     '.sidebar .nav-item[data-tab="mood"]',
     '.sidebar .nav-item[data-tab="goals"]',
+    '.sidebar .nav-item[data-tab="timer"]',
+    '.sidebar .nav-item[data-tab="toolbox"]',
+    '.sidebar .nav-item[data-tab="canvas"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]',
     '.mob-drawer .nav-item[onclick*="\'goals\'"]',
+    '.mob-drawer .nav-item[onclick*="\'timer\'"]',
+    '.mob-drawer .nav-item[onclick*="\'toolbox\'"]',
+    '.mob-drawer .nav-item[onclick*="\'canvas\'"]',
     '.bnav-item[data-tab="mood"]',
     '.bnav-item[data-tab="goals"]',
+    '.bnav-item[data-tab="timer"]',
+    '.bnav-item[data-tab="toolbox"]',
+    '.bnav-item[data-tab="canvas"]',
     '.locker-info-section',
     '.counselor-section-student',
     '.onboard-counselor-step',
@@ -3294,7 +3309,124 @@ function addClass(){
 function deleteClass(id){classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();}
 function addTeacherNote(){const teacher=document.getElementById('tNoteTeacher').value.trim(),note=document.getElementById('tNoteText').value.trim();if(!teacher||!note)return;teacherNotes.push({id:Date.now(),teacher,note});save('flux_teacher_notes',teacherNotes);document.getElementById('tNoteTeacher').value='';document.getElementById('tNoteText').value='';renderSchool();}
 function deleteTeacherNote(id){teacherNotes=teacherNotes.filter(n=>n.id!==id);save('flux_teacher_notes',teacherNotes);renderSchool();}
+
+// ── Teacher School Info ─────────────────────────────────────────────
+// Replaces the student locker/combo/counselor view with the educator's
+// directory entry plus editable department/room/office hours/extension.
+// Persists locally under flux_teacher_school_<userId> and best-effort
+// syncs to user_roles (subject/department) when Supabase is reachable.
+function _teacherSchoolKey(){
+  try{return 'flux_teacher_school_'+(currentUser?.id||'anon');}catch(_){return 'flux_teacher_school_anon';}
+}
+function loadTeacherSchoolInfo(){
+  return load(_teacherSchoolKey(),{department:'',room:'',officeHours:'',extension:'',pronouns:'',website:''});
+}
+function saveTeacherSchoolInfo(){
+  const info={
+    department:(document.getElementById('tsiDepartment')?.value||'').trim(),
+    room:(document.getElementById('tsiRoom')?.value||'').trim(),
+    officeHours:(document.getElementById('tsiOfficeHours')?.value||'').trim(),
+    extension:(document.getElementById('tsiExtension')?.value||'').trim(),
+    pronouns:(document.getElementById('tsiPronouns')?.value||'').trim(),
+    website:(document.getElementById('tsiWebsite')?.value||'').trim(),
+  };
+  save(_teacherSchoolKey(),info);
+  const sb=getSB&&getSB();
+  if(sb&&currentUser?.id){
+    const patch={updated_at:new Date().toISOString()};
+    if(info.department)patch.subject=(FluxRole?.profile?.subject)||info.department;
+    sb.from('user_roles').update(patch).eq('user_id',currentUser.id).then(()=>{},()=>{});
+  }
+  const btn=document.getElementById('tsiSaveBtn');
+  if(btn){
+    const orig=btn.textContent;
+    btn.textContent='✓ Saved';
+    btn.disabled=true;
+    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},1400);
+  }
+}
+window.saveTeacherSchoolInfo=saveTeacherSchoolInfo;
+
+function renderSchoolTeacher(){
+  const panel=document.getElementById('school');
+  if(!panel)return;
+  const dirRec=window.FluxStaffDirectory?.findByEmail(currentUser?.email||'')||null;
+  const profile=FluxRole?.profile||{};
+  const name=profile.display_name||dirRec?.name||(currentUser?.user_metadata?.full_name)||'Educator';
+  const role=profile.role||dirRec?.role||'staff';
+  const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'})[role]||'Staff';
+  const subject=profile.subject||dirRec?.subject||'';
+  const email=currentUser?.email||dirRec?.email||'';
+  const info=loadTeacherSchoolInfo();
+  const verified=!!(dirRec&&dirRec.email===String(email).toLowerCase());
+  const verifiedBadge=verified
+    ?'<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(123,224,154,.14);border:1px solid rgba(123,224,154,.32);color:#7be09a;font-size:.65rem;font-weight:800;letter-spacing:.05em">✓ DIRECTORY VERIFIED</span>'
+    :'<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(255,180,93,.12);border:1px solid rgba(255,180,93,.3);color:#ffb45d;font-size:.65rem;font-weight:800;letter-spacing:.05em">UNVERIFIED</span>';
+
+  panel.innerHTML=`
+    <header class="flux-page-header flux-page-header--lead">
+      <p class="flux-page-sub">Your educator profile, room, and contact details. The top card is read-only — managed by your school directory.</p>
+    </header>
+    <div class="flux-stack">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Identity</div>
+            <h3 style="margin:0 0 4px;font-size:1.3rem;font-weight:900">${esc(name)}</h3>
+            <div style="font-size:.85rem;color:var(--muted2)">${esc(roleLabel)}${subject?' · '+esc(subject):''}</div>
+          </div>
+          ${verifiedBadge}
+        </div>
+        <div class="school-info-grid" style="margin-top:16px">
+          <div class="info-tile"><div class="info-tile-label">School Email</div><div class="info-tile-val" style="font-size:.85rem;font-family:'JetBrains Mono',monospace">${esc(email||'—')}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Role</div><div class="info-tile-val">${esc(roleLabel)}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Subject / Area</div><div class="info-tile-val" style="font-size:.85rem">${esc(subject||'—')}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Building</div><div class="info-tile-val" style="font-size:.85rem">Bloomfield Independence East</div></div>
+        </div>
+        ${verified?'':'<div style="margin-top:12px;padding:10px 14px;background:rgba(255,180,93,.08);border:1px solid rgba(255,180,93,.22);border-radius:10px;font-size:.78rem;color:var(--muted2)">Your sign-in email isn\'t in the staff directory. Contact your admin to be added.</div>'}
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">My classroom</h3>
+        <div class="mrow"><label for="tsiDepartment">Department</label>
+          <input id="tsiDepartment" type="text" placeholder="e.g. Math, Science, Counseling" value="${esc(info.department||'')}">
+        </div>
+        <div class="mrow"><label for="tsiRoom">Room number</label>
+          <input id="tsiRoom" type="text" placeholder="e.g. 204, B-12" value="${esc(info.room||'')}">
+        </div>
+        <div class="mrow"><label for="tsiOfficeHours">Office / Prep hours</label>
+          <input id="tsiOfficeHours" type="text" placeholder="e.g. Mon-Wed 3:00-4:00pm" value="${esc(info.officeHours||'')}">
+        </div>
+        <div class="mrow"><label for="tsiExtension">Phone extension</label>
+          <input id="tsiExtension" type="text" placeholder="e.g. x4521" value="${esc(info.extension||'')}">
+        </div>
+        <div class="mrow"><label for="tsiPronouns">Pronouns (optional)</label>
+          <input id="tsiPronouns" type="text" placeholder="e.g. she / her" value="${esc(info.pronouns||'')}">
+        </div>
+        <div class="mrow"><label for="tsiWebsite">Class website / link</label>
+          <input id="tsiWebsite" type="url" placeholder="https://…" value="${esc(info.website||'')}">
+        </div>
+        <button id="tsiSaveBtn" type="button" class="btn-primary" style="margin-top:10px;padding:11px 18px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer" onclick="saveTeacherSchoolInfo()">Save details</button>
+      </div>
+
+      ${role==='teacher'?`
+      <div class="card">
+        <h3 style="margin-top:0">My classes</h3>
+        <p style="color:var(--muted2);font-size:.82rem;margin:0 0 8px">Class rosters and assignment posting live in the <a href="javascript:nav('teacherDashboard')" style="color:var(--accent);text-decoration:none;font-weight:700">Teacher Dashboard</a>.</p>
+      </div>`:''}
+    </div>`;
+}
+window.renderSchoolTeacher=renderSchoolTeacher;
+
 function renderSchool(){
+  // Educators in Work mode get a teacher-flavoured School Info view —
+  // their department / room / subject / verified email — instead of the
+  // student locker + counselor + studentID layout.
+  try{
+    if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()&&FluxRole.isEducator&&FluxRole.isEducator()){
+      return renderSchoolTeacher();
+    }
+  }catch(_){}
   const lockerEl=document.getElementById('inputLocker');
   const comboEl=document.getElementById('inputCombo');
   const counselorEl=document.getElementById('inputCounselor');
@@ -12521,29 +12653,43 @@ function showPostLoginRolePicker(opts){
 }
 window.showPostLoginRolePicker=showPostLoginRolePicker;
 
-/** Build the staff-detail mini form (role/name/subject) as an overlay.
- *  Resolves to {role,name,subject} or null if cancelled. Email/password are
- *  taken from the already-signed-in session, not collected here. */
+/** Build the staff-detail mini form (role + identity picker) as an overlay.
+ *  Resolves to {role,name,subject,email,verified:true} or null if cancelled.
+ *
+ *  Flow:
+ *    1. User picks role (Teacher / Counselor / Staff & Admin).
+ *    2. We populate a "Select your name" dropdown from FluxStaffDirectory
+ *       (same source as scripts/staff-import-ia-east.jsonl).
+ *    3. On Continue we VALIDATE the signed-in user's email against the
+ *       chosen entry. Mismatch → block with a clear error so impostors
+ *       can't claim someone else's seat.
+ *
+ *  This replaces the old freeform name + subject inputs. The directory is
+ *  the authority on who is a real teacher/staff member. */
 function showStaffDetailsForm(){
   return new Promise((resolve)=>{
     if(document.getElementById('staffDetailsForm'))return resolve(null);
+    const dir=window.FluxStaffDirectory;
+    const userEmail=String(currentUser?.email||'').toLowerCase().trim();
     const ov=document.createElement('div');
     ov.id='staffDetailsForm';
     ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
     ov.innerHTML=`
-      <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
-        <h1 style="margin:0 0 4px;font-size:1.4rem;font-weight:900" class="flux-color-title">Staff details</h1>
-        <p style="font-size:.85rem;color:var(--muted2);margin:0 0 20px">Just a few details so we can set up your educator dashboard.</p>
+      <div style="max-width:520px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+        <h1 style="margin:0 0 4px;font-size:1.4rem;font-weight:900" class="flux-color-title">Staff sign-in</h1>
+        <p style="font-size:.85rem;color:var(--muted2);margin:0 0 18px">Pick your role, then select your name from the staff directory. We verify it matches your school email so nobody can claim someone else's seat.</p>
+        <div style="font-size:.72rem;color:var(--muted2);margin-bottom:14px;padding:10px 12px;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.18);border-radius:10px;font-family:'JetBrains Mono',monospace">Signed in as <b style="color:var(--text)">${esc(userEmail||'unknown')}</b></div>
         <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Your role</label>
-        <select id="sdfRole" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px">
+        <select id="sdfRole" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:14px">
           <option value="teacher">Teacher</option>
           <option value="counselor">Counselor</option>
           <option value="staff">Staff / Admin</option>
         </select>
-        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Display name</label>
-        <input id="sdfName" type="text" placeholder="e.g. Ms. Johnson" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box">
-        <div id="sdfSubjectRow"><label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Subject (teacher only)</label>
-        <input id="sdfSubject" type="text" placeholder="e.g. AP Chemistry" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box"></div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Select your name</label>
+        <select id="sdfPerson" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:6px">
+          <option value="">— choose —</option>
+        </select>
+        <div id="sdfPersonHint" style="font-size:.7rem;color:var(--muted2);margin-bottom:14px;min-height:1em"></div>
         <div id="sdfError" style="display:none;font-size:.78rem;color:var(--red);padding:8px 12px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
         <div style="display:flex;gap:10px">
           <button id="sdfBack" type="button" style="flex:0 0 auto;padding:12px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">← Back</button>
@@ -12551,23 +12697,70 @@ function showStaffDetailsForm(){
         </div>
       </div>`;
     document.body.appendChild(ov);
+
     const roleSel=document.getElementById('sdfRole');
-    const subRow=document.getElementById('sdfSubjectRow');
-    if(roleSel&&subRow){
-      const sync=()=>{subRow.style.display=roleSel.value==='teacher'?'block':'none';};
-      sync();
-      roleSel.addEventListener('change',sync);
+    const personSel=document.getElementById('sdfPerson');
+    const hintEl=document.getElementById('sdfPersonHint');
+    const errEl=document.getElementById('sdfError');
+    const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display=t?'block':'none';}};
+
+    // If we recognise this email in the directory, preselect that role +
+    // person as a strong default. Otherwise default to Teacher.
+    const known=dir?.findByEmail(userEmail)||null;
+    if(known&&roleSel){
+      roleSel.value=known.role==='admin'?'staff':known.role;
     }
+
+    function repopulatePeople(){
+      if(!personSel||!dir)return;
+      const role=roleSel?.value||'teacher';
+      const list=dir.listByRole(role);
+      const opts=['<option value="">— choose —</option>']
+        .concat(list.map(p=>{
+          const tag=p.subject?` · ${esc(p.subject)}`:'';
+          const cls=p.email===userEmail?' (you)':'';
+          return `<option value="${esc(p.email)}">${esc(p.name)}${tag}${cls}</option>`;
+        }));
+      personSel.innerHTML=opts.join('');
+      // Preselect the matching person if their role aligns.
+      if(known&&(role==='staff'?(known.role==='staff'||known.role==='admin'):known.role===role)){
+        personSel.value=known.email;
+      }
+      updateHint();
+    }
+
+    function updateHint(){
+      if(!personSel||!hintEl||!dir)return;
+      const email=personSel.value;
+      if(!email){hintEl.textContent='';return;}
+      const rec=dir.findByEmail(email);
+      if(!rec){hintEl.textContent='';return;}
+      const matches=rec.email===userEmail;
+      hintEl.style.color=matches?'#7be09a':'var(--red)';
+      hintEl.innerHTML=matches
+        ?`✓ Matches your sign-in email`
+        :`✗ This entry is for <b>${esc(rec.email)}</b>. Sign in with that account to claim it.`;
+    }
+
+    repopulatePeople();
+    roleSel?.addEventListener('change',repopulatePeople);
+    personSel?.addEventListener('change',()=>{setErr('');updateHint();});
+
     document.getElementById('sdfBack')?.addEventListener('click',()=>{ov.remove();resolve(null);});
     document.getElementById('sdfSubmit')?.addEventListener('click',()=>{
-      const role=roleSel?.value||'teacher';
-      const name=(document.getElementById('sdfName')?.value||'').trim();
-      const subject=(document.getElementById('sdfSubject')?.value||'').trim();
-      const err=document.getElementById('sdfError');
-      const setErr=(t)=>{if(err){err.textContent=t;err.style.display='block';}};
-      if(!name){setErr('Please enter your name.');return;}
+      if(!dir){setErr('Staff directory not loaded — refresh and try again.');return;}
+      const email=personSel?.value||'';
+      if(!email){setErr('Please pick your name from the directory.');return;}
+      const rec=dir.findByEmail(email);
+      if(!rec){setErr('That entry is no longer in the directory.');return;}
+      if(rec.email!==userEmail){
+        setErr(`Email mismatch. To claim this account sign in with ${rec.email}, or contact your admin if this is wrong.`);
+        return;
+      }
+      // Snap the form's role to the directory's truth so admin/staff align.
+      const finalRole=rec.role;
       ov.remove();
-      resolve({role,name,subject});
+      resolve({role:finalRole,name:rec.name,subject:rec.subject||'',email:rec.email,verified:true});
     });
   });
 }
