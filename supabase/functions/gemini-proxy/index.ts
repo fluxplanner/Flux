@@ -1,5 +1,9 @@
 import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
-import { getEntitlement, checkAILimit, incrementAIUsage } from "../_shared/plan.ts";
+import {
+  getEntitlement,
+  checkAndIncrementAIUsage,
+  refundAIUsage,
+} from "../_shared/plan.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 
@@ -33,6 +37,7 @@ Deno.serve(async (req) => {
     return json({ error: "Missing params" }, 400, origin);
   }
 
+  let chargedQuota = false;
   if (PAYMENTS_ENABLED && userId) {
     const entitlement = await getEntitlement(userId);
     if (!entitlement.imageAnalysis) {
@@ -42,7 +47,7 @@ Deno.serve(async (req) => {
         message: "Vision import requires Flux Pro",
       }, 403, origin);
     }
-    const usage = await checkAILimit(userId, entitlement);
+    const usage = await checkAndIncrementAIUsage(userId, entitlement);
     if (!usage.allowed) {
       return json({
         error: "daily_limit_reached",
@@ -52,6 +57,7 @@ Deno.serve(async (req) => {
         monthly_limit: usage.monthlyLimit,
       }, 429, origin);
     }
+    chargedQuota = true;
   }
 
   const key = Deno.env.get("GROQ_API_KEY");
@@ -88,17 +94,15 @@ Deno.serve(async (req) => {
 
   if (!res.ok) {
     const err = await res.text();
+    if (chargedQuota && userId) refundAIUsage(userId).catch(console.error);
     return json({ error: `Groq API ${res.status}: ${err}` }, 502, origin);
   }
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || "";
   if (!text) {
+    if (chargedQuota && userId) refundAIUsage(userId).catch(console.error);
     return json({ error: "Groq returned empty response" }, 502, origin);
-  }
-
-  if (PAYMENTS_ENABLED && userId) {
-    incrementAIUsage(userId).catch(console.error);
   }
 
   return json({ text }, 200, origin);

@@ -833,11 +833,31 @@
           <span id="topbarMobAvInitial">F</span>
         </button>
       </div>
+      <!-- Flux Pulse: glassmorphic momentum flame + cognitive load meter -->
+      <div id="fluxPulseCluster" class="flux-pulse" data-recovery="false" data-tier="idle" hidden>
+        <button id="fluxFlame" type="button" class="flux-flame" aria-label="Session momentum">
+          <svg class="flux-flame-svg" viewBox="0 0 32 40" aria-hidden="true">
+            <defs>
+              <linearGradient id="fluxFlameGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#475569"/>
+                <stop offset="1" stop-color="#334155"/>
+              </linearGradient>
+            </defs>
+            <path class="flux-flame-outer" d="M16 2 C 22 12 28 18 24 28 C 22 34 18 38 16 38 C 14 38 10 34 8 28 C 4 18 10 12 16 2 Z" fill="url(#fluxFlameGrad)"/>
+            <path class="flux-flame-inner" d="M16 12 C 20 18 22 22 20 28 C 19 32 17 34 16 34 C 15 34 13 32 12 28 C 10 22 12 18 16 12 Z" fill="rgba(255,255,255,.18)"/>
+          </svg>
+          <span id="fluxFlameLabel" class="flux-flame-label">Idle</span>
+        </button>
+        <div id="cogLoadWrap" class="flux-load-meter" role="status" aria-label="Cognitive load">
+          <div class="flux-load-track"><div id="cogLoadBar" class="flux-load-fill"></div></div>
+          <span id="cogLoadLabel" class="flux-load-label">Low 0%</span>
+        </div>
+      </div>
+
       <!-- Hidden elements still needed by JS -->
       <div id="topbarCenterNotices" style="display:none"></div>
       <div id="panicPill" style="display:none"></div>
       <div id="momentumPill" style="display:none"></div>
-      <div id="cogLoadWrap" style="display:none"><div id="cogLoadBar"></div><span id="cogLoadLabel"></span></div>
       <div id="topbarTaskPill" style="display:none"></div>
       <div id="topbarNextClass" style="display:none"></div>
       <div id="topbarEnergy" style="display:none">😐</div>
@@ -852,6 +872,14 @@
 
     <!-- ─── DASHBOARD ─── -->
     <div id="dashboard" class="panel active dash-v2 flux-page">
+
+      <div id="recoveryBanner" class="recovery-banner" role="status" aria-live="polite">
+        <span class="recovery-banner-icon" aria-hidden="true">🛟</span>
+        <div class="recovery-banner-body">
+          <strong>Recovery Mode is on.</strong> Cognitive load is high, so non-essential tasks are dimmed. Try a Quick Win first.
+        </div>
+        <button type="button" class="recovery-banner-cta" onclick="window.fluxOpenQuickWins&&window.fluxOpenQuickWins()">Show Quick Wins</button>
+      </div>
 
       <header class="dash-v2-greet" id="dashHero">
         <div class="dash-hero-row">

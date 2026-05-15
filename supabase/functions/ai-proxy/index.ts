@@ -2,8 +2,8 @@ import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
 import {
   type Entitlement,
   getEntitlement,
-  checkAILimit,
-  incrementAIUsage,
+  checkAndIncrementAIUsage,
+  refundAIUsage,
 } from "../_shared/plan.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
@@ -65,6 +65,8 @@ Deno.serve(async (req) => {
     routeMode === "anthropic_messages";
 
   let entitlement: Entitlement | null = null;
+  // Whether we already debited a quota point (so we can refund on AI errors).
+  let chargedQuota = false;
 
   if (PAYMENTS_ENABLED && userId && !isBYOK) {
     entitlement = await getEntitlement(userId);
@@ -78,19 +80,23 @@ Deno.serve(async (req) => {
       }, 403, origin);
     }
 
-    const usage = await checkAILimit(userId, entitlement);
-    if (!usage.allowed) {
-      return json({
-        error: "daily_limit_reached",
-        daily_used: usage.dailyUsed,
-        daily_limit: usage.dailyLimit,
-        monthly_used: usage.monthlyUsed,
-        monthly_limit: usage.monthlyLimit,
-        plan: entitlement.plan,
-        is_trialing: entitlement.isTrialing,
-        trial_ends_at: entitlement.trialEndsAt,
-        upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
-      }, 429, origin);
+    // Image calls aren't currently metered against the text quota.
+    if (!hasImage) {
+      const usage = await checkAndIncrementAIUsage(userId, entitlement);
+      if (!usage.allowed) {
+        return json({
+          error: "daily_limit_reached",
+          daily_used: usage.dailyUsed,
+          daily_limit: usage.dailyLimit,
+          monthly_used: usage.monthlyUsed,
+          monthly_limit: usage.monthlyLimit,
+          plan: entitlement.plan,
+          is_trialing: entitlement.isTrialing,
+          trial_ends_at: entitlement.trialEndsAt,
+          upgrade_url: "https://azfermohammed.github.io/Fluxplanner/?upgrade=1",
+        }, 429, origin);
+      }
+      chargedQuota = true;
     }
 
     if (entitlement.plan === "free" && !body.model) {
@@ -109,6 +115,7 @@ Deno.serve(async (req) => {
     } else if (routeMode === "openai_compatible") {
       const rc = body.routing?.openaiCompatible;
       if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
+        if (chargedQuota && userId) await refundAIUsage(userId);
         return json({ error: "routing_incomplete_openai" }, 400, origin);
       }
       text = await callOpenAICompatible(body, {
@@ -119,6 +126,7 @@ Deno.serve(async (req) => {
     } else if (routeMode === "anthropic_messages") {
       const rc = body.routing?.anthropic;
       if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
+        if (chargedQuota && userId) await refundAIUsage(userId);
         return json({ error: "routing_incomplete_anthropic" }, 400, origin);
       }
       text = await callAnthropicMessages(body, {
@@ -130,15 +138,15 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     console.error("AI call failed:", e);
+    if (chargedQuota && userId) {
+      // Provider failed — give the user their quota back.
+      refundAIUsage(userId).catch(console.error);
+    }
     return json(
       { error: "AI service error", details: String(e) },
       502,
       origin,
     );
-  }
-
-  if (PAYMENTS_ENABLED && userId && !hasImage && !isBYOK) {
-    incrementAIUsage(userId).catch(console.error);
   }
 
   return json({ content: [{ type: "text", text }] }, 200, origin);

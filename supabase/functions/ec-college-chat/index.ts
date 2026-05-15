@@ -1,14 +1,19 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { ...cors, "Content-Type": "application/json" } });
+import { verifyUserJWT, json, corsHeaders } from "../_shared/auth.ts";
 
 const UA = "FluxPlanner/1.0 (student planner; college admissions help)";
+
+// Best-effort per-isolate rate limit: 12 calls/user/min. Resets on cold start.
+const _hits = new Map<string, number[]>();
+function rateOk(userId: string): boolean {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 12;
+  const arr = (_hits.get(userId) || []).filter((t) => now - t < windowMs);
+  if (arr.length >= max) return false;
+  arr.push(now);
+  _hits.set(userId, arr);
+  return true;
+}
 
 async function wikipediaContext(collegeName: string): Promise<string> {
   try {
@@ -88,15 +93,35 @@ function trimContext(s: string, max = 14000): string {
   return s.slice(0, max) + "\n… [context trimmed]";
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+Deno.serve(async (req) => {
+  const origin = req.headers.get("origin") ?? "";
+
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  }
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405, origin);
+  }
+
+  // Require a real Supabase user. Anonymous access was burning Groq quota.
+  const auth = await verifyUserJWT(req);
+  if ("error" in auth && auth.error) {
+    return json({ error: auth.error }, auth.status, origin);
+  }
+
+  if (!rateOk(auth.userId)) {
+    return json(
+      { error: "Too many requests. Wait a minute and try again." },
+      429,
+      origin,
+    );
+  }
 
   try {
     const body = await req.json();
     const { messages, collegeName, profile, plannerDigest } = body;
     if (!messages || !Array.isArray(messages) || !collegeName || typeof collegeName !== "string") {
-      return json({ error: "Invalid request: collegeName and messages[] required" }, 400);
+      return json({ error: "Invalid request: collegeName and messages[] required" }, 400, origin);
     }
 
     const safeName = collegeName.trim().slice(0, 160);
@@ -157,7 +182,7 @@ ${prof ? `Student profile (summary):\n${prof}\n\n` : ""}${digestBlock ? `${diges
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content.slice(0, 12000) }));
 
     const groqKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqKey) return json({ error: "GROQ_API_KEY not set" }, 500);
+    if (!groqKey) return json({ error: "GROQ_API_KEY not set" }, 500, origin);
 
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -171,25 +196,33 @@ ${prof ? `Student profile (summary):\n${prof}\n\n` : ""}${digestBlock ? `${diges
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return json({ error: `Groq error: ${err?.error?.message || res.status}` }, 500);
+      return json(
+        { error: `Groq error: ${err?.error?.message || res.status}` },
+        502,
+        origin,
+      );
     }
 
     const d = await res.json();
     const text = d.choices?.[0]?.message?.content;
-    if (!text) return json({ error: "Groq returned no content" }, 500);
+    if (!text) return json({ error: "Groq returned no content" }, 502, origin);
 
-    return json({
-      content: [{ type: "text", text }],
-      meta: {
-        college: safeName,
-        sourcesUsed: {
-          wikipedia: Boolean(wiki),
-          webSearch: Boolean(brave),
-          applyingToCollegeReddit: Boolean(reddit),
+    return json(
+      {
+        content: [{ type: "text", text }],
+        meta: {
+          college: safeName,
+          sourcesUsed: {
+            wikipedia: Boolean(wiki),
+            webSearch: Boolean(brave),
+            applyingToCollegeReddit: Boolean(reddit),
+          },
         },
       },
-    });
+      200,
+      origin,
+    );
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: (e as Error).message }, 500, origin);
   }
 });

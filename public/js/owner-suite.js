@@ -1279,13 +1279,23 @@
   };
   window.ownerSaveAnnouncement=function(opts){
     opts=opts||{};
+    const popupDraft={
+      title:document.getElementById('osPopupTitle')?.value,
+      body:document.getElementById('osPopupBody')?.value,
+    };
     const txt=opts.clear?'':(document.getElementById('osNukeAnn')?.value||'').trim();
     const pc=getPlatformConfig();
     const nextRev=opts.clear?(pc.announcementRevision||0):((pc.announcementRevision||0)+1);
     savePlatformConfig({announcement:txt,announcementRevision:nextRev});
     ownerAuditAppend('announcement_save',{rev:nextRev,len:txt.length,clear:!!opts.clear});
     if(typeof showToast==='function')showToast(opts.clear?'Announcement cleared.':'Announcement broadcast (rev '+nextRev+').','success');
-    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke')window.__osSetTab('nuke');
+    if(typeof window.__osSetTab==='function'&&window.__osActiveTab==='nuke'){
+      window.__osSetTab('nuke');
+      const titleEl=document.getElementById('osPopupTitle');
+      const bodyEl=document.getElementById('osPopupBody');
+      if(titleEl&&popupDraft.title!==undefined)titleEl.value=popupDraft.title;
+      if(bodyEl&&popupDraft.body!==undefined)bodyEl.value=popupDraft.body;
+    }
   };
   window.ownerNukeLocalState=function(){
     if(!confirm('Wipe ALL local Flux state on THIS device? (Supabase cloud data is untouched.) You will be signed out.'))return;

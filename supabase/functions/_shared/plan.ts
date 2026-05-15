@@ -178,3 +178,59 @@ export async function incrementAIUsage(userId: string): Promise<void> {
   });
   if (error) console.error("increment_ai_usage RPC failed:", error);
 }
+
+export interface UsageCheckResult {
+  allowed: boolean;
+  dailyUsed: number;
+  monthlyUsed: number;
+  dailyLimit: number;
+  monthlyLimit: number;
+}
+
+/**
+ * Atomic check + increment. Replaces the legacy check-then-act pair so
+ * concurrent requests can't race past the daily/monthly cap.
+ *
+ * If `allowed` is false the row was NOT incremented and the caller must
+ * return a 429 to the client.
+ */
+export async function checkAndIncrementAIUsage(
+  userId: string,
+  entitlement: Entitlement,
+): Promise<UsageCheckResult> {
+  const db = serviceClient();
+  const { data, error } = await db.rpc("check_and_increment_usage", {
+    p_user_id: userId,
+    p_daily_limit: entitlement.aiDailyMessages,
+    p_monthly_limit: entitlement.aiMonthlyMessages,
+  });
+
+  if (error) {
+    console.error("check_and_increment_usage RPC failed:", error);
+    // Failing closed would lock all users out if the RPC ever broke; fail
+    // open but mark used as 0 so we don't lie about quota.
+    return {
+      allowed: true,
+      dailyUsed: 0,
+      monthlyUsed: 0,
+      dailyLimit: entitlement.aiDailyMessages,
+      monthlyLimit: entitlement.aiMonthlyMessages,
+    };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    allowed: !!row?.allowed,
+    dailyUsed: Number(row?.daily_used ?? 0),
+    monthlyUsed: Number(row?.monthly_used ?? 0),
+    dailyLimit: Number(row?.daily_limit ?? entitlement.aiDailyMessages),
+    monthlyLimit: Number(row?.monthly_limit ?? entitlement.aiMonthlyMessages),
+  };
+}
+
+/** Roll back a charge — call this when the upstream AI provider errors out. */
+export async function refundAIUsage(userId: string): Promise<void> {
+  const db = serviceClient();
+  const { error } = await db.rpc("refund_ai_usage", { p_user_id: userId });
+  if (error) console.error("refund_ai_usage RPC failed:", error);
+}

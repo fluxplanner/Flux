@@ -2412,6 +2412,9 @@ function renderTasks(){
     const ti=tm[t.type]||tm.other;
     const priClass=t.priority==='high'?'priority-high':t.priority==='med'?'priority-med':'priority-low';
     const procras=(t.rescheduled||0)>=3?`<div class="procras-flag">Rescheduled ${t.rescheduled}×</div>`:'';
+    const _frTier=(window.FluxBehavior&&typeof window.FluxBehavior.frictionTier==='function')?window.FluxBehavior.frictionTier(t):((t.rescheduled||0)>=5?'severe':(t.rescheduled||0)>=3?'aged':(t.rescheduled||0)>=1?'warning':'none');
+    const frictionCls=_frTier==='none'?'':' friction-'+_frTier;
+    const recoveryCls=(!t.done&&(t.priority==='high'||t.type==='exam'||t.type==='test'||((t.estTime||0)>0&&(t.estTime||0)<=15)))?'':' recovery-hidden';
     const stPct=t.subtasks?.length?Math.round(t.subtasks.filter(s=>s.done).length/t.subtasks.length*100):-1;
     const stBar=stPct>=0?`<div class="task-prog"><div class="task-prog-fill" style="width:${stPct}%"></div></div>`:'';
     const blocked=typeof isBlocked==='function'&&isBlocked(t);
@@ -2426,7 +2429,7 @@ function renderTasks(){
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
     const recChip=t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'';
     const snz='';
-    return`<div class="task-item ${priClass}${extraCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${recoveryCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -8240,10 +8243,37 @@ function initDashboardFeatures(){
   applyHighContrast();
   renderSavedViewsDropdown();
   updateCognitiveLoadMeter();setInterval(updateCognitiveLoadMeter,5*60*1000);
+  if(typeof updateMomentumUI==='function'){try{updateMomentumUI();}catch(_){}}
   renderEffortReport();
   renderSubjectEfficiencyHeatmap();
   initV4Systems();
 }
+
+// ── Recovery Mode → "Show Quick Wins" CTA ─────────────────────────
+window.fluxOpenQuickWins=function(){
+  const wins=(window.FluxBehavior&&window.FluxBehavior.getQuickWins)
+    ? window.FluxBehavior.getQuickWins(tasks,15)
+    : (Array.isArray(tasks)?tasks.filter(t=>!t.done&&(t.estTime||0)>0&&(t.estTime||0)<=15):[]);
+  if(!wins.length){
+    if(typeof showToast==='function')showToast('No quick wins (≤15 min) right now. Add an estimate to a task to surface one.','info');
+    return;
+  }
+  if(typeof navTo==='function'){try{navTo('tasks');}catch(_){}}
+  taskFilter='active';
+  if(typeof renderTasks==='function')renderTasks();
+  const first=wins[0];
+  if(first){
+    requestAnimationFrame(()=>{
+      const el=document.querySelector('[data-task-id="'+first.id+'"]');
+      if(el){
+        el.scrollIntoView({behavior:'smooth',block:'center'});
+        el.classList.add('quick-win-flash');
+        setTimeout(()=>el.classList.remove('quick-win-flash'),1600);
+      }
+    });
+  }
+  if(typeof showToast==='function')showToast('Highlighted '+wins.length+' quick win'+(wins.length===1?'':'s')+' — start the shortest first.','success');
+};
 
 function handleCheckoutReturn(){
   const params=new URLSearchParams(window.location.search);
@@ -8675,7 +8705,17 @@ function showUndoSnackbar(msg,undoFn){
 
 
 // ══ COGNITIVE LOAD METER ══════════════════════════════════════
+// Delegates to the pure behavior engine (public/js/core/behavior-engine.js)
+// when available so the static app, the Next.js shell, and any future
+// surface compute load identically. Falls back to local logic if the
+// module hasn't loaded yet (e.g. during early boot).
 function calcCognitiveLoad(){
+  if(window.FluxBehavior&&typeof window.FluxBehavior.calcCognitiveLoad==='function'){
+    try{
+      const r=window.FluxBehavior.calcCognitiveLoad({tasks,classes,now:new Date()});
+      return r.score;
+    }catch(_){}
+  }
   const now=new Date();const h=now.getHours();
   const ts=todayStr();
   const active=tasks.filter(t=>!t.done);
@@ -8690,9 +8730,24 @@ function updateCognitiveLoadMeter(){
   const bar=document.getElementById('cogLoadBar');
   const lbl=document.getElementById('cogLoadLabel');
   const wrap=document.getElementById('cogLoadWrap');
+  const cluster=document.getElementById('fluxPulseCluster');
   if(!bar)return;
   try{window.FluxAnim?.initCogLoadMeter?.();}catch(e){}
-  const load=calcCognitiveLoad();
+
+  let payload=null;
+  if(window.FluxBehavior&&typeof window.FluxBehavior.tick==='function'){
+    try{
+      const lastActiveAt=Number(localStorage.getItem('flux_last_active_ms'))||null;
+      payload=window.FluxBehavior.tick({
+        tasks,classes,
+        momentumLevel:typeof _momentum==='number'?_momentum:0,
+        streak:Number(localStorage.getItem('flux_streak_count'))||0,
+        lastActiveAt:lastActiveAt?new Date(lastActiveAt):null,
+        now:new Date(),
+      });
+    }catch(_){payload=null;}
+  }
+  const load=payload?payload.load.score:calcCognitiveLoad();
   const color=load>=85?'var(--red)':load>=60?'var(--gold)':'var(--green)';
   const text=load>=85?'High':load>=60?'Med':'Low';
   let usedFlux=false;
@@ -8704,8 +8759,20 @@ function updateCognitiveLoadMeter(){
   }catch(e){}
   if(!usedFlux){bar.style.width=load+'%';bar.style.background=color;}
   if(lbl){lbl.textContent=text+' '+load+'%';lbl.style.color=color;}
-  if(wrap)wrap.title='Cognitive Load: '+load+'% — based on overdue, today density, time of day';
-  if(load>=85)showToast('⚠ High cognitive load ('+load+'%). Consider taking a break.','warning');
+  if(wrap)wrap.title='Cognitive Load: '+load+'% — based on overdue, today density, exam proximity, time of day';
+
+  if(cluster){
+    const inRecovery=load>=85;
+    cluster.removeAttribute('hidden');
+    cluster.dataset.recovery=inRecovery?'true':'false';
+    document.body.dataset.recovery=inRecovery?'true':'false';
+    if(inRecovery&&!cluster._recoveryToastShown){
+      cluster._recoveryToastShown=true;
+      showToast('⚠ High cognitive load ('+load+'%). Recovery Mode hides non-essential tasks.','warning');
+    }else if(!inRecovery&&cluster._recoveryToastShown){
+      cluster._recoveryToastShown=false;
+    }
+  }
 }
 
 
@@ -8726,13 +8793,32 @@ function addMomentum(){
   if(_momentum>=5)spawnConfetti();
 }
 function updateMomentumUI(){
-  const el=document.getElementById('momentumPill');if(!el)return;
-  if(_momentum>=2){
-    el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
-    el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
-    el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
-    el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
-  }else{el.style.display='none';}
+  const el=document.getElementById('momentumPill');
+  if(el){
+    if(_momentum>=2){
+      el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
+      el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
+      el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
+      el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
+    }else{el.style.display='none';}
+  }
+  const cluster=document.getElementById('fluxPulseCluster');
+  const flameLabel=document.getElementById('fluxFlameLabel');
+  const grad=document.querySelector('#fluxFlame linearGradient#fluxFlameGrad');
+  if(!cluster)return;
+  const state=(window.FluxBehavior&&window.FluxBehavior.momentumState)
+    ? window.FluxBehavior.momentumState(_momentum)
+    : (_momentum>=5?{tier:'inferno',label:_momentum+'× momentum',gradient:['#a855f7','#7c3aed']}
+       :_momentum>=3?{tier:'blaze',label:_momentum+'× momentum',gradient:['#fb923c','#f97316']}
+       :_momentum>=2?{tier:'spark',label:_momentum+'× momentum',gradient:['#60a5fa','#3b82f6']}
+       :{tier:'idle',label:'Idle',gradient:['#475569','#334155']});
+  cluster.removeAttribute('hidden');
+  cluster.dataset.tier=state.tier;
+  if(flameLabel)flameLabel.textContent=state.label;
+  if(grad&&grad.children&&grad.children.length>=2){
+    grad.children[0].setAttribute('stop-color',state.gradient[0]);
+    grad.children[1].setAttribute('stop-color',state.gradient[1]);
+  }
 }
 
 
@@ -13226,6 +13312,12 @@ async function loadTeacherAssignments(){
     .map(c=>c?.code||c?.classCode||null)
     .filter(Boolean);
   if(!myClassCodes.length)return;
+
+  // Subscribe codes via RPC so RLS allows reads. Idempotent; missing
+  // class codes are silently skipped.
+  await Promise.all(myClassCodes.map(async code=>{
+    try{await sb.rpc('flux_subscribe_class',{p_code:code});}catch(_){}
+  }));
 
   let assignments=[];
   try{

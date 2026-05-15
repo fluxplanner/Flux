@@ -9,6 +9,7 @@ import * as components from './ui/components.js';
 import * as modals from './ui/modals.js';
 import * as state from './core/state.js';
 import * as events from './core/events.js';
+import * as behavior from './core/behavior-engine.js';
 import * as helpers from './utils/helpers.js';
 import * as dom from './utils/dom.js';
 
@@ -42,14 +43,18 @@ window.FluxKit = {
     sidebar,
     modals,
   },
-  core: { state, events },
+  core: { state, events, behavior },
+  behavior,
   utils: { helpers, dom },
   animateIn: animations.animateIn,
   magneticEffect: animations.magneticEffect,
   getAIContext: ai.getAIContext,
-  version: 1,
+  version: 2,
   init: initFluxKit,
 };
+
+window.FluxBehavior = behavior;
+window.FluxEvents = events;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initFluxKit);

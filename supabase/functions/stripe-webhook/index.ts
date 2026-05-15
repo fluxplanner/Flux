@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
         const stripeSub = await fetchStripeSubscription(subscriptionId);
 
-        await db.from("subscriptions").upsert({
+        const { error: upsertErr } = await db.from("subscriptions").upsert({
           user_id: userId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
             : null,
           cancel_at_period_end: stripeSub.cancel_at_period_end ?? false,
         }, { onConflict: "user_id" });
+        if (upsertErr) throw new Error(`subscriptions upsert failed: ${upsertErr.message}`);
 
         console.log(`Checkout complete for user ${userId}`);
         break;
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
           ? "pro"
           : "free";
 
-        await db.from("subscriptions").update({
+        const { error: updErr } = await db.from("subscriptions").update({
           plan,
           status: stripeSub.status as string,
           stripe_price_id: (stripeSub.items as {
@@ -120,6 +121,7 @@ Deno.serve(async (req) => {
             ? new Date((stripeSub.canceled_at as number) * 1000).toISOString()
             : null,
         }).eq("user_id", existing.user_id);
+        if (updErr) throw new Error(`subscription update failed: ${updErr.message}`);
         break;
       }
 
@@ -135,7 +137,7 @@ Deno.serve(async (req) => {
 
         if (!existing?.user_id) break;
 
-        await db.from("subscriptions").update({
+        const { error: delErr } = await db.from("subscriptions").update({
           plan: "free",
           status: "canceled",
           canceled_at: new Date().toISOString(),
@@ -143,6 +145,7 @@ Deno.serve(async (req) => {
           stripe_subscription_id: null,
           cancel_at_period_end: false,
         }).eq("user_id", existing.user_id);
+        if (delErr) throw new Error(`subscription cancel update failed: ${delErr.message}`);
         break;
       }
 
@@ -158,10 +161,11 @@ Deno.serve(async (req) => {
 
         if (!existing?.user_id) break;
 
-        await db.from("subscriptions").update({ status: "past_due" }).eq(
+        const { error: pdErr } = await db.from("subscriptions").update({ status: "past_due" }).eq(
           "user_id",
           existing.user_id,
         );
+        if (pdErr) throw new Error(`past_due update failed: ${pdErr.message}`);
         break;
       }
 
@@ -177,10 +181,11 @@ Deno.serve(async (req) => {
 
         if (!existing?.user_id) break;
 
-        await db.from("subscriptions").update({
+        const { error: psErr } = await db.from("subscriptions").update({
           status: "active",
           plan: "pro",
         }).eq("user_id", existing.user_id);
+        if (psErr) throw new Error(`payment_succeeded update failed: ${psErr.message}`);
         break;
       }
 
@@ -188,7 +193,16 @@ Deno.serve(async (req) => {
         console.log(`Unhandled event: ${event.type}`);
     }
   } catch (e) {
+    // Return 5xx so Stripe retries instead of dropping the event.
+    // Subscription state would otherwise drift silently until manual reconcile.
     console.error("Webhook handler error:", e);
+    return jsonNoCors(
+      {
+        error: "Webhook handler failed; Stripe should retry.",
+        eventType: event?.type ?? "unknown",
+      },
+      500,
+    );
   }
 
   return jsonNoCors({ received: true }, 200);
