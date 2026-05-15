@@ -286,24 +286,14 @@ Deno.serve(async (req) => {
       action === "auth_send_recovery_link" ||
       action === "auth_invite_user" ||
       action === "auth_force_password_rotate" ||
-      action === "auth_revoke_sessions"
+      action === "auth_revoke_sessions" ||
+      action === "owner_patch_user_role"
     ) {
       if (email !== OWNER_EMAIL) {
         return json({ error: "Only the owner may call Auth Admin actions" }, 403, origin);
       }
 
       const adminAuth = db.auth.admin;
-
-      const safeUserSummaries = (users: unknown[]) =>
-        users.map((u) => {
-          const r = u as Record<string, unknown>;
-          return {
-            id: String(r.id ?? ""),
-            email: normEmail(r.email),
-            created_at: (r.created_at as string | null) ?? null,
-            banned: !!(r.banned_until && String(r.banned_until) !== ""),
-          };
-        });
 
       /** Block destructive actions targeting the owner's identity row. */
       async function guardNotOwnerIdentity(userId: string) {
@@ -331,12 +321,129 @@ Deno.serve(async (req) => {
         const { data, error } = await adminAuth.listUsers({ page, perPage });
         if (error) throw error;
         const users = data?.users ?? [];
+        const ids = users.map((u) =>
+          String((u as Record<string, unknown>).id ?? "")
+        ).filter(Boolean);
+
+        const roleById: Record<string, JsonRecord> = {};
+        if (ids.length) {
+          const { data: roleRows, error: rerr } = await db
+            .from("user_roles")
+            .select(
+              "user_id, role, display_name, subject, department, school, grade_level, updated_at",
+            )
+            .in("user_id", ids);
+          if (rerr) throw rerr;
+          for (const row of roleRows || []) {
+            const rec = row as JsonRecord;
+            const uid = String(rec.user_id ?? "");
+            if (uid) roleById[uid] = rec;
+          }
+        }
+
+        const summaries = users.map((u) => {
+          const r = u as Record<string, unknown>;
+          const id = String(r.id ?? "");
+          const prof = id ? roleById[id] : null;
+          const p = prof ? asRecord(prof) : null;
+          return {
+            id,
+            email: normEmail(r.email),
+            created_at: (r.created_at as string | null) ?? null,
+            last_sign_in_at: (r.last_sign_in_at as string | null) ?? null,
+            banned: !!(r.banned_until && String(r.banned_until) !== ""),
+            fluxRole: p ? String(p.role || "student") : null,
+            display_name: p ? String(p.display_name ?? "") : "",
+            subject: p ? String(p.subject ?? "") : "",
+            department: p ? String(p.department ?? "") : "",
+            school: p ? String(p.school ?? "") : "",
+            grade_level: p ? String(p.grade_level ?? "") : "",
+          };
+        });
+
         return json({
           ok: true,
-          users: safeUserSummaries(users as unknown[]),
+          users: summaries,
           nextPage:
             users.length >= perPage ? page + 1 : null,
         }, 200, origin);
+      }
+
+      if (action === "owner_patch_user_role") {
+        const userId = String(body.userId || "").trim();
+        if (!userId) return json({ error: "userId required" }, 400, origin);
+
+        const { data: ures, error: gerr } = await adminAuth.getUserById(userId);
+        if (gerr || !ures?.user?.id) {
+          return json({ error: "User not found" }, 404, origin);
+        }
+
+        const { data: existing, error: qerr } = await db
+          .from("user_roles")
+          .select(
+            "user_id, role, display_name, subject, department, school, grade_level",
+          )
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (qerr) throw qerr;
+
+        const ex = asRecord(existing as JsonRecord | null);
+        const allowedRoles = new Set([
+          "student",
+          "teacher",
+          "counselor",
+          "staff",
+          "admin",
+        ]);
+
+        const merged: JsonRecord = {
+          user_id: userId,
+          role: ex.role && allowedRoles.has(String(ex.role))
+            ? String(ex.role)
+            : "student",
+          display_name: ex.display_name ?? null,
+          subject: ex.subject ?? null,
+          department: ex.department ?? null,
+          school: ex.school ?? null,
+          grade_level: ex.grade_level ?? null,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (typeof body.role === "string" && body.role.trim()) {
+          const rr = body.role.trim().toLowerCase();
+          if (!allowedRoles.has(rr)) {
+            return json({ error: "Invalid role" }, 400, origin);
+          }
+          merged.role = rr;
+        }
+
+        const applyText = (
+          key: string,
+          bodyKey: string,
+          altBodyKey?: string,
+        ) => {
+          const raw = body[bodyKey] ?? (altBodyKey ? body[altBodyKey] : undefined);
+          if (raw === undefined) return;
+          if (raw === null) {
+            merged[key] = null;
+            return;
+          }
+          merged[key] = safeText(raw, 600) || null;
+        };
+
+        applyText("display_name", "display_name", "displayName");
+        applyText("subject", "subject");
+        applyText("department", "department");
+        applyText("school", "school");
+        applyText("grade_level", "grade_level", "gradeLevel");
+
+        const { error: uperr } = await db.from("user_roles").upsert(
+          merged,
+          { onConflict: "user_id" },
+        );
+        if (uperr) throw uperr;
+
+        return json({ ok: true, profile: merged }, 200, origin);
       }
 
       if (action === "auth_delete_user") {

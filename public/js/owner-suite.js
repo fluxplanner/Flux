@@ -430,7 +430,7 @@
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
-    auth:        {label:'Auth users',       icon:'🔐', group:'people'},
+    auth:        {label:'Users & roster',   icon:'🔐', group:'people'},
     analytics:   {label:'My analytics',     icon:'📈', group:'insights'},
     usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
     feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
@@ -661,7 +661,7 @@
         <div style="background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.25);border-radius:14px;padding:14px;margin-bottom:14px">
           <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">🔐 Platform reality (read this)</div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55">
-            Flux stores each user’s data in their own <b>user_data</b> row. <b>Auth administration</b> (list/ban/delete/reset) runs through the owner-only <b>release-admin</b> Edge Function with the service role — open the <button type="button" onclick="window.__osSetTab&&window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);padding:2px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Auth users</button> tab. This browser still ships only the <b>anon</b> key; impersonation and org SSO policies stay in Supabase.
+            Flux stores each user’s data in their own <b>user_data</b> row. <b>Auth administration</b> (list/ban/delete/reset) runs through the owner-only <b>release-admin</b> Edge Function with the service role — open the <button type="button" onclick="window.__osSetTab&&window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);padding:2px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button> tab. This browser still ships only the <b>anon</b> key; impersonation and org SSO policies stay in Supabase.
           </div>
         </div>
         <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">AI-style insights (heuristic)</div>
@@ -776,15 +776,30 @@
 
       if(tab==='auth')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:12px">
-          Owner-only <b>Supabase Auth Admin</b> via <code style="font-size:.65rem">release-admin</code> (JWT + <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>). Deploy the function and keep the <b>service role</b> in Edge secrets only. Recovery links are generated here — copy into email or your support flow; invite emails are sent by Supabase when you use <b>Invite</b>.
+          <b>Everyone in Supabase Auth</b> for this project — with each person’s <b>Flux role</b> (student, teacher, counselor, staff, admin) and roster fields from <code style="font-size:.65rem">user_roles</code>. Paging follows Supabase’s Auth list order (usually newest first). Destructive actions still require <code style="font-size:.65rem">release-admin</code> + <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>.
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
           <button type="button" onclick="ownerAuthUsersLoad(1)" style="padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);font-weight:700">↻ Refresh list</button>
           <button type="button" onclick="ownerAuthUsersPrevPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">← Prev page</button>
           <button type="button" onclick="ownerAuthUsersNextPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">Next page →</button>
           <button type="button" onclick="ownerOpenSupabase('auth')" style="padding:7px 12px;font-size:.72rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2)">Open Supabase Auth</button>
         </div>
-        <div id="osAuthMount" style="min-height:120px;margin-bottom:16px;font-size:.78rem;color:var(--muted)">Click <b>Refresh list</b> to load accounts (page size 40).</div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:12px">
+          <label style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:8px;margin:0">
+            <span style="white-space:nowrap">Filter this page</span>
+            <select id="osAuthRoleFilter" style="padding:6px 10px;border-radius:8px;font-size:.78rem;background:var(--card);border:1px solid var(--border2);color:var(--text)" onchange="window.ownerAuthApplyRoleFilter&&window.ownerAuthApplyRoleFilter()">
+              <option value="all">All roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+              <option value="counselor">Counselors</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admins</option>
+              <option value="__none">No Flux profile yet</option>
+            </select>
+          </label>
+          <span id="osAuthPageLabel" style="font-size:.68rem;color:var(--muted);font-family:JetBrains Mono,monospace"></span>
+        </div>
+        <div id="osAuthMount" style="min-height:120px;margin-bottom:16px;font-size:.78rem;color:var(--muted)">Loading…</div>
         <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
           <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Create user</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -1019,7 +1034,7 @@
 
       if(tab==='advanced')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:14px">
-          <b>Impersonation</b> requires a dedicated Admin API workflow — never the anon key. Session revoke / ban flows for arbitrary users live under <button type="button" onclick="window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Auth users</button>.
+          <b>Impersonation</b> requires a dedicated Admin API workflow — never the anon key. Session revoke / ban flows for arbitrary users live under <button type="button" onclick="window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button>.
         </div>
         <button type="button" onclick="document.getElementById('ownerSuite')?.remove();openModPanel();" style="padding:10px 16px;font-size:.78rem;border-radius:12px;margin-bottom:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)">⚡ Open classic Dev Panel</button>
         <button type="button" onclick="forceSyncNow()" style="display:block;width:100%;padding:10px;margin-bottom:8px;font-size:.78rem;border-radius:10px">⟳ Force sync now</button>
@@ -1043,6 +1058,15 @@
           </div>`;
         }
         bodyEl.innerHTML=html;
+        if(tab==='auth'){
+          try{
+            requestAnimationFrame(()=>{
+              if(window.__osActiveTab==='auth'&&typeof window.ownerAuthUsersLoad==='function'){
+                window.ownerAuthUsersLoad(window.__fluxAuthPage||1);
+              }
+            });
+          }catch(_){}
+        }
       }
       const sb=root.querySelector('#osSidebar');
       if(sb)sb.innerHTML=buildOsSidebarHtml(tab);
@@ -1569,47 +1593,194 @@
     ev.target.value='';
   };
 
+  window.ownerAuthRenderRows=function(users){
+    const mount=document.getElementById('osAuthMount');
+    if(!mount)return;
+    if(!users||!users.length){
+      mount.innerHTML='<div style="color:var(--muted);font-size:.82rem">No accounts match this filter on this page.</div>';
+      return;
+    }
+    const roleColor=function(r){
+      if(!r)return'var(--muted2)';
+      const m={student:'#22c55e',teacher:'#38bdf8',counselor:'#a78bfa',staff:'#94a3b8',admin:'#fbbf24'};
+      return m[r]||'var(--muted2)';
+    };
+    const rows=users.map(u=>{
+      const bannedTag=u.banned?'<span style="font-size:.58rem;color:var(--red);font-weight:700">Banned</span>':'<span style="font-size:.58rem;color:var(--muted)">Active</span>';
+      const fr=u.fluxRole||null;
+      const roleLbl=fr?('<span style="font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:'+roleColor(fr)+'">'+esc(fr)+'</span>'):'<span style="font-size:.62rem;color:var(--muted)">— no row</span>';
+      const dn=(u.display_name||'').trim();
+      const subj=(u.subject||'').trim();
+      const meta=[dn&&('“'+esc(dn.slice(0,40))+(dn.length>40?'…':'')+'”'),subj&&('Subject: '+esc(subj.slice(0,28)))].filter(Boolean).join(' · ')||'<span style="opacity:.6">No display name / subject</span>';
+      const last=u.last_sign_in_at?('<span style="font-size:.6rem;color:var(--muted)">Last sign-in: '+esc(String(u.last_sign_in_at).slice(0,16))+'</span>'):'';
+      return'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border);font-size:.72rem;background:var(--card2)">'+
+        '<div style="flex:1;min-width:200px">'+
+          '<div style="font-weight:700;font-size:.8rem;margin-bottom:4px">'+(esc(u.email)||'—')+'</div>'+
+          '<div style="font-size:.68rem;color:var(--muted2);line-height:1.45">'+meta+'</div>'+
+          last+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
+          roleLbl+bannedTag+
+        '</div>'+
+        '<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.06)">'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer;font-weight:700;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.28);color:var(--accent)" onclick="ownerAuthOpenEdit('+JSON.stringify(String(u.id))+')">Edit Flux profile…</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthBan(\''+esc(u.id)+'\','+(u.banned?'false':'true')+')">'+(u.banned?'Unban':'Ban')+'</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthRevokeSessions(\''+esc(u.id)+'\')">Revoke sessions</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthForceRotate(\''+esc(u.id)+'\')">Force pwd flag</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthSetPasswordPrompt(\''+esc(u.id)+'\')">Set password…</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer;color:var(--red)" onclick="ownerAuthDeleteUser(\''+esc(u.id)+'\')">Delete…</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    mount.innerHTML='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">'+rows+'</div>';
+  };
+
+  window.ownerAuthApplyRoleFilter=function(){
+    const raw=window.__fluxAuthLastUsers;
+    if(!Array.isArray(raw))return;
+    const sel=(document.getElementById('osAuthRoleFilter')?.value)||'all';
+    let list=raw;
+    if(sel&&sel!=='all'){
+      if(sel==='__none')list=raw.filter(u=>u.fluxRole==null);
+      else list=raw.filter(u=>String(u.fluxRole||'')===sel);
+    }
+    window.ownerAuthRenderRows(list);
+  };
+
+  window.ownerAuthCloseEditOverlay=function(){
+    document.getElementById('osAuthEditOverlay')?.remove();
+  };
+
+  window.ownerAuthOpenEdit=function(userId){
+    if(!isOwner())return;
+    const uid=String(userId||'').trim();
+    const u=(window.__fluxAuthLastUsers||[]).find(x=>String(x.id)===uid);
+    if(!u){alert('User not on the loaded page — refresh or navigate pages.');return;}
+    window.ownerAuthCloseEditOverlay();
+    const ov=document.createElement('div');
+    ov.id='osAuthEditOverlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:12020;background:rgba(4,7,14,.72);backdrop-filter:blur(10px);display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML=`
+      <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:20px;margin-top:40px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div>
+            <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-family:JetBrains Mono,monospace">Flux profile</div>
+            <div style="font-size:1rem;font-weight:800;margin-top:4px;word-break:break-all">${esc(u.email||'')}</div>
+          </div>
+          <button type="button" onclick="ownerAuthCloseEditOverlay()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;line-height:1;padding:4px">✕</button>
+        </div>
+        <p style="font-size:.72rem;color:var(--muted2);line-height:1.5;margin:0 0 14px">Updates <code style="font-size:.65rem">public.user_roles</code> for this account. Does not change their Google / email login address.</p>
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Role</label>
+        <select id="osAuthEditRole" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+          <option value="counselor">Counselor</option>
+          <option value="staff">Staff</option>
+          <option value="admin">Admin</option>
+        </select>
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Display name</label>
+        <input id="osAuthEditDisplay" type="text" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:10px;box-sizing:border-box;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Subject / focus (optional)</label>
+        <input id="osAuthEditSubject" type="text" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:10px;box-sizing:border-box;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Department (optional)</label>
+        <input id="osAuthEditDept" type="text" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:10px;box-sizing:border-box;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">School (optional)</label>
+        <input id="osAuthEditSchool" type="text" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:10px;box-sizing:border-box;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+        <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Grade level (optional)</label>
+        <input id="osAuthEditGrade" type="text" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:16px;box-sizing:border-box;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
+        <div style="display:flex;gap:10px">
+          <button type="button" id="osAuthEditSaveBtn" style="flex:1;padding:10px;border-radius:10px;font-weight:800;background:var(--accent);color:#0a0d18;border:none;cursor:pointer;font-size:.82rem">Save</button>
+          <button type="button" onclick="ownerAuthCloseEditOverlay()" style="padding:10px 14px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;font-size:.82rem">Cancel</button>
+        </div>
+      </div>`;
+    ov.addEventListener('click',function(e){if(e.target===ov)window.ownerAuthCloseEditOverlay();});
+    document.body.appendChild(ov);
+    const roleEl=document.getElementById('osAuthEditRole');
+    if(roleEl)roleEl.value=(u.fluxRole&&['student','teacher','counselor','staff','admin'].includes(u.fluxRole))?u.fluxRole:'student';
+    const setv=function(id,v){const el=document.getElementById(id);if(el)el.value=v==null?'':String(v);};
+    setv('osAuthEditDisplay',u.display_name);
+    setv('osAuthEditSubject',u.subject);
+    setv('osAuthEditDept',u.department);
+    setv('osAuthEditSchool',u.school);
+    setv('osAuthEditGrade',u.grade_level);
+    const saveBtn=document.getElementById('osAuthEditSaveBtn');
+    if(saveBtn)saveBtn.addEventListener('click',function(){window.ownerAuthSaveProfile(uid);});
+  };
+
+  window.ownerAuthSaveProfile=async function(userId){
+    if(!isOwner())return;
+    const uid=String(userId||'').trim();
+    const role=(document.getElementById('osAuthEditRole')?.value||'student').trim();
+    const display_name=(document.getElementById('osAuthEditDisplay')?.value||'').trim();
+    const subject=(document.getElementById('osAuthEditSubject')?.value||'').trim();
+    const department=(document.getElementById('osAuthEditDept')?.value||'').trim();
+    const school=(document.getElementById('osAuthEditSchool')?.value||'').trim();
+    const grade_level=(document.getElementById('osAuthEditGrade')?.value||'').trim();
+    try{
+      if(typeof FluxRelease==='undefined'||!FluxRelease.invokeOwnerReleaseAdmin)throw new Error('FluxRelease unavailable');
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({
+        action:'owner_patch_user_role',
+        userId:uid,
+        role,
+        display_name,
+        subject,
+        department,
+        school,
+        grade_level,
+      });
+      if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Save failed');
+      if(typeof ownerAuditAppend==='function')ownerAuditAppend('owner_patch_user_role',{userId:uid,role});
+      window.ownerAuthCloseEditOverlay();
+      if(typeof showToast==='function')showToast('Flux profile saved','success');
+      const ix=(window.__fluxAuthLastUsers||[]).findIndex(x=>String(x.id)===uid);
+      if(ix>=0){
+        window.__fluxAuthLastUsers[ix]={
+          ...window.__fluxAuthLastUsers[ix],
+          fluxRole:role,
+          display_name,
+          subject,
+          department,
+          school,
+          grade_level,
+        };
+      }
+      window.ownerAuthApplyRoleFilter();
+    }catch(e){
+      if(typeof showToast==='function')showToast(e.message||String(e),'error');
+      else alert(e.message||String(e));
+    }
+  };
+
   window.ownerAuthUsersLoad=async function(page){
     if(!isOwner())return;
     const p=Math.max(1,parseInt(page,10)||1);
     window.__fluxAuthPage=p;
     const mount=document.getElementById('osAuthMount');
     if(mount)mount.innerHTML='<div style="color:var(--muted);font-size:.82rem">Loading Auth users…</div>';
+    const pageLbl=document.getElementById('osAuthPageLabel');
+    if(pageLbl)pageLbl.textContent='Page '+p+' · up to 100 / page';
     try{
       if(typeof FluxRelease==='undefined'||!FluxRelease.invokeOwnerReleaseAdmin){
         throw new Error('FluxRelease.invokeOwnerReleaseAdmin unavailable');
       }
-      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_list_users',page:p,perPage:40});
+      const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_list_users',page:p,perPage:100});
       if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'List failed');
       window.__fluxAuthNextPage=data.nextPage;
       const users=data.users||[];
+      window.__fluxAuthLastUsers=users.slice();
       if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_list_users',{page:p,n:users.length});
       if(!mount)return;
       if(!users.length){
         mount.innerHTML='<div style="color:var(--muted);font-size:.82rem">No accounts on this page.</div>';
         return;
       }
-      const rows=users.map(u=>{
-        const bannedTag=u.banned?'<span style="font-size:.58rem;color:var(--red);font-weight:700">Banned</span>':'<span style="font-size:.58rem;color:var(--muted)">Active</span>';
-        return'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:.72rem;background:var(--card2)">'+
-          '<span style="font-family:JetBrains Mono,monospace;font-size:.62rem;color:var(--muted2);flex:0 0 260px;word-break:break-all">'+esc(u.id)+'</span>'+
-          '<span style="flex:1;min-width:140px;font-weight:600">'+(esc(u.email)||'—')+'</span>'+
-          bannedTag+
-          '<span style="font-size:.62rem;color:var(--muted)">'+(esc(u.created_at||''))+'</span>'+
-          '<span style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'+
-            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthBan(\''+esc(u.id)+'\','+(u.banned?'false':'true')+')">'+(u.banned?'Unban':'Ban')+'</button>'+
-            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthRevokeSessions(\''+esc(u.id)+'\')">Revoke sessions</button>'+
-            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthForceRotate(\''+esc(u.id)+'\')">Force pwd flag</button>'+
-            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthSetPasswordPrompt(\''+esc(u.id)+'\')">Set password…</button>'+
-            '<button type="button" style="padding:4px 8px;font-size:.65rem;border-radius:8px;cursor:pointer;color:var(--red)" onclick="ownerAuthDeleteUser(\''+esc(u.id)+'\')">Delete…</button>'+
-          '</span>'+
-        '</div>';
-      }).join('');
-      mount.innerHTML='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">'+rows+'</div>';
-      if(typeof showToast==='function')showToast('Loaded '+users.length+' user(s) · p.'+p,'success');
+      const sel=document.getElementById('osAuthRoleFilter');
+      if(sel)sel.value='all';
+      window.ownerAuthApplyRoleFilter();
+      if(typeof showToast==='function')showToast('Loaded '+users.length+' user(s) · page '+p,'success');
     }catch(e){
       const msg=e&&e.message?e.message:String(e);
-      if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with the newest Auth handlers and confirm <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> matches your Google account.</div>';
+      if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with Auth + <code style="font-size:.65rem">owner_patch_user_role</code>, and confirm <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> matches your Google account.</div>';
       if(typeof showToast==='function')showToast(msg,'error');
     }
   };
