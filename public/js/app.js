@@ -8487,9 +8487,6 @@ function fluxRenderV4Dashboard(){
   try{renderSubjectAccuracyDashboard();}catch(_){}
   try{renderSubjectHeatmapDashboard();}catch(_){}
 }
-if(typeof FluxBus!=='undefined'){
-  FluxBus.on('task_completed',fluxRenderV4Dashboard);
-}
 window.fluxRenderV4Dashboard=fluxRenderV4Dashboard;
 
 function handleCheckoutReturn(){
@@ -11646,6 +11643,9 @@ FluxBus.on('task_completed',function(task){
     setTimeout(()=>{try{spawnConfetti();}catch(_){}}, 250);
   }
 });
+// V4 dashboard cards (gap-fill, physics strip, heatmap/accuracy) — must register
+// after `const FluxBus` (earlier `typeof FluxBus` before declaration throws TDZ).
+FluxBus.on('task_completed',fluxRenderV4Dashboard);
 
 
 // ══ SMART DASHBOARD REORDER BY TIME OF DAY ═══════════════════
