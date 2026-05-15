@@ -12069,7 +12069,7 @@ function showPostLoginRolePicker(opts){
 }
 window.showPostLoginRolePicker=showPostLoginRolePicker;
 
-/** Build the staff-detail mini form (role/name/subject/code) as an overlay.
+/** Build the staff-detail mini form (role/name/subject) as an overlay.
  *  Resolves to {role,name,subject} or null if cancelled. Email/password are
  *  taken from the already-signed-in session, not collected here. */
 function showStaffDetailsForm(){
@@ -12092,9 +12092,6 @@ function showStaffDetailsForm(){
         <input id="sdfName" type="text" placeholder="e.g. Ms. Johnson" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box">
         <div id="sdfSubjectRow"><label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Subject (teacher only)</label>
         <input id="sdfSubject" type="text" placeholder="e.g. AP Chemistry" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box"></div>
-        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Staff verification code</label>
-        <input id="sdfCode" type="text" placeholder="Ask your administrator" style="width:100%;padding:10px 12px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:6px;box-sizing:border-box">
-        <div style="font-size:.66rem;color:var(--muted);line-height:1.4;margin-bottom:14px">Your school's administrator can provide this code. Without a valid code, we'll switch you to a Student account.</div>
         <div id="sdfError" style="display:none;font-size:.78rem;color:var(--red);padding:8px 12px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
         <div style="display:flex;gap:10px">
           <button id="sdfBack" type="button" style="flex:0 0 auto;padding:12px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">← Back</button>
@@ -12114,14 +12111,11 @@ function showStaffDetailsForm(){
       const role=roleSel?.value||'teacher';
       const name=(document.getElementById('sdfName')?.value||'').trim();
       const subject=(document.getElementById('sdfSubject')?.value||'').trim();
-      const code=String(document.getElementById('sdfCode')?.value||'').trim().toUpperCase();
       const err=document.getElementById('sdfError');
       const setErr=(t)=>{if(err){err.textContent=t;err.style.display='block';}};
       if(!name){setErr('Please enter your name.');return;}
-      const expectedRole=FLUX_STAFF_CODES[code];
-      if(!expectedRole){setErr('Invalid staff verification code. Ask your administrator.');return;}
       ov.remove();
-      resolve({role:expectedRole,name,subject});
+      resolve({role,name,subject});
     });
   });
 }
@@ -12150,16 +12144,6 @@ window.selectRole=selectRole;
   wrapped.__fluxEduPatched=true;
   try{window.showLoginScreen=wrapped;}catch(_){}
 })();
-
-// ── Staff signup flow ─────────────────────────────────────────────
-// NOTE: codes are validated client-side as a placeholder. Production
-// should call a Supabase Edge Function that checks a secure list.
-const FLUX_STAFF_CODES={
-  TEACHER2025:'teacher',
-  COUNSELOR2025:'counselor',
-  STAFF2025:'staff',
-  ADMIN2025:'admin',
-};
 
 function showStaffOnboarding(){
   if(document.getElementById('staffOnboarding'))return;
@@ -12190,10 +12174,6 @@ function showStaffOnboarding(){
       <div class="mrow"><label for="staffPassword">Password</label>
         <input id="staffPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password">
       </div>
-      <div class="mrow"><label for="staffCode">Staff verification code</label>
-        <input id="staffCode" type="text" placeholder="Ask your administrator">
-        <div style="font-size:.72rem;color:var(--muted2);margin-top:4px">Your school's administrator can provide this code.</div>
-      </div>
       <div id="staffSignupError" style="display:none;font-size:.78rem;color:var(--red);padding:10px 14px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
       <button id="staffSignupBtn" style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:14px;color:#0a0d18;font-weight:700;font-size:.95rem;cursor:pointer">Create staff account</button>
       <div style="text-align:center;margin-top:16px;font-size:.8rem;color:var(--muted2)">
@@ -12223,12 +12203,10 @@ async function submitStaffSignup(){
   const subject=(document.getElementById('staffSubject')?.value||'').trim();
   const email=(document.getElementById('staffEmail')?.value||'').trim();
   const password=document.getElementById('staffPassword')?.value||'';
-  const code=String(document.getElementById('staffCode')?.value||'').trim().toUpperCase();
+  const staffRole=role;
 
   if(!name||!email||!password){setErr('Please fill out all required fields');return;}
   if(password.length<8){setErr('Password must be at least 8 characters');return;}
-  const expectedRole=FLUX_STAFF_CODES[code];
-  if(!expectedRole){setErr('Invalid staff verification code — contact your administrator.');return;}
 
   const btn=document.getElementById('staffSignupBtn');
   if(btn){btn.disabled=true;btn.textContent='Creating account…';}
@@ -12239,13 +12217,13 @@ async function submitStaffSignup(){
     // Cache so detectUserRoleAndRoute can upsert on first sign-in even if
     // the project requires email confirmation (no session at signup time).
     try{
-      localStorage.setItem('flux_pending_staff_role',expectedRole);
+      localStorage.setItem('flux_pending_staff_role',staffRole);
       localStorage.setItem('flux_pending_staff_name',name);
       if(subject)localStorage.setItem('flux_pending_staff_subject',subject);
     }catch(_){}
     const {data,error}=await sb.auth.signUp({
       email,password,
-      options:{data:{full_name:name,role:expectedRole}},
+      options:{data:{full_name:name,role:staffRole}},
     });
     if(error)throw error;
     const user=data?.user;
@@ -12253,12 +12231,12 @@ async function submitStaffSignup(){
     if(data?.session){
       await sb.from('user_roles').upsert({
         user_id:user.id,
-        role:expectedRole,
+        role:staffRole,
         display_name:name,
         subject:subject||null,
         updated_at:new Date().toISOString(),
       });
-      if(expectedRole==='counselor'){
+      if(staffRole==='counselor'){
         const lastName=name.split(' ').filter(Boolean).pop();
         if(lastName){
           try{
@@ -12274,7 +12252,7 @@ async function submitStaffSignup(){
         localStorage.removeItem('flux_pending_staff_subject');
       }catch(_){}
       document.getElementById('staffOnboarding')?.remove();
-      showToast(`Welcome, ${name}! Your ${expectedRole} account is ready.`);
+      showToast(`Welcome, ${name}! Your ${staffRole} account is ready.`);
     }else{
       document.getElementById('staffOnboarding')?.remove();
       showToast('Account created — check your email for a confirmation link, then sign in.','info',6000);
@@ -12349,7 +12327,7 @@ async function detectUserRoleAndRoute(){
      If we still have no role row and this user has never picked one, show the
      post-login "I am a Student / Staff" picker. This is the moved-from-pre-login
      onboarding step. Student picks just write a 'student' row. Staff picks
-     open the staff detail form to capture name/subject/code.  We only ever
+     open the staff detail form to capture name/subject.  We only ever
      show this once per account; subsequent sign-ins skip straight through. */
   const alreadyPicked=(()=>{try{return localStorage.getItem('flux_role_picked_for_'+currentUser.id);}catch(_){return null;}})();
   if(!hadExplicitRole&&!alreadyPicked){
