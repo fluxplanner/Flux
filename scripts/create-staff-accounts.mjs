@@ -8,8 +8,11 @@
  *   - SUPABASE_SERVICE_ROLE_KEY (Dashboard → Project Settings → API → service_role)
  *
  * Input: JSON Lines (.jsonl). One JSON object per line:
- *   { "email", "password", "role", "display_name", "subject?" }
+ *   { "email", "password?", "role", "display_name", "subject?" }
  *   role must be one of: teacher | counselor | staff | admin
+ *   If "password" is missing or shorter than 8 characters, a random one is
+ *   generated and appended to a TSV next to the import file (same basename
+ *   + .passwords.tsv). Do not commit that file.
  *
  * Usage:
  *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/create-staff-accounts.mjs ./my-staff.jsonl
@@ -21,11 +24,21 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ROLES = new Set(["teacher", "counselor", "staff", "admin"]);
+
+function mkPw() {
+  for (let i = 0; i < 25; i++) {
+    const b = crypto.randomBytes(18).toString("base64url").replace(/[^a-zA-Z0-9]/g, "x");
+    const p = b.slice(0, 14) + "Aa1!";
+    if (/^[a-zA-Z0-9]/.test(p)) return p;
+  }
+  return "FluxTmp" + crypto.randomBytes(8).toString("hex") + "Aa1!";
+}
 
 function readJsonl(filePath) {
   const raw = fs.readFileSync(filePath, "utf8");
@@ -80,15 +93,14 @@ async function findUserIdByEmail(base, serviceKey, email) {
   return null;
 }
 
-async function createOrUpdateUser(base, serviceKey, row) {
+async function createOrUpdateUser(base, serviceKey, row, password) {
   const email = String(row.email || "").trim().toLowerCase();
-  const password = String(row.password || "");
   const role = String(row.role || "").trim().toLowerCase();
   const display_name = String(row.display_name || "").trim();
   const subject = row.subject != null ? String(row.subject).trim() : "";
 
   if (!email || !email.includes("@")) throw new Error("invalid email");
-  if (password.length < 8) throw new Error("password must be at least 8 characters");
+  if (!password || password.length < 8) throw new Error("password must be at least 8 characters");
   if (!ROLES.has(role)) throw new Error(`role must be one of: ${[...ROLES].join(", ")}`);
   if (!display_name) throw new Error("display_name required");
 
@@ -173,13 +185,32 @@ async function main() {
   }
 
   const rows = readJsonl(abs);
+  const needsPwLog = rows.some((r) => String(r.password || "").trim().length < 8);
+  const pwLogPath = needsPwLog
+    ? path.join(
+      path.dirname(abs),
+      path.basename(abs, path.extname(abs)) + ".passwords.tsv",
+    )
+    : null;
+  if (pwLogPath) {
+    fs.writeFileSync(pwLogPath, "email\tpassword\n", "utf8");
+    console.error(`[passwords] Missing or short passwords → writing generated secrets to:\n  ${pwLogPath}\n`);
+  }
+
   let ok = 0;
   let fail = 0;
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const label = row.email || `line ${i + 1}`;
     try {
-      const { userId, existed } = await createOrUpdateUser(base, serviceKey, row);
+      let password = String(row.password || "").trim();
+      if (password.length < 8) {
+        password = mkPw();
+        if (pwLogPath) {
+          fs.appendFileSync(pwLogPath, `${String(row.email).trim().toLowerCase()}\t${password}\n`, "utf8");
+        }
+      }
+      const { userId, existed } = await createOrUpdateUser(base, serviceKey, row, password);
       await upsertUserRole(
         base,
         serviceKey,

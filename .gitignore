@@ -8,3 +8,6 @@ supabase/.temp/
 
 # Dependencies (if added later)
 node_modules/
+
+# Staff bulk import — never commit generated secrets
+scripts/*.passwords.tsv
