@@ -5099,14 +5099,16 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   LIQUID GLASS — DEFAULT VISUAL TREATMENT
-   Forced on regardless of the data-flux-glass toggle (toggle still
-   downgrades certain heavier filters via existing rules).
+   LIQUID GLASS — OPT-IN VISUAL TREATMENT
+   Gated behind html[data-flux-glass="on"] so the user toggle in
+   Settings → Personalization actually controls it. Default is OFF.
+   The SVG filter helpers below are inert until the wrapping element
+   references them, so they're safe to leave outside the gate.
    ═══════════════════════════════════════════════════════════════════ */
 .flux-glass-filter{display:none;position:absolute;width:0;height:0}
 .glass-distortion-svg{position:fixed;width:0;height:0;pointer-events:none}
 
-.glass{
+html[data-flux-glass="on"] .glass{
   background:rgba(255,255,255,.04);
   backdrop-filter:blur(24px) saturate(180%);
   -webkit-backdrop-filter:blur(24px) saturate(180%);
@@ -5118,7 +5120,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Glass cards */
-.card{
+html[data-flux-glass="on"] .card{
   background:rgba(255,255,255,.03) !important;
   backdrop-filter:blur(20px) saturate(160%) !important;
   -webkit-backdrop-filter:blur(20px) saturate(160%) !important;
@@ -5129,7 +5131,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   position:relative;
   overflow:hidden;
 }
-.card::before{
+html[data-flux-glass="on"] .card::before{
   content:'';
   position:absolute;
   top:0;left:0;right:0;
@@ -5143,7 +5145,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   z-index:1;
   pointer-events:none;
 }
-.card::after{
+html[data-flux-glass="on"] .card::after{
   content:'';
   position:absolute;
   inset:0;
@@ -5157,7 +5159,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Glass modals */
-.modal-card{
+html[data-flux-glass="on"] .modal-card{
   backdrop-filter:blur(28px) saturate(200%) !important;
   -webkit-backdrop-filter:blur(28px) saturate(200%) !important;
   background:rgba(10,12,20,.75) !important;
@@ -5170,7 +5172,8 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Topbar liquid glass */
-#topbar,.topbar{
+html[data-flux-glass="on"] #topbar,
+html[data-flux-glass="on"] .topbar{
   background:rgba(7,8,15,.6) !important;
   backdrop-filter:blur(32px) saturate(200%) brightness(1.1) !important;
   -webkit-backdrop-filter:blur(32px) saturate(200%) brightness(1.1) !important;
@@ -5181,7 +5184,8 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Sidebar liquid glass */
-#sidebar,.sidebar{
+html[data-flux-glass="on"] #sidebar,
+html[data-flux-glass="on"] .sidebar{
   background:rgba(7,8,15,.55) !important;
   backdrop-filter:blur(28px) saturate(180%) !important;
   -webkit-backdrop-filter:blur(28px) saturate(180%) !important;
@@ -5189,7 +5193,8 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Bottom nav liquid glass */
-#bottomNav,.bottom-nav{
+html[data-flux-glass="on"] #bottomNav,
+html[data-flux-glass="on"] .bottom-nav{
   background:rgba(7,8,15,.75) !important;
   backdrop-filter:blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter:blur(24px) saturate(180%) !important;
@@ -5197,29 +5202,37 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* Input glass */
-input,textarea,select{
+html[data-flux-glass="on"] input,
+html[data-flux-glass="on"] textarea,
+html[data-flux-glass="on"] select{
   background:rgba(255,255,255,.04) !important;
   backdrop-filter:blur(8px) !important;
   border:1px solid rgba(255,255,255,.08) !important;
 }
-input:focus,textarea:focus,select:focus{
+html[data-flux-glass="on"] input:focus,
+html[data-flux-glass="on"] textarea:focus,
+html[data-flux-glass="on"] select:focus{
   background:rgba(255,255,255,.06) !important;
   border-color:rgba(var(--accent-rgb),.4) !important;
   box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1),inset 0 1px 0 rgba(255,255,255,.08) !important;
 }
 
-button{
+html[data-flux-glass="on"] button{
   backdrop-filter:blur(8px);
   -webkit-backdrop-filter:blur(8px);
 }
 
-.task-type-chip,.subject-chip,.page-badge,.suggestion-chip{
+html[data-flux-glass="on"] .task-type-chip,
+html[data-flux-glass="on"] .subject-chip,
+html[data-flux-glass="on"] .page-badge,
+html[data-flux-glass="on"] .suggestion-chip{
   backdrop-filter:blur(12px) !important;
   background:rgba(255,255,255,.05) !important;
   border:1px solid rgba(255,255,255,.1) !important;
 }
 
-#moreSheet,.more-sheet{
+html[data-flux-glass="on"] #moreSheet,
+html[data-flux-glass="on"] .more-sheet{
   background:rgba(10,12,22,.82) !important;
   backdrop-filter:blur(32px) saturate(200%) !important;
   -webkit-backdrop-filter:blur(32px) saturate(200%) !important;

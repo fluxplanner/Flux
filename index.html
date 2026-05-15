@@ -14,7 +14,6 @@
 (function(){
   try{
     var raw=localStorage.getItem('flux_liquid_glass');
-    var narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
     var p=null;
     if(raw!==null&&raw!==''){
       try{
@@ -23,11 +22,10 @@
         else if(v===false)p=false;
       }catch(e2){}
     }
-    var on=p!==null?p:narrow;
+    var on=p===true;
     document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
   }catch(e){
-    var n=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-    document.documentElement.setAttribute('data-flux-glass',n?'on':'off');
+    document.documentElement.setAttribute('data-flux-glass','off');
   }
 })();
 </script>

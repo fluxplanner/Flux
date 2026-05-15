@@ -86,9 +86,8 @@
   }
 
   function applyLiquidGlass(){
-    const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
     const p=readLiquidGlassPref();
-    const on=p!==null?p:narrow;
+    const on=p===true;
     document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
   }
   function setLiquidGlassEnabled(on){
