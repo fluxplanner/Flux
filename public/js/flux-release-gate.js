@@ -16,11 +16,13 @@
   window.FLUX_BUILD_ID=FLUX_BUILD_ID;
 
   /**
-   * When true: a build is "live" for the public only after owner/dev runs
-   * "Push to all users" (releaseGate.released === FLUX_BUILD_ID).
-   * Missing or empty gate = normal signed-in users see "Update under review".
-   * Owner always bypasses; dev access follows previewMode / previewEmails.
-   * Set false only if you intentionally want everyone on latest deploy with no gate.
+   * When true: the "Update under review" overlay is used only while
+   * releaseGate.stagingEnabled is true (owner turns it on in Owner → Release).
+   * When staging is off, everyone gets the current deploy — no automatic gate.
+   * While staging is on, the public is live only after releaseGate.released
+   * matches FLUX_BUILD_ID ("Push to all users").
+   * Owner always bypasses the overlay; dev access follows previewMode / previewEmails.
+   * Set false to ignore staging entirely (every deploy is live for everyone).
    */
   const REQUIRE_EXPLICIT_RELEASE=true;
 
@@ -137,11 +139,17 @@
       }
     }catch(_){}
   }
+  /** Owner opt-in: only when true do non-preview users see "Update under review". */
+  function isStagingActive(gate){
+    return !!(gate&&gate.stagingEnabled===true);
+  }
+
   function isReleased(gate){
     if(!REQUIRE_EXPLICIT_RELEASE){
       if(!gate||!gate.released)return true;
       return gate.released===FLUX_BUILD_ID;
     }
+    if(!isStagingActive(gate))return true;
     if(!gate||!gate.released)return false;
     return gate.released===FLUX_BUILD_ID;
   }
@@ -204,6 +212,7 @@
     let gate={
       ...(getGate()||{}),
       released:FLUX_BUILD_ID,
+      stagingEnabled:false,
       pushedAt:now,
       pushedAtIso:new Date(now).toISOString(),
       pushedBy:by,
@@ -244,6 +253,33 @@
       showToast('✓ Released build '+buildLabel(FLUX_BUILD_ID)+' to all users','success');
     }
     return{ok:true,gate,propagated};
+  }
+
+  async function saveStagingEnabled(enabled){
+    if(!isOwnerLocal())return{ok:false,err:'Only the owner can turn update mode on or off'};
+    const on=!!enabled;
+    let gate={
+      ...(getGate()||{}),
+      stagingEnabled:on,
+      stagingUpdatedAt:Date.now(),
+      stagingUpdatedBy:currentEmail()||'owner',
+    };
+    try{
+      const data=await callReleaseAdmin('set_staging_enabled',{stagingEnabled:on});
+      if(data&&data.gate)gate=data.gate;
+    }catch(e){
+      console.warn('[FluxRelease] set_staging_enabled failed; owner local fallback',e);
+    }
+    saveGate(gate);
+    try{
+      if(typeof savePlatformConfig==='function')savePlatformConfig({releaseGate:gate});
+      if(typeof syncToCloud==='function')await syncToCloud();
+    }catch(_){}
+    applyGate();
+    if(typeof showToast==='function'){
+      showToast(on?'Update mode ON — normal users see "Update under review" until you push this build.':'Update mode OFF — everyone uses the current deploy.','success');
+    }
+    return{ok:true,gate};
   }
 
   async function savePreviewAccess(mode,emails){
@@ -317,7 +353,7 @@
       <div style="max-width:460px;width:100%;text-align:center">
         <div style="font-size:2.6rem;margin-bottom:14px">🛠</div>
         <div style="font-size:1.3rem;font-weight:800;letter-spacing:-.01em;margin-bottom:8px">Update under review</div>
-        <div style="font-size:.85rem;color:var(--muted2,#8a93a7);line-height:1.55">Flux just shipped a new build. The Flux team is reviewing it before rolling out to everyone. Check back in a few minutes — this screen will clear automatically once it's live.</div>
+        <div style="font-size:.85rem;color:var(--muted2,#8a93a7);line-height:1.55">This build is not rolled out to everyone yet. The owner can turn on <b>Update mode</b> in Owner → Release to gate the public; once they push this build, this screen clears. If you think this is a mistake, try <b>Check again</b> or contact support.</div>
         ${notes}
         <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button type="button" id="fluxReleaseRetryBtn" style="padding:10px 18px;font-size:.82rem;font-weight:700;border-radius:10px;background:rgba(var(--accent-rgb),.16);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent,#00bfff);cursor:pointer">↻ Check again</button>
@@ -392,7 +428,7 @@
           </div>
           <button type="button" id="fluxPushClose" style="background:none;border:none;color:var(--muted,#5b6473);font-size:1.2rem;cursor:pointer;padding:0">✕</button>
         </div>
-        <div style="font-size:.76rem;color:var(--muted2,#8a93a7);line-height:1.55;margin-bottom:14px">Releases this build to every user. Normal users currently see an <b>"Update under review"</b> screen — on their next load (or auto-poll), they'll pick up the new build and the overlay clears.</div>
+        <div style="font-size:.76rem;color:var(--muted2,#8a93a7);line-height:1.55;margin-bottom:14px">Releases this build to every user and turns <b>Update mode</b> off. While update mode is on, normal users outside the preview list see an <b>"Update under review"</b> screen — after you push, their next load (or auto-poll) picks up this build and the overlay clears.</div>
         ${canPush?'':'<div style="font-size:.72rem;color:#fbbf24;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.28);border-radius:10px;padding:9px 11px;margin-bottom:12px;line-height:1.5">This dev account can preview, but does not have release-push permission.</div>'}
         <div style="background:var(--card2,#0c1220);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.72rem;line-height:1.5;color:var(--muted2,#8a93a7)">
           <div>Currently released: <b style="color:var(--text,#e6edf6)">${esc(buildLabel(gate.released)||'— (first release)')}</b></div>
@@ -496,11 +532,13 @@
     FLUX_BUILD_ID,
     REQUIRE_EXPLICIT_RELEASE,
     getGate,
+    isStagingActive,
     hasPreviewAccess,
     isPreviewAudience,
     isPublicReleaseLive,
     canPushRelease:canPushReleaseLocal,
     pushUpdate,
+    saveStagingEnabled,
     savePreviewAccess,
     syncPlatformToDevs,
     fetchOwnerGate,

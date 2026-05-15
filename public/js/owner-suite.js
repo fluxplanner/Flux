@@ -706,6 +706,7 @@
         const buildLabel=String(buildId).replace(/^build-/,'');
         const isLive=gate&&gate.released===buildId;
         const diff=!isLive;
+        const stagingOn=!!(gate&&gate.stagingEnabled);
         const previewMode=(gate&&gate.previewMode)||'all_devs';
         const previewEmails=(gate&&Array.isArray(gate.previewEmails)?gate.previewEmails:[]).map(x=>String(x||'').toLowerCase());
         const previewRows=devAccounts.length?devAccounts.map((d,i)=>{
@@ -718,8 +719,20 @@
           </label>`;
         }).join(''):'<div style="font-size:.72rem;color:var(--muted);padding:8px 0">No dev accounts yet. Add devs in Team & roles.</div>';
         return`
+          <div style="margin-bottom:16px;padding:14px;background:${stagingOn?'rgba(251,191,36,.08)':'var(--card2)'};border:1px solid ${stagingOn?'rgba(251,191,36,.45)':'var(--border)'};border-radius:14px">
+            <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px">Update mode (maintenance gate)</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+              <span style="font-size:1rem;font-weight:800;font-family:JetBrains Mono,monospace;color:${stagingOn?'#fbbf24':'var(--green)'}">${stagingOn?'ON':'OFF'}</span>
+              <span style="font-size:.72rem;color:var(--muted2);line-height:1.45">When <b>ON</b>, normal users see <i>Update under review</i> until you push this build. When <b>OFF</b>, nobody is blocked — new deploys go live for everyone automatically.</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button type="button" onclick="ownerSetReleaseStaging(true)" ${stagingOn?'disabled':''} style="padding:9px 14px;font-size:.78rem;font-weight:700;border-radius:10px;background:${stagingOn?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${stagingOn?'var(--border)':'rgba(251,191,36,.45)'};color:${stagingOn?'var(--muted)':'#080a0f'};cursor:${stagingOn?'default':'pointer'};opacity:${stagingOn?0.55:1}">Turn ON update mode</button>
+              <button type="button" onclick="ownerSetReleaseStaging(false)" ${!stagingOn?'disabled':''} style="padding:9px 14px;font-size:.78rem;font-weight:700;border-radius:10px;background:${!stagingOn?'var(--card2)':'rgba(124,92,255,.14)'};border:1px solid ${!stagingOn?'var(--border)':'rgba(124,92,255,.35)'};color:var(--text);cursor:${!stagingOn?'default':'pointer'};opacity:${!stagingOn?0.55:1}">Turn OFF update mode</button>
+            </div>
+            ${gate&&gate.stagingUpdatedAt?`<div style="font-size:.62rem;color:var(--muted);margin-top:8px;font-family:JetBrains Mono,monospace">Last change: ${esc(new Date(gate.stagingUpdatedAt).toLocaleString())}${gate.stagingUpdatedBy?' · '+esc(gate.stagingUpdatedBy):''}</div>`:''}
+          </div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
-            Staged rollout: bump <code style="font-size:.65rem">FLUX_BUILD_ID</code> each deploy. With <b>strict release</b> on (<code style="font-size:.65rem">REQUIRE_EXPLICIT_RELEASE</code> in <code style="font-size:.65rem">flux-release-gate.js</code>), signed-in users who are <b>not</b> owner/dev preview stay on <i>"Update under review"</i> until someone with permission clicks <b>Push to all users</b> for that build. Owner always sees preview; devs follow the mode below.
+            Bump <code style="font-size:.65rem">FLUX_BUILD_ID</code> in <code style="font-size:.65rem">flux-release-gate.js</code> each deploy. The <b>Update under review</b> screen only appears for normal users after you turn <b>Update mode</b> on above — then they stay on that screen until <b>Push to all users</b> matches this build (pushing also turns update mode off). Owner always bypasses the overlay; devs follow preview access below.
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div style="background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px">
@@ -734,7 +747,7 @@
           ${gate&&gate.pushedBy?`<div style="font-size:.7rem;color:var(--muted2);margin-bottom:12px">Last push by <b>${esc(gate.pushedBy)}</b> · ${esc(new Date(gate.pushedAt||0).toLocaleString())}${gate.notes?`<br><span style="color:var(--muted)">Notes:</span> ${esc(gate.notes)}`:''}</div>`:''}
           <button type="button" id="osReleasePushBtn" ${isLive?'disabled':''} style="width:100%;padding:12px;font-size:.9rem;font-weight:800;border-radius:12px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ This build is already released':'🚀 Push '+esc(buildLabel)+' to all users'}</button>
           <div style="margin-top:10px;font-size:.66rem;color:var(--muted);line-height:1.5">
-            ${diff?'Users currently see the "Update under review" screen. Push when you\'re ready to roll out.':'All users on the current build. New deploys will re-enter preview until pushed.'}
+            ${stagingOn&&diff?'Users currently see the "Update under review" screen. Push when you\'re ready to roll out.':stagingOn&&isLive?'Update mode is on but this build is already pushed — turn update mode off if you don\'t need the gate for the next deploy.':'Update mode is off — everyone gets the current deploy. Turn it on only when you want to preview a build before the public sees it.'}
           </div>
           <div style="margin-top:18px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:14px">
             <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">Preview access before release</div>
@@ -757,7 +770,7 @@
             <button type="button" onclick="ownerSyncPlatformConfigToDevs()" style="width:100%;padding:10px;font-size:.8rem;font-weight:700;border-radius:10px;background:rgba(124,92,255,.14);border:1px solid rgba(124,92,255,.35);color:var(--text)">⬆ Sync platform config to dev cloud rows</button>
           </div>
           <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:.66rem;color:var(--muted);line-height:1.5">
-            <b>How deploys work:</b> Bump <code style="font-size:.7rem">FLUX_BUILD_ID</code> in <code style="font-size:.7rem">public/js/flux-release-gate.js</code> before committing. After you deploy, the new build is automatically gated for non-preview users until an owner or release-authorized dev pushes it here.
+            <b>How deploys work:</b> Bump <code style="font-size:.7rem">FLUX_BUILD_ID</code> in <code style="font-size:.7rem">public/js/flux-release-gate.js</code> before committing. Deploys do <b>not</b> block users until you enable <b>Update mode</b> here; then use <b>Push to all users</b> when ready (that push clears update mode).
           </div>`;
       }
 
@@ -1407,6 +1420,21 @@
     });
     const res=await FluxRelease.savePreviewAccess(mode,emails);
     if(!res.ok&&typeof showToast==='function')showToast(res.err||'Save failed','error');
+    reopenOwnerSuite('release');
+  };
+
+  window.ownerSetReleaseStaging=async function(on){
+    if(!isOwner())return;
+    if(typeof FluxRelease==='undefined'||!FluxRelease.saveStagingEnabled){
+      alert('Flux Release module not loaded.');
+      return;
+    }
+    const want=!!on;
+    if(want&&!confirm('Turn ON update mode? Normal users (not in preview) will see "Update under review" until you push this build.'))return;
+    if(!want&&!confirm('Turn OFF update mode? Everyone will immediately use the current deploy with no blocking screen.'))return;
+    const res=await FluxRelease.saveStagingEnabled(want);
+    if(!res.ok&&typeof showToast==='function')showToast(res.err||'Update mode save failed','error');
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('release_staging',{on:want});
     reopenOwnerSuite('release');
   };
 

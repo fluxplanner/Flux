@@ -182,6 +182,7 @@ Deno.serve(async (req) => {
       const nextGate = {
         ...prevGate,
         released: buildId,
+        stagingEnabled: false,
         pushedAt: Date.now(),
         pushedAtIso: new Date().toISOString(),
         pushedBy: email,
@@ -474,6 +475,31 @@ Deno.serve(async (req) => {
       }
 
       return json({ error: "Unhandled auth_admin branch" }, 500, origin);
+    }
+
+    if (action === "set_staging_enabled") {
+      if (email !== OWNER_EMAIL) {
+        return json({ error: "Only the owner can enable update mode" }, 403, origin);
+      }
+      const prevGate = asRecord(platformConfig.releaseGate);
+      const enabled = Boolean(body.stagingEnabled);
+      const nextGate = {
+        ...prevGate,
+        stagingEnabled: enabled,
+        stagingUpdatedAt: Date.now(),
+        stagingUpdatedBy: email,
+      };
+      platformConfig.releaseGate = nextGate;
+      ownerData.platformConfig = platformConfig;
+      await saveOwnerData(db, ownerRow, ownerData);
+
+      return json({
+        ok: true,
+        gate: nextGate,
+        role: "owner",
+        canPush: true,
+        canManagePreview: true,
+      }, 200, origin);
     }
 
     if (action === "save_preview_access") {
