@@ -1306,8 +1306,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  flex-shrink: 0;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar__right > *{
+  flex-shrink: 0;
 }
 #ai.flux-ai-panel.ai-root .ai-mode-select{
   appearance: none;
@@ -1504,6 +1508,12 @@
   gap: 10px !important;
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar__left .ai-title{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #ai.flux-ai-panel.ai-root .ai-topbar-logo{
   width: 30px;
@@ -1525,22 +1535,36 @@
 #ai.flux-ai-panel.ai-root .ai-topbar__right{
   display: inline-flex !important;
   flex-wrap: nowrap !important;
-  gap: 6px !important;
+  gap: 8px !important;
   align-items: center !important;
-  flex: 0 0 auto;
-  padding: 4px;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  padding: 4px 6px !important;
   border-radius: 14px;
   background: color-mix(in srgb, var(--card2) 80%, transparent);
   border: 1px solid var(--fa-hair2);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  white-space: nowrap;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar__right > *{
+  flex-shrink: 0 !important;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar__right .ai-topbar-attach + .ai-topbar-btn{
+  margin-left: 2px;
 }
 #ai.flux-ai-panel.ai-root .ai-mode-select{
   appearance: none;
   -webkit-appearance: none;
-  padding: 6px 26px 6px 12px !important;
+  padding: 6px 22px 6px 10px !important;
   border-radius: 10px !important;
   border: none !important;
-  background: transparent !important;
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%) !important;
+  background-position: right 11px center, right 7px center !important;
+  background-size: 4px 4px, 4px 4px !important;
+  background-repeat: no-repeat !important;
   color: var(--fa-ink) !important;
   font-size: 0.74rem !important;
   font-weight: 700 !important;
@@ -1548,9 +1572,12 @@
   cursor: pointer;
   height: 32px;
   line-height: 1;
+  max-width: 138px;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 #ai.flux-ai-panel.ai-root .ai-mode-select:hover{
-  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+  background-color: color-mix(in srgb, var(--accent) 8%, transparent) !important;
   color: var(--accent) !important;
 }
 #ai.flux-ai-panel.ai-root .ai-topbar-attach{
