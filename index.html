@@ -691,11 +691,6 @@
       <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">☰</button>
     </div>
     <div class="sidebar-nav">
-      <div class="nav-group" data-educator-only style="display:none">
-        <div class="nav-group-label">Educator</div>
-        <button class="nav-item" data-educator-only data-teacher-nav data-tab="teacherDashboard" onclick="nav('teacherDashboard',this);try{renderTeacherDashboard()}catch(e){}" style="display:none"><span class="ni">🏫</span><span class="nl">Teacher Dashboard</span></button>
-        <button class="nav-item" data-educator-only data-counselor-nav data-tab="counselorDashboard" onclick="nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}" style="display:none"><span class="ni">💬</span><span class="nl">Counselor Dashboard</span></button>
-      </div>
       <div class="nav-group">
         <div class="nav-group-label">Main</div>
         <button class="nav-item active" onclick="nav('dashboard',this)" data-tab="dashboard"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>
@@ -764,11 +759,6 @@
       <button class="mob-drawer-close" onclick="closeDrawer()">✕</button>
     </div>
     <div class="mob-drawer-nav">
-      <div class="nav-group" data-educator-only style="display:none">
-        <div class="nav-group-label" style="padding:8px 16px 4px">Educator</div>
-        <button class="nav-item" data-educator-only data-teacher-nav onclick="navMob('teacherDashboard');try{renderTeacherDashboard()}catch(e){}" style="display:none"><span class="ni">🏫</span><span class="nl">Teacher Dashboard</span></button>
-        <button class="nav-item" data-educator-only data-counselor-nav onclick="navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}" style="display:none"><span class="ni">💬</span><span class="nl">Counselor Dashboard</span></button>
-      </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">Main</div>
         <button class="nav-item" onclick="navMob('dashboard')"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>

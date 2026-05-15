@@ -1349,13 +1349,11 @@ function applyRoleUI(){
   if(isWork){
     setMany(studentOnlySelectors,false);
     setMany(educatorWorkSelectors,true);
-    if(role==='teacher'||role==='staff'||role==='admin'){
-      document.querySelectorAll('[data-teacher-nav]').forEach(el=>{el.style.display='';el.style.visibility='';});
-      document.querySelectorAll('[data-counselor-nav]').forEach(el=>{el.style.display='none';el.style.visibility='hidden';});
-    }else if(role==='counselor'){
-      document.querySelectorAll('[data-counselor-nav]').forEach(el=>{el.style.display='';el.style.visibility='';});
-      document.querySelectorAll('[data-teacher-nav]').forEach(el=>{el.style.display='none';el.style.visibility='hidden';});
-    }
+    // The standard "Dashboard" sidebar button now routes to the role-specific
+    // dashboard (see nav() redirect), so we no longer need separate
+    // [data-teacher-nav] / [data-counselor-nav] entries — they were removed
+    // from the HTML. Future educator-only nav items (e.g. Classes, Students)
+    // can re-introduce these data attrs and they'll be controlled here.
   }else{
     // PERSONAL mode for educators: act like a student
     setMany(studentOnlySelectors,true);
@@ -1765,6 +1763,23 @@ function nav(id,btn,navOpt){
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
   if(tc&&!tc.visible){nav('dashboard');return;}
+  // ── Educator dashboard redirect ──
+  // For teachers / staff / counselors in Work mode, "Dashboard" shows the
+  // role-specific dashboard. The sidebar "Dashboard" button stays visually
+  // active (logicalId) so the highlight matches the home button the user
+  // clicked. Also works in reverse: explicit nav('teacherDashboard') calls
+  // (e.g. from handleSignedIn) still light up the "Dashboard" sidebar item.
+  let logicalId=id;
+  try{
+    if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()){
+      if(id==='dashboard'){
+        if(FluxRole.isTeacher()||FluxRole.isStaff())id='teacherDashboard';
+        else if(FluxRole.isCounselor())id='counselorDashboard';
+      }else if(id==='teacherDashboard'||id==='counselorDashboard'){
+        logicalId='dashboard';
+      }
+    }
+  }catch(_){}
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active','flux-panel-enter'));
   if(id!=='canvas'&&typeof window.fluxCanvasCloseMobileSidebar==='function'){
     try{ window.fluxCanvasCloseMobileSidebar(); }catch(e){}
@@ -1775,9 +1790,9 @@ function nav(id,btn,navOpt){
     setTimeout(()=>panel.classList.remove('flux-panel-enter'),560);
   }
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll(`[data-tab="${id}"]`).forEach(b=>b.classList.add('active'));
+  document.querySelectorAll(`[data-tab="${logicalId}"]`).forEach(b=>b.classList.add('active'));
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
-  const bni=document.querySelector(`.bnav-item[data-tab="${id}"]`);
+  const bni=document.querySelector(`.bnav-item[data-tab="${logicalId}"]`);
   if(bni){bni.classList.add('active');}
   else{
     // Target panel isn't one of the 5 primary tabs — light up the More button
@@ -1799,7 +1814,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
