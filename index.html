@@ -691,6 +691,11 @@
       <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">☰</button>
     </div>
     <div class="sidebar-nav">
+      <div class="nav-group" data-educator-only style="display:none">
+        <div class="nav-group-label">Educator</div>
+        <button class="nav-item" data-educator-only data-teacher-nav data-tab="teacherDashboard" onclick="nav('teacherDashboard',this);try{renderTeacherDashboard()}catch(e){}" style="display:none"><span class="ni">🏫</span><span class="nl">Teacher Dashboard</span></button>
+        <button class="nav-item" data-educator-only data-counselor-nav data-tab="counselorDashboard" onclick="nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}" style="display:none"><span class="ni">💬</span><span class="nl">Counselor Dashboard</span></button>
+      </div>
       <div class="nav-group">
         <div class="nav-group-label">Main</div>
         <button class="nav-item active" onclick="nav('dashboard',this)" data-tab="dashboard"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>
@@ -759,6 +764,11 @@
       <button class="mob-drawer-close" onclick="closeDrawer()">✕</button>
     </div>
     <div class="mob-drawer-nav">
+      <div class="nav-group" data-educator-only style="display:none">
+        <div class="nav-group-label" style="padding:8px 16px 4px">Educator</div>
+        <button class="nav-item" data-educator-only data-teacher-nav onclick="navMob('teacherDashboard');try{renderTeacherDashboard()}catch(e){}" style="display:none"><span class="ni">🏫</span><span class="nl">Teacher Dashboard</span></button>
+        <button class="nav-item" data-educator-only data-counselor-nav onclick="navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}" style="display:none"><span class="ni">💬</span><span class="nl">Counselor Dashboard</span></button>
+      </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">Main</div>
         <button class="nav-item" onclick="navMob('dashboard')"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>
@@ -864,6 +874,24 @@
       <div id="abPill" style="display:none"></div>
       <div id="topbarClock" style="display:none"></div>
     </div>
+
+    <!-- Mode switch bar (educators only — toggles Work / Personal mode) -->
+    <div id="modeSwitchBar" data-educator-only style="display:none" aria-label="Work or Personal mode">
+      <div class="mode-switch-wrap">
+        <span class="mode-switch-label">Mode</span>
+        <div class="mode-switch-track">
+          <button id="modeWorkBtn" type="button" class="mode-btn active" onclick="FluxRole.setMode('work')">
+            <span class="mode-icon" aria-hidden="true">🏫</span><span>Work</span>
+          </button>
+          <button id="modePersonalBtn" type="button" class="mode-btn" onclick="FluxRole.setMode('personal')">
+            <span class="mode-icon" aria-hidden="true">🏠</span><span>Personal</span>
+          </button>
+          <div class="mode-slider" id="modeSlider" aria-hidden="true"></div>
+        </div>
+        <span class="mode-desc" id="modeDesc">Teacher tools</span>
+      </div>
+    </div>
+
     <!-- Notices sub-bar — sits below topbar, never overlaps controls -->
     <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>

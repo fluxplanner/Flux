@@ -1216,7 +1216,205 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard'};
+
+// ══ Time / format helpers (used by educator dashboards + onboarding) ══
+function getTimeGreeting(){
+  const h=new Date().getHours();
+  if(h<12)return'Good morning';
+  if(h<17)return'Good afternoon';
+  return'Good evening';
+}
+function getTimeOfDay(){
+  const h=new Date().getHours();
+  if(h<12)return'morning';
+  if(h<17)return'afternoon';
+  return'evening';
+}
+function timeAgo(date){
+  const seconds=Math.floor((new Date()-date)/1000);
+  if(seconds<60)return'just now';
+  const minutes=Math.floor(seconds/60);
+  if(minutes<60)return`${minutes}m ago`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return`${hours}h ago`;
+  const days=Math.floor(hours/24);
+  return`${days}d ago`;
+}
+window.getTimeGreeting=getTimeGreeting;
+window.getTimeOfDay=getTimeOfDay;
+window.timeAgo=timeAgo;
+
+// ══ FLUX ROLE SYSTEM ══
+// Single source of truth for "who is this user" + "are they in work or personal mode".
+// Methods that touch currentUser/getSB() defer the lookup so this object is safe to define
+// before those are initialized.
+const FluxRole={
+  current:null,            // 'student' | 'teacher' | 'counselor' | 'staff' | 'admin'
+  mode:'work',             // 'work' | 'personal'  (educators only; students always 'personal')
+  profile:null,            // full user_roles row
+
+  isStudent(){return this.current==='student';},
+  isTeacher(){return this.current==='teacher';},
+  isCounselor(){return this.current==='counselor';},
+  isStaff(){return this.current==='staff'||this.current==='admin';},
+  isEducator(){return['teacher','counselor','staff','admin'].includes(this.current);},
+
+  isWorkMode(){return this.isEducator()&&this.mode==='work';},
+  isPersonalMode(){return!this.isEducator()||this.mode==='personal';},
+
+  async load(){
+    const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+    if(!u){this.current=this.current||'student';return this.current;}
+    const sb=(typeof getSB==='function'?getSB():null);
+    if(!sb){this.current=this.current||'student';return this.current;}
+    try{
+      const {data}=await sb.from('user_roles')
+        .select('*')
+        .eq('user_id',u.id)
+        .maybeSingle();
+      if(data){this.current=data.role||'student';this.profile=data;}
+      else{this.current='student';this.profile=null;}
+    }catch(e){
+      console.warn('[FluxRole] load failed',e);
+      this.current=this.current||'student';
+    }
+    try{this.mode=load('flux_staff_mode_'+u.id,'work');}catch(_){this.mode='work';}
+    if(!this.isEducator())this.mode='personal';
+    window._userRole=this.current; // back-compat with existing code
+    return this.current;
+  },
+
+  setMode(mode){
+    if(mode!=='work'&&mode!=='personal')return;
+    if(!this.isEducator())return; // students can't toggle
+    this.mode=mode;
+    try{
+      const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+      if(u)save('flux_staff_mode_'+u.id,mode);
+    }catch(_){}
+    if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
+  },
+};
+window.FluxRole=FluxRole;
+
+// ══ MASTER UI APPLICATION FUNCTION ══
+// Single source of truth for "what is visible". Call after FluxRole.load() and after
+// every mode switch. Never manually show/hide individual nav items elsewhere.
+function applyRoleUI(){
+  const role=FluxRole.current;
+  const isPersonal=FluxRole.isPersonalMode();
+  const isWork=FluxRole.isWorkMode();
+
+  // Selectors that are STUDENT-ONLY (mood/goals/habits + a couple of legacy classes).
+  // These hide for educators in work mode.
+  const studentOnlySelectors=[
+    '.sidebar .nav-item[data-tab="mood"]',
+    '.sidebar .nav-item[data-tab="goals"]',
+    '.mob-drawer .nav-item[onclick*="\'mood\'"]',
+    '.mob-drawer .nav-item[onclick*="\'goals\'"]',
+    '.bnav-item[data-tab="mood"]',
+    '.bnav-item[data-tab="goals"]',
+    '.locker-info-section',
+    '.counselor-section-student',
+    '.onboard-counselor-step',
+    '.onboard-locker-step',
+  ];
+
+  const educatorWorkSelectors=[
+    '#modeSwitchBar',
+    '[data-educator-only]',
+    '#teacherClassPanel',
+  ];
+
+  const setMany=(selectors,visible)=>{
+    selectors.forEach(s=>{
+      document.querySelectorAll(s).forEach(el=>{
+        if(visible){el.style.display='';el.style.visibility='';}
+        else{el.style.display='none';el.style.visibility='hidden';}
+      });
+    });
+  };
+
+  if(role==='student'||!FluxRole.isEducator()){
+    setMany(studentOnlySelectors,true);
+    setMany(educatorWorkSelectors,false);
+    document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
+    return;
+  }
+
+  // Educator path — always show the mode switch bar
+  document.querySelectorAll('#modeSwitchBar').forEach(el=>{el.style.display='flex';el.style.visibility='';});
+
+  if(isWork){
+    setMany(studentOnlySelectors,false);
+    setMany(educatorWorkSelectors,true);
+    if(role==='teacher'||role==='staff'||role==='admin'){
+      document.querySelectorAll('[data-teacher-nav]').forEach(el=>{el.style.display='';el.style.visibility='';});
+      document.querySelectorAll('[data-counselor-nav]').forEach(el=>{el.style.display='none';el.style.visibility='hidden';});
+    }else if(role==='counselor'){
+      document.querySelectorAll('[data-counselor-nav]').forEach(el=>{el.style.display='';el.style.visibility='';});
+      document.querySelectorAll('[data-teacher-nav]').forEach(el=>{el.style.display='none';el.style.visibility='hidden';});
+    }
+  }else{
+    // PERSONAL mode for educators: act like a student
+    setMany(studentOnlySelectors,true);
+    setMany(educatorWorkSelectors,false);
+    document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
+  }
+}
+window.applyRoleUI=applyRoleUI;
+
+// Animates the Work/Personal slider, labels, then re-applies role UI and navigates.
+function updateModeSwitchUI(){
+  const bar=document.getElementById('modeSwitchBar');
+  if(!bar)return;
+  const isEducator=FluxRole.isEducator();
+  bar.style.display=isEducator?'flex':'none';
+  if(!isEducator){applyRoleUI();return;}
+
+  const isWork=FluxRole.mode==='work';
+  const workBtn=document.getElementById('modeWorkBtn');
+  const personalBtn=document.getElementById('modePersonalBtn');
+  const slider=document.getElementById('modeSlider');
+  const desc=document.getElementById('modeDesc');
+
+  if(workBtn)workBtn.classList.toggle('active',isWork);
+  if(personalBtn)personalBtn.classList.toggle('active',!isWork);
+
+  if(slider&&workBtn&&personalBtn){
+    const track=slider.parentElement;
+    const trackRect=track.getBoundingClientRect();
+    const targetBtn=isWork?workBtn:personalBtn;
+    const btnRect=targetBtn.getBoundingClientRect();
+    if(trackRect.width>0){
+      slider.style.left=(btnRect.left-trackRect.left)+'px';
+      slider.style.width=btnRect.width+'px';
+    }
+  }
+
+  if(desc){
+    if(isWork){
+      desc.textContent=FluxRole.isTeacher()?'Teacher tools':FluxRole.isCounselor()?'Counselor tools':'Staff tools';
+    }else{
+      desc.textContent='Your personal planner';
+    }
+  }
+
+  applyRoleUI();
+
+  // Nav home for the active mode
+  if(isWork){
+    if(FluxRole.isTeacher()||FluxRole.isStaff()){
+      if(typeof nav==='function'){nav('teacherDashboard');try{renderTeacherDashboard();}catch(_){}}
+    }else if(FluxRole.isCounselor()){
+      if(typeof nav==='function'){nav('counselorDashboard');try{renderCounselorDashboard();}catch(_){}}
+    }
+  }else{
+    if(typeof nav==='function')nav('dashboard');
+  }
+}
+window.updateModeSwitchUI=updateModeSwitchUI;
 
 function buildABMap(){return load('flux_ab_map',{});}
 const AB_MAP=buildABMap();
@@ -7944,26 +8142,72 @@ async function handleSignedIn(user,session){
 
   initFluxSessionIdleAdvisory();
 
-  const onboarded=load('flux_onboarded',false);
+  // ── Role detection — runs BEFORE deciding which onboarding to show ──
+  // Previously the student wizard launched first and the role picker popped
+  // on top of it for new staff accounts. Order is now: load role row → if
+  // missing, pop picker → THEN choose onboarding. Same source of truth as
+  // detectUserRoleAndRoute (which we still call for routing/nav side-effects).
+  let resolvedRole='student';
+  try{
+    await FluxRole.load();
+    const noRoleRow=!FluxRole.profile;
+    if(noRoleRow&&typeof detectUserRoleAndRoute==='function'){
+      // Pops the role picker (and staff details form for educators) and
+      // upserts the user_roles row for us. Then refresh FluxRole state.
+      resolvedRole=(await detectUserRoleAndRoute())||'student';
+      try{await FluxRole.load();}catch(_){}
+    }else{
+      resolvedRole=FluxRole.current||'student';
+    }
+  }catch(e){console.warn('[Flux] role load failed',e);}
+  const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
+
+  const onboardedNewKey='flux_onboarding_done_'+user.id;
+  const onboardedNew=load(onboardedNewKey,false);
+  const onboardedLegacy=load('flux_onboarded',false);
+  const onboarded=onboardedNew||onboardedLegacy;
   const hasLocalData=tasks.length>0||notes.length>0||classes.length>0;
-  // Do not use profile.name here — step 1 saves name before flux_onboarded; excluding profile blocked resume
   const isFirstTime=!onboarded&&!hasLocalData;
 
   if(isFirstTime){
-    const sp=document.getElementById('splash');
-    if(sp)sp.style.display='block';
-    if(typeof window.runSplash==='function'){
-      window.runSplash(()=>showOnboarding(),true);
+    if(isStaffRole){
+      // Educator: skip the student questionnaire entirely; show the app shell
+      // first so the role-specific onboarding overlay sits on top of it.
+      showApp();
+      _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
+      try{startOnboarding(resolvedRole);}catch(e){console.warn('[Flux] startOnboarding',e);}
     }else{
-      showOnboarding();
+      const sp=document.getElementById('splash');
+      if(sp)sp.style.display='block';
+      if(typeof window.runSplash==='function'){
+        window.runSplash(()=>showOnboarding(),true);
+      }else{
+        showOnboarding();
+      }
     }
   }else{
     const ob=document.getElementById('onboarding');
     if(ob)ob.classList.remove('visible');
     showApp();
-    if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
+    if(!isStaffRole&&!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
     // Call _updateUserUI AFTER showApp() so DOM elements are visible
     _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
+
+    // Apply role-specific UI and home panel
+    try{
+      applyRoleUI();
+      updateModeSwitchUI();
+      if(FluxRole.isWorkMode()&&(FluxRole.isTeacher()||FluxRole.isStaff())){
+        nav('teacherDashboard');
+        try{renderTeacherDashboard();}catch(_){}
+      }else if(FluxRole.isWorkMode()&&FluxRole.isCounselor()){
+        nav('counselorDashboard');
+        try{renderCounselorDashboard();}catch(_){}
+      }else if(FluxRole.isStudent()){
+        try{loadTeacherAssignments();}catch(_){}
+        try{renderJoinClassButton();}catch(_){}
+      }
+    }catch(e){console.warn('[Flux] role UI apply failed',e);}
   }
   if(FLUX_FLAGS.PAYMENTS_ENABLED){
     _entitlementFetchedAt=0;
@@ -12613,38 +12857,516 @@ async function detectUserRoleAndRoute(){
 }
 window.detectUserRoleAndRoute=detectUserRoleAndRoute;
 
-// Patch handleSignedIn so role routing runs after the existing flow
-(function patchHandleSignedIn(){
-  if(typeof handleSignedIn!=='function')return;
-  if(handleSignedIn.__fluxEduPatched)return;
-  const orig=handleSignedIn;
-  const wrapped=async function(user,session){
-    const out=await orig.call(this,user,session);
-    try{await detectUserRoleAndRoute();}catch(e){console.warn('[Flux] role routing failed',e);}
-    return out;
+// ══════════════════════════════════════════════════════════════════
+// ROLE-AWARE ONBOARDING SYSTEM
+// ══════════════════════════════════════════════════════════════════
+// The student wizard already exists (showOnboarding / obFinish in this file).
+// This system handles teacher / counselor / staff onboarding via a stepped
+// overlay separate from the student questionnaire.
+
+// Generic step runner — each step is a function (container, next) that calls
+// next() when it's done. We replace the prompt's `eval(JSON.stringify(...))`
+// pattern with a real closure so first-time educators don't crash on sign-in.
+function runOnboardingSteps(steps,roleTag){
+  let existing=document.getElementById('eduOnboardOverlay');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='eduOnboardOverlay';
+  overlay.dataset.role=roleTag||'';
+  overlay.style.cssText='position:fixed;inset:0;z-index:5500;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto;background:rgba(7,8,15,.92);backdrop-filter:blur(12px)';
+  const container=document.createElement('div');
+  container.id='eduOnboardContainer';
+  container.style.cssText='width:100%;max-width:560px';
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  let i=0;
+  const goNext=()=>{
+    i++;
+    if(i>=steps.length){
+      try{finishOnboarding();}catch(_){}
+      return;
+    }
+    try{steps[i](container,goNext);}
+    catch(e){console.warn('[Flux onboard] step '+i+' failed',e);}
   };
-  wrapped.__fluxEduPatched=true;
-  try{window.handleSignedIn=wrapped;handleSignedIn=wrapped;}catch(_){}
-})();
+  // Expose so inline button handlers in step HTML can advance.
+  window.__eduOnboardNext=goNext;
+  steps[0](container,goNext);
+}
+window.runOnboardingSteps=runOnboardingSteps;
+
+function startOnboarding(role){
+  if(role==='student'){
+    if(typeof showOnboarding==='function')showOnboarding();
+    return;
+  }
+  if(role==='teacher')return runTeacherOnboarding();
+  if(role==='counselor')return runCounselorOnboarding();
+  // staff / admin / fallback
+  return runStaffOnboarding();
+}
+window.startOnboarding=startOnboarding;
+
+async function finishOnboarding(){
+  try{
+    const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+    if(u){
+      save('flux_onboarding_done_'+u.id,true);
+      save('flux_onboarded',true); // legacy flag for back-compat
+    }
+  }catch(_){}
+  document.getElementById('eduOnboardOverlay')?.remove();
+  document.getElementById('staffOnboarding')?.remove();
+  try{window.__eduOnboardNext=null;}catch(_){}
+  // Refresh role state (profile may have been written during onboarding)
+  try{await FluxRole.load();}catch(_){}
+  // Make sure the shell is visible
+  try{if(typeof showApp==='function'&&!document.getElementById('app')?.classList.contains('visible'))showApp();}catch(_){}
+  // Apply role UI + nav to the right home
+  try{applyRoleUI();updateModeSwitchUI();}catch(_){}
+  try{
+    if(FluxRole.isTeacher()||FluxRole.isStaff()){
+      if(typeof nav==='function')nav('teacherDashboard');
+      try{renderTeacherDashboard();}catch(_){}
+    }else if(FluxRole.isCounselor()){
+      if(typeof nav==='function')nav('counselorDashboard');
+      try{renderCounselorDashboard();}catch(_){}
+    }else if(FluxRole.isStudent()){
+      if(typeof nav==='function')nav('dashboard');
+      try{loadTeacherAssignments();}catch(_){}
+      try{renderJoinClassButton();}catch(_){}
+    }
+  }catch(e){console.warn('[Flux] post-onboarding routing failed',e);}
+}
+window.finishOnboarding=finishOnboarding;
+
+// ── Teacher onboarding ──────────────────────────────────────────────
+function runTeacherOnboarding(){
+  runOnboardingSteps([
+    renderTeacherOnboard_Welcome,
+    renderTeacherOnboard_Profile,
+    renderTeacherOnboard_Classes,
+    renderTeacherOnboard_Finish,
+  ],'teacher');
+}
+window.runTeacherOnboarding=runTeacherOnboarding;
+
+function renderTeacherOnboard_Welcome(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">🏫</div>
+      <h2 class="onboard-step-title">Welcome to Flux for Teachers</h2>
+      <p class="onboard-step-sub">Your teacher dashboard lets you create classes, post assignments, and see your students' progress — all in one place.</p>
+      <div class="onboard-feature-list">
+        <div class="onboard-feature"><span>📚</span> Create classes with auto-generated join codes</div>
+        <div class="onboard-feature"><span>📝</span> Post assignments that appear in student planners</div>
+        <div class="onboard-feature"><span>💬</span> Message students and parents directly</div>
+        <div class="onboard-feature"><span>📊</span> See real-time student progress + completion rates</div>
+        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+      </div>
+      <button class="onboard-next-btn" id="toWelcomeNext">Get Started →</button>
+    </div>`;
+  document.getElementById('toWelcomeNext')?.addEventListener('click',()=>window.__eduOnboardNext?.());
+}
+
+function renderTeacherOnboard_Profile(container){
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">👤</div>
+      <h2 class="onboard-step-title">Your Teaching Profile</h2>
+      <p class="onboard-step-sub">This is how students and parents will see you in Flux.</p>
+      <div class="mrow"><label>Full Name *</label>
+        <input id="to_name" placeholder="e.g. Mr. Rodriguez" value="${esc(presetName)}">
+      </div>
+      <div class="mrow"><label>Subject(s) You Teach *</label>
+        <input id="to_subject" placeholder="e.g. AP Chemistry, Physics 10" value="${esc(FluxRole.profile?.subject||'')}">
+      </div>
+      <div class="mrow"><label>School Name</label>
+        <input id="to_school" placeholder="e.g. Lincoln High School" value="${esc(FluxRole.profile?.school||'')}">
+      </div>
+      <div class="mrow"><label>Department</label>
+        <input id="to_dept" placeholder="e.g. Science, Math, English" value="${esc(FluxRole.profile?.department||'')}">
+      </div>
+      <div id="toProfileError" class="onboard-error" style="display:none"></div>
+      <button class="onboard-next-btn" id="toProfileNext">Continue →</button>
+    </div>`;
+  document.getElementById('toProfileNext')?.addEventListener('click',saveTeacherProfile_andNext);
+}
+
+async function saveTeacherProfile_andNext(){
+  const name=document.getElementById('to_name')?.value.trim()||'';
+  const subject=document.getElementById('to_subject')?.value.trim()||'';
+  const school=document.getElementById('to_school')?.value.trim()||'';
+  const dept=document.getElementById('to_dept')?.value.trim()||'';
+  const errEl=document.getElementById('toProfileError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  if(!name||!subject){setErr('Name and subject are required');return;}
+  const sb=getSB();const u=currentUser;
+  if(!sb||!u){setErr('Auth unavailable — try again in a moment.');return;}
+  try{
+    await sb.from('user_roles').upsert({
+      user_id:u.id,
+      role:'teacher',
+      display_name:name,
+      subject,
+      school:school||null,
+      department:dept||null,
+      updated_at:new Date().toISOString(),
+    });
+    try{await sb.auth.updateUser({data:{full_name:name}});}catch(_){}
+    FluxRole.current='teacher';
+    FluxRole.profile={...(FluxRole.profile||{}),role:'teacher',display_name:name,subject,school,department:dept};
+  }catch(e){setErr(e.message||'Failed to save profile');return;}
+  window.__eduOnboardNext?.();
+}
+window.saveTeacherProfile_andNext=saveTeacherProfile_andNext;
+
+function renderTeacherOnboard_Classes(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">📚</div>
+      <h2 class="onboard-step-title">Create Your Classes</h2>
+      <p class="onboard-step-sub">Create at least one class. Students join by entering the class code you'll share. You can add more later.</p>
+      <div id="classBuilderList"></div>
+      <button class="onboard-add-btn" id="toAddClassRow">+ Add another class</button>
+      <div id="classBuilderError" class="onboard-error" style="display:none"></div>
+      <button class="onboard-next-btn" id="toClassesNext">Save Classes & Continue →</button>
+      <button class="onboard-skip-btn" id="toClassesSkip">Skip for now</button>
+    </div>`;
+  document.getElementById('toAddClassRow')?.addEventListener('click',addClassBuilderRow);
+  document.getElementById('toClassesNext')?.addEventListener('click',saveTeacherClasses_andNext);
+  document.getElementById('toClassesSkip')?.addEventListener('click',()=>window.__eduOnboardNext?.());
+  addClassBuilderRow();
+}
+
+function addClassBuilderRow(){
+  const list=document.getElementById('classBuilderList');
+  if(!list)return;
+  const row=document.createElement('div');
+  row.className='class-builder-row';
+  row.innerHTML=`
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end">
+      <div>
+        <label style="font-size:.72rem;color:var(--muted2);display:block;margin-bottom:4px">Class Name *</label>
+        <input class="cb-name" placeholder="e.g. AP Chemistry Period 3" style="margin:0">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted2);display:block;margin-bottom:4px">Period</label>
+        <input class="cb-period" placeholder="3" style="margin:0">
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:var(--muted2);display:block;margin-bottom:4px">Room</label>
+        <input class="cb-room" placeholder="204" style="margin:0">
+      </div>
+    </div>`;
+  list.appendChild(row);
+}
+window.addClassBuilderRow=addClassBuilderRow;
+
+async function saveTeacherClasses_andNext(){
+  const rows=document.querySelectorAll('.class-builder-row');
+  const errEl=document.getElementById('classBuilderError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  const collected=[];
+  rows.forEach(r=>{
+    const name=r.querySelector('.cb-name')?.value.trim()||'';
+    const period=r.querySelector('.cb-period')?.value.trim()||'';
+    const room=r.querySelector('.cb-room')?.value.trim()||'';
+    if(name)collected.push({name,period,room});
+  });
+  if(!collected.length){setErr('Add at least one class name (or hit Skip).');return;}
+  const sb=getSB();const u=currentUser;
+  if(!sb||!u){setErr('Auth unavailable — try again.');return;}
+  try{
+    for(const c of collected){
+      const code=generateClassCode();
+      await sb.from('teacher_classes').insert({
+        teacher_id:u.id,
+        class_name:c.name,
+        class_code:code,
+        subject:FluxRole.profile?.subject||null,
+        period:c.period||null,
+        room:c.room||null,
+        school_year:'2025-26',
+        active:true,
+      });
+    }
+  }catch(e){setErr(e.message||'Failed to save classes');return;}
+  window.__eduOnboardNext?.();
+}
+window.saveTeacherClasses_andNext=saveTeacherClasses_andNext;
+
+function renderTeacherOnboard_Finish(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">🎉</div>
+      <h2 class="onboard-step-title">You're all set!</h2>
+      <p class="onboard-step-sub">Your teacher account is ready. Share your class codes with students so they can join.</p>
+      <div id="teacherClassCodes" style="margin:20px 0"></div>
+      <button class="onboard-next-btn" id="toFinishBtn">Go to Dashboard →</button>
+    </div>`;
+  document.getElementById('toFinishBtn')?.addEventListener('click',finishOnboarding);
+  const sb=getSB();const u=currentUser;
+  if(!sb||!u)return;
+  sb.from('teacher_classes')
+    .select('class_name,class_code')
+    .eq('teacher_id',u.id)
+    .then(({data})=>{
+      const el=document.getElementById('teacherClassCodes');
+      if(!el)return;
+      if(!data?.length){el.innerHTML='<div style="font-size:.78rem;color:var(--muted2)">You can add classes later from the Teacher Dashboard.</div>';return;}
+      el.innerHTML=data.map(c=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-bottom:8px">
+          <div>
+            <div style="font-size:.85rem;font-weight:700">${esc(c.class_name)}</div>
+            <div style="font-size:.72rem;color:var(--muted2)">Share this code with students</div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:800;color:var(--accent);letter-spacing:2px">${esc(c.class_code)}</div>
+        </div>`).join('');
+    });
+}
+
+// ── Counselor onboarding ────────────────────────────────────────────
+function runCounselorOnboarding(){
+  runOnboardingSteps([
+    renderCounselorOnboard_Welcome,
+    renderCounselorOnboard_Profile,
+    renderCounselorOnboard_Availability,
+    renderCounselorOnboard_Finish,
+  ],'counselor');
+}
+window.runCounselorOnboarding=runCounselorOnboarding;
+
+function renderCounselorOnboard_Welcome(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">💬</div>
+      <h2 class="onboard-step-title">Welcome, Counselor</h2>
+      <p class="onboard-step-sub">Your Flux counselor dashboard lets you manage student appointments, communicate directly, and track student wellbeing.</p>
+      <div class="onboard-feature-list">
+        <div class="onboard-feature"><span>📅</span> Students book appointments from your availability</div>
+        <div class="onboard-feature"><span>💬</span> Direct messaging with any student</div>
+        <div class="onboard-feature"><span>📋</span> View student notes and goals (with permission)</div>
+        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+      </div>
+      <button class="onboard-next-btn" id="cWelcomeNext">Set Up Account →</button>
+    </div>`;
+  document.getElementById('cWelcomeNext')?.addEventListener('click',()=>window.__eduOnboardNext?.());
+}
+
+function renderCounselorOnboard_Profile(container){
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">👤</div>
+      <h2 class="onboard-step-title">Counselor Profile</h2>
+      <p class="onboard-step-sub">This is how students will see you when booking appointments.</p>
+      <div class="mrow"><label>Full Name *</label>
+        <input id="co_name" placeholder="e.g. Ms. Patel" value="${esc(presetName)}">
+      </div>
+      <div class="mrow"><label>School Name</label>
+        <input id="co_school" placeholder="e.g. Lincoln High School" value="${esc(FluxRole.profile?.school||'')}">
+      </div>
+      <div id="coProfileError" class="onboard-error" style="display:none"></div>
+      <button class="onboard-next-btn" id="coProfileNext">Continue →</button>
+    </div>`;
+  document.getElementById('coProfileNext')?.addEventListener('click',async()=>{
+    const name=document.getElementById('co_name')?.value.trim()||'';
+    const school=document.getElementById('co_school')?.value.trim()||'';
+    const errEl=document.getElementById('coProfileError');
+    if(!name){if(errEl){errEl.textContent='Name is required';errEl.style.display='block';}return;}
+    const sb=getSB();const cu=currentUser;
+    try{
+      await sb.from('user_roles').upsert({
+        user_id:cu.id,role:'counselor',display_name:name,
+        school:school||null,updated_at:new Date().toISOString(),
+      });
+      try{await sb.auth.updateUser({data:{full_name:name}});}catch(_){}
+      FluxRole.current='counselor';
+      FluxRole.profile={...(FluxRole.profile||{}),role:'counselor',display_name:name,school};
+    }catch(e){if(errEl){errEl.textContent=e.message||'Failed to save';errEl.style.display='block';}return;}
+    window.__eduOnboardNext?.();
+  });
+}
+
+function renderCounselorOnboard_Availability(container){
+  const days=['monday','tuesday','wednesday','thursday','friday'];
+  const slots=['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM'];
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">📅</div>
+      <h2 class="onboard-step-title">Set Your Availability</h2>
+      <p class="onboard-step-sub">Students can only book during the slots you select. You can update this anytime.</p>
+      <div style="overflow-x:auto">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;min-width:400px;margin-bottom:18px">
+          ${days.map(day=>`
+            <div>
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace">${day.slice(0,3)}</div>
+              ${slots.map(slot=>`
+                <label style="display:flex;align-items:center;gap:4px;font-size:.68rem;margin-bottom:3px;cursor:pointer">
+                  <input type="checkbox" data-day="${day}" data-slot="${slot}" style="width:12px;height:12px">
+                  ${slot}
+                </label>`).join('')}
+            </div>`).join('')}
+        </div>
+      </div>
+      <button class="onboard-next-btn" id="coAvailNext">Save Availability →</button>
+      <button class="onboard-skip-btn" id="coAvailSkip">Skip for now</button>
+    </div>`;
+  document.getElementById('coAvailNext')?.addEventListener('click',saveCounselorAvailability_andNext);
+  document.getElementById('coAvailSkip')?.addEventListener('click',()=>window.__eduOnboardNext?.());
+}
+
+async function saveCounselorAvailability_andNext(){
+  const availability={};
+  document.querySelectorAll('input[data-day]:checked').forEach(cb=>{
+    const day=cb.dataset.day;
+    if(!availability[day])availability[day]=[];
+    availability[day].push(cb.dataset.slot);
+  });
+  const sb=getSB();const u=currentUser;
+  try{
+    if(sb&&u){
+      // Prefer user_id linkage if a counselor row exists, otherwise insert one.
+      const {data:existing}=await sb.from('counselors').select('id').eq('user_id',u.id).maybeSingle();
+      if(existing?.id){
+        await sb.from('counselors').update({availability}).eq('id',existing.id);
+      }else{
+        await sb.from('counselors').insert({user_id:u.id,name:FluxRole.profile?.display_name||'Counselor',availability,active:true});
+      }
+    }
+  }catch(e){console.warn('[Flux counselor] availability save failed',e);}
+  window.__eduOnboardNext?.();
+}
+window.saveCounselorAvailability_andNext=saveCounselorAvailability_andNext;
+
+function renderCounselorOnboard_Finish(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">✅</div>
+      <h2 class="onboard-step-title">You're set up!</h2>
+      <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now book appointments during your available slots.</p>
+      <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
+    </div>`;
+  document.getElementById('coFinishBtn')?.addEventListener('click',finishOnboarding);
+}
+
+// ── Staff onboarding ────────────────────────────────────────────────
+function runStaffOnboarding(){
+  runOnboardingSteps([
+    renderStaffOnboard_Welcome,
+    renderStaffOnboard_Profile,
+    renderStaffOnboard_Finish,
+  ],'staff');
+}
+window.runStaffOnboarding=runStaffOnboarding;
+
+function renderStaffOnboard_Welcome(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">🏫</div>
+      <h2 class="onboard-step-title">Staff Account</h2>
+      <p class="onboard-step-sub">Your staff account gives you school-wide tools in Work mode, plus a full personal planner in Personal mode. Switch between them anytime.</p>
+      <button class="onboard-next-btn" id="stWelcomeNext">Continue →</button>
+    </div>`;
+  document.getElementById('stWelcomeNext')?.addEventListener('click',()=>window.__eduOnboardNext?.());
+}
+
+function renderStaffOnboard_Profile(container){
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">👤</div>
+      <h2 class="onboard-step-title">Your Staff Profile</h2>
+      <div class="mrow"><label>Full Name *</label>
+        <input id="st_name" placeholder="e.g. Mr. Lee" value="${esc(presetName)}">
+      </div>
+      <div class="mrow"><label>Department</label>
+        <input id="st_dept" placeholder="e.g. Administration, IT, Athletics" value="${esc(FluxRole.profile?.department||'')}">
+      </div>
+      <div id="stProfileError" class="onboard-error" style="display:none"></div>
+      <button class="onboard-next-btn" id="stProfileNext">Continue →</button>
+    </div>`;
+  document.getElementById('stProfileNext')?.addEventListener('click',async()=>{
+    const name=document.getElementById('st_name')?.value.trim()||'';
+    const dept=document.getElementById('st_dept')?.value.trim()||'';
+    const errEl=document.getElementById('stProfileError');
+    if(!name){if(errEl){errEl.textContent='Name is required';errEl.style.display='block';}return;}
+    const sb=getSB();const cu=currentUser;
+    try{
+      await sb.from('user_roles').upsert({
+        user_id:cu.id,role:'staff',display_name:name,
+        department:dept||null,updated_at:new Date().toISOString(),
+      });
+      try{await sb.auth.updateUser({data:{full_name:name}});}catch(_){}
+      FluxRole.current='staff';
+      FluxRole.profile={...(FluxRole.profile||{}),role:'staff',display_name:name,department:dept};
+    }catch(e){if(errEl){errEl.textContent=e.message||'Failed';errEl.style.display='block';}return;}
+    window.__eduOnboardNext?.();
+  });
+}
+
+function renderStaffOnboard_Finish(container){
+  container.innerHTML=`
+    <div class="onboard-step glass">
+      <div class="onboard-step-icon">✨</div>
+      <h2 class="onboard-step-title">Welcome aboard!</h2>
+      <p class="onboard-step-sub">Use the Mode toggle in the top bar to switch between Work and Personal whenever you want.</p>
+      <button class="onboard-next-btn" id="stFinishBtn">Get Started →</button>
+    </div>`;
+  document.getElementById('stFinishBtn')?.addEventListener('click',finishOnboarding);
+}
 
 // ── Teacher dashboard ─────────────────────────────────────────────
+// Resolves student display names for an array of auth user IDs in one query.
+async function fluxFetchStudentNames(sb,studentIds){
+  const out={};
+  if(!sb||!studentIds?.length)return out;
+  const unique=Array.from(new Set(studentIds.filter(Boolean)));
+  if(!unique.length)return out;
+  try{
+    const {data}=await sb.from('user_roles')
+      .select('user_id,display_name,grade_level')
+      .in('user_id',unique);
+    (data||[]).forEach(r=>{out[r.user_id]={display_name:r.display_name||'',grade_level:r.grade_level||null};});
+  }catch(_){}
+  return out;
+}
+
 async function renderTeacherDashboard(){
   const host=document.getElementById('teacherDashboardBody');
   if(!host||!currentUser)return;
   const sb=getSB();if(!sb)return;
-  host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>';
+  host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading dashboard…</div>';
 
-  let classesRows=[];let recentCompletions=[];let unreadMessages=[];
+  const name=FluxRole.profile?.display_name||currentUser.user_metadata?.full_name||currentUser.email||'Teacher';
+  const firstName=name.split(' ').filter(w=>!['Mr.','Mrs.','Ms.','Dr.'].includes(w))[0]||name;
+
+  let classesRows=[];let recentCompletions=[];let unreadMessages=[];let announcements=[];
   try{
-    const {data:cls}=await sb.from('teacher_classes')
-      .select('*,teacher_assignments(id,title,due_date,visible)')
-      .eq('teacher_id',currentUser.id)
-      .eq('active',true);
-    classesRows=cls||[];
+    const [clsRes,annRes]=await Promise.all([
+      sb.from('teacher_classes')
+        .select('*,teacher_assignments(id,title,due_date,type,points_possible,estimated_minutes,visible)')
+        .eq('teacher_id',currentUser.id)
+        .eq('active',true)
+        .order('created_at',{ascending:true}),
+      sb.from('teacher_announcements')
+        .select('id,title,body,priority,created_at')
+        .eq('teacher_id',currentUser.id)
+        .order('created_at',{ascending:false})
+        .limit(5),
+    ]);
+    classesRows=clsRes.data||[];
+    announcements=annRes.data||[];
     const assignmentIds=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>a.id));
     if(assignmentIds.length){
       const {data:rc}=await sb.from('student_completions')
-        .select('id,status,submitted_at,assignment_id,student_id,grade,teacher_assignments(title)')
+        .select('id,status,submitted_at,assignment_id,student_id,grade,teacher_assignments(title,class_id)')
         .in('assignment_id',assignmentIds)
         .order('submitted_at',{ascending:false,nullsFirst:false})
         .limit(20);
@@ -12659,84 +13381,133 @@ async function renderTeacherDashboard(){
     unreadMessages=um||[];
   }catch(e){console.warn('[Flux teacher] load failed',e);}
 
-  const teacherFirst=(currentUser.user_metadata?.full_name||currentUser.email||'Teacher').split(' ')[0];
+  const studentIds=[
+    ...recentCompletions.map(c=>c.student_id),
+    ...unreadMessages.map(m=>m.sender_id),
+  ];
+  const nameMap=await fluxFetchStudentNames(sb,studentIds);
+  const nameOf=(id)=>nameMap[id]?.display_name||('Student '+String(id||'').slice(0,6));
+
   const totalAssignments=classesRows.reduce((s,c)=>s+((c.teacher_assignments||[]).length||0),0);
-  const submittedPending=recentCompletions.filter(c=>c.status==='submitted').length;
+  const pendingReview=recentCompletions.filter(c=>c.status==='submitted').length;
+  const dueSoon=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>({...a,_class:c.class_name})))
+    .filter(a=>{
+      if(!a.due_date)return false;
+      const due=new Date(a.due_date+'T00:00');
+      const now=new Date();
+      return due>=now&&due<=new Date(Date.now()+3*86400000);
+    });
 
   host.innerHTML=`
-    <div class="teacher-dashboard">
-      <div class="teacher-header">
-        <div>
-          <div class="teacher-greeting">Welcome back, ${esc(teacherFirst)}</div>
-          <div class="teacher-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+    <div class="teacher-dash-root">
+      <div class="teacher-topbar">
+        <div class="teacher-topbar-left">
+          <div class="teacher-greeting-text">${getTimeGreeting()}, ${esc(firstName)}</div>
+          <div class="teacher-topbar-sub">${esc(FluxRole.profile?.subject||'')}${FluxRole.profile?.subject?' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
-        <div class="teacher-header-actions">
-          <button class="btn-primary" data-action="new-assignment">+ New assignment</button>
-          <button data-action="new-class">+ New class</button>
-        </div>
-      </div>
-
-      <div class="teacher-stats">
-        <div class="teacher-stat-card">
-          <div class="stat-number">${classesRows.length}</div>
-          <div class="stat-label">Active classes</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${totalAssignments}</div>
-          <div class="stat-label">Assignments posted</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${submittedPending}</div>
-          <div class="stat-label">Pending review</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${unreadMessages.length}</div>
-          <div class="stat-label">Unread messages</div>
+        <div class="teacher-topbar-actions">
+          <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
+          <button class="teacher-action-btn" data-action="new-class"><span>📚</span> New Class</button>
+          <button class="teacher-action-btn" data-action="new-announcement"><span>📢</span> Announce</button>
         </div>
       </div>
 
-      <div class="teacher-grid">
-        <div class="teacher-section">
-          <div class="section-header"><h3>Your classes</h3><button class="btn-sm" data-action="new-class">+ Add</button></div>
-          ${classesRows.length
-            ? classesRows.map(c=>renderTeacherClassCard(c)).join('')
-            : '<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No classes yet</div><div class="empty-sub">Create your first class to get started.</div></div>'}
-        </div>
-        <div class="teacher-section">
-          <div class="section-header"><h3>Recent submissions</h3></div>
-          ${recentCompletions.length
-            ? recentCompletions.slice(0,8).map(c=>`
-              <div class="submission-row" data-completion-id="${esc(c.id)}">
-                <div class="submission-avatar">S</div>
-                <div class="submission-info">
-                  <div class="submission-student">Student ${esc(String(c.student_id).slice(0,6))}</div>
-                  <div class="submission-task">${esc(c.teacher_assignments?.title||'Assignment')}</div>
-                </div>
-                <div class="submission-status status-${esc(c.status)}">${esc(c.status)}</div>
-              </div>`).join('')
-            : '<div style="font-size:.82rem;color:var(--muted2);padding:12px 0">No submissions yet</div>'}
+      <div class="teacher-stats-strip">
+        <div class="teacher-stat"><div class="tstat-num">${classesRows.length}</div><div class="tstat-label">Classes</div></div>
+        <div class="teacher-stat-divider"></div>
+        <div class="teacher-stat"><div class="tstat-num">${totalAssignments}</div><div class="tstat-label">Assignments</div></div>
+        <div class="teacher-stat-divider"></div>
+        <div class="teacher-stat ${pendingReview>0?'tstat-alert':''}"><div class="tstat-num">${pendingReview}</div><div class="tstat-label">To Review</div></div>
+        <div class="teacher-stat-divider"></div>
+        <div class="teacher-stat ${unreadMessages.length>0?'tstat-alert':''}"><div class="tstat-num">${unreadMessages.length}</div><div class="tstat-label">Messages</div></div>
+        <div class="teacher-stat-divider"></div>
+        <div class="teacher-stat ${dueSoon.length>0?'tstat-warn':''}"><div class="tstat-num">${dueSoon.length}</div><div class="tstat-label">Due Soon</div></div>
+      </div>
 
-          ${unreadMessages.length?`
-            <div class="section-header" style="margin-top:20px"><h3>Messages (${unreadMessages.length})</h3></div>
-            ${unreadMessages.slice(0,5).map(m=>`
-              <div class="message-preview-row" data-message-sender="${esc(m.sender_id)}">
-                <div class="msg-avatar">S</div>
-                <div class="msg-info">
-                  <div class="msg-sender">Student ${esc(String(m.sender_id).slice(0,6))}</div>
-                  <div class="msg-preview">${esc((m.content||'').slice(0,60))}</div>
+      <div class="teacher-main-grid">
+        <div class="teacher-col">
+          <div class="teacher-section-head">
+            <h3>Your Classes</h3>
+            <button class="tsec-add" data-action="new-class">+ Add</button>
+          </div>
+          ${classesRows.length===0?`
+            <div class="teacher-empty">
+              <div class="te-icon">📚</div>
+              <div class="te-title">No classes yet</div>
+              <div class="te-sub">Create a class and share the code with your students</div>
+              <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create First Class</button>
+            </div>`:classesRows.map(c=>renderTeacherClassCard(c)).join('')}
+        </div>
+
+        <div class="teacher-col">
+          ${dueSoon.length>0?`
+            <div class="teacher-section-head"><h3>⚡ Due in 3 Days</h3></div>
+            <div class="teacher-due-list">
+              ${dueSoon.map(a=>`
+                <div class="teacher-due-row">
+                  <div class="tdue-type type-${esc(a.type||'homework')}">${esc(a.type||'task')}</div>
+                  <div class="tdue-title">${esc(a.title)}</div>
+                  <div class="tdue-date">${new Date(a.due_date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+                </div>`).join('')}
+            </div>
+            <div style="height:16px"></div>`:''}
+
+          <div class="teacher-section-head">
+            <h3>Recent Submissions ${pendingReview>0?`<span class="review-badge">${pendingReview} to review</span>`:''}</h3>
+          </div>
+          ${recentCompletions.length===0?'<div style="font-size:.8rem;color:var(--muted2);padding:12px 0">No submissions yet</div>':
+            recentCompletions.slice(0,10).map(c=>{
+              const sName=nameOf(c.student_id);
+              return`
+              <div class="teacher-submission-row" data-completion-id="${esc(c.id)}">
+                <div class="tsub-avatar">${esc((sName[0]||'S').toUpperCase())}</div>
+                <div class="tsub-info">
+                  <div class="tsub-student">${esc(sName)}</div>
+                  <div class="tsub-task">${esc(c.teacher_assignments?.title||'Assignment')}</div>
                 </div>
-                <div class="msg-unread-dot" aria-hidden="true"></div>
+                <div class="tsub-time">${c.submitted_at?timeAgo(new Date(c.submitted_at)):'—'}</div>
+                <div class="status-chip status-${esc(c.status)}">${esc(c.status)}</div>
+              </div>`;
+            }).join('')}
+        </div>
+
+        <div class="teacher-col">
+          <div class="teacher-section-head">
+            <h3>Messages${unreadMessages.length>0?` <span class="msg-count-badge">${unreadMessages.length}</span>`:''}</h3>
+          </div>
+          ${unreadMessages.length===0?'<div style="font-size:.8rem;color:var(--muted2);padding:12px 0">No unread messages</div>':
+            unreadMessages.slice(0,6).map(m=>{
+              const sName=nameOf(m.sender_id);
+              return`
+              <div class="teacher-msg-row" data-message-sender="${esc(m.sender_id)}">
+                <div class="tmsg-avatar">${esc((sName[0]||'S').toUpperCase())}</div>
+                <div class="tmsg-body">
+                  <div class="tmsg-name">${esc(sName)}</div>
+                  <div class="tmsg-preview">${esc((m.content||'').slice(0,50))}</div>
+                </div>
+                <div class="tmsg-dot"></div>
+              </div>`;
+            }).join('')}
+
+          <div class="teacher-section-head" style="margin-top:20px">
+            <h3>Announcements</h3>
+            <button class="tsec-add" data-action="new-announcement">+ New</button>
+          </div>
+          ${announcements.length===0?'<div style="font-size:.8rem;color:var(--muted2);padding:12px 0">No announcements yet</div>':
+            announcements.slice(0,4).map(a=>`
+              <div class="teacher-announce-row priority-${esc(a.priority||'normal')}">
+                <div class="tann-title">${esc(a.title)}</div>
+                <div class="tann-time">${timeAgo(new Date(a.created_at))}</div>
               </div>`).join('')}
-          `:''}
         </div>
       </div>
     </div>`;
 
-  // Wire actions (avoids inline onclick — keeps CSP friendly)
-  host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',openCreateAssignmentModal));
-  host.querySelectorAll('[data-action="new-class"]').forEach(b=>b.addEventListener('click',openCreateClassModal));
+  host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',()=>openCreateAssignmentModal()));
+  host.querySelectorAll('[data-action="new-class"]').forEach(b=>b.addEventListener('click',()=>openCreateClassModal()));
+  host.querySelectorAll('[data-action="new-announcement"]').forEach(b=>b.addEventListener('click',()=>openTeacherAnnouncementModal()));
   host.querySelectorAll('[data-message-sender]').forEach(row=>{
-    row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
+    row.addEventListener('click',()=>{try{FluxMessaging.openThreadById(row.dataset.messageSender);}catch(_){}});
   });
   host.querySelectorAll('.teacher-class-card[data-class-id]').forEach(card=>{
     card.addEventListener('click',()=>openTeacherClassView(card.dataset.classId));
@@ -12761,11 +13532,296 @@ function renderTeacherClassCard(cls){
     </button>`;
 }
 
-function openTeacherClassView(classId){
-  // Lightweight view: scroll to top + toast for now. Full view can be wired later.
-  showToast(`Class ${String(classId).slice(0,6)} — full view coming soon`,'info',2500);
+// Optional teacher actions referenced from the dashboard. Wire to existing
+// modals if available; otherwise show a friendly "coming soon" toast so we
+// don't throw ReferenceError when buttons are clicked.
+function openTeacherAnnouncementModal(){
+  if(typeof window.openCreateAnnouncementModal==='function')return window.openCreateAnnouncementModal();
+  if(typeof showToast==='function')showToast('Announcement composer coming next release','info',2400);
+}
+window.openTeacherAnnouncementModal=openTeacherAnnouncementModal;
+function openMessageThread(senderId){
+  try{FluxMessaging.openThreadById(senderId);}
+  catch(_){if(typeof showToast==='function')showToast('Messages thread unavailable','warn',2000);}
+}
+window.openMessageThread=openMessageThread;
+function openSubmissionReview(completionId){
+  if(typeof showToast==='function')showToast('Submission #'+String(completionId).slice(0,6)+' — review pane coming next release','info',2400);
+}
+window.openSubmissionReview=openSubmissionReview;
+function openSubmissionsView(assignmentId){
+  if(typeof showToast==='function')showToast('Assignment #'+String(assignmentId).slice(0,6)+' — submissions list coming next release','info',2400);
+}
+window.openSubmissionsView=openSubmissionsView;
+function openAssignmentEdit(assignmentId){
+  if(typeof showToast==='function')showToast('Assignment editor coming next release','info',2000);
+}
+window.openAssignmentEdit=openAssignmentEdit;
+
+// ── Teacher class drill-down view ─────────────────────────────────
+async function openTeacherClassView(classId){
+  const sb=getSB();if(!sb||!currentUser)return;
+  let cls=null;let assignments=[];let students=[];
+  try{
+    const [classRes,asgRes,stuRes]=await Promise.all([
+      sb.from('teacher_classes').select('*').eq('id',classId).maybeSingle(),
+      sb.from('teacher_assignments').select('*,student_completions(student_id,status,grade)').eq('class_id',classId).order('due_date',{ascending:true}),
+      sb.from('teacher_students').select('*').eq('teacher_id',currentUser.id),
+    ]);
+    cls=classRes.data;
+    assignments=asgRes.data||[];
+    students=(stuRes.data||[]).filter(s=>(cls?.class_name&&s.class_name===cls.class_name)||(s.class_code&&s.class_code===cls?.class_code));
+  }catch(e){console.warn('[Flux] openTeacherClassView load failed',e);}
+  if(!cls){if(typeof showToast==='function')showToast('Class not found','error',2200);return;}
+
+  const stuIds=students.map(s=>s.student_id);
+  const stuNameMap=await fluxFetchStudentNames(sb,stuIds);
+
+  const modal=document.createElement('div');
+  modal.id='teacherClassPanel';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;overflow-y:auto;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="max-width:900px;margin:0 auto;padding:24px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button id="tcvBack" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--muted2);cursor:pointer">← Back</button>
+        <div>
+          <h2 style="font-size:1.3rem;font-weight:800">${esc(cls.class_name||'')}</h2>
+          <div style="font-size:.78rem;color:var(--muted2)">Code: <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:1.5px">${esc(cls.class_code||'')}</span> · ${students.length} student${students.length===1?'':'s'}</div>
+        </div>
+        <button id="tcvNewAsg" style="margin-left:auto" class="teacher-action-btn primary">+ Assignment</button>
+      </div>
+
+      <div class="class-tabs">
+        <button class="class-tab active" data-class-tab="assignments">Assignments (${assignments.length})</button>
+        <button class="class-tab" data-class-tab="students">Students (${students.length})</button>
+        <button class="class-tab" data-class-tab="grades">Grades</button>
+      </div>
+
+      <div id="classTab-assignments" class="class-tab-content">
+        ${assignments.length===0?'<div class="teacher-empty"><div class="te-icon">📝</div><div class="te-title">No assignments yet</div></div>':
+          assignments.map(a=>{
+            const subs=(a.student_completions||[]).filter(c=>c.status==='submitted'||c.status==='graded').length;
+            const denom=Math.max(students.length,1);
+            const pct=Math.round(subs/denom*100);
+            return`
+            <div class="class-assignment-row">
+              <div class="ca-type type-${esc(a.type||'homework')}">${esc(a.type||'task')}</div>
+              <div class="ca-info">
+                <div class="ca-title">${esc(a.title)}</div>
+                <div class="ca-meta">${a.due_date?'Due '+new Date(a.due_date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'No due date'} · ${esc(String(a.points_possible||0))} pts · ~${esc(String(a.estimated_minutes||30))}min</div>
+              </div>
+              <div class="ca-completions">
+                <div class="ca-comp-bar"><div class="ca-comp-fill" style="width:${pct}%"></div></div>
+                <div class="ca-comp-num">${subs}/${denom}</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="ca-edit-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem">Edit</button>
+                <button class="ca-review-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem;background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.25);color:var(--accent)">Review</button>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+
+      <div id="classTab-students" class="class-tab-content" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:12px;padding:12px 16px;font-size:.82rem">
+            <strong>Class Code:</strong> <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:800;color:var(--accent);letter-spacing:2px">${esc(cls.class_code||'')}</span>
+            <div style="font-size:.72rem;color:var(--muted2);margin-top:2px">Share this with students to join your class</div>
+          </div>
+        </div>
+        ${students.length===0?'<div class="teacher-empty"><div class="te-icon">👥</div><div class="te-title">No students yet</div><div class="te-sub">Students join by entering your class code</div></div>':
+          students.map(s=>{
+            const meta=stuNameMap[s.student_id]||{};
+            const dn=meta.display_name||('Student '+String(s.student_id).slice(0,6));
+            return`
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card2);border:1px solid var(--border);border-radius:12px;margin-bottom:6px">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0">${esc((dn[0]||'S').toUpperCase())}</div>
+              <div style="flex:1">
+                <div style="font-size:.85rem;font-weight:600">${esc(dn)}</div>
+                ${meta.grade_level?`<div style="font-size:.72rem;color:var(--muted2)">Grade ${esc(String(meta.grade_level))}</div>`:''}
+              </div>
+              <button class="tcv-msg-btn" data-stu="${esc(s.student_id)}" style="padding:5px 10px;font-size:.75rem">Message</button>
+            </div>`;
+          }).join('')}
+      </div>
+
+      <div id="classTab-grades" class="class-tab-content" style="display:none">
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border2)">
+                <th style="text-align:left;padding:10px;color:var(--muted2);font-weight:600">Student</th>
+                ${assignments.slice(0,6).map(a=>`<th style="text-align:center;padding:8px 6px;color:var(--muted2);font-weight:600;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(a.title).slice(0,12))}</th>`).join('')}
+                <th style="text-align:center;padding:8px;color:var(--muted2);font-weight:600">Avg</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${students.map(s=>{
+                const dn=stuNameMap[s.student_id]?.display_name||('Student '+String(s.student_id).slice(0,6));
+                const stuCompletions=assignments.map(a=>(a.student_completions||[]).find(c=>c.student_id===s.student_id));
+                const grades=stuCompletions.filter(c=>c?.grade!=null).map(c=>Number(c.grade));
+                const avg=grades.length?Math.round(grades.reduce((x,y)=>x+y,0)/grades.length):null;
+                const cellColor=(g)=>g>=90?'var(--green)':g>=70?'var(--gold)':'var(--red)';
+                return`
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:10px">${esc(dn)}</td>
+                    ${stuCompletions.slice(0,6).map(c=>`
+                      <td style="text-align:center;padding:8px 6px">
+                        ${c?.grade!=null?`<span style="font-family:'JetBrains Mono',monospace;color:${cellColor(Number(c.grade))}">${esc(String(c.grade))}</span>`:
+                          c?.status?`<span style="font-size:.65rem;color:var(--muted)">${esc(c.status)}</span>`:'—'}
+                      </td>`).join('')}
+                    <td style="text-align:center;padding:8px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${avg==null?'var(--muted)':cellColor(avg)}">${avg==null?'—':avg}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  modal.querySelector('#tcvBack')?.addEventListener('click',()=>modal.remove());
+  modal.querySelector('#tcvNewAsg')?.addEventListener('click',()=>openCreateAssignmentModal(classId));
+  modal.querySelectorAll('[data-class-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>switchClassTab(btn,btn.dataset.classTab));
+  });
+  modal.querySelectorAll('.tcv-msg-btn').forEach(b=>b.addEventListener('click',()=>openMessageThread(b.dataset.stu)));
+  modal.querySelectorAll('.ca-edit-btn').forEach(b=>b.addEventListener('click',()=>openAssignmentEdit(b.dataset.asg)));
+  modal.querySelectorAll('.ca-review-btn').forEach(b=>b.addEventListener('click',()=>openSubmissionsView(b.dataset.asg)));
 }
 window.openTeacherClassView=openTeacherClassView;
+
+function switchClassTab(btn,tabId){
+  document.querySelectorAll('.class-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.class-tab-content').forEach(t=>t.style.display='none');
+  btn.classList.add('active');
+  const target=document.getElementById('classTab-'+tabId);
+  if(target)target.style.display='';
+}
+window.switchClassTab=switchClassTab;
+
+// ── Student "Join a Class" flow ──────────────────────────────────
+function renderJoinClassButton(){
+  // Mount on the school panel (where existing classes live for students).
+  const host=document.getElementById('school')||document.getElementById('classes');
+  if(!host)return;
+  if(host.querySelector('#joinClassBtn'))return;
+  const btn=document.createElement('button');
+  btn.id='joinClassBtn';
+  btn.type='button';
+  btn.innerHTML='🔗 Join a Teacher Class';
+  btn.style.cssText='width:100%;padding:11px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;font-weight:600;cursor:pointer;margin:10px 0';
+  btn.addEventListener('click',openJoinClassModal);
+  // Place near top of the panel for discoverability.
+  host.prepend(btn);
+}
+window.renderJoinClassButton=renderJoinClassButton;
+
+function openJoinClassModal(){
+  if(document.getElementById('joinClassModal'))return;
+  const modal=document.createElement('div');
+  modal.id='joinClassModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:380px;box-shadow:var(--shadow-float)">
+      <h3 style="font-size:1rem;font-weight:800;margin-bottom:6px">Join a Class</h3>
+      <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">Enter the 6-character code your teacher shared with you</p>
+      <input id="classJoinCode" placeholder="e.g. ABC123" maxlength="6"
+        style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:4px;color:var(--accent);text-transform:uppercase">
+      <div id="joinClassError" style="display:none;font-size:.78rem;color:var(--red);padding:8px;background:rgba(255,77,109,.08);border-radius:8px;margin-top:10px;border:1px solid rgba(255,77,109,.2)"></div>
+      <div id="joinClassPreview" style="display:none;padding:12px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-top:12px;font-size:.85rem"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button id="joinClassSubmit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Join Class</button>
+        <button id="joinClassCancel" style="padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  modal.querySelector('#joinClassCancel')?.addEventListener('click',()=>modal.remove());
+  modal.querySelector('#joinClassSubmit')?.addEventListener('click',submitJoinClass);
+
+  const inp=modal.querySelector('#classJoinCode');
+  inp?.addEventListener('input',async function(){
+    this.value=this.value.toUpperCase();
+    const code=this.value.trim();
+    const preview=document.getElementById('joinClassPreview');
+    if(!preview)return;
+    if(code.length!==6){preview.style.display='none';return;}
+    const sb=getSB();if(!sb)return;
+    try{
+      const {data}=await sb.from('teacher_classes')
+        .select('class_name,subject,teacher_id')
+        .eq('class_code',code)
+        .eq('active',true)
+        .maybeSingle();
+      if(data){
+        // Resolve teacher name in a follow-up
+        let tName='Unknown';
+        try{
+          const {data:tr}=await sb.from('user_roles').select('display_name').eq('user_id',data.teacher_id).maybeSingle();
+          if(tr?.display_name)tName=tr.display_name;
+        }catch(_){}
+        preview.style.display='block';
+        preview.innerHTML=`<strong>${esc(data.class_name)}</strong><br><span style="color:var(--muted2)">Teacher: ${esc(tName)} · ${esc(data.subject||'')}</span>`;
+      }else{
+        preview.style.display='none';
+      }
+    }catch(_){preview.style.display='none';}
+  });
+}
+window.openJoinClassModal=openJoinClassModal;
+
+async function submitJoinClass(){
+  const code=(document.getElementById('classJoinCode')?.value||'').trim().toUpperCase();
+  const errEl=document.getElementById('joinClassError');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  if(!code||code.length!==6){setErr('Enter a 6-character class code');return;}
+  const sb=getSB();const u=currentUser;
+  if(!sb||!u){setErr('Sign-in required');return;}
+
+  try{
+    const {data:cls}=await sb.from('teacher_classes')
+      .select('*')
+      .eq('class_code',code)
+      .eq('active',true)
+      .maybeSingle();
+    if(!cls){setErr('Class code not found. Check with your teacher.');return;}
+
+    const {data:existing}=await sb.from('teacher_students')
+      .select('id')
+      .eq('teacher_id',cls.teacher_id)
+      .eq('student_id',u.id)
+      .eq('class_name',cls.class_name)
+      .maybeSingle();
+    if(existing){setErr("You've already joined this class!");return;}
+
+    const {error}=await sb.from('teacher_students').insert({
+      teacher_id:cls.teacher_id,
+      student_id:u.id,
+      class_name:cls.class_name,
+      class_code:code,
+      period:cls.period||null,
+      school_year:cls.school_year||'2025-26',
+    });
+    if(error){setErr(error.message);return;}
+
+    // Add to student's local class list if not already there
+    try{
+      if(typeof classes!=='undefined'&&!classes.find(c=>c.code===code)){
+        classes.push({name:cls.class_name,code,teacherClassId:cls.id});
+        save('classes',classes);
+        if(typeof renderClasses==='function')renderClasses();
+      }
+    }catch(_){}
+
+    document.getElementById('joinClassModal')?.remove();
+    if(typeof showToast==='function')showToast(`✅ Joined "${cls.class_name}"!`);
+
+    try{loadTeacherAssignments();}catch(_){}
+  }catch(e){setErr(e.message||'Failed to join');}
+}
+window.submitJoinClass=submitJoinClass;
 
 // ── Create class modal ────────────────────────────────────────────
 function openCreateClassModal(){
