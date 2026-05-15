@@ -946,6 +946,10 @@
         <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
       </section>
 
+      <!-- V4: predictive gap fill + physics quick tools (auto-hide when empty) -->
+      <div id="fluxGapFillCard" data-flux-section="gapfill" style="display:none"></div>
+      <div id="fluxPhysicsCard" data-flux-section="physics" style="display:none"></div>
+
       <div id="countdownCard" class="dash-v2-countdown" style="display:none" data-flux-section="countdown">
         <div class="card dash-v2-countdown-card">
           <div class="dash-v2-countdown-kicker">Assessment</div>
@@ -1006,6 +1010,23 @@
           <div id="savedViewsList"></div>
         </div>
       </div>
+
+      <!-- V4 Analytics: subject heatmap + accuracy report on the dashboard -->
+      <section class="card flux-analytics-card" data-flux-section="analytics">
+        <div class="flux-analytics-head">
+          <h3 class="flux-analytics-title">Weekly subject efficiency</h3>
+          <span class="flux-analytics-sub">Focus minutes by subject and day</span>
+        </div>
+        <div id="dashSubjectHeatmap"></div>
+      </section>
+
+      <section class="card flux-analytics-card" data-flux-section="accuracy">
+        <div class="flux-analytics-head">
+          <h3 class="flux-analytics-title">Effort accuracy by subject</h3>
+          <span class="flux-analytics-sub">Estimated vs actual time on completed tasks</span>
+        </div>
+        <div id="dashEffortReport"></div>
+      </section>
       </div>
 
     </div>

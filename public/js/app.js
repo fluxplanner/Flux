@@ -1916,7 +1916,10 @@ function toggleTask(id){
     spawnConfetti();
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
-    // effort tracking prompt removed
+    // V4 Effort Accuracy: ask for actual time when an estimate exists.
+    if((t.estTime||0)>0&&t.actualMins==null&&typeof showEffortPrompt==='function'){
+      setTimeout(()=>{try{showEffortPrompt(t);}catch(_){}}, 1100);
+    }
     if(t.srsEnabled)setTimeout(()=>generateSRSReviews(t),800);
     showUndoSnackbar('Task completed','undoLastChange');
     setTimeout(showAutoNext,1200);
@@ -8247,6 +8250,10 @@ function initDashboardFeatures(){
   renderEffortReport();
   renderSubjectEfficiencyHeatmap();
   initV4Systems();
+  if(typeof fluxRenderV4Dashboard==='function'){
+    fluxRenderV4Dashboard();
+    setInterval(fluxRenderV4Dashboard,5*60*1000);
+  }
 }
 
 // ── Recovery Mode → "Show Quick Wins" CTA ─────────────────────────
@@ -8274,6 +8281,216 @@ window.fluxOpenQuickWins=function(){
   }
   if(typeof showToast==='function')showToast('Highlighted '+wins.length+' quick win'+(wins.length===1?'':'s')+' — start the shortest first.','success');
 };
+
+// ════════════════════════════════════════════════════════════════
+// V4 — PREDICTIVE GAP FILLING
+// Detects free time slots between today's classes and surfaces tasks
+// that fit each slot, using FluxBehavior.suggestForGaps.
+// ════════════════════════════════════════════════════════════════
+function _fluxTodayDayLetters(){
+  const d=new Date();
+  const dow=d.getDay();
+  const map={0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+  const long=map[dow];
+  const oneLetter=long.slice(0,1);
+  const twoLetter=long.slice(0,2);
+  return new Set([long,twoLetter,oneLetter,long.toUpperCase(),twoLetter.toUpperCase(),oneLetter.toUpperCase()]);
+}
+function _fluxTimeToMinutes(s){
+  if(!s||typeof s!=='string')return null;
+  const m=s.match(/^(\d{1,2}):(\d{2})/);
+  if(!m)return null;
+  const h=Math.max(0,Math.min(23,Number(m[1])));
+  const mm=Math.max(0,Math.min(59,Number(m[2])));
+  return h*60+mm;
+}
+function fluxComputeFreeSlots(){
+  const todayLetters=_fluxTodayDayLetters();
+  const cls=(Array.isArray(classes)?classes:[])
+    .map(c=>{
+      const start=_fluxTimeToMinutes(c.timeStart);
+      const end=_fluxTimeToMinutes(c.timeEnd);
+      if(start==null||end==null||end<=start)return null;
+      const days=String(c.days||'').trim();
+      const matchesToday=!days||[...todayLetters].some(l=>days.toUpperCase().includes(l.toUpperCase()));
+      if(!matchesToday)return null;
+      return {start,end};
+    })
+    .filter(Boolean)
+    .sort((a,b)=>a.start-b.start);
+  if(!cls.length)return [];
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const dayEnd=21*60;
+  const slots=[];
+  let cursor=Math.max(nowMin,cls[0].start);
+  for(const c of cls){
+    if(c.end<=nowMin)continue;
+    if(c.start>cursor+10){
+      slots.push({startMin:Math.max(cursor,nowMin),endMin:c.start});
+    }
+    cursor=Math.max(cursor,c.end);
+  }
+  if(cursor<dayEnd-30){
+    slots.push({startMin:cursor,endMin:dayEnd});
+  }
+  return slots.filter(s=>(s.endMin-s.startMin)>=15&&s.endMin>nowMin);
+}
+function _fluxFmtTime(min){
+  const h=Math.floor(min/60),m=min%60;
+  const ampm=h>=12?'pm':'am';
+  const h12=((h+11)%12)+1;
+  return m===0?`${h12}${ampm}`:`${h12}:${String(m).padStart(2,'0')}${ampm}`;
+}
+function renderPredictiveGapFill(){
+  const el=document.getElementById('fluxGapFillCard');
+  if(!el)return;
+  const slots=fluxComputeFreeSlots();
+  if(!slots.length){
+    el.style.display='none';
+    el.innerHTML='';
+    return;
+  }
+  const beh=window.FluxBehavior;
+  const suggestions=beh&&typeof beh.suggestForGaps==='function'
+    ? beh.suggestForGaps(slots,tasks)
+    : slots.map(s=>({slot:s,task:null}));
+  const filled=suggestions.filter(s=>s.task);
+  if(!filled.length){
+    el.style.display='none';
+    el.innerHTML='';
+    return;
+  }
+  el.style.display='';
+  el.innerHTML=`
+    <div class="card flux-gap-card">
+      <div class="flux-gap-head">
+        <span class="flux-gap-icon" aria-hidden="true">🧩</span>
+        <div>
+          <div class="flux-gap-kicker">Predictive gap-fill</div>
+          <h3 class="flux-gap-title">Free pockets between classes</h3>
+        </div>
+      </div>
+      <div class="flux-gap-list">
+        ${filled.slice(0,3).map(({slot,task})=>{
+          const mins=Math.max(0,slot.endMin-slot.startMin);
+          return `
+          <div class="flux-gap-row">
+            <div class="flux-gap-row-time">
+              <div class="flux-gap-row-window">${esc(_fluxFmtTime(slot.startMin))} – ${esc(_fluxFmtTime(slot.endMin))}</div>
+              <div class="flux-gap-row-mins">${mins} min free</div>
+            </div>
+            <div class="flux-gap-row-task" title="${esc(task.name)}">
+              <div class="flux-gap-row-name">${esc(task.name)}</div>
+              <div class="flux-gap-row-meta">${esc(task.subject||'no subject')} · est ${task.estTime||'?'}m</div>
+            </div>
+            <button type="button" class="flux-gap-row-cta" onclick="fluxStartGapTask(${task.id})">Start →</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+window.fluxStartGapTask=function(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t)return;
+  if(typeof startDeepWork==='function')startDeepWork(taskId);
+  else if(typeof showToast==='function')showToast('Focus this task: '+t.name,'info');
+};
+
+// ════════════════════════════════════════════════════════════════
+// V4 — PHYSICS QUICK TOOLBOX
+// When the user has any active "Physics" task, surface a one-tap card
+// linking to the existing flux-toolbox physics sandbox + reminding them
+// of the Flux convention (g=10, 4-decimal rounding).
+// ════════════════════════════════════════════════════════════════
+function _fluxIsPhysicsTask(t){
+  if(!t)return false;
+  if(t.done)return false;
+  const subjs=typeof getSubjects==='function'?getSubjects():{};
+  const subj=t.subject?(subjs[t.subject]||{}).name||t.subject:'';
+  const hay=(t.name+' '+subj+' '+(t.notes||'')).toLowerCase();
+  return /\b(physics|kinematics|projectile|newton|momentum|torque|capacitor|circuit|optics|thermo)\b/.test(hay);
+}
+function renderPhysicsQuickToolbox(){
+  const el=document.getElementById('fluxPhysicsCard');
+  if(!el)return;
+  const phys=(Array.isArray(tasks)?tasks:[]).filter(_fluxIsPhysicsTask);
+  if(!phys.length){
+    el.style.display='none';
+    el.innerHTML='';
+    return;
+  }
+  const next=phys[0];
+  el.style.display='';
+  el.innerHTML=`
+    <div class="card flux-physics-card">
+      <div class="flux-physics-head">
+        <span class="flux-physics-icon" aria-hidden="true">🪐</span>
+        <div>
+          <div class="flux-physics-kicker">Physics toolbox</div>
+          <h3 class="flux-physics-title">Quick math for "${esc(next.name).slice(0,60)}"</h3>
+          <div class="flux-physics-sub">Flux uses <b>g = 10.0000 m/s²</b> and rounds to <b>4 decimals</b> by convention.</div>
+        </div>
+      </div>
+      <div class="flux-physics-actions">
+        <button type="button" class="flux-physics-cta" onclick="fluxOpenPhysicsToolbox()">Open formula sheet →</button>
+        <button type="button" class="flux-physics-secondary" onclick="fluxAskPhysicsAI(${next.id})">Ask Flux AI</button>
+      </div>
+    </div>`;
+}
+window.fluxOpenPhysicsToolbox=function(){
+  try{
+    if(typeof openToolboxTool==='function'){
+      openToolboxTool('science','formulas-sci');
+      return;
+    }
+  }catch(_){}
+  if(typeof navTo==='function'){
+    try{navTo('toolbox');}catch(_){}
+  }
+};
+window.fluxAskPhysicsAI=function(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t)return;
+  if(typeof navTo==='function'){try{navTo('ai');}catch(_){}}
+  setTimeout(()=>{
+    const inp=document.getElementById('aiInput');
+    if(!inp)return;
+    inp.value=`Help me solve "${t.name}". Use g=10 m/s² and round any numeric answer to 4 decimal places.`;
+    if(typeof sendAI==='function'){try{sendAI();}catch(_){}}
+  },200);
+};
+
+// ════════════════════════════════════════════════════════════════
+// V4 — DASHBOARD-MOUNTED ANALYTICS (heatmap + accuracy report)
+// ════════════════════════════════════════════════════════════════
+function renderSubjectAccuracyDashboard(){
+  const el=document.getElementById('dashEffortReport');
+  if(!el)return;
+  el.innerHTML='<div id="effortReport"></div>';
+  try{renderEffortReport();}catch(_){}
+}
+function renderSubjectHeatmapDashboard(){
+  const el=document.getElementById('dashSubjectHeatmap');
+  if(!el)return;
+  el.innerHTML='<div id="subjectEffHeatmap"></div>';
+  try{renderSubjectEfficiencyHeatmap();}catch(_){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// V4 — Re-render all the predictive cards on relevant changes.
+// Hook into existing render loops via a periodic + event-bus mix.
+// ════════════════════════════════════════════════════════════════
+function fluxRenderV4Dashboard(){
+  try{renderPredictiveGapFill();}catch(_){}
+  try{renderPhysicsQuickToolbox();}catch(_){}
+  try{renderSubjectAccuracyDashboard();}catch(_){}
+  try{renderSubjectHeatmapDashboard();}catch(_){}
+}
+if(typeof FluxBus!=='undefined'){
+  FluxBus.on('task_completed',fluxRenderV4Dashboard);
+}
+window.fluxRenderV4Dashboard=fluxRenderV4Dashboard;
 
 function handleCheckoutReturn(){
   const params=new URLSearchParams(window.location.search);
@@ -8827,13 +9044,70 @@ let _effortLog=load('flux_effort_log',[]);
 function logEffort(taskId,actualMins,el){
   const t=tasks.find(x=>x.id===taskId);
   if(t){
+    t.actualMins=actualMins;
     _effortLog.push({taskId,subject:t.subject||'',estimated:t.estTime||0,actual:actualMins,date:todayStr()});
     if(_effortLog.length>300)_effortLog=_effortLog.slice(-300);
     save('flux_effort_log',_effortLog);
+    save('tasks',tasks);
     showToast('Effort logged: '+actualMins+'m','success');
+    try{renderEffortReport();renderSubjectAccuracyDashboard&&renderSubjectAccuracyDashboard();}catch(_){}
   }
   if(el)el.remove();
 }
+
+/**
+ * V4 Effort Accuracy prompt — asks for actual time after a task is checked
+ * off, only when the user originally estimated. One quick chip row + custom
+ * input. "Skip" stores nothing so we don't pollute the report.
+ */
+function showEffortPrompt(task){
+  if(!task||(task.estTime||0)<=0)return;
+  if(document.getElementById('fluxEffortPrompt'))return;
+  const est=task.estTime;
+  const overlay=document.createElement('div');
+  overlay.id='fluxEffortPrompt';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-label','Log actual time');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9970;background:rgba(4,7,14,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:20px';
+  const opts=[
+    Math.max(5,Math.round(est*0.5)),
+    Math.max(5,Math.round(est*0.75)),
+    est,
+    Math.round(est*1.25),
+    Math.round(est*1.5),
+  ];
+  const uniq=Array.from(new Set(opts)).sort((a,b)=>a-b);
+  overlay.innerHTML=`
+    <div style="max-width:420px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+      <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Effort accuracy</div>
+      <div style="font-size:1.05rem;font-weight:800;line-height:1.3;margin-bottom:6px">How long did "${esc(task.name).slice(0,80)}" actually take?</div>
+      <div style="font-size:.78rem;color:var(--muted2);margin-bottom:14px">You estimated <b>${est}m</b>. This builds your subject accuracy report.</div>
+      <div id="fluxEffortChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${uniq.map(m=>`<button type="button" data-mins="${m}" style="padding:8px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">${m}m${m===est?' • est':''}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <input id="fluxEffortCustom" type="number" min="1" max="600" placeholder="Custom (min)" style="flex:1;padding:9px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.85rem;font-family:inherit;box-sizing:border-box">
+        <button type="button" id="fluxEffortLog" style="padding:9px 14px;border-radius:10px;background:var(--accent);color:#0a0d18;border:none;font-weight:800;font-size:.82rem;cursor:pointer">Log</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="fluxEffortSkip" style="flex:1;padding:9px;border-radius:10px;background:transparent;border:1px solid var(--border2);color:var(--muted2);font-size:.78rem;font-weight:700;cursor:pointer">Skip</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.addEventListener('click',(e)=>{if(e.target===overlay)close();});
+  overlay.querySelector('#fluxEffortSkip').addEventListener('click',close);
+  overlay.querySelectorAll('#fluxEffortChips button').forEach(b=>{
+    b.addEventListener('click',()=>{logEffort(task.id,Number(b.dataset.mins)||est);close();});
+  });
+  overlay.querySelector('#fluxEffortLog').addEventListener('click',()=>{
+    const v=Number(document.getElementById('fluxEffortCustom').value);
+    if(!v||v<=0){showToast('Enter a number of minutes','warning');return;}
+    logEffort(task.id,v);close();
+  });
+  setTimeout(()=>{document.getElementById('fluxEffortCustom')?.focus();},80);
+}
+window.showEffortPrompt=showEffortPrompt;
 function renderEffortReport(){
   const el=document.getElementById('effortReport');if(!el)return;
   if(!_effortLog.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">Complete tasks with time estimates to see accuracy data.</div>';return;}
@@ -11351,22 +11625,25 @@ function renderDepSelector(taskId){
   return available.slice(0,8).map(a=>`<button onclick="addDependency(${taskId},${a.id})" style="display:block;width:100%;text-align:left;padding:6px 10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.78rem;cursor:pointer;margin-bottom:4px;transition:all .15s;transform:none;box-shadow:none" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${esc(a.name)}</button>`).join('');
 }
 
-// Wire dependency unlock into task completion
+// Wire dependency unlock into task completion (V4 chain-reaction)
 FluxBus.on('task_completed',function(task){
   const unlocked=getDependentTasks(task.id);
   if(unlocked.length){
-    const names=unlocked.map(t=>t.name).slice(0,3);
-    showToast('🔓 Unlocked: '+names.join(', '),'success');
+    const n=unlocked.length;
+    showToast(
+      n===1
+        ? `🔓 You just unlocked "${unlocked[0].name}"! 🔥`
+        : `🔥 Chain reaction — you just unlocked ${n} dependent task${n===1?'':'s'}!`,
+      'success',
+    );
     requestAnimationFrame(()=>{
       try{
         const els=unlocked.map(t=>document.querySelector(`[data-task-id="${t.id}"]`)).filter(Boolean);
         if(els.length&&window.FluxAnim?.chainUnlock)FluxAnim.chainUnlock(els);
       }catch(e){}
     });
-    const allChainDone=unlocked.every(t=>!isBlocked(t));
-    if(allChainDone&&unlocked.length>=2){
-      setTimeout(()=>{spawnConfetti();showToast('⚡ Chain Reaction! '+unlocked.length+' tasks unlocked','success');},600);
-    }
+    // Confetti always — even single unlocks deserve the moment
+    setTimeout(()=>{try{spawnConfetti();}catch(_){}}, 250);
   }
 });
 

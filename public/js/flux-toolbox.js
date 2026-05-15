@@ -197,7 +197,7 @@ const FORMULA_SHEET = {
     ]},
     { title:'Constants', items:[
       { f:'c = 2.998 × 10⁸ m/s',        vars:['speed of light in vacuum'] },
-      { f:'g = 9.81 m/s²',               vars:['gravity at Earth surface'] },
+      { f:'g = 10.0000 m/s²',            vars:['gravity (Flux convention — 4-decimal, g=10 per V4 contract)'] },
       { f:'N_A = 6.022 × 10²³ /mol',     vars:['Avogadro\'s number'] },
       { f:'h = 6.626 × 10⁻³⁴ J·s',       vars:['Planck constant'] },
       { f:'e = 1.602 × 10⁻¹⁹ C',         vars:['elementary charge'] },
