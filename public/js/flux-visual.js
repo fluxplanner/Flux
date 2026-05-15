@@ -523,14 +523,13 @@
     function createNodes() {
       const accent = hexToRgb(getAccent());
       const purple = [124, 92, 255];
-      const teal = [0, 217, 163];
       nodes = [
         new MeshNode(W * 0.2, H * 0.2, W * 0.5, accent, 0.0008, 0),
         new MeshNode(W * 0.8, H * 0.8, W * 0.5, purple, 0.0007, 1.5),
-        new MeshNode(W * 0.5, H * 0.5, W * 0.4, teal, 0.0009, 3.0),
+        new MeshNode(W * 0.5, H * 0.5, W * 0.4, accent, 0.0009, 3.0),
         new MeshNode(W * 0.1, H * 0.7, W * 0.4, accent, 0.0006, 0.8),
         new MeshNode(W * 0.9, H * 0.3, W * 0.45, purple, 0.0008, 2.2),
-        new MeshNode(W * 0.6, H * 0.1, W * 0.35, teal, 0.0010, 4.0),
+        new MeshNode(W * 0.6, H * 0.1, W * 0.35, purple, 0.0010, 4.0),
         new MeshNode(W * 0.3, H * 0.9, W * 0.35, accent, 0.0007, 1.0),
       ];
     }
