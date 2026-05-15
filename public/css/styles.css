@@ -4013,6 +4013,9 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   -webkit-backdrop-filter:blur(6px);
   border-radius:inherit;
 }
+/* Author rule above clobbers the UA [hidden]{display:none} default,
+   so the spinner used to be permanently visible. Restore the toggle. */
+.flux-pdf-import__overlay[hidden]{display:none!important}
 .flux-pdf-import__overlay-inner{text-align:center;color:var(--text)}
 .flux-pdf-import__overlay-inner p{margin-top:14px;font-size:.9rem;font-weight:600}
 .flux-pdf-import__spinner{
