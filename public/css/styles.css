@@ -4556,11 +4556,14 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
    Used by public/js/flux-canvas-panel.js (rewritten 2026-05).
    ───────────────────────────────────────────────────────────────── */
 .cv-wrap{
-  display:flex;flex-direction:column;gap:14px;min-height:0;
+  display:flex;flex-direction:column;gap:14px;
+  flex:1;min-height:0;overflow:hidden;
+  padding:14px 16px 0;
 }
 .cv-head{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   padding:14px 16px;
+  flex-shrink:0;
   background:linear-gradient(165deg, rgba(var(--accent-rgb),.06) 0%, rgba(124,92,255,.04) 60%, transparent 100%);
   border:1px solid var(--border2);
   border-radius:18px;
@@ -4608,6 +4611,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .cv-tabs{
   display:flex;gap:6px;flex-wrap:wrap;
   padding:6px;
+  flex-shrink:0;
   background:var(--card);border:1px solid var(--border2);border-radius:14px;
 }
 .cv-tab{
@@ -4627,7 +4631,10 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 
 .cv-body{
   display:flex;flex-direction:column;gap:10px;
-  min-height:180px;
+  flex:1;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:40px;
 }
 .cv-toolbar{
   display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
@@ -4879,6 +4886,11 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .cv-onb{
   max-width:520px;margin:24px auto;
   display:flex;flex-direction:column;gap:18px;
+  flex:1;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:0 16px 40px;
+  width:100%;box-sizing:border-box;
 }
 .cv-onb-head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
 .cv-onb-logo{
