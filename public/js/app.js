@@ -12273,18 +12273,23 @@ async function detectUserRoleAndRoute(){
   let role='student';
   let counselorRow=null;
   let displayName=null;
+  // Important: track whether a row EXISTS, not whether role !== 'student'.
+  // Otherwise a user who picked "Student" gets re-prompted forever.
+  let hadExplicitRole=false;
   try{
     const {data}=await sb.from('user_roles')
       .select('role,display_name')
       .eq('user_id',currentUser.id)
       .maybeSingle();
-    if(data?.role)role=data.role;
-    if(data?.display_name)displayName=data.display_name;
+    if(data){
+      hadExplicitRole=true;
+      if(data.role)role=data.role;
+      if(data.display_name)displayName=data.display_name;
+    }
   }catch(_){}
 
   // First sign-in after email-confirm staff signup: apply pending role now
-  let hadExplicitRole=false;
-  if(role==='student'){
+  if(!hadExplicitRole){
     let pendingRole='',pendingName='',pendingSubject='';
     try{
       pendingRole=localStorage.getItem('flux_pending_staff_role')||'';
@@ -12319,18 +12324,14 @@ async function detectUserRoleAndRoute(){
         }catch(_){}
       }catch(_){}
     }
-  }else{
-    hadExplicitRole=true;
   }
 
   /* Brand-new account flow:
-     If we still have no role row and this user has never picked one, show the
-     post-login "I am a Student / Staff" picker. This is the moved-from-pre-login
-     onboarding step. Student picks just write a 'student' row. Staff picks
-     open the staff detail form to capture name/subject.  We only ever
-     show this once per account; subsequent sign-ins skip straight through. */
-  const alreadyPicked=(()=>{try{return localStorage.getItem('flux_role_picked_for_'+currentUser.id);}catch(_){return null;}})();
-  if(!hadExplicitRole&&!alreadyPicked){
+     Show the "I am a Student / Staff" picker only when there is no row in
+     public.user_roles for this user. We do NOT use a localStorage gate
+     anymore — that just hid bugs and re-prompted on a new device. The row
+     itself (created the moment they answer) is the single source of truth. */
+  if(!hadExplicitRole){
     try{
       const pick=await showPostLoginRolePicker();
       if(pick==='student'){
@@ -12342,8 +12343,8 @@ async function detectUserRoleAndRoute(){
             updated_at:new Date().toISOString(),
           });
           role='student';
+          hadExplicitRole=true;
         }catch(_){}
-        try{localStorage.setItem('flux_role_picked_for_'+currentUser.id,'student');}catch(_){}
       }else if(pick==='staff'){
         const det=await showStaffDetailsForm();
         if(det&&det.role){
@@ -12356,6 +12357,7 @@ async function detectUserRoleAndRoute(){
               updated_at:new Date().toISOString(),
             });
             role=det.role;
+            hadExplicitRole=true;
             if(det.role==='counselor'&&det.name){
               const lastName=det.name.split(' ').filter(Boolean).pop();
               if(lastName){
@@ -12375,9 +12377,9 @@ async function detectUserRoleAndRoute(){
               display_name:displayName||null,updated_at:new Date().toISOString(),
             });
             role='student';
+            hadExplicitRole=true;
           }catch(_){}
         }
-        try{localStorage.setItem('flux_role_picked_for_'+currentUser.id,role);}catch(_){}
       }
     }catch(e){console.warn('[Flux] post-login role picker error',e);}
   }
