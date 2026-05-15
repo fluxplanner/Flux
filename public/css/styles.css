@@ -5225,13 +5225,24 @@ button{
   position:relative;
   z-index:1;
 }
-.panel,[id$="Panel"],
+.panel,
 #dashboard,#calendar,#ai,#study,#timer,#notes,#habits,#goals,
 #mood,#settings,#profile,#canvas,#teacherDashboard,#counselorDashboard,
 #gmail,#school,#toolbox,#flux_control,#references{
   background:transparent !important;
   position:relative;
   z-index:1;
+}
+/* The quick-add slide-up drawer must stay position:fixed at the bottom of the
+   viewport. Earlier rule used [id$="Panel"] which matched #quickAddPanel and
+   knocked it into document flow with translateY(100%), making it scroll into
+   view as empty space then a stray panel on tabs like AI / Notes / Canvas. */
+#quickAddPanel.quick-add-panel{
+  position:fixed !important;
+  bottom:0 !important;
+  left:0 !important;
+  right:0 !important;
+  z-index:400 !important;
 }
 .panel-content,.panel-body,.panel-scroll{
   background:transparent !important;
