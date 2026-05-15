@@ -448,7 +448,7 @@ body[data-recovery="true"] .recovery-banner{display:flex!important}
 .recovery-banner-cta:hover{background:rgba(244,63,94,.25)}
 
 /* V4 — Predictive Gap-Fill card */
-.flux-gap-card,.flux-physics-card{
+.flux-gap-card{
   display:flex;flex-direction:column;gap:12px;
   padding:16px 18px;border-radius:18px;
   background:linear-gradient(165deg,rgba(124,92,255,.10),rgba(var(--accent-rgb),.04) 60%,var(--card));
@@ -456,13 +456,13 @@ body[data-recovery="true"] .recovery-banner{display:flex!important}
   backdrop-filter:blur(20px) saturate(140%);
   -webkit-backdrop-filter:blur(20px) saturate(140%);
 }
-.flux-gap-head,.flux-physics-head{display:flex;align-items:flex-start;gap:12px}
-.flux-gap-icon,.flux-physics-icon{font-size:1.6rem;line-height:1;flex:0 0 auto;margin-top:2px}
-.flux-gap-kicker,.flux-physics-kicker{
+.flux-gap-head{display:flex;align-items:flex-start;gap:12px}
+.flux-gap-icon{font-size:1.6rem;line-height:1;flex:0 0 auto;margin-top:2px}
+.flux-gap-kicker{
   font-size:.6rem;text-transform:uppercase;letter-spacing:.16em;
   color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:2px;
 }
-.flux-gap-title,.flux-physics-title{
+.flux-gap-title{
   font-size:1rem;font-weight:800;margin:0 0 2px;letter-spacing:-.005em;
 }
 .flux-gap-list{display:flex;flex-direction:column;gap:8px;margin-top:2px}
@@ -483,26 +483,6 @@ body[data-recovery="true"] .recovery-banner{display:flex!important}
   padding:7px 12px;border-radius:10px;font-size:.74rem;font-weight:800;cursor:pointer;
 }
 .flux-gap-row-cta:hover{background:rgba(var(--accent-rgb),.26)}
-
-.flux-physics-sub{font-size:.74rem;color:var(--muted2);line-height:1.5;margin-top:2px}
-.flux-physics-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.flux-physics-cta{
-  appearance:none;border:none;background:linear-gradient(135deg,#a855f7,#7c3aed);
-  color:#fff;padding:9px 14px;border-radius:10px;font-size:.78rem;font-weight:800;cursor:pointer;
-  box-shadow:0 6px 18px rgba(168,85,247,.35);
-}
-.flux-physics-cta:hover{filter:brightness(1.1)}
-.flux-physics-secondary{
-  appearance:none;border:1px solid rgba(var(--accent-rgb),.35);
-  background:transparent;color:var(--accent);
-  padding:9px 12px;border-radius:10px;font-size:.78rem;font-weight:700;cursor:pointer;
-}
-
-/* V4 — dashboard analytics cards */
-.flux-analytics-card{margin-top:14px}
-.flux-analytics-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
-.flux-analytics-title{margin:0;font-size:.95rem;font-weight:800;letter-spacing:-.005em}
-.flux-analytics-sub{font-size:.66rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em}
 
 /* Quick Win flash highlight */
 .task-item.quick-win-flash{

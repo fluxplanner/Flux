@@ -8398,94 +8398,10 @@ window.fluxStartGapTask=function(taskId){
 };
 
 // ════════════════════════════════════════════════════════════════
-// V4 — PHYSICS QUICK TOOLBOX
-// When the user has any active "Physics" task, surface a one-tap card
-// linking to the existing flux-toolbox physics sandbox + reminding them
-// of the Flux convention (g=10, 4-decimal rounding).
-// ════════════════════════════════════════════════════════════════
-function _fluxIsPhysicsTask(t){
-  if(!t)return false;
-  if(t.done)return false;
-  const subjs=typeof getSubjects==='function'?getSubjects():{};
-  const subj=t.subject?(subjs[t.subject]||{}).name||t.subject:'';
-  const hay=(t.name+' '+subj+' '+(t.notes||'')).toLowerCase();
-  return /\b(physics|kinematics|projectile|newton|momentum|torque|capacitor|circuit|optics|thermo)\b/.test(hay);
-}
-function renderPhysicsQuickToolbox(){
-  const el=document.getElementById('fluxPhysicsCard');
-  if(!el)return;
-  const phys=(Array.isArray(tasks)?tasks:[]).filter(_fluxIsPhysicsTask);
-  if(!phys.length){
-    el.style.display='none';
-    el.innerHTML='';
-    return;
-  }
-  const next=phys[0];
-  el.style.display='';
-  el.innerHTML=`
-    <div class="card flux-physics-card">
-      <div class="flux-physics-head">
-        <span class="flux-physics-icon" aria-hidden="true">🪐</span>
-        <div>
-          <div class="flux-physics-kicker">Physics toolbox</div>
-          <h3 class="flux-physics-title">Quick math for "${esc(next.name).slice(0,60)}"</h3>
-          <div class="flux-physics-sub">Flux uses <b>g = 10.0000 m/s²</b> and rounds to <b>4 decimals</b> by convention.</div>
-        </div>
-      </div>
-      <div class="flux-physics-actions">
-        <button type="button" class="flux-physics-cta" onclick="fluxOpenPhysicsToolbox()">Open formula sheet →</button>
-        <button type="button" class="flux-physics-secondary" onclick="fluxAskPhysicsAI(${next.id})">Ask Flux AI</button>
-      </div>
-    </div>`;
-}
-window.fluxOpenPhysicsToolbox=function(){
-  try{
-    if(typeof openToolboxTool==='function'){
-      openToolboxTool('science','formulas-sci');
-      return;
-    }
-  }catch(_){}
-  if(typeof navTo==='function'){
-    try{navTo('toolbox');}catch(_){}
-  }
-};
-window.fluxAskPhysicsAI=function(taskId){
-  const t=tasks.find(x=>x.id===taskId);
-  if(!t)return;
-  if(typeof navTo==='function'){try{navTo('ai');}catch(_){}}
-  setTimeout(()=>{
-    const inp=document.getElementById('aiInput');
-    if(!inp)return;
-    inp.value=`Help me solve "${t.name}". Use g=10 m/s² and round any numeric answer to 4 decimal places.`;
-    if(typeof sendAI==='function'){try{sendAI();}catch(_){}}
-  },200);
-};
-
-// ════════════════════════════════════════════════════════════════
-// V4 — DASHBOARD-MOUNTED ANALYTICS (heatmap + accuracy report)
-// ════════════════════════════════════════════════════════════════
-function renderSubjectAccuracyDashboard(){
-  const el=document.getElementById('dashEffortReport');
-  if(!el)return;
-  el.innerHTML='<div id="effortReport"></div>';
-  try{renderEffortReport();}catch(_){}
-}
-function renderSubjectHeatmapDashboard(){
-  const el=document.getElementById('dashSubjectHeatmap');
-  if(!el)return;
-  el.innerHTML='<div id="subjectEffHeatmap"></div>';
-  try{renderSubjectEfficiencyHeatmap();}catch(_){}
-}
-
-// ════════════════════════════════════════════════════════════════
-// V4 — Re-render all the predictive cards on relevant changes.
-// Hook into existing render loops via a periodic + event-bus mix.
+// V4 — Re-render predictive gap-fill on task completion / interval.
 // ════════════════════════════════════════════════════════════════
 function fluxRenderV4Dashboard(){
   try{renderPredictiveGapFill();}catch(_){}
-  try{renderPhysicsQuickToolbox();}catch(_){}
-  try{renderSubjectAccuracyDashboard();}catch(_){}
-  try{renderSubjectHeatmapDashboard();}catch(_){}
 }
 window.fluxRenderV4Dashboard=fluxRenderV4Dashboard;
 
@@ -9047,7 +8963,7 @@ function logEffort(taskId,actualMins,el){
     save('flux_effort_log',_effortLog);
     save('tasks',tasks);
     showToast('Effort logged: '+actualMins+'m','success');
-    try{renderEffortReport();renderSubjectAccuracyDashboard&&renderSubjectAccuracyDashboard();}catch(_){}
+    try{renderEffortReport();}catch(_){}
   }
   if(el)el.remove();
 }
