@@ -31,12 +31,25 @@
   function fmtTime(d){
     return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   }
+  // Route reads/writes through the same namespace prefix the rest of the
+  // planner uses (see app.js fluxNamespacedKey). When the owner is in a
+  // teacher preview, lesson notes / counselor notes / sub coverage / staff
+  // tickets all live in that teacher's isolated bubble instead of being
+  // overlaid on the owner's account.
+  function _key(k){
+    try{
+      if(typeof window!=='undefined'&&typeof window.fluxNamespacedKey==='function'){
+        return window.fluxNamespacedKey(k);
+      }
+    }catch(_){}
+    return k;
+  }
   function ls(key,fallback){
-    try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback;}
+    try{const raw=localStorage.getItem(_key(key));return raw?JSON.parse(raw):fallback;}
     catch(_){return fallback;}
   }
   function lsSet(key,val){
-    try{localStorage.setItem(key,JSON.stringify(val));}catch(_){}
+    try{localStorage.setItem(_key(key),JSON.stringify(val));}catch(_){}
   }
   function toast(msg,kind){
     if(typeof window.showToast==='function')window.showToast(msg,kind||'info');

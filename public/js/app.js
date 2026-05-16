@@ -1,8 +1,78 @@
 /* ── FLUX PLANNER · app.js v2 ── */
 
 // ══ STORAGE — must be first, everything below depends on it ══
-const load=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}};
-const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('Storage full',e);}};
+//
+// IMPORTANT: load / save automatically apply the FluxImpersonate prefix
+// (defined later in this file). When the owner is "previewing as" a teacher,
+// every read & write transparently goes to a per-teacher localStorage bubble
+// (e.g.  imp:abenitez@bloomfield.org:flux_tasks ) instead of the owner's real
+// keys. The owner's real planner data never moves and never mixes with the
+// preview bubble. See FLUX_IMPERSONATION_GLOBAL_KEYS below for the small
+// denylist of keys that must stay shared across personas (migration markers,
+// owner-only audit, theme prefs, OAuth tokens, etc.).
+const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
+  // Impersonation control state itself — must be unprefixed or we'd recurse.
+  'flux_owner_impersonate',
+  // Migration / version markers
+  'flux_data_version','flux_splash_shown',
+  // Owner-only operations data — only ever touched while signed in as owner
+  'flux_dev_accounts','flux_platform_config','flux_platform_broadcast',
+  'flux_owner_audit','flux_feedback_inbox','flux_feedback_tombstones',
+  'flux_dev_mode',
+  // Pre-auth / one-shot signup state
+  'flux_pref_role','flux_pending_staff_role','flux_pending_staff_name',
+  'flux_pending_staff_subject',
+  // UI / theme prefs — kept shared so the dev experience doesn't reset
+  // every time you switch into a different teacher to test something.
+  'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
+  'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+  'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+  'flux_last_sync',
+]);
+const FLUX_IMPERSONATION_GLOBAL_PREFIXES=[
+  // External integrations — owner's own OAuth/connection state, not the
+  // impersonated teacher's. (When teachers sign in for real they get their
+  // own tokens.)
+  'flux_canvas_','flux_extension_',
+  'flux_ai_connections_','flux_ai_model_route_',
+  // Supabase auth tokens are stored under sb-... in localStorage by the SDK.
+  'sb-',
+];
+function fluxImpersonationPrefix(){
+  try{
+    const raw=localStorage.getItem('flux_owner_impersonate');
+    if(!raw)return '';
+    const v=JSON.parse(raw);
+    if(!v||typeof v!=='object'||!v.email)return '';
+    return 'imp:'+String(v.email).toLowerCase().trim()+':';
+  }catch(_){return '';}
+}
+function fluxNamespacedKey(k){
+  if(!k||typeof k!=='string')return k;
+  if(FLUX_IMPERSONATION_GLOBAL_KEYS.has(k))return k;
+  for(let i=0;i<FLUX_IMPERSONATION_GLOBAL_PREFIXES.length;i++){
+    if(k.indexOf(FLUX_IMPERSONATION_GLOBAL_PREFIXES[i])===0)return k;
+  }
+  if(k.indexOf('imp:')===0)return k; // already namespaced — don't double-prefix
+  const pre=fluxImpersonationPrefix();
+  return pre?pre+k:k;
+}
+const load=(k,def)=>{try{const v=localStorage.getItem(fluxNamespacedKey(k));return v?JSON.parse(v):def;}catch(e){return def;}};
+const save=(k,v)=>{try{localStorage.setItem(fluxNamespacedKey(k),JSON.stringify(v));}catch(e){console.warn('Storage full',e);}};
+window.fluxNamespacedKey=fluxNamespacedKey;
+window.fluxImpersonationPrefix=fluxImpersonationPrefix;
+
+// Defense in depth: impersonation is owner-only. If the most recent user on
+// this browser wasn't the owner, scrub any stale `flux_owner_impersonate`
+// key BEFORE the module-init `let tasks = load(...)` calls below run — so
+// they don't briefly populate from the wrong namespace. The post-sign-in
+// handler clears it too, but that runs later.
+try{
+  const lastEmail=String(localStorage.getItem('flux_last_user_email')||'').trim().toLowerCase();
+  if(lastEmail&&lastEmail!=='azfermohammed21@gmail.com'){
+    localStorage.removeItem('flux_owner_impersonate');
+  }
+}catch(_){}
 
 // ══ DATA VERSION — bump when schema needs pruning; never drop user task/note data ══
 const DATA_VERSION=6;
@@ -1318,8 +1388,20 @@ window.FluxRole=FluxRole;
 // ══════════════════════════════════════════════════════════════════
 // Owner-only feature. When active, overrides FluxRole.current /
 // FluxRole.profile / FluxRole.mode so the entire app (sidebar nav,
-// dashboards, school info, applyRoleUI) behaves as that user. Real
-// Supabase data isn't touched — this is a client-side facade for QA.
+// dashboards, school info, applyRoleUI) behaves as that user.
+//
+// **Data isolation** (see top of file for load/save patch):
+//   While impersonating with an email, every load/save call is transparently
+//   prefixed with  imp:<email>:  so the dev preview lives in its own
+//   localStorage bubble. The owner's REAL planner data (under unprefixed
+//   keys) is never touched and never mixes with any teacher's preview.
+//
+//   We also short-circuit syncToCloud / syncFromCloud / keepalive while
+//   impersonating, so preview data NEVER hits the owner's Supabase row.
+//
+//   Result: when teachers eventually sign in for real with their own
+//   Google accounts, they get a clean slate — none of the dev preview
+//   data ever leaves this browser.
 //
 // Storage: localStorage 'flux_owner_impersonate' = JSON
 //   { role:'teacher'|'counselor'|'staff'|'admin'|'student',
@@ -1343,6 +1425,15 @@ const FluxImpersonate={
   active(){
     try{if(typeof isOwner==='function'&&!isOwner())return null;}catch(_){}
     return this.read();
+  },
+
+  /** localStorage prefix for the active impersonation, or '' when off.
+   *  Mirrors fluxImpersonationPrefix() at the top of this file but goes
+   *  through the same isOwner() gate as active(). */
+  namespace(){
+    const a=this.active();
+    if(!a||!a.email)return '';
+    return 'imp:'+String(a.email).toLowerCase().trim()+':';
   },
 
   /** Snapshot the real role state once, then overwrite FluxRole with the
@@ -1380,6 +1471,32 @@ const FluxImpersonate={
     this._orig=null;
   },
 
+  /** Re-load all in-memory state arrays from the (now possibly different)
+   *  localStorage namespace. Called after set() / clear() so flipping into
+   *  a teacher preview shows that teacher's data, not the previous
+   *  persona's leftovers. Safe to call before the state vars exist. */
+  reloadState(){
+    try{
+      if(typeof tasks!=='undefined')tasks=load('tasks',[]);
+      if(typeof notes!=='undefined')notes=load('flux_notes',[]);
+      if(typeof habits!=='undefined')habits=load('flux_habits',[]);
+      if(typeof goals!=='undefined')goals=load('flux_goals',[]);
+      if(typeof colleges!=='undefined')colleges=load('flux_colleges',[]);
+      if(typeof moodHistory!=='undefined')moodHistory=load('flux_mood',[]);
+      if(typeof confidences!=='undefined')confidences=load('flux_conf',{});
+      if(typeof studyDNA!=='undefined')studyDNA=load('flux_dna',[]);
+      if(typeof subjectBudgets!=='undefined')subjectBudgets=load('flux_budgets',{});
+      if(typeof sessionLog!=='undefined')sessionLog=load('flux_session_log',[]);
+      if(typeof settings!=='undefined')settings=load('flux_settings',settings);
+      if(typeof schoolInfo!=='undefined')schoolInfo=load('flux_school',{locker:'',combo:'',counselor:'',studentID:''});
+      if(typeof classes!=='undefined')classes=load('flux_classes',[]);
+      if(typeof teacherNotes!=='undefined')teacherNotes=load('flux_teacher_notes',[]);
+      if(typeof extras!=='undefined')extras=load('flux_extras',[]);
+      if(typeof ecSchools!=='undefined')ecSchools=load('flux_ec_schools',[]);
+      if(typeof ecGoals!=='undefined')ecGoals=load('flux_ec_goals',[]);
+    }catch(e){console.warn('[FluxImpersonate] reloadState skipped',e);}
+  },
+
   /** Persist a new impersonation record + apply + refresh the app shell. */
   set(record){
     try{if(typeof isOwner==='function'&&!isOwner())return;}catch(_){return;}
@@ -1393,6 +1510,9 @@ const FluxImpersonate={
     };
     try{localStorage.setItem(this.STORE_KEY,JSON.stringify(r));}catch(_){}
     this.apply();
+    // Reload state from the NEW impersonation namespace so the preview
+    // shows the teacher's bubble instead of whatever was loaded before.
+    this.reloadState();
     this._refresh();
   },
 
@@ -1400,6 +1520,9 @@ const FluxImpersonate={
   clear(){
     try{localStorage.removeItem(this.STORE_KEY);}catch(_){}
     this.restore();
+    // Reload state from the OWNER's real (unprefixed) namespace so we
+    // snap back to their actual planner data after exiting preview.
+    this.reloadState();
     this._refresh();
   },
 
@@ -1412,6 +1535,15 @@ const FluxImpersonate={
     try{if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();}catch(_){}
     try{if(typeof renderImpersonationBanner==='function')renderImpersonationBanner();}catch(_){}
     try{if(typeof renderImpersonatePill==='function')renderImpersonatePill();}catch(_){}
+    // Re-render the visible data surfaces so the freshly reloaded state
+    // arrays are reflected immediately (tasks, calendar, notes, etc.).
+    try{if(typeof renderStats==='function')renderStats();}catch(_){}
+    try{if(typeof renderTasks==='function')renderTasks();}catch(_){}
+    try{if(typeof renderCalendar==='function')renderCalendar();}catch(_){}
+    try{if(typeof renderCountdown==='function')renderCountdown();}catch(_){}
+    try{if(typeof renderNotesList==='function')renderNotesList();}catch(_){}
+    try{if(typeof renderProfile==='function')renderProfile();}catch(_){}
+    try{if(typeof renderSchool==='function')renderSchool();}catch(_){}
     // Re-route to the role's home panel — but only when in Work mode. In
     // Personal mode (whether impersonated or not) educators are deliberately
     // dropped onto the student-style dashboard so the toggle isn't fighting
@@ -6479,6 +6611,10 @@ function getCloudPayload(){
 }
 async function syncToCloud(){
   if(!currentUser)return;
+  // Owner is in a teacher preview — never push that bubble's data into the
+  // owner's Supabase row. Preview lives only on this browser, in its own
+  // localStorage namespace, until the actual teacher signs in for real.
+  try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   const sb=getSB();if(!sb)return;
   setSyncStatus('syncing');
   try{
@@ -6546,6 +6682,11 @@ async function forceSyncNow(){
 }
 async function syncFromCloud(){
   if(!currentUser)return;
+  // Owner is previewing as a teacher — don't pull the owner's cloud data
+  // into the preview bubble (it'd visually look like a leak even though
+  // load/save would route the writes back to the bubble). The preview is
+  // intentionally a local-only sandbox.
+  try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   const sb=getSB();if(!sb)return;
   setSyncStatus('syncing');
   try{
@@ -6842,6 +6983,8 @@ function flushPendingSyncToCloud(){
  */
 function trySyncToCloudKeepalive(){
   if(!currentUser)return;
+  // Same guard as syncToCloud — never push impersonation-preview data.
+  try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   const sb=getSB();
   if(!sb)return;
   sb.auth.getSession().then(res=>{
@@ -6885,6 +7028,10 @@ function initSyncLifecycle(){
 }
 function syncKey(key,val){
   if(!currentUser)return;
+  // Same guard as syncToCloud — don't even queue debounced pushes while the
+  // owner is previewing as a teacher. (syncToCloud has its own guard too,
+  // this just avoids spamming timers that would no-op.)
+  try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   clearTimeout(syncDebounceTimers[key]);
   const delay=key==='tasks'?SYNC_DEBOUNCE_TASKS_MS:SYNC_DEBOUNCE_MS;
   syncDebounceTimers[key]=setTimeout(()=>{ void syncToCloud(); },delay);
@@ -8539,6 +8686,15 @@ async function handleSignedIn(user,session){
   // ────────────────────────────────────────────────────────────
 
   currentUser=user;
+  // If a non-owner account is signing in, wipe any leftover impersonation
+  // record from a previous owner session on this browser. Otherwise their
+  // load() calls would route into a stale "imp:..." namespace until the
+  // owner manually exits preview mode.
+  try{
+    if(user&&user.email!==OWNER_EMAIL){
+      localStorage.removeItem('flux_owner_impersonate');
+    }
+  }catch(_){}
   checkTesterMode();
   save('flux_was_guest',false);
   if(session?.provider_token){
@@ -12987,6 +13143,13 @@ window.showPostLoginRolePicker=showPostLoginRolePicker;
  *    3. On Continue we VALIDATE the signed-in user's email against the
  *       chosen entry. Mismatch → block with a clear error so impostors
  *       can't claim someone else's seat.
+ *    4. **Owner-only DEV preview override**: while the planner is still in
+ *       development and the real teachers haven't onboarded, the owner sees
+ *       an extra "Continue as preview" button that bypasses the email check
+ *       and routes through FluxImpersonate. Each teacher's preview lives in
+ *       its own localStorage bubble (load/save namespace) and Supabase sync
+ *       is disabled, so the owner's data never leaks into a teacher account
+ *       and vice versa. See FluxImpersonate at the top of this file.
  *
  *  This replaces the old freeform name + subject inputs. The directory is
  *  the authority on who is a real teacher/staff member. */
@@ -12995,6 +13158,7 @@ function showStaffDetailsForm(){
     if(document.getElementById('staffDetailsForm'))return resolve(null);
     const dir=window.FluxStaffDirectory;
     const userEmail=String(currentUser?.email||'').toLowerCase().trim();
+    const ownerHere=(typeof isOwner==='function'&&isOwner());
     const ov=document.createElement('div');
     ov.id='staffDetailsForm';
     ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
@@ -13015,6 +13179,15 @@ function showStaffDetailsForm(){
         </select>
         <div id="sdfPersonHint" style="font-size:.7rem;color:var(--muted2);margin-bottom:14px;min-height:1em"></div>
         <div id="sdfError" style="display:none;font-size:.78rem;color:var(--red);padding:8px 12px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
+        ${ownerHere?`
+        <div id="sdfDevBox" style="margin-bottom:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(124,92,255,.10),rgba(255,92,124,.10));border:1px dashed rgba(124,92,255,.55);border-radius:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:1rem">🧪</span>
+            <span style="font-size:.74rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#cbb6ff">Dev preview (owner only)</span>
+          </div>
+          <p style="font-size:.74rem;color:var(--muted2);margin:0 0 10px;line-height:1.5">Skip the email check and walk through the planner as the selected teacher while you build it out. Each teacher's preview lives in its own local sandbox — your owner data never leaks in, and nothing syncs to the cloud while preview is active.</p>
+          <button id="sdfDevPreview" type="button" style="width:100%;padding:11px;border-radius:11px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-weight:800;border:none;cursor:pointer;font-size:.86rem">Continue as preview →</button>
+        </div>`:''}
         <div style="display:flex;gap:10px">
           <button id="sdfBack" type="button" style="flex:0 0 auto;padding:12px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">← Back</button>
           <button id="sdfSubmit" type="button" style="flex:1;padding:12px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer;font-size:.92rem">Continue</button>
@@ -13060,6 +13233,13 @@ function showStaffDetailsForm(){
       const rec=dir.findByEmail(email);
       if(!rec){hintEl.textContent='';return;}
       const matches=rec.email===userEmail;
+      // For the owner: a mismatch isn't an error, it's just "you'd be in
+      // preview mode for this teacher" — the dev box below handles it.
+      if(!matches&&ownerHere){
+        hintEl.style.color='#cbb6ff';
+        hintEl.innerHTML=`🧪 Owner: pick "Continue as preview" below to walk through as <b>${esc(rec.name)}</b>.`;
+        return;
+      }
       hintEl.style.color=matches?'#7be09a':'var(--red)';
       hintEl.innerHTML=matches
         ?`✓ Matches your sign-in email`
@@ -13078,13 +13258,48 @@ function showStaffDetailsForm(){
       const rec=dir.findByEmail(email);
       if(!rec){setErr('That entry is no longer in the directory.');return;}
       if(rec.email!==userEmail){
-        setErr(`Email mismatch. To claim this account sign in with ${rec.email}, or contact your admin if this is wrong.`);
+        // Owners get a softer nudge that points them at the dev box below
+        // instead of the hard "go away, impostor" message.
+        if(ownerHere){
+          setErr('That entry is for a different account. Use "Continue as preview" below to walk through as that teacher in the dev sandbox.');
+        }else{
+          setErr(`Email mismatch. To claim this account sign in with ${rec.email}, or contact your admin if this is wrong.`);
+        }
         return;
       }
       // Snap the form's role to the directory's truth so admin/staff align.
       const finalRole=rec.role;
       ov.remove();
       resolve({role:finalRole,name:rec.name,subject:rec.subject||'',email:rec.email,verified:true});
+    });
+
+    // Owner-only "DEV preview" path. Activates FluxImpersonate so the entire
+    // app re-renders as the chosen teacher (with its own load/save namespace
+    // and Supabase sync disabled), then resolves the form with `null` so the
+    // calling onboarding flow treats it like a normal cancel — i.e. it
+    // upserts the owner's REAL DB role to 'student' (which is correct: the
+    // owner is the dev, not actually a teacher) and continues. The visible
+    // app then renders as the previewed teacher via the impersonation
+    // overlay, on top of the owner's auth session.
+    document.getElementById('sdfDevPreview')?.addEventListener('click',()=>{
+      if(!ownerHere)return;
+      if(!dir){setErr('Staff directory not loaded — refresh and try again.');return;}
+      const email=personSel?.value||'';
+      if(!email){setErr('Pick a teacher to preview as first.');return;}
+      const rec=dir.findByEmail(email);
+      if(!rec){setErr('That entry is no longer in the directory.');return;}
+      try{
+        FluxImpersonate.set({
+          role:rec.role,
+          name:rec.name,
+          subject:rec.subject||'',
+          email:rec.email,
+          mode:'work',
+        });
+      }catch(e){console.warn('[Flux] preview activation failed',e);}
+      try{if(typeof showToast==='function')showToast('Preview mode: '+rec.name,'info');}catch(_){}
+      ov.remove();
+      resolve(null);
     });
   });
 }
