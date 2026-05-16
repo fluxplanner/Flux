@@ -426,6 +426,7 @@
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
     overview:    {label:'Overview',         icon:'📊', group:'home'},
+    preview:     {label:'Switch to staff',  icon:'🧪', group:'home'},
     nuke:        {label:'Nuke Controls',    icon:'☢️', group:'home'},
     release:     {label:'Release & push',   icon:'🚀', group:'home'},
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
@@ -668,6 +669,94 @@
         <div style="display:flex;flex-direction:column;gap:8px">
           ${insights.map(i=>`<div style="display:flex;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px"><span>${i.icon}</span><div><div style="font-size:.78rem;font-weight:700">${esc(i.t)}</div><div style="font-size:.72rem;color:var(--muted2)">${esc(i.d)}</div></div></div>`).join('')}
         </div>`;
+
+      // ─────────────────────────────────────────────────────────────
+      // Switch to staff (preview / impersonation control surface)
+      // ─────────────────────────────────────────────────────────────
+      // Owner-only walkthrough cockpit: pick any teacher / counselor /
+      // staff / admin from the building directory and snap the entire
+      // app into "preview as them" mode. Each preview lives in its own
+      // localStorage namespace (imp:<email>:…) and Supabase sync is
+      // disabled while active, so nothing leaks between accounts. See
+      // FluxImpersonate at the top of public/js/app.js.
+      if(tab==='preview'){
+        const dir=window.FluxStaffDirectory;
+        if(!dir||!Array.isArray(dir.all)||!dir.all.length){
+          return`<div style="padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--muted2);font-size:.82rem;line-height:1.55">
+            Staff directory hasn't loaded yet. Refresh the page and reopen this tab. (Loaded from <code style="font-size:.7rem">public/js/flux-staff-directory.js</code>.)
+          </div>`;
+        }
+        const active=(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active())||null;
+        const list=dir.all.slice().sort((a,b)=>a.name.localeCompare(b.name));
+        const teachers=list.filter(d=>d.role==='teacher');
+        const counselors=list.filter(d=>d.role==='counselor');
+        const staffOnly=list.filter(d=>d.role==='staff'||d.role==='admin');
+        const ROLE_TINT={teacher:'#7c5cff',counselor:'#10b981',staff:'#3b82f6',admin:'#fbbf24'};
+        const ROLE_LABEL={teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'};
+        function row(d){
+          const isCurrent=!!(active&&active.email===d.email);
+          const tint=ROLE_TINT[d.role]||'#7c5cff';
+          const initial=esc((d.name||'?').charAt(0).toUpperCase());
+          const subj=d.subject?` · ${esc(d.subject)}`:'';
+          const action=isCurrent
+            ? `<span style="font-size:.66rem;font-weight:800;letter-spacing:.06em;color:#fbbf24;padding:6px 10px;border-radius:8px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35)">CURRENT</span>`
+            : `<button type="button" onclick="ownerPreviewSwitch('${esc(d.email)}')" style="padding:7px 12px;font-size:.74rem;font-weight:700;border-radius:9px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;border:none;cursor:pointer;flex-shrink:0">Switch in →</button>`;
+          return`<div data-preview-row data-search="${esc((d.name+' '+d.email+' '+(d.subject||'')+' '+ROLE_LABEL[d.role]).toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${isCurrent?'rgba(251,191,36,.06)':'var(--card2)'};border:1px solid ${isCurrent?'rgba(251,191,36,.32)':'var(--border)'};border-radius:11px;margin-bottom:8px">
+            <div style="width:30px;height:30px;border-radius:50%;background:${tint};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;flex-shrink:0">${initial}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name)}${subj}</div>
+              <div style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.email)} · ${esc(ROLE_LABEL[d.role]||d.role)}</div>
+            </div>
+            ${action}
+          </div>`;
+        }
+        function group(label,items){
+          if(!items.length)return'';
+          return`<div data-preview-group="${esc(label)}" style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:JetBrains Mono,monospace;font-weight:700">${esc(label)}</span>
+              <span style="font-size:.62rem;color:var(--muted);background:var(--card2);border:1px solid var(--border);padding:2px 8px;border-radius:999px">${items.length}</span>
+            </div>
+            ${items.map(row).join('')}
+          </div>`;
+        }
+        const banner=active
+          ? `<div style="margin-bottom:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(124,92,255,.16),rgba(255,92,124,.12));border:1px solid rgba(124,92,255,.4);border-radius:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="font-size:1.4rem">🧪</div>
+              <div style="flex:1;min-width:200px">
+                <div style="font-size:.86rem;font-weight:800;color:var(--text)">Currently previewing as ${esc(active.name||'(unnamed)')}</div>
+                <div style="font-size:.7rem;color:var(--muted2);font-family:JetBrains Mono,monospace;margin-top:2px">${esc(active.email||'no email')} · ${esc(ROLE_LABEL[active.role]||active.role)} · ${esc(active.mode||'work')} mode</div>
+                <div style="font-size:.66rem;color:var(--muted);margin-top:6px;line-height:1.5">All planner data on screen comes from the <code style="font-size:.62rem">imp:${esc((active.email||'').toLowerCase())}:</code> namespace. Cloud sync is paused until you exit.</div>
+              </div>
+              <button type="button" onclick="ownerPreviewExit()" style="flex-shrink:0;padding:9px 14px;font-size:.78rem;font-weight:800;border-radius:10px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.22);color:#fff;cursor:pointer">Exit preview</button>
+            </div>`
+          : `<div style="margin-bottom:14px;padding:14px 16px;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.22);border-radius:14px;display:flex;align-items:center;gap:14px">
+              <div style="font-size:1.4rem">👑</div>
+              <div style="flex:1">
+                <div style="font-size:.86rem;font-weight:800;color:var(--text)">Signed in as owner</div>
+                <div style="font-size:.7rem;color:var(--muted2);margin-top:2px;line-height:1.5">Pick any staff member below to walk through the planner as them. Each preview lives in an isolated localStorage bubble — no Supabase writes, no leaks between accounts.</div>
+              </div>
+            </div>`;
+        return`
+          ${banner}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <input type="search" id="osPreviewSearch" placeholder="Search by name, subject, email…" oninput="ownerPreviewFilter(this.value)" style="flex:1;min-width:220px;margin:0;padding:9px 12px;font-size:.82rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text)">
+            <select id="osPreviewRoleFilter" onchange="ownerPreviewFilter()" style="padding:9px 12px;font-size:.78rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text)">
+              <option value="all">All roles</option>
+              <option value="teacher">Teachers only</option>
+              <option value="counselor">Counselors only</option>
+              <option value="staff">Staff &amp; admin only</option>
+            </select>
+          </div>
+          <div id="osPreviewList">
+            ${group('Teachers',teachers)}
+            ${group('Counselors',counselors)}
+            ${group('Staff &amp; Admin',staffOnly)}
+          </div>
+          <div style="margin-top:18px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:12px;font-size:.7rem;color:var(--muted2);line-height:1.6">
+            <b style="color:var(--text)">How preview works.</b> Switching in overlays the chosen identity on top of your owner auth session and re-points every <code style="font-size:.65rem">load()</code> / <code style="font-size:.65rem">save()</code> call to <code style="font-size:.65rem">imp:&lt;email&gt;:</code>. The cloud sync (<code style="font-size:.65rem">syncToCloud</code>, <code style="font-size:.65rem">syncFromCloud</code>, keepalive) short-circuits while preview is active so the bubble never reaches anyone's Supabase row. Exit at any time from this tab, the floating "🧪 Test as…" pill, or the top banner.
+          </div>`;
+      }
 
       if(tab==='team')return`
         <div style="font-size:.72rem;color:var(--muted2);margin-bottom:12px;line-height:1.5">
@@ -1166,6 +1255,77 @@
     saveDevAccounts(devAccounts);
     ownerAuditAppend('dev_role_change',{email:acc.email,role});
     reopenOwnerSuite();
+  };
+
+  // ── Switch-to-staff (preview) tab handlers ───────────────────────
+  // Thin wrappers around FluxImpersonate so the inline onclick="..."s
+  // in the preview tab body have stable, owner-gated entry points.
+  window.ownerPreviewSwitch=function(email){
+    if(!isOwner())return;
+    const dir=window.FluxStaffDirectory;
+    const rec=dir&&dir.findByEmail&&dir.findByEmail(email);
+    if(!rec){if(typeof showToast==='function')showToast('That entry is no longer in the directory.','warn');return;}
+    if(!window.FluxImpersonate||typeof FluxImpersonate.set!=='function'){
+      if(typeof showToast==='function')showToast('Impersonation engine not loaded.','warn');
+      return;
+    }
+    try{
+      FluxImpersonate.set({
+        role:rec.role,
+        name:rec.name,
+        subject:rec.subject||'',
+        email:rec.email,
+        mode:'work',
+      });
+      ownerAuditAppend('preview_switch_in',{email:rec.email,role:rec.role});
+      if(typeof showToast==='function')showToast('Preview mode: '+rec.name,'info');
+    }catch(e){
+      console.warn('[OwnerSuite] preview switch failed',e);
+      if(typeof showToast==='function')showToast('Preview switch failed — see console.','warn');
+    }
+  };
+
+  window.ownerPreviewExit=function(){
+    if(!isOwner())return;
+    if(!window.FluxImpersonate||typeof FluxImpersonate.clear!=='function')return;
+    try{
+      FluxImpersonate.clear();
+      ownerAuditAppend('preview_exit',{});
+      if(typeof showToast==='function')showToast('Back to owner','success');
+    }catch(e){console.warn('[OwnerSuite] preview exit failed',e);}
+    // FluxImpersonate.clear()._refresh navigates to the dashboard. Since the
+    // user clearly wanted to stay in the owner suite (they clicked Exit from
+    // inside it), defer-reopen the suite on the preview tab so they see the
+    // freshly-cleared state and can keep switching.
+    try{
+      setTimeout(()=>{
+        if(typeof reopenOwnerSuite==='function')reopenOwnerSuite('preview');
+      },0);
+    }catch(_){}
+  };
+
+  // Filter the preview list in-place so the owner can scrub without a
+  // full re-render. Reads the search box + role select; hides any row
+  // (and the group containing it) that doesn't match. Defensive: works
+  // even if either control is missing.
+  window.ownerPreviewFilter=function(){
+    const q=String(document.getElementById('osPreviewSearch')?.value||'').toLowerCase().trim();
+    const roleSel=document.getElementById('osPreviewRoleFilter');
+    const wantRole=(roleSel&&roleSel.value)||'all';
+    const wantGroupLabel={teacher:'Teachers',counselor:'Counselors',staff:'Staff & Admin'}[wantRole]||null;
+    document.querySelectorAll('[data-preview-group]').forEach(grp=>{
+      const grpLabel=grp.getAttribute('data-preview-group')||'';
+      const grpMatchesRole=!wantGroupLabel||grpLabel===wantGroupLabel;
+      let visibleRows=0;
+      grp.querySelectorAll('[data-preview-row]').forEach(r=>{
+        const text=r.getAttribute('data-search')||'';
+        const matchesQuery=!q||text.indexOf(q)!==-1;
+        const show=grpMatchesRole&&matchesQuery;
+        r.style.display=show?'':'none';
+        if(show)visibleRows++;
+      });
+      grp.style.display=(grpMatchesRole&&visibleRows>0)?'':'none';
+    });
   };
 
   window.ownerQuickAddDev=function(){
