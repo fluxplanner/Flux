@@ -106,6 +106,7 @@
 <link rel="stylesheet" href="public/css/flux-toolbox.css">
 <link rel="stylesheet" href="public/css/flux-visual.css">
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
+<link rel="stylesheet" href="public/css/flux-staff-tabs.css">
 <script type="importmap">
 {
   "imports": {
@@ -695,6 +696,13 @@
         <button class="nav-item" onclick="nav('calendar',this)" data-tab="calendar"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         <button class="nav-item" onclick="nav('ai',this)" data-tab="ai"><span class="ni">✦</span><span class="nl">Flux AI</span></button>
       </div>
+      <div class="nav-group" data-role-group="staff" style="display:none">
+        <div class="nav-group-label">Workspace</div>
+        <button class="nav-item" onclick="nav('lessonHub',this)" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
+        <button class="nav-item" onclick="nav('counselorMeetings',this)" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
+        <button class="nav-item" onclick="nav('adminOps',this)" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
+        <button class="nav-item" onclick="nav('staffWorkboard',this)" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
+      </div>
       <div class="nav-group">
         <div class="nav-group-label">School</div>
         <button class="nav-item" onclick="nav('school',this)" data-tab="school"><span class="ni">🏫</span><span class="nl">School Info</span></button>
@@ -762,6 +770,13 @@
         <button class="nav-item" onclick="navMob('dashboard')"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>
         <button class="nav-item" onclick="navMob('calendar')"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         <button class="nav-item" onclick="navMob('ai')"><span class="ni">✦</span><span class="nl">Flux AI</span></button>
+      </div>
+      <div class="nav-group" data-role-group="staff" style="display:none">
+        <div class="nav-group-label" style="padding:8px 16px 4px">Workspace</div>
+        <button class="nav-item" onclick="navMob('lessonHub')" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
+        <button class="nav-item" onclick="navMob('counselorMeetings')" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
+        <button class="nav-item" onclick="navMob('adminOps')" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
+        <button class="nav-item" onclick="navMob('staffWorkboard')" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">School</div>
@@ -1437,6 +1452,38 @@
         <p class="flux-page-sub">Today's appointments, upcoming sessions, and messages.</p>
       </header>
       <div id="counselorDashboardBody"></div>
+    </div>
+
+    <!-- ─── TEACHER · LESSON HUB (visible only for teacher accounts in Work mode) ─── -->
+    <div id="lessonHub" class="panel flux-page flux-edu-panel" data-edu-role="teacher">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Today's classes bell-by-bell. Lesson notes, materials, and a sub-plan template.</p>
+      </header>
+      <div id="lessonHubBody"></div>
+    </div>
+
+    <!-- ─── COUNSELOR · MEETINGS (Google Calendar integrated) ─── -->
+    <div id="counselorMeetings" class="panel flux-page flux-edu-panel" data-edu-role="counselor">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Your day on Google Calendar — meetings, 1:1s, parent calls, and IEPs.</p>
+      </header>
+      <div id="counselorMeetingsBody"></div>
+    </div>
+
+    <!-- ─── ADMIN · OPERATIONS (school-wide command center) ─── -->
+    <div id="adminOps" class="panel flux-page flux-edu-panel" data-edu-role="admin">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">School command center — staff roster, sub coverage, duties, and faculty announcements.</p>
+      </header>
+      <div id="adminOpsBody"></div>
+    </div>
+
+    <!-- ─── STAFF · WORKBOARD (department tools & request inbox) ─── -->
+    <div id="staffWorkboard" class="panel flux-page flux-edu-panel" data-edu-role="staff">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Your daily workboard — department tools, request queue, and shared tools.</p>
+      </header>
+      <div id="staffWorkboardBody"></div>
     </div>
 
     <div id="profile" class="panel flux-page">
@@ -2391,6 +2438,7 @@
   </div>
 </div>
 <script defer src="public/js/flux-staff-directory.js"></script>
+<script defer src="public/js/flux-staff-tabs.js"></script>
 <script defer src="public/js/flux-canvas-panel.js"></script>
 <script defer src="public/js/flux-release-gate.js"></script>
 <script defer src="public/js/flux-personalization.js"></script>

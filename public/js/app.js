@@ -1216,7 +1216,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1293,6 +1293,21 @@ const FluxRole={
       const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
       if(u)save('flux_staff_mode_'+u.id,mode);
     }catch(_){}
+    // If the owner is impersonating, also persist the new mode INTO the
+    // impersonation record so apply()/_refresh() doesn't snap us back to
+    // 'work' on the next render and clobber the toggle.
+    try{
+      const imp=window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();
+      if(imp){
+        const next={...imp,mode};
+        try{localStorage.setItem(FluxImpersonate.STORE_KEY,JSON.stringify(next));}catch(_){}
+      }
+    }catch(_){}
+    // Re-render the visible identity (sidebar user card, topbar avatar,
+    // dashboard greeting). Without this, switching modes re-runs render
+    // paths that surface the real owner's name/email even while we're
+    // technically still impersonating someone else.
+    try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
   },
 };
@@ -1389,16 +1404,27 @@ const FluxImpersonate={
   },
 
   _refresh(){
+    // Identity surfaces (user card, dashboard greeting, accountEmail) must
+    // be re-rendered first so applyRoleUI / nav re-renders below pick up the
+    // impersonated name and email instead of the real owner's.
+    try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
     try{if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();}catch(_){}
     try{if(typeof renderImpersonationBanner==='function')renderImpersonationBanner();}catch(_){}
     try{if(typeof renderImpersonatePill==='function')renderImpersonatePill();}catch(_){}
-    // Re-route to the role's home panel.
+    // Re-route to the role's home panel — but only when in Work mode. In
+    // Personal mode (whether impersonated or not) educators are deliberately
+    // dropped onto the student-style dashboard so the toggle isn't fighting
+    // us by force-jumping back to the role-specific home.
     try{
       if(typeof nav==='function'){
-        if(FluxRole.isTeacher()||FluxRole.isStaff())nav('teacherDashboard');
-        else if(FluxRole.isCounselor())nav('counselorDashboard');
-        else nav('dashboard');
+        if(FluxRole.isWorkMode&&FluxRole.isWorkMode()){
+          if(FluxRole.isTeacher()||FluxRole.isStaff())nav('teacherDashboard');
+          else if(FluxRole.isCounselor())nav('counselorDashboard');
+          else nav('dashboard');
+        }else{
+          nav('dashboard');
+        }
       }
     }catch(_){}
   },
@@ -1584,9 +1610,27 @@ function applyRoleUI(){
     });
   };
 
+  // Per-role workspace tab visibility. Each tab carries data-role-tab="teacher"
+  // | "counselor" | "admin" | "staff"; we only show the one that matches the
+  // signed-in educator's role while in Work mode. The wrapping nav-group
+  // (data-role-group="staff") is shown whenever ANY role tab is visible so the
+  // "Workspace" label doesn't sit alone for students or in Personal mode.
+  const setRoleTabs=(visibleRole)=>{
+    document.querySelectorAll('[data-role-tab]').forEach(el=>{
+      const want=el.dataset.roleTab;
+      const show=visibleRole&&(want===visibleRole||(visibleRole==='admin'&&want==='admin'));
+      if(show){el.style.display='';el.style.visibility='';}
+      else{el.style.display='none';el.style.visibility='hidden';}
+    });
+    document.querySelectorAll('[data-role-group="staff"]').forEach(el=>{
+      el.style.display=visibleRole?'':'none';
+    });
+  };
+
   if(role==='student'||!FluxRole.isEducator()){
     setMany(studentOnlySelectors,true);
     setMany(educatorWorkSelectors,false);
+    setRoleTabs(null);
     document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
     return;
   }
@@ -1597,15 +1641,16 @@ function applyRoleUI(){
   if(isWork){
     setMany(studentOnlySelectors,false);
     setMany(educatorWorkSelectors,true);
-    // The standard "Dashboard" sidebar button now routes to the role-specific
-    // dashboard (see nav() redirect), so we no longer need separate
-    // [data-teacher-nav] / [data-counselor-nav] entries — they were removed
-    // from the HTML. Future educator-only nav items (e.g. Classes, Students)
-    // can re-introduce these data attrs and they'll be controlled here.
+    // Map FluxRole -> the data-role-tab attribute. Admins still use the
+    // teacher dashboard for now but get their own Operations tab.
+    let roleTab=role;
+    if(role==='admin')roleTab='admin';
+    setRoleTabs(roleTab);
   }else{
     // PERSONAL mode for educators: act like a student
     setMany(studentOnlySelectors,true);
     setMany(educatorWorkSelectors,false);
+    setRoleTabs(null);
     document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
   }
 }
@@ -2062,7 +2107,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxIntel){FluxIntel.refreshStreakBadge();}if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3619,7 +3664,7 @@ function renderSchoolTeacher(){
           <div class="info-tile"><div class="info-tile-label">School Email</div><div class="info-tile-val" style="font-size:.85rem;font-family:'JetBrains Mono',monospace">${esc(email||'—')}</div></div>
           <div class="info-tile"><div class="info-tile-label">Role</div><div class="info-tile-val">${esc(roleLabel)}</div></div>
           <div class="info-tile"><div class="info-tile-label">Subject / Area</div><div class="info-tile-val" style="font-size:.85rem">${esc(subject||'—')}</div></div>
-          <div class="info-tile"><div class="info-tile-label">Building</div><div class="info-tile-val" style="font-size:.85rem">Bloomfield Independence East</div></div>
+          <div class="info-tile"><div class="info-tile-label">Building</div><div class="info-tile-val" style="font-size:.85rem">International Academy East</div></div>
         </div>
         ${verified?'':'<div style="margin-top:12px;padding:10px 14px;background:rgba(255,180,93,.08);border:1px solid rgba(255,180,93,.22);border-radius:10px;font-size:.78rem;color:var(--muted2)">Your sign-in email isn\'t in the staff directory. Contact your admin to be added.</div>'}
       </div>
@@ -8584,6 +8629,10 @@ async function handleSignedIn(user,session){
       // Owner impersonation: if a saved override exists, apply it before
       // applyRoleUI so the entire shell renders as the impersonated role.
       try{if(window.FluxImpersonate&&FluxImpersonate.active())FluxImpersonate.apply();}catch(_){}
+      // After impersonation is applied, re-render the user card so the
+      // sidebar / topbar identity reflects the impersonated person instead
+      // of the real signed-in owner.
+      try{_refreshUserUI();}catch(_){}
       applyRoleUI();
       updateModeSwitchUI();
       try{renderImpersonationBanner();}catch(_){}
@@ -8622,20 +8671,36 @@ async function handleSignedIn(user,session){
 }
 
 function _updateUserUI(user,name){
-  const firstName=(name||user.email?.split('@')[0]||'User').split(' ')[0];
+  // ── Impersonation override ──────────────────────────────────────
+  // When the owner is impersonating a staff member, every visible identity
+  // (sidebar user card, topbar avatar, dashboard greeting via flux_user_name,
+  // accountEmail) reads as the impersonated person, not the signed-in owner.
+  // This keeps Work AND Personal mode "stuck" on the impersonated identity
+  // so toggling Mode never bounces you back to your real account.
+  let displayEmail=user.email||'';
+  let avatarUrl=user.user_metadata?.avatar_url||user.user_metadata?.picture||'';
+  try{
+    const imp=window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();
+    if(imp){
+      name=imp.name||name;
+      displayEmail=imp.email||displayEmail;
+      avatarUrl=''; // force initial-letter avatar so we don't show the owner's Google photo
+    }
+  }catch(_){}
+
+  const firstName=(name||displayEmail.split('@')[0]||'User').split(' ')[0];
   const fullName=name||firstName;
   localStorage.setItem('flux_user_name',firstName);
-  const avatarUrl=user.user_metadata?.avatar_url||user.user_metadata?.picture||'';
   const avatarHTML=avatarUrl
     ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
   // Update every user display element
   ['sidebarAv','mobAv'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=avatarHTML;});
   ['sidebarName','mobName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fullName;});
-  ['sidebarEmail','mobEmail'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=user.email||'';});
+  ['sidebarEmail','mobEmail'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=displayEmail;});
   const asd=document.getElementById('accountSignedOut');if(asd)asd.style.display='none';
   const asi=document.getElementById('accountSignedIn');if(asi)asi.style.display='block';
-  const emailEl=document.getElementById('accountEmail');if(emailEl)emailEl.textContent=user.email||'';
+  const emailEl=document.getElementById('accountEmail');if(emailEl)emailEl.textContent=displayEmail;
   const topUser=document.getElementById('topbarUser');if(topUser)topUser.textContent=firstName;
   // Mobile topbar avatar chip (rebuilt mobile UI)
   const topMobAv=document.getElementById('topbarMobAv');
@@ -8651,6 +8716,17 @@ function _updateUserUI(user,name){
     ['sidebarName','mobName'].forEach(id=>{const el=document.getElementById(id);if(el&&el.textContent!==fullName)el.textContent=fullName;});
   },500);
 }
+
+// Re-render the user card with the latest identity (real or impersonated).
+// Called by FluxImpersonate._refresh() and by FluxRole.setMode() so toggling
+// Work/Personal never reverts the visible identity to the signed-in owner.
+function _refreshUserUI(){
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  if(!u)return;
+  const name=u.user_metadata?.full_name||u.email?.split('@')[0]||'';
+  _updateUserUI(u,name);
+}
+window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
   FLUX_FLAGS.TESTER_MODE = false;
@@ -12832,6 +12908,10 @@ try{
 try{
   PANEL_TITLES.teacherDashboard='Teacher Dashboard';
   PANEL_TITLES.counselorDashboard='Counselor Dashboard';
+  PANEL_TITLES.lessonHub='Lesson Hub';
+  PANEL_TITLES.counselorMeetings='Meetings';
+  PANEL_TITLES.adminOps='Operations';
+  PANEL_TITLES.staffWorkboard='Workboard';
 }catch(_){}
 
 // Cached role + counselor record once we know who the user is.

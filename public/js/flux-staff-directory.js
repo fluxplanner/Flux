@@ -1,4 +1,4 @@
-/* Flux staff directory — Bloomfield Independence East
+/* Flux staff directory — International Academy East
  *
  * Source of truth for "who is a real teacher / counselor / staff member".
  * Used by the staff onboarding flow to:
