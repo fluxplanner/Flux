@@ -789,6 +789,8 @@
 
   <!-- ── MAIN CONTENT ── -->
   <div class="main-content" id="flux-main" role="main">
+    <!-- Sticky chrome: topbar + educator mode bar move as one unit (fixes offset when test banner / release strip push sticky top) -->
+    <div class="flux-main-chrome" id="fluxMainChrome">
     <!-- Topbar -->
     <div class="topbar">
       <!-- Desktop/tablet content (hidden on mobile) -->
@@ -879,6 +881,7 @@
         <span class="mode-desc" id="modeDesc">Teacher tools</span>
       </div>
     </div>
+    </div><!-- /.flux-main-chrome -->
 
     <!-- Notices sub-bar — sits below topbar, never overlaps controls -->
     <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
