@@ -1405,25 +1405,31 @@ const FluxImpersonate={
 };
 window.FluxImpersonate=FluxImpersonate;
 
-/** Sticky banner across the top of the app while the owner is impersonating. */
+/** Top banner while the owner is impersonating. Uses position:fixed so it
+ *  doesn't stretch as a flex child of #app (which is display:flex row).
+ *  body.flux-has-impersonate-banner shifts #app down so the topbar isn't
+ *  hidden under it. */
 function renderImpersonationBanner(){
   let bar=document.getElementById('fluxImpersonateBanner');
   const a=FluxImpersonate.active();
-  if(!a){if(bar)bar.remove();return;}
+  if(!a){
+    if(bar)bar.remove();
+    document.body.classList.remove('flux-has-impersonate-banner');
+    return;
+  }
   if(!bar){
     bar=document.createElement('div');
     bar.id='fluxImpersonateBanner';
-    bar.style.cssText='position:sticky;top:0;z-index:6500;display:flex;align-items:center;gap:12px;padding:8px 16px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-size:.78rem;font-weight:700;font-family:var(--font-ui,inherit);box-shadow:0 4px 18px rgba(0,0,0,.35)';
-    const app=document.getElementById('app')||document.body;
-    app.insertBefore(bar,app.firstChild);
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:6500;display:flex;align-items:center;gap:12px;padding:7px 14px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-size:.76rem;font-weight:700;font-family:var(--font-ui,inherit);box-shadow:0 4px 18px rgba(0,0,0,.35);min-height:34px;box-sizing:border-box';
+    document.body.appendChild(bar);
   }
+  document.body.classList.add('flux-has-impersonate-banner');
   const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin',student:'Student'})[a.role]||a.role;
   bar.innerHTML=`
-    <span style="font-size:.95rem">🧪</span>
-    <span>Testing as <b>${esc(a.name||'(unnamed)')}</b> — ${esc(roleLabel)}${a.subject?' · '+esc(a.subject):''}</span>
-    <span style="opacity:.8;font-size:.7rem;letter-spacing:.04em">OWNER IMPERSONATION</span>
-    <span style="flex:1"></span>
-    <button type="button" id="fluxImpersonateExit" style="padding:5px 12px;border-radius:8px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:.72rem;cursor:pointer">Exit test mode</button>`;
+    <span style="font-size:.95rem;flex:0 0 auto">🧪</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Testing as <b>${esc(a.name||'(unnamed)')}</b> — ${esc(roleLabel)}${a.subject?' · '+esc(a.subject):''}</span>
+    <span style="opacity:.8;font-size:.66rem;letter-spacing:.04em;flex:0 0 auto">OWNER</span>
+    <button type="button" id="fluxImpersonateExit" style="flex:0 0 auto;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:.7rem;cursor:pointer">Exit</button>`;
   document.getElementById('fluxImpersonateExit')?.addEventListener('click',()=>FluxImpersonate.clear());
 }
 window.renderImpersonationBanner=renderImpersonationBanner;

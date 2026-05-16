@@ -2464,6 +2464,14 @@ body.flux-has-release-banner #app{padding-top:var(--flux-release-banner-h,34px)}
   body.flux-has-release-banner #app{padding-top:0!important}
 }
 
+/* ── Owner impersonation banner: same shift trick as the release banner ── */
+body.flux-has-impersonate-banner #app{padding-top:34px}
+body.flux-has-impersonate-banner .topbar{top:34px!important}
+body.flux-has-impersonate-banner .sidebar{top:34px!important;height:calc(100vh - 34px)!important}
+body.flux-has-impersonate-banner.flux-has-release-banner #app{padding-top:calc(34px + var(--flux-release-banner-h,34px))}
+body.flux-has-impersonate-banner.flux-has-release-banner .topbar{top:calc(34px + var(--flux-release-banner-h,34px))!important}
+body.flux-has-impersonate-banner.flux-has-release-banner .sidebar{top:calc(34px + var(--flux-release-banner-h,34px))!important;height:calc(100vh - 34px - var(--flux-release-banner-h,34px))!important}
+
 /* ── 6. TASK CARDS ── */
 .task-item{
   padding:14px 18px!important;gap:14px!important;
