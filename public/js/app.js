@@ -1298,6 +1298,233 @@ const FluxRole={
 };
 window.FluxRole=FluxRole;
 
+// ══════════════════════════════════════════════════════════════════
+// OWNER IMPERSONATION — test the planner as any role/staff member
+// ══════════════════════════════════════════════════════════════════
+// Owner-only feature. When active, overrides FluxRole.current /
+// FluxRole.profile / FluxRole.mode so the entire app (sidebar nav,
+// dashboards, school info, applyRoleUI) behaves as that user. Real
+// Supabase data isn't touched — this is a client-side facade for QA.
+//
+// Storage: localStorage 'flux_owner_impersonate' = JSON
+//   { role:'teacher'|'counselor'|'staff'|'admin'|'student',
+//     name, subject, email, mode:'work'|'personal' }
+// or absent when off.
+const FluxImpersonate={
+  STORE_KEY:'flux_owner_impersonate',
+  _orig:null,
+
+  read(){
+    try{
+      const raw=localStorage.getItem(this.STORE_KEY);
+      if(!raw)return null;
+      const v=JSON.parse(raw);
+      if(!v||typeof v!=='object'||!v.role)return null;
+      return v;
+    }catch(_){return null;}
+  },
+
+  /** Active impersonation record (only meaningful for the owner). */
+  active(){
+    try{if(typeof isOwner==='function'&&!isOwner())return null;}catch(_){}
+    return this.read();
+  },
+
+  /** Snapshot the real role state once, then overwrite FluxRole with the
+   *  impersonated values so every existing getter (isTeacher, isWorkMode,
+   *  applyRoleUI) sees the new identity automatically. */
+  apply(){
+    const a=this.active();
+    if(!a)return false;
+    if(!this._orig){
+      this._orig={
+        current:FluxRole.current,
+        profile:FluxRole.profile,
+        mode:FluxRole.mode,
+      };
+    }
+    FluxRole.current=a.role;
+    FluxRole.profile={
+      role:a.role,
+      display_name:a.name||null,
+      subject:a.subject||null,
+      _impersonated:true,
+    };
+    FluxRole.mode=a.mode==='personal'?'personal':'work';
+    window._userRole=FluxRole.current;
+    return true;
+  },
+
+  /** Restore the snapshotted real role and forget the impersonation. */
+  restore(){
+    if(!this._orig)return;
+    FluxRole.current=this._orig.current;
+    FluxRole.profile=this._orig.profile;
+    FluxRole.mode=this._orig.mode||'work';
+    window._userRole=FluxRole.current;
+    this._orig=null;
+  },
+
+  /** Persist a new impersonation record + apply + refresh the app shell. */
+  set(record){
+    try{if(typeof isOwner==='function'&&!isOwner())return;}catch(_){return;}
+    if(!record||!record.role){this.clear();return;}
+    const r={
+      role:record.role,
+      name:record.name||'',
+      subject:record.subject||'',
+      email:record.email||'',
+      mode:record.mode==='personal'?'personal':'work',
+    };
+    try{localStorage.setItem(this.STORE_KEY,JSON.stringify(r));}catch(_){}
+    this.apply();
+    this._refresh();
+  },
+
+  /** Wipe the override, restore the real role, refresh the shell. */
+  clear(){
+    try{localStorage.removeItem(this.STORE_KEY);}catch(_){}
+    this.restore();
+    this._refresh();
+  },
+
+  _refresh(){
+    try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
+    try{if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();}catch(_){}
+    try{if(typeof renderImpersonationBanner==='function')renderImpersonationBanner();}catch(_){}
+    try{if(typeof renderImpersonatePill==='function')renderImpersonatePill();}catch(_){}
+    // Re-route to the role's home panel.
+    try{
+      if(typeof nav==='function'){
+        if(FluxRole.isTeacher()||FluxRole.isStaff())nav('teacherDashboard');
+        else if(FluxRole.isCounselor())nav('counselorDashboard');
+        else nav('dashboard');
+      }
+    }catch(_){}
+  },
+};
+window.FluxImpersonate=FluxImpersonate;
+
+/** Sticky banner across the top of the app while the owner is impersonating. */
+function renderImpersonationBanner(){
+  let bar=document.getElementById('fluxImpersonateBanner');
+  const a=FluxImpersonate.active();
+  if(!a){if(bar)bar.remove();return;}
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='fluxImpersonateBanner';
+    bar.style.cssText='position:sticky;top:0;z-index:6500;display:flex;align-items:center;gap:12px;padding:8px 16px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-size:.78rem;font-weight:700;font-family:var(--font-ui,inherit);box-shadow:0 4px 18px rgba(0,0,0,.35)';
+    const app=document.getElementById('app')||document.body;
+    app.insertBefore(bar,app.firstChild);
+  }
+  const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin',student:'Student'})[a.role]||a.role;
+  bar.innerHTML=`
+    <span style="font-size:.95rem">🧪</span>
+    <span>Testing as <b>${esc(a.name||'(unnamed)')}</b> — ${esc(roleLabel)}${a.subject?' · '+esc(a.subject):''}</span>
+    <span style="opacity:.8;font-size:.7rem;letter-spacing:.04em">OWNER IMPERSONATION</span>
+    <span style="flex:1"></span>
+    <button type="button" id="fluxImpersonateExit" style="padding:5px 12px;border-radius:8px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:.72rem;cursor:pointer">Exit test mode</button>`;
+  document.getElementById('fluxImpersonateExit')?.addEventListener('click',()=>FluxImpersonate.clear());
+}
+window.renderImpersonationBanner=renderImpersonationBanner;
+
+/** Floating "Test as…" pill at the bottom-right, owner only. */
+function renderImpersonatePill(){
+  if(typeof isOwner==='function'&&!isOwner()){
+    document.getElementById('fluxImpersonatePill')?.remove();
+    return;
+  }
+  let pill=document.getElementById('fluxImpersonatePill');
+  if(!pill){
+    pill=document.createElement('button');
+    pill.id='fluxImpersonatePill';
+    pill.type='button';
+    pill.style.cssText='position:fixed;right:18px;bottom:88px;z-index:6400;padding:9px 14px;border-radius:999px;background:rgba(7,8,15,.86);border:1px solid rgba(124,92,255,.5);color:#cbb6ff;font-weight:800;font-size:.74rem;font-family:var(--font-ui,inherit);letter-spacing:.04em;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.45);display:flex;align-items:center;gap:7px';
+    pill.addEventListener('click',openImpersonatePicker);
+    document.body.appendChild(pill);
+  }
+  const a=FluxImpersonate.active();
+  pill.innerHTML=a?`🧪 Testing: ${esc((a.name||a.role).slice(0,18))}`:'🧪 Test as…';
+  pill.style.borderColor=a?'rgba(255,92,124,.55)':'rgba(124,92,255,.5)';
+  pill.style.color=a?'#ffb6c5':'#cbb6ff';
+}
+window.renderImpersonatePill=renderImpersonatePill;
+
+/** Modal picker: choose Off / Student / any staff directory entry. */
+function openImpersonatePicker(){
+  if(typeof isOwner==='function'&&!isOwner())return;
+  document.getElementById('fluxImpersonatePicker')?.remove();
+  const dir=window.FluxStaffDirectory;
+  const ov=document.createElement('div');
+  ov.id='fluxImpersonatePicker';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+  ov.innerHTML=`
+    <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:1.4rem">🧪</span>
+        <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <button type="button" data-imp="off" style="padding:11px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Off (real owner)</button>
+        <button type="button" data-imp="student" style="padding:11px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-weight:700;cursor:pointer">Student (generic)</button>
+      </div>
+      <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Pick a real staff member</label>
+      <select id="impDirSelect" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:10px">
+        <option value="">— choose —</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="work" checked> Work mode</label>
+        <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:.78rem;cursor:pointer"><input type="radio" name="impMode" value="personal"> Personal mode</label>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="button" id="impCancel" style="flex:0 0 auto;padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">Cancel</button>
+        <button type="button" id="impGo" style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(90deg,#7c5cff,#ff5c7c);color:#fff;font-weight:800;border:none;cursor:pointer">Switch into selected staff</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  const sel=document.getElementById('impDirSelect');
+  if(sel&&dir){
+    const list=dir.all.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    const ROLE_LABEL={teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'};
+    sel.innerHTML='<option value="">— choose —</option>'+list.map(d=>{
+      const roleTxt=ROLE_LABEL[d.role]||d.role;
+      const subj=d.subject?' · '+d.subject:'';
+      return `<option value="${esc(d.email)}">${esc(d.name)} — ${esc(roleTxt)}${esc(subj)}</option>`;
+    }).join('');
+    const cur=FluxImpersonate.active();
+    if(cur&&cur.email)sel.value=cur.email;
+  }
+
+  const close=()=>ov.remove();
+  ov.querySelectorAll('[data-imp]').forEach(b=>b.addEventListener('click',()=>{
+    const v=b.dataset.imp;
+    if(v==='off'){FluxImpersonate.clear();close();return;}
+    if(v==='student'){
+      FluxImpersonate.set({role:'student',name:'Test Student',subject:'',email:'',mode:'personal'});
+      close();
+    }
+  }));
+  document.getElementById('impCancel')?.addEventListener('click',close);
+  document.getElementById('impGo')?.addEventListener('click',()=>{
+    const email=sel?.value||'';
+    if(!email||!dir){return;}
+    const rec=dir.findByEmail(email);
+    if(!rec)return;
+    const mode=document.querySelector('input[name="impMode"]:checked')?.value||'work';
+    FluxImpersonate.set({
+      role:rec.role,
+      name:rec.name,
+      subject:rec.subject||'',
+      email:rec.email,
+      mode,
+    });
+    close();
+  });
+}
+window.openImpersonatePicker=openImpersonatePicker;
+
 // ══ MASTER UI APPLICATION FUNCTION ══
 // Single source of truth for "what is visible". Call after FluxRole.load() and after
 // every mode switch. Never manually show/hide individual nav items elsewhere.
@@ -3350,13 +3577,18 @@ window.saveTeacherSchoolInfo=saveTeacherSchoolInfo;
 function renderSchoolTeacher(){
   const panel=document.getElementById('school');
   if(!panel)return;
-  const dirRec=window.FluxStaffDirectory?.findByEmail(currentUser?.email||'')||null;
+  // When the owner is impersonating, use the impersonated email/name so the
+  // verified badge + identity card reflect the role under test rather than
+  // the real owner account.
+  const imp=window.FluxImpersonate?.active?.()||null;
+  const lookupEmail=imp?.email||currentUser?.email||'';
+  const dirRec=window.FluxStaffDirectory?.findByEmail(lookupEmail)||null;
   const profile=FluxRole?.profile||{};
   const name=profile.display_name||dirRec?.name||(currentUser?.user_metadata?.full_name)||'Educator';
   const role=profile.role||dirRec?.role||'staff';
   const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'})[role]||'Staff';
   const subject=profile.subject||dirRec?.subject||'';
-  const email=currentUser?.email||dirRec?.email||'';
+  const email=lookupEmail||dirRec?.email||'';
   const info=loadTeacherSchoolInfo();
   const verified=!!(dirRec&&dirRec.email===String(email).toLowerCase());
   const verifiedBadge=verified
@@ -8322,6 +8554,7 @@ async function handleSignedIn(user,session){
       // first so the role-specific onboarding overlay sits on top of it.
       showApp();
       _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
+      try{renderImpersonatePill();}catch(_){}
       try{startOnboarding(resolvedRole);}catch(e){console.warn('[Flux] startOnboarding',e);}
     }else{
       const sp=document.getElementById('splash');
@@ -8342,8 +8575,13 @@ async function handleSignedIn(user,session){
 
     // Apply role-specific UI and home panel
     try{
+      // Owner impersonation: if a saved override exists, apply it before
+      // applyRoleUI so the entire shell renders as the impersonated role.
+      try{if(window.FluxImpersonate&&FluxImpersonate.active())FluxImpersonate.apply();}catch(_){}
       applyRoleUI();
       updateModeSwitchUI();
+      try{renderImpersonationBanner();}catch(_){}
+      try{renderImpersonatePill();}catch(_){}
       if(FluxRole.isWorkMode()&&(FluxRole.isTeacher()||FluxRole.isStaff())){
         nav('teacherDashboard');
         try{renderTeacherDashboard();}catch(_){}
