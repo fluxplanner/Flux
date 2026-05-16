@@ -109,7 +109,6 @@
   window.fluxAfterRenderTasks=function(){
     attachTaskRowUX();
     updateStickyFocus();
-    if(window.FluxIntel&&FluxIntel.refreshStreakBadge)FluxIntel.refreshStreakBadge();
   };
 
   window.fluxAfterRenderCalendar=function(){

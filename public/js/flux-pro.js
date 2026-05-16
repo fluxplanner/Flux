@@ -821,9 +821,6 @@ function renderDailyProgressRing(){
   const C = 2 * Math.PI * r;
   const offset = C - (C * pct/100);
 
-  // Streak (simple: number of consecutive days with at least 1 done task)
-  const streak = computeStreak();
-
   let host = document.getElementById('fluxDailyRingHost');
   if(!host){
     host = document.createElement('div');
@@ -856,14 +853,6 @@ function renderDailyProgressRing(){
         <div style="font-size:.7rem;color:var(--muted2)">${pct === 100 ? "Perfect day so far. Keep it up." : (total - done) + ' to go'}</div>
       </div>
     </div>
-    <div class="card flux-streak-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;min-width:160px;flex:0 0 auto">
-      <div style="font-size:1.8rem;line-height:1">🔥</div>
-      <div style="min-width:0">
-        <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace">STREAK</div>
-        <div style="font-size:1.05rem;font-weight:800;letter-spacing:-.01em;margin:1px 0 2px">${streak} ${streak === 1 ? 'day' : 'days'}</div>
-        <div style="font-size:.7rem;color:var(--muted2)">${streak === 0 ? 'Complete a task today to start' : 'Keep going'}</div>
-      </div>
-    </div>
     <div class="card flux-achievements-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;min-width:180px;flex:0 0 auto;cursor:pointer" onclick="window.fluxOpenAchievements()" title="View achievements">
       <div style="font-size:1.8rem;line-height:1">★</div>
       <div style="min-width:0">
@@ -872,29 +861,6 @@ function renderDailyProgressRing(){
         <div style="font-size:.7rem;color:var(--muted2)">Tap to view all</div>
       </div>
     </div>`;
-  try{ localStorage.setItem('flux_streak_count', String(streak)); }catch(e){}
-}
-
-function computeStreak(){
-  const tasks = (window.tasks)||[];
-  const days = new Set();
-  for(const t of tasks){
-    if(!t.done || !t.completedAt) continue;
-    const d = new Date(t.completedAt); d.setHours(0,0,0,0);
-    days.add(d.toISOString().slice(0,10));
-  }
-  if(days.size === 0) return 0;
-  let streak = 0;
-  const cur = new Date(); cur.setHours(0,0,0,0);
-  // If nothing done today, check from yesterday
-  if(!days.has(cur.toISOString().slice(0,10))){
-    cur.setDate(cur.getDate() - 1);
-  }
-  while(days.has(cur.toISOString().slice(0,10))){
-    streak++;
-    cur.setDate(cur.getDate() - 1);
-  }
-  return streak;
 }
 
 // ────────────────────────────────────────────────────────────────

@@ -142,15 +142,6 @@
     if(typeof renderCalendar==='function')renderCalendar();
   }
 
-  function refreshStreakBadge(){
-    const el=document.getElementById('fluxStreakBadge');
-    if(!el)return;
-    const n=parseInt(localStorage.getItem('flux_task_streak_n')||'0',10)||0;
-    if(n<1){el.style.display='none';return;}
-    el.style.display='inline-flex';
-    el.innerHTML=`<span class="flux-streak-icon" aria-hidden="true">🔥</span><span>${n}-day streak</span>`;
-  }
-
   function appendFocusHtml(baseHtml){
     return baseHtml;
   }
@@ -177,7 +168,6 @@
     dismissAiInsightStrip,
     renderOverdueBanner,
     rollOverdueForward,
-    refreshStreakBadge,
     appendFocusHtml,
     doWhatNow,
     smartDayDraft
