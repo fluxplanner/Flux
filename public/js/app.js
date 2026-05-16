@@ -1727,8 +1727,8 @@ function applyRoleUI(){
     '.onboard-locker-step',
   ];
 
+  // Mode switch stays visible in Personal mode so educators can return to Work.
   const educatorWorkSelectors=[
-    '#modeSwitchBar',
     '[data-educator-only]',
     '#teacherClassPanel',
   ];
