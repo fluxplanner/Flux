@@ -1286,7 +1286,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1302,6 +1302,7 @@ function getTimeOfDay(){
   return'evening';
 }
 function timeAgo(date){
+  if(!date||isNaN(date.getTime()))return'';
   const seconds=Math.floor((new Date()-date)/1000);
   if(seconds<60)return'just now';
   const minutes=Math.floor(seconds/60);
@@ -1309,11 +1310,21 @@ function timeAgo(date){
   const hours=Math.floor(minutes/60);
   if(hours<24)return`${hours}h ago`;
   const days=Math.floor(hours/24);
-  return`${days}d ago`;
+  if(days<7)return`${days}d ago`;
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+function renderEmptyState(icon,title,sub,btnText,btnClick){
+  return`<div style="text-align:center;padding:28px 16px">
+    <div style="font-size:2.2rem;margin-bottom:10px">${icon}</div>
+    <div style="font-size:.9rem;font-weight:700;margin-bottom:5px">${esc(title)}</div>
+    ${sub?`<div style="font-size:.78rem;color:var(--muted2);line-height:1.5;margin-bottom:${btnText?'14px':'0'}">${esc(sub)}</div>`:''}
+    ${btnText&&btnClick?`<button type="button" onclick="${btnClick}" class="edu-action-btn primary" style="margin:12px auto 0;display:inline-flex">${esc(btnText)}</button>`:''}
+  </div>`;
 }
 window.getTimeGreeting=getTimeGreeting;
 window.getTimeOfDay=getTimeOfDay;
 window.timeAgo=timeAgo;
+window.renderEmptyState=renderEmptyState;
 
 // ══ FLUX ROLE SYSTEM ══
 // Single source of truth for "who is this user" + "are they in work or personal mode".
@@ -1520,10 +1531,22 @@ const FluxImpersonate={
   clear(){
     try{localStorage.removeItem(this.STORE_KEY);}catch(_){}
     this.restore();
-    // Reload state from the OWNER's real (unprefixed) namespace so we
-    // snap back to their actual planner data after exiting preview.
-    this.reloadState();
-    this._refresh();
+    const finish=()=>{
+      try{this.reloadState();}catch(e){console.warn('[FluxImpersonate] reloadState skipped',e);}
+      try{this._refresh();}catch(_){}
+    };
+    // Re-fetch user_roles so FluxRole.profile / display_name match the signed-in
+    // account (restore() is a no-op if _orig was never snapshotted — then the
+    // School Info identity card would keep the previewed teacher's name).
+    try{
+      if(typeof FluxRole?.load==='function'){
+        void FluxRole.load().then(finish).catch(()=>finish());
+      }else{
+        finish();
+      }
+    }catch(_){
+      finish();
+    }
   },
 
   _refresh(){
@@ -1551,8 +1574,9 @@ const FluxImpersonate={
     try{
       if(typeof nav==='function'){
         if(FluxRole.isWorkMode&&FluxRole.isWorkMode()){
-          if(FluxRole.isTeacher()||FluxRole.isStaff())nav('teacherDashboard');
+          if(FluxRole.isTeacher())nav('teacherDashboard');
           else if(FluxRole.isCounselor())nav('counselorDashboard');
+          else if(FluxRole.isStaff())nav('adminDashboard');
           else nav('dashboard');
         }else{
           nav('dashboard');
@@ -1592,25 +1616,10 @@ function renderImpersonationBanner(){
 }
 window.renderImpersonationBanner=renderImpersonationBanner;
 
-/** Floating "Test as…" pill at the bottom-right, owner only. */
+/** Owner test picker lives in Owner control (preview tab). This only tears down
+ *  any legacy floating pill so it never appears in the shell. */
 function renderImpersonatePill(){
-  if(typeof isOwner==='function'&&!isOwner()){
-    document.getElementById('fluxImpersonatePill')?.remove();
-    return;
-  }
-  let pill=document.getElementById('fluxImpersonatePill');
-  if(!pill){
-    pill=document.createElement('button');
-    pill.id='fluxImpersonatePill';
-    pill.type='button';
-    pill.style.cssText='position:fixed;right:18px;bottom:88px;z-index:6400;padding:9px 14px;border-radius:999px;background:rgba(7,8,15,.86);border:1px solid rgba(124,92,255,.5);color:#cbb6ff;font-weight:800;font-size:.74rem;font-family:var(--font-ui,inherit);letter-spacing:.04em;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.45);display:flex;align-items:center;gap:7px';
-    pill.addEventListener('click',openImpersonatePicker);
-    document.body.appendChild(pill);
-  }
-  const a=FluxImpersonate.active();
-  pill.innerHTML=a?`🧪 Testing: ${esc((a.name||a.role).slice(0,18))}`:'🧪 Test as…';
-  pill.style.borderColor=a?'rgba(255,92,124,.55)':'rgba(124,92,255,.5)';
-  pill.style.color=a?'#ffb6c5':'#cbb6ff';
+  document.getElementById('fluxImpersonatePill')?.remove();
 }
 window.renderImpersonatePill=renderImpersonatePill;
 
@@ -1788,13 +1797,37 @@ function applyRoleUI(){
 }
 window.applyRoleUI=applyRoleUI;
 
+/** Work vs personal: show educator sidebar entries and hide student-only tabs in work mode. */
+function applyModeToNav(isWork){
+  document.querySelectorAll('[data-teacher-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isTeacher()?'':'none';
+  });
+  document.querySelectorAll('[data-counselor-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isCounselor()?'':'none';
+  });
+  document.querySelectorAll('[data-admin-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isStaff()?'':'none';
+  });
+  const studentNavIds=['#nav-mood','#nav-goals','#nav-habits','[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-tab="mood"]','[data-tab="goals"]'];
+  studentNavIds.forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      el.style.display=!isWork||!FluxRole.isEducator()?'':'none';
+    });
+  });
+}
+window.applyModeToNav=applyModeToNav;
+
 // Animates the Work/Personal slider, labels, then re-applies role UI and navigates.
 function updateModeSwitchUI(){
   const bar=document.getElementById('modeSwitchBar');
   if(!bar)return;
-  const isEducator=FluxRole.isEducator();
-  bar.style.display=isEducator?'flex':'none';
-  if(!isEducator){applyRoleUI();return;}
+  if(!FluxRole.isEducator()){
+    bar.style.display='none';
+    try{applyRoleUI();}catch(_){}
+    try{syncStudentEducatorUpgradeCard();}catch(_){}
+    return;
+  }
+  bar.style.display='flex';
 
   const isWork=FluxRole.mode==='work';
   const workBtn=document.getElementById('modeWorkBtn');
@@ -1806,36 +1839,49 @@ function updateModeSwitchUI(){
   if(personalBtn)personalBtn.classList.toggle('active',!isWork);
 
   if(slider&&workBtn&&personalBtn){
-    const track=slider.parentElement;
-    const trackRect=track.getBoundingClientRect();
-    const targetBtn=isWork?workBtn:personalBtn;
-    const btnRect=targetBtn.getBoundingClientRect();
-    if(trackRect.width>0){
-      slider.style.left=(btnRect.left-trackRect.left)+'px';
-      slider.style.width=btnRect.width+'px';
-    }
+    requestAnimationFrame(()=>{
+      const track=document.querySelector('.mode-switch-track');
+      if(!track)return;
+      const trackRect=track.getBoundingClientRect();
+      const targetBtn=isWork?workBtn:personalBtn;
+      const btnRect=targetBtn.getBoundingClientRect();
+      if(trackRect.width>0){
+        slider.style.left=(btnRect.left-trackRect.left)+'px';
+        slider.style.width=btnRect.width+'px';
+      }
+    });
   }
 
   if(desc){
-    if(isWork){
-      desc.textContent=FluxRole.isTeacher()?'Teacher tools':FluxRole.isCounselor()?'Counselor tools':'Staff tools';
-    }else{
-      desc.textContent='Your personal planner';
-    }
+    const roleDescriptions={
+      teacher:{work:'Teacher tools',personal:'Your planner'},
+      counselor:{work:'Counselor tools',personal:'Your planner'},
+      staff:{work:'Staff dashboard',personal:'Your planner'},
+      admin:{work:'Admin control',personal:'Your planner'},
+    };
+    const r=FluxRole.current;
+    desc.textContent=roleDescriptions[r]?.[FluxRole.mode]||(isWork?'Work mode':'Personal');
   }
 
-  applyRoleUI();
+  try{applyRoleUI();}catch(_){}
+  try{applyModeToNav(isWork);}catch(_){}
 
-  // Nav home for the active mode
   if(isWork){
-    if(FluxRole.isTeacher()||FluxRole.isStaff()){
-      if(typeof nav==='function'){nav('teacherDashboard');try{renderTeacherDashboard();}catch(_){}}
+    if(FluxRole.isTeacher()){
+      if(typeof nav==='function')nav('teacherDashboard');
+      try{renderTeacherDashboard();}catch(_){}
     }else if(FluxRole.isCounselor()){
-      if(typeof nav==='function'){nav('counselorDashboard');try{renderCounselorDashboard();}catch(_){}}
+      if(typeof nav==='function')nav('counselorDashboard');
+      try{renderCounselorDashboard();}catch(_){}
+    }else if(FluxRole.isStaff()){
+      if(typeof nav==='function')nav('adminDashboard');
+      try{renderAdminDashboard();}catch(_){}
     }
-  }else{
-    if(typeof nav==='function')nav('dashboard');
+  }else if(typeof nav==='function'){
+    nav('dashboard');
   }
+  try{syncStudentEducatorUpgradeCard();}catch(_){}
+  try{if(typeof checkForActiveAnnouncements==='function')void checkForActiveAnnouncements();}catch(_){}
 }
 window.updateModeSwitchUI=updateModeSwitchUI;
 
@@ -2137,6 +2183,145 @@ async function fetchAndCacheEntitlement(){
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
 const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
+function syncStudentEducatorUpgradeCard(){
+  const card=document.getElementById('studentEducatorUpgradeCard');
+  if(!card)return;
+  let imp=false;
+  try{imp=!!(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active());}catch(_){}
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  const show=!!u&&typeof FluxRole!=='undefined'&&FluxRole.current==='student'&&!imp;
+  card.style.display=show?'block':'none';
+}
+window.syncStudentEducatorUpgradeCard=syncStudentEducatorUpgradeCard;
+
+/** Self-serve when the signed-in email is not in FluxStaffDirectory. */
+function showPersonalEducatorSelfSignupModal(){
+  return new Promise((resolve)=>{
+    if(document.getElementById('personalEducatorSelfModal')){resolve(null);return;}
+    const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+    const p=typeof load==='function'?load('profile',{}):{};
+    const defaultName=String(p.name||localStorage.getItem('flux_user_name')||u?.user_metadata?.full_name||'').trim();
+    const ov=document.createElement('div');
+    ov.id='personalEducatorSelfModal';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
+    ov.innerHTML=`
+      <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
+        <h2 style="margin:0 0 8px;font-size:1.25rem;font-weight:900" class="flux-color-title">Enable school workspace</h2>
+        <p style="font-size:.82rem;color:var(--muted2);margin:0 0 18px;line-height:1.55">You’re quick-added as a student. If you use Flux as <strong>faculty or staff</strong> too, save your role here. We’ll turn on <strong>Work mode</strong> (teacher tools). You can switch to <strong>Personal</strong> anytime in the bar at the top.</p>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Role</label>
+        <select id="pesRole" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px">
+          <option value="teacher">Teacher</option>
+          <option value="counselor">Counselor</option>
+          <option value="staff">Staff / Admin</option>
+        </select>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px">Name</label>
+        <input id="pesName" type="text" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:12px;box-sizing:border-box" value="${esc(defaultName)}" placeholder="e.g. Ms. Lee">
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px" id="pesSubjLabel">Subject (optional)</label>
+        <input id="pesSubject" type="text" style="width:100%;padding:10px;font-size:.9rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text);margin-bottom:16px;box-sizing:border-box" placeholder="e.g. Biology">
+        <div id="pesErr" style="display:none;font-size:.78rem;color:var(--red);margin-bottom:12px"></div>
+        <div style="display:flex;gap:10px">
+          <button type="button" id="pesCancel" style="flex:0 0 auto;padding:12px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);font-weight:700;cursor:pointer">Cancel</button>
+          <button type="button" id="pesGo" style="flex:1;padding:12px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer">Save &amp; enable</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const roleSel=document.getElementById('pesRole');
+    const subjLabel=document.getElementById('pesSubjLabel');
+    const subjIn=document.getElementById('pesSubject');
+    function subjRow(){
+      const r=roleSel?.value||'teacher';
+      const show=r==='teacher';
+      if(subjLabel)subjLabel.style.display=show?'block':'none';
+      if(subjIn)subjIn.style.display=show?'block':'none';
+    }
+    roleSel?.addEventListener('change',subjRow);
+    subjRow();
+    const close=(v)=>{ov.remove();resolve(v);};
+    document.getElementById('pesCancel')?.addEventListener('click',()=>close(null));
+    document.getElementById('pesGo')?.addEventListener('click',()=>{
+      const role=roleSel?.value||'teacher';
+      const name=(document.getElementById('pesName')?.value||'').trim();
+      const subject=(document.getElementById('pesSubject')?.value||'').trim();
+      const errEl=document.getElementById('pesErr');
+      if(!name){if(errEl){errEl.textContent='Please enter your name.';errEl.style.display='block';}return;}
+      if(errEl)errEl.style.display='none';
+      close({role,name,subject:role==='teacher'?subject:'',email:String(u?.email||'').toLowerCase().trim()});
+    });
+  });
+}
+
+async function commitEducatorRoleFromUpgrade(det){
+  const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+  const sb=typeof getSB==='function'?getSB():null;
+  if(!u||!sb||!det||!det.role)return;
+  const displayName=det.name||det.display_name||u.user_metadata?.full_name||u.email?.split('@')[0]||null;
+  const {error}=await sb.from('user_roles').upsert({
+    user_id:u.id,
+    role:det.role,
+    display_name:displayName,
+    subject:det.subject||null,
+    updated_at:new Date().toISOString(),
+  });
+  if(error){
+    if(typeof showToast==='function')showToast('Could not update account: '+error.message,'error');
+    return;
+  }
+  if(det.role==='counselor'&&displayName){
+    const lastName=String(displayName).split(/\s+/).filter(Boolean).pop();
+    if(lastName){
+      try{
+        await sb.from('counselors').update({user_id:u.id})
+          .ilike('name','%'+lastName+'%')
+          .is('user_id',null);
+      }catch(_){}
+    }
+  }
+  try{await FluxRole.load();}catch(_){}
+  window._userRole=FluxRole.current;
+  try{
+    const impOn=!!(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active());
+    if(!impOn&&typeof applyRoleUI==='function')applyRoleUI();
+  }catch(_){}
+  try{if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();}catch(_){}
+  try{FluxRole.setMode('work');}catch(_){}
+  try{if(FluxRole.isTeacher()){if(typeof nav==='function')nav('teacherDashboard');if(typeof renderTeacherDashboard==='function')renderTeacherDashboard();}}
+  catch(_){}
+  try{if(FluxRole.isStaff()&&!FluxRole.isTeacher()&&!FluxRole.isCounselor()){if(typeof nav==='function')nav('adminDashboard');if(typeof renderAdminDashboard==='function')renderAdminDashboard();}}
+  catch(_){}
+  try{if(FluxRole.isCounselor()){if(typeof nav==='function')nav('counselorDashboard');if(typeof renderCounselorDashboard==='function')renderCounselorDashboard();}}
+  catch(_){}
+  try{syncStudentEducatorUpgradeCard();}catch(_){}
+  if(typeof showToast==='function')showToast('School workspace on. Use Work / Personal at the top anytime.','success');
+}
+
+async function startUpgradeToSchoolWorkspace(){
+  try{
+    const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
+    if(!u){if(typeof showToast==='function')showToast('Sign in first.','info');return;}
+    try{await FluxRole.load();}catch(_){}
+    if(FluxRole.current!=='student'){
+      if(typeof showToast==='function')showToast('You already have educator access. Use Work / Personal at the top.','info');
+      return;
+    }
+    const email=String(u.email||'').toLowerCase().trim();
+    const dirRec=window.FluxStaffDirectory?.findByEmail?.(email)||null;
+    let det=null;
+    if(dirRec){
+      if(typeof showToast==='function')showToast('Confirm your staff directory entry…','info');
+      det=await showStaffDetailsForm();
+    }else{
+      det=await showPersonalEducatorSelfSignupModal();
+    }
+    if(!det||!det.role)return;
+    await commitEducatorRoleFromUpgrade(det);
+  }catch(e){
+    console.warn('[Flux] startUpgradeToSchoolWorkspace',e);
+    if(typeof showToast==='function')showToast('Something went wrong. Try again.','error');
+  }
+}
+window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
+
 const strip=html=>html.replace(/<[^>]+>/g,'').slice(0,120);
 const todayStr=()=>TODAY.toISOString().slice(0,10);
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
@@ -2188,6 +2373,27 @@ function nav(id,btn,navOpt){
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
   if(tc&&!tc.visible){nav('dashboard');return;}
+  // Never mount another role's workspace with stale HTML (e.g. after account
+  // switch without reload, or a deep link to teacherDashboard while signed in as staff).
+  try{
+    const fr=typeof FluxRole!=='undefined'?FluxRole:null;
+    if(fr&&fr.isEducator&&fr.isEducator()){
+      const work=fr.isWorkMode&&fr.isWorkMode();
+      if(work){
+        if(id==='teacherDashboard'&&!fr.isTeacher()){
+          id=fr.isCounselor()?'counselorDashboard':(fr.isStaff()?'adminDashboard':'dashboard');
+        }else if(id==='counselorDashboard'&&!fr.isCounselor()){
+          id=fr.isTeacher()?'teacherDashboard':(fr.isStaff()?'adminDashboard':'dashboard');
+        }else if(id==='adminDashboard'&&!fr.isStaff()){
+          id=fr.isTeacher()?'teacherDashboard':(fr.isCounselor()?'counselorDashboard':'dashboard');
+        }
+      }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
+        id='dashboard';
+      }
+    }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
+      id='dashboard';
+    }
+  }catch(_){}
   // ── Educator dashboard redirect ──
   // For teachers / staff / counselors in Work mode, "Dashboard" shows the
   // role-specific dashboard. The sidebar "Dashboard" button stays visually
@@ -2198,9 +2404,10 @@ function nav(id,btn,navOpt){
   try{
     if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()){
       if(id==='dashboard'){
-        if(FluxRole.isTeacher()||FluxRole.isStaff())id='teacherDashboard';
+        if(FluxRole.isTeacher())id='teacherDashboard';
         else if(FluxRole.isCounselor())id='counselorDashboard';
-      }else if(id==='teacherDashboard'||id==='counselorDashboard'){
+        else if(FluxRole.isStaff())id='adminDashboard';
+      }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
         logicalId='dashboard';
       }
     }
@@ -2239,7 +2446,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}}};
+  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3760,13 +3967,14 @@ window.saveTeacherSchoolInfo=saveTeacherSchoolInfo;
 function renderSchoolTeacher(){
   const panel=document.getElementById('school');
   if(!panel)return;
-  // When the owner is impersonating, use the impersonated email/name so the
-  // verified badge + identity card reflect the role under test rather than
-  // the real owner account.
   const imp=window.FluxImpersonate?.active?.()||null;
+  const prof=FluxRole?.profile||{};
+  // If preview ended but FluxRole still holds the synthetic preview row, don't
+  // paint that identity on the School card (wait for FluxRole.load / restore).
+  const useRoleRow=!(!imp&&prof._impersonated);
   const lookupEmail=imp?.email||currentUser?.email||'';
-  const dirRec=window.FluxStaffDirectory?.findByEmail(lookupEmail)||null;
-  const profile=FluxRole?.profile||{};
+  const dirRec=window.FluxStaffDirectory?.findByEmail(String(lookupEmail).toLowerCase())||null;
+  const profile=useRoleRow?prof:{};
   const name=profile.display_name||dirRec?.name||(currentUser?.user_metadata?.full_name)||'Educator';
   const role=profile.role||dirRec?.role||'staff';
   const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin'})[role]||'Staff';
@@ -4756,6 +4964,7 @@ function switchStab(id,el){
   if(id==='appearance'){applyFontScale();applyReduceMotion();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();}
   if(id==='data'&&typeof renderStorageMeter==='function')renderStorageMeter();
   if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
+  if(id==='account')try{syncStudentEducatorUpgradeCard();}catch(_){}
 }
 function toggleSetting(k,el){settings[k]=!settings[k];el.classList.toggle('on',settings[k]);save('flux_settings',settings);}
 function toggleNotifyBrowser(el){
@@ -8679,6 +8888,12 @@ async function handleSignedIn(user,session){
     moodHistory=[];schoolInfo={};classes=[];teacherNotes=[];
     sessionLog=[];studyDNA=[];confidences={};
     aiChats=[];aiHistory=[];
+    try{
+      const _clearEduHost=(hid)=>{const h=document.getElementById(hid);if(h)h.innerHTML='';};
+      _clearEduHost('teacherDashboardBody');
+      _clearEduHost('adminDashboardBody');
+      _clearEduHost('counselorDashboardBody');
+    }catch(_){}
     console.log('🔄 Account switched — wiped previous user data');
   }
   localStorage.setItem('flux_last_user_id', user.id);
@@ -8793,12 +9008,15 @@ async function handleSignedIn(user,session){
       updateModeSwitchUI();
       try{renderImpersonationBanner();}catch(_){}
       try{renderImpersonatePill();}catch(_){}
-      if(FluxRole.isWorkMode()&&(FluxRole.isTeacher()||FluxRole.isStaff())){
+      if(FluxRole.isWorkMode()&&FluxRole.isTeacher()){
         nav('teacherDashboard');
         try{renderTeacherDashboard();}catch(_){}
       }else if(FluxRole.isWorkMode()&&FluxRole.isCounselor()){
         nav('counselorDashboard');
         try{renderCounselorDashboard();}catch(_){}
+      }else if(FluxRole.isWorkMode()&&FluxRole.isStaff()){
+        nav('adminDashboard');
+        try{renderAdminDashboard();}catch(_){}
       }else if(FluxRole.isStudent()){
         try{loadTeacherAssignments();}catch(_){}
         try{renderJoinClassButton();}catch(_){}
@@ -8821,6 +9039,7 @@ async function handleSignedIn(user,session){
     updatePlanUI();
   }
   renderTesterBadge();
+  try{if(typeof checkForActiveAnnouncements==='function')void checkForActiveAnnouncements();}catch(_){}
   syncTokenToExtension();
   // Full cloud push every minute while logged in (faster cross-device; debounced typing still uses syncKey)
   if(!window._syncInterval)window._syncInterval=setInterval(()=>{ if(currentUser)void syncToCloud(); },60*1000);
@@ -9724,13 +9943,6 @@ function calcCognitiveLoad(){
   return Math.min(100,Math.round((overdue.length*15+todayTasks.length*8+highPri.length*10-srsWeight)*tf));
 }
 function updateCognitiveLoadMeter(){
-  const bar=document.getElementById('cogLoadBar');
-  const lbl=document.getElementById('cogLoadLabel');
-  const wrap=document.getElementById('cogLoadWrap');
-  const cluster=document.getElementById('fluxPulseCluster');
-  if(!bar)return;
-  try{window.FluxAnim?.initCogLoadMeter?.();}catch(e){}
-
   let payload=null;
   if(window.FluxBehavior&&typeof window.FluxBehavior.tick==='function'){
     try{
@@ -9745,30 +9957,13 @@ function updateCognitiveLoadMeter(){
     }catch(_){payload=null;}
   }
   const load=payload?payload.load.score:calcCognitiveLoad();
-  const color=load>=85?'var(--red)':load>=60?'var(--gold)':'var(--green)';
-  const text=load>=85?'High':load>=60?'Med':'Low';
-  let usedFlux=false;
-  try{
-    if(typeof window.FluxAnim?.updateCogLoad==='function'){
-      window.FluxAnim.updateCogLoad(load);
-      usedFlux=true;
-    }
-  }catch(e){}
-  if(!usedFlux){bar.style.width=load+'%';bar.style.background=color;}
-  if(lbl){lbl.textContent=text+' '+load+'%';lbl.style.color=color;}
-  if(wrap)wrap.title='Cognitive Load: '+load+'% — based on overdue, today density, exam proximity, time of day';
-
-  if(cluster){
-    const inRecovery=load>=85;
-    cluster.removeAttribute('hidden');
-    cluster.dataset.recovery=inRecovery?'true':'false';
-    document.body.dataset.recovery=inRecovery?'true':'false';
-    if(inRecovery&&!cluster._recoveryToastShown){
-      cluster._recoveryToastShown=true;
-      showToast('⚠ High cognitive load ('+load+'%). Recovery Mode hides non-essential tasks.','warning');
-    }else if(!inRecovery&&cluster._recoveryToastShown){
-      cluster._recoveryToastShown=false;
-    }
+  const inRecovery=load>=85;
+  document.body.dataset.recovery=inRecovery?'true':'false';
+  if(inRecovery&&!window._fluxRecoveryToastShown){
+    window._fluxRecoveryToastShown=true;
+    showToast('⚠ High cognitive load ('+load+'%). Recovery Mode hides non-essential tasks.','warning');
+  }else if(!inRecovery&&window._fluxRecoveryToastShown){
+    window._fluxRecoveryToastShown=false;
   }
 }
 
@@ -9798,23 +9993,6 @@ function updateMomentumUI(){
       el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
       el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
     }else{el.style.display='none';}
-  }
-  const cluster=document.getElementById('fluxPulseCluster');
-  const flameLabel=document.getElementById('fluxFlameLabel');
-  const grad=document.querySelector('#fluxFlame linearGradient#fluxFlameGrad');
-  if(!cluster)return;
-  const state=(window.FluxBehavior&&window.FluxBehavior.momentumState)
-    ? window.FluxBehavior.momentumState(_momentum)
-    : (_momentum>=5?{tier:'inferno',label:_momentum+'× momentum',gradient:['#a855f7','#7c3aed']}
-       :_momentum>=3?{tier:'blaze',label:_momentum+'× momentum',gradient:['#fb923c','#f97316']}
-       :_momentum>=2?{tier:'spark',label:_momentum+'× momentum',gradient:['#60a5fa','#3b82f6']}
-       :{tier:'idle',label:'Idle',gradient:['#475569','#334155']});
-  cluster.removeAttribute('hidden');
-  cluster.dataset.tier=state.tier;
-  if(flameLabel)flameLabel.textContent=state.label;
-  if(grad&&grad.children&&grad.children.length>=2){
-    grad.children[0].setAttribute('stop-color',state.gradient[0]);
-    grad.children[1].setAttribute('stop-color',state.gradient[1]);
   }
 }
 
@@ -13123,7 +13301,7 @@ function showPostLoginRolePicker(opts){
             </div>
           </button>
         </div>
-        <div style="text-align:center;margin-top:20px;font-size:.74rem;color:var(--muted)">You can change this later in <b>Profile</b>.</div>
+        <div style="text-align:center;margin-top:20px;font-size:.74rem;color:var(--muted)">You can change this later in <b>Settings → Account</b>.</div>
       </div>`;
     document.body.appendChild(ov);
     const finish=(role)=>{ov.remove();resolve(role);};
@@ -13673,12 +13851,15 @@ async function finishOnboarding(){
   // Apply role UI + nav to the right home
   try{applyRoleUI();updateModeSwitchUI();}catch(_){}
   try{
-    if(FluxRole.isTeacher()||FluxRole.isStaff()){
+    if(FluxRole.isTeacher()){
       if(typeof nav==='function')nav('teacherDashboard');
       try{renderTeacherDashboard();}catch(_){}
     }else if(FluxRole.isCounselor()){
       if(typeof nav==='function')nav('counselorDashboard');
       try{renderCounselorDashboard();}catch(_){}
+    }else if(FluxRole.isStaff()){
+      if(typeof nav==='function')nav('adminDashboard');
+      try{renderAdminDashboard();}catch(_){}
     }else if(FluxRole.isStudent()){
       if(typeof nav==='function')nav('dashboard');
       try{loadTeacherAssignments();}catch(_){}
@@ -14088,13 +14269,23 @@ async function fluxFetchStudentNames(sb,studentIds){
 async function renderTeacherDashboard(){
   const host=document.getElementById('teacherDashboardBody');
   if(!host||!currentUser)return;
-  const sb=getSB();if(!sb)return;
+  try{
+    if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()&&!FluxRole.isTeacher()){
+      host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2);font-size:.9rem">Teacher classes and assignments are only available on <strong>teacher</strong> accounts. Use your school dashboard for staff tools.</div>';
+      return;
+    }
+  }catch(_){}
+  const sb=getSB();
+  if(!sb){
+    host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Sign in to load your classes.</div>';
+    return;
+  }
   host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading dashboard…</div>';
 
   const name=FluxRole.profile?.display_name||currentUser.user_metadata?.full_name||currentUser.email||'Teacher';
   const firstName=name.split(' ').filter(w=>!['Mr.','Mrs.','Ms.','Dr.'].includes(w))[0]||name;
 
-  let classesRows=[];let recentCompletions=[];let unreadMessages=[];let announcements=[];
+  let classesRows=[];let recentCompletions=[];let unreadMessages=[];let announcements=[];let pendingJoins=[];
   try{
     const [clsRes,annRes]=await Promise.all([
       sb.from('teacher_classes')
@@ -14110,6 +14301,15 @@ async function renderTeacherDashboard(){
     ]);
     classesRows=clsRes.data||[];
     announcements=annRes.data||[];
+    try{
+      const {data:pj}=await sb.from('class_join_requests')
+        .select('id,created_at,student_id,class_id,student_note,teacher_classes(class_name,class_code)')
+        .eq('teacher_id',currentUser.id)
+        .eq('status','pending')
+        .order('created_at',{ascending:false})
+        .limit(20);
+      pendingJoins=pj||[];
+    }catch(_){pendingJoins=[];}
     const assignmentIds=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>a.id));
     if(assignmentIds.length){
       const {data:rc}=await sb.from('student_completions')
@@ -14131,6 +14331,7 @@ async function renderTeacherDashboard(){
   const studentIds=[
     ...recentCompletions.map(c=>c.student_id),
     ...unreadMessages.map(m=>m.sender_id),
+    ...pendingJoins.map(j=>j.student_id),
   ];
   const nameMap=await fluxFetchStudentNames(sb,studentIds);
   const nameOf=(id)=>nameMap[id]?.display_name||('Student '+String(id||'').slice(0,6));
@@ -14164,12 +14365,21 @@ async function renderTeacherDashboard(){
         <div class="teacher-stat-divider"></div>
         <div class="teacher-stat"><div class="tstat-num">${totalAssignments}</div><div class="tstat-label">Assignments</div></div>
         <div class="teacher-stat-divider"></div>
+        <div class="teacher-stat ${pendingJoins.length>0?'tstat-alert':''}"><div class="tstat-num">${pendingJoins.length}</div><div class="tstat-label">Join Queue</div></div>
+        <div class="teacher-stat-divider"></div>
         <div class="teacher-stat ${pendingReview>0?'tstat-alert':''}"><div class="tstat-num">${pendingReview}</div><div class="tstat-label">To Review</div></div>
         <div class="teacher-stat-divider"></div>
         <div class="teacher-stat ${unreadMessages.length>0?'tstat-alert':''}"><div class="tstat-num">${unreadMessages.length}</div><div class="tstat-label">Messages</div></div>
         <div class="teacher-stat-divider"></div>
         <div class="teacher-stat ${dueSoon.length>0?'tstat-warn':''}"><div class="tstat-num">${dueSoon.length}</div><div class="tstat-label">Due Soon</div></div>
       </div>
+
+      ${pendingJoins.length>0?`
+      <div class="flux-join-request-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.28);border-radius:14px">
+        <span style="font-size:1.2rem">🔔</span>
+        <span style="flex:1;font-size:.84rem;font-weight:600">${pendingJoins.length} student${pendingJoins.length===1?'':'s'} waiting to join your class${pendingJoins.length===1?'':'es'}</span>
+        <button type="button" class="teacher-action-btn" data-action="review-joins" style="flex-shrink:0">Review</button>
+      </div>`:''}
 
       <div class="teacher-main-grid">
         <div class="teacher-col">
@@ -14253,6 +14463,7 @@ async function renderTeacherDashboard(){
   host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',()=>openCreateAssignmentModal()));
   host.querySelectorAll('[data-action="new-class"]').forEach(b=>b.addEventListener('click',()=>openCreateClassModal()));
   host.querySelectorAll('[data-action="new-announcement"]').forEach(b=>b.addEventListener('click',()=>openTeacherAnnouncementModal()));
+  host.querySelectorAll('[data-action="review-joins"]').forEach(b=>b.addEventListener('click',()=>openTeacherPendingJoinsModal()));
   host.querySelectorAll('[data-message-sender]').forEach(row=>{
     row.addEventListener('click',()=>{try{FluxMessaging.openThreadById(row.dataset.messageSender);}catch(_){}});
   });
@@ -14261,6 +14472,108 @@ async function renderTeacherDashboard(){
   });
 }
 window.renderTeacherDashboard=renderTeacherDashboard;
+
+async function openTeacherPendingJoinsModal(){
+  const sb=getSB();
+  if(!sb||!currentUser)return;
+  if(document.getElementById('teacherPendingJoinsModal'))return;
+  let rows=[];
+  try{
+    const {data}=await sb.from('class_join_requests')
+      .select('id,created_at,student_id,student_note,teacher_classes(class_name,class_code)')
+      .eq('teacher_id',currentUser.id)
+      .eq('status','pending')
+      .order('created_at',{ascending:false});
+    rows=data||[];
+  }catch(_){
+    if(typeof showToast==='function')showToast('Run the latest Supabase migration to enable class join requests.','info');
+    return;
+  }
+  const nm=await fluxFetchStudentNames(sb,rows.map(r=>r.student_id));
+  const modal=document.createElement('div');
+  modal.id='teacherPendingJoinsModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:620;overflow-y:auto;backdrop-filter:blur(10px)';
+  modal.innerHTML=`
+    <div style="max-width:520px;margin:32px auto;padding:24px;background:var(--card);border:1px solid var(--border2);border-radius:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="margin:0;font-size:1.1rem;font-weight:800">Class join requests</h2>
+        <button type="button" id="tpjClose" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:6px 12px;cursor:pointer;color:var(--muted2)">Close</button>
+      </div>
+      ${rows.length===0?'<p style="color:var(--muted2);font-size:.86rem;margin:0">No pending requests.</p>':
+        rows.map(r=>{
+          const tc=r.teacher_classes;
+          const cn=(tc&&tc.class_name)||'Class';
+          const sn=nm[r.student_id]?.display_name||('Student '+String(r.student_id).slice(0,6));
+          return`
+          <div style="padding:14px;border:1px solid var(--border2);border-radius:14px;margin-bottom:10px;background:var(--card2)">
+            <div style="font-size:.88rem;font-weight:700">${esc(sn)}</div>
+            <div style="font-size:.74rem;color:var(--muted2);margin-top:2px">Wants to join <b>${esc(cn)}</b></div>
+            ${r.student_note?`<div style="font-size:.78rem;color:var(--muted);margin-top:8px;font-style:italic">“${esc(r.student_note)}”</div>`:''}
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button type="button" class="teacher-action-btn primary" data-jr="${esc(r.id)}" data-act="approved">Approve</button>
+              <button type="button" class="teacher-action-btn" data-jr="${esc(r.id)}" data-act="rejected" style="border-color:rgba(255,77,109,.35);color:var(--red)">Reject</button>
+            </div>
+          </div>`;
+        }).join('')}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  modal.querySelector('#tpjClose')?.addEventListener('click',()=>modal.remove());
+  modal.querySelectorAll('[data-jr]').forEach(btn=>{
+    btn.addEventListener('click',()=>resolveJoinRequest(btn.dataset.jr,btn.dataset.act));
+  });
+}
+window.openTeacherPendingJoinsModal=openTeacherPendingJoinsModal;
+
+async function resolveJoinRequest(requestId,newStatus,classId){
+  const sb=getSB();
+  if(!sb||!currentUser)return;
+  if(newStatus!=='approved'&&newStatus!=='rejected')return;
+  const {data:req,error}=await sb.from('class_join_requests')
+    .update({status:newStatus,resolved_at:new Date().toISOString()})
+    .eq('id',requestId)
+    .eq('teacher_id',currentUser.id)
+    .eq('status','pending')
+    .select('student_id,teacher_id,period,teacher_classes(class_name,class_code,period,school_year)')
+    .maybeSingle();
+  if(error||!req){
+    if(typeof showToast==='function')showToast('Could not update that request (it may have been handled already).','error');
+    return;
+  }
+  const tc=req.teacher_classes;
+  const className=(tc&&tc.class_name)||'your class';
+  const classCode=(tc&&tc.class_code)||'';
+  const period=req.period||tc?.period||null;
+  const schoolYear=tc?.school_year||'2025-26';
+  if(newStatus==='approved'){
+    const {error:e2}=await sb.from('teacher_students').upsert({
+      teacher_id:req.teacher_id,
+      student_id:req.student_id,
+      class_name:className,
+      class_code:classCode||null,
+      period,
+      school_year:schoolYear,
+    },{onConflict:'teacher_id,student_id,class_name'});
+    if(e2){
+      if(typeof showToast==='function')showToast(e2.message,'error');
+      return;
+    }
+    await fluxEnsureThreadAndSend(req.student_id,`Your request to join "${className}" was approved. Welcome to the class!`);
+    if(typeof showToast==='function')showToast('Student approved and notified.','success');
+  }else{
+    await fluxEnsureThreadAndSend(req.student_id,`Your request to join "${className}" was not approved. Please reach out to your teacher if you have questions.`);
+    if(typeof showToast==='function')showToast('Request rejected; student was notified.','info');
+  }
+  document.getElementById('teacherPendingJoinsModal')?.remove();
+  try{renderTeacherDashboard();}catch(_){}
+  if(classId){
+    try{
+      document.getElementById('teacherClassPanel')?.remove();
+      openTeacherClassView(classId);
+    }catch(_){}
+  }
+}
+window.resolveJoinRequest=resolveJoinRequest;
 
 function renderTeacherClassCard(cls){
   const assignmentCount=(cls.teacher_assignments||[]).length;
@@ -14320,6 +14633,10 @@ async function openTeacherClassView(classId){
     students=(stuRes.data||[]).filter(s=>(cls?.class_name&&s.class_name===cls.class_name)||(s.class_code&&s.class_code===cls?.class_code));
   }catch(e){console.warn('[Flux] openTeacherClassView load failed',e);}
   if(!cls){if(typeof showToast==='function')showToast('Class not found','error',2200);return;}
+  if(cls.teacher_id!==currentUser.id){
+    if(typeof showToast==='function')showToast('You can only open classes you teach.','error',2400);
+    return;
+  }
 
   const stuIds=students.map(s=>s.student_id);
   const stuNameMap=await fluxFetchStudentNames(sb,stuIds);
@@ -14476,10 +14793,14 @@ function openJoinClassModal(){
       <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">Enter the 6-character code your teacher shared with you</p>
       <input id="classJoinCode" placeholder="e.g. ABC123" maxlength="6"
         style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:4px;color:var(--accent);text-transform:uppercase">
+      <div class="mrow" style="margin-top:12px">
+        <label style="font-size:.78rem;color:var(--muted)">Note to teacher (optional)</label>
+        <textarea id="classJoinNote" placeholder="e.g. I'm in Period 3" style="min-height:52px;resize:none;margin-top:4px"></textarea>
+      </div>
       <div id="joinClassError" style="display:none;font-size:.78rem;color:var(--red);padding:8px;background:rgba(255,77,109,.08);border-radius:8px;margin-top:10px;border:1px solid rgba(255,77,109,.2)"></div>
       <div id="joinClassPreview" style="display:none;padding:12px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-top:12px;font-size:.85rem"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button id="joinClassSubmit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Join Class</button>
+        <button id="joinClassSubmit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Request to Join</button>
         <button id="joinClassCancel" style="padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
       </div>
     </div>`;
@@ -14498,19 +14819,29 @@ function openJoinClassModal(){
     const sb=getSB();if(!sb)return;
     try{
       const {data}=await sb.from('teacher_classes')
-        .select('class_name,subject,teacher_id')
+        .select('id,class_name,subject,teacher_id')
         .eq('class_code',code)
         .eq('active',true)
         .maybeSingle();
       if(data){
-        // Resolve teacher name in a follow-up
         let tName='Unknown';
         try{
           const {data:tr}=await sb.from('user_roles').select('display_name').eq('user_id',data.teacher_id).maybeSingle();
           if(tr?.display_name)tName=tr.display_name;
         }catch(_){}
+        let extra='';
+        try{
+          const {data:jr}=await sb.from('class_join_requests')
+            .select('status')
+            .eq('class_id',data.id)
+            .eq('student_id',currentUser.id)
+            .maybeSingle();
+          if(jr?.status==='pending')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--gold)">⏳ You already have a pending request for this class.</div>';
+          else if(jr?.status==='approved')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--green)">✓ You are already approved for this class.</div>';
+          else if(jr?.status==='rejected')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--muted2)">A previous request was not approved — you can submit a new request.</div>';
+        }catch(_){}
         preview.style.display='block';
-        preview.innerHTML=`<strong>${esc(data.class_name)}</strong><br><span style="color:var(--muted2)">Teacher: ${esc(tName)} · ${esc(data.subject||'')}</span>`;
+        preview.innerHTML=`<strong>${esc(data.class_name)}</strong><br><span style="color:var(--muted2)">Teacher: ${esc(tName)} · ${esc(data.subject||'')}</span>${extra}`;
       }else{
         preview.style.display='none';
       }
@@ -14521,6 +14852,7 @@ window.openJoinClassModal=openJoinClassModal;
 
 async function submitJoinClass(){
   const code=(document.getElementById('classJoinCode')?.value||'').trim().toUpperCase();
+  const note=(document.getElementById('classJoinNote')?.value||'').trim();
   const errEl=document.getElementById('joinClassError');
   const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
   if(!code||code.length!==6){setErr('Enter a 6-character class code');return;}
@@ -14541,32 +14873,43 @@ async function submitJoinClass(){
       .eq('student_id',u.id)
       .eq('class_name',cls.class_name)
       .maybeSingle();
-    if(existing){setErr("You've already joined this class!");return;}
+    if(existing){setErr("You're already enrolled in this class.");return;}
 
-    const {error}=await sb.from('teacher_students').insert({
-      teacher_id:cls.teacher_id,
-      student_id:u.id,
-      class_name:cls.class_name,
-      class_code:code,
-      period:cls.period||null,
-      school_year:cls.school_year||'2025-26',
-    });
-    if(error){setErr(error.message);return;}
-
-    // Add to student's local class list if not already there
+    let jr=null;
     try{
-      if(typeof classes!=='undefined'&&!classes.find(c=>c.code===code)){
-        classes.push({name:cls.class_name,code,teacherClassId:cls.id});
-        save('classes',classes);
-        if(typeof renderClasses==='function')renderClasses();
-      }
-    }catch(_){}
+      const {data:j0}=await sb.from('class_join_requests')
+        .select('id,status')
+        .eq('class_id',cls.id)
+        .eq('student_id',u.id)
+        .maybeSingle();
+      jr=j0;
+    }catch(_){jr=null;}
+
+    if(jr?.status==='pending'){setErr('You already have a pending request for this class.');return;}
+
+    if(jr?.status==='rejected'){
+      const {error:e1}=await sb.from('class_join_requests').update({
+        status:'pending',
+        student_note:note||null,
+        teacher_note:null,
+        resolved_at:null,
+      }).eq('id',jr.id).eq('student_id',u.id);
+      if(e1){setErr(e1.message);return;}
+    }else{
+      const {error:e2}=await sb.from('class_join_requests').insert({
+        class_id:cls.id,
+        student_id:u.id,
+        teacher_id:cls.teacher_id,
+        student_note:note||null,
+        status:'pending',
+      });
+      if(e2){setErr(e2.message);return;}
+    }
 
     document.getElementById('joinClassModal')?.remove();
-    if(typeof showToast==='function')showToast(`✅ Joined "${cls.class_name}"!`);
-
+    if(typeof showToast==='function')showToast(`Request sent — your teacher will review joining "${cls.class_name}".`,'success');
     try{loadTeacherAssignments();}catch(_){}
-  }catch(e){setErr(e.message||'Failed to join');}
+  }catch(e){setErr(e.message||'Failed to submit request');}
 }
 window.submitJoinClass=submitJoinClass;
 
@@ -14780,6 +15123,7 @@ async function renderCounselorDashboard(){
           <div class="teacher-greeting">Good ${getTimeOfDay()}, ${esc(counselorRow.name||'Counselor')}</div>
           <div class="teacher-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
+        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">📅 Edit availability</button>
       </div>
 
       <div class="teacher-stats">
@@ -15271,6 +15615,93 @@ const FluxMessaging={
   },
 };
 window.FluxMessaging=FluxMessaging;
+
+/** Create or reuse a DM thread and insert a message (used for join approvals, etc.). */
+async function fluxEnsureThreadAndSend(recipientId, content){
+  const sb=getSB();
+  if(!sb||!currentUser||!recipientId||!content)return false;
+  const myId=currentUser.id;
+  if(recipientId===myId)return false;
+  let threadId=null;
+  try{
+    const {data}=await sb.from('flux_threads')
+      .select('id')
+      .or(`and(participant_1.eq.${myId},participant_2.eq.${recipientId}),and(participant_1.eq.${recipientId},participant_2.eq.${myId})`)
+      .limit(1)
+      .maybeSingle();
+    if(data?.id)threadId=data.id;
+  }catch(_){}
+  if(!threadId){
+    try{
+      const {data:nt,error}=await sb.from('flux_threads').insert({
+        participant_1:myId,
+        participant_2:recipientId,
+        subject:'Flux',
+      }).select('id').single();
+      if(error||!nt?.id)return false;
+      threadId=nt.id;
+    }catch(_){return false;}
+  }
+  try{
+    const {error}=await sb.from('flux_messages').insert({
+      thread_id:threadId,
+      sender_id:myId,
+      recipient_id:recipientId,
+      content:String(content).slice(0,4000),
+    });
+    if(error)return false;
+    await sb.from('flux_threads').update({
+      last_message_at:new Date().toISOString(),
+      last_message_preview:String(content).slice(0,80),
+    }).eq('id',threadId);
+  }catch(_){return false;}
+  return true;
+}
+window.fluxEnsureThreadAndSend=fluxEnsureThreadAndSend;
+
+/** School-wide urgent / important banners (requires `school_announcements` migration). */
+async function checkForActiveAnnouncements(){
+  if(!currentUser)return;
+  const sb=getSB();
+  if(!sb)return;
+  let rows=[];
+  try{
+    const iso=new Date().toISOString();
+    const {data}=await sb.from('school_announcements')
+      .select('id,title,body,priority,created_at')
+      .in('priority',['important','urgent','emergency'])
+      .or(`expires_at.is.null,expires_at.gt.${iso}`)
+      .order('created_at',{ascending:false})
+      .limit(5);
+    rows=data||[];
+  }catch(_){return;}
+  const dismissed=typeof load==='function'?load('flux_dismissed_announcements',[]):[];
+  const pick=rows.find(r=>r&&r.id&&!dismissed.includes(r.id));
+  if(!pick)return;
+  document.getElementById('fluxSchoolAnnounceBanner')?.remove();
+  const pri=pick.priority||'important';
+  const bg=pri==='emergency'?'linear-gradient(135deg,#7f1d1d,#b91c1c)':pri==='urgent'?'rgba(234,88,12,.92)':pri==='important'?'rgba(245,166,35,.9)':'rgba(var(--accent-rgb),.88)';
+  const icon=pri==='emergency'?'🚨':pri==='urgent'?'🔴':pri==='important'?'⚠':'📢';
+  const bar=document.createElement('div');
+  bar.id='fluxSchoolAnnounceBanner';
+  bar.style.cssText=`position:fixed;top:52px;left:0;right:0;z-index:400;background:${bg};color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,.35)`;
+  bar.innerHTML=`
+    <span style="font-size:1.1rem;flex-shrink:0">${icon}</span>
+    <div style="flex:1;min-width:0">
+      <strong style="font-size:.85rem;display:block">${esc(pick.title||'Announcement')}</strong>
+      <div style="font-size:.78rem;opacity:.92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(pick.body||'').slice(0,140))}${String(pick.body||'').length>140?'…':''}</div>
+    </div>
+    <button type="button" class="flux-sa-dismiss" style="flex-shrink:0;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:8px;color:#fff;padding:5px 10px;cursor:pointer;font-size:.78rem;font-weight:700">Dismiss</button>`;
+  document.body.appendChild(bar);
+  bar.querySelector('.flux-sa-dismiss')?.addEventListener('click',()=>{
+    try{
+      const d=load('flux_dismissed_announcements',[]);
+      if(!d.includes(pick.id)){d.push(pick.id);save('flux_dismissed_announcements',d);}
+    }catch(_){}
+    bar.remove();
+  });
+}
+window.checkForActiveAnnouncements=checkForActiveAnnouncements;
 
 function openMessageComposer(userId,name){
   FluxMessaging.openThread(userId,name);

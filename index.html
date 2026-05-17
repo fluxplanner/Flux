@@ -702,6 +702,17 @@
         <button class="nav-item" onclick="nav('counselorMeetings',this)" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
         <button class="nav-item" onclick="nav('adminOps',this)" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
         <button class="nav-item" onclick="nav('staffWorkboard',this)" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
+        <button type="button" class="nav-item" onclick="nav('teacherDashboard',this);try{renderTeacherDashboard()}catch(e){}" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📚</span><span class="nl">Classes</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
+        <button type="button" class="nav-item" onclick="nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+        <button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
+        <button type="button" class="nav-item" onclick="nav('adminDashboard',this);try{renderAdminDashboard()}catch(e){}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
+        <button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">👥</span><span class="nl">Users</span></button>
+        <button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+        <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📢</span><span class="nl">Announce</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">School</div>
@@ -777,6 +788,17 @@
         <button class="nav-item" onclick="navMob('counselorMeetings')" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
         <button class="nav-item" onclick="navMob('adminOps')" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
         <button class="nav-item" onclick="navMob('staffWorkboard')" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
+        <button type="button" class="nav-item" onclick="navMob('teacherDashboard');try{renderTeacherDashboard()}catch(e){}" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📚</span><span class="nl">Classes</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
+        <button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
+        <button type="button" class="nav-item" onclick="navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+        <button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
+        <button type="button" class="nav-item" onclick="navMob('adminDashboard');try{renderAdminDashboard()}catch(e){}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
+        <button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">👥</span><span class="nl">Users</span></button>
+        <button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+        <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📢</span><span class="nl">Announce</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">School</div>
@@ -847,26 +869,6 @@
         <button type="button" class="topbar-mob-av" id="topbarMobAv" onclick="navMob('profile')" aria-label="Your profile">
           <span id="topbarMobAvInitial">F</span>
         </button>
-      </div>
-      <!-- Flux Pulse: glassmorphic momentum flame + cognitive load meter -->
-      <div id="fluxPulseCluster" class="flux-pulse" data-recovery="false" data-tier="idle" hidden>
-        <button id="fluxFlame" type="button" class="flux-flame" aria-label="Session momentum">
-          <svg class="flux-flame-svg" viewBox="0 0 32 40" aria-hidden="true">
-            <defs>
-              <linearGradient id="fluxFlameGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#475569"/>
-                <stop offset="1" stop-color="#334155"/>
-              </linearGradient>
-            </defs>
-            <path class="flux-flame-outer" d="M16 2 C 22 12 28 18 24 28 C 22 34 18 38 16 38 C 14 38 10 34 8 28 C 4 18 10 12 16 2 Z" fill="url(#fluxFlameGrad)"/>
-            <path class="flux-flame-inner" d="M16 12 C 20 18 22 22 20 28 C 19 32 17 34 16 34 C 15 34 13 32 12 28 C 10 22 12 18 16 12 Z" fill="rgba(255,255,255,.18)"/>
-          </svg>
-          <span id="fluxFlameLabel" class="flux-flame-label">Idle</span>
-        </button>
-        <div id="cogLoadWrap" class="flux-load-meter" role="status" aria-label="Cognitive load">
-          <div class="flux-load-track"><div id="cogLoadBar" class="flux-load-fill"></div></div>
-          <span id="cogLoadLabel" class="flux-load-label">Low 0%</span>
-        </div>
       </div>
 
       <!-- Hidden elements still needed by JS -->
@@ -1451,6 +1453,13 @@
         <p class="flux-page-sub">Today's appointments, upcoming sessions, and messages.</p>
       </header>
       <div id="counselorDashboardBody"></div>
+    </div>
+
+    <div id="adminDashboard" class="panel flux-page flux-edu-panel" data-edu-role="admin">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">School-wide overview, announcements, and meeting requests.</p>
+      </header>
+      <div id="adminDashboardBody"></div>
     </div>
 
     <!-- ─── TEACHER · LESSON HUB (visible only for teacher accounts in Work mode) ─── -->
@@ -2087,6 +2096,11 @@
             <button onclick="signOut()" class="btn-sec" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red)">Sign Out</button>
           </div>
         </div>
+        <div class="card" id="studentEducatorUpgradeCard" style="display:none">
+          <h3>School workspace</h3>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 12px">Your account is set up as a <strong>student</strong>. If you also use Flux as <strong>faculty or staff</strong>, enable the school workspace to unlock <strong>Work mode</strong> (teacher dashboard, classes, and tools). You can switch to a personal view anytime with <strong>Work / Personal</strong> at the top.</p>
+          <button type="button" onclick="startUpgradeToSchoolWorkspace()" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--accent);border:none;color:#0a0d18;font-weight:800;font-size:.88rem;cursor:pointer;font-family:inherit">Enable school &amp; work mode</button>
+        </div>
         <div id="subscriptionSection" style="display:none">
           <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">Subscription</div>
           <div id="subscriptionStatusCard" class="card" style="padding:14px">
@@ -2406,6 +2420,7 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
     <script defer src="public/js/app.js"></script>
+    <script defer src="public/js/flux-educator-platform-extras.js"></script>
     <script defer src="public/js/flux-visual.js"></script>
     <script defer src="public/js/flux-extension-bridge.js"></script>
     <script defer src="public/js/flux-ai-core.js"></script>
