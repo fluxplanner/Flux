@@ -147,6 +147,58 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 }
 .nav-group-label{font-size:.62rem;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);font-family:'JetBrains Mono',monospace;padding:4px 10px 0;white-space:nowrap;overflow:hidden;transition:opacity var(--t-base) var(--ease)}
 .sidebar.collapsed .nav-group-label{opacity:0}
+/* Educator Work mode — School section horizontal tabs (sidebar + drawer) */
+.school-work-tabs{
+  display:none;
+  flex-wrap:wrap;
+  gap:6px;
+  padding:2px 6px 10px;
+  margin:0 -2px 2px;
+}
+.school-work-tab{
+  flex:0 1 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 9px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:var(--muted2);
+  font-size:.62rem;
+  font-weight:600;
+  font-family:'JetBrains Mono',monospace;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+  white-space:nowrap;
+}
+.school-work-tab:hover{
+  border-color:rgba(var(--accent-rgb),.28);
+  color:var(--text);
+  background:rgba(var(--accent-rgb),.08);
+}
+.school-work-tab.active{
+  border-color:rgba(var(--accent-rgb),.45);
+  color:var(--accent);
+  background:rgba(var(--accent-rgb),.12);
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb),.12);
+}
+.school-work-tab .ni{font-size:.85rem;line-height:1}
+.sidebar.collapsed .school-work-tabs{
+  flex-direction:column;
+  flex-wrap:nowrap;
+  align-items:stretch;
+  gap:3px;
+  padding:2px 4px 8px;
+}
+.sidebar.collapsed .school-work-tab{
+  justify-content:center;
+  padding:6px 4px;
+  gap:0;
+}
+.sidebar.collapsed .school-work-tab .nl{display:none;width:0;opacity:0;overflow:hidden}
+.sidebar.collapsed .school-work-tab .ni{margin:0;font-size:1rem}
+.mob-drawer .school-work-tabs{padding:2px 8px 12px;margin:0}
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;color:var(--muted2);cursor:pointer;border-radius:10px;transition:all var(--t-base) var(--ease);white-space:nowrap;border:none;background:none;width:100%;font-family:'Plus Jakarta Sans',sans-serif;font-size:.86rem;font-weight:500;position:relative;margin-bottom:0}
 .nav-item:hover{
   background:rgba(255,255,255,.07);color:var(--text);transform:translateX(1px);

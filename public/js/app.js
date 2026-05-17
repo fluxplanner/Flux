@@ -1795,6 +1795,40 @@ function openImpersonatePicker(){
 }
 window.openImpersonatePicker=openImpersonatePicker;
 
+/** Sidebar / drawer: educator Work mode shows School tab strip; students keep classic rows. */
+function syncSchoolNavChrome(){
+  try{
+    const fr=typeof FluxRole!=='undefined'?FluxRole:null;
+    if(!fr)return;
+    const isEducator=fr.isEducator&&fr.isEducator();
+    const isWork=fr.isWorkMode&&fr.isWorkMode();
+    const eduWorkNav=isEducator&&isWork;
+    document.querySelectorAll('#sidebarSchoolWorkTabs,#mobDrawerSchoolWorkTabs').forEach(el=>{
+      if(!el)return;
+      el.style.display=eduWorkNav?'flex':'none';
+    });
+    document.querySelectorAll('[data-school-nav-classic]').forEach(el=>{
+      el.style.display=eduWorkNav?'none':'';
+    });
+    document.querySelectorAll('[data-school-feed-student-only]').forEach(el=>{
+      el.style.display=!isEducator?'':'none';
+    });
+  }catch(_){}
+}
+window.syncSchoolNavChrome=syncSchoolNavChrome;
+
+/** Highlights School workspace tabs when a matching panel is active. */
+function syncSchoolWorkTabStrip(panelId){
+  const workTabs=['school','staffMeetingNotes','staffPD','staffWellbeing','schoolFeedPanel','calendar'];
+  const onPanel=workTabs.indexOf(panelId)>=0;
+  document.querySelectorAll('#sidebarSchoolWorkTabs .school-work-tab,#mobDrawerSchoolWorkTabs .school-work-tab').forEach(t=>{
+    const tabId=t.getAttribute('data-school-work-tab');
+    const on=onPanel&&tabId===panelId;
+    t.classList.toggle('active',on);
+    t.setAttribute('aria-selected',on?'true':'false');
+  });
+}
+
 // ══ MASTER UI APPLICATION FUNCTION ══
 // Single source of truth for "what is visible". Call after FluxRole.load() and after
 // every mode switch. Never manually show/hide individual nav items elsewhere.
@@ -1875,16 +1909,6 @@ function applyRoleUI(){
     el.style.display=eduPersonalNav?'':'none';
   });
 
-  // ── RULE 2b: Educator work-only items under School (meeting notes, PD, wellbeing, school cal shortcut)
-  const eduWorkNav=isEducator&&isWork;
-  document.querySelectorAll('[data-staff-work]').forEach(el=>{
-    el.style.display=eduWorkNav?'':'none';
-  });
-  // Feed: students always; educators only while in work mode (same strip as other school tools)
-  document.querySelectorAll('.sidebar .nav-item[data-tab="schoolFeedPanel"],.mob-drawer .nav-item[data-tab="schoolFeedPanel"]').forEach(el=>{
-    el.style.display=(!isEducator||isWork)?'':'none';
-  });
-
   // ── RULE 3: Work-mode educator chrome
   document.querySelectorAll('[data-teacher-nav]').forEach(el=>{
     el.style.display=isWork&&FluxRole.isTeacher()?'':'none';
@@ -1928,6 +1952,8 @@ function applyRoleUI(){
 
   const bookCounselorBtn=document.querySelector('[data-action="book-counselor"]');
   if(bookCounselorBtn)bookCounselorBtn.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+
+  syncSchoolNavChrome();
 }
 window.applyRoleUI=applyRoleUI;
 
@@ -1950,13 +1976,6 @@ function applyModeToNav(isWork){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=isEducatorPersonal?'':'none';
   });
-  const eduWorkNav=FluxRole.isEducator()&&isWork;
-  document.querySelectorAll('[data-staff-work]').forEach(el=>{
-    el.style.display=eduWorkNav?'':'none';
-  });
-  document.querySelectorAll('.sidebar .nav-item[data-tab="schoolFeedPanel"],.mob-drawer .nav-item[data-tab="schoolFeedPanel"]').forEach(el=>{
-    el.style.display=(!FluxRole.isEducator()||isWork)?'':'none';
-  });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
     '#nav-mood','#nav-goals','#nav-habits','#nav-canvas','#nav-study',
@@ -1973,6 +1992,7 @@ function applyModeToNav(isWork){
   document.querySelectorAll('.sidebar .nav-item[data-tab="dashboard"],.mob-drawer .nav-item[onclick*="\'dashboard\'"]').forEach(el=>{
     el.style.display=(!isWork&&(FluxRole.current==='student'||FluxRole.isEducator()||pendingStaffPersonal))?'':'none';
   });
+  syncSchoolNavChrome();
 }
 window.applyModeToNav=applyModeToNav;
 
@@ -2610,6 +2630,7 @@ function nav(id,btn,navOpt){
     if(moreBtn)moreBtn.classList.add('active');
   }
   updateNavAriaCurrent(id);
+  try{syncSchoolWorkTabStrip(id);}catch(_){}
   try{document.dispatchEvent(new CustomEvent('flux-nav',{detail:{panel:id}}));}catch(e){}
   try{
     if(window.FluxVisual&&typeof FluxVisual.animateNavIndicator==='function'){

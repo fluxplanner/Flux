@@ -330,7 +330,7 @@
           day: 'numeric',
         })}</div>
       </div>
-      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> for meetings, PD, wellbeing, feed, and school calendar under <b>School</b> in the sidebar.</span></div>
+      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and use the <b>School</b> tabs in the sidebar (Info, Meetings, PD, Wellbeing, Feed, Calendar).</span></div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
         <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Links &amp; files</div></div>
