@@ -15338,12 +15338,30 @@ async function renderCounselorDashboard(){
   const todayAppts=appointments.filter(a=>a.date===today);
   const upcomingAppts=appointments.filter(a=>a.date>today);
 
+  let greetFull='';
+  try{
+    const imp=window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();
+    if(imp&&String(imp.name||'').trim())greetFull=String(imp.name).trim();
+  }catch(_){}
+  if(!greetFull){
+    greetFull=String(
+      (typeof FluxRole!=='undefined'&&FluxRole.profile&&FluxRole.profile.display_name)
+        ||currentUser.user_metadata?.full_name
+        ||counselorRow.name
+        ||currentUser.email?.split('@')[0]
+        ||'Counselor',
+    ).trim();
+  }
+  const greetFirst=greetFull.split(/\s+/).filter(Boolean).filter(w=>!['Mr.','Mrs.','Ms.','Dr.'].includes(w))[0]||greetFull;
+  const subjLine=(typeof FluxRole!=='undefined'&&FluxRole.profile&&FluxRole.profile.subject)
+    ?String(FluxRole.profile.subject).trim():'';
+
   host.innerHTML=`
     <div class="counselor-dashboard">
       <div class="teacher-header">
         <div>
-          <div class="teacher-greeting">Good ${getTimeOfDay()}, ${esc(counselorRow.name||'Counselor')}</div>
-          <div class="teacher-date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+          <div class="teacher-greeting">${esc(getTimeGreeting())}, ${esc(greetFirst)}</div>
+          <div class="teacher-date">${subjLine?esc(subjLine)+' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
         <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">📅 Edit availability</button>
       </div>
