@@ -57,10 +57,74 @@ function fluxNamespacedKey(k){
   const pre=fluxImpersonationPrefix();
   return pre?pre+k:k;
 }
-const load=(k,def)=>{try{const v=localStorage.getItem(fluxNamespacedKey(k));return v?JSON.parse(v):def;}catch(e){return def;}};
-const save=(k,v)=>{try{localStorage.setItem(fluxNamespacedKey(k),JSON.stringify(v));}catch(e){console.warn('Storage full',e);}};
+function _fluxLoadRaw(k,def){try{const v=localStorage.getItem(fluxNamespacedKey(k));return v?JSON.parse(v):def;}catch(e){return def;}}
+function _fluxSaveRaw(k,v){try{localStorage.setItem(fluxNamespacedKey(k),JSON.stringify(v));}catch(e){console.warn('Storage full',e);}}
+const load=(k,def)=>{
+  const o=_fluxLoadRaw(k,def);
+  try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('load',k);}catch(e){}
+  return o;
+};
+const save=(k,v)=>{
+  try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('save',k);}catch(e){}
+  _fluxSaveRaw(k,v);
+};
 window.fluxNamespacedKey=fluxNamespacedKey;
 window.fluxImpersonationPrefix=fluxImpersonationPrefix;
+
+// ── Phase 2 · DEV-only diagnostics (no-op unless explicitly enabled) ──
+// Master: window.FLUX_DEBUG = true  OR  localStorage.setItem('FLUX_DEBUG','1')
+// Scoped (localStorage, value '1'): FLUX_DEBUG_NAV, FLUX_DEBUG_ROLE, FLUX_DEBUG_IMP,
+//   FLUX_DEBUG_BUS, FLUX_DEBUG_STORAGE, FLUX_DEBUG_AI
+(function initFluxDebug(){
+  function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function onFlag(sub){
+    try{
+      if(typeof window!=='undefined'&&window.FLUX_DEBUG===true)return true;
+      if(lsGet('FLUX_DEBUG')==='1')return true;
+      if(sub&&lsGet('FLUX_DEBUG_'+String(sub).toUpperCase())==='1')return true;
+    }catch(e){}
+    return false;
+  }
+  const _throttle=Object.create(null);
+  function throttle(key,ms){
+    const t=Date.now();
+    const last=_throttle[key]||0;
+    if(t-last<ms)return false;
+    _throttle[key]=t;
+    return true;
+  }
+  window.FluxDebug={
+    on:onFlag,
+    traceStorage(op,key){
+      if(!onFlag('STORAGE'))return;
+      if(!throttle('s:'+op+':'+String(key),900))return;
+      let pre='',nk='';
+      try{pre=typeof fluxImpersonationPrefix==='function'?fluxImpersonationPrefix():'';}catch(e){}
+      try{nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(key):String(key);}catch(e){nk=String(key);}
+      console.log('[FluxStorage]',{op,key,impPrefix:pre||'(none)',namespacedKey:nk});
+    },
+    navStart(payload){
+      if(!onFlag('NAV'))return;
+      console.log('[FluxNav:start]',payload);
+    },
+    navEnd(payload){
+      if(!onFlag('NAV'))return;
+      console.log('[FluxNav:end]',payload);
+    },
+    traceBusEmit(e,d){
+      if(!onFlag('BUS'))return;
+      if(!throttle('bus:'+e,1400))return;
+      const n=(FluxBus&&FluxBus._h&&FluxBus._h[e])?FluxBus._h[e].length:0;
+      const hint=d&&typeof d==='object'&&'id'in d?{id:d.id}:undefined;
+      console.log('[FluxBus:emit]',{e,listeners:n,...hint});
+    },
+    ai(ev,payload){
+      if(!onFlag('AI'))return;
+      if(!throttle('ai:'+ev,400))return;
+      console.log('[FluxAI:'+ev+']',payload);
+    },
+  };
+})();
 
 // Defense in depth: impersonation is owner-only. If the most recent user on
 // this browser wasn't the owner, scrub any stale `flux_owner_impersonate`
@@ -1346,9 +1410,16 @@ const FluxRole={
 
   async load(){
     const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
-    if(!u){this.current=this.current||'student';return this.current;}
+    const logRoleLoad=(why)=>{
+      try{
+        if(!window.FluxDebug||!FluxDebug.on)return;
+        if(!FluxDebug.on('ROLE')&&!FluxDebug.on())return;
+        console.log('[FluxRole:load]',{why,current:this.current,mode:this.mode,hasProfile:!!this.profile});
+      }catch(_){}
+    };
+    if(!u){this.current=this.current||'student';logRoleLoad('no_user');return this.current;}
     const sb=(typeof getSB==='function'?getSB():null);
-    if(!sb){this.current=this.current||'student';return this.current;}
+    if(!sb){this.current=this.current||'student';logRoleLoad('no_sb');return this.current;}
     try{
       const {data}=await sb.from('user_roles')
         .select('*')
@@ -1363,6 +1434,7 @@ const FluxRole={
     try{this.mode=load('flux_staff_mode_'+u.id,'work');}catch(_){this.mode='work';}
     if(!this.isEducator())this.mode='personal';
     window._userRole=this.current; // back-compat with existing code
+    logRoleLoad('ok');
     return this.current;
   },
 
@@ -1390,6 +1462,11 @@ const FluxRole={
     // technically still impersonating someone else.
     try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('ROLE')||FluxDebug.on())){
+        console.log('[FluxRole:setMode]',{mode,current:this.current,imp:!!(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active())});
+      }
+    }catch(_){}
   },
 };
 window.FluxRole=FluxRole;
@@ -1469,12 +1546,22 @@ const FluxImpersonate={
     };
     FluxRole.mode=a.mode==='personal'?'personal':'work';
     window._userRole=FluxRole.current;
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('IMP')||FluxDebug.on())){
+        console.log('[FluxImpersonate:apply]',{role:a.role,email:a.email,mode:FluxRole.mode});
+      }
+    }catch(_){}
     return true;
   },
 
   /** Restore the snapshotted real role and forget the impersonation. */
   restore(){
     if(!this._orig)return;
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('IMP')||FluxDebug.on())){
+        console.log('[FluxImpersonate:restore]',{toCurrent:this._orig.current});
+      }
+    }catch(_){}
     FluxRole.current=this._orig.current;
     FluxRole.profile=this._orig.profile;
     FluxRole.mode=this._orig.mode||'work';
@@ -1520,6 +1607,11 @@ const FluxImpersonate={
       mode:record.mode==='personal'?'personal':'work',
     };
     try{localStorage.setItem(this.STORE_KEY,JSON.stringify(r));}catch(_){}
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('IMP')||FluxDebug.on())){
+        console.log('[FluxImpersonate:set]',{role:r.role,email:r.email});
+      }
+    }catch(_){}
     this.apply();
     // Reload state from the NEW impersonation namespace so the preview
     // shows the teacher's bubble instead of whatever was loaded before.
@@ -1529,6 +1621,11 @@ const FluxImpersonate={
 
   /** Wipe the override, restore the real role, refresh the shell. */
   clear(){
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('IMP')||FluxDebug.on())){
+        console.log('[FluxImpersonate:clear]',{hadStore:!!this.read()});
+      }
+    }catch(_){}
     try{localStorage.removeItem(this.STORE_KEY);}catch(_){}
     this.restore();
     const finish=()=>{
@@ -2365,6 +2462,8 @@ function updateNavAriaCurrent(tabId){
   });
 }
 function nav(id,btn,navOpt){
+  const navRawId=id;
+  const navT0=(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('NAV')||FluxDebug.on()))?performance.now():0;
   if(id==='references'){ id='toolbox'; }
   if(id==='flux_control'){
     const r=getMyRole();
@@ -2410,6 +2509,21 @@ function nav(id,btn,navOpt){
       }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
         logicalId='dashboard';
       }
+    }
+  }catch(_){}
+  try{
+    if(window.FluxDebug&&FluxDebug.navStart&&(FluxDebug.on('NAV')||FluxDebug.on())){
+      let imp=null;
+      try{imp=FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();}catch(e){}
+      FluxDebug.navStart({
+        requested:String(navRawId),
+        routed:id,
+        logicalId,
+        role:typeof FluxRole!=='undefined'?FluxRole.current:undefined,
+        mode:typeof FluxRole!=='undefined'?FluxRole.mode:undefined,
+        impersonating:!!imp,
+        canvasSplit:typeof document!=='undefined'&&document.body&&document.body.classList.contains('flux-canvas-ai-split'),
+      });
     }
   }catch(_){}
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active','flux-panel-enter'));
@@ -2472,6 +2586,26 @@ function nav(id,btn,navOpt){
     const np=document.getElementById(id);
     if(np&&window.FluxAnim?.panelFlash)FluxAnim.panelFlash(np);
   }catch(e){}
+  try{
+    if(window.FluxDebug&&FluxDebug.navEnd&&(FluxDebug.on('NAV')||FluxDebug.on())){
+      const direct=[...document.querySelectorAll('.main-content > .panel.active')];
+      const any=[...document.querySelectorAll('.panel.active')];
+      const ids=direct.map(p=>p.id).filter(Boolean);
+      const anyIds=any.map(p=>p.id).filter(Boolean);
+      FluxDebug.navEnd({
+        requested:String(navRawId),
+        final:id,
+        logicalId,
+        directActiveCount:direct.length,
+        directActiveIds:ids,
+        anyActiveCount:any.length,
+        anyActiveIds:anyIds,
+        ms:navT0?Math.round(performance.now()-navT0):undefined,
+      });
+      if(direct.length>1)console.warn('[FluxNav:dup-active] .main-content > .panel.active',ids);
+      if(any.length>1)console.warn('[FluxNav:dup-active] .panel.active (document-wide)',anyIds);
+    }
+  }catch(_){}
 }
 function navMob(id,opt){closeDrawer();closeMobileSheet();nav(id,null,opt);}
 
@@ -5616,6 +5750,7 @@ try{window.fluxRevealAISidebar=fluxRevealAISidebar;}catch(e){}
 
 function initAIChats(){
   loadAIChatsForUser();
+  try{if(window.FluxDebug&&typeof FluxDebug.ai==='function')FluxDebug.ai('initAIChats',{chats:aiChats.length});}catch(e){}
   if(!aiChats.length)newAIChat();
   else loadAIChat(aiChats[0].id);
   wireAIComposerInput();
@@ -5635,6 +5770,7 @@ function newAIChat(){
 
 function loadAIChat(id){
   aiCurrentChatId=id;
+  try{if(window.FluxDebug&&typeof FluxDebug.ai==='function')FluxDebug.ai('loadAIChat',{id});}catch(e){}
   const chat=aiChats.find(c=>c.id===id);
   if(!chat)return;
   aiHistory=chat.messages.map(m=>({role:m.role,content:m.content}));
@@ -6464,6 +6600,7 @@ function execActions(reply){
 }
 async function sendAI(optionalUserText, depth){
   const d=typeof depth==='number'?depth:0;
+  try{if(window.FluxDebug&&typeof FluxDebug.ai==='function')FluxDebug.ai('sendAI',{depth:d,hasOptional:typeof optionalUserText==='string'&&optionalUserText.length>0});}catch(e){}
   if(d>5){
     showToast('Skill chain stopped (too many nested steps).','warning');
     return;
@@ -12542,7 +12679,24 @@ function initIntelligenceEngine(){
 // ══════════════════════════════════════════════════════════════
 
 // ══ EVENT BUS ════════════════════════════════════════════════
-const FluxBus={_h:{},on(e,fn){(this._h[e]=this._h[e]||[]).push(fn);},off(e,fn){this._h[e]=(this._h[e]||[]).filter(f=>f!==fn);},emit(e,d){(this._h[e]||[]).forEach(fn=>{try{fn(d);}catch(err){console.warn('FluxBus error on '+e,err);}});}};
+const FluxBus={
+  _h:{},
+  on(e,fn){
+    try{
+      if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('BUS')||FluxDebug.on())){
+        const arr=this._h[e]||[];
+        if(arr.includes(fn))console.warn('[FluxBus:dup-listener] same function registered twice',{e});
+        if(arr.length>=6)console.warn('[FluxBus:many-listeners]',{e,count:arr.length+1});
+      }
+    }catch(err){}
+    (this._h[e]=this._h[e]||[]).push(fn);
+  },
+  off(e,fn){this._h[e]=(this._h[e]||[]).filter(f=>f!==fn);},
+  emit(e,d){
+    try{if(window.FluxDebug&&typeof FluxDebug.traceBusEmit==='function')FluxDebug.traceBusEmit(e,d);}catch(err){}
+    (this._h[e]||[]).forEach(fn=>{try{fn(d);}catch(err){console.warn('FluxBus error on '+e,err);}});
+  },
+};
 
 // ══ TASK DEPENDENCY SYSTEM ═══════════════════════════════════
 function addDependency(taskId,blockedById){

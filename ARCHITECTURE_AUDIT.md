@@ -300,9 +300,30 @@ Audit SQL/migrations separately under `supabase/migrations/` and `PASTE-INTO-SUP
 
 ---
 
+## Phase 2 — DEV instrumentation (`window.FluxDebug`)
+
+**All no-op in production** until enabled in the browser console / localStorage.
+
+| Enable | Effect |
+|--------|--------|
+| `window.FLUX_DEBUG = true` | Master switch (all areas below that check `FluxDebug.on()`). |
+| `localStorage.setItem('FLUX_DEBUG','1')` | Same (persists per origin). |
+| `localStorage.setItem('FLUX_DEBUG_NAV','1')` | `[FluxNav:start]` / `[FluxNav:end]` + duplicate `.panel.active` warnings. |
+| `localStorage.setItem('FLUX_DEBUG_ROLE','1')` | `[FluxRole:load]` / `[FluxRole:setMode]`. |
+| `localStorage.setItem('FLUX_DEBUG_IMP','1')` | `[FluxImpersonate:apply]`, `restore`, `set`, `clear` logs. |
+| `localStorage.setItem('FLUX_DEBUG_BUS','1')` | `FluxBus.emit` (throttled), duplicate listener warnings on `FluxBus.on`. |
+| `localStorage.setItem('FLUX_DEBUG_STORAGE','1')` | `[FluxStorage]` load/save (throttled per key). |
+| `localStorage.setItem('FLUX_DEBUG_AI','1')` | `initAIChats`, `loadAIChat`, `sendAI` (throttled). |
+
+**Implementation:** `public/js/app.js` immediately after `fluxImpersonationPrefix` export — `initFluxDebug` IIFE; `load`/`save` delegate to `_fluxLoadRaw` / `_fluxSaveRaw` with optional `traceStorage`; `nav`, `FluxRole`, `FluxImpersonate`, `FluxBus`, AI entry points call `FluxDebug` helpers.
+
+**Disable:** `delete window.FLUX_DEBUG` and remove `FLUX_DEBUG*` keys from localStorage, or set to `0`.
+
+---
+
 ## Recommended next steps (matches master prompt Phases 2–4)
 
-1. **Instrumentation only** — `nav` + optionally `FluxBus.emit` / `FluxRole.load` (gated flag).
+1. ~~**Instrumentation only**~~ — **Done (Phase 2):** `FluxDebug` + `nav` / `FluxBus` / role / impersonation / storage / AI hooks (gated).
 2. **Grep audit** — all `.panel` manipulations outside `nav`; list exceptions (fullscreen modals, staff-tabs).
 3. **`STORAGE_AUDIT.md`** — raw `localStorage` inventory (Phase 5).
 4. **Manual matrix** — student / teacher / staff / counselor / owner impersonation / mobile / canvas split (Phase 13).
@@ -314,3 +335,4 @@ Audit SQL/migrations separately under `supabase/migrations/` and `PASTE-INTO-SUP
 | Date | Change |
 |------|--------|
 | 2026-05-18 | Initial audit from workspace scan (HEAD `54f61d3`). |
+| 2026-05-18 | Phase 2: `FluxDebug` instrumentation in `app.js` (gated). |
