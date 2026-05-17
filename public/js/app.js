@@ -6833,9 +6833,9 @@ const SYNC_KEYS=['tasks','notes','habits','goals','colleges','moodHistory','scho
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
-  if(status==='synced'){el.className='sync-badge synced sync-badge--quiet sync-dot';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
-  else if(status==='syncing'){el.className='sync-badge syncing sync-dot';el.textContent='↑ Syncing...';if(sl)sl.textContent='Syncing...';}
-  else{el.className='sync-badge offline sync-dot';el.textContent='○ Local';if(sl)sl.textContent='Not signed in — data is local only';}
+  if(status==='synced'){el.className='sync-badge synced sync-badge--quiet topbar-sync-pill';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
+  else if(status==='syncing'){el.className='sync-badge syncing topbar-sync-pill';el.textContent='Syncing';if(sl)sl.textContent='Syncing...';}
+  else{el.className='sync-badge offline topbar-sync-pill';el.textContent='Local';if(sl)sl.textContent='Not signed in — data is local only';}
   el.style.display=currentUser?'flex':'none';
   if(currentUser){
     if(status==='syncing')el.title='Syncing with cloud…';

@@ -296,6 +296,58 @@ body.flux-has-impersonate-banner.flux-has-release-banner{
 }
 .topbar-right{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;position:relative;z-index:32}
 .date-pill{background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.03) 100%);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:3px 10px;font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);white-space:nowrap;backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+/* Topbar cloud sync chip — matches date-pill glass; never use .sync-dot here (that class fills/scales the whole node). */
+#syncIndicator.sync-badge.topbar-sync-pill{
+  position:relative;
+  white-space:nowrap;
+  font-size:.62rem;
+  padding:4px 12px 4px 12px;
+  border-radius:999px;
+  font-weight:600;
+  letter-spacing:.02em;
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  background:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.03) 100%);
+  border:1px solid rgba(255,255,255,.1);
+  animation:none;
+}
+#syncIndicator.sync-badge.topbar-sync-pill.synced,
+#syncIndicator.sync-badge.topbar-sync-pill.sync-badge--quiet{
+  color:rgba(255,255,255,.72);
+  background:linear-gradient(180deg,rgba(var(--green-rgb),.12) 0%,rgba(var(--green-rgb),.04) 100%);
+  border-color:rgba(var(--green-rgb),.22);
+}
+#syncIndicator.sync-badge.topbar-sync-pill.syncing{
+  color:var(--accent);
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.14) 0%,rgba(var(--accent-rgb),.05) 100%);
+  border-color:rgba(var(--accent-rgb),.28);
+  padding-left:26px;
+}
+#syncIndicator.sync-badge.topbar-sync-pill.syncing::before{
+  content:'';
+  position:absolute;
+  left:9px;
+  top:50%;
+  width:9px;
+  height:9px;
+  margin-top:-5px;
+  border-radius:50%;
+  border:2px solid rgba(var(--accent-rgb),.22);
+  border-top-color:var(--accent);
+  box-sizing:border-box;
+}
+@media (prefers-reduced-motion:no-preference){
+  #syncIndicator.sync-badge.topbar-sync-pill.syncing::before{animation:spin .7s linear infinite}
+}
+@media (prefers-reduced-motion:reduce){
+  #syncIndicator.sync-badge.topbar-sync-pill.syncing::before{opacity:.85}
+}
+#syncIndicator.sync-badge.topbar-sync-pill.offline{
+  color:var(--gold);
+  background:linear-gradient(180deg,rgba(var(--gold-rgb),.12) 0%,rgba(var(--gold-rgb),.04) 100%);
+  border-color:rgba(var(--gold-rgb),.24);
+}
 .ab-pill{padding:4px 12px;border-radius:20px;font-size:.68rem;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px;display:none;white-space:nowrap}
 .mob-menu-btn{display:none;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:6px;border-radius:8px;transition:var(--transition)}
 .mob-menu-btn:hover{color:var(--text);background:var(--card2);transform:none;box-shadow:none}
@@ -2250,6 +2302,7 @@ button:focus-visible,.nav-item:focus-visible,.tmode-btn:focus-visible,.check:foc
 }
 .topbar-right{gap:12px!important}
 .topbar-right>.date-pill{padding:3px 10px!important;font-size:.62rem!important}
+.topbar-right>#syncIndicator.sync-badge.topbar-sync-pill{font-size:.62rem!important}
 .btn-icon{
   width:36px;height:36px;border-radius:10px;border:none;
   background:linear-gradient(145deg,rgba(var(--accent-rgb),.12) 0%,rgba(255,255,255,.06) 55%,rgba(255,255,255,.02) 100%);
