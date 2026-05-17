@@ -5,6 +5,7 @@
    Gmail/Calendar scopes (same provider_token as gmailToken).
    Uses honest batchUpdate; Google Docs still records version history — we
    do not simulate human typing to obscure edits.
+   Depends on globals from app.js: load, save, showToast, …
    ════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -232,8 +233,7 @@
 
   function isGoogleDocsConnectionEnabled() {
     try {
-      var raw = localStorage.getItem('flux_ai_connections_items_v1');
-      var o = raw ? JSON.parse(raw) : {};
+      var o = load('flux_ai_connections_items_v1', {});
       return !!(o.google_docs && o.google_docs.enabled);
     } catch (e) {
       return false;
@@ -245,7 +245,7 @@
     if (!isGoogleDocsConnectionEnabled()) return;
     var urlOrId = '';
     try {
-      urlOrId = localStorage.getItem(LS_PRIMARY_URL) || '';
+      urlOrId = load(LS_PRIMARY_URL, '') || '';
     } catch (e) {}
     var id = extractGoogleDocId(urlOrId);
     if (!id) return;
@@ -262,7 +262,7 @@
     var inp = document.getElementById('fluxDocsPrimaryUrl');
     var v = inp ? inp.value.trim() : '';
     try {
-      localStorage.setItem(LS_PRIMARY_URL, v);
+      save(LS_PRIMARY_URL, v);
     } catch (e) {}
     toast(v ? 'Primary doc URL saved' : 'Cleared primary doc URL', 'success');
   }
@@ -277,7 +277,7 @@
       var url = 'https://docs.google.com/document/d/' + id + '/edit';
       toast('Created Google Doc', 'success');
       try {
-        localStorage.setItem(LS_PRIMARY_URL, url);
+        save(LS_PRIMARY_URL, url);
         var pu = document.getElementById('fluxDocsPrimaryUrl');
         if (pu) pu.value = url;
       } catch (e) {}
@@ -309,7 +309,7 @@
     var text = ta ? ta.value : '';
     var urlOrId = '';
     try {
-      urlOrId = localStorage.getItem(LS_PRIMARY_URL) || '';
+      urlOrId = load(LS_PRIMARY_URL, '') || '';
     } catch (e) {}
     var id = extractGoogleDocId(urlOrId);
     if (!id) {
@@ -328,7 +328,7 @@
     var inp = document.getElementById('fluxDocsPrimaryUrl');
     if (inp) {
       try {
-        inp.value = localStorage.getItem(LS_PRIMARY_URL) || '';
+        inp.value = load(LS_PRIMARY_URL, '') || '';
       } catch (e) {}
     }
     var st = document.getElementById('fluxGoogleDocsStatus');

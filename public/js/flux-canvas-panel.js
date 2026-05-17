@@ -57,7 +57,10 @@
     } catch (_) {}
     // From the signed-in Google account's email domain:
     try {
-      const email = (currentUser && currentUser.email) || localStorage.getItem("flux_user_email") || "";
+      const email =
+        (currentUser && currentUser.email) ||
+        (typeof load === 'function' ? load('flux_last_user_email', '') : '') ||
+        '';
       const at = email.indexOf("@");
       if (at > 0) {
         const domain = email.slice(at + 1).toLowerCase();

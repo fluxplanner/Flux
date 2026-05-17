@@ -19,12 +19,17 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   'flux_dev_accounts','flux_platform_config','flux_platform_broadcast',
   'flux_owner_audit','flux_feedback_inbox','flux_feedback_tombstones',
   'flux_dev_mode',
+  // Chrome extension bridge (device-local; not per-impersonation bubble)
+  'flux_chrome_extension_id',
   // Pre-auth / one-shot signup state
   'flux_pref_role','flux_pending_staff_role','flux_pending_staff_name',
   'flux_pending_staff_subject',
+  // Last signed-in user (device-local; used for account-switch wipe + pre-init scrub)
+  'flux_last_user_id','flux_last_user_email',
   // UI / theme prefs — kept shared so the dev experience doesn't reset
   // every time you switch into a different teacher to test something.
   'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
+  'flux_profile_pic',
   'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
   'flux_last_sync',
@@ -68,6 +73,36 @@ const save=(k,v)=>{
   try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('save',k);}catch(e){}
   _fluxSaveRaw(k,v);
 };
+/** Prefs historically stored as raw '1'/'0' or via save() (JSON); respects namespacing. */
+function fluxLoadLegacy01(k){
+  try{
+    const v=load(k,null);
+    if(v!==null&&v!==undefined){
+      if(v===1||v===true||v==='1')return true;
+      if(v===0||v===false||v==='0')return false;
+    }
+  }catch(_){}
+  try{return localStorage.getItem(fluxNamespacedKey(k))==='1';}catch(_){ return false; }
+}
+function fluxSaveLegacy01(k,on){save(k,on?'1':'0');}
+/** Plain string prefs (raw localStorage or JSON string via save()). */
+function fluxLoadStoredString(k,def){
+  try{
+    const v=load(k,null);
+    if(v!==null&&v!==undefined&&String(v).length)return String(v);
+  }catch(_){}
+  try{
+    const nk=fluxNamespacedKey(k);
+    const raw=localStorage.getItem(nk);
+    if(raw==null||raw==='')return def;
+    try{return String(JSON.parse(raw));}catch(_){return String(raw);}
+  }catch(_){ return def; }
+}
+function fluxSaveStoredString(k,v){save(k,String(v));}
+window.fluxLoadLegacy01=fluxLoadLegacy01;
+window.fluxSaveLegacy01=fluxSaveLegacy01;
+window.fluxLoadStoredString=fluxLoadStoredString;
+window.fluxSaveStoredString=fluxSaveStoredString;
 window.fluxNamespacedKey=fluxNamespacedKey;
 window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 
@@ -76,10 +111,12 @@ window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 // Scoped (localStorage, value '1'): FLUX_DEBUG_NAV, FLUX_DEBUG_ROLE, FLUX_DEBUG_IMP,
 //   FLUX_DEBUG_BUS, FLUX_DEBUG_STORAGE, FLUX_DEBUG_AI
 (function initFluxDebug(){
+  if(window.FluxDebug&&window.FluxDebug.__fromCoreModule)return;
   function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
   function onFlag(sub){
     try{
       if(typeof window!=='undefined'&&window.FLUX_DEBUG===true)return true;
+      if(lsGet('flux_debug')==='on')return true;
       if(lsGet('FLUX_DEBUG')==='1')return true;
       if(sub&&lsGet('FLUX_DEBUG_'+String(sub).toUpperCase())==='1')return true;
     }catch(e){}
@@ -132,7 +169,7 @@ window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 // they don't briefly populate from the wrong namespace. The post-sign-in
 // handler clears it too, but that runs later.
 try{
-  const lastEmail=String(localStorage.getItem('flux_last_user_email')||'').trim().toLowerCase();
+  const lastEmail=String(fluxLoadStoredString('flux_last_user_email','')).trim().toLowerCase();
   if(lastEmail&&lastEmail!=='azfermohammed21@gmail.com'){
     localStorage.removeItem('flux_owner_impersonate');
   }
@@ -141,7 +178,7 @@ try{
 // ══ DATA VERSION — bump when schema needs pruning; never drop user task/note data ══
 const DATA_VERSION=6;
 (function checkDataVersion(){
-  const stored=parseInt(localStorage.getItem('flux_data_version')||'0',10);
+  const stored=Number(load('flux_data_version',0))||0;
   if(stored>=DATA_VERSION)return;
   const keepExact=new Set([
     'flux_data_version','flux_splash_shown',
@@ -154,12 +191,16 @@ const DATA_VERSION=6;
     'flux_canvas_split','flux_canvas_sidebar_collapsed',
     'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
     'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
+    'flux_chrome_extension_id','flux_profile_pic',
     'tasks',
   ]);
   function shouldKeepKey(k){
     if(!k)return false;
     if(keepExact.has(k))return true;
     if(k.startsWith('flux_'))return true;
+    // Supabase JS client session + preview bubbles must survive version bumps.
+    if(k.startsWith('sb-')||k.includes('supabase'))return true;
+    if(k.startsWith('imp:'))return true;
     return false;
   }
   Object.keys(localStorage).forEach(k=>{
@@ -169,7 +210,7 @@ const DATA_VERSION=6;
     }catch(e){}
     try{localStorage.removeItem(k);}catch(e){}
   });
-  localStorage.setItem('flux_data_version',String(DATA_VERSION));
+  save('flux_data_version',DATA_VERSION);
   console.log('[Flux] Data migration applied → version',DATA_VERSION);
 })();
 
@@ -188,16 +229,13 @@ const DATA_VERSION=6;
   window.fluxCompactStorageIfNeeded=function(){
     if(estBytes()<=5*1024*1024)return;
     try{
-      const raw=localStorage.getItem('flux_notes');
-      if(raw){
-        const notes=JSON.parse(raw);
-        if(Array.isArray(notes)&&notes.length>240)localStorage.setItem('flux_notes',JSON.stringify(notes.slice(-240)));
-      }
+      const notes=load('flux_notes',[]);
+      if(Array.isArray(notes)&&notes.length>240)save('flux_notes',notes.slice(-240));
     }catch(e){}
     try{
       for(let i=localStorage.length-1;i>=0;i--){
         const k=localStorage.key(i);
-        if(!k||!k.startsWith('flux_ai_chats'))continue;
+        if(!k||!k.includes('flux_ai_chats'))continue;
         const arr=JSON.parse(localStorage.getItem(k)||'null');
         if(!Array.isArray(arr))continue;
         let dirty=false;
@@ -774,10 +812,10 @@ function getTodayClassesForSchedule(){
   }).sort((a,b)=>(a.timeStart||'').localeCompare(b.timeStart||'')||(a.period||0)-(b.period||0));
 }
 function isDashScheduleDetailExpanded(){
-  return localStorage.getItem('flux_dash_schedule_expanded')==='1';
+  return fluxLoadLegacy01('flux_dash_schedule_expanded');
 }
 function toggleDashScheduleExpanded(){
-  localStorage.setItem('flux_dash_schedule_expanded',isDashScheduleDetailExpanded()?'0':'1');
+  fluxSaveLegacy01('flux_dash_schedule_expanded',!fluxLoadLegacy01('flux_dash_schedule_expanded'));
   renderDynamicFocus();
 }
 function renderDynamicFocus(){
@@ -951,8 +989,17 @@ async function breakItDown(taskId){
 }
 
 // ══ ENERGY-BASED SMART SORT ══
+function readFluxEnergyLevel(){
+  try{
+    const v=load('flux_energy',3);
+    const n=parseInt(String(v),10);
+    return isNaN(n)?3:Math.max(1,Math.min(5,n));
+  }catch(e){return 3;}
+}
+try{window.readFluxEnergyLevel=readFluxEnergyLevel;}catch(e){}
+
 function smartSortTasks(taskList){
-  const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+  const energy=readFluxEnergyLevel();
   return [...taskList].sort((a,b)=>{
     if(energy<=2){
       // Low energy: easy tasks first (difficulty 1-2), then by urgency
@@ -1453,7 +1500,7 @@ const FluxRole={
       const imp=window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();
       if(imp){
         const next={...imp,mode};
-        try{localStorage.setItem(FluxImpersonate.STORE_KEY,JSON.stringify(next));}catch(_){}
+        try{save(FluxImpersonate.STORE_KEY,next);}catch(_){}
       }
     }catch(_){}
     // Re-render the visible identity (sidebar user card, topbar avatar,
@@ -1491,7 +1538,7 @@ window.FluxRole=FluxRole;
 //   Google accounts, they get a clean slate — none of the dev preview
 //   data ever leaves this browser.
 //
-// Storage: localStorage 'flux_owner_impersonate' = JSON
+// Storage: global key `flux_owner_impersonate` via save/load (JSON object).
 //   { role:'teacher'|'counselor'|'staff'|'admin'|'student',
 //     name, subject, email, mode:'work'|'personal' }
 // or absent when off.
@@ -1501,9 +1548,7 @@ const FluxImpersonate={
 
   read(){
     try{
-      const raw=localStorage.getItem(this.STORE_KEY);
-      if(!raw)return null;
-      const v=JSON.parse(raw);
+      const v=load(this.STORE_KEY,null);
       if(!v||typeof v!=='object'||!v.role)return null;
       return v;
     }catch(_){return null;}
@@ -1606,7 +1651,7 @@ const FluxImpersonate={
       email:record.email||'',
       mode:record.mode==='personal'?'personal':'work',
     };
-    try{localStorage.setItem(this.STORE_KEY,JSON.stringify(r));}catch(_){}
+    try{save(this.STORE_KEY,r);}catch(_){}
     try{
       if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('IMP')||FluxDebug.on())){
         console.log('[FluxImpersonate:set]',{role:r.role,email:r.email});
@@ -1626,7 +1671,7 @@ const FluxImpersonate={
         console.log('[FluxImpersonate:clear]',{hadStore:!!this.read()});
       }
     }catch(_){}
-    try{localStorage.removeItem(this.STORE_KEY);}catch(_){}
+    try{localStorage.removeItem(fluxNamespacedKey(this.STORE_KEY));}catch(_){}
     this.restore();
     const finish=()=>{
       try{this.reloadState();}catch(e){console.warn('[FluxImpersonate] reloadState skipped',e);}
@@ -2381,7 +2426,7 @@ function showPersonalEducatorSelfSignupModal(){
     if(document.getElementById('personalEducatorSelfModal')){resolve(null);return;}
     const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
     const p=typeof load==='function'?load('profile',{}):{};
-    const defaultName=String(p.name||localStorage.getItem('flux_user_name')||u?.user_metadata?.full_name||'').trim();
+    const defaultName=String(p.name||fluxLoadStoredString('flux_user_name','')||u?.user_metadata?.full_name||'').trim();
     const ov=document.createElement('div');
     ov.id='personalEducatorSelfModal';
     ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';
@@ -2544,6 +2589,63 @@ function updateNavAriaCurrent(tabId){
     else b.removeAttribute('aria-current');
   });
 }
+
+/** UX-only gate for sensitive panels — delegates to FluxRole; RLS remains authoritative on server. */
+function assertRoleAccess(panelId){
+  const pid=String(panelId||'');
+  if(!pid)return{ok:true};
+  try{
+    if(pid==='flux_control'){
+      const r=typeof getMyRole==='function'?getMyRole():'';
+      if(r==='owner'||r==='dev')return{ok:true};
+      return{ok:false,reason:'flux_control_owner_only',fallbackId:'dashboard'};
+    }
+    const fr=typeof FluxRole!=='undefined'?FluxRole:null;
+    if(!fr)return{ok:true};
+    const work=fr.isWorkMode&&fr.isWorkMode();
+    const personal=fr.isPersonalMode&&fr.isPersonalMode();
+    const edu=fr.isEducator&&fr.isEducator();
+
+    if(pid==='teacherDashboard'){
+      if(fr.isTeacher()&&work)return{ok:true};
+      return{ok:false,reason:'teacher_dashboard',fallbackId:'dashboard'};
+    }
+    if(pid==='counselorDashboard'){
+      if(fr.isCounselor()&&work)return{ok:true};
+      return{ok:false,reason:'counselor_dashboard',fallbackId:'dashboard'};
+    }
+    if(pid==='adminDashboard'){
+      if(fr.isStaff()&&work)return{ok:true};
+      return{ok:false,reason:'admin_dashboard',fallbackId:'dashboard'};
+    }
+    if(pid==='lessonHub'){
+      if(fr.isTeacher()&&work)return{ok:true};
+      return{ok:false,reason:'lesson_hub',fallbackId:fr.isTeacher()?'teacherDashboard':'dashboard'};
+    }
+    if(pid==='counselorMeetings'){
+      if(fr.isCounselor()&&work)return{ok:true};
+      return{ok:false,reason:'counselor_meetings',fallbackId:fr.isCounselor()?'counselorDashboard':'dashboard'};
+    }
+    if(pid==='adminOps'){
+      if(fr.current==='admin'&&work)return{ok:true};
+      return{ok:false,reason:'admin_ops',fallbackId:fr.current==='staff'?'adminDashboard':'dashboard'};
+    }
+    if(pid==='staffWorkboard'){
+      if(fr.current==='staff'&&work)return{ok:true};
+      return{ok:false,reason:'staff_workboard',fallbackId:fr.current==='admin'?'adminDashboard':'dashboard'};
+    }
+    const personalStaffPanels=new Set(['staffTasks','staffMeetingNotes','staffPD','staffWellbeing','staffResources']);
+    if(personalStaffPanels.has(pid)){
+      if(edu&&personal)return{ok:true};
+      return{ok:false,reason:'staff_personal_panel',fallbackId:'dashboard'};
+    }
+  }catch(e){
+    return{ok:true};
+  }
+  return{ok:true};
+}
+window.assertRoleAccess=assertRoleAccess;
+
 function nav(id,btn,navOpt){
   const navRawId=id;
   const navT0=(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('NAV')||FluxDebug.on()))?performance.now():0;
@@ -2594,6 +2696,18 @@ function nav(id,btn,navOpt){
       }
     }
   }catch(_){}
+  const _gate=assertRoleAccess(id);
+  if(!_gate.ok){
+    try{
+      if(window.FluxDebug&&typeof FluxDebug.log==='function'&&(FluxDebug.on('ROLE')||FluxDebug.on('NAV')||FluxDebug.on())){
+        FluxDebug.log('role','assertRoleAccess denied',{panelId:id,reason:_gate.reason,routedFrom:navRawId,role:typeof FluxRole!=='undefined'?FluxRole.current:undefined,mode:typeof FluxRole!=='undefined'?FluxRole.mode:undefined});
+      }
+    }catch(_){}
+    const fb=_gate.fallbackId||'dashboard';
+    if(fb!==id){nav(fb,btn,navOpt);return;}
+    id='dashboard';
+    logicalId='dashboard';
+  }
   try{
     if(window.FluxDebug&&FluxDebug.navStart&&(FluxDebug.on('NAV')||FluxDebug.on())){
       let imp=null;
@@ -2618,6 +2732,19 @@ function nav(id,btn,navOpt){
     panel.classList.add('active','flux-panel-enter');
     setTimeout(()=>panel.classList.remove('flux-panel-enter'),560);
   }
+  try{
+    if(window.FluxDebug&&typeof FluxDebug.tracePanels==='function'){
+      FluxDebug.tracePanels({
+        requested:String(navRawId),
+        routed:id,
+        logicalId,
+        panelFound:!!panel,
+        panelId:panel&&panel.id,
+        role:typeof FluxRole!=='undefined'?FluxRole.current:undefined,
+        mode:typeof FluxRole!=='undefined'?FluxRole.mode:undefined,
+      });
+    }
+  }catch(_){}
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll(`[data-tab="${logicalId}"]`).forEach(b=>b.classList.add('active'));
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
@@ -3144,7 +3271,7 @@ function renderAboutStats(){
 function updateDashHero(){
   const greet=document.getElementById('dashGreeting');
   if(!greet)return;
-  const raw=(localStorage.getItem('flux_user_name')||'there').trim()||'there';
+  const raw=(fluxLoadStoredString('flux_user_name','there').trim()||'there');
   const first=raw.split(/\s+/)[0];
   const h=new Date().getHours();
   const part=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
@@ -3344,7 +3471,7 @@ function fluxRenderDashMob(){
       const cta=document.getElementById('dashMobDoNowCta');
       if(cta){
         cta.onclick=()=>{
-          try{ localStorage.setItem('flux_timer_subject_prefill',t.subject||''); }catch(e){}
+          try{ fluxSaveStoredString('flux_timer_subject_prefill',t.subject||''); }catch(e){}
           if(typeof nav==='function')nav('timer');
         };
       }
@@ -3439,7 +3566,7 @@ function renderTasks(){
       return (a.id||0)-(b.id||0);
     });
   }else{
-  const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+  const energy=readFluxEnergyLevel();
   let moodStress=5;
   try{const mh=moodHistory&&moodHistory.length?moodHistory[moodHistory.length-1]:null;if(mh&&mh.stress!=null)moodStress=parseInt(mh.stress,10);}catch(e){}
   list.sort((a,b)=>{
@@ -3564,7 +3691,11 @@ function closeDashAddTaskModal(){
   const rw=document.getElementById('taskRecurringWeekly');if(rw)rw.checked=false;
 }
 function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];const card=document.getElementById('countdownCard');if(!next){card.style.display='none';return;}card.style.display='block';const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));const sub=getSubjects()[next.subject];const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';document.getElementById('countdownLabel').textContent=next.name+(sub?' · '+sub.short:'');document.getElementById('countdownGrid').innerHTML=[[diff,'Days','var(--accent)'],[Math.floor(diff/7),'Weeks','var(--accent)'],[new Date(next.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),'Date','var(--accent)'],[diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC]].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`).join('');}
-function setEnergy(v){localStorage.setItem('flux_energy',v);const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[v];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[v];renderSmartSug();}
+function setEnergy(v){
+  const n=Math.max(1,Math.min(5,parseInt(String(v),10)||3));
+  save('flux_energy',n);
+  const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[n];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[n];renderSmartSug();
+}
 function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';
   const depEl=document.getElementById('editDeps');
   if(depEl){
@@ -4788,9 +4919,9 @@ function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlip
 // (Old habits/goals/college functions removed — replaced by extracurriculars system above)
 
 // ══ MOOD ══
-function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');localStorage.setItem('flux_mood_today',val);}
-function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;localStorage.setItem('flux_stress_today',v);}
-function saveMoodEntry(){const mood=parseInt(localStorage.getItem('flux_mood_today')||'3');const stress=parseInt(document.getElementById('stressSlider').value||'3');const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
+function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');save('flux_mood_today',val);}
+function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;save('flux_stress_today',v);}
+function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
 function startBreathing(){if(breathingActive){clearInterval(breathTimer);breathingActive=false;document.getElementById('breathBtn').textContent='Start';document.getElementById('breathCircle').style.transform='scale(1)';document.getElementById('breathCircle').textContent='START';return;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];document.getElementById('breathCircle').textContent=p.label+'\n'+countdown;document.getElementById('breathCircle').style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
@@ -4848,8 +4979,8 @@ function saveProfile(){
     program:Array.from(document.querySelectorAll('input[name="programOpt"]:checked')).map(i=>i.value),
     school:document.getElementById('profileSchool').value.trim(),
   };
-  localStorage.setItem('profile',JSON.stringify(p));
-  localStorage.setItem('flux_user_name',p.name);
+  save('profile',p);
+  fluxSaveStoredString('flux_user_name',p.name);
   checkProgramUpgrade(p);
   renderProfile();
   syncKey('profile',p);
@@ -4865,7 +4996,7 @@ function checkProgramUpgrade(p){
     programs=programs.filter(x=>x!=='IB MYP');
     if(!programs.includes('IB DP'))programs.push('IB DP');
     p.program=programs;
-    localStorage.setItem('profile',JSON.stringify(p));
+    save('profile',p);
     // Show upgrade notification
     const notif=document.createElement('div');
     notif.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;padding:14px 24px;border-radius:14px;font-size:.88rem;font-weight:700;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:floatIn .3s ease';
@@ -4880,7 +5011,7 @@ function renderProfile(){
   const p=load('profile',{});
   try{if(typeof renderMyCounselorSection==='function')void renderMyCounselorSection();}catch(_){}
   if(p.grade)checkProgramUpgrade(p);
-  const name=p.name||localStorage.getItem('flux_user_name')||'Student';
+  const name=p.name||fluxLoadStoredString('flux_user_name','Student');
   const grade=p.grade||'';
   const programs=normalizeProgramList(p.program);
   const programDisplay=formatProgramsDisplay(programs);
@@ -4897,7 +5028,7 @@ function renderProfile(){
   }
   document.querySelectorAll('input[name="programOpt"]').forEach(cb=>{cb.checked=programs.includes(cb.value);});
 
-  const pic=localStorage.getItem('flux_profile_pic');
+  const pic=fluxLoadStoredString('flux_profile_pic','');
   const av=document.getElementById('pAvatar');
   if(av)av.innerHTML=(pic?`<img src="${pic}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
@@ -4929,7 +5060,7 @@ function renderProfile(){
   studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});
 }
 
-function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{localStorage.setItem('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
+function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fluxSaveStoredString('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
 function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
@@ -4983,26 +5114,26 @@ function applyTheme(key){
   const theme=THEMES[key];if(!theme)return;
   applyThemeVars(key,true);
   document.body.setAttribute('data-theme',key);
-  localStorage.setItem('flux_theme',key);
+  fluxSaveStoredString('flux_theme',key);
   const custom=load('flux_custom_colors',{});
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
   if(theme.vars['--accent']){
-    localStorage.setItem('flux_accent',theme.vars['--accent']);
-    localStorage.setItem('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
+    fluxSaveStoredString('flux_accent',theme.vars['--accent']);
+    fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
   }
-  updateLogoColor(theme.vars['--accent']||localStorage.getItem('flux_accent')||'#00bfff');
+  updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
 }
 function themeDark(){applyTheme('dark');}
 function themeCrimson(){applyTheme('ember');}
 function themeFocus(){applyTheme('forest');}
 function themeSepia(){applyTheme('rose');}
 function toggleTheme(){
-  const cur=localStorage.getItem('flux_theme')||'dark';
+  const cur=fluxLoadStoredString('flux_theme','dark');
   applyTheme(cur==='light'?'dark':'light');
   if(typeof showToast==='function'){
-    const next=localStorage.getItem('flux_theme')||'dark';
+    const next=fluxLoadStoredString('flux_theme','dark');
     showToast('Theme: '+(THEMES[next]?.label||next),'info');
   }
 }
@@ -5019,11 +5150,14 @@ function loadTheme(){
     save('flux_custom_colors',custom);
   }
   // Auto-detect OS color scheme on first visit
-  if(!localStorage.getItem('flux_theme')){
-    const prefersDark=typeof matchMedia==='undefined'||matchMedia('(prefers-color-scheme:dark)').matches;
-    localStorage.setItem('flux_theme',prefersDark?'dark':'light');
-  }
-  const raw=localStorage.getItem('flux_theme')||'dark';
+  try{
+    const nk=fluxNamespacedKey('flux_theme');
+    if(localStorage.getItem(nk)==null||localStorage.getItem(nk)===''){
+      const prefersDark=typeof matchMedia==='undefined'||matchMedia('(prefers-color-scheme:dark)').matches;
+      fluxSaveStoredString('flux_theme',prefersDark?'dark':'light');
+    }
+  }catch(_){}
+  const raw=fluxLoadStoredString('flux_theme','dark');
   const key=THEMES[raw]?raw:'dark';
   const theme=THEMES[key];
   applyThemeVars(key,false);
@@ -5031,10 +5165,10 @@ function loadTheme(){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  let acc=(localStorage.getItem('flux_accent')||theme.vars['--accent']||'#00bfff').replace(/^"|"$/g,'');
-  let rgb=(localStorage.getItem('flux_accent_rgb')||theme.vars['--accent-rgb']||'0,191,255').replace(/^"|"$/g,'');
-  localStorage.setItem('flux_accent',acc);
-  localStorage.setItem('flux_accent_rgb',rgb);
+  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#00bfff')).replace(/^"|"$/g,'');
+  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255')).replace(/^"|"$/g,'');
+  fluxSaveStoredString('flux_accent',acc);
+  fluxSaveStoredString('flux_accent_rgb',rgb);
   document.documentElement.style.setProperty('--accent',acc);
   document.documentElement.style.setProperty('--accent-rgb',rgb);
   setTimeout(()=>{updateLogoColor(acc);clearSvgLogoGradientStyles();},0);
@@ -5050,7 +5184,7 @@ function applyCustomVar(varName,value){
 }
 function resetCustomColors(){
   save('flux_custom_colors',{});
-  const key=localStorage.getItem('flux_theme')||'dark';
+  const key=fluxLoadStoredString('flux_theme','dark');
   applyTheme(key);
   const b=event?.target;if(b){b.textContent='✓ Reset!';setTimeout(()=>b.textContent='↺ Reset colors',1500);}
 }
@@ -5160,9 +5294,8 @@ function setAccent(hex,rgb,el){
   });
   const tp=document.getElementById('topbarTaskPill');
   if(tp)tp.style.borderColor=`rgba(${rgb},.3)`;
-  // Persist to localStorage as raw strings (NOT via save() which JSON.stringify wraps in quotes)
-  localStorage.setItem('flux_accent',hex);
-  localStorage.setItem('flux_accent_rgb',rgb);
+  fluxSaveStoredString('flux_accent',hex);
+  fluxSaveStoredString('flux_accent_rgb',rgb);
   syncKey('accent',{accent:hex,accentRgb:rgb});
   updateLogoColor(hex);
   try{if(window.FluxVisual&&typeof FluxVisual.updateNavSquiggle==='function')FluxVisual.updateNavSquiggle(hex);}catch(e){}
@@ -5370,8 +5503,27 @@ function clearCache(){
     'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
     'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
+    'flux_data_version','flux_splash_shown',
   ];
-  Object.keys(localStorage).forEach(k=>{if(!keep.includes(k))localStorage.removeItem(k);});
+  const survived={};
+  keep.forEach(logicalKey=>{
+    try{
+      const nk=fluxNamespacedKey(logicalKey);
+      const v=localStorage.getItem(nk);
+      if(v!==null)survived[nk]=v;
+    }catch(_){}
+  });
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&(k.startsWith('sb-')||k.includes('supabase'))){
+      try{
+        const v=localStorage.getItem(k);
+        if(v!==null)survived[k]=v;
+      }catch(_){}
+    }
+  }
+  localStorage.clear();
+  Object.entries(survived).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(_){}});
   tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
   renderStats();renderTasks();
   showToast('All planner data cleared.','info');
@@ -5795,8 +5947,8 @@ function syncAISidebarLayout(){
   const root=document.querySelector('#ai.flux-ai-panel.ai-root');
   const side=document.querySelector('#ai.flux-ai-panel.ai-root .ai-sidebar');
   if(!root||!side)return;
-  const hidden=localStorage.getItem('flux_ai_sidebar_hidden')==='1';
-  const compact=!hidden&&localStorage.getItem('flux_ai_chats_compact')==='1';
+  const hidden=fluxLoadLegacy01('flux_ai_sidebar_hidden');
+  const compact=!hidden&&fluxLoadLegacy01('flux_ai_chats_compact');
   root.classList.toggle('ai-root--sidebar-hidden',hidden);
   side.classList.toggle('ai-sidebar--chats-compact',compact&&!hidden);
   const btn=document.getElementById('aiChatCompactBtn');
@@ -5810,23 +5962,23 @@ function syncAISidebarLayout(){
 }
 function fluxRevealAISidebar(){
   try{
-    localStorage.setItem('flux_ai_sidebar_hidden','0');
-    localStorage.setItem('flux_ai_chats_compact','0');
+    fluxSaveLegacy01('flux_ai_sidebar_hidden',false);
+    fluxSaveLegacy01('flux_ai_chats_compact',false);
   }catch(e){}
   syncAISidebarLayout();
 }
 function toggleAIChatListCompact(){
-  const hidden=localStorage.getItem('flux_ai_sidebar_hidden')==='1';
-  const compact=localStorage.getItem('flux_ai_chats_compact')==='1';
+  const hidden=fluxLoadLegacy01('flux_ai_sidebar_hidden');
+  const compact=fluxLoadLegacy01('flux_ai_chats_compact');
   try{
     if(!hidden&&!compact){
-      localStorage.setItem('flux_ai_chats_compact','1');
+      fluxSaveLegacy01('flux_ai_chats_compact',true);
     }else if(!hidden&&compact){
-      localStorage.setItem('flux_ai_sidebar_hidden','1');
-      localStorage.setItem('flux_ai_chats_compact','0');
+      fluxSaveLegacy01('flux_ai_sidebar_hidden',true);
+      fluxSaveLegacy01('flux_ai_chats_compact',false);
     }else{
-      localStorage.setItem('flux_ai_sidebar_hidden','0');
-      localStorage.setItem('flux_ai_chats_compact','0');
+      fluxSaveLegacy01('flux_ai_sidebar_hidden',false);
+      fluxSaveLegacy01('flux_ai_chats_compact',false);
     }
   }catch(e){}
   syncAISidebarLayout();
@@ -6012,12 +6164,12 @@ function fmtAI(raw){
 
   return t;
 }
-function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg ai-msg--gpt '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(localStorage.getItem('flux_user_name')||'U').charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
+function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg ai-msg--gpt '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(fluxLoadStoredString('flux_user_name','U')).charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
 const msgWrap=document.getElementById('aiMsgsWrap');if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,30);return div;}
 function setFluxAIMode(mode,btn){
   const ok=['default','research','deep','overtime'];
   const m=ok.includes(mode)?mode:'default';
-  localStorage.setItem('flux_ai_mode',m);
+  fluxSaveStoredString('flux_ai_mode',m);
   document.querySelectorAll('.flux-ai-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
   const sel=document.getElementById('aiModeSelect');
   if(sel)sel.value=m;
@@ -6031,7 +6183,7 @@ function setFluxAIModeFromSelect(value){
   if(typeof showToast==='function')showToast('AI style: '+(labels[m]||m),'info');
 }
 function syncFluxAIModeButtons(){
-  const m=localStorage.getItem('flux_ai_mode')||'default';
+  const m=fluxLoadStoredString('flux_ai_mode','default');
   document.querySelectorAll('.flux-ai-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
   const sel=document.getElementById('aiModeSelect');
   if(sel)sel.value=m;
@@ -6051,7 +6203,7 @@ function wireAIComposerInput(){
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}});
 }
 function getFluxAIModeInstructions(){
-  const mode=localStorage.getItem('flux_ai_mode')||'default';
+  const mode=fluxLoadStoredString('flux_ai_mode','default');
   if(mode==='research')return`\n<mode_research>\nResearch mode: lead with the most credible, specific sources first — official .gov/.edu pages, Google Scholar, PubMed, major digital libraries. Format links as [title](url). Wikipedia is a starting point, not a citation. Always tell the student to verify before citing. Don't substitute a list of links for actual thinking — links support their work, they don't replace it.\n</mode_research>`;
   if(mode==='deep')return`\n<mode_deep_think>\nDeep Think mode: slow down, prioritize accuracy. Cross-check claims against the planner snapshot. Separate what you know from what you're inferring. For anything that touches dates or school policy — tell the student exactly what to verify and where. When uncertain, hedge explicitly rather than projecting false confidence.\n</mode_deep_think>`;
   if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable.\n</mode_overtime>`;
@@ -6547,7 +6699,7 @@ loadCustomSkills();
 
 function buildAIPrompt(){
   const ctx=refreshAIContext();
-  const name=localStorage.getItem('flux_user_name')||'Student';
+  const name=fluxLoadStoredString('flux_user_name','Student');
   const p=load('profile',{});
   const grade=p.grade||'';
   const program=formatProgramsDisplay(p.program);
@@ -6719,7 +6871,7 @@ async function sendAI(optionalUserText, depth){
   }
   const userMsg=nested?text:(text||(imgSnapshot?'Please analyze this image.':''));
   aiHistory.push({role:'user',content:userMsg});
-  if(!nested){try{const c=parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10)||0;localStorage.setItem('flux_ai_msg_count',String(c+1));}catch(e){}}
+  if(!nested){try{const c=Number(load('flux_ai_msg_count',0))||0;save('flux_ai_msg_count',c+1);}catch(e){}}
   saveCurrentChat();
   if(!nested){input.value='';input.style.height='auto';}
   btn.disabled=true;
@@ -6913,7 +7065,7 @@ function buildFullPlannerContextForAI(opts){
   };
 
   const p=load('profile',{});
-  const displayName=[localStorage.getItem('flux_user_name'),p.name].filter(Boolean).join(' · ')||'Student';
+  const displayName=[fluxLoadStoredString('flux_user_name',''),p.name].filter(Boolean).join(' · ')||'Student';
   add('Student',displayName);
   add('Profile (JSON)',clip(JSON.stringify(p),1400));
 
@@ -6999,9 +7151,9 @@ function buildFullPlannerContextForAI(opts){
 function getCloudPayload(){
   // Include colors in sync now — user wants same colors everywhere
   return{
-    accent:localStorage.getItem('flux_accent')||'#00bfff',
-    accentRgb:localStorage.getItem('flux_accent_rgb')||'0,191,255',
-    theme:localStorage.getItem('flux_theme')||'dark',
+    accent:fluxLoadStoredString('flux_accent','#00bfff'),
+    accentRgb:fluxLoadStoredString('flux_accent_rgb','0,191,255'),
+    theme:fluxLoadStoredString('flux_theme','dark'),
     tasks,
     notes:notes.map(n=>({...n,body:n.body||''})),
     habits,
@@ -7106,7 +7258,7 @@ async function forceSyncNow(){
   renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   renderSchool();updateTStats();populateSubjectSelects();
   // Re-apply accent AFTER all renders (renderSidebars rebuilds SVG logo)
-  updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
+  updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
   if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
   if(btn){btn.textContent='✓ Synced';setTimeout(()=>{btn.textContent='Force Sync Now';btn.disabled=false;},2000);}
   showToast('✓ Data synced');
@@ -7138,7 +7290,7 @@ async function syncFromCloud(){
     if(d.schoolInfo){schoolInfo=d.schoolInfo;save('flux_school',schoolInfo);}
     if(d.classes){classes=d.classes;save('flux_classes',classes);}
     if(d.teacherNotes){teacherNotes=d.teacherNotes;save('flux_teacher_notes',teacherNotes);}
-    if(d.profile&&d.profile.name){localStorage.setItem('profile',JSON.stringify(d.profile));localStorage.setItem('flux_user_name',d.profile.name.split(' ')[0]);}
+    if(d.profile&&d.profile.name){save('profile',d.profile);fluxSaveStoredString('flux_user_name',d.profile.name.split(' ')[0]);}
     if(d.studyDNA){studyDNA=d.studyDNA;save('flux_dna',studyDNA);}
     if(d.confidences){confidences=d.confidences;save('flux_conf',confidences);}
     if(d.sessionLog){sessionLog=d.sessionLog;save('flux_session_log',sessionLog);}
@@ -7167,12 +7319,12 @@ async function syncFromCloud(){
       save('flux_tour_completed',true);
       save('flux_tour_done',true);
     }
-    // Restore synced colors — write to localStorage FIRST so applyTheme reads correct values
+    // Restore synced colors — write canonical storage first so loadTheme reads correct values
     const syncAccent=d.accent||'#00bfff';
     const syncRgb=d.accentRgb||'0,191,255';
-    localStorage.setItem('flux_accent',syncAccent);
-    localStorage.setItem('flux_accent_rgb',syncRgb);
-    if(d.theme)localStorage.setItem('flux_theme',d.theme);
+    fluxSaveStoredString('flux_accent',syncAccent);
+    fluxSaveStoredString('flux_accent_rgb',syncRgb);
+    if(d.theme)fluxSaveStoredString('flux_theme',d.theme);
     loadTheme();
     // Mark active swatch
     document.querySelectorAll('.swatch').forEach(s=>{
@@ -7229,7 +7381,7 @@ async function syncFromCloud(){
     renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();renderSchool();updateTStats();
     populateSubjectSelects();
     // Re-apply accent after renders in case sidebar was rebuilt
-    updateLogoColor(localStorage.getItem('flux_accent')||'#00bfff');
+    updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
     if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
     updateMasterBacklogCardVisibility();
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
@@ -7616,8 +7768,8 @@ function checkDueNotifications(){
   if(quietHours())return;
   const now=new Date();
   const horizon=new Date(now.getTime()+24*3600000);
-  let log={};
-  try{log=JSON.parse(localStorage.getItem('flux_notify_log')||'{}');}catch(e){log={};}
+  let log=load('flux_notify_log',{});
+  if(!log||typeof log!=='object'||Array.isArray(log))log={};
   tasks.forEach(t=>{
     if(t.done||!t.date)return;
     const due=new Date(t.date+'T23:59:59');
@@ -7630,7 +7782,7 @@ function checkDueNotifications(){
     log[key]=Date.now();
   });
   const pruned=Object.fromEntries(Object.entries(log).filter(([,ts])=>Date.now()-ts<7*86400000));
-  localStorage.setItem('flux_notify_log',JSON.stringify(pruned));
+  save('flux_notify_log',pruned);
 }
 function handleDeepLinkParams(){
   try{
@@ -7828,7 +7980,7 @@ function handleObPic(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    localStorage.setItem('flux_profile_pic',e.target.result);
+    fluxSaveStoredString('flux_profile_pic',e.target.result);
     const av=document.getElementById('obAvatar');
     if(av)av.innerHTML=`<img src="${e.target.result}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
   };
@@ -7842,7 +7994,7 @@ function obNext(){
     p.name=name;
     p.grade=obSelectedGrade;
     save('profile',p);
-    localStorage.setItem('flux_user_name',name.split(' ')[0]);
+    fluxSaveStoredString('flux_user_name',name.split(' ')[0]);
     _updateSidebarName(name);
   }
   if(obCurrentStep===2){
@@ -9009,7 +9161,7 @@ function showApp(){
     }catch(e){}
   },100);
   // Always open to the dashboard on load (no tab restore)
-  try{localStorage.removeItem('flux_last_tab');localStorage.removeItem('flux_last_tab_ts');}catch(e){}
+  try{localStorage.removeItem(fluxNamespacedKey('flux_last_tab'));localStorage.removeItem(fluxNamespacedKey('flux_last_tab_ts'));}catch(e){}
   // Smart next-day warning
   setTimeout(checkTomorrowLoad,4500);
   setTimeout(checkWeeklyReview,5000);
@@ -9022,7 +9174,7 @@ function initFluxExtensionIdSettings(){
   const inp=document.getElementById('fluxChromeExtensionIdInput');
   if(!inp)return;
   var v='';
-  try{v=(localStorage.getItem('flux_chrome_extension_id')||window.FLUX_CHROME_EXTENSION_ID||'').trim();}catch(e){v=(window.FLUX_CHROME_EXTENSION_ID||'').trim();}
+  try{v=(fluxLoadStoredString('flux_chrome_extension_id','')||window.FLUX_CHROME_EXTENSION_ID||'').trim();}catch(e){v=(window.FLUX_CHROME_EXTENSION_ID||'').trim();}
   inp.value=v;
 }
 function saveFluxExtensionIdFromSettings(){
@@ -9031,7 +9183,7 @@ function saveFluxExtensionIdFromSettings(){
   const id=String(inp.value||'').trim().replace(/\s+/g,'');
   if(!id){if(typeof showToast==='function')showToast('Paste your extension ID first','error');return;}
   if(!/^[a-p]{32}$/.test(id)){if(typeof showToast==='function')showToast('That does not look like a Chrome extension ID (32 letters a–p).','error');return;}
-  try{localStorage.setItem('flux_chrome_extension_id',id);}catch(e){}
+  try{fluxSaveStoredString('flux_chrome_extension_id',id);}catch(e){}
   window.FLUX_CHROME_EXTENSION_ID=id;
   if(typeof syncTokenToExtension==='function')syncTokenToExtension();
   if(typeof showToast==='function')showToast('Extension linked — session synced','success');
@@ -9042,7 +9194,7 @@ window.saveFluxExtensionIdFromSettings=saveFluxExtensionIdFromSettings;
 window.FLUX_CHROME_EXTENSION_ID=window.FLUX_CHROME_EXTENSION_ID||'';
 function syncTokenToExtension(){
   if(!currentUser||typeof chrome==='undefined'||!chrome.runtime?.sendMessage)return;
-  const extId=(typeof localStorage!=='undefined'&&localStorage.getItem('flux_chrome_extension_id'))||window.FLUX_CHROME_EXTENSION_ID;
+  const extId=(fluxLoadStoredString('flux_chrome_extension_id','')||window.FLUX_CHROME_EXTENSION_ID);
   if(!extId||!String(extId).trim())return;
   const sb=getSB();
   if(!sb)return;
@@ -9092,13 +9244,19 @@ async function handleSignedIn(user,session){
     return;
   }
   // ── ACCOUNT SWITCH: wipe previous user's data ──────────────
-  const lastId = localStorage.getItem('flux_last_user_id');
+  const lastId = String(fluxLoadStoredString('flux_last_user_id','')).trim();
   if(lastId && lastId !== user.id){
     // Different account — clear app data but NEVER clear sb-* keys (Supabase auth session)
     // localStorage.clear() was wiping the new OAuth tokens → immediate SIGNED_OUT
     const survivingKeys=['flux_splash_shown','flux_theme'];
     const survived={};
-    survivingKeys.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)survived[k]=v;});
+    survivingKeys.forEach(logicalKey=>{
+      try{
+        const nk=fluxNamespacedKey(logicalKey);
+        const v=localStorage.getItem(nk);
+        if(v!==null)survived[nk]=v;
+      }catch(_){}
+    });
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i);
       if(k&&(k.startsWith('sb-')||k.includes('supabase')))survived[k]=localStorage.getItem(k);
@@ -9120,8 +9278,8 @@ async function handleSignedIn(user,session){
     }catch(_){}
     console.log('🔄 Account switched — wiped previous user data');
   }
-  localStorage.setItem('flux_last_user_id', user.id);
-  localStorage.setItem('flux_last_user_email', user.email||'');
+  fluxSaveStoredString('flux_last_user_id',user.id);
+  fluxSaveStoredString('flux_last_user_email',user.email||'');
   // ────────────────────────────────────────────────────────────
 
   currentUser=user;
@@ -9151,7 +9309,7 @@ async function handleSignedIn(user,session){
   teardownLoginScrollAnimations();
   const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'Student';
   const firstName=name.split(' ')[0];
-  localStorage.setItem('flux_user_name',firstName);
+  fluxSaveStoredString('flux_user_name',firstName);
   _updateUserUI(user,name);
   setSyncStatus('syncing');
 
@@ -9304,7 +9462,7 @@ function _updateUserUI(user,name){
 
   const firstName=(name||displayEmail.split('@')[0]||'User').split(' ')[0];
   const fullName=name||firstName;
-  localStorage.setItem('flux_user_name',firstName);
+  fluxSaveStoredString('flux_user_name',firstName);
   const avatarHTML=avatarUrl
     ?`<img src="${avatarUrl}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`
     :`<span style="font-size:.9rem;font-weight:700;line-height:1">${firstName.charAt(0).toUpperCase()}</span>`;
@@ -9361,6 +9519,7 @@ function handleSignedOut(){
     'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
+    'flux_profile_pic',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
     'flux_canvas_autosync','flux_canvas_last_sync',
@@ -9369,11 +9528,18 @@ function handleSignedOut(){
     'flux_canvas_embed_url','flux_canvas_hub_cache','flux_canvas_ai_focus',
     'flux_ai_connections_items_v1','flux_ai_connections_custom_v1','flux_ai_model_route_v1',
     'flux_chrome_extension_id',
+    'flux_last_user_id','flux_last_user_email',
   ];
   const kept={};
-  keysToKeep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)kept[k]=v;});
+  keysToKeep.forEach(logicalKey=>{
+    try{
+      const nk=fluxNamespacedKey(logicalKey);
+      const v=localStorage.getItem(nk);
+      if(v!==null)kept[nk]=v;
+    }catch(_){}
+  });
   localStorage.clear();
-  Object.entries(kept).forEach(([k,v])=>localStorage.setItem(k,v));
+  Object.entries(kept).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(_){}});
   window.location.replace(getRedirectURL());
 }
 
@@ -9435,7 +9601,7 @@ function initTopbar(){
   }
   updateClock();setInterval(updateClock,10000);
   function updateEnergyPill(){
-    const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+    const energy=readFluxEnergyLevel();
     const emojis=['','😴','😕','😐','😊','🚀'];
     const el=document.getElementById('topbarEnergy');if(el)el.textContent=emojis[energy]||'😐';
   }
@@ -9824,10 +9990,10 @@ function handleCheckoutReturn(){
   const afterSplash = () => initAuth();
 
   // Show splash only on first ever visit or fresh install
-  const shownSplash = localStorage.getItem('flux_splash_shown');
-  const isFirstTimeSplash = !shownSplash;
+  const shownSplash=fluxLoadStoredString('flux_splash_shown','');
+  const isFirstTimeSplash=!shownSplash;
   if(!shownSplash){
-    localStorage.setItem('flux_splash_shown','1');
+    fluxSaveStoredString('flux_splash_shown','1');
   }
   const s=document.getElementById('splash');
   if(s)s.style.display='block';
@@ -10185,11 +10351,11 @@ function updateCognitiveLoadMeter(){
   let payload=null;
   if(window.FluxBehavior&&typeof window.FluxBehavior.tick==='function'){
     try{
-      const lastActiveAt=Number(localStorage.getItem('flux_last_active_ms'))||null;
+      const lastActiveAt=Number(load('flux_last_active_ms',0))||null;
       payload=window.FluxBehavior.tick({
         tasks,classes,
         momentumLevel:typeof _momentum==='number'?_momentum:0,
-        streak:Number(localStorage.getItem('flux_task_streak_n'))||0,
+        streak:Number(load('flux_task_streak_n',0))||0,
         lastActiveAt:lastActiveAt?new Date(lastActiveAt):null,
         now:new Date(),
       });
@@ -12169,7 +12335,7 @@ function startPresentMode(){
   overlay.style.cssText='position:fixed;inset:0;z-index:9500;background:var(--bg);overflow:auto;animation:fadeIn .3s ease';
   
   const now=new Date();
-  const name=localStorage.getItem('flux_user_name')||'Student';
+  const name=fluxLoadStoredString('flux_user_name','Student');
   const focusHrs=Math.round((load('t_minutes',0)||0)/60);
   const totalTasks=tasks.filter(t=>!t.done).length;
   const doneTasks=tasks.filter(t=>t.done).length;
@@ -12886,7 +13052,7 @@ function explainTaskRanking(task){
     else if(days<=2)reasons.push('⏰ Due in '+days+' day'+(days>1?'s':''));
   }
   if(task.priority==='high')reasons.push('🔴 High priority');
-  const energy=parseInt(localStorage.getItem('flux_energy')||'3');
+  const energy=readFluxEnergyLevel();
   if(energy<=2&&(task.difficulty||3)<=2)reasons.push('💡 Easy task fits low energy');
   if(energy>=4&&['project','essay'].includes(task.type))reasons.push('🚀 Complex task fits high energy');
   if(task.estTime&&task.estTime<=15)reasons.push('⚡ Quick win (~'+task.estTime+'min)');
@@ -13444,9 +13610,9 @@ function checkTomorrowLoad(){
     if(tmTasks.length<3)return;
     const mins=tmTasks.reduce((s,t)=>s+(t.estTime||30),0);
     if(mins<90)return;
-    const lastWarn=localStorage.getItem('flux_tomorrow_warn');
+    const lastWarn=fluxLoadStoredString('flux_tomorrow_warn','');
     if(lastWarn===todayStr())return;
-    localStorage.setItem('flux_tomorrow_warn',todayStr());
+    fluxSaveStoredString('flux_tomorrow_warn',todayStr());
     showToast(`⚡ Tomorrow: ${tmTasks.length} tasks (~${mins}m) — prep tonight!`,'warning');
   }catch(e){}
 }
@@ -13455,9 +13621,9 @@ function checkTomorrowLoad(){
 function checkWeeklyReview(){
   try{
     if(new Date().getDay()!==0)return;
-    const lastReview=localStorage.getItem('flux_last_weekly_review');
+    const lastReview=fluxLoadStoredString('flux_last_weekly_review','');
     if(lastReview===todayStr())return;
-    localStorage.setItem('flux_last_weekly_review',todayStr());
+    fluxSaveStoredString('flux_last_weekly_review',todayStr());
     const banner=document.getElementById('weeklyReviewBanner');
     if(banner)banner.style.display='flex';
   }catch(e){}
@@ -13743,7 +13909,7 @@ function selectRole(role){
   // Legacy entry point used by the now-hidden #roleSelectScreen. We keep
   // it for backwards compat: if someone calls it pre-login it just opens
   // the login screen with a hint stored locally.
-  try{localStorage.setItem('flux_pref_role',role);}catch(_){}
+  try{fluxSaveStoredString('flux_pref_role',role);}catch(_){}
   const rs=document.getElementById('roleSelectScreen');
   if(rs){rs.style.display='none';rs.classList.remove('visible');}
   showLoginScreen();
@@ -13793,9 +13959,9 @@ async function detectUserRoleAndRoute(){
   if(!hadExplicitRole){
     let pendingRole='',pendingName='',pendingSubject='';
     try{
-      pendingRole=localStorage.getItem('flux_pending_staff_role')||'';
-      pendingName=localStorage.getItem('flux_pending_staff_name')||'';
-      pendingSubject=localStorage.getItem('flux_pending_staff_subject')||'';
+      pendingRole=fluxLoadStoredString('flux_pending_staff_role','');
+      pendingName=fluxLoadStoredString('flux_pending_staff_name','');
+      pendingSubject=fluxLoadStoredString('flux_pending_staff_subject','');
     }catch(_){}
     if(pendingRole&&['teacher','counselor','staff','admin'].includes(pendingRole)){
       try{
@@ -13819,9 +13985,9 @@ async function detectUserRoleAndRoute(){
           }
         }
         try{
-          localStorage.removeItem('flux_pending_staff_role');
-          localStorage.removeItem('flux_pending_staff_name');
-          localStorage.removeItem('flux_pending_staff_subject');
+          localStorage.removeItem(fluxNamespacedKey('flux_pending_staff_role'));
+          localStorage.removeItem(fluxNamespacedKey('flux_pending_staff_name'));
+          localStorage.removeItem(fluxNamespacedKey('flux_pending_staff_subject'));
         }catch(_){}
       }catch(_){}
     }

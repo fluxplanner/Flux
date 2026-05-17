@@ -6,6 +6,7 @@
    token lacks write permission, we prompt the user to reconnect with
    `fluxReconnectGoogleCalendarWrite()` which triggers a fresh OAuth with
    the added scope.
+   Depends on globals from app.js: load, save, showToast, …
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
@@ -14,13 +15,13 @@
   const LS_KEY_AUTO = 'flux_gcal_auto_push';    // "1" / "0"
 
   function getToken(){ return window.gmailToken || sessionStorage.getItem('flux_gmail_token') || null; }
-  function isAutoOn(){ return localStorage.getItem(LS_KEY_AUTO) === '1'; }
-  function setAutoOn(on){ localStorage.setItem(LS_KEY_AUTO, on ? '1' : '0'); }
+  function isAutoOn(){ return load(LS_KEY_AUTO, '0') === '1'; }
+  function setAutoOn(on){ save(LS_KEY_AUTO, on ? '1' : '0'); }
   function getPushedMap(){
-    try{ return JSON.parse(localStorage.getItem(LS_KEY_PUSHED) || '{}') || {}; }
-    catch(e){ return {}; }
+    const o = load(LS_KEY_PUSHED, {});
+    return o && typeof o === 'object' ? o : {};
   }
-  function savePushedMap(m){ try{ localStorage.setItem(LS_KEY_PUSHED, JSON.stringify(m||{})); }catch(e){} }
+  function savePushedMap(m){ try{ save(LS_KEY_PUSHED, m || {}); }catch(e){} }
 
   function toast(msg, kind){
     if(typeof window.showToast === 'function'){ window.showToast(msg, kind || 'info'); }

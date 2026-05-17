@@ -10,10 +10,43 @@
  * user_data row. Reads prefer the release-admin Edge Function and fall back
  * to the older direct Supabase read. Pushes go through release-admin so
  * authorized dev accounts can publish without waiting for the owner browser.
+ *
+ * Client-side cache: **`relLoad`/`relSave`** delegate to **`load`/`save`** from `app.js`
+ * when present. **`flux_last_user_email`** uses **`fluxLoadStoredString`** when present
+ * (handles JSON from **`save`**) and falls back to raw **`getItem`** + parse.
  */
 (function(){
   const FLUX_BUILD_ID='build-2026-04-24-01'; // ⬅ BUMP THIS EACH DEPLOY
   window.FLUX_BUILD_ID=FLUX_BUILD_ID;
+
+  /** Delegate to app.js `load`/`save` / `fluxNamespacedKey`; safe if script order changes. */
+  function relLoad(k, def){
+    if(typeof load === 'function'){
+      try{ return load(k, def); }catch(_){ return def; }
+    }
+    try{
+      const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey(k) : k;
+      const v = localStorage.getItem(nk);
+      if(v == null || v === '') return def;
+      try{ return JSON.parse(v); }catch(_){ return v; }
+    }catch(_){ return def; }
+  }
+  function relSave(k, v){
+    if(typeof save === 'function'){
+      try{ save(k, v); }catch(_){}
+    }else{
+      try{
+        const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey(k) : k;
+        localStorage.setItem(nk, JSON.stringify(v));
+      }catch(_){}
+    }
+  }
+  function relRemoveKey(k){
+    try{
+      const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey(k) : k;
+      localStorage.removeItem(nk);
+    }catch(_){}
+  }
 
   /**
    * When true: the "Update under review" overlay is used only while
@@ -41,7 +74,15 @@
 
   function normEmail(v){return String(v||'').trim().toLowerCase();}
   function cachedEmail(){
-    try{return normEmail(localStorage.getItem('flux_last_user_email')||'');}catch(_){return'';}
+    try{
+      if(typeof fluxLoadStoredString === 'function'){
+        return normEmail(fluxLoadStoredString('flux_last_user_email',''));
+      }
+      const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey('flux_last_user_email') : 'flux_last_user_email';
+      const raw = localStorage.getItem(nk);
+      if(raw == null || raw === '') return '';
+      try{ return normEmail(String(JSON.parse(raw))); }catch(_){ return normEmail(raw); }
+    }catch(_){return'';}
   }
   function currentEmail(){
     try{
@@ -58,7 +99,7 @@
     if(!email)return null;
     if(email===ownerEmail())return true;
     try{
-      const devs=JSON.parse(localStorage.getItem('flux_dev_accounts')||'[]');
+      const devs=relLoad('flux_dev_accounts',[]);
       if(!Array.isArray(devs))return null;
       return devs.find(d=>d&&normEmail(d.email)===email)||null;
     }catch(_){return null;}
@@ -112,30 +153,30 @@
 
   function getGate(){
     try{
-      const raw=localStorage.getItem(KEY_GATE);
-      if(raw)return JSON.parse(raw);
+      const g=relLoad(KEY_GATE,null);
+      if(g&&typeof g==='object')return g;
     }catch(_){}
     try{
-      const pc=JSON.parse(localStorage.getItem('flux_platform_config'));
-      if(pc&&pc.releaseGate)return pc.releaseGate;
+      const pc=relLoad('flux_platform_config',null);
+      if(pc&&typeof pc==='object'&&pc.releaseGate)return pc.releaseGate;
     }catch(_){}
     return null;
   }
   function saveGate(g){
     try{
-      localStorage.setItem(KEY_GATE,JSON.stringify(g));
-      const pc=JSON.parse(localStorage.getItem('flux_platform_config')||'{}')||{};
+      relSave(KEY_GATE,g);
+      const pc=relLoad('flux_platform_config',{})||{};
       pc.releaseGate=g;
-      localStorage.setItem('flux_platform_config',JSON.stringify(pc));
+      relSave('flux_platform_config',pc);
     }catch(_){}
   }
   function clearGate(){
     try{
-      localStorage.removeItem(KEY_GATE);
-      const pc=JSON.parse(localStorage.getItem('flux_platform_config')||'{}')||{};
+      relRemoveKey(KEY_GATE);
+      const pc=relLoad('flux_platform_config',{})||{};
       if(pc&&pc.releaseGate){
         delete pc.releaseGate;
-        localStorage.setItem('flux_platform_config',JSON.stringify(pc));
+        relSave('flux_platform_config',pc);
       }
     }catch(_){}
   }
@@ -234,9 +275,9 @@
       if(typeof savePlatformConfig==='function'){
         savePlatformConfig({releaseGate:gate});
       }else{
-        const pc=JSON.parse(localStorage.getItem('flux_platform_config'))||{};
+        const pc=relLoad('flux_platform_config',{})||{};
         pc.releaseGate=gate;
-        localStorage.setItem('flux_platform_config',JSON.stringify(pc));
+        relSave('flux_platform_config',pc);
       }
     }catch(_){}
     try{
@@ -504,7 +545,7 @@
 
   function boot(){
     try{
-      if(!localStorage.getItem(KEY_FIRST))localStorage.setItem(KEY_FIRST,String(Date.now()));
+      if(relLoad(KEY_FIRST,null)==null)relSave(KEY_FIRST,Date.now());
     }catch(_){}
     applyGate();
     startPolling();

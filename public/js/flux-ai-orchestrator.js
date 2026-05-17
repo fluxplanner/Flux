@@ -26,14 +26,11 @@
   }
 
   function loadMem(){
-    try{
-      return JSON.parse(localStorage.getItem(MEM_KEY)||'{}')||{};
-    }catch(e){
-      return{};
-    }
+    const o = load(MEM_KEY, {});
+    return o && typeof o === 'object' ? o : {};
   }
   function saveMem(m){
-    try{localStorage.setItem(MEM_KEY,JSON.stringify(m));}catch(e){}
+    try{ save(MEM_KEY, m); }catch(e){}
   }
 
   function bumpSubjectCompletion(subject,done){
@@ -202,10 +199,17 @@
     return{ok:true,...out};
   }
 
+  function readFluxEnergy(){
+    if (typeof window.readFluxEnergyLevel === 'function') return window.readFluxEnergyLevel();
+    const v = typeof load === 'function' ? load('flux_energy', 3) : 3;
+    const n = parseInt(String(v), 10);
+    return isNaN(n) ? 3 : Math.max(1, Math.min(5, n));
+  }
+
   function adjustForEnergyLevel(args){
-    const level=args&&args.level!=null?parseInt(args.level,10):parseInt(localStorage.getItem('flux_energy')||'3',10);
+    const level=args&&args.level!=null?parseInt(args.level,10):readFluxEnergy();
     const energy=isNaN(level)?3:Math.max(1,Math.min(5,level));
-    if(args&&args.persist)localStorage.setItem('flux_energy',String(energy));
+    if(args&&args.persist&&typeof save==='function')save('flux_energy', energy);
     if(!window.FluxMega||!FluxMega.studyOrderWithReasons)return{ok:false,error:'FluxMega not available'};
     const ranked=FluxMega.studyOrderWithReasons(12).map(o=>{
       const d=o.task.difficulty||3;
@@ -238,7 +242,7 @@
       });
     }
     const tests=window.FluxMega&&FluxMega.reviewBeforeTests?FluxMega.reviewBeforeTests().slice(0,6):[];
-    const energy=parseInt(localStorage.getItem('flux_energy')||'3',10);
+    const energy=readFluxEnergy();
     let stress=null;
     try{
       const mh=typeof moodHistory!=='undefined'&&moodHistory?.length?moodHistory[moodHistory.length-1]:null;

@@ -994,8 +994,8 @@
         const last30Max=Math.max(1,...last30.map(d=>d.n));
         const noteCount=Array.isArray(_notesRef)?_notesRef.length:0;
         const goalCount=Array.isArray(window.extraGoals)?window.extraGoals.length:0;
-        const streakBest=parseInt(localStorage.getItem('flux_streak_best')||'0',10)||0;
-        const streakCur=parseInt(localStorage.getItem('flux_streak_current')||'0',10)||0;
+        const streakBest=Number(load('flux_streak_best',0))||0;
+        const streakCur=Number(load('flux_streak_current',0))||0;
         const feedbackCount=(load('flux_feedback_inbox',[])||[]).length;
         const sparkBars=last30.map(d=>`<div title="${esc(d.key)}: ${d.n}" style="flex:1;height:${Math.max(4,(d.n/last30Max)*48)}px;background:linear-gradient(180deg,var(--accent) 0%, color-mix(in srgb, var(--accent) 40%, transparent) 100%);border-radius:3px 3px 0 0;opacity:${d.n?0.95:0.25}"></div>`).join('');
         return`
@@ -1415,7 +1415,7 @@
         if(d.devAccounts&&isOwner())save('flux_dev_accounts',d.devAccounts);
         if(d.ownerAuditLog&&isOwner())save('flux_owner_audit',d.ownerAuditLog.slice(-300));
         if(d.platformConfig&&isOwner())save('flux_platform_config',d.platformConfig);
-        if(d.profile)localStorage.setItem('profile',JSON.stringify(d.profile));
+        if(d.profile)save('profile',d.profile);
         if(currentUser)syncToCloud();
         ownerAuditAppend('backup_restore',{keys:Object.keys(d).slice(0,20).join(',')});
         showToast('Restore applied — verify data & sync','success');
@@ -1518,9 +1518,20 @@
     try{
       const keep=['flux_dev_accounts','flux_owner_audit','flux_platform_config'];
       const stash={};
-      keep.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)stash[k]=v;});
+      keep.forEach(k=>{
+        try{
+          const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
+          const v=localStorage.getItem(nk);
+          if(v!==null)stash[k]=v;
+        }catch(_){}
+      });
       localStorage.clear();
-      Object.keys(stash).forEach(k=>localStorage.setItem(k,stash[k]));
+      Object.keys(stash).forEach(k=>{
+        try{
+          const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
+          localStorage.setItem(nk,stash[k]);
+        }catch(_){}
+      });
       sessionStorage.clear();
     }catch(_){}
     ownerAuditAppend('local_nuke',{});

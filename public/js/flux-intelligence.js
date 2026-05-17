@@ -9,7 +9,10 @@
   }
   function pickNextBestTask(){
     if(typeof tasks==='undefined'||!Array.isArray(tasks))return null;
-    const energy=parseInt(localStorage.getItem('flux_energy')||'3',10);
+    const energy =
+      typeof window.readFluxEnergyLevel === 'function'
+        ? window.readFluxEnergyLevel()
+        : parseInt(String(typeof load === 'function' ? load('flux_energy', 3) : 3), 10) || 3;
     const now=new Date();now.setHours(0,0,0,0);
     let stress=5;
     try{
@@ -42,15 +45,17 @@
 
   function recordCompletionStreak(){
     const ts=typeof todayStr==='function'?todayStr():new Date().toISOString().slice(0,10);
-    const last=localStorage.getItem('flux_task_streak_last');
-    let n=parseInt(localStorage.getItem('flux_task_streak_n')||'0',10)||0;
+    const last=typeof window.fluxLoadStoredString==='function'?window.fluxLoadStoredString('flux_task_streak_last',''):'';
+    let n=typeof load==='function'?Number(load('flux_task_streak_n',0))||0:0;
     if(last===ts)return n;
     const y=new Date();y.setDate(y.getDate()-1);
     const ystr=y.toISOString().slice(0,10);
     if(last===ystr)n++;
     else n=1;
-    localStorage.setItem('flux_task_streak_last',ts);
-    localStorage.setItem('flux_task_streak_n',String(n));
+    if(typeof save==='function'){
+      save('flux_task_streak_last',ts);
+      save('flux_task_streak_n',n);
+    }
     return n;
   }
 

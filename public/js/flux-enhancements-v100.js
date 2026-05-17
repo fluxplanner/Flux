@@ -202,8 +202,8 @@
     return r.length?'Heavy reschedules: '+r[0].name+' — pick a smaller next step or a fixed time.':null;
   }
   function intel21(){
-    const last=localStorage.getItem('flux_task_streak_last');
-    const n=parseInt(localStorage.getItem('flux_task_streak_n')||'0',10);
+    const last=typeof window.fluxLoadStoredString==='function'?window.fluxLoadStoredString('flux_task_streak_last',''):'';
+    const n=typeof load==='function'?Number(load('flux_task_streak_n',0))||0:0;
     if(n>=3&&last&&last!==safeToday())return 'Streak at risk — complete one task today to stay on track.';
     return null;
   }

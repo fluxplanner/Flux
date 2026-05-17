@@ -3,10 +3,38 @@
    Cross-subject study tools: formula sheets, graphing calc, matrix
    calc, stats, converters, citation builder, conjugation, ASCII/
    binary, financial calc, and more. One tab with subject subtabs.
+   Depends on globals from app.js: load, save, fluxNamespacedKey, fluxLoadStoredString (all optional;
+   fallbacks remain for script-order / tests without app.js).
    ════════════════════════════════════════════════════════════════ */
 
 (function(){
 'use strict';
+
+/** Canonical planner storage when `app.js` has run; tolerates legacy plain-string values for a few study prefs. */
+function plannerLoad(k, def){
+  if (typeof load !== 'function'){
+    try{
+      const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey(k) : k;
+      const v = localStorage.getItem(nk);
+      if (v == null || v === '') return def;
+      try { return JSON.parse(v); } catch (_) { return v; }
+    }catch(e){ return def; }
+  }
+  try{
+    return load(k, def);
+  }catch(e){
+    return def;
+  }
+}
+function plannerSave(k, v){
+  if (typeof save === 'function') save(k, v);
+  else{
+    try{
+      const nk = typeof fluxNamespacedKey === 'function' ? fluxNamespacedKey(k) : k;
+      localStorage.setItem(nk, JSON.stringify(v));
+    }catch(e){}
+  }
+}
 
 // ────────────────────────────────────────────────────────────────
 // HELPERS
@@ -56,20 +84,33 @@ const state = {
 // Shared render helpers (unified Study Tools + legacy callers)
 // ────────────────────────────────────────────────────────────────
 function lsStudyTool(sectionId){
-  try{ return localStorage.getItem('flux_study_tool_'+sectionId); }catch(e){ return null; }
+  const k = 'flux_study_tool_' + sectionId;
+  try{
+    if (typeof fluxLoadStoredString === 'function'){
+      const s = String(fluxLoadStoredString(k, '')).trim();
+      return s || null;
+    }
+    const v = plannerLoad(k, null);
+    if (v == null || v === '') return null;
+    if (typeof v === 'string') return v;
+    return v != null ? String(v) : null;
+  }catch(e){ return null; }
 }
 function setLsStudyTool(sectionId, chipId){
-  try{ localStorage.setItem('flux_study_tool_'+sectionId, chipId); }catch(e){}
+  plannerSave('flux_study_tool_' + sectionId, String(chipId));
 }
 function lsStudyCollapsed(sectionId){
-  try{
-    const v = localStorage.getItem('flux_study_collapsed_'+sectionId);
-    if (v === null || v === '') return true;
-    return v === '1';
-  }catch(e){ return true; }
+  const k = 'flux_study_collapsed_' + sectionId;
+  const v = plannerLoad(k, null);
+  if (v === null || v === '') return true;
+  if (v === true) return true;
+  if (v === false) return false;
+  if (v === '1' || v === 1) return true;
+  if (v === '0' || v === 0) return false;
+  return true;
 }
 function setLsStudyCollapsed(sectionId, collapsed){
-  try{ localStorage.setItem('flux_study_collapsed_'+sectionId, collapsed?'1':'0'); }catch(e){}
+  plannerSave('flux_study_collapsed_' + sectionId, !!collapsed);
 }
 
 function ensurePeriodicStashedUnlessOpening(){
@@ -1894,9 +1935,12 @@ SUBJECTS.push({
 
 function renderTimelineBuilder(body){
   const STORE_KEY = 'flux_timelines';
-  const load = () => { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; } };
-  const save = (v) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch(e){} };
-  let timelines = load();
+  const loadTl = () => {
+    const arr = plannerLoad(STORE_KEY, []);
+    return Array.isArray(arr) ? arr : [];
+  };
+  const saveTl = (v) => { plannerSave(STORE_KEY, Array.isArray(v) ? v : []); };
+  let timelines = loadTl();
   if (!timelines.length){
     timelines = [{
       id: 't_' + Date.now(), name:'World History · 20th Century',
@@ -1912,7 +1956,7 @@ function renderTimelineBuilder(body){
         { year:1991, label:'USSR dissolves' },
       ],
     }];
-    save(timelines);
+    saveTl(timelines);
   }
   let active = timelines[0].id;
 
@@ -1967,7 +2011,7 @@ function renderTimelineBuilder(body){
       if (!name) return;
       const id = 't_' + Date.now();
       timelines.push({ id, name, events:[] });
-      save(timelines);
+      saveTl(timelines);
       active = id; refresh();
     });
     $('tlDel').addEventListener('click', () => {
@@ -1975,13 +2019,13 @@ function renderTimelineBuilder(body){
       timelines = timelines.filter(x => x.id !== active);
       if (!timelines.length) timelines = [{ id:'t_' + Date.now(), name:'New timeline', events:[] }];
       active = timelines[0].id;
-      save(timelines); refresh();
+      saveTl(timelines); refresh();
     });
     $('tlRename').addEventListener('click', () => {
       const cur = timelines.find(x => x.id === active);
       const n = prompt('Rename timeline:', cur?.name || '');
       if (!n) return;
-      cur.name = n; save(timelines); refresh();
+      cur.name = n; saveTl(timelines); refresh();
     });
     $('tlAdd').addEventListener('click', () => {
       const y = parseInt($('tlYear').value, 10);
@@ -1989,7 +2033,7 @@ function renderTimelineBuilder(body){
       if (!y || !l) return;
       const cur = timelines.find(x => x.id === active);
       cur.events.push({ year:y, label:l });
-      save(timelines); refresh();
+      saveTl(timelines); refresh();
     });
     body.querySelectorAll('.tl-rm').forEach(btn => btn.addEventListener('click', () => {
       const cur = timelines.find(x => x.id === active);
@@ -1997,7 +2041,7 @@ function renderTimelineBuilder(body){
       const target = evsSorted[+btn.dataset.i];
       const idx = cur.events.findIndex(e => e === target);
       if (idx > -1) cur.events.splice(idx, 1);
-      save(timelines); refresh();
+      saveTl(timelines); refresh();
     }));
   }
   refresh();
@@ -2236,7 +2280,8 @@ function renderGrammar(body){
 
 function renderEssayGuide(body){
   const K = 'flux_essay_draft';
-  const prev = JSON.parse(localStorage.getItem(K) || '{}');
+  const prevRaw = plannerLoad(K, {});
+  const prev = prevRaw && typeof prevRaw === 'object' ? prevRaw : {};
   body.innerHTML = `
     <div class="tb-card">
       <div class="tb-card-h">
@@ -2284,7 +2329,7 @@ function renderEssayGuide(body){
   function collect(){
     const data = {};
     body.querySelectorAll('.es-ta').forEach(t => data[t.dataset.k] = t.value.trim());
-    localStorage.setItem(K, JSON.stringify(data));
+    plannerSave(K, data);
     return data;
   }
   function outline(d){
@@ -2316,7 +2361,7 @@ function renderEssayGuide(body){
   $('esClear').addEventListener('click', () => {
     if (!confirm('Clear all fields?')) return;
     body.querySelectorAll('.es-ta').forEach(t => t.value = '');
-    localStorage.removeItem(K);
+    plannerSave(K, {});
     redraw();
   });
   $('esCopy').addEventListener('click', () => {
@@ -2517,13 +2562,13 @@ const CJ_CACHE_KEY = 'flux_cj_ai_cache_v1';
 const CJ_CACHE_MAX = 200;
 function cjCacheGet(lang, verb){
   try {
-    const c = JSON.parse(localStorage.getItem(CJ_CACHE_KEY) || '{}');
+    const c = plannerLoad(CJ_CACHE_KEY, {});
     return c[`${lang}:${verb}`] || null;
   } catch { return null; }
 }
 function cjCacheSet(lang, verb, data){
   try {
-    const c = JSON.parse(localStorage.getItem(CJ_CACHE_KEY) || '{}');
+    const c = plannerLoad(CJ_CACHE_KEY, {});
     c[`${lang}:${verb}`] = { ...data, _at: Date.now() };
     const keys = Object.keys(c);
     if (keys.length > CJ_CACHE_MAX){
@@ -2531,7 +2576,7 @@ function cjCacheSet(lang, verb, data){
           .slice(0, keys.length - CJ_CACHE_MAX)
           .forEach(k => delete c[k]);
     }
-    localStorage.setItem(CJ_CACHE_KEY, JSON.stringify(c));
+    plannerSave(CJ_CACHE_KEY, c);
   } catch {}
 }
 
@@ -3608,7 +3653,7 @@ function getStudyLayoutMode(){
 
 function setStudyLayoutMode(mode){
   if (mode === 'class') return;
-  try{ localStorage.setItem(LS_ST_LAYOUT, 'subject'); }catch(e){}
+  try{ plannerSave(LS_ST_LAYOUT, 'subject'); }catch(e){}
   syncStudyLayoutToggleUI();
   applyStudyLayoutModeToDom();
 }

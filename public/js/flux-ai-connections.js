@@ -25,39 +25,25 @@
   let _mounted = false;
   let _view = 'chat';
 
-  function lsGet(k, d) {
-    try {
-      var v = localStorage.getItem(k);
-      return v ? JSON.parse(v) : d;
-    } catch (e) {
-      return d;
-    }
-  }
-  function lsSet(k, v) {
-    try {
-      localStorage.setItem(k, JSON.stringify(v));
-    } catch (e) {}
-  }
-
   function getItemsState() {
-    var o = lsGet(STORAGE_ITEMS, {});
+    var o = load(STORAGE_ITEMS, {});
     if (!o || typeof o !== 'object') o = {};
     return o;
   }
   function saveItemsState(items) {
-    lsSet(STORAGE_ITEMS, items);
+    save(STORAGE_ITEMS, items);
   }
 
   function getCustomSlots() {
-    var a = lsGet(STORAGE_CUSTOM, []);
+    var a = load(STORAGE_CUSTOM, []);
     return Array.isArray(a) ? a : [];
   }
   function saveCustomSlots(arr) {
-    lsSet(STORAGE_CUSTOM, arr.slice(0, 24));
+    save(STORAGE_CUSTOM, arr.slice(0, 24));
   }
 
   function getModelRoute() {
-    var d = lsGet(STORAGE_MODEL, {});
+    var d = load(STORAGE_MODEL, {});
     var out = {};
     out.mode =
       typeof d.mode === 'string' && d.mode.length ? d.mode : 'flux_default';
@@ -129,7 +115,7 @@
     var keyEl = document.getElementById('fluxAiConnApiKey');
     var baseEl = document.getElementById('fluxAiConnBaseUrl');
     var midEl = document.getElementById('fluxAiConnModelId');
-    lsSet(STORAGE_MODEL, {
+    save(STORAGE_MODEL, {
       mode: modeEl ? modeEl.value : 'flux_default',
       apiKey: keyEl ? keyEl.value.trim() : '',
       baseUrl: baseEl ? baseEl.value.trim() : '',
@@ -535,7 +521,7 @@
     var clrBtn = document.getElementById('fluxAiConnClearModel');
     if (clrBtn) {
       clrBtn.onclick = function () {
-        lsSet(STORAGE_MODEL, { mode: 'flux_default', apiKey: '', baseUrl: '', modelId: '' });
+        save(STORAGE_MODEL, { mode: 'flux_default', apiKey: '', baseUrl: '', modelId: '' });
         if (typeof showToast === 'function') showToast('Cleared routing + keys locally', 'info');
         renderConnectionsPanel(true);
       };

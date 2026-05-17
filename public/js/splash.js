@@ -16,7 +16,10 @@ function isLikelyLowEndDevice(){
 
 function fluxSplashAccentHex(){
   try{
-    const h=(localStorage.getItem('flux_accent')||'').trim();
+    let h='';
+    if(typeof window.fluxLoadStoredString==='function')h=window.fluxLoadStoredString('flux_accent','');
+    else h=(localStorage.getItem('flux_accent')||'').trim();
+    h=String(h||'').replace(/^"|"$/g,'').trim();
     if(h&&/^#[0-9A-Fa-f]{6}$/.test(h))return h;
   }catch(_){}
   return '#00bfff';

@@ -15,9 +15,18 @@
   }
 
   function readBias(){
+    if(typeof load==='function'){
+      try{
+        const o=load(KEY_BIAS,{});
+        return o&&typeof o==='object'&&!Array.isArray(o)?o:{};
+      }catch(e){}
+    }
     try{return JSON.parse(localStorage.getItem(KEY_BIAS)||'{}');}catch(e){return{};}
   }
   function writeBias(o){
+    if(typeof save==='function'){
+      try{save(KEY_BIAS,o||{});return;}catch(e){}
+    }
     try{localStorage.setItem(KEY_BIAS,JSON.stringify(o));}catch(e){}
   }
 
@@ -153,7 +162,10 @@
       s+=25/(1+daysUntil);
     }
     const diff=t.difficulty||3;
-    const energy=parseInt(localStorage.getItem('flux_energy')||'3',10);
+    const energy =
+      typeof window.readFluxEnergyLevel === 'function'
+        ? window.readFluxEnergyLevel()
+        : parseInt(String(typeof load === 'function' ? load('flux_energy', 3) : 3), 10) || 3;
     if(energy<=2){if(diff<=2)s+=15;if(diff>=4)s-=10;}
     if(energy>=4&&['project','essay','lab'].includes(t.type))s+=12;
     const p=t.priority==='high'?8:t.priority==='low'?-3:2;
@@ -366,9 +378,10 @@
     const sum=today.reduce((a,x)=>a+(x.mins||0),0);
     const lastSess=today.slice(-1)[0];
     if(sum>=90){
-      const prev=parseInt(localStorage.getItem(KEY_BREAK)||'0',10);
+      const prev=typeof load==='function'?Number(load(KEY_BREAK,0))||0:parseInt(localStorage.getItem(KEY_BREAK)||'0',10);
       if(Date.now()-prev>12*60*1000){
-        localStorage.setItem(KEY_BREAK,String(Date.now()));
+        if(typeof save==='function')save(KEY_BREAK,Date.now());
+        else try{localStorage.setItem(KEY_BREAK,String(Date.now()));}catch(e){}
         return`You've logged ${sum}m focus today — take a 10–15m break before the next block.`;
       }
     }
@@ -446,10 +459,13 @@
   }
 
   function getExplainLevel(){
+    if(typeof window.fluxLoadStoredString==='function')return window.fluxLoadStoredString(KEY_EXPLAIN,'ib');
     return localStorage.getItem(KEY_EXPLAIN)||'ib';
   }
   function setExplainLevel(v){
-    localStorage.setItem(KEY_EXPLAIN,v==='eli5'?'eli5':'ib');
+    const s=v==='eli5'?'eli5':'ib';
+    if(typeof window.fluxSaveStoredString==='function')window.fluxSaveStoredString(KEY_EXPLAIN,s);
+    else try{localStorage.setItem(KEY_EXPLAIN,s);}catch(e){}
     render();
   }
 

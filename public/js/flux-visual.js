@@ -646,7 +646,7 @@
     if (taskList) taskObserver.observe(taskList, { childList: true, subtree: false });
     injectTaskShootingStars();
 
-    updateNavSquiggle(localStorage.getItem('flux_accent') || undefined);
+    updateNavSquiggle((typeof window.fluxLoadStoredString==='function'?window.fluxLoadStoredString('flux_accent',''):'')||undefined);
   }
 
   window.FluxVisual = {

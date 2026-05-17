@@ -62,10 +62,8 @@
   }
   /** true / false = explicit user choice; null = unset (viewport default for glass). */
   function readLiquidGlassPref(){
-    const raw=localStorage.getItem(KEY_LIQUID_GLASS);
-    if(raw===null||raw==='')return null;
     try{
-      const v=JSON.parse(raw);
+      const v=load(KEY_LIQUID_GLASS,null);
       if(v===true)return true;
       if(v===false)return false;
     }catch(e){}
@@ -77,7 +75,7 @@
     document.documentElement.removeAttribute('data-mood-tint');
     if(!on)return;
     const mh=typeof moodHistory!=='undefined'&&moodHistory?.length?moodHistory[moodHistory.length-1]:null;
-    const mood=mh&&mh.mood!=null?parseInt(mh.mood,10):parseInt(localStorage.getItem('flux_mood_today')||'3',10);
+    const mood=mh&&mh.mood!=null?parseInt(mh.mood,10):(Number(load('flux_mood_today',3))||3);
     const stress=mh&&mh.stress!=null?parseInt(mh.stress,10):5;
     let tone='neutral';
     if(mood<=2||stress>=9)tone='calm';
@@ -97,10 +95,7 @@
 
   function applyPerfSnappy(){
     let on=false;
-    try{
-      const raw=localStorage.getItem(KEY_PERF_SNAPPY);
-      if(raw!==null)on=JSON.parse(raw)===true;
-    }catch(e){on=false;}
+    try{on=load(KEY_PERF_SNAPPY,false)===true;}catch(e){on=false;}
     document.documentElement.setAttribute('data-flux-perf',on?'on':'off');
   }
   function setPerfSnappyEnabled(on){
@@ -151,7 +146,7 @@
   }
 
   function computeEvolutionLevel(){
-    const streak=parseInt(localStorage.getItem('flux_task_streak_n')||'0',10)||0;
+    const streak=Number(load('flux_task_streak_n',0))||0;
     const done=(typeof tasks!=='undefined'?tasks:[]).filter(t=>t.done).length;
     return Math.min(5,Math.max(1,1+Math.floor(streak/10)+Math.floor(done/35)));
   }
@@ -169,7 +164,7 @@
     const el=document.getElementById('affirmation');
     if(!el)return;
     const prof=load('profile',{});
-    const first=(prof.name||localStorage.getItem('flux_user_name')||'').trim().split(/\s+/)[0]||'';
+    const first=(prof.name||(typeof window.fluxLoadStoredString==='function'?window.fluxLoadStoredString('flux_user_name',''):'')||'').trim().split(/\s+/)[0]||'';
     const nm=first||'You';
     const dna=typeof studyDNA!=='undefined'&&studyDNA.length?studyDNA:load('flux_dna',[]);
     const last=typeof moodHistory!=='undefined'&&moodHistory.length?moodHistory[moodHistory.length-1]:null;
@@ -355,11 +350,7 @@
     }
     const perf=document.getElementById('fluxPerfSnappyToggle');
     if(perf){
-      let cur=false;
-      try{
-        const raw=localStorage.getItem(KEY_PERF_SNAPPY);
-        cur=raw===null?false:JSON.parse(raw)===true;
-      }catch(e){cur=false;}
+      const cur=load(KEY_PERF_SNAPPY,false)===true;
       perf.classList.toggle('on',!!cur);
       perf.setAttribute('aria-pressed',cur?'true':'false');
       perf.onclick=()=>{

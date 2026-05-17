@@ -4,10 +4,30 @@
    cursor spotlight, pinned task, skeleton loaders, progress rings,
    view transitions, right-click ctx menu, arrow-key nav, density,
    daily reflection, pomodoro auto-link, celebration confetti.
+   Depends on globals from app.js: load, save (optional fallbacks in proLoad/proSave).
    ════════════════════════════════════════════════════════════════ */
 
 (function(){
 'use strict';
+
+/** Delegate to app.js `load`/`save` (namespaced); safe fallback if globals missing. */
+function proLoad(k, def){
+  if(typeof load === 'function'){
+    try{ return load(k, def); }catch(e){ return def; }
+  }
+  try{
+    const v = localStorage.getItem(k);
+    if(v == null || v === '') return def;
+    try{ return JSON.parse(v); }catch(_){ return v; }
+  }catch(e){ return def; }
+}
+function proSave(k, v){
+  if(typeof save === 'function'){
+    try{ save(k, v); }catch(e){}
+  }else{
+    try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){}
+  }
+}
 
 // Wait for app to be ready
 function whenReady(fn){
@@ -23,8 +43,8 @@ function initCursorSpotlight(){
   const noHover = window.matchMedia('(hover: none)').matches;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tooSmall = window.innerWidth < 769;
-  const stored = localStorage.getItem('flux_cursor_spotlight');
-  const on = stored === null ? true : stored === '1';
+  const stored = proLoad('flux_cursor_spotlight', null);
+  const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
   if(noHover || tooSmall || reducedMotion){
     document.body.dataset.fluxCursor = 'off';
   } else {
@@ -44,8 +64,8 @@ function initCursorSpotlight(){
 }
 
 function initMeshBackground(){
-  const stored = localStorage.getItem('flux_mesh_bg');
-  const on = stored === null ? true : stored === '1';
+  const stored = proLoad('flux_mesh_bg', null);
+  const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
   document.body.dataset.fluxMesh = on ? 'on' : 'off';
 }
 
@@ -102,22 +122,22 @@ function getAchievementStats(){
     undone:       tasks.filter(t=>!t.done).length,
     todayDone:    todayTasks.filter(t=>t.done).length,
     todayUndone:  todayTasks.filter(t=>!t.done).length,
-    streak:       parseInt(localStorage.getItem('flux_task_streak_n')||'0',10) || 0,
-    totalFocusMin:parseInt(localStorage.getItem('t_minutes')||'0',10) || 0,
-    aiMessages:   parseInt(localStorage.getItem('flux_ai_msg_count')||'0',10) || 0,
+    streak:       parseInt(String(proLoad('flux_task_streak_n', 0)), 10) || 0,
+    totalFocusMin:parseInt(String(proLoad('t_minutes', 0)), 10) || 0,
+    aiMessages:   parseInt(String(proLoad('flux_ai_msg_count', 0)), 10) || 0,
     classCount:   (window.classes||[]).filter(c=>c&&c.name).length,
-    lateNight:    localStorage.getItem('flux_milestone_late_night')==='1',
-    earlyBird:    localStorage.getItem('flux_milestone_early_bird')==='1',
+    lateNight:    (()=>{ const v=proLoad('flux_milestone_late_night',''); return v===true||v==='1'||v===1; })(),
+    earlyBird:    (()=>{ const v=proLoad('flux_milestone_early_bird',''); return v===true||v==='1'||v===1; })(),
   };
   return stats;
 }
 
 function getEarnedAchievements(){
-  try{ return JSON.parse(localStorage.getItem('flux_achievements_earned')||'[]'); }
-  catch(e){ return []; }
+  const arr = proLoad('flux_achievements_earned', []);
+  return Array.isArray(arr) ? arr : [];
 }
 function saveEarnedAchievements(arr){
-  try{ localStorage.setItem('flux_achievements_earned', JSON.stringify(arr)); }catch(e){}
+  proSave('flux_achievements_earned', Array.isArray(arr) ? arr : []);
 }
 
 let _achievementQueue = [];
@@ -160,7 +180,8 @@ function checkAchievements(){
   const earned = new Set(getEarnedAchievements());
   let changed = false;
   // First-ever check: silently absorb anything already true so users don't get a popup avalanche
-  const isFirstCheck = localStorage.getItem('flux_achievements_seeded') !== '1';
+  const seeded = proLoad('flux_achievements_seeded', '');
+  const isFirstCheck = seeded !== '1' && seeded !== true && seeded !== 1;
   for(const a of ACHIEVEMENTS){
     if(earned.has(a.id)) continue;
     try{
@@ -172,7 +193,7 @@ function checkAchievements(){
     }catch(e){}
   }
   if(changed) saveEarnedAchievements([...earned]);
-  if(isFirstCheck) localStorage.setItem('flux_achievements_seeded','1');
+  if(isFirstCheck) proSave('flux_achievements_seeded', true);
 }
 
 function playAchievementSound(){
@@ -299,10 +320,10 @@ function injectYearHeatmap(){
 // ────────────────────────────────────────────────────────────────
 // Pinned task on dashboard
 // ────────────────────────────────────────────────────────────────
-function getPinnedTaskId(){ return localStorage.getItem('flux_pinned_task') || ''; }
+function getPinnedTaskId(){ return String(proLoad('flux_pinned_task', '') || ''); }
 function setPinnedTaskId(id){
-  if(id) localStorage.setItem('flux_pinned_task', id);
-  else localStorage.removeItem('flux_pinned_task');
+  if(id) proSave('flux_pinned_task', String(id));
+  else proSave('flux_pinned_task', '');
 }
 window.fluxPinTask = function(id){
   const cur = getPinnedTaskId();
@@ -574,27 +595,27 @@ document.addEventListener('keydown', e=>{
 // Density toggle
 // ────────────────────────────────────────────────────────────────
 function applyDensity(){
-  const d = localStorage.getItem('flux_density') || 'normal';
+  const d = String(proLoad('flux_density', 'normal') || 'normal');
   if(d === 'normal') document.body.removeAttribute('data-flux-density');
   else document.body.dataset.fluxDensity = d;
 }
 window.fluxToggleDensity = function(){
-  const cur = localStorage.getItem('flux_density') || 'normal';
+  const cur = String(proLoad('flux_density', 'normal') || 'normal');
   const next = cur === 'normal' ? 'compact' : (cur === 'compact' ? 'comfy' : 'normal');
-  localStorage.setItem('flux_density', next);
+  proSave('flux_density', next);
   applyDensity();
   refreshDensityButtons();
   _toast(`Density: ${next}`,'info');
 };
 window.fluxSetDensity = function(mode){
   if(!['normal','compact','comfy'].includes(mode)) mode = 'normal';
-  localStorage.setItem('flux_density', mode);
+  proSave('flux_density', mode);
   applyDensity();
   refreshDensityButtons();
   _toast(`Density: ${mode}`,'info');
 };
 function refreshDensityButtons(){
-  const cur = localStorage.getItem('flux_density') || 'normal';
+  const cur = String(proLoad('flux_density', 'normal') || 'normal');
   document.querySelectorAll('[data-density]').forEach(b=>{
     if(b.dataset.density === cur){
       b.style.background = 'rgba(var(--accent-rgb),.18)';
@@ -664,8 +685,8 @@ function hookTaskCompletion(){
       celebrateCompletion();
       // Mark milestones
       const h = new Date().getHours();
-      if(h >= 0 && h < 5) localStorage.setItem('flux_milestone_late_night','1');
-      if(h >= 5 && h < 7) localStorage.setItem('flux_milestone_early_bird','1');
+      if(h >= 0 && h < 5) proSave('flux_milestone_late_night', true);
+      if(h >= 5 && h < 7) proSave('flux_milestone_early_bird', true);
       // Re-check after a moment
       setTimeout(checkAchievements, 400);
       setTimeout(renderPinnedTask, 200);
@@ -680,7 +701,7 @@ function hookTaskCompletion(){
 function maybeShowReflectionPrompt(){
   const now = new Date();
   const todayStr = now.toISOString().slice(0,10);
-  const lastShown = localStorage.getItem('flux_reflect_last_shown');
+  const lastShown = String(proLoad('flux_reflect_last_shown', '') || '');
   if(lastShown === todayStr) return;
   if(now.getHours() < 21) return;
   const tasks = (window.tasks)||[];
@@ -711,7 +732,7 @@ function maybeShowReflectionPrompt(){
 }
 window.fluxStartReflection = function(){
   const todayStr = new Date().toISOString().slice(0,10);
-  localStorage.setItem('flux_reflect_last_shown', todayStr);
+  proSave('flux_reflect_last_shown', todayStr);
   document.getElementById('fluxReflectBanner')?.remove();
   if(typeof window.nav === 'function') try{ window.nav('ai'); }catch(e){}
   setTimeout(()=>{
@@ -723,7 +744,7 @@ window.fluxStartReflection = function(){
   }, 280);
 };
 window.fluxDismissReflection = function(){
-  localStorage.setItem('flux_reflect_last_shown', new Date().toISOString().slice(0,10));
+  proSave('flux_reflect_last_shown', new Date().toISOString().slice(0,10));
   document.getElementById('fluxReflectBanner')?.remove();
 };
 
@@ -735,11 +756,11 @@ function trackLastActiveTask(){
     const t = e.target.closest('.task-item, [data-task-id]');
     if(!t) return;
     const tid = t.dataset.taskId || (t.id||'').replace(/^task-/,'');
-    if(tid) localStorage.setItem('flux_last_active_task', tid);
+    if(tid) proSave('flux_last_active_task', String(tid));
   }, true);
 }
 window.fluxGetLastActiveTask = function(){
-  const id = localStorage.getItem('flux_last_active_task');
+  const id = String(proLoad('flux_last_active_task', '') || '');
   if(!id) return null;
   const tasks = (window.tasks)||[];
   return tasks.find(t=>String(t.id)===id) || null;
@@ -989,14 +1010,14 @@ function wireSettingsToggles(){
   const sel1 = document.getElementById('fluxCursorSpotlightToggle');
   if(sel1 && !sel1.__wired){
     sel1.__wired = true;
-    const stored = localStorage.getItem('flux_cursor_spotlight');
-    const on = stored === null ? true : stored === '1';
+    const stored = proLoad('flux_cursor_spotlight', null);
+    const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
     setToggle(sel1, on);
     sel1.addEventListener('click', ()=>{
-      const cur = localStorage.getItem('flux_cursor_spotlight');
-      const wasOn = cur === null ? true : cur === '1';
+      const cur = proLoad('flux_cursor_spotlight', null);
+      const wasOn = cur === null ? true : (cur === true || cur === '1' || cur === 1);
       const next = !wasOn;
-      localStorage.setItem('flux_cursor_spotlight', next ? '1' : '0');
+      proSave('flux_cursor_spotlight', next);
       document.body.dataset.fluxCursor = next ? 'on' : 'off';
       setToggle(sel1, next);
       _toast('Cursor spotlight ' + (next ? 'on' : 'off'));
@@ -1006,14 +1027,14 @@ function wireSettingsToggles(){
   const sel2 = document.getElementById('fluxMeshBgToggle');
   if(sel2 && !sel2.__wired){
     sel2.__wired = true;
-    const stored = localStorage.getItem('flux_mesh_bg');
-    const on = stored === null ? true : stored === '1';
+    const stored = proLoad('flux_mesh_bg', null);
+    const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
     setToggle(sel2, on);
     sel2.addEventListener('click', ()=>{
-      const cur = localStorage.getItem('flux_mesh_bg');
-      const wasOn = cur === null ? true : cur === '1';
+      const cur = proLoad('flux_mesh_bg', null);
+      const wasOn = cur === null ? true : (cur === true || cur === '1' || cur === 1);
       const next = !wasOn;
-      localStorage.setItem('flux_mesh_bg', next ? '1' : '0');
+      proSave('flux_mesh_bg', next);
       document.body.dataset.fluxMesh = next ? 'on' : 'off';
       setToggle(sel2, next);
       _toast('Mesh background ' + (next ? 'on' : 'off'));
