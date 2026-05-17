@@ -330,17 +330,10 @@
           day: 'numeric',
         })}</div>
       </div>
-      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> for ${esc(
-        roleLabel
-      )} tools.</span></div>
+      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> for meetings, PD, wellbeing, feed, and school calendar under <b>School</b> in the sidebar.</span></div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
-        <div class="spd-card" data-spd-nav="staffMeetingNotes"><div class="spd-card-icon">📋</div><div class="spd-card-title">Meeting notes</div><div class="spd-card-sub">Decisions &amp; actions</div></div>
-        <div class="spd-card" data-spd-nav="staffPD"><div class="spd-card-icon">🎓</div><div class="spd-card-title">Development</div><div class="spd-card-sub">PD hours &amp; courses</div></div>
-        <div class="spd-card" data-spd-nav="staffWellbeing"><div class="spd-card-icon">🌿</div><div class="spd-card-title">Wellbeing</div><div class="spd-card-sub">Energy &amp; stress</div></div>
         <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Links &amp; files</div></div>
-        <div class="spd-card" data-spd-nav="staffCalendar"><div class="spd-card-icon">📅</div><div class="spd-card-title">Calendar</div><div class="spd-card-sub">School calendar tab</div></div>
-        <div class="spd-card" data-spd-nav="schoolFeedPanel"><div class="spd-card-icon">📢</div><div class="spd-card-title">School feed</div><div class="spd-card-sub">Community posts</div></div>
       </div>
     </div>`;
     el.querySelectorAll('[data-spd-nav]').forEach((card) => {
@@ -348,14 +341,7 @@
         const id = card.getAttribute('data-spd-nav');
         if (typeof nav === 'function') nav(id);
         if (id === 'staffTasks' && window.FluxStaffPlatform) FluxStaffPlatform.renderStaffTasksPanel();
-        if (id === 'staffMeetingNotes') FluxStaffPlatform.renderMeetingNotesPanel();
-        if (id === 'staffPD') FluxStaffPlatform.renderPDPanel();
-        if (id === 'staffWellbeing') FluxStaffPlatform.renderWellbeingPanel();
         if (id === 'staffResources') FluxStaffPlatform.renderResourcesPanel();
-        if (id === 'staffCalendar') {
-          if (typeof nav === 'function') nav('calendar');
-        }
-        if (id === 'schoolFeedPanel') FluxStaffPlatform.renderSchoolFeed();
       });
     });
   }

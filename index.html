@@ -717,15 +717,16 @@
       <div class="nav-group">
         <div class="nav-group-label">School</div>
         <button class="nav-item" onclick="nav('school',this)" data-tab="school"><span class="ni">🏫</span><span class="nl">School Info</span></button>
+        <button type="button" class="nav-item" onclick="nav('staffMeetingNotes',this);try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" data-tab="staffMeetingNotes" data-staff-work style="display:none"><span class="ni">📋</span><span class="nl">Meeting notes</span></button>
+        <button type="button" class="nav-item" onclick="nav('staffPD',this);try{FluxStaffPlatform.renderPDPanel()}catch(e){}" data-tab="staffPD" data-staff-work style="display:none"><span class="ni">🎓</span><span class="nl">Development</span></button>
+        <button type="button" class="nav-item" onclick="nav('staffWellbeing',this);try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" data-tab="staffWellbeing" data-staff-work style="display:none"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
         <button class="nav-item" onclick="nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
+        <button type="button" class="nav-item" onclick="nav('calendar',this)" data-tab="calendar" data-staff-work style="display:none"><span class="ni">📅</span><span class="nl">School calendar</span></button>
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
         <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
-        <button type="button" class="nav-item" onclick="nav('staffMeetingNotes',this);try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" data-tab="staffMeetingNotes" data-staff-personal style="display:none"><span class="ni">📋</span><span class="nl">Meeting notes</span></button>
-        <button type="button" class="nav-item" onclick="nav('staffPD',this);try{FluxStaffPlatform.renderPDPanel()}catch(e){}" data-tab="staffPD" data-staff-personal style="display:none"><span class="ni">🎓</span><span class="nl">Development</span></button>
-        <button type="button" class="nav-item" onclick="nav('staffWellbeing',this);try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" data-tab="staffWellbeing" data-staff-personal style="display:none"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
         <button type="button" class="nav-item" onclick="nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
       </div>
       <div class="nav-group">
@@ -809,15 +810,16 @@
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">School</div>
         <button class="nav-item" onclick="navMob('school')"><span class="ni">🏫</span><span class="nl">School Info</span></button>
+        <button type="button" class="nav-item" onclick="navMob('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" data-tab="staffMeetingNotes" data-staff-work style="display:none"><span class="ni">📋</span><span class="nl">Meeting notes</span></button>
+        <button type="button" class="nav-item" onclick="navMob('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}" data-tab="staffPD" data-staff-work style="display:none"><span class="ni">🎓</span><span class="nl">Development</span></button>
+        <button type="button" class="nav-item" onclick="navMob('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" data-tab="staffWellbeing" data-staff-work style="display:none"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
         <button class="nav-item" onclick="navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
+        <button type="button" class="nav-item" onclick="navMob('calendar')" data-tab="calendar" data-staff-work style="display:none"><span class="ni">📅</span><span class="nl">School calendar</span></button>
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
         <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
         <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
-        <button type="button" class="nav-item" onclick="navMob('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" data-tab="staffMeetingNotes" data-staff-personal style="display:none"><span class="ni">📋</span><span class="nl">Meeting notes</span></button>
-        <button type="button" class="nav-item" onclick="navMob('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}" data-tab="staffPD" data-staff-personal style="display:none"><span class="ni">🎓</span><span class="nl">Development</span></button>
-        <button type="button" class="nav-item" onclick="navMob('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" data-tab="staffWellbeing" data-staff-personal style="display:none"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
       </div>
       <div class="nav-group">

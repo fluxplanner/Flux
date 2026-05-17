@@ -1875,6 +1875,16 @@ function applyRoleUI(){
     el.style.display=eduPersonalNav?'':'none';
   });
 
+  // ── RULE 2b: Educator work-only items under School (meeting notes, PD, wellbeing, school cal shortcut)
+  const eduWorkNav=isEducator&&isWork;
+  document.querySelectorAll('[data-staff-work]').forEach(el=>{
+    el.style.display=eduWorkNav?'':'none';
+  });
+  // Feed: students always; educators only while in work mode (same strip as other school tools)
+  document.querySelectorAll('.sidebar .nav-item[data-tab="schoolFeedPanel"],.mob-drawer .nav-item[data-tab="schoolFeedPanel"]').forEach(el=>{
+    el.style.display=(!isEducator||isWork)?'':'none';
+  });
+
   // ── RULE 3: Work-mode educator chrome
   document.querySelectorAll('[data-teacher-nav]').forEach(el=>{
     el.style.display=isWork&&FluxRole.isTeacher()?'':'none';
@@ -1939,6 +1949,13 @@ function applyModeToNav(isWork){
   const isEducatorPersonal=(FluxRole.isEducator()&&!isWork)||pendingStaffPersonal;
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=isEducatorPersonal?'':'none';
+  });
+  const eduWorkNav=FluxRole.isEducator()&&isWork;
+  document.querySelectorAll('[data-staff-work]').forEach(el=>{
+    el.style.display=eduWorkNav?'':'none';
+  });
+  document.querySelectorAll('.sidebar .nav-item[data-tab="schoolFeedPanel"],.mob-drawer .nav-item[data-tab="schoolFeedPanel"]').forEach(el=>{
+    el.style.display=(!FluxRole.isEducator()||isWork)?'':'none';
   });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
