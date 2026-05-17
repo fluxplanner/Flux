@@ -9030,6 +9030,8 @@ async function handleSignedIn(user,session){
       _clearEduHost('teacherDashboardBody');
       _clearEduHost('adminDashboardBody');
       _clearEduHost('counselorDashboardBody');
+      window._counselorRecord=null;
+      window.__fluxWarnedCounselorEnsure=0;
     }catch(_){}
     console.log('🔄 Account switched — wiped previous user data');
   }
@@ -13902,11 +13904,7 @@ async function detectUserRoleAndRoute(){
   // If counselor, pull their counselor record
   if(role==='counselor'){
     try{
-      const {data:cr}=await sb.from('counselors')
-        .select('*')
-        .eq('user_id',currentUser.id)
-        .maybeSingle();
-      counselorRow=cr||null;
+      counselorRow=await ensureCounselorRecord(sb,role);
     }catch(_){}
   }
   window._userRole=role;
@@ -15221,28 +15219,98 @@ async function submitCreateAssignment(){
 }
 window.submitCreateAssignment=submitCreateAssignment;
 
+/** When user_roles.role is counselor, ensure public.counselors has this auth user:
+ *  (1) row by user_id, (2) claim active orphan row with same email, (3) insert new row.
+ *  Requires Supabase policies counselors_insert_own + counselors_claim_email (see migration). */
+async function ensureCounselorRecord(sb,roleHint){
+  if(!sb||!currentUser)return null;
+  const r=roleHint||(typeof FluxRole!=='undefined'&&FluxRole.current)||window._userRole||'student';
+  if(r!=='counselor')return null;
+  let row=window._counselorRecord;
+  if(row&&row.user_id===currentUser.id)return row;
+  try{
+    const {data}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).maybeSingle();
+    if(data){window._counselorRecord=data;return data;}
+  }catch(_){}
+  const email=(currentUser.email||'').trim();
+  if(email){
+    try{
+      const {data:orphList}=await sb.from('counselors')
+        .select('*')
+        .is('user_id',null)
+        .ilike('email',email)
+        .eq('active',true)
+        .order('id',{ascending:true})
+        .limit(1);
+      const orphan=orphList&&orphList[0];
+      if(orphan?.id){
+        const {data:claimed,error}=await sb.from('counselors')
+          .update({user_id:currentUser.id})
+          .eq('id',orphan.id)
+          .is('user_id',null)
+          .select()
+          .maybeSingle();
+        if(!error&&claimed){window._counselorRecord=claimed;return claimed;}
+      }
+    }catch(_){}
+  }
+  try{
+    let disp=null;
+    try{
+      const {data:ur}=await sb.from('user_roles').select('display_name').eq('user_id',currentUser.id).maybeSingle();
+      disp=ur?.display_name||null;
+    }catch(_){}
+    const meta=currentUser.user_metadata||{};
+    const display=String(disp||meta.full_name||meta.name||(email?email.split('@')[0]:'')||'Counselor').trim()||'Counselor';
+    const letter=display.replace(/[^A-Za-z0-9]/g,'').charAt(0).toUpperCase()||'C';
+    const avail={
+      monday:['9:00 AM','2:00 PM'],tuesday:['9:00 AM','2:00 PM'],wednesday:['9:00 AM','2:00 PM'],
+      thursday:['9:00 AM','2:00 PM'],friday:['9:00 AM','2:00 PM'],
+    };
+    const {data:ins,error}=await sb.from('counselors').insert({
+      user_id:currentUser.id,
+      name:display.slice(0,120),
+      email:email||null,
+      avatar_initial:letter,
+      availability:avail,
+      booking_enabled:true,
+      active:true,
+    }).select().maybeSingle();
+    if(!error&&ins){window._counselorRecord=ins;return ins;}
+    if(error&&(error.code==='23505'||String(error.message||'').toLowerCase().includes('unique'))){
+      const {data:again}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).maybeSingle();
+      if(again){window._counselorRecord=again;return again;}
+    }
+    if(error)console.warn('[Flux] ensureCounselorRecord insert',error);
+  }catch(e){console.warn('[Flux] ensureCounselorRecord',e);}
+  return null;
+}
+window.ensureCounselorRecord=ensureCounselorRecord;
+
 // ── Counselor dashboard ───────────────────────────────────────────
 async function renderCounselorDashboard(){
   const host=document.getElementById('counselorDashboardBody');
   if(!host||!currentUser)return;
+  try{
+    if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()&&!FluxRole.isCounselor()){
+      host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2);font-size:.9rem">Counselor tools are only available on <strong>counselor</strong> accounts.</div>';
+      return;
+    }
+  }catch(_){}
   const sb=getSB();if(!sb)return;
   host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>';
 
-  let counselorRow=window._counselorRecord;
+  const counselorRow=await ensureCounselorRecord(sb,'counselor');
   if(!counselorRow){
-    try{
-      const {data}=await sb.from('counselors')
-        .select('*').eq('user_id',currentUser.id).maybeSingle();
-      counselorRow=data||null;
-      window._counselorRecord=counselorRow;
-    }catch(_){}
-  }
-  if(!counselorRow){
+    if(!window.__fluxWarnedCounselorEnsure){
+      window.__fluxWarnedCounselorEnsure=1;
+      console.warn('[Flux] Counselor profile still missing after auto-provision. Apply DB migration 20260518120000_counselor_self_provision.sql (or paste block in PASTE-INTO-SUPABASE.sql) so inserts/claims are allowed by RLS.');
+    }
     host.innerHTML=`
       <div class="empty">
         <div class="empty-icon">⚠</div>
         <div class="empty-title">Counselor record not found</div>
-        <div class="empty-sub">Ask the system administrator to link your account to a counselor profile.</div>
+        <div class="empty-sub">Flux could not create or link your counselor profile (often fixed by applying the latest database migration, then signing out and back in). Your school admin can also link your account in Supabase.</div>
       </div>`;
     return;
   }
