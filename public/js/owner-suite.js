@@ -432,6 +432,7 @@
     team:        {label:'Team & roles',     icon:'👥', group:'people'},
     testers:     {label:'Testers',          icon:'🧪', group:'people'},
     auth:        {label:'Users & roster',   icon:'🔐', group:'people'},
+    staffverify: {label:'Staff verify',     icon:'✅', group:'people'},
     analytics:   {label:'My analytics',     icon:'📈', group:'insights'},
     usage:       {label:'Platform usage',   icon:'🌐', group:'insights'},
     feedback:    {label:'Feedback inbox',   icon:'💬', group:'insights'},
@@ -863,6 +864,12 @@
           </div>`;
       }
 
+      if(tab==='staffverify')return`
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:14px">
+          Pending <b>staff verification</b> requests (directory signup). Approving updates <code style="font-size:.65rem">user_roles</code> for that user.
+        </div>
+        <div id="osStaffVerifyMount"></div>`;
+
       if(tab==='auth')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:12px">
           <b>Everyone in Supabase Auth</b> for this project — with each person’s <b>Flux role</b> (student, teacher, counselor, staff, admin) and roster fields from <code style="font-size:.65rem">user_roles</code>. Paging follows Supabase’s Auth list order (usually newest first). Destructive actions still require <code style="font-size:.65rem">release-admin</code> + <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>.
@@ -1152,6 +1159,18 @@
             requestAnimationFrame(()=>{
               if(window.__osActiveTab==='auth'&&typeof window.ownerAuthUsersLoad==='function'){
                 window.ownerAuthUsersLoad(window.__fluxAuthPage||1);
+              }
+            });
+          }catch(_){}
+        }
+        if(tab==='staffverify'){
+          try{
+            requestAnimationFrame(()=>{
+              if(window.__osActiveTab==='staffverify'){
+                const m=document.getElementById('osStaffVerifyMount');
+                if(m&&window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.hydrateOwnerStaffVerification==='function'){
+                  window.FluxStaffPlatform.hydrateOwnerStaffVerification(m);
+                }
               }
             });
           }catch(_){}

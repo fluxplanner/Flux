@@ -5555,3 +5555,33 @@ body{
 .scl-event-info{flex:1}
 .scl-event-title{font-size:.87rem;font-weight:700}
 @keyframes emergency-pulse{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* ════════════════════════════════════
+   STAFF PLATFORM (personal mode + verification UI)
+   ════════════════════════════════════ */
+.staff-steps{display:flex;gap:0;margin-bottom:28px}
+.sstep{flex:1;text-align:center;font-size:.75rem;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 0;border-bottom:2px solid var(--border);transition:all .3s}
+.sstep span{width:22px;height:22px;border-radius:50%;background:var(--border2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;transition:all .3s}
+.sstep.active{color:var(--accent);border-bottom-color:var(--accent)}
+.sstep.active span{background:var(--accent);color:#fff}
+.dir-entry{transition:all .2s}
+.dir-entry:hover{border-color:rgba(var(--accent-rgb),.3)!important;background:rgba(var(--accent-rgb),.05)!important}
+.dir-loading{text-align:center;padding:20px;font-size:.82rem;color:var(--muted2)}
+.staff-personal-dash{padding:20px;max-width:700px;margin:0 auto}
+.spd-greeting{margin-bottom:16px}
+.spd-hello{font-size:1.4rem;font-weight:800;letter-spacing:-.5px}
+.spd-sub{font-size:.8rem;color:var(--muted2);margin-top:2px}
+.spd-mode-hint{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.15);border-radius:12px;font-size:.82rem;color:var(--text2);line-height:1.5;margin-bottom:20px}
+.spd-mode-icon{font-size:1.1rem;flex-shrink:0}
+.spd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:600px){.spd-grid{grid-template-columns:1fr 1fr}}
+.spd-card{background:rgba(255,255,255,.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 16px;cursor:pointer;transition:all .25s;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.spd-card:hover{border-color:rgba(var(--accent-rgb),.3);background:rgba(var(--accent-rgb),.05);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
+.spd-card-icon{font-size:1.8rem}
+.spd-card-title{font-size:.88rem;font-weight:700}
+.spd-card-sub{font-size:.72rem;color:var(--muted2);line-height:1.5}
+.wellbeing-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important}
+.wellbeing-emotion-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important;color:var(--accent)!important}
+.form-error{font-size:.78rem;color:var(--red);padding:9px 13px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:10px;margin-bottom:12px}
+.cbm-date-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important;color:var(--accent)!important}
+.cbm-time-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important;color:var(--accent)!important}

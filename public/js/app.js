@@ -1350,7 +1350,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',schoolFeedPanel:'School feed'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1802,26 +1802,29 @@ function applyRoleUI(){
   const role=FluxRole.current;
   const isPersonal=FluxRole.isPersonalMode();
   const isWork=FluxRole.isWorkMode();
+  const isStudent=role==='student';
+  const isEducator=FluxRole.isEducator();
+  const pendingStaffPersonal=!!(
+    typeof currentUser!=='undefined'&&currentUser&&
+    String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&
+    role==='student'&&isPersonal
+  );
+  const eduPersonalNav=(isEducator&&isPersonal)||pendingStaffPersonal;
+  const studentChromeOn=isStudent&&!pendingStaffPersonal;
 
-  // Selectors that are STUDENT-ONLY. Hidden for educators in Work mode so
-  // the teacher / counselor / staff planner reads as a focused workspace
-  // instead of "student app with extra tabs".
-  //
-  // What's removed: study tools (toolbox/timer/canvas), goals/mood/habits,
-  // the locker info section, and the student counselor lookup. What stays:
-  // Dashboard (re-routed to teacherDashboard), Calendar, Flux AI, Notes,
-  // School Info (rendered as the teacher version), Profile, Settings.
   const studentOnlySelectors=[
     '.sidebar .nav-item[data-tab="mood"]',
     '.sidebar .nav-item[data-tab="goals"]',
     '.sidebar .nav-item[data-tab="timer"]',
     '.sidebar .nav-item[data-tab="toolbox"]',
     '.sidebar .nav-item[data-tab="canvas"]',
+    '.sidebar .nav-item[data-tab="notes"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]',
     '.mob-drawer .nav-item[onclick*="\'goals\'"]',
     '.mob-drawer .nav-item[onclick*="\'timer\'"]',
     '.mob-drawer .nav-item[onclick*="\'toolbox\'"]',
     '.mob-drawer .nav-item[onclick*="\'canvas\'"]',
+    '.mob-drawer .nav-item[onclick*="\'notes\'"]',
     '.bnav-item[data-tab="mood"]',
     '.bnav-item[data-tab="goals"]',
     '.bnav-item[data-tab="timer"]',
@@ -1833,7 +1836,6 @@ function applyRoleUI(){
     '.onboard-locker-step',
   ];
 
-  // Mode switch stays visible in Personal mode so educators can return to Work.
   const educatorWorkSelectors=[
     '[data-educator-only]',
     '#teacherClassPanel',
@@ -1848,11 +1850,6 @@ function applyRoleUI(){
     });
   };
 
-  // Per-role workspace tab visibility. Each tab carries data-role-tab="teacher"
-  // | "counselor" | "admin" | "staff"; we only show the one that matches the
-  // signed-in educator's role while in Work mode. The wrapping nav-group
-  // (data-role-group="staff") is shown whenever ANY role tab is visible so the
-  // "Workspace" label doesn't sit alone for students or in Personal mode.
   const setRoleTabs=(visibleRole)=>{
     document.querySelectorAll('[data-role-tab]').forEach(el=>{
       const want=el.dataset.roleTab;
@@ -1865,36 +1862,65 @@ function applyRoleUI(){
     });
   };
 
-  if(role==='student'||!FluxRole.isEducator()){
-    setMany(studentOnlySelectors,true);
-    setMany(educatorWorkSelectors,false);
-    setRoleTabs(null);
-    document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
-    return;
-  }
+  // ── RULE 1: Student-only chrome — only real students
+  studentOnlySelectors.forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      if(studentChromeOn){el.style.display='';el.style.visibility='';}
+      else{el.style.display='none';el.style.visibility='hidden';}
+    });
+  });
 
-  // Educator path — always show the mode switch bar
-  document.querySelectorAll('#modeSwitchBar').forEach(el=>{el.style.display='flex';el.style.visibility='';});
+  // ── RULE 2: Staff personal nav
+  document.querySelectorAll('[data-staff-personal]').forEach(el=>{
+    el.style.display=eduPersonalNav?'':'none';
+  });
 
-  if(isWork){
-    setMany(studentOnlySelectors,false);
-    setMany(educatorWorkSelectors,true);
-    // Map FluxRole -> the data-role-tab attribute. Admins still use the
-    // teacher dashboard for now but get their own Operations tab.
+  // ── RULE 3: Work-mode educator chrome
+  document.querySelectorAll('[data-teacher-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isTeacher()?'':'none';
+  });
+  document.querySelectorAll('[data-counselor-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isCounselor()?'':'none';
+  });
+  document.querySelectorAll('[data-admin-nav]').forEach(el=>{
+    el.style.display=isWork&&FluxRole.isStaff()?'':'none';
+  });
+  document.querySelectorAll('[data-educator-only]').forEach(el=>{
+    el.style.display=isWork?'':'none';
+  });
+  if(isEducator&&isWork){
     let roleTab=role;
     if(role==='admin')roleTab='admin';
     setRoleTabs(roleTab);
   }else{
-    // PERSONAL mode for educators: act like a student
-    setMany(studentOnlySelectors,true);
-    setMany(educatorWorkSelectors,false);
     setRoleTabs(null);
-    document.querySelectorAll('[data-student-panel]').forEach(el=>{el.style.display='';el.style.visibility='';});
+    setMany(educatorWorkSelectors,false);
   }
+  if(isEducator&&isWork){
+    setMany(studentOnlySelectors,false);
+    setMany(educatorWorkSelectors,true);
+  }
+
+  // ── Mode switch
+  const bar=document.getElementById('modeSwitchBar');
+  if(bar)bar.style.display=isEducator?'flex':'none';
+
+  // ── Dashboard nav: students + educators in personal (work mode uses role home)
+  document.querySelectorAll('.sidebar .nav-item[data-tab="dashboard"],.mob-drawer .nav-item[onclick*="\'dashboard\'"]').forEach(el=>{
+    el.style.display=(isStudent||(isEducator&&isPersonal)||pendingStaffPersonal)?'':'none';
+  });
+
+  const testerBadge=document.getElementById('testerBadge');
+  if(testerBadge)testerBadge.style.display=FLUX_FLAGS.TESTER_MODE?'inline-flex':'none';
+
+  const counselorSection=document.getElementById('myCounselorSection');
+  if(counselorSection)counselorSection.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+
+  const bookCounselorBtn=document.querySelector('[data-action="book-counselor"]');
+  if(bookCounselorBtn)bookCounselorBtn.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
 }
 window.applyRoleUI=applyRoleUI;
 
-/** Work vs personal: show educator sidebar entries and hide student-only tabs in work mode. */
 function applyModeToNav(isWork){
   document.querySelectorAll('[data-teacher-nav]').forEach(el=>{
     el.style.display=isWork&&FluxRole.isTeacher()?'':'none';
@@ -1905,11 +1931,30 @@ function applyModeToNav(isWork){
   document.querySelectorAll('[data-admin-nav]').forEach(el=>{
     el.style.display=isWork&&FluxRole.isStaff()?'':'none';
   });
-  const studentNavIds=['#nav-mood','#nav-goals','#nav-habits','[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-tab="mood"]','[data-tab="goals"]'];
-  studentNavIds.forEach(sel=>{
+  const pendingStaffPersonal=!!(
+    typeof currentUser!=='undefined'&&currentUser&&
+    String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&
+    FluxRole.current==='student'&&!isWork
+  );
+  const isEducatorPersonal=(FluxRole.isEducator()&&!isWork)||pendingStaffPersonal;
+  document.querySelectorAll('[data-staff-personal]').forEach(el=>{
+    el.style.display=isEducatorPersonal?'':'none';
+  });
+  const studentOnlyTabs=[
+    '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
+    '#nav-mood','#nav-goals','#nav-habits','#nav-canvas','#nav-study',
+    '.nav-item[data-tab="mood"]','.nav-item[data-tab="goals"]','.nav-item[data-tab="habits"]',
+    '.nav-item[data-tab="canvas"]','.nav-item[data-tab="toolbox"]','.nav-item[data-tab="timer"]','.nav-item[data-tab="notes"]',
+    '.mob-drawer .nav-item[onclick*="\'mood\'"]','.mob-drawer .nav-item[onclick*="\'goals\'"]',
+    '.mob-drawer .nav-item[onclick*="\'canvas\'"]','.mob-drawer .nav-item[onclick*="\'toolbox\'"]','.mob-drawer .nav-item[onclick*="\'timer\'"]','.mob-drawer .nav-item[onclick*="\'notes\'"]',
+  ];
+  studentOnlyTabs.forEach(sel=>{
     document.querySelectorAll(sel).forEach(el=>{
-      el.style.display=!isWork||!FluxRole.isEducator()?'':'none';
+      el.style.display=(FluxRole.current==='student'&&!pendingStaffPersonal)?'':'none';
     });
+  });
+  document.querySelectorAll('.sidebar .nav-item[data-tab="dashboard"],.mob-drawer .nav-item[onclick*="\'dashboard\'"]').forEach(el=>{
+    el.style.display=(!isWork&&(FluxRole.current==='student'||FluxRole.isEducator()||pendingStaffPersonal))?'':'none';
   });
 }
 window.applyModeToNav=applyModeToNav;
@@ -1921,6 +1966,7 @@ function updateModeSwitchUI(){
   if(!FluxRole.isEducator()){
     bar.style.display='none';
     try{applyRoleUI();}catch(_){}
+    try{applyModeToNav(false);}catch(_){}
     try{syncStudentEducatorUpgradeCard();}catch(_){}
     return;
   }
@@ -2560,7 +2606,7 @@ function nav(id,btn,navOpt){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();if((typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')||(pendStaff&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -4794,6 +4840,7 @@ function checkProgramUpgrade(p){
 
 function renderProfile(){
   const p=load('profile',{});
+  try{if(typeof renderMyCounselorSection==='function')void renderMyCounselorSection();}catch(_){}
   if(p.grade)checkProgramUpgrade(p);
   const name=p.name||localStorage.getItem('flux_user_name')||'Student';
   const grade=p.grade||'';
@@ -9100,6 +9147,15 @@ async function handleSignedIn(user,session){
       resolvedRole=FluxRole.current||'student';
     }
   }catch(e){console.warn('[Flux] role load failed',e);}
+  try{
+    if(window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.maybeApplyApprovedStaffVerification==='function'){
+      const upgraded=await window.FluxStaffPlatform.maybeApplyApprovedStaffVerification();
+      if(upgraded){
+        try{await FluxRole.load();}catch(_){}
+      }
+    }
+  }catch(_){}
+  resolvedRole=FluxRole.current||resolvedRole;
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
   const onboardedNewKey='flux_onboarding_done_'+user.id;
@@ -9156,6 +9212,12 @@ async function handleSignedIn(user,session){
       }else if(FluxRole.isWorkMode()&&FluxRole.isStaff()){
         nav('adminDashboard');
         try{renderAdminDashboard();}catch(_){}
+      }else if(FluxRole.isEducator()&&!FluxRole.isWorkMode()){
+        nav('dashboard');
+        try{if(window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.renderStaffPersonalDashboard==='function')window.FluxStaffPlatform.renderStaffPersonalDashboard();}catch(_){}
+      }else if(FluxRole.isStudent()&&String(user.user_metadata?.role_pending||'').toLowerCase()==='staff'){
+        nav('dashboard');
+        try{if(window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.renderStaffPersonalDashboard==='function')window.FluxStaffPlatform.renderStaffPersonalDashboard();}catch(_){}
       }else if(FluxRole.isStudent()){
         try{loadTeacherAssignments();}catch(_){}
         try{renderJoinClassButton();}catch(_){}
@@ -13663,125 +13725,8 @@ window.selectRole=selectRole;
   try{window.showLoginScreen=wrapped;}catch(_){}
 })();
 
-function showStaffOnboarding(){
-  if(document.getElementById('staffOnboarding'))return;
-  const overlay=document.createElement('div');
-  overlay.id='staffOnboarding';
-  overlay.innerHTML=`
-    <div style="max-width:480px;width:100%">
-      <div style="text-align:center;margin-bottom:32px">
-        <div style="font-size:1.8rem;font-weight:800;margin-bottom:8px">Staff sign up</div>
-        <div style="font-size:.85rem;color:var(--muted2)">Create your educator account</div>
-      </div>
-      <div class="mrow"><label for="staffRoleSelect">Your role</label>
-        <select id="staffRoleSelect">
-          <option value="teacher">Teacher</option>
-          <option value="counselor">Counselor</option>
-          <option value="staff">Staff / Admin</option>
-        </select>
-      </div>
-      <div class="mrow"><label for="staffName">Full name</label>
-        <input id="staffName" type="text" placeholder="e.g. Ms. Johnson">
-      </div>
-      <div class="mrow" id="staffSubjectRow"><label for="staffSubject">Subject</label>
-        <input id="staffSubject" type="text" placeholder="e.g. AP Chemistry, Math 10">
-      </div>
-      <div class="mrow"><label for="staffEmail">School email</label>
-        <input id="staffEmail" type="email" placeholder="your@school.edu" autocomplete="email">
-      </div>
-      <div class="mrow"><label for="staffPassword">Password</label>
-        <input id="staffPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password">
-      </div>
-      <div id="staffSignupError" style="display:none;font-size:.78rem;color:var(--red);padding:10px 14px;background:rgba(255,77,109,.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,77,109,.2)"></div>
-      <button id="staffSignupBtn" style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:14px;color:#0a0d18;font-weight:700;font-size:.95rem;cursor:pointer">Create staff account</button>
-      <div style="text-align:center;margin-top:16px;font-size:.8rem;color:var(--muted2)">
-        Already have an account?
-        <span id="staffBackToLogin" style="color:var(--accent);cursor:pointer">Sign in</span>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const roleSel=document.getElementById('staffRoleSelect');
-  const subjectRow=document.getElementById('staffSubjectRow');
-  roleSel?.addEventListener('change',function(){
-    if(subjectRow)subjectRow.style.display=this.value==='teacher'?'block':'none';
-  });
-  document.getElementById('staffSignupBtn')?.addEventListener('click',submitStaffSignup);
-  document.getElementById('staffBackToLogin')?.addEventListener('click',()=>{
-    overlay.remove();
-    showLoginScreen();
-  });
-}
-window.showStaffOnboarding=showStaffOnboarding;
-
-async function submitStaffSignup(){
-  const errEl=document.getElementById('staffSignupError');
-  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
-  const role=document.getElementById('staffRoleSelect')?.value||'teacher';
-  const name=(document.getElementById('staffName')?.value||'').trim();
-  const subject=(document.getElementById('staffSubject')?.value||'').trim();
-  const email=(document.getElementById('staffEmail')?.value||'').trim();
-  const password=document.getElementById('staffPassword')?.value||'';
-  const staffRole=role;
-
-  if(!name||!email||!password){setErr('Please fill out all required fields');return;}
-  if(password.length<8){setErr('Password must be at least 8 characters');return;}
-
-  const btn=document.getElementById('staffSignupBtn');
-  if(btn){btn.disabled=true;btn.textContent='Creating account…';}
-
-  try{
-    const sb=getSB();
-    if(!sb)throw new Error('Auth not available right now');
-    // Cache so detectUserRoleAndRoute can upsert on first sign-in even if
-    // the project requires email confirmation (no session at signup time).
-    try{
-      localStorage.setItem('flux_pending_staff_role',staffRole);
-      localStorage.setItem('flux_pending_staff_name',name);
-      if(subject)localStorage.setItem('flux_pending_staff_subject',subject);
-    }catch(_){}
-    const {data,error}=await sb.auth.signUp({
-      email,password,
-      options:{data:{full_name:name,role:staffRole}},
-    });
-    if(error)throw error;
-    const user=data?.user;
-    if(!user)throw new Error('Account creation failed');
-    if(data?.session){
-      await sb.from('user_roles').upsert({
-        user_id:user.id,
-        role:staffRole,
-        display_name:name,
-        subject:subject||null,
-        updated_at:new Date().toISOString(),
-      });
-      if(staffRole==='counselor'){
-        const lastName=name.split(' ').filter(Boolean).pop();
-        if(lastName){
-          try{
-            await sb.from('counselors').update({user_id:user.id})
-              .ilike('name','%'+lastName+'%')
-              .is('user_id',null);
-          }catch(_){}
-        }
-      }
-      try{
-        localStorage.removeItem('flux_pending_staff_role');
-        localStorage.removeItem('flux_pending_staff_name');
-        localStorage.removeItem('flux_pending_staff_subject');
-      }catch(_){}
-      document.getElementById('staffOnboarding')?.remove();
-      showToast(`Welcome, ${name}! Your ${staffRole} account is ready.`);
-    }else{
-      document.getElementById('staffOnboarding')?.remove();
-      showToast('Account created — check your email for a confirmation link, then sign in.','info',6000);
-      showLoginScreen();
-    }
-  }catch(e){
-    setErr(String(e.message||e));
-    if(btn){btn.disabled=false;btn.textContent='Create staff account';}
-  }
-}
-window.submitStaffSignup=submitStaffSignup;
+// Staff verification signup UI lives in `flux-staff-platform.js` (loaded after this file).
+// It assigns `window.showStaffOnboarding`.
 
 // ── Role detection + routing after sign-in ────────────────────────
 async function detectUserRoleAndRoute(){
@@ -13909,14 +13854,6 @@ async function detectUserRoleAndRoute(){
   }
   window._userRole=role;
   window._counselorRecord=counselorRow;
-
-  // Hide student-only sidebar items for staff accounts
-  if(role==='teacher'||role==='counselor'||role==='staff'||role==='admin'){
-    document.querySelectorAll('.sidebar .nav-item[data-tab],.mob-drawer .nav-item').forEach((el)=>{
-      const tab=el.dataset?.tab||'';
-      if(['mood','goals','habits'].includes(tab))el.style.display='none';
-    });
-  }
 
   if(role==='teacher'||role==='staff'||role==='admin'){
     nav('teacherDashboard');
@@ -15430,8 +15367,11 @@ async function renderMyCounselorSection(){
   if(!host||!currentUser)return;
   const sb=getSB();if(!sb)return;
 
-  // Hide for non-students
-  if(window._userRole&&window._userRole!=='student'){host.innerHTML='';return;}
+  const pendingStaffMeta=String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff';
+  if((typeof FluxRole!=='undefined'&&FluxRole.current!=='student')||pendingStaffMeta){
+    host.innerHTML='';
+    return;
+  }
 
   let counselor=null;
   try{
@@ -15465,7 +15405,9 @@ async function renderMyCounselorSection(){
       .eq('student_id',currentUser.id)
       .eq('counselor_id',counselor.id)
       .gte('date',today)
+      .neq('status','cancelled')
       .order('date',{ascending:true})
+      .order('time_slot',{ascending:true})
       .limit(5);
     upcoming=data||[];
   }catch(_){}
@@ -15481,8 +15423,8 @@ async function renderMyCounselorSection(){
         </div>
       </div>
       <div style="display:flex;gap:8px;margin:14px 0">
-        <button id="bookApptBtn" style="flex:1;padding:10px;font-size:.82rem">📅 Book appointment</button>
-        <button id="msgCounselorBtn" style="flex:1;padding:10px;font-size:.82rem">💬 Message</button>
+        <button id="bookApptBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">📅 Book appointment</button>
+        <button id="msgCounselorBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">💬 Message</button>
       </div>
       ${upcoming.length?`
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Upcoming appointments</div>
@@ -15493,13 +15435,47 @@ async function renderMyCounselorSection(){
             </div>
             <div style="flex:1;font-size:.78rem;color:var(--muted2)">${esc((a.reason||'').slice(0,40)||'No reason')}</div>
             <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
+            ${a.status==='pending'?`<button type="button" class="btn-sec" style="padding:4px 8px;font-size:.68rem;flex-shrink:0" data-cancel-appt="${esc(a.id)}">Cancel</button>`:''}
           </div>`).join('')}
       `:'<div style="font-size:.78rem;color:var(--muted2)">No upcoming appointments</div>'}
     </div>`;
-  host.querySelector('#bookApptBtn')?.addEventListener('click',()=>openBookAppointmentModal(counselor.id));
-  host.querySelector('#msgCounselorBtn')?.addEventListener('click',()=>openMessageComposer(counselor.user_id,counselor.name));
+  host.querySelector('#bookApptBtn')?.addEventListener('click',()=>{
+    if(typeof openBookAppointmentModal==='function')openBookAppointmentModal(counselor.id);
+  });
+  host.querySelector('#msgCounselorBtn')?.addEventListener('click',()=>{
+    if(counselor.user_id&&typeof openMessageComposer==='function')openMessageComposer(counselor.user_id,counselor.name);
+    else if(typeof showToast==='function')showToast('This counselor has not linked their account yet.','info');
+  });
+  host.querySelectorAll('[data-cancel-appt]').forEach(btn=>{
+    btn.addEventListener('click',()=>cancelCounselorAppointment(btn.getAttribute('data-cancel-appt')));
+  });
 }
 window.renderMyCounselorSection=renderMyCounselorSection;
+
+function openCounselorBookingFromAnywhere(){
+  const sb=getSB();
+  if(!sb||!currentUser)return;
+  sb.from('student_counselors').select('counselor_id').eq('student_id',currentUser.id).maybeSingle()
+    .then(({data})=>{
+      if(data?.counselor_id){
+        if(typeof openBookAppointmentModal==='function')openBookAppointmentModal(data.counselor_id);
+      }else if(typeof openCounselorSelectModal==='function')openCounselorSelectModal();
+    });
+}
+window.openCounselorBookingFromAnywhere=openCounselorBookingFromAnywhere;
+
+async function cancelCounselorAppointment(appointmentId){
+  const sb=getSB();
+  if(!sb||!currentUser||!appointmentId)return;
+  try{
+    await sb.from('counselor_appointments').update({status:'cancelled'}).eq('id',appointmentId).eq('student_id',currentUser.id);
+    if(typeof showToast==='function')showToast('Appointment cancelled','info');
+    renderMyCounselorSection();
+  }catch(e){
+    if(typeof showToast==='function')showToast(String(e.message||e),'error');
+  }
+}
+window.cancelCounselorAppointment=cancelCounselorAppointment;
 
 function openCounselorSelectModal(){
   if(document.getElementById('counselorPickModal'))return;
