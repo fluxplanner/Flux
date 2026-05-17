@@ -2957,29 +2957,100 @@ function syncMoreSheetNavIcons(){
   });
 }
 
+/** Educator-only chrome: Workspace role strip + School work pills + staff personal rows. Mirrors index.html; must survive renderSidebars(). */
+function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
+  const Lp=isMob?' style="padding:8px 16px 4px"':'';
+  const stripId=isMob?'mobDrawerSchoolWorkTabs':'sidebarSchoolWorkTabs';
+  const n=(id,useThis)=>isMob?`navMob('${id}')`:(useThis?`nav('${id}',this)`:`nav('${id}')`);
+  const workspace=`<div class="nav-group" data-role-group="staff" style="display:none">
+<div class="nav-group-label"${Lp}>Workspace</div>
+<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
+<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
+<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
+<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('teacherDashboard');try{renderTeacherDashboard()}catch(e){}`:`nav('teacherDashboard',this);try{renderTeacherDashboard()}catch(e){}`}" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📚</span><span class="nl">Classes</span></button>
+<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
+<button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}`:`nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}`}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('adminDashboard');try{renderAdminDashboard()}catch(e){}`:`nav('adminDashboard',this);try{renderAdminDashboard()}catch(e){}`}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
+<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">👥</span><span class="nl">Users</span></button>
+<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📢</span><span class="nl">Announce</span></button>
+</div>`;
+  const schoolClassicBtn=`<button type="button" class="nav-item" data-school-nav-classic onclick="${n('school',true)}" data-tab="school"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">${schoolClassicLabelEscaped}</span></button>`;
+  const schoolStripAndFeed=`<div id="${stripId}" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni">🏫</span><span class="nl">Info</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffMeetingNotes" onclick="${isMob?`navMob('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}`:`nav('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}`}" title="Meeting notes"><span class="ni">📋</span><span class="nl">Meetings</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffPD" onclick="${isMob?`navMob('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}`:`nav('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}`}" title="Professional development"><span class="ni">🎓</span><span class="nl">PD</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffWellbeing" onclick="${isMob?`navMob('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}`:`nav('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}`}" title="Wellbeing"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" title="School feed"><span class="ni">📢</span><span class="nl">Feed</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="calendar" onclick="${n('calendar',true)}" title="Planner calendar"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+</div>
+<button type="button" class="nav-item" data-school-feed-student-only onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>`;
+  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>`;
+  return{workspace,schoolClassicBtn,schoolStripAndFeed,staffPersonal};
+}
+
 function renderSidebars(){
   const groups=[
     {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['school','canvas','notes','timer','toolbox']},
+    {label:'School',ids:['canvas','notes','timer','toolbox']},
     {label:'Me',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
-  // Build nav HTML for both sidebar and drawer
-  const buildNav=(clickFn)=>groups.map(g=>{
-    const items=g.ids.filter(id=>visibleIds.has(id)).map(id=>{
+  const schoolTab=tabConfig.find(t=>t.id==='school')||DEFAULT_TABS.find(t=>t.id==='school');
+  const schoolClassicLabel=esc(schoolTab?.label||'School Info');
+  const buildStdGroup=(label,ids,clickFn,labelPadStyle)=>{
+    const items=ids.filter(id=>visibleIds.has(id)).map(id=>{
       const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
       const lab=esc(tc?.label||id);
-      return`<button type="button" class="nav-item" onclick="${clickFn}('${id}')" data-tab="${id}" aria-label="${lab}"><span class="ni">${getNavIconHtml(id)}</span><span class="nl">${tc?.label||id}</span></button>`;
+      return`<button type="button" class="nav-item" onclick="${clickFn}('${id}'${clickFn==='nav'?',this':''})" data-tab="${id}" aria-label="${lab}"><span class="ni">${getNavIconHtml(id)}</span><span class="nl">${esc(tc?.label||id)}</span></button>`;
     }).join('');
     if(!items)return'';
-    return`<div class="nav-group"><div class="nav-group-label">${g.label}</div>${items}</div>`;
+    const labDiv=labelPadStyle?`<div class="nav-group-label" style="${labelPadStyle}">${label}</div>`:`<div class="nav-group-label">${label}</div>`;
+    return`<div class="nav-group">${labDiv}${items}</div>`;
+  };
+  const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
+  const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
+  const schoolIds=['canvas','notes','timer','toolbox'];
+  const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
+    const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
+    const lab=esc(tc?.label||id);
+    return`<button type="button" class="nav-item" onclick="nav('${id}',this)" data-tab="${id}" aria-label="${lab}"><span class="ni">${getNavIconHtml(id)}</span><span class="nl">${esc(tc?.label||id)}</span></button>`;
   }).join('');
+  const schoolItemsMob=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
+    const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
+    const lab=esc(tc?.label||id);
+    return`<button type="button" class="nav-item" onclick="navMob('${id}')" data-tab="${id}" aria-label="${lab}"><span class="ni">${getNavIconHtml(id)}</span><span class="nl">${esc(tc?.label||id)}</span></button>`;
+  }).join('');
+  const schoolTopSide=(visibleIds.has('school')?augSide.schoolClassicBtn:'')+augSide.schoolStripAndFeed;
+  const schoolTopMob=(visibleIds.has('school')?augMob.schoolClassicBtn:'')+augMob.schoolStripAndFeed;
+  const schoolGroupSide=`<div class="nav-group"><div class="nav-group-label">School</div>${schoolTopSide}${schoolItemsSide}${augSide.staffPersonal}</div>`;
+  const schoolGroupMob=`<div class="nav-group"><div class="nav-group-label" style="padding:8px 16px 4px">School</div>${schoolTopMob}${schoolItemsMob}${augMob.staffPersonal}</div>`;
 
   const sidebarNav=document.querySelector('.sidebar-nav');
-  if(sidebarNav)sidebarNav.innerHTML=buildNav('nav');
+  if(sidebarNav){
+    sidebarNav.innerHTML=[
+      buildStdGroup('Main',groups[0].ids,'nav'),
+      augSide.workspace,
+      schoolGroupSide,
+      buildStdGroup('Me',groups[2].ids,'nav'),
+    ].join('');
+  }
 
   const drawerNav=document.querySelector('.mob-drawer-nav');
-  if(drawerNav)drawerNav.innerHTML=buildNav('navMob');
+  if(drawerNav){
+    drawerNav.innerHTML=[
+      buildStdGroup('Main',groups[0].ids,'navMob','padding:8px 16px 4px'),
+      augMob.workspace,
+      schoolGroupMob,
+      buildStdGroup('Me',groups[2].ids,'navMob','padding:8px 16px 4px'),
+    ].join('');
+  }
 
   const role=getMyRole();
   if(role==='owner'||role==='dev'){
@@ -3018,6 +3089,7 @@ function renderSidebars(){
       +`<button type="button" class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More"><span class="bni" aria-hidden="true">${BNAV_ICONS.more}</span><span class="bnl">More</span></button>`;
   }
   syncMoreSheetNavIcons();
+  try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
 }
 function toggleSidebar(){
   sidebarCollapsed=!sidebarCollapsed;
