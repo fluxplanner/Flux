@@ -245,13 +245,13 @@
     0 2px 8px rgba(0,0,0,.22),
     0 0 0 1px rgba(255,255,255,.05) inset,
     0 0 0 1px currentColor;
-  z-index: 2;
+  z-index: var(--flux-z-sticky-low);
 }
 .pt-el:hover::before{ opacity: .18; }
 .pt-el:focus-visible{
   outline: 2px solid rgba(var(--accent-rgb),.8);
   outline-offset: 0;
-  z-index: 2;
+  z-index: var(--flux-z-sticky-low);
   box-shadow: none;
 }
 .pt-el[data-cat="alkali"]         { color: var(--pt-alkali); }
@@ -385,7 +385,7 @@
     max-width: none;
     min-height: 0;
     height: auto;
-    z-index: 3;
+    z-index: var(--flux-z-sticky-mid);
     transform: none;
     pointer-events: auto;
   }
@@ -398,7 +398,7 @@
     width: min(420px, 100%);
     height: 100%;
     min-height: 100dvh;
-    z-index: 1100;
+    z-index: var(--flux-z-periodic-drawer);
     transform: translateX(0);
     transition: transform .3s cubic-bezier(.2,.85,.3,1);
     pointer-events: auto;

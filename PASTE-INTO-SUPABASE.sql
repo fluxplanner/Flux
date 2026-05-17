@@ -32,10 +32,7 @@ DROP POLICY IF EXISTS "roles_select_own" ON public.user_roles;
 CREATE POLICY "roles_select_own" ON public.user_roles
   FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "roles_select_educators" ON public.user_roles;
-CREATE POLICY "roles_select_educators" ON public.user_roles
-  FOR SELECT TO authenticated
-  USING (role IN ('teacher', 'counselor', 'staff', 'admin'));
+-- roles_select_educators: removed here — applied after teacher_students + counselors exist (see §11b below; mirrors supabase/migrations/20260519120000_user_roles_select_tighten.sql).
 
 DROP POLICY IF EXISTS "roles_insert_own" ON public.user_roles;
 CREATE POLICY "roles_insert_own" ON public.user_roles
@@ -412,6 +409,71 @@ CREATE POLICY "nhd_teacher_all" ON public.no_homework_days
 DROP POLICY IF EXISTS "nhd_student_read" ON public.no_homework_days;
 CREATE POLICY "nhd_student_read" ON public.no_homework_days
   FOR SELECT TO authenticated USING (true);
+
+-- ──────────────────────────────────────────────────────────────────
+-- 11b. user_roles SELECT tighten (docs/RLS_AUDIT.md §1; same as migration 20260519120000)
+--      Run after teacher_students, counselors, student_counselors, counselor_appointments exist.
+-- ──────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "roles_select_educators" ON public.user_roles;
+DROP POLICY IF EXISTS "roles_select_educators_same_school" ON public.user_roles;
+DROP POLICY IF EXISTS "roles_select_students_i_teacher" ON public.user_roles;
+DROP POLICY IF EXISTS "roles_select_students_i_counselor" ON public.user_roles;
+DROP POLICY IF EXISTS "roles_select_as_admin" ON public.user_roles;
+
+CREATE POLICY "roles_select_educators_same_school" ON public.user_roles
+  FOR SELECT TO authenticated
+  USING (
+    role IN ('teacher', 'counselor', 'staff', 'admin')
+    AND EXISTS (
+      SELECT 1 FROM public.user_roles viewer
+      WHERE viewer.user_id = auth.uid()
+        AND NULLIF(trim(viewer.school), '') IS NOT NULL
+        AND NULLIF(trim(public.user_roles.school), '') IS NOT NULL
+        AND lower(trim(viewer.school)) = lower(trim(public.user_roles.school))
+    )
+  );
+
+CREATE POLICY "roles_select_students_i_teacher" ON public.user_roles
+  FOR SELECT TO authenticated
+  USING (
+    role = 'student'
+    AND EXISTS (
+      SELECT 1 FROM public.teacher_students ts
+      WHERE ts.teacher_id = auth.uid()
+        AND ts.student_id = public.user_roles.user_id
+        AND COALESCE(ts.active, true) = true
+    )
+  );
+
+CREATE POLICY "roles_select_students_i_counselor" ON public.user_roles
+  FOR SELECT TO authenticated
+  USING (
+    role = 'student'
+    AND (
+      EXISTS (
+        SELECT 1 FROM public.student_counselors sc
+        INNER JOIN public.counselors c ON c.id = sc.counselor_id
+        WHERE c.user_id = auth.uid()
+          AND sc.student_id = public.user_roles.user_id
+      )
+      OR EXISTS (
+        SELECT 1 FROM public.counselor_appointments ca
+        INNER JOIN public.counselors c ON c.id = ca.counselor_id
+        WHERE c.user_id = auth.uid()
+          AND ca.student_id = public.user_roles.user_id
+      )
+    )
+  );
+
+CREATE POLICY "roles_select_as_admin" ON public.user_roles
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles me
+      WHERE me.user_id = auth.uid()
+        AND me.role = 'admin'
+    )
+  );
 
 -- ──────────────────────────────────────────────────────────────────
 -- 12. Realtime — enable for messaging & appointments

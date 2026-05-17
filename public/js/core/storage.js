@@ -3,6 +3,10 @@
  * Canonical source of truth remains the same keys `app.js` already uses:
  * tasks, flux_events, flux_notes, flux_mood — so cloud sync and legacy
  * flows keep working. We dual-write the blob for portable reads / future migration.
+ *
+ * When `window.FluxStorage` from `app.js` is present, reads/writes delegate to
+ * `load`/`save` (impersonation + `fluxNamespacedKey`). Otherwise fall back to
+ * `localStorage` + `fluxNamespacedKey` when that global exists.
  */
 
 export const STORAGE_KEY = 'flux_data_v1';
@@ -14,10 +18,30 @@ const LEGACY = {
   moodHistory: 'flux_mood',
 };
 
+function nsKey(k) {
+  try {
+    if (typeof window !== 'undefined' && typeof window.fluxNamespacedKey === 'function') {
+      return window.fluxNamespacedKey(k);
+    }
+  } catch {
+    /* ignore */
+  }
+  return k;
+}
+
 function parseJson(key, fallback) {
   try {
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
+    const fs = typeof window !== 'undefined' ? window.FluxStorage : null;
+    if (fs && typeof fs.load === 'function') {
+      return fs.load(key, fallback);
+    }
+    const v = localStorage.getItem(nsKey(key));
+    if (!v) return fallback;
+    try {
+      return JSON.parse(v);
+    } catch {
+      return fallback;
+    }
   } catch {
     return fallback;
   }
@@ -25,7 +49,12 @@ function parseJson(key, fallback) {
 
 function setJson(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const fs = typeof window !== 'undefined' ? window.FluxStorage : null;
+    if (fs && typeof fs.save === 'function') {
+      fs.save(key, value);
+      return;
+    }
+    localStorage.setItem(nsKey(key), JSON.stringify(value));
   } catch (e) {
     console.warn('Storage full', e);
   }
@@ -49,9 +78,12 @@ export function loadData() {
     moodHistory: parseJson(LEGACY.moodHistory, []),
   });
   try {
-    const blob = localStorage.getItem(STORAGE_KEY);
-    if (blob) {
-      JSON.parse(blob);
+    const fs = typeof window !== 'undefined' ? window.FluxStorage : null;
+    if (fs && typeof fs.load === 'function') {
+      fs.load(STORAGE_KEY, null);
+    } else {
+      const blob = localStorage.getItem(nsKey(STORAGE_KEY));
+      if (blob) JSON.parse(blob);
     }
   } catch {
     /* ignore corrupt blob */

@@ -2,7 +2,7 @@
    FLUX · Reference tools (8 tools) — all hardcoded, offline, theme-aware
    ------------------------------------------------------------------------
    Shared modal shell: creates .ref-tool-overlay + .ref-tool-modal in body,
-   remembers last active tab per tool in localStorage.
+   remembers last active tab per tool via load/save (namespaced fallback when app.js is absent).
    All tools expose a single global function: open<ToolName>().
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
@@ -10,6 +10,28 @@
 
   const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   const LS_TAB = (toolId) => `flux_tool_tab_${toolId}`;
+  function readToolTab(toolId){
+    const k = LS_TAB(toolId);
+    try{
+      if(typeof load==='function'){
+        const v = load(k, null);
+        if(v==null||v==='')return null;
+        return String(v);
+      }
+      const nkk = typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
+      const raw = localStorage.getItem(nkk);
+      if(raw==null||raw==='')return null;
+      try{return String(JSON.parse(raw));}catch(_){return String(raw);}
+    }catch(_){ return null; }
+  }
+  function writeToolTab(toolId, tabId){
+    const k = LS_TAB(toolId);
+    if(typeof save==='function'){ try{ save(k, tabId); }catch(_){} return; }
+    try{
+      const nkk = typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
+      localStorage.setItem(nkk, JSON.stringify(tabId));
+    }catch(_){}
+  }
 
   // ─────────────────────────────────────────────────────────────────
   // Shared modal
@@ -21,7 +43,7 @@
     overlay.id = 'refToolOverlay';
     if(wide) overlay.classList.add('ref-overlay--wide');
 
-    const savedTab = localStorage.getItem(LS_TAB(id));
+    const savedTab = readToolTab(id);
     const initialTab = (tabs && tabs.find(t => t.id === savedTab)) ? savedTab : (tabs && tabs[0] ? tabs[0].id : null);
 
     const tabButtons = tabs ? tabs.map(t => `<button type="button" class="ref-tool-tab ${t.id===initialTab?'active':''}" data-tab="${esc(t.id)}">${esc(t.label)}</button>`).join('') : '';
@@ -47,7 +69,7 @@
       if(typeof onTabChange === 'function') onTabChange(tabId);
       if(tabs){
         overlay.querySelectorAll('.ref-tool-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
-        localStorage.setItem(LS_TAB(id), tabId);
+        writeToolTab(id, tabId);
       }
     };
 

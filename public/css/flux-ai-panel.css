@@ -929,7 +929,7 @@
   #ai.flux-ai-panel .flux-ai-composer-foot{
     position: sticky;
     bottom: 0;
-    z-index: 3;
+    z-index: var(--flux-z-sticky-mid);
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
   #ai.flux-ai-panel .ai-irow--flux #aiInput{
@@ -1502,7 +1502,7 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   position: relative;
-  z-index: 2;
+  z-index: var(--flux-z-sticky-low);
 }
 #ai.flux-ai-panel.ai-root .ai-topbar__left{
   gap: 10px !important;

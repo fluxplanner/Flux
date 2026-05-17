@@ -20,7 +20,10 @@
         var v=JSON.parse(raw);
         if(v===true)p=true;
         else if(v===false)p=false;
-      }catch(e2){}
+      }catch(e2){
+        if(raw==='1')p=true;
+        else if(raw==='0')p=false;
+      }
     }
     var on=p===true;
     document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
@@ -33,7 +36,15 @@
 (function(){
   try{
     var raw=localStorage.getItem('flux_perf_snappy');
-    var on=raw===null?false:JSON.parse(raw)===true;
+    var on=false;
+    if(raw!==null&&raw!==''){
+      try{
+        var v=JSON.parse(raw);
+        on=(v===true||v===1||v==='1');
+      }catch(e2){
+        on=(raw==='1');
+      }
+    }
     document.documentElement.setAttribute('data-flux-perf',on?'on':'off');
   }catch(e){
     document.documentElement.setAttribute('data-flux-perf','off');

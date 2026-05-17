@@ -178,7 +178,7 @@ body[data-flux-mesh='off']::before {
 .login-bg-aurora {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: var(--flux-z-base);
   pointer-events: none;
   overflow: hidden;
 }
@@ -241,7 +241,7 @@ body[data-flux-mesh='off']::before {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 0;
+  z-index: var(--flux-z-base);
 }
 .shooting-star {
   position: absolute;
@@ -320,7 +320,7 @@ body[data-flux-mesh='off']::before {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: var(--flux-z-base);
   pointer-events: none;
   background: repeating-linear-gradient(
     45deg,
@@ -451,7 +451,7 @@ body[data-flux-mesh='off']::before {
   opacity: 0;
   transition: opacity 0.3s;
   pointer-events: none;
-  z-index: 0;
+  z-index: var(--flux-z-base);
 }
 .ref-card:hover::before {
   opacity: 1;
@@ -487,7 +487,7 @@ body[data-flux-mesh='off']::before {
 .kanban-card[data-dragging='true'] {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(var(--accent-rgb), 0.3);
   transform: rotate(1.5deg) scale(1.03);
-  z-index: 100;
+  z-index: var(--flux-z-sidebar-tooltip);
   cursor: grabbing;
 }
 
@@ -578,7 +578,7 @@ body[data-flux-mesh='off']::before {
 .section-header-sticky {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: var(--flux-z-visual-section);
   backdrop-filter: blur(12px);
   background: rgba(7, 8, 15, 0.8);
   margin: 0 -16px;
@@ -870,7 +870,7 @@ body[data-flux-mesh='off']::before {
   height: 2px;
   background: var(--accent);
   width: 0%;
-  z-index: 20;
+  z-index: var(--flux-z-scroll-indicator);
   border-radius: 0 2px 2px 0;
   pointer-events: none;
   transition: width 0.12s ease-out;

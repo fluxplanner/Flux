@@ -108,7 +108,7 @@ body[data-flux-focus-mode="on"] .task-item{padding:18px 20px!important;font-size
 body[data-flux-focus-mode="on"] .task-text{font-size:1.06rem!important;font-weight:600}
 
 #fluxFocusBar{
-  position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:9000;
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:var(--flux-z-palette);
   display:none;align-items:center;gap:14px;
   padding:9px 18px 9px 14px;border-radius:999px;
   background:rgba(15,20,35,.85);backdrop-filter:blur(20px) saturate(180%);
@@ -127,7 +127,7 @@ body[data-flux-focus-mode="on"] #fluxFocusBar{display:flex}
 
 /* ── Achievement badges (toast-style popup) ── */
 .flux-achievement{
-  position:fixed;top:80px;right:20px;z-index:9500;
+  position:fixed;top:80px;right:20px;z-index:var(--flux-z-achievement-toast);
   display:flex;align-items:center;gap:14px;
   padding:14px 18px 14px 14px;
   background:linear-gradient(135deg,rgba(var(--accent-rgb),.18) 0%,rgba(124,92,255,.14) 100%);
@@ -255,11 +255,11 @@ body[data-flux-focus-mode="on"] #fluxFocusBar{display:flex}
 .flux-prog-ring-num{font-size:1.05rem;font-weight:800;color:var(--text);line-height:1}
 .flux-prog-ring-cap{font-size:.55rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:2px}
 
-/* ── Smooth view transitions between tabs ── */
+/* Smooth view transitions when JS adds .flux-panel-enter on tab switch (name is unique vs flux-mobile-app keyframes). */
 .panel.flux-panel-enter{
-  animation:fluxPanelIn .42s var(--ease-cinematic) both;
+  animation:fluxProPanelTabIn .42s var(--ease-cinematic) both;
 }
-@keyframes fluxPanelIn{
+@keyframes fluxProPanelTabIn{
   0%{opacity:0;transform:translateY(8px) scale(.992)}
   100%{opacity:1;transform:translateY(0) scale(1)}
 }
@@ -269,7 +269,7 @@ body[data-flux-focus-mode="on"] #fluxFocusBar{display:flex}
 
 /* ── Right-click context menu for tasks ── */
 .flux-ctx-menu{
-  position:fixed;z-index:9990;min-width:200px;
+  position:fixed;z-index:var(--flux-z-shortcut-overlay);min-width:200px;
   background:var(--card);border:1px solid var(--border2);border-radius:12px;
   padding:6px;
   box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.06);
@@ -330,7 +330,7 @@ h3{letter-spacing:-.012em}
 
 /* ── Task completion celebration overlay ── */
 .flux-celebrate-overlay{
-  position:fixed;inset:0;pointer-events:none;z-index:9988;
+  position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-celebrate-overlay);
   display:flex;align-items:center;justify-content:center;
   font-size:5rem;opacity:0;
 }

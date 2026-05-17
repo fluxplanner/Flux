@@ -7,6 +7,22 @@
   const KEY_EXPLAIN='flux_explain_level_v1';
   const KEY_BREAK='flux_last_break_hint_ts';
 
+  /** Physical key when `app.js` namespacing is available (impersonation-safe fallbacks). */
+  function lsNk(k){
+    try{return typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;}catch(_){return k;}
+  }
+  /** Fallback when `load`/`save` are missing; values match JSON written by `save()`. */
+  function rawLoad(k, def){
+    try{
+      const raw=localStorage.getItem(lsNk(k));
+      if(raw==null||raw==='')return def;
+      try{return JSON.parse(raw);}catch(_){return raw;}
+    }catch(_){return def;}
+  }
+  function rawSave(k, v){
+    try{localStorage.setItem(lsNk(k), JSON.stringify(v));}catch(_){}
+  }
+
   function esc(s){
     return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -21,13 +37,14 @@
         return o&&typeof o==='object'&&!Array.isArray(o)?o:{};
       }catch(e){}
     }
-    try{return JSON.parse(localStorage.getItem(KEY_BIAS)||'{}');}catch(e){return{};}
+    const o=rawLoad(KEY_BIAS,{});
+    return o&&typeof o==='object'&&!Array.isArray(o)?o:{};
   }
   function writeBias(o){
     if(typeof save==='function'){
       try{save(KEY_BIAS,o||{});return;}catch(e){}
     }
-    try{localStorage.setItem(KEY_BIAS,JSON.stringify(o));}catch(e){}
+    rawSave(KEY_BIAS,o||{});
   }
 
   function onTaskComplete(task){
@@ -378,10 +395,10 @@
     const sum=today.reduce((a,x)=>a+(x.mins||0),0);
     const lastSess=today.slice(-1)[0];
     if(sum>=90){
-      const prev=typeof load==='function'?Number(load(KEY_BREAK,0))||0:parseInt(localStorage.getItem(KEY_BREAK)||'0',10);
+      const prev=typeof load==='function'?Number(load(KEY_BREAK,0))||0:Number(rawLoad(KEY_BREAK,0))||0;
       if(Date.now()-prev>12*60*1000){
         if(typeof save==='function')save(KEY_BREAK,Date.now());
-        else try{localStorage.setItem(KEY_BREAK,String(Date.now()));}catch(e){}
+        else rawSave(KEY_BREAK,Date.now());
         return`You've logged ${sum}m focus today — take a 10–15m break before the next block.`;
       }
     }
@@ -460,12 +477,13 @@
 
   function getExplainLevel(){
     if(typeof window.fluxLoadStoredString==='function')return window.fluxLoadStoredString(KEY_EXPLAIN,'ib');
-    return localStorage.getItem(KEY_EXPLAIN)||'ib';
+    const v=rawLoad(KEY_EXPLAIN,'ib');
+    return v!=null&&String(v).length?String(v):'ib';
   }
   function setExplainLevel(v){
     const s=v==='eli5'?'eli5':'ib';
     if(typeof window.fluxSaveStoredString==='function')window.fluxSaveStoredString(KEY_EXPLAIN,s);
-    else try{localStorage.setItem(KEY_EXPLAIN,s);}catch(e){}
+    else rawSave(KEY_EXPLAIN,s);
     render();
   }
 

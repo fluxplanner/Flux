@@ -45,10 +45,16 @@
     return k;
   }
   function ls(key,fallback){
+    if(typeof load==='function'){
+      try{return load(key,fallback);}catch(_){return fallback;}
+    }
     try{const raw=localStorage.getItem(_key(key));return raw?JSON.parse(raw):fallback;}
     catch(_){return fallback;}
   }
   function lsSet(key,val){
+    if(typeof save==='function'){
+      try{save(key,val);return;}catch(_){}
+    }
     try{localStorage.setItem(_key(key),JSON.stringify(val));}catch(_){}
   }
   function toast(msg,kind){

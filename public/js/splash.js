@@ -18,7 +18,15 @@ function fluxSplashAccentHex(){
   try{
     let h='';
     if(typeof window.fluxLoadStoredString==='function')h=window.fluxLoadStoredString('flux_accent','');
-    else h=(localStorage.getItem('flux_accent')||'').trim();
+    else{
+      try{
+        const nk=typeof window.fluxNamespacedKey==='function'?window.fluxNamespacedKey('flux_accent'):'flux_accent';
+        const raw=localStorage.getItem(nk);
+        if(raw!=null&&raw!==''){
+          try{h=String(JSON.parse(raw));}catch(_){h=String(raw);}
+        }
+      }catch(_){h='';}
+    }
     h=String(h||'').replace(/^"|"$/g,'').trim();
     if(h&&/^#[0-9A-Fa-f]{6}$/.test(h))return h;
   }catch(_){}

@@ -14,6 +14,7 @@
  * No console spam unless one of the above is set.
  */
 (function () {
+  /** Debug flags use unprefixed keys (device-global; not per-impersonation bubble). */
   function lsGet(k) {
     try {
       return localStorage.getItem(k);

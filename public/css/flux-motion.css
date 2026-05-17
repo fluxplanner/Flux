@@ -169,7 +169,7 @@
 
 /* Particle burst (spawned by JS) */
 .task-burst-particle{
-  position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:10000;
+  position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:var(--flux-z-skip-link);
   will-change:transform,opacity;
 }
 

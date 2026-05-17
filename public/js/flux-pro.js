@@ -11,12 +11,15 @@
 'use strict';
 
 /** Delegate to app.js `load`/`save` (namespaced); safe fallback if globals missing. */
+function nk(k){
+  try{return typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;}catch(e){return k;}
+}
 function proLoad(k, def){
   if(typeof load === 'function'){
     try{ return load(k, def); }catch(e){ return def; }
   }
   try{
-    const v = localStorage.getItem(k);
+    const v = localStorage.getItem(nk(k));
     if(v == null || v === '') return def;
     try{ return JSON.parse(v); }catch(_){ return v; }
   }catch(e){ return def; }
@@ -25,7 +28,7 @@ function proSave(k, v){
   if(typeof save === 'function'){
     try{ save(k, v); }catch(e){}
   }else{
-    try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){}
+    try{ localStorage.setItem(nk(k), JSON.stringify(v)); }catch(e){}
   }
 }
 
@@ -906,7 +909,7 @@ window.fluxOpenAchievements = function(){
     </div>`;
   }).join('');
   wrap.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:22px;max-width:580px;width:100%;max-height:84vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.55);animation:fluxPanelIn .35s var(--ease-cinematic)">
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:22px;max-width:580px;width:100%;max-height:84vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.55);animation:fluxProPanelTabIn .35s var(--ease-cinematic)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
         <div>
           <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace">FLUX PLANNER</div>
@@ -930,7 +933,7 @@ window.fluxOpenQuickAdd = function(){
   el.id = 'fluxQuickAdd';
   el.style.cssText = 'position:fixed;inset:0;z-index:9991;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:18vh 20px 20px;animation:fadeIn .15s ease';
   el.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:18px;max-width:540px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.6);animation:fluxPanelIn .3s var(--ease-cinematic)">
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:18px;max-width:540px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.6);animation:fluxProPanelTabIn .3s var(--ease-cinematic)">
       <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:6px">QUICK ADD</div>
       <input id="fluxQuickAddInput" type="text" placeholder="Add a task… (e.g. 'Chem essay due Friday' or 'Math hw tomorrow')"
         style="width:100%;font-size:1rem;padding:14px 14px;border-radius:12px;border:1px solid var(--border2);background:var(--card2);color:var(--text);box-sizing:border-box;margin:0">

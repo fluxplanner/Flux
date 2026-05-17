@@ -105,6 +105,8 @@ window.fluxLoadStoredString=fluxLoadStoredString;
 window.fluxSaveStoredString=fluxSaveStoredString;
 window.fluxNamespacedKey=fluxNamespacedKey;
 window.fluxImpersonationPrefix=fluxImpersonationPrefix;
+/** ESM helpers (`public/js/core/storage.js`) use this so reads/writes match `fluxNamespacedKey` + impersonation. */
+window.FluxStorage={load,save};
 
 // ── Phase 2 · DEV-only diagnostics (no-op unless explicitly enabled) ──
 // Master: window.FLUX_DEBUG = true  OR  localStorage.setItem('FLUX_DEBUG','1')
@@ -112,6 +114,7 @@ window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 //   FLUX_DEBUG_BUS, FLUX_DEBUG_STORAGE, FLUX_DEBUG_AI
 (function initFluxDebug(){
   if(window.FluxDebug&&window.FluxDebug.__fromCoreModule)return;
+  // Debug toggles are intentionally unprefixed (device-global; not per-impersonation bubble).
   function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
   function onFlag(sub){
     try{
@@ -171,7 +174,7 @@ window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 try{
   const lastEmail=String(fluxLoadStoredString('flux_last_user_email','')).trim().toLowerCase();
   if(lastEmail&&lastEmail!=='azfermohammed21@gmail.com'){
-    localStorage.removeItem('flux_owner_impersonate');
+    localStorage.removeItem(fluxNamespacedKey('flux_owner_impersonate'));
   }
 }catch(_){}
 
@@ -232,6 +235,7 @@ const DATA_VERSION=6;
       const notes=load('flux_notes',[]);
       if(Array.isArray(notes)&&notes.length>240)save('flux_notes',notes.slice(-240));
     }catch(e){}
+    // AI chat shards use physical keys (may include `imp:…` prefix). Must read/write `k` as-is — not `load(key)` (would re-namespace).
     try{
       for(let i=localStorage.length-1;i>=0;i--){
         const k=localStorage.key(i);
@@ -1273,6 +1277,7 @@ function setTimerPresetMins(mins){
   el.value=String(mins);updateTLengths();showToast(mins+' min focus','info');
 }
 function estimateStorageBytes(){
+  try{if(typeof window.fluxEstimateLocalStorageBytes==='function')return window.fluxEstimateLocalStorageBytes();}catch(_){}
   let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)n+=(k.length+(localStorage.getItem(k)||'').length)*2;}}catch(e){}
   return n;
 }
@@ -5151,8 +5156,8 @@ function loadTheme(){
   }
   // Auto-detect OS color scheme on first visit
   try{
-    const nk=fluxNamespacedKey('flux_theme');
-    if(localStorage.getItem(nk)==null||localStorage.getItem(nk)===''){
+    const cur=String(fluxLoadStoredString('flux_theme','')).trim();
+    if(!cur){
       const prefersDark=typeof matchMedia==='undefined'||matchMedia('(prefers-color-scheme:dark)').matches;
       fluxSaveStoredString('flux_theme',prefersDark?'dark':'light');
     }
@@ -9289,7 +9294,7 @@ async function handleSignedIn(user,session){
   // owner manually exits preview mode.
   try{
     if(user&&user.email!==OWNER_EMAIL){
-      localStorage.removeItem('flux_owner_impersonate');
+      localStorage.removeItem(fluxNamespacedKey('flux_owner_impersonate'));
     }
   }catch(_){}
   checkTesterMode();

@@ -1518,19 +1518,16 @@
     try{
       const keep=['flux_dev_accounts','flux_owner_audit','flux_platform_config'];
       const stash={};
-      keep.forEach(k=>{
+      keep.forEach(logicalKey=>{
         try{
-          const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
+          const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(logicalKey):logicalKey;
           const v=localStorage.getItem(nk);
-          if(v!==null)stash[k]=v;
+          if(v!==null)stash[nk]=v;
         }catch(_){}
       });
       localStorage.clear();
-      Object.keys(stash).forEach(k=>{
-        try{
-          const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;
-          localStorage.setItem(nk,stash[k]);
-        }catch(_){}
+      Object.entries(stash).forEach(([nk,v])=>{
+        try{localStorage.setItem(nk,v);}catch(_){}
       });
       sessionStorage.clear();
     }catch(_){}

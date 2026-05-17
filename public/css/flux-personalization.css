@@ -14,7 +14,7 @@
 [data-mood-tint="neutral"]{--mood-tint-a:0;--mood-tint-b:0;}
 html[data-mood-tint="calm"] body::before,
 html[data-mood-tint="warm"] body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);
   opacity:.07;
   background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(var(--accent-rgb),calc(.35 + var(--mood-tint-a,0) * .01)),transparent 55%);
   transition:opacity .75s cubic-bezier(0.16,1,0.3,1),background .75s cubic-bezier(0.16,1,0.3,1);

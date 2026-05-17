@@ -1,7 +1,7 @@
 /* ── FLUX PLANNER · login.css — Scroll showcase + top auth bar ── */
 
 #loginScreen{
-  position:fixed;inset:0;z-index:1000;display:none;
+  position:fixed;inset:0;z-index:var(--flux-z-login);display:none;
   overflow-y:auto;overflow-x:hidden;max-width:100vw;
   -webkit-overflow-scrolling:touch;
   background:
@@ -53,7 +53,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 .login-left-headline .flux-anim-char{line-height:1.35;padding-bottom:.06em}
 
 .login-bg{
-  position:fixed;inset:0;pointer-events:none;z-index:0;
+  position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);
   background:
     radial-gradient(ellipse 88% 52% at 12% 18%,rgba(var(--accent-rgb),.14) 0%,transparent 58%),
     radial-gradient(ellipse 72% 48% at 88% 78%,rgba(var(--purple-rgb),.11) 0%,transparent 58%),
@@ -66,7 +66,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 }
 
 .login-aurora{
-  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);opacity:.5;
   background:conic-gradient(from 210deg at 70% 40%,rgba(var(--accent-rgb),.07),transparent 42%,rgba(var(--purple-rgb),.05),transparent 68%);
   mix-blend-mode:screen;
   animation:loginAuroraDrift 40s ease-in-out infinite alternate;
@@ -78,7 +78,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 @media (prefers-reduced-motion:reduce){.login-aurora{animation:none}}
 
 .login-grid-pattern{
-  position:fixed;inset:0;pointer-events:none;z-index:0;
+  position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);
   background-image:radial-gradient(rgba(255,255,255,.032) 1px,transparent 1px);
   background-size:32px 32px;
   mask-image:radial-gradient(ellipse 72% 62% at 48% 48%,black 18%,transparent 78%);
@@ -86,12 +86,12 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
   opacity:.85;
 }
 .login-vignette{
-  position:fixed;inset:0;pointer-events:none;z-index:0;
+  position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);
   background:radial-gradient(ellipse 85% 70% at 50% 45%,transparent 35%,rgba(0,0,0,.52) 100%);
   mix-blend-mode:multiply;opacity:.88;
 }
 .login-glow{
-  position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0;
+  position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:var(--flux-z-base);
   opacity:.52;animation:glowFloat 18s ease-in-out infinite alternate;
 }
 .login-glow-1{width:620px;height:620px;top:-200px;left:-170px;background:rgba(var(--accent-rgb),.1);animation-duration:20s}
@@ -117,7 +117,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 
 /* ── Top auth bar ── */
 .login-topbar{
-  position:sticky;top:0;z-index:200;
+  position:sticky;top:0;z-index:var(--flux-z-mob-drawer-overlay);
   padding-top:max(12px, env(safe-area-inset-top));
   isolation:isolate;
   background:
@@ -177,7 +177,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
   border:1px solid rgba(255,255,255,.12);
   box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.08);
   backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-  z-index:120;
+  z-index:var(--flux-z-login-popover);
 }
 .login-email-details[open] > .login-email-summary{
   background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.45);
@@ -204,7 +204,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 
 /* ── Scroll main ── */
 .login-showcase{
-  position:relative;z-index:2;
+  position:relative;z-index:var(--flux-z-sticky-low);
   padding-bottom:max(36px, env(safe-area-inset-bottom));
 }
 

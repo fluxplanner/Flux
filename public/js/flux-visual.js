@@ -78,7 +78,19 @@
   function initCursorSpotlight() {
     if (prefersReduced()) return;
     try {
-      if (localStorage.getItem('flux_cursor_spotlight') === '0') return;
+      const k = 'flux_cursor_spotlight';
+      const nkk = typeof window.fluxNamespacedKey === 'function' ? window.fluxNamespacedKey(k) : k;
+      const raw = localStorage.getItem(nkk);
+      if (raw != null && raw !== '') {
+        let off = false;
+        try {
+          const v = JSON.parse(raw);
+          off = v === false || v === 0;
+        } catch (_) {
+          off = raw === '0';
+        }
+        if (off) return;
+      }
     } catch (_) {}
     if (window.innerWidth < 900) return;
     if (document.body.dataset.fluxCursor === 'off') return;

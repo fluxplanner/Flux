@@ -7,27 +7,28 @@
 
 | File | Approx. matches |
 |------|------------------|
-| `public/js/app.js` | ~28 (helpers + migrations + keys that must stay raw until migrated) |
-| `public/js/flux-pro.js` | 2 (helpers only; `proLoad`/`proSave` fallbacks) |
+| `public/js/app.js` | ~27 (helpers + migrations + keys that must stay raw until migrated) |
+| `public/js/flux-pro.js` | 2 ( **`proLoad`/`proSave`** fallbacks use **`fluxNamespacedKey`**) |
 | `public/js/flux-toolbox.js` | 2 ( **`plannerLoad`/`plannerSave`** fallbacks only when **`load`/`save`** absent) |
 | `public/js/flux-release-gate.js` | 4 (helpers; **`cachedEmail`** prefers **`fluxLoadStoredString`** when **`app.js`** loaded) |
-| `public/js/flux-ai-mega.js` | 6 (fallback paths only) |
+| `public/js/flux-ai-mega.js` | 2 (**`rawLoad`/`rawSave`** fallbacks only when **`load`/`save`** absent) |
 | `public/js/flux-personalization.js` | 0 |
 | `public/js/flux-google-docs.js` | 0 (canonical **`load`/`save`** since wave 1) |
 | `public/js/flux-ai-orchestrator.js` | 0 (memory + energy via **`load`/`save`** / **`window.readFluxEnergyLevel`**) |
 | `public/js/flux-intelligence.js` | 0 |
-| `public/js/owner-suite.js` | 2 (local nuke stash restore only) |
-| `public/js/flux-gcal-push.js` | 4 |
-| `public/js/core/storage.js` | 3 (dual-write by design) |
-| `public/js/flux-staff-tabs.js` | 2 |
-| `public/js/flux-visual.js` | 1 (fallback only) |
-| `public/js/flux-reftool-units.js` | 2 |
-| `public/js/flux-estimate-learn.js` | 2 |
-| `public/js/flux-reference-tools.js` | 2 |
-| `public/js/flux-ai-connections.js` | 2 |
+| `public/js/owner-suite.js` | 2 (owner nuke stash/restore only; stash keys are physical **`nk`**) |
+| `public/js/flux-gcal-push.js` | 0 ( **`load`/`save`** only; token from **`sessionStorage`**) |
+| `public/js/core/storage.js` | 3 ( **`localStorage`** only when **`window.FluxStorage`** absent; else **`load`/`save`**) |
+| `public/js/flux-staff-tabs.js` | 2 ( **`ls`/`lsSet`** fallbacks when **`load`/`save`** absent) |
+| `public/js/flux-visual.js` | 1 (pre-**`app.js`** **`flux_cursor_spotlight`** probe; namespaced + JSON **`false`**) |
+| `public/js/flux-reftool-units.js` | 2 ( **`readUnitCat`/`writeUnitCat`** fallbacks when **`load`/`save`** absent) |
+| `public/js/flux-estimate-learn.js` | 2 ( **`nk` + raw** fallback when **`load`/`save`** absent) |
+| `public/js/flux-reference-tools.js` | 2 ( **`readToolTab`/`writeToolTab`** fallbacks) |
+| `public/js/flux-ai-connections.js` | 0 ( **`load`/`save`** only) |
 | `public/js/flux-enhancements-v100.js` | 0 |
-| `public/js/flux-canvas-panel.js` | 1 |
-| `public/js/splash.js` | 1 (accent fallback before `app.js`) |
+| `public/js/flux-canvas-panel.js` | 0 ( **`load`/`save`** only; no **`localStorage`** API) |
+| `public/js/splash.js` | 1 (accent **`getItem`** only when **`fluxLoadStoredString`** absent; namespaced + JSON-aware) |
+| `index.html` (head) | 2 (first-paint **`flux_liquid_glass`** / **`flux_perf_snappy`**; legacy **`'1'`/`'0'`** + JSON tolerant, wave 19) |
 
 ## Canonical rule
 
@@ -41,7 +42,7 @@ Planner data keys **should** use `load()` / `save()` from `app.js` so `fluxNames
 | `flux-google-docs.js` | **`load`/`save`** for `flux_google_docs_primary_url` and connection-enabled check |
 | `flux-canvas-panel.js` | Host guess fallback email: **`load('flux_last_user_email')`** (replaces dead `flux_user_email` key) |
 
-Next targets (high count): **`flux-ai-mega.js`**, remaining **`app.js`** hotspots in the table.
+Next targets: **Phase 8 incremental routing** is complete for app modules; remaining raw **`localStorage`** in **`app.js`** / head / storage fallback is **documented** under **“Intentional raw `localStorage`”** above. Optional: add **`FluxDebug.traceStorage`** hooks on migration/compaction only if you need deeper audits.
 
 ## Wave 2 (2026-05-17)
 
@@ -133,8 +134,99 @@ Next targets (high count): **`flux-ai-mega.js`**, remaining **`app.js`** hotspot
 | `docs/STORAGE_RAW_INVENTORY.md` | Wave 13; **`flux-toolbox.js`** count **~2** (was stale at ~13) |
 | `docs/stabilization-checkpoint.md` | Wave 13 log |
 
+## Wave 14 (2026-05-17) — `flux-ai-mega.js` fallbacks
+
+| File | Change |
+|------|--------|
+| `public/js/flux-ai-mega.js` | **`lsNk`/`rawLoad`/`rawSave`** for no-`app.js` paths; night bias, break hint ts, explain level use namespaced storage consistent with **`save()`** JSON |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 14; **`flux-ai-mega.js`** count **~2** |
+| `docs/stabilization-checkpoint.md` | Wave 14 log |
+
+## Wave 15 (2026-05-17) — small tools + Pro / visual
+
+| File | Change |
+|------|--------|
+| `public/js/flux-estimate-learn.js` | **`load`/`save`** when present; **`nk` + JSON** fallback otherwise |
+| `public/js/flux-reference-tools.js` | **`readToolTab`/`writeToolTab`** — **`load`/`save`** or namespaced JSON fallback |
+| `public/js/flux-reftool-units.js` | **`readUnitCat`/`writeUnitCat`** — **`fluxLoadStoredString`** / **`save`** or namespaced fallback |
+| `public/js/flux-pro.js` | **`proLoad`/`proSave`** no-**`app.js`** path uses **`fluxNamespacedKey`** |
+| `public/js/flux-visual.js` | Early **`flux_cursor_spotlight`** check uses namespaced key + JSON boolean (matches **`proSave`**) |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 15; **`flux-gcal-push.js`** count **0** |
+| `docs/stabilization-checkpoint.md` | Wave 15 log |
+
+## Wave 16 (2026-05-17) — `app.js` polish
+
+| File | Change |
+|------|--------|
+| `public/js/app.js` | **`loadTheme`**: first-visit theme probe via **`fluxLoadStoredString('flux_theme','')`** (no duplicate **`getItem`**); impersonation scrub + **`handleSignedIn`** use **`fluxNamespacedKey('flux_owner_impersonate')`**; **`estimateStorageBytes`** delegates to **`fluxEstimateLocalStorageBytes`** when defined |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 16; **`app.js`** count **~27** |
+| `docs/stabilization-checkpoint.md` | Wave 16 log |
+
+## Wave 17 (2026-05-17) — splash accent + owner nuke stash
+
+| File | Change |
+|------|--------|
+| `public/js/splash.js` | **`fluxSplashAccentHex`** fallback: **`fluxNamespacedKey('flux_accent')`** + JSON-or-raw parse (matches **`save`**-stored strings) |
+| `public/js/owner-suite.js` | **`ownerNukeLocalState`**: stash map keyed by **physical** storage keys, restore via **`Object.entries`** (same pattern as **`clearCache`**) |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 17 row notes |
+| `docs/stabilization-checkpoint.md` | Wave 17 log |
+
+## Wave 18 (2026-05-17) — staff tabs + inventory fix
+
+| File | Change |
+|------|--------|
+| `public/js/flux-staff-tabs.js` | **`ls`/`lsSet`** prefer **`load`/`save`** from **`app.js`**; namespaced **`getItem`/`setItem`** only as fallback |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 18; **`flux-canvas-panel.js`** count **0**; **`flux-staff-tabs.js`** note |
+| `docs/stabilization-checkpoint.md` | Wave 18 log |
+
+## Wave 19 (2026-05-17) — first-paint prefs + storage docs
+
+| File | Change |
+|------|--------|
+| `index.html` | Head scripts: tolerate legacy **`'1'`/`'0'`** and JSON for **`flux_liquid_glass`** / **`flux_perf_snappy`** (matches **`save`** / **`fluxSaveLegacy01`** shapes) |
+| `public/js/app.js` | **`initFluxDebug`**: comment that debug **`lsGet`** keys stay unprefixed; **`fluxCompactStorageIfNeeded`**: comment why AI chat compaction uses physical keys |
+| `public/js/core/debug.js` | Comment on unprefixed debug **`lsGet`** keys |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 19 + **`index.html`** row |
+| `docs/stabilization-checkpoint.md` | Wave 19 log |
+
+## Wave 20 (2026-05-17) — `FluxStorage` + ESM blob path
+
+| File | Change |
+|------|--------|
+| `public/js/app.js` | **`window.FluxStorage = { load, save }`** for ESM consumers |
+| `public/js/core/storage.js` | **`parseJson`/`setJson`** delegate to **`FluxStorage`** when present; else **`fluxNamespacedKey` + `localStorage`**; blob probe uses same split |
+| `docs/STORAGE_RAW_INVENTORY.md` | Wave 20 + **`core/storage.js`** row note |
+| `docs/stabilization-checkpoint.md` | Wave 20 log |
+
+## Wave 21 (2026-05-17) — exceptions appendix (Phase 8 close-out)
+
+| File | Change |
+|------|--------|
+| `docs/STORAGE_RAW_INVENTORY.md` | **“Intentional raw `localStorage`”** appendix: `app.js` migration / compaction / `fluxImpersonationPrefix` / `FluxDebug.lsGet`, `index.html` head, `core/storage.js` fallback |
+| `docs/stabilization-checkpoint.md` | Step 8 + wave 21 log |
+
+## Intentional raw `localStorage` (exceptions)
+
+These paths **stay** on raw **`localStorage`** (or head **`getItem`**) by design — not bugs.
+
+| Location | Why |
+|----------|-----|
+| **`public/js/app.js`** **`fluxImpersonationPrefix()`** | Reads global **`flux_owner_impersonate`** before **`load`** can safely depend on fully bootstrapped storage helpers. |
+| **`public/js/app.js`** **`_fluxLoadRaw` / `_fluxSaveRaw`** | Implement **`load`/`save`**; the canonical boundary. |
+| **`public/js/app.js`** **`fluxLoadLegacy01`** fallback | Raw **`getItem`** for legacy **`'1'`** prefs when JSON branch misses. |
+| **`public/js/app.js`** **`fluxLoadStoredString`** fallback | Raw read for mixed JSON/plain string prefs. |
+| **`public/js/app.js`** **`checkDataVersion`** | Iterates **physical** keys from **`Object.keys(localStorage)`**; **`removeItem(k)`** for keys outside the keep policy (migration). |
+| **`public/js/app.js`** **`fluxCompactStorageIfNeeded`** | AI chat shards use **physical** keys (may include **`imp:…`**); must **`getItem`/`setItem`** that key as-is — **`load(logical)`** would re-namespace incorrectly. |
+| **`public/js/app.js`** **`initFluxDebug` · `lsGet`** | **`flux_debug`**, **`FLUX_DEBUG*`** toggles are **device-global**, not per-impersonation bubble. |
+| **`public/js/app.js`** **`fluxEstimateLocalStorageBytes` / `estimateStorageBytes`** | Full-browser quota estimate across **all** keys (incl. **`sb-*`**, **`imp:`**). |
+| **`public/js/app.js`** | Account switch / **`clearCache` / `handleSignedOut` / `ownerNukeLocalState`**: **`clear`** + selective **`setItem`** on preserved physical keys. |
+| **`index.html`** (head) | First-paint **`data-flux-glass`** / **`data-flux-perf`** before **`app.js`** runs. |
+| **`public/js/core/storage.js`** | When **`window.FluxStorage`** is absent, **`nsKey` + `localStorage`** fallback (tests / load order). |
+| **`public/js/core/debug.js`** · **`initFluxDebug` in `app.js` (legacy)** | Same unprefixed debug **`lsGet`** rule when **`debug.js`** not loaded. |
+
 ## Migration plan (incremental)
 
 1. Classify each raw access: *must stay global* (e.g. `sb-*`), *must use load/save*, *bug*.  
 2. Fix highest-risk paths first (tokens, AI connections, Canvas, account switch).  
-3. Add `FluxDebug.traceStorage` when `FLUX_DEBUG_STORAGE=1` or `flux_debug=on` to catch stragglers.
+3. Add `FluxDebug.traceStorage` when `FLUX_DEBUG_STORAGE=1` or `flux_debug=on` to catch stragglers.  
+4. ~~Document intentional raw **`localStorage`** exceptions (see **“Intentional raw `localStorage`”** above).~~

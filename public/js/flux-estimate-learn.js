@@ -4,11 +4,28 @@
  */
 (function(){
   const KEY='flux_est_learn_v1';
+  function nk(k){
+    try{return typeof fluxNamespacedKey==='function'?fluxNamespacedKey(k):k;}catch(_){return k;}
+  }
   function read(){
-    try{return JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){return{};}
+    if(typeof load==='function'){
+      try{
+        const o=load(KEY,{});
+        return o&&typeof o==='object'&&!Array.isArray(o)?o:{};
+      }catch(_){}
+    }
+    try{
+      const raw=localStorage.getItem(nk(KEY));
+      if(raw==null||raw==='')return{};
+      const o=JSON.parse(raw);
+      return o&&typeof o==='object'&&!Array.isArray(o)?o:{};
+    }catch(_){return{};}
   }
   function write(o){
-    try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}
+    if(typeof save==='function'){
+      try{save(KEY,o||{});return;}catch(_){}
+    }
+    try{localStorage.setItem(nk(KEY),JSON.stringify(o||{}));}catch(_){}
   }
   window.FluxEstimateLearn={
     record(subjectKey,estimatedMin,actualMin){

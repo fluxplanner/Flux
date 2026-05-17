@@ -1,21 +1,26 @@
 # Flux Planner — RLS & policy audit (codebase / migrations)
 
-**Scope:** Policies as defined in `supabase/migrations/` in this repo. **Live Supabase may differ** — diff against the dashboard before production changes.
+**Scope:** Policies as defined in `supabase/migrations/` in this repo. **Live Supabase may differ** — diff against the dashboard before production changes. The monolith **`PASTE-INTO-SUPABASE.sql`** part 1 **§11b** mirrors **`20260519120000_user_roles_select_tighten.sql`** (same `DROP`/`CREATE` order, idempotent).
 
 ---
 
 ## 1. `user_roles` — HIGH PRIORITY
 
-**Migration:** `20260513120000_educator_platform.sql`
+**Original migration:** `20260513120000_educator_platform.sql` created `roles_select_educators` (over-broad).
 
-| Policy | Action | USING / WITH CHECK | Risk |
-|--------|--------|---------------------|------|
-| `roles_select_own` | SELECT | `auth.uid() = user_id` | OK |
-| `roles_select_educators` | SELECT | `role IN ('teacher','counselor','staff','admin')` on **the row** | **Any authenticated user can SELECT every educator row** (student enumerates all teachers). Verify intent; likely should be **removed or replaced** with scoped policy (e.g. same school only) or dropped if unused. |
-| `roles_insert_own` | INSERT | self | OK |
-| `roles_update_own` | UPDATE | self | OK |
+**Fix migration:** `20260519120000_user_roles_select_tighten.sql` — drops `roles_select_educators` and adds:
 
-**Recommendation:** In a **new** migration: drop `roles_select_educators` unless product explicitly needs a public educator directory via this table; if needed, gate by `school` or a join table.
+| Policy | SELECT allowed when |
+|--------|---------------------|
+| `roles_select_own` | *(unchanged)* `auth.uid() = user_id` |
+| `roles_select_educators_same_school` | Target row is educator role **and** viewer’s `user_roles.school` matches (non-empty, trimmed, lowercased). |
+| `roles_select_students_i_teacher` | Target is `student` **and** viewer is their `teacher_students.teacher_id` (active). |
+| `roles_select_students_i_counselor` | Target is `student` **and** viewer is their counselor (`student_counselors` or `counselor_appointments`). |
+| `roles_select_as_admin` | Viewer’s own `user_roles.role = 'admin'` (school admin user manager / stats). |
+
+**Product note:** Join-class **code preview** loads teacher `display_name` from `user_roles`; that still works if both accounts have **matching `school`** on `user_roles`, or use another path later (e.g. denormalize on `teacher_classes`). Students with **no** `school` set will not resolve educator rows via same-school policy.
+
+**Other migrations on this table:** `roles_platform_owner_update` in `20260518220000_staff_platform_v1.sql` (owner email) — unchanged.
 
 ---
 
@@ -81,7 +86,7 @@ See `20260425120000_billing_entitlements.sql`, `20260514130000_check_and_increme
 - [ ] Student A **cannot** `select * from teacher_classes` for classes they did not join.  
 - [ ] Student A **cannot** read Student B’s `student_completions`.  
 - [ ] Teacher T **cannot** update assignments of teacher U.  
-- [ ] **user_roles** educator enumeration fixed or accepted as product decision.  
+- [x] **user_roles** educator enumeration — addressed by `20260519120000_user_roles_select_tighten.sql` (replaces `roles_select_educators` with scoped policies; verify on staging).  
 - [ ] Owner-only policies match **production** owner email if changed.
 
 ---

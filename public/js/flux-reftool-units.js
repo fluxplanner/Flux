@@ -3,6 +3,31 @@
   'use strict';
   const esc = window.fluxEsc || ((s)=>String(s==null?'':s).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])));
 
+  const LS_UNIT_CAT = 'flux_tool_tab_unit-converter';
+  function readUnitCat(){
+    try{
+      if(typeof fluxLoadStoredString==='function'){
+        const s=String(fluxLoadStoredString(LS_UNIT_CAT,'')).trim();
+        return s||'length';
+      }
+      if(typeof load==='function'){
+        const v=load(LS_UNIT_CAT,null);
+        if(v!=null&&String(v).length)return String(v);
+      }
+      const nkk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(LS_UNIT_CAT):LS_UNIT_CAT;
+      const raw=localStorage.getItem(nkk);
+      if(raw==null||raw==='')return'length';
+      try{return String(JSON.parse(raw));}catch(_){return String(raw).trim()||'length';}
+    }catch(_){return'length';}
+  }
+  function writeUnitCat(cat){
+    try{
+      if(typeof save==='function'){save(LS_UNIT_CAT,String(cat));return;}
+      const nkk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(LS_UNIT_CAT):LS_UNIT_CAT;
+      localStorage.setItem(nkk,JSON.stringify(String(cat)));
+    }catch(_){}
+  }
+
   // Each category: units with factor to base, plus label
   const CATEGORIES = {
     length: {
@@ -149,7 +174,7 @@
 
   // State keyed per modal instance
   let state = {
-    cat: localStorage.getItem('flux_tool_tab_unit-converter') || 'length',
+    cat: readUnitCat(),
     from: null,
     to: null,
     value: 1,
@@ -220,7 +245,7 @@
     body.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => {
       state.cat = b.dataset.cat;
       state.from = null; state.to = null;
-      localStorage.setItem('flux_tool_tab_unit-converter', state.cat);
+      writeUnitCat(state.cat);
       render(body);
     }));
     body.querySelector('#refUnitFrom').addEventListener('change', (e) => { state.from = e.target.value; render(body); });
