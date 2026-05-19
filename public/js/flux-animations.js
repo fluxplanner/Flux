@@ -340,14 +340,19 @@ function teardownFluxAnimeLogin() {
   if (lr) unwrapFluxText(lr);
 }
 
+const fluxPanelCardsAnimated = new Set();
+
 function animateActivePanelCards() {
   const app = document.getElementById('app');
   if (prefersReducedMotion() || perfSnappy() || !app?.classList.contains('visible')) return;
-  revertAll(appPanelRevertibles);
   const main = document.getElementById('flux-main');
   const panel = main?.querySelector('.panel.active');
+  const panelId = panel?.id;
+  if (panelId && fluxPanelCardsAnimated.has(panelId)) return;
+  revertAll(appPanelRevertibles);
   const cards = panel?.querySelectorAll('.card');
   if (!cards?.length) return;
+  if (panelId) fluxPanelCardsAnimated.add(panelId);
   try {
     track(
       appPanelRevertibles,
@@ -481,6 +486,7 @@ function teardownFluxAnimeApp() {
   revertAll(appPanelRevertibles);
   teardownScrollPathArt();
   appShellAnimated = false;
+  fluxPanelCardsAnimated.clear();
 }
 
 function fluxAnimeNavAfter(panelId) {

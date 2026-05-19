@@ -57,7 +57,7 @@ html[data-flux-glass="on"]::after{
   opacity:.055;
   mix-blend-mode:soft-light;
   transition:opacity .4s var(--flux-ease-out-expo);
-  background:radial-gradient(ellipse 55% 48% at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.85),transparent 62%);
+  background:radial-gradient(ellipse 34% 30% at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.75),transparent 52%);
 }
 @media (prefers-reduced-motion:reduce){
   html[data-flux-glass="on"]::before,html[data-flux-glass="on"]::after{animation:none!important;opacity:.28}

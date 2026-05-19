@@ -11,6 +11,7 @@
   const DEFS = [
     { id: 'gmail', group: 'Google', icon: '📧', title: 'Gmail', hint: 'Injects anonymized inbox subject lines into Flux AI context when Google is linked.', needsGoogle: true },
     { id: 'gcalendar', group: 'Google', icon: '🗓', title: 'Google Calendar', hint: 'Same Google login as Flux. Calendar already feeds your planner snapshot; Flux AI assumes you use it.', needsGoogle: true },
+    { id: 'google_tasks', group: 'Google', icon: '✅', title: 'Google Tasks', hint: 'Open tasks from your default Google Tasks list (Canvas tab → Google Tasks). Flux AI can reference due items when enabled.', needsGoogle: true },
     { id: 'google_docs', group: 'Google', icon: '📄', title: 'Google Docs', hint: 'Use Settings → Google Docs to connect the API. Set a primary doc URL; Flux AI pulls plain text before each message when this is on.', needsGoogle: false },
     { id: 'notebooklm', group: 'Google', icon: '📓', title: 'NotebookLM', hint: 'No public developer API — enable this pin so Flux knows you use NotebookLM. Link Google Docs you keep beside notebooks, paste summaries in the note, and connect Google Docs for live excerpts.', needsGoogle: false },
     { id: 'youtube', group: 'Google', icon: '▶', title: 'YouTube', hint: 'No OAuth yet. When on, Flux AI can cite study playlists, explain concepts visually, and help you scaffold watch notes.', needsGoogle: false },

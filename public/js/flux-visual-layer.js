@@ -24,7 +24,7 @@
   function tick(e){
     if(perfSnappy())return;
     var dx=Math.abs(e.clientX-lastX),dy=Math.abs(e.clientY-lastY);
-    if(dx<12&&dy<12)return;
+    if(dx<18&&dy<18)return;
     lastX=e.clientX;lastY=e.clientY;
     if(raf)return;
     raf=requestAnimationFrame(function(){

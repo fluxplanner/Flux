@@ -296,6 +296,7 @@
         .update({
           role: v.requested_role,
           display_name: v.requested_name || null,
+          school: (window.FluxSchool?.IAE?.name || 'International Academy East'),
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', currentUser.id);
@@ -304,6 +305,53 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function renderStaffWorkHub() {
+    const el = document.getElementById('staffHub');
+    if (!el) return;
+    const name =
+      (typeof FluxRole !== 'undefined' && FluxRole.profile && FluxRole.profile.display_name) ||
+      currentUser?.user_metadata?.full_name ||
+      currentUser?.email?.split('@')[0] ||
+      'there';
+    const first =
+      String(name)
+        .split(/\s+/)
+        .filter((w) => !['Mr.', 'Mrs.', 'Ms.', 'Dr.'].includes(w))[0] || name;
+    const role = (typeof FluxRole !== 'undefined' && FluxRole.current) || 'staff';
+    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+    const go = (id, renderFn) => {
+      if (typeof nav === 'function') nav(id);
+      if (renderFn) renderFn();
+    };
+    el.innerHTML = `
+    <div class="staff-personal-dash">
+      <div class="spd-greeting">
+        <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
+        <div class="spd-sub">${esc(roleLabel)} · Work mode · ${new Date().toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        })}</div>
+      </div>
+      <div class="spd-mode-hint"><span class="spd-mode-icon">🏫</span><span>Meetings, PD, and wellbeing live here. Use <b>Calendar</b> in Main for your planner schedule.</span></div>
+      <div class="spd-grid">
+        <div class="spd-card" data-spd-nav="staffMeetingNotes" data-spd-render="meetingNotes"><div class="spd-card-icon">📋</div><div class="spd-card-title">Meetings</div><div class="spd-card-sub">Notes, decisions, action items</div></div>
+        <div class="spd-card" data-spd-nav="staffPD" data-spd-render="pd"><div class="spd-card-icon">🎓</div><div class="spd-card-title">PD</div><div class="spd-card-sub">Professional development log</div></div>
+        <div class="spd-card" data-spd-nav="staffWellbeing" data-spd-render="wellbeing"><div class="spd-card-icon">🌿</div><div class="spd-card-title">Wellbeing</div><div class="spd-card-sub">Energy &amp; check-ins</div></div>
+      </div>
+    </div>`;
+    el.innerHTML = el.innerHTML.replace(/<motion[^>]*><\/motion>\s*/g, '').replace(/<\/motion>/g, '');
+    el.querySelectorAll('[data-spd-nav]').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-spd-nav');
+        const kind = card.getAttribute('data-spd-render');
+        if (kind === 'meetingNotes') go(id, () => renderMeetingNotesPanel());
+        else if (kind === 'pd') go(id, () => renderPDPanel());
+        else if (kind === 'wellbeing') go(id, () => renderWellbeingPanel());
+      });
+    });
   }
 
   function renderStaffPersonalDashboard() {
@@ -330,7 +378,7 @@
           day: 'numeric',
         })}</div>
       </div>
-      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and use the <b>School</b> tabs in the sidebar (Info, Meetings, PD, Wellbeing, Feed, Calendar).</span></div>
+      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
         <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Links &amp; files</div></div>
@@ -733,6 +781,7 @@
       .update({
         role,
         display_name: name,
+        school: (window.FluxSchool?.IAE?.name || 'International Academy East'),
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
@@ -770,6 +819,7 @@
     StaffSignup,
     showStaffOnboarding,
     maybeApplyApprovedStaffVerification,
+    renderStaffWorkHub,
     renderStaffPersonalDashboard,
     renderStaffTasksPanel,
     renderMeetingNotesPanel,

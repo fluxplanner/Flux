@@ -18,10 +18,12 @@ html{
   --liquid-edge: inset 0 1px 0 rgba(255,255,255,.08);
   --red-rgb: 244,63,94;
 }
+/* When liquid glass ambient layer is on, it already follows the cursor */
+html[data-flux-glass="on"] body[data-flux-cursor="on"]::after{display:none}
 @media(hover:hover) and (min-width:769px){
   body[data-flux-cursor="on"]::after{
     content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
-    background:radial-gradient(450px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.06),transparent 50%);
+    background:radial-gradient(260px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.045),transparent 52%);
     transition:background .18s ease;
   }
 }
@@ -386,7 +388,7 @@ h3{letter-spacing:-.012em}
 [data-theme="light"] .flux-skel::after{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.05) 50%,transparent 100%)}
 [data-theme="light"] .flux-yh-cell{background:rgba(0,0,0,.04)}
 [data-theme="light"] body[data-flux-cursor="on"]::after{
-  background:radial-gradient(450px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.08),transparent 50%);
+  background:radial-gradient(260px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.06),transparent 52%);
 }
 [data-theme="light"] #fluxFocusBar{background:rgba(255,255,255,.92);border-color:rgba(var(--accent-rgb),.3)}
 

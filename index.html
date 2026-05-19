@@ -118,6 +118,7 @@
 <link rel="stylesheet" href="public/css/flux-visual.css">
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
 <link rel="stylesheet" href="public/css/flux-staff-tabs.css">
+<link rel="stylesheet" href="public/css/flux-google-hub.css">
 <script type="importmap">
 {
   "imports": {
@@ -729,12 +730,6 @@
         <div class="nav-group-label">School</div>
         <button type="button" class="nav-item" data-school-nav-classic onclick="nav('school',this)" data-tab="school"><span class="ni">🏫</span><span class="nl">School Info</span></button>
         <div id="sidebarSchoolWorkTabs" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="nav('school')" title="School info"><span class="ni">🏫</span><span class="nl">Info</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffMeetingNotes" onclick="nav('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" title="Meeting notes"><span class="ni">📋</span><span class="nl">Meetings</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffPD" onclick="nav('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}" title="Professional development"><span class="ni">🎓</span><span class="nl">PD</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffWellbeing" onclick="nav('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" title="Wellbeing"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" title="School feed"><span class="ni">📢</span><span class="nl">Feed</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="calendar" onclick="nav('calendar')" title="School calendar"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         </div>
         <button type="button" class="nav-item" data-school-feed-student-only onclick="nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
@@ -826,12 +821,6 @@
         <div class="nav-group-label" style="padding:8px 16px 4px">School</div>
         <button type="button" class="nav-item" data-school-nav-classic onclick="navMob('school')"><span class="ni">🏫</span><span class="nl">School Info</span></button>
         <div id="mobDrawerSchoolWorkTabs" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="navMob('school')" title="School info"><span class="ni">🏫</span><span class="nl">Info</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffMeetingNotes" onclick="navMob('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}" title="Meeting notes"><span class="ni">📋</span><span class="nl">Meetings</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffPD" onclick="navMob('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}" title="Professional development"><span class="ni">🎓</span><span class="nl">PD</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="staffWellbeing" onclick="navMob('staffWellbeing');try{FluxStaffPlatform.renderWellbeingPanel()}catch(e){}" title="Wellbeing"><span class="ni">🌿</span><span class="nl">Wellbeing</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" title="School feed"><span class="ni">📢</span><span class="nl">Feed</span></button>
-          <button type="button" role="tab" class="school-work-tab" data-school-work-tab="calendar" onclick="navMob('calendar')" title="School calendar"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         </div>
         <button type="button" class="nav-item" data-school-feed-student-only onclick="navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
@@ -1082,6 +1071,7 @@
     </div>
 
     <!-- ─── EDUCATOR PERSONAL (staff) ─── -->
+    <div id="staffHub" class="panel flux-page" data-educator-work-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meetings, professional development, and wellbeing.</p></header></div>
     <div id="staffTasks" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal tasks and errands (synced).</p></header></div>
     <div id="staffMeetingNotes" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meetings, decisions, and action items.</p></header></div>
     <div id="staffPD" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Professional development log.</p></header></div>
@@ -1262,6 +1252,21 @@
         <p class="flux-page-sub">Locker, classes, schedule import, and private teacher notes.</p>
       </header>
       <div class="flux-stack">
+      <div class="card" id="schoolJoinCard" style="display:none">
+        <h3>Join your school</h3>
+        <p style="font-size:.85rem;color:var(--muted2);margin:0 0 14px">Enter your school code to connect with classmates and staff on Flux.</p>
+        <div id="schoolJoinCurrent" style="display:none;margin-bottom:12px"></div>
+        <div id="schoolJoinForm">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:.72rem;color:var(--muted)">School code</label>
+              <input type="text" id="schoolJoinCodeInput" placeholder="IAE-EAST" autocomplete="off" style="margin:0;text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:.04em">
+            </div>
+            <button type="button" onclick="joinFluxSchoolFromUI()" style="padding:10px 18px;white-space:nowrap;font-weight:700">Join school</button>
+          </div>
+          <p style="font-size:.75rem;color:var(--muted2);margin:12px 0 0">International Academy East: <strong style="color:var(--text)">IAE-EAST</strong></p>
+        </div>
+      </div>
       <div class="card">
         <h3>School Info</h3>
         <div class="school-info-grid">
@@ -1519,8 +1524,11 @@
       </div>
     </div>
 
-    <!-- ─── CANVAS LMS (clean tabbed hub: announcements / assignments / modules / calendar / inbox / files) ─── -->
+    <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
     <div id="canvas" class="panel flux-page">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.</p>
+      </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
 
@@ -2104,33 +2112,21 @@
             </div>
           </div>
         </div>
-        <div class="card">
-          <h3>Google Calendar sync</h3>
-          <div class="srow">
+        <div class="card" id="fluxGoogleIntegrationCard">
+          <h3>Google &amp; Canvas</h3>
+          <p class="ssub" id="fluxGoogleIntegrationStatus" style="margin-bottom:12px;line-height:1.55">Sign in with Google once for Gmail, Google Tasks, Calendar, and Docs — every account type. Open the <strong>Canvas</strong> tab for school LMS + inbox.</p>
+          <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.76rem;margin-bottom:14px" onclick="nav('canvas')">Open integrations hub</button>
+          <div class="srow" style="border:none">
             <div>
               <div class="slabel">📅 Auto-push new tasks</div>
-              <div class="ssub">When on, new tasks are added to your Google Calendar automatically</div>
+              <div class="ssub">When on, new tasks are added to your Google Calendar automatically (included with Google sign-in)</div>
             </div>
             <button type="button" class="toggle" id="gcalAutoToggle" onclick="fluxToggleGCalAutoPush(this)" aria-pressed="false"></button>
-          </div>
-          <div class="srow" style="border:none">
-            <div style="flex:1">
-              <div class="slabel">Write access</div>
-              <div class="ssub" id="gcalWriteStatusLine">Requires the <code>calendar.events</code> scope. If pushing fails, reconnect below.</div>
-              <button type="button" class="btn-sec" style="margin-top:8px;padding:6px 12px;font-size:.76rem" onclick="window.fluxReconnectGoogleCalendarWrite&&fluxReconnectGoogleCalendarWrite()">Connect Google Calendar (write)</button>
-            </div>
           </div>
         </div>
         <div class="card" id="fluxGoogleDocsSettingsCard">
           <h3>Google Docs (study sync)</h3>
-          <div class="ssub" style="margin-bottom:10px;line-height:1.55">Create docs, replace the body with plain text from Flux, and pull a primary doc into <strong>Flux AI</strong> before each message (toggle <em>Google Docs</em> under AI → Connections). Google still keeps full version history — there is no supported way to hide that you edited a doc.</div>
-          <div class="srow" style="border:none;margin-bottom:8px">
-            <div style="flex:1">
-              <div class="slabel">Docs API access</div>
-              <div class="ssub" id="fluxGoogleDocsStatus">Connect once to add the Google Docs scope alongside Gmail/Calendar.</div>
-              <button type="button" class="btn-sec" style="margin-top:8px;padding:6px 12px;font-size:.76rem" onclick="window.fluxReconnectGoogleDocs&&fluxReconnectGoogleDocs()">Connect Google Docs</button>
-            </div>
-          </div>
+          <div class="ssub" style="margin-bottom:10px;line-height:1.55">Create docs, replace the body with plain text from Flux, and pull a primary doc into <strong>Flux AI</strong> before each message (toggle <em>Google Docs</em> under AI → Connections). Uses the same Google sign-in as Gmail and Tasks. Google keeps full version history for edits.</div>
           <div class="srow" style="border:none;margin-bottom:8px">
             <div style="flex:1;min-width:0">
               <div class="slabel">Primary doc URL (for Flux AI excerpts)</div>
@@ -2540,8 +2536,11 @@
   </div>
 </div>
 <script defer src="public/js/flux-staff-directory.js"></script>
+<script defer src="public/js/flux-school-registry.js"></script>
 <script defer src="public/js/flux-staff-tabs.js"></script>
 <script defer src="public/js/flux-canvas-panel.js"></script>
+<script defer src="public/js/flux-google-hub.js"></script>
+<script defer src="public/js/flux-google-tasks.js"></script>
 <script defer src="public/js/flux-release-gate.js"></script>
 <script defer src="public/js/flux-personalization.js"></script>
 <script defer src="public/js/flux-estimate-learn.js"></script>

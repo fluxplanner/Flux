@@ -1,0 +1,118 @@
+/* Flux · Google + Canvas integrations hub */
+.g-hub { display: flex; flex-direction: column; gap: 12px; }
+.g-hub-status { display: flex; flex-wrap: wrap; gap: 8px; }
+.g-hub-pill {
+  font-size: 0.68rem;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  background: var(--card2);
+}
+.g-hub-pill--on {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.g-hub-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+}
+.g-hub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.g-hub-tab.active {
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+}
+.g-hub-pane { min-height: 120px; }
+.g-hub-pane--pad { padding: 4px 0 12px; }
+.g-hub-gate {
+  text-align: center;
+  padding: 32px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.06), transparent);
+}
+.g-hub-gate-icon { font-size: 2.4rem; margin-bottom: 12px; }
+.g-hub-gate-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 10px; }
+.g-hub-gate-sub {
+  font-size: 0.82rem;
+  color: var(--muted2);
+  line-height: 1.65;
+  max-width: 420px;
+  margin: 0 auto 10px;
+}
+.g-hub-gate-sub--muted { font-size: 0.75rem; color: var(--muted); }
+.g-hub-gate-btn {
+  width: 100%;
+  max-width: 320px;
+  margin: 16px auto 10px;
+  padding: 12px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.g-hub-gate-guest { max-width: 320px; margin: 0 auto; }
+.g-hub-muted { font-size: 0.78rem; color: var(--muted2); line-height: 1.55; margin: 0; }
+.g-hub-loading { font-size: 0.8rem; color: var(--muted2); padding: 20px; font-family: 'JetBrains Mono', monospace; }
+.g-hub-err { color: var(--red); font-size: 0.8rem; margin-bottom: 10px; }
+.g-tasks-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.g-tasks-title { font-size: 1rem; font-weight: 800; margin: 0 0 4px; }
+.g-tasks-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.g-tasks-list { display: flex; flex-direction: column; gap: 8px; }
+.g-task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+}
+.g-task-main { flex: 1; min-width: 0; }
+.g-task-name { font-size: 0.85rem; font-weight: 600; }
+.g-task-due {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
+}
+.g-task-notes { font-size: 0.72rem; color: var(--muted2); margin-top: 4px; line-height: 1.4; }
+.g-task-add {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  cursor: pointer;
+}
+.g-task-add--done { opacity: 0.55; cursor: default; }
+.g-tasks-more { margin-top: 12px; font-size: 0.72rem; }

@@ -436,8 +436,25 @@
   // ────────────────────────────────────────────────────────────────
   // UI shell
   // ────────────────────────────────────────────────────────────────
+  function hubMountEl() {
+    return document.getElementById("gHubCanvasSlot") || document.getElementById("canvasHubStack");
+  }
+
+  /** After Google sign-in: pre-fill Canvas host from school email and skip to SSO step. */
+  window.fluxCanvasBootstrapFromGoogle = function () {
+    if (isConnected()) return;
+    try {
+      if (window.FluxGoogle && !FluxGoogle.isGoogleLinked()) return;
+    } catch (_) {
+      return;
+    }
+    const guesses = fluxCanvasGuessHosts();
+    if (guesses.length && !CV.connectHostDraft) CV.connectHostDraft = guesses[0];
+    if (guesses.length && CV.connectStep === "host") CV.connectStep = "signin";
+  };
+
   function renderShell() {
-    const stack = document.getElementById("canvasHubStack");
+    const stack = hubMountEl();
     if (!stack) return;
 
     if (!isConnected()) {
@@ -531,7 +548,7 @@
           </svg>
         </div>
         <h2 class="cv-onb-title flux-color-title">Sign in to Canvas</h2>
-        <p class="cv-onb-sub">Flux uses your school's own Canvas login — so if your school signs in with Google, you'll see the Google button on Canvas's page. No new password, no API keys to manage.</p>
+        <p class="cv-onb-sub">You're already signed into Google in Flux. Open Canvas below and use your school's <strong>Google</strong> button if shown — same account, no extra Flux login. Paste the access token once; Flux remembers it on your account.</p>
         ${stepDots}
       </div>`;
 
@@ -727,6 +744,11 @@
       CV.connectStep = "host";
       CV.connectHostDraft = "";
       await loadCourses(true);
+      try {
+        if (window.FluxGoogle && typeof FluxGoogle.pushIntegrationsToCloud === "function") {
+          FluxGoogle.pushIntegrationsToCloud();
+        }
+      } catch (_) {}
       renderShell();
       renderActiveTab();
       showToast("Canvas signed in ✓", "success");
@@ -1145,6 +1167,11 @@
       await canvasProxyGet("/users/self/profile");
       cacheBust();
       await loadCourses(true);
+      try {
+        if (window.FluxGoogle && typeof FluxGoogle.pushIntegrationsToCloud === "function") {
+          FluxGoogle.pushIntegrationsToCloud();
+        }
+      } catch (_) {}
       renderShell();
       renderActiveTab();
       showToast("Canvas connected ✓", "success");

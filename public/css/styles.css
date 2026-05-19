@@ -1116,7 +1116,7 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
   color:transparent;-webkit-text-fill-color:transparent;
   background-size:200% 100%;
   background-position:0% 50%;
-  animation:flux-title-flow 9s ease-in-out infinite alternate;
+  animation:flux-title-flow 2.8s ease-out 1 forwards;
 }
 @keyframes flux-title-flow{
   from{ background-position: 0% 50%; }

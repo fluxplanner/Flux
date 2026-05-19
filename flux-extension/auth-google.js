@@ -11,8 +11,16 @@
   const SB_ANON =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
 
-  const GOOGLE_SCOPES =
-    'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly';
+  const GOOGLE_SCOPES = [
+    'openid',
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/documents',
+  ].join(' ');
 
   function dec2hex(dec) {
     return ('0' + dec.toString(16)).substr(-2);
@@ -198,7 +206,7 @@
         code_challenge_method: 's256',
         skip_http_redirect: 'true',
         access_type: 'offline',
-        prompt: 'select_account',
+        prompt: 'consent',
       });
       const authorizeUrl = `${SB_URL}/auth/v1/authorize?${params.toString()}`;
 
@@ -251,6 +259,7 @@
         fluxRefreshToken: refresh_token || '',
         fluxUserId: user?.id || '',
         fluxUserEmail: email,
+        fluxGoogleProviderToken: tokenJson.provider_token || '',
       });
 
       setHint('');

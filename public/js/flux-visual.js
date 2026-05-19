@@ -94,16 +94,28 @@
     } catch (_) {}
     if (window.innerWidth < 900) return;
     if (document.body.dataset.fluxCursor === 'off') return;
+    try {
+      if (document.documentElement.getAttribute('data-flux-perf') === 'on') return;
+    } catch (_) {}
+    if (document.documentElement.getAttribute('data-flux-glass') !== 'off') return;
     const spotlight = document.createElement('div');
     spotlight.id = 'cursorSpotlight';
-    spotlight.style.cssText = `position:fixed;pointer-events:none;z-index:1;width:400px;height:400px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(var(--accent-rgb),0.05) 0%,transparent 70%);transition:opacity 0.3s;opacity:0`;
+    spotlight.style.cssText = `position:fixed;pointer-events:none;z-index:1;width:260px;height:260px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(var(--accent-rgb),0.04) 0%,transparent 68%);transition:opacity 0.3s;opacity:0`;
     document.body.appendChild(spotlight);
     let raf = 0;
+    let lastX = -999;
+    let lastY = -999;
     document.addEventListener(
       'mousemove',
       (e) => {
-        cancelAnimationFrame(raf);
+        const dx = Math.abs(e.clientX - lastX);
+        const dy = Math.abs(e.clientY - lastY);
+        if (dx < 18 && dy < 18) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (raf) return;
         raf = requestAnimationFrame(() => {
+          raf = 0;
           spotlight.style.left = e.clientX + 'px';
           spotlight.style.top = e.clientY + 'px';
           spotlight.style.opacity = '1';
@@ -355,7 +367,10 @@
       if (paths) containerEl.insertBefore(host, paths.nextSibling);
       else containerEl.insertBefore(host, containerEl.firstChild);
     }
-    const count = starCount || 20;
+    let count = starCount || 20;
+    try {
+      if (document.documentElement.getAttribute('data-flux-perf') === 'on') count = Math.min(count, 10);
+    } catch (_) {}
     for (let i = 0; i < count; i++) {
       const star = document.createElement('div');
       star.className = 'flux-star';
@@ -499,6 +514,9 @@
   // and respects prefers-reduced-motion (skip entirely in that case).
   function initGlobalMesh() {
     if (prefersReduced()) return;
+    try {
+      if (document.documentElement.getAttribute('data-flux-perf') === 'on') return;
+    } catch (_) {}
     if (document.getElementById('fluxMeshCanvas')) return;
 
     const canvas = document.createElement('canvas');
@@ -601,9 +619,14 @@
 
     let raf = 0;
     let running = true;
-    function loop() {
+    let lastDraw = 0;
+    const frameMs = 1000 / 24;
+    function loop(now) {
       if (!running) return;
-      draw();
+      if (!lastDraw || now - lastDraw >= frameMs) {
+        draw();
+        lastDraw = now;
+      }
       raf = requestAnimationFrame(loop);
     }
 

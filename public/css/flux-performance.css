@@ -26,6 +26,19 @@ html[data-flux-perf="on"] #fluxCursorAmbient{
   visibility:hidden!important;
   pointer-events:none!important;
 }
+html.flux-reduce-motion #cursorSpotlight,
+html[data-flux-perf="on"] #cursorSpotlight,
+html.flux-reduce-motion #fluxMeshCanvas,
+html[data-flux-perf="on"] #fluxMeshCanvas{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+html.flux-reduce-motion body[data-flux-cursor="on"]::after,
+html[data-flux-perf="on"] body[data-flux-cursor="on"]::after{
+  display:none!important;
+  visibility:hidden!important;
+}
 
 /* Pause decorative infinite loops (GPU-heavy filter / transform layers) */
 html.flux-reduce-motion .flux-dash-card-inner::after,
