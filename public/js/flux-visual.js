@@ -323,18 +323,47 @@
     });
   }
 
-  function initStarField(containerEl) {
+  const FLUX_STAR_PANELS = new Set([
+    'dashboard',
+    'calendar',
+    'goals',
+    'school',
+    'notes',
+    'timer',
+    'mood',
+    'profile',
+    'toolbox',
+    'settings',
+    'canvas',
+    'staffTasks',
+    'staffMeetingNotes',
+    'staffWellbeing',
+  ]);
+
+  function initStarField(containerEl, starCount) {
     if (!containerEl || prefersReduced()) return;
     if (containerEl.dataset.fluxStarsInit === '1') return;
     containerEl.dataset.fluxStarsInit = '1';
+    containerEl.classList.add('flux-ambient-stars');
     containerEl.style.position = containerEl.style.position || 'relative';
-    for (let i = 0; i < 20; i++) {
+    let host = containerEl.querySelector('.flux-star-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'flux-star-host';
+      host.setAttribute('aria-hidden', 'true');
+      const paths = containerEl.querySelector('.flux-dash-scroll-paths');
+      if (paths) containerEl.insertBefore(host, paths.nextSibling);
+      else containerEl.insertBefore(host, containerEl.firstChild);
+    }
+    const count = starCount || 20;
+    for (let i = 0; i < count; i++) {
       const star = document.createElement('div');
+      star.className = 'flux-star';
       const size = Math.random() * 2 + 1;
       const dur = Math.random() * 3 + 2;
       const del = Math.random() * 4;
-      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none;z-index:0;animation:star-twinkle ${dur}s ease-in-out ${del}s infinite alternate`;
-      containerEl.appendChild(star);
+      star.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,${Math.random() * 0.4 + 0.1});left:${Math.random() * 100}%;top:${Math.random() * 100}%;pointer-events:none;animation:star-twinkle ${dur}s ease-in-out ${del}s infinite alternate`;
+      host.appendChild(star);
     }
   }
 
@@ -627,13 +656,20 @@
 
     document.getElementById('quickAddSubmit')?.classList.add('flux-fab-glow');
 
+    function initPanelStarField(panelId) {
+      if (!panelId || !FLUX_STAR_PANELS.has(panelId)) return;
+      const el = document.getElementById(panelId);
+      if (!el) return;
+      const dense = panelId === 'notes' || panelId === 'mood';
+      initStarField(el, dense ? 22 : 16);
+    }
+
     document.addEventListener(
       'flux-nav',
       (e) => {
-        if (e.detail?.panel === 'notes') {
-          setTimeout(() => initStarField(document.getElementById('notes')), 120);
-        }
-        if (e.detail?.panel === 'dashboard' && typeof window.renderStats === 'function') {
+        const panelId = e.detail?.panel;
+        if (panelId) setTimeout(() => initPanelStarField(panelId), 120);
+        if (panelId === 'dashboard' && typeof window.renderStats === 'function') {
           setTimeout(() => {
             document.querySelectorAll('#dashboard .stat .num, #dashMobStats .dash-mob-stat-num').forEach((el) => {
               const t = el.textContent;
@@ -659,6 +695,9 @@
     injectTaskShootingStars();
 
     updateNavSquiggle((typeof window.fluxLoadStoredString==='function'?window.fluxLoadStoredString('flux_accent',''):'')||undefined);
+
+    const activePanel = document.querySelector('.panel.active')?.id;
+    if (activePanel) initPanelStarField(activePanel);
   }
 
   window.FluxVisual = {

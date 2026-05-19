@@ -363,8 +363,20 @@ body[data-flux-mesh='off']::before {
   pointer-events: none;
 }
 
-#notes {
+/* Twinkling star field (injected by flux-visual.js) */
+.flux-page.flux-ambient-stars {
   position: relative;
+}
+.flux-star-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.flux-page.flux-ambient-stars > :not(.flux-star-host):not(.flux-dash-scroll-paths) {
+  position: relative;
+  z-index: 1;
 }
 
 @media (prefers-reduced-motion: no-preference) {

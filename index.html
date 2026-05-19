@@ -1092,7 +1092,7 @@
     <!-- ─── CALENDAR ─── -->
     <div id="calendar" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Month view, cycle days, weekly activities, and what’s ahead.</p>
+        <p class="flux-page-sub">Month view, cycle days, weekly activities, extracurriculars, and what’s ahead.</p>
       </header>
       <div id="fluxCalSections" class="cal-layout flux-stack flux-cal-sections-wrap">
         <div class="cal-cal-section" data-flux-cal-section="hero">
@@ -1115,6 +1115,7 @@
               <div class="cal-selected-actions">
                 <button type="button" id="calAddBtn" onclick="openAddForDate()" class="cal-add-btn" style="display:none">+ Task</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Event</button>
+                <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none">+ EC</button>
               </div>
             </div>
             <div id="calDayTasks"></div>
@@ -1153,6 +1154,12 @@
           </div>
           <div style="border-top:1px solid var(--border2);padding-top:14px">
             <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px">Repeats every week</div>
+            <div class="mrow" style="margin-bottom:10px">
+              <label style="font-size:.7rem;color:var(--muted)">Link to extracurricular (optional)</label>
+              <select id="weeklyExtraLink" style="margin:4px 0 0" onchange="onWeeklyExtraLinkChange()">
+                <option value="">— Custom title below —</option>
+              </select>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;margin-bottom:10px;align-items:end">
               <div><label style="font-size:.7rem;color:var(--muted)">Title</label><input type="text" id="weeklyTitleInput" placeholder="e.g. Taekwondo" style="margin:4px 0 0"></div>
               <div><label style="font-size:.7rem;color:var(--muted)">Time (optional)</label><input type="time" id="weeklyTimeInput" style="margin:4px 0 0"></div>
@@ -1187,6 +1194,10 @@
         <div id="addEventTypeRow" style="display:flex;gap:8px;margin-bottom:16px">
           <button type="button" id="addEventTypeTask" onclick="setAddEventType('task')" style="flex:1;background:var(--accent)">📋 Task</button>
           <button type="button" id="addEventTypeEvent" onclick="setAddEventType('event')" style="flex:1" class="btn-sec">📅 Event</button>
+          <button type="button" id="addEventTypeEc" onclick="setAddEventType('ec')" style="flex:1" class="btn-sec">🎯 EC</button>
+        </div>
+        <div class="mrow" id="addEventExtraRow" style="display:none"><label>Extracurricular</label>
+          <select id="addEventExtraSelect" style="margin:0" onchange="onAddEventExtraPick()"><option value="">Select activity…</option></select>
         </div>
         <div class="mrow"><label>Title</label><input type="text" id="addEventTitle" placeholder="Assignment, exam, event..."></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1208,6 +1219,40 @@
         </div>
         <div class="mrow"><label>Notes</label><textarea id="addEventNotes" style="min-height:60px" placeholder="Optional notes..."></textarea></div>
         <div class="mactions"><button onclick="closeAddEventModal()" class="btn-sec">Cancel</button><button type="button" id="addEventPrimaryBtn" onclick="saveAddEvent()">Add</button></div>
+      </div>
+    </div>
+
+
+    <!-- EC SCHEDULE MODAL -->
+    <div id="ecScheduleModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeEcScheduleModal()">
+      <div class="modal-card">
+        <div class="modal-title" id="ecScheduleModalTitle">Add to calendar</div>
+        <p id="ecScheduleModalSub" style="font-size:.82rem;color:var(--muted2);margin:-8px 0 14px;line-height:1.45"></p>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button type="button" id="ecSchedTypeWeekly" onclick="setEcScheduleType('weekly')" style="flex:1;background:var(--accent)">🔁 Weekly</button>
+          <button type="button" id="ecSchedTypeOnce" onclick="setEcScheduleType('once')" class="btn-sec" style="flex:1">📅 One-time</button>
+        </div>
+        <div class="mrow" id="ecSchedDateRow" style="display:none"><label>Date</label><input type="date" id="ecSchedDate"></div>
+        <div class="mrow"><label>Time (optional)</label><input type="time" id="ecSchedTime"></div>
+        <div id="ecSchedWeeklyDays" style="margin-bottom:12px">
+          <span style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:6px">Days each week</span>
+          <div class="weekly-dow-row" style="display:flex;flex-wrap:wrap;gap:6px">
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="1"> Mon</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="2"> Tue</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="3"> Wed</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="4"> Thu</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="5"> Fri</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="6"> Sat</label>
+            <label class="weekly-dow"><input type="checkbox" name="ecWd" value="0"> Sun</label>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-bottom:14px;cursor:pointer">
+          <input type="checkbox" id="ecSchedShowOnCal" checked style="margin:0"> Show EC goal deadlines on calendar
+        </label>
+        <div class="mactions">
+          <button type="button" onclick="closeEcScheduleModal()" class="btn-sec">Cancel</button>
+          <button type="button" id="ecScheduleSaveBtn" onclick="saveEcCalendarSchedule()">Save to calendar</button>
+        </div>
       </div>
     </div>
 
@@ -1591,7 +1636,7 @@
     <!-- ─── EXTRACURRICULARS ─── -->
     <div id="goals" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Activities, target schools, goals, AI advisor, and college chat.</p>
+        <p class="flux-page-sub">Activities, target schools, goals, AI advisor, and college chat. Use <strong>📅 Calendar</strong> on any activity to show it on your planner calendar.</p>
       </header>
       <div class="flux-stack">
 

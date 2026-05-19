@@ -363,17 +363,42 @@ function animateActivePanelCards() {
   } catch (_) {}
 }
 
-/** Decorative SVG paths on the dashboard, drawn in sync with panel scroll (or loop when nothing scrolls). */
-function initMainScrollPathDraw(mainEl) {
-  if (!mainEl || prefersReducedMotion() || perfSnappy()) return;
-  const dash = document.getElementById('dashboard');
-  if (!dash || dash.dataset.fluxScrollPathInit === '1') return;
-  dash.dataset.fluxScrollPathInit = '1';
+/** Main panels that get the drifting scroll-drawn accent lines. */
+const FLUX_SCROLL_PATH_PANELS = new Set([
+  'dashboard',
+  'calendar',
+  'goals',
+  'school',
+  'notes',
+  'timer',
+  'mood',
+  'profile',
+  'toolbox',
+  'settings',
+  'ai',
+  'canvas',
+  'staffTasks',
+  'staffMeetingNotes',
+  'staffWellbeing',
+]);
+
+/** Decorative SVG paths behind a panel, drawn in sync with scroll (or loop when nothing scrolls). */
+function initPanelScrollPathDraw(mainEl, panelId) {
+  if (prefersReducedMotion() || perfSnappy()) return;
+  const activeId =
+    panelId ||
+    document.querySelector('.main-content > .panel.active')?.id ||
+    document.querySelector('.panel.active')?.id;
+  teardownScrollPathArt();
+  if (!activeId || !FLUX_SCROLL_PATH_PANELS.has(activeId)) return;
+  const panel = document.getElementById(activeId);
+  if (!panel || !mainEl) return;
+  panel.dataset.fluxScrollPathInit = '1';
+  panel.classList.add('flux-scroll-paths-host');
 
   const wrap = document.createElement('div');
   wrap.className = 'flux-dash-scroll-paths';
   wrap.setAttribute('aria-hidden', 'true');
-  /* Wide viewBox + full-bleed mover so strokes read edge-to-edge and drift slowly */
   wrap.innerHTML =
     '<div class="flux-dash-scroll-paths-mover">' +
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-240 0 2880 440" preserveAspectRatio="none" width="100%" height="100%">' +
@@ -382,13 +407,13 @@ function initMainScrollPathDraw(mainEl) {
     '<path d="M-180 360 C520 200 1080 420 1760 240 S2280 100 2720 300" fill="none" stroke="rgba(34,255,136,0.22)" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
     '<path d="M-220 140 C380 280 900 80 1580 320 S2420 180 2680 40" fill="none" stroke="rgba(0,191,255,0.14)" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
     '</svg></div>';
-  dash.insertBefore(wrap, dash.firstChild);
+  panel.insertBefore(wrap, panel.firstChild);
 
   try {
     const drawables = svg.createDrawable('.flux-dash-scroll-paths svg path');
     let scrollCtl = null;
-    if (dash.scrollHeight > dash.clientHeight + 48) {
-      scrollCtl = onScroll({ target: dash, sync: true });
+    if (panel.scrollHeight > panel.clientHeight + 48) {
+      scrollCtl = onScroll({ target: panel, sync: true });
     } else if (mainEl.scrollHeight > mainEl.clientHeight + 48) {
       scrollCtl = onScroll({ target: mainEl, sync: true });
     }
@@ -407,15 +432,21 @@ function initMainScrollPathDraw(mainEl) {
     );
     if (scrollCtl) track(scrollArtRevertibles, scrollCtl);
   } catch (e) {
-    console.warn('flux-animations: dashboard scroll paths', e);
+    console.warn('flux-animations: panel scroll paths', e);
   }
+}
+
+function initMainScrollPathDraw(mainEl, panelId) {
+  initPanelScrollPathDraw(mainEl, panelId);
 }
 
 function teardownScrollPathArt() {
   revertAll(scrollArtRevertibles);
   document.querySelectorAll('.flux-dash-scroll-paths').forEach((n) => n.remove());
-  const dash = document.getElementById('dashboard');
-  if (dash) delete dash.dataset.fluxScrollPathInit;
+  document.querySelectorAll('.flux-scroll-paths-host').forEach((p) => {
+    delete p.dataset.fluxScrollPathInit;
+    p.classList.remove('flux-scroll-paths-host');
+  });
 }
 
 function initFluxAnimeApp() {
@@ -441,7 +472,7 @@ function initFluxAnimeApp() {
   animateActivePanelCards();
   try {
     const main = document.getElementById('flux-main');
-    if (main) initMainScrollPathDraw(main);
+    if (main) initPanelScrollPathDraw(main);
   } catch (_) {}
 }
 
@@ -452,8 +483,12 @@ function teardownFluxAnimeApp() {
   appShellAnimated = false;
 }
 
-function fluxAnimeNavAfter() {
+function fluxAnimeNavAfter(panelId) {
   animateActivePanelCards();
+  try {
+    const main = document.getElementById('flux-main');
+    if (main) initPanelScrollPathDraw(main, panelId);
+  } catch (_) {}
 }
 
 /** Particle burst — uses utils.random from anime */
@@ -1340,6 +1375,7 @@ window.FluxAnim = {
   initTaskLayout,
   initScrollReveal,
   initMainScrollPathDraw,
+  initPanelScrollPathDraw,
   initWorkloadScrollSync,
   initCogLoadMeter,
   updateCogLoad,

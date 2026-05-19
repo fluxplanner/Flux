@@ -185,6 +185,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:var(-
   margin-top:12px;padding-top:12px;
   border-top:1px solid rgba(255,255,255,.07);
 }
+/* Beats .nav-group{display:flex!important} — used for educator Workspace strip */
+.sidebar-nav .nav-group.flux-nav-group-hidden,
+.mob-drawer-nav .nav-group.flux-nav-group-hidden{
+  display:none!important;
+  margin:0!important;padding:0!important;border:none!important;
+}
 .nav-group-label{font-size:.62rem;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);font-family:'JetBrains Mono',monospace;padding:4px 10px 0;white-space:nowrap;overflow:hidden;transition:opacity var(--t-base) var(--ease)}
 .sidebar.collapsed .nav-group-label{opacity:0}
 /* Educator Work mode — School section horizontal tabs (sidebar + drawer) */
@@ -223,7 +229,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:var(-
   background:rgba(var(--accent-rgb),.12);
   box-shadow:0 0 0 1px rgba(var(--accent-rgb),.12);
 }
-.school-work-tab .ni{font-size:.85rem;line-height:1}
+.school-work-tab .ni{font-size:.85rem;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.school-work-tab .ni-svg-wrap{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.school-work-tab .ni-svg-wrap svg{display:block;width:18px;height:18px;overflow:visible}
+.school-work-tab.active .ni-svg-wrap svg{color:currentColor}
 .sidebar.collapsed .school-work-tabs{
   flex-direction:column;
   flex-wrap:nowrap;
@@ -771,11 +780,19 @@ body[data-recovery="true"] .recovery-banner{display:flex!important}
   max-width:1100px;margin:0 auto;
   padding-bottom:32px;
 }
-/* Scroll-drawn accent paths — full viewport width behind dashboard, slow drift */
+/* Scroll-drawn accent paths — full viewport width behind panel, slow drift */
+.flux-page.panel.flux-scroll-paths-host,
 #dashboard.dash-v2.flux-page.panel{
   position:relative;
   overflow-x:hidden;
 }
+.flux-page.panel.flux-scroll-paths-host > :not(.flux-dash-scroll-paths),
+#dashboard.dash-v2.flux-page.panel > :not(.flux-dash-scroll-paths){
+  position:relative;
+  z-index:1;
+}
+#ai.flux-scroll-paths-host .flux-dash-scroll-paths,
+#canvas.flux-scroll-paths-host .flux-dash-scroll-paths{opacity:.38}
 .flux-dash-scroll-paths{
   position:absolute;
   left:50%;
@@ -981,10 +998,18 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .dash-week-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
 .dash-week-kicker{font-size:.58rem;text-transform:uppercase;letter-spacing:.14em;font-family:'JetBrains Mono',monospace;color:var(--muted);font-weight:600}
 .dash-week-total{font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace}
-.dash-week-bars{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;min-height:52px}
+.dash-week-bars{display:flex;align-items:stretch;justify-content:space-between;gap:4px;min-height:72px}
 .dash-week-col{
-  flex:1;min-width:0;max-width:48px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex:1;min-width:0;max-width:48px;display:flex;flex-direction:column;align-items:stretch;
   cursor:default;
+}
+.dash-week-col-chart{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  min-height:44px;gap:2px;
+}
+.dash-week-col-meta{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  min-height:26px;padding-top:4px;
 }
 .dash-week-bar{
   width:100%;max-width:28px;margin:0 auto;border-radius:6px 6px 2px 2px;
@@ -1009,7 +1034,9 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 }
 #dashboard .dash-workload-compact .dash-week-strip{margin:0}
 #dashboard .dash-workload-compact .dash-week-strip-inner{padding:8px 10px 10px}
-#dashboard .dash-workload-compact .dash-week-bars{min-height:32px;gap:3px}
+#dashboard .dash-workload-compact .dash-week-bars{min-height:64px;gap:3px}
+#dashboard .dash-workload-compact .dash-week-col-chart{min-height:38px}
+#dashboard .dash-workload-compact .dash-week-col-meta{min-height:24px;padding-top:3px}
 #dashboard .dash-workload-compact .dash-week-bar{max-width:24px}
 #dashboard .dash-workload-compact .dash-week-head{margin-bottom:5px}
 #dashboard .dash-workload-compact .dash-week-kicker{font-size:.5rem;letter-spacing:.12em}
@@ -1222,6 +1249,7 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .cal-selected-actions{display:flex;gap:8px;flex-wrap:wrap}
 .cal-add-btn{display:inline-flex;align-items:center;padding:6px 14px;font-size:.8rem}
 .cal-add-event-btn{display:inline-flex;align-items:center;padding:6px 14px;font-size:.8rem;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)}
+.cal-add-ec-btn{display:inline-flex;align-items:center;padding:6px 14px;font-size:.8rem;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:var(--gold)}
 .cal-gcal-inline{margin-top:10px;padding-top:10px;border-top:1px solid var(--border2)}
 .cal-gcal-inline-head{margin-bottom:4px}
 .cal-gcal-inline-title{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-family:'JetBrains Mono',monospace;color:var(--muted);font-weight:700}
