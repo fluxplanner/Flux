@@ -1821,11 +1821,15 @@
       <aside class="ai-sidebar" aria-label="Flux AI chats">
         <div class="ai-sidebar-top">
           <button type="button" class="ai-new-chat-btn" onclick="newAIChat()">+ New chat</button>
+          <button type="button" class="ai-sidebar-hide-btn" id="aiSidebarHideBtnSide" onclick="fluxHideAISidebar()" title="Hide threads — wider chat area" aria-label="Hide chat sidebar">‹</button>
         </div>
         <div class="ai-sidebar-chats" aria-label="Chat threads">
           <div class="ai-chat-list-meta">
             <span class="ai-chat-list-meta__hint" aria-hidden="true">Threads</span>
-            <button type="button" class="ai-chat-compact-btn" id="aiChatCompactBtn" onclick="toggleAIChatListCompact()" title="Compact tabs — click again to hide sidebar" aria-pressed="false" aria-label="Cycle sidebar layout: full, compact, or hidden">▦</button>
+            <div class="ai-chat-list-meta__actions">
+              <button type="button" class="ai-chat-compact-btn" id="aiChatCompactBtn" onclick="toggleAIChatListCompact()" title="Compact thread list" aria-pressed="false" aria-label="Toggle compact thread list">▦</button>
+              <button type="button" class="ai-chat-hide-link" id="aiSidebarHideBtnMeta" onclick="fluxHideAISidebar()" title="Hide sidebar for more chat space">Hide ›</button>
+            </div>
           </div>
           <div class="ai-chat-list" id="aiChatTabs"></div>
         </div>
@@ -1838,7 +1842,8 @@
       <div class="ai-main">
         <header class="ai-topbar">
           <div class="ai-topbar__left">
-            <button type="button" class="ai-sidebar-reveal-btn" id="aiSidebarRevealBtn" onclick="fluxRevealAISidebar()" hidden title="Show chat threads" aria-label="Show chat threads">☰</button>
+            <button type="button" class="ai-sidebar-reveal-btn" id="aiSidebarRevealBtn" onclick="fluxRevealAISidebar()" hidden title="Show chat threads" aria-label="Show chat threads">☰ Threads</button>
+            <button type="button" class="ai-sidebar-hide-btn ai-topbar-hide-btn" id="aiSidebarHideBtnTop" onclick="fluxHideAISidebar()" title="Hide thread sidebar — wider chat" aria-label="Hide chat sidebar">‹</button>
             <img class="ai-topbar-logo" src="public/flux-planner-logo.png" width="32" height="32" alt="" aria-hidden="true" />
             <span class="ai-title">Flux AI</span>
             <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>

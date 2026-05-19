@@ -1992,9 +1992,9 @@ function applyRoleUI(){
   const bar=document.getElementById('modeSwitchBar');
   if(bar)bar.style.display=isEducator?'flex':'none';
 
-  // ── Dashboard nav: students + educators in personal (work mode uses role home)
+  // ── Dashboard nav: students + all educators (work mode routes to role dashboard via nav())
   document.querySelectorAll('.sidebar .nav-item[data-tab="dashboard"],.mob-drawer .nav-item[onclick*="\'dashboard\'"]').forEach(el=>{
-    el.style.display=(isStudent||(isEducator&&isPersonal)||pendingStaffPersonal)?'':'none';
+    el.style.display=(isStudent||isEducator||pendingStaffPersonal)?'':'none';
   });
 
   const testerBadge=document.getElementById('testerBadge');
@@ -2043,7 +2043,7 @@ function applyModeToNav(isWork){
     });
   });
   document.querySelectorAll('.sidebar .nav-item[data-tab="dashboard"],.mob-drawer .nav-item[onclick*="\'dashboard\'"]').forEach(el=>{
-    el.style.display=(!isWork&&(FluxRole.current==='student'||FluxRole.isEducator()||pendingStaffPersonal))?'':'none';
+    el.style.display=(FluxRole.current==='student'||FluxRole.isEducator()||pendingStaffPersonal)?'':'none';
   });
   syncSchoolNavChrome();
 }
@@ -2106,6 +2106,9 @@ function updateModeSwitchUI(){
     }else if(FluxRole.isCounselor()){
       if(typeof nav==='function')nav('counselorDashboard');
       try{renderCounselorDashboard();}catch(_){}
+    }else if(FluxRole.current==='staff'){
+      if(typeof nav==='function')nav('staffWorkboard');
+      try{renderStaffWorkboard();}catch(_){}
     }else if(FluxRole.isStaff()){
       if(typeof nav==='function')nav('adminDashboard');
       try{renderAdminDashboard();}catch(_){}
@@ -2833,8 +2836,9 @@ function nav(id,btn,navOpt){
       if(id==='dashboard'){
         if(FluxRole.isTeacher())id='teacherDashboard';
         else if(FluxRole.isCounselor())id='counselorDashboard';
+        else if(FluxRole.current==='staff')id='staffWorkboard';
         else if(FluxRole.isStaff())id='adminDashboard';
-      }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
+      }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'||id==='staffWorkboard'){
         logicalId='dashboard';
       }
     }
@@ -6362,11 +6366,21 @@ function syncAISidebarLayout(){
   const btn=document.getElementById('aiChatCompactBtn');
   if(btn){
     btn.setAttribute('aria-pressed',compact&&!hidden?'true':'false');
-    btn.title=hidden?'Sidebar hidden — use ☰ in header to show':(compact?'Expand sidebar (roomy tabs)':'Compact tabs — again to hide sidebar');
-    btn.setAttribute('aria-label',hidden?'Sidebar hidden':`Cycle sidebar: ${compact?'compact':'full'}`);
+    btn.title=compact?'Expand thread list':'Compact thread list';
+    btn.setAttribute('aria-label',compact?'Expand thread list':'Compact thread list');
   }
   const rev=document.getElementById('aiSidebarRevealBtn');
   if(rev)rev.hidden=!hidden;
+  ['aiSidebarHideBtnSide','aiSidebarHideBtnMeta','aiSidebarHideBtnTop'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.hidden=!!hidden;
+  });
+  const topHide=document.getElementById('aiSidebarHideBtnTop');
+  if(topHide&&window.matchMedia('(max-width:768px)').matches)topHide.hidden=true;
+}
+function fluxHideAISidebar(){
+  try{fluxSaveLegacy01('flux_ai_sidebar_hidden',true);}catch(e){}
+  syncAISidebarLayout();
 }
 function fluxRevealAISidebar(){
   try{
@@ -6376,22 +6390,11 @@ function fluxRevealAISidebar(){
   syncAISidebarLayout();
 }
 function toggleAIChatListCompact(){
-  const hidden=fluxLoadLegacy01('flux_ai_sidebar_hidden');
-  const compact=fluxLoadLegacy01('flux_ai_chats_compact');
-  try{
-    if(!hidden&&!compact){
-      fluxSaveLegacy01('flux_ai_chats_compact',true);
-    }else if(!hidden&&compact){
-      fluxSaveLegacy01('flux_ai_sidebar_hidden',true);
-      fluxSaveLegacy01('flux_ai_chats_compact',false);
-    }else{
-      fluxSaveLegacy01('flux_ai_sidebar_hidden',false);
-      fluxSaveLegacy01('flux_ai_chats_compact',false);
-    }
-  }catch(e){}
+  if(fluxLoadLegacy01('flux_ai_sidebar_hidden'))return;
+  try{fluxSaveLegacy01('flux_ai_chats_compact',!fluxLoadLegacy01('flux_ai_chats_compact'));}catch(e){}
   syncAISidebarLayout();
 }
-try{window.fluxRevealAISidebar=fluxRevealAISidebar;}catch(e){}
+try{window.fluxRevealAISidebar=fluxRevealAISidebar;window.fluxHideAISidebar=fluxHideAISidebar;}catch(e){}
 
 function initAIChats(){
   loadAIChatsForUser();

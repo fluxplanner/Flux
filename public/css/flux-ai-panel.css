@@ -1123,14 +1123,55 @@
 @media (min-width: 769px){
   #ai.flux-ai-panel.ai-root.ai-root--sidebar-hidden .ai-sidebar-reveal-btn{
     display: inline-flex;
+    width: auto;
+    padding: 0 12px;
+    font-size: 0.76rem;
+    font-weight: 650;
+    gap: 4px;
   }
 }
 #ai.flux-ai-panel.ai-root .ai-sidebar-top{
   padding: 12px;
   flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+#ai.flux-ai-panel.ai-root .ai-sidebar-hide-btn{
+  flex-shrink: 0;
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid var(--fa-hair2);
+  background: var(--fa-elevated);
+  color: var(--fa-ink2);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+#ai.flux-ai-panel.ai-root .ai-sidebar-hide-btn:hover{
+  background: color-mix(in srgb, var(--fa-paper) 88%, transparent);
+  color: var(--fa-ink);
+}
+#ai.flux-ai-panel.ai-root .ai-topbar-hide-btn{
+  display: none;
+}
+@media (min-width: 769px){
+  #ai.flux-ai-panel.ai-root:not(.ai-root--sidebar-hidden) .ai-topbar-hide-btn{
+    display: inline-flex;
+  }
 }
 #ai.flux-ai-panel.ai-root .ai-new-chat-btn{
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
@@ -1159,6 +1200,29 @@
   gap: 8px;
   padding: 2px 10px 4px;
   flex-shrink: 0;
+}
+#ai.flux-ai-panel.ai-root .ai-chat-list-meta__actions{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#ai.flux-ai-panel.ai-root .ai-chat-hide-link{
+  padding: 4px 8px;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 650;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+#ai.flux-ai-panel.ai-root .ai-chat-hide-link:hover{
+  background: rgba(var(--accent-rgb), 0.1);
 }
 #ai.flux-ai-panel.ai-root .ai-chat-list-meta__hint{
   font-size: 0.62rem;
