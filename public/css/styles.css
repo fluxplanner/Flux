@@ -424,6 +424,7 @@ body.flux-has-impersonate-banner.flux-has-release-banner{
   background:linear-gradient(180deg,rgba(var(--accent-rgb),.14) 0%,rgba(var(--accent-rgb),.05) 100%);
   border-color:rgba(var(--accent-rgb),.28);
   padding-left:26px;
+  animation:none;
 }
 #syncIndicator.sync-badge.topbar-sync-pill.syncing::before{
   content:'';
@@ -1431,7 +1432,8 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .sync-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .sync-badge.synced{background:rgba(var(--green-rgb),.08);color:rgba(255,255,255,.55);border:1px solid rgba(var(--green-rgb),.14)}
 .sync-badge.sync-badge--quiet,.sync-badge.synced.sync-badge--quiet{background:rgba(255,255,255,.04);color:var(--muted2);border:1px solid rgba(255,255,255,.08)}
-.sync-badge.syncing{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.2);animation:pulse 1.5s ease-in-out infinite}
+.sync-badge.syncing{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.2)}
+.sync-badge.syncing:not(.topbar-sync-pill){animation:pulse 1.5s ease-in-out infinite}
 .sync-badge.offline{background:rgba(var(--gold-rgb),.1);color:var(--gold);border:1px solid rgba(var(--gold-rgb),.2)}
 
 .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:.875rem;display:flex;flex-direction:column;align-items:center;gap:10px}

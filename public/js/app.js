@@ -7286,9 +7286,22 @@ function resetPlannerTour(){
 
 // ══ SUPABASE SYNC ══
 const SYNC_KEYS=['tasks','notes','habits','goals','colleges','moodHistory','schoolInfo','classes','teacherNotes','profile','flux_extras','flux_ec_schools','flux_ec_goals'];
+let _syncUiActivityDepth=0;
+function pushSyncUiActivity(){_syncUiActivityDepth++;}
+function popSyncUiActivity(){_syncUiActivityDepth=Math.max(0,_syncUiActivityDepth-1);}
+function syncUiWantsActivity(){return _syncUiActivityDepth>0;}
+
 function setSyncStatus(status){
   const el=document.getElementById('syncIndicator');const sl=document.getElementById('syncStatus');const bh=document.getElementById('syncBadgeHolder');
   if(!el)return;
+  const showActivity=syncUiWantsActivity();
+  if(status==='syncing'&&!showActivity)return;
+  if(status==='synced'&&el.classList.contains('synced')&&!showActivity){
+    el.style.display=currentUser?'flex':'none';
+    const ts=load('flux_last_sync',0);
+    if(currentUser)el.title=ts?('Last sync: '+new Date(ts).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'})):'Cloud sync ready';
+    return;
+  }
   if(status==='synced'){el.className='sync-badge synced sync-badge--quiet topbar-sync-pill';el.textContent='Synced';if(sl)sl.textContent='All data synced to cloud';if(bh)bh.innerHTML='<span class="sync-badge synced sync-badge--quiet">Synced</span>';}
   else if(status==='syncing'){el.className='sync-badge syncing topbar-sync-pill';el.textContent='Syncing';if(sl)sl.textContent='Syncing...';}
   else{el.className='sync-badge offline topbar-sync-pill';el.textContent='Local';if(sl)sl.textContent='Not signed in — data is local only';}
@@ -7496,7 +7509,7 @@ async function syncToCloud(){
   }
   _syncToCloudInFlight=true;
   const sb=getSB();if(!sb){_syncToCloudInFlight=false;return;}
-  setSyncStatus('syncing');
+  if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
     let payload=getCloudPayload();
     if(isOwner()){
@@ -7553,6 +7566,9 @@ async function syncToCloud(){
 async function forceSyncNow(){
   const btn=event?.target;
   if(btn){btn.textContent='Syncing...';btn.disabled=true;}
+  pushSyncUiActivity();
+  setSyncStatus('syncing');
+  try{
   await syncToCloud();
   await syncFromCloud();
   // Re-render everything so pulled data appears immediately without refresh
@@ -7565,6 +7581,7 @@ async function forceSyncNow(){
   if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
   if(btn){btn.textContent='✓ Synced';setTimeout(()=>{btn.textContent='Force Sync Now';btn.disabled=false;},2000);}
   showToast('✓ Data synced');
+  }finally{popSyncUiActivity();}
 }
 let _syncFromCloudInFlight=false;
 
@@ -7578,7 +7595,7 @@ async function syncFromCloud(){
   if(_syncFromCloudInFlight)return;
   _syncFromCloudInFlight=true;
   const sb=getSB();if(!sb){_syncFromCloudInFlight=false;return;}
-  setSyncStatus('syncing');
+  if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
     const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
     if(error||!data){
@@ -9630,10 +9647,12 @@ async function handleSignedIn(user,session){
   const firstName=name.split(' ')[0];
   fluxSaveStoredString('flux_user_name',firstName);
   _updateUserUI(user,name);
+  pushSyncUiActivity();
   setSyncStatus('syncing');
 
   // If migrating from guest account, push local data to cloud first
   const migratingGuest=load('flux_migrate_guest',false);
+  try{
   if(migratingGuest){
     save('flux_migrate_guest',false);
     save('flux_onboarded',true);
@@ -9641,6 +9660,7 @@ async function handleSignedIn(user,session){
   }
 
   await syncFromCloud();
+  }finally{popSyncUiActivity();}
 
   initFluxSessionIdleAdvisory();
 
