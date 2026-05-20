@@ -131,7 +131,9 @@
             ? { month: 'short', day: 'numeric' }
             : style === 'monthDayYear'
               ? { month: 'short', day: 'numeric', year: 'numeric' }
-              : { weekday: 'short', month: 'short', day: 'numeric' };
+              : style === 'weekdayShort'
+                ? { weekday: 'short' }
+                : { weekday: 'short', month: 'short', day: 'numeric' };
     try {
       return new Intl.DateTimeFormat(loc, opts).format(d);
     } catch (_) {
@@ -159,14 +161,22 @@
   }
 
   function relativeDayLabel(iso) {
-    if (!iso || !enabled()) return null;
+    if (!iso) return null;
     const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10);
-    if (iso === today) return t('date.today');
+    if (iso === today) return enabled() ? t('date.today') : 'Today';
     const tmr = new Date(`${today}T12:00:00`);
     tmr.setDate(tmr.getDate() + 1);
     const tmrStr = tmr.toISOString().slice(0, 10);
-    if (iso === tmrStr) return t('date.tomorrow');
+    if (iso === tmrStr) return enabled() ? t('date.tomorrow') : 'Tomorrow';
     return null;
+  }
+
+  /** Calendar week strip: Today / Tomorrow / short weekday */
+  function calendarStripLabel(iso, index) {
+    const rel = relativeDayLabel(iso);
+    if (rel) return rel;
+    if (index === 1) return enabled() ? t('date.tomorrow') : 'Tmrw';
+    return formatDate(iso, 'weekdayShort');
   }
 
   function updateDatePill() {
@@ -214,23 +224,43 @@
     if (preview) preview.textContent = `${formatDate(new Date(), 'long')} · ${formatTime(new Date())}`;
   }
 
-  function install() {
-    if (!enabled()) return false;
-    _locale = normalizeLocale(load(LOCALE_KEY, 'en-US'));
-    applyDocumentLocale();
+  function bindGlobals() {
+    window.fluxFmtDate = formatDate;
     window.fluxFormatDate = formatDate;
     window.fluxFormatTime = formatTime;
     window.fluxFormatDateTime = formatDateTime;
     window.fluxRelativeDayLabel = relativeDayLabel;
+    window.fluxCalendarStripLabel = calendarStripLabel;
+  }
+
+  function install() {
+    _locale = normalizeLocale(load(LOCALE_KEY, 'en-US'));
+    bindGlobals();
+    if (!enabled()) {
+      updateDatePill();
+      return false;
+    }
+    applyDocumentLocale();
     updateDatePill();
     renderSettingsCard();
     document.addEventListener('flux-nav', (ev) => {
       if (ev.detail?.panel === 'settings') renderSettingsCard();
       if (ev.detail?.panel === 'dashboard') updateDatePill();
     });
-    document.addEventListener('flux-locale-change', updateDatePill);
+    document.addEventListener('flux-locale-change', () => {
+      updateDatePill();
+      try {
+        if (typeof renderTasks === 'function') renderTasks();
+        if (typeof renderCalendar === 'function') renderCalendar();
+        if (typeof renderCountdown === 'function') renderCountdown();
+        if (typeof renderDashWeekStrip === 'function') renderDashWeekStrip();
+      } catch (_) {}
+    });
     return true;
   }
+
+  _locale = normalizeLocale(load(LOCALE_KEY, 'en-US'));
+  bindGlobals();
 
   window.FluxI18n = {
     FLAG,
@@ -243,6 +273,8 @@
     formatTime,
     formatDateTime,
     relativeDayLabel,
+    calendarStripLabel,
+    bindGlobals,
     updateDatePill,
     renderSettingsCard,
     install,

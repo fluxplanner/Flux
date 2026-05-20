@@ -99,7 +99,8 @@ Migration: `20260528100000_staff_productivity_suite.sql`, `20260528200000_counse
 |---------|------|-------------|-----------------|
 | Flag on | Any | Settings → Appearance → Language & region → Español | Top date pill uses Spanish month names; rest days list dates localized. |
 | RTL | Any | Select العربية | `<html dir="rtl">`; layout mirrors. |
-| Rollback | Owner | Disable flag, reload | `fluxFormatDate` unset; en-US dates. |
+| Rollback | Owner | Disable flag, reload | Dates stay en-US via `fmtFluxDate` fallback. |
+| Task due chips | Any | Flag on → Español → Dashboard tasks | Due dates show localized month/day. |
 
 Migration: `20260528500000_locale_foundation.sql` · Doc: `docs/P8-I18N.md`
 

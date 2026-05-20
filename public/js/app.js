@@ -1229,7 +1229,7 @@ function renderExamConflictBanner(){
   const bad=Object.entries(by).filter(([,a])=>a.length>=2);
   if(!bad.length){el.style.display='none';el.innerHTML='';return;}
   el.style.display='block';
-  el.innerHTML='<strong>⚠️ Heavy day:</strong> '+bad.map(([d,a])=>`${new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} (${a.length} tests/quizzes)`).join(' · ');
+  el.innerHTML='<strong>⚠️ Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
 }
 async function exportEncryptedBackup(){
   if(!window.crypto?.subtle){showToast('Encrypted export needs a secure (HTTPS) context','error');return;}
@@ -1445,8 +1445,31 @@ function timeAgo(date){
   if(hours<24)return`${hours}h ago`;
   const days=Math.floor(hours/24);
   if(days<7)return`${days}d ago`;
-  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return fmtFluxDate(date,'monthDay');
 }
+/** Locale-aware date (FluxI18n); en-US fallback when flag off */
+function fmtFluxDate(input,style){
+  if(typeof window.fluxFmtDate==='function')return window.fluxFmtDate(input,style||'short');
+  const d=input instanceof Date?input:(input?new Date(String(input).length===10?input+'T12:00:00':input):null);
+  if(!d||isNaN(d.getTime()))return'';
+  const st=style||'short';
+  const opts=st==='long'?{weekday:'long',month:'long',day:'numeric',year:'numeric'}
+    :st==='weekday'?{weekday:'long',month:'short',day:'numeric'}
+    :st==='monthDay'?{month:'short',day:'numeric'}
+    :st==='monthDayYear'?{month:'short',day:'numeric',year:'numeric'}
+    :st==='weekdayShort'?{weekday:'short'}
+    :{weekday:'short',month:'short',day:'numeric'};
+  return d.toLocaleDateString('en-US',opts);
+}
+function fmtFluxDue(iso){return iso?fmtFluxDate(iso,'monthDay'):'';}
+function fmtFluxCalDay(iso,idx){
+  if(typeof window.fluxCalendarStripLabel==='function')return window.fluxCalendarStripLabel(iso,idx);
+  if(idx===0)return'Today';
+  if(idx===1)return'Tmrw';
+  return fmtFluxDate(iso,'weekdayShort');
+}
+window.fmtFluxDate=fmtFluxDate;
+window.fmtFluxDue=fmtFluxDue;
 function renderEmptyState(icon,title,sub,btnText,btnClick){
   return`<div style="text-align:center;padding:28px 16px">
     <div style="font-size:2.2rem;margin-bottom:10px">${icon}</div>
@@ -3793,7 +3816,7 @@ function fluxRenderDashMob(){
   const todayIso=today.toISOString().slice(0,10);
   // Date strip: "Friday, Apr 24"
   try{
-    dateEl.textContent=today.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+    dateEl.textContent=fmtFluxDate(today,'weekday');
   }catch(e){ dateEl.textContent=todayIso; }
   // A/B pill (if schedule data indicates today as A or B day)
   const abEl=document.getElementById('dashMobAB');
@@ -3997,7 +4020,7 @@ function renderTasks(){
     const isToday=t.date&&t.date===todayS&&!t.done;
     const isNP=t.date&&isBreak(t.date);
     const restEmoji=isNP?(restDayKind(t.date)==='sick'?'🤒':'🛋'):'';
-    const ds=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+    const ds=t.date?fmtFluxDue(t.date):'';
     const ti=tm[t.type]||tm.other;
     const priClass=t.priority==='high'?'priority-high':t.priority==='med'?'priority-med':'priority-low';
     let frictionCls='';
@@ -4126,7 +4149,7 @@ function closeDashAddTaskModal(){
   const w=document.getElementById('taskWaitingOn');if(w)w.value='';
   const rw=document.getElementById('taskRecurringWeekly');if(rw)rw.checked=false;
 }
-function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];const card=document.getElementById('countdownCard');if(!next){card.style.display='none';return;}card.style.display='block';const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));const sub=getSubjects()[next.subject];const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';document.getElementById('countdownLabel').textContent=next.name+(sub?' · '+sub.short:'');document.getElementById('countdownGrid').innerHTML=[[diff,'Days','var(--accent)'],[Math.floor(diff/7),'Weeks','var(--accent)'],[new Date(next.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),'Date','var(--accent)'],[diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC]].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`).join('');}
+function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];const card=document.getElementById('countdownCard');if(!next){card.style.display='none';return;}card.style.display='block';const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));const sub=getSubjects()[next.subject];const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';document.getElementById('countdownLabel').textContent=next.name+(sub?' · '+sub.short:'');document.getElementById('countdownGrid').innerHTML=[[diff,'Days','var(--accent)'],[Math.floor(diff/7),'Weeks','var(--accent)'],[fmtFluxDue(next.date),'Date','var(--accent)'],[diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC]].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`).join('');}
 function setEnergy(v){
   const n=Math.max(1,Math.min(5,parseInt(String(v),10)||3));
   save('flux_energy',n);
@@ -6063,7 +6086,7 @@ function renderNoHWList(){
   const sorted=[...days].sort((a,b)=>a.date.localeCompare(b.date));
   el.innerHTML=sorted.map(r=>{
     const lab=r.kind==='sick'?'🤒 Sick':'🛋 Lazy';
-    const dateLbl=typeof window.fluxFormatDate==='function'?window.fluxFormatDate(r.date,'monthDayYear'):new Date(r.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const dateLbl=fmtFluxDate(r.date,'monthDayYear');
     return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span><strong style="font-size:.72rem;color:var(--muted2)">${lab}</strong> · ${dateLbl}</span><button type="button" onclick="removeRestDay('${r.date}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px" aria-label="Remove">✕</button></div>`;
   }).join('');
 }
@@ -7392,7 +7415,7 @@ function buildAIPrompt(){
   const now=new Date();now.setHours(0,0,0,0);
   const mood=moodHistory.slice(-1)[0];
   const subjs=getSubjects();
-  const fmt=t=>{const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?` [REST ${restDayKind(t.date)==='sick'?'SICK':'LAZY'}]`:'';const s=subjs[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};
+  const fmt=t=>{const due=t.date?fmtFluxDue(t.date):'no date';const over=t.date&&new Date(t.date+'T00:00:00')<now?' OVERDUE':'';const np=t.date&&isBreak(t.date)?` [REST ${restDayKind(t.date)==='sick'?'SICK':'LAZY'}]`:'';const s=subjs[t.subject];return`- [${(t.priority||'med').toUpperCase()}|${s?s.short:t.subject||'—'}|${t.type||'hw'}|Due ${due}${over}${np}]: ${t.name}`;};
 
   // Calendar context — upcoming events + classes
   const today=todayStr();
@@ -11075,6 +11098,7 @@ function handleCheckoutReturn(){
   handleCheckoutReturn();
   initOAuthPostMessageListener();
   loadTheme();
+  try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
   migrateCompletedAtBackfill();
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
@@ -11082,11 +11106,11 @@ function handleCheckoutReturn(){
     if(window.FluxI18n?.enabled?.())window.FluxI18n.updateDatePill();
     else{
       const dp=document.getElementById('datePill');
-      if(dp)dp.textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      if(dp)dp.textContent=fmtFluxDate(TODAY,'short');
     }
   }catch(_){
     const dp=document.getElementById('datePill');
-    if(dp)dp.textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    if(dp)dp.textContent=fmtFluxDate(TODAY,'short');
   }
   const ab=AB_MAP[todayStr()];
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':'rgba(16,217,160,.15)';p.style.color=ab==='A'?'var(--accent)':'var(--green)';p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':'rgba(16,217,160,.3)');}
@@ -13148,7 +13172,7 @@ function showKanban(){
       el.innerHTML=colTasks.map(t=>{
         const s=subjs[t.subject];
         const c=s?s.color:'var(--accent)';
-        const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+        const due=t.date?fmtFluxDue(t.date):'';
         return`<div class="kanban-card" draggable="true" data-id="${t.id}" style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${c};border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:grab;transition:all .15s">
           <div style="font-size:.82rem;font-weight:700;margin-bottom:4px;line-height:1.3">${esc(t.name)}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -13231,7 +13255,7 @@ function renderWorkloadForecast(){
     const ds=d.toISOString().slice(0,10);
     const dayTasks=tasks.filter(t=>!t.done&&t.date===ds);
     const mins=dayTasks.reduce((s,t)=>s+(t.estTime||20),0);
-    const label=i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'});
+    const label=fmtFluxCalDay(d.toISOString().slice(0,10),i);
     days.push({label,mins,count:dayTasks.length,date:ds,tasks:dayTasks});
   }
   const maxMins=Math.max(...days.map(d=>d.mins),0);
@@ -13287,7 +13311,7 @@ function showDayTasksPopup(dateStr){
   const dayTasks=tasks.filter(t=>!t.done&&t.date===dateStr);
   if(!dayTasks.length)return;
   const d=new Date(dateStr+'T12:00:00');
-  const label=d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+  const label=fmtFluxDate(d,'weekday');
   const subjs=getSubjects();
   const m=document.createElement('div');
   m.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
@@ -13424,7 +13448,7 @@ function renderGapFiller(){
     const ds=d.toISOString().slice(0,10);
     const dayCount=tasks.filter(t=>!t.done&&t.date===ds).length;
     if(dayCount===0){
-      const label=i===1?'tomorrow':d.toLocaleDateString('en-US',{weekday:'long'});
+      const label=i===1?(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(d.toISOString().slice(0,10))||'tomorrow'):fmtFluxDate(d,'weekday');
       gaps.push({label,date:ds,d});
     }
   }
@@ -13546,7 +13570,7 @@ function startPresentMode(){
     const d=new Date(now);d.setDate(now.getDate()+i);
     const ds=d.toISOString().slice(0,10);
     const count=tasks.filter(t=>!t.done&&t.date===ds).length;
-    days7.push({label:i===0?'Today':d.toLocaleDateString('en-US',{weekday:'short'}),count});
+    days7.push({label:fmtFluxCalDay(d.toISOString().slice(0,10),i),count});
   }
   const maxC=Math.max(...days7.map(d=>d.count),1);
   
@@ -13581,7 +13605,7 @@ function startPresentMode(){
           <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px">Upcoming Tasks</div>
           ${upcoming.length?upcoming.map(t=>{
             const s=subjs[t.subject];const c=s?s.color:'var(--accent)';
-            const due=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+            const due=t.date?fmtFluxDue(t.date):'';
             return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
               <div style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0"></div>
               <div style="flex:1;font-size:.82rem;font-weight:600">${esc(t.name)}</div>
@@ -13743,7 +13767,7 @@ function addTaskFromNL(text){
   checkAllPanic();
   // Background sync
   save('tasks',tasks);syncKey('tasks',tasks);
-  showToast(`✓ "${parsed.name}" added${parsed.date?' — due '+new Date(parsed.date+'T00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):''}${parsed.priority==='high'?' 🔴':''}`);
+  showToast(`✓ "${parsed.name}" added${parsed.date?' — due '+fmtFluxDate(parsed.date,'short'):''}${parsed.priority==='high'?' 🔴':''}`);
   return true;
 }
 
@@ -13821,7 +13845,7 @@ function renderKanban(){
           <div style="padding-left:8px">
             <div style="font-size:.84rem;font-weight:600;margin-bottom:4px">${esc(t.name)}</div>
             ${sub?`<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:${sub.color}22;color:${sub.color};font-family:'JetBrains Mono',monospace">${sub.short}</span>`:''}
-            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">📅 ${new Date(t.date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`:''}
+            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">📅 ${fmtFluxDue(t.date)}</span>`:''}
             <div style="display:flex;justify-content:flex-end;margin-top:6px">
               <button onclick="toggleTask(${t.id})" style="font-size:.65rem;padding:3px 8px;background:rgba(var(--green-rgb),.1);border:1px solid rgba(var(--green-rgb),.2);color:var(--green);border-radius:6px;cursor:pointer;transform:none;box-shadow:none">Done</button>
             </div>
@@ -13865,7 +13889,8 @@ function renderTimeline(){
     const isToday=d.getTime()===now.getTime();
     const isPast=d<now;
     const diff=Math.round((d-now)/86400000);
-    const label=isToday?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const iso=d.toISOString().slice(0,10);
+    const label=(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(iso))||(isToday?'Today':diff===1?'Tomorrow':fmtFluxDate(d,'short'));
     return`<div style="display:flex;gap:12px;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
         <div style="width:10px;height:10px;border-radius:50%;background:${isPast?'var(--red)':isToday?'var(--accent)':'var(--border2)'};border:2px solid ${isPast?'var(--red)':isToday?'var(--accent)':'var(--border2)'};margin-top:14px"></div>
@@ -14567,7 +14592,7 @@ function updateQuickAddPreview(raw){
   let chips='';
   if(parsed.subject){const sub=getSubjects()[parsed.subject];chips+=`<span class="task-chip task-chip-subject">${sub?sub.short:parsed.subject}</span>`;}
   if(parsed.priority!=='med')chips+=`<span class="task-chip task-chip-priority ${parsed.priority}">${parsed.priority}</span>`;
-  if(parsed.date)chips+=`<span class="task-chip task-chip-due">${new Date(parsed.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
+  if(parsed.date)chips+=`<span class="task-chip task-chip-due">${fmtFluxDue(parsed.date)}</span>`;
   if(parsed.type&&parsed.type!=='hw')chips+=`<span class="task-chip" style="background:rgba(255,255,255,.03);color:var(--muted2);border:1px solid rgba(255,255,255,.06)">${parsed.type}</span>`;
   if(parsed.estTime){
     const tl=parsed.estTime>=60?`${Math.round(parsed.estTime/60)}h`:`${parsed.estTime}m`;

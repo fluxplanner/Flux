@@ -147,6 +147,7 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | 8.8 | `P8-PILOT` | IA East school flag overrides + counselor roster pickers for notes/referrals | Done |
 | 8.9 | `P8-HEALTH-PANEL` | Admin system health widget + extended RLS snapshot | Done |
 | 8.10 | `P8-I18N` | Locale picker, Intl formatters, RTL, settings card | Done |
+| 8.11 | `P8-I18N-B` | Adopt `fmtFluxDate` across dashboard tasks, calendar strip, countdown | Done |
 
 For new work beyond Phase 8, add rows here or pick items from product backlog.
 
