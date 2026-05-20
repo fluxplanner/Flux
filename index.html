@@ -109,6 +109,11 @@
 <link rel="stylesheet" href="public/css/flux-visual-premium.css">
 <link rel="stylesheet" href="public/css/flux-mobile-premium.css">
 <link rel="stylesheet" href="public/css/flux-ai-orchestrator.css">
+<link rel="stylesheet" href="public/css/flux-ai-orch-layer.css">
+<link rel="stylesheet" href="public/css/flux-offline-sync.css">
+<link rel="stylesheet" href="public/css/flux-layered-memory.css">
+<link rel="stylesheet" href="public/css/flux-parent-portal.css">
+<link rel="stylesheet" href="public/css/flux-a11y.css">
 <link rel="stylesheet" href="public/css/flux-performance.css">
 <link rel="stylesheet" href="public/css/flux-pro.css">
 <link rel="stylesheet" href="public/css/flux-mobile-app.css">
@@ -119,6 +124,37 @@
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
 <link rel="stylesheet" href="public/css/flux-staff-tabs.css">
 <link rel="stylesheet" href="public/css/flux-google-hub.css">
+<link rel="stylesheet" href="public/css/flux-momentum-v2.css">
+<link rel="stylesheet" href="public/css/flux-cognitive-v2.css">
+<link rel="stylesheet" href="public/css/flux-friction.css">
+<link rel="stylesheet" href="public/css/flux-shutdown-v2.css">
+<link rel="stylesheet" href="public/css/flux-ghost-draft-v2.css">
+<link rel="stylesheet" href="public/css/flux-neuro-dashboard.css">
+<link rel="stylesheet" href="public/css/flux-srs-v2.css">
+<link rel="stylesheet" href="public/css/flux-predict-v2.css">
+<link rel="stylesheet" href="public/css/flux-teacher-dash-v2.css">
+<link rel="stylesheet" href="public/css/flux-teacher-assign-intel.css">
+<link rel="stylesheet" href="public/css/flux-teacher-roster-v2.css">
+<link rel="stylesheet" href="public/css/flux-teacher-live-class.css">
+<link rel="stylesheet" href="public/css/flux-teacher-lesson-ai.css">
+<link rel="stylesheet" href="public/css/flux-teacher-copilot.css">
+<link rel="stylesheet" href="public/css/flux-assignment-recovery.css">
+<link rel="stylesheet" href="public/css/flux-teacher-wellness.css">
+<link rel="stylesheet" href="public/css/flux-counselor-caseload.css">
+<link rel="stylesheet" href="public/css/flux-counselor-wellness-timeline.css">
+<link rel="stylesheet" href="public/css/flux-counselor-risk-queue.css">
+<link rel="stylesheet" href="public/css/flux-counselor-consent.css">
+<link rel="stylesheet" href="public/css/flux-counselor-copilot.css">
+<link rel="stylesheet" href="public/css/flux-school-command.css">
+<link rel="stylesheet" href="public/css/flux-school-emergency.css">
+<link rel="stylesheet" href="public/css/flux-district-rollup.css">
+<link rel="stylesheet" href="public/css/flux-school-ops.css">
+<link rel="stylesheet" href="public/css/flux-gcal-2way.css">
+<link rel="stylesheet" href="public/css/flux-classroom-sync.css">
+<link rel="stylesheet" href="public/css/flux-drive-import.css">
+<link rel="stylesheet" href="public/css/flux-docs-ghost-sync.css">
+<link rel="stylesheet" href="public/css/flux-gmail-educator.css">
+<link rel="stylesheet" href="public/css/flux-event-processors.css">
 <script type="importmap">
 {
   "imports": {
@@ -707,6 +743,7 @@
         <button class="nav-item active" onclick="nav('dashboard',this)" data-tab="dashboard"><span class="ni">⚡</span><span class="nl">Dashboard</span></button>
         <button class="nav-item" onclick="nav('calendar',this)" data-tab="calendar"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         <button class="nav-item" onclick="nav('ai',this)" data-tab="ai"><span class="ni">✦</span><span class="nl">Flux AI</span></button>
+        <button type="button" class="nav-item" onclick="nav('parentPortal',this);try{renderParentPortal()}catch(e){}" data-tab="parentPortal" data-parent-nav style="display:none"><span class="ni">👪</span><span class="nl">Family</span></button>
       </div>
       <div class="nav-group" data-role-group="staff" style="display:none">
         <div class="nav-group-label">Workspace</div>
@@ -887,6 +924,10 @@
           <span class="topbar-new-task-label">New task</span>
         </button>
         <div class="date-pill topbar-desktop-only" id="datePill"></div>
+        <div id="fluxCognitiveMeter" class="flux-cognitive-meter topbar-desktop-only" style="display:none" role="meter" aria-label="Cognitive load" aria-valuemin="0" aria-valuemax="100">
+          <span class="flux-cog-label">Load</span>
+          <span class="flux-cog-track"><span class="flux-cog-fill"></span></span>
+        </div>
         <div id="syncIndicator" class="sync-badge offline topbar-sync-pill topbar-desktop-only" style="display:none">Local</div>
         <button type="button" class="topbar-mob-av" id="topbarMobAv" onclick="navMob('profile')" aria-label="Your profile">
           <span id="topbarMobAvInitial">F</span>
@@ -1541,6 +1582,14 @@
       <div id="teacherDashboardBody"></div>
     </div>
 
+    <!-- ─── PARENT PORTAL (flag + linked students) ─── -->
+    <div id="parentPortal" class="panel flux-page">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">View consent-gated wellness summaries for linked students — no grades, task titles, or messages.</p>
+      </header>
+      <div id="parentPortalBody"></div>
+    </div>
+
     <!-- ─── COUNSELOR DASHBOARD (visible only for counselor accounts) ─── -->
     <div id="counselorDashboard" class="panel flux-page flux-edu-panel" data-edu-role="counselor">
       <header class="flux-page-header flux-page-header--lead">
@@ -2089,6 +2138,11 @@
             <button type="button" class="toggle" id="reduceMotionToggle" onclick="toggleReduceMotion()"></button>
           </div>
         </div>
+        <div class="card" id="fluxA11ySuiteCard" style="display:none;margin-bottom:10px">
+          <h3>Accessibility suite</h3>
+          <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Personal calm and ADHD-friendly focus layout. Works alongside reduce motion and high contrast above.</p>
+          <div id="fluxA11ySuiteMount"></div>
+        </div>
         <div class="card">
           <h3>Panel layout</h3>
           <p style="font-size:.75rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Reorder major blocks on the <strong>Dashboard</strong> and <strong>Calendar</strong>. Preference is saved on this device.</p>
@@ -2194,6 +2248,16 @@
           <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">Subscription</div>
           <div id="subscriptionStatusCard" class="card" style="padding:14px">
           </div>
+        </div>
+        <div class="card" id="fluxParentStudentCard" style="display:none">
+          <h3>Family sharing</h3>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 4px">Invite a parent or guardian with an 8-character code. You choose what summaries they can see.</p>
+          <div id="fluxParentStudentMount"></div>
+        </div>
+        <div class="card" id="fluxLayeredMemoryCard" style="display:none">
+          <h3>AI memory</h3>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.55;margin:0 0 4px">Layered memory helps Flux AI remember patterns and recent chat context. Reset any layer anytime.</p>
+          <div id="fluxLayeredMemoryMount"></div>
         </div>
         <div class="card">
           <h3>Setup questionnaire</h3>
@@ -2509,8 +2573,15 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
     <script defer src="public/js/core/debug.js"></script>
+    <script defer src="public/js/flux-storage-keys.js"></script>
+    <script defer src="public/js/flux-role-routing.js"></script>
+    <script defer src="public/js/flux-e2e-harness.js"></script>
     <script defer src="public/js/app.js"></script>
     <script defer src="public/js/flux-staff-platform.js"></script>
+    <script defer src="public/js/flux-school-command.js"></script>
+    <script defer src="public/js/flux-school-emergency.js"></script>
+    <script defer src="public/js/flux-district-rollup.js"></script>
+    <script defer src="public/js/flux-school-ops.js"></script>
     <script defer src="public/js/flux-educator-platform-extras.js"></script>
     <script defer src="public/js/flux-visual.js"></script>
     <script defer src="public/js/flux-extension-bridge.js"></script>
@@ -2545,8 +2616,35 @@
 <script defer src="public/js/flux-staff-directory.js"></script>
 <script defer src="public/js/flux-school-registry.js"></script>
 <script defer src="public/js/flux-feature-flags.js"></script>
+<script defer src="public/js/flux-telemetry.js"></script>
+<script defer src="public/js/flux-event-bus.js"></script>
+<script defer src="public/js/flux-error-reporter.js"></script>
+<script defer src="public/js/flux-event-processors.js"></script>
+<script defer src="public/js/flux-momentum-v2.js"></script>
+<script defer src="public/js/flux-cognitive-v2.js"></script>
+<script defer src="public/js/flux-friction.js"></script>
+<script defer src="public/js/flux-shutdown-v2.js"></script>
+<script defer src="public/js/flux-ghost-draft-v2.js"></script>
+<script defer src="public/js/flux-neuro-dashboard.js"></script>
+<script defer src="public/js/flux-srs-v2.js"></script>
+<script defer src="public/js/flux-predict-v2.js"></script>
+<script defer src="public/js/flux-teacher-dash-v2.js"></script>
+<script defer src="public/js/flux-teacher-assign-intel.js"></script>
+<script defer src="public/js/flux-teacher-roster-v2.js"></script>
+<script defer src="public/js/flux-teacher-live-class.js"></script>
+<script defer src="public/js/flux-teacher-lesson-ai.js"></script>
+<script defer src="public/js/flux-teacher-copilot.js"></script>
+<script defer src="public/js/flux-assignment-recovery.js"></script>
+<script defer src="public/js/flux-teacher-wellness.js"></script>
+<script defer src="public/js/flux-counselor-consent.js"></script>
+<script defer src="public/js/flux-counselor-copilot.js"></script>
+<script defer src="public/js/flux-counselor-caseload.js"></script>
+<script defer src="public/js/flux-counselor-wellness-timeline.js"></script>
+<script defer src="public/js/flux-counselor-risk-queue.js"></script>
 <script defer src="public/js/flux-staff-tabs.js"></script>
 <script defer src="public/js/flux-canvas-panel.js"></script>
+<script defer src="public/js/flux-classroom-sync.js"></script>
+<script defer src="public/js/flux-drive-import.js"></script>
 <script defer src="public/js/flux-google-hub.js"></script>
 <script defer src="public/js/flux-google-tasks.js"></script>
 <script defer src="public/js/flux-release-gate.js"></script>
@@ -2557,7 +2655,10 @@
 <script defer src="public/js/flux-mobile-swipe.js"></script>
 <script defer src="public/js/flux-task-context.js"></script>
 <script defer src="public/js/flux-gcal-push.js"></script>
+    <script defer src="public/js/flux-gcal-2way.js"></script>
 <script defer src="public/js/flux-google-docs.js"></script>
+    <script defer src="public/js/flux-docs-ghost-sync.js"></script>
+    <script defer src="public/js/flux-gmail-educator.js"></script>
 <script defer src="public/js/flux-references.js"></script>
 <script defer src="public/js/flux-reference-tools.js"></script>
 <script defer src="public/js/flux-progress-streak.js"></script>
@@ -2570,6 +2671,11 @@
 <script defer src="public/js/flux-reftool-cs.js"></script>
 <script defer src="public/js/flux-ai-mega.js"></script>
 <script defer src="public/js/flux-ai-orchestrator.js"></script>
+<script defer src="public/js/flux-ai-orch-layer.js"></script>
+<script defer src="public/js/flux-offline-sync.js"></script>
+<script defer src="public/js/flux-layered-memory.js"></script>
+<script defer src="public/js/flux-parent-portal.js"></script>
+<script defer src="public/js/flux-a11y.js"></script>
 <script defer src="public/js/flux-enhancements-v100.js"></script>
 <script defer src="public/js/flux-visual-layer.js"></script>
 <script defer src="public/js/flux-master-backlog.js"></script>

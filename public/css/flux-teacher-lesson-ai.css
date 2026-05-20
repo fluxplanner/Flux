@@ -1,0 +1,212 @@
+/* P3-LESSON-AI — teacher lesson generator (enable_teacher_ai) */
+
+.flux-lesson-ai-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.flux-lesson-ai-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 22px 24px 28px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.flux-lesson-ai-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.flux-lesson-ai-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.flux-lesson-ai-sub {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted2);
+}
+
+.flux-lesson-ai-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.flux-lesson-ai-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flux-lesson-ai-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted2);
+  margin-top: 4px;
+}
+
+.flux-lesson-ai-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.flux-lesson-ai-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.flux-lesson-ai-primary {
+  margin-top: 10px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #0a0d18;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.flux-lesson-ai-primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.flux-lesson-ai-result {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border2);
+}
+
+.flux-lesson-ai-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.flux-lesson-ai-result-head h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.flux-lesson-ai-result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.flux-lesson-ai-secondary {
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.flux-lesson-ai-secondary:hover {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
+}
+
+.flux-lesson-ai-body {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.flux-lesson-ai-body h2 {
+  font-size: 0.95rem;
+  margin: 14px 0 6px;
+}
+
+.flux-lesson-ai-body h2:first-child {
+  margin-top: 0;
+}
+
+.flux-lesson-ai-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--red);
+  background: rgba(255, 77, 109, 0.08);
+  border: 1px solid rgba(255, 77, 109, 0.25);
+}
+
+.flux-lesson-ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted2);
+  font-size: 0.82rem;
+}
+
+.flux-lesson-ai-loading span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: flux-lesson-pulse 1s ease-in-out infinite;
+}
+
+.flux-lesson-ai-loading span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.flux-lesson-ai-loading span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes flux-lesson-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.flux-lesson-ai-class-btn {
+  border-color: rgba(var(--purple-rgb, 139, 92, 246), 0.35) !important;
+  color: var(--purple, #a78bfa) !important;
+}

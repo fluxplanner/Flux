@@ -1,0 +1,114 @@
+/* P2-NEURO-DASHBOARD — adaptive density (enable_neuro_dashboard) */
+
+.flux-neuro-dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--muted2);
+  white-space: nowrap;
+}
+
+.flux-neuro-dash-chip--recovery {
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.flux-neuro-dash-chip--focus {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.32);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.flux-neuro-dash-chip--flow {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.flux-neuro-dash-chip--balanced {
+  color: var(--muted2);
+}
+
+/* Recovery — hide non-essential dashboard chrome */
+body[data-neuro-dash-mode='recovery'] #dashboard [data-flux-section='pulse'],
+body[data-neuro-dash-mode='recovery'] #dashboard [data-flux-section='gapfill'],
+body[data-neuro-dash-mode='recovery'] #dashboard [data-flux-section='countdown'],
+body[data-neuro-dash-mode='recovery'] #dashboard [data-flux-section='schedule'],
+body[data-neuro-dash-mode='recovery'] #weeklyReviewBanner,
+body[data-neuro-dash-mode='recovery'] #dashboard .dash-v2-saved-views {
+  display: none !important;
+}
+
+body[data-neuro-dash-mode='recovery'] #recoveryBanner {
+  display: flex !important;
+}
+
+body[data-neuro-dash-mode='recovery'] #dashboard .dash-alerts .time-poverty-banner {
+  display: none !important;
+}
+
+/* Focus — compact secondary sections */
+body[data-neuro-dash-mode='focus'] #dashboard [data-flux-section='pulse'],
+body[data-neuro-dash-mode='focus'] #dashboard [data-flux-section='gapfill'] {
+  opacity: 0.55;
+  pointer-events: none;
+  max-height: 72px;
+  overflow: hidden;
+}
+
+body[data-neuro-dash-mode='focus'] #dashboard .card {
+  padding: 12px 14px;
+}
+
+body[data-neuro-dash-mode='focus'] #dashboard .dash-v2-workspace {
+  border-color: rgba(var(--accent-rgb), 0.12);
+}
+
+/* Flow — expanded workspace emphasis */
+body[data-neuro-dash-mode='flow'] #dashboard .flux-dash-sections {
+  gap: 14px;
+}
+
+body[data-neuro-dash-mode='flow'] #dashboard .dash-v2-workspace {
+  box-shadow: 0 0 48px var(--zone-glow, rgba(var(--accent-rgb), 0.06));
+  border-radius: 16px;
+}
+
+body[data-neuro-dash-mode='flow'] #dashboard .dash-v2-pulse {
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+/* Density tokens */
+body[data-neuro-dash-density='minimal'] #dashboard .task-item:not(.task-done) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+body[data-neuro-dash-density='compact'] #dashboard .dash-filters-row {
+  margin-bottom: 8px;
+}
+
+body[data-neuro-dash-density='expanded'] #dashboard .dash-v2-greet-title {
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 720px) {
+  .flux-neuro-dash-chip {
+    font-size: 0.58rem;
+    padding: 3px 8px;
+  }
+
+  body[data-neuro-dash-mode='focus'] #dashboard [data-flux-section='pulse'] {
+    display: none !important;
+  }
+}

@@ -1,0 +1,157 @@
+/* P3-ROSTER — teacher roster + join-by-code (enable_teacher_roster_v2) */
+
+.flux-roster-code-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: 14px;
+}
+
+.flux-roster-code-label {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin: 0 0 4px;
+}
+
+.flux-roster-code-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+
+.flux-roster-code-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.flux-roster-copy-btn {
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.flux-roster-copy-btn:hover {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
+}
+
+.flux-roster-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.74rem;
+  color: var(--muted2);
+}
+
+.flux-roster-stat-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+}
+
+.flux-roster-stat-pill--pending {
+  color: var(--gold);
+  border-color: rgba(245, 166, 35, 0.35);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.flux-roster-pending-block {
+  margin-bottom: 14px;
+}
+
+.flux-roster-pending-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+
+.flux-roster-pending-row {
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 12px;
+  background: rgba(245, 166, 35, 0.06);
+  margin-bottom: 8px;
+}
+
+.flux-roster-pending-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.flux-roster-pending-note {
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.flux-roster-pending-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.flux-roster-student-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+
+.flux-roster-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.flux-roster-student-meta {
+  font-size: 0.7rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+
+.flux-roster-join-btn-v2 {
+  width: 100%;
+  padding: 11px;
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px dashed rgba(var(--accent-rgb), 0.35);
+  border-radius: 12px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.flux-roster-join-btn-v2:hover {
+  background: rgba(var(--accent-rgb), 0.16);
+}

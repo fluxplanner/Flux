@@ -75,18 +75,31 @@ Participants only — **OK** for privacy between two users.
 
 ---
 
-## 7. Billing / usage
+## 7. Product events (`20260524140000_flux_product_events_skeleton.sql`)
+
+| Table | Notes |
+|-------|------|
+| `flux_product_events` | Append-only telemetry; INSERT/SELECT own; admin SELECT all. Batch via `flux_record_product_events`. |
+
+**Not** the same as calendar data in `localStorage` key `flux_events`.
+
+---
+
+## 8. Billing / usage
 
 See `20260425120000_billing_entitlements.sql`, `20260514130000_check_and_increment_usage.sql` — audit separately against Edge Functions.
 
 ---
 
-## 8. Verification checklist (manual / SQL)
+## 9. Verification checklist (manual / SQL)
+
+Run **`docs/P1-RLS-VERIFICATION.md`** and **`supabase/scripts/verify_rls_policies.sql`** on production.
 
 - [ ] Student A **cannot** `select * from teacher_classes` for classes they did not join.  
 - [ ] Student A **cannot** read Student B’s `student_completions`.  
 - [ ] Teacher T **cannot** update assignments of teacher U.  
-- [x] **user_roles** educator enumeration — addressed by `20260519120000_user_roles_select_tighten.sql` (replaces `roles_select_educators` with scoped policies; verify on staging).  
+- [x] **user_roles** educator enumeration — `20260519120000` + `20260524130000` drops legacy `roles_select_educators`.  
+- [x] **teacher_classes** — split teacher policies + code-scoped student read (`20260523120000`, sweep `20260524130000`).  
 - [ ] Owner-only policies match **production** owner email if changed.
 
 ---

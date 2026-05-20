@@ -1,6 +1,6 @@
 # Flux Planner — QA matrix (Phase 15)
 
-**Status:** Living checklist for manual regression passes before releases. Pair with `docs/stabilization-checkpoint.md` (stabilization bundle) and `docs/RLS_AUDIT.md` (Supabase).
+**Status:** Living checklist for manual regression passes before releases. Pair with `docs/PHASE_1_CLOSEOUT.md` (exit criteria), `docs/stabilization-checkpoint.md`, and `docs/RLS_AUDIT.md` (Supabase).
 
 **Mark cells:** ✓ pass · ✗ fail · — skip (not applicable)
 
@@ -66,24 +66,388 @@ Implementation: `public/js/core/debug.js` (`window.FluxDebug`).
 
 ## 4. `assertRoleAccess` (with `FLUX_DEBUG_ROLE=1`)
 
+- [ ] Run `FluxRoleRouting.auditMatrix()` after sign-in — review `ok` column for current role/mode.
 - [ ] Open each educator-only panel from sidebar / deep link; expect **no** unexpected `assertRoleAccess denied` for the current role/mode.
+- [ ] **Staff** work mode: lands on `staffWorkboard`, not `adminDashboard`; admin nav hidden.
+- [ ] **Admin** work mode: `adminDashboard` + Operations; staff workboard hidden.
+- [ ] **Staff** personal: Google tab visible when `enable_staff_google_hub`; staff personal panels visible.
+- [ ] **Teacher** work: student Canvas tab hidden; `nav('canvas')` redirects to teacher home if forced.
 - [ ] Intentional deny: student account hitting educator URL → redirect / fallback tab (`dashboard` or role home) without broken layout.
 
 ---
 
 ## 5. Storage regression (spot)
 
-Authority: `docs/STORAGE_RAW_INVENTORY.md` + `load`/`save` / `FluxStorage`.
+Authority: `docs/STORAGE_RAW_INVENTORY.md` + `docs/P1-STORAGE.md` + `load`/`save` / `FluxStorage`.
 
 - [ ] Toggle a preference (theme, accent, feature flag); reload; value persists (correct namespace when not impersonating).
 - [ ] Impersonate (if available): confirm writes do **not** corrupt the owner bubble (keys prefixed per inventory).
+- [ ] Account switch: sign in as user B after user A — feature flags match B (no stale A cache).
+- [ ] `FluxStorageKeys.auditStragglers()` — no unexpected keys (or documented).
 - [ ] Optional: `FLUX_DEBUG_STORAGE=1` — console shows throttled `[FluxStorage]` lines on read/write paths.
 
 ---
 
 ## 6. Supabase / RLS
 
-- [ ] Run SQL checks in `docs/RLS_AUDIT.md` (or linked migrations) against staging.
+- [ ] Run `supabase/scripts/verify_rls_policies.sql` + manual matrix in `docs/P1-RLS-VERIFICATION.md`.
+- [ ] Admin: `flux_rls_health_snapshot()` returns `legacy_*: false`.
+- [ ] Student join preview shows teacher name without `user_roles` query errors.
+
+## 7. Product event bus (`enable_event_bus` off by default)
+
+- [ ] With flag off: `FluxBus.emit('task_completed', …)` works; no `flux_product_events` rows created.
+- [ ] With `FLUX_EXPERIMENTS.enable_event_bus: true`: sign-in → `sign_in` row; complete task → `task_completed` row (own user only).
+- [ ] `flux_record_product_events` rejects batches > 25.
+
+## 40. Client error reporting (`enable_client_error_reporting` off by default)
+
+- [ ] Migration applied: `enable_client_error_reporting` flag.
+- [ ] Flag off: no global error hooks; `FluxErrorReporter.ring()` empty or stale only.
+- [ ] Flag on: `throw new Error('test')` → `FluxErrorReporter.ring()[0]` has scrubbed message.
+- [ ] With `enable_event_bus` on: `client_error` row in `flux_product_events` (no email/token in payload).
+- [ ] Rate limit: 6+ errors in 1 min → only first 5 persisted per minute.
+
+## 39. E2E harness (`enable_e2e_harness` / `?e2e=1`)
+
+- [ ] Migration applied: `enable_e2e_harness` flag in `flux_feature_flags`.
+- [ ] `npm run test:e2e` passes: student-semester, teacher-workflow, counselor-path.
+- [ ] Student scenario: seeded tasks visible; calendar tab; task checkbox completes.
+- [ ] Teacher scenario: teacher nav + dashboard; **New Class** opens modal.
+- [ ] Counselor scenario: counselor nav + dashboard (no “record not found”).
+- [ ] Normal users (no `?e2e=1`): login flow unchanged.
+
+## 38. Accessibility suite (`enable_a11y_suite` off by default)
+
+- [ ] Migration applied: `enable_a11y_suite` flag in `flux_feature_flags`.
+- [ ] Flag off: no Accessibility suite card in Settings → Look; calm/ADHD classes not applied.
+- [ ] Flag on: Settings → Look shows calm + ADHD toggles; toggles persist across reload.
+- [ ] Personal calm: mesh/cursor effects hidden; saturation reduced (not school emergency calm).
+- [ ] ADHD focus: smart suggestions / gap filler hidden; tap targets ≥ 44px; stronger `:focus-visible`.
+- [ ] Reduce motion + font scale + high contrast still work when flag off (legacy controls).
+
+## 37. Parent portal (`enable_parent_portal` off by default)
+
+- [ ] Migration applied: `flux_parent_links` + invite/claim/snapshot RPCs.
+- [ ] Flag off: no Family nav, no student Family sharing card.
+- [ ] Student creates invite → parent claims code → Family tab shows wellness table.
+- [ ] Student revokes link → parent snapshot returns forbidden.
+- [ ] No task titles or grades in parent RPC payloads.
+
+## 36. Layered AI memory (`enable_layered_memory` off by default)
+
+- [ ] Migration applied: `flux_user_memory.layer` + `flux_reset_user_memory` RPC.
+- [ ] Flag off: no AI memory card in Settings → Account.
+- [ ] Flag on: Account shows layer counts + per-layer reset + reset all.
+- [ ] Chat stores session turns; long-term hints after struggle/reminder phrases.
+- [ ] Reset long-term clears `flux_user_memory` rows for that user (own RLS only).
+
+## 35. Offline sync (`enable_offline_sync` off by default)
+
+- [ ] Migration applied: `flux_sync_conflict_log` + `flux_record_sync_conflicts` RPC.
+- [ ] Flag off: `syncFromCloud` overwrites tasks/notes/events (legacy).
+- [ ] Flag on: DevTools offline → edit task → outbox pill shows pending; online → sync clears outbox.
+- [ ] Flag on: same task edited on two devices → conflict pill + modal; **Keep mine** / **Keep cloud** resolves.
+- [ ] LWW: newer `_fluxTs` wins when fingerprints differ beyond 2s skew.
+
+## 34. AI orchestration (`enable_ai_orchestration` off by default)
+
+- [ ] Migration applied: `flux_ai_agent_runs` + `flux_record_agent_runs` RPC.
+- [ ] Flag off: `sendAI` uses legacy `FluxOrchestrator` augment only.
+- [ ] Flag on (student): “I’m tired and overwhelmed” routes to Momentum agent; thinking log shows agent label.
+- [ ] Flag on (student): `/plan` still invokes planner tools when routed to Planner/Momentum.
+- [ ] Flag on (teacher work mode): class question routes to Instruction agent; copilot tip when `enable_teacher_copilot` on.
+- [ ] With `enable_event_bus`: `ai_agent_routed` rows contain agent ids only (no message body).
+
+## 33. Event processors (`enable_event_bus_processors` off by default)
+
+- [ ] Migration applied: `flux_processor_jobs` + enqueue/claim/complete RPCs.
+- [ ] Flag off: `FluxBus.emit` unchanged aside from P1 persist; no processor audit ring growth.
+- [ ] Flag on: complete task → `FluxEventProcessors.getAuditRing()` includes `task_completed`; `getSessionStats()` unchanged until focus session ends.
+- [ ] Flag on: `session_ended` → local stats `sessions` increments; optional row in `flux_processor_jobs` (status → `done` after drain).
+- [ ] `flux_enqueue_processor_jobs` rejects batches > 10; users cannot read others' jobs (RLS).
+
+## 32. District rollup (`enable_district_rollup` off by default)
+
+- [ ] Migration applied: `flux_districts`, `flux_district_admins`, `district_slug`, `school_slug`, RPC.
+- [ ] Flag off: no district rollup section on admin dashboard.
+- [ ] Flag on: admin with district sees rollup table + district totals.
+- [ ] `flux_district_rollup_metrics` returns forbidden for users outside district.
+- [ ] Per-school rows show role counts and active classes (aggregates only).
+- [ ] `flux_district_admins` grant expands access beyond single-school admin.
+
+## 31. School emergency / calm broadcast (`enable_school_emergency_broadcast` off by default)
+
+- [ ] Migration applied: `flux_school_broadcast` table + admin/staff write RLS.
+- [ ] Flag off: legacy emergency modal + local banner only.
+- [ ] Flag on: admin modal offers Emergency, Calm mode, End broadcast.
+- [ ] Emergency requires message; calm allows default copy.
+- [ ] All users see banner + body `data-school-broadcast` after sign-in refresh.
+- [ ] Calm mode reduces animations (CSS).
+- [ ] End broadcast clears mode to normal.
+- [ ] Emergency also creates `school_announcements` row; duplicate emergency banner from announcements suppressed when broadcast active.
+
+## 36. Educator Gmail import (`enable_gmail_educator_import` off by default)
+
+- [ ] Flag on + educator role: Gmail hub tab shows filter bar and action scoring.
+- [ ] Flag on + student: legacy Gmail list (no educator UI).
+- [ ] + Task creates task with `gmailMessageId`; second import shows “In Flux”.
+- [ ] Due tag appears when date parsed from subject/snippet.
+- [ ] Import action items bulk-imports high-score emails only.
+- [ ] Filters (unread, parents, school) change Gmail query results.
+
+## 35. Docs ↔ Ghost draft sync (`enable_docs_ghost_sync` off by default)
+
+- [ ] Flag on: ghost scaffold cards show Docs ↔ Ghost draft bar.
+- [ ] Create & link opens new Google Doc; Open linked Doc works.
+- [ ] Push → Doc writes ghost text; Pull ← Doc updates `task.ghostDraft`.
+- [ ] Use primary doc links Settings/hub URL to task.
+- [ ] Legacy ghost block (ghost v2 off) still shows doc bar when `ghostDraft` exists.
+- [ ] Integrations hub Docs tab shows per-task sync help text.
+- [ ] 403 on push offers reconnect via `fluxReconnectGoogleDocs`.
+
+## 34. Google Drive import (`enable_drive_import` off by default)
+
+- [ ] Flag on: Integrations hub shows **Drive** tab.
+- [ ] List Drive files returns Docs/Slides/PDFs; preview loads exported text.
+- [ ] Generate lesson draft copies markdown to clipboard.
+- [ ] Generate assignment prefills create-assignment modal (teachers).
+- [ ] Open in Lesson AI prefills topic/notes when `enable_teacher_ai` on.
+- [ ] + Add as Flux task creates deduped planner row with Drive link in notes.
+- [ ] Lesson Hub shows Drive import shortcut (teachers, flag on).
+- [ ] 403 → reconnect scopes (`fluxReconnectGoogleDrive`).
+
+## 33. Google Classroom sync (`enable_classroom_sync` off by default)
+
+- [ ] Flag on: Integrations hub shows **Classroom** tab.
+- [ ] Flag off: no Classroom tab.
+- [ ] Sync pulls active classes and coursework; status shows last sync time.
+- [ ] + Flux adds task; second click shows “In Flux” (no duplicate).
+- [ ] Import dated (new) bulk-imports only assignments with due dates.
+- [ ] Grade column shows assigned grade or submission state when API returns it.
+- [ ] 403 prompts reconnect; `fluxReconnectGoogleClassroom()` requests Classroom scopes.
+- [ ] Course filter narrows assignment table.
+
+## 32. Google Calendar two-way sync (`enable_gcal_2way` off by default)
+
+- [ ] Flag seeded: `enable_gcal_2way`.
+- [ ] Flag off: legacy calendar sync (read list + add task per event).
+- [ ] Flag on: calendar panel shows week load strip, import mode, push/open toggles.
+- [ ] Two-way sync imports new events (no duplicate on second sync).
+- [ ] Push open tasks respects overload-aware skip on heavy days.
+- [ ] Suggest lighter dates assigns due dates to low-load days in the next 7.
+- [ ] `fluxGCal2WaySuggestDueDate(taskId)` works from console.
+- [ ] Sign-in required; expired token shows offline badge.
+
+## 31. School operations intelligence (`enable_school_ops` off by default)
+
+- [ ] Migration applied: `flux_school_ops_overload_week()` RPC exists.
+- [ ] Flag off: no Operations intelligence on admin School dashboard or Operations tab.
+- [ ] Flag on (admin): Operations tab shows week badge, signals, 7-day bar chart.
+- [ ] Flag on: School dashboard shows compact ops card (no duplicate full stats required).
+- [ ] Non-admin cannot call RPC (forbidden).
+- [ ] Peak day column highlighted when overload elevated/high.
+- [ ] Footer states aggregates only (no individual student wellness rows).
+
+## 30. School command center (`enable_school_command` off by default)
+
+- [ ] Migration applied: `flux_school_command_metrics()` RPC exists.
+- [ ] Flag off: admin dashboard has no Command center section (legacy stats band only).
+- [ ] Flag on (admin): Command center shows community, teaching, counseling, admin groups.
+- [ ] Non-admin cannot call RPC (forbidden).
+- [ ] Alert styling on join requests / pending reviews when counts > 0.
+- [ ] Footer states aggregates only (no individual student wellness rows).
+
+## 29. Counselor copilot (`enable_counselor_copilot` off by default)
+
+- [ ] Migration applied: `counselor_copilot_audit` + RLS.
+- [ ] Flag off: no Copilot button, FAB, or panel.
+- [ ] Flag on: panel opens; context line shows aggregate caseload stats only (no student names).
+- [ ] Quick chips send a message; reply renders in panel.
+- [ ] Successful exchange creates audit row with prompt/reply summaries + context_snapshot JSON.
+- [ ] Copilot independent of teacher copilot flag.
+
+## 28. Counselor consent flows (`enable_counselor_consent_flows` off by default)
+
+- [ ] Migration applied: `counselor_consent_audit` table + RLS.
+- [ ] Flag off: legacy dual-checkbox consent (when caseload flag on).
+- [ ] Flag on: student sees three-tier picker + Stop all sharing.
+- [ ] Wellness tier upgrade shows confirm dialog.
+- [ ] Tier save writes `student_counselors` + audit row.
+- [ ] Counselor dashboard shows Visibility & consent summary table.
+- [ ] Caseload cards show tier badge for consented students.
+- [ ] Revoke sets tier `none` and clears insights_consent.
+
+## 27. Counselor outreach queue (`enable_counselor_risk_queue` off by default)
+
+- [ ] Flag off: no outreach queue on counselor dashboard.
+- [ ] Flag on, no consented students: empty-state copy (no errors).
+- [ ] Basic consent: appointment-based priority/watch signals only.
+- [ ] Wellness consent + snapshots: mood/stress/load/momentum signals appear.
+- [ ] Queue sorted high → medium severity.
+- [ ] Message opens student thread; Timeline opens wellness modal (wellness tier only).
+- [ ] Dismiss removes row and persists locally until cleared.
+- [ ] Disclaimer states signals are not diagnoses.
+
+## 26. Counselor wellness timeline (`enable_counselor_wellness_timeline` off by default)
+
+- [ ] Migration applied: `student_wellness_snapshots`, `consent_tier` includes `wellness`.
+- [ ] Both caseload + timeline flags off: no timeline UI or snapshots written.
+- [ ] Student wellness consent only with basic enabled; unchecking basic clears wellness.
+- [ ] Mood check-in with wellness tier upserts row for today in `student_wellness_snapshots`.
+- [ ] Counselor sees "View wellness timeline" only for wellness-tier students.
+- [ ] Modal shows mood/stress/load/momentum summaries — no task titles or grades.
+- [ ] Student without snapshots sees empty state in modal.
+- [ ] Counselor cannot read snapshots for `basic`-only or non-consented students (RLS).
+
+## 25. Counselor caseload (`enable_counselor_caseload` off by default)
+
+- [ ] Migration applied: `insights_consent`, `consent_tier`, `consented_at` on `student_counselors`.
+- [ ] Flag off: no caseload section on counselor dashboard; no student consent checkbox.
+- [ ] Flag on, student has not consented: counselor sees assigned count only; no student names in caseload grid.
+- [ ] Student opts in (Profile → My counselor): `insights_consent` true, `consent_tier` = `basic`.
+- [ ] Counselor dashboard shows consented students with engagement band (appointment-derived).
+- [ ] Student opts out: counselor caseload cards disappear for that student.
+- [ ] Caseload card click opens message thread.
+- [ ] Disclaimer visible; bands are not labeled as clinical diagnosis.
+
+## 24. Teacher wellness (`enable_teacher_wellness` off by default)
+
+- [ ] Flag off: no wellness opt-in or pulse card on teacher dashboard.
+- [ ] Flag on, not opted in: opt-in banner only; no score until enabled.
+- [ ] Opt-in: wellness card shows aggregate signals (counts) — no student names.
+- [ ] Turn off wellness removes card until re-enabled.
+- [ ] Score changes when review queue / due-soon counts change (aggregate inputs only).
+
+## 23. Assignment recovery (`enable_assignment_recovery` off by default)
+
+- [ ] Migration applied: `assignment_recovery_plans` exists with RLS.
+- [ ] Flag off: no Recovery link on assignments, no dashboard banner.
+- [ ] Teacher proposes plan for missing/late student → status `proposed`.
+- [ ] Dashboard Review approves → student gets message; plan status `approved`.
+- [ ] Student task notes include approved recovery steps after planner sync.
+- [ ] Reject removes student visibility (status `rejected`).
+- [ ] Plans do not auto-complete assignments for students.
+
+## 22. Teacher copilot (`enable_teacher_copilot` off by default)
+
+- [ ] Flag off: no Copilot button, FAB, or side panel.
+- [ ] Flag on: panel opens; class dropdown lists only teacher’s active classes.
+- [ ] Context line shows aggregates (enrolled, due soon, to review) — no student names in UI.
+- [ ] Quick chips send a message; reply renders in panel.
+- [ ] Class view opens copilot scoped to that class.
+- [ ] Copilot independent of `enable_teacher_ai` (lesson generator).
+
+## 21. Teacher lesson AI (`enable_teacher_ai` off by default)
+
+- [ ] Flag off: no Lesson AI / Lesson plan buttons on dashboard or class view.
+- [ ] Flag on: modal opens; required topic field; Generate returns markdown sections.
+- [ ] Copy puts plan on clipboard; Regenerate replaces result.
+- [ ] Plan is not auto-created as assignment or announcement.
+- [ ] Daily AI limit errors surface in modal (same proxy as chat).
+- [ ] With `enable_event_bus`: optional `lesson_ai_generated` event (no student PII in payload).
+
+## 20. Start Class / live mode (`enable_live_class_mode` off by default)
+
+- [ ] Flag off: no Start Class button, no resume chip, nav visible during class work.
+- [ ] Flag on: class view shows **▶ Start Class**; opens full-screen overlay with timer.
+- [ ] End class clears session and restores normal layout.
+- [ ] Resume chip appears on teacher dashboard after starting; click reopens immersive mode.
+- [ ] Session notes persist locally until End class (same class).
+- [ ] Quick actions: copy code, + Assignment, Announce work without errors.
+- [ ] No student PII beyond what teacher already sees in class view (agenda uses assignment aggregates).
+
+## 19. Teacher roster v2 (`enable_teacher_roster_v2` off by default)
+
+- [ ] Flag off: student join uses instant `flux_join_teacher_class` RPC; class Students tab is legacy layout.
+- [ ] Flag on (student): join creates pending request; toast says teacher will approve; no planner sync until approved.
+- [ ] Flag on (teacher): Students tab shows copy code, enrolled count, pending block with Approve/Reject.
+- [ ] Approve from class roster adds student to `teacher_students` and refreshes class view.
+- [ ] Roster list only shows students matching class `class_code` (no cross-class leak on client).
+- [ ] Class cards show enrolled / pending meta when aggregates loaded.
+
+## 18. Teacher assignment intel (`enable_teacher_assign_intel` off by default)
+
+- [ ] Flag off: class assignment rows have no friction badge or Steps button.
+- [ ] Flag on: new assignment insert includes `friction_score`, `friction_tier`, `scaffold_steps`.
+- [ ] Flag on: assignment row shows friction badge when tier ≠ none; Steps opens scaffold modal with labels.
+- [ ] Scaffold modal is read-only (no student tasks created).
+- [ ] Legacy assignments without DB intel still show computed badge/steps when flag on.
+
+## 17. Teacher class momentum (`enable_teacher_class_momentum` off by default)
+
+- [ ] Flag off: teacher dashboard has no Class momentum section.
+- [ ] Flag on (teacher account): momentum cards show enrolled count + % on track — **no student names** on cards.
+- [ ] Clicking a momentum card opens the same class view as the class list.
+- [ ] Class list cards show momentum meta line when aggregates exist.
+- [ ] RLS: teacher only sees their own classes (existing policies).
+
+## 16. Predict v2 (`enable_predict_v2` off by default)
+
+- [ ] Flag off: legacy gap-fill with **Start →** only; no insights panel.
+- [ ] Flag on: insights card shows when at-risk tasks or heavy week; disclaimer visible.
+- [ ] Gap-fill rows use **View →** (`openEdit`), not `startDeepWork`.
+- [ ] No tasks auto-created or rescheduled when panel renders.
+- [ ] With `enable_event_bus`: `predict_insight_shown` rows (counts only, no task titles).
+
+## 15. SRS v2 (`enable_srs_v2` off by default)
+
+- [ ] Flag off: completing SRS-enabled task uses legacy 1/7/30 scheduling from due date.
+- [ ] Flag on: reviews schedule from **completion** day; no duplicate sets on second complete.
+- [ ] Review cards show `🔄 Review today` / overdue badges; parent shows `SRS on` before complete.
+- [ ] Dashboard chip shows count when reviews are due; click scrolls to first review.
+- [ ] With `enable_event_bus`: `srs_reviews_scheduled` + `srs_review_completed` rows (no task titles in payload).
+
+## 14. Neuro dashboard (`enable_neuro_dashboard` off by default)
+
+- [ ] Flag off: no `data-neuro-dash-mode` on body; mode chip hidden.
+- [ ] Flag on: chip shows one of Recovery / Focus / Flow / Balanced.
+- [ ] Simulated high load (or `enable_cognitive_ui` + stress): recovery mode hides pulse & schedule sections.
+- [ ] High momentum (`enable_momentum_v2` + completions): flow mode expands task workspace styling.
+- [ ] `body[data-neuro-dash-mode]` updates after mood check-in without reload.
+
+## 13. Ghost draft v2 (`enable_ghost_draft_v2` off by default)
+
+- [ ] Flag off: new task still calls legacy ghost inject; basic ghost block if `ghostDraft` exists.
+- [ ] Flag on: project/essay/lab card shows scaffold area; loading shimmer while AI runs.
+- [ ] Paste rubric → Save & generate → card shows checklist + starters; `ghostDraftMeta.rubricCriteria` > 0.
+- [ ] Regenerate (↻) replaces draft without duplicate cards.
+- [ ] Notes with `Rubric:` header parse criteria without paste modal.
+
+## 12. Shutdown v2 (`enable_shutdown_v2` off by default)
+
+- [ ] Flag off: `dailyShutdown()` opens legacy 3-stat modal (inline styles).
+- [ ] Flag on: dashboard shows `🌙 Shutdown`; modal has reflect fields + tomorrow list.
+- [ ] Finish shutdown: coach line appears; `flux_shutdown_v2_log_v1` gains an entry (FluxStorage).
+- [ ] Second click on entry button closes modal (toggle).
+
+## 11. Task friction (`enable_task_friction` off by default)
+
+- [ ] Flag off: reschedule styling uses legacy `rescheduled` count only.
+- [ ] Flag on: overdue task shows friction badge; inline date change increments slip count.
+- [ ] 3+ slips triggers break-down intervention (once per task).
+- [ ] `data-friction-tier` present on card when tier ≠ none.
+
+## 10. Cognitive v2 (`enable_cognitive_ui` off by default)
+
+- [ ] Flag off: `updateCognitiveLoadMeter` sets only `data-recovery` (no meter, no `data-cognitive-level`).
+- [ ] Flag on: topbar meter visible; levels calm → balanced → elevated → overload change CSS tokens.
+- [ ] Score ≥ 85: recovery banner + `recovery-hidden` tasks; Quick Wins CTA works.
+- [ ] Mood check-in with high stress raises score (v2 boost).
+
+## 9. Momentum v2 (`enable_momentum_v2` off by default)
+
+- [ ] Flag off: legacy `momentumPill` streak (`N×`) behavior unchanged.
+- [ ] Flag on: pill shows composite score + 4 domain bars; `data-zone` follows composite.
+- [ ] Complete task + mood check-in + focus session — domains update without console errors.
+- [ ] Achievements `streak_3` / `streak_7` still use legacy `_momentum` count.
+
+## 8. Telemetry schema (v1)
+
+- [ ] `FluxTelemetry.audit()` lists 10 persisted events + categories.
+- [ ] `FluxTelemetry.normalize('task_completed', { id: 1, name: 'Secret' })` — payload has **no** `name` key.
+- [ ] Toggle work/personal as educator → `role_mode_changed` row when bus enabled.
+- [ ] Payloads include `schema_version: 1` (see `docs/TELEMETRY_SCHEMA.md`).
 - [ ] After applying **`supabase/migrations/20260519120000_user_roles_select_tighten.sql`**, re-run §8 checklist in that doc (especially admin user list + join-class preview with `school` set on `user_roles`).
 - [ ] Smoke: sign-in, fetch profile, write allowed row, confirm denied row returns policy error (not silent empty).
 

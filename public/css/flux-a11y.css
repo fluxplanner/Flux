@@ -1,0 +1,64 @@
+/* P7-A11Y — personal calm + ADHD-friendly layout */
+
+html.flux-personal-calm body {
+  filter: saturate(0.88) contrast(0.97);
+}
+
+html.flux-personal-calm #fluxMeshBg,
+html.flux-personal-calm .flux-mesh-bg,
+html.flux-personal-calm .flux-cursor-spotlight,
+html.flux-personal-calm .cursor-spotlight {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+html.flux-personal-calm .flux-ai-think-row,
+html.flux-personal-calm .flux-empty-bounce {
+  animation: none !important;
+}
+
+html.flux-adhd-focus .smart-sug,
+html.flux-adhd-focus #smartSug,
+html.flux-adhd-focus .dash-smart-sug,
+html.flux-adhd-focus #examConflictBanner,
+html.flux-adhd-focus .gap-filler-wrap,
+html.flux-adhd-focus #gapFiller,
+html.flux-adhd-focus .flux-visual-layer,
+html.flux-adhd-focus #weeklyReviewBanner {
+  display: none !important;
+}
+
+html.flux-adhd-focus .main-content {
+  max-width: 48rem;
+}
+
+html.flux-adhd-focus .btn,
+html.flux-adhd-focus .nav-item,
+html.flux-adhd-focus .bnav-item,
+html.flux-adhd-focus .task-chip,
+html.flux-adhd-focus .toggle {
+  min-height: 44px;
+}
+
+html.flux-adhd-focus :focus-visible {
+  outline: 2px solid var(--accent, #00bfff);
+  outline-offset: 2px;
+}
+
+html.flux-adhd-focus .card {
+  box-shadow: none;
+  border-width: 1px;
+}
+
+html.flux-high-contrast body.high-contrast,
+html.flux-high-contrast.high-contrast {
+  --text: #ffffff;
+  --muted: #cccccc;
+  --muted2: #dddddd;
+  --border: rgba(255, 255, 255, 0.35);
+  --border2: rgba(255, 255, 255, 0.5);
+}
+
+#fluxA11ySuiteCard {
+  display: none;
+}

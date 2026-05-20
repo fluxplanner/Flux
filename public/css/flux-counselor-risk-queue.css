@@ -1,0 +1,108 @@
+/* P4-ALERTS — counselor outreach queue (enable_counselor_risk_queue) */
+
+.flux-risk-queue-section {
+  margin-bottom: 20px;
+}
+
+.flux-risk-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.flux-risk-queue-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-risk-queue-hint {
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+
+.flux-risk-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flux-risk-queue-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+}
+
+.flux-risk-queue-row--high {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.flux-risk-queue-row--medium {
+  border-color: rgba(245, 166, 35, 0.35);
+}
+
+.flux-risk-queue-row-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.flux-risk-queue-row-signal {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.flux-risk-queue-row-detail {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  line-height: 1.35;
+}
+
+.flux-risk-queue-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.flux-risk-queue-actions button {
+  padding: 6px 10px;
+  font-size: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flux-risk-queue-actions button.primary {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
+}
+
+.flux-risk-queue-empty {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border2);
+  font-size: 0.78rem;
+  color: var(--muted2);
+}
+
+.flux-risk-queue-disclaimer {
+  margin: 10px 0 0;
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-style: italic;
+}

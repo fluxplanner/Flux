@@ -14,7 +14,9 @@ The full Ultimate Master Cursor Prompt lives in product planning history. **Do n
 | Counselor appointments & wellness | Phase 4 | P4-* |
 | Admin / district | Phase 5 | P5-* |
 | Feature flags, rollback, migrations | Phase 1 | P1-FEATURE-FLAGS |
-| Event bus, AI agents, memory | Phase 7 | P7-EVENT-BUS, P7-AI-ORCH, P7-MEMORY |
+| Event bus (skeleton), product telemetry | Phase 1 | P1-EVENTS-SKELETON, P1-TELEMETRY (`docs/TELEMETRY_SCHEMA.md`) |
+| Client storage / namespacing | Phase 1 | P1-STORAGE (`docs/STORAGE_RAW_INVENTORY.md`) |
+| Event bus processors, AI agents, memory | Phase 7 | P7-EVENT-BUS, P7-AI-ORCH, P7-MEMORY |
 | Parent visibility | Phase 7 | P7-PARENT |
 | Cognitive UI / adaptive interface | Phase 2+ | P2-NEURO-DASHBOARD, P7-A11Y |
 | Security, RLS, consent | Phase 1 + 4 | P1-RLS, P4-CONSENT |
@@ -26,3 +28,4 @@ The full Ultimate Master Cursor Prompt lives in product planning history. **Do n
 - `docs/RLS_AUDIT.md`
 - `docs/QA_MATRIX.md`
 - `docs/ROADMAP.md` ← **start here for execution**
+- `docs/PHASE_1_CLOSEOUT.md` ← Phase 1 index + exit checklist

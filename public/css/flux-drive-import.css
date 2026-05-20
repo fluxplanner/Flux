@@ -1,0 +1,143 @@
+/* P6-DRIVE — Google Drive import (enable_drive_import) */
+
+.flux-drive-import {
+  padding: 4px 0 12px;
+}
+
+.flux-drive-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.flux-drive-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.flux-drive-status {
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+
+.flux-drive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.flux-drive-actions button {
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.flux-drive-actions .flux-drive-btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.flux-drive-list {
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.flux-drive-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+}
+
+.flux-drive-row:last-child {
+  border-bottom: none;
+}
+
+.flux-drive-row:hover,
+.flux-drive-row--sel {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.flux-drive-row input {
+  margin-top: 3px;
+}
+
+.flux-drive-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.flux-drive-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flux-drive-meta {
+  font-size: 0.62rem;
+  color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-drive-gen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.flux-drive-gen button {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.flux-drive-preview {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(0, 0, 0, 0.1);
+  font-size: 0.68rem;
+  color: var(--muted2);
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.flux-drive-foot {
+  margin-top: 10px;
+  font-size: 0.65rem;
+  color: var(--muted2);
+  line-height: 1.4;
+}
+
+.flux-drive-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--muted2);
+  font-size: 0.78rem;
+}

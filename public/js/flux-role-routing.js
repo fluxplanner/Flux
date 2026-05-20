@@ -1,0 +1,244 @@
+/**
+ * Flux role routing — panel access matrix + educator nav remap helpers.
+ * UX-only; Supabase RLS remains authoritative.
+ */
+(function () {
+  'use strict';
+
+  const EDUCATOR_WORK_PANELS = new Set([
+    'teacherDashboard',
+    'counselorDashboard',
+    'adminDashboard',
+    'staffWorkboard',
+    'lessonHub',
+    'counselorMeetings',
+    'adminOps',
+    'staffHub',
+  ]);
+
+  const STAFF_PERSONAL_PANELS = new Set([
+    'staffTasks',
+    'staffMeetingNotes',
+    'staffPD',
+    'staffWellbeing',
+    'staffResources',
+  ]);
+
+  function role() {
+    return typeof window.FluxRole !== 'undefined' ? window.FluxRole : null;
+  }
+
+  function staffGoogleEnabled() {
+    try {
+      return !window.FluxFeatureFlags || FluxFeatureFlags.isEnabled('enable_staff_google_hub', true);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function isPendingStaffPersonal() {
+    const fr = role();
+    const u = typeof currentUser !== 'undefined' ? currentUser : window.currentUser;
+    if (!fr || !u) return false;
+    return (
+      String(u.user_metadata?.role_pending || '').toLowerCase() === 'staff' &&
+      fr.current === 'student' &&
+      fr.isPersonalMode &&
+      fr.isPersonalMode()
+    );
+  }
+
+  /** Role home panel when in work mode (or dashboard in personal). */
+  function workHomePanel(fr) {
+    if (!fr) return 'dashboard';
+    if (fr.isTeacher && fr.isTeacher()) return 'teacherDashboard';
+    if (fr.isCounselor && fr.isCounselor()) return 'counselorDashboard';
+    if (fr.current === 'staff') return 'staffWorkboard';
+    if (fr.current === 'admin') return 'adminDashboard';
+    return 'dashboard';
+  }
+
+  /**
+   * Remap mis-matched educator panel ids before assertRoleAccess (nav prefetch).
+   */
+  function remapNavTarget(id) {
+    const pid = String(id || '');
+    if (!pid) return pid;
+    const fr = role();
+    if (!fr) return pid;
+
+    try {
+      if (fr.isEducator && fr.isEducator()) {
+        const work = fr.isWorkMode && fr.isWorkMode();
+        if (work) {
+          if (pid === 'teacherDashboard' && !fr.isTeacher()) {
+            return workHomePanel(fr);
+          }
+          if (pid === 'counselorDashboard' && !fr.isCounselor()) {
+            return workHomePanel(fr);
+          }
+          if (pid === 'adminDashboard' && fr.current !== 'admin') {
+            return workHomePanel(fr);
+          }
+          if (pid === 'staffWorkboard' && fr.current !== 'staff') {
+            return workHomePanel(fr);
+          }
+          if (pid === 'adminOps' && fr.current !== 'admin') {
+            return fr.current === 'staff' ? 'staffWorkboard' : workHomePanel(fr);
+          }
+          if (pid === 'lessonHub' && !fr.isTeacher()) {
+            return workHomePanel(fr);
+          }
+          if (pid === 'counselorMeetings' && !fr.isCounselor()) {
+            return workHomePanel(fr);
+          }
+        } else if (EDUCATOR_WORK_PANELS.has(pid)) {
+          return 'dashboard';
+        }
+      } else if (EDUCATOR_WORK_PANELS.has(pid) || STAFF_PERSONAL_PANELS.has(pid)) {
+        return 'dashboard';
+      }
+    } catch (_) {}
+
+    return pid;
+  }
+
+  /**
+   * @param {string} panelId
+   * @returns {{ ok: boolean, reason?: string, fallbackId?: string }}
+   */
+  function check(panelId) {
+    const pid = String(panelId || '');
+    if (!pid) return { ok: true };
+
+    try {
+      if (pid === 'flux_control') {
+        const r = typeof getMyRole === 'function' ? getMyRole() : '';
+        if (r === 'owner' || r === 'dev') return { ok: true };
+        return { ok: false, reason: 'flux_control_owner_only', fallbackId: 'dashboard' };
+      }
+
+      if (pid === 'parentPortal') {
+        try {
+          if (
+            window.FluxFeatureFlags &&
+            FluxFeatureFlags.isEnabled('enable_parent_portal', false)
+          ) {
+            return { ok: true };
+          }
+        } catch (_) {}
+        return { ok: false, reason: 'parent_portal_flag', fallbackId: 'dashboard' };
+      }
+
+      const fr = role();
+      if (!fr) return { ok: true };
+
+      const work = fr.isWorkMode && fr.isWorkMode();
+      const personal = fr.isPersonalMode && fr.isPersonalMode();
+      const edu = fr.isEducator && fr.isEducator();
+      const home = work ? workHomePanel(fr) : 'dashboard';
+
+      if (pid === 'teacherDashboard') {
+        if (fr.isTeacher() && work) return { ok: true };
+        return { ok: false, reason: 'teacher_dashboard', fallbackId: home };
+      }
+      if (pid === 'counselorDashboard') {
+        if (fr.isCounselor() && work) return { ok: true };
+        return { ok: false, reason: 'counselor_dashboard', fallbackId: home };
+      }
+      if (pid === 'adminDashboard') {
+        if (fr.current === 'admin' && work) return { ok: true };
+        return { ok: false, reason: 'admin_dashboard', fallbackId: home };
+      }
+      if (pid === 'staffWorkboard') {
+        if (fr.current === 'staff' && work) return { ok: true };
+        return { ok: false, reason: 'staff_workboard', fallbackId: home };
+      }
+      if (pid === 'lessonHub') {
+        if (fr.isTeacher() && work) return { ok: true };
+        return { ok: false, reason: 'lesson_hub', fallbackId: home };
+      }
+      if (pid === 'counselorMeetings') {
+        if (fr.isCounselor() && work) return { ok: true };
+        return { ok: false, reason: 'counselor_meetings', fallbackId: home };
+      }
+      if (pid === 'adminOps') {
+        if (fr.current === 'admin' && work) return { ok: true };
+        return {
+          ok: false,
+          reason: 'admin_ops',
+          fallbackId: fr.current === 'staff' ? 'staffWorkboard' : home,
+        };
+      }
+      if (pid === 'staffHub') {
+        if (edu && work && (fr.isStaff() || fr.isCounselor())) return { ok: true };
+        return { ok: false, reason: 'staff_hub', fallbackId: home };
+      }
+      if (STAFF_PERSONAL_PANELS.has(pid)) {
+        if ((edu && personal) || isPendingStaffPersonal()) return { ok: true };
+        return {
+          ok: false,
+          reason: 'staff_personal_panel',
+          fallbackId: work ? home : 'dashboard',
+        };
+      }
+      if (pid === 'schoolFeedPanel') {
+        if (fr.isStudent() || isPendingStaffPersonal()) return { ok: true };
+        return { ok: false, reason: 'school_feed_student', fallbackId: 'dashboard' };
+      }
+      if (pid === 'canvas') {
+        if (!edu || personal || fr.isStudent()) return { ok: true };
+        if (fr.isStaff() && staffGoogleEnabled()) return { ok: true };
+        if (fr.isTeacher() || fr.isCounselor()) {
+          return { ok: false, reason: 'canvas_work_educator', fallbackId: home };
+        }
+        return { ok: true };
+      }
+    } catch (_) {
+      return { ok: true };
+    }
+
+    return { ok: true };
+  }
+
+  /** Dev-only: log access outcome for every known gated panel. */
+  function auditMatrix() {
+    const fr = role();
+    const panels = [
+      'dashboard',
+      'teacherDashboard',
+      'counselorDashboard',
+      'adminDashboard',
+      'staffWorkboard',
+      'lessonHub',
+      'counselorMeetings',
+      'adminOps',
+      'staffHub',
+      'staffTasks',
+      'schoolFeedPanel',
+      'canvas',
+      'flux_control',
+    ];
+    const rows = panels.map((p) => {
+      const r = check(p);
+      return { panel: p, ok: r.ok, reason: r.reason, fallback: r.fallbackId };
+    });
+    console.table(rows);
+    console.log('[FluxRoleRouting] context', {
+      role: fr?.current,
+      mode: fr?.mode,
+      work: fr?.isWorkMode?.(),
+      personal: fr?.isPersonalMode?.(),
+    });
+    return rows;
+  }
+
+  window.FluxRoleRouting = {
+    check,
+    remapNavTarget,
+    workHomePanel,
+    auditMatrix,
+    EDUCATOR_WORK_PANELS,
+    STAFF_PERSONAL_PANELS,
+  };
+})();

@@ -144,6 +144,7 @@
             <div class="lh-greet-sub">${esc(dateLabel)}${abLabel?' · '+esc(abLabel):''} · ${classes.length} class${classes.length===1?'':'es'} on the schedule</div>
           </div>
           <div class="lh-topbar-actions">
+            ${window.FluxDriveImport?.enabled?.()?'<button class="lh-action-btn" id="lhDriveImportBtn">📂 Drive import</button>':''}
             <button class="lh-action-btn" id="lhSubPlanBtn">📄 Sub-plan template</button>
             <button class="lh-action-btn" id="lhExitTicketBtn">🎫 Exit ticket</button>
             <button class="lh-action-btn primary" id="lhBroadcastBtn">📢 Announce</button>
@@ -205,6 +206,15 @@
     });
 
     // Sub-plan generator
+    document.getElementById('lhDriveImportBtn')?.addEventListener('click',()=>{
+      if(typeof window.nav==='function'){
+        window.nav('canvas');
+        try{
+          if(window.FluxGoogle?.setTab)window.FluxGoogle.setTab('drive');
+          else if(window.FluxDriveImport?.render)window.FluxDriveImport.render(document.getElementById('gHubDriveSlot'));
+        }catch(_){}
+      }
+    });
     document.getElementById('lhSubPlanBtn')?.addEventListener('click',()=>{
       const lines=[`SUB PLAN — ${esc(meName())} — ${esc(dateLabel)}`,''];
       classes.forEach(c=>{
@@ -492,9 +502,21 @@
     };
   }
 
-  function renderAdminOps(){
+  async function renderAdminOps(){
     const host=document.getElementById('adminOpsBody');
     if(!host)return;
+    let schoolOpsHtml='';
+    try{
+      if(window.FluxSchoolOps?.enabled?.()&&typeof FluxSchoolOps.loadForecast==='function'){
+        const client=typeof sb==='function'?sb():null;
+        if(client){
+          const fc=await FluxSchoolOps.loadForecast(client);
+          if(typeof FluxSchoolOps.renderOpsPanelHtml==='function'){
+            schoolOpsHtml=FluxSchoolOps.renderOpsPanelHtml(fc);
+          }
+        }
+      }
+    }catch(e){console.warn('[FluxSchoolOps]',e);}
     const dir=(window.FluxStaffDirectory&&window.FluxStaffDirectory.all)||[];
     const teachers=dir.filter(d=>d.role==='teacher');
     const counselors=dir.filter(d=>d.role==='counselor');
@@ -523,6 +545,7 @@
 
     host.innerHTML=`
       <div class="ao-root">
+        ${schoolOpsHtml}
         <div class="ao-topbar">
           <div>
             <div class="ao-greet">Good ${timeOfDay()}, ${esc(firstName())}</div>

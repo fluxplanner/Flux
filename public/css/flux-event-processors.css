@@ -1,0 +1,19 @@
+/* P7-EVENT-BUS — optional owner debug panel */
+.flux-processor-debug {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted, #6b7280);
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+}
+.flux-processor-debug strong {
+  color: var(--text, #111);
+  font-weight: 600;
+}
+.flux-processor-debug ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}

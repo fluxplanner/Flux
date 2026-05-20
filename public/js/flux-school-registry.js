@@ -72,6 +72,11 @@
     if (typeof save === 'function') save('profile', p);
     if (typeof syncKey === 'function') syncKey('profile', p);
 
+    try {
+      if (typeof FluxBus !== 'undefined') {
+        FluxBus.emit('school_joined', { school: schoolName, short_name: shortName });
+      }
+    } catch (_) {}
     if (typeof showToast === 'function') {
       showToast(`Joined ${shortName || schoolName || IAE.shortName}`, 'success');
     }

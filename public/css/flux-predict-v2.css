@@ -1,0 +1,143 @@
+/* P2-PREDICT — read-only predictive insights (enable_predict_v2) */
+
+.flux-predict-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  margin-bottom: 14px;
+  background: linear-gradient(
+    165deg,
+    rgba(59, 130, 246, 0.1),
+    rgba(var(--purple-rgb, 139, 92, 246), 0.05) 55%,
+    var(--card)
+  );
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+
+.flux-predict-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.flux-predict-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.flux-predict-kicker {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 2px;
+}
+
+.flux-predict-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.flux-predict-disclaimer {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted2);
+  line-height: 1.45;
+}
+
+.flux-predict-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flux-predict-row--elevated {
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.flux-predict-row--high {
+  border-color: rgba(244, 63, 94, 0.28);
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.flux-predict-row-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.flux-predict-row-meta {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+
+.flux-predict-section-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+
+.flux-predict-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flux-predict-risk-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+}
+
+.flux-predict-risk-pct {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+
+.flux-predict-risk-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flux-predict-risk-meta {
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+
+.flux-predict-view-btn,
+.flux-predict-gap .flux-gap-row-cta {
+  appearance: none;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  padding: 6px 11px;
+  border-radius: 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flux-predict-view-btn:hover {
+  background: rgba(var(--accent-rgb), 0.18);
+}

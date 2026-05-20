@@ -40,6 +40,9 @@ const FLUX_IMPERSONATION_GLOBAL_PREFIXES=[
   // own tokens.)
   'flux_canvas_','flux_extension_',
   'flux_ai_connections_','flux_ai_model_route_',
+  // Per-device / per-auth-user prefs (suffix may include user id)
+  'flux_staff_mode_','flux_feature_flags_cache_v1',
+  'flux_role_setup_v1_',
   // Supabase auth tokens are stored under sb-... in localStorage by the SDK.
   'sb-',
 ];
@@ -1402,7 +1405,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',schoolFeedPanel:'School feed'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1442,6 +1445,37 @@ window.getTimeOfDay=getTimeOfDay;
 window.timeAgo=timeAgo;
 window.renderEmptyState=renderEmptyState;
 
+/** Per-user marker: student/staff picker completed once (survives flaky user_roles reads). */
+function fluxRoleSetupKey(userId){
+  return 'flux_role_setup_v1_'+String(userId||'').trim();
+}
+function fluxGetRoleSetup(userId){
+  if(!userId)return null;
+  try{
+    const v=load(fluxRoleSetupKey(userId),null);
+    return v&&typeof v==='object'&&v.done?v:null;
+  }catch(_){return null;}
+}
+function fluxMarkRoleSetupDone(userId,role,displayName){
+  if(!userId||!role)return;
+  try{
+    save(fluxRoleSetupKey(userId),{
+      done:true,
+      role:String(role),
+      display_name:displayName!=null?String(displayName).slice(0,120):null,
+      at:Date.now(),
+    });
+  }catch(_){}
+}
+function fluxNeedsRolePicker(userId){
+  if(!userId)return false;
+  if(fluxGetRoleSetup(userId))return false;
+  try{return !FluxRole.profile;}catch(_){return true;}
+}
+window.fluxGetRoleSetup=fluxGetRoleSetup;
+window.fluxMarkRoleSetupDone=fluxMarkRoleSetupDone;
+window.fluxNeedsRolePicker=fluxNeedsRolePicker;
+
 // ══ FLUX ROLE SYSTEM ══
 // Single source of truth for "who is this user" + "are they in work or personal mode".
 // Methods that touch currentUser/getSB() defer the lookup so this object is safe to define
@@ -1477,11 +1511,29 @@ const FluxRole={
         .select('*')
         .eq('user_id',u.id)
         .maybeSingle();
-      if(data){this.current=data.role||'student';this.profile=data;}
-      else{this.current='student';this.profile=null;}
+      if(data){
+        this.current=data.role||'student';
+        this.profile=data;
+        try{fluxMarkRoleSetupDone(u.id,this.current);}catch(_){}
+      }else{
+        const cached=fluxGetRoleSetup(u.id);
+        if(cached&&cached.done){
+          this.current=cached.role||'student';
+          this.profile={role:this.current,display_name:cached.display_name||null,_fromLocalSetup:true};
+        }else{
+          this.current='student';
+          this.profile=null;
+        }
+      }
     }catch(e){
       console.warn('[FluxRole] load failed',e);
-      this.current=this.current||'student';
+      const cached=u?fluxGetRoleSetup(u.id):null;
+      if(cached&&cached.done){
+        this.current=cached.role||'student';
+        this.profile={role:this.current,display_name:cached.display_name||null,_fromLocalSetup:true};
+      }else{
+        this.current=this.current||'student';
+      }
     }
     try{this.mode=load('flux_staff_mode_'+u.id,'work');}catch(_){this.mode='work';}
     if(!this.isEducator())this.mode='personal';
@@ -1514,6 +1566,9 @@ const FluxRole={
     // technically still impersonating someone else.
     try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
+    try{
+      if(typeof FluxBus!=='undefined')FluxBus.emit('role_mode_changed',{mode,role:this.current});
+    }catch(_){}
     try{
       if(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('ROLE')||FluxDebug.on())){
         console.log('[FluxRole:setMode]',{mode,current:this.current,imp:!!(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active())});
@@ -1977,7 +2032,7 @@ function applyRoleUI(){
     el.style.display=isWork&&FluxRole.isCounselor()?'':'none';
   });
   document.querySelectorAll('[data-admin-nav]').forEach(el=>{
-    el.style.display=isWork&&FluxRole.isStaff()?'':'none';
+    el.style.display=isWork&&FluxRole.current==='admin'?'':'none';
   });
   document.querySelectorAll('[data-educator-only]').forEach(el=>{
     el.style.display=isWork?'':'none';
@@ -2025,7 +2080,7 @@ function applyModeToNav(isWork){
     el.style.display=isWork&&FluxRole.isCounselor()?'':'none';
   });
   document.querySelectorAll('[data-admin-nav]').forEach(el=>{
-    el.style.display=isWork&&FluxRole.isStaff()?'':'none';
+    el.style.display=isWork&&FluxRole.current==='admin'?'':'none';
   });
   const pendingStaffPersonal=!!(
     typeof currentUser!=='undefined'&&currentUser&&
@@ -2041,7 +2096,7 @@ function applyModeToNav(isWork){
     el.style.display=FluxRole.isStaff()&&isWork&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isPersonal&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaff()&&!isWork&&staffGoogleOn?'':'none';
   });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
@@ -2132,6 +2187,7 @@ function updateModeSwitchUI(){
   }
   try{syncStudentEducatorUpgradeCard();}catch(_){}
   try{if(typeof checkForActiveAnnouncements==='function')void checkForActiveAnnouncements();}catch(_){}
+  try{if(window.FluxSchoolEmergency?.refresh)void FluxSchoolEmergency.refresh();}catch(_){}
 }
 window.updateModeSwitchUI=updateModeSwitchUI;
 
@@ -2518,6 +2574,10 @@ try{
 
 let _sb=null,currentUser=null;
 function getSB(){
+  try{
+    const mock=window.FluxE2e?.getMockClient?.();
+    if(mock)return mock;
+  }catch(_){}
   if(!_sb&&window.supabase?.createClient){
     _sb=window.supabase.createClient(SB_URL,SB_ANON,{
       auth:{
@@ -2746,61 +2806,10 @@ function updateNavAriaCurrent(tabId){
   });
 }
 
-/** UX-only gate for sensitive panels — delegates to FluxRole; RLS remains authoritative on server. */
+/** UX-only gate — see public/js/flux-role-routing.js (RLS remains authoritative). */
 function assertRoleAccess(panelId){
-  const pid=String(panelId||'');
-  if(!pid)return{ok:true};
-  try{
-    if(pid==='flux_control'){
-      const r=typeof getMyRole==='function'?getMyRole():'';
-      if(r==='owner'||r==='dev')return{ok:true};
-      return{ok:false,reason:'flux_control_owner_only',fallbackId:'dashboard'};
-    }
-    const fr=typeof FluxRole!=='undefined'?FluxRole:null;
-    if(!fr)return{ok:true};
-    const work=fr.isWorkMode&&fr.isWorkMode();
-    const personal=fr.isPersonalMode&&fr.isPersonalMode();
-    const edu=fr.isEducator&&fr.isEducator();
-
-    if(pid==='teacherDashboard'){
-      if(fr.isTeacher()&&work)return{ok:true};
-      return{ok:false,reason:'teacher_dashboard',fallbackId:'dashboard'};
-    }
-    if(pid==='counselorDashboard'){
-      if(fr.isCounselor()&&work)return{ok:true};
-      return{ok:false,reason:'counselor_dashboard',fallbackId:'dashboard'};
-    }
-    if(pid==='adminDashboard'){
-      if(fr.isStaff()&&work)return{ok:true};
-      return{ok:false,reason:'admin_dashboard',fallbackId:'dashboard'};
-    }
-    if(pid==='lessonHub'){
-      if(fr.isTeacher()&&work)return{ok:true};
-      return{ok:false,reason:'lesson_hub',fallbackId:fr.isTeacher()?'teacherDashboard':'dashboard'};
-    }
-    if(pid==='counselorMeetings'){
-      if(fr.isCounselor()&&work)return{ok:true};
-      return{ok:false,reason:'counselor_meetings',fallbackId:fr.isCounselor()?'counselorDashboard':'dashboard'};
-    }
-    if(pid==='adminOps'){
-      if(fr.current==='admin'&&work)return{ok:true};
-      return{ok:false,reason:'admin_ops',fallbackId:fr.current==='staff'?'adminDashboard':'dashboard'};
-    }
-    if(pid==='staffWorkboard'){
-      if(fr.current==='staff'&&work)return{ok:true};
-      return{ok:false,reason:'staff_workboard',fallbackId:fr.current==='admin'?'adminDashboard':'dashboard'};
-    }
-    if(pid==='staffHub'){
-      if(edu&&work)return{ok:true};
-      return{ok:false,reason:'staff_hub',fallbackId:'dashboard'};
-    }
-    const personalStaffPanels=new Set(['staffTasks','staffMeetingNotes','staffPD','staffWellbeing','staffResources']);
-    if(personalStaffPanels.has(pid)){
-      if(edu&&(personal||work))return{ok:true};
-      return{ok:false,reason:'staff_personal_panel',fallbackId:'dashboard'};
-    }
-  }catch(e){
-    return{ok:true};
+  if(window.FluxRoleRouting&&typeof FluxRoleRouting.check==='function'){
+    return FluxRoleRouting.check(panelId);
   }
   return{ok:true};
 }
@@ -2817,27 +2826,9 @@ function nav(id,btn,navOpt){
   // Check if tab is visible
   const tc=tabConfig.find(t=>t.id===id);
   if(tc&&!tc.visible){nav('dashboard');return;}
-  // Never mount another role's workspace with stale HTML (e.g. after account
-  // switch without reload, or a deep link to teacherDashboard while signed in as staff).
-  try{
-    const fr=typeof FluxRole!=='undefined'?FluxRole:null;
-    if(fr&&fr.isEducator&&fr.isEducator()){
-      const work=fr.isWorkMode&&fr.isWorkMode();
-      if(work){
-        if(id==='teacherDashboard'&&!fr.isTeacher()){
-          id=fr.isCounselor()?'counselorDashboard':(fr.isStaff()?'adminDashboard':'dashboard');
-        }else if(id==='counselorDashboard'&&!fr.isCounselor()){
-          id=fr.isTeacher()?'teacherDashboard':(fr.isStaff()?'adminDashboard':'dashboard');
-        }else if(id==='adminDashboard'&&!fr.isStaff()){
-          id=fr.isTeacher()?'teacherDashboard':(fr.isCounselor()?'counselorDashboard':'dashboard');
-        }
-      }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
-        id='dashboard';
-      }
-    }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'){
-      id='dashboard';
-    }
-  }catch(_){}
+  if(window.FluxRoleRouting&&typeof FluxRoleRouting.remapNavTarget==='function'){
+    id=FluxRoleRouting.remapNavTarget(id);
+  }
   // ── Educator dashboard redirect ──
   // For teachers / staff / counselors in Work mode, "Dashboard" shows the
   // role-specific dashboard. The sidebar "Dashboard" button stays visually
@@ -2933,7 +2924,7 @@ function nav(id,btn,navOpt){
     else if(id==='canvas'&&typeof FluxRole!=='undefined'&&FluxRole.isStaff&&FluxRole.isStaff())tTitle.textContent=PANEL_TITLES.google||'Google';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();if((typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')||(pendStaff&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();if((typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')||(pendStaff&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3319,7 +3310,7 @@ function addTask(){
       return;
     }
   }
-  task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject)setTimeout(()=>injectGhostDraft(task),1500);
+  task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
   closeDashAddTaskModal();
@@ -3350,7 +3341,10 @@ function toggleTask(id){
     if((t.estTime||0)>0&&t.actualMins==null&&typeof showEffortPrompt==='function'){
       setTimeout(()=>{try{showEffortPrompt(t);}catch(_){}}, 1100);
     }
-    if(t.srsEnabled)setTimeout(()=>generateSRSReviews(t),800);
+    if(t.srsEnabled)setTimeout(()=>{
+      if(window.FluxSrsV2?.enabled?.()&&typeof FluxSrsV2.scheduleReviews==='function')FluxSrsV2.scheduleReviews(t);
+      else generateSRSReviews(t);
+    },800);
     showUndoSnackbar('Task completed','undoLastChange');
     setTimeout(showAutoNext,1200);
     const recType=t.recurringType||(t.recurringWeekly?'weekly':null);
@@ -3855,9 +3849,30 @@ function renderTasks(){
     const ds=t.date?new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
     const ti=tm[t.type]||tm.other;
     const priClass=t.priority==='high'?'priority-high':t.priority==='med'?'priority-med':'priority-low';
-    const procras=(t.rescheduled||0)>=3?`<div class="procras-flag">Rescheduled ${t.rescheduled}×</div>`:'';
-    const _frTier=(window.FluxBehavior&&typeof window.FluxBehavior.frictionTier==='function')?window.FluxBehavior.frictionTier(t):((t.rescheduled||0)>=5?'severe':(t.rescheduled||0)>=3?'aged':(t.rescheduled||0)>=1?'warning':'none');
-    const frictionCls=_frTier==='none'?'':' friction-'+_frTier;
+    let frictionCls='';
+    let frictionBadge='';
+    let frictionData='';
+    if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.cardMeta==='function'){
+      const fm=FluxFriction.cardMeta(t);
+      frictionCls=fm.className||'';
+      frictionBadge=fm.badgeHtml||'';
+      frictionData=fm.dataAttrs||'';
+    }else{
+      const _frTier=(window.FluxBehavior&&typeof window.FluxBehavior.frictionTier==='function')?window.FluxBehavior.frictionTier(t):((t.rescheduled||0)>=5?'severe':(t.rescheduled||0)>=3?'aged':(t.rescheduled||0)>=1?'warning':'none');
+      frictionCls=_frTier==='none'?'':' friction-'+_frTier;
+      frictionBadge=(t.rescheduled||0)>=3?`<div class="procras-flag">Rescheduled ${t.rescheduled}×</div>`:'';
+    }
+    let srsCls='';
+    let srsBadge='';
+    let srsData='';
+    if(window.FluxSrsV2?.enabled?.()&&typeof FluxSrsV2.cardMeta==='function'){
+      const sm=FluxSrsV2.cardMeta(t);
+      srsCls=sm.className||'';
+      srsBadge=sm.badgeHtml||'';
+      srsData=sm.dataAttrs||'';
+    }else if(t.srsReview&&!t.done){
+      srsCls=' srs-review';
+    }
     const recoveryCls=(!t.done&&(t.priority==='high'||t.type==='exam'||t.type==='test'||((t.estTime||0)>0&&(t.estTime||0)<=15)))?'':' recovery-hidden';
     const stPct=t.subtasks?.length?Math.round(t.subtasks.filter(s=>s.done).length/t.subtasks.length*100):-1;
     const stBar=stPct>=0?`<div class="task-prog"><div class="task-prog-fill" style="width:${stPct}%"></div></div>`:'';
@@ -3873,7 +3888,13 @@ function renderTasks(){
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
     const recChip=t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'';
     const snz='';
-    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${recoveryCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}" draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    let ghostHtml='';
+    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
+      ghostHtml=FluxGhostDraftV2.cardHtml(t)||'';
+    }else if(t.ghostDraft&&!t.done){
+      ghostHtml=`<div class="ghost-draft" data-ghost-task-id="${t.id}"><div class="ghost-draft-title">✦ Ghost draft</div><div style="white-space:pre-wrap">${esc(t.ghostDraft)}</div></div>`;
+    }
+    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls}${recoveryCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -3887,7 +3908,7 @@ ${waitChip}${recChip}${snz}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
-${stBar}${procras}
+${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
@@ -3982,7 +4003,7 @@ function completeAllSubtasksInEdit(){
   document.getElementById('editSubtasks').value=lines.join('\n');
   showToast('All subtasks marked complete','success');
 }
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
@@ -5361,7 +5382,7 @@ function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlip
 // ══ MOOD ══
 function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');save('flux_mood_today',val);}
 function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;save('flux_stress_today',v);}
-function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
+function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
 function startBreathing(){if(breathingActive){clearInterval(breathTimer);breathingActive=false;document.getElementById('breathBtn').textContent='Start';document.getElementById('breathCircle').style.transform='scale(1)';document.getElementById('breathCircle').textContent='START';return;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];document.getElementById('breathCircle').textContent=p.label+'\n'+countdown;document.getElementById('breathCircle').style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
@@ -5762,7 +5783,7 @@ function switchStab(id,el){
   if(el){el.classList.add('active');el.setAttribute('aria-selected','true');}
   const pane=document.getElementById('spane-'+id);
   if(pane)pane.classList.add('active');
-  if(id==='appearance'){applyFontScale();applyReduceMotion();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();}
+  if(id==='appearance'){if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();}
   if(id==='data'&&typeof renderStorageMeter==='function')renderStorageMeter();
   if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
   if(id==='account')try{syncStudentEducatorUpgradeCard();}catch(_){}
@@ -7328,14 +7349,21 @@ async function sendAI(optionalUserText, depth){
   const thinkHost=document.getElementById('aiThinkingIndicator')||thinkEl;
   try{thinkAnim=window.FluxAnim?.aiThinking?.(thinkHost);}catch(e){}
   try{
-    if(window.FluxOrchestrator&&FluxOrchestrator.beginThinking)FluxOrchestrator.beginThinking(thinkEl);
+    if(window.FluxAiOrchestration?.enabled?.()&&FluxAiOrchestration.beginThinking)FluxAiOrchestration.beginThinking(thinkEl);
+    else if(window.FluxOrchestrator&&FluxOrchestrator.beginThinking)FluxOrchestrator.beginThinking(thinkEl);
     try{if(window.FluxAIConnections&&typeof FluxAIConnections.beforeSend==='function')await FluxAIConnections.beforeSend(text);}catch(e){}
-    if(!nested&&window.FluxOrchestrator&&FluxOrchestrator.handleSlashCommand){
-      const slashNote=FluxOrchestrator.handleSlashCommand(text);
-      if(slashNote&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Ran /fix — schedule relief applied on-device.');
+    if(!nested){
+      const slashFn=window.FluxAiOrchestration?.enabled?.()&&FluxAiOrchestration.handleSlashCommand?FluxAiOrchestration.handleSlashCommand:window.FluxOrchestrator?.handleSlashCommand;
+      if(slashFn){
+        const slashNote=slashFn(text);
+        if(slashNote&&FluxOrchestrator?.thinkingStep)FluxOrchestrator.thinkingStep('Ran /fix — schedule relief applied on-device.');
+      }
     }
     const baseSys=buildAIPrompt();
-    let system=(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)?FluxOrchestrator.augmentSystemPrompt(baseSys,text):baseSys;
+    let system=baseSys;
+    if(window.FluxAiOrchestration?.enabled?.()&&FluxAiOrchestration.augmentSystemPrompt)system=FluxAiOrchestration.augmentSystemPrompt(baseSys,text);
+    else if(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)system=FluxOrchestrator.augmentSystemPrompt(baseSys,text);
+    if(window.FluxLayeredMemory?.enabled?.()&&FluxLayeredMemory.appendToSystem)system=FluxLayeredMemory.appendToSystem(system);
     if(window.FluxAIConnections&&typeof FluxAIConnections.appendToSystem==='function')system=FluxAIConnections.appendToSystem(system);
     if(window.FluxAIConnections&&typeof FluxAIConnections.isRoutingConfigured==='function'&&!FluxAIConnections.isRoutingConfigured()){
       showToast('Connections: finish Models & routing (save API key + model) or pick Flux default.','warning');
@@ -7402,10 +7430,14 @@ async function sendAI(optionalUserText, depth){
     const ar=execActions(reply);
     let clean=reply;
     const toolsRun=[];
-    if(window.FluxOrchestrator&&FluxOrchestrator.processAssistantReply){
-      if(window.FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Parsing tools & updating scratch pad…');
+    if(window.FluxAiOrchestration?.enabled?.()&&FluxAiOrchestration.processAssistantReply){
+      if(FluxOrchestrator?.thinkingStep)FluxOrchestrator.thinkingStep('Parsing tools & updating scratch pad…');
+      FluxAiOrchestration.processAssistantReply(reply,toolsRun);
+      clean=FluxOrchestrator?.stripFluxTools?FluxOrchestrator.stripFluxTools(clean):clean;
+    }else if(window.FluxOrchestrator&&FluxOrchestrator.processAssistantReply){
+      if(FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Parsing tools & updating scratch pad…');
       FluxOrchestrator.processAssistantReply(reply,toolsRun);
-      clean=window.FluxOrchestrator.stripFluxTools?FluxOrchestrator.stripFluxTools(clean):clean;
+      clean=FluxOrchestrator.stripFluxTools?FluxOrchestrator.stripFluxTools(clean):clean;
     }
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
@@ -7701,6 +7733,7 @@ async function syncToCloud(){
   if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
     let payload=getCloudPayload();
+    if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.beforePush)payload=FluxOfflineSync.beforePush(payload);
     if(isOwner()){
       try{
         const {data:row}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
@@ -7794,8 +7827,15 @@ async function syncFromCloud(){
       return;
     }
     const d=data.data;
-    if(d.tasks){tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();}
-    if(d.notes){notes=d.notes;save('flux_notes',notes);}
+    if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.applyCloudPayload){
+      try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
+    }
+    if(d.tasks&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
+      tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();
+    }
+    if(d.notes&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
+      notes=d.notes;save('flux_notes',notes);
+    }
     if(d.habits){habits=d.habits;save('flux_habits',habits);}
     if(d.goals){goals=d.goals;save('flux_goals',goals);}
     if(d.colleges){colleges=d.colleges;save('flux_colleges',colleges);}
@@ -7822,7 +7862,7 @@ async function syncFromCloud(){
     if(d.flux_mood_tint_enabled!==undefined)save('flux_mood_tint_enabled',d.flux_mood_tint_enabled);
     if(d.flux_liquid_glass===true||d.flux_liquid_glass===false)save('flux_liquid_glass',d.flux_liquid_glass);
     if(d.flux_nav_counts_v1&&typeof d.flux_nav_counts_v1==='object')save('flux_nav_counts_v1',d.flux_nav_counts_v1);
-    if(d.events){save('flux_events',d.events);}
+    if(d.events&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('events'))){save('flux_events',d.events);}
     if(d.cycleConfig!==undefined)save('flux_cycle_config',d.cycleConfig);
     if(Array.isArray(d.weeklyEvents)){save('flux_weekly_events',d.weeklyEvents);}
     if(d.settings){
@@ -8138,6 +8178,7 @@ function syncKey(key,val){
   // owner is previewing as a teacher. (syncToCloud has its own guard too,
   // this just avoids spamming timers that would no-op.)
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
+  try{if(window.FluxOfflineSync?.onLocalMutation)FluxOfflineSync.onLocalMutation(key);}catch(_){}
   clearTimeout(syncDebounceTimers[key]);
   const delay=key==='tasks'?SYNC_DEBOUNCE_TASKS_MS:SYNC_DEBOUNCE_MS;
   syncDebounceTimers[key]=setTimeout(()=>{ void syncToCloud(); },delay);
@@ -8279,6 +8320,7 @@ function initConnectivityAndNotifications(){
   window.addEventListener('online',()=>{
     updateConnectivityBanner();
     if(currentUser){
+      try{if(window.FluxOfflineSync?.flushOutbox)FluxOfflineSync.flushOutbox();}catch(_){}
       flushPendingSyncToCloud();
       void syncFromCloud();
     }
@@ -9164,6 +9206,9 @@ function renderCmdResults(){
   if(window.Flux100&&typeof Flux100.getExtraCommands==='function'){
     try{Flux100.getExtraCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
   }
+  if(window.FluxAiOrchestration?.enabled?.()&&typeof FluxAiOrchestration.getPaletteCommands==='function'){
+    try{FluxAiOrchestration.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+  }
   if(window.FluxOrchestrator&&typeof FluxOrchestrator.getPaletteCommands==='function'){
     try{FluxOrchestrator.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
   }
@@ -9478,6 +9523,12 @@ async function getSessionAfterOAuth(sb){
 }
 
 async function initAuth(){
+  try{
+    if(window.FluxE2e?.active?.()&&typeof FluxE2e.runBootstrap==='function'){
+      await FluxE2e.runBootstrap();
+      return;
+    }
+  }catch(_){}
   const sb=getSB();
   if(!sb){
     showLoginScreen();
@@ -9674,8 +9725,7 @@ function showApp(){
   renderNotesList();renderExtrasList();renderSchoolsList();renderECGoals();renderMoodHistory();
   renderSchool();updateTStats();
   renderExamConflictBanner();
-  applyFontScale();
-  applyReduceMotion();
+  if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}
   if(typeof initConnectivityAndNotifications==='function')initConnectivityAndNotifications();
   if(typeof handleDeepLinkParams==='function')handleDeepLinkParams();
   updateNavAriaCurrent('dashboard');
@@ -9791,6 +9841,39 @@ async function handleSignedIn(user,session){
       }
     }catch(_){}
     try{if(window.FluxFeatureFlags?.load)await FluxFeatureFlags.load({force:true});}catch(_){}
+    try{if(window.FluxEventBus?.install)FluxEventBus.install();}catch(_){}
+    try{if(window.FluxErrorReporter?.install)FluxErrorReporter.install();}catch(_){}
+    try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
+    try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
+    try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+    try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
+    try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
+    try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
+    try{if(window.FluxMomentumV2?.install)FluxMomentumV2.install();}catch(_){}
+    try{if(window.FluxCognitiveV2?.install)FluxCognitiveV2.install();}catch(_){}
+    try{if(window.FluxShutdownV2?.install)FluxShutdownV2.install();}catch(_){}
+  try{if(window.FluxTeacherLiveClass?.install)FluxTeacherLiveClass.install();}catch(_){}
+  try{if(window.FluxTeacherLessonAI?.install)FluxTeacherLessonAI.install();}catch(_){}
+  try{if(window.FluxTeacherCopilot?.install)FluxTeacherCopilot.install();}catch(_){}
+  try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
+  try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
+  try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
+  try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
+  try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
+  try{if(window.FluxCounselorCopilot?.install)FluxCounselorCopilot.install();}catch(_){}
+  try{if(window.FluxSchoolCommand?.install)FluxSchoolCommand.install();}catch(_){}
+  try{if(window.FluxSchoolEmergency?.install)FluxSchoolEmergency.install();}catch(_){}
+  try{if(window.FluxDistrictRollup?.install)FluxDistrictRollup.install();}catch(_){}
+  try{if(window.FluxSchoolOps?.install)FluxSchoolOps.install();}catch(_){}
+  try{if(window.FluxGCal2Way?.install)FluxGCal2Way.install();}catch(_){}
+  try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
+  try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
+  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
+  try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
+    try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
+    try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
+    try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
+    try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
     try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     return;
@@ -9815,6 +9898,7 @@ async function handleSignedIn(user,session){
     }
     localStorage.clear();
     Object.entries(survived).forEach(([k,v])=>localStorage.setItem(k,v));
+    try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
     // Reset all in-memory state
     tasks=[];notes=[];habits=[];goals=[];colleges=[];extras=[];ecSchools=[];ecGoals=[];
     moodHistory=[];schoolInfo={};classes=[];teacherNotes=[];
@@ -9897,14 +9981,15 @@ async function handleSignedIn(user,session){
   let resolvedRole='student';
   try{
     await FluxRole.load();
-    const noRoleRow=!FluxRole.profile;
-    if(noRoleRow&&typeof detectUserRoleAndRoute==='function'){
-      // Pops the role picker (and staff details form for educators) and
-      // upserts the user_roles row for us. Then refresh FluxRole state.
+    if(fluxNeedsRolePicker(user.id)&&typeof detectUserRoleAndRoute==='function'){
+      // First sign-up only: picker + user_roles row (skipped if already completed).
       resolvedRole=(await detectUserRoleAndRoute())||'student';
       try{await FluxRole.load();}catch(_){}
     }else{
-      resolvedRole=FluxRole.current||'student';
+      resolvedRole=FluxRole.current||fluxGetRoleSetup(user.id)?.role||'student';
+      if(FluxRole.profile){
+        try{fluxMarkRoleSetupDone(user.id,FluxRole.current,FluxRole.profile.display_name);}catch(_){}
+      }
     }
   }catch(e){console.warn('[Flux] role load failed',e);}
   try{
@@ -9924,6 +10009,39 @@ async function handleSignedIn(user,session){
     }
   }catch(_){}
   try{if(window.FluxFeatureFlags?.load)await FluxFeatureFlags.load();}catch(_){}
+  try{if(window.FluxEventBus?.install)FluxEventBus.install();}catch(_){}
+  try{if(window.FluxErrorReporter?.install)FluxErrorReporter.install();}catch(_){}
+  try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
+  try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
+  try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+  try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
+  try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
+  try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
+  try{if(window.FluxMomentumV2?.install)FluxMomentumV2.install();}catch(_){}
+  try{if(window.FluxCognitiveV2?.install)FluxCognitiveV2.install();}catch(_){}
+  try{if(window.FluxShutdownV2?.install)FluxShutdownV2.install();}catch(_){}
+  try{if(window.FluxTeacherLiveClass?.install)FluxTeacherLiveClass.install();}catch(_){}
+  try{if(window.FluxTeacherLessonAI?.install)FluxTeacherLessonAI.install();}catch(_){}
+  try{if(window.FluxTeacherCopilot?.install)FluxTeacherCopilot.install();}catch(_){}
+  try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
+  try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
+  try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
+  try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
+  try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
+  try{if(window.FluxCounselorCopilot?.install)FluxCounselorCopilot.install();}catch(_){}
+  try{if(window.FluxSchoolCommand?.install)FluxSchoolCommand.install();}catch(_){}
+  try{if(window.FluxSchoolEmergency?.install)FluxSchoolEmergency.install();}catch(_){}
+  try{if(window.FluxDistrictRollup?.install)FluxDistrictRollup.install();}catch(_){}
+  try{if(window.FluxSchoolOps?.install)FluxSchoolOps.install();}catch(_){}
+  try{if(window.FluxGCal2Way?.install)FluxGCal2Way.install();}catch(_){}
+  try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
+  try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
+  try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
+  try{if(window.FluxGmailEducator?.install)FluxGmailEducator.install();}catch(_){}
+  try{if(window.FluxGhostDraftV2?.install)FluxGhostDraftV2.install();}catch(_){}
+  try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
+  try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
+  try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
@@ -10010,6 +10128,7 @@ async function handleSignedIn(user,session){
   }
   renderTesterBadge();
   try{if(typeof checkForActiveAnnouncements==='function')void checkForActiveAnnouncements();}catch(_){}
+  try{if(window.FluxSchoolEmergency?.refresh)void FluxSchoolEmergency.refresh();}catch(_){}
   syncTokenToExtension();
   startFluxCloudSyncLoops();
 }
@@ -10073,6 +10192,7 @@ function _refreshUserUI(){
 window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
+  try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
   FLUX_FLAGS.TESTER_MODE = false;
   _entitlementFetchedAt=0;
   _entitlement.plan='free';
@@ -10406,6 +10526,11 @@ function _fluxFmtTime(min){
   return m===0?`${h12}${ampm}`:`${h12}:${String(m).padStart(2,'0')}${ampm}`;
 }
 function renderPredictiveGapFill(){
+  try{
+    if(window.FluxPredictV2?.enabled?.()&&typeof FluxPredictV2.renderGapFill==='function'){
+      return FluxPredictV2.renderGapFill();
+    }
+  }catch(_){}
   const el=document.getElementById('fluxGapFillCard');
   if(!el)return;
   const slots=fluxComputeFreeSlots();
@@ -10464,9 +10589,17 @@ window.fluxStartGapTask=function(taskId){
 // V4 — Re-render predictive gap-fill on task completion / interval.
 // ════════════════════════════════════════════════════════════════
 function fluxRenderV4Dashboard(){
-  try{renderPredictiveGapFill();}catch(_){}
+  try{
+    if(window.FluxPredictV2?.enabled?.()&&typeof FluxPredictV2.renderAll==='function'){
+      FluxPredictV2.renderAll();
+    }else{
+      renderPredictiveGapFill();
+    }
+  }catch(_){}
 }
 window.fluxRenderV4Dashboard=fluxRenderV4Dashboard;
+window.fluxComputeFreeSlots=fluxComputeFreeSlots;
+window.fluxFmtTimeMin=_fluxFmtTime;
 
 function handleCheckoutReturn(){
   const params=new URLSearchParams(window.location.search);
@@ -10558,6 +10691,26 @@ function handleCheckoutReturn(){
   showKeyHint();
   setInterval(applyPanicGlow,25000);
 
+  try{
+    if(window.FluxE2e&&typeof FluxE2e._register==='function'){
+      FluxE2e._register({
+        setCurrentUser(u){currentUser=u;window.currentUser=u;},
+        reloadState(){
+          tasks=load('tasks',[]);
+          notes=load('flux_notes',[]);
+          classes=load('flux_classes',[]);
+          settings=load('flux_settings',settings);
+        },
+        save,
+        showApp,
+        applyRoleUI,
+        nav,
+        renderTeacherDashboard,
+        renderCounselorDashboard,
+      });
+    }
+  }catch(_){}
+
   // ── FLOW: Splash (once per session) → Login → (1st time) Onboarding → App ──
   const afterSplash = () => initAuth();
 
@@ -10581,6 +10734,11 @@ function handleCheckoutReturn(){
 
 // ══ SPACED REPETITION SYSTEM ══════════════════════════════════
 function generateSRSReviews(originalTask){
+  try{
+    if(window.FluxSrsV2?.enabled?.()&&typeof FluxSrsV2.scheduleReviews==='function'){
+      return FluxSrsV2.scheduleReviews(originalTask);
+    }
+  }catch(_){}
   if(!originalTask.srsEnabled)return;
   const intervals=[1,7,30];
   const base=new Date(originalTask.date||todayStr()+'T00:00:00');
@@ -10610,6 +10768,11 @@ function generateSRSReviews(originalTask){
 
 // ══ GHOST DRAFT INJECTOR ══════════════════════════════════════
 async function injectGhostDraft(task){
+  try{
+    if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.inject==='function'){
+      return FluxGhostDraftV2.inject(task);
+    }
+  }catch(_){}
   if(!currentUser||!task.subject)return;
   const subj=getSubjects()[task.subject];
   if(!subj)return;
@@ -10655,6 +10818,12 @@ function getFrictionStyle(task){
   return{border:'3px solid rgba(244,63,94,.8)',glow:'0 0 14px rgba(244,63,94,.3)'};
 }
 async function checkFrictionIntervention(task){
+  try{
+    if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.checkIntervention==='function'){
+      await FluxFriction.checkIntervention(task);
+      return;
+    }
+  }catch(_){}
   if((task.rescheduled||0)>=3&&!task.frictionHandled){
     task.frictionHandled=true;save('tasks',tasks);
     showToast('⚠ "'+task.name.slice(0,30)+'" rescheduled 3×. Breaking it down...','warning');
@@ -10665,6 +10834,12 @@ async function checkFrictionIntervention(task){
 
 // ══ DAILY SHUTDOWN PROTOCOL ══════════════════════════════════
 async function dailyShutdown(){
+  try{
+    if(window.FluxShutdownV2?.enabled?.()&&typeof FluxShutdownV2.run==='function'){
+      await FluxShutdownV2.run();
+      return;
+    }
+  }catch(_){}
   const existing=document.getElementById('shutdownPanel');
   if(existing){existing.remove();return;}
   const today=todayStr();
@@ -10707,6 +10882,7 @@ async function dailyShutdown(){
     if(el)el.textContent=completed.length?'Great work today! '+completed.length+' task'+(completed.length>1?'s':'')+'  completed. Rest well.':'Tomorrow is a new day. Rest up and start fresh.';
   }
 }
+window.dailyShutdown=dailyShutdown;
 
 
 // ══ AUTO-NEXT TASK SUGGESTION ═════════════════════════════════
@@ -10920,6 +11096,13 @@ function calcCognitiveLoad(){
   return Math.min(100,Math.round((overdue.length*15+todayTasks.length*8+highPri.length*10-srsWeight)*tf));
 }
 function updateCognitiveLoadMeter(){
+  try{
+    if(window.FluxCognitiveV2?.enabled?.()&&typeof FluxCognitiveV2.tick==='function'){
+      FluxCognitiveV2.tick();
+      try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
+      return;
+    }
+  }catch(_){}
   let payload=null;
   if(window.FluxBehavior&&typeof window.FluxBehavior.tick==='function'){
     try{
@@ -10942,6 +11125,7 @@ function updateCognitiveLoadMeter(){
   }else if(!inRecovery&&window._fluxRecoveryToastShown){
     window._fluxRecoveryToastShown=false;
   }
+  try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
 }
 
 
@@ -10951,6 +11135,11 @@ function addMomentum(){
   _momentum++;
   clearTimeout(_momentumTimer);
   _momentumTimer=setTimeout(()=>{_momentum=0;updateMomentumUI();},10*60*1000);
+  try{
+    if(window.FluxMomentumV2?.enabled?.()&&typeof FluxMomentumV2.onSessionPulse==='function'){
+      FluxMomentumV2.onSessionPulse(_momentum);
+    }
+  }catch(_){}
   updateMomentumUI();
   if(_momentum>=2){
     try{
@@ -10962,8 +11151,16 @@ function addMomentum(){
   if(_momentum>=5)spawnConfetti();
 }
 function updateMomentumUI(){
+  try{
+    if(window.FluxMomentumV2?.enabled?.()&&typeof FluxMomentumV2.render==='function'){
+      FluxMomentumV2.render();
+      try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
+      return;
+    }
+  }catch(_){}
   const el=document.getElementById('momentumPill');
   if(el){
+    el.classList.remove('flux-momentum-v2-pill');
     if(_momentum>=2){
       el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
       el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
@@ -10971,6 +11168,7 @@ function updateMomentumUI(){
       el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
     }else{el.style.display='none';}
   }
+  try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
 }
 
 
@@ -11282,6 +11480,7 @@ function toggleHighContrast(){
     btn.style.background=_highContrast?'rgba(var(--accent-rgb),.15)':'';}
 }
 function applyHighContrast(){
+  _highContrast=!!load('flux_high_contrast',false);
   if(_highContrast){
     document.documentElement.style.setProperty('--text','#ffffff');
     document.documentElement.style.setProperty('--muted','#aaaaaa');
@@ -11291,6 +11490,8 @@ function applyHighContrast(){
   }else{
     ['--text','--muted','--muted2','--border','--border2'].forEach(v=>document.documentElement.style.removeProperty(v));
   }
+  document.body.classList.toggle('high-contrast',_highContrast);
+  document.documentElement.classList.toggle('flux-high-contrast',_highContrast);
 }
 
 // ══ TASK SWIPE GESTURES ═══════════════════════════════════════
@@ -12094,6 +12295,7 @@ async function addCanvasAssignmentToPlanner(courseId,assignmentId,opts){
   };
   t.urgencyScore=calcUrgency(t);
   tasks.unshift(t);save('tasks',tasks);
+  if(subKey)setTimeout(()=>injectGhostDraft(t),1500);
   if(!skipRender){syncKey('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();}
   if(!silent)showToast(`Added '${name.slice(0,48)}' to your planner ✓`,'success');
   if(!silent){
@@ -13742,6 +13944,27 @@ FluxBus.on('session_ended',function(){
 // ══ MOMENTUM ZONES — UI REACTS TO PRODUCTIVITY LEVEL ═════════
 let _currentZone='idle';
 function updateMomentumZone(){
+  try{
+    if(window.FluxMomentumV2?.enabled?.()){
+      const s=window.FluxMomentumV2.get?.();
+      if(s&&s.zone){
+        if(s.zone===_currentZone)return;
+        _currentZone=s.zone;
+        const root=document.documentElement;
+        root.setAttribute('data-zone',s.zone);
+        const zoneStyles={
+          idle:{glow:'none',border:'var(--border)'},
+          warm:{glow:'0 0 40px rgba(var(--accent-rgb),.04)',border:'rgba(var(--accent-rgb),.08)'},
+          flow:{glow:'0 0 60px rgba(var(--accent-rgb),.07)',border:'rgba(var(--accent-rgb),.12)'},
+          fire:{glow:'0 0 80px rgba(255,77,109,.06)',border:'rgba(255,77,109,.1)'}
+        };
+        const st=zoneStyles[s.zone]||zoneStyles.idle;
+        root.style.setProperty('--zone-glow',st.glow);
+        root.style.setProperty('--zone-border',st.border);
+        return;
+      }
+    }
+  }catch(_){}
   const load=calcCognitiveLoad();
   let zone='idle';
   if(_momentum>=5)zone='fire';
@@ -13768,6 +13991,9 @@ function initV4Systems(){
   _achievements=load('flux_achievements',[]);
 
   smartReorderDashboard();
+  try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
+  try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
+  try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
 
   // Wire event bus into existing toggleTask
   const _origToggle=window.toggleTask;
@@ -14128,11 +14354,18 @@ function openInlineDatePicker(taskId,el){
 }
 function setTaskDateInline(id,date,pickerEl){
   const t=tasks.find(x=>x.id===id);if(!t)return;
+  const oldDate=t.date;
   t.date=date;t.urgencyScore=calcUrgency(t);
+  if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){
+    FluxFriction.recordDateChange(t,oldDate,date);
+  }else if(oldDate&&date!==oldDate){
+    t.rescheduled=(t.rescheduled||0)+1;
+  }
   save('tasks',tasks);syncKey('tasks',tasks);
   if(pickerEl)pickerEl.remove();
   renderTasks();renderCalendar();renderStats();
   showToast(date?'Due date updated':'Date cleared','success');
+  if(oldDate!==date)setTimeout(()=>{try{checkFrictionIntervention(t);}catch(_){}},500);
 }
 
 // ── Feature: Ask Flux AI about a task ──
@@ -14269,6 +14502,7 @@ window.showRoleSelectOrLogin=showRoleSelectOrLogin;
  *  Used by detectUserRoleAndRoute when the user has no role yet. */
 function showPostLoginRolePicker(opts){
   return new Promise((resolve)=>{
+    if(currentUser?.id&&fluxGetRoleSetup(currentUser.id))return resolve(null);
     if(document.getElementById('postLoginRolePicker'))return resolve(null);
     const ov=document.createElement('div');
     ov.id='postLoginRolePicker';
@@ -14566,11 +14800,23 @@ async function detectUserRoleAndRoute(){
     }
   }
 
-  /* Brand-new account flow:
-     Show the "I am a Student / Staff" picker only when there is no row in
-     public.user_roles for this user. We do NOT use a localStorage gate
-     anymore — that just hid bugs and re-prompted on a new device. The row
-     itself (created the moment they answer) is the single source of truth. */
+  /* Brand-new account flow: show picker only once per account (local marker +
+     user_roles row). Returning users skip even if a read fails temporarily. */
+  if(!hadExplicitRole){
+    const cached=fluxGetRoleSetup(currentUser.id);
+    if(cached&&cached.done){
+      hadExplicitRole=true;
+      role=cached.role||'student';
+      try{
+        await sb.from('user_roles').upsert({
+          user_id:currentUser.id,
+          role,
+          display_name:displayName||cached.display_name||currentUser.user_metadata?.full_name||null,
+          updated_at:new Date().toISOString(),
+        });
+      }catch(_){}
+    }
+  }
   if(!hadExplicitRole){
     try{
       const pick=await showPostLoginRolePicker();
@@ -14584,6 +14830,7 @@ async function detectUserRoleAndRoute(){
           });
           role='student';
           hadExplicitRole=true;
+          fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
         }catch(_){}
       }else if(pick==='staff'){
         const det=await showStaffDetailsForm();
@@ -14599,6 +14846,7 @@ async function detectUserRoleAndRoute(){
             });
             role=det.role;
             hadExplicitRole=true;
+            fluxMarkRoleSetupDone(currentUser.id,det.role,det.name||displayName);
             if(det.role==='counselor'&&det.name){
               const lastName=det.name.split(' ').filter(Boolean).pop();
               if(lastName){
@@ -14619,10 +14867,14 @@ async function detectUserRoleAndRoute(){
             });
             role='student';
             hadExplicitRole=true;
+            fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
           }catch(_){}
         }
       }
     }catch(e){console.warn('[Flux] post-login role picker error',e);}
+  }
+  if(hadExplicitRole){
+    try{fluxMarkRoleSetupDone(currentUser.id,role,displayName);}catch(_){}
   }
   // If counselor, pull their counselor record
   if(role==='counselor'){
@@ -15177,7 +15429,7 @@ async function renderTeacherDashboard(){
   const name=FluxRole.profile?.display_name||currentUser.user_metadata?.full_name||currentUser.email||'Teacher';
   const firstName=name.split(' ').filter(w=>!['Mr.','Mrs.','Ms.','Dr.'].includes(w))[0]||name;
 
-  let classesRows=[];let recentCompletions=[];let unreadMessages=[];let announcements=[];let pendingJoins=[];
+  let classesRows=[];let recentCompletions=[];let unreadMessages=[];let announcements=[];let pendingJoins=[];let pendingRecovery=[];
   try{
     const [clsRes,annRes]=await Promise.all([
       sb.from('teacher_classes')
@@ -15202,6 +15454,11 @@ async function renderTeacherDashboard(){
         .limit(20);
       pendingJoins=pj||[];
     }catch(_){pendingJoins=[];}
+    try{
+      if(window.FluxAssignmentRecovery?.enabled?.()&&typeof FluxAssignmentRecovery.loadPending==='function'){
+        pendingRecovery=await FluxAssignmentRecovery.loadPending(sb,currentUser.id);
+      }
+    }catch(_){pendingRecovery=[];}
     const assignmentIds=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>a.id));
     if(assignmentIds.length){
       const {data:rc}=await sb.from('student_completions')
@@ -15228,6 +15485,18 @@ async function renderTeacherDashboard(){
   const nameMap=await fluxFetchStudentNames(sb,studentIds);
   const nameOf=(id)=>nameMap[id]?.display_name||('Student '+String(id||'').slice(0,6));
 
+  let momentumSectionHtml='';
+  try{
+    if(window.FluxTeacherDashV2?.enabled?.()&&typeof FluxTeacherDashV2.renderMomentumSection==='function'){
+      momentumSectionHtml=await FluxTeacherDashV2.renderMomentumSection(sb,currentUser.id,classesRows);
+    }
+  }catch(_){}
+  try{
+    if(window.FluxTeacherRosterV2?.enabled?.()&&typeof FluxTeacherRosterV2.prefetchRosterCounts==='function'){
+      await FluxTeacherRosterV2.prefetchRosterCounts(sb,currentUser.id,classesRows);
+    }
+  }catch(_){}
+
   const totalAssignments=classesRows.reduce((s,c)=>s+((c.teacher_assignments||[]).length||0),0);
   const pendingReview=recentCompletions.filter(c=>c.status==='submitted').length;
   const dueSoon=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>({...a,_class:c.class_name})))
@@ -15238,8 +15507,24 @@ async function renderTeacherDashboard(){
       return due>=now&&due<=new Date(Date.now()+3*86400000);
     });
 
+  let wellnessSectionHtml='';
+  try{
+    if(window.FluxTeacherWellness?.enabled?.()&&typeof FluxTeacherWellness.renderDashboardSection==='function'){
+      wellnessSectionHtml=FluxTeacherWellness.renderDashboardSection({
+        classCount:classesRows.length,
+        totalAssignments,
+        pendingReview,
+        pendingJoins:pendingJoins.length,
+        pendingRecovery:pendingRecovery.length,
+        dueSoonCount:dueSoon.length,
+        unreadMessages:unreadMessages.length,
+      });
+    }
+  }catch(_){}
+
   host.innerHTML=`
     <div class="teacher-dash-root">
+      ${window.FluxTeacherLiveClass?.resumeChipHtml?.()||''}
       <div class="teacher-topbar">
         <div class="teacher-topbar-left">
           <div class="teacher-greeting-text">${getTimeGreeting()}, ${esc(firstName)}</div>
@@ -15249,6 +15534,8 @@ async function renderTeacherDashboard(){
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
           <button class="teacher-action-btn" data-action="new-class"><span>📚</span> New Class</button>
           <button class="teacher-action-btn" data-action="new-announcement"><span>📢</span> Announce</button>
+          ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
+          ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
       </div>
 
@@ -15266,6 +15553,11 @@ async function renderTeacherDashboard(){
         <div class="teacher-stat ${dueSoon.length>0?'tstat-warn':''}"><div class="tstat-num">${dueSoon.length}</div><div class="tstat-label">Due Soon</div></div>
       </div>
 
+      ${momentumSectionHtml}
+
+      ${wellnessSectionHtml}
+
+      ${window.FluxAssignmentRecovery?.bannerHtml?.(pendingRecovery.length)||''}
       ${pendingJoins.length>0?`
       <div class="flux-join-request-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.28);border-radius:14px">
         <span style="font-size:1.2rem">🔔</span>
@@ -15355,13 +15647,34 @@ async function renderTeacherDashboard(){
   host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',()=>openCreateAssignmentModal()));
   host.querySelectorAll('[data-action="new-class"]').forEach(b=>b.addEventListener('click',()=>openCreateClassModal()));
   host.querySelectorAll('[data-action="new-announcement"]').forEach(b=>b.addEventListener('click',()=>openTeacherAnnouncementModal()));
+  host.querySelectorAll('[data-action="lesson-ai"]').forEach(b=>b.addEventListener('click',()=>{
+    if(window.FluxTeacherLessonAI?.open)FluxTeacherLessonAI.open();
+  }));
+  host.querySelectorAll('[data-action="teacher-copilot"]').forEach(b=>b.addEventListener('click',()=>{
+    if(window.FluxTeacherCopilot?.open)FluxTeacherCopilot.open();
+  }));
   host.querySelectorAll('[data-action="review-joins"]').forEach(b=>b.addEventListener('click',()=>openTeacherPendingJoinsModal()));
+  host.querySelectorAll('[data-action="review-recovery"]').forEach(b=>b.addEventListener('click',async()=>{
+    if(window.FluxAssignmentRecovery?.openPendingModal){
+      const nm=await fluxFetchStudentNames(sb,pendingRecovery.map(r=>r.student_id));
+      await FluxAssignmentRecovery.openPendingModal(sb,currentUser.id,nm);
+    }
+  }));
   host.querySelectorAll('[data-message-sender]').forEach(row=>{
     row.addEventListener('click',()=>{try{FluxMessaging.openThreadById(row.dataset.messageSender);}catch(_){}});
   });
   host.querySelectorAll('.teacher-class-card[data-class-id]').forEach(card=>{
     card.addEventListener('click',()=>openTeacherClassView(card.dataset.classId));
   });
+  try{
+    if(window.FluxTeacherDashV2?.wireMomentumCards)FluxTeacherDashV2.wireMomentumCards(host);
+  }catch(_){}
+  try{
+    if(window.FluxTeacherLiveClass?.wireResumeChip)FluxTeacherLiveClass.wireResumeChip(host);
+  }catch(_){}
+  try{
+    if(window.FluxTeacherWellness?.wire)FluxTeacherWellness.wire(host);
+  }catch(_){}
 }
 window.renderTeacherDashboard=renderTeacherDashboard;
 
@@ -15469,12 +15782,24 @@ window.resolveJoinRequest=resolveJoinRequest;
 
 function renderTeacherClassCard(cls){
   const assignmentCount=(cls.teacher_assignments||[]).length;
+  let momMeta='';
+  let rosterMeta='';
+  try{
+    if(window.FluxTeacherDashV2?.enabled?.()&&typeof FluxTeacherDashV2.formatClassMeta==='function'){
+      momMeta=FluxTeacherDashV2.formatClassMeta(cls.id)||'';
+    }
+  }catch(_){}
+  try{
+    if(window.FluxTeacherRosterV2?.enabled?.()&&typeof FluxTeacherRosterV2.formatClassCardMeta==='function'){
+      rosterMeta=FluxTeacherRosterV2.formatClassCardMeta(cls.id)||'';
+    }
+  }catch(_){}
   return `
     <button type="button" class="teacher-class-card" data-class-id="${esc(cls.id)}">
       <div class="class-color-stripe"></div>
       <div class="class-card-body">
         <div class="class-name">${esc(cls.class_name)}</div>
-        <div class="class-meta">${esc(cls.subject||'')}${fluxFormatTeacherClassSchedule(cls)?' · '+esc(fluxFormatTeacherClassSchedule(cls)):cls.period?' · Period '+esc(cls.period):''}</div>
+        <div class="class-meta">${esc(cls.subject||'')}${fluxFormatTeacherClassSchedule(cls)?' · '+esc(fluxFormatTeacherClassSchedule(cls)):cls.period?' · Period '+esc(cls.period):''}${momMeta}${rosterMeta}</div>
         <div class="class-stats">
           <span>${assignmentCount} assignment${assignmentCount===1?'':'s'}</span>
           <span class="class-code">Code: ${esc(cls.class_code)}</span>
@@ -15511,7 +15836,8 @@ function openAssignmentEdit(assignmentId){
 window.openAssignmentEdit=openAssignmentEdit;
 
 // ── Teacher class drill-down view ─────────────────────────────────
-async function openTeacherClassView(classId){
+async function openTeacherClassView(classId,options){
+  options=options||{};
   const sb=getSB();if(!sb||!currentUser)return;
   let cls=null;let assignments=[];let students=[];
   try{
@@ -15531,65 +15857,36 @@ async function openTeacherClassView(classId){
     return;
   }
 
-  const stuIds=students.map(s=>s.student_id);
+  let rosterStudents=students;
+  let rosterPending=[];
+  try{
+    if(window.FluxTeacherRosterV2?.enabled?.()){
+      rosterStudents=FluxTeacherRosterV2.filterStudentsForClass(students,cls);
+      rosterPending=await FluxTeacherRosterV2.loadPendingForClass(sb,currentUser.id,classId);
+    }
+  }catch(_){}
+  const stuIds=[
+    ...rosterStudents.map(s=>s.student_id),
+    ...rosterPending.map(r=>r.student_id),
+  ];
   const stuNameMap=await fluxFetchStudentNames(sb,stuIds);
 
-  const modal=document.createElement('div');
-  modal.id='teacherClassPanel';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;overflow-y:auto;backdrop-filter:blur(8px)';
-  modal.innerHTML=`
-    <div style="max-width:900px;margin:0 auto;padding:24px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button id="tcvBack" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--muted2);cursor:pointer">← Back</button>
-        <div>
-          <h2 style="font-size:1.3rem;font-weight:800">${esc(cls.class_name||'')}</h2>
-          <div style="font-size:.78rem;color:var(--muted2)">Code: <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:1.5px">${esc(cls.class_code||'')}</span> · ${students.length} student${students.length===1?'':'s'}</div>
-          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?'🕐 '+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
-        </div>
-        <button type="button" id="tcvEditSchedule" style="padding:8px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);cursor:pointer;font-size:.78rem;font-weight:700">Edit schedule</button>
-        <button id="tcvNewAsg" style="margin-left:auto" class="teacher-action-btn primary">+ Assignment</button>
-      </div>
-
-      <div class="class-tabs">
-        <button class="class-tab active" data-class-tab="assignments">Assignments (${assignments.length})</button>
-        <button class="class-tab" data-class-tab="students">Students (${students.length})</button>
-        <button class="class-tab" data-class-tab="grades">Grades</button>
-      </div>
-
-      <div id="classTab-assignments" class="class-tab-content">
-        ${assignments.length===0?'<div class="teacher-empty"><div class="te-icon">📝</div><div class="te-title">No assignments yet</div></div>':
-          assignments.map(a=>{
-            const subs=(a.student_completions||[]).filter(c=>c.status==='submitted'||c.status==='graded').length;
-            const denom=Math.max(students.length,1);
-            const pct=Math.round(subs/denom*100);
-            return`
-            <div class="class-assignment-row">
-              <div class="ca-type type-${esc(a.type||'homework')}">${esc(a.type||'task')}</div>
-              <div class="ca-info">
-                <div class="ca-title">${esc(a.title)}</div>
-                <div class="ca-meta">${a.due_date?'Due '+new Date(a.due_date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'No due date'} · ${esc(String(a.points_possible||0))} pts · ~${esc(String(a.estimated_minutes||30))}min</div>
-              </div>
-              <div class="ca-completions">
-                <div class="ca-comp-bar"><div class="ca-comp-fill" style="width:${pct}%"></div></div>
-                <div class="ca-comp-num">${subs}/${denom}</div>
-              </div>
-              <div style="display:flex;gap:6px">
-                <button class="ca-edit-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem">Edit</button>
-                <button class="ca-review-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem;background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.25);color:var(--accent)">Review</button>
-              </div>
-            </div>`;
-          }).join('')}
-      </div>
-
-      <div id="classTab-students" class="class-tab-content" style="display:none">
+  let studentsTabInner='';
+  try{
+    if(window.FluxTeacherRosterV2?.enabled?.()){
+      studentsTabInner=FluxTeacherRosterV2.renderStudentsTabHtml({cls,students:rosterStudents,pending:rosterPending,nameMap:stuNameMap});
+    }
+  }catch(_){}
+  if(!studentsTabInner){
+    studentsTabInner=`
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.2);border-radius:12px;padding:12px 16px;font-size:.82rem">
             <strong>Class Code:</strong> <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:800;color:var(--accent);letter-spacing:2px">${esc(cls.class_code||'')}</span>
             <div style="font-size:.72rem;color:var(--muted2);margin-top:2px">Share this with students to join your class</div>
           </div>
         </div>
-        ${students.length===0?'<div class="teacher-empty"><div class="te-icon">👥</div><div class="te-title">No students yet</div><div class="te-sub">Students join by entering your class code</div></div>':
-          students.map(s=>{
+        ${rosterStudents.length===0?'<div class="teacher-empty"><div class="te-icon">👥</div><div class="te-title">No students yet</div><div class="te-sub">Students join by entering your class code</div></div>':
+          rosterStudents.map(s=>{
             const meta=stuNameMap[s.student_id]||{};
             const dn=meta.display_name||('Student '+String(s.student_id).slice(0,6));
             return`
@@ -15601,7 +15898,68 @@ async function openTeacherClassView(classId){
               </div>
               <button class="tcv-msg-btn" data-stu="${esc(s.student_id)}" style="padding:5px 10px;font-size:.75rem">Message</button>
             </div>`;
+          }).join('')}`;
+  }
+
+  const modal=document.createElement('div');
+  modal.id='teacherClassPanel';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;overflow-y:auto;backdrop-filter:blur(8px)';
+  modal.innerHTML=`
+    <div style="max-width:900px;margin:0 auto;padding:24px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button id="tcvBack" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--muted2);cursor:pointer">← Back</button>
+        <div>
+          <h2 style="font-size:1.3rem;font-weight:800">${esc(cls.class_name||'')}</h2>
+          <div style="font-size:.78rem;color:var(--muted2)">Code: <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:1.5px">${esc(cls.class_code||'')}</span> · ${rosterStudents.length} student${rosterStudents.length===1?'':'s'}</div>
+          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?'🕐 '+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
+        </div>
+        <button type="button" id="tcvEditSchedule" style="padding:8px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);cursor:pointer;font-size:.78rem;font-weight:700">Edit schedule</button>
+        ${window.FluxTeacherLessonAI?.classButtonHtml?.(classId,cls.class_name,cls.subject)||''}
+        ${window.FluxTeacherCopilot?.classButtonHtml?.()||''}
+        ${window.FluxTeacherLiveClass?.startButtonHtml?.()||''}
+        <button id="tcvNewAsg" style="margin-left:auto" class="teacher-action-btn primary">+ Assignment</button>
+      </div>
+
+      <div class="class-tabs">
+        <button class="class-tab active" data-class-tab="assignments">Assignments (${assignments.length})</button>
+        <button class="class-tab" data-class-tab="students">Students (${rosterStudents.length+(window.FluxTeacherRosterV2?.enabled?.()?rosterPending.length:0)})</button>
+        <button class="class-tab" data-class-tab="grades">Grades</button>
+      </div>
+
+      <div id="classTab-assignments" class="class-tab-content">
+        ${assignments.length===0?'<div class="teacher-empty"><div class="te-icon">📝</div><div class="te-title">No assignments yet</div></div>':
+          assignments.map(a=>{
+            if(window.FluxTeacherAssignIntel?.remember)FluxTeacherAssignIntel.remember(a);
+            const intel=window.FluxTeacherAssignIntel?.resolveIntel?.(a);
+            const stepCount=intel?.scaffoldSteps?.length||0;
+            const frictionBadge=window.FluxTeacherAssignIntel?.badgeHtml?.(a)||'';
+            const scaffoldBtn=window.FluxTeacherAssignIntel?.scaffoldButtonHtml?.(a.id,stepCount)||'';
+            const subs=(a.student_completions||[]).filter(c=>c.status==='submitted'||c.status==='graded').length;
+            const denom=Math.max(students.length,1);
+            const pct=Math.round(subs/denom*100);
+            return`
+            <div class="class-assignment-row" data-asg-row="${esc(a.id)}">
+              <div class="ca-type type-${esc(a.type||'homework')}">${esc(a.type||'task')}</div>
+              <div class="ca-info">
+                <div class="ca-title">${esc(a.title)}${frictionBadge}</div>
+                <div class="ca-meta">${a.due_date?'Due '+new Date(a.due_date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'No due date'} · ${esc(String(a.points_possible||0))} pts · ~${esc(String(a.estimated_minutes||30))}min</div>
+              </div>
+              <div class="ca-completions">
+                <div class="ca-comp-bar"><div class="ca-comp-fill" style="width:${pct}%"></div></div>
+                <div class="ca-comp-num">${subs}/${denom}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                ${scaffoldBtn}
+                ${window.FluxAssignmentRecovery?.recoveryButtonHtml?.(a.id)||''}
+                <button class="ca-edit-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem">Edit</button>
+                <button class="ca-review-btn" data-asg="${esc(a.id)}" style="padding:5px 10px;font-size:.75rem;background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.25);color:var(--accent)">Review</button>
+              </div>
+            </div>`;
           }).join('')}
+      </div>
+
+      <div id="classTab-students" class="class-tab-content" style="display:none">
+        ${studentsTabInner}
       </div>
 
       <div id="classTab-grades" class="class-tab-content" style="display:none">
@@ -15649,6 +16007,44 @@ async function openTeacherClassView(classId){
   modal.querySelectorAll('.tcv-msg-btn').forEach(b=>b.addEventListener('click',()=>openMessageThread(b.dataset.stu)));
   modal.querySelectorAll('.ca-edit-btn').forEach(b=>b.addEventListener('click',()=>openAssignmentEdit(b.dataset.asg)));
   modal.querySelectorAll('.ca-review-btn').forEach(b=>b.addEventListener('click',()=>openSubmissionsView(b.dataset.asg)));
+  const asgTab=modal.querySelector('#classTab-assignments');
+  if(window.FluxTeacherAssignIntel?.wireAssignmentRows)FluxTeacherAssignIntel.wireAssignmentRows(asgTab);
+  asgTab?.querySelectorAll('[data-recovery-asg]').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const aid=btn.getAttribute('data-recovery-asg');
+      const asg=assignments.find(x=>x.id===aid);
+      if(asg&&window.FluxAssignmentRecovery?.openProposeForAssignment){
+        FluxAssignmentRecovery.openProposeForAssignment(sb,currentUser.id,asg,rosterStudents,stuNameMap);
+      }
+    });
+  });
+  const stuTab=modal.querySelector('#classTab-students');
+  if(window.FluxTeacherRosterV2?.wireStudentsTab)FluxTeacherRosterV2.wireStudentsTab(stuTab,{classId});
+  modal.querySelectorAll('[data-lesson-ai-class]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(window.FluxTeacherLessonAI?.open){
+        FluxTeacherLessonAI.open({
+          classId:btn.getAttribute('data-lesson-ai-class'),
+          className:btn.getAttribute('data-lesson-class-name')||cls.class_name,
+          subject:btn.getAttribute('data-lesson-subject')||cls.subject,
+        });
+      }
+    });
+  });
+  modal.querySelector('#tcvCopilot')?.addEventListener('click',()=>{
+    const ctx=window.FluxTeacherCopilot?.buildContextFromView?.({cls,assignments,rosterStudents,rosterPending});
+    if(window.FluxTeacherCopilot?.open)FluxTeacherCopilot.open(ctx||{classId});
+  });
+  modal.querySelector('#tcvStartClass')?.addEventListener('click',()=>{
+    if(window.FluxTeacherLiveClass?.open){
+      FluxTeacherLiveClass.open(FluxTeacherLiveClass.buildContextFromView({cls,assignments,rosterStudents,rosterPending}));
+    }
+  });
+  if(options.autoStartLive&&window.FluxTeacherLiveClass?.enabled?.()&&window.FluxTeacherLiveClass?.open){
+    FluxTeacherLiveClass.open(FluxTeacherLiveClass.buildContextFromView({cls,assignments,rosterStudents,rosterPending}));
+  }
 }
 window.openTeacherClassView=openTeacherClassView;
 
@@ -15670,8 +16066,10 @@ function renderJoinClassButton(){
   const btn=document.createElement('button');
   btn.id='joinClassBtn';
   btn.type='button';
-  btn.innerHTML='🔗 Join a Teacher Class';
-  btn.style.cssText='width:100%;padding:11px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;font-weight:600;cursor:pointer;margin:10px 0';
+  const v2Label=window.FluxTeacherRosterV2?.joinButtonHtml?.();
+  btn.innerHTML=v2Label||'🔗 Join a Teacher Class';
+  btn.className=v2Label?'flux-roster-join-btn-v2':'';
+  btn.style.cssText=v2Label?'': 'width:100%;padding:11px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;font-weight:600;cursor:pointer;margin:10px 0';
   btn.addEventListener('click',openJoinClassModal);
   // Place near top of the panel for discoverability.
   host.prepend(btn);
@@ -15686,7 +16084,7 @@ function openJoinClassModal(){
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:380px;box-shadow:var(--shadow-float)">
       <h3 style="font-size:1rem;font-weight:800;margin-bottom:6px">Join a Class</h3>
-      <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">Enter the 6-character code your teacher shared. Your class schedule fills in automatically.</p>
+      <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">${window.FluxTeacherRosterV2?.enabled?.()?'Enter your teacher\'s 6-character code. They will approve your request before you appear on the roster.':'Enter the 6-character code your teacher shared. Your class schedule fills in automatically.'}</p>
       <input id="classJoinCode" placeholder="e.g. ABC123" maxlength="6"
         style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:4px;color:var(--accent);text-transform:uppercase">
       <div class="mrow" style="margin-top:12px">
@@ -15716,11 +16114,7 @@ function openJoinClassModal(){
     try{
       const data=await fluxLookupClassByCode(sb,code);
       if(data){
-        let tName='Unknown';
-        try{
-          const {data:tr}=await sb.from('user_roles').select('display_name').eq('user_id',data.teacher_id).maybeSingle();
-          if(tr?.display_name)tName=tr.display_name;
-        }catch(_){}
+        const tName=data.teacher_display_name||'Teacher';
         let extra='';
         try{
           const {data:enr}=await sb.from('teacher_students')
@@ -15752,6 +16146,20 @@ async function submitJoinClass(){
   if(!sb||!u){setErr('Sign-in required');return;}
 
   try{
+    if(window.FluxTeacherRosterV2?.enabled?.()&&typeof FluxTeacherRosterV2.submitStudentJoinRequest==='function'){
+      const req=await FluxTeacherRosterV2.submitStudentJoinRequest(sb,u.id,code,note);
+      if(!req.ok){
+        if(req.error==='invalid_code')setErr('Class code not found. Check with your teacher.');
+        else if(req.error==='already_enrolled')setErr(`You are already in ${req.className||'this class'}.`);
+        else if(req.error==='pending_exists')setErr(`Your request to join ${req.className||'this class'} is already pending.`);
+        else setErr(req.message||'Could not send join request.');
+        return;
+      }
+      document.getElementById('joinClassModal')?.remove();
+      if(typeof showToast==='function')showToast(`Request sent for ${req.className||'class'} — your teacher will approve soon.`,'success');
+      return;
+    }
+
     const {data:joinRes,error:joinErr}=await sb.rpc('flux_join_teacher_class',{p_code:code});
     if(joinErr)throw joinErr;
     if(!joinRes?.ok){
@@ -15777,6 +16185,7 @@ async function submitJoinClass(){
     }
 
     document.getElementById('joinClassModal')?.remove();
+    try{if(typeof FluxBus!=='undefined')FluxBus.emit('class_joined',{class_code:joinRes.class_code,class_id:joinRes.class_id});}catch(_){}
     if(typeof showToast==='function')showToast(`Joined ${className} — your schedule was updated.`,'success');
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     try{loadTeacherAssignments();}catch(_){}
@@ -15979,7 +16388,7 @@ async function submitCreateAssignment(){
   if(!title||!classId){setErr('Title and class are required');return;}
 
   const {data:cls}=await sb.from('teacher_classes').select('class_code').eq('id',classId).eq('teacher_id',currentUser.id).maybeSingle();
-  const {error}=await sb.from('teacher_assignments').insert({
+  const draft={
     teacher_id:currentUser.id,
     class_id:classId,
     class_code:cls?.class_code||null,
@@ -15992,7 +16401,9 @@ async function submitCreateAssignment(){
     estimated_minutes:estMin,
     priority,
     visible:true,
-  });
+  };
+  const intelFields=window.FluxTeacherAssignIntel?.payloadFields?.(draft)||{};
+  const {error}=await sb.from('teacher_assignments').insert({...draft,...intelFields});
   if(error){setErr(error.message);return;}
   document.getElementById('createAsgnModal')?.remove();
   showToast(`✓ "${title}" posted to your class`);
@@ -16137,6 +16548,35 @@ async function renderCounselorDashboard(){
   const subjLine=(typeof FluxRole!=='undefined'&&FluxRole.profile&&FluxRole.profile.subject)
     ?String(FluxRole.profile.subject).trim():'';
 
+  let caseloadSectionHtml='';
+  let riskQueueSectionHtml='';
+  let _counselorCaseload=null;
+  let _counselorQueue=null;
+  try{
+    if(window.FluxCounselorCaseload?.enabled?.()&&typeof FluxCounselorCaseload.loadCaseload==='function'){
+      _counselorCaseload=await FluxCounselorCaseload.loadCaseload(sb,counselorRow.id);
+      if(typeof FluxCounselorCaseload.renderSection==='function'){
+        caseloadSectionHtml=FluxCounselorCaseload.renderSection(_counselorCaseload);
+      }
+    }
+    if(window.FluxCounselorRiskQueue?.enabled?.()&&_counselorCaseload&&typeof FluxCounselorRiskQueue.loadQueue==='function'){
+      _counselorQueue=await FluxCounselorRiskQueue.loadQueue(sb,counselorRow.id,_counselorCaseload);
+      if(typeof FluxCounselorRiskQueue.renderSection==='function'){
+        riskQueueSectionHtml=FluxCounselorRiskQueue.renderSection(_counselorQueue);
+      }
+    }
+    if(window.FluxCounselorCopilot?.setDashboardContext){
+      FluxCounselorCopilot.setDashboardContext({
+        counselorDbId:counselorRow.id,
+        caseload:_counselorCaseload,
+        queue:_counselorQueue,
+        todayApptCount:todayAppts.length,
+        upcomingApptCount:upcomingAppts.length,
+        unreadMessages:messages.length,
+      });
+    }
+  }catch(_){}
+
   host.innerHTML=`
     <div class="counselor-dashboard">
       <div class="teacher-header">
@@ -16145,6 +16585,7 @@ async function renderCounselorDashboard(){
           <div class="teacher-date">${subjLine?esc(subjLine)+' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
         <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">📅 Edit availability</button>
+        ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
 
       <div class="teacher-stats">
@@ -16161,6 +16602,14 @@ async function renderCounselorDashboard(){
           <div class="stat-label">Unread messages</div>
         </div>
       </div>
+
+      ${riskQueueSectionHtml}
+
+      ${window.FluxCounselorConsent?.enabled?.()&&_counselorCaseload&&window.FluxCounselorConsent.renderCounselorSummary
+        ?FluxCounselorConsent.renderCounselorSummary(_counselorCaseload)
+        :''}
+
+      ${caseloadSectionHtml}
 
       <div class="teacher-grid">
         <div class="teacher-section">
@@ -16202,6 +16651,15 @@ async function renderCounselorDashboard(){
   host.querySelectorAll('[data-message-sender]').forEach(row=>{
     row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
   });
+  try{
+    if(window.FluxCounselorCaseload?.wireCounselorSection)FluxCounselorCaseload.wireCounselorSection(host,sb);
+  }catch(_){}
+  try{
+    if(window.FluxCounselorRiskQueue?.wire)FluxCounselorRiskQueue.wire(host,sb);
+  }catch(_){}
+  host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
+    if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();
+  }));
 }
 window.renderCounselorDashboard=renderCounselorDashboard;
 
@@ -16218,11 +16676,13 @@ async function renderMyCounselorSection(){
   }
 
   let counselor=null;
+  let scLink=null;
   try{
     const {data:sc}=await sb.from('student_counselors')
-      .select('counselor_id,counselors(*)')
+      .select('counselor_id,insights_consent,consent_tier,counselors(*)')
       .eq('student_id',currentUser.id)
       .maybeSingle();
+    scLink=sc||null;
     counselor=sc?.counselors||null;
   }catch(_){}
 
@@ -16282,6 +16742,14 @@ async function renderMyCounselorSection(){
             ${a.status==='pending'?`<button type="button" class="btn-sec" style="padding:4px 8px;font-size:.68rem;flex-shrink:0" data-cancel-appt="${esc(a.id)}">Cancel</button>`:''}
           </div>`).join('')}
       `:'<div style="font-size:.78rem;color:var(--muted2)">No upcoming appointments</div>'}
+      ${window.FluxCounselorConsent?.enabled?.()&&window.FluxCounselorConsent.renderStudentPanel
+        ?FluxCounselorConsent.renderStudentPanel(String(scLink?.consent_tier||'none'),counselor.name,scLink?.consented_at)
+        :window.FluxCounselorCaseload?.consentCheckboxHtml?.(
+        !!(scLink&&scLink.insights_consent&&['basic','wellness'].includes(String(scLink.consent_tier||'none'))),
+        !!(scLink&&scLink.insights_consent&&String(scLink.consent_tier||'')==='wellness'),
+        counselor.name,
+        scLink?.consented_at
+      )||''}
     </div>`;
   host.querySelector('#bookApptBtn')?.addEventListener('click',()=>{
     if(typeof openBookAppointmentModal==='function')openBookAppointmentModal(counselor.id);
@@ -16293,6 +16761,10 @@ async function renderMyCounselorSection(){
   host.querySelectorAll('[data-cancel-appt]').forEach(btn=>{
     btn.addEventListener('click',()=>cancelCounselorAppointment(btn.getAttribute('data-cancel-appt')));
   });
+  try{
+    if(window.FluxCounselorCaseload?.wireStudentConsent&&counselor?.id)
+      FluxCounselorCaseload.wireStudentConsent(host,sb,currentUser.id,counselor.id);
+  }catch(_){}
 }
 window.renderMyCounselorSection=renderMyCounselorSection;
 
@@ -16722,6 +17194,9 @@ window.fluxEnsureThreadAndSend=fluxEnsureThreadAndSend;
 /** School-wide urgent / important banners (requires `school_announcements` migration). */
 async function checkForActiveAnnouncements(){
   if(!currentUser)return;
+  try{
+    if(window.FluxSchoolEmergency?.enabled?.()&&document.body.getAttribute('data-school-broadcast')==='emergency')return;
+  }catch(_){}
   const sb=getSB();
   if(!sb)return;
   let rows=[];
@@ -16796,7 +17271,15 @@ async function loadTeacherAssignments(){
       .gte('due_date',new Date().toISOString().slice(0,10));
     assignments=data||[];
   }catch(_){}
-  if(!assignments.length)return;
+  if(!assignments.length){
+    try{
+      if(window.FluxAssignmentRecovery?.attachApprovedPlansToTasks){
+        await FluxAssignmentRecovery.attachApprovedPlansToTasks(sb,currentUser.id,tasks);
+        save('tasks',tasks);
+      }
+    }catch(_){}
+    return;
+  }
 
   let added=0;
   assignments.forEach(ta=>{
@@ -16818,10 +17301,17 @@ async function loadTeacherAssignments(){
     });
     added++;
   });
+  try{
+    if(window.FluxAssignmentRecovery?.attachApprovedPlansToTasks){
+      await FluxAssignmentRecovery.attachApprovedPlansToTasks(sb,currentUser.id,tasks);
+    }
+  }catch(_){}
   if(added){
     save('tasks',tasks);
     try{renderTasks();}catch(_){}
     try{renderCalendar();}catch(_){}
+  } else {
+    try{save('tasks',tasks);}catch(_){}
   }
 }
 window.loadTeacherAssignments=loadTeacherAssignments;

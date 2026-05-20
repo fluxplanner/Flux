@@ -1,0 +1,88 @@
+/* P5-COMMAND — school command center (enable_school_command) */
+
+.flux-school-command {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.06), transparent);
+}
+
+.flux-school-command-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.flux-school-command-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-school-command-hint {
+  font-size: 0.65rem;
+  color: var(--muted2);
+}
+
+.flux-school-command-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.flux-school-command-group {
+  margin-bottom: 14px;
+}
+
+.flux-school-command-group-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+
+.flux-school-command-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  text-align: center;
+}
+
+.flux-school-command-card--alert {
+  border-color: rgba(245, 166, 35, 0.4);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.flux-school-command-n {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.2;
+}
+
+.flux-school-command-l {
+  font-size: 0.62rem;
+  color: var(--muted2);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.flux-school-command-foot {
+  margin: 12px 0 0;
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.flux-school-command-err {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  padding: 12px;
+}

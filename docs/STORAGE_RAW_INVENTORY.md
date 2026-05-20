@@ -224,9 +224,28 @@ These paths **stay** on raw **`localStorage`** (or head **`getItem`**) by design
 | **`public/js/core/storage.js`** | When **`window.FluxStorage`** is absent, **`nsKey` + `localStorage`** fallback (tests / load order). |
 | **`public/js/core/debug.js`** · **`initFluxDebug` in `app.js` (legacy)** | Same unprefixed debug **`lsGet`** rule when **`debug.js`** not loaded. |
 
+## Wave 22 (2026-05-19) — P1-STORAGE platform keys
+
+| File | Change |
+|------|--------|
+| `public/js/flux-storage-keys.js` | **New** — key registry, global prefix list, `auditStragglers()`, `FluxStorageKeys` |
+| `public/js/flux-feature-flags.js` | Per-user cache key + `userId` in blob; **`FluxStorage`** read/write; clear on user mismatch |
+| `public/js/app.js` | Global prefixes `flux_staff_mode_`, `flux_feature_flags_cache_v1`; **`FluxFeatureFlags.clear()`** on sign-out + account switch |
+| `index.html` | Load `flux-storage-keys.js` before `app.js` |
+| `docs/P1-STORAGE.md` | Step guide |
+
+**Phase 1 platform keys (use `load`/`save` or `FluxStorage`):**
+
+| Key | Scope |
+|-----|--------|
+| `flux_feature_flags_cache_v1_<userId>` | Auth user flag cache |
+| `flux_staff_mode_<userId>` | Educator work/personal toggle |
+| `flux_events` (localStorage) | Calendar events (not `flux_product_events` DB table) |
+
 ## Migration plan (incremental)
 
 1. Classify each raw access: *must stay global* (e.g. `sb-*`), *must use load/save*, *bug*.  
 2. Fix highest-risk paths first (tokens, AI connections, Canvas, account switch).  
 3. Add `FluxDebug.traceStorage` when `FLUX_DEBUG_STORAGE=1` or `flux_debug=on` to catch stragglers.  
-4. ~~Document intentional raw **`localStorage`** exceptions (see **“Intentional raw `localStorage`”** above).~~
+4. ~~Document intentional raw **`localStorage`** exceptions (see **“Intentional raw `localStorage`”** above).~~  
+5. New modules: register keys in **`FluxStorageKeys`** + run **`auditStragglers()`** before release.

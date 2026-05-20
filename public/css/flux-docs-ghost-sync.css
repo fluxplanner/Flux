@@ -1,0 +1,73 @@
+/* P6-DOCS — Docs ↔ Ghost draft sync (enable_docs_ghost_sync) */
+
+.flux-docs-ghost-bar {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border2);
+}
+
+.flux-docs-ghost-label {
+  display: block;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.flux-docs-ghost-link {
+  font-size: 0.65rem;
+  color: var(--accent);
+  word-break: break-all;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.flux-docs-ghost-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.flux-docs-ghost-actions button {
+  padding: 4px 8px;
+  font-size: 0.62rem;
+  border-radius: 6px;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.flux-docs-ghost-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.flux-docs-ghost-meta {
+  font-size: 0.58rem;
+  color: var(--muted2);
+  margin-top: 5px;
+}
+
+.flux-docs-ghost-hub {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.flux-docs-ghost-hub h4 {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+}
+
+.flux-docs-ghost-hub p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--muted2);
+  line-height: 1.45;
+}

@@ -271,13 +271,24 @@
   }
 
   function hubTabsList() {
-    return [
+    const tabs = [
       { id: 'tasks', label: 'Tasks', icon: '✅' },
       { id: 'calendar', label: 'Calendar', icon: '📅' },
       { id: 'gmail', label: 'Gmail', icon: '📧' },
       { id: 'docs', label: 'Docs', icon: '📄' },
-      { id: 'canvas', label: 'Canvas', icon: '🎓' },
     ];
+    try {
+      if (window.FluxClassroomSync?.enabled?.()) {
+        tabs.push({ id: 'classroom', label: 'Classroom', icon: '🏫' });
+      }
+    } catch (_) {}
+    try {
+      if (window.FluxDriveImport?.enabled?.()) {
+        tabs.push({ id: 'drive', label: 'Drive', icon: '📂' });
+      }
+    } catch (_) {}
+    tabs.push({ id: 'canvas', label: 'Canvas', icon: '🎓' });
+    return tabs;
   }
 
   async function syncCalendar() {
@@ -329,6 +340,7 @@
         <textarea id="gHubDocsPush" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…" style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;width:100%"></textarea>
         <button type="button" style="margin-top:8px" onclick="FluxGoogle.pushDocsFromHub()">Replace doc body</button>
       </div>
+      ${window.FluxDocsGhostSync?.enabled?.() && typeof FluxDocsGhostSync.hubExtraHtml === 'function' ? FluxDocsGhostSync.hubExtraHtml() : ''}
     </div>`;
   }
 
@@ -379,11 +391,21 @@
         <div id="canvasGmailList" class="g-hub-gmail-list"></div>
       </div>
       <div id="gHubDocsSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'docs' ? '' : 'style="display:none"'}></div>
+      <div id="gHubClassroomSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'classroom' ? '' : 'style="display:none"'}></div>
+      <div id="gHubDriveSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'drive' ? '' : 'style="display:none"'}></div>
       <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
     </div>`;
 
     if (tab === 'canvas') {
       if (typeof window.__fluxRenderCanvasPanelCore === 'function') window.__fluxRenderCanvasPanelCore();
+    } else if (tab === 'drive') {
+      if (window.FluxDriveImport && typeof FluxDriveImport.render === 'function') {
+        FluxDriveImport.render(document.getElementById('gHubDriveSlot'));
+      }
+    } else if (tab === 'classroom') {
+      if (window.FluxClassroomSync && typeof FluxClassroomSync.render === 'function') {
+        FluxClassroomSync.render(document.getElementById('gHubClassroomSlot'));
+      }
     } else if (tab === 'gmail') {
       if (typeof loadGmail === 'function') void loadGmail();
     } else if (tab === 'tasks') {

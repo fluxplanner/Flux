@@ -1,0 +1,94 @@
+/* P5-DISTRICT — district rollup (enable_district_rollup) */
+
+.flux-district-rollup {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+}
+
+.flux-district-rollup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.flux-district-rollup-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-district-rollup-hint {
+  font-size: 0.65rem;
+  color: var(--muted2);
+}
+
+.flux-district-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.flux-district-total {
+  flex: 1;
+  min-width: 90px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  text-align: center;
+}
+
+.flux-district-total-n {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-district-total-l {
+  font-size: 0.6rem;
+  color: var(--muted2);
+  margin-top: 4px;
+}
+
+.flux-district-table-wrap {
+  overflow-x: auto;
+}
+
+.flux-district-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.flux-district-table th,
+.flux-district-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border2);
+}
+
+.flux-district-table th {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted2);
+}
+
+.flux-district-rollup-err {
+  font-size: 0.78rem;
+  color: var(--muted2);
+}
+
+.flux-district-rollup-foot {
+  margin: 10px 0 0;
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-style: italic;
+}

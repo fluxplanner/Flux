@@ -35,10 +35,11 @@
 | Area | Owner | Notes |
 |------|--------|------|
 | Panel routing / visibility | `nav()` in `public/js/app.js` | `logicalId`, educator remap, **`assertRoleAccess`** after remap, `fns` dispatch |
-| Role UX | `FluxRole` + `applyRoleUI()` + `updateModeSwitchUI()` + **`assertRoleAccess()`** (UX only; RLS authoritative) |
+| Role UX | `FluxRole` + `applyRoleUI()` + **`flux-role-routing.js`** + **`assertRoleAccess()`** | UX only; RLS authoritative |
 | Impersonation | `FluxImpersonate` + `fluxNamespacedKey` / `load` / `save` | Sync short-circuit elsewhere |
-| Storage (planner) | `load` / `save` via `fluxNamespacedKey`; **`window.FluxStorage`** | ESM: `public/js/core/storage.js` delegates when **`FluxStorage`** is set |
-| Events | `FluxBus` + `flux-nav` `CustomEvent` | Not interchangeable |
+| Storage (planner) | `load` / `save` + **`flux-storage-keys.js`** + **`FluxStorage`** | `core/storage.js` delegates |
+| Feature flags | **`flux-feature-flags.js`** + Supabase RPC | `enable_event_bus` default off |
+| Events | **`FluxBus`** (UI) · **`flux-event-bus.js`** + **`flux-telemetry.js`** (persist, gated) · `flux-nav` | Persist ≠ bus-only |
 | AI | `app.js` (chats) + `flux-ai-*.js` | Multiple listeners — order-sensitive |
 | Canvas | `flux-canvas-panel.js` + `nav('canvas')` | Split layout interacts with `.panel` CSS |
 | Staff / educator UI | `flux-staff-platform.js`, `flux-staff-tabs.js`, `flux-educator-platform-extras.js` | Fragmentation risk |
@@ -51,7 +52,7 @@
 1. **Dual storage paths:** raw `localStorage` in many modules bypasses impersonation prefix (see `docs/STORAGE_RAW_INVENTORY.md`).
 2. **Multiple writers to “active” UI:** `nav()` vs tab internals vs CSS `!important` (see `ARCHITECTURE_AUDIT.md` + V2).
 3. **Empty / stub UI hooks:** e.g. `renderSmartSug()`, `renderSidebarMiniStats()` in `app.js`.
-4. **RLS:** `user_roles` educator-wide SELECT policy may allow enumeration — verify live DB (`docs/RLS_AUDIT.md`).
+4. **RLS:** `user_roles` / `teacher_classes` tightened in migrations through `20260524130000` — run manual checklist (`docs/P1-RLS-VERIFICATION.md`).
 5. **Duplicate extensions:** `chrome-extension/` vs `flux-extension/` — audit only; no removal in this checkpoint.
 6. **Next.js shell (`web/`):** parallel product surface; not the root SPA authority.
 
@@ -487,3 +488,21 @@
 | `docs/RLS_AUDIT.md` | Scope note: paste file kept in sync |
 
 **Rollback:** revert **`PASTE-INTO-SUPABASE.sql`** + **`docs/RLS_AUDIT.md`** from this wave.
+
+---
+
+## Phase 1 platform foundation (2026-05-19)
+
+**Index:** `docs/PHASE_1_CLOSEOUT.md`
+
+| Deliverable | Modules / docs |
+|-------------|----------------|
+| RLS + class isolation | Migrations `20260523120000`, `20260524130000`; `docs/P1-RLS-VERIFICATION.md` |
+| School join | `flux-school-registry.js` |
+| Staff Google | `flux-google-hub.js` |
+| Feature flags | `flux-feature-flags.js`, `20260524120000` |
+| Event bus + telemetry | `flux-event-bus.js`, `flux-telemetry.js`, `docs/TELEMETRY_SCHEMA.md` |
+| Role routing | `flux-role-routing.js` |
+| Storage registry | `flux-storage-keys.js`, inventory Wave 22 |
+
+**Remaining before Phase 2:** manual pass of `docs/QA_MATRIX.md` (all sections).

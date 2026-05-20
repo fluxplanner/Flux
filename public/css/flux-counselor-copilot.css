@@ -1,0 +1,263 @@
+/* P4-COUNSELOR-AI — counselor caseload AI panel (enable_counselor_copilot) */
+
+.flux-ccopilot-fab {
+  position: fixed;
+  bottom: 88px;
+  right: 20px;
+  z-index: 590;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--purple-rgb, 139, 92, 246), 0.15));
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.flux-ccopilot-fab:hover {
+  border-color: var(--accent);
+}
+
+body.flux-ccopilot-open .flux-ccopilot-fab {
+  display: none;
+}
+
+.flux-ccopilot-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 640;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+body.flux-ccopilot-open .flux-ccopilot-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.flux-ccopilot-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 645;
+  width: min(420px, 100vw);
+  height: 100%;
+  background: var(--card);
+  border-left: 1px solid var(--border2);
+  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+
+body.flux-ccopilot-open .flux-ccopilot-panel {
+  transform: translateX(0);
+}
+
+.flux-ccopilot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.flux-ccopilot-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-ccopilot-sub {
+  margin: 4px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+
+.flux-ccopilot-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.flux-ccopilot-scope {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.flux-ccopilot-scope label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted2);
+  margin-bottom: 6px;
+}
+
+.flux-ccopilot-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.flux-ccopilot-context {
+  margin-top: 8px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.flux-ccopilot-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.flux-ccopilot-chip {
+  padding: 5px 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.flux-ccopilot-chip:hover {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
+}
+
+.flux-ccopilot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flux-ccopilot-msg {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.flux-ccopilot-msg--user {
+  align-self: flex-end;
+  background: rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  color: var(--text);
+}
+
+.flux-ccopilot-msg--bot {
+  align-self: flex-start;
+  background: var(--card2);
+  border: 1px solid var(--border);
+}
+
+.flux-ccopilot-msg--bot p {
+  margin: 0 0 8px;
+}
+
+.flux-ccopilot-msg--bot p:last-child {
+  margin-bottom: 0;
+}
+
+.flux-ccopilot-thinking {
+  display: flex;
+  gap: 5px;
+  padding: 12px;
+}
+
+.flux-ccopilot-thinking span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: flux-ccopilot-pulse 1s ease-in-out infinite;
+}
+
+.flux-ccopilot-thinking span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.flux-ccopilot-thinking span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes flux-ccopilot-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.flux-ccopilot-compose {
+  padding: 12px 16px 20px;
+  border-top: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.flux-ccopilot-input {
+  width: 100%;
+  min-height: 72px;
+  resize: none;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  font-size: 0.82rem;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+.flux-ccopilot-send {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #0a0d18;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.flux-ccopilot-send:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.flux-ccopilot-foot {
+  margin: 6px 0 0;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-align: center;
+}

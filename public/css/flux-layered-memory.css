@@ -1,0 +1,30 @@
+/* P7-MEMORY — settings memory panel */
+#fluxLayeredMemoryMount {
+  display: none;
+}
+.flux-memory-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.flux-memory-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card2, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border2, rgba(255, 255, 255, 0.06));
+}
+.flux-memory-row span {
+  color: var(--muted2, #9ca3af);
+}
+.flux-memory-hint {
+  font-size: 0.72rem;
+  color: var(--muted, #6b7280);
+  line-height: 1.5;
+  margin: 10px 0 0;
+}

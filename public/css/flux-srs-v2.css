@@ -1,0 +1,70 @@
+/* P2-SRS — spaced repetition v2 (enable_srs_v2) */
+
+.task-item.srs-review,
+.task-item.flux-srs-review--today {
+  border-left-color: rgba(var(--accent-rgb), 0.45) !important;
+}
+
+.task-item.flux-srs-review--overdue {
+  border-left-color: rgba(244, 63, 94, 0.55) !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.12);
+}
+
+.flux-srs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.flux-srs-badge--pending {
+  color: var(--muted2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.flux-srs-badge--today {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+}
+
+.flux-srs-badge--soon {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.flux-srs-badge--overdue {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.flux-srs-badge--upcoming {
+  color: var(--muted2);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.flux-srs-due-chip {
+  margin-left: 8px;
+  padding: 5px 11px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flux-srs-due-chip:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+}

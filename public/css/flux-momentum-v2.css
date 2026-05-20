@@ -1,0 +1,42 @@
+/* Momentum v2 — multi-domain topbar pill (enable_momentum_v2) */
+#momentumPill.flux-momentum-v2-pill {
+  gap: 8px;
+  padding: 4px 10px 4px 8px;
+}
+
+#momentumPill .flux-mv2-score {
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#momentumPill .flux-mv2-domains {
+  display: inline-flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 14px;
+}
+
+#momentumPill .flux-mv2-bar {
+  display: inline-block;
+  width: 4px;
+  height: var(--mv2-p, 0%);
+  min-height: 2px;
+  max-height: 14px;
+  border-radius: 2px;
+  background: var(--muted2);
+  opacity: 0.85;
+}
+
+#momentumPill .flux-mv2-task {
+  background: #3b82f6;
+}
+#momentumPill .flux-mv2-academic {
+  background: #10d9a0;
+}
+#momentumPill .flux-mv2-emotional {
+  background: #fbbf24;
+}
+#momentumPill .flux-mv2-recovery {
+  background: #a78bfa;
+}

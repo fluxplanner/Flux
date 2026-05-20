@@ -1,0 +1,123 @@
+/* P4-TIMELINE — counselor wellness timeline (enable_counselor_wellness_timeline) */
+
+.flux-wtl-modal .edu-modal-panel {
+  max-width: 520px;
+  width: min(96vw, 520px);
+}
+
+.flux-wtl-head {
+  margin-bottom: 16px;
+}
+
+.flux-wtl-head h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.flux-wtl-sub {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.4;
+}
+
+.flux-wtl-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 72px;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.flux-wtl-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.flux-wtl-bar {
+  width: 100%;
+  max-width: 14px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--accent), rgba(var(--accent-rgb), 0.35));
+  min-height: 4px;
+}
+
+.flux-wtl-bar-label {
+  font-size: 0.55rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-wtl-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.flux-wtl-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.78rem;
+}
+
+.flux-wtl-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+
+.flux-wtl-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted2);
+}
+
+.flux-wtl-metric strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.flux-wtl-mood {
+  font-size: 1.1rem;
+}
+
+.flux-wtl-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted2);
+  font-size: 0.82rem;
+}
+
+.flux-caseload-timeline-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 8px;
+  font-size: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.flux-caseload-consent-box + .flux-caseload-consent-box {
+  margin-top: 10px;
+}

@@ -6,18 +6,22 @@
   'use strict';
 
   async function storeMemory(type, key, value) {
+    if (window.FluxLayeredMemory && FluxLayeredMemory.enabled && FluxLayeredMemory.enabled()) {
+      return FluxLayeredMemory.storeLongTerm(type, key, value);
+    }
     if (typeof getSB !== 'function' || typeof currentUser === 'undefined' || !currentUser) return;
     try {
       var sb = getSB();
       await sb.from('flux_user_memory').upsert(
         {
           user_id: currentUser.id,
+          layer: 'longterm',
           type: type,
           key: key,
           value: value,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: 'user_id,type,key' }
+        { onConflict: 'user_id,layer,type,key' }
       );
     } catch (e) {
       console.warn('[FluxAICore] storeMemory', e);
@@ -25,6 +29,10 @@
   }
 
   function afterExchange(userMsg, aiMsg) {
+    if (window.FluxLayeredMemory && FluxLayeredMemory.enabled && FluxLayeredMemory.enabled()) {
+      FluxLayeredMemory.afterExchange(userMsg, aiMsg);
+      return;
+    }
     var u = String(userMsg || '');
     var low = u.toLowerCase();
     if (/i struggle|hard for me|confused about|don't understand/i.test(low)) {

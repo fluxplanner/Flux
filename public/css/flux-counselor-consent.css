@@ -1,0 +1,177 @@
+/* P4-CONSENT — counselor visibility tiers (enable_counselor_consent_flows) */
+
+.flux-consent-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+}
+
+.flux-consent-panel h4 {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.flux-consent-intro {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.flux-consent-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flux-consent-tier {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.flux-consent-tier:hover {
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.flux-consent-tier.is-active {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.flux-consent-tier-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.flux-consent-tier-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.flux-consent-tier-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.flux-consent-tier.is-active .flux-consent-tier-radio {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 5px var(--accent);
+}
+
+.flux-consent-tier-desc {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  line-height: 1.4;
+}
+
+.flux-consent-tier-includes {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.flux-consent-tier-includes li::before {
+  content: '· ';
+}
+
+.flux-consent-revoke {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.flux-consent-status {
+  margin-top: 10px;
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-consent-summary {
+  margin-bottom: 20px;
+}
+
+.flux-consent-summary h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.flux-consent-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.flux-consent-summary-table th,
+.flux-consent-summary-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border2);
+}
+
+.flux-consent-summary-table th {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted2);
+}
+
+.flux-consent-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flux-consent-badge--none {
+  background: var(--card2);
+  color: var(--muted2);
+}
+
+.flux-consent-badge--basic {
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+.flux-consent-badge--wellness {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.flux-consent-card-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted2);
+}

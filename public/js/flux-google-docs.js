@@ -349,5 +349,30 @@
     window.fluxGoogleDocsLoadSettingsUI = fluxGoogleDocsLoadSettingsUI;
     window.fluxRefreshGoogleDocsContextForAI = fluxRefreshGoogleDocsContextForAI;
     window.fluxGoogleDocsScopeCached = fluxGoogleDocsScopeCached;
+    window.FluxGoogleDocs = {
+      extractId: extractGoogleDocId,
+      docJsonToPlain,
+      getPlainText: async function (documentId) {
+        const doc = await apiGetDocument(documentId);
+        return docJsonToPlain(doc).trim();
+      },
+      replaceBody: replaceEntireBodyText,
+      createDocument,
+      getPrimaryUrl: function () {
+        try {
+          return load(LS_PRIMARY_URL, '') || '';
+        } catch (e) {
+          return '';
+        }
+      },
+      setPrimaryUrl: function (url) {
+        try {
+          save(LS_PRIMARY_URL, url || '');
+        } catch (e) {}
+      },
+      docUrl: function (documentId) {
+        return documentId ? 'https://docs.google.com/document/d/' + documentId + '/edit' : '';
+      },
+    };
   } catch (e) {}
 })();

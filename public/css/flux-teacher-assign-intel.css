@@ -1,0 +1,121 @@
+/* P3-ASSIGN-INTEL — teacher assignment friction + scaffold (enable_teacher_assign_intel) */
+
+.flux-tassign-friction {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.flux-tassign-friction--warning {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+}
+
+.flux-tassign-friction--aged {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.flux-tassign-friction--severe {
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.32);
+}
+
+.flux-tassign-scaffold-btn {
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--purple-rgb, 139, 92, 246), 0.35);
+  background: rgba(var(--purple-rgb, 139, 92, 246), 0.1);
+  color: var(--purple);
+  cursor: pointer;
+}
+
+.flux-tassign-scaffold-btn:hover {
+  background: rgba(var(--purple-rgb, 139, 92, 246), 0.18);
+}
+
+.flux-tassign-intel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+.flux-tassign-intel-card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  max-width: 480px;
+  width: 100%;
+  padding: 20px 22px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.flux-tassign-intel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.flux-tassign-intel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-tassign-intel-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.flux-tassign-intel-sub {
+  margin: 0 0 12px;
+  font-size: 0.72rem;
+  color: var(--muted2);
+}
+
+.flux-tassign-scaffold-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.flux-tassign-step-label {
+  display: inline;
+}
+
+.flux-tassign-step-est {
+  margin-left: 8px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-tassign-intel-foot {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+}

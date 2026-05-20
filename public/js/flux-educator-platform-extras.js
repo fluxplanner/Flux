@@ -209,6 +209,42 @@
       profile?.display_name ||
       currentUser?.user_metadata?.full_name ||
       'Administrator';
+    let schoolCommandHtml = '';
+    try {
+      if (window.FluxSchoolCommand?.enabled?.() && typeof FluxSchoolCommand.loadMetrics === 'function') {
+        const cmdMetrics = await FluxSchoolCommand.loadMetrics(client);
+        if (typeof FluxSchoolCommand.renderSection === 'function') {
+          schoolCommandHtml = FluxSchoolCommand.renderSection(cmdMetrics);
+        }
+      }
+    } catch (e) {
+      console.warn('[FluxSchoolCommand]', e);
+    }
+
+    let districtRollupHtml = '';
+    try {
+      if (window.FluxDistrictRollup?.enabled?.() && typeof FluxDistrictRollup.loadRollup === 'function') {
+        const rollup = await FluxDistrictRollup.loadRollup(client);
+        if (typeof FluxDistrictRollup.renderSection === 'function') {
+          districtRollupHtml = FluxDistrictRollup.renderSection(rollup);
+        }
+      }
+    } catch (e) {
+      console.warn('[FluxDistrictRollup]', e);
+    }
+
+    let schoolOpsHtml = '';
+    try {
+      if (window.FluxSchoolOps?.enabled?.() && typeof FluxSchoolOps.loadForecast === 'function') {
+        const opsFc = await FluxSchoolOps.loadForecast(client);
+        if (typeof FluxSchoolOps.renderSection === 'function') {
+          schoolOpsHtml = FluxSchoolOps.renderSection(opsFc, { compact: true });
+        }
+      }
+    } catch (e) {
+      console.warn('[FluxSchoolOps]', e);
+    }
+
     const last = name.split(' ').slice(-1)[0];
     el.innerHTML = `
   <div class="edu-dash-root">
@@ -237,6 +273,9 @@
       <div class="asb-stat ${meetingRequests.length > 0 ? 'alert' : ''}"><div class="asb-n">${meetingRequests.length}</div><div class="asb-l">Meeting Requests</div></div>
       <div class="asb-stat"><div class="asb-n">${appointments.filter((a) => a.status === 'pending').length}</div><div class="asb-l">Pending Appts</div></div>
     </div>
+    ${schoolCommandHtml}
+    ${districtRollupHtml}
+    ${schoolOpsHtml}
     ${
       meetingRequests.length > 0
         ? `
@@ -672,6 +711,7 @@
   window.submitAnnouncement = submitAnnouncement;
 
   function openEmergencyAlertModal() {
+    if (window.FluxSchoolEmergency?.openEmergencyAlertModal?.()) return;
     const modal = document.createElement('div');
     modal.id = 'fluxEmergencyAlertRoot';
     modal.style.cssText =

@@ -1,9 +1,9 @@
 # Flux Planner — Architecture audit **V2**
 
-**Date:** 2026-05-17  
+**Date:** 2026-05-17 (Phase 1 module sync: 2026-05-19)  
 **Supersedes:** Nothing — extends `ARCHITECTURE_AUDIT.md` (Phase 1) with **V2 scope**: all 27 areas, explicit migration plans, links to new artifacts.
 
-**Related:** `docs/stabilization-checkpoint.md`, `docs/RLS_AUDIT.md`, `docs/STORAGE_RAW_INVENTORY.md`, `public/js/core/debug.js`
+**Related:** `docs/PHASE_1_CLOSEOUT.md`, `docs/stabilization-checkpoint.md`, `docs/RLS_AUDIT.md`, `docs/STORAGE_RAW_INVENTORY.md`, `docs/TELEMETRY_SCHEMA.md`, `public/js/core/debug.js`
 
 ---
 
@@ -29,10 +29,10 @@
 
 | | |
 |--|--|
-| **Canonical** | `FluxRole` (`load`, `setMode`, predicates) + `applyRoleUI()` + **`assertRoleAccess(panelId)`** in `app.js` (called from `nav()` after remaps) |
+| **Canonical** | `FluxRole` + `applyRoleUI()` + **`public/js/flux-role-routing.js`** (`FluxRoleRouting.check`, `remapNavTarget`) invoked from **`assertRoleAccess`** / **`nav()`** |
 | **Duplicate** | `window._userRole`, `getMyRole()` for owner/dev |
 | **Risks** | Client gating ≠ security; synthetic impersonation profile vs DB |
-| **Migration** | Optional: call `assertRoleAccess` from heavy `render*` entry points only if leaks reappear — prefer single `nav()` gate |
+| **Migration** | **P1-ROLE-ROUTING done** — extend `flux-role-routing.js` for new panels; avoid second gate in `app.js` |
 
 ---
 
@@ -51,10 +51,10 @@
 
 | | |
 |--|--|
-| **Canonical** | `load` / `save` + `fluxNamespacedKey` + `FLUX_IMPERSONATION_GLOBAL_KEYS` / prefix allowlist |
-| **Duplicate** | `core/storage.js` blob; raw `localStorage` (~100+ in `app.js` alone) |
+| **Canonical** | `load` / `save` + `fluxNamespacedKey` + **`public/js/flux-storage-keys.js`** (`FluxStorageKeys`) + `window.FluxStorage` |
+| **Duplicate** | `core/storage.js` blob; intentional raw `localStorage` (see inventory appendix) |
 | **Risks** | Impersonation leakage; split-brain keys |
-| **Migration** | `docs/STORAGE_RAW_INVENTORY.md` → per-file routing; `FluxDebug.traceStorage` |
+| **Migration** | **P1-STORAGE done** — new keys register in `FluxStorageKeys`; waves in `docs/STORAGE_RAW_INVENTORY.md` |
 
 ---
 
@@ -83,9 +83,10 @@
 
 | | |
 |--|--|
-| **Canonical** | `FluxBus` (`on`/`off`/`emit`); `flux-nav` `CustomEvent` for routing only |
-| **Risks** | `task_completed` handled in multiple modules |
-| **Migration** | Phase 11: document emitters; dev-only duplicate listener warn (extend `FluxDebug`) |
+| **Canonical** | `FluxBus` (in-app UI); optional persist via **`flux-event-bus.js`** + **`flux-telemetry.js`** → `flux_product_events` (flag `enable_event_bus`) |
+| **Secondary** | `flux-nav` `CustomEvent` for routing only — **not** persisted |
+| **Risks** | `task_completed` handled in multiple modules; PII in payloads if normalizers bypassed |
+| **Migration** | **P1-EVENTS + P1-TELEMETRY done** — add events only via `FluxTelemetry.CATALOG`; processors remain **P7** |
 
 ---
 
@@ -252,9 +253,9 @@
 
 | | |
 |--|--|
-| **Canonical** | `FLUX_FLAGS` in `app.js`; payments toggles |
-| **New** | `window.FLUX_EXPERIMENTS` in `public/js/core/debug.js` (mutable object, default false) |
-| **Migration** | Risky work behind `FLUX_EXPERIMENTS.*` |
+| **Canonical** | **`flux-feature-flags.js`** + DB `flux_resolve_feature_flags` (migration `20260524120000`); `FLUX_FLAGS` in `app.js` for payments |
+| **Dev overrides** | `window.FLUX_EXPERIMENTS` in `public/js/core/debug.js` |
+| **Migration** | New product flags → SQL seed + `FluxFeatureFlags.defaults()` + QA matrix row |
 
 ---
 
@@ -292,3 +293,4 @@
 |------|--------|
 | 2026-05-17 | Initial V2: full 27-area map + links to checkpoint, RLS audit, storage inventory, debug core |
 | 2026-05-17 | Phase 6: `assertRoleAccess(panelId)` documented under Area 2; **`nav()`** invokes gate after `logicalId` remap |
+| 2026-05-19 | **Phase 1 closeout:** Areas 2, 4, 7, 24 updated for `flux-role-routing`, `flux-storage-keys`, `flux-telemetry`, `flux-event-bus`, `flux-feature-flags`; see `docs/PHASE_1_CLOSEOUT.md` |

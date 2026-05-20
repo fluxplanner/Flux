@@ -1,0 +1,82 @@
+/* P7-PARENT — parent portal */
+#parentPortal.flux-page .flux-page-sub {
+  max-width: 52ch;
+}
+.flux-parent-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border2, rgba(255, 255, 255, 0.08));
+  background: var(--card, rgba(0, 0, 0, 0.2));
+  margin-bottom: 14px;
+}
+.flux-parent-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.flux-parent-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.flux-parent-muted {
+  font-size: 0.78rem;
+  color: var(--muted2, #9ca3af);
+  line-height: 1.55;
+  margin: 0 0 10px;
+}
+.flux-parent-claim-row,
+.flux-parent-student-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.flux-parent-claim-row input,
+.flux-parent-student-actions input {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+}
+.flux-parent-tier-select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.flux-parent-invite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border2);
+}
+.flux-parent-invite-list {
+  margin-top: 12px;
+}
+.flux-parent-table-wrap {
+  overflow-x: auto;
+}
+.flux-parent-table {
+  width: 100%;
+  font-size: 0.78rem;
+  border-collapse: collapse;
+}
+.flux-parent-table th,
+.flux-parent-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border2);
+}
+.flux-parent-tier {
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}

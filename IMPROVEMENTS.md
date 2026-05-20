@@ -82,9 +82,9 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 76 | Task version history | Roadmap |
 | 77 | Guest storage quota meter | Partial — localStorage size estimate (Data & info) |
 | 78 | localStorage repair | Roadmap |
-| 79 | E2E tests | Roadmap |
+| 79 | E2E tests | Done — `docs/P7-TESTS.md`, `npm run test:e2e` |
 | 80 | Feature flags | Roadmap |
-| 81 | Error reporting (Sentry) | Roadmap |
+| 81 | Error reporting (Sentry) | Partial — `P8-ERRORS` scrubbed client capture; Sentry SDK optional later |
 | 82 | Function health endpoint | Roadmap |
 | 83 | Full keyboard modals | Partial |
 | 84 | Screen reader toasts | Done — live region |

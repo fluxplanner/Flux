@@ -1,0 +1,80 @@
+/* Cognitive load v2 — UI tokens (enable_cognitive_ui) */
+
+.flux-cognitive-meter {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  max-width: min(168px, 42vw);
+}
+
+.flux-cognitive-meter .flux-cog-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--flux-cog-accent, var(--accent));
+}
+
+.flux-cognitive-meter .flux-cog-track {
+  flex: 1;
+  min-width: 48px;
+  height: 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.flux-cognitive-meter .flux-cog-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: var(--flux-cog-accent, var(--accent));
+  box-shadow: 0 0 8px var(--flux-cog-glow, transparent);
+  transition: width 0.35s ease, background 0.25s ease;
+}
+
+.flux-cognitive-meter[data-level='overload'] {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.flux-cognitive-meter[data-level='elevated'] {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Dashboard density modes */
+body.flux-cog-density-compact .dash-section--secondary {
+  opacity: 0.92;
+}
+
+body.flux-cog-density-minimal .dash-section--secondary,
+body.flux-cog-density-minimal .dash-alerts .dash-alert:not([data-priority='high']) {
+  display: none !important;
+}
+
+body[data-cognitive-v2='on'] .recovery-banner {
+  border-left: 3px solid var(--flux-cog-accent, var(--red));
+  box-shadow: 0 0 24px var(--flux-cog-glow, transparent);
+}
+
+body[data-cognitive-level='calm'] #dashboard {
+  --dash-accent-glow: var(--flux-cog-glow);
+}
+
+@media (max-width: 720px) {
+  .flux-cognitive-meter .flux-cog-label {
+    display: none;
+  }
+  .flux-cognitive-meter {
+    padding: 4px 8px;
+    max-width: 72px;
+  }
+}

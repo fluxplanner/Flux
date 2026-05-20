@@ -1,0 +1,105 @@
+/* P3-TEACHER-DASH — class momentum cards (enable_teacher_class_momentum) */
+
+.flux-tdash-momentum {
+  margin-bottom: 20px;
+}
+
+.flux-tdash-momentum .teacher-section-head {
+  align-items: baseline;
+  gap: 10px;
+}
+
+.flux-tdash-mom-hint {
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.flux-tdash-momentum-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.flux-tdash-mom-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.flux-tdash-mom-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  transform: translateY(-2px);
+}
+
+.flux-tdash-mom-score {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+}
+
+.flux-tdash-mom-card--flow .flux-tdash-mom-score,
+.flux-tdash-mom-card--fire .flux-tdash-mom-score {
+  color: var(--green);
+}
+
+.flux-tdash-mom-card--warm .flux-tdash-mom-score {
+  color: #fbbf24;
+}
+
+.flux-tdash-mom-card--idle .flux-tdash-mom-score {
+  color: var(--muted2);
+}
+
+.flux-tdash-mom-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.flux-tdash-mom-zone {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted2);
+}
+
+.flux-tdash-mom-meta {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.flux-tdash-mom-card--fire {
+  border-color: rgba(244, 63, 94, 0.28);
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.08);
+}
+
+.flux-tdash-mom-card--flow {
+  border-color: rgba(16, 217, 160, 0.25);
+}
+
+.flux-tdash-mom-card--warm {
+  border-color: rgba(251, 191, 36, 0.22);
+}
+
+@media (max-width: 640px) {
+  .flux-tdash-momentum-grid {
+    grid-template-columns: 1fr;
+  }
+}

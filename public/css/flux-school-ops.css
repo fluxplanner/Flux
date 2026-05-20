@@ -1,0 +1,197 @@
+/* P5-OPS — school operations intelligence (enable_school_ops) */
+
+.flux-school-ops {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: linear-gradient(180deg, rgba(var(--gold-rgb, 212, 168, 67), 0.08), transparent);
+}
+
+.flux-school-ops--compact {
+  padding: 12px 14px;
+}
+
+.flux-school-ops--compact .flux-school-ops-bars {
+  margin-top: 10px;
+}
+
+.flux-school-ops-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.flux-school-ops-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flux-school-ops-hint {
+  font-size: 0.65rem;
+  color: var(--muted2);
+  margin-left: auto;
+}
+
+.flux-school-ops-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+}
+
+.flux-school-ops-badge--ok {
+  color: var(--green, #3ecf8e);
+  border-color: rgba(62, 207, 142, 0.35);
+}
+
+.flux-school-ops-badge--elevated {
+  color: var(--gold);
+  border-color: rgba(var(--gold-rgb, 212, 168, 67), 0.45);
+}
+
+.flux-school-ops-badge--high {
+  color: var(--red);
+  border-color: rgba(var(--red-rgb, 255, 90, 90), 0.45);
+}
+
+.flux-school-ops-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.flux-school-ops-stat {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.flux-school-ops-stat-n {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.flux-school-ops-stat-l {
+  font-size: 0.65rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+
+.flux-school-ops-stat--elevated .flux-school-ops-stat-n {
+  color: var(--gold);
+}
+
+.flux-school-ops-stat--high .flux-school-ops-stat-n {
+  color: var(--red);
+}
+
+.flux-school-ops-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.flux-school-ops-signal {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.flux-school-ops-signal--high {
+  border-color: rgba(var(--red-rgb, 255, 90, 90), 0.35);
+}
+
+.flux-school-ops-signal--elevated {
+  border-color: rgba(var(--gold-rgb, 212, 168, 67), 0.35);
+}
+
+.flux-school-ops-signal-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.flux-school-ops-signal-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.flux-school-ops-signal-detail {
+  font-size: 0.7rem;
+  color: var(--muted2);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.flux-school-ops-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 56px;
+  padding: 4px 0 0;
+}
+
+.flux-school-ops-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.flux-school-ops-bar-col--peak .flux-school-ops-bar {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.flux-school-ops-bar {
+  width: 100%;
+  max-width: 36px;
+  border-radius: 6px 6px 3px 3px;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.flux-school-ops-bar-col--elevated .flux-school-ops-bar {
+  background: var(--gold);
+  opacity: 0.9;
+}
+
+.flux-school-ops-bar-col--high .flux-school-ops-bar {
+  background: var(--red);
+  opacity: 0.95;
+}
+
+.flux-school-ops-bar-lbl {
+  font-size: 0.58rem;
+  color: var(--muted2);
+}
+
+.flux-school-ops-foot,
+.flux-school-ops-err {
+  margin: 10px 0 0;
+  font-size: 0.65rem;
+  color: var(--muted2);
+  line-height: 1.4;
+}
+
+.flux-school-ops-err {
+  color: var(--red);
+}
+
+.ao-root .flux-school-ops {
+  margin-bottom: 18px;
+}
