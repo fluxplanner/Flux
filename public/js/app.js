@@ -1203,7 +1203,10 @@ function fluxInitGCalAutoPushToggle(){
   btn.setAttribute('aria-pressed',on?'true':'false');
 }
 try{ window.fluxToggleGCalAutoPush=fluxToggleGCalAutoPush; window.fluxInitGCalAutoPushToggle=fluxInitGCalAutoPushToggle; }catch(e){}
-document.addEventListener('DOMContentLoaded',()=>{ setTimeout(fluxInitGCalAutoPushToggle,400); });
+document.addEventListener('DOMContentLoaded',()=>{
+  try{fluxCaptureDashboardSnapshot();}catch(_){}
+  setTimeout(fluxInitGCalAutoPushToggle,400);
+});
 function toggleBulkOne(id,on){if(on)_bulkIds.add(id);else _bulkIds.delete(id);const el=document.getElementById('bulkCount');if(el)el.textContent=_bulkIds.size+' selected';}
 function bulkCompleteSelected(){
   _bulkIds.forEach(id=>{const t=tasks.find(x=>x.id===id);if(t&&!t.done){t.done=true;t.completedAt=Date.now();}});
@@ -1622,12 +1625,39 @@ function fluxRouteEducatorHome(){
 }
 window.fluxRouteEducatorHome=fluxRouteEducatorHome;
 
-function showDashboardRoleSkeleton(){
+let _fluxDashboardHtmlSnapshot=null;
+const FLUX_DASH_SNAPSHOT_KEY='flux_dashboard_dom_snapshot_v1';
+
+function fluxCaptureDashboardSnapshot(){
   const el=document.getElementById('dashboard');
-  if(!el||el.dataset.fluxRoleSkeleton==='1')return;
-  el.dataset.fluxRoleSkeleton='1';
-  el.innerHTML=`<div class="flux-role-skeleton" aria-busy="true" aria-label="Loading workspace">
-    <div class="flux-skeleton-pulse flux-role-skel-title"></div>
+  if(!el||!document.getElementById('taskList'))return;
+  const html=el.innerHTML;
+  if(!html||html.length<200)return;
+  _fluxDashboardHtmlSnapshot=html;
+  try{sessionStorage.setItem(FLUX_DASH_SNAPSHOT_KEY,html);}catch(_){}
+}
+window.fluxCaptureDashboardSnapshot=fluxCaptureDashboardSnapshot;
+
+/** Restore dashboard markup if role skeleton wiped #taskList / greet chrome. */
+function ensureDashboardDom(){
+  if(document.getElementById('taskList')&&document.getElementById('dashGreeting'))return true;
+  const el=document.getElementById('dashboard');
+  if(!el)return false;
+  let html=_fluxDashboardHtmlSnapshot;
+  if(!html){
+    try{html=sessionStorage.getItem(FLUX_DASH_SNAPSHOT_KEY);}catch(_){}
+  }
+  if(!html||html.length<200)return false;
+  el.innerHTML=html;
+  delete el.dataset.fluxRoleSkeleton;
+  document.getElementById('fluxRoleSkeletonOverlay')?.remove();
+  _fluxDashboardHtmlSnapshot=html;
+  return true;
+}
+window.ensureDashboardDom=ensureDashboardDom;
+
+function _fluxRoleSkeletonMarkup(){
+  return `<div class="flux-skeleton-pulse flux-role-skel-title"></div>
     <div class="flux-role-skel-grid">
       <div class="flux-skeleton-pulse flux-role-skel-card"></div>
       <div class="flux-skeleton-pulse flux-role-skel-card"></div>
@@ -1635,17 +1665,39 @@ function showDashboardRoleSkeleton(){
       <div class="flux-skeleton-pulse flux-role-skel-card"></div>
     </div>
     <div class="flux-skeleton-pulse flux-role-skel-strip"></div>
-    <div class="flux-skeleton-pulse flux-role-skel-strip flux-role-skel-strip--short"></div>
-  </div>`;
+    <div class="flux-skeleton-pulse flux-role-skel-strip flux-role-skel-strip--short"></div>`;
+}
+
+function showDashboardRoleSkeleton(){
+  const el=document.getElementById('dashboard');
+  if(!el||el.dataset.fluxRoleSkeleton==='1')return;
+  fluxCaptureDashboardSnapshot();
+  ensureDashboardDom();
+  el.dataset.fluxRoleSkeleton='1';
+  if(getComputedStyle(el).position==='static')el.style.position='relative';
+  let ov=document.getElementById('fluxRoleSkeletonOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='fluxRoleSkeletonOverlay';
+    ov.className='flux-role-skeleton flux-role-skeleton-overlay';
+    ov.setAttribute('aria-busy','true');
+    ov.setAttribute('role','status');
+    ov.setAttribute('aria-label','Loading workspace');
+    ov.innerHTML=_fluxRoleSkeletonMarkup();
+    el.appendChild(ov);
+  }
+  ov.style.display='block';
 }
 window.showDashboardRoleSkeleton=showDashboardRoleSkeleton;
 
 function clearDashboardRoleSkeleton(){
   const el=document.getElementById('dashboard');
-  if(!el||el.dataset.fluxRoleSkeleton!=='1')return;
+  if(!el)return;
+  const hadOverlay=el.dataset.fluxRoleSkeleton==='1'||!!document.getElementById('fluxRoleSkeletonOverlay');
   delete el.dataset.fluxRoleSkeleton;
-  el.innerHTML='';
-  if(el.classList.contains('active')){
+  document.getElementById('fluxRoleSkeletonOverlay')?.remove();
+  if(!document.getElementById('taskList'))ensureDashboardDom();
+  if(hadOverlay||el.classList.contains('active')){
     try{
       renderStats();renderTasks();renderCountdown();renderSmartSug();
       checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();
@@ -3923,6 +3975,10 @@ function renderTasks(){
   }
   const el=document.getElementById('taskList');
   updateDocTitle();
+  if(!el){
+    try{ensureDashboardDom();}catch(_){}
+    return;
+  }
   if(!list.length){
     const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
     const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
@@ -9987,6 +10043,7 @@ function showLoginScreen(){
   },40);
 }
 function showApp(){
+  try{ensureDashboardDom();}catch(_){}
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof stopLoginAmbient==='function')stopLoginAmbient();
@@ -10464,6 +10521,7 @@ async function handleSignedIn(user,session){
   }finally{
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}
+    try{ensureDashboardDom();}catch(_){}
     try{clearDashboardRoleSkeleton();}catch(_){}
     const appEl=document.getElementById('app');
     if(appEl&&!appEl.classList.contains('visible'))try{showApp();}catch(_){}
