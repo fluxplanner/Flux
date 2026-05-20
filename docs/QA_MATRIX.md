@@ -48,6 +48,34 @@ Implementation: `public/js/flux-google-hub.js` (`FluxGoogle.installStaffHub`, `F
 
 ---
 
+## 0e. Counselor appointment booking
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Student books | `student` | Profile → My counselor → Book appointment → pick slot → Request | Row in `counselor_appointments` with `status=pending`; taken slots show as booked for other students. |
+| Counselor queue | `counselor` | Work mode → Overview → **Booking requests** | Pending rows show student name, reason, Confirm / Decline. |
+| Confirm | `counselor` | Click **Confirm** on pending row | Status `confirmed`; student gets message (if messaging works). |
+| Meetings tab | `counselor` | **Meetings** nav | Pending requests block appears above Google Calendar. |
+
+Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fixes.sql`
+
+---
+
+## 0f. Site enhancements pack (50)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Pack enabled | Any | Sign in; `FluxFeatureFlags.isEnabled('enable_site_enhancements_pack')` | `true` by default. |
+| Shortcuts | Any | Press `?` (not in input) | Modal lists shortcuts; `Esc` closes. |
+| Deep link | Any | Open `?panel=settings` while signed in | Lands on Settings after load. |
+| Toggles | Any | Settings → Data → Site enhancements (50) | Uncheck item → behavior off after reload. |
+| Staff CSV | `staff` | Workboard → **Export tickets CSV** | Downloads CSV when tickets exist. |
+| Rollback | Owner | Disable `enable_site_enhancements_pack` in DB, reload | No breadcrumb, `?` modal, or enhancement settings card. |
+
+See `docs/SITE_IMPROVEMENTS_50.md`. Migration: `20260527100000_site_enhancements_pack.sql`.
+
+---
+
 ## 0d. Phase 8 — Pilot hardening & security audit
 
 | Feature | Role | Test action | Expected result |

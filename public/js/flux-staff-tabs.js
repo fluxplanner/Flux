@@ -323,6 +323,7 @@
     const token=getGoogleToken();
     if(!token){
       host.innerHTML=`
+        <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
         <div class="cm-connect">
           <div class="cm-connect-icon">📅</div>
           <h3>Connect Google Calendar</h3>
@@ -330,6 +331,16 @@
           <button class="cm-connect-btn" id="cmConnectBtn">Connect Google →</button>
           <div class="cm-connect-hint">Already signed in? <a href="javascript:void(0)" id="cmReauth">Reconnect with calendar access</a></div>
         </div>`;
+      try{
+        if(window.FluxCounselorAppointments?.renderPendingSection&&typeof ensureCounselorRecord==='function'){
+          const sb=typeof getSB==='function'?getSB():null;
+          if(sb){
+            ensureCounselorRecord(sb,'counselor').then(row=>{
+              if(row)FluxCounselorAppointments.renderPendingSection(document.getElementById('counselorApptRequestsMount'),row.id);
+            });
+          }
+        }
+      }catch(_){}
       document.getElementById('cmConnectBtn')?.addEventListener('click',()=>{
         if(typeof window.signInWithGoogle==='function')window.signInWithGoogle();
         else if(typeof window.fluxReconnectGoogleCalendarWrite==='function')window.fluxReconnectGoogleCalendarWrite();
@@ -477,6 +488,11 @@
     document.getElementById('cmNewMeet')?.addEventListener('click',()=>{
       window.open('https://calendar.google.com/calendar/u/0/r/eventedit','_blank','noopener');
     });
+    try{
+      if(window.FluxCounselorAppointments?.renderMeetingsBookingPanel){
+        void window.FluxCounselorAppointments.renderMeetingsBookingPanel();
+      }
+    }catch(_){}
   }
   window.renderCounselorMeetings=renderCounselorMeetings;
 
@@ -851,15 +867,20 @@
             ${open.length===0?'<div class="sw-empty-mini">Inbox zero ✨</div>':
               open.map((t,i)=>`
                 <div class="sw-ticket" data-id="${esc(t.id)}">
-                  <div class="sw-ticket-head">
-                    <span class="sw-prio sw-prio-${esc(t.priority||'normal')}">${esc(t.priority||'normal')}</span>
-                    <span class="sw-from">${esc(t.from||'unknown')}</span>
-                    <span class="sw-when">${esc(t.created||'')}</span>
-                  </div>
-                  <div class="sw-ticket-body">${esc(t.text)}</div>
+                  <label class="sw-check-row sw-ticket-complete-row">
+                    <input type="checkbox" class="sw-check-cb sw-ticket-complete-cb" data-id="${esc(t.id)}" aria-label="Mark request complete">
+                    <span class="sw-ticket-complete-label">
+                      <span class="sw-ticket-head">
+                        <span class="sw-prio sw-prio-${esc(t.priority||'normal')}">${esc(t.priority||'normal')}</span>
+                        <span class="sw-from">${esc(t.from||'unknown')}</span>
+                        <span class="sw-when">${esc(t.created||'')}</span>
+                      </span>
+                      <span class="sw-ticket-body">${esc(t.text)}</span>
+                    </span>
+                  </label>
                   <div class="sw-ticket-actions">
-                    <button class="sw-resolve" data-id="${esc(t.id)}">✓ Resolve</button>
-                    <button class="sw-trash" data-id="${esc(t.id)}">Delete</button>
+                    <button type="button" class="sw-resolve" data-id="${esc(t.id)}">✓ Resolve</button>
+                    <button type="button" class="sw-trash" data-id="${esc(t.id)}">Delete</button>
                   </div>
                 </div>`).join('')}
 
@@ -906,6 +927,14 @@
       const priority=(prompt('Priority? (low / normal / high)','normal')||'normal').toLowerCase();
       await persistStaffTicketInsert(text,from,priority,myDept,subjectField);
       renderStaffWorkboard();
+    });
+    host.querySelectorAll('.sw-ticket-complete-cb').forEach(cb=>{
+      cb.addEventListener('change',async ()=>{
+        if(!cb.checked)return;
+        const id=cb.dataset.id;
+        await persistStaffTicketResolve(id);
+        renderStaffWorkboard();
+      });
     });
     host.querySelectorAll('.sw-resolve').forEach(b=>{
       b.addEventListener('click',async ()=>{

@@ -1,0 +1,139 @@
+/* Flux Site Enhancements Pack */
+.flux-panel-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin-left: 8px;
+  max-width: min(240px, 28vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flux-panel-breadcrumb button {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--muted);
+  cursor: pointer;
+}
+.flux-panel-breadcrumb button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.flux-enh-nav-badge {
+  display: inline-flex;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  background: var(--red);
+  color: #fff;
+  vertical-align: middle;
+}
+.flux-enh-google-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 6px;
+  background: var(--muted);
+}
+.flux-enh-google-dot--on {
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(var(--green-rgb, 80, 200, 120), 0.6);
+}
+.flux-enh-impersonate-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 10001;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--gold),
+    var(--gold) 12px,
+    var(--red) 12px,
+    var(--red) 24px
+  );
+}
+body.flux-focus-chrome-dim .sidebar,
+body.flux-focus-chrome-dim .bnav {
+  opacity: 0.55;
+  transition: opacity 0.25s ease;
+}
+.flux-enh-shortcuts-modal .modal {
+  max-width: 520px;
+}
+.flux-enh-shortcuts-modal kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+}
+.flux-enh-task-flash {
+  animation: fluxEnhTaskFlash 1.2s ease;
+}
+@keyframes fluxEnhTaskFlash {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  30% {
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.45);
+  }
+}
+.flux-enh-storage-warn {
+  color: var(--gold) !important;
+}
+.flux-enh-storage-critical {
+  color: var(--red) !important;
+}
+.flux-enh-settings-list {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 0.72rem;
+  color: var(--muted2);
+}
+.flux-enh-settings-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+@media print {
+  .sidebar,
+  .bnav,
+  .topbar,
+  .mode-switch-wrap,
+  #loginScreen,
+  .flux-enh-no-print {
+    display: none !important;
+  }
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .panel {
+    display: block !important;
+    page-break-inside: avoid;
+  }
+  .panel:not(.active) {
+    display: none !important;
+  }
+}

@@ -381,7 +381,7 @@
       <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
-        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Links &amp; files</div></div>
+        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Workspace links &amp; bookmarks</div></div>
       </div>
     </div>`;
     el.querySelectorAll('[data-spd-nav]').forEach((card) => {
@@ -401,6 +401,25 @@
     }
   }
 
+  async function saveStaffPersonalTasks(client, tasks) {
+    await client.from('staff_personal_data').upsert({
+      user_id: currentUser.id,
+      tasks,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  function staffTaskRowHtml(t) {
+    const id = esc(String(t.id || ''));
+    const title = esc(t.title || t);
+    const done = !!t.done;
+    return `<label class="sw-check-row st-task-row">
+      <input type="checkbox" class="sw-check-cb st-task-cb" data-id="${id}" ${done ? 'checked' : ''} aria-label="Mark complete">
+      <span class="${done ? 'sw-done' : ''}">${title}</span>
+      <button type="button" class="sw-check-del st-task-del" data-id="${id}" aria-label="Remove task">×</button>
+    </label>`;
+  }
+
   async function renderStaffTasksPanel() {
     const el = document.getElementById('staffTasks');
     if (!el || !currentUser) return;
@@ -409,8 +428,17 @@
     await ensureStaffPersonalRow(client);
     const { data } = await client.from('staff_personal_data').select('tasks').eq('user_id', currentUser.id).maybeSingle();
     const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+    const open = tasks.filter((t) => !t.done);
+    const done = tasks.filter((t) => t.done);
+    const listHtml = tasks.length
+      ? `${open.length ? `<div class="st-task-group"><div class="st-task-group-lbl">Active</div>${open.map(staffTaskRowHtml).join('')}</div>` : ''}${
+          done.length
+            ? `<div class="st-task-group"><div class="st-task-group-lbl">Completed</div>${done.map(staffTaskRowHtml).join('')}</div>`
+            : ''
+        }`
+      : '<div style="color:var(--muted2);font-size:.85rem;padding:8px 0">No tasks yet — add one above.</div>';
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal tasks (staff)</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal tasks — check off to complete (syncs to cloud)</p></div>
       <div class="flux-stack" style="max-width:720px;margin:0 auto;padding:16px">
         <div class="card">
           <h3>Add task</h3>
@@ -418,15 +446,36 @@
           <button type="button" id="stAddBtn" class="edu-action-btn primary" style="width:100%">Add</button>
         </div>
         <div class="card"><h3>Your list</h3>
-          <div id="stList">${tasks.length ? tasks.map((t) => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">${esc(t.title || t)}</div>`).join('') : '<div style="color:var(--muted2);font-size:.85rem">No tasks yet</div>'}</div>
+          <div id="stList" class="st-task-list">${listHtml}</div>
         </div>
       </div>`;
     el.querySelector('#stAddBtn')?.addEventListener('click', async () => {
       const title = el.querySelector('#stNewTitle')?.value?.trim();
       if (!title) return;
       const next = tasks.concat({ title, id: String(Date.now()), done: false });
-      await client.from('staff_personal_data').upsert({ user_id: currentUser.id, tasks: next, updated_at: new Date().toISOString() });
+      await saveStaffPersonalTasks(client, next);
       renderStaffTasksPanel();
+    });
+    const list = el.querySelector('#stList');
+    list?.querySelectorAll('.st-task-cb').forEach((cb) => {
+      cb.addEventListener('change', async () => {
+        const id = cb.dataset.id;
+        const next = tasks.map((t) =>
+          String(t.id) === String(id) ? { ...t, done: cb.checked } : t,
+        );
+        await saveStaffPersonalTasks(client, next);
+        renderStaffTasksPanel();
+      });
+    });
+    list?.querySelectorAll('.st-task-del').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const next = tasks.filter((t) => String(t.id) !== String(id));
+        await saveStaffPersonalTasks(client, next);
+        renderStaffTasksPanel();
+      });
     });
   }
 
@@ -646,6 +695,107 @@
     renderWellbeingPanel();
   }
 
+  function staffResourcePins() {
+    const role = (typeof FluxRole !== 'undefined' && FluxRole.current) || 'staff';
+    const school =
+      (typeof FluxRole !== 'undefined' && FluxRole.profile && FluxRole.profile.school) ||
+      (window.FluxSchool && FluxSchool.IAE && FluxSchool.IAE.name) ||
+      'International Academy East';
+    const pins = [
+      {
+        id: 'pin-gmail',
+        title: 'Gmail',
+        url: 'https://mail.google.com/mail/u/0/#inbox',
+        icon: '✉',
+        blurb: 'Inbox',
+      },
+      {
+        id: 'pin-drive',
+        title: 'Google Drive',
+        url: 'https://drive.google.com/drive/my-drive',
+        icon: '📂',
+        blurb: 'Files',
+      },
+      {
+        id: 'pin-cal',
+        title: 'Google Calendar',
+        url: 'https://calendar.google.com/calendar/u/0/r',
+        icon: '📅',
+        blurb: 'Schedule',
+      },
+      {
+        id: 'pin-docs',
+        title: 'Google Docs',
+        url: 'https://docs.google.com/document/u/0/',
+        icon: '📝',
+        blurb: 'New doc',
+      },
+      {
+        id: 'pin-bhs',
+        title: 'Bloomfield Hills Schools',
+        url: 'https://www.bloomfield.org/',
+        icon: '🏫',
+        blurb: 'District',
+      },
+    ];
+    if (['teacher', 'counselor', 'staff', 'admin'].includes(role)) {
+      pins.push({
+        id: 'pin-classroom',
+        title: 'Google Classroom',
+        url: 'https://classroom.google.com/',
+        icon: '🎓',
+        blurb: 'Classes',
+      });
+    }
+    try {
+      const canvasUrl =
+        (typeof load === 'function' && load('flux_canvas_url', '')) ||
+        (typeof window.canvasUrl === 'string' && window.canvasUrl) ||
+        '';
+      const canvasTok =
+        (typeof load === 'function' && load('flux_canvas_token', '')) ||
+        (typeof window.canvasToken === 'string' && window.canvasToken) ||
+        '';
+      if (canvasUrl && canvasTok) {
+        pins.push({
+          id: 'pin-canvas',
+          title: 'Canvas LMS',
+          url: canvasUrl,
+          icon: '📊',
+          blurb: 'Linked in Flux',
+        });
+      }
+    } catch (_) {}
+    pins.push({
+      id: 'pin-school',
+      title: school,
+      url: 'https://www.bloomfield.org/schools/international-academy',
+      icon: '🌐',
+      blurb: 'IA East',
+    });
+    return pins;
+  }
+
+  function normalizeStaffBookmarks(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((r, i) => ({
+        id: String(r.id || `bm_${i}`),
+        title: String(r.title || r.url || 'Link').trim(),
+        url: String(r.url || '').trim(),
+        note: String(r.note || '').trim(),
+      }))
+      .filter((r) => r.url);
+  }
+
+  async function saveStaffResources(client, resources) {
+    await client.from('staff_personal_data').upsert({
+      user_id: currentUser.id,
+      resources,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   async function renderResourcesPanel() {
     const el = document.getElementById('staffResources');
     if (!el || !currentUser) return;
@@ -653,23 +803,140 @@
     if (!client) return;
     await ensureStaffPersonalRow(client);
     const { data } = await client.from('staff_personal_data').select('resources').eq('user_id', currentUser.id).maybeSingle();
-    const res = Array.isArray(data?.resources) ? data.resources : [];
+    const bookmarks = normalizeStaffBookmarks(data?.resources);
+    const pins = staffResourcePins();
+    const fluxShortcuts = [
+      { id: 'fx-tasks', label: 'Personal tasks', icon: '✅', action: () => nav && nav('staffTasks') },
+      {
+        id: 'fx-google',
+        label: 'Google hub',
+        icon: '🔗',
+        action: () => {
+          if (typeof nav === 'function') nav('canvas');
+          try {
+            if (window.FluxGoogle && typeof FluxGoogle.renderHub === 'function') FluxGoogle.renderHub();
+          } catch (_) {}
+        },
+        hide: !(
+          typeof FluxRole !== 'undefined' &&
+          FluxRole.isStaffGoogleHubRole &&
+          FluxRole.isStaffGoogleHubRole()
+        ),
+      },
+      { id: 'fx-settings', label: 'Settings', icon: '⚙', action: () => nav && nav('settings') },
+      { id: 'fx-profile', label: 'Profile', icon: '👤', action: () => nav && nav('profile') },
+    ].filter((s) => !s.hide);
+
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Resource library</p></div>
-      <div style="max-width:720px;margin:0 auto;padding:16px">
-        <div class="card">
-          <label style="font-size:.72rem;color:var(--muted)">Add link</label>
-          <input id="srUrl" placeholder="https://…" style="margin-bottom:8px">
-          <button type="button" class="edu-action-btn primary" id="srAdd" style="width:100%">Save</button>
-        </div>
-        ${res.map((r) => `<div class="card"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></div>`).join('') || '<div style="color:var(--muted2)">No resources yet</div>'}
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Workspace shortcuts, school links, and your saved bookmarks (synced to cloud).</p></div>
+      <div class="sr-root">
+        <section class="sr-section">
+          <h3 class="sr-section-title">In Flux</h3>
+          <div class="sr-shortcut-grid">
+            ${fluxShortcuts
+              .map(
+                (s) =>
+                  `<button type="button" class="sr-shortcut-btn" data-sr-flux="${esc(s.id)}"><span class="sr-pin-icon" aria-hidden="true">${s.icon}</span><span>${esc(s.label)}</span></button>`,
+              )
+              .join('')}
+          </div>
+          <p class="sr-hint">Press <strong>Ctrl+K</strong> (Mac: <strong>Cmd+K</strong>) to toggle Work ↔ Personal mode.</p>
+        </section>
+
+        <section class="sr-section">
+          <h3 class="sr-section-title">Workspace &amp; school</h3>
+          <div class="sr-pin-grid">
+            ${pins
+              .map(
+                (p) =>
+                  `<a class="sr-pin" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">
+                    <span class="sr-pin-icon" aria-hidden="true">${p.icon}</span>
+                    <span class="sr-pin-text">
+                      <span class="sr-pin-title">${esc(p.title)}</span>
+                      <span class="sr-pin-blurb">${esc(p.blurb)}</span>
+                    </span>
+                  </a>`,
+              )
+              .join('')}
+          </div>
+        </section>
+
+        <section class="sr-section">
+          <h3 class="sr-section-title">My bookmarks</h3>
+          <div class="card sr-add-card">
+            <div class="mrow">
+              <label for="srTitle">Title</label>
+              <input type="text" id="srTitle" placeholder="e.g. Sub coverage form" maxlength="120">
+            </div>
+            <div class="mrow">
+              <label for="srUrl">Link</label>
+              <input type="url" id="srUrl" placeholder="https://…" maxlength="2048">
+            </div>
+            <div class="mrow">
+              <label for="srNote">Note <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
+              <input type="text" id="srNote" placeholder="Room, contact, or reminder" maxlength="200">
+            </div>
+            <button type="button" class="edu-action-btn primary" id="srAdd" style="width:100%">Save bookmark</button>
+          </div>
+          <div class="sr-bookmark-list" id="srBookmarkList">
+            ${
+              bookmarks.length
+                ? bookmarks
+                    .map(
+                      (r) =>
+                        `<div class="sr-bookmark" data-id="${esc(r.id)}">
+                          <a class="sr-bookmark-main" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">
+                            <span class="sr-bookmark-title">${esc(r.title)}</span>
+                            ${r.note ? `<span class="sr-bookmark-note">${esc(r.note)}</span>` : ''}
+                            <span class="sr-bookmark-url">${esc(r.url)}</span>
+                          </a>
+                          <button type="button" class="sr-bookmark-del" data-id="${esc(r.id)}" aria-label="Remove bookmark">×</button>
+                        </div>`,
+                    )
+                    .join('')
+                : '<div class="sr-empty">No bookmarks yet — save forms, docs, or dashboards you use every week.</div>'
+            }
+          </div>
+        </section>
       </div>`;
+
+    fluxShortcuts.forEach((s) => {
+      el.querySelector(`[data-sr-flux="${s.id}"]`)?.addEventListener('click', () => {
+        try {
+          s.action();
+          if (s.id === 'fx-tasks' && typeof renderStaffTasksPanel === 'function') renderStaffTasksPanel();
+        } catch (_) {}
+      });
+    });
+
     el.querySelector('#srAdd')?.addEventListener('click', async () => {
+      const title = el.querySelector('#srTitle')?.value?.trim();
       const url = el.querySelector('#srUrl')?.value?.trim();
-      if (!url) return;
-      const next = res.concat({ url, title: url });
-      await client.from('staff_personal_data').upsert({ user_id: currentUser.id, resources: next, updated_at: new Date().toISOString() });
+      const note = el.querySelector('#srNote')?.value?.trim();
+      if (!url) {
+        if (typeof showToast === 'function') showToast('Paste a link first', 'warning');
+        return;
+      }
+      let href = url;
+      if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+      const next = bookmarks.concat({
+        id: String(Date.now()),
+        title: title || href.replace(/^https?:\/\//i, '').slice(0, 80),
+        url: href,
+        note: note || '',
+      });
+      await saveStaffResources(client, next);
+      if (typeof showToast === 'function') showToast('Bookmark saved', 'success');
       renderResourcesPanel();
+    });
+
+    el.querySelectorAll('.sr-bookmark-del').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const next = bookmarks.filter((b) => String(b.id) !== String(id));
+        await saveStaffResources(client, next);
+        renderResourcesPanel();
+      });
     });
   }
 

@@ -133,7 +133,13 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 
 ## How to use this in Cursor
 
-**Phases 1–7 are complete.** For new work, add a **Phase 8** section here or pick items from `IMPROVEMENTS.md`.
+**Phases 1–7 are complete.** Phase 8 slices below; see also `docs/SITE_IMPROVEMENTS_50.md`.
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 8.1 | `P8-SITE-ENH` | 50 UX enhancements pack (`enable_site_enhancements_pack`) | Done |
+
+For new work beyond Phase 8, add rows here or pick items from product backlog.
 
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  
 2. Run `npm run test:e2e` before large UI changes.  

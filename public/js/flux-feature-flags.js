@@ -70,6 +70,7 @@
       enable_drive_import: false,
       enable_docs_ghost_sync: false,
       enable_gmail_educator_import: false,
+      enable_site_enhancements_pack: true,
     };
   }
 

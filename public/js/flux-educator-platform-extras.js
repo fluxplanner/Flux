@@ -1218,6 +1218,7 @@
         date: _pickedDate,
         time_slot: _pickedTime,
         reason,
+        notes: notes || null,
         student_requested_message: notes || null,
         status: 'pending',
         duration_minutes: 30,
@@ -1243,22 +1244,35 @@
   async function respondToAppointmentRequest(appointmentId, status, counselorId) {
     const client = sb();
     if (!client || !currentUser) return;
-    const { data: appt } = await client
+    const { data: appt, error } = await client
       .from('counselor_appointments')
       .update({ status })
       .eq('id', appointmentId)
-      .select('*, user_roles!student_id(display_name)')
+      .select('*')
       .maybeSingle();
-    if (appt && typeof fluxEnsureThreadAndSend === 'function') {
+    if (error) {
+      if (typeof showToast === 'function') showToast(error.message || 'Could not update appointment', 'error');
+      return;
+    }
+    if (appt && typeof fluxEnsureThreadAndSend === 'function' && appt.student_id) {
       const msg =
         status === 'confirmed'
           ? `Your appointment for ${appt.date} at ${appt.time_slot} is confirmed.`
           : `Your appointment request for ${appt.date} at ${appt.time_slot} could not be accommodated.`;
-      await fluxEnsureThreadAndSend(appt.student_id, msg);
+      try {
+        await fluxEnsureThreadAndSend(appt.student_id, msg);
+      } catch (e) {
+        console.warn('[Flux] appointment notify', e);
+      }
     }
-    if (typeof showToast === 'function') showToast('Updated.', 'success');
+    if (typeof showToast === 'function') {
+      showToast(status === 'confirmed' ? 'Appointment confirmed' : 'Request declined', 'success');
+    }
     try {
-      renderCounselorDashboard();
+      if (typeof renderCounselorDashboard === 'function') renderCounselorDashboard();
+    } catch (_) {}
+    try {
+      if (typeof renderCounselorMeetings === 'function') renderCounselorMeetings();
     } catch (_) {}
   }
   window.respondToAppointmentRequest = respondToAppointmentRequest;

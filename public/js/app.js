@@ -10127,6 +10127,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
   try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
+  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -10325,6 +10326,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
   try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
+  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -16862,16 +16864,35 @@ async function renderCounselorDashboard(){
   }
 
   const today=new Date().toISOString().slice(0,10);
-  let appointments=[];let messages=[];
+  let appointments=[];let pendingAppts=[];let messages=[];
+  let studentNames={};
   try{
-    const {data:appts}=await sb.from('counselor_appointments')
-      .select('*')
-      .eq('counselor_id',counselorRow.id)
-      .gte('date',today)
-      .order('date',{ascending:true})
-      .order('time_slot',{ascending:true})
-      .limit(30);
+    const [{data:appts},{data:pending}]=await Promise.all([
+      sb.from('counselor_appointments')
+        .select('*')
+        .eq('counselor_id',counselorRow.id)
+        .gte('date',today)
+        .neq('status','cancelled')
+        .order('date',{ascending:true})
+        .order('time_slot',{ascending:true})
+        .limit(50),
+      sb.from('counselor_appointments')
+        .select('*')
+        .eq('counselor_id',counselorRow.id)
+        .eq('status','pending')
+        .order('date',{ascending:true})
+        .order('time_slot',{ascending:true})
+        .limit(40),
+    ]);
     appointments=appts||[];
+    pendingAppts=pending||[];
+    const ids=[...new Set([...appointments,...pendingAppts].map(a=>a.student_id).filter(Boolean))];
+    if(window.FluxCounselorAppointments?.loadStudentNames){
+      studentNames=await FluxCounselorAppointments.loadStudentNames(sb,ids);
+    }else if(ids.length){
+      const {data:roles}=await sb.from('user_roles').select('user_id,display_name').in('user_id',ids);
+      (roles||[]).forEach(r=>{studentNames[r.user_id]=r.display_name||'Student';});
+    }
     const {data:msgs}=await sb.from('flux_messages')
       .select('id,content,sender_id,thread_id,created_at')
       .eq('recipient_id',currentUser.id)
@@ -16881,8 +16902,25 @@ async function renderCounselorDashboard(){
     messages=msgs||[];
   }catch(e){console.warn('[Flux counselor] load failed',e);}
 
-  const todayAppts=appointments.filter(a=>a.date===today);
-  const upcomingAppts=appointments.filter(a=>a.date>today);
+  const scheduleAppts=appointments.filter(a=>a.status!=='pending');
+  const todayAppts=scheduleAppts.filter(a=>a.date===today);
+  const upcomingAppts=scheduleAppts.filter(a=>a.date>today);
+  const apptLabel=(id)=>esc(studentNames[id]||'Student');
+  const pendingRowsHtml=pendingAppts.length?pendingAppts.map(a=>{
+    const msg=a.student_requested_message||a.notes||'';
+    const dl=new Date(a.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="appointment-row appointment-row--pending" data-appt-id="${esc(a.id)}">
+      <div class="appt-time">${esc(dl)} · ${esc(a.time_slot)}</div>
+      <div class="appt-student">${apptLabel(a.student_id)}</div>
+      <div class="appt-reason">${esc((a.reason||'').slice(0,80)||'No reason given')}</div>
+      ${msg?`<div class="appt-notes">${esc(msg.slice(0,120))}</div>`:''}
+      <div class="appt-status-badge status-pending">pending</div>
+      <div class="appt-actions">
+        <button type="button" class="appt-btn appt-btn-confirm" data-appt-confirm="${esc(a.id)}">Confirm</button>
+        <button type="button" class="appt-btn appt-btn-decline" data-appt-decline="${esc(a.id)}">Decline</button>
+      </div>
+    </div>`;
+  }).join(''):'<div style="font-size:.82rem;color:var(--muted2);padding:8px 0">No pending requests</div>';
 
   let greetFull='';
   try{
@@ -16944,6 +16982,10 @@ async function renderCounselorDashboard(){
       </div>
 
       <div class="teacher-stats">
+        <div class="teacher-stat-card ${pendingAppts.length?'sw-stat-warn':''}">
+          <div class="stat-number">${pendingAppts.length}</div>
+          <div class="stat-label">Pending requests</div>
+        </div>
         <div class="teacher-stat-card">
           <div class="stat-number">${todayAppts.length}</div>
           <div class="stat-label">Today's appointments</div>
@@ -16963,12 +17005,16 @@ async function renderCounselorDashboard(){
         :''}
 
       <div class="teacher-grid">
+        <div class="teacher-section teacher-section--pending">
+          <div class="section-header"><h3>Booking requests</h3>${pendingAppts.length?`<span class="sw-mini-tag">${pendingAppts.length} pending</span>`:''}</div>
+          ${pendingRowsHtml}
+        </div>
         <div class="teacher-section">
           <div class="section-header"><h3>Today's schedule</h3></div>
           ${todayAppts.length?todayAppts.map(a=>`
             <div class="appointment-row">
               <div class="appt-time">${esc(a.time_slot)}</div>
-              <div class="appt-student">Student ${esc(String(a.student_id).slice(0,6))}</div>
+              <div class="appt-student">${apptLabel(a.student_id)}</div>
               <div class="appt-reason">${esc((a.reason||'').slice(0,40)||'No reason given')}</div>
               <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
             </div>`).join('')
@@ -16978,7 +17024,7 @@ async function renderCounselorDashboard(){
             ${upcomingAppts.slice(0,8).map(a=>`
               <div class="appointment-row">
                 <div class="appt-time">${new Date(a.date+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${esc(a.time_slot)}</div>
-                <div class="appt-student">Student ${esc(String(a.student_id).slice(0,6))}</div>
+                <div class="appt-student">${apptLabel(a.student_id)}</div>
                 <div class="appt-status-badge status-${esc(a.status)}">${esc(a.status)}</div>
               </div>`).join('')}
           `:''}
@@ -17015,6 +17061,9 @@ async function renderCounselorDashboard(){
   host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();
   }));
+  if(window.FluxCounselorAppointments?.wireAppointmentActions){
+    FluxCounselorAppointments.wireAppointmentActions(host,counselorRow.id);
+  }
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
 }
 window.renderCounselorDashboard=renderCounselorDashboard;
@@ -17188,7 +17237,7 @@ function openCounselorSelectModal(){
     <div id="counselorList" class="counselor-select-list">
       <div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>
     </div>`);
-  sb.from('counselors').select('*').eq('active',true).then(({data,error})=>{
+    sb.from('counselors').select('*').eq('active',true).eq('booking_enabled',true).then(({data,error})=>{
     const list=document.getElementById('counselorList');
     if(!list)return;
     if(error){
