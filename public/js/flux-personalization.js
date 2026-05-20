@@ -7,6 +7,7 @@
   const KEY_NAV='flux_nav_counts_v1';
   const KEY_MOOD_TINT='flux_mood_tint_enabled';
   const KEY_LAYOUT_DASH='flux_layout_dashboard_v1';
+  const KEY_DASH_HIDDEN='flux_dashboard_hidden_sections_v1';
   const KEY_LAYOUT_CAL='flux_layout_calendar_v1';
   const KEY_LIQUID_GLASS='flux_liquid_glass';
   const KEY_PERF_SNAPPY='flux_perf_snappy';
@@ -14,7 +15,13 @@
   /** Previous factory default (before pulse-first). Used to one-time-migrate users who never customized. */
   const PREVIOUS_DEFAULT_DASH_ORDER=['countdown','pulse','schedule','tasks'];
   const DEFAULT_CAL_ORDER=['hero','schedule'];
-  const DASH_LABELS={countdown:'Exam countdown',pulse:'Next 7 days (workload)',schedule:'Today schedule & focus (above tasks)',tasks:'Tasks'};
+  const DASH_LABELS={
+    pulse:'Next 7 days (workload)',
+    gapfill:'Smart gap-fill suggestions',
+    countdown:'Exam countdown',
+    schedule:'Today schedule & focus',
+    tasks:'Tasks',
+  };
   const CAL_LABELS={hero:'Month, day detail & Google sync',schedule:'Cycle & weekly schedule'};
 
   function esc(s){
@@ -205,13 +212,61 @@
     </div>`;
   }
 
+  function widgetPickerEnabled(){
+    try{
+      return !!window.FluxFeatureFlags?.isEnabled('enable_dashboard_widget_picker', true);
+    }catch(_){
+      return true;
+    }
+  }
+
+  function dashSectionIds(){
+    const wrap=document.getElementById('fluxDashSections');
+    if(!wrap)return DEFAULT_DASH_ORDER.slice();
+    const ids=Array.from(wrap.querySelectorAll('[data-flux-section]'))
+      .map((el)=>el.getAttribute('data-flux-section'))
+      .filter(Boolean);
+    return ids.length?ids:DEFAULT_DASH_ORDER.slice();
+  }
+
+  function loadDashHidden(){
+    if(!widgetPickerEnabled())return new Set();
+    try{
+      const arr=load(KEY_DASH_HIDDEN,[]);
+      return new Set(Array.isArray(arr)?arr.filter(Boolean):[]);
+    }catch(_){
+      return new Set();
+    }
+  }
+
+  function saveDashHidden(hiddenSet){
+    save(KEY_DASH_HIDDEN,Array.from(hiddenSet||[]));
+    applyDashboardVisibility();
+  }
+
+  function applyDashboardVisibility(){
+    const wrap=document.getElementById('fluxDashSections');
+    if(!wrap)return;
+    const hidden=loadDashHidden();
+    wrap.querySelectorAll('[data-flux-section]').forEach((el)=>{
+      const id=el.getAttribute('data-flux-section');
+      if(widgetPickerEnabled()&&hidden.has(id)){
+        el.classList.add('flux-dash-user-hidden');
+        el.setAttribute('data-flux-user-hidden','1');
+      }else{
+        el.classList.remove('flux-dash-user-hidden');
+        el.removeAttribute('data-flux-user-hidden');
+      }
+    });
+  }
+
   function normalizeOrder(saved,allowed){
     const a=Array.isArray(saved)?saved.filter(x=>allowed.includes(x)):[];
     const miss=allowed.filter(x=>!a.includes(x));
     return a.concat(miss);
   }
   function loadDashOrder(){
-    const allowed=DEFAULT_DASH_ORDER.slice();
+    const allowed=dashSectionIds();
     try{
       const v=load(KEY_LAYOUT_DASH,null);
       if(Array.isArray(v)&&v.length){
@@ -248,6 +303,7 @@
       const child=wrap.querySelector('[data-flux-section="'+name+'"]');
       if(child)child.style.order=String(i+1);
     });
+    applyDashboardVisibility();
   }
   function applyCalendarOrder(){
     const wrap=document.getElementById('fluxCalSections');
@@ -281,6 +337,7 @@
   }
   function resetPanelLayouts(){
     save(KEY_LAYOUT_DASH,DEFAULT_DASH_ORDER.slice());
+    save(KEY_DASH_HIDDEN,[]);
     save(KEY_LAYOUT_CAL,DEFAULT_CAL_ORDER.slice());
     applyDashboardOrder();
     applyCalendarOrder();
@@ -301,11 +358,34 @@
           </span>
         </li>`).join('');
     };
+    const hidden=loadDashHidden();
+    const visRows=widgetPickerEnabled()
+      ? dashSectionIds().map((id)=>{
+          const on=!hidden.has(id);
+          return `<label class="flux-layout-vis-row">
+            <input type="checkbox" data-flux-dash-vis="${esc(id)}" ${on?'checked':''}/>
+            <span>${esc(DASH_LABELS[id]||id)}</span>
+          </label>`;
+        }).join('')
+      : '';
     host.innerHTML=`
       <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 8px;font-family:'JetBrains Mono',monospace">Dashboard</div>
+      ${widgetPickerEnabled()?`<p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px;line-height:1.45">Show or hide sections, then reorder.</p><div class="flux-layout-vis-grid">${visRows}</div>`:''}
       <ul class="flux-layout-sort-list" role="list">${row('dash',dOrder,DASH_LABELS)}</ul>
       <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">Calendar</div>
       <ul class="flux-layout-sort-list" role="list">${row('cal',cOrder,CAL_LABELS)}</ul>`;
+    if(widgetPickerEnabled()){
+      host.querySelectorAll('[data-flux-dash-vis]').forEach((cb)=>{
+        cb.addEventListener('change',()=>{
+          const id=cb.getAttribute('data-flux-dash-vis');
+          const next=new Set(loadDashHidden());
+          if(cb.checked)next.delete(id);
+          else next.add(id);
+          saveDashHidden(next);
+          renderPanelLayoutSettings();
+        });
+      });
+    }
   }
 
   function applyAll(){
@@ -314,6 +394,7 @@
     applyLiquidGlass();
     applyPerfSnappy();
     applyDashboardOrder();
+    applyDashboardVisibility();
     applyCalendarOrder();
     styleProfileAvatar();
   }
@@ -382,6 +463,9 @@
     renderAffirmation,
     renderPatternsPanel,
     applyDashboardOrder,
+    applyDashboardVisibility,
+    widgetPickerEnabled,
+    dashSectionIds,
     applyCalendarOrder,
     shiftLayoutSection,
     resetPanelLayouts,

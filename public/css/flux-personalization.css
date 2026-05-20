@@ -30,6 +30,10 @@ html[data-mood-tint]{transition:color .4s ease}
 .flux-layout-sort-actions{display:flex;gap:4px;flex-shrink:0}
 .flux-layout-sort-btn{padding:4px 10px!important;font-size:.72rem!important;min-width:36px;line-height:1.2}
 .flux-layout-sort-btn:disabled{opacity:.35;cursor:not-allowed}
+.flux-layout-vis-grid{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.flux-layout-vis-row{display:flex;align-items:center;gap:8px;font-size:.78rem;padding:6px 8px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;cursor:pointer}
+.flux-layout-vis-row input{accent-color:var(--accent)}
+.flux-dash-sections .flux-dash-user-hidden{display:none!important}
 
 /* Patterns card */
 .flux-patterns-host{margin-bottom:12px}

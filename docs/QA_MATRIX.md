@@ -93,6 +93,19 @@ Migration: `20260528100000_staff_productivity_suite.sql`, `20260528200000_counse
 
 ---
 
+## 0i. Dashboard widget picker (`enable_dashboard_widget_picker` on by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Visibility | `student` | Settings → Appearance → uncheck Exam countdown | `#countdownCard` hidden on dashboard after reload/nav. |
+| Reorder | `student` | Move Tasks ↑ | Task block appears above workload strip. |
+| Reset | `student` | Reset panel layouts (if exposed) or re-enable sections | Defaults restore. |
+| Rollback | Owner | Disable flag in DB | Checkboxes hidden; order-only UI unchanged. |
+
+Migration: `20260528600000_dashboard_widget_picker.sql` · Doc: `docs/P9-DASHBOARD-WIDGETS.md`
+
+---
+
 ## 0h. Locale foundation (`enable_locale_foundation` off by default)
 
 | Feature | Role | Test action | Expected result |

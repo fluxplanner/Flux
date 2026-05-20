@@ -149,6 +149,12 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | 8.10 | `P8-I18N` | Locale picker, Intl formatters, RTL, settings card | Done |
 | 8.11 | `P8-I18N-B` | Adopt `fmtFluxDate` across dashboard tasks, calendar strip, countdown | Done |
 
+## Phase 9 — Student experience polish
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 9.1 | `P9-DASH-WIDGETS` | Dashboard widget show/hide + reorder (`enable_dashboard_widget_picker`) | Done |
+
 For new work beyond Phase 8, add rows here or pick items from product backlog.
 
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  

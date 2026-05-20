@@ -78,6 +78,7 @@
       enable_staff_command_v2: false,
       enable_locale_foundation: false,
       enable_ops_health_panel: false,
+      enable_dashboard_widget_picker: true,
     };
   }
 

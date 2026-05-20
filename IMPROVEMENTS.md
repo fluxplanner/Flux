@@ -28,7 +28,7 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 22 | Rubric checklist | Roadmap |
 | 23 | Quick-add clipboard history | Done |
 | 24 | Command palette math | Roadmap |
-| 25 | Dashboard widget picker | Roadmap |
+| 25 | Dashboard widget picker | Done — `enable_dashboard_widget_picker`, Settings → Appearance |
 | 26 | What-if GPA | Done — Grades tab |
 | 27 | Category IB/AP presets | Partial — weighted rows |
 | 28 | Transcript export | Roadmap — PDF |
