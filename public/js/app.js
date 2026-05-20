@@ -1482,7 +1482,12 @@ function fluxMarkRoleSetupDone(userId,role,displayName){
 function fluxNeedsRolePicker(userId){
   if(!userId)return false;
   if(fluxGetRoleSetup(userId))return false;
-  try{return !FluxRole.profile;}catch(_){return true;}
+  try{
+    if(FluxRole.profile)return false;
+    if(FluxRole.current&&FluxRole.current!=='student')return false;
+    if(window._userRole&&window._userRole!=='student')return false;
+    return true;
+  }catch(_){return true;}
 }
 window.fluxGetRoleSetup=fluxGetRoleSetup;
 window.fluxMarkRoleSetupDone=fluxMarkRoleSetupDone;
@@ -9572,6 +9577,10 @@ function initOAuthPostMessageListener(){
     }else if(typeof showToast==='function'){
       showToast('Could not read session — try refreshing the page.','warning');
     }
+    try{
+      const pop=window.open('','fluxGoogleOAuth');
+      if(pop&&!pop.closed)pop.close();
+    }catch(_){}
   });
 }
 
@@ -9731,20 +9740,25 @@ async function pingSupabaseReachable(sb){
 }
 
 function showFluxOfflineScreen(){
-  const mount=document.getElementById('app')||document.getElementById('loginScreen')||document.body;
   const ls=document.getElementById('loginScreen');
   const splash=document.getElementById('splash');
   if(splash)splash.style.display='none';
   if(ls){ls.style.display='none';ls.classList.remove('visible');}
   const app=document.getElementById('app');
   if(app)app.classList.remove('visible');
-  mount.innerHTML=`
-    <div class="flux-offline-screen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:4rem 2rem;text-align:center;font-family:system-ui,sans-serif;background:var(--bg,#0B0F1A);color:var(--text,#e8ecff)">
-      <div style="max-width:420px">
-        <h2 style="margin:0 0 12px;font-size:1.35rem;font-weight:700">Unable to reach Flux servers</h2>
-        <p style="margin:0 0 20px;color:var(--muted2,#94a3b8);font-size:.92rem;line-height:1.5">Check your internet connection. Our database may be momentarily unreachable.</p>
-        <button type="button" class="btn-primary" style="padding:12px 20px" onclick="window.location.reload()">Retry connection</button>
-      </div>
+  let ov=document.getElementById('fluxOfflineOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='fluxOfflineOverlay';
+    ov.setAttribute('role','alertdialog');
+    ov.style.cssText='position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:2rem;background:rgba(5,8,16,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)';
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML=`
+    <div class="flux-offline-screen" style="max-width:420px;text-align:center;font-family:system-ui,sans-serif;color:var(--text,#e8ecff)">
+      <h2 style="margin:0 0 12px;font-size:1.35rem;font-weight:700">Unable to reach Flux servers</h2>
+      <p style="margin:0 0 20px;color:var(--muted2,#94a3b8);font-size:.92rem;line-height:1.5">Check your internet connection. Our database may be momentarily unreachable.</p>
+      <button type="button" class="btn-primary" style="padding:12px 20px" onclick="window.location.reload()">Retry connection</button>
     </div>`;
 }
 window.showFluxOfflineScreen=showFluxOfflineScreen;
@@ -9777,16 +9791,19 @@ async function initAuth(){
     showLoginScreen();
     return;
   }
-  const reach=await pingSupabaseReachable(sb);
-  if(!reach.ok&&reach.reason==='offline'){
-    showFluxOfflineScreen();
-    return;
-  }
   initOAuthPostMessageListener();
   try{
     const hash=window.location.hash;
     const params=new URLSearchParams(window.location.search);
     const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error');
+
+    if(!isOAuthCallback){
+      const reach=await pingSupabaseReachable(sb);
+      if(!reach.ok&&reach.reason==='offline'){
+        showFluxOfflineScreen();
+        return;
+      }
+    }
 
     const session=await getSessionAfterOAuth(sb);
 
@@ -10201,10 +10218,13 @@ async function handleSignedIn(user,session){
       FluxAIConnections.renderConnectionsPanel(true);
     }
   }catch(e){}
-  // hide login immediately
+  // hide login immediately; show app shell while role/cloud hydrate (avoids blank screen + stuck login)
   const _ls=document.getElementById('loginScreen');if(_ls){_ls.style.display='none';_ls.classList.remove('visible');}
   stopLoginDemoRotator();
   teardownLoginScrollAnimations();
+  document.getElementById('fluxOfflineOverlay')?.remove();
+  try{showApp();}catch(_){}
+  try{showDashboardRoleSkeleton();}catch(_){}
   const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'Student';
   const firstName=name.split(' ')[0];
   fluxSaveStoredString('flux_user_name',firstName);
@@ -10226,8 +10246,6 @@ async function handleSignedIn(user,session){
 
   initFluxSessionIdleAdvisory();
 
-  try{showDashboardRoleSkeleton();}catch(_){}
-
   // ── Role detection — runs BEFORE deciding which onboarding to show ──
   // Previously the student wizard launched first and the role picker popped
   // on top of it for new staff accounts. Order is now: load role row → if
@@ -10245,6 +10263,8 @@ async function handleSignedIn(user,session){
       // First sign-up only: picker + user_roles row (skipped if already completed).
       resolvedRole=(await detectUserRoleAndRoute())||'student';
       try{await FluxRole.load();}catch(_){}
+      document.getElementById('postLoginRolePicker')?.remove();
+      document.getElementById('staffDetailsForm')?.remove();
     }else{
       resolvedRole=FluxRole.current||fluxGetRoleSetup(user.id)?.role||'student';
       if(FluxRole.profile){
@@ -14797,7 +14817,8 @@ window.showRoleSelectOrLogin=showRoleSelectOrLogin;
  *  Used by detectUserRoleAndRoute when the user has no role yet. */
 function showPostLoginRolePicker(opts){
   return new Promise((resolve)=>{
-    if(currentUser?.id&&fluxGetRoleSetup(currentUser.id))return resolve(null);
+    const cached=currentUser?.id?fluxGetRoleSetup(currentUser.id):null;
+    if(cached?.done)return resolve(cached.role||'student');
     if(document.getElementById('postLoginRolePicker'))return resolve(null);
     const ov=document.createElement('div');
     ov.id='postLoginRolePicker';
@@ -15121,6 +15142,9 @@ async function detectUserRoleAndRoute(){
     try{
       const pick=await showPostLoginRolePicker();
       if(pick==='student'){
+        role='student';
+        hadExplicitRole=true;
+        fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
         try{
           await sb.from('user_roles').upsert({
             user_id:currentUser.id,
@@ -15128,13 +15152,13 @@ async function detectUserRoleAndRoute(){
             display_name:displayName||currentUser.user_metadata?.full_name||null,
             updated_at:new Date().toISOString(),
           });
-          role='student';
-          hadExplicitRole=true;
-          fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
-        }catch(_){}
+        }catch(e){console.warn('[Flux] user_roles upsert (student)',e);}
       }else if(pick==='staff'){
         const det=await showStaffDetailsForm();
         if(det&&det.role){
+          role=det.role;
+          hadExplicitRole=true;
+          fluxMarkRoleSetupDone(currentUser.id,det.role,det.name||displayName);
           try{
             await sb.from('user_roles').upsert({
               user_id:currentUser.id,
@@ -15144,9 +15168,6 @@ async function detectUserRoleAndRoute(){
               school:(window.FluxSchool?.IAE?.name||'International Academy East'),
               updated_at:new Date().toISOString(),
             });
-            role=det.role;
-            hadExplicitRole=true;
-            fluxMarkRoleSetupDone(currentUser.id,det.role,det.name||displayName);
             if(det.role==='counselor'&&det.name){
               const lastName=det.name.split(' ').filter(Boolean).pop();
               if(lastName){
@@ -15157,19 +15178,31 @@ async function detectUserRoleAndRoute(){
                 }catch(_){}
               }
             }
-          }catch(_){}
-        }else{
-          // Cancelled — default to student so we don't keep nagging.
+          }catch(e){console.warn('[Flux] user_roles upsert (staff)',e);}
+        }else if(pick==='staff'){
+          // Staff flow cancelled — default to student so we don't keep nagging.
+          role='student';
+          hadExplicitRole=true;
+          fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
           try{
             await sb.from('user_roles').upsert({
               user_id:currentUser.id,role:'student',
               display_name:displayName||null,updated_at:new Date().toISOString(),
             });
-            role='student';
-            hadExplicitRole=true;
-            fluxMarkRoleSetupDone(currentUser.id,'student',displayName);
-          }catch(_){}
+          }catch(e){console.warn('[Flux] user_roles upsert (staff cancel)',e);}
         }
+      }else if(pick&&['teacher','counselor','staff','admin','student'].includes(pick)){
+        role=pick;
+        hadExplicitRole=true;
+        fluxMarkRoleSetupDone(currentUser.id,pick,displayName);
+        try{
+          await sb.from('user_roles').upsert({
+            user_id:currentUser.id,
+            role:pick,
+            display_name:displayName||currentUser.user_metadata?.full_name||null,
+            updated_at:new Date().toISOString(),
+          });
+        }catch(e){console.warn('[Flux] user_roles upsert (cached pick)',e);}
       }
     }catch(e){console.warn('[Flux] post-login role picker error',e);}
   }
@@ -15203,6 +15236,9 @@ async function detectUserRoleAndRoute(){
       try{loadTeacherAssignments();}catch(_){}
     },500);
   }
+  document.getElementById('postLoginRolePicker')?.remove();
+  document.getElementById('staffDetailsForm')?.remove();
+  try{await FluxRole.load();}catch(_){}
   return role;
 }
 window.detectUserRoleAndRoute=detectUserRoleAndRoute;
