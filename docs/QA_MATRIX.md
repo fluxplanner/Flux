@@ -95,6 +95,22 @@ Migration: `20260528100000` … `20260528700000_ia_east_pilot_extended.sql` · D
 
 ---
 
+## 0m. Syllabus conflict check (`enable_syllabus_conflict_check` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Two quizzes same day | Legacy “Heavy day” one-line banner |
+| Flag on | `student` | 2+ tests same date | Bullet list under notices bar |
+| Flag on | `student` | Test + hw same subject/date | Subject clash bullet |
+| Flag on | `student` | Duplicate task name same day | Duplicate due bullet |
+| Locale | `student` | Flag + locale on | Bullets use `fluxT` / Español |
+| IAE pilot | `student` @ IAE | After `20260529100000`, two quizzes same day | Banner shows without experiments |
+| Live refresh | `student` | Add second quiz same date | Banner updates without full page reload |
+
+Migration: `20260529000000` … `20260529100000_ia_east_syllabus_conflict.sql` · Doc: `docs/P11-SYLLABUS-CONFLICT.md`
+
+---
+
 ## 0l. Locale UI strings (P10.2 — needs `enable_locale_foundation`)
 
 | Feature | Role | Test action | Expected result |

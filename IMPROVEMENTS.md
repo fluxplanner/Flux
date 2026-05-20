@@ -74,7 +74,7 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 68 | Chat presets | Roadmap |
 | 69 | AI cost meter | Roadmap |
 | 70 | AI split task | Partial — auto-split |
-| 71 | Syllabus conflict check | Roadmap |
+| 71 | Syllabus conflict check | Done — `P11-SYLLABUS-CONFLICT`, `enable_syllabus_conflict_check` |
 | 72 | Offline AI queue | Roadmap |
 | 73 | Sync conflict UI | Done — `P9-SYNC-CONFLICT`, `enable_sync_conflict_ui` |
 | 74 | Encrypted backup | Done — export + merge import |

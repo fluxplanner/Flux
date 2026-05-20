@@ -73,6 +73,12 @@
     'cal.heading': 'Calendar',
     'cal.section.hero': 'Month, day detail & Google sync',
     'cal.section.schedule': 'Cycle & weekly schedule',
+    'syllabus.title': 'Schedule conflicts',
+    'syllabus.exam_stack': '{date}: {n} tests/quizzes due',
+    'syllabus.heavy_day': '{date}: {n} assignments due',
+    'syllabus.subject_clash': '{date}: {subject} has a test and homework due',
+    'syllabus.duplicate_due': '{date}: duplicate "{name}" — check syllabus import',
+    'syllabus.more': '+{n} more conflicts',
   };
 
   const STRINGS = {
@@ -132,6 +138,12 @@
       'cal.heading': 'Calendario',
       'cal.section.hero': 'Mes, día y sync de Google',
       'cal.section.schedule': 'Ciclo y horario semanal',
+      'syllabus.title': 'Conflictos de horario',
+      'syllabus.exam_stack': '{date}: {n} exámenes/pruebas',
+      'syllabus.heavy_day': '{date}: {n} tareas con entrega',
+      'syllabus.subject_clash': '{date}: {subject} tiene examen y tarea',
+      'syllabus.duplicate_due': '{date}: duplicado "{name}" — revisa el sílabo',
+      'syllabus.more': '+{n} conflictos más',
     },
     'fr-FR': {
       ...UI_STRINGS,
@@ -168,6 +180,12 @@
       'dash.section.countdown': 'Compte à rebours examens',
       'dash.section.tasks': 'Tâches',
       'cal.heading': 'Calendrier',
+      'syllabus.title': 'Conflits d\'emploi du temps',
+      'syllabus.exam_stack': '{date} : {n} tests',
+      'syllabus.heavy_day': '{date} : {n} devoirs',
+      'syllabus.subject_clash': '{date} : {subject} — test et devoir',
+      'syllabus.duplicate_due': '{date} : doublon « {name} »',
+      'syllabus.more': '+{n} autres',
     },
     'ar-SA': {
       ...UI_STRINGS,
@@ -196,6 +214,12 @@
       'dash.heading': 'لوحة التحكم',
       'dash.section.tasks': 'المهام',
       'cal.heading': 'التقويم',
+      'syllabus.title': 'تعارضات الجدول',
+      'syllabus.exam_stack': '{date}: {n} اختبارات',
+      'syllabus.heavy_day': '{date}: {n} واجبات',
+      'syllabus.subject_clash': '{date}: {subject} — اختبار وواجب',
+      'syllabus.duplicate_due': '{date}: تكرار «{name}»',
+      'syllabus.more': '+{n} أخرى',
     },
   };
 
@@ -291,6 +315,7 @@
       if (window.FluxPersonal?.renderPanelLayoutSettings) window.FluxPersonal.renderPanelLayoutSettings();
       if (window.FluxStorageRepair?.renderSettingsCard) window.FluxStorageRepair.renderSettingsCard();
       if (window.FluxOfflineSync?.refreshConflictUi) window.FluxOfflineSync.refreshConflictUi();
+      if (window.FluxSyllabusConflict?.render) window.FluxSyllabusConflict.render();
     } catch (_) {}
   }
 

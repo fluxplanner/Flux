@@ -1,0 +1,18 @@
+/* P11-SYLLABUS-CONFLICT — dashboard notice (reuses notices sub-bar) */
+.exam-conflict-banner.syllabus-conflict-banner--v2 {
+  display: block;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  border-radius: 10px;
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  color: var(--text2, #e8ecff);
+}
+.syllabus-conflict-list {
+  margin: 6px 0 0;
+  padding-left: 1.15rem;
+}
+.syllabus-conflict-list li {
+  margin: 4px 0;
+}

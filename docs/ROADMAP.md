@@ -170,7 +170,14 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 
 **Phase 10 exit:** `docs/PHASE_10_CLOSEOUT.md`
 
-For new work beyond Phase 10, add rows here or pick items from `IMPROVEMENTS.md`.
+## Phase 11 — Schedule intelligence
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 11.1 | `P11-SYLLABUS-CONFLICT` | Syllabus conflict banner (`enable_syllabus_conflict_check`) | Done |
+| 11.2 | `P11-PILOT-B` | IA East school override for syllabus conflicts + live banner refresh | Done |
+
+For new work beyond Phase 11, add rows here or pick items from `IMPROVEMENTS.md`.
 
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  
 2. Run `npm run test:e2e` before large UI changes.  

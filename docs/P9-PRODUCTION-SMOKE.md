@@ -5,7 +5,7 @@ Manual checklist for International Academy East pilot and Phase 9 student polish
 
 ## Prerequisites
 
-- Migrations through `20260528800000_sync_conflict_ui.sql` applied (`supabase db push`).
+- Migrations through `20260529100000_ia_east_syllabus_conflict.sql` applied (`supabase db push`).
 - Test accounts at `user_roles.school = International Academy East` for each role.
 - No `FLUX_EXPERIMENTS` in production — flags come from `flux_school_feature_flags` + global defaults.
 
@@ -16,6 +16,7 @@ Manual checklist for International Academy East pilot and Phase 9 student polish
 | Staff suite + classroom + caseload + personal hub + ⌘K + school ops | `20260528300000` |
 | Locale foundation | `20260528700000` |
 | Ops health panel | `20260528700000` |
+| Syllabus conflict check | `20260529100000` |
 | Gmail educator import | **off** unless added manually |
 
 Global defaults: `enable_dashboard_widget_picker` **on**, `enable_site_enhancements_pack` **on**.
@@ -27,6 +28,7 @@ Global defaults: `enable_dashboard_widget_picker` **on**, `enable_site_enhanceme
 | # | Action | Pass |
 |---|--------|------|
 | 1 | Sign in, open dashboard | Tasks, pulse, schedule load; no blank overlay |
+| 1b | Two quizzes same due date | Schedule conflicts banner (IAE pilot) lists exam stack |
 | 2 | Settings → Appearance → hide **Exam countdown** | `#countdownCard` hidden after reload |
 | 3 | Settings → Appearance → Español (locale on) | Date pill + task due dates localized |
 | 4 | Core with staff flags **off** (guest or non-IAE) | No staff widget grid on student dashboard |
