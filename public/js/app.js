@@ -1958,11 +1958,12 @@ function applyRoleUI(){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=eduPersonalNav?'':'none';
   });
+  const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isWork?'':'none';
+    el.style.display=FluxRole.isStaff()&&isWork&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isPersonal?'':'none';
+    el.style.display=FluxRole.isStaff()&&isPersonal&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-work-main]').forEach(el=>{
     el.style.display=(isEducator&&isWork)?'':'none';
@@ -2035,11 +2036,12 @@ function applyModeToNav(isWork){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=isEducatorPersonal?'':'none';
   });
+  const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isWork?'':'none';
+    el.style.display=FluxRole.isStaff()&&isWork&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isPersonal?'':'none';
+    el.style.display=FluxRole.isStaff()&&isPersonal&&staffGoogleOn?'':'none';
   });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
@@ -9788,6 +9790,8 @@ async function handleSignedIn(user,session){
         try{await FluxRole.load();}catch(_){}
       }
     }catch(_){}
+    try{if(window.FluxFeatureFlags?.load)await FluxFeatureFlags.load({force:true});}catch(_){}
+    try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     return;
   }
@@ -9919,6 +9923,8 @@ async function handleSignedIn(user,session){
       resolvedRole=FluxRole.current||resolvedRole;
     }
   }catch(_){}
+  try{if(window.FluxFeatureFlags?.load)await FluxFeatureFlags.load();}catch(_){}
+  try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
   const onboardedNewKey='flux_onboarding_done_'+user.id;

@@ -6,6 +6,15 @@
 
 ---
 
+## 0. Feature flags (after sign-in)
+
+- [ ] `FluxFeatureFlags.load()` completes without console error (requires migration `20260524120000_feature_flags_foundation.sql`).
+- [ ] `FluxFeatureFlags.isEnabled('enable_staff_google_hub')` is true by default for staff/admin.
+- [ ] Disabling `enable_staff_google_hub` in DB user override hides staff **Google** nav (work + personal) after reload.
+- [ ] `FLUX_EXPERIMENTS.enable_*` in devtools overrides local flag when set.
+
+---
+
 ## 1. Debug switches (no console spam unless enabled)
 
 | Goal | Enable |
