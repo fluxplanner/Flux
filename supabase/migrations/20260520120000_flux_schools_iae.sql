@@ -23,7 +23,7 @@ VALUES (
   'iae',
   'International Academy East',
   'IAE',
-  'IAE-EAST',
+  'IA-EAST',
   'Bloomfield Hills Schools'
 )
 ON CONFLICT (slug) DO UPDATE SET

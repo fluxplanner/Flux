@@ -1260,11 +1260,11 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <div style="flex:1;min-width:180px">
               <label style="font-size:.72rem;color:var(--muted)">School code</label>
-              <input type="text" id="schoolJoinCodeInput" placeholder="IAE-EAST" autocomplete="off" style="margin:0;text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:.04em">
+              <input type="text" id="schoolJoinCodeInput" placeholder="IA-EAST" autocomplete="off" style="margin:0;text-transform:uppercase;font-family:'JetBrains Mono',monospace;letter-spacing:.04em">
             </div>
             <button type="button" onclick="joinFluxSchoolFromUI()" style="padding:10px 18px;white-space:nowrap;font-weight:700">Join school</button>
           </div>
-          <p style="font-size:.75rem;color:var(--muted2);margin:12px 0 0">International Academy East: <strong style="color:var(--text)">IAE-EAST</strong></p>
+          <p style="font-size:.75rem;color:var(--muted2);margin:12px 0 0">International Academy East: <strong style="color:var(--text)">IA-East</strong></p>
         </div>
       </div>
       <div class="card">
@@ -1527,7 +1527,7 @@
     <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.</p>
+        <p class="flux-page-sub" id="canvasHubPageSub">One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.</p>
       </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
@@ -1848,13 +1848,15 @@
             <span class="ai-title">Flux AI</span>
             <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
           </div>
-          <div class="ai-topbar__right ai-controls" role="toolbar" aria-label="Flux AI controls">
+          <div class="ai-topbar__center" aria-label="AI style">
             <select id="aiModeSelect" class="ai-mode-select" aria-label="AI style" onchange="setFluxAIModeFromSelect(this.value)">
               <option value="default">⚡ Balanced</option>
               <option value="research">🔬 Research</option>
               <option value="deep">🧠 Deep think</option>
               <option value="overtime">⏱ Overtime</option>
             </select>
+          </div>
+          <div class="ai-topbar__right ai-controls" role="toolbar" aria-label="Flux AI controls">
             <label class="ai-topbar-attach" title="Attach image">
               <input type="file" accept="image/*" id="aiImgUpload" onchange="handleAIImg(event)">
               <span class="ai-topbar-attach__ico" aria-hidden="true">📎</span>

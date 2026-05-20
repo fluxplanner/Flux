@@ -1554,6 +1554,9 @@
    live in the message column intro (not the topbar).
    ═════════════════════════════════════════════════════════════ */
 #ai.flux-ai-panel.ai-root .ai-topbar{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center !important;
   flex-wrap: nowrap !important;
   gap: 10px !important;
   padding: 10px 18px !important;
@@ -1570,9 +1573,20 @@
 }
 #ai.flux-ai-panel.ai-root .ai-topbar__left{
   gap: 10px !important;
-  flex: 1 1 auto;
+  flex: none !important;
   min-width: 0;
   overflow: hidden;
+  justify-self: start;
+  grid-column: 1;
+}
+#ai.flux-ai-panel.ai-root .ai-topbar__center{
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
 }
 #ai.flux-ai-panel.ai-root .ai-topbar__left .ai-title{
   min-width: 0;
@@ -1601,8 +1615,10 @@
   flex-wrap: nowrap !important;
   gap: 8px !important;
   align-items: center !important;
-  flex: 0 0 auto !important;
+  flex: none !important;
   flex-shrink: 0 !important;
+  justify-self: end;
+  grid-column: 3;
   padding: 4px 6px !important;
   border-radius: 14px;
   background: color-mix(in srgb, var(--card2) 80%, transparent);
@@ -1616,13 +1632,18 @@
 #ai.flux-ai-panel.ai-root .ai-topbar__right .ai-topbar-attach + .ai-topbar-btn{
   margin-left: 2px;
 }
+#ai.flux-ai-panel.ai-root .ai-topbar__center .ai-mode-select{
+  margin: 0 auto;
+  text-align: center;
+  text-align-last: center;
+}
 #ai.flux-ai-panel.ai-root .ai-mode-select{
   appearance: none;
   -webkit-appearance: none;
   padding: 6px 22px 6px 10px !important;
   border-radius: 10px !important;
-  border: none !important;
-  background-color: transparent !important;
+  border: 1px solid var(--fa-hair2) !important;
+  background-color: color-mix(in srgb, var(--card2) 85%, transparent) !important;
   background-image:
     linear-gradient(45deg, transparent 50%, currentColor 50%),
     linear-gradient(135deg, currentColor 50%, transparent 50%) !important;
@@ -1812,7 +1833,8 @@
   #ai.flux-ai-panel.ai-root .ai-topbar{
     padding: 8px 12px !important;
     min-height: 52px !important;
-    gap: 8px !important;
+    gap: 6px !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
   #ai.flux-ai-panel.ai-root .ai-topbar-logo{ width: 26px; height: 26px; }
   #ai.flux-ai-panel.ai-root .ai-title{ font-size: 0.95rem; }

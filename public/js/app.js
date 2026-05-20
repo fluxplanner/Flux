@@ -1402,7 +1402,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',schoolFeedPanel:'School feed'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',schoolFeedPanel:'School feed'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1901,19 +1901,19 @@ function applyRoleUI(){
     '.sidebar .nav-item[data-tab="goals"]',
     '.sidebar .nav-item[data-tab="timer"]',
     '.sidebar .nav-item[data-tab="toolbox"]',
-    '.sidebar .nav-item[data-tab="canvas"]',
+    '.sidebar .nav-item[data-tab="canvas"]:not([data-educator-google])',
     '.sidebar .nav-item[data-tab="notes"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]',
     '.mob-drawer .nav-item[onclick*="\'goals\'"]',
     '.mob-drawer .nav-item[onclick*="\'timer\'"]',
     '.mob-drawer .nav-item[onclick*="\'toolbox\'"]',
-    '.mob-drawer .nav-item[onclick*="\'canvas\'"]',
+    '.mob-drawer .nav-item[onclick*="\'canvas\'"]:not([data-educator-google])',
     '.mob-drawer .nav-item[onclick*="\'notes\'"]',
     '.bnav-item[data-tab="mood"]',
     '.bnav-item[data-tab="goals"]',
     '.bnav-item[data-tab="timer"]',
     '.bnav-item[data-tab="toolbox"]',
-    '.bnav-item[data-tab="canvas"]',
+    '.bnav-item[data-tab="canvas"]:not([data-educator-google])',
     '.locker-info-section',
     '.counselor-section-student',
     '.onboard-counselor-step',
@@ -1957,6 +1957,12 @@ function applyRoleUI(){
   // ── RULE 2: Staff personal nav
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=eduPersonalNav?'':'none';
+  });
+  document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
+    el.style.display=FluxRole.isStaff()&&isWork?'':'none';
+  });
+  document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
+    el.style.display=FluxRole.isStaff()&&isPersonal?'':'none';
   });
   document.querySelectorAll('[data-educator-work-main]').forEach(el=>{
     el.style.display=(isEducator&&isWork)?'':'none';
@@ -2029,13 +2035,19 @@ function applyModeToNav(isWork){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=isEducatorPersonal?'':'none';
   });
+  document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
+    el.style.display=FluxRole.isStaff()&&isWork?'':'none';
+  });
+  document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
+    el.style.display=FluxRole.isStaff()&&isPersonal?'':'none';
+  });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
     '#nav-mood','#nav-goals','#nav-habits','#nav-canvas','#nav-study',
     '.nav-item[data-tab="mood"]','.nav-item[data-tab="goals"]','.nav-item[data-tab="habits"]',
-    '.nav-item[data-tab="canvas"]','.nav-item[data-tab="toolbox"]','.nav-item[data-tab="timer"]','.nav-item[data-tab="notes"]',
+    '.nav-item[data-tab="canvas"]:not([data-educator-google])','.nav-item[data-tab="toolbox"]','.nav-item[data-tab="timer"]','.nav-item[data-tab="notes"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]','.mob-drawer .nav-item[onclick*="\'goals\'"]',
-    '.mob-drawer .nav-item[onclick*="\'canvas\'"]','.mob-drawer .nav-item[onclick*="\'toolbox\'"]','.mob-drawer .nav-item[onclick*="\'timer\'"]','.mob-drawer .nav-item[onclick*="\'notes\'"]',
+    '.mob-drawer .nav-item[onclick*="\'canvas\'"]:not([data-educator-google])','.mob-drawer .nav-item[onclick*="\'toolbox\'"]','.mob-drawer .nav-item[onclick*="\'timer\'"]','.mob-drawer .nav-item[onclick*="\'notes\'"]',
   ];
   studentOnlyTabs.forEach(sel=>{
     document.querySelectorAll(sel).forEach(el=>{
@@ -2916,6 +2928,7 @@ function nav(id,btn,navOpt){
   const tTitle=document.getElementById('topbarTitle');
   if(tTitle){
     if(id==='flux_control')tTitle.textContent=isOwner()?'Owner control':(getMyRole()==='dev'?'Dev panel':'Control');
+    else if(id==='canvas'&&typeof FluxRole!=='undefined'&&FluxRole.isStaff&&FluxRole.isStaff())tTitle.textContent=PANEL_TITLES.google||'Google';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
   const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();if((typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')||(pendStaff&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderExamConflictBanner();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}}};
@@ -3132,9 +3145,14 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 <button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" title="School feed"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>
 </div>
 <button type="button" class="nav-item" data-school-feed-student-only onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" data-tab="schoolFeedPanel"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>`;
+  const googleNavIcon=`<svg class="nt-svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`;
+  const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
+  const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
+  const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
   const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>`;
-  return{workspace,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
+${googleNavPersonal}`;
+  return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
 
 function renderSidebars(){
@@ -4457,9 +4475,9 @@ function toggleWeeklyRuleScope(rid){
 }
 
 // ── Google Calendar sync ──
-async function syncGoogleCalendar(){
-  const statusEl=document.getElementById('gcalStatus');
-  const eventsEl=document.getElementById('gcalEvents');
+async function syncGoogleCalendar(opts){
+  const statusEl=(opts&&opts.statusEl)||document.getElementById('gcalStatus');
+  const eventsEl=(opts&&opts.eventsEl)||document.getElementById('gcalEvents');
   if(!gmailToken){
     if(statusEl)statusEl.innerHTML='<div class="sync-badge offline">○ Sign in with Google to sync</div>';return;
   }
@@ -4542,6 +4560,23 @@ function fluxClassDaysSelectHtml(selectId,selected){
   ];
   return`<select id="${selectId}" style="margin:0">${opts.map(([v,l])=>`<option value="${esc(v)}"${sel===v?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
 }
+/** Lookup active class by share code (SECURITY DEFINER RPC — no directory leak). */
+async function fluxLookupClassByCode(sb,code){
+  if(!sb||!code)return null;
+  const norm=String(code).trim().toUpperCase();
+  if(norm.length<4)return null;
+  try{
+    const {data,error}=await sb.rpc('flux_lookup_class_by_code',{p_code:norm});
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    return row&&row.id?row:null;
+  }catch(e){
+    console.warn('[Flux] fluxLookupClassByCode',e);
+    return null;
+  }
+}
+window.fluxLookupClassByCode=fluxLookupClassByCode;
+
 function fluxFormatTeacherClassSchedule(tc){
   if(!tc)return'';
   const parts=[];
@@ -15150,7 +15185,7 @@ async function renderTeacherDashboard(){
         .order('created_at',{ascending:false})
         .limit(5),
     ]);
-    classesRows=clsRes.data||[];
+    classesRows=(clsRes.data||[]).filter(c=>c&&c.teacher_id===currentUser.id);
     announcements=annRes.data||[];
     try{
       const {data:pj}=await sb.from('class_join_requests')
@@ -15474,14 +15509,15 @@ async function openTeacherClassView(classId){
   const sb=getSB();if(!sb||!currentUser)return;
   let cls=null;let assignments=[];let students=[];
   try{
-    const [classRes,asgRes,stuRes]=await Promise.all([
-      sb.from('teacher_classes').select('*').eq('id',classId).maybeSingle(),
-      sb.from('teacher_assignments').select('*,student_completions(student_id,status,grade)').eq('class_id',classId).order('due_date',{ascending:true}),
-      sb.from('teacher_students').select('*').eq('teacher_id',currentUser.id),
-    ]);
+    const classRes=await sb.from('teacher_classes').select('*').eq('id',classId).eq('teacher_id',currentUser.id).maybeSingle();
     cls=classRes.data;
+    if(!cls)throw new Error('not_found');
+    const [asgRes,stuRes]=await Promise.all([
+      sb.from('teacher_assignments').select('*,student_completions(student_id,status,grade)').eq('class_id',classId).eq('teacher_id',currentUser.id).order('due_date',{ascending:true}),
+      sb.from('teacher_students').select('*').eq('teacher_id',currentUser.id).eq('class_code',cls.class_code||''),
+    ]);
     assignments=asgRes.data||[];
-    students=(stuRes.data||[]).filter(s=>(cls?.class_name&&s.class_name===cls.class_name)||(s.class_code&&s.class_code===cls?.class_code));
+    students=stuRes.data||[];
   }catch(e){console.warn('[Flux] openTeacherClassView load failed',e);}
   if(!cls){if(typeof showToast==='function')showToast('Class not found','error',2200);return;}
   if(cls.teacher_id!==currentUser.id){
@@ -15644,7 +15680,7 @@ function openJoinClassModal(){
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:380px;box-shadow:var(--shadow-float)">
       <h3 style="font-size:1rem;font-weight:800;margin-bottom:6px">Join a Class</h3>
-      <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">Enter the 6-character code your teacher shared with you</p>
+      <p style="font-size:.8rem;color:var(--muted2);margin-bottom:18px">Enter the 6-character code your teacher shared. Your class schedule fills in automatically.</p>
       <input id="classJoinCode" placeholder="e.g. ABC123" maxlength="6"
         style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:4px;color:var(--accent);text-transform:uppercase">
       <div class="mrow" style="margin-top:12px">
@@ -15654,7 +15690,7 @@ function openJoinClassModal(){
       <div id="joinClassError" style="display:none;font-size:.78rem;color:var(--red);padding:8px;background:rgba(255,77,109,.08);border-radius:8px;margin-top:10px;border:1px solid rgba(255,77,109,.2)"></div>
       <div id="joinClassPreview" style="display:none;padding:12px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-top:12px;font-size:.85rem"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button id="joinClassSubmit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Request to Join</button>
+        <button id="joinClassSubmit" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#0a0d18;font-weight:700;cursor:pointer">Join class</button>
         <button id="joinClassCancel" style="padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--muted2);cursor:pointer">Cancel</button>
       </div>
     </div>`;
@@ -15672,11 +15708,7 @@ function openJoinClassModal(){
     if(code.length!==6){preview.style.display='none';return;}
     const sb=getSB();if(!sb)return;
     try{
-      const {data}=await sb.from('teacher_classes')
-        .select('id,class_name,subject,teacher_id,period,room,time_start,time_end,days')
-        .eq('class_code',code)
-        .eq('active',true)
-        .maybeSingle();
+      const data=await fluxLookupClassByCode(sb,code);
       if(data){
         let tName='Unknown';
         try{
@@ -15685,14 +15717,13 @@ function openJoinClassModal(){
         }catch(_){}
         let extra='';
         try{
-          const {data:jr}=await sb.from('class_join_requests')
-            .select('status')
-            .eq('class_id',data.id)
+          const {data:enr}=await sb.from('teacher_students')
+            .select('id')
             .eq('student_id',currentUser.id)
+            .eq('class_code',data.class_code)
+            .eq('active',true)
             .maybeSingle();
-          if(jr?.status==='pending')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--gold)">⏳ You already have a pending request for this class.</div>';
-          else if(jr?.status==='approved')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--green)">✓ You are already approved for this class.</div>';
-          else if(jr?.status==='rejected')extra='<div style="margin-top:8px;font-size:.78rem;color:var(--muted2)">A previous request was not approved — you can submit a new request.</div>';
+          if(enr?.id)extra='<div style="margin-top:8px;font-size:.78rem;color:var(--green)">✓ You are already in this class.</div>';
         }catch(_){}
         preview.style.display='block';
         const sched=fluxFormatTeacherClassSchedule(data);
@@ -15715,56 +15746,36 @@ async function submitJoinClass(){
   if(!sb||!u){setErr('Sign-in required');return;}
 
   try{
-    const {data:cls}=await sb.from('teacher_classes')
-      .select('*')
-      .eq('class_code',code)
-      .eq('active',true)
-      .maybeSingle();
-    if(!cls){setErr('Class code not found. Check with your teacher.');return;}
+    const {data:joinRes,error:joinErr}=await sb.rpc('flux_join_teacher_class',{p_code:code});
+    if(joinErr)throw joinErr;
+    if(!joinRes?.ok){
+      const why=joinRes?.error==='invalid_code'
+        ?'Class code not found. Check with your teacher.'
+        :'Could not join this class. Try again.';
+      setErr(why);
+      return;
+    }
 
-    const {data:existing}=await sb.from('teacher_students')
-      .select('id')
-      .eq('teacher_id',cls.teacher_id)
-      .eq('student_id',u.id)
-      .eq('class_name',cls.class_name)
-      .maybeSingle();
-    if(existing){setErr("You're already enrolled in this class.");return;}
-
-    let jr=null;
-    try{
-      const {data:j0}=await sb.from('class_join_requests')
-        .select('id,status')
-        .eq('class_id',cls.id)
-        .eq('student_id',u.id)
-        .maybeSingle();
-      jr=j0;
-    }catch(_){jr=null;}
-
-    if(jr?.status==='pending'){setErr('You already have a pending request for this class.');return;}
-
-    if(jr?.status==='rejected'){
-      const {error:e1}=await sb.from('class_join_requests').update({
-        status:'pending',
-        student_note:note||null,
-        teacher_note:null,
-        resolved_at:null,
-      }).eq('id',jr.id).eq('student_id',u.id);
-      if(e1){setErr(e1.message);return;}
-    }else{
-      const {error:e2}=await sb.from('class_join_requests').insert({
-        class_id:cls.id,
-        student_id:u.id,
-        teacher_id:cls.teacher_id,
-        student_note:note||null,
-        status:'pending',
-      });
-      if(e2){setErr(e2.message);return;}
+    const className=joinRes.class_name||'your class';
+    if(note){
+      try{
+        await sb.from('class_join_requests').insert({
+          class_id:joinRes.class_id,
+          student_id:u.id,
+          teacher_id:joinRes.teacher_id,
+          student_note:note,
+          status:'approved',
+          resolved_at:new Date().toISOString(),
+        });
+      }catch(_){}
     }
 
     document.getElementById('joinClassModal')?.remove();
-    if(typeof showToast==='function')showToast(`Request sent — your teacher will review joining "${cls.class_name}".`,'success');
+    if(typeof showToast==='function')showToast(`Joined ${className} — your schedule was updated.`,'success');
+    try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     try{loadTeacherAssignments();}catch(_){}
-  }catch(e){setErr(e.message||'Failed to submit request');}
+    try{renderSchool();}catch(_){}
+  }catch(e){setErr(e.message||'Failed to join class');}
 }
 window.submitJoinClass=submitJoinClass;
 
@@ -15961,7 +15972,7 @@ async function submitCreateAssignment(){
   const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
   if(!title||!classId){setErr('Title and class are required');return;}
 
-  const {data:cls}=await sb.from('teacher_classes').select('class_code').eq('id',classId).maybeSingle();
+  const {data:cls}=await sb.from('teacher_classes').select('class_code').eq('id',classId).eq('teacher_id',currentUser.id).maybeSingle();
   const {error}=await sb.from('teacher_assignments').insert({
     teacher_id:currentUser.id,
     class_id:classId,

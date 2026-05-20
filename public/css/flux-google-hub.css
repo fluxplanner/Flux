@@ -73,6 +73,14 @@
 }
 .g-hub-gate-guest { max-width: 320px; margin: 0 auto; }
 .g-hub-muted { font-size: 0.78rem; color: var(--muted2); line-height: 1.55; margin: 0; }
+.g-hub-import-lede { margin: 0 0 4px; }
+.g-hub-import-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+}
+.g-hub-gcal-events { max-height: 360px; overflow-y: auto; }
 .g-hub-loading { font-size: 0.8rem; color: var(--muted2); padding: 20px; font-family: 'JetBrains Mono', monospace; }
 .g-hub-err { color: var(--red); font-size: 0.8rem; margin-bottom: 10px; }
 .g-tasks-head {

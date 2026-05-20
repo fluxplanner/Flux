@@ -207,9 +207,9 @@
 
   function hubTab() {
     try {
-      return load(LS_HUB_TAB, 'canvas');
+      return load(LS_HUB_TAB, 'tasks');
     } catch (_) {
-      return 'canvas';
+      return 'tasks';
     }
   }
 
@@ -250,9 +250,108 @@
     </div>`;
   }
 
+  function isStaffHub() {
+    try {
+      return typeof FluxRole !== 'undefined' && FluxRole.isStaff && FluxRole.isStaff();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncHubPageSubtitle() {
+    const sub = document.getElementById('canvasHubPageSub');
+    if (!sub) return;
+    if (isStaffHub()) {
+      sub.textContent =
+        'Connect once, then import Gmail, Calendar events, Tasks, Docs, and Canvas assignments into Flux — available in Work and Personal mode.';
+    } else {
+      sub.textContent =
+        'One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.';
+    }
+  }
+
+  function hubTabsList() {
+    return [
+      { id: 'tasks', label: 'Tasks', icon: '✅' },
+      { id: 'calendar', label: 'Calendar', icon: '📅' },
+      { id: 'gmail', label: 'Gmail', icon: '📧' },
+      { id: 'docs', label: 'Docs', icon: '📄' },
+      { id: 'canvas', label: 'Canvas', icon: '🎓' },
+    ];
+  }
+
+  async function syncCalendar() {
+    if (typeof syncGoogleCalendar !== 'function') {
+      toast('Calendar sync is not available', 'warning');
+      return;
+    }
+    await ensureToken();
+    await syncGoogleCalendar({
+      statusEl: document.getElementById('gHubGcalStatus'),
+      eventsEl: document.getElementById('gHubGcalEvents'),
+    });
+  }
+
+  function renderCalendarPane() {
+    const slot = document.getElementById('gHubCalendarSlot');
+    if (!slot) return;
+    slot.innerHTML = `
+    <div class="g-hub-import-card">
+      <p class="g-hub-muted">Pull upcoming Google Calendar events and add them as Flux tasks.</p>
+      <div class="g-tasks-head" style="margin-top:12px">
+        <button type="button" class="btn-sec" onclick="FluxGoogle.syncCalendar()">↻ Sync calendar</button>
+        <button type="button" onclick="nav('calendar')">Open Flux calendar</button>
+      </div>
+      <div id="gHubGcalStatus" style="margin-top:12px"></div>
+      <div id="gHubGcalEvents" class="g-hub-gcal-events" style="margin-top:8px"></div>
+    </div>`;
+    void syncCalendar();
+  }
+
+  function renderDocsPane() {
+    const slot = document.getElementById('gHubDocsSlot');
+    if (!slot) return;
+    const primary = (typeof load === 'function' && load('flux_google_docs_primary_url', '')) || '';
+    slot.innerHTML = `
+    <div class="g-hub-import-card">
+      <p class="g-hub-muted">Sync a Google Doc into <strong>Flux AI</strong> or push planner notes to your doc.</p>
+      <div class="mrow" style="margin-top:12px">
+        <label for="gHubDocsUrl" style="font-size:.78rem;color:var(--muted)">Primary doc URL</label>
+        <input type="url" id="gHubDocsUrl" value="${esc(primary)}" placeholder="https://docs.google.com/document/d/…/edit" style="margin-top:6px;width:100%">
+      </div>
+      <div class="g-tasks-head" style="margin-top:12px">
+        <button type="button" class="btn-sec" onclick="FluxGoogle.saveDocsUrl()">Save URL</button>
+        <button type="button" onclick="window.fluxGoogleDocsPullNow&&fluxGoogleDocsPullNow()">Pull into AI</button>
+        <button type="button" class="btn-sec" onclick="window.fluxGoogleDocsCreateAndOpen&&fluxGoogleDocsCreateAndOpen()">New doc</button>
+      </div>
+      <div class="mrow" style="margin-top:14px">
+        <label for="gHubDocsPush" style="font-size:.78rem;color:var(--muted)">Push text to doc</label>
+        <textarea id="gHubDocsPush" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…" style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;width:100%"></textarea>
+        <button type="button" style="margin-top:8px" onclick="FluxGoogle.pushDocsFromHub()">Replace doc body</button>
+      </div>
+    </div>`;
+  }
+
+  function saveDocsUrl() {
+    const v = String(document.getElementById('gHubDocsUrl')?.value || '').trim();
+    if (typeof save === 'function') save('flux_google_docs_primary_url', v);
+    if (typeof window.fluxGoogleDocsSavePrimaryUrl === 'function') window.fluxGoogleDocsSavePrimaryUrl();
+    toast('Doc URL saved', 'success');
+  }
+
+  function pushDocsFromHub() {
+    const ta = document.getElementById('gHubDocsPush');
+    const settingsTa = document.getElementById('fluxDocsPushBody');
+    if (ta && settingsTa) settingsTa.value = ta.value;
+    if (typeof window.fluxGoogleDocsPushFromTextarea === 'function') window.fluxGoogleDocsPushFromTextarea();
+    else toast('Docs sync not loaded', 'warning');
+  }
+
   function renderHub() {
     const stack = document.getElementById('canvasHubStack');
     if (!stack) return;
+
+    syncHubPageSubtitle();
 
     if (!isGoogleLinked()) {
       stack.innerHTML = googleSignInGateHtml();
@@ -260,15 +359,12 @@
     }
 
     const tab = hubTab();
-    const tabs = [
-      { id: 'canvas', label: 'Canvas LMS', icon: '🎓' },
-      { id: 'gmail', label: 'Gmail', icon: '📧' },
-      { id: 'tasks', label: 'Google Tasks', icon: '✅' },
-    ];
+    const tabs = hubTabsList();
 
     stack.innerHTML = `
     <div class="g-hub">
       ${statusStripHtml()}
+      <p class="g-hub-muted g-hub-import-lede">Import into Flux — use <strong>+ Task</strong> or <strong>+ Flux</strong> on each row, or bulk import on Tasks and Canvas.</p>
       <nav class="g-hub-tabs" role="tablist" aria-label="Google and Canvas">
         ${tabs
           .map(
@@ -277,11 +373,13 @@
           )
           .join('')}
       </nav>
-      <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
+      <div id="gHubTasksSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'tasks' ? '' : 'style="display:none"'}></div>
+      <div id="gHubCalendarSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'calendar' ? '' : 'style="display:none"'}></div>
       <div id="gHubGmailSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'gmail' ? '' : 'style="display:none"'}>
         <div id="canvasGmailList" class="g-hub-gmail-list"></div>
       </div>
-      <div id="gHubTasksSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'tasks' ? '' : 'style="display:none"'}></div>
+      <div id="gHubDocsSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'docs' ? '' : 'style="display:none"'}></div>
+      <div id="gHubCanvasSlot" class="g-hub-pane" ${tab === 'canvas' ? '' : 'style="display:none"'}></div>
     </div>`;
 
     if (tab === 'canvas') {
@@ -290,6 +388,10 @@
       if (typeof loadGmail === 'function') void loadGmail();
     } else if (tab === 'tasks') {
       if (window.FluxGoogleTasks && typeof FluxGoogleTasks.render === 'function') FluxGoogleTasks.render();
+    } else if (tab === 'calendar') {
+      renderCalendarPane();
+    } else if (tab === 'docs') {
+      renderDocsPane();
     }
   }
 
@@ -344,6 +446,9 @@
     renderHub,
     renderHubIfVisible,
     updateSettingsCard,
+    syncCalendar,
+    saveDocsUrl,
+    pushDocsFromHub,
   };
 
   window.fluxReconnectGoogleCalendarWrite = function () {

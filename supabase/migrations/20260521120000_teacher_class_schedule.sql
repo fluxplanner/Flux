@@ -12,6 +12,8 @@ COMMENT ON COLUMN public.teacher_classes.time_end IS 'Class end time HH:MM';
 COMMENT ON COLUMN public.teacher_classes.days IS 'A Day, B Day, Mon-Fri, etc.';
 
 -- Include schedule in code lookup for join preview.
+DROP FUNCTION IF EXISTS public.flux_lookup_class_by_code(TEXT);
+
 CREATE OR REPLACE FUNCTION public.flux_lookup_class_by_code(p_code TEXT)
 RETURNS TABLE (
   id          UUID,
