@@ -20,6 +20,12 @@ html{
 }
 /* When liquid glass ambient layer is on, it already follows the cursor */
 html[data-flux-glass="on"] body[data-flux-cursor="on"]::after{display:none}
+body[data-flux-cursor="off"] #fluxCursorAmbient,
+body[data-flux-cursor="off"] #cursorSpotlight{
+  display:none!important;
+  opacity:0!important;
+  pointer-events:none;
+}
 @media(hover:hover) and (min-width:769px){
   body[data-flux-cursor="on"]::after{
     content:'';position:fixed;inset:0;pointer-events:none;z-index:1;

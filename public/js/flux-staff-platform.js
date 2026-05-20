@@ -673,6 +673,194 @@
     });
   }
 
+  function staffProfileIdentity() {
+    const imp = window.FluxImpersonate?.active?.() || null;
+    const prof = (typeof FluxRole !== 'undefined' && FluxRole.profile) || {};
+    const useRoleRow = !(!imp && prof._impersonated);
+    const profile = useRoleRow ? prof : {};
+    const lookupEmail = imp?.email || currentUser?.email || '';
+    const dirRec =
+      (window.FluxStaffDirectory && FluxStaffDirectory.findByEmail(String(lookupEmail).toLowerCase())) || null;
+    const name =
+      profile.display_name || dirRec?.name || currentUser?.user_metadata?.full_name || 'Educator';
+    const role = profile.role || dirRec?.role || 'staff';
+    const roleLabel = ({ teacher: 'Teacher', counselor: 'Counselor', staff: 'Staff', admin: 'Admin' })[role] || 'Staff';
+    const subject = profile.subject || dirRec?.subject || '';
+    const email = lookupEmail || dirRec?.email || '';
+    const verified = !!(dirRec && dirRec.email === String(email).toLowerCase());
+    return { name, role, roleLabel, subject, email, verified, profile };
+  }
+
+  function updateStaffProfileHero(identity) {
+    const name = identity?.name || 'Educator';
+    const subline = [identity?.roleLabel, identity?.subject, identity?.email]
+      .filter(Boolean)
+      .join(' · ');
+    const profileNameEl = document.getElementById('profileName');
+    if (profileNameEl) profileNameEl.textContent = name;
+    const profileSubEl = document.getElementById('profileSubline');
+    if (profileSubEl) profileSubEl.textContent = subline || 'Staff profile';
+    const pic =
+      (typeof fluxLoadStoredString === 'function' && fluxLoadStoredString('flux_profile_pic', '')) || '';
+    const av = document.getElementById('pAvatar');
+    if (av) {
+      av.innerHTML =
+        (pic
+          ? `<img src="${pic}" loading="lazy" decoding="async" alt="">`
+          : name.charAt(0).toUpperCase()) +
+        `<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
+    }
+    if (window.FluxPersonal && FluxPersonal.styleProfileAvatar) FluxPersonal.styleProfileAvatar();
+    const badgeEl = document.getElementById('profileBadges');
+    if (badgeEl) {
+      const badges = [];
+      if (identity?.verified) badges.push({ t: '✓ Directory', c: 'badge-green' });
+      badges.push({ t: identity?.roleLabel || 'Staff', c: 'badge-blue' });
+      if (typeof FluxRole !== 'undefined' && FluxRole.isWorkMode && FluxRole.isWorkMode()) {
+        badges.push({ t: 'Work mode', c: 'badge-purple' });
+      } else if (typeof FluxRole !== 'undefined' && FluxRole.isPersonalMode && FluxRole.isPersonalMode()) {
+        badges.push({ t: 'Personal mode', c: 'badge-purple' });
+      }
+      badgeEl.innerHTML = badges.map((b) => `<span class="badge ${b.c}">${b.t}</span>`).join('');
+    }
+  }
+
+  async function fetchStaffProfileStats() {
+    const stats = {
+      meetings: 0,
+      pdHours: 0,
+      tasksOpen: 0,
+      wellbeing: 0,
+      focusHrs: 0,
+    };
+    try {
+      if (typeof load === 'function') stats.focusHrs = Math.round((load('t_minutes', 0) || 0) / 60);
+    } catch (_) {}
+    const client = sb();
+    if (!client || !currentUser?.id) return stats;
+    try {
+      const { count: mn } = await client
+        .from('meeting_notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id);
+      stats.meetings = mn || 0;
+    } catch (_) {}
+    try {
+      const { data: pd } = await client
+        .from('professional_development')
+        .select('hours,status')
+        .eq('user_id', currentUser.id);
+      stats.pdHours = Math.round(
+        (pd || []).filter((i) => i.status === 'completed').reduce((s, i) => s + Number(i.hours || 0), 0),
+      );
+    } catch (_) {}
+    try {
+      const { data: row } = await client
+        .from('staff_personal_data')
+        .select('tasks,wellbeing_log')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      const tasks = Array.isArray(row?.tasks) ? row.tasks : [];
+      stats.tasksOpen = tasks.filter((t) => !t.done).length;
+      stats.wellbeing = Array.isArray(row?.wellbeing_log) ? row.wellbeing_log.length : 0;
+    } catch (_) {}
+    return stats;
+  }
+
+  function renderStaffProfileStatsGrid(stats) {
+    const el = document.getElementById('staffProfileStats');
+    if (!el) return;
+    const items = [
+      [String(stats.meetings), 'Meetings', 'var(--accent)'],
+      [String(stats.pdHours) + 'h', 'PD hours', 'var(--green)'],
+      [String(stats.tasksOpen), 'Open tasks', 'var(--gold)'],
+      [String(stats.wellbeing), 'Check-ins', 'var(--purple)'],
+      [String(stats.focusHrs) + 'h', 'Focus time', 'var(--accent2)'],
+    ];
+    el.innerHTML = items
+      .map(
+        ([n, l, c]) =>
+          `<div class="staff-profile-stat"><div class="staff-profile-stat__n" style="color:${c}">${n}</div><div class="staff-profile-stat__l">${l}</div></div>`,
+      )
+      .join('');
+  }
+
+  async function renderStaffProfile() {
+    const mount = document.getElementById('staffProfileMount');
+    if (!mount) return;
+    const identity = staffProfileIdentity();
+    updateStaffProfileHero(identity);
+    const info =
+      typeof window.loadTeacherSchoolInfo === 'function'
+        ? window.loadTeacherSchoolInfo()
+        : { department: '', room: '', officeHours: '', extension: '', pronouns: '', website: '' };
+    const verifiedBadge = identity.verified
+      ? '<span class="staff-profile-pill staff-profile-pill--ok">Directory verified</span>'
+      : '<span class="staff-profile-pill">Directory pending</span>';
+    const dash = '\u2014';
+    const schoolName =
+      (window.FluxSchool && window.FluxSchool.IAE && window.FluxSchool.IAE.name) ||
+      'International Academy East';
+
+    mount.innerHTML = `
+      <div class="card">
+        <div class="staff-profile-card-head">
+          <div>
+            <div class="staff-profile-kicker">Identity</div>
+            <h3 style="margin:4px 0 0;font-size:1.15rem;font-weight:800">${esc(identity.name)}</h3>
+            <p style="margin:6px 0 0;font-size:.82rem;color:var(--muted2)">${esc(identity.roleLabel)}${identity.subject ? ' \u00b7 ' + esc(identity.subject) : ''}</p>
+          </div>
+          ${verifiedBadge}
+        </div>
+        <div class="school-info-grid" style="margin-top:14px">
+          <div class="info-tile"><div class="info-tile-label">School email</div><div class="info-tile-val" style="font-size:.8rem;font-family:'JetBrains Mono',monospace">${esc(identity.email || dash)}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Role</div><div class="info-tile-val">${esc(identity.roleLabel)}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Subject / focus</div><div class="info-tile-val">${esc(identity.subject || dash)}</div></div>
+          <div class="info-tile"><div class="info-tile-label">Campus</div><div class="info-tile-val">${esc(schoolName)}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Professional details</h3>
+        <p style="font-size:.78rem;color:var(--muted2);margin:-8px 0 12px">Room, department, and contact info. Also editable under <strong>School Info</strong> in Work mode.</p>
+        <div class="mrow"><label for="tsiDepartment">Department</label>
+          <input id="tsiDepartment" type="text" placeholder="e.g. Math, Counseling" value="${esc(info.department || '')}">
+        </div>
+        <div class="mrow"><label for="tsiRoom">Room</label>
+          <input id="tsiRoom" type="text" placeholder="e.g. 204" value="${esc(info.room || '')}">
+        </div>
+        <div class="mrow"><label for="tsiOfficeHours">Office / prep hours</label>
+          <input id="tsiOfficeHours" type="text" placeholder="Mon-Wed 3:00-4:00pm" value="${esc(info.officeHours || '')}">
+        </div>
+        <div class="mrow"><label for="tsiExtension">Phone extension</label>
+          <input id="tsiExtension" type="text" value="${esc(info.extension || '')}">
+        </div>
+        <div class="mrow"><label for="tsiPronouns">Pronouns (optional)</label>
+          <input id="tsiPronouns" type="text" value="${esc(info.pronouns || '')}">
+        </div>
+        <div class="mrow"><label for="tsiWebsite">Class website</label>
+          <input id="tsiWebsite" type="url" placeholder="https://example.com" value="${esc(info.website || '')}">
+        </div>
+        <button id="tsiSaveBtn" type="button" style="width:100%;margin-top:10px" onclick="typeof saveTeacherSchoolInfo==='function'&&saveTeacherSchoolInfo()">Save details</button>
+      </div>
+      <div class="card">
+        <h3>Workspace activity</h3>
+        <div id="staffProfileStats" class="staff-profile-stats"><div style="color:var(--muted2);font-size:.82rem">Loading\u2026</div></div>
+      </div>
+      <div class="card">
+        <h3>Quick links</h3>
+        <div class="staff-profile-links">
+          <button type="button" class="btn-sec" onclick="if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()){nav('school')}else if(typeof showToast==='function'){showToast('Switch to Work mode for School Info','info')}">School info (Work)</button>
+          <button type="button" class="btn-sec" onclick="nav('staffHub');try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}">Work hub</button>
+          <button type="button" class="btn-sec" onclick="nav('staffMeetingNotes');try{FluxStaffPlatform.renderMeetingNotesPanel()}catch(e){}">Meetings</button>
+          <button type="button" class="btn-sec" onclick="nav('staffPD');try{FluxStaffPlatform.renderPDPanel()}catch(e){}">PD</button>
+        </div>
+      </div>`;
+
+
+    const stats = await fetchStaffProfileStats();
+    renderStaffProfileStatsGrid(stats);
+  }
+
   async function renderSchoolFeed() {
     const el = document.getElementById('schoolFeedPanel');
     if (!el || !currentUser) return;
@@ -827,6 +1015,7 @@
     renderWellbeingPanel,
     renderResourcesPanel,
     renderSchoolFeed,
+    renderStaffProfile,
     hydrateOwnerStaffVerification,
     approveStaffRequest,
     rejectStaffRequest,

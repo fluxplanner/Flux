@@ -235,9 +235,24 @@
     }, 1500);
   }
 
+  function collapsibleHtml({ className = '', attrs = {}, summaryHtml, bodyHtml }) {
+    const attrParts = Object.entries(attrs || {})
+      .filter(([, v]) => v != null && v !== '')
+      .map(([k, v]) => `${k}="${escapeAttr(v)}"`)
+      .join(' ');
+    return `<details class="ghost-draft ghost-draft--collapsible ${className}" ${attrParts}>
+      <summary class="ghost-draft-summary">${summaryHtml}<span class="ghost-draft-chevron" aria-hidden="true"></span></summary>
+      ${bodyHtml}
+    </details>`;
+  }
+
   function legacyGhostHtml(task) {
     if (!task.ghostDraft || task.done) return '';
-    return `<div class="ghost-draft"><div class="ghost-draft-title">✦ Ghost draft</div>${formatDraftHtml(task.ghostDraft)}</div>`;
+    return collapsibleHtml({
+      attrs: { 'data-ghost-task-id': task.id },
+      summaryHtml: '<span class="ghost-draft-title">✦ Ghost draft</span>',
+      bodyHtml: `<div class="ghost-draft-body">${formatDraftHtml(task.ghostDraft)}</div>`,
+    });
   }
 
   function cardHtml(task) {
@@ -272,16 +287,16 @@
         ? `<span class="flux-ghost-draft-chip" title="Rubric criteria used">${rubricN} rubric line${rubricN > 1 ? 's' : ''}</span>`
         : '';
 
-    return `<div class="ghost-draft flux-ghost-draft-v2" data-task-id="${task.id}">
-      <div class="flux-ghost-draft-head">
-        <div class="ghost-draft-title">✦ Ghost scaffold ${rubricChip}</div>
-        <div class="flux-ghost-draft-actions flux-ghost-draft-actions--inline">
+    return collapsibleHtml({
+      className: 'flux-ghost-draft-v2',
+      attrs: { 'data-task-id': task.id },
+      summaryHtml: `<span class="ghost-draft-summary-main"><span class="ghost-draft-title">✦ Ghost scaffold ${rubricChip}</span></span>
+        <span class="flux-ghost-draft-actions flux-ghost-draft-actions--inline">
           <button type="button" class="flux-ghost-draft-btn flux-ghost-draft-btn--icon" data-flux-ghost-gen="${task.id}" title="Regenerate">↻</button>
           <button type="button" class="flux-ghost-draft-btn flux-ghost-draft-btn--icon" data-flux-ghost-rubric="${task.id}" title="Edit rubric">☰</button>
-        </div>
-      </div>
-      <div class="flux-ghost-draft-body">${formatDraftHtml(task.ghostDraft)}</div>
-    </div>`;
+        </span>`,
+      bodyHtml: `<div class="flux-ghost-draft-body">${formatDraftHtml(task.ghostDraft)}</div>`,
+    });
   }
 
   function closeRubricModal() {
@@ -363,6 +378,7 @@
     inject,
     scheduleInject,
     cardHtml,
+    collapsibleHtml,
     extractRubric,
     parseRubricLines,
     regenerate,

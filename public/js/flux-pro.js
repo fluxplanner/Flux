@@ -42,21 +42,42 @@ function whenReady(fn){
 // ────────────────────────────────────────────────────────────────
 // Cursor spotlight (subtle radial follow)
 // ────────────────────────────────────────────────────────────────
-function initCursorSpotlight(){
+function isCursorSpotlightStoredOn(){
+  const stored = proLoad('flux_cursor_spotlight', null);
+  return stored === null ? true : (stored === true || stored === '1' || stored === 1);
+}
+function applyCursorSpotlightState(on){
   const noHover = window.matchMedia('(hover: none)').matches;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tooSmall = window.innerWidth < 769;
-  const stored = proLoad('flux_cursor_spotlight', null);
-  const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
-  if(noHover || tooSmall || reducedMotion){
-    document.body.dataset.fluxCursor = 'off';
-  } else {
-    document.body.dataset.fluxCursor = on ? 'on' : 'off';
+  const effective = on && !noHover && !tooSmall && !reducedMotion;
+  document.body.dataset.fluxCursor = effective ? 'on' : 'off';
+  ['fluxCursorAmbient', 'cursorSpotlight'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(effective){
+      el.style.display = '';
+      el.style.opacity = '';
+    } else {
+      el.style.display = 'none';
+      el.style.opacity = '0';
+    }
+  });
+  if(effective && typeof window.FluxCursorSpotlight?.ensure === 'function'){
+    window.FluxCursorSpotlight.ensure();
   }
-  // Always attach mousemove (cheap; it's gated by the data-attr in CSS)
+  try{
+    document.dispatchEvent(new CustomEvent('flux:cursor-spotlight', { detail: { on: effective } }));
+  }catch(_){}
+}
+function initCursorSpotlight(){
+  applyCursorSpotlightState(isCursorSpotlightStoredOn());
+  const noHover = window.matchMedia('(hover: none)').matches;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(noHover || reducedMotion) return;
   let raf = null;
   document.addEventListener('mousemove', e=>{
+    if(document.body.dataset.fluxCursor === 'off') return;
     if(raf) return;
     raf = requestAnimationFrame(()=>{
       document.documentElement.style.setProperty('--flux-cursor-x', e.clientX+'px');
@@ -65,6 +86,12 @@ function initCursorSpotlight(){
     });
   }, {passive:true});
 }
+const _fluxCursorAmbientEnsure = window.FluxCursorSpotlight && window.FluxCursorSpotlight.ensure;
+window.FluxCursorSpotlight = {
+  isOn: isCursorSpotlightStoredOn,
+  apply: applyCursorSpotlightState,
+  ensure: typeof _fluxCursorAmbientEnsure === 'function' ? _fluxCursorAmbientEnsure : function () {},
+};
 
 function initMeshBackground(){
   const stored = proLoad('flux_mesh_bg', null);
@@ -1021,7 +1048,7 @@ function wireSettingsToggles(){
       const wasOn = cur === null ? true : (cur === true || cur === '1' || cur === 1);
       const next = !wasOn;
       proSave('flux_cursor_spotlight', next);
-      document.body.dataset.fluxCursor = next ? 'on' : 'off';
+      applyCursorSpotlightState(next);
       setToggle(sel1, next);
       _toast('Cursor spotlight ' + (next ? 'on' : 'off'));
     });
@@ -1045,6 +1072,7 @@ function wireSettingsToggles(){
   }
   refreshDensityButtons();
 }
+window.wireSettingsToggles = wireSettingsToggles;
 
 // ────────────────────────────────────────────────────────────────
 // Bootstrap

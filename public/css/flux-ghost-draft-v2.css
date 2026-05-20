@@ -4,16 +4,12 @@
   margin-top: 8px;
 }
 
-.flux-ghost-draft-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+.flux-ghost-draft-v2.ghost-draft--collapsible .ghost-draft-summary {
+  flex-wrap: wrap;
 }
 
-.flux-ghost-draft-head .ghost-draft-title {
-  margin-bottom: 0;
+.flux-ghost-draft-v2 .ghost-draft-summary .flux-ghost-draft-actions--inline {
+  margin-right: 4px;
 }
 
 .flux-ghost-draft-chip {

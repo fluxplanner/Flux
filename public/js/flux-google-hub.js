@@ -266,7 +266,7 @@
         'Connect once, then import Gmail, Calendar events, Tasks, Docs, and Canvas assignments into Flux — available in Work and Personal mode.';
     } else {
       sub.textContent =
-        'One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.';
+        'Sign in once for Gmail, Tasks, Calendar, and Docs. Use the Canvas tab below when your school uses Canvas LMS.';
     }
   }
 
@@ -328,7 +328,7 @@
       <p class="g-hub-muted">Sync a Google Doc into <strong>Flux AI</strong> or push planner notes to your doc.</p>
       <div class="mrow" style="margin-top:12px">
         <label for="gHubDocsUrl" style="font-size:.78rem;color:var(--muted)">Primary doc URL</label>
-        <input type="url" id="gHubDocsUrl" value="${esc(primary)}" placeholder="https://docs.google.com/document/d/…/edit" style="margin-top:6px;width:100%">
+        <input type="url" id="gHubDocsUrl" value="${esc(primary)}" placeholder="https://docs.google.com/document/d/…/edit">
       </div>
       <div class="g-tasks-head" style="margin-top:12px">
         <button type="button" class="btn-sec" onclick="FluxGoogle.saveDocsUrl()">Save URL</button>
@@ -337,7 +337,7 @@
       </div>
       <div class="mrow" style="margin-top:14px">
         <label for="gHubDocsPush" style="font-size:.78rem;color:var(--muted)">Push text to doc</label>
-        <textarea id="gHubDocsPush" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…" style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:.78rem;width:100%"></textarea>
+        <textarea id="gHubDocsPush" class="flux-field--mono" rows="4" maxlength="480000" placeholder="Paste notes to send to your primary Google Doc…"></textarea>
         <button type="button" style="margin-top:8px" onclick="FluxGoogle.pushDocsFromHub()">Replace doc body</button>
       </div>
       ${window.FluxDocsGhostSync?.enabled?.() && typeof FluxDocsGhostSync.hubExtraHtml === 'function' ? FluxDocsGhostSync.hubExtraHtml() : ''}
@@ -377,7 +377,7 @@
     <div class="g-hub">
       ${statusStripHtml()}
       <p class="g-hub-muted g-hub-import-lede">Import into Flux — use <strong>+ Task</strong> or <strong>+ Flux</strong> on each row, or bulk import on Tasks and Canvas.</p>
-      <nav class="g-hub-tabs" role="tablist" aria-label="Google and Canvas">
+      <nav class="g-hub-tabs" role="tablist" aria-label="Google integrations">
         ${tabs
           .map(
             (t) =>
@@ -430,7 +430,7 @@
       return;
     }
     const bits = ['Gmail', 'Calendar', 'Tasks', 'Docs'];
-    el.textContent = 'Connected — ' + bits.join(', ') + ' use the same Google session. Open the Canvas tab for school LMS + inbox.';
+    el.textContent = 'Connected — ' + bits.join(', ') + ' share one Google session. Open the Google hub for Gmail, Tasks, Calendar, Docs, and Canvas LMS.';
   }
 
   function wrapCanvasPanel() {

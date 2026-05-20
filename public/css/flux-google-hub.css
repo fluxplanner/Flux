@@ -1,5 +1,33 @@
 /* Flux · Google + Canvas integrations hub */
-.g-hub { display: flex; flex-direction: column; gap: 12px; }
+#canvas.panel.flux-page > .flux-page-header--lead {
+  text-align: center;
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+#canvas.panel.flux-page > .flux-page-header--lead .flux-page-sub {
+  max-width: 56ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+#canvas.panel.flux-page #canvasHubStack.flux-stack {
+  align-items: center;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+.g-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
 .g-hub-status { display: flex; flex-wrap: wrap; gap: 8px; }
 .g-hub-pill {
   font-size: 0.68rem;
@@ -18,17 +46,24 @@
 .g-hub-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 12px;
   background: var(--card2);
   border: 1px solid var(--border);
+  width: 100%;
 }
 .g-hub-tab {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  flex: 1 1 0;
+  min-width: 72px;
+  max-width: 132px;
+  padding: 8px 10px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -38,12 +73,19 @@
   cursor: pointer;
   font-family: inherit;
 }
+.g-hub-tab span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .g-hub-tab.active {
   background: rgba(var(--accent-rgb), 0.14);
   color: var(--accent);
 }
-.g-hub-pane { min-height: 120px; }
-.g-hub-pane--pad { padding: 4px 0 12px; }
+.g-hub-pane { min-height: 120px; width: 100%; }
+.g-hub-pane--pad { padding: 8px 0 16px; }
+.g-hub-import-lede { text-align: center; }
+.g-hub-status { justify-content: center; }
 .g-hub-gate {
   text-align: center;
   padding: 32px 20px;
@@ -88,12 +130,26 @@
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border2);
 }
-.g-tasks-title { font-size: 1rem; font-weight: 800; margin: 0 0 4px; }
-.g-tasks-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.g-tasks-list { display: flex; flex-direction: column; gap: 8px; }
+.g-tasks-head > div:first-child { flex: 1; min-width: 200px; }
+.g-tasks-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 8px; }
+.g-tasks-head .g-hub-muted { margin: 0; }
+.g-tasks-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.g-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.g-tasks-list > .g-hub-muted {
+  text-align: center;
+  padding: 20px 12px;
+  margin: 0;
+}
 .g-task-row {
   display: flex;
   align-items: flex-start;

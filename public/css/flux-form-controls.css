@@ -1,0 +1,194 @@
+/* Flux · planner-themed form controls (all text fields, selects, textareas) */
+
+:is(#app, #loginScreen) input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='hidden'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='image']
+  ),
+:is(#app, #loginScreen) select,
+:is(#app, #loginScreen) textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.03) 100%);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  outline: none;
+  transition:
+    border-color var(--t-base) var(--ease),
+    background var(--t-base) var(--ease),
+    box-shadow var(--t-base) var(--ease);
+  -webkit-appearance: none;
+  appearance: none;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:is(#app, #loginScreen) textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.65;
+}
+
+:is(#app, #loginScreen) select {
+  padding-right: 36px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237b809a' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+:is(#app, #loginScreen) select option {
+  background: var(--card-solid);
+  color: var(--text);
+}
+
+:is(#app, #loginScreen) input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='hidden'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='image']
+  ):focus,
+:is(#app, #loginScreen) select:focus,
+:is(#app, #loginScreen) textarea:focus {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.04);
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:is(#app, #loginScreen) input::placeholder,
+:is(#app, #loginScreen) textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+:is(#app, #loginScreen) input:disabled,
+:is(#app, #loginScreen) select:disabled,
+:is(#app, #loginScreen) textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tighter stacks (modals, hub cards, settings rows) */
+.mrow input,
+.mrow select,
+.mrow textarea,
+.g-hub-import-card input,
+.g-hub-import-card select,
+.g-hub-import-card textarea,
+.modal-card input,
+.modal-card select,
+.modal-card textarea,
+.modal-field-group input,
+.modal-field-group select,
+.modal-field-group textarea {
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+/* Mono fields (docs push, code-ish notes) */
+textarea.flux-field--mono,
+input.flux-field--mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+}
+
+[data-theme='light'] :is(#app, #loginScreen) input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='hidden'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='image']
+  ),
+[data-theme='light'] :is(#app, #loginScreen) select,
+[data-theme='light'] :is(#app, #loginScreen) textarea {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a1b2e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+html[data-flux-glass='on'] :is(#app, #loginScreen) input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='hidden'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='image']
+  ),
+html[data-flux-glass='on'] :is(#app, #loginScreen) select,
+html[data-flux-glass='on'] :is(#app, #loginScreen) textarea {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html[data-flux-glass='on'] :is(#app, #loginScreen) input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='hidden'],
+    [type='submit'],
+    [type='button'],
+    [type='reset'],
+    [type='image']
+  ):focus,
+html[data-flux-glass='on'] :is(#app, #loginScreen) select:focus,
+html[data-flux-glass='on'] :is(#app, #loginScreen) textarea:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:is(#app, #loginScreen) input:-webkit-autofill,
+:is(#app, #loginScreen) input:-webkit-autofill:hover,
+:is(#app, #loginScreen) input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  transition: background-color 9999s ease-out 0s;
+  box-shadow: 0 0 0 1000px rgba(14, 20, 36, 0.92) inset;
+}
+
+[data-theme='light'] :is(#app, #loginScreen) input:-webkit-autofill,
+[data-theme='light'] :is(#app, #loginScreen) input:-webkit-autofill:hover,
+[data-theme='light'] :is(#app, #loginScreen) input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1a1b2e;
+  box-shadow: 0 0 0 1000px rgba(248, 249, 252, 0.95) inset;
+}

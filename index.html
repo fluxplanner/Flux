@@ -155,6 +155,7 @@
 <link rel="stylesheet" href="public/css/flux-docs-ghost-sync.css">
 <link rel="stylesheet" href="public/css/flux-gmail-educator.css">
 <link rel="stylesheet" href="public/css/flux-event-processors.css">
+<link rel="stylesheet" href="public/css/flux-form-controls.css">
 <script type="importmap">
 {
   "imports": {
@@ -771,7 +772,7 @@
         <button type="button" class="nav-item" data-school-feed-student-only onclick="nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
         <button class="nav-item" onclick="nav('notes',this)" data-tab="notes"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="nav('timer',this)" data-tab="timer"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
-        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
+        <button class="nav-item" onclick="nav('canvas',this)" data-tab="canvas" aria-label="Google integrations"><span class="ni"><svg class="nt-svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span><span class="nl">Google</span></button>
         <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
@@ -862,7 +863,7 @@
         <button type="button" class="nav-item" data-school-feed-student-only onclick="navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}" data-tab="schoolFeedPanel"><span class="ni">📢</span><span class="nl">Feed</span></button>
         <button class="nav-item" onclick="navMob('notes')"><span class="ni">📝</span><span class="nl">Notes</span></button>
         <button class="nav-item" onclick="navMob('timer')"><span class="ni">⏱</span><span class="nl">Focus Timer</span></button>
-        <button class="nav-item" onclick="navMob('canvas')"><span class="ni">🎓</span><span class="nl">Canvas</span></button>
+        <button class="nav-item" onclick="navMob('canvas')" aria-label="Google integrations"><span class="ni"><svg class="nt-svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span><span class="nl">Google</span></button>
         <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
@@ -1568,7 +1569,7 @@
     <!-- ─── Google + Canvas hub (Gmail, Tasks, LMS) — all account types ─── -->
     <div id="canvas" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub" id="canvasHubPageSub">One Google sign-in for Gmail, Google Tasks, and Calendar. Link Canvas once with your school Google login when prompted.</p>
+        <p class="flux-page-sub" id="canvasHubPageSub">Sign in once for Gmail, Tasks, Calendar, and Docs. Use the Canvas tab below when your school uses Canvas LMS.</p>
       </header>
       <div class="flux-stack" id="canvasHubStack"></div>
     </div>
@@ -1639,10 +1640,10 @@
 
     <div id="profile" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Identity, study style, stats, and badges.</p>
+        <p class="flux-page-sub" id="profilePageSub">Identity, study style, stats, and badges.</p>
       </header>
       <div class="flux-stack">
-      <div id="myCounselorSection" class="my-counselor-section"></div>
+      <div id="myCounselorSection" class="my-counselor-section" data-student-profile-only></div>
       <div class="profile-hero">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
           <div class="p-avatar" id="pAvatar" onclick="document.getElementById('picUpload').click()">?
@@ -1655,7 +1656,8 @@
           </div>
         </div>
       </div>
-      <div class="card">
+      <div id="staffProfileMount" data-staff-profile-only hidden></div>
+      <div class="card" data-student-profile-only>
         <h3>Profile Info</h3>
         <label style="font-size:.72rem;color:var(--muted)">Name</label>
         <input type="text" id="name" placeholder="Your name">
@@ -1674,7 +1676,7 @@
         </div>
         <button onclick="saveProfile()" style="width:100%">Save Profile</button>
       </div>
-      <div class="card">
+      <div class="card" data-student-profile-only>
         <h3>Study DNA</h3>
         <div style="font-size:.82rem;color:var(--muted2);margin-bottom:12px">How do you learn best?</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -1685,8 +1687,8 @@
         </div>
         <div id="studyDNAResult" style="font-size:.82rem;color:var(--muted2)"></div>
       </div>
-      <div class="card"><h3>Course Confidence</h3><div id="confidenceSliders"></div><button onclick="saveConfidences()" style="width:100%;margin-top:8px">Save</button></div>
-      <div class="card"><h3>Academic Stats</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="profileStats"></div></div>
+      <div class="card" data-student-profile-only><h3>Course Confidence</h3><div id="confidenceSliders"></div><button onclick="saveConfidences()" style="width:100%;margin-top:8px">Save</button></div>
+      <div class="card" data-student-profile-only><h3>Academic Stats</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="profileStats"></div></div>
       </div>
     </div>
 
@@ -1866,7 +1868,7 @@
     </div>
 
     <!-- ─── AI (ChatGPT-style shell: sidebar + main + composer) ─── -->
-    <div id="ai" class="panel flux-page flux-ai-panel ai-root" style="display:none;flex:1;min-height:0;padding:0;max-width:none;overflow:hidden">
+    <div id="ai" class="panel flux-page flux-ai-panel ai-root ai-root--sidebar-hidden" style="display:none;flex:1;min-height:0;padding:0;max-width:none;overflow:hidden">
       <aside class="ai-sidebar" aria-label="Flux AI chats">
         <div class="ai-sidebar-top">
           <button type="button" class="ai-new-chat-btn" onclick="newAIChat()">+ New chat</button>
@@ -1891,7 +1893,7 @@
       <div class="ai-main">
         <header class="ai-topbar">
           <div class="ai-topbar__left">
-            <button type="button" class="ai-sidebar-reveal-btn" id="aiSidebarRevealBtn" onclick="fluxRevealAISidebar()" hidden title="Show chat threads" aria-label="Show chat threads">☰ Threads</button>
+            <button type="button" class="ai-sidebar-reveal-btn" id="aiSidebarRevealBtn" onclick="fluxRevealAISidebar()" title="Show chat threads" aria-label="Show chat threads">☰ Threads</button>
             <button type="button" class="ai-sidebar-hide-btn ai-topbar-hide-btn" id="aiSidebarHideBtnTop" onclick="fluxHideAISidebar()" title="Hide thread sidebar — wider chat" aria-label="Hide chat sidebar">‹</button>
             <img class="ai-topbar-logo" src="public/flux-planner-logo.png" width="32" height="32" alt="" aria-hidden="true" />
             <span class="ai-title">Flux AI</span>
@@ -2175,8 +2177,8 @@
         </div>
         <div class="card" id="fluxGoogleIntegrationCard">
           <h3>Google &amp; Canvas</h3>
-          <p class="ssub" id="fluxGoogleIntegrationStatus" style="margin-bottom:12px;line-height:1.55">Sign in with Google once for Gmail, Google Tasks, Calendar, and Docs — every account type. Open the <strong>Canvas</strong> tab for school LMS + inbox.</p>
-          <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.76rem;margin-bottom:14px" onclick="nav('canvas')">Open integrations hub</button>
+          <p class="ssub" id="fluxGoogleIntegrationStatus" style="margin-bottom:12px;line-height:1.55">Sign in with Google once for Gmail, Google Tasks, Calendar, and Docs — every account type. Open the <strong>Google</strong> tab for Gmail, Tasks, Calendar, Docs, and Canvas LMS.</p>
+          <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.76rem;margin-bottom:14px" onclick="nav('canvas')">Open Google hub</button>
           <div class="srow" style="border:none">
             <div>
               <div class="slabel">📅 Auto-push new tasks</div>
@@ -2719,7 +2721,7 @@
       <span class="more-sheet-icon" aria-hidden="true">😊</span><span class="more-sheet-label">Mood</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="canvas" onclick="navMob('canvas')">
-      <span class="more-sheet-icon" aria-hidden="true">🎓</span><span class="more-sheet-label">Canvas</span>
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span><span class="more-sheet-label">Google</span>
     </button>
     <button type="button" class="more-sheet-item" data-nav-tab="toolbox" onclick="navMob('toolbox')">
       <span class="more-sheet-icon" aria-hidden="true">🧰</span><span class="more-sheet-label">Study tools</span>

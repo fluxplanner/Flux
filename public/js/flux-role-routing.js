@@ -92,7 +92,7 @@
           if (pid === 'counselorMeetings' && !fr.isCounselor()) {
             return workHomePanel(fr);
           }
-        } else if (EDUCATOR_WORK_PANELS.has(pid)) {
+        } else if (pid === 'school' || EDUCATOR_WORK_PANELS.has(pid)) {
           return 'dashboard';
         }
       } else if (EDUCATOR_WORK_PANELS.has(pid) || STAFF_PERSONAL_PANELS.has(pid)) {
@@ -182,9 +182,17 @@
           fallbackId: work ? home : 'dashboard',
         };
       }
+      if (pid === 'school') {
+        if (fr.isStudent && fr.isStudent()) return { ok: true };
+        if (isPendingStaffPersonal()) return { ok: true };
+        if (edu && work) return { ok: true };
+        return { ok: false, reason: 'school_educator_personal', fallbackId: 'dashboard' };
+      }
       if (pid === 'schoolFeedPanel') {
-        if (fr.isStudent() || isPendingStaffPersonal()) return { ok: true };
-        return { ok: false, reason: 'school_feed_student', fallbackId: 'dashboard' };
+        if (fr.isStudent && fr.isStudent()) return { ok: true };
+        if (isPendingStaffPersonal()) return { ok: true };
+        if (edu && work) return { ok: true };
+        return { ok: false, reason: 'school_feed_denied', fallbackId: home };
       }
       if (pid === 'canvas') {
         if (!edu || personal || fr.isStudent()) return { ok: true };

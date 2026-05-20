@@ -113,7 +113,7 @@
 
     if (window.FluxGoogle && !FluxGoogle.isGoogleLinked()) {
       slot.innerHTML =
-        '<p class="g-hub-muted">Sign in with Google on the Canvas tab to load Google Tasks.</p>';
+        '<p class="g-hub-muted">Sign in with Google on the Google tab to load Google Tasks.</p>';
       return;
     }
 
