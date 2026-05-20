@@ -76,6 +76,8 @@
       enable_caseload_engine: false,
       enable_personal_hub: false,
       enable_staff_command_v2: false,
+      enable_locale_foundation: false,
+      enable_ops_health_panel: false,
     };
   }
 

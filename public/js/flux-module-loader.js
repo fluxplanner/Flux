@@ -18,10 +18,14 @@
     { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket' },
     { id: 'classroom_timer', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Classroom timer', status: 'beta', module: 'FluxClassroomTools', method: 'renderClassroomTimer' },
     { id: 'classroom_oops_broadcast', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Oops broadcast', status: 'beta', module: 'FluxClassroomTools', method: 'renderOopsBroadcast' },
-    { id: 'admin_duty_alerts', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Duty roster alerts', status: 'planned', module: 'FluxSchoolOps' },
-    { id: 'admin_sub_swap', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Sub-coverage swap', status: 'planned', module: 'FluxStaffTabs' },
+    { id: 'admin_duty_alerts', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Duty roster alerts', status: 'beta', module: 'FluxAdminWidgets', method: 'renderDutyAlerts' },
+    { id: 'admin_sub_swap', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Sub-coverage swap', status: 'beta', module: 'FluxAdminWidgets', method: 'renderSubSwap' },
+    { id: 'admin_ops_health', flag: 'enable_ops_health_panel', roles: ['admin', 'owner'], scope: 'work', title: 'System health', status: 'beta', module: 'FluxOpsHealth', method: 'renderHealthPanel' },
     { id: 'counselor_caseload', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Caseload dashboard', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderCaseloadWidget' },
     { id: 'counselor_meeting_log', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Private meeting log', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderMeetingLog' },
+    { id: 'counselor_wellness_queue', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Wellness check-in queue', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderWellnessQueue' },
+    { id: 'counselor_crisis_sheet', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Crisis protocol cheat-sheet', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderCrisisCheatSheet' },
+    { id: 'counselor_referrals', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Referral tracker', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderReferralTracker' },
     { id: 'counselor_appointments', flag: 'enable_counselor_caseload', roles: ['counselor'], scope: 'work', title: 'Appointment scheduler', status: 'live', module: 'FluxCounselorAppointments' },
     { id: 'personal_brain_dump', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Brain dump', status: 'beta', module: 'FluxPersonalHub', method: 'renderBrainDump' },
     { id: 'personal_commute', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Commute tracker', status: 'planned', module: 'FluxPersonalHub' },
@@ -29,6 +33,7 @@
     { id: 'personal_mood_energy', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Mood / energy log', status: 'beta', module: 'FluxPersonalHub', method: 'renderMoodEnergy' },
     { id: 'personal_deep_work', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Deep work blocker', status: 'planned', module: 'FluxPersonalHub' },
     { id: 'sys_command_v2', flag: 'enable_staff_command_v2', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Staff command palette', status: 'beta', module: 'FluxStaffCommand', method: 'registerCommands' },
+    { id: 'sys_gmail_quick', flag: 'enable_gmail_educator_import', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Gmail → task quick import', status: 'beta', module: 'FluxStaffCommand', method: 'renderGmailQuickWidget' },
     { id: 'sys_export_csv', flag: 'enable_staff_productivity_suite', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Export to CSV', status: 'beta', module: 'FluxModuleLoader', method: 'exportEnabledData' },
   ];
 
@@ -89,7 +94,12 @@
     const personal = isPersonalContext();
     return CATALOG.filter((m) => {
       if (!moduleEnabled(m)) return false;
-      if (!m.roles.includes(role) && !(role === 'admin' && m.roles.includes('staff'))) return false;
+      if (
+        !m.roles.includes(role) &&
+        !(role === 'admin' && m.roles.includes('staff')) &&
+        !(role === 'owner' && m.roles.includes('owner'))
+      )
+        return false;
       if (m.scope === 'work' && !work) return false;
       if (m.scope === 'personal' && !personal) return false;
       if (m.scope === 'work' && panelId === 'dashboard') return false;

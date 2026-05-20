@@ -111,8 +111,8 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | Step | ID | Deliverable |
 |------|-----|-------------|
 | 8.1 | `P8-ERRORS` | Client error reporting (scrubbed, rate-limited) | Done (see `docs/P8-ERRORS.md`) |
-| 8.2 | `P8-HEALTH` | Ops health / readiness checks | Planned |
-| 8.3 | `P8-I18N` | Locale + date formatting foundation | Planned |
+| 8.2 | `P8-HEALTH` | Ops health / readiness checks | Done (see `docs/P8-HEALTH.md`) |
+| 8.3 | `P8-I18N` | Locale + date formatting foundation | Done (see `docs/P8-I18N.md`) |
 
 ---
 
@@ -141,6 +141,12 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | 8.2 | `P8-STAFF-PROD` | Staff Productivity Suite — ModuleLoader, classroom/counselor/personal modules, SQL | Done (foundation); 8.3 classroom widgets ongoing |
 | 8.3 | `P8-CLASSROOM` | Student picker, classroom timer, roster pickers for logs | Done |
 | 8.4 | `P8-CLASSROOM-B` | Hall pass, exit ticket, Oops broadcast + student alert banner | Done |
+| 8.5 | `P8-COUNSELOR-B` | Wellness check-in queue, crisis cheat-sheet, referral tracker + student check-in | Done |
+| 8.6 | `P8-ADMIN-B` | Duty roster alerts + sub-coverage swap widgets (`FluxAdminWidgets`) | Done |
+| 8.7 | `P8-SYSTEM-B` | Staff ⌘K commands (role shortcuts) + Gmail quick import palette/widget | Done |
+| 8.8 | `P8-PILOT` | IA East school flag overrides + counselor roster pickers for notes/referrals | Done |
+| 8.9 | `P8-HEALTH-PANEL` | Admin system health widget + extended RLS snapshot | Done |
+| 8.10 | `P8-I18N` | Locale picker, Intl formatters, RTL, settings card | Done |
 
 For new work beyond Phase 8, add rows here or pick items from product backlog.
 

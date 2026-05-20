@@ -379,6 +379,57 @@
     renderList(host);
   }
 
+  async function importTopActionEmail() {
+    if (!enabled() || !isEducator()) {
+      toast('Gmail import not enabled', 'warn');
+      return false;
+    }
+    if (!(await ensureToken()) || !getToken()) {
+      toast('Sign in with Google first', 'warn');
+      return false;
+    }
+    const res = await fetchInbox(load(LS_FILTER, 'inbox'));
+    if (!res.ok) {
+      toast(res.needsSignIn ? 'Connect Google in Gmail hub' : res.error || 'Gmail unavailable', 'error');
+      return false;
+    }
+    const top = (_emails || [])
+      .filter((e) => e.actionScore >= 2 && !messageImported(e.id))
+      .sort((a, b) => b.actionScore - a.actionScore)[0];
+    if (!top) {
+      toast('No new high-action emails in this filter', 'info');
+      return false;
+    }
+    return importEmail(top);
+  }
+
+  async function importActionEmailsBulk(max) {
+    if (!enabled() || !isEducator()) return 0;
+    if (!(await ensureToken()) || !getToken()) {
+      toast('Sign in with Google first', 'warn');
+      return 0;
+    }
+    const res = await fetchInbox(load(LS_FILTER, 'inbox'));
+    if (!res.ok) {
+      toast(res.error || 'Could not load Gmail', 'error');
+      return 0;
+    }
+    const limit = typeof max === 'number' ? max : 8;
+    let n = 0;
+    (_emails || [])
+      .filter((e) => e.actionScore >= 2 && !messageImported(e.id))
+      .slice(0, limit)
+      .forEach((e) => {
+        if (importEmail(e, { silent: true })) n += 1;
+      });
+    if (n) {
+      if (typeof window.renderStats === 'function') window.renderStats();
+      if (typeof window.renderTasks === 'function') window.renderTasks();
+      toast(`Imported ${n} task${n === 1 ? '' : 's'}`, 'success');
+    } else toast('No new action emails to import', 'info');
+    return n;
+  }
+
   function install() {
     if (!enabled()) return false;
     if (typeof window.loadGmail === 'function' && !_legacyLoadGmail) {
@@ -396,7 +447,10 @@
     isEducator,
     install,
     load,
+    fetchInbox,
     importEmail,
+    importTopActionEmail,
+    importActionEmailsBulk,
     parseDueDate,
     buildTaskFromEmail,
   };

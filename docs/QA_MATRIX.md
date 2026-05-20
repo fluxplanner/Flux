@@ -76,8 +76,32 @@ Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fi
 | Hall pass | `teacher` | Log student out → Returned | Local registry only. |
 | Exit ticket | `teacher` | Generate question | New prompt each click. |
 | Rollback | Owner | Disable master flag | Widget grid hidden. |
+| Wellness queue | `counselor` | Student sends check-in (Profile → My counselor) | Row in `student_counselor_checkins`; counselor Wellness queue shows new item; Acknowledge / Resolve. |
+| Crisis sheet | `counselor` | Open crisis widget | Static steps visible; no DB write. |
+| Referrals | `counselor` | + New referral | Row in `counselor_referrals`; admin same school can SELECT. |
+| Student check-in | `student` | Profile → Need support → Send | Counselor notified; button disabled after send. |
+| Duty alerts | `admin` | Work → Admin Ops → Duty widget | Unassigned slots highlighted; edit persists locally; Publish inserts `admin_duty_logs`. |
+| Sub swap | `admin` | Add two subs → select both → Swap covers | Cover names exchanged; Operations tab reflects change. |
+| Staff ⌘K | `teacher` / `admin` | With command v2 on: ⌘K opens palette (not mode toggle) → "Open teacher dashboard" | Navigates to correct panel; closes palette. Mode toggle still in palette under Workspace. |
+| Gmail palette | `teacher` | ⌘K → "Gmail: import top action email" (Gmail connected) | Task created with `gmailMessageId`; dashboard shows task. |
+| Gmail widget | `counselor` | Enable `sys_gmail_quick` widget → Import top | Same as palette import. |
+| IA East pilot | `teacher` @ IAE | After `20260528300000` migration, reload (no FLUX_EXPERIMENTS) | `FluxFeatureFlags` resolves suite flags true for IAE school. |
+| Counselor picker | `counselor` | Meeting log → + note → select assigned student | Saves without UUID prompt; shows display name in list. |
+| Ops health | `admin` | Enable `enable_ops_health_panel` → System health → Run checks | Supabase + flags ok; staff tables ok after migrations; RLS legacy flags false. |
 
-Migration: `20260528100000_staff_productivity_suite.sql` · Doc: `docs/P8-STAFF-PRODUCTIVITY.md`
+Migration: `20260528100000_staff_productivity_suite.sql`, `20260528200000_counselor_support_tools.sql`, `20260528300000_ia_east_staff_pilot.sql`, `20260528400000_ops_health_panel.sql` · Docs: `docs/P8-STAFF-PRODUCTIVITY.md`, `docs/P8-HEALTH.md`
+
+---
+
+## 0h. Locale foundation (`enable_locale_foundation` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag on | Any | Settings → Appearance → Language & region → Español | Top date pill uses Spanish month names; rest days list dates localized. |
+| RTL | Any | Select العربية | `<html dir="rtl">`; layout mirrors. |
+| Rollback | Owner | Disable flag, reload | `fluxFormatDate` unset; en-US dates. |
+
+Migration: `20260528500000_locale_foundation.sql` · Doc: `docs/P8-I18N.md`
 
 ---
 

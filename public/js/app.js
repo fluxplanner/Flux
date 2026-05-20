@@ -6063,7 +6063,8 @@ function renderNoHWList(){
   const sorted=[...days].sort((a,b)=>a.date.localeCompare(b.date));
   el.innerHTML=sorted.map(r=>{
     const lab=r.kind==='sick'?'🤒 Sick':'🛋 Lazy';
-    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span><strong style="font-size:.72rem;color:var(--muted2)">${lab}</strong> · ${new Date(r.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><button type="button" onclick="removeRestDay('${r.date}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px" aria-label="Remove">✕</button></div>`;
+    const dateLbl=typeof window.fluxFormatDate==='function'?window.fluxFormatDate(r.date,'monthDayYear'):new Date(r.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span><strong style="font-size:.72rem;color:var(--muted2)">${lab}</strong> · ${dateLbl}</span><button type="button" onclick="removeRestDay('${r.date}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px" aria-label="Remove">✕</button></div>`;
   }).join('');
 }
 function addRestDay(){
@@ -9274,7 +9275,8 @@ function initKeyboardShortcuts(){
         return;
       }
       try{
-        if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
+        const staffPalette=window.FluxStaffCommand?.enabled?.();
+        if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&!staffPalette){
           const next=FluxRole.isWorkMode()?'personal':'work';
           FluxRole.setMode(next);
           try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
@@ -9456,6 +9458,9 @@ function renderCmdResults(){
   }
   if(window.FluxAiOrchestration?.enabled?.()&&typeof FluxAiOrchestration.getPaletteCommands==='function'){
     try{FluxAiOrchestration.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+  }
+  if(window.FluxStaffCommand?.getPaletteCommands){
+    try{FluxStaffCommand.getPaletteCommands(q).forEach(x=>cmds.push(x));}catch(e){console.warn('[FluxStaffCommand]',e);}
   }
   if(window.FluxOrchestrator&&typeof FluxOrchestrator.getPaletteCommands==='function'){
     try{FluxOrchestrator.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
@@ -10216,7 +10221,8 @@ async function handleSignedIn(user,session){
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     setTimeout(()=>{
       try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
-      try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
+      try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
+  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
     },0);
     return;
   }
@@ -10530,7 +10536,8 @@ async function handleSignedIn(user,session){
     else if(_signInFailed)try{showApp();}catch(_){}
     setTimeout(()=>{
       try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
-      try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
+      try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
+  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
     },0);
   }
 }
@@ -11071,7 +11078,16 @@ function handleCheckoutReturn(){
   migrateCompletedAtBackfill();
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
-  document.getElementById('datePill').textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  try{
+    if(window.FluxI18n?.enabled?.())window.FluxI18n.updateDatePill();
+    else{
+      const dp=document.getElementById('datePill');
+      if(dp)dp.textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    }
+  }catch(_){
+    const dp=document.getElementById('datePill');
+    if(dp)dp.textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  }
   const ab=AB_MAP[todayStr()];
   if(ab){const p=document.getElementById('abPill');p.textContent=ab+' Day';p.style.display='block';p.style.background=ab==='A'?'rgba(99,102,241,.15)':'rgba(16,217,160,.15)';p.style.color=ab==='A'?'var(--accent)':'var(--green)';p.style.border='1px solid '+(ab==='A'?'rgba(99,102,241,.3)':'rgba(16,217,160,.3)');}
   updateTopbarStats();
@@ -17288,6 +17304,10 @@ async function renderMyCounselorSection(){
   try{
     if(window.FluxCounselorCaseload?.wireStudentConsent&&counselor?.id)
       FluxCounselorCaseload.wireStudentConsent(host,sb,currentUser.id,counselor.id);
+  }catch(_){}
+  try{
+    if(window.FluxCaseloadEngine?.enabled?.()&&window.FluxCaseloadEngine?.renderStudentWellnessCheckin)
+      await FluxCaseloadEngine.renderStudentWellnessCheckin(host,counselor);
   }catch(_){}
 }
 window.renderMyCounselorSection=renderMyCounselorSection;

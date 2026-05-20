@@ -260,3 +260,169 @@
   border: 1px solid var(--border2);
   min-height: 48px;
 }
+.flux-caseload-warn {
+  color: var(--gold);
+}
+.flux-wellness-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.flux-wellness-row--high {
+  border-left: 3px solid var(--red);
+  padding-left: 8px;
+}
+.flux-wellness-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.flux-wellness-sev {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.flux-wellness-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.flux-crisis-steps {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted2);
+}
+.flux-crisis-steps li {
+  margin-bottom: 8px;
+}
+.flux-referral-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.flux-referral-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.flux-referral-status {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+.flux-referral-status--submitted {
+  color: var(--accent);
+}
+.flux-referral-status--complete {
+  color: var(--green);
+}
+.flux-meet-log-card {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.flux-meet-log-meta {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+.flux-caseload-form {
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 8px;
+}
+.flux-health-summary {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+.flux-health-summary--ok {
+  color: var(--green);
+}
+.flux-health-summary--warn {
+  color: var(--gold);
+}
+.flux-health-summary--fail {
+  color: var(--red);
+}
+.flux-health-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.flux-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+.flux-health-row--ok .flux-health-dot {
+  background: var(--green);
+}
+.flux-health-row--warn .flux-health-dot {
+  background: var(--gold);
+}
+.flux-health-row--fail .flux-health-dot {
+  background: var(--red);
+}
+.flux-health-label {
+  font-weight: 600;
+}
+.flux-health-detail {
+  color: var(--muted2);
+  font-size: 0.65rem;
+}
+.flux-admin-warn {
+  color: var(--gold);
+}
+.flux-duty-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+}
+.flux-duty-edit-row--warn .flux-duty-edit-label {
+  color: var(--gold);
+}
+.flux-duty-edit-label {
+  font-weight: 600;
+}
+.flux-duty-edit-input {
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+}
+.flux-sub-swap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.flux-sub-period {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  min-width: 28px;
+}
+.flux-sub-del-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+}

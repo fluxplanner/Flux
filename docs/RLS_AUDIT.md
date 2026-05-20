@@ -113,6 +113,8 @@ Run **`docs/P1-RLS-VERIFICATION.md`** and **`supabase/scripts/verify_rls_policie
 | `staff_student_accommodations` | Same-school educators; teachers need roster or counselor assignment to student | Author only (`author_id = auth.uid()`), educator same school |
 | `staff_counselor_private_notes` | Owning counselor; school admin + `flux_is_platform_admin()` | Owning counselor only |
 | `staff_parent_contact_logs` | Owner educator; counselors/admins same school | Insert as owner educator |
+| `student_counselor_checkins` | Assigned counselor (via `counselors.user_id`); student read own | Student insert if `student_counselors` link exists |
+| `counselor_referrals` | Owning counselor | Counselor insert/update; school admin SELECT same school |
 
 **Personal Hub** (`FluxPersonalHub`) — no table; `localStorage` only.
 

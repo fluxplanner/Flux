@@ -337,7 +337,11 @@
       const pill = document.getElementById('datePill');
       if (pill && pref('time_24h', false)) {
         const now = new Date();
-        pill.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + fmt(now);
+        const datePart =
+          typeof window.fluxFormatDate === 'function'
+            ? window.fluxFormatDate(now, 'short')
+            : now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        pill.textContent = datePart + ' · ' + fmt(now);
       }
     };
     setInterval(tick, 30000);
