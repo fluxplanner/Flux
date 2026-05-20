@@ -1645,6 +1645,14 @@ function clearDashboardRoleSkeleton(){
   if(!el||el.dataset.fluxRoleSkeleton!=='1')return;
   delete el.dataset.fluxRoleSkeleton;
   el.innerHTML='';
+  if(el.classList.contains('active')){
+    try{
+      renderStats();renderTasks();renderCountdown();renderSmartSug();
+      checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();
+      renderExamConflictBanner();
+      if(window.FluxPersonal?.applyDashboardOrder)FluxPersonal.applyDashboardOrder();
+    }catch(e){console.warn('[Flux] dashboard restore after skeleton',e);}
+  }
 }
 window.clearDashboardRoleSkeleton=clearDashboardRoleSkeleton;
 
@@ -9799,10 +9807,12 @@ async function initAuth(){
 
     if(!isOAuthCallback){
       const reach=await pingSupabaseReachable(sb);
+      window.__fluxSupabaseReachable=!!(reach&&reach.ok);
       if(!reach.ok&&reach.reason==='offline'){
-        showFluxOfflineScreen();
-        return;
+        console.warn('[Flux] Supabase unreachable at startup — login still allowed');
       }
+    }else{
+      window.__fluxSupabaseReachable=true;
     }
 
     const session=await getSessionAfterOAuth(sb);
@@ -9868,11 +9878,11 @@ async function initAuth(){
     });
   }catch(e){
     console.error('Auth init error:',e);
-    if(isSupabaseNetworkFailure(e)){
-      showFluxOfflineScreen();
-      return;
-    }
+    window.__fluxSupabaseReachable=false;
     showLoginOrApp();
+    if(isSupabaseNetworkFailure(e)&&typeof showToast==='function'){
+      showToast('Network issue — you can still try signing in.','warning',6000);
+    }
   }
 }
 
@@ -10127,7 +10137,6 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
   try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
-  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -10147,6 +10156,9 @@ async function handleSignedIn(user,session){
     try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
     try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
+    setTimeout(()=>{
+      try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
+    },0);
     return;
   }
   // ── ACCOUNT SWITCH: wipe previous user's data ──────────────
@@ -10196,6 +10208,8 @@ async function handleSignedIn(user,session){
   // ────────────────────────────────────────────────────────────
 
   currentUser=user;
+  let _signInFailed=false;
+  try{
   // If a non-owner account is signing in, wipe any leftover impersonation
   // record from a previous owner session on this browser. Otherwise their
   // load() calls would route into a stale "imp:..." namespace until the
@@ -10326,7 +10340,6 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
   try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
-  try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -10444,6 +10457,21 @@ async function handleSignedIn(user,session){
   try{if(window.FluxSchoolEmergency?.refresh)void FluxSchoolEmergency.refresh();}catch(_){}
   syncTokenToExtension();
   startFluxCloudSyncLoops();
+  }catch(signInErr){
+    _signInFailed=true;
+    console.error('[Flux] handleSignedIn failed',signInErr);
+    if(typeof showToast==='function')showToast('Sign-in had a hiccup — showing your planner anyway.','warning',5000);
+  }finally{
+    const ls=document.getElementById('loginScreen');
+    if(ls){ls.style.display='none';ls.classList.remove('visible');}
+    try{clearDashboardRoleSkeleton();}catch(_){}
+    const appEl=document.getElementById('app');
+    if(appEl&&!appEl.classList.contains('visible'))try{showApp();}catch(_){}
+    else if(_signInFailed)try{showApp();}catch(_){}
+    setTimeout(()=>{
+      try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
+    },0);
+  }
 }
 
 function _updateUserUI(user,name){
@@ -14821,7 +14849,8 @@ function showPostLoginRolePicker(opts){
   return new Promise((resolve)=>{
     const cached=currentUser?.id?fluxGetRoleSetup(currentUser.id):null;
     if(cached?.done)return resolve(cached.role||'student');
-    if(document.getElementById('postLoginRolePicker'))return resolve(null);
+    const stale=document.getElementById('postLoginRolePicker');
+    if(stale){try{stale.remove();}catch(_){}}
     const ov=document.createElement('div');
     ov.id='postLoginRolePicker';
     ov.style.cssText='position:fixed;inset:0;background:rgba(5,8,16,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:9990;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto';

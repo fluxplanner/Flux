@@ -1111,12 +1111,15 @@
   /* ── Deep link ?panel= on load ── */
   function installDeepLinkNav() {
     if (!pref('deep_link_panel', true)) return;
-    try {
-      const p = new URLSearchParams(location.search).get('panel');
-      if (p && typeof nav === 'function' && document.getElementById('app')?.classList.contains('visible')) {
-        setTimeout(() => nav(p), 800);
-      }
-    } catch (_) {}
+    setTimeout(() => {
+      try {
+        const p = new URLSearchParams(location.search).get('panel');
+        if (!p || typeof nav !== 'function') return;
+        if (!document.getElementById('app')?.classList.contains('visible')) return;
+        if (!document.getElementById(p)) return;
+        nav(p);
+      } catch (_) {}
+    }, 1200);
   }
 
   const CATALOG = [
@@ -1227,6 +1230,7 @@
 
   function install() {
     if (_installed || !packEnabled()) return;
+    if (!currentUserId()) return;
     _installed = true;
     _sessionStart = Date.now();
     INSTALLERS.forEach((fn) => {
@@ -1236,7 +1240,8 @@
         console.warn('[FluxSiteEnhancements]', e);
       }
     });
-    setInterval(refreshAppointmentBadges, 120000);
+    if (window.__fluxEnhApptBadgeInterval) clearInterval(window.__fluxEnhApptBadgeInterval);
+    window.__fluxEnhApptBadgeInterval = setInterval(refreshAppointmentBadges, 120000);
     document.addEventListener('flux-nav', () => {
       try {
         installDirectoryDebounce();
