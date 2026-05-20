@@ -373,6 +373,9 @@
       </div>
     </div>
   </div>`;
+    try {
+      if (window.FluxGoogle?.refreshStaffHubMounts) FluxGoogle.refreshStaffHubMounts();
+    } catch (_) {}
   }
   window.renderAdminDashboard = renderAdminDashboard;
 

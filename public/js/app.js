@@ -1565,6 +1565,9 @@ const FluxRole={
       const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
       if(u)save('flux_staff_mode_'+u.id,mode);
     }catch(_){}
+    if(mode==='personal'){
+      try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
+    }
     // If the owner is impersonating, also persist the new mode INTO the
     // impersonation record so apply()/_refresh() doesn't snap us back to
     // 'work' on the next render and clobber the toggle.
@@ -9681,6 +9684,71 @@ function confirmGuestLogin(){
   }
 }
 
+const FLUX_SENSITIVE_STAFF_KEYS=[
+  'flux_staff_tickets_v1',
+  'flux_staff_checklist_v1',
+  'flux_admin_sub_coverage_v1',
+  'flux_admin_duties_v1',
+  'flux_admin_walkthrough_v1',
+];
+
+function clearSensitiveStaffCache(){
+  FLUX_SENSITIVE_STAFF_KEYS.forEach(logical=>{
+    try{
+      const nk=typeof fluxNamespacedKey==='function'?fluxNamespacedKey(logical):logical;
+      localStorage.removeItem(nk);
+    }catch(_){}
+  });
+  try{
+    const markers=['flux_staff_tickets_','flux_staff_checklist_','flux_admin_sub_','flux_admin_duties','flux_admin_walkthrough'];
+    const drop=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k)continue;
+      if(markers.some(m=>k.indexOf(m)!==-1))drop.push(k);
+    }
+    drop.forEach(k=>{try{localStorage.removeItem(k);}catch(_){}});
+  }catch(_){}
+}
+window.clearSensitiveStaffCache=clearSensitiveStaffCache;
+
+function isSupabaseNetworkFailure(err){
+  const msg=String(err?.message||err||'').toLowerCase();
+  return msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('load failed')||msg.includes('network request failed');
+}
+
+async function pingSupabaseReachable(sb){
+  if(!sb)return{ok:false,reason:'no_client'};
+  try{
+    const{error}=await sb.from('user_roles').select('user_id').limit(1);
+    if(!error)return{ok:true};
+    if(isSupabaseNetworkFailure(error))return{ok:false,reason:'offline'};
+    return{ok:true};
+  }catch(e){
+    if(isSupabaseNetworkFailure(e))return{ok:false,reason:'offline'};
+    return{ok:true};
+  }
+}
+
+function showFluxOfflineScreen(){
+  const mount=document.getElementById('app')||document.getElementById('loginScreen')||document.body;
+  const ls=document.getElementById('loginScreen');
+  const splash=document.getElementById('splash');
+  if(splash)splash.style.display='none';
+  if(ls){ls.style.display='none';ls.classList.remove('visible');}
+  const app=document.getElementById('app');
+  if(app)app.classList.remove('visible');
+  mount.innerHTML=`
+    <div class="flux-offline-screen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:4rem 2rem;text-align:center;font-family:system-ui,sans-serif;background:var(--bg,#0B0F1A);color:var(--text,#e8ecff)">
+      <div style="max-width:420px">
+        <h2 style="margin:0 0 12px;font-size:1.35rem;font-weight:700">Unable to reach Flux servers</h2>
+        <p style="margin:0 0 20px;color:var(--muted2,#94a3b8);font-size:.92rem;line-height:1.5">Check your internet connection. Our database may be momentarily unreachable.</p>
+        <button type="button" class="btn-primary" style="padding:12px 20px" onclick="window.location.reload()">Retry connection</button>
+      </div>
+    </div>`;
+}
+window.showFluxOfflineScreen=showFluxOfflineScreen;
+
 // Wait for PKCE code exchange / hash parsing — getSession() can briefly return null on redirect
 async function getSessionAfterOAuth(sb){
   let{data:{session}}=await sb.auth.getSession();
@@ -9707,6 +9775,11 @@ async function initAuth(){
   const sb=getSB();
   if(!sb){
     showLoginScreen();
+    return;
+  }
+  const reach=await pingSupabaseReachable(sb);
+  if(!reach.ok&&reach.reason==='offline'){
+    showFluxOfflineScreen();
     return;
   }
   initOAuthPostMessageListener();
@@ -9778,6 +9851,10 @@ async function initAuth(){
     });
   }catch(e){
     console.error('Auth init error:',e);
+    if(isSupabaseNetworkFailure(e)){
+      showFluxOfflineScreen();
+      return;
+    }
     showLoginOrApp();
   }
 }
@@ -10032,6 +10109,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherCopilot?.install)FluxTeacherCopilot.install();}catch(_){}
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
+  try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -10226,6 +10304,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxTeacherCopilot?.install)FluxTeacherCopilot.install();}catch(_){}
   try{if(window.FluxTeacherWellness?.install)FluxTeacherWellness.install();}catch(_){}
   try{if(window.FluxCounselorCaseload?.install)FluxCounselorCaseload.install();}catch(_){}
+  try{if(window.FluxGoogle?.installStaffHub)FluxGoogle.installStaffHub();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.install)FluxCounselorWellnessTimeline.install();}catch(_){}
   try{if(window.FluxCounselorRiskQueue?.install)FluxCounselorRiskQueue.install();}catch(_){}
   try{if(window.FluxCounselorConsent?.install)FluxCounselorConsent.install();}catch(_){}
@@ -10316,6 +10395,13 @@ async function handleSignedIn(user,session){
       }
     }catch(e){console.warn('[Flux] role UI apply failed',e);}
   }
+  try{
+    const betaRole=FluxRole.current||resolvedRole;
+    if(window.FluxWelcomeModal?.showStaffBetaIfNeeded&&['teacher','counselor','admin'].includes(betaRole)){
+      const delay=isFirstTime&&isStaffRole?1400:500;
+      setTimeout(()=>{try{FluxWelcomeModal.showStaffBetaIfNeeded(betaRole);}catch(_){}},delay);
+    }
+  }catch(_){}
   if(FLUX_FLAGS.PAYMENTS_ENABLED){
     _entitlementFetchedAt=0;
     fetchAndCacheEntitlement().then(()=>{
@@ -10397,6 +10483,7 @@ function _refreshUserUI(){
 window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
+  try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
   try{if(window.FluxOwnerSuite?.teardownVerificationQueue)window.FluxOwnerSuite.teardownVerificationQueue();}catch(_){}
   try{if(window.FluxStaffPlatform?.teardownVerificationRealtime)window.FluxStaffPlatform.teardownVerificationRealtime();}catch(_){}
   try{if(window.FluxCounselorCaseload?.teardown)window.FluxCounselorCaseload.teardown();}catch(_){}
@@ -15897,6 +15984,7 @@ async function renderTeacherDashboard(){
   try{
     if(window.FluxTeacherWellness?.wire)FluxTeacherWellness.wire(host);
   }catch(_){}
+  try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
 }
 window.renderTeacherDashboard=renderTeacherDashboard;
 
@@ -16891,6 +16979,7 @@ async function renderCounselorDashboard(){
   host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();
   }));
+  try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
 }
 window.renderCounselorDashboard=renderCounselorDashboard;
 

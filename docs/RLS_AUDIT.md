@@ -68,7 +68,8 @@ Participants only — **OK** for privacy between two users.
 | Table | Notes |
 |-------|------|
 | `staff_verification_requests` | Owner moderation via `flux_is_platform_admin()` + `platform_admins` (v2) |
-| `staff_tickets` | Same-school educator SELECT/INSERT/UPDATE; creator DELETE |
+| `staff_tickets` | Same-school educator SELECT/UPDATE; **`staff_tickets_insert_strict`** (`created_by = auth.uid()`, educator role, non-empty `user_roles.school`); creator DELETE |
+| `admin_duty_logs` | **`20260525100000_final_audit.sql`** — admin same-school SELECT; **`admin_duty_logs_insert_strict`** (`admin_id = auth.uid()`, school match); own UPDATE/DELETE |
 | `staff_directory` | Authenticated read active; claim UPDATE | OK |
 | `staff_personal_data` | own user only | OK |
 | `school_feed` | read with expiry; insert for educators; owner delete | OK |

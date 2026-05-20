@@ -34,6 +34,35 @@ Directory seed: `node scripts/seed-staff-directory.mjs scripts/staff-import-ia-e
 
 ---
 
+## 0c. Phase 7 — Educator Google Workspace hub
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Google Hub Auth | `teacher` | Work mode → Teacher Overview → **Connect Google Workspace** | OAuth pop-up requests Classroom + Drive (plus Gmail/Calendar); UI updates without full page reload. |
+| Student isolation | `student` | Console: `FluxGoogleHub.init()` or `FluxGoogle.canInitStaffHub()` | Returns false / no-op; student Canvas + personal Google flows unchanged. |
+| Work mode routing | `counselor` | Work mode → click **Canvas** in sidebar (if visible) or `nav('canvas')` | `FluxRoleRouting.interceptNavigation` sends user to `counselorDashboard`, not student Canvas LMS panel. |
+| Staff Hub feature flag | `staff` | Disable `enable_staff_google_hub` in DB, reload | `.staff-google-hub-mount` hidden; staff **Google** nav hidden (see §0). Re-enable → mount + nav return. |
+| Staff / admin Google nav | `staff` or `admin` | Work mode → **Google** nav | Opens unified hub (`canvas` panel); pop-up OAuth preserves workboard Realtime state. |
+
+Implementation: `public/js/flux-google-hub.js` (`FluxGoogle.installStaffHub`, `FluxGoogleHub` alias), `flux-role-routing.js` (`interceptNavigation`).
+
+---
+
+## 0d. Phase 8 — Pilot hardening & security audit
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Offline boot | Any | DevTools → Offline, hard refresh | `showFluxOfflineScreen()` with retry button (no blank white `#app`). |
+| Staff cache wipe | `teacher` | Work → Personal (Ctrl/Cmd+K) | `flux_staff_tickets_v1` / checklist keys removed from localStorage (namespaced). |
+| Sign-out wipe | Any educator | Sign out | `clearSensitiveStaffCache()` runs before redirect; staff ticket keys not restored. |
+| Staff beta modal | `teacher` / `counselor` / `admin` | First sign-in after migration | One-time welcome modal; `flux_staff_beta_seen_<userId>` set on dismiss. |
+| RLS insert | `staff` | Insert `staff_tickets` row | Succeeds only when `created_by = auth.uid()` and `user_roles.school` is set. |
+| Admin duty logs | `admin` | Insert `admin_duty_logs` | Succeeds only when `admin_id = auth.uid()` and school matches `user_roles.school`. |
+
+Migration: `supabase/migrations/20260525100000_final_audit.sql`
+
+---
+
 ## 0. Feature flags (after sign-in)
 
 - [ ] `FluxFeatureFlags.load()` completes without console error (requires migration `20260524120000_feature_flags_foundation.sql`).

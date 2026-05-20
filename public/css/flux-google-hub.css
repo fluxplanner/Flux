@@ -1,3 +1,41 @@
+/* Flux · Educator workspace hub (work-mode dashboards) */
+.staff-google-hub-mount {
+  margin: 0 16px 16px;
+  max-width: 960px;
+}
+.staff-google-hub {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--card2);
+}
+.staff-google-hub-title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.staff-google-hub-sub {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--muted2);
+  line-height: 1.45;
+}
+.staff-google-hub-sub--ok { color: var(--success, #34a853); }
+.staff-google-hub-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-google-hub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.staff-google-hub-btn:hover { border-color: var(--accent); }
+
 /* Flux · Google + Canvas integrations hub */
 #canvas.panel.flux-page > .flux-page-header--lead {
   text-align: center;

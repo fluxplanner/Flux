@@ -944,6 +944,7 @@
     host.querySelectorAll('.sw-quick-btn').forEach(b=>{
       b.addEventListener('click',()=>window.open(b.dataset.link,'_blank','noopener'));
     });
+    try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
   }
   window.renderStaffWorkboard=renderStaffWorkboard;
 

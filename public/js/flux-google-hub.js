@@ -21,8 +21,56 @@
     'https://www.googleapis.com/auth/documents',
   ];
 
+  /** Educator work dashboards — Classroom + Drive (does not replace student Canvas LMS flows). */
+  const STAFF_WORKSPACE_SCOPES = [
+    'https://www.googleapis.com/auth/classroom.courses.readonly',
+    'https://www.googleapis.com/auth/drive.readonly',
+  ];
+
+  let _staffHubInstalled = false;
+
   function scopesString() {
     return SCOPES.join(' ');
+  }
+
+  function staffWorkspaceScopesString() {
+    const merged = [...SCOPES];
+    STAFF_WORKSPACE_SCOPES.forEach((s) => {
+      if (!merged.includes(s)) merged.push(s);
+    });
+    return merged.join(' ');
+  }
+
+  function staffHubFlagEnabled() {
+    try {
+      return !window.FluxFeatureFlags || FluxFeatureFlags.isEnabled('enable_staff_google_hub', true);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /** Educator workspace hub — never runs for students. */
+  function canInitStaffHub() {
+    try {
+      if (!staffHubFlagEnabled()) return false;
+      const fr = window.FluxRole;
+      if (!fr) return false;
+      if (fr.isStudent && fr.isStudent()) return false;
+      if (fr.isTeacher && fr.isTeacher()) return true;
+      if (fr.isCounselor && fr.isCounselor()) return true;
+      if (fr.current === 'admin') return true;
+      if (fr.isStaff && fr.isStaff()) return true;
+      if (fr.isStaffGoogleHubRole && fr.isStaffGoogleHubRole()) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function staffHubVisibleNow() {
+    try {
+      return canInitStaffHub() && window.FluxRole?.isWorkMode?.();
+    } catch (_) {
+      return false;
+    }
   }
 
   function toast(msg, kind) {
@@ -81,8 +129,10 @@
       return;
     }
     const forceConsent = !!(opts && opts.forceConsent);
+    const staffWorkspace = !!(opts && opts.staffWorkspace);
     const hadScopes = typeof load === 'function' && load(LS_SCOPES_OK, false);
     const prompt = forceConsent || !hadScopes ? 'consent' : 'select_account';
+    const scopeList = staffWorkspace ? staffWorkspaceScopesString() : scopesString();
     try {
       if (typeof window.initOAuthPostMessageListener === 'function') window.initOAuthPostMessageListener();
       const redirectTo =
@@ -92,7 +142,7 @@
         options: {
           redirectTo,
           skipBrowserRedirect: true,
-          scopes: scopesString(),
+          scopes: scopeList,
           queryParams: { access_type: 'offline', prompt },
         },
       });
@@ -110,7 +160,12 @@
       try {
         w.focus();
       } catch (_) {}
-      toast('Approve Google access in the pop-up — Gmail, Calendar, Tasks, and Docs unlock together.', 'info');
+      toast(
+        staffWorkspace
+          ? 'Approve Google access in the pop-up — Workspace, Classroom, and Drive scopes unlock without reloading Flux.'
+          : 'Approve Google access in the pop-up — Gmail, Calendar, Tasks, and Docs unlock together.',
+        'info',
+      );
     } catch (e) {
       console.error('[FluxGoogle] oauth', e);
       toast('Sign-in failed: ' + (e.message || e), 'error');
@@ -197,12 +252,73 @@
       if (window.fluxCanvasBootstrapFromGoogle) window.fluxCanvasBootstrapFromGoogle();
     } catch (_) {}
     renderHubIfVisible();
+    refreshStaffHubMounts();
     try {
       if (window.FluxAIConnections && typeof FluxAIConnections.renderConnectionsPanel === 'function') {
         FluxAIConnections.renderConnectionsPanel(true);
       }
     } catch (_) {}
     updateSettingsCard();
+  }
+
+  function signInStaffWorkspace() {
+    return signIn({ forceConsent: true, staffWorkspace: true });
+  }
+
+  function staffHubMountHtml() {
+    const linked = isGoogleLinked();
+    if (linked) {
+      return `
+      <div class="staff-google-hub staff-google-hub--connected">
+        <h4 class="staff-google-hub-title">Bloomfield Workspace connected</h4>
+        <p class="staff-google-hub-sub staff-google-hub-sub--ok">Gmail, Calendar, Classroom (read-only), and Drive (read-only) are active. Open the <strong>Google</strong> tab for imports — workboard state is preserved (no full-page redirect).</p>
+        <div class="staff-google-hub-actions">
+          <button type="button" class="btn-sec" onclick="FluxGoogle.signInStaffWorkspace()">Refresh Google scopes</button>
+          <button type="button" class="btn-sec" onclick="nav('canvas');try{FluxGoogle.renderHub()}catch(e){}">Open Google hub</button>
+        </div>
+      </div>`;
+    }
+    return `
+    <div class="staff-google-hub staff-google-hub--gate">
+      <h4 class="staff-google-hub-title">Connect Bloomfield Workspace</h4>
+      <p class="staff-google-hub-sub">Link Google Classroom and Drive alongside Gmail and Calendar — pop-up sign-in only; student Canvas LMS flows stay separate.</p>
+      <button type="button" class="staff-google-hub-btn login-google-btn" onclick="FluxGoogle.signInStaffWorkspace()">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Connect Google Workspace
+      </button>
+    </div>`;
+  }
+
+  function refreshStaffHubMounts() {
+    if (!canInitStaffHub()) {
+      document.querySelectorAll('.staff-google-hub-mount').forEach((el) => {
+        el.hidden = true;
+        el.innerHTML = '';
+      });
+      return;
+    }
+    const show = staffHubVisibleNow();
+    document.querySelectorAll('.staff-google-hub-mount').forEach((el) => {
+      if (!show) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      el.innerHTML = staffHubMountHtml();
+    });
+  }
+
+  function installStaffHub() {
+    if (!canInitStaffHub()) return;
+    refreshStaffHubMounts();
+    if (_staffHubInstalled) return;
+    _staffHubInstalled = true;
+    try {
+      if (window.FluxBus && typeof FluxBus.on === 'function') {
+        FluxBus.on('role_mode_changed', () => refreshStaffHubMounts());
+      }
+    } catch (_) {}
+    console.log('[FluxGoogle] Educator workspace hub ready (Supabase OAuth pop-up).');
   }
 
   function hubTab() {
@@ -458,11 +574,15 @@
 
   window.FluxGoogle = {
     SCOPES,
+    STAFF_WORKSPACE_SCOPES,
     scopesString,
+    staffWorkspaceScopesString,
+    canInitStaffHub,
     isGoogleLinked,
     ensureToken,
     applyProviderToken,
     signIn,
+    signInStaffWorkspace,
     signInWithFullScopes: (opts) => signIn({ forceConsent: true, ...(opts || {}) }),
     afterSignIn,
     getIntegrationsForCloud,
@@ -475,6 +595,17 @@
     syncCalendar,
     saveDocsUrl,
     pushDocsFromHub,
+    installStaffHub,
+    refreshStaffHubMounts,
+    init: installStaffHub,
+  };
+
+  /** Alias for external Phase 7 prompts — same Supabase OAuth pop-up, not GIS token client. */
+  window.FluxGoogleHub = {
+    STAFF_SCOPES: STAFF_WORKSPACE_SCOPES.join(' '),
+    init: installStaffHub,
+    requestAccess: signInStaffWorkspace,
+    renderHubUI: refreshStaffHubMounts,
   };
 
   window.fluxReconnectGoogleCalendarWrite = function () {

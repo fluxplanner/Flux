@@ -59,10 +59,36 @@
   }
 
   /**
+   * Work-mode educators: Canvas LMS panel → role work home (Google hub uses canvas id for staff/admin only).
+   */
+  function interceptNavigation(targetPanel) {
+    const pid = String(targetPanel || '');
+    if (pid !== 'canvas') return pid;
+    try {
+      const fr = role();
+      if (!fr || !fr.isEducator || !fr.isEducator()) return pid;
+      const work = fr.isWorkMode && fr.isWorkMode();
+      if (!work) return pid;
+      if (
+        staffGoogleEnabled() &&
+        ((fr.isStaff && fr.isStaff()) || (fr.isPlatformAdmin && fr.isPlatformAdmin()))
+      ) {
+        return pid;
+      }
+      if (fr.isTeacher && fr.isTeacher()) return 'teacherDashboard';
+      if (fr.isCounselor && fr.isCounselor()) return 'counselorDashboard';
+      if (fr.current === 'admin') return 'adminDashboard';
+      if (fr.isStaff && fr.isStaff()) return 'staffWorkboard';
+    } catch (_) {}
+    return pid;
+  }
+
+  /**
    * Remap mis-matched educator panel ids before assertRoleAccess (nav prefetch).
    */
   function remapNavTarget(id) {
-    const pid = String(id || '');
+    let pid = interceptNavigation(id);
+    pid = String(pid || '');
     if (!pid) return pid;
     const fr = role();
     if (!fr) return pid;
@@ -251,6 +277,7 @@
 
   window.FluxRoleRouting = {
     check,
+    interceptNavigation,
     remapNavTarget,
     workHomePanel,
     auditMatrix,

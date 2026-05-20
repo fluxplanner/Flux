@@ -29,3 +29,18 @@ The full Ultimate Master Cursor Prompt lives in product planning history. **Do n
 - `docs/QA_MATRIX.md`
 - `docs/ROADMAP.md` ← **start here for execution**
 - `docs/PHASE_1_CLOSEOUT.md` ← Phase 1 index + exit checklist
+
+### Staff Accounts V2 · Phase 7: Educator Google Workspace
+
+- **Strategy:** Supabase Google OAuth (pop-up via `skipBrowserRedirect`) with merged educator scopes — base Gmail/Calendar/Tasks/Docs plus `classroom.courses.readonly` and `drive.readonly` for work dashboards. Not GIS `initTokenClient` (no `GOOGLE_CLIENT_ID` in app).
+- **State preservation:** `signInStaffWorkspace()` opens OAuth in a window; Phase 6 workboard Realtime channels stay subscribed.
+- **Routing security:** `FluxRoleRouting.interceptNavigation()` remaps `canvas` in Work mode for teachers/counselors/admins to role dashboards; staff/admin with `enable_staff_google_hub` keep the Google hub panel.
+- **Student isolation:** `FluxGoogle.canInitStaffHub()` is false for students; mounts stay hidden.
+- **Modules:** `FluxGoogle` / `FluxGoogleHub` alias in `flux-google-hub.js`; mounts on teacher/counselor/admin/staff work panels.
+
+### Staff Accounts V2 · Phase 8: Pilot hardening
+
+- **RLS:** `20260525100000_final_audit.sql` — drops loose V1 policy names; `staff_tickets_insert_strict`; new `admin_duty_logs` with JWT-bound insert.
+- **Boot:** `pingSupabaseReachable()` + `showFluxOfflineScreen()` in `initAuth()` before session hydrate.
+- **Cache:** `clearSensitiveStaffCache()` on sign-out and Personal mode toggle.
+- **UX:** `FluxWelcomeModal.showStaffBetaIfNeeded()` in `flux-ui-modals.js` (teacher/counselor/admin, once per user).
