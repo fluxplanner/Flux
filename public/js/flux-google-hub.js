@@ -252,7 +252,11 @@
 
   function isStaffHub() {
     try {
-      return typeof FluxRole !== 'undefined' && FluxRole.isStaff && FluxRole.isStaff();
+      return (
+        typeof FluxRole !== 'undefined' &&
+        FluxRole.isStaffGoogleHubRole &&
+        FluxRole.isStaffGoogleHubRole()
+      );
     } catch (_) {
       return false;
     }

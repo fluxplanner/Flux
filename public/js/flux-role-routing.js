@@ -172,6 +172,9 @@
       }
       if (pid === 'staffHub') {
         if (edu && work && (fr.isStaff() || fr.isCounselor())) return { ok: true };
+        if (edu && work && fr.isPlatformAdmin && fr.isPlatformAdmin()) {
+          return { ok: false, reason: 'staff_hub_admin_use_ops', fallbackId: 'adminOps' };
+        }
         return { ok: false, reason: 'staff_hub', fallbackId: home };
       }
       if (STAFF_PERSONAL_PANELS.has(pid)) {
@@ -196,7 +199,12 @@
       }
       if (pid === 'canvas') {
         if (!edu || personal || fr.isStudent()) return { ok: true };
-        if (fr.isStaff() && staffGoogleEnabled()) return { ok: true };
+        if (
+          staffGoogleEnabled() &&
+          ((fr.isStaff && fr.isStaff()) || (fr.isPlatformAdmin && fr.isPlatformAdmin()))
+        ) {
+          return { ok: true };
+        }
         if (fr.isTeacher() || fr.isCounselor()) {
           return { ok: false, reason: 'canvas_work_educator', fallbackId: home };
         }

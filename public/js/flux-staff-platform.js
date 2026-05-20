@@ -256,7 +256,7 @@
         subject: entry.subject || '',
         school_email: schoolEmail,
         personal_gmail: StaffSignup.email || '',
-        student_note: note,
+        applicant_note: note,
         verification_status: 'pending',
       },
       { onConflict: 'user_id' }
@@ -919,11 +919,67 @@
     });
   }
 
-  async function hydrateOwnerStaffVerification(mount) {
+  let verifyChannel = null;
+
+  function teardownVerificationRealtime() {
+    const client = sb();
+    if (client && verifyChannel) {
+      try {
+        client.removeChannel(verifyChannel);
+      } catch (_) {}
+    }
+    verifyChannel = null;
+  }
+
+  function listenForApproval(userId) {
+    const client = sb();
+    const uid = String(userId || currentUser?.id || '').trim();
+    if (!client || !uid) return;
+    teardownVerificationRealtime();
+    verifyChannel = client
+      .channel(`applicant_verification_watch:${uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'staff_verification_requests',
+          filter: `user_id=eq.${uid}`,
+        },
+        async (payload) => {
+          const next = payload?.new;
+          if (!next || next.verification_status !== 'approved') return;
+          const upgraded = await maybeApplyApprovedStaffVerification();
+          if (upgraded) {
+            try {
+              await FluxRole.load();
+            } catch (_) {}
+            try {
+              if (typeof applyRoleUI === 'function') applyRoleUI();
+            } catch (_) {}
+            try {
+              if (typeof updateModeSwitchUI === 'function') updateModeSwitchUI();
+            } catch (_) {}
+            try {
+              if (typeof fluxRouteEducatorHome === 'function') fluxRouteEducatorHome();
+              else if (typeof showToast === 'function') {
+                showToast('Staff access approved — refresh if UI is stale', 'success', 5000);
+              }
+            } catch (_) {}
+          }
+        },
+      )
+      .subscribe();
+  }
+
+  async function hydrateOwnerStaffVerification(mount, opts) {
     if (!mount || typeof isOwner !== 'function' || !isOwner()) return;
     const client = sb();
     if (!client) return;
-    mount.innerHTML = '<div style="color:var(--muted2)">Loading requests…</div>';
+    const silent = opts === true || (opts && opts.silent);
+    if (!silent) {
+      mount.innerHTML = '<div style="color:var(--muted2)">Loading requests…</div>';
+    }
     const { data: requests, error } = await client
       .from('staff_verification_requests')
       .select('*')
@@ -943,7 +999,7 @@
       <div class="card" style="margin-bottom:10px">
         <div style="font-weight:800">${esc(r.requested_name)}</div>
         <div style="font-size:.78rem;color:var(--muted2)">${esc(r.requested_role)} · ${esc(r.personal_gmail || '')}</div>
-        ${r.student_note ? `<div style="font-size:.78rem;margin-top:8px;font-style:italic;color:var(--muted2)">“${esc(r.student_note)}”</div>` : ''}
+        ${r.applicant_note ? `<div style="font-size:.78rem;margin-top:8px;font-style:italic;color:var(--muted2)">“${esc(r.applicant_note)}”</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button type="button" class="edu-action-btn primary" data-sv-approve="${esc(r.user_id)}" data-role="${esc(r.requested_role)}" data-name="${esc(r.requested_name)}">Approve</button>
           <button type="button" class="btn-sec" data-sv-reject="${esc(r.user_id)}">Reject</button>
@@ -1019,6 +1075,8 @@
     hydrateOwnerStaffVerification,
     approveStaffRequest,
     rejectStaffRequest,
+    listenForApproval,
+    teardownVerificationRealtime,
   };
 
   window.showStaffOnboarding = showStaffOnboarding;

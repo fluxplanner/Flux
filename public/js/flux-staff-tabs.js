@@ -714,12 +714,89 @@
   const TICKET_KEY='flux_staff_tickets_v1';
   const CHECKLIST_KEY='flux_staff_checklist_v1';
 
-  function renderStaffWorkboard(){
+  async function fetchStaffTickets(){
+    const sb=typeof getSB==='function'?getSB():null;
+    const uid=window.currentUser?.id;
+    if(!sb||!uid)return ls(TICKET_KEY,[]);
+    try{
+      const {data,error}=await sb.from('staff_tickets')
+        .select('id,created_by,department,title,status,created_at')
+        .order('created_at',{ascending:false})
+        .limit(80);
+      if(error){
+        console.warn('[renderStaffWorkboard] staff_tickets',error);
+        return ls(TICKET_KEY,[]);
+      }
+      return (data||[]).map(row=>({
+        id:row.id,
+        text:row.title,
+        from:row.department||'internal',
+        priority:'normal',
+        created:new Date(row.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),
+        done:row.status!=='open',
+        closed:row.status==='resolved'?todayISO():'',
+        _cloud:true,
+      }));
+    }catch(e){
+      console.warn('[renderStaffWorkboard] fetch',e);
+      return ls(TICKET_KEY,[]);
+    }
+  }
+
+  async function persistStaffTicketInsert(text,from,priority,myDept,subjectField){
+    const sb=typeof getSB==='function'?getSB():null;
+    const uid=window.currentUser?.id;
+    if(sb&&uid){
+      const {error}=await sb.from('staff_tickets').insert({
+        created_by:uid,
+        department:from||myDept||subjectField||null,
+        title:text,
+        status:'open',
+      });
+      if(!error)return true;
+      console.warn('[renderStaffWorkboard] insert',error);
+    }
+    const id=Date.now().toString(36);
+    const created=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const arr=ls(TICKET_KEY,[]).concat([{id,text,from,priority,created,done:false}]);
+    lsSet(TICKET_KEY,arr);
+    return true;
+  }
+
+  async function persistStaffTicketResolve(id){
+    const sb=typeof getSB==='function'?getSB():null;
+    if(sb&&String(id).length>8){
+      const {error}=await sb.from('staff_tickets')
+        .update({status:'resolved',updated_at:new Date().toISOString()})
+        .eq('id',id);
+      if(!error)return true;
+    }
+    const arr=ls(TICKET_KEY,[]);
+    const t=arr.find(x=>x.id===id);
+    if(!t)return false;
+    t.done=true;
+    t.closed=todayISO();
+    lsSet(TICKET_KEY,arr);
+    return true;
+  }
+
+  async function persistStaffTicketDelete(id){
+    const sb=typeof getSB==='function'?getSB():null;
+    if(sb&&String(id).length>8){
+      const {error}=await sb.from('staff_tickets').delete().eq('id',id);
+      if(!error)return true;
+    }
+    lsSet(TICKET_KEY,ls(TICKET_KEY,[]).filter(x=>x.id!==id));
+    return true;
+  }
+
+  async function renderStaffWorkboard(){
     const host=document.getElementById('staffWorkboardBody');
     if(!host)return;
+    host.innerHTML='<div class="sw-root"><div style="padding:20px;color:var(--muted2)">Loading workboard…</div></div>';
     const dir=(window.FluxStaffDirectory&&window.FluxStaffDirectory.all)||[];
     const today=todayISO();
-    const tickets=ls(TICKET_KEY,[]);
+    const tickets=await fetchStaffTickets();
     const checklist=ls(CHECKLIST_KEY,{});
     const todayList=checklist[today]||[];
 
@@ -821,29 +898,27 @@
         </div>
       </div>`;
 
-    function persistTickets(arr){lsSet(TICKET_KEY,arr);}
     function persistChecklist(){lsSet(CHECKLIST_KEY,checklist);}
 
-    document.getElementById('swAddTicket')?.addEventListener('click',()=>{
+    document.getElementById('swAddTicket')?.addEventListener('click',async ()=>{
       const text=prompt('Request / ticket detail');if(!text)return;
       const from=prompt('From whom? (name, email, or "drop-in")','drop-in')||'drop-in';
       const priority=(prompt('Priority? (low / normal / high)','normal')||'normal').toLowerCase();
-      const id=Date.now().toString(36);
-      const created=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-      persistTickets(tickets.concat([{id,text,from,priority,created,done:false}]));
+      await persistStaffTicketInsert(text,from,priority,myDept,subjectField);
       renderStaffWorkboard();
     });
     host.querySelectorAll('.sw-resolve').forEach(b=>{
-      b.addEventListener('click',()=>{
-        const id=b.dataset.id;const arr=ls(TICKET_KEY,[]);
-        const t=arr.find(x=>x.id===id);if(!t)return;t.done=true;t.closed=todayISO();
-        persistTickets(arr);renderStaffWorkboard();
+      b.addEventListener('click',async ()=>{
+        const id=b.dataset.id;
+        await persistStaffTicketResolve(id);
+        renderStaffWorkboard();
       });
     });
     host.querySelectorAll('.sw-trash').forEach(b=>{
-      b.addEventListener('click',()=>{
-        const id=b.dataset.id;const arr=ls(TICKET_KEY,[]).filter(x=>x.id!==id);
-        persistTickets(arr);renderStaffWorkboard();
+      b.addEventListener('click',async ()=>{
+        const id=b.dataset.id;
+        await persistStaffTicketDelete(id);
+        renderStaffWorkboard();
       });
     });
 

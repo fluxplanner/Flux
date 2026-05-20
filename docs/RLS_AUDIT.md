@@ -20,7 +20,7 @@
 
 **Product note:** Join-class **code preview** loads teacher `display_name` from `user_roles`; that still works if both accounts have **matching `school`** on `user_roles`, or use another path later (e.g. denormalize on `teacher_classes`). Students with **no** `school` set will not resolve educator rows via same-school policy.
 
-**Other migrations on this table:** `roles_platform_owner_update` in `20260518220000_staff_platform_v1.sql` (owner email) — unchanged.
+**Other migrations on this table:** `roles_platform_owner_update` — v1 used hardcoded owner email; **`20260521130000_staff_platform_v2_fixes.sql`** uses `public.flux_is_platform_admin()` + `platform_admins` table.
 
 ---
 
@@ -67,7 +67,8 @@ Participants only — **OK** for privacy between two users.
 
 | Table | Notes |
 |-------|------|
-| `staff_verification_requests` | Owner email hardcoded for moderation — OK for single-tenant owner; bad for forks |
+| `staff_verification_requests` | Owner moderation via `flux_is_platform_admin()` + `platform_admins` (v2) |
+| `staff_tickets` | Same-school educator SELECT/INSERT/UPDATE; creator DELETE |
 | `staff_directory` | Authenticated read active; claim UPDATE | OK |
 | `staff_personal_data` | own user only | OK |
 | `school_feed` | read with expiry; insert for educators; owner delete | OK |

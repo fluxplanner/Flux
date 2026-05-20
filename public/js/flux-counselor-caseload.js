@@ -283,7 +283,118 @@
     });
   }
 
+  let _installWired = false;
+  let _roleBusHandler = null;
+
+  function caseloadSkeletonHtml() {
+    return `<div class="flux-caseload-skeleton-wrap" aria-busy="true" aria-label="Loading caseload">
+      <div class="flux-skeleton-pulse flux-role-skel-title" style="height:22px;width:min(240px,55%);margin-bottom:12px"></div>
+      <div class="flux-role-skel-grid" style="margin-bottom:12px">
+        <div class="flux-skeleton-pulse flux-role-skel-card" style="height:64px"></div>
+        <div class="flux-skeleton-pulse flux-role-skel-card" style="height:64px"></div>
+        <div class="flux-skeleton-pulse flux-role-skel-card" style="height:64px"></div>
+        <div class="flux-skeleton-pulse flux-role-skel-card" style="height:64px"></div>
+      </div>
+      <div class="flux-skeleton-pulse flux-role-skel-strip" style="height:120px"></div>
+    </div>`;
+  }
+
+  function showCaseloadSkeleton(mount) {
+    if (!mount) return;
+    mount.hidden = false;
+    mount.innerHTML = caseloadSkeletonHtml();
+  }
+
+  async function renderCaseloadDashboard() {
+    const mount = document.getElementById('counselorCaseloadMount');
+    if (!mount) return;
+    if (!enabled()) {
+      mount.innerHTML = '';
+      mount.hidden = true;
+      return;
+    }
+    try {
+      if (
+        typeof FluxRole !== 'undefined' &&
+        FluxRole.isCounselor &&
+        FluxRole.isCounselor() &&
+        FluxRole.isWorkMode &&
+        !FluxRole.isWorkMode()
+      ) {
+        mount.innerHTML = '';
+        mount.hidden = true;
+        return;
+      }
+    } catch (_) {}
+
+    showCaseloadSkeleton(mount);
+    const client = typeof getSB === 'function' ? getSB() : null;
+    const uid =
+      (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ||
+      window.currentUser?.id;
+    if (!client || !uid) {
+      mount.innerHTML =
+        '<div class="flux-empty-state" style="padding:16px;color:var(--muted2)">Sign in to load caseload.</div>';
+      return;
+    }
+
+    try {
+      const counselorRow =
+        typeof window.ensureCounselorRecord === 'function'
+          ? await window.ensureCounselorRecord(client, 'counselor')
+          : null;
+      if (!counselorRow) {
+        mount.innerHTML =
+          '<div class="flux-empty-state" style="padding:16px;color:var(--muted2)">Counselor profile not linked yet.</div>';
+        return;
+      }
+      const caseload = await loadCaseload(client, counselorRow.id);
+      const html = renderSection(caseload);
+      mount.innerHTML = html || '';
+      mount.hidden = !html;
+      if (html) wireCounselorSection(mount, client);
+    } catch (err) {
+      console.error('[FluxCounselorCaseload] render failed', err);
+      mount.innerHTML = `<div class="flux-error" style="padding:16px;color:var(--red)">Unable to load caseload. ${esc(
+        err?.message || err,
+      )}</div>`;
+      mount.hidden = false;
+    }
+  }
+
+  function teardown() {
+    const mount = document.getElementById('counselorCaseloadMount');
+    if (mount) {
+      mount.innerHTML = '';
+      mount.hidden = true;
+    }
+    const rq = document.getElementById('counselorRiskQueueMount');
+    if (rq) {
+      rq.innerHTML = '';
+      rq.hidden = true;
+    }
+  }
+
   function install() {
+    if (_installWired) return enabled();
+    _installWired = true;
+    if (typeof window.FluxBus !== 'undefined' && FluxBus.on) {
+      _roleBusHandler = (payload) => {
+        if (!enabled()) return;
+        try {
+          if (!FluxRole.isCounselor || !FluxRole.isCounselor()) return;
+          if (FluxRole.isWorkMode && FluxRole.isWorkMode()) {
+            void renderCaseloadDashboard();
+            if (typeof window.renderCounselorDashboard === 'function') {
+              void window.renderCounselorDashboard();
+            }
+          } else {
+            teardown();
+          }
+        } catch (_) {}
+      };
+      FluxBus.on('role_mode_changed', _roleBusHandler);
+    }
     return enabled();
   }
 
@@ -292,10 +403,13 @@
     enabled,
     loadCaseload,
     renderSection,
+    renderCaseloadDashboard,
+    showCaseloadSkeleton,
     consentCheckboxHtml,
     saveStudentConsent,
     wireCounselorSection,
     wireStudentConsent,
     install,
+    teardown,
   };
 })();

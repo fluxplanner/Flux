@@ -511,3 +511,24 @@
 .sw-peer-act:hover{background:rgba(var(--accent-rgb),.12);color:var(--accent)}
 
 .sw-quick{display:flex;flex-direction:column;gap:5px}
+
+/* ── Role-load skeleton (sign-in / mode routing) ─────────────────── */
+@keyframes flux-skeleton-pulse{
+  0%,100%{opacity:.45}
+  50%{opacity:1}
+}
+.flux-skeleton-pulse{
+  animation:flux-skeleton-pulse 1.35s ease-in-out infinite;
+  background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 100%);
+  background-size:200% 100%;
+  border-radius:12px;
+}
+.flux-role-skeleton{padding:20px;max-width:920px;margin:0 auto}
+.flux-role-skel-title{height:28px;width:min(320px,70%);margin-bottom:18px}
+.flux-role-skel-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:12px;margin-bottom:16px;
+}
+.flux-role-skel-card{height:88px}
+.flux-role-skel-strip{height:52px;width:100%;margin-bottom:10px}
+.flux-role-skel-strip--short{width:72%}

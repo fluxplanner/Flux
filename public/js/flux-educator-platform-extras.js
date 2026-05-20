@@ -67,9 +67,14 @@
           if (typeof renderTeacherDashboard === 'function') renderTeacherDashboard();
           return;
         }
-        if (FluxRole.isStaff && FluxRole.isStaff()) {
+        if (FluxRole.isPlatformAdmin && FluxRole.isPlatformAdmin()) {
           if (typeof nav === 'function') nav('adminDashboard');
           if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
+          return;
+        }
+        if (FluxRole.isStaff && FluxRole.isStaff()) {
+          if (typeof nav === 'function') nav('staffWorkboard');
+          if (typeof renderStaffWorkboard === 'function') renderStaffWorkboard();
           return;
         }
         if (FluxRole.isCounselor && FluxRole.isCounselor()) {

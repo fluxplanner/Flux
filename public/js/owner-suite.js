@@ -1195,7 +1195,7 @@
     const osBodyStyle=embedUi?'padding:22px 24px;max-height:none;overflow-y:visible':'padding:22px 24px;max-height:min(74vh,720px);overflow-y:auto';
     const closeBtn=embedUi
       ?`<button type="button" onclick="nav('dashboard')" class="os-head-btn" title="Back to planner">← Planner</button>`
-      :`<button type="button" onclick="document.getElementById('ownerSuite')?.remove()" class="os-head-btn" title="Close" aria-label="Close">✕</button>`;
+      :`<button type="button" onclick="try{window.FluxOwnerSuite&&FluxOwnerSuite.teardownVerificationQueue&&FluxOwnerSuite.teardownVerificationQueue();}catch(e){}document.getElementById('ownerSuite')?.remove()" class="os-head-btn" title="Close" aria-label="Close">✕</button>`;
 
     /* Current release state — show "live build" badge in header and "Push update" button */
     let __buildLabel='unknown';
@@ -1240,10 +1240,45 @@
         </div>
       </div>`;
 
+    function teardownVerificationQueue(){
+      try{
+        const client=typeof getSB==='function'?getSB():null;
+        if(client&&window.FluxOwnerSuite&&window.FluxOwnerSuite.verifyChannel){
+          client.removeChannel(window.FluxOwnerSuite.verifyChannel);
+        }
+      }catch(_){}
+      if(window.FluxOwnerSuite)window.FluxOwnerSuite.verifyChannel=null;
+    }
+
+    function subscribeToVerificationQueue(){
+      if(typeof isOwner!=='function'||!isOwner())return;
+      const client=typeof getSB==='function'?getSB():null;
+      if(!client)return;
+      teardownVerificationQueue();
+      const ch=client
+        .channel('owner_verification_queue')
+        .on(
+          'postgres_changes',
+          {event:'*',schema:'public',table:'staff_verification_requests'},
+          ()=>{
+            if(window.__osActiveTab!=='staffverify')return;
+            const mount=document.getElementById('osStaffVerifyMount');
+            if(mount&&window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.hydrateOwnerStaffVerification==='function'){
+              window.FluxStaffPlatform.hydrateOwnerStaffVerification(mount,{silent:true});
+            }
+          },
+        )
+        .subscribe();
+      if(!window.FluxOwnerSuite)window.FluxOwnerSuite={};
+      window.FluxOwnerSuite.verifyChannel=ch;
+    }
+
     window.__osSetTab=function(t){
+      if(window.__osActiveTab==='staffverify'&&t!=='staffverify')teardownVerificationQueue();
       tab=t;
       window.__osActiveTab=t;
       paint();
+      if(t==='staffverify')subscribeToVerificationQueue();
     };
     if(mountEl){
       mountEl.innerHTML='';
@@ -1255,6 +1290,34 @@
     ownerAuditAppend('owner_suite_open',{embed:!!mountEl});
     const ann=getPlatformConfig().announcement;
     if(ann&&!embedUi)showToast(ann,'info');
+    if(tab==='staffverify')subscribeToVerificationQueue();
+  };
+
+  window.FluxOwnerSuite=window.FluxOwnerSuite||{};
+  window.FluxOwnerSuite.verifyChannel=null;
+  window.FluxOwnerSuite.subscribeToVerificationQueue=function(){
+    if(typeof isOwner!=='function'||!isOwner())return;
+    const root=document.getElementById('ownerSuite');
+    if(!root)return;
+    if(window.__osActiveTab==='staffverify'&&typeof window.__osSetTab==='function'){
+      window.__osSetTab('staffverify');
+      return;
+    }
+    if(typeof window.__osSetTab==='function')window.__osSetTab('staffverify');
+  };
+  window.FluxOwnerSuite.teardownVerificationQueue=function(){
+    try{
+      const client=typeof getSB==='function'?getSB():null;
+      if(client&&window.FluxOwnerSuite.verifyChannel){
+        client.removeChannel(window.FluxOwnerSuite.verifyChannel);
+      }
+    }catch(_){}
+    window.FluxOwnerSuite.verifyChannel=null;
+    try{
+      if(window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.teardownVerificationRealtime==='function'){
+        window.FluxStaffPlatform.teardownVerificationRealtime();
+      }
+    }catch(_){}
   };
 
   window.reopenOwnerSuite=function(prefTab){

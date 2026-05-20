@@ -1,5 +1,14 @@
 /* P4-CASELOAD — counselor caseload health (enable_counselor_caseload) */
 
+.counselor-caseload-mount,
+.counselor-risk-queue-mount {
+  padding: 0 20px 8px;
+}
+
+.counselor-caseload-mount:not([hidden]) + .counselor-risk-queue-mount:not([hidden]) {
+  padding-top: 0;
+}
+
 .flux-caseload-section {
   margin-bottom: 20px;
 }

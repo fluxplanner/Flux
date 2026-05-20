@@ -1500,8 +1500,11 @@ const FluxRole={
   isStudent(){return this.current==='student';},
   isTeacher(){return this.current==='teacher';},
   isCounselor(){return this.current==='counselor';},
-  isStaff(){return this.current==='staff'||this.current==='admin';},
+  isStaff(){return this.current==='staff';},
+  isPlatformAdmin(){return this.current==='admin';},
   isEducator(){return['teacher','counselor','staff','admin'].includes(this.current);},
+  /** Staff Google hub nav (staff + school admin). */
+  isStaffGoogleHubRole(){return this.current==='staff'||this.current==='admin';},
 
   isWorkMode(){return this.isEducator()&&this.mode==='work';},
   isPersonalMode(){return!this.isEducator()||this.mode==='personal';},
@@ -1589,6 +1592,53 @@ const FluxRole={
   },
 };
 window.FluxRole=FluxRole;
+
+/** Route educator to role-appropriate home after mode switch or sign-in. */
+function fluxRouteEducatorHome(){
+  try{
+    if(!FluxRole.isEducator||!FluxRole.isEducator())return;
+    if(FluxRole.isWorkMode&&FluxRole.isWorkMode()){
+      if(FluxRole.isTeacher()){if(typeof nav==='function')nav('teacherDashboard');try{renderTeacherDashboard();}catch(_){}}
+      else if(FluxRole.isCounselor()){if(typeof nav==='function')nav('counselorDashboard');try{renderCounselorDashboard();}catch(_){}}
+      else if(FluxRole.isPlatformAdmin()){if(typeof nav==='function')nav('adminDashboard');try{renderAdminDashboard();}catch(_){}}
+      else if(FluxRole.isStaff()){if(typeof nav==='function')nav('staffWorkboard');try{renderStaffWorkboard();}catch(_){}}
+    }else{
+      if(typeof nav==='function')nav('dashboard');
+      try{
+        if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){
+          FluxStaffPlatform.renderStaffPersonalDashboard();
+        }
+      }catch(_){}
+    }
+  }catch(_){}
+}
+window.fluxRouteEducatorHome=fluxRouteEducatorHome;
+
+function showDashboardRoleSkeleton(){
+  const el=document.getElementById('dashboard');
+  if(!el||el.dataset.fluxRoleSkeleton==='1')return;
+  el.dataset.fluxRoleSkeleton='1';
+  el.innerHTML=`<div class="flux-role-skeleton" aria-busy="true" aria-label="Loading workspace">
+    <div class="flux-skeleton-pulse flux-role-skel-title"></div>
+    <div class="flux-role-skel-grid">
+      <div class="flux-skeleton-pulse flux-role-skel-card"></div>
+      <div class="flux-skeleton-pulse flux-role-skel-card"></div>
+      <div class="flux-skeleton-pulse flux-role-skel-card"></div>
+      <div class="flux-skeleton-pulse flux-role-skel-card"></div>
+    </div>
+    <div class="flux-skeleton-pulse flux-role-skel-strip"></div>
+    <div class="flux-skeleton-pulse flux-role-skel-strip flux-role-skel-strip--short"></div>
+  </div>`;
+}
+window.showDashboardRoleSkeleton=showDashboardRoleSkeleton;
+
+function clearDashboardRoleSkeleton(){
+  const el=document.getElementById('dashboard');
+  if(!el||el.dataset.fluxRoleSkeleton!=='1')return;
+  delete el.dataset.fluxRoleSkeleton;
+  el.innerHTML='';
+}
+window.clearDashboardRoleSkeleton=clearDashboardRoleSkeleton;
 
 // ══════════════════════════════════════════════════════════════════
 // OWNER IMPERSONATION — test the planner as any role/staff member
@@ -1790,7 +1840,8 @@ const FluxImpersonate={
         if(FluxRole.isWorkMode&&FluxRole.isWorkMode()){
           if(FluxRole.isTeacher())nav('teacherDashboard');
           else if(FluxRole.isCounselor())nav('counselorDashboard');
-          else if(FluxRole.isStaff())nav('adminDashboard');
+          else if(FluxRole.isPlatformAdmin())nav('adminDashboard');
+          else if(FluxRole.isStaff())nav('staffWorkboard');
           else nav('dashboard');
         }else{
           nav('dashboard');
@@ -2030,10 +2081,10 @@ function applyRoleUI(){
   });
   const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isPersonal&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isPersonal&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-work-main]').forEach(el=>{
     el.style.display=(isEducator&&isWork)?'':'none';
@@ -2110,10 +2161,10 @@ function applyModeToNav(isWork){
   });
   const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork&&staffGoogleOn?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaff()&&!isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&!isWork&&staffGoogleOn?'':'none';
   });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
@@ -2195,9 +2246,12 @@ function updateModeSwitchUI(){
     }else if(FluxRole.current==='staff'){
       if(typeof nav==='function')nav('staffWorkboard');
       try{renderStaffWorkboard();}catch(_){}
-    }else if(FluxRole.isStaff()){
+    }else if(FluxRole.isPlatformAdmin()){
       if(typeof nav==='function')nav('adminDashboard');
       try{renderAdminDashboard();}catch(_){}
+    }else if(FluxRole.isStaff()){
+      if(typeof nav==='function')nav('staffWorkboard');
+      try{renderStaffWorkboard();}catch(_){}
     }
   }else if(typeof nav==='function'){
     nav('dashboard');
@@ -2748,7 +2802,9 @@ async function commitEducatorRoleFromUpgrade(det){
   try{FluxRole.setMode('work');}catch(_){}
   try{if(FluxRole.isTeacher()){if(typeof nav==='function')nav('teacherDashboard');if(typeof renderTeacherDashboard==='function')renderTeacherDashboard();}}
   catch(_){}
-  try{if(FluxRole.isStaff()&&!FluxRole.isTeacher()&&!FluxRole.isCounselor()){if(typeof nav==='function')nav('adminDashboard');if(typeof renderAdminDashboard==='function')renderAdminDashboard();}}
+  try{if(FluxRole.isPlatformAdmin()){if(typeof nav==='function')nav('adminDashboard');if(typeof renderAdminDashboard==='function')renderAdminDashboard();}}
+  catch(_){}
+  try{if(FluxRole.isStaff()){if(typeof nav==='function')nav('staffWorkboard');if(typeof renderStaffWorkboard==='function')renderStaffWorkboard();}}
   catch(_){}
   try{if(FluxRole.isCounselor()){if(typeof nav==='function')nav('counselorDashboard');if(typeof renderCounselorDashboard==='function')renderCounselorDashboard();}}
   catch(_){}
@@ -2862,7 +2918,8 @@ function nav(id,btn,navOpt){
         if(FluxRole.isTeacher())id='teacherDashboard';
         else if(FluxRole.isCounselor())id='counselorDashboard';
         else if(FluxRole.current==='staff')id='staffWorkboard';
-        else if(FluxRole.isStaff())id='adminDashboard';
+        else if(FluxRole.isPlatformAdmin())id='adminDashboard';
+        else if(FluxRole.isStaff())id='staffWorkboard';
       }else if(id==='teacherDashboard'||id==='counselorDashboard'||id==='adminDashboard'||id==='staffWorkboard'){
         logicalId='dashboard';
       }
@@ -9136,11 +9193,25 @@ function fabFocus(){
 // ══ KEYBOARD SHORTCUTS ══
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
-    // ⌘⇧K / Ctrl+Shift+K — Global search · ⌘K / Ctrl+K — Command palette
+    // ⌘⇧K / Ctrl+Shift+K — Global search · ⌘K / Ctrl+K — Educators: toggle Work/Personal · others: command palette
     if((e.metaKey||e.ctrlKey)&&e.key?.toLowerCase()==='k'){
       e.preventDefault();
-      if(e.shiftKey)openGlobalSearch();
-      else openCommandPalette();
+      if(e.shiftKey){
+        openGlobalSearch();
+        return;
+      }
+      try{
+        if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
+          const next=FluxRole.isWorkMode()?'personal':'work';
+          FluxRole.setMode(next);
+          try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
+          try{if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();}catch(_){}
+          try{if(typeof fluxRouteEducatorHome==='function')fluxRouteEducatorHome();}catch(_){}
+          if(typeof showToast==='function')showToast(next==='work'?'Work mode':'Personal mode','info');
+          return;
+        }
+      }catch(_){}
+      openCommandPalette();
       return;
     }
     // Cmd+D — Deep Work mode
@@ -9243,6 +9314,24 @@ function renderCmdResults(){
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
   navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
+
+  if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
+    const workLbl='Switch to Work mode';
+    const personalLbl='Switch to Personal mode';
+    const toggleMode=()=>{
+      const next=FluxRole.isWorkMode()?'personal':'work';
+      FluxRole.setMode(next);
+      try{applyRoleUI();}catch(_){}
+      try{updateModeSwitchUI();}catch(_){}
+      try{fluxRouteEducatorHome();}catch(_){}
+      closeCommandPalette();
+      if(typeof showToast==='function')showToast(next==='work'?'Work mode':'Personal mode','info');
+    };
+    if(!q||workLbl.toLowerCase().includes(q)||'work'.includes(q))
+      cmds.push({icon:'🏫',label:workLbl,cat:'Workspace',action:()=>{if(!FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
+    if(!q||personalLbl.toLowerCase().includes(q)||'personal'.includes(q))
+      cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
+  }
 
   const rNav=typeof getMyRole==='function'?getMyRole():'user';
   if(rNav==='owner'||rNav==='dev'){
@@ -10059,12 +10148,19 @@ async function handleSignedIn(user,session){
 
   initFluxSessionIdleAdvisory();
 
+  try{showDashboardRoleSkeleton();}catch(_){}
+
   // ── Role detection — runs BEFORE deciding which onboarding to show ──
   // Previously the student wizard launched first and the role picker popped
   // on top of it for new staff accounts. Order is now: load role row → if
   // missing, pop picker → THEN choose onboarding. Same source of truth as
   // detectUserRoleAndRoute (which we still call for routing/nav side-effects).
   let resolvedRole='student';
+  try{
+    if(window.FluxStaffDirectory&&typeof FluxStaffDirectory.hydrate==='function'){
+      await FluxStaffDirectory.hydrate();
+    }
+  }catch(_){}
   try{
     await FluxRole.load();
     if(fluxNeedsRolePicker(user.id)&&typeof detectUserRoleAndRoute==='function'){
@@ -10087,6 +10183,25 @@ async function handleSignedIn(user,session){
     }
   }catch(_){}
   resolvedRole=FluxRole.current||resolvedRole;
+  try{
+    const pendingStaffMeta=String(user.user_metadata?.role_pending||'').toLowerCase()==='staff';
+    if(
+      pendingStaffMeta&&
+      (FluxRole.current==='student'||!FluxRole.isEducator?.())&&
+      window.FluxStaffPlatform?.listenForApproval
+    ){
+      window.FluxStaffPlatform.listenForApproval(user.id);
+    }else if(window.FluxStaffPlatform?.teardownVerificationRealtime){
+      window.FluxStaffPlatform.teardownVerificationRealtime();
+    }
+  }catch(_){}
+  try{
+    if(FluxRole.isCounselor()&&FluxRole.isWorkMode?.()&&window.FluxCounselorCaseload?.enabled?.()){
+      if(typeof window.FluxCounselorCaseload.renderCaseloadDashboard==='function'){
+        void window.FluxCounselorCaseload.renderCaseloadDashboard();
+      }
+    }
+  }catch(_){}
   try{
     if(window.FluxSchool?.ensureDefaultSchoolForAccount){
       await FluxSchool.ensureDefaultSchoolForAccount();
@@ -10128,6 +10243,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
   try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
   try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
+  try{clearDashboardRoleSkeleton();}catch(_){}
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
@@ -10182,9 +10298,12 @@ async function handleSignedIn(user,session){
       }else if(FluxRole.isWorkMode()&&FluxRole.isCounselor()){
         nav('counselorDashboard');
         try{renderCounselorDashboard();}catch(_){}
-      }else if(FluxRole.isWorkMode()&&FluxRole.isStaff()){
+      }else if(FluxRole.isWorkMode()&&FluxRole.isPlatformAdmin()){
         nav('adminDashboard');
         try{renderAdminDashboard();}catch(_){}
+      }else if(FluxRole.isWorkMode()&&FluxRole.isStaff()){
+        nav('staffWorkboard');
+        try{renderStaffWorkboard();}catch(_){}
       }else if(FluxRole.isEducator()&&!FluxRole.isWorkMode()){
         nav('dashboard');
         try{if(window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.renderStaffPersonalDashboard==='function')window.FluxStaffPlatform.renderStaffPersonalDashboard();}catch(_){}
@@ -10278,6 +10397,9 @@ function _refreshUserUI(){
 window._refreshUserUI=_refreshUserUI;
 
 function handleSignedOut(){
+  try{if(window.FluxOwnerSuite?.teardownVerificationQueue)window.FluxOwnerSuite.teardownVerificationQueue();}catch(_){}
+  try{if(window.FluxStaffPlatform?.teardownVerificationRealtime)window.FluxStaffPlatform.teardownVerificationRealtime();}catch(_){}
+  try{if(window.FluxCounselorCaseload?.teardown)window.FluxCounselorCaseload.teardown();}catch(_){}
   try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
   FLUX_FLAGS.TESTER_MODE = false;
   _entitlementFetchedAt=0;
@@ -14646,8 +14768,13 @@ window.showPostLoginRolePicker=showPostLoginRolePicker;
  *  This replaces the old freeform name + subject inputs. The directory is
  *  the authority on who is a real teacher/staff member. */
 function showStaffDetailsForm(){
-  return new Promise((resolve)=>{
+  return new Promise(async (resolve)=>{
     if(document.getElementById('staffDetailsForm'))return resolve(null);
+    try{
+      if(window.FluxStaffDirectory&&typeof FluxStaffDirectory.hydrate==='function'){
+        await FluxStaffDirectory.hydrate();
+      }
+    }catch(_){}
     const dir=window.FluxStaffDirectory;
     const userEmail=String(currentUser?.email||'').toLowerCase().trim();
     const ownerHere=(typeof isOwner==='function'&&isOwner());
@@ -14971,12 +15098,18 @@ async function detectUserRoleAndRoute(){
   window._userRole=role;
   window._counselorRecord=counselorRow;
 
-  if(role==='teacher'||role==='staff'||role==='admin'){
+  if(role==='teacher'){
     nav('teacherDashboard');
     renderTeacherDashboard();
   }else if(role==='counselor'){
     nav('counselorDashboard');
     renderCounselorDashboard();
+  }else if(role==='admin'){
+    nav('adminDashboard');
+    try{renderAdminDashboard();}catch(_){}
+  }else if(role==='staff'){
+    nav('staffWorkboard');
+    try{renderStaffWorkboard();}catch(_){}
   }else{
     setTimeout(()=>{
       try{renderMyCounselorSection();}catch(_){}
@@ -15062,9 +15195,12 @@ async function finishOnboarding(){
     }else if(FluxRole.isCounselor()){
       if(typeof nav==='function')nav('counselorDashboard');
       try{renderCounselorDashboard();}catch(_){}
-    }else if(FluxRole.isStaff()){
+    }else if(FluxRole.isPlatformAdmin()){
       if(typeof nav==='function')nav('adminDashboard');
       try{renderAdminDashboard();}catch(_){}
+    }else if(FluxRole.isStaff()){
+      if(typeof nav==='function')nav('staffWorkboard');
+      try{renderStaffWorkboard();}catch(_){}
     }else if(FluxRole.isStudent()){
       if(typeof nav==='function')nav('dashboard');
       try{loadTeacherAssignments();}catch(_){}
@@ -16576,7 +16712,15 @@ async function renderCounselorDashboard(){
     }
   }catch(_){}
   const sb=getSB();if(!sb)return;
-  host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2)">Loading…</div>';
+  host.innerHTML=`<div class="flux-role-skeleton" aria-busy="true" style="padding:20px">
+    <div class="flux-skeleton-pulse flux-role-skel-title" style="height:28px;width:min(280px,70%);margin-bottom:14px"></div>
+    <div class="flux-role-skel-grid" style="margin-bottom:14px">
+      <div class="flux-skeleton-pulse flux-role-skel-card" style="height:72px"></div>
+      <div class="flux-skeleton-pulse flux-role-skel-card" style="height:72px"></div>
+      <div class="flux-skeleton-pulse flux-role-skel-card" style="height:72px"></div>
+    </div>
+    <div class="flux-skeleton-pulse flux-role-skel-strip" style="height:200px"></div>
+  </div>`;
 
   const counselorRow=await ensureCounselorRecord(sb,'counselor');
   if(!counselorRow){
@@ -16634,21 +16778,22 @@ async function renderCounselorDashboard(){
   const subjLine=(typeof FluxRole!=='undefined'&&FluxRole.profile&&FluxRole.profile.subject)
     ?String(FluxRole.profile.subject).trim():'';
 
-  let caseloadSectionHtml='';
-  let riskQueueSectionHtml='';
   let _counselorCaseload=null;
   let _counselorQueue=null;
   try{
+    if(window.FluxCounselorCaseload?.enabled?.()&&typeof FluxCounselorCaseload.renderCaseloadDashboard==='function'){
+      await FluxCounselorCaseload.renderCaseloadDashboard();
+    }
     if(window.FluxCounselorCaseload?.enabled?.()&&typeof FluxCounselorCaseload.loadCaseload==='function'){
       _counselorCaseload=await FluxCounselorCaseload.loadCaseload(sb,counselorRow.id);
-      if(typeof FluxCounselorCaseload.renderSection==='function'){
-        caseloadSectionHtml=FluxCounselorCaseload.renderSection(_counselorCaseload);
-      }
     }
     if(window.FluxCounselorRiskQueue?.enabled?.()&&_counselorCaseload&&typeof FluxCounselorRiskQueue.loadQueue==='function'){
       _counselorQueue=await FluxCounselorRiskQueue.loadQueue(sb,counselorRow.id,_counselorCaseload);
-      if(typeof FluxCounselorRiskQueue.renderSection==='function'){
-        riskQueueSectionHtml=FluxCounselorRiskQueue.renderSection(_counselorQueue);
+      const rqMount=document.getElementById('counselorRiskQueueMount');
+      if(rqMount&&typeof FluxCounselorRiskQueue.renderSection==='function'){
+        const rqHtml=FluxCounselorRiskQueue.renderSection(_counselorQueue);
+        rqMount.innerHTML=rqHtml||'';
+        rqMount.hidden=!rqHtml;
       }
     }
     if(window.FluxCounselorCopilot?.setDashboardContext){
@@ -16689,13 +16834,9 @@ async function renderCounselorDashboard(){
         </div>
       </div>
 
-      ${riskQueueSectionHtml}
-
       ${window.FluxCounselorConsent?.enabled?.()&&_counselorCaseload&&window.FluxCounselorConsent.renderCounselorSummary
         ?FluxCounselorConsent.renderCounselorSummary(_counselorCaseload)
         :''}
-
-      ${caseloadSectionHtml}
 
       <div class="teacher-grid">
         <div class="teacher-section">
@@ -16738,10 +16879,14 @@ async function renderCounselorDashboard(){
     row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
   });
   try{
-    if(window.FluxCounselorCaseload?.wireCounselorSection)FluxCounselorCaseload.wireCounselorSection(host,sb);
+    const caseloadMount=document.getElementById('counselorCaseloadMount');
+    if(window.FluxCounselorCaseload?.wireCounselorSection&&caseloadMount){
+      FluxCounselorCaseload.wireCounselorSection(caseloadMount,sb);
+    }
   }catch(_){}
   try{
-    if(window.FluxCounselorRiskQueue?.wire)FluxCounselorRiskQueue.wire(host,sb);
+    const rqMount=document.getElementById('counselorRiskQueueMount');
+    if(window.FluxCounselorRiskQueue?.wire&&rqMount)FluxCounselorRiskQueue.wire(rqMount,sb);
   }catch(_){}
   host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();

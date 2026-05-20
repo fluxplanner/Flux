@@ -6,6 +6,34 @@
 
 ---
 
+## 0a. Staff platform v2 (`20260521130000_staff_platform_v2_fixes.sql`)
+
+- [ ] Migration applied: `platform_admins`, `staff_tickets`, `applicant_note` column, `flux_is_platform_admin()`.
+- [ ] `FluxStaffDirectory.hydrate()` loads rows from `staff_directory` (not empty after seed/import).
+- [ ] `staff` role work mode opens **Workboard** (`staffWorkboard`), not admin dashboard.
+- [ ] `admin` role work mode opens **Operations** / admin dashboard; `adminOps` denied for `staff`.
+- [ ] Staff workboard tickets persist to `staff_tickets` (visible after reload, same school).
+- [ ] Sign-in shows dashboard skeleton until role routing completes (no flash of wrong layout).
+- [ ] Educator **Ctrl/Cmd+K** toggles Work ↔ Personal; **Ctrl/Cmd+Shift+K** still opens global search.
+- [ ] Owner approval queue works via `platform_admins` email (not hardcoded JWT string in new policies).
+
+---
+
+## 0b. Phase 5 — Counselor caseload + verification realtime
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Counselor caseload | `counselor` | Enable `enable_counselor_caseload`, sign in, Work mode, open Overview | `#counselorCaseloadMount` shows skeleton then summary cards (assigned / consented / bands). |
+| Caseload mode toggle | `counselor` | Work → Personal via Ctrl/Cmd+K | Caseload mount clears/hides; student planner chrome returns. |
+| Verification subscriptions | `owner` | Open Owner Suite → Staff verify; approve pending row while applicant is logged in | Applicant `user_roles` upgrades without full page reload (watch Network + console). |
+| Realtime cleanup | Any | Sign out | `getSB().getChannels()` length returns to 0 (no `owner_verification_queue` / `applicant_verification_watch` left). |
+
+Dev flags: `window.FLUX_EXPERIMENTS = { enable_counselor_caseload: true };` then reload.
+
+Directory seed: `node scripts/seed-staff-directory.mjs scripts/staff-import-ia-east.jsonl` (requires service role).
+
+---
+
 ## 0. Feature flags (after sign-in)
 
 - [ ] `FluxFeatureFlags.load()` completes without console error (requires migration `20260524120000_feature_flags_foundation.sql`).
