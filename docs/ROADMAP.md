@@ -176,6 +176,9 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 |------|-----|-------------|--------|
 | 11.1 | `P11-SYLLABUS-CONFLICT` | Syllabus conflict banner (`enable_syllabus_conflict_check`) | Done |
 | 11.2 | `P11-PILOT-B` | IA East school override for syllabus conflicts + live banner refresh | Done |
+| 11.3 | `P11-CALENDAR-CONFLICT` | Calendar day markers + day-panel hints (`cal-day--conflict`) | Done |
+
+**Phase 11 exit:** `docs/PHASE_11_CLOSEOUT.md`
 
 For new work beyond Phase 11, add rows here or pick items from `IMPROVEMENTS.md`.
 

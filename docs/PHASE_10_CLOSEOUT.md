@@ -44,6 +44,5 @@ supabase db push
 ## After Phase 10
 
 1. **IAE production smoke** with real accounts (no `FLUX_EXPERIMENTS`).  
-2. **Phase 11** — `docs/P11-SYLLABUS-CONFLICT.md` (schedule conflict banner).  
-3. **Backlog** — AI export dates, broader i18n.  
-3. Add **Phase 11** to `docs/ROADMAP.md` for the next theme.
+2. **Phase 11** — complete; see `docs/PHASE_11_CLOSEOUT.md`.  
+3. **Phase 12+** — `docs/IMPROVEMENTS.md`, AI export dates, broader i18n.

@@ -1,5 +1,5 @@
 /**
- * P11-SYLLABUS-CONFLICT — schedule conflict detection for dashboard banner.
+ * P11-SYLLABUS-CONFLICT — schedule conflict detection (dashboard banner + calendar markers).
  * Flag: enable_syllabus_conflict_check (default off). Falls back to renderExamConflictBanner.
  */
 (function () {
@@ -145,6 +145,45 @@
     if (typeof window.renderExamConflictBanner === 'function') window.renderExamConflictBanner();
   }
 
+  function conflictDatesSet() {
+    if (!enabled()) return new Set();
+    const set = new Set();
+    detectConflicts().forEach((i) => {
+      if (i.date) set.add(String(i.date).slice(0, 10));
+    });
+    return set;
+  }
+
+  function conflictsForDate(iso) {
+    const d = String(iso || '').slice(0, 10);
+    if (!d) return [];
+    return detectConflicts().filter((i) => i.date === d);
+  }
+
+  function decorateCalendar() {
+    if (!enabled()) return;
+    const dates = conflictDatesSet();
+    if (!dates.size) return;
+    document.querySelectorAll('#calGrid .cal-day[data-cal-date]').forEach((cell) => {
+      const ds = cell.getAttribute('data-cal-date');
+      if (ds && dates.has(ds)) {
+        cell.classList.add('cal-day--conflict');
+        cell.setAttribute('title', T('syllabus.cal_marker'));
+      }
+    });
+  }
+
+  function renderDayHint(iso) {
+    if (!enabled() || !iso) return '';
+    const issues = conflictsForDate(iso);
+    if (!issues.length) return '';
+    const items = issues.map((i) => `<li>${esc(i.message)}</li>`).join('');
+    return `<div class="cal-day-conflict-hint" role="status">
+      <strong>${esc(T('syllabus.title'))}</strong>
+      <ul class="syllabus-conflict-list">${items}</ul>
+    </div>`;
+  }
+
   function render() {
     const el = document.getElementById('examConflictBanner');
     if (!el) return;
@@ -182,6 +221,10 @@
     FLAG,
     enabled,
     detectConflicts,
+    conflictDatesSet,
+    conflictsForDate,
+    decorateCalendar,
+    renderDayHint,
     render,
   };
 })();

@@ -79,6 +79,7 @@
     'syllabus.subject_clash': '{date}: {subject} has a test and homework due',
     'syllabus.duplicate_due': '{date}: duplicate "{name}" — check syllabus import',
     'syllabus.more': '+{n} more conflicts',
+    'syllabus.cal_marker': 'Schedule conflict on this day',
   };
 
   const STRINGS = {
@@ -144,6 +145,7 @@
       'syllabus.subject_clash': '{date}: {subject} tiene examen y tarea',
       'syllabus.duplicate_due': '{date}: duplicado "{name}" — revisa el sílabo',
       'syllabus.more': '+{n} conflictos más',
+      'syllabus.cal_marker': 'Conflicto de horario este día',
     },
     'fr-FR': {
       ...UI_STRINGS,
@@ -186,6 +188,7 @@
       'syllabus.subject_clash': '{date} : {subject} — test et devoir',
       'syllabus.duplicate_due': '{date} : doublon « {name} »',
       'syllabus.more': '+{n} autres',
+      'syllabus.cal_marker': 'Conflit d\'horaire ce jour',
     },
     'ar-SA': {
       ...UI_STRINGS,
@@ -220,6 +223,7 @@
       'syllabus.subject_clash': '{date}: {subject} — اختبار وواجب',
       'syllabus.duplicate_due': '{date}: تكرار «{name}»',
       'syllabus.more': '+{n} أخرى',
+      'syllabus.cal_marker': 'تعارض في الجدول هذا اليوم',
     },
   };
 
@@ -316,6 +320,7 @@
       if (window.FluxStorageRepair?.renderSettingsCard) window.FluxStorageRepair.renderSettingsCard();
       if (window.FluxOfflineSync?.refreshConflictUi) window.FluxOfflineSync.refreshConflictUi();
       if (window.FluxSyllabusConflict?.render) window.FluxSyllabusConflict.render();
+      if (window.FluxSyllabusConflict?.decorateCalendar) window.FluxSyllabusConflict.decorateCalendar();
     } catch (_) {}
   }
 

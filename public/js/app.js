@@ -4421,6 +4421,8 @@ function renderCalendar(){
     if(ecg.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...ecg);}
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  let calConflictDates=new Set();
+  try{if(window.FluxSyllabusConflict?.enabled?.()&&window.FluxSyllabusConflict.conflictDatesSet)calConflictDates=FluxSyllabusConflict.conflictDatesSet();}catch(_){}
   for(let i=first-1;i>=0;i--)html+=`<div class="cal-day other"><div class="cal-dn">${prevDays-i}</div></div>`;
   for(let d=1;d<=days;d++){const dt=new Date(calYear,calMonth,d),ds=fluxLocalYMD(dt);const isToday=dt.getTime()===now.getTime(),isNP=isBreak(ds),rk=isNP?restDayKind(ds)||'lazy':null,ab=getCycleDayLabel(ds);const rawT=tMap[d]||[],rawE=evMap[d]||[];const tlist=[...rawT].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));const elist=[...rawE].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));// Task bars — school items first
 const taskBars=tlist.slice(0,3).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';const out=fluxEventScope(t)==='outside';const tm=t.time?formatCalTimeShort(t.time):'';const lab=tm?`${esc(t.name)} · ${esc(tm)}`:esc(t.name);return`<div class="cal-task-bar" style="background:${c}22;border-left:2px solid ${c};opacity:${out?0.75:(t.done?0.5:1)};text-decoration:${t.done?'line-through':'none'}">${lab}</div>`;}).join('');
@@ -4428,9 +4430,11 @@ const eventBars=elist.slice(0,2).map(e=>{const out=fluxEventScope(e)==='outside'
 const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abCol=ab==='A'?'var(--accent)':ab==='B'?'var(--green)':ab?'var(--gold)':'var(--muted)';const abLabel=ab?`<div style="font-size:${ab.length>2?'.4rem':'.45rem'};font-family:'JetBrains Mono',monospace;color:${abCol};line-height:1;margin-top:1px;max-width:100%;text-overflow:ellipsis;overflow:hidden">${esc(ab)}</div>`:'';const overFlag=tlist.some(t=>!t.done&&new Date(t.date+'T00:00:00')<now)?'<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--red)"></div>':'';const countBadge=allCount>3?`<div class="cal-day-count">+${allCount-3}</div>`:'';const restCls=isNP?` no-hw ${rk==='sick'?'rest-sick':'rest-lazy'}`:'';const dayMins=tlist.filter(t=>!t.done).reduce((s,t)=>s+(t.estTime||30),0);const heatCls=!isNP&&!d===calSelected?(dayMins>=180?' cal-heat-3':dayMins>=90?' cal-heat-2':dayMins>=30?' cal-heat-1':''):'';
 // Compact dots for mobile — show up to 4 per day, colored by subject/event type
 const _mobMax=4;const _taskDots=tlist.slice(0,_mobMax).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';return`<span class="cal-dot-compact" style="background:${c};opacity:${t.done?0.35:1}"></span>`;});const _evSlots=Math.max(0,_mobMax-_taskDots.length);const _evDots=elist.slice(0,_evSlots).map(e=>{const wk=e._weekly;const out=fluxEventScope(e)==='outside';const isEc=fluxIsEcCalendarItem(e);const c=isEc?'var(--gold)':wk?(out?'var(--muted2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<span class="cal-dot-compact" style="background:${c};opacity:${wk?0.85:1}"></span>`;});const _dotsHTML=(_taskDots.concat(_evDots)).join('')+(allCount>_mobMax?`<span class="cal-dot-compact cal-dot-more">+${allCount-_mobMax}</span>`:'');const compactDotsEl=_dotsHTML?`<div class="cal-dots-mobile" aria-hidden="true">${_dotsHTML}</div>`:'';
-html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}" ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${countBadge}</div>`;}
+const conflictCls=calConflictDates.has(ds)?' cal-day--conflict':'';const conflictTitle=conflictCls&&typeof fluxT==='function'?` title="${esc(fluxT('syllabus.cal_marker'))}"`:'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}${conflictCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}"${conflictTitle} ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${countBadge}</div>`;}
   document.getElementById('calGrid').innerHTML=html;
+  try{if(window.FluxSyllabusConflict?.decorateCalendar)FluxSyllabusConflict.decorateCalendar();}catch(_){}
   renderCalDay();
+  try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
   if(typeof fluxAfterRenderCalendar==='function')fluxAfterRenderCalendar();
   }finally{_fluxCalRenderBusy=false;}
 }
@@ -4452,11 +4456,16 @@ function renderCalDay(){
   const weekly=weeklyVirtualEventsForDate(ds);
   const ecGoalsDay=ecGoalEventsForDate(ds);
   const el=document.getElementById('calDayTasks');
-  if(!day.length&&!events.length&&!weekly.length&&!ecGoalsDay.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:4px 0">Nothing scheduled.</div>';return;}
+  let conflictHint='';
+  try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
+  if(!day.length&&!events.length&&!weekly.length&&!ecGoalsDay.length){
+    el.innerHTML=conflictHint+'<div style="color:var(--muted);font-size:.82rem;padding:4px 0">Nothing scheduled.</div>';
+    return;
+  }
   const blocks=[];weekly.forEach(w=>blocks.push({k:'w',o:w}));events.forEach(e=>blocks.push({k:'e',o:e}));ecGoalsDay.forEach(g=>blocks.push({k:'g',o:g}));day.forEach(t=>blocks.push({k:'t',o:t}));
   const ord={w:0,e:1,g:1,t:2};
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
-  el.innerHTML=blocks.map(({k,o})=>{
+  el.innerHTML=conflictHint+blocks.map(({k,o})=>{
     if(k==='g'){
       return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">🎯</span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
     }

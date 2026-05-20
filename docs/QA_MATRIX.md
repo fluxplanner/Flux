@@ -106,8 +106,11 @@ Migration: `20260528100000` … `20260528700000_ia_east_pilot_extended.sql` · D
 | Locale | `student` | Flag + locale on | Bullets use `fluxT` / Español |
 | IAE pilot | `student` @ IAE | After `20260529100000`, two quizzes same day | Banner shows without experiments |
 | Live refresh | `student` | Add second quiz same date | Banner updates without full page reload |
+| Calendar marker | `student` | Flag on, conflict date in month view | `cal-day--conflict` on grid cell |
+| Calendar day panel | `student` | Select conflict day | Gold hint block in `#calDayTasks` |
+| Calendar tab | `student` | Open Calendar with conflicts | Notices banner still shows v2 list |
 
-Migration: `20260529000000` … `20260529100000_ia_east_syllabus_conflict.sql` · Doc: `docs/P11-SYLLABUS-CONFLICT.md`
+Migration: `20260529000000` … `20260529100000_ia_east_syllabus_conflict.sql` · Docs: `docs/P11-SYLLABUS-CONFLICT.md`, `docs/P11-CALENDAR-CONFLICT.md`
 
 ---
 
