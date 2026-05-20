@@ -154,8 +154,23 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | Step | ID | Deliverable | Status |
 |------|-----|-------------|--------|
 | 9.1 | `P9-DASH-WIDGETS` | Dashboard widget show/hide + reorder (`enable_dashboard_widget_picker`) | Done |
+| 9.2 | `P9-PILOT-B` | `PHASE_8_CLOSEOUT.md` + IA East locale/ops health pilot extension | Done |
+| 9.3 | `P9-SYNC-CONFLICT` | Enhanced conflict modal + Settings card (`enable_sync_conflict_ui`) | Done |
+| 9.4 | `P9-I18N-EDUCATOR` | `fmtFluxDate` / `fluxFmtStaffDate` in educator & staff panels | Done |
+| 9.5 | `P9-PRODUCTION-SMOKE` | IAE smoke checklist + E2E harness scenarios | Done |
 
-For new work beyond Phase 8, add rows here or pick items from product backlog.
+**Phase 9 exit:** `docs/PHASE_9_CLOSEOUT.md` · **Phase 8 exit:** `docs/PHASE_8_CLOSEOUT.md`
+
+## Phase 10 — Reliability & data hygiene
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 10.1 | `P10-STORAGE-REPAIR` | Corrupt localStorage scan/repair (`enable_storage_repair`) | Done |
+| 10.2 | `P10-I18N-STRINGS` | `fluxT` strings for sync conflict, storage repair, widget picker | Done |
+
+**Phase 10 exit:** `docs/PHASE_10_CLOSEOUT.md`
+
+For new work beyond Phase 10, add rows here or pick items from `IMPROVEMENTS.md`.
 
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  
 2. Run `npm run test:e2e` before large UI changes.  

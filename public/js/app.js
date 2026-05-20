@@ -6015,7 +6015,10 @@ function switchStab(id,el){
   const pane=document.getElementById('spane-'+id);
   if(pane)pane.classList.add('active');
   if(id==='appearance'){if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();if(typeof window.wireSettingsToggles==='function')window.wireSettingsToggles();else if(typeof wireSettingsToggles==='function')wireSettingsToggles();}
-  if(id==='data'&&typeof renderStorageMeter==='function')renderStorageMeter();
+  if(id==='data'){
+    if(typeof renderStorageMeter==='function')renderStorageMeter();
+    try{if(window.FluxStorageRepair?.renderSettingsCard)FluxStorageRepair.renderSettingsCard();}catch(_){}
+  }
   if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
   if(id==='account')try{syncStudentEducatorUpgradeCard();}catch(_){}
 }
@@ -10211,6 +10214,7 @@ async function handleSignedIn(user,session){
     try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
     try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
     try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+    try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
     try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
     try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
     try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
@@ -10416,6 +10420,7 @@ async function handleSignedIn(user,session){
   try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
   try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
   try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+  try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
   try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
   try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
@@ -11099,6 +11104,7 @@ function handleCheckoutReturn(){
   initOAuthPostMessageListener();
   loadTheme();
   try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
+  try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   migrateCompletedAtBackfill();
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');

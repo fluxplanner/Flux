@@ -387,7 +387,13 @@
 
     const data = hubData();
     const status = data?.fetchedAt
-      ? `Last sync: ${new Date(data.fetchedAt).toLocaleString()} · ${(data.courses || []).length} classes`
+      ? `Last sync: ${
+          typeof window.fluxFmtStaffDateTime === 'function'
+            ? window.fluxFmtStaffDateTime(data.fetchedAt)
+            : typeof window.fmtFluxDate === 'function'
+              ? window.fmtFluxDate(data.fetchedAt, 'short')
+              : new Date(data.fetchedAt).toLocaleString()
+        } · ${(data.courses || []).length} classes`
       : 'Not synced yet — pull courses and assignments from Google Classroom.';
 
     const courses = data?.courses || [];

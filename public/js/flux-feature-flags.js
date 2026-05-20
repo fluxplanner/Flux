@@ -43,6 +43,8 @@
       enable_event_bus_processors: false,
       enable_ai_orchestration: false,
       enable_offline_sync: false,
+      enable_sync_conflict_ui: false,
+      enable_storage_repair: false,
       enable_layered_memory: false,
       enable_a11y_suite: false,
       enable_e2e_harness: false,

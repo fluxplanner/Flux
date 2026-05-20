@@ -16,6 +16,26 @@
     return typeof getSB === 'function' ? getSB() : null;
   }
 
+  function fmtD(input, style) {
+    if (typeof window.fluxFmtStaffDate === 'function') return window.fluxFmtStaffDate(input, style);
+    if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(input, style);
+    const d = input instanceof Date ? input : new Date(String(input).length === 10 ? input + 'T12:00:00' : input);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function fmtMonthYear(iso) {
+    const d = new Date(String(iso).slice(0, 10) + 'T12:00:00');
+    const loc =
+      window.FluxI18n?.enabled?.() && typeof window.FluxI18n.getLocale === 'function'
+        ? window.FluxI18n.getLocale()
+        : 'en-US';
+    try {
+      return new Intl.DateTimeFormat(loc, { month: 'long', year: 'numeric' }).format(d);
+    } catch (_) {
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+  }
+
   function switchEduTab(btn, tabId) {
     const modal = btn.closest('.edu-fullscreen-modal');
     const scope = modal || document;
@@ -32,10 +52,7 @@
   function groupEventsByMonth(events) {
     const groups = new Map();
     (events || []).forEach((e) => {
-      const month = new Date(e.event_date + 'T00:00').toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
+      const month = fmtMonthYear(e.event_date);
       if (!groups.has(month)) groups.set(month, []);
       groups.get(month).push(e);
     });
@@ -256,11 +273,7 @@
     <div class="edu-toprow">
       <div class="edu-greeting">
         <span class="edu-hello">${getTimeGreeting()}, ${esc(last)}</span>
-        <span class="edu-sub">${esc(profile?.school || 'Your School')} · ${new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        })}</span>
+        <span class="edu-sub">${esc(profile?.school || 'Your School')} · ${esc(fmtD(new Date(), 'weekday'))}</span>
       </div>
       <div class="edu-actions">
         <button type="button" class="edu-action-btn primary" onclick="openPostAnnouncementModal('admin')">📢 Announce</button>
@@ -327,10 +340,7 @@
               <div class="erc-avatar">${esc((r.user_roles?.display_name || 'S')[0])}</div>
               <div class="erc-info">
                 <div class="erc-name">${esc(r.user_roles?.display_name || 'Student')}</div>
-                <div class="erc-meta">${new Date(r.date + 'T00:00').toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })} at ${esc(r.time_slot)}</div>
+                <div class="erc-meta">${esc(fmtD(r.date, 'monthDay'))} at ${esc(r.time_slot)}</div>
               </div>
             </div>
             <div class="erc-reason">${esc(r.subject)}</div>
@@ -815,7 +825,7 @@
             .map(
               (e) => `
           <div class="scl-event-row event-type-${esc(e.event_type)}">
-            <div class="scl-event-date">${new Date(e.event_date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+            <div class="scl-event-date">${esc(fmtD(e.event_date, 'monthDay'))}</div>
             <div class="scl-event-dot" style="background:${getEventColor(e.event_type)}"></div>
             <div class="scl-event-info">
               <div class="scl-event-title">${esc(e.title)}</div>
@@ -1119,7 +1129,7 @@
       if (daySlots.length) {
         availableDays.push({
           date: dateStr,
-          label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          label: fmtD(dateStr, 'weekday'),
           slots: daySlots,
         });
         _apptDaySlots[dateStr] = daySlots;

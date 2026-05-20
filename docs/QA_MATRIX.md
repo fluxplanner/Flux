@@ -86,10 +86,50 @@ Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fi
 | Gmail palette | `teacher` | ⌘K → "Gmail: import top action email" (Gmail connected) | Task created with `gmailMessageId`; dashboard shows task. |
 | Gmail widget | `counselor` | Enable `sys_gmail_quick` widget → Import top | Same as palette import. |
 | IA East pilot | `teacher` @ IAE | After `20260528300000` migration, reload (no FLUX_EXPERIMENTS) | `FluxFeatureFlags` resolves suite flags true for IAE school. |
+| IA East locale | `student` @ IAE | After `20260528700000`, reload | `enable_locale_foundation` true via school override; Appearance shows locale card. |
+| IA East health | `admin` @ IAE | Operations → System health | Panel available without experiments when extended pilot applied. |
 | Counselor picker | `counselor` | Meeting log → + note → select assigned student | Saves without UUID prompt; shows display name in list. |
 | Ops health | `admin` | Enable `enable_ops_health_panel` → System health → Run checks | Supabase + flags ok; staff tables ok after migrations; RLS legacy flags false. |
 
-Migration: `20260528100000_staff_productivity_suite.sql`, `20260528200000_counselor_support_tools.sql`, `20260528300000_ia_east_staff_pilot.sql`, `20260528400000_ops_health_panel.sql` · Docs: `docs/P8-STAFF-PRODUCTIVITY.md`, `docs/P8-HEALTH.md`
+Migration: `20260528100000` … `20260528700000_ia_east_pilot_extended.sql` · Docs: `docs/PHASE_8_CLOSEOUT.md`, `docs/P8-STAFF-PRODUCTIVITY.md`, `docs/P8-HEALTH.md`
+
+---
+
+## 0l. Locale UI strings (P10.2 — needs `enable_locale_foundation`)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Sync modal | Any | Locale on + conflict UI → open resolver | Buttons/labels in selected language |
+| Widget picker | Any | Appearance → Español | Section labels (countdown, tasks, …) in Spanish |
+| Storage repair | Any | Locale on + repair flag → Data card | Title and scan button translated |
+| Rollback | Any | Disable locale flag | `fluxT` returns English |
+
+Doc: `docs/P10-I18N-STRINGS.md`
+
+---
+
+## 0k. Storage repair (`enable_storage_repair` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | Any | Settings → Data | No Storage repair card |
+| Flag on | Any | Corrupt `tasks` JSON in DevTools → Scan & repair | Toast reports repair; tasks reload (default or salvaged) |
+| Auto scan | Any | Reload with flag on, corrupt key present | One session toast on first fix |
+| Rollback | Owner | Disable flag | Card hidden; no auto scan |
+
+Migration: `20260528900000_storage_repair.sql` · Doc: `docs/P10-STORAGE-REPAIR.md`
+
+---
+
+## 0j. Production smoke (P9.5)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| E2E IAE teacher | Harness | `npm run test:e2e` → `ia-east-pilot` | Widget grid visible on teacher dashboard |
+| E2E widgets | Harness | `student-dashboard-widgets` spec | Countdown hide + Appearance toggles |
+| Manual IAE | Real accounts | `docs/P9-PRODUCTION-SMOKE.md` checklist | All rows pass without `FLUX_EXPERIMENTS` |
+
+Doc: `docs/P9-PRODUCTION-SMOKE.md` · Closeout: `docs/PHASE_9_CLOSEOUT.md`
 
 ---
 
@@ -114,8 +154,10 @@ Migration: `20260528600000_dashboard_widget_picker.sql` · Doc: `docs/P9-DASHBOA
 | RTL | Any | Select العربية | `<html dir="rtl">`; layout mirrors. |
 | Rollback | Owner | Disable flag, reload | Dates stay en-US via `fmtFluxDate` fallback. |
 | Task due chips | Any | Flag on → Español → Dashboard tasks | Due dates show localized month/day. |
+| Educator panels (P9.4) | `counselor` / `admin` | Locale on + staff suite → meeting log / School dashboard greet | Timestamps and greet line use selected locale (not hardcoded en-US). |
+| Locale change refresh | `teacher` | Work hub widgets open → switch locale | Widget grid re-renders with new date labels. |
 
-Migration: `20260528500000_locale_foundation.sql` · Doc: `docs/P8-I18N.md`
+Migration: `20260528500000_locale_foundation.sql` · Docs: `docs/P8-I18N.md`, `docs/P9-I18N-EDUCATOR.md`
 
 ---
 
@@ -292,6 +334,17 @@ Authority: `docs/STORAGE_RAW_INVENTORY.md` + `docs/P1-STORAGE.md` + `load`/`save
 - [ ] Flag on: DevTools offline → edit task → outbox pill shows pending; online → sync clears outbox.
 - [ ] Flag on: same task edited on two devices → conflict pill + modal; **Keep mine** / **Keep cloud** resolves.
 - [ ] LWW: newer `_fluxTs` wins when fingerprints differ beyond 2s skew.
+
+## 35b. Sync conflict UI v2 (`enable_sync_conflict_ui` off by default; needs offline sync)
+
+- [ ] Migration `20260528800000_sync_conflict_ui.sql` applied.
+- [ ] Both flags on: conflict modal shows side-by-side previews + relative edit times.
+- [ ] Both flags on: **Keep all mine** / **Keep all cloud** clears all conflicts.
+- [ ] Both flags on: Settings → Data & info → **Sync & conflicts** card; **Review conflicts** opens modal.
+- [ ] `enable_sync_conflict_ui` off, offline on: legacy two-button row modal still works.
+- [ ] Rollback: disable `enable_sync_conflict_ui` only — merge/outbox unchanged.
+
+Migration: `20260528800000_sync_conflict_ui.sql` · Doc: `docs/P9-SYNC-CONFLICT.md`
 
 ## 34. AI orchestration (`enable_ai_orchestration` off by default)
 

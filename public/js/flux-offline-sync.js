@@ -1,7 +1,8 @@
 /**
  * P7-OFFLINE — offline-first sync: outbox, LWW merge, conflict rules.
  * Flag: enable_offline_sync (default off).
- * Migration: 20260525420000_offline_sync.sql
+ * P9.3 — enable_sync_conflict_ui: preview modal, bulk resolve, settings card.
+ * Migrations: 20260525420000_offline_sync.sql, 20260528800000_sync_conflict_ui.sql
  */
 (function () {
   'use strict';
@@ -17,6 +18,67 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function conflictUiV2() {
+    if (!enabled()) return false;
+    try {
+      return !!window.FluxFeatureFlags?.isEnabled('enable_sync_conflict_ui', false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function T(key, vars) {
+    if (typeof window.fluxT === 'function') return window.fluxT(key, vars);
+    return key;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(d, { dateStyle: 'medium' });
+    return String(d);
+  }
+
+  function relEdit(ts) {
+    const t = Number(ts) || 0;
+    if (!t) return 'unknown time';
+    const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (sec < 60) return 'just now';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+    if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+    return Math.floor(sec / 86400) + 'd ago';
+  }
+
+  function previewLines(type, item) {
+    if (!item) return ['(empty)'];
+    if (type === 'task') {
+      const lines = [item.name || T('task.untitled')];
+      lines.push(T('task.due', { date: fmtDate(item.date) }));
+      lines.push(item.done ? T('task.done') : T('task.not_done'));
+      if (item.priority) lines.push(T('task.priority', { p: item.priority }));
+      return lines;
+    }
+    if (type === 'note') {
+      const body = (item.body || '').replace(/\s+/g, ' ').trim();
+      return [
+        item.title || T('note.untitled'),
+        body ? body.slice(0, 120) + (body.length > 120 ? '…' : '') : T('note.no_body'),
+      ];
+    }
+    if (type === 'event') {
+      return [
+        item.title || T('event.untitled'),
+        fmtDate(item.date) + (item.time ? ' · ' + item.time : ''),
+        item.notes ? String(item.notes).slice(0, 80) : '',
+      ].filter(Boolean);
+    }
+    return [JSON.stringify(item).slice(0, 80)];
+  }
+
+  function conflictLabel(c) {
+    if (c.entityType === 'task') return c.local?.name || c.remote?.name || 'Task';
+    return c.local?.title || c.remote?.title || c.entityType;
   }
 
   function load(k, def) {
@@ -175,16 +237,23 @@
 
   function appendConflicts(newOnes) {
     if (!newOnes.length) return;
+    const before = getConflicts().length;
     const cur = getConflicts();
     const ids = new Set(cur.map((c) => c.id));
+    let added = 0;
     newOnes.forEach((c) => {
       if (!ids.has(c.id)) {
         cur.push(c);
         ids.add(c.id);
+        added += 1;
       }
     });
     setConflicts(cur);
     persistConflictsServer(newOnes).catch(() => {});
+    if (added && conflictUiV2() && typeof window.showToast === 'function') {
+      window.showToast(T('sync.toast_new', { n: added }), 'warning', 6000);
+    }
+    if (added && !before && conflictUiV2()) renderSettingsSyncCard();
   }
 
   async function persistConflictsServer(rows) {
@@ -320,6 +389,15 @@
     return enabled() && (key === 'tasks' || key === 'notes' || key === 'events');
   }
 
+  function resolveAll(choice) {
+    const list = getConflicts().slice();
+    let n = 0;
+    list.forEach((c) => {
+      if (resolveConflict(c.id, choice)) n += 1;
+    });
+    return n;
+  }
+
   function resolveConflict(conflictId, choice) {
     const list = getConflicts();
     const idx = list.findIndex((c) => c.id === conflictId);
@@ -355,48 +433,20 @@
     return true;
   }
 
-  function renderConflictModal() {
-    const list = getConflicts();
-    if (!list.length) {
-      if (typeof window.showToast === 'function') window.showToast('No sync conflicts', 'info');
-      return;
-    }
-    let host = document.getElementById('fluxOfflineConflictModal');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'fluxOfflineConflictModal';
-      host.className = 'flux-offline-modal';
-      host.setAttribute('role', 'dialog');
-      host.setAttribute('aria-modal', 'true');
-      document.body.appendChild(host);
-    }
-    const rows = list
-      .map((c) => {
-        const label =
-          c.entityType === 'task'
-            ? esc(c.local?.name || c.remote?.name || 'Task')
-            : esc(c.local?.title || c.remote?.title || c.entityType);
-        return `<div class="flux-offline-conflict-row" data-id="${esc(c.id)}">
-          <div class="flux-offline-conflict-title">${label} <span class="flux-offline-conflict-type">${esc(c.entityType)}</span></div>
-          <div class="flux-offline-conflict-actions">
-            <button type="button" class="btn sm" data-resolve="local" data-id="${esc(c.id)}">Keep mine</button>
-            <button type="button" class="btn sm ghost" data-resolve="remote" data-id="${esc(c.id)}">Keep cloud</button>
-          </div>
-        </div>`;
-      })
-      .join('');
-
-    host.innerHTML = `<div class="flux-offline-modal-inner">
-      <div class="flux-offline-modal-head"><h3>Sync conflicts</h3>
-        <button type="button" class="btn sm ghost" id="fluxOfflineConflictClose">✕</button>
-      </div>
-      <p class="flux-offline-modal-lede">Same item changed on two devices. Pick a version.</p>
-      ${rows}
-    </div>`;
-
+  function wireConflictModal(host) {
     host.style.display = 'flex';
     host.querySelector('#fluxOfflineConflictClose')?.addEventListener('click', () => {
       host.style.display = 'none';
+    });
+    host.querySelector('#fluxOfflineResolveAllLocal')?.addEventListener('click', () => {
+      resolveAll('local');
+      if (!getConflicts().length) host.style.display = 'none';
+      else renderConflictModal();
+    });
+    host.querySelector('#fluxOfflineResolveAllRemote')?.addEventListener('click', () => {
+      resolveAll('remote');
+      if (!getConflicts().length) host.style.display = 'none';
+      else renderConflictModal();
     });
     host.querySelectorAll('[data-resolve]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -407,22 +457,158 @@
     });
   }
 
+  function ensureConflictModalHost() {
+    let host = document.getElementById('fluxOfflineConflictModal');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'fluxOfflineConflictModal';
+      host.className = 'flux-offline-modal';
+      host.setAttribute('role', 'dialog');
+      host.setAttribute('aria-modal', 'true');
+      host.setAttribute('aria-labelledby', 'fluxOfflineConflictTitle');
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  function renderConflictModalLegacy(list, host) {
+    const rows = list
+      .map((c) => {
+        const label = esc(conflictLabel(c));
+        return `<div class="flux-offline-conflict-row" data-id="${esc(c.id)}">
+          <div class="flux-offline-conflict-title">${label} <span class="flux-offline-conflict-type">${esc(c.entityType)}</span></div>
+          <div class="flux-offline-conflict-actions">
+            <button type="button" class="btn sm" data-resolve="local" data-id="${esc(c.id)}">${esc(T('sync.keep_mine'))}</button>
+            <button type="button" class="btn sm ghost" data-resolve="remote" data-id="${esc(c.id)}">${esc(T('sync.keep_cloud'))}</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    host.innerHTML = `<div class="flux-offline-modal-inner">
+      <div class="flux-offline-modal-head"><h3 id="fluxOfflineConflictTitle">${esc(T('sync.title'))}</h3>
+        <button type="button" class="btn sm ghost" id="fluxOfflineConflictClose" aria-label="${esc(T('sync.close'))}">✕</button>
+      </div>
+      <p class="flux-offline-modal-lede">${esc(T('sync.lede_legacy'))}</p>
+      ${rows}
+    </div>`;
+    wireConflictModal(host);
+  }
+
+  function renderConflictModalV2(list, host) {
+    const bulk =
+      list.length > 1
+        ? `<div class="flux-offline-bulk">
+            <button type="button" class="btn sm" id="fluxOfflineResolveAllLocal">${esc(T('sync.keep_all_mine', { n: list.length }))}</button>
+            <button type="button" class="btn sm ghost" id="fluxOfflineResolveAllRemote">${esc(T('sync.keep_all_cloud', { n: list.length }))}</button>
+          </div>`
+        : '';
+    const rows = list
+      .map((c) => {
+        const label = esc(conflictLabel(c));
+        const lt = itemTs(c.local);
+        const rt = itemTs(c.remote);
+        const localLines = previewLines(c.entityType, c.local)
+          .map((l) => `<li>${esc(l)}</li>`)
+          .join('');
+        const remoteLines = previewLines(c.entityType, c.remote)
+          .map((l) => `<li>${esc(l)}</li>`)
+          .join('');
+        return `<div class="flux-offline-conflict-row flux-offline-conflict-row--v2" data-id="${esc(c.id)}">
+          <div class="flux-offline-conflict-title">${label} <span class="flux-offline-conflict-type">${esc(c.entityType)}</span></div>
+          <div class="flux-offline-preview-grid">
+            <div class="flux-offline-preview-col">
+              <div class="flux-offline-preview-label">${esc(T('sync.this_device'))} <span class="flux-offline-preview-ts">${esc(relEdit(lt))}</span></div>
+              <ul class="flux-offline-preview-list">${localLines}</ul>
+            </div>
+            <div class="flux-offline-preview-col flux-offline-preview-col--remote">
+              <div class="flux-offline-preview-label">${esc(T('sync.cloud'))} <span class="flux-offline-preview-ts">${esc(relEdit(rt))}</span></div>
+              <ul class="flux-offline-preview-list">${remoteLines}</ul>
+            </div>
+          </div>
+          <div class="flux-offline-conflict-actions">
+            <button type="button" class="btn sm" data-resolve="local" data-id="${esc(c.id)}">${esc(T('sync.keep_mine'))}</button>
+            <button type="button" class="btn sm ghost" data-resolve="remote" data-id="${esc(c.id)}">${esc(T('sync.keep_cloud'))}</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    host.innerHTML = `<div class="flux-offline-modal-inner flux-offline-modal-inner--v2">
+      <div class="flux-offline-modal-head"><h3 id="fluxOfflineConflictTitle">${esc(T('sync.title'))}</h3>
+        <button type="button" class="btn sm ghost" id="fluxOfflineConflictClose" aria-label="${esc(T('sync.close'))}">✕</button>
+      </div>
+      <p class="flux-offline-modal-lede">${esc(T('sync.lede_v2'))}</p>
+      ${bulk}
+      ${rows}
+    </div>`;
+    wireConflictModal(host);
+  }
+
+  function renderConflictModal() {
+    const list = getConflicts();
+    if (!list.length) {
+      if (typeof window.showToast === 'function') window.showToast(T('sync.no_conflicts'), 'info');
+      return;
+    }
+    const host = ensureConflictModalHost();
+    if (conflictUiV2()) renderConflictModalV2(list, host);
+    else renderConflictModalLegacy(list, host);
+    renderSettingsSyncCard();
+  }
+
+  function renderSettingsSyncCard() {
+    const mount = document.getElementById('fluxSyncConflictSettingsMount');
+    if (!mount) return;
+    if (!enabled()) {
+      mount.innerHTML = '';
+      mount.style.display = 'none';
+      return;
+    }
+    const n = getConflicts().length;
+    const out = getOutbox().length;
+    const v2 = conflictUiV2();
+    mount.style.display = 'block';
+    mount.innerHTML = `<div class="card flux-sync-settings-card">
+      <h3>${esc(T('sync.settings_title'))}</h3>
+      <p style="font-size:.78rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">
+        ${esc(T('sync.settings_body'))}${v2 ? esc(T('sync.settings_body_v2')) : ''}
+      </p>
+      <div class="flux-sync-settings-stats">
+        <span class="flux-sync-settings-stat${n ? ' flux-sync-settings-stat--alert' : ''}">${esc(T('sync.stat_conflicts', { n }))}</span>
+        <span class="flux-sync-settings-stat">${esc(T('sync.stat_pending', { n: out }))}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button type="button" class="btn-sec" style="padding:8px 14px;font-size:.82rem" id="fluxSyncSettingsReviewBtn"${n ? '' : ' disabled'}>${esc(T('sync.review'))}</button>
+        <button type="button" class="btn-sec" style="padding:8px 14px;font-size:.82rem" id="fluxSyncSettingsFlushBtn"${out && navigator.onLine ? '' : ' disabled'}>${esc(T('sync.flush'))}</button>
+      </div>
+    </div>`;
+    mount.querySelector('#fluxSyncSettingsReviewBtn')?.addEventListener('click', renderConflictModal);
+    mount.querySelector('#fluxSyncSettingsFlushBtn')?.addEventListener('click', () => {
+      flushOutbox();
+      if (typeof window.showToast === 'function') window.showToast(T('sync.syncing'), 'info');
+    });
+  }
+
   function updateConflictUi() {
     const n = getConflicts().length;
     const pill = document.getElementById('fluxOfflineConflictPill');
     if (pill) {
       pill.style.display = n ? 'inline-flex' : 'none';
-      pill.textContent = n ? `${n} conflict${n > 1 ? 's' : ''}` : '';
+      pill.textContent = n ? T('sync.conflicts_pill', { n }) : '';
+      pill.title = conflictUiV2() ? T('sync.pill_title_v2') : T('sync.pill_title');
     }
     const banner = document.getElementById('connectivityBanner');
     if (banner && n && navigator.onLine) {
       banner.style.display = 'block';
       banner.dataset.state = 'conflict';
-      banner.innerHTML = `${n} sync conflict${n > 1 ? 's' : ''} — <button type="button" class="flux-offline-inline-btn" id="fluxOfflineResolveBtn">Resolve</button>`;
+      const hint = conflictUiV2() ? T('sync.compare') : T('sync.resolve');
+      banner.innerHTML = `${esc(T('sync.banner', { n }))} <button type="button" class="flux-offline-inline-btn" id="fluxOfflineResolveBtn">${esc(hint)}</button>`;
       document.getElementById('fluxOfflineResolveBtn')?.addEventListener('click', renderConflictModal);
     } else if (typeof window.updateConnectivityBanner === 'function') {
       window.updateConnectivityBanner();
     }
+    renderSettingsSyncCard();
   }
 
   function updateOutboxUi() {
@@ -430,7 +616,7 @@
     const el = document.getElementById('fluxOfflineOutboxPill');
     if (el) {
       el.style.display = n ? 'inline-flex' : 'none';
-      el.textContent = n ? `${n} pending` : '';
+      el.textContent = n ? T('sync.pending_pill', { n }) : '';
     }
   }
 
@@ -440,13 +626,13 @@
     const pill = document.createElement('span');
     pill.id = 'fluxOfflineConflictPill';
     pill.className = 'flux-offline-pill';
-    pill.title = 'Sync conflicts';
+    pill.title = T('sync.pill_title');
     pill.addEventListener('click', renderConflictModal);
     syncEl.parentNode?.insertBefore(pill, syncEl.nextSibling);
     const out = document.createElement('span');
     out.id = 'fluxOfflineOutboxPill';
     out.className = 'flux-offline-pill flux-offline-pill--outbox';
-    out.title = 'Pending offline changes';
+    out.title = T('sync.outbox_title');
     pill.parentNode?.insertBefore(out, pill.nextSibling);
     updateConflictUi();
     updateOutboxUi();
@@ -461,8 +647,12 @@
   }
 
   function install() {
-    if (!enabled()) return false;
+    if (!enabled()) {
+      renderSettingsSyncCard();
+      return false;
+    }
     ensureUiChrome();
+    renderSettingsSyncCard();
     if (!window._fluxOfflineOnlineHook) {
       window._fluxOfflineOnlineHook = true;
       window.addEventListener('online', () => {
@@ -474,6 +664,7 @@
 
   window.FluxOfflineSync = {
     enabled,
+    conflictUiV2,
     install,
     deviceId,
     stamp,
@@ -484,7 +675,10 @@
     mergeTasksFromCloud,
     getConflicts,
     resolveConflict,
+    resolveAll,
     renderConflictModal,
+    renderSettingsSyncCard,
+    refreshConflictUi: updateConflictUi,
     flushOutbox,
     getOutbox,
   };

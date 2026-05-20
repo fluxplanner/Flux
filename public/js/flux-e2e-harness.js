@@ -6,11 +6,31 @@
   'use strict';
 
   const E2E_USER_ID = '00000000-0000-4000-8000-0000000000e2';
+  const IAE_SCHOOL = 'International Academy East';
+
+  const IAE_PILOT_FLAGS = {
+    enable_staff_productivity_suite: true,
+    enable_classroom_tools: true,
+    enable_caseload_engine: true,
+    enable_personal_hub: true,
+    enable_staff_command_v2: true,
+    enable_school_ops: true,
+    enable_locale_foundation: true,
+    enable_ops_health_panel: true,
+    enable_dashboard_widget_picker: true,
+  };
+
   const SCENARIOS = {
     'student-semester': {
       role: 'student',
       mode: 'personal',
       needsUser: false,
+    },
+    'student-dashboard-widgets': {
+      role: 'student',
+      mode: 'personal',
+      needsUser: false,
+      flags: { enable_dashboard_widget_picker: true },
     },
     'teacher-workflow': {
       role: 'teacher',
@@ -18,11 +38,30 @@
       needsUser: true,
       profile: { role: 'teacher', display_name: 'E2E Teacher', subject: 'Biology' },
     },
+    'ia-east-teacher': {
+      role: 'teacher',
+      mode: 'work',
+      needsUser: true,
+      profile: {
+        role: 'teacher',
+        display_name: 'IAE E2E Teacher',
+        subject: 'Biology',
+        school: IAE_SCHOOL,
+      },
+      flags: IAE_PILOT_FLAGS,
+    },
     'counselor-path': {
       role: 'counselor',
       mode: 'work',
       needsUser: true,
       profile: { role: 'counselor', display_name: 'E2E Counselor' },
+    },
+    'ia-east-counselor': {
+      role: 'counselor',
+      mode: 'work',
+      needsUser: true,
+      profile: { role: 'counselor', display_name: 'IAE E2E Counselor', school: IAE_SCHOOL },
+      flags: IAE_PILOT_FLAGS,
     },
   };
 
@@ -289,20 +328,33 @@
 
     reloadAppState();
 
+    if (cfg.flags && typeof cfg.flags === 'object') {
+      window.FLUX_EXPERIMENTS = { ...(window.FLUX_EXPERIMENTS || {}), ...cfg.flags };
+      try {
+        if (window.FluxFeatureFlags?.load) await window.FluxFeatureFlags.load({ force: true });
+      } catch (_) {}
+    }
+
     if (typeof FluxRole !== 'undefined') {
       FluxRole.current = cfg.role;
       FluxRole.mode = cfg.mode || 'work';
-      FluxRole.profile = cfg.profile || null;
+      FluxRole.profile = cfg.profile ? { ...cfg.profile } : null;
       window._userRole = cfg.role;
     }
 
     if (typeof _api.showApp === 'function') _api.showApp();
     if (typeof _api.applyRoleUI === 'function') _api.applyRoleUI();
 
-    if (scenario === 'teacher-workflow') {
+    if (scenario === 'teacher-workflow' || scenario === 'ia-east-teacher') {
+      try {
+        if (window.FluxModuleLoader?.install) window.FluxModuleLoader.install();
+      } catch (_) {}
       if (typeof _api.nav === 'function') _api.nav('teacherDashboard', null);
       if (typeof _api.renderTeacherDashboard === 'function') await _api.renderTeacherDashboard();
-    } else if (scenario === 'counselor-path') {
+      try {
+        if (window.FluxModuleLoader?.renderWidgetGrid) window.FluxModuleLoader.renderWidgetGrid('teacherDashboard');
+      } catch (_) {}
+    } else if (scenario === 'counselor-path' || scenario === 'ia-east-counselor') {
       try {
         window._counselorRecord = {
           id: 'e2e-counselor-001',
@@ -312,10 +364,20 @@
           active: true,
         };
       } catch (_) {}
+      try {
+        if (window.FluxModuleLoader?.install) window.FluxModuleLoader.install();
+      } catch (_) {}
       if (typeof _api.nav === 'function') _api.nav('counselorDashboard', null);
       if (typeof _api.renderCounselorDashboard === 'function') await _api.renderCounselorDashboard();
+      try {
+        if (window.FluxModuleLoader?.renderWidgetGrid) window.FluxModuleLoader.renderWidgetGrid('counselorDashboard');
+      } catch (_) {}
     } else {
       if (typeof _api.nav === 'function') _api.nav('dashboard', null);
+      try {
+        if (window.FluxPersonal?.applyDashboardVisibility) window.FluxPersonal.applyDashboardVisibility();
+        if (window.FluxPersonal?.applyDashboardOrder) window.FluxPersonal.applyDashboardOrder();
+      } catch (_) {}
     }
 
     return true;

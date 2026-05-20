@@ -26,6 +26,13 @@
       .replace(/>/g, '&gt;');
   }
 
+  function fmtT(input) {
+    if (typeof window.fluxFmtStaffTime === 'function') return window.fluxFmtStaffTime(input);
+    if (typeof window.fluxFormatTime === 'function') return window.fluxFormatTime(input);
+    const d = input instanceof Date ? input : new Date(input);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
   function sb() {
     return typeof getSB === 'function' ? getSB() : null;
   }
@@ -467,7 +474,7 @@
               (e, i) => `
           <div class="flux-hall-row">
             <span>${esc(e.student_label || e.student_id)} → ${esc(e.destination || 'Hall')}</span>
-            <span class="flux-hall-time">${esc(new Date(e.out_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}</span>
+            <span class="flux-hall-time">${esc(fmtT(e.out_at))}</span>
             <button type="button" class="btn-sec" data-return="${i}" style="font-size:.65rem">Returned</button>
           </div>`
             )

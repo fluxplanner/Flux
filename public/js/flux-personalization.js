@@ -28,6 +28,33 @@
     return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  function dashLabels(){
+    if(typeof window.fluxT!=='function')return DASH_LABELS;
+    return {
+      pulse:window.fluxT('dash.section.pulse'),
+      gapfill:window.fluxT('dash.section.gapfill'),
+      countdown:window.fluxT('dash.section.countdown'),
+      schedule:window.fluxT('dash.section.schedule'),
+      tasks:window.fluxT('dash.section.tasks'),
+    };
+  }
+
+  function calLabels(){
+    if(typeof window.fluxT!=='function')return CAL_LABELS;
+    return {
+      hero:window.fluxT('cal.section.hero'),
+      schedule:window.fluxT('cal.section.schedule'),
+    };
+  }
+
+  function T(key){
+    if(typeof window.fluxT==='function')return window.fluxT(key);
+    if(key==='dash.heading')return 'Dashboard';
+    if(key==='dash.hint')return 'Show or hide sections, then reorder.';
+    if(key==='cal.heading')return 'Calendar';
+    return key;
+  }
+
   function loadNavCounts(){
     return load(KEY_NAV,{});
   }
@@ -214,6 +241,7 @@
 
   function widgetPickerEnabled(){
     try{
+      if(document.documentElement.getAttribute('data-e2e')==='1') return true;
       return !!window.FluxFeatureFlags?.isEnabled('enable_dashboard_widget_picker', true);
     }catch(_){
       return true;
@@ -242,6 +270,10 @@
   function saveDashHidden(hiddenSet){
     save(KEY_DASH_HIDDEN,Array.from(hiddenSet||[]));
     applyDashboardVisibility();
+  }
+
+  function setDashboardHidden(ids){
+    saveDashHidden(new Set(Array.isArray(ids)?ids.filter(Boolean):[]));
   }
 
   function applyDashboardVisibility(){
@@ -348,6 +380,8 @@
     if(!host)return;
     const dOrder=loadDashOrder();
     const cOrder=loadCalOrder();
+    const dLabels=dashLabels();
+    const cLabels=calLabels();
     const row=(panel,order,labels)=>{
       return order.map((id,i)=>`
         <li class="flux-layout-sort-row">
@@ -364,16 +398,16 @@
           const on=!hidden.has(id);
           return `<label class="flux-layout-vis-row">
             <input type="checkbox" data-flux-dash-vis="${esc(id)}" ${on?'checked':''}/>
-            <span>${esc(DASH_LABELS[id]||id)}</span>
+            <span>${esc(dLabels[id]||DASH_LABELS[id]||id)}</span>
           </label>`;
         }).join('')
       : '';
     host.innerHTML=`
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 8px;font-family:'JetBrains Mono',monospace">Dashboard</div>
-      ${widgetPickerEnabled()?`<p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px;line-height:1.45">Show or hide sections, then reorder.</p><div class="flux-layout-vis-grid">${visRows}</div>`:''}
-      <ul class="flux-layout-sort-list" role="list">${row('dash',dOrder,DASH_LABELS)}</ul>
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">Calendar</div>
-      <ul class="flux-layout-sort-list" role="list">${row('cal',cOrder,CAL_LABELS)}</ul>`;
+      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 8px;font-family:'JetBrains Mono',monospace">${esc(T('dash.heading'))}</div>
+      ${widgetPickerEnabled()?`<p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px;line-height:1.45">${esc(T('dash.hint'))}</p><div class="flux-layout-vis-grid">${visRows}</div>`:''}
+      <ul class="flux-layout-sort-list" role="list">${row('dash',dOrder,dLabels)}</ul>
+      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:16px 0 8px;font-family:'JetBrains Mono',monospace">${esc(T('cal.heading'))}</div>
+      <ul class="flux-layout-sort-list" role="list">${row('cal',cOrder,cLabels)}</ul>`;
     if(widgetPickerEnabled()){
       host.querySelectorAll('[data-flux-dash-vis]').forEach((cb)=>{
         cb.addEventListener('change',()=>{
@@ -464,6 +498,7 @@
     renderPatternsPanel,
     applyDashboardOrder,
     applyDashboardVisibility,
+    setDashboardHidden,
     widgetPickerEnabled,
     dashSectionIds,
     applyCalendarOrder,

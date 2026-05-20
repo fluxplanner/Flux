@@ -21,6 +21,18 @@
       .replace(/>/g, '&gt;');
   }
 
+  function fmtD(input, style) {
+    if (typeof window.fluxFmtStaffDate === 'function') return window.fluxFmtStaffDate(input, style);
+    if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(input, style);
+    const d = input instanceof Date ? input : new Date(String(input));
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+  }
+
+  function fmtDT(input) {
+    if (typeof window.fluxFmtStaffDateTime === 'function') return window.fluxFmtStaffDateTime(input);
+    return fmtD(input, 'short');
+  }
+
   function sb() {
     return typeof getSB === 'function' ? getSB() : null;
   }
@@ -223,7 +235,7 @@
           .map(
             (n) => `
         <div class="flux-meet-log-card">
-          <div class="flux-meet-log-meta">${esc(n.meeting_type)} · ${new Date(n.occurred_at).toLocaleString()}</div>
+          <div class="flux-meet-log-meta">${esc(n.meeting_type)} · ${esc(fmtDT(n.occurred_at))}</div>
           <div class="flux-meet-log-student">${esc(names[n.student_id] || 'Student')}</div>
           <div class="flux-meet-log-body">${esc((n.note_body || '').slice(0, 200))}${(n.note_body || '').length > 200 ? '…' : ''}</div>
         </div>`

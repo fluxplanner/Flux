@@ -32,8 +32,10 @@ Reload, sign in as educator, open **Work** mode → Teacher Overview / Counselor
 
 ### IA East pilot (production)
 
-Migration `20260528300000_ia_east_staff_pilot.sql` enables the suite for `user_roles.school = International Academy East` via `flux_school_feature_flags`.  
+Migrations `20260528300000_ia_east_staff_pilot.sql` and `20260528700000_ia_east_pilot_extended.sql` enable staff suite, locale, and ops health for `user_roles.school = International Academy East` via `flux_school_feature_flags`.  
 Rollback: delete those school override rows or set `enabled = false`. Gmail import remains off unless you also enable `enable_gmail_educator_import` per school.
+
+See **`docs/PHASE_8_CLOSEOUT.md`** for full migration list and exit checks.
 
 ## Human-Centered feature catalog (50)
 

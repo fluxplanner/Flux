@@ -12,6 +12,12 @@
     return typeof getSB === 'function' ? getSB() : null;
   }
 
+  function fmtLongDay(d) {
+    if (typeof window.fluxFmtStaffDate === 'function') return window.fluxFmtStaffDate(d, 'weekday');
+    if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(d, 'weekday');
+    return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
   function showStaffOnboarding() {
     if (document.getElementById('staffOnboarding')) return;
     const overlay = document.createElement('div');
@@ -329,11 +335,7 @@
     <div class="staff-personal-dash">
       <div class="spd-greeting">
         <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
-        <div class="spd-sub">${esc(roleLabel)} · Work mode · ${new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        })}</div>
+        <div class="spd-sub">${esc(roleLabel)} · Work mode · ${esc(fmtLongDay(new Date()))}</div>
       </div>
       <div class="spd-mode-hint"><span class="spd-mode-icon">🏫</span><span>Meetings, PD, and wellbeing live here. Use <b>Calendar</b> in Main for your planner schedule.</span></div>
       <div class="spd-grid">
@@ -372,11 +374,7 @@
     <div class="staff-personal-dash">
       <div class="spd-greeting">
         <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
-        <div class="spd-sub">${esc(roleLabel)} · Personal mode · ${new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        })}</div>
+        <div class="spd-sub">${esc(roleLabel)} · Personal mode · ${esc(fmtLongDay(new Date()))}</div>
       </div>
       <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
       <div class="spd-grid">

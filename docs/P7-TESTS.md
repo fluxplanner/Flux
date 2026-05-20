@@ -21,6 +21,9 @@ Playwright smoke tests for three core personas without real Supabase credentials
 | `student-semester` | Seeded tasks across the term, calendar tab, task completion |
 | `teacher-workflow` | Teacher nav, dashboard greeting / empty classes, create-class modal |
 | `counselor-path` | Counselor nav, dashboard sections (no “record not found”) |
+| `ia-east-teacher` | IAE pilot flags + teacher staff widget grid |
+| `ia-east-counselor` | IAE pilot flags + counselor widget grid |
+| `student-dashboard-widgets` | Hide countdown section + Appearance toggles |
 
 ## Run locally
 

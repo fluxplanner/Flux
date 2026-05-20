@@ -12,7 +12,7 @@ Offline-first sync layer on top of existing `user_data` push/pull in `app.js`.
 | Outbox | Queues `tasks` / `notes` / `events` mutations while offline or after sync failure |
 | Merge | Per-id **last-write-wins** using `_fluxTs` + device stamp |
 | Skew | Edits within 2s merge automatically (same session / clock skew) |
-| Conflicts | Divergent edits → local list + **Resolve** UI (Keep mine / Keep cloud) |
+| Conflicts | Divergent edits → local list + **Resolve** UI (Keep mine / Keep cloud); v2 preview + bulk when `enable_sync_conflict_ui` (`docs/P9-SYNC-CONFLICT.md`) |
 | Scope | Tasks, notes, calendar events — other `user_data` keys keep legacy overwrite |
 
 Not full CRDT — pragmatic conflict rules suitable for planner blobs.

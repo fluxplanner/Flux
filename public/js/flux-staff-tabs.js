@@ -26,10 +26,24 @@
     if(h<12)return 'morning';if(h<17)return 'afternoon';return 'evening';
   }
   function fmtDate(d){
+    const iso=d instanceof Date?d.toISOString().slice(0,10):String(d||'').slice(0,10);
+    if(typeof window.fluxFmtStaffDate==='function')return window.fluxFmtStaffDate(iso||d,'weekday');
+    if(typeof window.fmtFluxDate==='function')return window.fmtFluxDate(iso||d,'weekday');
     return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   }
   function fmtTime(d){
+    if(typeof window.fluxFmtStaffTime==='function')return window.fluxFmtStaffTime(d);
+    if(typeof window.fluxFormatTime==='function')return window.fluxFormatTime(d);
     return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  }
+  function fmtLongDay(d){
+    if(typeof window.fluxFmtStaffDate==='function')return window.fluxFmtStaffDate(d,'weekday');
+    if(typeof window.fmtFluxDate==='function')return window.fmtFluxDate(d,'weekday');
+    return new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  }
+  function fmtStamp(iso){
+    if(typeof window.fluxFmtStaffDateTime==='function')return window.fluxFmtStaffDateTime(iso);
+    return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   }
   // Route reads/writes through the same namespace prefix the rest of the
   // planner uses (see app.js fluxNamespacedKey). When the owner is in a
@@ -86,7 +100,7 @@
     if(!host)return;
     const classes=(window.classes||[]).slice().sort((a,b)=>(a.period||0)-(b.period||0));
     const today=todayISO();
-    const dateLabel=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const dateLabel=fmtLongDay(new Date());
 
     // Determine current A/B day, if used
     let abLabel='';
@@ -565,7 +579,7 @@
         <div class="ao-topbar">
           <div>
             <div class="ao-greet">Good ${timeOfDay()}, ${esc(firstName())}</div>
-            <div class="ao-greet-sub">${esc(new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}))} · ${dir.length} staff on file</div>
+            <div class="ao-greet-sub">${esc(fmtLongDay(new Date()))} · ${dir.length} staff on file</div>
           </div>
           <div class="ao-topbar-actions">
             <button class="ao-action-btn" id="aoAddSub">+ Sub coverage</button>
@@ -749,7 +763,7 @@
         text:row.title,
         from:row.department||'internal',
         priority:'normal',
-        created:new Date(row.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),
+        created:fmtStamp(row.created_at),
         done:row.status!=='open',
         closed:row.status==='resolved'?todayISO():'',
         _cloud:true,
@@ -774,7 +788,7 @@
       console.warn('[renderStaffWorkboard] insert',error);
     }
     const id=Date.now().toString(36);
-    const created=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const created=fmtStamp(new Date().toISOString());
     const arr=ls(TICKET_KEY,[]).concat([{id,text,from,priority,created,done:false}]);
     lsSet(TICKET_KEY,arr);
     return true;
@@ -836,7 +850,7 @@
         <div class="sw-topbar">
           <div>
             <div class="sw-greet">Good ${timeOfDay()}, ${esc(firstName())}</div>
-            <div class="sw-greet-sub">${esc(myDept||subjectField||'Staff')} · ${esc(new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}))}</div>
+            <div class="sw-greet-sub">${esc(myDept||subjectField||'Staff')} · ${esc(fmtLongDay(new Date()))}</div>
           </div>
           <div class="sw-topbar-actions">
             <button class="sw-action-btn" id="swAddTicket">+ Log request</button>

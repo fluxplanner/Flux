@@ -76,12 +76,12 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 70 | AI split task | Partial — auto-split |
 | 71 | Syllabus conflict check | Roadmap |
 | 72 | Offline AI queue | Roadmap |
-| 73 | Sync conflict UI | Roadmap |
+| 73 | Sync conflict UI | Done — `P9-SYNC-CONFLICT`, `enable_sync_conflict_ui` |
 | 74 | Encrypted backup | Done — export + merge import |
 | 75 | Auto backup to Drive | Roadmap |
 | 76 | Task version history | Roadmap |
 | 77 | Guest storage quota meter | Partial — localStorage size estimate (Data & info) |
-| 78 | localStorage repair | Roadmap |
+| 78 | localStorage repair | Done — `P10-STORAGE-REPAIR`, `enable_storage_repair` |
 | 79 | E2E tests | Done — `docs/P7-TESTS.md`, `npm run test:e2e` |
 | 80 | Feature flags | Roadmap |
 | 81 | Error reporting (Sentry) | Partial — `P8-ERRORS` scrubbed client capture; Sentry SDK optional later |
@@ -91,8 +91,8 @@ This file tracks the **100+ improvement ideas**. Status: **Done** (in app), **Pa
 | 85 | Focus trap audit | Partial |
 | 86 | Reduced motion | Done |
 | 87 | Font size | Done — scale |
-| 88 | i18n | Roadmap |
-| 89 | Locale dates | Partial |
+| 88 | i18n | Partial — `fluxT` for sync/storage/widget picker (`P10-I18N-STRINGS`) |
+| 89 | Locale dates | Partial — `fmtFluxDate` + educator panels |
 | 90 | High-contrast presets | Partial — toggle |
 | 91 | Changelog page | Done — file + link |
 | 92 | Google Classroom | Roadmap |
