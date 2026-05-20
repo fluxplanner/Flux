@@ -37,12 +37,12 @@ Reload, sign in as educator, open **Work** mode → Teacher Overview / Counselor
 | 2 | Random student picker | `classroom_student_picker` | beta |
 | 3 | Accommodation cheat-sheet | `classroom_accommodations` | beta |
 | 4 | Automated parent log | `classroom_parent_log` | beta |
-| 5 | Digital hall pass | `classroom_hall_pass` | planned |
-| 6 | Exit ticket generator | `classroom_exit_ticket` | planned |
+| 5 | Digital hall pass | `classroom_hall_pass` | beta |
+| 6 | Exit ticket generator | `classroom_exit_ticket` | beta |
 | 7 | Classroom timer | `classroom_timer` | beta |
 | 8 | Lesson planner + Drive/Canvas | — | planned (Lesson Hub) |
 | 9 | Attendance heatmap | — | planned |
-| 10 | Oops broadcast | `classroom_oops_broadcast` | planned |
+| 10 | Oops broadcast | `classroom_oops_broadcast` | beta (urgent `teacher_announcements` → student dashboard banner) |
 | **II. Admin** |
 | 11–20 | Duty, sub swap, rooms, directory skills, maintenance, budget, inventory, drills, meeting timer, PD log | various | planned / partial (`FluxSchoolOps`, `renderAdminOps`) |
 | **III. Counseling** |

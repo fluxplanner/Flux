@@ -7,8 +7,17 @@
 
   const BUCKET_KEY = 'flux_quick_grade_buckets_v1';
   const PICKER_KEY = 'flux_student_picker_state_v1';
+  const HALL_KEY = 'flux_hall_pass_registry_v1';
+  const DISMISS_ALERT_KEY = 'flux_class_alert_dismissed_v1';
   const BUCKETS = ['To grade', 'Graded', 'Need feedback', 'Sent back'];
   const PICKER_COOLDOWN = 3;
+  const EXIT_QUESTIONS = [
+    'In one sentence, what was the main idea of today\'s lesson?',
+    'What is one question you still have?',
+    'How does today\'s topic connect to what we learned last week?',
+    'Give an example of the concept we practiced today.',
+    'What was the most challenging part of class today?',
+  ];
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -431,12 +440,219 @@
     if (display) display.textContent = fmt(remaining);
   }
 
+  async function fetchTeacherClasses() {
+    const client = sb();
+    const id = uid();
+    if (!client || !id) return [];
+    const { data, error } = await client
+      .from('teacher_classes')
+      .select('id, class_name, class_code')
+      .eq('teacher_id', id)
+      .eq('active', true)
+      .order('class_name');
+    if (error) return [];
+    return data || [];
+  }
+
+  function renderHallPass(mount) {
+    const log = ls(HALL_KEY, []);
+    const out = log.filter((e) => !e.returned_at);
+
+    function paint() {
+      const list = mount.querySelector('#fluxHallPassList');
+      if (!list) return;
+      list.innerHTML = out.length
+        ? out
+            .map(
+              (e, i) => `
+          <div class="flux-hall-row">
+            <span>${esc(e.student_label || e.student_id)} → ${esc(e.destination || 'Hall')}</span>
+            <span class="flux-hall-time">${esc(new Date(e.out_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}</span>
+            <button type="button" class="btn-sec" data-return="${i}" style="font-size:.65rem">Returned</button>
+          </div>`
+            )
+            .join('')
+        : '<p class="flux-widget-planned">No students out right now.</p>';
+      list.querySelectorAll('[data-return]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-return'), 10);
+          const entry = out[idx];
+          if (!entry) return;
+          entry.returned_at = Date.now();
+          const all = ls(HALL_KEY, []);
+          const j = all.findIndex((x) => x.out_at === entry.out_at && x.student_id === entry.student_id);
+          if (j >= 0) all[j] = entry;
+          lsSet(HALL_KEY, all);
+          renderHallPass(mount);
+        });
+      });
+    }
+
+    mount.innerHTML = `
+      <p class="flux-widget-hint">Who is out of the room right now (this device only).</p>
+      <button type="button" class="btn" id="fluxHallPassOut" style="width:100%;margin-bottom:8px;font-size:.78rem">Log student out</button>
+      <div id="fluxHallPassList"></div>`;
+
+    mount.querySelector('#fluxHallPassOut')?.addEventListener('click', async () => {
+      const roster = await fetchRosterStudents();
+      let studentId = null;
+      let label = '';
+      if (roster.length) {
+        studentId = await pickStudentId(mount, 'Student leaving');
+        if (!studentId) return;
+        label = roster.find((s) => s.id === studentId)?.label || 'Student';
+      } else {
+        label = prompt('Student name') || '';
+        if (!label) return;
+        studentId = 'local_' + Date.now();
+      }
+      const dest = prompt('Destination (bathroom, nurse, office…)', 'Bathroom') || 'Hall';
+      const all = ls(HALL_KEY, []);
+      all.push({ student_id: studentId, student_label: label, destination: dest, out_at: Date.now() });
+      lsSet(HALL_KEY, all);
+      renderHallPass(mount);
+    });
+    paint();
+  }
+
+  function renderExitTicket(mount) {
+    mount.innerHTML = `
+      <p class="flux-widget-hint">Random check-for-understanding prompt.</p>
+      <div class="flux-exit-ticket" id="fluxExitTicketText">Tap generate for a question.</div>
+      <button type="button" class="btn" id="fluxExitGen" style="width:100%;margin-top:8px">Generate question</button>`;
+    mount.querySelector('#fluxExitGen')?.addEventListener('click', () => {
+      const q = EXIT_QUESTIONS[Math.floor(Math.random() * EXIT_QUESTIONS.length)];
+      const el = mount.querySelector('#fluxExitTicketText');
+      if (el) el.textContent = q;
+    });
+  }
+
+  async function renderOopsBroadcast(mount) {
+    const classes = await fetchTeacherClasses();
+    mount.innerHTML = `
+      <p class="flux-widget-hint">Sends an <strong>urgent</strong> alert to enrolled students' dashboards (via class announcements).</p>
+      <select id="fluxOopsClass" style="width:100%;margin-bottom:8px;font-size:.78rem">
+        <option value="">All active classes</option>
+        ${classes.map((c) => `<option value="${esc(c.id)}">${esc(c.class_name || c.class_code)}</option>`).join('')}
+      </select>
+      <input id="fluxOopsTitle" placeholder="Title (e.g. Class moved)" style="width:100%;margin-bottom:6px;font-size:.78rem;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text)"/>
+      <textarea id="fluxOopsBody" rows="3" placeholder="Message for students" style="width:100%;font-size:.78rem;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text)"></textarea>
+      <button type="button" class="btn" id="fluxOopsSend" style="width:100%;margin-top:8px">📢 Broadcast now</button>`;
+
+    mount.querySelector('#fluxOopsSend')?.addEventListener('click', async () => {
+      const title = (mount.querySelector('#fluxOopsTitle')?.value || 'Class update').trim();
+      const body = (mount.querySelector('#fluxOopsBody')?.value || '').trim();
+      if (!body) {
+        if (typeof showToast === 'function') showToast('Enter a message', 'warning');
+        return;
+      }
+      const classId = mount.querySelector('#fluxOopsClass')?.value || '';
+      const targets = classId ? classes.filter((c) => c.id === classId) : classes;
+      if (!targets.length) {
+        if (typeof showToast === 'function') showToast('No classes to broadcast to', 'warning');
+        return;
+      }
+      const client = sb();
+      if (!client) return;
+      let ok = 0;
+      for (const cls of targets) {
+        const { error } = await client.from('teacher_announcements').insert({
+          teacher_id: uid(),
+          class_id: cls.id,
+          title: title.startsWith('📢') ? title : '📢 ' + title,
+          content: body,
+          priority: 'urgent',
+          visible: true,
+        });
+        if (!error) ok += 1;
+      }
+      if (typeof showToast === 'function') {
+        showToast(
+          ok ? `Broadcast sent to ${ok} class${ok === 1 ? '' : 'es'}` : 'Broadcast failed',
+          ok ? 'success' : 'error'
+        );
+      }
+    });
+  }
+
+  async function renderStudentClassAlerts() {
+    try {
+      if (typeof FluxRole === 'undefined' || !FluxRole.isStudent?.()) return;
+    } catch (_) {
+      return;
+    }
+    const banner = document.getElementById('fluxClassAlertBanner');
+    if (!banner || !currentUser) return;
+    const client = sb();
+    if (!client) return;
+
+    const dismissed = ls(DISMISS_ALERT_KEY, []);
+    const { data: codes } = await client
+      .from('student_class_codes')
+      .select('class_code')
+      .eq('student_id', currentUser.id);
+    const classCodes = [...new Set((codes || []).map((c) => c.class_code).filter(Boolean))];
+    if (!classCodes.length) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    const { data: classes } = await client
+      .from('teacher_classes')
+      .select('id')
+      .in('class_code', classCodes);
+    const classIds = (classes || []).map((c) => c.id).filter(Boolean);
+    if (!classIds.length) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    const since = new Date(Date.now() - 72 * 3600000).toISOString();
+    const { data: alerts } = await client
+      .from('teacher_announcements')
+      .select('id, title, content, created_at')
+      .in('class_id', classIds)
+      .eq('priority', 'urgent')
+      .eq('visible', true)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const visible = (alerts || []).filter((a) => !dismissed.includes(a.id));
+    if (!visible.length) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    const top = visible[0];
+    banner.style.display = 'flex';
+    banner.innerHTML = `
+      <span class="flux-class-alert-icon" aria-hidden="true">📢</span>
+      <div class="flux-class-alert-body">
+        <strong>${esc(top.title)}</strong>
+        <p>${esc(top.content)}</p>
+      </div>
+      <button type="button" class="flux-class-alert-dismiss" data-id="${esc(top.id)}" aria-label="Dismiss">✕</button>`;
+    banner.querySelector('.flux-class-alert-dismiss')?.addEventListener('click', () => {
+      const id = top.id;
+      const d = ls(DISMISS_ALERT_KEY, []);
+      if (!d.includes(id)) d.push(id);
+      lsSet(DISMISS_ALERT_KEY, d);
+      banner.style.display = 'none';
+    });
+  }
+
   window.FluxClassroomTools = {
     renderQuickGrade,
     renderAccommodations,
     renderParentLog,
     renderStudentPicker,
     renderClassroomTimer,
+    renderHallPass,
+    renderExitTicket,
+    renderOopsBroadcast,
+    renderStudentClassAlerts,
     fetchRosterStudents,
+    fetchTeacherClasses,
   };
 })();

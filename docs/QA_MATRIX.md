@@ -72,6 +72,9 @@ Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fi
 | Personal hub | `teacher` | Personal mode → Dashboard | Brain dump / grocery widgets; no row in Supabase for grocery. |
 | Student picker | `teacher` | Load roster → Pick student | Name shown; same student not picked again within 3 rounds. |
 | Classroom timer | `teacher` | Start 5 min preset | Countdown runs; toast at 0:00. |
+| Oops broadcast | `teacher` | Work mode → Oops widget → send message | `teacher_announcements` urgent row; enrolled `student` sees banner on Dashboard. |
+| Hall pass | `teacher` | Log student out → Returned | Local registry only. |
+| Exit ticket | `teacher` | Generate question | New prompt each click. |
 | Rollback | Owner | Disable master flag | Widget grid hidden. |
 
 Migration: `20260528100000_staff_productivity_suite.sql` · Doc: `docs/P8-STAFF-PRODUCTIVITY.md`

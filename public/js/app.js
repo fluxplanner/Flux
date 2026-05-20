@@ -3930,6 +3930,7 @@ try{ window.fluxRenderDashMob=fluxRenderDashMob; }catch(e){}
 
 function renderStats(){
   renderDashWeekStrip();
+  try{if(window.FluxClassroomTools?.renderStudentClassAlerts)void FluxClassroomTools.renderStudentClassAlerts();}catch(_){}
   if(typeof updateTopbarStats==='function')updateTopbarStats();
   updateDashHero();
   if(typeof updateNextClassPill==='function')updateNextClassPill();
