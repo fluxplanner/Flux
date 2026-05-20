@@ -138,6 +138,8 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | Step | ID | Deliverable | Status |
 |------|-----|-------------|--------|
 | 8.1 | `P8-SITE-ENH` | 50 UX enhancements pack (`enable_site_enhancements_pack`) | Done |
+| 8.2 | `P8-STAFF-PROD` | Staff Productivity Suite — ModuleLoader, classroom/counselor/personal modules, SQL | Done (foundation); 8.3 classroom widgets ongoing |
+| 8.3 | `P8-CLASSROOM` | Student picker, classroom timer, roster pickers for logs | Done |
 
 For new work beyond Phase 8, add rows here or pick items from product backlog.
 

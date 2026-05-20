@@ -61,6 +61,23 @@ Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fi
 
 ---
 
+## 0g. Staff Productivity Suite (P8.2)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Suite flags | Owner | Enable `enable_staff_productivity_suite` + `enable_classroom_tools` | Widget grid appears on teacher dashboard (Work mode). |
+| Quick-Grade | `teacher` | Drag card between buckets | Persists in localStorage after reload. |
+| Accommodations | `teacher` | Add need-to-know row | Row in `staff_student_accommodations`; visible to same-school educators with roster/counselor link. |
+| Meeting log | `counselor` | Add private note | Row in `staff_counselor_private_notes`; not readable by teacher test account. |
+| Personal hub | `teacher` | Personal mode → Dashboard | Brain dump / grocery widgets; no row in Supabase for grocery. |
+| Student picker | `teacher` | Load roster → Pick student | Name shown; same student not picked again within 3 rounds. |
+| Classroom timer | `teacher` | Start 5 min preset | Countdown runs; toast at 0:00. |
+| Rollback | Owner | Disable master flag | Widget grid hidden. |
+
+Migration: `20260528100000_staff_productivity_suite.sql` · Doc: `docs/P8-STAFF-PRODUCTIVITY.md`
+
+---
+
 ## 0f. Site enhancements pack (50)
 
 | Feature | Role | Test action | Expected result |

@@ -1,0 +1,212 @@
+/* Flux Staff Productivity Suite — widget grid + classroom/counselor widgets */
+.flux-widget-grid {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border2);
+}
+.flux-widget-grid__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.flux-widget-grid__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.flux-widget-grid__configure {
+  font-size: 0.68rem !important;
+  padding: 4px 10px !important;
+}
+.flux-widget-grid__cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.flux-widget-cell {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: 120px;
+}
+.flux-widget-cell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.flux-widget-cell__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.flux-widget-cell__badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--muted);
+}
+.flux-widget-cell__badge--beta {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.flux-widget-cell__badge--live {
+  color: var(--green);
+  background: rgba(var(--green-rgb, 80, 200, 120), 0.12);
+}
+.flux-widget-hint {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+.flux-widget-planned {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0;
+}
+.flux-widget-error {
+  font-size: 0.72rem;
+  color: var(--red);
+}
+.flux-qg-board {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .flux-qg-board {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.flux-qg-col {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 8px;
+  min-height: 80px;
+}
+.flux-qg-col-title {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.flux-qg-drop {
+  min-height: 48px;
+  border-radius: 8px;
+  border: 1px dashed var(--border2);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.flux-qg-drop--over {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+.flux-qg-card {
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  background: var(--card2);
+  border-radius: 8px;
+  cursor: grab;
+  border: 1px solid var(--border);
+}
+.flux-accom-card,
+.flux-meet-log-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.flux-accom-cat,
+.flux-meet-log-meta {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--purple, #a78bfa);
+}
+.flux-accom-body,
+.flux-meet-log-body {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin-top: 4px;
+}
+.flux-ph-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+  padding: 8px;
+  font-size: 0.78rem;
+  resize: vertical;
+}
+.flux-ph-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.78rem;
+}
+.flux-widget-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.flux-widget-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.flux-picker-result {
+  margin-top: 10px;
+  text-align: center;
+}
+.flux-picker-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.flux-picker-meta {
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+.flux-class-timer-display {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  margin: 10px 0;
+  color: var(--accent);
+}
+.flux-class-timer-display.flux-class-timer-done {
+  color: var(--gold);
+  animation: flux-timer-pulse 0.8s ease infinite;
+}
+@keyframes flux-timer-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+.flux-roster-pick-overlay {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+}

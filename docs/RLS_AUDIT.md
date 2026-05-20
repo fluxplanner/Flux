@@ -106,6 +106,18 @@ Run **`docs/P1-RLS-VERIFICATION.md`** and **`supabase/scripts/verify_rls_policie
 
 ---
 
+## 10. Staff Productivity Suite (`20260528100000_staff_productivity_suite.sql`)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `staff_student_accommodations` | Same-school educators; teachers need roster or counselor assignment to student | Author only (`author_id = auth.uid()`), educator same school |
+| `staff_counselor_private_notes` | Owning counselor; school admin + `flux_is_platform_admin()` | Owning counselor only |
+| `staff_parent_contact_logs` | Owner educator; counselors/admins same school | Insert as owner educator |
+
+**Personal Hub** (`FluxPersonalHub`) — no table; `localStorage` only.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

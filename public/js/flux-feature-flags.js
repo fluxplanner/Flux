@@ -71,6 +71,11 @@
       enable_docs_ghost_sync: false,
       enable_gmail_educator_import: false,
       enable_site_enhancements_pack: true,
+      enable_staff_productivity_suite: false,
+      enable_classroom_tools: false,
+      enable_caseload_engine: false,
+      enable_personal_hub: false,
+      enable_staff_command_v2: false,
     };
   }
 

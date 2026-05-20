@@ -718,6 +718,7 @@
       });
     });
     search?.addEventListener('input',renderDir);
+    try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('adminOps');}catch(_){}
   }
   window.renderAdminOps=renderAdminOps;
 
@@ -974,6 +975,7 @@
       b.addEventListener('click',()=>window.open(b.dataset.link,'_blank','noopener'));
     });
     try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
+    try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('staffWorkboard');}catch(_){}
   }
   window.renderStaffWorkboard=renderStaffWorkboard;
 

@@ -10214,6 +10214,7 @@ async function handleSignedIn(user,session){
     try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     setTimeout(()=>{
+      try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
       try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
     },0);
     return;
@@ -10527,6 +10528,7 @@ async function handleSignedIn(user,session){
     if(appEl&&!appEl.classList.contains('visible'))try{showApp();}catch(_){}
     else if(_signInFailed)try{showApp();}catch(_){}
     setTimeout(()=>{
+      try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
       try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
     },0);
   }
@@ -16110,6 +16112,7 @@ async function renderTeacherDashboard(){
     if(window.FluxTeacherWellness?.wire)FluxTeacherWellness.wire(host);
   }catch(_){}
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
+  try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('teacherDashboard');}catch(_){}
 }
 window.renderTeacherDashboard=renderTeacherDashboard;
 
@@ -17152,6 +17155,7 @@ async function renderCounselorDashboard(){
     FluxCounselorAppointments.wireAppointmentActions(host,counselorRow.id);
   }
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
+  try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('counselorDashboard');}catch(_){}
 }
 window.renderCounselorDashboard=renderCounselorDashboard;
 
