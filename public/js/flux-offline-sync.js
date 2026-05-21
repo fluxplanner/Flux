@@ -2,7 +2,8 @@
  * P7-OFFLINE — offline-first sync: outbox, LWW merge, conflict rules.
  * Flag: enable_offline_sync (default off).
  * P9.3 — enable_sync_conflict_ui: preview modal, bulk resolve, settings card.
- * Migrations: 20260525420000_offline_sync.sql, 20260528800000_sync_conflict_ui.sql
+ * P12.2 — enable_sync_queue_ui: pending-write queue modal.
+ * Migrations: 20260525420000_offline_sync.sql, 20260528800000_sync_conflict_ui.sql, 20260529200000_phase_12_deep_links_sync_queue.sql
  */
 (function () {
   'use strict';
@@ -28,6 +29,24 @@
       return false;
     }
   }
+
+  function queueUiEnabled() {
+    if (!enabled()) return false;
+    try {
+      return !!window.FluxFeatureFlags?.isEnabled('enable_sync_queue_ui', false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  const OUTBOX_KEY_LABELS = {
+    tasks: 'Tasks',
+    notes: 'Notes',
+    flux_notes: 'Notes',
+    flux_events: 'Calendar events',
+    habits: 'Habits',
+    goals: 'Goals',
+  };
 
   function T(key, vars) {
     if (typeof window.fluxT === 'function') return window.fluxT(key, vars);
@@ -545,6 +564,82 @@
     wireConflictModal(host);
   }
 
+  function outboxLabel(key) {
+    const k = String(key || '');
+    if (OUTBOX_KEY_LABELS[k]) return OUTBOX_KEY_LABELS[k];
+    return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function outboxStatus(entry) {
+    if (!navigator.onLine) return T('sync.queue_offline');
+    if (window._fluxSyncFailed) return T('sync.queue_retry');
+    return T('sync.queue_pending');
+  }
+
+  function renderOutboxModal() {
+    if (!queueUiEnabled()) return;
+    const list = getOutbox().slice().reverse();
+    let host = document.getElementById('fluxOfflineQueueModal');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'fluxOfflineQueueModal';
+      host.className = 'flux-offline-modal flux-offline-modal--queue';
+      host.setAttribute('role', 'dialog');
+      host.setAttribute('aria-modal', 'true');
+      document.body.appendChild(host);
+    }
+
+    const rows = list.length
+      ? list
+          .map((entry) => {
+            const label = outboxLabel(entry.key);
+            const when = relEdit(entry.at);
+            const status = outboxStatus(entry);
+            return `<div class="flux-offline-queue-row" data-key="${esc(entry.key)}">
+              <div class="flux-offline-queue-main">
+                <div class="flux-offline-queue-title">${esc(label)}</div>
+                <div class="flux-offline-queue-meta">${esc(when)} · ${esc(status)}</div>
+              </div>
+              <span class="flux-offline-queue-badge">${esc(entry.key)}</span>
+            </div>`;
+          })
+          .join('')
+      : `<p class="flux-offline-queue-empty">${esc(T('sync.queue_empty'))}</p>`;
+
+    host.innerHTML = `<div class="flux-offline-modal-inner flux-offline-modal-inner--queue">
+      <div class="flux-offline-modal-head">
+        <h3 id="fluxOfflineQueueTitle">${esc(T('sync.queue_title'))}</h3>
+        <button type="button" class="flux-offline-modal-close" id="fluxOfflineQueueClose" aria-label="Close">✕</button>
+      </div>
+      <p class="flux-offline-modal-lede">${esc(T('sync.queue_lede'))}</p>
+      <div class="flux-offline-queue-list">${rows}</div>
+      <div class="flux-offline-queue-actions">
+        <button type="button" class="btn-sec" id="fluxOfflineQueueRetryBtn"${list.length && navigator.onLine ? '' : ' disabled'}>${esc(T('sync.queue_retry_all'))}</button>
+        <button type="button" class="btn-sec" id="fluxOfflineQueueDismissBtn">${esc(T('sync.queue_dismiss'))}</button>
+      </div>
+    </div>`;
+
+    host.style.display = 'flex';
+    host.querySelector('#fluxOfflineQueueClose')?.addEventListener('click', () => {
+      host.style.display = 'none';
+    });
+    host.querySelector('#fluxOfflineQueueDismissBtn')?.addEventListener('click', () => {
+      host.style.display = 'none';
+    });
+    host.querySelector('#fluxOfflineQueueRetryBtn')?.addEventListener('click', () => {
+      flushOutbox();
+      if (typeof window.showToast === 'function') window.showToast(T('sync.syncing'), 'info');
+      setTimeout(renderOutboxModal, 600);
+    });
+    host.addEventListener(
+      'click',
+      (e) => {
+        if (e.target === host) host.style.display = 'none';
+      },
+      { once: true }
+    );
+  }
+
   function renderConflictModal() {
     const list = getConflicts();
     if (!list.length) {
@@ -581,6 +676,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button type="button" class="btn-sec" style="padding:8px 14px;font-size:.82rem" id="fluxSyncSettingsReviewBtn"${n ? '' : ' disabled'}>${esc(T('sync.review'))}</button>
         <button type="button" class="btn-sec" style="padding:8px 14px;font-size:.82rem" id="fluxSyncSettingsFlushBtn"${out && navigator.onLine ? '' : ' disabled'}>${esc(T('sync.flush'))}</button>
+        ${queueUiEnabled() ? `<button type="button" class="btn-sec" style="padding:8px 14px;font-size:.82rem" id="fluxSyncSettingsQueueBtn">${esc(T('sync.queue_open'))}</button>` : ''}
       </div>
     </div>`;
     mount.querySelector('#fluxSyncSettingsReviewBtn')?.addEventListener('click', renderConflictModal);
@@ -588,6 +684,7 @@
       flushOutbox();
       if (typeof window.showToast === 'function') window.showToast(T('sync.syncing'), 'info');
     });
+    mount.querySelector('#fluxSyncSettingsQueueBtn')?.addEventListener('click', renderOutboxModal);
   }
 
   function updateConflictUi() {
@@ -633,6 +730,10 @@
     out.id = 'fluxOfflineOutboxPill';
     out.className = 'flux-offline-pill flux-offline-pill--outbox';
     out.title = T('sync.outbox_title');
+    if (queueUiEnabled()) {
+      out.style.cursor = 'pointer';
+      out.addEventListener('click', renderOutboxModal);
+    }
     pill.parentNode?.insertBefore(out, pill.nextSibling);
     updateConflictUi();
     updateOutboxUi();
@@ -665,6 +766,7 @@
   window.FluxOfflineSync = {
     enabled,
     conflictUiV2,
+    queueUiEnabled,
     install,
     deviceId,
     stamp,
@@ -677,6 +779,7 @@
     resolveConflict,
     resolveAll,
     renderConflictModal,
+    renderOutboxModal,
     renderSettingsSyncCard,
     refreshConflictUi: updateConflictUi,
     flushOutbox,

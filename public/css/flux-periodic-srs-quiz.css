@@ -1,0 +1,111 @@
+/* P26.1 — Periodic table SRS quiz */
+.flux-ptsrs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.flux-ptsrs-stat {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  text-align: center;
+}
+
+.flux-ptsrs-stat-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-ptsrs-stat-lbl {
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.flux-ptsrs-card {
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.flux-ptsrs-prompt {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.flux-ptsrs-sub {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin-bottom: 14px;
+}
+
+.flux-ptsrs-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.flux-ptsrs-opt {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.flux-ptsrs-opt:hover:not(:disabled) {
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.flux-ptsrs-opt.correct {
+  border-color: var(--green);
+  background: rgba(16, 217, 160, 0.12);
+}
+
+.flux-ptsrs-opt.wrong {
+  border-color: var(--red);
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.flux-ptsrs-grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.flux-ptsrs-grade button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-ptsrs-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.flux-ptsrs-mode-row button {
+  font-size: 0.72rem;
+  padding: 6px 10px;
+}
+
+.flux-ptsrs-mode-row button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}

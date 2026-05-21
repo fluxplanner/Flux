@@ -1072,9 +1072,12 @@ function renderGraphCalc(body){
         const fn = compileExpr(raw);
         let v = fn(0);
         if (!isFinite(v)) throw new Error('NaN');
-        bcExpr = String(round(v, 12));
-        if (/e/i.test(bcExpr)) bcExpr = String(v);
+        const result = /e/i.test(String(v)) ? String(v) : String(round(v, 12));
+        bcExpr = result;
         bcFresh = true;
+        try{
+          window.dispatchEvent(new CustomEvent('flux-calc-tape', { detail: { expr: raw, result, kind: 'basic' } }));
+        }catch(_ev){}
       }catch(_e){
         bcExpr = 'Error';
       }
@@ -4069,6 +4072,13 @@ function renderUnifiedStudyTools(){
 function renderToolboxCompat(){
   renderUnifiedStudyTools();
 }
+window.fluxGc = {
+  compileExpr,
+  evalY: gcEvalY,
+  getAngleMode: () => fluxGcAngleMode,
+  setAngleMode: (m) => { fluxGcAngleMode = m === 'deg' ? 'deg' : 'rad'; },
+};
+
 window.renderToolbox = renderToolboxCompat;
 window.renderStudyTools = renderToolboxCompat;
 window.activateStudyTool = activateStudyTool;

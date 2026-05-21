@@ -1,0 +1,62 @@
+/* P14.2 — Screenshot snip in quick-add */
+.flux-snip-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--purple-rgb, 168, 85, 247), 0.35);
+  background: rgba(var(--purple-rgb, 168, 85, 247), 0.1);
+  color: var(--purple, #a855f7);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.flux-snip-btn:hover:not(:disabled) {
+  background: rgba(var(--purple-rgb, 168, 85, 247), 0.18);
+  border-color: rgba(var(--purple-rgb, 168, 85, 247), 0.55);
+}
+
+.flux-snip-btn:disabled,
+.flux-snip-btn--busy {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.flux-snip-status {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  padding: 2px 14px 0;
+  min-height: 1.2em;
+}
+
+.flux-snip-preview {
+  display: none;
+  margin: 8px 14px 0;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+}
+
+.flux-snip-preview.is-visible {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flux-snip-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.flux-snip-preview-meta {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  min-width: 0;
+}

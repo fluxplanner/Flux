@@ -1116,6 +1116,7 @@ function showToast(msg,type='success',durationMs=3000){
 // ══ ACCESSIBILITY · SNOOZE · BULK · EXAM CONFLICTS ══
 let _taskBulkMode=false;
 const _bulkIds=new Set();
+try{window._fluxBulkIds=_bulkIds;}catch(_){}
 function isTaskSnoozed(_t){return false;}
 function applyFontScale(){
   const v=parseInt(load('flux_font_scale','100'),10)||100;
@@ -1232,8 +1233,19 @@ function renderExamConflictBanner(){
   el.innerHTML='<strong>⚠️ Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
 }
 function renderScheduleConflictNotices(){
-  try{if(window.FluxSyllabusConflict?.render){FluxSyllabusConflict.render();return;}}catch(_){}
-  renderExamConflictBanner();
+  let syllabusOn=false;
+  try{
+    if(window.FluxSyllabusConflict?.enabled?.()&&window.FluxSyllabusConflict?.render){
+      FluxSyllabusConflict.render();
+      syllabusOn=true;
+    }
+  }catch(_){}
+  try{if(window.FluxGCalBusy?.renderBanner)window.FluxGCalBusy.renderBanner();}catch(_){}
+  try{if(window.FluxEventBuffer?.renderBanner)window.FluxEventBuffer.renderBanner();}catch(_){}
+  try{if(window.FluxTravelTime?.renderBanner)window.FluxTravelTime.renderBanner();}catch(_){}
+  if(!syllabusOn){
+    try{renderExamConflictBanner();}catch(_){}
+  }
 }
 async function exportEncryptedBackup(){
   if(!window.crypto?.subtle){showToast('Encrypted export needs a secure (HTTPS) context','error');return;}
@@ -1348,7 +1360,9 @@ function getSubjects(){
     const cleanName=cleanClassName(c.name);
     const key='CLS'+(c.id||i);
     subjs[key]={name:cleanName,short:cleanName.length>8?cleanName.slice(0,3).toUpperCase():cleanName,color:c.color||SUBJECT_COLORS[i%SUBJECT_COLORS.length]};
+    if(c.icon)subjs[key].icon=c.icon;
   });
+  try{if(window.FluxSubjectThemes?.enrich)FluxSubjectThemes.enrich(subjs);}catch(_){}
   return subjs;
 }
 // ── CLEAN CLASS NAME — strips prefixes and grade numbers ──
@@ -2596,6 +2610,9 @@ window.onAddEventExtraPick=onAddEventExtraPick;
 let tasks=load('tasks',[]);
 let notes=load('flux_notes',[]);
 let habits=load('flux_habits',[]);
+function getFluxHabits(){return habits;}
+function setFluxHabits(next){habits=Array.isArray(next)?next:[];save('flux_habits',habits);syncKey('habits',habits);}
+try{window.getFluxHabits=getFluxHabits;window.setFluxHabits=setFluxHabits;}catch(_){}
 let goals=load('flux_goals',[]);
 let colleges=load('flux_colleges',[]);
 let moodHistory=load('flux_mood',[]);
@@ -3483,7 +3500,9 @@ function addTask(){
       return;
     }
   }
-  task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
+  task.urgencyScore=calcUrgency(task);tasks.unshift(task);
+  try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
+  save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
   document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
   closeDashAddTaskModal();
@@ -3519,9 +3538,15 @@ function toggleTask(id){
       else generateSRSReviews(t);
     },800);
     showUndoSnackbar('Task completed','undoLastChange');
+    try{if(window.FluxMoodVelocity?.onTaskCompleted)FluxMoodVelocity.onTaskCompleted();}catch(_){}
     setTimeout(showAutoNext,1200);
     const recType=t.recurringType||(t.recurringWeekly?'weekly':null);
     if(recType&&t.date){
+      if(window.FluxRecurring?.enabled?.()&&typeof FluxRecurring.onComplete==='function'){
+        const r=FluxRecurring.onComplete(t);
+        if(r?.spawn&&r.task){tasks.unshift(r.task);showToast(r.message||'Repeat added','info');}
+        else if(r?.message&&typeof showToast==='function')showToast(r.message,r.ended||r.skipped?'info':'info');
+      }else{
       const nd=new Date(t.date+'T12:00:00');
       if(recType==='weekly')nd.setDate(nd.getDate()+7);
       else if(recType==='biweekly')nd.setDate(nd.getDate()+14);
@@ -3529,6 +3554,7 @@ function toggleTask(id){
       const labels={weekly:'Next week',biweekly:'Biweekly',monthly:'Next month'};
       const nt={id:Date.now()+Math.random(),name:t.name,date:nd.toISOString().slice(0,10),subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',estTime:t.estTime||0,difficulty:t.difficulty||3,notes:t.notes||'',subtasks:(t.subtasks||[]).map(s=>({text:s.text,done:false})),done:false,rescheduled:0,createdAt:Date.now(),recurringType:recType,recurringWeekly:recType==='weekly',waitingOn:t.waitingOn,srsEnabled:false};
       nt.urgencyScore=calcUrgency(nt);tasks.unshift(nt);showToast((labels[recType]||'Repeat')+' repeat added','info');
+      }
     }
   }
   const flush=function(){
@@ -3547,6 +3573,7 @@ function toggleTask(id){
 function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
   if(f==='reading'||f==='snoozed')f='active';
+  try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}
   taskFilter=f;
   document.querySelectorAll('#filterChips .tmode-btn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
@@ -3973,6 +4000,14 @@ function renderTasks(){
   if(el0){el0.style.display='';el0.style.gridTemplateColumns='';el0.style.gap='';el0.style.alignItems='';}
   const now=new Date();now.setHours(0,0,0,0);
   let list=[...tasks];
+  if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
+    list=FluxSmartLists.applyFilter(list,taskFilter);
+    list.sort((a,b)=>{
+      const d=fluxTaskDueDateMs(a)-fluxTaskDueDateMs(b);
+      if(d!==0)return d;
+      return (a.id||0)-(b.id||0);
+    });
+  }else{
   if(taskFilter==='active')list=list.filter(t=>!t.done);
   if(taskFilter==='done')list=list.filter(t=>t.done);
   if(taskFilter==='overdue')list=list.filter(t=>isTaskOverdueDay(t));
@@ -4001,6 +4036,7 @@ function renderTasks(){
     return 0;
   });
   }
+  }
   const el=document.getElementById('taskList');
   updateDocTitle();
   if(!el){
@@ -4010,7 +4046,10 @@ function renderTasks(){
   if(!list.length){
     const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
     const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
-    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${icons[taskFilter]||icons.all}</div><div class="empty-title">${msgs[taskFilter]||msgs.all}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
+    const smartMeta=window.FluxSmartLists?.getEmptyMeta?.(taskFilter);
+    const emptyTitle=smartMeta?.title||(msgs[taskFilter]||msgs.all);
+    const emptyIcon=smartMeta?.icon||(icons[taskFilter]||icons.all);
+    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
   }
@@ -4064,7 +4103,7 @@ function renderTasks(){
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
     const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
-    const recChip=t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'';
+    const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'');
     const snz='';
     let ghostHtml='';
     if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
@@ -4087,7 +4126,7 @@ ${bulk}
 <div class="task-body">
 <div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas">🎓</span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
-${sub?`<span class="task-chip task-chip-subject">${sub.short}</span>`:''}
+${sub?`<span class="task-chip task-chip-subject">${sub.icon?sub.icon+' ':''}${sub.short}</span>`:''}
 ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
@@ -4099,7 +4138,9 @@ ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
+${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options">🔁</button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
+${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link">🔗</button>`:''}
 ${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar">📅</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
@@ -4191,7 +4232,7 @@ function completeAllSubtasksInEdit(){
   document.getElementById('editSubtasks').value=lines.join('\n');
   showToast('All subtasks marked complete','success');
 }
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
@@ -4423,6 +4464,9 @@ function renderCalendar(){
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
   let calConflictDates=new Set();
   try{if(window.FluxSyllabusConflict?.enabled?.()&&window.FluxSyllabusConflict.conflictDatesSet)calConflictDates=FluxSyllabusConflict.conflictDatesSet();}catch(_){}
+  let gcalBusyDates=new Set();
+  try{if(window.FluxGCalBusy?.enabled?.()&&window.FluxGCalBusy.busyDatesSet)gcalBusyDates=FluxGCalBusy.busyDatesSet();}catch(_){}
+  try{if(window.FluxGCalBusy?.enabled?.()&&window.FluxGCalBusy.refreshIfStale)void FluxGCalBusy.refreshIfStale();}catch(_){}
   for(let i=first-1;i>=0;i--)html+=`<div class="cal-day other"><div class="cal-dn">${prevDays-i}</div></div>`;
   for(let d=1;d<=days;d++){const dt=new Date(calYear,calMonth,d),ds=fluxLocalYMD(dt);const isToday=dt.getTime()===now.getTime(),isNP=isBreak(ds),rk=isNP?restDayKind(ds)||'lazy':null,ab=getCycleDayLabel(ds);const rawT=tMap[d]||[],rawE=evMap[d]||[];const tlist=[...rawT].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));const elist=[...rawE].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));// Task bars — school items first
 const taskBars=tlist.slice(0,3).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';const out=fluxEventScope(t)==='outside';const tm=t.time?formatCalTimeShort(t.time):'';const lab=tm?`${esc(t.name)} · ${esc(tm)}`:esc(t.name);return`<div class="cal-task-bar" style="background:${c}22;border-left:2px solid ${c};opacity:${out?0.75:(t.done?0.5:1)};text-decoration:${t.done?'line-through':'none'}">${lab}</div>`;}).join('');
@@ -4430,9 +4474,11 @@ const eventBars=elist.slice(0,2).map(e=>{const out=fluxEventScope(e)==='outside'
 const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abCol=ab==='A'?'var(--accent)':ab==='B'?'var(--green)':ab?'var(--gold)':'var(--muted)';const abLabel=ab?`<div style="font-size:${ab.length>2?'.4rem':'.45rem'};font-family:'JetBrains Mono',monospace;color:${abCol};line-height:1;margin-top:1px;max-width:100%;text-overflow:ellipsis;overflow:hidden">${esc(ab)}</div>`:'';const overFlag=tlist.some(t=>!t.done&&new Date(t.date+'T00:00:00')<now)?'<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--red)"></div>':'';const countBadge=allCount>3?`<div class="cal-day-count">+${allCount-3}</div>`:'';const restCls=isNP?` no-hw ${rk==='sick'?'rest-sick':'rest-lazy'}`:'';const dayMins=tlist.filter(t=>!t.done).reduce((s,t)=>s+(t.estTime||30),0);const heatCls=!isNP&&!d===calSelected?(dayMins>=180?' cal-heat-3':dayMins>=90?' cal-heat-2':dayMins>=30?' cal-heat-1':''):'';
 // Compact dots for mobile — show up to 4 per day, colored by subject/event type
 const _mobMax=4;const _taskDots=tlist.slice(0,_mobMax).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';return`<span class="cal-dot-compact" style="background:${c};opacity:${t.done?0.35:1}"></span>`;});const _evSlots=Math.max(0,_mobMax-_taskDots.length);const _evDots=elist.slice(0,_evSlots).map(e=>{const wk=e._weekly;const out=fluxEventScope(e)==='outside';const isEc=fluxIsEcCalendarItem(e);const c=isEc?'var(--gold)':wk?(out?'var(--muted2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<span class="cal-dot-compact" style="background:${c};opacity:${wk?0.85:1}"></span>`;});const _dotsHTML=(_taskDots.concat(_evDots)).join('')+(allCount>_mobMax?`<span class="cal-dot-compact cal-dot-more">+${allCount-_mobMax}</span>`:'');const compactDotsEl=_dotsHTML?`<div class="cal-dots-mobile" aria-hidden="true">${_dotsHTML}</div>`:'';
-const conflictCls=calConflictDates.has(ds)?' cal-day--conflict':'';const conflictTitle=conflictCls&&typeof fluxT==='function'?` title="${esc(fluxT('syllabus.cal_marker'))}"`:'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}${conflictCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}"${conflictTitle} ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${countBadge}</div>`;}
+const conflictCls=calConflictDates.has(ds)?' cal-day--conflict':'';const busyCls=gcalBusyDates.has(ds)?' cal-day--gcal-busy':'';let dayTitle='';if(conflictCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('syllabus.cal_marker'))}"`;else if(busyCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('gcal.cal_marker'))}"`;const gcalBarsHtml=window.FluxGCalBusy?.enabled?.()&&window.FluxGCalBusy.renderBusyBarsHtml?FluxGCalBusy.renderBusyBarsHtml(ds,2):'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}${conflictCls}${busyCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}"${dayTitle} ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${gcalBarsHtml?`<div class="cal-gcal-busy-stack">${gcalBarsHtml}</div>`:''}${countBadge}</div>`;}
   document.getElementById('calGrid').innerHTML=html;
   try{if(window.FluxSyllabusConflict?.decorateCalendar)FluxSyllabusConflict.decorateCalendar();}catch(_){}
+  try{if(window.FluxEventBuffer?.decorateCalendarDays)FluxEventBuffer.decorateCalendarDays();}catch(_){}
+  try{if(window.FluxTravelTime?.decorateCalendarDays)FluxTravelTime.decorateCalendarDays();}catch(_){}
   renderCalDay();
   try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
   if(typeof fluxAfterRenderCalendar==='function')fluxAfterRenderCalendar();
@@ -4458,14 +4504,22 @@ function renderCalDay(){
   const el=document.getElementById('calDayTasks');
   let conflictHint='';
   try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
+  let gcalHint='';
+  try{if(window.FluxGCalBusy?.renderDayHint)gcalHint=FluxGCalBusy.renderDayHint(ds)||'';}catch(_){}
+  let bufferHint='';
+  try{if(window.FluxEventBuffer?.renderDayHint)bufferHint=FluxEventBuffer.renderDayHint(ds)||'';}catch(_){}
+  let travelHint='';
+  try{if(window.FluxTravelTime?.renderDayHint)travelHint=FluxTravelTime.renderDayHint(ds)||'';}catch(_){}
+  const dayHints=conflictHint+gcalHint+bufferHint+travelHint;
   if(!day.length&&!events.length&&!weekly.length&&!ecGoalsDay.length){
-    el.innerHTML=conflictHint+'<div style="color:var(--muted);font-size:.82rem;padding:4px 0">Nothing scheduled.</div>';
+    if(dayHints){el.innerHTML=dayHints;return;}
+    el.innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:4px 0">Nothing scheduled.</div>';
     return;
   }
   const blocks=[];weekly.forEach(w=>blocks.push({k:'w',o:w}));events.forEach(e=>blocks.push({k:'e',o:e}));ecGoalsDay.forEach(g=>blocks.push({k:'g',o:g}));day.forEach(t=>blocks.push({k:'t',o:t}));
   const ord={w:0,e:1,g:1,t:2};
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
-  el.innerHTML=conflictHint+blocks.map(({k,o})=>{
+  el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='g'){
       return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">🎯</span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
     }
@@ -5576,7 +5630,7 @@ async function sendEcCollegeChat(){
 
 function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
-function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
+function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
 function saveNote(){const title=document.getElementById('noteTitleInput').value.trim()||'Untitled';const body=document.getElementById('noteEditor').innerHTML;const subject=document.getElementById('noteSubjectTag').value;const starred=document.getElementById('starBtn').textContent==='⭐';if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.title=title;n.body=body;n.subject=subject;n.starred=starred;n.updatedAt=Date.now();}}else{const n={id:Date.now(),title,body,subject,starred,flashcards:[],createdAt:Date.now(),updatedAt:Date.now()};notes.unshift(n);currentNoteId=n.id;}save('flux_notes',notes);syncKey('notes',notes);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 function deleteNote(){if(!currentNoteId)return;if(!confirm('Delete this note?'))return;notes=notes.filter(n=>n.id!==currentNoteId);save('flux_notes',notes);backToNotesList();}
@@ -7933,6 +7987,41 @@ function getCloudPayload(){
     ecSchools,
     ecGoals,
     ibProgramProgress:getIbProgramProgress(),
+    recurringSeries:(window.FluxRecurring?.getCloudSlice?FluxRecurring.getCloudSlice():load('flux_recurring_series_v1',{})),
+    subjectThemePack:(window.FluxSubjectThemes?.getCloudSlice?FluxSubjectThemes.getCloudSlice():load('flux_subject_theme_pack_v1',{})),
+    cmdPaletteRecents:(window.FluxCmdPaletteV2?.getCloudSlice?FluxCmdPaletteV2.getCloudSlice():load('flux_cmd_palette_recents_v1',[])),
+    globalSearchRecents:(window.FluxGlobalSearchV2?.getCloudSlice?FluxGlobalSearchV2.getCloudSlice():load('flux_global_search_recents_v1',[])),
+    smartLists:(window.FluxSmartLists?.getCloudSlice?FluxSmartLists.getCloudSlice():load('flux_smart_lists_v1',{})),
+    focusIntents:(window.FluxFocusIntent?.getCloudSlice?FluxFocusIntent.getCloudSlice():load('flux_focus_intents_v1',{history:[],recent:[]})),
+    pomodoroPresets:(window.FluxPomodoroPresets?.getCloudSlice?FluxPomodoroPresets.getCloudSlice():load('flux_pomodoro_presets_v1',{bySubject:{}})),
+    meetingMode:(window.FluxMeetingMode?.getCloudSlice?FluxMeetingMode.getCloudSlice():load('flux_meeting_mode_v1',{})),
+    moodVelocity:(window.FluxMoodVelocity?.getCloudSlice?FluxMoodVelocity.getCloudSlice():load('flux_mood_velocity_v1',{privateMode:true})),
+    eventBuffer:(window.FluxEventBuffer?.getCloudSlice?FluxEventBuffer.getCloudSlice():load('flux_event_buffer_v1',{beforeMin:15,afterMin:15})),
+    travelTime:(window.FluxTravelTime?.getCloudSlice?FluxTravelTime.getCloudSlice():load('flux_travel_time_v1',{travelMin:15})),
+    ambientWeather:(window.FluxAmbientWeather?.getCloudSlice?FluxAmbientWeather.getCloudSlice():load('flux_ambient_weather_v1',{})),
+    energyScheduling:(window.FluxEnergyScheduling?.getCloudSlice?FluxEnergyScheduling.getCloudSlice():load('flux_energy_scheduling_v1',{samples:{}})),
+    restDayPlan:(window.FluxRestDayPlan?.getCloudSlice?FluxRestDayPlan.getCloudSlice():load('flux_rest_day_plan_v1',{autoDeferOnMark:true,maxLazyTasks:2})),
+    geofence:(window.FluxGeofence?.getCloudSlice?FluxGeofence.getCloudSlice():load('flux_geofence_v1',{places:[]})),
+    examPrepPlan:(window.FluxExamPrepPlan?.getCloudSlice?FluxExamPrepPlan.getCloudSlice():load('flux_exam_prep_plan_v1',{defaultReviewMin:90,overrides:{}})),
+    syllabusWeekScaffold:(window.FluxSyllabusWeekScaffold?.getCloudSlice?FluxSyllabusWeekScaffold.getCloudSlice():load('flux_syllabus_week_scaffold_v1',{termStart:'',defaultSubject:'',scaffoldedWeeks:[]})),
+    taskTemplateMarketplace:(window.FluxTaskTemplateMarketplace?.getCloudSlice?FluxTaskTemplateMarketplace.getCloudSlice():load('flux_task_template_marketplace_v1',{importedPacks:[],recentPackIds:[]})),
+    emailTaskInbox:(window.FluxEmailTaskInbox?.getCloudSlice?FluxEmailTaskInbox.getCloudSlice():load('flux_email_task_inbox_v1',{queue:[]})),
+    icalSubscribe:(window.FluxIcalSubscribe?.getCloudSlice?FluxIcalSubscribe.getCloudSlice():load('flux_ical_subscribe_v1',{includeFocus:true,token:'',lastPublishedAt:0})),
+    icsTimetableImport:(window.FluxIcsTimetableImport?.getCloudSlice?FluxIcsTimetableImport.getCloudSlice():load('flux_ics_timetable_import_v1',{lastImportAt:0,lastFileName:'',importBlackouts:true,importWeekly:true})),
+    sportPracticePack:(window.FluxSportPracticePack?.getCloudSlice?FluxSportPracticePack.getCloudSlice():load('flux_sport_practice_pack_v1',{sportName:'',practiceTime:'16:00',practiceWeekdays:[1,3,5],linkedExtraId:'',lastPackId:''})),
+    csSnippetLibrary:(window.FluxCsSnippetLibrary?.getCloudSlice?FluxCsSnippetLibrary.getCloudSlice():load('flux_cs_snippet_library_v1',{snippets:[],seeded:false})),
+    unitConverterFavorites:(window.FluxUnitConverterFavorites?.getCloudSlice?FluxUnitConverterFavorites.getCloudSlice():load('flux_unit_converter_favorites_v1',{favorites:[],seeded:false})),
+    periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
+    flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
+    srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
+    latexLivePreview:(window.FluxLatexLivePreview?.getCloudSlice?FluxLatexLivePreview.getCloudSlice():load('flux_latex_preview_v1',{splitOpen:true})),
+    equationOcrLatex:(window.FluxEquationOcrLatex?.getCloudSlice?FluxEquationOcrLatex.getCloudSlice():load('flux_equation_ocr_v1',{converted:0})),
+    wikiBacklinks:(window.FluxWikiBacklinks?.getCloudSlice?FluxWikiBacklinks.getCloudSlice():load('flux_wiki_backlinks_v1',{graphOpens:0})),
+    notionObsidianExport:(window.FluxNotionObsidianExport?.getCloudSlice?FluxNotionObsidianExport.getCloudSlice():load('flux_obsidian_export_v1',{exports:0})),
+    mindMapTasks:(window.FluxMindMapTasks?.getCloudSlice?FluxMindMapTasks.getCloudSlice():load('flux_mind_map_v1',{maps:[],activeMapId:'default',opens:0})),
+    handwritingToText:(window.FluxHandwritingToText?.getCloudSlice?FluxHandwritingToText.getCloudSlice():load('flux_handwriting_ocr_v1',{scans:0})),
+    citationHelper:(window.FluxCitationHelper?.getCloudSlice?FluxCitationHelper.getCloudSlice():load('flux_citation_helper_v1',{entries:[],exports:0})),
+    calcHistory:(window.FluxCalcHistory?.getCloudSlice?FluxCalcHistory.getCloudSlice():load('flux_calc_history_v1',{tape:[],plots:[],exports:0})),
     integrations:(function(){
       if(window.FluxGoogle&&typeof FluxGoogle.getIntegrationsForCloud==='function')return FluxGoogle.getIntegrationsForCloud();
       const tok=load('flux_canvas_token','');
@@ -8089,6 +8178,111 @@ async function syncFromCloud(){
     }
     if(d.tasks&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
       tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();
+    }
+    if(d.recurringSeries&&typeof d.recurringSeries==='object'){
+      try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
+    }
+    if(d.subjectThemePack&&typeof d.subjectThemePack==='object'){
+      try{if(window.FluxSubjectThemes?.applyFromCloud)FluxSubjectThemes.applyFromCloud(d.subjectThemePack);else save('flux_subject_theme_pack_v1',d.subjectThemePack);}catch(_){}
+    }
+    if(d.cmdPaletteRecents&&Array.isArray(d.cmdPaletteRecents)){
+      try{if(window.FluxCmdPaletteV2?.applyFromCloud)FluxCmdPaletteV2.applyFromCloud(d.cmdPaletteRecents);else save('flux_cmd_palette_recents_v1',d.cmdPaletteRecents);}catch(_){}
+    }
+    if(d.globalSearchRecents&&Array.isArray(d.globalSearchRecents)){
+      try{if(window.FluxGlobalSearchV2?.applyFromCloud)FluxGlobalSearchV2.applyFromCloud(d.globalSearchRecents);else save('flux_global_search_recents_v1',d.globalSearchRecents);}catch(_){}
+    }
+    if(d.smartLists&&typeof d.smartLists==='object'){
+      try{if(window.FluxSmartLists?.applyFromCloud)FluxSmartLists.applyFromCloud(d.smartLists);else save('flux_smart_lists_v1',d.smartLists);}catch(_){}
+    }
+    if(d.focusIntents&&typeof d.focusIntents==='object'){
+      try{if(window.FluxFocusIntent?.applyFromCloud)FluxFocusIntent.applyFromCloud(d.focusIntents);else save('flux_focus_intents_v1',d.focusIntents);}catch(_){}
+    }
+    if(d.pomodoroPresets&&typeof d.pomodoroPresets==='object'){
+      try{if(window.FluxPomodoroPresets?.applyFromCloud)FluxPomodoroPresets.applyFromCloud(d.pomodoroPresets);else save('flux_pomodoro_presets_v1',d.pomodoroPresets);}catch(_){}
+    }
+    if(d.meetingMode&&typeof d.meetingMode==='object'){
+      try{if(window.FluxMeetingMode?.applyFromCloud)FluxMeetingMode.applyFromCloud(d.meetingMode);else save('flux_meeting_mode_v1',d.meetingMode);}catch(_){}
+    }
+    if(d.moodVelocity&&typeof d.moodVelocity==='object'){
+      try{if(window.FluxMoodVelocity?.applyFromCloud)FluxMoodVelocity.applyFromCloud(d.moodVelocity);else save('flux_mood_velocity_v1',d.moodVelocity);}catch(_){}
+    }
+    if(d.eventBuffer&&typeof d.eventBuffer==='object'){
+      try{if(window.FluxEventBuffer?.applyFromCloud)FluxEventBuffer.applyFromCloud(d.eventBuffer);else save('flux_event_buffer_v1',d.eventBuffer);}catch(_){}
+    }
+    if(d.travelTime&&typeof d.travelTime==='object'){
+      try{if(window.FluxTravelTime?.applyFromCloud)FluxTravelTime.applyFromCloud(d.travelTime);else save('flux_travel_time_v1',d.travelTime);}catch(_){}
+    }
+    if(d.ambientWeather&&typeof d.ambientWeather==='object'){
+      try{if(window.FluxAmbientWeather?.applyFromCloud)FluxAmbientWeather.applyFromCloud(d.ambientWeather);else save('flux_ambient_weather_v1',d.ambientWeather);}catch(_){}
+    }
+    if(d.energyScheduling&&typeof d.energyScheduling==='object'){
+      try{if(window.FluxEnergyScheduling?.applyFromCloud)FluxEnergyScheduling.applyFromCloud(d.energyScheduling);else save('flux_energy_scheduling_v1',d.energyScheduling);}catch(_){}
+    }
+    if(d.restDayPlan&&typeof d.restDayPlan==='object'){
+      try{if(window.FluxRestDayPlan?.applyFromCloud)FluxRestDayPlan.applyFromCloud(d.restDayPlan);else save('flux_rest_day_plan_v1',d.restDayPlan);}catch(_){}
+    }
+    if(d.geofence&&typeof d.geofence==='object'){
+      try{if(window.FluxGeofence?.applyFromCloud)FluxGeofence.applyFromCloud(d.geofence);else save('flux_geofence_v1',{...load('flux_geofence_v1',{}),places:d.geofence.places||[]});}catch(_){}
+    }
+    if(d.examPrepPlan&&typeof d.examPrepPlan==='object'){
+      try{if(window.FluxExamPrepPlan?.applyFromCloud)FluxExamPrepPlan.applyFromCloud(d.examPrepPlan);else save('flux_exam_prep_plan_v1',d.examPrepPlan);}catch(_){}
+    }
+    if(d.syllabusWeekScaffold&&typeof d.syllabusWeekScaffold==='object'){
+      try{if(window.FluxSyllabusWeekScaffold?.applyFromCloud)FluxSyllabusWeekScaffold.applyFromCloud(d.syllabusWeekScaffold);else save('flux_syllabus_week_scaffold_v1',d.syllabusWeekScaffold);}catch(_){}
+    }
+    if(d.taskTemplateMarketplace&&typeof d.taskTemplateMarketplace==='object'){
+      try{if(window.FluxTaskTemplateMarketplace?.applyFromCloud)FluxTaskTemplateMarketplace.applyFromCloud(d.taskTemplateMarketplace);else save('flux_task_template_marketplace_v1',d.taskTemplateMarketplace);}catch(_){}
+    }
+    if(d.emailTaskInbox&&typeof d.emailTaskInbox==='object'){
+      try{if(window.FluxEmailTaskInbox?.applyFromCloud)FluxEmailTaskInbox.applyFromCloud(d.emailTaskInbox);else save('flux_email_task_inbox_v1',d.emailTaskInbox);}catch(_){}
+    }
+    if(d.icalSubscribe&&typeof d.icalSubscribe==='object'){
+      try{if(window.FluxIcalSubscribe?.applyFromCloud)FluxIcalSubscribe.applyFromCloud(d.icalSubscribe);else save('flux_ical_subscribe_v1',d.icalSubscribe);}catch(_){}
+    }
+    if(d.icsTimetableImport&&typeof d.icsTimetableImport==='object'){
+      try{if(window.FluxIcsTimetableImport?.applyFromCloud)FluxIcsTimetableImport.applyFromCloud(d.icsTimetableImport);else save('flux_ics_timetable_import_v1',d.icsTimetableImport);}catch(_){}
+    }
+    if(d.sportPracticePack&&typeof d.sportPracticePack==='object'){
+      try{if(window.FluxSportPracticePack?.applyFromCloud)FluxSportPracticePack.applyFromCloud(d.sportPracticePack);else save('flux_sport_practice_pack_v1',d.sportPracticePack);}catch(_){}
+    }
+    if(d.csSnippetLibrary&&typeof d.csSnippetLibrary==='object'){
+      try{if(window.FluxCsSnippetLibrary?.applyFromCloud)FluxCsSnippetLibrary.applyFromCloud(d.csSnippetLibrary);else save('flux_cs_snippet_library_v1',d.csSnippetLibrary);}catch(_){}
+    }
+    if(d.unitConverterFavorites&&typeof d.unitConverterFavorites==='object'){
+      try{if(window.FluxUnitConverterFavorites?.applyFromCloud)FluxUnitConverterFavorites.applyFromCloud(d.unitConverterFavorites);else save('flux_unit_converter_favorites_v1',d.unitConverterFavorites);}catch(_){}
+    }
+    if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
+      try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}
+    }
+    if(d.flashcardGenerator&&typeof d.flashcardGenerator==='object'){
+      try{if(window.FluxFlashcardGenerator?.applyFromCloud)FluxFlashcardGenerator.applyFromCloud(d.flashcardGenerator);else save('flux_flashcard_generator_v1',d.flashcardGenerator);}catch(_){}
+    }
+    if(d.srsDeckMode&&typeof d.srsDeckMode==='object'){
+      try{if(window.FluxSrsDeckMode?.applyFromCloud)FluxSrsDeckMode.applyFromCloud(d.srsDeckMode);else save('flux_srs_deck_v1',d.srsDeckMode);}catch(_){}
+    }
+    if(d.latexLivePreview&&typeof d.latexLivePreview==='object'){
+      try{if(window.FluxLatexLivePreview?.applyFromCloud)FluxLatexLivePreview.applyFromCloud(d.latexLivePreview);else save('flux_latex_preview_v1',d.latexLivePreview);}catch(_){}
+    }
+    if(d.equationOcrLatex&&typeof d.equationOcrLatex==='object'){
+      try{if(window.FluxEquationOcrLatex?.applyFromCloud)FluxEquationOcrLatex.applyFromCloud(d.equationOcrLatex);else save('flux_equation_ocr_v1',d.equationOcrLatex);}catch(_){}
+    }
+    if(d.wikiBacklinks&&typeof d.wikiBacklinks==='object'){
+      try{if(window.FluxWikiBacklinks?.applyFromCloud)FluxWikiBacklinks.applyFromCloud(d.wikiBacklinks);else save('flux_wiki_backlinks_v1',d.wikiBacklinks);}catch(_){}
+    }
+    if(d.notionObsidianExport&&typeof d.notionObsidianExport==='object'){
+      try{if(window.FluxNotionObsidianExport?.applyFromCloud)FluxNotionObsidianExport.applyFromCloud(d.notionObsidianExport);else save('flux_obsidian_export_v1',d.notionObsidianExport);}catch(_){}
+    }
+    if(d.mindMapTasks&&typeof d.mindMapTasks==='object'){
+      try{if(window.FluxMindMapTasks?.applyFromCloud)FluxMindMapTasks.applyFromCloud(d.mindMapTasks);else save('flux_mind_map_v1',d.mindMapTasks);}catch(_){}
+    }
+    if(d.handwritingToText&&typeof d.handwritingToText==='object'){
+      try{if(window.FluxHandwritingToText?.applyFromCloud)FluxHandwritingToText.applyFromCloud(d.handwritingToText);else save('flux_handwriting_ocr_v1',d.handwritingToText);}catch(_){}
+    }
+    if(d.citationHelper&&typeof d.citationHelper==='object'){
+      try{if(window.FluxCitationHelper?.applyFromCloud)FluxCitationHelper.applyFromCloud(d.citationHelper);else save('flux_citation_helper_v1',d.citationHelper);}catch(_){}
+    }
+    if(d.calcHistory&&typeof d.calcHistory==='object'){
+      try{if(window.FluxCalcHistory?.applyFromCloud)FluxCalcHistory.applyFromCloud(d.calcHistory);else save('flux_calc_history_v1',d.calcHistory);}catch(_){}
     }
     if(d.notes&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
       notes=d.notes;save('flux_notes',notes);
@@ -9407,9 +9601,18 @@ function renderCmdResults(){
   const q=(document.getElementById('cmdInput')?.value||'').toLowerCase().trim();
   _cmdIdx=0;
   const res=document.getElementById('cmdResults');if(!res)return;
+  const cpV2=!!window.FluxCmdPaletteV2?.enabled?.();
+  function cpMatch(label,sub,keys){
+    if(!q)return true;
+    if(cpV2&&window.FluxCmdPaletteV2?.matchesQuery)return FluxCmdPaletteV2.matchesQuery(q,label,sub,keys);
+    const l=String(label||'').toLowerCase();
+    if(l.includes(q))return true;
+    if(sub&&String(sub).toLowerCase().includes(q))return true;
+    return (keys||[]).some(k=>String(k).toLowerCase().includes(q));
+  }
   
   // Build commands
-  const cmds=[];
+  let cmds=[];
   cmds.push({icon:'🔍',label:'Search tasks & notes',cat:'Actions',action:()=>{closeCommandPalette();openGlobalSearch();}});
   cmds.push({icon:'💬',label:'Send feedback',cat:'Actions',action:()=>{closeCommandPalette();openFluxFeedbackModal();}});
   
@@ -9428,7 +9631,7 @@ function renderCmdResults(){
     {icon:'🎓',label:'Canvas LMS panel',action:()=>{closeCommandPalette();nav('canvas');}},
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
-  navItems.forEach(n=>{if(!q||n.label.toLowerCase().includes(q))cmds.push({...n,cat:'Navigate'});});
+  navItems.forEach(n=>{if(cpMatch(n.label,'',[]))cmds.push({...n,cat:'Navigate',id:'nav:'+n.label});});
 
   if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
     const workLbl='Switch to Work mode';
@@ -9442,17 +9645,17 @@ function renderCmdResults(){
       closeCommandPalette();
       if(typeof showToast==='function')showToast(next==='work'?'Work mode':'Personal mode','info');
     };
-    if(!q||workLbl.toLowerCase().includes(q)||'work'.includes(q))
-      cmds.push({icon:'🏫',label:workLbl,cat:'Workspace',action:()=>{if(!FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
-    if(!q||personalLbl.toLowerCase().includes(q)||'personal'.includes(q))
-      cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
+    if(cpMatch(workLbl,'',['work']))
+      cmds.push({icon:'🏫',label:workLbl,cat:'Workspace',id:'mode:work',action:()=>{if(!FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
+    if(cpMatch(personalLbl,'',['personal']))
+      cmds.push({icon:'🔄',label:personalLbl,cat:'Workspace',id:'mode:personal',action:()=>{if(FluxRole.isWorkMode())toggleMode();else closeCommandPalette();}});
   }
 
   const rNav=typeof getMyRole==='function'?getMyRole():'user';
   if(rNav==='owner'||rNav==='dev'){
     const pl=rNav==='owner'?'Owner control':'Dev panel';
-    if(!q||pl.toLowerCase().includes(q)||q==='admin'||q==='owner'||q==='dev')
-      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',action:()=>{nav('flux_control');closeCommandPalette();}});
+    if(cpMatch(pl,'',['admin','owner','dev']))
+      cmds.push({icon:rNav==='owner'?'👑':'⚡',label:pl,cat:'Navigate',id:'nav:flux_control',action:()=>{nav('flux_control');closeCommandPalette();}});
   }
 
   const refTools=[
@@ -9468,10 +9671,14 @@ function renderCmdResults(){
     {icon:'🧪',label:'Periodic Table',action:()=>{closeCommandPalette();if(typeof window.openPeriodicTableModal==='function')window.openPeriodicTableModal();else if(typeof window.openPeriodicTable==='function')window.openPeriodicTable();else nav('toolbox');}},
     {icon:'🪐',label:'Physics Formula Sheet',action:()=>{closeCommandPalette();if(typeof window.openPhysicsSandbox==='function')window.openPhysicsSandbox();else nav('toolbox');}},
   ];
-  refTools.forEach(r=>{if(!q||r.label.toLowerCase().includes(q))cmds.push({...r,cat:'Study Tools'});});
+  refTools.forEach(r=>{if(cpMatch(r.label,'',[]))cmds.push({...r,cat:'Study Tools',id:'tool:'+r.label});});
 
   // Task search
-  const matchTasks=tasks.filter(t=>!t.done&&t.name.toLowerCase().includes(q)).slice(0,5);
+  const matchTasks=tasks.filter(t=>{
+    if(t.done)return false;
+    if(cpV2&&window.FluxCmdPaletteV2?.matchesQuery)return FluxCmdPaletteV2.matchesQuery(q,t.name,'');
+    return t.name.toLowerCase().includes(q);
+  }).slice(0,5);
   matchTasks.forEach(t=>cmds.push({icon:'✓',label:t.name,sub:t.date?'Due '+t.date:'',cat:'Tasks',action:()=>{nav('dashboard');closeCommandPalette();setTimeout(()=>{const el=document.querySelector('[data-task-id="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth'});},300);}}));
   
   // Add task shortcut
@@ -9492,18 +9699,132 @@ function renderCmdResults(){
     {icon:'🖨',label:'Print / save as PDF',cat:'Actions',action:()=>{closeCommandPalette();window.print();}},
     {icon:'🔐',label:'Import encrypted backup',cat:'Actions',action:()=>{closeCommandPalette();document.getElementById('importEncryptedFile')?.click();}},
   ];
-  actions.forEach(a=>{if(!q||a.label.toLowerCase().includes(q))cmds.push(a);});
+  actions.forEach(a=>{if(cpMatch(a.label,'',[]))cmds.push({...a,id:'act:'+a.label});});
+  if(window.FluxCmdPaletteV2?.getSurfaceCommands){
+    try{FluxCmdPaletteV2.getSurfaceCommands().forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxDeepLinks?.getPaletteCommands){
+    try{FluxDeepLinks.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){}
+  }
+  if(window.FluxVoiceCapture?.getPaletteCommands){
+    try{FluxVoiceCapture.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){}
+  }
   if(window.Flux100&&typeof Flux100.getExtraCommands==='function'){
-    try{Flux100.getExtraCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+    try{Flux100.getExtraCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){}
   }
   if(window.FluxAiOrchestration?.enabled?.()&&typeof FluxAiOrchestration.getPaletteCommands==='function'){
-    try{FluxAiOrchestration.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+    try{FluxAiOrchestration.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){}
   }
   if(window.FluxStaffCommand?.getPaletteCommands){
-    try{FluxStaffCommand.getPaletteCommands(q).forEach(x=>cmds.push(x));}catch(e){console.warn('[FluxStaffCommand]',e);}
+    try{FluxStaffCommand.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){console.warn('[FluxStaffCommand]',e);}
   }
   if(window.FluxOrchestrator&&typeof FluxOrchestrator.getPaletteCommands==='function'){
-    try{FluxOrchestrator.getPaletteCommands(q).forEach(x=>{if(!q||x.label.toLowerCase().includes(q))cmds.push(x);});}catch(e){}
+    try{FluxOrchestrator.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(e){}
+  }
+  if(window.FluxSmartLists?.getPaletteCommands){
+    try{FluxSmartLists.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxBulkFilter?.getPaletteCommands){
+    try{FluxBulkFilter.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxFocusIntent?.getPaletteCommands){
+    try{FluxFocusIntent.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxMeetingMode?.getPaletteCommands){
+    try{FluxMeetingMode.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxMoodVelocity?.getPaletteCommands){
+    try{FluxMoodVelocity.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxScreenshotSnip?.getPaletteCommands){
+    try{FluxScreenshotSnip.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxEventBuffer?.getPaletteCommands){
+    try{FluxEventBuffer.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxTravelTime?.getPaletteCommands){
+    try{FluxTravelTime.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxAmbientWeather?.getPaletteCommands){
+    try{FluxAmbientWeather.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxEnergyScheduling?.getPaletteCommands){
+    try{FluxEnergyScheduling.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxRestDayPlan?.getPaletteCommands){
+    try{FluxRestDayPlan.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxGeofence?.getPaletteCommands){
+    try{FluxGeofence.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxExamPrepPlan?.getPaletteCommands){
+    try{FluxExamPrepPlan.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxSyllabusWeekScaffold?.getPaletteCommands){
+    try{FluxSyllabusWeekScaffold.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxTaskTemplateMarketplace?.getPaletteCommands){
+    try{FluxTaskTemplateMarketplace.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxFocusScore?.getPaletteCommands){
+    try{FluxFocusScore.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxEmailTaskInbox?.getPaletteCommands){
+    try{FluxEmailTaskInbox.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxAutomationHooks?.getPaletteCommands){
+    try{FluxAutomationHooks.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxIcalSubscribe?.getPaletteCommands){
+    try{FluxIcalSubscribe.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxIcsTimetableImport?.getPaletteCommands){
+    try{FluxIcsTimetableImport.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxSportPracticePack?.getPaletteCommands){
+    try{FluxSportPracticePack.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxCsSnippetLibrary?.getPaletteCommands){
+    try{FluxCsSnippetLibrary.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxUnitConverterFavorites?.getPaletteCommands){
+    try{FluxUnitConverterFavorites.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxPeriodicSrsQuiz?.getPaletteCommands){
+    try{FluxPeriodicSrsQuiz.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxFlashcardGenerator?.getPaletteCommands){
+    try{FluxFlashcardGenerator.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxSrsDeckMode?.getPaletteCommands){
+    try{FluxSrsDeckMode.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxLatexLivePreview?.getPaletteCommands){
+    try{FluxLatexLivePreview.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxEquationOcrLatex?.getPaletteCommands){
+    try{FluxEquationOcrLatex.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxWikiBacklinks?.getPaletteCommands){
+    try{FluxWikiBacklinks.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxNotionObsidianExport?.getPaletteCommands){
+    try{FluxNotionObsidianExport.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxMindMapTasks?.getPaletteCommands){
+    try{FluxMindMapTasks.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxHandwritingToText?.getPaletteCommands){
+    try{FluxHandwritingToText.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxCitationHelper?.getPaletteCommands){
+    try{FluxCitationHelper.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxCalcHistory?.getPaletteCommands){
+    try{FluxCalcHistory.getPaletteCommands(q).forEach(x=>{if(cpMatch(x.label,x.sub||'',x._keys))cmds.push(x);});}catch(_){}
+  }
+  if(window.FluxCmdPaletteV2?.refineCommands){
+    try{cmds=FluxCmdPaletteV2.refineCommands(cmds,q);}catch(_){}
   }
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
@@ -9533,7 +9854,11 @@ function renderCmdResults(){
   const allCmds=[];
   Object.values(cats).forEach(items=>items.forEach(i=>allCmds.push(i)));
   res.querySelectorAll('.cmd-item').forEach((el,i)=>{
-    el.addEventListener('click',()=>allCmds[i]?.action());
+    el.addEventListener('click',()=>{
+      const cmd=allCmds[i];
+      try{if(window.FluxCmdPaletteV2?.recordRecent)FluxCmdPaletteV2.recordRecent(cmd);}catch(_){}
+      cmd?.action();
+    });
     el.addEventListener('mouseenter',()=>{
       _cmdIdx=i;
       res.querySelectorAll('.cmd-item').forEach((e2,j)=>e2.classList.toggle('cmd-active',i===j));
@@ -10228,6 +10553,9 @@ async function handleSignedIn(user,session){
     try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
     try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
     try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+    try{if(window.FluxDeepLinks?.install)FluxDeepLinks.install();}catch(_){}
+    try{if(window.FluxVoiceCapture?.install)FluxVoiceCapture.install();}catch(_){}
+    try{if(window.FluxScreenshotSnip?.install)FluxScreenshotSnip.install();}catch(_){}
     try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
     try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
     try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
@@ -10250,6 +10578,45 @@ async function handleSignedIn(user,session){
   try{if(window.FluxDistrictRollup?.install)FluxDistrictRollup.install();}catch(_){}
   try{if(window.FluxSchoolOps?.install)FluxSchoolOps.install();}catch(_){}
   try{if(window.FluxGCal2Way?.install)FluxGCal2Way.install();}catch(_){}
+  try{if(window.FluxGCalBusy?.install)FluxGCalBusy.install();}catch(_){}
+  try{if(window.FluxSubjectThemes?.install)FluxSubjectThemes.install();}catch(_){}
+  try{if(window.FluxCmdPaletteV2?.install)FluxCmdPaletteV2.install();}catch(_){}
+  try{if(window.FluxGlobalSearchV2?.install)FluxGlobalSearchV2.install();}catch(_){}
+  try{if(window.FluxSmartLists?.install)FluxSmartLists.install();}catch(_){}
+  try{if(window.FluxBulkFilter?.install)FluxBulkFilter.install();}catch(_){}
+  try{if(window.FluxFocusIntent?.install)FluxFocusIntent.install();}catch(_){}
+  try{if(window.FluxHabitHeatmap?.install)FluxHabitHeatmap.install();}catch(_){}
+  try{if(window.FluxPomodoroPresets?.install)FluxPomodoroPresets.install();}catch(_){}
+  try{if(window.FluxMeetingMode?.install)FluxMeetingMode.install();}catch(_){}
+  try{if(window.FluxMoodVelocity?.install)FluxMoodVelocity.install();}catch(_){}
+  try{if(window.FluxEventBuffer?.install)FluxEventBuffer.install();}catch(_){}
+  try{if(window.FluxTravelTime?.install)FluxTravelTime.install();}catch(_){}
+  try{if(window.FluxAmbientWeather?.install)FluxAmbientWeather.install();}catch(_){}
+  try{if(window.FluxEnergyScheduling?.install)FluxEnergyScheduling.install();}catch(_){}
+  try{if(window.FluxRestDayPlan?.install)FluxRestDayPlan.install();}catch(_){}
+  try{if(window.FluxGeofence?.install)FluxGeofence.install();}catch(_){}
+  try{if(window.FluxExamPrepPlan?.install)FluxExamPrepPlan.install();}catch(_){}
+  try{if(window.FluxSyllabusWeekScaffold?.install)FluxSyllabusWeekScaffold.install();}catch(_){}
+  try{if(window.FluxTaskTemplateMarketplace?.install)FluxTaskTemplateMarketplace.install();}catch(_){}
+  try{if(window.FluxFocusScore?.install)FluxFocusScore.install();}catch(_){}
+  try{if(window.FluxEmailTaskInbox?.install)FluxEmailTaskInbox.install();}catch(_){}
+  try{if(window.FluxAutomationHooks?.install)FluxAutomationHooks.install();}catch(_){}
+  try{if(window.FluxIcalSubscribe?.install)FluxIcalSubscribe.install();}catch(_){}
+  try{if(window.FluxIcsTimetableImport?.install)FluxIcsTimetableImport.install();}catch(_){}
+  try{if(window.FluxSportPracticePack?.install)FluxSportPracticePack.install();}catch(_){}
+  try{if(window.FluxCsSnippetLibrary?.install)FluxCsSnippetLibrary.install();}catch(_){}
+  try{if(window.FluxUnitConverterFavorites?.install)FluxUnitConverterFavorites.install();}catch(_){}
+  try{if(window.FluxPeriodicSrsQuiz?.install)FluxPeriodicSrsQuiz.install();}catch(_){}
+  try{if(window.FluxFlashcardGenerator?.install)FluxFlashcardGenerator.install();}catch(_){}
+  try{if(window.FluxSrsDeckMode?.install)FluxSrsDeckMode.install();}catch(_){}
+  try{if(window.FluxLatexLivePreview?.install)FluxLatexLivePreview.install();}catch(_){}
+  try{if(window.FluxEquationOcrLatex?.install)FluxEquationOcrLatex.install();}catch(_){}
+  try{if(window.FluxWikiBacklinks?.install)FluxWikiBacklinks.install();}catch(_){}
+  try{if(window.FluxNotionObsidianExport?.install)FluxNotionObsidianExport.install();}catch(_){}
+  try{if(window.FluxMindMapTasks?.install)FluxMindMapTasks.install();}catch(_){}
+  try{if(window.FluxHandwritingToText?.install)FluxHandwritingToText.install();}catch(_){}
+  try{if(window.FluxCitationHelper?.install)FluxCitationHelper.install();}catch(_){}
+  try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
   try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
@@ -10434,6 +10801,9 @@ async function handleSignedIn(user,session){
   try{if(window.FluxEventProcessors?.install)FluxEventProcessors.install();}catch(_){}
   try{if(window.FluxAiOrchestration?.install)FluxAiOrchestration.install();}catch(_){}
   try{if(window.FluxOfflineSync?.install)FluxOfflineSync.install();}catch(_){}
+  try{if(window.FluxDeepLinks?.install)FluxDeepLinks.install();}catch(_){}
+  try{if(window.FluxVoiceCapture?.install)FluxVoiceCapture.install();}catch(_){}
+  try{if(window.FluxScreenshotSnip?.install)FluxScreenshotSnip.install();}catch(_){}
   try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   try{if(window.FluxLayeredMemory?.install)FluxLayeredMemory.install();}catch(_){}
   try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
@@ -10456,6 +10826,45 @@ async function handleSignedIn(user,session){
   try{if(window.FluxDistrictRollup?.install)FluxDistrictRollup.install();}catch(_){}
   try{if(window.FluxSchoolOps?.install)FluxSchoolOps.install();}catch(_){}
   try{if(window.FluxGCal2Way?.install)FluxGCal2Way.install();}catch(_){}
+  try{if(window.FluxGCalBusy?.install)FluxGCalBusy.install();}catch(_){}
+  try{if(window.FluxSubjectThemes?.install)FluxSubjectThemes.install();}catch(_){}
+  try{if(window.FluxCmdPaletteV2?.install)FluxCmdPaletteV2.install();}catch(_){}
+  try{if(window.FluxGlobalSearchV2?.install)FluxGlobalSearchV2.install();}catch(_){}
+  try{if(window.FluxSmartLists?.install)FluxSmartLists.install();}catch(_){}
+  try{if(window.FluxBulkFilter?.install)FluxBulkFilter.install();}catch(_){}
+  try{if(window.FluxFocusIntent?.install)FluxFocusIntent.install();}catch(_){}
+  try{if(window.FluxHabitHeatmap?.install)FluxHabitHeatmap.install();}catch(_){}
+  try{if(window.FluxPomodoroPresets?.install)FluxPomodoroPresets.install();}catch(_){}
+  try{if(window.FluxMeetingMode?.install)FluxMeetingMode.install();}catch(_){}
+  try{if(window.FluxMoodVelocity?.install)FluxMoodVelocity.install();}catch(_){}
+  try{if(window.FluxEventBuffer?.install)FluxEventBuffer.install();}catch(_){}
+  try{if(window.FluxTravelTime?.install)FluxTravelTime.install();}catch(_){}
+  try{if(window.FluxAmbientWeather?.install)FluxAmbientWeather.install();}catch(_){}
+  try{if(window.FluxEnergyScheduling?.install)FluxEnergyScheduling.install();}catch(_){}
+  try{if(window.FluxRestDayPlan?.install)FluxRestDayPlan.install();}catch(_){}
+  try{if(window.FluxGeofence?.install)FluxGeofence.install();}catch(_){}
+  try{if(window.FluxExamPrepPlan?.install)FluxExamPrepPlan.install();}catch(_){}
+  try{if(window.FluxSyllabusWeekScaffold?.install)FluxSyllabusWeekScaffold.install();}catch(_){}
+  try{if(window.FluxTaskTemplateMarketplace?.install)FluxTaskTemplateMarketplace.install();}catch(_){}
+  try{if(window.FluxFocusScore?.install)FluxFocusScore.install();}catch(_){}
+  try{if(window.FluxEmailTaskInbox?.install)FluxEmailTaskInbox.install();}catch(_){}
+  try{if(window.FluxAutomationHooks?.install)FluxAutomationHooks.install();}catch(_){}
+  try{if(window.FluxIcalSubscribe?.install)FluxIcalSubscribe.install();}catch(_){}
+  try{if(window.FluxIcsTimetableImport?.install)FluxIcsTimetableImport.install();}catch(_){}
+  try{if(window.FluxSportPracticePack?.install)FluxSportPracticePack.install();}catch(_){}
+  try{if(window.FluxCsSnippetLibrary?.install)FluxCsSnippetLibrary.install();}catch(_){}
+  try{if(window.FluxUnitConverterFavorites?.install)FluxUnitConverterFavorites.install();}catch(_){}
+  try{if(window.FluxPeriodicSrsQuiz?.install)FluxPeriodicSrsQuiz.install();}catch(_){}
+  try{if(window.FluxFlashcardGenerator?.install)FluxFlashcardGenerator.install();}catch(_){}
+  try{if(window.FluxSrsDeckMode?.install)FluxSrsDeckMode.install();}catch(_){}
+  try{if(window.FluxLatexLivePreview?.install)FluxLatexLivePreview.install();}catch(_){}
+  try{if(window.FluxEquationOcrLatex?.install)FluxEquationOcrLatex.install();}catch(_){}
+  try{if(window.FluxWikiBacklinks?.install)FluxWikiBacklinks.install();}catch(_){}
+  try{if(window.FluxNotionObsidianExport?.install)FluxNotionObsidianExport.install();}catch(_){}
+  try{if(window.FluxMindMapTasks?.install)FluxMindMapTasks.install();}catch(_){}
+  try{if(window.FluxHandwritingToText?.install)FluxHandwritingToText.install();}catch(_){}
+  try{if(window.FluxCitationHelper?.install)FluxCitationHelper.install();}catch(_){}
+  try{if(window.FluxCalcHistory?.install)FluxCalcHistory.install();}catch(_){}
   try{if(window.FluxClassroomSync?.install)FluxClassroomSync.install();}catch(_){}
   try{if(window.FluxDriveImport?.install)FluxDriveImport.install();}catch(_){}
   try{if(window.FluxDocsGhostSync?.install)FluxDocsGhostSync.install();}catch(_){}
@@ -11384,6 +11793,7 @@ const TASK_TEMPLATES=[
   {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:'📚'},
   {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:'🔢'},
 ];
+try{window.TASK_TEMPLATES=TASK_TEMPLATES;}catch(_){}
 function showTemplateMenu(){
   const existing=document.getElementById('templateMenu');if(existing){existing.remove();return;}
   const menu=document.createElement('div');
@@ -11485,6 +11895,8 @@ function startVoiceInput(){
 
 // ══ POMODORO AUTO-PAUSE + DISTRACTION TRACKING ═══════════════
 let _pomDistractions=0;
+function getPomDistractionCount(){return _pomDistractions;}
+try{window.getPomDistractionCount=getPomDistractionCount;}catch(_){}
 function initPomodoroVisibilityPause(){
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden&&tRunning){

@@ -1,0 +1,39 @@
+/* P13.1 — Global search v2 */
+.flux-gs-recents {
+  padding: 12px 16px 14px;
+}
+.flux-gs-recents-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+.flux-gs-recent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.flux-gs-recent-chip {
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.flux-gs-recent-chip:hover {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.flux-gs-v2-hint,
+.flux-gs-v2-foot {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.5;
+  padding: 8px 2px 0;
+}

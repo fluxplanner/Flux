@@ -475,6 +475,9 @@
       if (typeof window.renderCalendar === 'function') window.renderCalendar();
       if (typeof window.renderTasks === 'function') window.renderTasks();
     }
+
+    if (window.FluxGCalBusy?.ingestItems) window.FluxGCalBusy.ingestItems(fetched.items || []);
+    if (window.FluxGCalBusy?.renderBanner) window.FluxGCalBusy.renderBanner();
   }
 
   function install() {
@@ -497,6 +500,7 @@
     suggestDueDate,
     schedulingHint,
     dayLevel,
+    fetchGCalEvents,
   };
   window.fluxGCal2WaySuggestDueDate = suggestDueDate;
 })();

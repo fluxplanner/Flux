@@ -1,0 +1,77 @@
+/* P13.6 — Pomodoro subject presets */
+.flux-pomo-preset-bar {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.flux-pomo-preset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.flux-pomo-preset-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+}
+.flux-pomo-save-btn {
+  padding: 4px 10px !important;
+  font-size: 0.68rem !important;
+}
+.flux-pomo-lede {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+.flux-pomo-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.flux-pomo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 8px 4px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.flux-pomo-chip--active {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.flux-pomo-chip-mins {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--accent);
+}
+.flux-pomo-chip-x {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+.flux-pomo-muted,
+.flux-pomo-active-meta {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+.flux-pomo-active-meta {
+  margin: 8px 0 0;
+}

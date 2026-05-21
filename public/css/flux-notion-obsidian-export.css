@@ -1,0 +1,39 @@
+/* P32.1 — Notion / Obsidian export */
+.flux-nox-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(16, 217, 160, 0.06);
+  border: 1px solid rgba(16, 217, 160, 0.22);
+}
+
+.flux-nox-banner-text {
+  flex: 1;
+  font-size: 0.76rem;
+  color: var(--muted2);
+}
+
+.flux-nox-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flux-nox-banner-actions button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-nox-editor-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.flux-nox-editor-actions button {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}

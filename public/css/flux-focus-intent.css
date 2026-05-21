@@ -1,0 +1,100 @@
+/* P13.4 — Focus intent modal */
+.flux-focus-intent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(0, 8, 16, 0.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+.flux-focus-intent-dialog {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.flux-intent-kicker {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+.flux-intent-heading {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+.flux-intent-task {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+#fluxFocusIntentInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.88rem;
+  resize: vertical;
+  min-height: 72px;
+}
+.flux-intent-recents-label {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+.flux-intent-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.flux-intent-chip {
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.flux-intent-chip:hover {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.flux-intent-muted {
+  font-size: 0.75rem;
+  color: var(--muted2);
+}
+.flux-intent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.flux-dw-intent {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  margin: 0 auto 16px;
+  max-width: 360px;
+  line-height: 1.45;
+}

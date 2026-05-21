@@ -1,0 +1,55 @@
+/* P15.3 — Geofence reminders */
+#fluxGeofenceCard .flux-gf-place {
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--card2);
+}
+
+#fluxGeofenceCard .flux-gf-place-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+#fluxGeofenceCard .flux-gf-meta {
+  font-size: 0.7rem;
+  color: var(--muted2);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+#fluxGeofenceCard .flux-gf-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#fluxGeofenceCard .flux-gf-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#fluxGeofenceCard input {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+#fluxGeofenceCard .flux-gf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#fluxGeofenceCard .flux-gf-status {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin-top: 8px;
+  line-height: 1.45;
+}

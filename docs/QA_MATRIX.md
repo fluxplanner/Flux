@@ -114,6 +114,683 @@ Migration: `20260529000000` … `20260529100000_ia_east_syllabus_conflict.sql` �
 
 ---
 
+## 0n. Deep links (`enable_deep_links` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Open `?task=123` | Param ignored; app loads normally |
+| Flag on | `student` | Copy link from task row | Clipboard URL with task id |
+| Flag on | `student` | Open copied URL | Dashboard scrolls to task + flash |
+| Note link | `student` | `?note={id}` | Notes editor opens |
+| Focus link | `student` | `?focus={id}` | Deep work overlay starts |
+| Edit param | `student` | `?task={id}&edit=1` | Edit modal opens |
+
+Migration: `20260529200000_phase_12_deep_links_sync_queue.sql` · Doc: `docs/P12-DEEP-LINKS.md`
+
+---
+
+## 0o. Sync queue UI (`enable_sync_queue_ui` + `enable_offline_sync`)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | Any | Pending outbox pill | Count only; no modal on click |
+| Flag on | Any | Offline edit + pill click | Queue modal lists storage keys |
+| Retry | Any | Retry all while online | Flush + toast “Syncing…” |
+| Settings | Any | Data card | “View pending queue” opens modal |
+
+Doc: `docs/P12-SYNC-QUEUE.md`
+
+---
+
+## 0p. Voice task capture (`enable_voice_task_capture` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Open quick-add | No mic button |
+| Flag on | `student` | Quick-add → mic → speak “Bio lab Friday 30 min” | Preview shows date, time chip |
+| Flag on | `student` | Enter after voice | Task added with parsed fields |
+| Unsupported | Any | Firefox / no SR API | Mic disabled + toast |
+| Palette | `student` | ⌘K → “Voice task” | Opens listen on quick-add |
+
+Migration: `20260529300000_voice_task_capture.sql` · Doc: `docs/P12-VOICE-CAPTURE.md`
+
+---
+
+## 0q. GCal busy overlays (`enable_gcal_busy_overlay` + `enable_gcal_2way`)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flags off | `student` | Calendar month | No blue busy stripes |
+| Both on | `student` | Sync two-way with Google events | Busy bars on matching days |
+| Day panel | `student` | Select day with GCal events | Blue hint block lists events |
+| Conflict | `student` | Due task same day as 2+ GCal events | `#gcalBusyBanner` on dashboard |
+| Overlap | `student` | Task with time overlaps GCal block | Overlap bullet in banner/day hint |
+
+Migration: `20260529400000_gcal_busy_overlay.sql` · Docs: `docs/P12-GCAL-BUSY.md`, `docs/P6-GCAL-2WAY.md`
+
+---
+
+## 0r. Recurring exceptions (`enable_recurring_exceptions` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Complete weekly task | Legacy spawn only |
+| Flag on | `student` | 🔁 → Complete without next | Done; no new instance |
+| Skip next | `student` | 🔁 → Skip next date, then complete | Spawn date skips one cycle |
+| Shift | `student` | 🔁 → Shift +7 days | Open series tasks move +7d |
+| End after | `student` | Set end-after 2, complete twice | Second completion ends series |
+| Cloud | `student` | Change series on device A | Device B pull shows same rules |
+
+Migration: `20260529500000_recurring_exceptions.sql` · Doc: `docs/P12-RECUR-EXCEPTIONS.md`
+
+---
+
+## 0s. Subject theme packs (`enable_subject_theme_packs` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Appearance | No subject theme card |
+| Flag on | `student` | Appearance card | Preset select + export/import |
+| Apply preset | `student` | Choose Pastel STEM → Apply | Class colors/icons update in School |
+| Task chip | `student` | Open tasks with subjects | Chip shows icon when set |
+| Export | `student` | Export JSON | Downloads `flux-subject-theme.json` |
+| Import | `student` | Import matching pack | Classes merge colors/icons; toast count |
+| Cloud | `student` | Apply preset on device A | Device B pull shows same active preset |
+
+Migration: `20260529600000_subject_theme_packs.sql` · Doc: `docs/P12-THEME-PACKS.md`
+
+---
+
+## 0t. Command palette v2 (`enable_cmd_palette_v2` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | ⌘K → type `cal` | Substring match only (Calendar if label contains query) |
+| Flag on | `student` | ⌘K → `cal` | Calendar matches via fuzzy |
+| Recents | `student` | Run Settings + Notes, reopen ⌘K empty | **Recent** group shows both |
+| Surfaces | `student` | Enable hidden tab in tab customizer | **Surfaces** lists Open … command |
+| Cloud | `student` | Run commands on A | Device B pull restores recents order |
+
+Migration: `20260529700000_cmd_palette_v2.sql` · Doc: `docs/P12-CMD-PALETTE-V2.md`
+
+---
+
+## 0u. Global search v2 (`enable_global_search_v2` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | ⌘⇧K → partial query | Substring match (legacy) |
+| Flag on | `student` | ⌘⇧K → `bio hw` | Fuzzy task/note/class hits |
+| Keyboard | `student` | ↑↓ then Enter | Opens highlighted result |
+| Recents | `student` | Search twice, reopen empty | Recent query chips appear |
+| Cloud | `student` | Search on device A | Device B shows same recents |
+
+Migration: `20260529800000_global_search_v2.sql` · Doc: `docs/P13-GLOBAL-SEARCH-V2.md`
+
+---
+
+## 0v. Smart task lists (`enable_smart_lists` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard filters | No smart-list chip row |
+| Flag on | `student` | Dashboard | Overdue STEM, No estimate, Exam prep chips |
+| Overdue STEM | `student` | Tap chip with overdue bio task | Only matching tasks shown |
+| No estimate | `student` | Tap chip | Open tasks without `estTime` |
+| Exam prep | `student` | Tap chip | Tests/quizzes due ≤14 days |
+| ⌘K | `student` | `Smart list: exam prep` | Navigates + applies filter |
+| Cloud | `student` | Pin/activate on A | Device B restores `lastActive` |
+
+Migration: `20260529900000_smart_lists.sql` · Doc: `docs/P13-SMART-LISTS.md`
+
+---
+
+## 0w. Bulk edit by filter (`enable_bulk_filter` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Bulk bar | “Select all” selects every open task |
+| Flag on | `student` | Filter row | **Bulk edit filter** button visible |
+| Smart list | `student` | Exam prep → Bulk edit filter | Bulk mode; only matching tasks selected |
+| Select filtered | `student` | Toggle in bulk bar | Selects/deselects visible set only |
+| Set estimate | `student` | Bulk → Set estimate → 45 | All selected get `estTime` 45 |
+| Set priority | `student` | Bulk → Set priority → high | Priority updated on selection |
+| ⌘K | `student` | Bulk edit filtered tasks | Dashboard + bulk mode |
+
+Migration: `20260530000000_bulk_filter.sql` · Doc: `docs/P13-BULK-FILTER.md`
+
+---
+
+## 0x. Focus intent note (`enable_focus_intent` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | ⌘D deep work | Opens immediately, no modal |
+| Flag on | `student` | ⌘D or task ⏱ | Intent modal with Skip / Start |
+| Intent display | `student` | Enter intent → start | Text shown in deep work overlay |
+| Session log | `student` | Complete deep work | `flux_session_log` row has `intent` |
+| Recents | `student` | Reuse chip in modal | Fills textarea |
+| Cloud | `student` | Save intent on A | Device B shows same recents |
+
+Migration: `20260530100000_focus_intent.sql` · Doc: `docs/P13-FOCUS-INTENT.md`
+
+---
+
+## 0y. Habit chain heatmaps (`enable_habit_heatmap` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Focus Timer | No habit chains card |
+| Flag on | `student` | Focus Timer | Habit chains card below focus heatmap |
+| Add | `student` | Name + Add habit | Row with empty heatmap |
+| Check today | `student` | Toggle checkbox | Cell fills; streak updates |
+| Streak | `student` | Log 2 consecutive days | Streak shows 2 |
+| Cloud | `student` | Log on device A | Device B shows same history |
+
+Migration: `20260530200000_habit_heatmap.sql` · Doc: `docs/P13-HABIT-HEATMAP.md`
+
+---
+
+## 0z. Pomodoro subject presets (`enable_pomodoro_subject_presets` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Focus Timer | No subject preset bar |
+| Flag on | `student` | Timer subject + Save preset | Chip appears with minutes |
+| Apply | `student` | Click chip | Work/short inputs update |
+| Subject change | `student` | Select tagged subject | Saved minutes auto-apply |
+| Task timer | `student` | ⏱ on task with subject | Uses subject preset |
+| Cloud | `student` | Save on A | Device B shows same chips |
+
+Migration: `20260530300000_pomodoro_subject_presets.sql` · Doc: `docs/P13-POMODORO-PRESETS.md`
+
+---
+
+## 10a. Meeting mode (`enable_meeting_mode` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Focus Timer | No meeting mode card |
+| Flag on | `student` | Timer → Start meeting mode | Focus shell + top banner |
+| Countdown | `student` | Wait / observe banner | Timer counts down |
+| Auto-reply | `student` | Copy auto-reply | Clipboard status message |
+| Toasts | `student` | Trigger info toast while active | Suppressed |
+| Exit | `student` | Esc or Exit | Full UI restored |
+
+Migration: `20260530400000_meeting_mode.sql` · Doc: `docs/P13-MEETING-MODE.md`
+
+---
+
+## 10b. Mood velocity (`enable_mood_velocity` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Mood tab | No velocity card |
+| Flag on | `student` | Mood → quick log | Chart + chips appear |
+| Save | `student` | Pick mood + energy → Save | Toast; history updates |
+| Complete task | `student` | Mark task done | Chart bar updates |
+| Privacy on | `student` | Save mood with private checked | Counselor snapshot skipped |
+| Privacy off | `student` | Uncheck private + save | Cloud slice includes logs |
+| ⌘K | `student` | “mood velocity” | Opens Mood tab |
+
+Migration: `20260530500000_mood_velocity.sql` · Doc: `docs/P14-MOOD-VELOCITY.md`
+
+---
+
+## 10c. Screenshot snip (`enable_screenshot_snip` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Quick-add (T) | No ✂️ button |
+| Flag on | `student` | Quick-add | ✂️ snip button visible |
+| Paste | `student` | Copy screenshot → paste in quick-add | Preview + OCR text in field |
+| Snip btn | `student` | Copy screenshot → tap ✂️ | Same as paste |
+| Add | `student` | Submit extracted text | Task created via NL parse |
+| ⌘K | `student` | “screenshot snip” | Opens quick-add + reads clipboard |
+
+Migration: `20260530600000_screenshot_snip.sql` · Doc: `docs/P14-SCREENSHOT-SNIP.md`
+
+---
+
+## 10d. Event buffer (`enable_event_buffer` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Calendar | No buffer card |
+| Flag on | `student` | Calendar → buffer card | Before/after inputs |
+| Save | `student` | Set 15m / 15m → Save | Toast; settings persist |
+| Day hint | `student` | Day with timed event | Buffer zone list |
+| Conflict | `student` | Timed task in buffer window | Banner + day warning |
+| Grid | `student` | Conflict day | `cal-day--buffer-warn` ring |
+
+Migration: `20260530700000_event_buffer.sql` · Doc: `docs/P14-EVENT-BUFFER.md`
+
+---
+
+## 10e. Travel time (`enable_travel_time` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Calendar | No travel card |
+| Flag on | `student` | Calendar → travel card | Minutes input |
+| Tight gap | `student` | Two events 5m apart (< 15m travel) | Day hint + banner |
+| Grid | `student` | Gap day | `cal-day--travel-warn` outline |
+| Save | `student` | Change travel min → Save | Setting persists |
+
+Migration: `20260530800000_travel_time.sql` · Doc: `docs/P14-TRAVEL-TIME.md`
+
+---
+
+## 10f. Ambient weather (`enable_ambient_weather` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard | No weather card |
+| Flag on | `student` | Dashboard | Weather card under greeting |
+| Refresh | `student` | Tap Refresh | Temp + condition load |
+| Geo | `student` | Use my location (allow) | Location label updates |
+| Hint | `student` | Clear day, mild temp | Outdoor study hint |
+| ⌘K | `student` | “ambient weather” | Dashboard + refresh |
+
+Migration: `20260530900000_ambient_weather.sql` · Doc: `docs/P14-AMBIENT-WEATHER.md`
+
+---
+
+## 10g. Energy scheduling (`enable_energy_scheduling` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard | No peak hours card |
+| Flag on | `student` | Move energy slider 3+ times | Peak window chips appear |
+| Heavy tasks | `student` | Add essay/project task | Listed with schedule hint |
+| ⌘K | `student` | “peak energy” | Opens dashboard card |
+
+Migration: `20260531000000_energy_scheduling.sql` · Doc: `docs/P15-ENERGY-SCHEDULING.md`
+
+---
+
+## 10h. Rest day plan (`enable_rest_day_plan` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard | No recovery card |
+| Flag on | `student` | Dashboard | Recovery mode card |
+| Mark lazy | `student` | Lazy day button | Rest plan + defer options |
+| Mark sick | `student` | Sick day button | Sick plan + push all |
+| Defer heavy | `student` | Lazy day + defer heavy | Heavy tasks moved forward |
+| ⌘K | `student` | “rest day plan” | Opens dashboard card |
+
+Migration: `20260531100000_rest_day_plan.sql` · Doc: `docs/P15-REST-DAY-PLAN.md`
+
+---
+
+## 10i. Geofence reminders (`enable_geofence_reminders` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Alerts | No geofence card |
+| Flag on | `student` | Settings → Alerts | Geofence card visible |
+| Add place | `student` | Name + coords + Add | Place listed |
+| Watch | `student` | Start location watch | Status shows watching |
+| Arrive | `student` | Enter radius (simulated coords) | Toast / notification |
+| ⌘K | `student` | “geofence” | Settings Alerts tab |
+
+Migration: `20260531200000_geofence_reminders.sql` · Doc: `docs/P15-GEOFENCE.md`
+
+---
+
+## 10j. Exam prep plan (`enable_exam_prep_plan` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard exam countdown | No daily prep block |
+| Flag on | `student` | Seeded/future test task | Prep rows under countdown |
+| Minutes | `student` | Subject tasks with estimates | min/day reflects total ÷ days |
+| Multi exam | `student` | 2+ future tests | Up to 4 rows |
+| ⌘K | `student` | “exam prep” | Dashboard + countdown refresh |
+
+Migration: `20260531300000_exam_prep_plan.sql` · Doc: `docs/P16-EXAM-PREP-PLAN.md`
+
+---
+
+## 10k. Syllabus week scaffold (`enable_syllabus_week_scaffold` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard | No syllabus week card |
+| Flag on | `student` | Task named "Week 4 reading" | Week 4 listed on card |
+| Term start | `student` | Set Week 1 Monday | Scaffold dates shift |
+| Scaffold | `student` | Scaffold week 4 | 4 placeholder tasks added |
+| Dedupe | `student` | Scaffold same week again | Toast: already scaffolded |
+| Manual | `student` | Enter week # + scaffold | Tasks for that week |
+| ⌘K | `student` | "syllabus week" | Dashboard + card visible |
+
+Migration: `20260531400000_syllabus_week_scaffold.sql` · Doc: `docs/P16-SYLLABUS-WEEK-SCAFFOLD.md`
+
+---
+
+## 10l. Task template marketplace (`enable_task_template_marketplace` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Templates button | Legacy 8 singles + 2 packs |
+| Flag on | `student` | Templates button | Marketplace modal with curated packs |
+| Apply pack | `student` | AP exam crunch | 4 tasks added |
+| Quick template | `student` | Homework single | Add-task modal prefilled |
+| Import JSON | `student` | Valid pack file | Pack listed under Imported |
+| Export | `student` | Export imported pack | JSON download |
+| ⌘K | `student` | "template marketplace" | Opens marketplace |
+
+Migration: `20260531500000_task_template_marketplace.sql` · Doc: `docs/P17-TASK-TEMPLATE-MARKETPLACE.md`
+
+---
+
+## 10m. Focus score (`enable_focus_score` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Focus Timer page | No focus score card |
+| Flag on | `student` | Complete pomodoro | Session recap shows score |
+| Interruptions | `student` | Switch tab mid-session | Score lower vs clean session |
+| Card | `student` | Timer page | Today + 7-day averages |
+| Cloud | `student` | Sync after session | `focusScore` on sessionLog entry |
+| ⌘K | `student` | "focus score" | Navigates to Focus Timer |
+
+Migration: `20260531600000_focus_score.sql` · Doc: `docs/P18-FOCUS-SCORE.md`
+
+---
+
+## 10n. Email task inbox (`enable_email_task_inbox` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Data | No email inbox card |
+| Flag on | `student` | Settings → Data | Inbox card with paste + scan |
+| Paste | `student` | Paste syllabus email → Stage | Item in queue |
+| Approve | `student` | Approve → task | Task added, queue item gone |
+| Dismiss | `student` | Dismiss | Item removed |
+| Gmail | `student` | Scan Gmail (signed in) | Matching emails staged |
+| Dedupe | `student` | Stage same email twice | Duplicate toast |
+| ⌘K | `student` | "email inbox" | Settings Data tab |
+
+Migration: `20260531700000_email_task_inbox.sql` · Doc: `docs/P19-EMAIL-TASK-INBOX.md`
+
+---
+
+## 10o. Automation hooks (`enable_automation_hooks` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Data | No automation hooks card |
+| Flag on | `student` | Settings → Data | Hook URLs listed |
+| Copy | `student` | Copy URL | Clipboard toast |
+| quick=focus | `student` | Open `?quick=focus` | Timer tab + session starts |
+| quick=timer | `student` | Open `?quick=timer` | Timer tab |
+| panel=calendar | `student` | Open `?panel=calendar` | Calendar tab |
+| quick=task+text | `student` | `?quick=task&text=Math hw` | Quick add prefilled |
+| ⌘K | `student` | "automation hooks" | Settings Data tab |
+
+Migration: `20260531800000_automation_hooks.sql` · Doc: `docs/P20-AUTOMATION-HOOKS.md`
+
+---
+
+## 10p. iCal subscribe (`enable_ical_subscribe` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Calendar tab | No iCal subscribe card |
+| Flag on | `student` | Calendar → card below Google sync | Publish + copy URLs |
+| Publish | `student` | Publish feed (signed in) | Toast + webcal URL shown |
+| Focus toggle | `student` | Include focus → publish | Focus days in ICS |
+| Download | `student` | Download .ics | File download |
+| Regenerate | `student` | Regenerate token | Old URL invalid |
+| ⌘K | `student` | "ical subscribe" | Calendar tab |
+
+Migration: `20260531900000_ical_subscribe.sql` · Edge: `ical-feed` · Doc: `docs/P21-ICAL-SUBSCRIBE.md`
+
+---
+
+## 10q. ICS timetable import (`enable_ics_timetable_import` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Calendar tab | No ICS import card |
+| Flag on | `student` | Calendar → card below iCal | Drop zone visible |
+| Parse | `student` | Drop sample .ics | Preview rows (weekly/event/blackout) |
+| Weekly | `student` | Import RRULE weekly item | Appears in weekly schedule |
+| Blackout | `student` | Import holiday all-day | Rest day added |
+| Options | `student` | Uncheck blackouts → import | Only weekly/events imported |
+| ⌘K | `student` | "ics import" | Calendar tab |
+
+Migration: `20260532000000_ics_timetable_import.sql` · Doc: `docs/P22-ICS-TIMETABLE-IMPORT.md`
+
+---
+
+## 10r. Sport practice pack (`enable_sport_practice_pack` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Extracurriculars tab | No sport practice card |
+| Flag on | `student` | Extracurriculars → card | 3 packs + weekly scheduler |
+| Practice pack | `student` | Apply Practice day | 4 tasks added (outside scope) |
+| Game pack | `student` | Apply Game day | Match-day tasks added |
+| Weekly | `student` | Pick days + Add weekly practice | Rule in calendar weekly schedule |
+| Marketplace | `student` | Both sport + marketplace flags | Sport packs in Templates modal |
+| ⌘K | `student` | "sport practice" | Extracurriculars tab |
+
+Migration: `20260532100000_sport_practice_pack.sql` · Doc: `docs/P23-SPORT-PRACTICE-PACK.md`
+
+---
+
+## 10s. CS snippet library (`enable_cs_snippet_library` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Toolbox → CS | No Snippet library chip |
+| Flag on | `student` | Toolbox → CS → Snippet library | Modal with starter snippets |
+| Search | `student` | Search "binary" | Python binary search shown |
+| Copy | `student` | Copy code | Clipboard + toast |
+| Add | `student` | Save new snippet | Appears in list |
+| Notes | `student` | Add to notes | Note with fenced code block |
+| Export | `student` | Export JSON | File download |
+| ⌘K | `student` | "cs snippet" | Opens library |
+
+Migration: `20260532200000_cs_snippet_library.sql` · Doc: `docs/P24-CS-SNIPPET-LIBRARY.md`
+
+---
+
+## 10t. Unit converter favorites (`enable_unit_converter_favorites` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Open quick-add (N) | No conversion chip strip |
+| Flag on | `student` | Open quick-add | Chip strip above hint |
+| Tap chip | `student` | Tap `1 in → 2.54 cm` | Text in quick-add + toast |
+| Add | `student` | + Add → pin mph→km/h | New chip appears |
+| Manage | `student` | Manage → Remove | Chip removed |
+| ⌘K | `student` | "unit favorite" | Opens quick-add with strip |
+
+Migration: `20260532300000_unit_converter_favorites.sql` · Doc: `docs/P25-UNIT-CONVERTER-FAVORITES.md`
+
+---
+
+## 10u. Periodic SRS quiz (`enable_periodic_srs_quiz` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Toolbox → Science | No Element quiz chip |
+| Flag on | `student` | Science → Element quiz | MCQ modal opens |
+| Answer | `student` | Pick option | Reveal + grade buttons |
+| SRS | `student` | Good → next card | Due count decreases |
+| Wrong | `student` | Miss answer | Added to review queue |
+| Modes | `student` | Switch Name → symbol | New prompt style |
+| ⌘K | `student` | "element quiz" | Opens quiz |
+
+Migration: `20260532400000_periodic_srs_quiz.sql` · Doc: `docs/P26-PERIODIC-SRS-QUIZ.md`
+
+---
+
+## 10v. Flashcard generator (`enable_flashcard_generator` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes → Flashcards | AI generation (legacy) |
+| Flag on | `student` | Note with H + bullets → Generate | Preview modal |
+| Select | `student` | Study selected | Flashcard view opens |
+| Saved | `student` | Study saved on note w/ cards | Deck loads |
+| Shuffle | `student` | Shuffle in study view | Order changes |
+| AI fallback | `student` | Try AI instead | Legacy AI path |
+| ⌘K | `student` | "flashcard generate" | Notes + generate |
+
+Migration: `20260532500000_flashcard_generator.sql` · Doc: `docs/P27-FLASHCARD-GENERATOR.md`
+
+---
+
+## 10w. SRS deck mode (`enable_srs_deck_mode` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes tab | No SRS banner or #review filter |
+| Flag on | `student` | Notes tab | SRS banner with due/cards counts |
+| Tag | `student` | Note → 🔄 #review | Tag toggles; note appears in filter |
+| Sync | `student` | Note w/ flashcards + #review → Sync | Card count updates |
+| Review | `student` | Start review | Flip + grade modal |
+| SRS | `student` | Good → next card | Due count decreases |
+| Filter | `student` | #review filter | Only tagged notes listed |
+| ⌘K | `student` | "srs review deck" | Opens study modal |
+
+Migration: `20260532600000_srs_deck_mode.sql` · Doc: `docs/P28-SRS-DECK-MODE.md`
+
+---
+
+## 10x. LaTeX live preview (`enable_latex_live_preview` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes → edit note | Single editor pane, no ∑ buttons |
+| Flag on | `student` | Notes → edit note | ∑ / $x$ / $$ in rtbar |
+| Split | `student` | Tap ∑ | Preview pane toggles |
+| Inline | `student` | Type `$E=mc^2$` | Renders inline in preview |
+| Display | `student` | Type `$$\frac{a}{b}$$` | Block equation in preview |
+| Insert | `student` | Tap $$ button | Display template inserted |
+| ⌘K | `student` | "latex preview" | Notes + split opens |
+
+Migration: `20260532700000_latex_live_preview.sql` · Doc: `docs/P29-LATEX-LIVE-PREVIEW.md`
+
+---
+
+## 10y. Equation OCR → LaTeX (`enable_equation_ocr_latex` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes → edit note | No 📐 Equation OCR button |
+| Flag on | `student` | Notes → 📐 Equation OCR | File picker opens |
+| OCR | `student` | Photo of equation | Correction modal with LaTeX |
+| Edit | `student` | Fix typo in textarea | KaTeX preview updates |
+| Insert | `student` | Insert into note | `$$…$$` block in editor |
+| ⌘K | `student` | "equation ocr" | Notes + picker |
+
+Migration: `20260532800000_equation_ocr_latex.sql` · Doc: `docs/P30-EQUATION-OCR-LATEX.md`
+
+---
+
+## 10z. Wiki backlinks (`enable_wiki_backlinks` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes tab | No wiki banner or [[ ]] button |
+| Flag on | `student` | Notes tab | Banner with link counts |
+| Insert | `student` | [[ ]] → "Biology" | `[[Biology]]` in editor |
+| Outlinks | `student` | Save link to existing note | Outlinks panel lists target |
+| Backlinks | `student` | Open linked-to note | Backlinks shows source |
+| Graph | `student` | Graph button | SVG modal; click opens note |
+| Filter | `student` | 🔗 Linked | Only notes with wikilinks |
+| ⌘K | `student` | "wiki graph" | Opens graph modal |
+
+Migration: `20260532900000_wiki_backlinks.sql` · Doc: `docs/P31-WIKI-BACKLINKS.md`
+
+---
+
+## 10aa. Notion / Obsidian export (`enable_notion_obsidian_export` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes tab | No export banner |
+| Flag on | `student` | Notes tab | ZIP export banner |
+| ZIP | `student` | Download ZIP vault | `.zip` with `.md` per note |
+| Single | `student` | Note → ↓ MD | One `.md` file downloads |
+| Copy | `student` | Note → 📋 | Markdown on clipboard |
+| Front matter | `student` | Export starred tagged note | YAML includes tags/starred |
+| ⌘K | `student` | "obsidian export" | ZIP download starts |
+
+Migration: `20260533000000_notion_obsidian_export.sql` · Doc: `docs/P32-NOTION-OBSIDIAN-EXPORT.md`
+
+---
+
+## 10ab. Mind map ↔ tasks (`enable_mind_map_tasks` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Dashboard | No mind map banner |
+| Flag on | `student` | Dashboard | Banner with branch/link counts |
+| Map | `student` | Open mind map | Radial SVG modal |
+| Branch | `student` | Select node → + Branch | Child node appears |
+| Create | `student` | Create task | Task on dashboard + linked node |
+| Link | `student` | Pick existing task | Node shows task name |
+| Jump | `student` | Go to task | Dashboard scroll + highlight |
+| ⌘K | `student` | "mind map" | Opens map modal |
+
+Migration: `20260533100000_mind_map_tasks.sql` · Doc: `docs/P33-MIND-MAP-TASKS.md`
+
+---
+
+## 10ac. Handwriting-to-text (`enable_handwriting_to_text` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes → edit note | No ✍ Handwriting button |
+| Flag on | `student` | Notes → ✍ Handwriting | File picker opens |
+| OCR | `student` | Photo of writing | Edit modal with text |
+| Edit | `student` | Fix typo → Insert | Paragraphs in note editor |
+| Progress | `student` | Scan in progress | Percent updates |
+| ⌘K | `student` | "handwriting scan" | Notes + picker |
+
+Migration: `20260533200000_handwriting_to_text.sql` · Doc: `docs/P34-HANDWRITING-TO-TEXT.md`
+
+---
+
+## 10ad. Citation helper (`enable_citation_helper` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Notes tab | No citation banner |
+| Flag on | `student` | Notes → ❝ Cite | Builder modal opens |
+| MLA | `student` | Web source + fields | Preview updates |
+| Save | `student` | Save to library | Appears in sidebar |
+| Insert | `student` | Insert into note | Citation in editor |
+| Export | `student` | Export bibliography | `.txt` download |
+| ⌘K | `student` | "citation mla" | Opens builder |
+
+Migration: `20260533300000_citation_helper.sql` · Doc: `docs/P35-CITATION-HELPER.md`
+
+---
+
+## 10ae. Calc history (`enable_calc_history` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Toolbox → Graph + calc | No history bar |
+| Flag on | `student` | Basic calc → `2+2` → `=` | Entry on tape |
+| Save plot | `student` | Y= sin(x) → Save plot | Plot in library |
+| Export | `student` | Tape → Export .txt | Download |
+| Note | `student` | Insert tape into note | Markdown list in editor |
+| PNG | `student` | Saved plot → PNG | File download |
+| ⌘K | `student` | "calc history" | Modal opens |
+
+Migration: `20260533400000_calc_history.sql` · Doc: `docs/P36-CALC-HISTORY.md`
+
+---
+
 ## 0l. Locale UI strings (P10.2 — needs `enable_locale_foundation`)
 
 | Feature | Role | Test action | Expected result |

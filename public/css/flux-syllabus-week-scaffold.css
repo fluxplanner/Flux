@@ -1,0 +1,101 @@
+/* P16.2 — Syllabus week auto-scaffold */
+.flux-sws-card {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+}
+
+.flux-sws-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.flux-sws-lede {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.flux-sws-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.flux-sws-form-row label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-sws-form-row input,
+.flux-sws-form-row select {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--text);
+}
+
+.flux-sws-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.flux-sws-week-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+}
+
+.flux-sws-week-meta {
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.flux-sws-week-sub {
+  font-size: 0.66rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+
+.flux-sws-week-row button {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 0.68rem;
+}
+
+.flux-sws-week-row.done {
+  opacity: 0.65;
+}
+
+.flux-sws-manual {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border2);
+}
+
+.flux-sws-manual input[type='number'] {
+  width: 72px;
+}

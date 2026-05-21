@@ -1,0 +1,48 @@
+/* P20.1 — Automation URL hooks */
+.flux-auto-card h3 {
+  margin-bottom: 6px;
+}
+
+.flux-auto-lede {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0 0 12px;
+}
+
+.flux-auto-hook {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  margin-bottom: 6px;
+}
+
+.flux-auto-hook code {
+  flex: 1;
+  font-size: 0.66rem;
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+  color: var(--muted);
+}
+
+.flux-auto-hook button {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 0.66rem;
+}
+
+.flux-auto-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.flux-auto-sub {
+  font-size: 0.62rem;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}

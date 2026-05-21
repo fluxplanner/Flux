@@ -1,0 +1,50 @@
+/* P15.1 — Energy peak hours card */
+#fluxEnergySchedulingCard {
+  margin-bottom: 12px;
+}
+
+.flux-es-peak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.flux-es-peak-chip {
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--green-rgb, 74, 222, 128), 0.35);
+  background: rgba(var(--green-rgb, 74, 222, 128), 0.1);
+  color: var(--green, #4ade80);
+}
+
+.flux-es-lede {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.flux-es-tasks {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flux-es-tasks li {
+  font-size: 0.78rem;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.flux-es-empty {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-top: 8px;
+}

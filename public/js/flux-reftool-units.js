@@ -273,4 +273,7 @@
   }
 
   try{ window.openUnitConverter = openUnitConverter; }catch(e){}
+  try{
+    window.FluxUnitConverter = { CATEGORIES, convert, fmt };
+  }catch(e){}
 })();

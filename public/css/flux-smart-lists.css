@@ -1,0 +1,29 @@
+/* P13.2 — Smart task lists */
+.dash-smart-list-row {
+  margin: 0 0 10px;
+}
+.flux-smart-list-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.flux-smart-chip {
+  font-size: 0.72rem !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.flux-smart-count {
+  font-size: 0.62rem;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 1px 6px;
+  min-width: 1.2em;
+  text-align: center;
+}
+.flux-smart-chip.active .flux-smart-count {
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+}

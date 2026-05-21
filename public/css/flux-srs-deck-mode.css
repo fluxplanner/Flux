@@ -1,0 +1,136 @@
+/* P28.1 — SRS deck mode (#review notes) */
+.flux-srsd-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(var(--purple-rgb), 0.08);
+  border: 1px solid rgba(var(--purple-rgb), 0.22);
+}
+
+.flux-srsd-banner-text {
+  flex: 1;
+  min-width: 140px;
+  font-size: 0.78rem;
+  color: var(--muted2);
+}
+
+.flux-srsd-banner-text strong {
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-srsd-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flux-srsd-banner-actions button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-srsd-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.flux-srsd-stat {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  text-align: center;
+}
+
+.flux-srsd-stat-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-srsd-stat-lbl {
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.flux-srsd-card {
+  padding: 24px 18px;
+  border-radius: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  text-align: center;
+  margin-bottom: 14px;
+  min-height: 120px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.flux-srsd-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.flux-srsd-card.revealed {
+  background: rgba(var(--accent-rgb), 0.08);
+  cursor: default;
+}
+
+.flux-srsd-q {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.flux-srsd-a {
+  font-size: 0.92rem;
+  color: var(--accent);
+  line-height: 1.45;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border2);
+}
+
+.flux-srsd-meta {
+  font-size: 0.65rem;
+  color: var(--muted2);
+  margin-bottom: 10px;
+}
+
+.flux-srsd-hint {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.flux-srsd-grade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.flux-srsd-grade button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-srsd-review-btn.active {
+  background: rgba(var(--purple-rgb), 0.18);
+  border-color: rgba(var(--purple-rgb), 0.4);
+  color: var(--purple);
+}
+
+.flux-srsd-tag-btn.active {
+  background: rgba(var(--purple-rgb), 0.18);
+  border-color: rgba(var(--purple-rgb), 0.45);
+  color: var(--purple);
+}

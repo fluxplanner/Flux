@@ -1,0 +1,117 @@
+/* P30.1 — Equation OCR → LaTeX correction modal */
+.flux-eocr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.flux-eocr-panel {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.flux-eocr-head {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flux-eocr-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.flux-eocr-thumb {
+  max-width: 100%;
+  max-height: 140px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  margin-bottom: 12px;
+  object-fit: contain;
+  background: var(--card2);
+}
+
+.flux-eocr-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-eocr-textarea {
+  width: 100%;
+  min-height: 88px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--text);
+  resize: vertical;
+}
+
+.flux-eocr-preview {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  min-height: 56px;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.flux-eocr-preview .flux-eocr-err {
+  color: var(--red);
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-eocr-foot {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.flux-eocr-foot button {
+  font-size: 0.78rem;
+  padding: 8px 14px;
+}
+
+.flux-eocr-insert-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flux-eocr-loading {
+  color: var(--muted2);
+  font-size: 0.82rem;
+  padding: 20px 0;
+  text-align: center;
+}

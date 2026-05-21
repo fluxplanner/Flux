@@ -1,0 +1,75 @@
+/* P25.1 — Unit converter favorites strip */
+.flux-ucf-strip {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px 0;
+  max-width: min(720px, 96vw);
+  margin: 0 auto;
+}
+
+.quick-add-panel.open .flux-ucf-strip {
+  display: flex;
+}
+
+.flux-ucf-chip {
+  font-size: 0.62rem;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.flux-ucf-chip:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--text);
+}
+
+.flux-ucf-add,
+.flux-ucf-manage {
+  font-size: 0.62rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.flux-ucf-pop {
+  position: fixed;
+  z-index: 5000;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow-card);
+  min-width: 240px;
+}
+
+.flux-ucf-pop label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin: 6px 0 4px;
+}
+
+.flux-ucf-pop select,
+.flux-ucf-pop input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.flux-ucf-pop-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}

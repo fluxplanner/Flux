@@ -1,0 +1,93 @@
+/* P29.1 — LaTeX live preview split pane */
+.flux-latex-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.flux-latex-split.is-collapsed {
+  grid-template-columns: 1fr;
+}
+
+.flux-latex-split.is-collapsed .flux-latex-preview-pane {
+  display: none;
+}
+
+.flux-latex-split #noteEditor {
+  min-height: 220px;
+  margin: 0;
+}
+
+.flux-latex-preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  overflow: hidden;
+}
+
+.flux-latex-preview-head {
+  padding: 8px 12px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  border-bottom: 1px solid var(--border2);
+  background: rgba(var(--accent-rgb), 0.04);
+}
+
+.flux-latex-preview-body {
+  flex: 1;
+  padding: 14px 16px;
+  overflow: auto;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.flux-latex-preview-body .katex-display {
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.flux-latex-preview-body .flux-latex-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.flux-latex-preview-body .flux-latex-err {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--red);
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-latex-preview-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.rtbtn.flux-latex-active {
+  background: rgba(var(--accent-rgb), 0.18);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .flux-latex-split:not(.is-collapsed) {
+    grid-template-columns: 1fr;
+  }
+
+  .flux-latex-preview-pane {
+    min-height: 160px;
+    max-height: 240px;
+  }
+}

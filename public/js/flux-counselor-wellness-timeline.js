@@ -118,6 +118,7 @@
 
   async function maybeCaptureSnapshot(sb, studentId) {
     if (!enabled() || !sb || !studentId) return { ok: false, skipped: true };
+    if (window.FluxMoodVelocity?.blocksCounselorShare?.()) return { ok: false, skipped: true, reason: 'private' };
     if (!(await hasWellnessConsent(sb, studentId))) return { ok: false, skipped: true };
     const row = { student_id: studentId, ...buildSnapshotPayload() };
     const { error } = await sb.from('student_wellness_snapshots').upsert(row, {

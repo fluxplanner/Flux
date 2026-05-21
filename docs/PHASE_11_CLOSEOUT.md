@@ -26,8 +26,4 @@ Turn flag off globally or remove school override — banner reverts to legacy he
 
 ## Suggested next (Phase 12+)
 
-See `docs/IMPROVEMENTS.md` and `docs/P9-PRODUCTION-SMOKE.md` (IAE manual smoke). Candidates:
-
-- E2E scenario for syllabus conflicts on calendar
-- Enable `enable_storage_repair` / `enable_sync_conflict_ui` for IAE test cohorts
-- AI export / educator date surfaces (remaining i18n)
+See `docs/PHASE_12_BACKLOG.md` and `docs/ROADMAP.md` Phase 12. Shipped: P12.1 deep links, P12.2 sync queue UI. Next candidates: voice capture (12.3), GCal busy overlays (12.4).

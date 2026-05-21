@@ -1,0 +1,45 @@
+/* P12.5 — Recurring series menu */
+.flux-recur-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  background: rgba(0, 0, 0, 0.35);
+}
+.flux-recur-menu-inner {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 220px;
+  max-width: min(280px, 92vw);
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--card, #12141a);
+  border: 1px solid rgba(var(--accent-rgb, 0, 194, 255), 0.25);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+.flux-recur-menu-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted2);
+  padding: 4px 8px 8px;
+}
+.flux-recur-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  margin: 2px 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.flux-recur-menu-item:hover {
+  background: rgba(var(--accent-rgb, 0, 194, 255), 0.12);
+  color: var(--accent);
+}

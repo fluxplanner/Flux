@@ -158,3 +158,50 @@
   border-color: rgba(255, 79, 94, 0.35);
   background: rgba(255, 79, 94, 0.1);
 }
+.flux-offline-modal-inner--queue {
+  width: min(480px, 100%);
+}
+.flux-offline-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.flux-offline-queue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.flux-offline-queue-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.flux-offline-queue-meta {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+.flux-offline-queue-badge {
+  font-size: 0.62rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--gold);
+  opacity: 0.85;
+}
+.flux-offline-queue-empty {
+  font-size: 0.82rem;
+  color: var(--muted2);
+  margin: 8px 0;
+}
+.flux-offline-queue-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}

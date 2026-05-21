@@ -1,0 +1,63 @@
+/* P12.4 — GCal busy overlays on Flux calendar */
+.cal-day--gcal-busy {
+  box-shadow: inset 0 -3px 0 rgba(66, 133, 244, 0.55);
+}
+.cal-gcal-busy-stack {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+}
+.cal-gcal-busy-bar {
+  font-size: 0.45rem;
+  line-height: 1.1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: rgba(66, 133, 244, 0.22);
+  border-left: 2px solid #4285f4;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'JetBrains Mono', monospace;
+}
+.cal-gcal-busy-hint {
+  font-size: 0.78rem;
+  color: #8ab4f8;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(66, 133, 244, 0.08);
+  border: 1px solid rgba(66, 133, 244, 0.25);
+}
+.cal-gcal-busy-hint .gcal-busy-list,
+.cal-gcal-busy-hint .gcal-busy-conflict-list {
+  margin: 6px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.74rem;
+}
+.gcal-busy-conflict-list {
+  color: var(--gold, #f5a623);
+  margin-top: 8px !important;
+}
+#gcalBusyBanner {
+  display: none;
+  font-size: 0.78rem;
+  color: #8ab4f8;
+  background: rgba(66, 133, 244, 0.08);
+  border: 1px solid rgba(66, 133, 244, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.gcal-busy-banner-list {
+  margin: 6px 0 0;
+  padding-left: 1.1rem;
+}
+.gcal-busy-banner-list li {
+  margin: 3px 0;
+}

@@ -112,6 +112,7 @@
 <link rel="stylesheet" href="public/css/flux-ai-orch-layer.css">
 <link rel="stylesheet" href="public/css/flux-offline-sync.css">
 <link rel="stylesheet" href="public/css/flux-syllabus-conflict.css">
+<link rel="stylesheet" href="public/css/flux-voice-capture.css">
 <link rel="stylesheet" href="public/css/flux-layered-memory.css">
 <link rel="stylesheet" href="public/css/flux-parent-portal.css">
 <link rel="stylesheet" href="public/css/flux-site-enhancements.css">
@@ -153,6 +154,46 @@
 <link rel="stylesheet" href="public/css/flux-district-rollup.css">
 <link rel="stylesheet" href="public/css/flux-school-ops.css">
 <link rel="stylesheet" href="public/css/flux-gcal-2way.css">
+<link rel="stylesheet" href="public/css/flux-gcal-busy.css">
+<link rel="stylesheet" href="public/css/flux-recurring-v2.css">
+<link rel="stylesheet" href="public/css/flux-subject-themes.css">
+<link rel="stylesheet" href="public/css/flux-global-search-v2.css">
+<link rel="stylesheet" href="public/css/flux-smart-lists.css">
+<link rel="stylesheet" href="public/css/flux-bulk-filter.css">
+<link rel="stylesheet" href="public/css/flux-focus-intent.css">
+<link rel="stylesheet" href="public/css/flux-habit-heatmap.css">
+<link rel="stylesheet" href="public/css/flux-pomodoro-presets.css">
+<link rel="stylesheet" href="public/css/flux-meeting-mode.css">
+<link rel="stylesheet" href="public/css/flux-mood-velocity.css">
+<link rel="stylesheet" href="public/css/flux-screenshot-snip.css">
+<link rel="stylesheet" href="public/css/flux-event-buffer.css">
+<link rel="stylesheet" href="public/css/flux-travel-time.css">
+<link rel="stylesheet" href="public/css/flux-ambient-weather.css">
+<link rel="stylesheet" href="public/css/flux-energy-scheduling.css">
+<link rel="stylesheet" href="public/css/flux-rest-day-plan.css">
+<link rel="stylesheet" href="public/css/flux-geofence.css">
+<link rel="stylesheet" href="public/css/flux-exam-prep-plan.css">
+<link rel="stylesheet" href="public/css/flux-syllabus-week-scaffold.css">
+<link rel="stylesheet" href="public/css/flux-task-template-marketplace.css">
+<link rel="stylesheet" href="public/css/flux-focus-score.css">
+<link rel="stylesheet" href="public/css/flux-email-task-inbox.css">
+<link rel="stylesheet" href="public/css/flux-automation-hooks.css">
+<link rel="stylesheet" href="public/css/flux-ical-subscribe.css">
+<link rel="stylesheet" href="public/css/flux-ics-timetable-import.css">
+<link rel="stylesheet" href="public/css/flux-sport-practice-pack.css">
+<link rel="stylesheet" href="public/css/flux-cs-snippet-library.css">
+<link rel="stylesheet" href="public/css/flux-unit-converter-favorites.css">
+<link rel="stylesheet" href="public/css/flux-periodic-srs-quiz.css">
+<link rel="stylesheet" href="public/css/flux-flashcard-generator.css">
+<link rel="stylesheet" href="public/css/flux-srs-deck-mode.css">
+<link rel="stylesheet" href="public/css/flux-latex-live-preview.css">
+<link rel="stylesheet" href="public/css/flux-equation-ocr-latex.css">
+<link rel="stylesheet" href="public/css/flux-wiki-backlinks.css">
+<link rel="stylesheet" href="public/css/flux-notion-obsidian-export.css">
+<link rel="stylesheet" href="public/css/flux-mind-map-tasks.css">
+<link rel="stylesheet" href="public/css/flux-handwriting-to-text.css">
+<link rel="stylesheet" href="public/css/flux-citation-helper.css">
+<link rel="stylesheet" href="public/css/flux-calc-history.css">
 <link rel="stylesheet" href="public/css/flux-classroom-sync.css">
 <link rel="stylesheet" href="public/css/flux-drive-import.css">
 <link rel="stylesheet" href="public/css/flux-docs-ghost-sync.css">
@@ -971,6 +1012,9 @@
     <div class="notices-subbar" id="noticesSubbar" aria-live="polite">
       <div id="connectivityBanner" class="connectivity-banner" style="display:none" role="status"></div>
       <div id="examConflictBanner" class="exam-conflict-banner" style="display:none" role="status"></div>
+      <div id="gcalBusyBanner" role="status"></div>
+      <div id="eventBufferBanner" role="status"></div>
+      <div id="travelTimeBanner" role="status"></div>
     </div>
 
     <!-- ─── DASHBOARD ─── -->
@@ -1465,6 +1509,7 @@
           <button onclick="backToNotesList()" class="btn-sec" style="padding:6px 12px;font-size:.82rem">← Back</button>
           <input type="text" id="noteTitleInput" placeholder="Note title..." style="flex:1;margin:0;font-size:1rem;font-weight:700">
           <button onclick="toggleStarNote()" id="starBtn" style="background:none;border:1px solid var(--border2);color:var(--gold);padding:6px 10px;font-size:1rem">☆</button>
+          <button type="button" onclick="typeof fluxCopyNoteLink==='function'&&fluxCopyNoteLink()" id="noteShareLinkBtn" style="display:none;background:none;border:1px solid var(--border2);color:var(--accent);padding:6px 10px;font-size:.85rem" title="Copy note link">🔗</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
           <select id="noteSubjectTag" style="width:auto;margin:0;padding:5px 8px;font-size:.78rem"><option value="">No subject</option></select>
@@ -2595,6 +2640,9 @@
     <script defer src="public/js/flux-ui-modals.js"></script>
     <script defer src="public/js/flux-site-enhancements.js"></script>
     <script defer src="public/js/app.js"></script>
+    <script defer src="public/js/flux-deep-links.js"></script>
+    <script defer src="public/js/flux-voice-capture.js"></script>
+    <script defer src="public/js/flux-screenshot-snip.js"></script>
     <script defer src="public/js/flux-staff-platform.js"></script>
     <script defer src="public/js/flux-school-command.js"></script>
     <script defer src="public/js/flux-school-emergency.js"></script>
@@ -2683,6 +2731,33 @@
 <script defer src="public/js/flux-task-context.js"></script>
 <script defer src="public/js/flux-gcal-push.js"></script>
     <script defer src="public/js/flux-gcal-2way.js"></script>
+    <script defer src="public/js/flux-gcal-busy.js"></script>
+    <script defer src="public/js/flux-recurring-v2.js"></script>
+    <script defer src="public/js/flux-subject-themes.js"></script>
+    <script defer src="public/js/flux-cmd-palette-v2.js"></script>
+    <script defer src="public/js/flux-global-search-v2.js"></script>
+    <script defer src="public/js/flux-smart-lists.js"></script>
+    <script defer src="public/js/flux-bulk-filter.js"></script>
+    <script defer src="public/js/flux-focus-intent.js"></script>
+    <script defer src="public/js/flux-habit-heatmap.js"></script>
+    <script defer src="public/js/flux-pomodoro-presets.js"></script>
+    <script defer src="public/js/flux-meeting-mode.js"></script>
+    <script defer src="public/js/flux-mood-velocity.js"></script>
+    <script defer src="public/js/flux-event-buffer.js"></script>
+    <script defer src="public/js/flux-travel-time.js"></script>
+    <script defer src="public/js/flux-ambient-weather.js"></script>
+    <script defer src="public/js/flux-energy-scheduling.js"></script>
+    <script defer src="public/js/flux-rest-day-plan.js"></script>
+    <script defer src="public/js/flux-geofence.js"></script>
+    <script defer src="public/js/flux-exam-prep-plan.js"></script>
+    <script defer src="public/js/flux-syllabus-week-scaffold.js"></script>
+    <script defer src="public/js/flux-task-template-marketplace.js"></script>
+    <script defer src="public/js/flux-focus-score.js"></script>
+    <script defer src="public/js/flux-email-task-inbox.js"></script>
+    <script defer src="public/js/flux-automation-hooks.js"></script>
+    <script defer src="public/js/flux-ical-subscribe.js"></script>
+    <script defer src="public/js/flux-ics-timetable-import.js"></script>
+    <script defer src="public/js/flux-sport-practice-pack.js"></script>
 <script defer src="public/js/flux-google-docs.js"></script>
     <script defer src="public/js/flux-docs-ghost-sync.js"></script>
     <script defer src="public/js/flux-gmail-educator.js"></script>
@@ -2695,6 +2770,7 @@
 <script defer src="public/js/flux-reftool-history.js"></script>
 <script defer src="public/js/flux-reftool-lang.js"></script>
 <script defer src="public/js/flux-reftool-units.js"></script>
+<script defer src="public/js/flux-unit-converter-favorites.js"></script>
 <script defer src="public/js/flux-reftool-cs.js"></script>
 <script defer src="public/js/flux-ai-mega.js"></script>
 <script defer src="public/js/flux-ai-orchestrator.js"></script>
@@ -2711,6 +2787,18 @@
 <script defer src="public/js/flux-pro.js"></script>
 <script defer src="public/js/flux-periodic.js"></script>
 <script defer src="public/js/flux-toolbox.js"></script>
+<script defer src="public/js/flux-cs-snippet-library.js"></script>
+<script defer src="public/js/flux-periodic-srs-quiz.js"></script>
+<script defer src="public/js/flux-flashcard-generator.js"></script>
+<script defer src="public/js/flux-srs-deck-mode.js"></script>
+<script defer src="public/js/flux-latex-live-preview.js"></script>
+<script defer src="public/js/flux-equation-ocr-latex.js"></script>
+<script defer src="public/js/flux-wiki-backlinks.js"></script>
+<script defer src="public/js/flux-notion-obsidian-export.js"></script>
+<script defer src="public/js/flux-mind-map-tasks.js"></script>
+<script defer src="public/js/flux-handwriting-to-text.js"></script>
+<script defer src="public/js/flux-citation-helper.js"></script>
+<script defer src="public/js/flux-calc-history.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>

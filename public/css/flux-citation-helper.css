@@ -1,0 +1,182 @@
+/* P35.1 — Citation helper */
+.flux-cite-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(192, 132, 252, 0.07);
+  border: 1px solid rgba(192, 132, 252, 0.22);
+}
+
+.flux-cite-banner-text {
+  flex: 1;
+  font-size: 0.76rem;
+  color: var(--muted2);
+}
+
+.flux-cite-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.flux-cite-panel {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  width: min(780px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flux-cite-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.flux-cite-body {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .flux-cite-body {
+    grid-template-columns: 1fr;
+  }
+
+  .flux-cite-lib {
+    border-left: none !important;
+    border-top: 1px solid var(--border2);
+    max-height: 180px;
+  }
+}
+
+.flux-cite-main {
+  padding: 14px 18px;
+  overflow-y: auto;
+}
+
+.flux-cite-lib {
+  padding: 14px;
+  border-left: 1px solid var(--border2);
+  overflow-y: auto;
+  background: var(--card2);
+}
+
+.flux-cite-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.flux-cite-seg button {
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  cursor: pointer;
+}
+
+.flux-cite-seg button.active {
+  background: rgba(var(--purple-rgb), 0.18);
+  border-color: rgba(var(--purple-rgb), 0.4);
+  color: var(--purple);
+}
+
+.flux-cite-field {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+}
+
+.flux-cite-field span {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.flux-cite-field input,
+.flux-cite-field select {
+  width: 100%;
+  margin: 0;
+  padding: 7px 9px;
+  font-size: 0.78rem;
+  border-radius: 8px;
+}
+
+.flux-cite-preview {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  min-height: 56px;
+}
+
+.flux-cite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.flux-cite-actions button {
+  font-size: 0.72rem;
+  padding: 7px 12px;
+}
+
+.flux-cite-lib-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.flux-cite-lib-item:hover {
+  border-color: rgba(var(--purple-rgb), 0.35);
+}
+
+.flux-cite-lib-meta {
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-cite-lib-text {
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.flux-cite-note-btn {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  color: var(--purple);
+  border-radius: 8px;
+  cursor: pointer;
+}

@@ -1,0 +1,164 @@
+#fluxMoodVelocityCard {
+  --mv-bar: rgba(var(--accent-rgb), 0.55);
+  --mv-bar-muted: rgba(var(--accent-rgb), 0.18);
+}
+
+.flux-mv-quick {
+  display: grid;
+  gap: 12px;
+}
+
+.flux-mv-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.flux-mv-row-label {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  min-width: 52px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flux-mv-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card2);
+  cursor: pointer;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+
+.flux-mv-chip:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.flux-mv-chip.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.25);
+}
+
+.flux-mv-save {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.flux-mv-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border2);
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.45;
+}
+
+.flux-mv-privacy input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.flux-mv-chart {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 4px;
+  align-items: end;
+  min-height: 96px;
+  margin-top: 12px;
+}
+
+.flux-mv-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.flux-mv-bar-wrap {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.flux-mv-bar {
+  width: 100%;
+  max-width: 18px;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--mv-bar-muted);
+  position: relative;
+  min-height: 4px;
+  transition: height 0.2s ease;
+}
+
+.flux-mv-bar.has-done {
+  background: var(--mv-bar);
+}
+
+.flux-mv-mood-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--card);
+  box-shadow: 0 0 0 1px var(--border2);
+}
+
+.flux-mv-day {
+  font-size: 0.58rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.flux-mv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 10px;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.flux-mv-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.flux-mv-insight {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.5;
+}
+
+.flux-mv-energy-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  pointer-events: none;
+  border: 2px solid transparent;
+}
+
+.flux-mv-bar[data-energy='1'] .flux-mv-energy-ring { border-color: rgba(148, 163, 184, 0.5); }
+.flux-mv-bar[data-energy='2'] .flux-mv-energy-ring { border-color: rgba(96, 165, 250, 0.45); }
+.flux-mv-bar[data-energy='3'] .flux-mv-energy-ring { border-color: rgba(var(--accent-rgb), 0.45); }
+.flux-mv-bar[data-energy='4'] .flux-mv-energy-ring { border-color: rgba(var(--green-rgb), 0.45); }
+.flux-mv-bar[data-energy='5'] .flux-mv-energy-ring { border-color: rgba(250, 204, 21, 0.55); }

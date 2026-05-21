@@ -1,0 +1,131 @@
+/* P24.1 — CS snippet library */
+.flux-csl-search {
+  margin-bottom: 12px;
+}
+
+.flux-csl-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  min-height: 320px;
+}
+
+@media (max-width: 640px) {
+  .flux-csl-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flux-csl-list {
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  background: var(--card2);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.flux-csl-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.flux-csl-item:hover,
+.flux-csl-item.active {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.flux-csl-item-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.flux-csl-item-meta {
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
+}
+
+.flux-csl-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.flux-csl-tag {
+  font-size: 0.58rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-csl-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.flux-csl-code {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  overflow: auto;
+  max-height: 280px;
+  white-space: pre;
+}
+
+.flux-csl-code .csl-kw { color: #ff7b72; }
+.flux-csl-code .csl-str { color: #a5d6ff; }
+.flux-csl-code .csl-cmt { color: #8b949e; font-style: italic; }
+.flux-csl-code .csl-num { color: #79c0ff; }
+.flux-csl-code .csl-fn { color: #d2a8ff; }
+
+.flux-csl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flux-csl-actions button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-csl-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border2);
+}
+
+.flux-csl-form input,
+.flux-csl-form select,
+.flux-csl-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+}
+
+.flux-csl-form textarea {
+  min-height: 100px;
+  font-family: 'JetBrains Mono', monospace;
+}

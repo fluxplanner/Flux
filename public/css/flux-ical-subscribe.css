@@ -1,0 +1,70 @@
+/* P21.1 — iCal subscribe feed */
+.flux-ical-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+}
+
+.flux-ical-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.flux-ical-lede {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.flux-ical-url {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.flux-ical-url code {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.62rem;
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+  color: var(--muted);
+  padding: 8px 10px;
+  background: var(--card);
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+}
+
+.flux-ical-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.flux-ical-actions button {
+  font-size: 0.72rem;
+  padding: 6px 12px;
+}
+
+.flux-ical-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  margin: 8px 0;
+  cursor: pointer;
+}
+
+.flux-ical-status {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 6px;
+}

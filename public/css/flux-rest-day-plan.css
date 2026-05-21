@@ -1,0 +1,64 @@
+/* P15.2 — Rest day adaptive plan */
+#fluxRestDayPlanCard {
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--gold-rgb, 245, 166, 35), 0.28);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--gold-rgb, 245, 166, 35), 0.1),
+    rgba(var(--accent-rgb, 0, 194, 255), 0.06)
+  );
+  padding: 14px 16px;
+}
+
+#fluxRestDayPlanCard.rest-sick {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(var(--card-rgb, 30, 30, 40), 0.04));
+}
+
+.flux-rdp-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.flux-rdp-lede {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.flux-rdp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.flux-rdp-actions button {
+  font-size: 0.74rem;
+  padding: 7px 12px;
+}
+
+.flux-rdp-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flux-rdp-list li {
+  font-size: 0.76rem;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  margin-bottom: 5px;
+}
+
+.flux-rdp-mark {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}

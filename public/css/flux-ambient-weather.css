@@ -1,0 +1,90 @@
+/* P14.5 — Ambient dashboard weather */
+#fluxAmbientWeatherCard {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--accent-rgb, 0, 194, 255), 0.22);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 0, 194, 255), 0.08),
+    rgba(var(--purple-rgb, 168, 85, 247), 0.06)
+  );
+}
+
+.flux-aw-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.flux-aw-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.flux-aw-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.flux-aw-temp {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.2;
+}
+
+.flux-aw-label {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  margin-top: 2px;
+}
+
+.flux-aw-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+
+.flux-aw-hint {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border2);
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.flux-aw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.flux-aw-actions button {
+  font-size: 0.72rem;
+  padding: 6px 10px;
+}
+
+.flux-aw-loc-form {
+  display: none;
+  margin-top: 10px;
+  gap: 8px;
+}
+
+.flux-aw-loc-form.is-open {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+}
+
+.flux-aw-loc-form input {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.flux-aw-loading {
+  opacity: 0.65;
+}

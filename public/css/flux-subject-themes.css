@@ -1,0 +1,42 @@
+/* P12.6 — Subject theme packs */
+.flux-subject-themes-card .flux-theme-lede {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.flux-theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.flux-theme-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.flux-theme-muted {
+  font-size: 0.75rem;
+  color: var(--muted2);
+}
+.flux-theme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.flux-theme-actions .btn-sec {
+  flex: 1;
+  min-width: 100px;
+}
+.flux-theme-meta {
+  font-size: 0.68rem;
+  color: var(--muted2);
+  margin: 0;
+}

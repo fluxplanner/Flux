@@ -1,0 +1,103 @@
+/* P18.1 — Focus score heuristic */
+.flux-fs-card {
+  margin-bottom: 14px;
+}
+
+.flux-fs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.flux-fs-score-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  flex-shrink: 0;
+  border: 3px solid var(--border2);
+  background: var(--card2);
+}
+
+.flux-fs-score-num {
+  font-size: 1.35rem;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+
+.flux-fs-score-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.flux-fs-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.flux-fs-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 4px;
+}
+
+.flux-fs-band {
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.flux-fs-lede {
+  font-size: 0.72rem;
+  color: var(--muted2);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.flux-fs-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.flux-fs-stat {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+}
+
+.flux-fs-stat-val {
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-fs-stat-lbl {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.flux-fs-recap-score {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 4px;
+}

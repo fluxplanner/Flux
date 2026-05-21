@@ -180,7 +180,234 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 
 **Phase 11 exit:** `docs/PHASE_11_CLOSEOUT.md`
 
-For new work beyond Phase 11, add rows here or pick items from `IMPROVEMENTS.md`.
+## Phase 12 — Capture, links & platform UX
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 12.1 | `P12-DEEP-LINKS` | Entity deep links `?task=` `?note=` `?focus=` + share | Done |
+| 12.2 | `P12-SYNC-QUEUE` | Offline pending-write queue modal | Done |
+| 12.3 | `P12-VOICE-CAPTURE` | Voice NL task capture on mobile quick-add | Done |
+| 12.4 | `P12-GCAL-BUSY` | GCal busy-block overlays + conflict surfacing | Done |
+| 12.5 | `P12-RECUR-EXCEPTIONS` | Recurring tasks with skip/shift/end-after-N | Done |
+| 12.6 | `P12-THEME-PACKS` | Subject theme JSON import/export | Done |
+| 12.7 | `P12-CMD-PALETTE-V2` | Fuzzy search + recent commands all surfaces | Done |
+
+**Backlog index:** `docs/PHASE_12_BACKLOG.md` (100 owner ideas mapped)
+
+## Phase 13 — Search & smart planning
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 13.1 | `P13-GLOBAL-SEARCH-V2` | Fuzzy ⌘⇧K + keyboard nav + recent queries | Done |
+| 13.2 | `P13-SMART-LISTS` | Saved smart lists (overdue STEM, no estimate, exam prep) | Done |
+| 13.3 | `P13-BULK-FILTER` | Bulk edit by smart-list filter | Done |
+| 13.4 | `P13-FOCUS-INTENT` | Focus intent note before deep work | Done |
+| 13.5 | `P13-HABIT-HEATMAP` | Habit chain heatmaps | Done |
+| 13.6 | `P13-POMODORO-PRESETS` | Pomodoro presets per subject | Done |
+| 13.7 | `P13-MEETING-MODE` | Meeting / distraction collapse mode | Done |
+
+**Phase 13 exit:** Steps 13.1–13.7 complete (search, smart lists, bulk filter, focus intent, habits, pomodoro presets, meeting mode).
+
+## Phase 14 — Mood, capture & wellness depth
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 14.1 | `P14-MOOD-VELOCITY` | Mood + energy quick-log tied to completion velocity + privacy | Done |
+| 14.2 | `P14-SCREENSHOT-SNIP` | Screenshot snip → task (clipboard + local OCR) | Done |
+| 14.3 | `P14-EVENT-BUFFER` | Buffer time around imported calendar events | Done |
+| 14.4 | `P14-TRAVEL-TIME` | Travel time between consecutive events | Done |
+| 14.5 | `P14-AMBIENT-WEATHER` | Dashboard weather + sunset + outdoor study hint | Done |
+
+**Phase 14 exit:** Steps 14.1–14.5 complete (mood velocity, screenshot snip, event buffer, travel time, ambient weather).
+
+## Phase 15 — Planning intelligence
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 15.1 | `P15-ENERGY-SCHEDULING` | Peak energy hours + heavy-task scheduling hints | Done |
+| 15.2 | `P15-REST-DAY-PLAN` | Adaptive sick/lazy day plan on dashboard | Done |
+| 15.3 | `P15-GEOFENCE` | Campus geofence arrival reminders | Done |
+
+**Phase 15 exit:** Steps 15.1–15.3 complete (energy scheduling, rest day plan, geofence reminders).
+
+## Phase 16 — Exam & syllabus planning
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 16.1 | `P16-EXAM-PREP-PLAN` | Exam countdown + suggested daily minutes per subject | Done |
+| 16.2 | `P16-SYLLABUS-WEEK-SCAFFOLD` | Syllabus week auto-scaffold from detected week numbers | Done |
+
+**Phase 16 exit:** Steps 16.1–16.2 complete (exam prep minutes, syllabus week scaffold).
+
+## Phase 17 — Templates & packs
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 17.1 | `P17-TASK-TEMPLATE-MARKETPLACE` | Curated task template packs (AP, SAT, college) + JSON import | Done |
+
+**Phase 17 exit:** Step 17.1 complete (task template marketplace).
+
+## Phase 18 — Focus quality
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 18.1 | `P18-FOCUS-SCORE` | Focus score heuristic from session length vs interruptions | Done |
+
+**Phase 18 exit:** Step 18.1 complete (focus score heuristic).
+
+## Phase 19 — Email & capture
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 19.1 | `P19-EMAIL-TASK-INBOX` | Email-to-task staging inbox with approve flow | Done |
+
+**Phase 19 exit:** Step 19.1 complete (email task inbox).
+
+## Phase 20 — Automations & mobile hooks
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 20.1 | `P20-AUTOMATION-HOOKS` | URL hooks for Shortcuts (`?quick=focus`, `?panel=calendar`) | Done |
+
+**Phase 20 exit:** Step 20.1 complete (automation URL hooks).
+
+## Phase 21 — Calendar export
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 21.1 | `P21-ICAL-SUBSCRIBE` | Live iCal/webcal subscribe feed for due dates + focus | Done |
+
+**Phase 21 exit:** Step 21.1 complete (iCal subscribe).
+
+## Phase 22 — Calendar import
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 22.1 | `P22-ICS-TIMETABLE-IMPORT` | ICS timetable + blackout import in one step | Done |
+
+**Phase 22 exit:** Step 22.1 complete (ICS timetable import).
+
+## Phase 23 — Sport practice
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 23.1 | `P23-SPORT-PRACTICE-PACK` | Drills, hydration, recovery packs + weekly practice | Done |
+
+**Phase 23 exit:** Step 23.1 complete (sport practice pack).
+
+## Phase 24 — STEM toolbox
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 24.1 | `P24-CS-SNIPPET-LIBRARY` | Local CS snippet library with tag search + highlight | Done |
+
+**Phase 24 exit:** Step 24.1 complete (CS snippet library).
+
+## Phase 25 — Toolbox UX
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 25.1 | `P25-UNIT-CONVERTER-FAVORITES` | Pinned unit conversions next to quick-add | Done |
+
+**Phase 25 exit:** Step 25.1 complete (unit converter favorites).
+
+## Phase 26 — STEM learning
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 26.1 | `P26-PERIODIC-SRS-QUIZ` | Periodic table SRS quizzes + wrong-answer review | Done |
+
+**Phase 26 exit:** Step 26.1 complete (periodic SRS quiz).
+
+## Phase 27 — Notes & learning
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 27.1 | `P27-FLASHCARD-GENERATOR` | Local flashcard generator from headings/bullets | Done |
+
+## Phase 28 — Spaced repetition
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 28.1 | `P28-SRS-DECK-MODE` | SM-2 deck for notes tagged #review | Done |
+
+**Phase 28 exit:** Step 28.1 complete (SRS deck mode).
+
+## Phase 29 — Notes & STEM
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 29.1 | `P29-LATEX-LIVE-PREVIEW` | KaTeX live preview split in note editor | Done |
+
+**Phase 29 exit:** Step 29.1 complete (LaTeX live preview).
+
+## Phase 30 — STEM capture
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 30.1 | `P30-EQUATION-OCR-LATEX` | Photo → editable LaTeX for notes | Done |
+
+**Phase 30 exit:** Step 30.1 complete (equation OCR).
+
+## Phase 31 — Notes graph
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 31.1 | `P31-WIKI-BACKLINKS` | [[wikilink]] backlinks + graph overview | Done |
+
+**Phase 31 exit:** Step 31.1 complete (wiki backlinks).
+
+## Phase 32 — Export
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 32.1 | `P32-NOTION-OBSIDIAN-EXPORT` | Markdown + YAML ZIP export for Obsidian/Notion | Done |
+
+**Phase 32 exit:** Step 32.1 complete (Notion/Obsidian export).
+
+## Phase 33 — Planning UX
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 33.1 | `P33-MIND-MAP-TASKS` | Radial mind map linked to tasks | Done |
+
+**Phase 33 exit:** Step 33.1 complete (mind map ↔ tasks).
+
+## Phase 34 — Capture
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 34.1 | `P34-HANDWRITING-TO-TEXT` | Tesseract handwriting OCR for notes | Done |
+
+**Phase 34 exit:** Step 34.1 complete (handwriting-to-text).
+
+## Phase 35 — Writing tools
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 35.1 | `P35-CITATION-HELPER` | MLA/APA/Chicago library + bibliography export | Done |
+
+**Phase 35 exit:** Step 35.1 complete (citation helper).
+
+## Phase 36 — STEM toolbox
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 36.1 | `P36-CALC-HISTORY` | Calculator tape + saved graph plot library | Done |
+
+**Phase 36 exit:** Step 36.1 complete (calc history).
+
+## Phase 37 — Cleanup & flag deprecation (HIGH PRIORITY)
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 37.1 | `P37-FLAG-DEPRECATION` | Audit Phase 12–36 flags; promote stable slices; remove dead code paths | **Next** |
+| 37.2 | `P37-QA-CONSOLIDATION` | Merge QA matrix sections; add flag-on regression suite to CI | Roadmap |
+| 37.3 | `P37-MIGRATION-CLOSEOUT` | Verify all 43 migrations applied in prod; document rollback matrix | Roadmap |
+
+**Phase 37 exit:** Flag debt reduced; stable features default-on or merged into core; deprecated modules removed behind owner toggle.
+
+For new work beyond Phase 37, extend Phase 37 rows or add steps in `docs/ROADMAP.md`.
 
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  
 2. Run `npm run test:e2e` before large UI changes.  
