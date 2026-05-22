@@ -16211,8 +16211,9 @@ async function saveCounselorAvailability_andNext(){
     availability[day].push(cb.dataset.slot);
   });
   const sb=getSB();const u=currentUser;
+  try{if(typeof isOwner==='function'&&isOwner()){window.__eduOnboardNext?.();return;}}catch(_){}
   try{
-    if(sb&&u){
+    if(sb&&u&&fluxIsBookableCounselorEmail(u.email)){
       // Prefer user_id linkage if a counselor row exists, otherwise insert one.
       const {data:existing}=await sb.from('counselors').select('id').eq('user_id',u.id).maybeSingle();
       if(existing?.id){
@@ -17326,15 +17327,25 @@ window.submitCreateAssignment=submitCreateAssignment;
 /** When user_roles.role is counselor, ensure public.counselors has this auth user:
  *  (1) row by user_id, (2) claim active orphan row with same email, (3) insert new row.
  *  Requires Supabase policies counselors_insert_own + counselors_claim_email (see migration). */
+/** Platform owner is not a bookable school counselor (Owner control / admin only). */
+function fluxIsBookableCounselorEmail(email){
+  const e=String(email||'').trim().toLowerCase();
+  if(!e)return false;
+  try{if(typeof OWNER_EMAIL!=='undefined'&&e===String(OWNER_EMAIL).trim().toLowerCase())return false;}catch(_){}
+  return true;
+}
+
 async function ensureCounselorRecord(sb,roleHint){
   if(!sb||!currentUser)return null;
+  try{if(typeof isOwner==='function'&&isOwner())return null;}catch(_){}
   const r=roleHint||(typeof FluxRole!=='undefined'&&FluxRole.current)||window._userRole||'student';
   if(r!=='counselor')return null;
+  if(!fluxIsBookableCounselorEmail(currentUser.email))return null;
   let row=window._counselorRecord;
   if(row&&row.user_id===currentUser.id)return row;
   try{
-    const {data}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).maybeSingle();
-    if(data){window._counselorRecord=data;return data;}
+    const {data}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).eq('active',true).order('id',{ascending:true}).limit(1).maybeSingle();
+    if(data){window._counselorRecord=data;await deactivateExtraCounselorRows(sb,data.id);return data;}
   }catch(_){}
   const email=(currentUser.email||'').trim();
   if(email){
@@ -17354,7 +17365,7 @@ async function ensureCounselorRecord(sb,roleHint){
           .is('user_id',null)
           .select()
           .maybeSingle();
-        if(!error&&claimed){window._counselorRecord=claimed;return claimed;}
+        if(!error&&claimed){window._counselorRecord=claimed;await deactivateExtraCounselorRows(sb,claimed.id);return claimed;}
       }
     }catch(_){}
   }
@@ -17380,14 +17391,25 @@ async function ensureCounselorRecord(sb,roleHint){
       booking_enabled:true,
       active:true,
     }).select().maybeSingle();
-    if(!error&&ins){window._counselorRecord=ins;return ins;}
+    if(!error&&ins){window._counselorRecord=ins;await deactivateExtraCounselorRows(sb,ins.id);return ins;}
     if(error&&(error.code==='23505'||String(error.message||'').toLowerCase().includes('unique'))){
       const {data:again}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).maybeSingle();
-      if(again){window._counselorRecord=again;return again;}
+      if(again){window._counselorRecord=again;await deactivateExtraCounselorRows(sb,again.id);return again;}
     }
     if(error)console.warn('[Flux] ensureCounselorRecord insert',error);
   }catch(e){console.warn('[Flux] ensureCounselorRecord',e);}
   return null;
+}
+
+/** One auth user must map to one active counselors row (demo seed + auto-insert dupes). */
+async function deactivateExtraCounselorRows(sb,keepId){
+  if(!sb||!currentUser||!keepId)return;
+  try{
+    const {data:dupes}=await sb.from('counselors').select('id').eq('user_id',currentUser.id).eq('active',true);
+    const off=(dupes||[]).map(d=>d.id).filter(id=>id&&id!==keepId);
+    if(!off.length)return;
+    await sb.from('counselors').update({active:false,booking_enabled:false}).in('id',off);
+  }catch(_){}
 }
 window.ensureCounselorRecord=ensureCounselorRecord;
 
@@ -17813,8 +17835,9 @@ function openCounselorSelectModal(){
       list.innerHTML=`<div class="edu-modal-error" style="display:block">${esc(error.message||'Could not load counselors')}</div>`;
       return;
     }
-    if(!data?.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤷</div><div class="empty-title">No counselors available</div></div>';return;}
-    list.innerHTML=data.map(c=>`
+    const bookable=(data||[]).filter(c=>fluxIsBookableCounselorEmail(c.email));
+    if(!bookable.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤷</div><div class="empty-title">No counselors available</div></div>';return;}
+    list.innerHTML=bookable.map(c=>`
       <button type="button" class="counselor-select-card" data-counselor-id="${esc(c.id)}">
         <div class="counselor-avatar" style="background:${esc(c.avatar_color||'#7c5cff')}">${esc(c.avatar_initial||(c.name||'?')[0])}</div>
         <div class="counselor-info">

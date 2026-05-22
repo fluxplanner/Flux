@@ -78,12 +78,12 @@ CREATE POLICY "sdir_claim_update" ON public.staff_directory
   WITH CHECK (claimed_by = auth.uid() AND is_claimed = true);
 
 INSERT INTO public.staff_directory (full_name, role, department, subject, school_email)
-SELECT 'Mrs. Bernstein', 'counselor', 'Counseling', NULL, 'bernstein@school.edu'
-WHERE NOT EXISTS (SELECT 1 FROM public.staff_directory sd WHERE lower(trim(coalesce(sd.school_email,''))) = 'bernstein@school.edu');
+SELECT 'Whitney Bernstein', 'counselor', 'Counseling', NULL, 'wbernstein@bloomfield.org'
+WHERE NOT EXISTS (SELECT 1 FROM public.staff_directory sd WHERE lower(trim(coalesce(sd.school_email,''))) = 'wbernstein@bloomfield.org');
 
 INSERT INTO public.staff_directory (full_name, role, department, subject, school_email)
-SELECT 'Mrs. Phelps', 'counselor', 'Counseling', NULL, 'phelps@school.edu'
-WHERE NOT EXISTS (SELECT 1 FROM public.staff_directory sd WHERE lower(trim(coalesce(sd.school_email,''))) = 'phelps@school.edu');
+SELECT 'Alexandria Phelps', 'counselor', 'Counseling', NULL, 'aphelps@bloomfield.org'
+WHERE NOT EXISTS (SELECT 1 FROM public.staff_directory sd WHERE lower(trim(coalesce(sd.school_email,''))) = 'aphelps@bloomfield.org');
 
 -- ── 3. staff_personal_data ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.staff_personal_data (

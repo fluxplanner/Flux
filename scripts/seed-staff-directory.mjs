@@ -184,6 +184,23 @@ async function main() {
     }
   }
 
+  const placeholderEmails = ["bernstein@school.edu", "phelps@school.edu"];
+  for (const email of placeholderEmails) {
+    const { res, json } = await adminFetch(
+      base,
+      serviceKey,
+      `/rest/v1/staff_directory?school_email=eq.${encodeURIComponent(email)}&select=id,is_claimed&limit=1`,
+      { method: "GET" },
+    );
+    if (!res.ok || !Array.isArray(json) || !json[0]?.id || json[0].is_claimed) continue;
+    await adminFetch(base, serviceKey, `/rest/v1/staff_directory?id=eq.${json[0].id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ active: false }),
+    });
+    console.log(`⊘ retired demo directory row ${email}`);
+  }
+
   console.log(
     `\nDone. inserted=${inserted} updated=${updated} skipped_claimed=${skipped} failed=${fail}`,
   );

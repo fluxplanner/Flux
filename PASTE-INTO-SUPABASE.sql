@@ -271,12 +271,12 @@ CREATE POLICY "counselors_claim_email" ON public.counselors
   )
   WITH CHECK (user_id = auth.uid());
 
--- Seed default counselors (idempotent via WHERE NOT EXISTS)
+-- Seed IAE counselors (idempotent via school email — one row per counselor)
 INSERT INTO public.counselors (name, email, avatar_initial, avatar_color, bio, availability)
 SELECT
-  'Mrs. Bernstein',
-  'bernstein@school.edu',
-  'B',
+  'Whitney Bernstein',
+  'wbernstein@bloomfield.org',
+  'W',
   '#7c5cff',
   'School counselor specializing in academic planning, college preparation, and student wellbeing.',
   '{
@@ -286,13 +286,16 @@ SELECT
     "thursday": ["9:00 AM","9:30 AM","1:00 PM","1:30 PM","2:00 PM"],
     "friday": ["9:00 AM","10:00 AM","10:30 AM"]
   }'::jsonb
-WHERE NOT EXISTS (SELECT 1 FROM public.counselors WHERE name = 'Mrs. Bernstein');
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.counselors
+  WHERE lower(trim(coalesce(email, ''))) = 'wbernstein@bloomfield.org'
+);
 
 INSERT INTO public.counselors (name, email, avatar_initial, avatar_color, bio, availability)
 SELECT
-  'Mrs. Phelps',
-  'phelps@school.edu',
-  'P',
+  'Alexandria Phelps',
+  'aphelps@bloomfield.org',
+  'A',
   '#00bfff',
   'Dedicated to helping students navigate high school, manage stress, and plan for their future.',
   '{
@@ -302,7 +305,10 @@ SELECT
     "thursday": ["10:00 AM","10:30 AM","11:00 AM","1:00 PM","1:30 PM"],
     "friday": ["9:00 AM","9:30 AM","10:00 AM","10:30 AM"]
   }'::jsonb
-WHERE NOT EXISTS (SELECT 1 FROM public.counselors WHERE name = 'Mrs. Phelps');
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.counselors
+  WHERE lower(trim(coalesce(email, ''))) = 'aphelps@bloomfield.org'
+);
 
 -- ──────────────────────────────────────────────────────────────────
 -- 8. Counselor appointments
