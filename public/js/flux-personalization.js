@@ -219,12 +219,7 @@
   }
 
   function widgetPickerEnabled(){
-    try{
-      if(document.documentElement.getAttribute('data-e2e')==='1') return true;
-      return !!window.FluxFeatureFlags?.isEnabled('enable_dashboard_widget_picker', true);
-    }catch(_){
-      return true;
-    }
+    return true; // CORE: enable_dashboard_widget_picker (Phase 37.1 PR-B)
   }
 
   function dashSectionIds(){

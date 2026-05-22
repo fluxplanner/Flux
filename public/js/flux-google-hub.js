@@ -42,11 +42,7 @@
   }
 
   function staffHubFlagEnabled() {
-    try {
-      return !window.FluxFeatureFlags || FluxFeatureFlags.isEnabled('enable_staff_google_hub', true);
-    } catch (_) {
-      return true;
-    }
+    return true; // CORE: enable_staff_google_hub (Phase 37.1 PR-B)
   }
 
   /** Educator workspace hub — never runs for students. */

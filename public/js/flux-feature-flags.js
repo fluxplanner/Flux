@@ -35,7 +35,7 @@
       enable_school_command: false,
       enable_school_emergency_broadcast: false,
       enable_parent_portal: false,
-      enable_staff_google_hub: true,
+      enable_staff_google_hub: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_classroom_sync: false,
       enable_event_bus: false,
       enable_event_bus_processors: false,
@@ -71,7 +71,7 @@
       enable_drive_import: false,
       enable_docs_ghost_sync: false,
       enable_gmail_educator_import: false,
-      enable_site_enhancements_pack: true,
+      enable_site_enhancements_pack: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_staff_productivity_suite: false,
       enable_classroom_tools: false,
       enable_caseload_engine: false,
@@ -79,7 +79,7 @@
       enable_staff_command_v2: false,
       enable_locale_foundation: false,
       enable_ops_health_panel: false,
-      enable_dashboard_widget_picker: true,
+      enable_dashboard_widget_picker: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_deep_links: false,
       enable_sync_queue_ui: false,
       enable_voice_task_capture: false,

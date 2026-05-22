@@ -43,7 +43,7 @@ WHERE flag_key IN ('enable_counselor_insights', 'enable_cognitive_predictions');
 
 ### Promote (merge or treat as core)
 
-- Default-on trio above
+- [x] **PR-B:** Default-on trio — runtime `isEnabled` removed; keys kept in `flux_feature_flags` for metadata/overrides
 - IAE daily workflow flags (confirm in `flux_school_feature_flags` before promoting): `enable_staff_productivity_suite`, `enable_classroom_tools`, `enable_caseload_engine`, `enable_counselor_caseload`, `enable_locale_foundation`
 
 ### Keep flagged
@@ -53,12 +53,13 @@ WHERE flag_key IN ('enable_counselor_insights', 'enable_cognitive_predictions');
 
 ### Cleanup (this phase)
 
-- PR-A: remove orphan keys (migration `20260533800000_cleanup_orphan_flags.sql`)
+- [x] PR-A: remove orphan keys (`20260533800000_cleanup_orphan_flags.sql`)
+- [x] PR-B: hardcode default-on trio (`app.js`, `flux-google-hub.js`, `flux-role-routing.js`, `flux-personalization.js`, `flux-site-enhancements.js`)
 
 ## 5. Phase 37 exit criteria
 
 - [x] PR-A — orphan removal
-- [ ] PR-B — promote default-on trio (inline branches)
+- [x] PR-B — promote default-on trio (inline branches)
 - [ ] PR-C — IAE school flag profile documented
 - [ ] 37.2 — QA consolidation + CI flag smoke
 - [ ] 37.3 — migration closeout matrix

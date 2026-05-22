@@ -2240,12 +2240,11 @@ function applyRoleUI(){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=eduPersonalNav?'':'none';
   });
-  const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaffGoogleHubRole()&&isPersonal&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isPersonal?'':'none';
   });
   document.querySelectorAll('[data-educator-work-main]').forEach(el=>{
     el.style.display=(isEducator&&isWork)?'':'none';
@@ -2320,12 +2319,11 @@ function applyModeToNav(isWork){
   document.querySelectorAll('[data-staff-personal]').forEach(el=>{
     el.style.display=isEducatorPersonal?'':'none';
   });
-  const staffGoogleOn=!window.FluxFeatureFlags||FluxFeatureFlags.isEnabled('enable_staff_google_hub',true);
   document.querySelectorAll('[data-educator-google-work]').forEach(el=>{
-    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&isWork?'':'none';
   });
   document.querySelectorAll('[data-educator-google-personal]').forEach(el=>{
-    el.style.display=FluxRole.isStaffGoogleHubRole()&&!isWork&&staffGoogleOn?'':'none';
+    el.style.display=FluxRole.isStaffGoogleHubRole()&&!isWork?'':'none';
   });
   const studentOnlyTabs=[
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',

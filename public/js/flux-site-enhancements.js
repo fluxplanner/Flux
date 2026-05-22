@@ -1,6 +1,6 @@
 /**
  * Site Enhancements Pack — 50 small UX, a11y, and productivity improvements.
- * Flag: enable_site_enhancements_pack (default on). See docs/SITE_IMPROVEMENTS_50.md
+ * CORE (Phase 37.1 PR-B): always on; flag key retained for DB metadata. See docs/SITE_IMPROVEMENTS_50.md
  */
 (function () {
   'use strict';
@@ -38,11 +38,7 @@
   let _modalFocus = null;
 
   function packEnabled() {
-    try {
-      return window.FluxFeatureFlags?.isEnabled(FLAG, true) !== false;
-    } catch (_) {
-      return true;
-    }
+    return true; // CORE: enable_site_enhancements_pack (Phase 37.1 PR-B)
   }
 
   function loadPrefs() {
