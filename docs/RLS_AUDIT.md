@@ -61,6 +61,12 @@ Participants only — **OK** for privacy between two users.
 
 **Risk:** Directory exposure is intentional; PII in `bio` / `email` — acceptable only for school product context.
 
+### `counselor_availability_slots`
+
+- `cas_public_read` (**`20260533700000_counselor_availability_student_read.sql`**): authenticated SELECT where `is_available = true` and parent counselor `active`.
+- `cas_counselor_all`: counselor owns row via `counselors.user_id = auth.uid()`.
+- Client normalizes `day_of_week` to lowercase; backfill migration syncs JSON → slots.
+
 ---
 
 ## 6. Staff platform (`20260518220000_staff_platform_v1.sql`)

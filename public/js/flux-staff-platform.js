@@ -1217,19 +1217,8 @@
           const upgraded = await maybeApplyApprovedStaffVerification();
           if (upgraded) {
             try {
-              await FluxRole.load();
-            } catch (_) {}
-            try {
-              if (typeof applyRoleUI === 'function') applyRoleUI();
-            } catch (_) {}
-            try {
-              if (typeof updateModeSwitchUI === 'function') updateModeSwitchUI();
-            } catch (_) {}
-            try {
-              if (typeof fluxRouteEducatorHome === 'function') fluxRouteEducatorHome();
-              else if (typeof showToast === 'function') {
-                showToast('Staff access approved — refresh if UI is stale', 'success', 5000);
-              }
+              if (typeof fluxRouteAfterAuth === 'function') await fluxRouteAfterAuth('verification');
+              else if (typeof fluxRouteEducatorHome === 'function') fluxRouteEducatorHome();
             } catch (_) {}
           }
         },

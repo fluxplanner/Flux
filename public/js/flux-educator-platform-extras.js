@@ -16,6 +16,32 @@
     return typeof getSB === 'function' ? getSB() : null;
   }
 
+  function fluxNormDayKey(day) {
+    return String(day || '')
+      .trim()
+      .toLowerCase();
+  }
+
+  function fluxLocalDateStr(d) {
+    const dt = d instanceof Date ? d : new Date(d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function fluxAvailTimesForDay(avail, dayKey) {
+    if (!avail || typeof avail !== 'object') return [];
+    const want = fluxNormDayKey(dayKey);
+    for (const k of Object.keys(avail)) {
+      if (fluxNormDayKey(k) === want) {
+        const v = avail[k];
+        return Array.isArray(v) ? v : [];
+      }
+    }
+    return [];
+  }
+
   function fmtD(input, style) {
     if (typeof window.fluxFmtStaffDate === 'function') return window.fluxFmtStaffDate(input, style);
     if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(input, style);
@@ -993,8 +1019,9 @@
     ];
     const existingMap = {};
     existingSlots.forEach((s) => {
-      if (!existingMap[s.day_of_week]) existingMap[s.day_of_week] = new Set();
-      if (s.is_available) existingMap[s.day_of_week].add(s.time_slot);
+      const day = fluxNormDayKey(s.day_of_week);
+      if (!existingMap[day]) existingMap[day] = new Set();
+      if (s.is_available) existingMap[day].add(s.time_slot);
     });
     const modal = document.createElement('div');
     modal.className = 'edu-fullscreen-modal';
@@ -1065,6 +1092,9 @@
         availMap[s.day_of_week].push(s.time_slot);
       });
     await client.from('counselors').update({ availability: availMap }).eq('id', counselorId);
+    if (typeof window.fluxUpsertCounselorAvailabilitySlots === 'function') {
+      await window.fluxUpsertCounselorAvailabilitySlots(client, counselorId, availMap);
+    }
     document.querySelector('.edu-fullscreen-modal')?.remove();
     if (typeof showToast === 'function') showToast('Availability saved.', 'success');
   }
@@ -1093,8 +1123,8 @@
     } catch (_) {}
     if (!counselor) return;
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const today = new Date().toISOString().slice(0, 10);
-    const twoWeeks = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+    const today = fluxLocalDateStr(new Date());
+    const twoWeeks = fluxLocalDateStr(new Date(Date.now() + 14 * 86400000));
     let booked = [];
     try {
       const { data: b } = await client
@@ -1111,10 +1141,11 @@
     function slotsForCalendarDay(dateStr) {
       const d = new Date(dateStr + 'T12:00:00');
       const key = dayNames[d.getDay()];
-      let list = slotRows.filter((s) => s.day_of_week === key);
-      if (!list.length && counselor.availability && counselor.availability[key]) {
-        const arr = counselor.availability[key];
-        list = (Array.isArray(arr) ? arr : []).map((time_slot) => ({ time_slot, day_of_week: key }));
+      const normKey = fluxNormDayKey(key);
+      let list = slotRows.filter((s) => fluxNormDayKey(s.day_of_week) === normKey && s.is_available !== false);
+      if (!list.length) {
+        const arr = fluxAvailTimesForDay(counselor.availability, normKey);
+        list = arr.map((time_slot) => ({ time_slot, day_of_week: normKey }));
       }
       return list.filter((s) => !bookedSet.has(dateStr + '|' + s.time_slot));
     }
@@ -1124,7 +1155,7 @@
       const d = new Date();
       d.setDate(d.getDate() + i);
       if (d.getDay() === 0 || d.getDay() === 6) continue;
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = fluxLocalDateStr(d);
       const daySlots = slotsForCalendarDay(dateStr);
       if (daySlots.length) {
         availableDays.push({

@@ -59,6 +59,10 @@ Implementation: `public/js/flux-google-hub.js` (`FluxGoogle.installStaffHub`, `F
 
 Migration: `supabase/migrations/20260526120000_counselor_appointments_booking_fixes.sql`
 
+| Availability slots | `counselor` + `student` | Counselor saves grid in Workboard; student opens Book appointment | Date chips show counts; not “No open slots”; rows in `counselor_availability_slots` (lowercase `day_of_week`). |
+
+Migration: `supabase/migrations/20260533700000_counselor_availability_student_read.sql`
+
 ---
 
 ## 0g. Staff Productivity Suite (P8.2)
