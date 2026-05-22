@@ -32,8 +32,6 @@
       enable_cognitive_ui: false,
       enable_teacher_ai: false,
       enable_live_class_mode: false,
-      enable_cognitive_predictions: false,
-      enable_counselor_insights: false,
       enable_school_command: false,
       enable_school_emergency_broadcast: false,
       enable_parent_portal: false,
