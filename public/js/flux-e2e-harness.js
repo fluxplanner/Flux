@@ -17,6 +17,8 @@
     enable_school_ops: true,
     enable_locale_foundation: true,
     enable_ops_health_panel: true,
+    enable_syllabus_conflict_check: true,
+    enable_counselor_caseload: true,
     enable_dashboard_widget_picker: true,
   };
 

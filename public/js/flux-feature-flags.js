@@ -43,7 +43,7 @@
       enable_offline_sync: false,
       enable_sync_conflict_ui: false,
       enable_storage_repair: false,
-      enable_syllabus_conflict_check: false,
+      enable_syllabus_conflict_check: true, // IAE PR-C: global default
       enable_layered_memory: false,
       enable_a11y_suite: false,
       enable_e2e_harness: false,
@@ -72,12 +72,12 @@
       enable_docs_ghost_sync: false,
       enable_gmail_educator_import: false,
       enable_site_enhancements_pack: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
-      enable_staff_productivity_suite: false,
-      enable_classroom_tools: false,
-      enable_caseload_engine: false,
-      enable_personal_hub: false,
-      enable_staff_command_v2: false,
-      enable_locale_foundation: false,
+      enable_staff_productivity_suite: true, // IAE PR-C: global default (was school override)
+      enable_classroom_tools: true, // IAE PR-C: global default
+      enable_caseload_engine: true, // IAE PR-C: global default
+      enable_personal_hub: true, // IAE PR-C: global default
+      enable_staff_command_v2: true, // IAE PR-C: global default
+      enable_locale_foundation: true, // IAE PR-C: global default
       enable_ops_health_panel: false,
       enable_dashboard_widget_picker: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_deep_links: false,
