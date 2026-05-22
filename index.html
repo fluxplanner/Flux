@@ -12,24 +12,8 @@
 </style>
 <script>
 (function(){
-  try{
-    var raw=localStorage.getItem('flux_liquid_glass');
-    var p=null;
-    if(raw!==null&&raw!==''){
-      try{
-        var v=JSON.parse(raw);
-        if(v===true)p=true;
-        else if(v===false)p=false;
-      }catch(e2){
-        if(raw==='1')p=true;
-        else if(raw==='0')p=false;
-      }
-    }
-    var on=p===true;
-    document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
-  }catch(e){
-    document.documentElement.setAttribute('data-flux-glass','off');
-  }
+  try{localStorage.removeItem('flux_liquid_glass');}catch(e){}
+  document.documentElement.setAttribute('data-flux-glass','off');
 })();
 </script>
 <script>
@@ -106,7 +90,6 @@
 <link rel="stylesheet" href="public/css/flux-ui-polish.css">
 <link rel="stylesheet" href="public/css/flux-personalization.css">
 <link rel="stylesheet" href="public/css/flux-enhancements-v100.css">
-<link rel="stylesheet" href="public/css/flux-visual-premium.css">
 <link rel="stylesheet" href="public/css/flux-mobile-premium.css">
 <link rel="stylesheet" href="public/css/flux-ai-orchestrator.css">
 <link rel="stylesheet" href="public/css/flux-ai-orch-layer.css">
@@ -2048,13 +2031,6 @@
           <h3>Effects</h3>
           <div class="srow" style="border:none;padding-top:0">
             <div>
-              <div class="slabel">Liquid glass</div>
-              <div class="ssub">Phones default to glass on; wider screens default off for speed. Turn on anytime for blur, glow, and softer chrome.</div>
-            </div>
-            <button type="button" class="toggle" id="fluxLiquidGlassToggle" aria-label="Liquid glass" aria-pressed="false"></button>
-          </div>
-          <div class="srow" style="border:none;padding-top:0">
-            <div>
               <div class="slabel">Snappy mode</div>
               <div class="ssub">On by default — fewer animated layers, lighter hovers, less GPU work. Turn off if you want the full motion polish.</div>
             </div>
@@ -2781,7 +2757,6 @@
 <script defer src="public/js/flux-parent-portal.js"></script>
 <script defer src="public/js/flux-a11y.js"></script>
 <script defer src="public/js/flux-enhancements-v100.js"></script>
-<script defer src="public/js/flux-visual-layer.js"></script>
 <script defer src="public/js/flux-master-backlog.js"></script>
 <script defer src="public/js/owner-suite.js"></script>
 <script defer src="public/js/flux-pro.js"></script>

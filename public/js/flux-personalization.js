@@ -9,7 +9,6 @@
   const KEY_LAYOUT_DASH='flux_layout_dashboard_v1';
   const KEY_DASH_HIDDEN='flux_dashboard_hidden_sections_v1';
   const KEY_LAYOUT_CAL='flux_layout_calendar_v1';
-  const KEY_LIQUID_GLASS='flux_liquid_glass';
   const KEY_PERF_SNAPPY='flux_perf_snappy';
   const DEFAULT_DASH_ORDER=['pulse','countdown','schedule','tasks'];
   /** Previous factory default (before pulse-first). Used to one-time-migrate users who never customized. */
@@ -94,16 +93,6 @@
     save(KEY_MOOD_TINT,!!on);
     applyMoodTint();
   }
-  /** true / false = explicit user choice; null = unset (viewport default for glass). */
-  function readLiquidGlassPref(){
-    try{
-      const v=load(KEY_LIQUID_GLASS,null);
-      if(v===true)return true;
-      if(v===false)return false;
-    }catch(e){}
-    return null;
-  }
-
   function applyMoodTint(){
     const on=load(KEY_MOOD_TINT,true);
     document.documentElement.removeAttribute('data-mood-tint');
@@ -115,16 +104,6 @@
     if(mood<=2||stress>=9)tone='calm';
     else if(mood>=4&&stress<=4)tone='warm';
     document.documentElement.setAttribute('data-mood-tint',tone);
-  }
-
-  function applyLiquidGlass(){
-    const p=readLiquidGlassPref();
-    const on=p===true;
-    document.documentElement.setAttribute('data-flux-glass',on?'on':'off');
-  }
-  function setLiquidGlassEnabled(on){
-    save(KEY_LIQUID_GLASS,!!on);
-    applyLiquidGlass();
   }
 
   function applyPerfSnappy(){
@@ -425,7 +404,8 @@
   function applyAll(){
     applyUiDensity();
     applyMoodTint();
-    applyLiquidGlass();
+    try{localStorage.removeItem('flux_liquid_glass');}catch(_){}
+    document.documentElement.setAttribute('data-flux-glass','off');
     applyPerfSnappy();
     applyDashboardOrder();
     applyDashboardVisibility();
@@ -447,20 +427,6 @@
         const next=!mt.classList.contains('on');
         setMoodTintEnabled(next);
         mt.classList.toggle('on',next);
-      };
-    }
-    const lg=document.getElementById('fluxLiquidGlassToggle');
-    if(lg){
-      const narrow=typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches;
-      const p=readLiquidGlassPref();
-      const en=p!==null?p:narrow;
-      lg.classList.toggle('on',en);
-      lg.setAttribute('aria-pressed',en?'true':'false');
-      lg.onclick=()=>{
-        const next=!lg.classList.contains('on');
-        setLiquidGlassEnabled(next);
-        lg.classList.toggle('on',next);
-        lg.setAttribute('aria-pressed',next?'true':'false');
       };
     }
     const perf=document.getElementById('fluxPerfSnappyToggle');
@@ -485,8 +451,6 @@
     applyUiDensity,
     setMoodTintEnabled,
     applyMoodTint,
-    applyLiquidGlass,
-    setLiquidGlassEnabled,
     applyPerfSnappy,
     setPerfSnappyEnabled,
     peakHoursFromLog,

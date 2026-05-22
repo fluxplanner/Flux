@@ -487,28 +487,6 @@
     document.querySelectorAll('.ai-title, .sidebar-logo').forEach((el) => el.classList.add('gradient-animate'));
   }
 
-  // ── Liquid glass SVG filter (injected once) ──────────────────────
-  function initLiquidGlass() {
-    if (document.querySelector('svg.glass-distortion-svg')) return;
-    const NS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('class', 'glass-distortion-svg');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.innerHTML = `
-      <defs>
-        <filter id="glass-distortion" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.65 0.65" numOctaves="1" seed="12" result="noise"/>
-          <feColorMatrix in="noise" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 15 -6" result="sharpNoise"/>
-          <feComposite in="SourceGraphic" in2="sharpNoise" operator="in"/>
-        </filter>
-        <filter id="glass-refraction">
-          <feTurbulence type="fractalNoise" baseFrequency="0.015 0.01" numOctaves="3" seed="5" result="turbulence"/>
-          <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="4" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-      </defs>`;
-    document.body.prepend(svg);
-  }
-
   // ── Animated global mesh canvas ──────────────────────────────────
   // Lives at z-index:0 behind the app shell. Pauses when the tab is hidden
   // and respects prefers-reduced-motion (skip entirely in that case).
@@ -663,7 +641,6 @@
   }
 
   function initFluxVisual() {
-    initLiquidGlass();
     initGlobalMesh();
     decorateHeadings();
     initCursorSpotlight();
@@ -734,7 +711,6 @@
     animateNavIndicator,
     updateNavSquiggle,
     initFluxVisual,
-    initLiquidGlass,
     initGlobalMesh,
   };
 

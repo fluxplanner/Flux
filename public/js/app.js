@@ -30,7 +30,7 @@ const FLUX_IMPERSONATION_GLOBAL_KEYS=new Set([
   // every time you switch into a different teacher to test something.
   'flux_user_name','flux_accent','flux_accent_rgb','flux_theme',
   'flux_profile_pic',
-  'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+  'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
   'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
   'flux_last_sync',
 ]);
@@ -200,7 +200,7 @@ const DATA_VERSION=6;
   if(stored>=DATA_VERSION)return;
   const keepExact=new Set([
     'flux_data_version','flux_splash_shown',
-    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_canvas_token','flux_canvas_url','flux_canvas_host',
     'flux_canvas_last_view','flux_canvas_last_params',
@@ -6274,7 +6274,7 @@ function clearCache(){
   if(inp!=='DELETE'){if(inp!==null)alert('Cancelled — you must type DELETE exactly.');return;}
   const keep=[
     'flux_settings','flux_accent','flux_accent_rgb','flux_theme','profile','flux_user_name',
-    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version','flux_splash_shown',
   ];
@@ -7976,7 +7976,6 @@ function getCloudPayload(){
     restDays:loadRestDaysList(),
     flux_ui_density:load('flux_ui_density','comfortable'),
     flux_mood_tint_enabled:load('flux_mood_tint_enabled',true),
-    flux_liquid_glass:load('flux_liquid_glass',null),
     flux_nav_counts_v1:load('flux_nav_counts_v1',{}),
     events:load('flux_events',[]),
     cycleConfig:load('flux_cycle_config',null),
@@ -8311,7 +8310,6 @@ async function syncFromCloud(){
     else if(d.noHWDays&&Array.isArray(d.noHWDays)){saveRestDaysList(d.noHWDays.map(x=>typeof x==='string'?{date:x,kind:'lazy'}:x));}
     if(d.flux_ui_density)save('flux_ui_density',d.flux_ui_density);
     if(d.flux_mood_tint_enabled!==undefined)save('flux_mood_tint_enabled',d.flux_mood_tint_enabled);
-    if(d.flux_liquid_glass===true||d.flux_liquid_glass===false)save('flux_liquid_glass',d.flux_liquid_glass);
     if(d.flux_nav_counts_v1&&typeof d.flux_nav_counts_v1==='object')save('flux_nav_counts_v1',d.flux_nav_counts_v1);
     if(d.events&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('events'))){save('flux_events',d.events);}
     if(d.cycleConfig!==undefined)save('flux_cycle_config',d.cycleConfig);
@@ -11072,7 +11070,7 @@ function handleSignedOut(){
   sessionStorage.clear();
   const keysToKeep=[
     'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
-    'flux_liquid_glass','flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
+    'flux_perf_snappy','flux_ui_density','flux_mood_tint_enabled',
     'flux_nav_counts_v1','flux_layout_dashboard_v1','flux_layout_calendar_v1',
     'flux_data_version',
     'flux_profile_pic',
