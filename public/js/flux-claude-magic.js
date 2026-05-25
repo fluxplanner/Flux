@@ -297,6 +297,47 @@
     }
   }
 
+  /* ── Patch educator dashboard stats ─────────────────────────── */
+  function tryPatchDashboardStats() {
+    var roots = document.querySelectorAll('.lh-root,.cm-root,.ao-root,.sw-root');
+    for (var i = 0; i < roots.length; i++) {
+      var root = roots[i];
+      if (root.dataset.magicApplied) continue;
+      root.dataset.magicApplied = '1';
+      var nums = root.querySelectorAll('.lh-stat-num,.ao-stat-num,.sw-stat-num');
+      nums.forEach(function (el, idx) {
+        var text = el.textContent.trim();
+        var m = text.match(/^(\d+)/);
+        if (!m) return;
+        var to = parseInt(m[1], 10);
+        var suffix = text.slice(m[0].length);
+        el.textContent = '0' + suffix;
+        el.classList.add('flux-counter');
+        setTimeout(function () {
+          animateCounter(el, to, { suffix: suffix, duration: 700 });
+        }, 60 + idx * 80);
+      });
+      var cards = root.querySelectorAll('.lh-class-card,.cm-card,.ao-sub-row,.ao-walk-row,.sw-ticket,.sw-peer,.ao-dir-row');
+      cards.forEach(function (card, idx) {
+        if (card.style.animation) return;
+        card.style.opacity = '0';
+        card.style.animation = 'fluxFadeUp .35s cubic-bezier(.22,1,.36,1) ' + (idx * 45) + 'ms both';
+      });
+    }
+  }
+
+  /* ── Patch booking modal ──────────────────────────────────────── */
+  function tryPatchBookingModal() {
+    var modal = document.getElementById('bookApptModal');
+    if (!modal || modal.dataset.magicApplied) return;
+    modal.dataset.magicApplied = '1';
+    var chips = modal.querySelectorAll('.date-chip');
+    chips.forEach(function (chip, idx) {
+      chip.style.opacity = '0';
+      chip.style.animation = 'fluxFadeUp .3s cubic-bezier(.22,1,.36,1) ' + (idx * 35) + 'ms both';
+    });
+  }
+
   /* ── MutationObserver to watch for panel renders ─────────────── */
   var _observer = new MutationObserver(function () {
     tryPatchStaffTasks();
@@ -307,6 +348,8 @@
     tryPatchMeetingNotes();
     tryPatchSchoolFeed();
     tryPatchMeetingModal();
+    tryPatchDashboardStats();
+    tryPatchBookingModal();
   });
 
   /* ── Init ─────────────────────────────────────────────────────── */

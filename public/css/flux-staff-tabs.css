@@ -598,3 +598,120 @@
 .flux-role-skel-card{height:88px}
 .flux-role-skel-strip{height:52px;width:100%;margin-bottom:10px}
 .flux-role-skel-strip--short{width:72%}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dashboard revamp — visual upgrades
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Greeting gradient text */
+.lh-greet,.cm-greet,.ao-greet,.sw-greet {
+  background: linear-gradient(135deg, #f5f7fc 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 1.5rem;
+}
+
+/* Stats bar glass upgrade */
+.lh-stats,.ao-stats,.sw-stats {
+  background: linear-gradient(135deg, rgba(255,255,255,.04) 0%, rgba(var(--accent-rgb),.03) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* Counselor filter strip glow */
+.cm-filter.active {
+  box-shadow: 0 2px 12px rgba(var(--accent-rgb),.15);
+}
+
+/* Class card left accent stripe */
+.lh-class-card {
+  position: relative;
+  overflow: hidden;
+}
+.lh-class-card::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0; width: 4px;
+  background: var(--lh-accent, var(--accent));
+  opacity: .6;
+  transition: opacity .2s;
+}
+.lh-class-card:hover::after { opacity: 1; }
+
+/* Period pill glow */
+.lh-period-pill {
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb),.12);
+}
+
+/* Sub coverage indicator dot */
+.ao-stat-warn {
+  position: relative;
+}
+.ao-stat-warn::after {
+  content: '';
+  position: absolute;
+  top: 8px; right: 12px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold, #f5a623);
+  animation: fluxPulseDot 2s ease-in-out infinite;
+}
+@keyframes fluxPulseDot {
+  0%, 100% { transform: scale(1); opacity: .8; }
+  50% { transform: scale(1.4); opacity: .4; }
+}
+
+/* Quick link buttons upgrade */
+.ao-quick-btn,.sw-quick-btn {
+  position: relative;
+  overflow: hidden;
+}
+.ao-quick-btn::before,.sw-quick-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent);
+  transition: left .4s ease;
+}
+.ao-quick-btn:hover::before,.sw-quick-btn:hover::before {
+  left: 100%;
+}
+
+/* Ticket priority high pulse */
+.sw-prio-high {
+  animation: fluxPrioGlow 2.5s ease-in-out infinite;
+}
+@keyframes fluxPrioGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,109,0); }
+  50% { box-shadow: 0 0 8px rgba(255,77,109,.15); }
+}
+
+/* Section headers with accent underline */
+.ao-section-head h3,.sw-section-head h3 {
+  position: relative;
+  padding-bottom: 6px;
+}
+.ao-section-head h3::after,.sw-section-head h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 28px; height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: .5;
+}
+
+/* Resolve button glow */
+.sw-resolve {
+  transition: all .2s ease;
+}
+.sw-resolve:hover {
+  box-shadow: 0 2px 12px rgba(0,217,163,.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ao-stat-warn::after { animation: none !important; }
+  .sw-prio-high { animation: none !important; }
+  .ao-quick-btn::before,.sw-quick-btn::before { transition: none !important; display: none; }
+}

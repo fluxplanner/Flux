@@ -104,3 +104,51 @@
   }
   document.addEventListener('mousemove',onMove,{passive:true});
 })();
+
+/* Login — magnetic button hover (buttons subtly follow the cursor) */
+(function(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  document.addEventListener('mousemove',function(e){
+    var ls=document.getElementById('loginScreen');
+    if(!ls||!ls.classList.contains('visible'))return;
+    var btns=ls.querySelectorAll('.login-google-btn--compact,.login-email-summary,.login-feature-card');
+    for(var i=0;i<btns.length;i++){
+      var b=btns[i];
+      var r=b.getBoundingClientRect();
+      var cx=r.left+r.width/2,cy=r.top+r.height/2;
+      var dx=e.clientX-cx,dy=e.clientY-cy;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<150){
+        var pull=Math.max(0,(150-dist)/150)*3;
+        b.style.transform='translate('+(dx*pull/150)+'px,'+(dy*pull/150)+'px)';
+      }else{
+        b.style.transform='';
+      }
+    }
+  },{passive:true});
+})();
+
+/* Login — counter animation for any stat numbers on the page */
+(function(){
+  function animateLoginCounters(){
+    var ls=document.getElementById('loginScreen');
+    if(!ls||!ls.classList.contains('visible'))return;
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    var els=ls.querySelectorAll('[data-login-count]');
+    for(var i=0;i<els.length;i++){
+      (function(el){
+        if(el.dataset.counted)return;
+        el.dataset.counted='1';
+        var to=parseInt(el.dataset.loginCount,10)||0;
+        var suffix=el.dataset.loginSuffix||'';
+        if(window.FluxMagic&&window.FluxMagic.counter){
+          FluxMagic.counter(el,to,{suffix:suffix,duration:1200});
+        }
+      })(els[i]);
+    }
+  }
+  var obs=new MutationObserver(animateLoginCounters);
+  var target=document.getElementById('loginScreen');
+  if(target)obs.observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('DOMContentLoaded',animateLoginCounters);
+})();

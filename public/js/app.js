@@ -4893,9 +4893,23 @@ async function fluxLookupClassByCode(sb,code){
     const {data,error}=await sb.rpc('flux_lookup_class_by_code',{p_code:norm});
     if(error)throw error;
     const row=Array.isArray(data)?data[0]:data;
-    return row&&row.id?row:null;
+    if(row&&row.id)return row;
   }catch(e){
-    console.warn('[Flux] fluxLookupClassByCode',e);
+    console.warn('[Flux] fluxLookupClassByCode RPC fallback',e);
+  }
+  try{
+    const {data:row}=await sb.from('teacher_classes')
+      .select('id,class_name,class_code,subject,teacher_id,period,room,time_start,time_end,days')
+      .eq('class_code',norm).eq('active',true).maybeSingle();
+    if(!row||!row.id)return null;
+    let tName='Teacher';
+    try{
+      const {data:ur}=await sb.from('user_roles').select('display_name').eq('user_id',row.teacher_id).maybeSingle();
+      if(ur?.display_name)tName=ur.display_name;
+    }catch(_){}
+    return{...row,teacher_display_name:tName};
+  }catch(e2){
+    console.warn('[Flux] fluxLookupClassByCode direct fallback',e2);
     return null;
   }
 }
@@ -16033,7 +16047,7 @@ async function saveTeacherClasses_andNext(){
   try{
     for(const c of collected){
       const code=generateClassCode();
-      await sb.from('teacher_classes').insert({
+      const {error:insErr}=await sb.from('teacher_classes').insert({
         teacher_id:u.id,
         class_name:c.name,
         class_code:code,
@@ -16046,6 +16060,7 @@ async function saveTeacherClasses_andNext(){
         school_year:'2025-26',
         active:true,
       });
+      if(insErr){setErr(`Failed to save "${c.name}": ${insErr.message||insErr}`);return;}
     }
   }catch(e){setErr(e.message||'Failed to save classes');return;}
   window.__eduOnboardNext?.();
@@ -17049,14 +17064,30 @@ async function submitJoinClass(){
       return;
     }
 
-    const {data:joinRes,error:joinErr}=await sb.rpc('flux_join_teacher_class',{p_code:code});
-    if(joinErr)throw joinErr;
-    if(!joinRes?.ok){
-      const why=joinRes?.error==='invalid_code'
-        ?'Class code not found. Check with your teacher.'
-        :'Could not join this class. Try again.';
-      setErr(why);
-      return;
+    let joinRes=null;
+    try{
+      const {data,error:joinErr}=await sb.rpc('flux_join_teacher_class',{p_code:code});
+      if(joinErr)throw joinErr;
+      joinRes=data;
+    }catch(rpcErr){
+      console.warn('[Flux] flux_join_teacher_class RPC failed, using fallback',rpcErr);
+    }
+
+    if(!joinRes||!joinRes.ok){
+      if(joinRes&&joinRes.error==='invalid_code'){
+        setErr('Class code not found. Check with your teacher.');return;
+      }
+      const cls=await fluxLookupClassByCode(sb,code);
+      if(!cls){setErr('Class code not found. Check with your teacher.');return;}
+      const {data:existing}=await sb.from('teacher_students')
+        .select('id').eq('student_id',u.id).eq('class_id',cls.id).eq('active',true).maybeSingle();
+      if(existing?.id){setErr(`You are already in ${cls.class_name||'this class'}.`);return;}
+      const {error:enrollErr}=await sb.from('teacher_students').insert({
+        student_id:u.id,class_id:cls.id,teacher_id:cls.teacher_id,
+        class_code:cls.class_code,active:true,
+      });
+      if(enrollErr){setErr(enrollErr.message||'Could not join. Try again.');return;}
+      joinRes={ok:true,class_name:cls.class_name,class_id:cls.id,class_code:cls.class_code,teacher_id:cls.teacher_id};
     }
 
     const className=joinRes.class_name||'your class';
@@ -17971,7 +18002,15 @@ async function selectAppointmentDate(btn,counselorId){
   try{
     const {data:c}=await sb.from('counselors').select('availability').eq('id',counselorId).maybeSingle();
     availability=c?.availability?.[dayName]||[];
-  }catch(_){}
+    if(!availability.length&&c?.availability){
+      const allSlots=Object.values(c.availability).flat();
+      if(!allSlots.length){
+        availability=['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM'];
+      }
+    }
+  }catch(_){
+    availability=['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM'];
+  }
   let booked=new Set();
   try{
     const {data:b}=await sb.from('counselor_appointments')
@@ -17985,7 +18024,7 @@ async function selectAppointmentDate(btn,counselorId){
   const slotsEl=document.getElementById('timeSlots');
   if(!container||!slotsEl)return;
   if(!availability.length){
-    slotsEl.innerHTML='<div style="font-size:.8rem;color:var(--muted2)">No availability on this day</div>';
+    slotsEl.innerHTML='<div style="font-size:.8rem;color:var(--muted2)">No availability on this day. Try another date.</div>';
   }else{
     slotsEl.innerHTML=availability.map(slot=>{
       const isBooked=booked.has(slot);
@@ -18019,7 +18058,9 @@ async function confirmAppointment(counselorId){
   const reason=document.getElementById('appt_reason')?.value||'General check-in';
   const notes=document.getElementById('appt_notes')?.value.trim();
   const errEl=document.getElementById('apptError');
-  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
+  const confirmBtn=document.getElementById('confirmApptBtn');
+  const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent='Confirm appointment';}};
+  if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='Booking…';}
   const {error}=await sb.from('counselor_appointments').insert({
     counselor_id:counselorId,
     student_id:currentUser.id,
@@ -18030,9 +18071,11 @@ async function confirmAppointment(counselorId){
     status:'pending',
     duration_minutes:30,
   });
-  if(error){setErr(error.message);return;}
+  if(error){setErr(error.message||'Could not book appointment. Please try again.');return;}
   document.getElementById('bookApptModal')?.remove();
-  showToast(`✅ Booked for ${_selectedApptDate} at ${_selectedApptTime}`);
+  const rect=confirmBtn?.getBoundingClientRect();
+  if(rect&&window.FluxMagic?.particles)FluxMagic.particles(rect.left+rect.width/2,rect.top,{count:10});
+  showToast(`Booked for ${new Date(_selectedApptDate+'T00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} at ${_selectedApptTime}`,'success');
   _selectedApptDate=null;_selectedApptTime=null;
   renderMyCounselorSection();
 }
