@@ -140,8 +140,19 @@
     const list = document.getElementById('staffDirectoryList');
     if (!list) return;
     if (!entries.length) {
-      list.innerHTML =
-        '<div style="text-align:center;padding:18px;font-size:.82rem;color:var(--muted2)">No directory rows yet — ask your admin to add staff in Supabase.</div>';
+      const isFiltered = (document.getElementById('staffSearch')?.value || '').trim().length > 0;
+      list.innerHTML = isFiltered
+        ? `<div style="text-align:center;padding:20px;font-size:.82rem;color:var(--muted2);line-height:1.6">
+            <div style="font-size:1.5rem;margin-bottom:8px" class="flux-empty-icon">🔍</div>
+            <div style="font-weight:700;color:var(--text);margin-bottom:4px">No matches</div>
+            Try a different name or department.
+          </div>`
+        : `<div style="text-align:center;padding:22px 16px;font-size:.82rem;color:var(--muted2);line-height:1.6">
+            <div style="font-size:1.8rem;margin-bottom:10px" class="flux-empty-icon">🏫</div>
+            <div style="font-weight:700;color:var(--text);margin-bottom:5px">Directory not set up yet</div>
+            Your admin hasn't added staff to the directory, or your school isn't on Flux yet.<br><br>
+            <button type="button" style="padding:8px 18px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);font-size:.8rem;font-weight:700;cursor:pointer" onclick="(function(){const e=window.FluxStaffPlatform&&FluxStaffPlatform.StaffSignup;if(e){e.selectedDirectoryEntry={id:'manual',full_name:e.email?e.email.split('@')[0]:'Educator',role:'staff',school_email:'',department:''}}const b=document.getElementById('step2NextBtn');if(b){b.disabled=false;b.style.opacity='1'}})()">Continue without matching →</button>
+          </div>`;
       return;
     }
     const icons = { teacher: '👩‍🏫', counselor: '💬', staff: '🏫', admin: '🎓' };
@@ -247,7 +258,23 @@
 
   async function submitStaffVerificationRequest() {
     const client = sb();
-    if (!client || !StaffSignup.userId || !StaffSignup.selectedDirectoryEntry) return;
+    if (!client || !StaffSignup.userId || !StaffSignup.selectedDirectoryEntry) {
+      if (!StaffSignup.selectedDirectoryEntry) {
+        if (typeof showToast === 'function') showToast('Select your directory entry first', 'warning');
+      }
+      return;
+    }
+    // Show loading state on button
+    const submitBtn = document.querySelector('#staffStep3 .onboard-next-btn');
+    if (submitBtn) {
+      submitBtn.classList.add('flux-btn-loading');
+      submitBtn.textContent = 'Submitting…';
+      submitBtn.disabled = true;
+    }
+    // Progress shimmer
+    const shimmer = document.createElement('div');
+    shimmer.className = 'flux-submit-progress';
+    submitBtn?.parentNode?.insertBefore(shimmer, submitBtn?.nextSibling);
     const entry = StaffSignup.selectedDirectoryEntry;
     const note = document.getElementById('sRequestNote')?.value.trim() || '';
     const schoolEmail = document.getElementById('sSchoolEmail')?.value.trim() || entry.school_email || '';
@@ -279,7 +306,42 @@
       .update({ is_claimed: true, claimed_by: StaffSignup.userId, claimed_at: new Date().toISOString() })
       .eq('id', entry.id)
       .eq('is_claimed', false);
-    document.getElementById('staffOnboarding')?.remove();
+    // Replace onboarding with polished pending state
+    const overlay = document.getElementById('staffOnboarding');
+    if (overlay) {
+      const wrap = overlay.querySelector('[style*="max-width"]');
+      if (wrap) {
+        wrap.innerHTML = `
+          <div class="flux-pending-card" style="margin-top:20px">
+            <span class="flux-pending-icon">⏳</span>
+            <div style="font-size:1.4rem;font-weight:800;margin-bottom:8px">Request submitted!</div>
+            <div style="font-size:.88rem;color:var(--muted2);line-height:1.6;margin-bottom:18px">
+              Your admin will review and approve your staff access.<br>
+              You'll be notified here and via messaging when it's approved.
+            </div>
+            <div class="flux-pending-badge" style="margin:0 auto 18px;width:fit-content">
+              <span class="flux-pending-dot"></span> Verification pending
+            </div>
+            <div style="font-size:.78rem;color:var(--muted2);margin-bottom:16px">
+              <b>In the meantime</b> — you can use Flux as a personal planner.<br>
+              Your work dashboard activates automatically once approved.
+            </div>
+            <button type="button" class="onboard-next-btn" style="width:100%;margin-top:4px" id="pendingEnterBtn">Open personal planner →</button>
+          </div>`;
+        overlay.querySelector('#pendingEnterBtn')?.addEventListener('click', async () => {
+          overlay.remove();
+          const sess = await client.auth.getSession();
+          if (sess?.data?.session && typeof handleSignedIn === 'function') {
+            await handleSignedIn(sess.data.session.user, sess.data.session);
+          }
+        });
+        // Auto-dismiss after 8s
+        setTimeout(() => {
+          overlay.querySelector('#pendingEnterBtn')?.click();
+        }, 8000);
+        return;
+      }
+    }
     if (typeof showToast === 'function') showToast('Request submitted. You can use personal planner until approved.', 'success', 5000);
     const sess = await client.auth.getSession();
     if (sess?.data?.session && typeof handleSignedIn === 'function') await handleSignedIn(sess.data.session.user, sess.data.session);
@@ -440,13 +502,17 @@
       <div class="flux-stack" style="max-width:720px;margin:0 auto;padding:16px">
         <div class="card">
           <h3>Add task</h3>
-          <input id="stNewTitle" placeholder="Title" style="margin-bottom:8px">
-          <button type="button" id="stAddBtn" class="edu-action-btn primary" style="width:100%">Add</button>
+          <input id="stNewTitle" placeholder="What needs doing? (Enter to add)" style="margin-bottom:8px" class="flux-quick-add">
+          <button type="button" id="stAddBtn" class="edu-action-btn primary" style="width:100%">Add task</button>
         </div>
         <div class="card"><h3>Your list</h3>
           <div id="stList" class="st-task-list">${listHtml}</div>
         </div>
       </div>`;
+    // Enter key to add task
+    el.querySelector('#stNewTitle')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.querySelector('#stAddBtn')?.click(); }
+    });
     el.querySelector('#stAddBtn')?.addEventListener('click', async () => {
       const title = el.querySelector('#stNewTitle')?.value?.trim();
       if (!title) return;
@@ -568,8 +634,32 @@
           <div style="font-size:1.1rem;font-weight:800">🎓 PD</div>
           <button type="button" class="edu-action-btn primary" id="pdAdd">+ Add</button>
         </div>
-        <div style="font-size:.85rem;color:var(--muted2);margin-bottom:12px">Completed hours (approx): <b>${Math.round(hrs)}</b></div>
-        ${(items || []).map((i) => `<div class="card" style="margin-bottom:8px"><b>${esc(i.title)}</b><div style="font-size:.75rem;color:var(--muted2)">${esc(i.status)} · ${esc(i.pd_type || '')}</div></div>`).join('') || '<div style="color:var(--muted2)">No PD rows yet</div>'}
+        <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="padding:10px 16px;border-radius:12px;background:rgba(var(--green-rgb),.07);border:1px solid rgba(var(--green-rgb),.18)">
+            <div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green)">${Math.round(hrs)}h</div>
+            <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:2px">Completed</div>
+          </div>
+          <div style="padding:10px 16px;border-radius:12px;background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.18)">
+            <div style="font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)">${(items || []).length}</div>
+            <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:2px">Activities</div>
+          </div>
+        </div>
+        ${(items || []).map((i) => {
+          const typeLabel = { course:'Course', workshop:'Workshop', conference:'Conference', observation:'Observation', book:'Book', other:'Other' }[i.pd_type] || (i.pd_type || 'Other');
+          const statusColor = i.status === 'completed' ? 'var(--green)' : i.status === 'in_progress' ? 'var(--accent)' : 'var(--muted2)';
+          return `<div class="card flux-wb-card" style="margin-bottom:8px;display:flex;align-items:flex-start;gap:12px">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;margin-bottom:4px">${esc(i.title)}</div>
+              <div style="font-size:.73rem;color:var(--muted2);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <span style="color:${statusColor}">${esc(i.status.replace('_',' '))}</span>
+                <span>·</span>
+                <span class="pd-type-badge ${esc(i.pd_type || 'other')}">${esc(typeLabel)}</span>
+                ${i.hours ? `<span>· ${i.hours}h</span>` : ''}
+                ${i.completed_date ? `<span>· ${esc(i.completed_date)}</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('') || `<div style="text-align:center;padding:24px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px">🎓</div><div style="font-size:.85rem">No PD activities yet — add your first one above.</div></div>`}
       </div>`;
     el.querySelector('#pdAdd')?.addEventListener('click', openAddPDModal);
   }
@@ -579,18 +669,42 @@
     const r = document.createElement('div');
     r.id = 'pdModalRoot';
     r.style.cssText =
-      'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:6200;display:flex;align-items:center;justify-content:center;padding:16px';
+      'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:6200;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px)';
     r.innerHTML = `
-      <div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:20px;width:100%;max-width:420px">
-        <div class="mrow"><label>Title *</label><input id="pd_title"></div>
-        <div class="mrow"><label>Hours</label><input id="pd_hours" type="number" step="0.5" value="1"></div>
-        <div class="mrow"><label>Status</label>
-          <select id="pd_status"><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:22px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+        <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px">Add PD activity</h3>
+        <div class="mrow"><label>Title *</label><input id="pd_title" placeholder="e.g. First Aid Re-certification"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="mrow"><label>Hours</label><input id="pd_hours" type="number" step="0.5" min="0" value="1"></div>
+          <div class="mrow"><label>Status</label>
+            <select id="pd_status">
+              <option value="planned">Planned</option>
+              <option value="in_progress">In progress</option>
+              <option value="completed" selected>Completed</option>
+            </select>
+          </div>
         </div>
-        <button type="button" id="pd_go" class="edu-action-btn primary" style="width:100%;margin-top:10px">Save</button>
-        <button type="button" id="pd_x" class="onboard-skip-btn" style="width:100%;margin-top:6px">Cancel</button>
+        <div class="mrow"><label>Type</label>
+          <select id="pd_type">
+            <option value="course">Course / Online</option>
+            <option value="workshop">Workshop</option>
+            <option value="conference">Conference</option>
+            <option value="observation">Peer observation</option>
+            <option value="book">Book / reading</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="mrow"><label>Date <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
+          <input id="pd_date" type="date" value="${new Date().toISOString().slice(0, 10)}">
+        </div>
+        <button type="button" id="pd_go" class="edu-action-btn primary" style="width:100%;margin-top:14px">Save activity</button>
+        <button type="button" id="pd_x" class="onboard-skip-btn" style="width:100%;margin-top:8px">Cancel</button>
       </div>`;
     document.body.appendChild(r);
+    // Enter on title submits
+    r.querySelector('#pd_title')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); r.querySelector('#pd_go')?.click(); }
+    });
     r.addEventListener('click', (e) => {
       if (e.target === r) r.remove();
     });
@@ -598,20 +712,49 @@
     r.querySelector('#pd_go').addEventListener('click', async () => {
       const client = sb();
       const title = r.querySelector('#pd_title')?.value?.trim();
-      if (!client || !title) return;
+      if (!client || !title) {
+        r.querySelector('#pd_title')?.focus();
+        return;
+      }
+      const goBtn = r.querySelector('#pd_go');
+      if (goBtn) { goBtn.classList.add('flux-btn-loading'); goBtn.textContent = 'Saving…'; }
       await client.from('professional_development').insert({
         user_id: currentUser.id,
         title,
         hours: parseFloat(r.querySelector('#pd_hours')?.value) || 0,
-        status: r.querySelector('#pd_status')?.value || 'planned',
-        pd_type: 'course',
+        status: r.querySelector('#pd_status')?.value || 'completed',
+        pd_type: r.querySelector('#pd_type')?.value || 'course',
+        completed_date: r.querySelector('#pd_date')?.value || null,
       });
       r.remove();
+      if (typeof showToast === 'function') showToast('PD activity added', 'success');
       renderPDPanel();
     });
   }
 
   const WellbeingState = { energy: 0, stress: 0, emotions: [] };
+
+  const EMOTION_LIST = [
+    { key: 'energized',  label: 'Energized',  emoji: '⚡' },
+    { key: 'calm',       label: 'Calm',        emoji: '😌' },
+    { key: 'happy',      label: 'Happy',       emoji: '😊' },
+    { key: 'motivated',  label: 'Motivated',   emoji: '🚀' },
+    { key: 'tired',      label: 'Tired',       emoji: '😴' },
+    { key: 'stressed',   label: 'Stressed',    emoji: '😰' },
+    { key: 'anxious',    label: 'Anxious',     emoji: '😬' },
+    { key: 'frustrated', label: 'Frustrated',  emoji: '😤' },
+    { key: 'overwhelmed',label: 'Overwhelmed', emoji: '🤯' },
+    { key: 'grateful',   label: 'Grateful',    emoji: '🙏' },
+    { key: 'proud',      label: 'Proud',       emoji: '💪' },
+    { key: 'uncertain',  label: 'Uncertain',   emoji: '🤔' },
+  ];
+
+  function wbDotColor(energy, stress) {
+    if (energy >= 4 && stress <= 2) return 'var(--green)';
+    if (energy >= 3 && stress <= 3) return 'var(--accent)';
+    if (stress >= 4) return 'var(--red)';
+    return 'var(--gold)';
+  }
 
   async function renderWellbeingPanel() {
     const el = document.getElementById('staffWellbeing');
@@ -622,39 +765,94 @@
     const { data } = await client.from('staff_personal_data').select('wellbeing_log').eq('user_id', currentUser.id).maybeSingle();
     const logs = Array.isArray(data?.wellbeing_log) ? data.wellbeing_log : [];
     const today = new Date().toISOString().slice(0, 10);
+    const todayLog = logs.find((l) => l.date === today);
+
+    // Build history sparkline dots
+    const recentLogs = logs.slice(-14);
+    const historyDots = recentLogs.length
+      ? `<div class="flux-wb-history">${recentLogs.map((l) =>
+          `<div class="flux-wb-dot" style="background:${wbDotColor(l.energy, l.stress)}"
+            title="${esc(l.date)} · ⚡${l.energy} 😰${l.stress}${l.note ? ' · ' + esc(l.note.slice(0,40)) : ''}"></div>`
+        ).join('')}</div>`
+      : '';
+
     el.innerHTML = `
       <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Wellbeing check-in</p></div>
-      <div style="max-width:560px;margin:0 auto;padding:16px">
+      <div style="max-width:580px;margin:0 auto;padding:16px">
+        ${todayLog ? `<div style="padding:10px 14px;border-radius:12px;background:rgba(var(--green-rgb),.07);border:1px solid rgba(var(--green-rgb),.2);font-size:.8rem;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+          <span>✓</span><span>Checked in today — ⚡${todayLog.energy} · 😰${todayLog.stress}${todayLog.emotions?.length ? ' · ' + todayLog.emotions.slice(0,3).join(', ') : ''}</span>
+        </div>` : ''}
         <div class="card">
-          <div style="font-size:.8rem;font-weight:700;margin-bottom:8px">Energy (1–5)</div>
-          <div style="display:flex;gap:6px;margin-bottom:12px" id="energyRating">${[1, 2, 3, 4, 5]
-            .map(
-              (n) =>
-                `<button type="button" class="wellbeing-btn" data-energy="${n}" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);cursor:pointer">${n}</button>`
-            )
-            .join('')}</div>
-          <div style="font-size:.8rem;font-weight:700;margin-bottom:8px">Stress (1–5)</div>
-          <div style="display:flex;gap:6px;margin-bottom:12px" id="stressRating">${[1, 2, 3, 4, 5]
-            .map(
-              (n) =>
-                `<button type="button" class="wellbeing-btn" data-stress="${n}" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);cursor:pointer">${n}</button>`
-            )
-            .join('')}</div>
-          <div class="mrow"><label>Note</label><textarea id="wellbeingNote" style="min-height:56px;resize:none"></textarea></div>
+          <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Energy level (1–5)</div>
+          <div style="display:flex;gap:6px;margin-bottom:16px" id="energyRating">${[1, 2, 3, 4, 5]
+            .map((n) => {
+              const emojis = ['','😴','😐','🙂','😊','⚡'];
+              return `<button type="button" class="wellbeing-btn" data-energy="${n}"
+                style="flex:1;padding:10px 6px;border-radius:12px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.9rem;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <span>${emojis[n]}</span><span style="font-size:.7rem;font-weight:700">${n}</span>
+              </button>`;
+            }).join('')}</div>
+
+          <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Stress level (1–5)</div>
+          <div style="display:flex;gap:6px;margin-bottom:16px" id="stressRating">${[1, 2, 3, 4, 5]
+            .map((n) => {
+              const emojis = ['','😌','😐','😟','😰','🤯'];
+              return `<button type="button" class="wellbeing-btn" data-stress="${n}"
+                style="flex:1;padding:10px 6px;border-radius:12px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;font-size:.9rem;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <span>${emojis[n]}</span><span style="font-size:.7rem;font-weight:700">${n}</span>
+              </button>`;
+            }).join('')}</div>
+
+          <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">How are you feeling?</div>
+          <div class="flux-emotion-wrap" id="emotionPicker">
+            ${EMOTION_LIST.map((em) =>
+              `<button type="button" class="flux-emotion-chip" data-emotion="${esc(em.key)}">${em.emoji} ${esc(em.label)}</button>`
+            ).join('')}
+          </div>
+
+          <div class="mrow"><label>Note <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
+            <textarea id="wellbeingNote" placeholder="Anything on your mind today?" style="min-height:60px;resize:none"></textarea></div>
           <button type="button" class="edu-action-btn primary" style="width:100%" id="wbSave">Save check-in</button>
         </div>
-        <div style="margin-top:16px;font-size:.78rem;color:var(--muted2)">Recent: ${logs
-          .slice(-5)
-          .map((l) => `${esc(l.date)} ⚡${l.energy} 🔴${l.stress}`)
-          .join(' · ') || '—'}
-        </div>
+
+        ${recentLogs.length ? `<div class="card" style="margin-top:12px">
+          <div style="font-size:.78rem;font-weight:700;margin-bottom:6px">Last ${recentLogs.length} days</div>
+          ${historyDots}
+          <div style="font-size:.68rem;color:var(--muted2);margin-top:6px;display:flex;gap:12px">
+            <span style="color:var(--green)">● High energy / low stress</span>
+            <span style="color:var(--accent)">● Moderate</span>
+            <span style="color:var(--red)">● High stress</span>
+          </div>
+        </div>` : ''}
       </div>`;
+
     el.querySelectorAll('[data-energy]').forEach((b) =>
-      b.addEventListener('click', () => setWellbeingRating('energy', +b.getAttribute('data-energy')))
+      b.addEventListener('click', () => {
+        setWellbeingRating('energy', +b.getAttribute('data-energy'));
+        b.classList.add('selected');
+        b.closest('#energyRating')?.querySelectorAll('.wellbeing-btn').forEach((btn) => {
+          if (btn !== b) btn.classList.remove('selected');
+        });
+      })
     );
     el.querySelectorAll('[data-stress]').forEach((b) =>
-      b.addEventListener('click', () => setWellbeingRating('stress', +b.getAttribute('data-stress')))
+      b.addEventListener('click', () => {
+        setWellbeingRating('stress', +b.getAttribute('data-stress'));
+        b.classList.add('selected');
+        b.closest('#stressRating')?.querySelectorAll('.wellbeing-btn').forEach((btn) => {
+          if (btn !== b) btn.classList.remove('selected');
+        });
+      })
     );
+    el.querySelectorAll('.flux-emotion-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const key = chip.getAttribute('data-emotion');
+        chip.classList.toggle('active');
+        const idx = WellbeingState.emotions.indexOf(key);
+        if (idx === -1) { WellbeingState.emotions.push(key); }
+        else { WellbeingState.emotions.splice(idx, 1); }
+      });
+    });
     el.querySelector('#wbSave')?.addEventListener('click', saveWellbeingCheckin);
   }
 
@@ -664,14 +862,23 @@
     document.querySelectorAll(sel).forEach((btn) => {
       const n = +btn.getAttribute('data-' + type);
       btn.style.background = n === v ? 'rgba(var(--accent-rgb),.18)' : 'var(--card2)';
+      btn.classList.toggle('selected', n === v);
     });
   }
 
   async function saveWellbeingCheckin() {
     if (!WellbeingState.energy || !WellbeingState.stress) {
-      if (typeof showToast === 'function') showToast('Pick energy and stress', 'warning');
+      if (typeof showToast === 'function') showToast('Pick your energy and stress levels first', 'warning');
+      const saveBtn = document.getElementById('wbSave');
+      if (saveBtn) {
+        saveBtn.style.animation = 'none';
+        saveBtn.style.outline = '2px solid var(--gold)';
+        setTimeout(() => { if (saveBtn) saveBtn.style.outline = ''; }, 1200);
+      }
       return;
     }
+    const saveBtn = document.getElementById('wbSave');
+    if (saveBtn) { saveBtn.classList.add('flux-btn-loading'); saveBtn.textContent = 'Saving…'; }
     const client = sb();
     if (!client) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -689,7 +896,12 @@
     WellbeingState.energy = 0;
     WellbeingState.stress = 0;
     WellbeingState.emotions = [];
-    if (typeof showToast === 'function') showToast('Saved', 'success');
+    if (typeof showToast === 'function') showToast('Check-in saved ✓', 'success');
+    // Particle burst on the button if available
+    if (saveBtn && typeof window.FluxMagic?.particles === 'function') {
+      const r = saveBtn.getBoundingClientRect();
+      FluxMagic.particles(r.left + r.width / 2, r.top + r.height / 2, { count: 8, colors: ['var(--green)','var(--accent)'] });
+    }
     renderWellbeingPanel();
   }
 
@@ -1036,18 +1248,27 @@
     const el = document.getElementById('staffProfileStats');
     if (!el) return;
     const items = [
-      [String(stats.meetings), 'Meetings', 'var(--accent)'],
-      [String(stats.pdHours) + 'h', 'PD hours', 'var(--green)'],
-      [String(stats.tasksOpen), 'Open tasks', 'var(--gold)'],
-      [String(stats.wellbeing), 'Check-ins', 'var(--purple)'],
-      [String(stats.focusHrs) + 'h', 'Focus time', 'var(--accent2)'],
+      [stats.meetings,  '',  'Meetings',   'var(--accent)'],
+      [stats.pdHours,   'h', 'PD hours',   'var(--green)'],
+      [stats.tasksOpen, '',  'Open tasks', 'var(--gold)'],
+      [stats.wellbeing, '',  'Check-ins',  'var(--purple)'],
+      [stats.focusHrs,  'h', 'Focus time', 'var(--accent2)'],
     ];
     el.innerHTML = items
       .map(
-        ([n, l, c]) =>
-          `<div class="staff-profile-stat"><div class="staff-profile-stat__n" style="color:${c}">${n}</div><div class="staff-profile-stat__l">${l}</div></div>`,
+        ([n, suf, l, c]) =>
+          `<div class="staff-profile-stat">
+            <div class="staff-profile-stat__n flux-counter" style="color:${c}" data-flux-count="${n}" data-flux-count-suffix="${suf}">0${suf}</div>
+            <div class="staff-profile-stat__l">${l}</div>
+          </div>`,
       )
       .join('');
+    // Trigger counter animations after a short delay
+    setTimeout(() => {
+      if (typeof window.FluxMagic?.animateStaffStats === 'function') {
+        FluxMagic.animateStaffStats();
+      }
+    }, 120);
   }
 
   async function renderStaffProfile() {
@@ -1139,15 +1360,27 @@
       .order('created_at', { ascending: false })
       .limit(25);
     const canPost = typeof FluxRole !== 'undefined' && FluxRole.isEducator && FluxRole.isEducator();
+    const postTypeIcon = { announcement: '📢', resource: '📁', event: '📅', alert: '🚨' };
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School feed</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School feed — announcements, resources, and events</p></div>
       <div style="max-width:720px;margin:0 auto;padding:16px">
-        ${
-          canPost
-            ? `<button type="button" class="edu-action-btn primary" id="sfNew" style="margin-bottom:12px">+ Post</button>`
-            : ''
-        }
-        ${(posts || []).map((p) => `<div class="card" style="margin-bottom:10px"><div style="font-weight:800">${esc(p.title)}</div><div style="font-size:.82rem;color:var(--muted2);margin-top:6px">${esc(p.body || '')}</div><div style="font-size:.68rem;color:var(--muted);margin-top:6px">${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</div></div>`).join('') || '<div style="color:var(--muted2)">No posts yet</div>'}
+        ${canPost ? `<button type="button" class="edu-action-btn primary" id="sfNew" style="margin-bottom:14px">+ New post</button>` : ''}
+        <div class="flux-feed-list">
+        ${(posts || []).map((p) => {
+          const icon = postTypeIcon[p.post_type] || '📌';
+          const pinned = p.is_pinned ? '<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:rgba(var(--gold-rgb),.12);color:var(--gold);font-weight:700;margin-left:6px">📌 Pinned</span>' : '';
+          return `<div class="card" style="margin-bottom:10px">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:1.2rem;flex-shrink:0;margin-top:2px">${icon}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:800;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${esc(p.title)}${pinned}</div>
+                ${p.body ? `<div style="font-size:.82rem;color:var(--muted2);margin-top:5px;line-height:1.5">${esc(p.body)}</div>` : ''}
+                <div style="font-size:.68rem;color:var(--muted);margin-top:6px">${typeof timeAgo === 'function' ? timeAgo(new Date(p.created_at)) : ''}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('') || `<div style="text-align:center;padding:28px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px">📢</div><div style="font-size:.85rem">No posts yet${canPost ? ' — be the first to post' : ''}.</div></div>`}
+        </div>
       </div>`;
     el.querySelector('#sfNew')?.addEventListener('click', openNewFeedPostModal);
   }
@@ -1157,29 +1390,62 @@
     const m = document.createElement('div');
     m.id = 'sfModal';
     m.style.cssText =
-      'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:6200;display:flex;align-items:center;justify-content:center;padding:16px';
+      'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:6200;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px)';
     m.innerHTML = `
-      <div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:20px;width:100%;max-width:440px">
-        <div class="mrow"><label>Title *</label><input id="fp_title"></div>
-        <div class="mrow"><label>Body</label><textarea id="fp_body" style="min-height:72px;resize:none"></textarea></div>
-        <button type="button" class="edu-action-btn primary" style="width:100%" id="fp_go">Post</button>
-        <button type="button" class="onboard-skip-btn" style="width:100%;margin-top:6px" id="fp_x">Cancel</button>
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:22px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+        <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px">New school post</h3>
+        <div class="mrow"><label>Title *</label><input id="fp_title" placeholder="Brief title…"></div>
+        <div class="mrow"><label>Body</label><textarea id="fp_body" style="min-height:80px;resize:none" placeholder="Details, links, or context…"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="mrow"><label>Type</label>
+            <select id="fp_type">
+              <option value="announcement">📢 Announcement</option>
+              <option value="resource">📁 Resource</option>
+              <option value="event">📅 Event</option>
+            </select>
+          </div>
+          <div class="mrow"><label>Audience</label>
+            <select id="fp_audience">
+              <option value="all">Everyone</option>
+              <option value="educators">Educators only</option>
+              <option value="students">Students only</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="edu-action-btn primary" style="width:100%;margin-top:14px" id="fp_go">Post to school feed</button>
+        <button type="button" class="onboard-skip-btn" style="width:100%;margin-top:8px" id="fp_x">Cancel</button>
       </div>`;
     document.body.appendChild(m);
+    m.querySelector('#fp_title')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) m.querySelector('#fp_go')?.click();
+    });
     m.querySelector('#fp_x').addEventListener('click', () => m.remove());
+    m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
     m.querySelector('#fp_go').addEventListener('click', async () => {
       const client = sb();
       const title = m.querySelector('#fp_title')?.value?.trim();
       const body = m.querySelector('#fp_body')?.value?.trim();
-      if (!client || !title) return;
+      if (!client || !title) {
+        m.querySelector('#fp_title')?.focus();
+        return;
+      }
+      const audience = m.querySelector('#fp_audience')?.value || 'all';
+      const targetRoles = audience === 'educators'
+        ? ['teacher', 'counselor', 'staff', 'admin']
+        : audience === 'students'
+        ? ['student']
+        : ['student', 'teacher', 'counselor', 'staff', 'admin'];
+      const goBtn = m.querySelector('#fp_go');
+      if (goBtn) { goBtn.classList.add('flux-btn-loading'); goBtn.textContent = 'Posting…'; }
       await client.from('school_feed').insert({
         posted_by: currentUser.id,
-        post_type: 'announcement',
+        post_type: m.querySelector('#fp_type')?.value || 'announcement',
         title,
         body: body || null,
-        target_roles: ['student'],
+        target_roles: targetRoles,
       });
       m.remove();
+      if (typeof showToast === 'function') showToast('Posted to school feed', 'success');
       renderSchoolFeed();
     });
   }

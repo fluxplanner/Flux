@@ -1,0 +1,578 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Flux · Claude Code Magic — micro-interactions, animations, polish
+   Enhances staff & student accounts without breaking existing UI.
+   All animations respect prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Counter number animation ── */
+.flux-counter { font-variant-numeric: tabular-nums; display: inline-block; }
+@keyframes fluxCounterPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.flux-counter-pop { animation: fluxCounterPop .32s var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both; }
+
+/* ── Ripple effect ── */
+.flux-ripple-host { position: relative !important; overflow: hidden !important; }
+.flux-ripple {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  transform: scale(0);
+  animation: fluxRippleAnim .6s cubic-bezier(.22,1,.36,1) forwards;
+  pointer-events: none; z-index: 0;
+}
+@keyframes fluxRippleAnim {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ── Staggered list entrance ── */
+.flux-stagger-in > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fluxFadeUp .38s var(--ease-cinematic, cubic-bezier(.22,1,.36,1)) forwards;
+}
+@keyframes fluxFadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Skeleton shimmer ── */
+.flux-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,.04) 0%,
+    rgba(255,255,255,.09) 40%,
+    rgba(255,255,255,.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: fluxShimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes fluxShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.flux-skel-line { height: 13px; border-radius: 6px; margin-bottom: 9px; }
+.flux-skel-line--wide   { width: 100%; }
+.flux-skel-line--medium { width: 66%; }
+.flux-skel-line--short  { width: 38%; }
+.flux-skel-block { border-radius: 12px; }
+
+/* ── Particle burst ── */
+.flux-particle {
+  position: fixed; pointer-events: none;
+  width: 7px; height: 7px; border-radius: 50%;
+  z-index: 9998;
+  animation: fluxParticleAnim var(--dur, .55s) cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes fluxParticleAnim {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx,0px), var(--dy,-50px)) scale(0); opacity: 0; }
+}
+.flux-celebrate-ring {
+  position: fixed; pointer-events: none;
+  width: 70px; height: 70px; border-radius: 50%;
+  border: 2px solid rgba(var(--accent-rgb, 0,194,255), .65);
+  z-index: 9997;
+  transform: translate(-50%,-50%) scale(0);
+  animation: fluxRingBurst .5s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes fluxRingBurst {
+  to { transform: translate(-50%,-50%) scale(2.8); opacity: 0; }
+}
+
+/* ── Typing indicator ── */
+.flux-typing {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 12px; border-radius: 20px;
+  background: var(--card2, rgba(26,35,53,.52));
+  border: 1px solid var(--border, rgba(255,255,255,.065));
+}
+.flux-typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted, #5a5f7a);
+  animation: fluxTypingBounce 1.2s ease infinite;
+}
+.flux-typing-dot:nth-child(2) { animation-delay: .22s; }
+.flux-typing-dot:nth-child(3) { animation-delay: .44s; }
+@keyframes fluxTypingBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: .4; }
+  40%            { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── Staff onboarding step transitions ── */
+#staffOnboarding [id^="staffStep"] {
+  transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
+}
+@keyframes fluxStepSlideIn {
+  from { opacity: 0; transform: translateX(18px) scale(.99); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+#staffOnboarding [id^="staffStep"][style*="display: block"],
+#staffOnboarding [id^="staffStep"][style*="display:block"] {
+  animation: fluxStepSlideIn .35s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── Step indicator dots ── */
+.sstep {
+  transition: all .3s cubic-bezier(.22,1,.36,1) !important;
+}
+.sstep.active span {
+  animation: fluxStepDotActive .35s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes fluxStepDotActive {
+  from { transform: scale(.8); }
+  to   { transform: scale(1); }
+}
+
+/* ── Staff onboarding backdrop ── */
+#staffOnboarding {
+  background: rgba(5,7,15,.97) !important;
+  backdrop-filter: blur(44px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(44px) saturate(180%) !important;
+}
+
+/* ── Wellbeing emotion chips ── */
+.flux-emotion-wrap {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  margin: 8px 0 14px;
+}
+.flux-emotion-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 13px; border-radius: 20px;
+  background: var(--card2, rgba(26,35,53,.52));
+  border: 1px solid var(--border2, rgba(255,255,255,.1));
+  font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: all .22s cubic-bezier(.34,1.56,.64,1);
+  user-select: none; -webkit-user-select: none;
+}
+.flux-emotion-chip:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb, 0,194,255), .35);
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.flux-emotion-chip.active {
+  background: rgba(var(--accent-rgb, 0,194,255), .13);
+  border-color: rgba(var(--accent-rgb, 0,194,255), .5);
+  color: var(--accent, #00C2FF);
+  transform: scale(1.06) translateY(-1px);
+  box-shadow: 0 0 14px rgba(var(--accent-rgb, 0,194,255), .22);
+}
+
+/* ── Wellbeing rating buttons enhanced ── */
+.wellbeing-btn {
+  transition: all .2s cubic-bezier(.34,1.56,.64,1) !important;
+}
+.wellbeing-btn:hover {
+  transform: translateY(-2px) scale(1.06) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25) !important;
+}
+.wellbeing-btn.selected {
+  background: rgba(var(--accent-rgb, 0,194,255), .2) !important;
+  border-color: var(--accent, #00C2FF) !important;
+  color: var(--accent, #00C2FF) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 0 16px rgba(var(--accent-rgb, 0,194,255), .28) !important;
+}
+
+/* ── SPD (Staff Personal Dashboard) cards ── */
+.spd-card {
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, border-color .2s ease !important;
+  cursor: pointer;
+}
+.spd-card:hover {
+  transform: translateY(-5px) scale(1.01) !important;
+  box-shadow: 0 14px 40px rgba(0,0,0,.38), 0 0 0 1px rgba(var(--accent-rgb, 0,194,255), .18) !important;
+  border-color: rgba(var(--accent-rgb, 0,194,255), .28) !important;
+}
+.spd-card:active { transform: scale(.98) !important; }
+.spd-card-icon {
+  display: block; font-size: 1.65rem; margin-bottom: 6px;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.spd-card:hover .spd-card-icon {
+  transform: translateY(-3px) scale(1.18) rotate(-3deg);
+}
+
+/* ── Directory entry hover ── */
+.dir-entry {
+  transition: all .2s cubic-bezier(.34,1.56,.64,1) !important;
+}
+.dir-entry:hover {
+  transform: translateX(4px) !important;
+  border-color: rgba(var(--accent-rgb, 0,194,255), .35) !important;
+  background: rgba(var(--accent-rgb, 0,194,255), .06) !important;
+}
+
+/* ── Staff profile stats ── */
+.staff-profile-stat {
+  cursor: default; border-radius: 10px; padding: 4px 8px;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.staff-profile-stat:hover { transform: translateY(-2px); }
+.staff-profile-stat__n {
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s ease;
+  display: inline-block;
+}
+.staff-profile-stat:hover .staff-profile-stat__n {
+  transform: scale(1.12);
+  filter: brightness(1.18);
+}
+
+/* ── Pending approval badge ── */
+.flux-pending-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3);
+  color: var(--gold, #f5a623); font-size: .72rem; font-weight: 700;
+}
+.flux-pending-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gold, #f5a623);
+  animation: fluxPendingPulse 1.6s ease-in-out infinite;
+}
+@keyframes fluxPendingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .5; transform: scale(.75); }
+}
+
+/* ── Pending status full card ── */
+.flux-pending-card {
+  background: linear-gradient(135deg, rgba(245,166,35,.06), rgba(124,92,255,.04));
+  border: 1px solid rgba(245,166,35,.2);
+  border-radius: 16px; padding: 20px;
+  text-align: center;
+}
+.flux-pending-icon {
+  font-size: 2.6rem;
+  animation: fluxFloat 3s ease-in-out infinite;
+  display: block; margin: 0 auto 12px;
+}
+@keyframes fluxFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* ── Gradient border ── */
+.flux-grad-border {
+  background:
+    linear-gradient(var(--card, rgba(21,29,48,.58)), var(--card, rgba(21,29,48,.58))) padding-box,
+    linear-gradient(135deg, var(--accent, #00C2FF), var(--purple, #7C5CFF), var(--green, #22FF88)) border-box;
+  border: 1px solid transparent !important;
+}
+
+/* ── Glow pulse ── */
+.flux-glow-pulse {
+  animation: fluxGlowPulse 2.6s ease-in-out infinite;
+}
+@keyframes fluxGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 0,194,255), .25); }
+  50%       { box-shadow: 0 0 0 8px rgba(var(--accent-rgb, 0,194,255), 0); }
+}
+
+/* ── AI response fade-in ── */
+.flux-ai-msg-new {
+  animation: fluxFadeUp .38s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── Button loading spinner ── */
+.flux-btn-loading {
+  position: relative; pointer-events: none; opacity: .72;
+}
+.flux-btn-loading::after {
+  content: '';
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.22);
+  border-top-color: #fff;
+  animation: spin .75s linear infinite;
+}
+
+/* ── Claude Code attribution ── */
+.flux-cc-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 8px;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb, 0,194,255),.08), rgba(124,92,255,.08));
+  border: 1px solid rgba(var(--accent-rgb, 0,194,255),.18);
+  font-size: .6rem; font-weight: 700;
+  color: var(--muted2, #7b809a);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .06em;
+  vertical-align: middle;
+}
+.flux-cc-badge::before { content: '⚡ '; }
+
+/* ── Input focus glow ── */
+#staffOnboarding input:focus,
+#staffOnboarding textarea:focus,
+#staffOnboarding select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 0,194,255),.16) !important;
+  border-color: rgba(var(--accent-rgb, 0,194,255),.48) !important;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+/* ── Meeting notes card stagger ── */
+.flux-mn-list > .card {
+  animation: fluxFadeUp .35s cubic-bezier(.22,1,.36,1) backwards;
+}
+.flux-mn-list > .card:nth-child(1) { animation-delay: 0ms; }
+.flux-mn-list > .card:nth-child(2) { animation-delay: 55ms; }
+.flux-mn-list > .card:nth-child(3) { animation-delay: 110ms; }
+.flux-mn-list > .card:nth-child(4) { animation-delay: 165ms; }
+.flux-mn-list > .card:nth-child(5) { animation-delay: 220ms; }
+.flux-mn-list > .card:nth-child(n+6) { animation-delay: 275ms; }
+
+/* ── Wellbeing heatmap dots ── */
+.flux-wb-history {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+}
+.flux-wb-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  cursor: default; transition: transform .15s ease;
+}
+.flux-wb-dot:hover { transform: scale(1.5); }
+
+/* ── Page/panel entry ── */
+.flux-page-enter {
+  animation: fluxFadeUp .42s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── Verified chip ── */
+.flux-verified-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 20px;
+  background: rgba(34,255,136,.1); border: 1px solid rgba(34,255,136,.28);
+  color: var(--green, #22FF88); font-size: .68rem; font-weight: 700;
+}
+.flux-verified-chip::before { content: '✓ '; }
+
+/* ── Student: task pulse on near-due ── */
+.task-item.task-due-soon {
+  animation: fluxDueSoon 2.5s ease-in-out infinite;
+}
+@keyframes fluxDueSoon {
+  0%, 100% { border-color: var(--border, rgba(255,255,255,.065)); }
+  50% { border-color: rgba(var(--gold-rgb, 245,166,35), .55); box-shadow: 0 0 12px rgba(var(--gold-rgb, 245,166,35), .12); }
+}
+
+/* ── Resource pin hover ── */
+.sr-pin {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+}
+.sr-pin:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3) !important;
+}
+
+/* ── Bookmark list stagger ── */
+.sr-bookmark {
+  animation: fluxFadeUp .3s cubic-bezier(.22,1,.36,1) backwards;
+}
+
+/* ── Staff workboard action cards ── */
+.flux-wb-card {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+}
+.flux-wb-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(var(--accent-rgb, 0,194,255), .1);
+}
+
+/* ── Celebration toast ── */
+.flux-celebrate-toast {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb, 0,194,255),.18), rgba(124,92,255,.18)) !important;
+  border: 1px solid rgba(var(--accent-rgb, 0,194,255), .35) !important;
+  color: var(--text, #f0f1f8) !important;
+  box-shadow: 0 0 32px rgba(var(--accent-rgb, 0,194,255), .2) !important;
+}
+
+/* ── Quick add input magic ── */
+input.flux-quick-add:focus {
+  background: rgba(var(--accent-rgb, 0,194,255), .04);
+}
+
+/* ── Staff tasks completed strikethrough animation ── */
+.st-task-row .sw-done {
+  position: relative;
+}
+.st-task-row .sw-done::after {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  width: 0; height: 1px;
+  background: var(--muted2, #7b809a);
+  animation: fluxStrikethrough .3s ease forwards;
+}
+@keyframes fluxStrikethrough {
+  to { width: 100%; }
+}
+
+/* ── PD type badge colors ── */
+.pd-type-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 6px;
+  font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+}
+.pd-type-badge.course   { background: rgba(var(--accent-rgb, 0,194,255),.1); color: var(--accent, #00C2FF); }
+.pd-type-badge.workshop { background: rgba(var(--purple-rgb, 124,92,255),.1); color: var(--purple, #7C5CFF); }
+.pd-type-badge.conference { background: rgba(var(--green-rgb, 34,255,136),.1); color: var(--green, #22FF88); }
+.pd-type-badge.observation { background: rgba(var(--gold-rgb, 245,166,35),.1); color: var(--gold, #f5a623); }
+.pd-type-badge.book     { background: rgba(255,255,255,.07); color: var(--muted2, #7b809a); }
+.pd-type-badge.other    { background: rgba(255,255,255,.05); color: var(--muted, #5a5f7a); }
+
+/* ── Feed post stagger ── */
+.flux-feed-list > .card {
+  animation: fluxFadeUp .32s cubic-bezier(.22,1,.36,1) backwards;
+}
+.flux-feed-list > .card:nth-child(1) { animation-delay: 0ms; }
+.flux-feed-list > .card:nth-child(2) { animation-delay: 60ms; }
+.flux-feed-list > .card:nth-child(3) { animation-delay: 120ms; }
+.flux-feed-list > .card:nth-child(4) { animation-delay: 180ms; }
+.flux-feed-list > .card:nth-child(n+5) { animation-delay: 240ms; }
+
+/* ── Empty state icon float ── */
+.flux-empty-icon { animation: fluxFloat 3.5s ease-in-out infinite; display: inline-block; }
+
+/* ── Toast stack limit (show max 4) ── */
+#fluxToastStack .toast-item:nth-child(n+5) {
+  display: none !important;
+}
+
+/* ── Progress bar shimmer (onboarding submit) ── */
+.flux-submit-progress {
+  height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--purple), var(--green), var(--accent));
+  background-size: 200% 100%;
+  animation: fluxShimmer .9s linear infinite;
+  margin-top: 10px; border-radius: 2px;
+}
+
+/* ── Checkin save success flash ── */
+@keyframes fluxSavedFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--green-rgb, 34,255,136), .45); }
+  50%  { box-shadow: 0 0 0 8px rgba(var(--green-rgb, 34,255,136), 0); }
+  100% { box-shadow: none; }
+}
+.flux-saved-flash {
+  animation: fluxSavedFlash .55s ease forwards !important;
+}
+
+/* ── Student profile stat cards ── */
+#profileStats > div {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+  cursor: default;
+}
+#profileStats > div:hover {
+  transform: translateY(-3px) scale(1.03) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28) !important;
+}
+
+/* ── Student profile badges ── */
+#profileBadges .badge {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+  cursor: default;
+  display: inline-flex;
+  animation: fluxFadeUp .3s cubic-bezier(.22,1,.36,1) backwards;
+}
+#profileBadges .badge:hover {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+}
+
+/* ── Dash hero smooth entrance ── */
+.dash-hero {
+  transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+}
+
+/* ── Task item completion glow (already has .completing; reinforce) ── */
+.task-item.task-done {
+  opacity: .55;
+  transition: opacity .3s ease;
+}
+.task-item.task-done label {
+  text-decoration: line-through;
+}
+
+/* ── Note card hover lift ── */
+.note-item, .note-card {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+}
+.note-item:hover, .note-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.28) !important;
+}
+
+/* ── Calendar day hover ── */
+.cal-day:hover {
+  background: rgba(var(--accent-rgb, 0,194,255), .04) !important;
+  transform: scale(1.01);
+  transition: background .15s ease, transform .15s ease;
+}
+
+/* ── Quick task button glow on focus ── */
+.topbar-new-task-btn:focus-visible,
+#topbarNewTaskBtn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 0,194,255), .3) !important;
+}
+
+/* ── Study timer pulse when running ── */
+.timer-running #timerDisplay,
+#timerDisplay.running {
+  animation: fluxTimerPulse 2s ease-in-out infinite;
+}
+@keyframes fluxTimerPulse {
+  0%, 100% { text-shadow: none; }
+  50% { text-shadow: 0 0 20px rgba(var(--accent-rgb, 0,194,255), .4); }
+}
+
+/* ── Mood check-in button polish ── */
+.mood-btn, [class*="mood-"] button {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+}
+.mood-btn:hover, [class*="mood-"] button:hover {
+  transform: translateY(-2px) scale(1.08) !important;
+}
+
+/* ── Sidebar nav item active indicator ── */
+.nav-item.active::before {
+  transition: box-shadow .3s ease !important;
+}
+
+/* ── Goal item hover ── */
+.goal-item, [class*="goal-card"] {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease !important;
+}
+.goal-item:hover { transform: translateY(-2px) !important; }
+
+/* ── Confidence slider thumb polish ── */
+input[type="range"]::-webkit-slider-thumb {
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s ease !important;
+}
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus::-webkit-slider-thumb {
+  transform: scale(1.15) !important;
+}
+
+/* ── Meeting note card hover ── */
+[data-mn-id] {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, border-color .2s ease !important;
+}
+[data-mn-id]:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(var(--accent-rgb, 0,194,255), .25) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25) !important;
+}
+
+/* ── Reduced motion safety ── */
+@media (prefers-reduced-motion: reduce) {
+  .flux-particle, .flux-celebrate-ring { display: none !important; }
+  .flux-stagger-in > * { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .flux-skeleton { animation: none !important; }
+  .flux-typing-dot { animation: none !important; }
+  .spd-card { transition: none !important; }
+  .flux-emotion-chip { transition: none !important; }
+  .wellbeing-btn { transition: none !important; }
+  .flux-pending-dot { animation: none !important; }
+  .flux-pending-icon { animation: none !important; }
+  [class*="flux-"] { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
