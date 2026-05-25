@@ -6,6 +6,19 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "-l", "3344", "."],
       "port": 3344
+    },
+    {
+      "name": "web-next-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "web"
+    },
+    {
+      "name": "e2e-server",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "-l", "4173"],
+      "port": 4173
     }
   ]
 }

@@ -79,7 +79,21 @@ ORDER BY flag_key;
 - [x] PR-A — orphan removal
 - [x] PR-B — promote default-on trio (hardcoded)
 - [x] PR-C — IAE school flag profile + global promotion migration
-- [ ] 37.2 — QA consolidation + CI flag smoke
+
+## 7. Phase 37.2 — flag integrity CI
+
+**Script:** `scripts/test-flag-integrity.mjs`  
+**Local:** `npm run test:flags`
+
+Checks:
+
+1. `flux-feature-flags.js` `defaults()` keys ↔ cumulative `flux_feature_flags` migration registry (INSERT minus DELETE, excluding PR-A retired keys).
+2. Every `isEnabled('enable_*')` / `const FLAG = 'enable_*'` in `public/js` is registered in client defaults.
+
+**CI:** `.github/workflows/flag-integrity.yml` on push/PR to `main`.
+
+## 8. Phase 37 exit criteria (remaining)
+
 - [ ] 37.3 — migration closeout matrix
 
 See `docs/ROADMAP.md` § Phase 37 and `docs/GEMINI-HANDOFF.md`.

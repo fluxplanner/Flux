@@ -402,7 +402,7 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 | Step | ID | Deliverable | Status |
 |------|-----|-------------|--------|
 | 37.1 | `P37-FLAG-DEPRECATION` | Audit Phase 12–36 flags; promote stable slices; remove dead code paths | **Done** (PR-A/B/C) |
-| 37.2 | `P37-QA-CONSOLIDATION` | Merge QA matrix sections; add flag-on regression suite to CI | Roadmap |
+| 37.2 | `P37-QA-CONSOLIDATION` | Merge QA matrix sections; add flag-on regression suite to CI | **Done** (`test-flag-integrity.mjs`) |
 | 37.3 | `P37-MIGRATION-CLOSEOUT` | Verify all 43 migrations applied in prod; document rollback matrix | Roadmap |
 
 **Phase 37 exit:** Flag debt reduced; stable features default-on or merged into core; deprecated modules removed behind owner toggle.
