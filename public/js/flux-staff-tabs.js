@@ -192,21 +192,23 @@
       });
     });
     host.querySelectorAll('.lh-att-btn').forEach(btn=>{
-      btn.addEventListener('click',()=>{
+      btn.addEventListener('click',async()=>{
         const p=btn.dataset.period;const k=stateKey(p);const t=btn.dataset.att;
         state[k]=state[k]||{};
         if(t==='present'){state[k].attendance='All present';}
         else{
-          const v=prompt('Mark attendance — type a quick note (e.g. "3 absent: Aiden, Maya, Jordan")',state[k].attendance||'');
+          const fp=window.FluxMagic?.prompt;
+          const v=fp?await fp('Mark attendance — note absences',state[k].attendance||'',{placeholder:'e.g. 3 absent: Aiden, Maya, Jordan'}):prompt('Mark attendance',state[k].attendance||'');
           if(v==null)return;state[k].attendance=v.trim()||'';
         }
         persist();renderLessonHub();
       });
     });
     host.querySelectorAll('.lh-mat-btn').forEach(btn=>{
-      btn.addEventListener('click',()=>{
+      btn.addEventListener('click',async()=>{
         const p=btn.dataset.period;const k=stateKey(p);
-        const v=prompt('Material reminder (e.g. "Bring lab worksheets", "Print Section 4.2")','');
+        const fp=window.FluxMagic?.prompt;
+        const v=fp?await fp('Add a material reminder','',{placeholder:'e.g. Bring lab worksheets, Print Section 4.2'}):prompt('Material reminder','');
         if(!v)return;
         state[k]=state[k]||{materials:[]};state[k].materials=state[k].materials||[];
         state[k].materials.push(v.trim());persist();renderLessonHub();
@@ -664,13 +666,26 @@
     host.querySelectorAll('.ao-duty-input').forEach(inp=>{
       inp.addEventListener('change',()=>{duties[inp.dataset.key]=inp.value.trim()||'(unassigned)';persistDuties();});
     });
-    const addSub=()=>{
-      const period=prompt('Period?','1');if(!period)return;
-      const absent=prompt('Absent teacher?');if(!absent)return;
-      const cover=prompt('Covered by? (or "TBD")','TBD')||'TBD';
-      const note=prompt('Note (optional)?','')||'';
-      const next=ls(SUB_KEY,[]).concat([{date:today,period,absent,cover,note}]);
-      persistSubs(next);renderAdminOps();
+    const addSub=async()=>{
+      const ff=window.FluxMagic?.form;
+      if(ff){
+        const vals=await ff('Log sub coverage',[
+          {key:'period',label:'Period',value:'1',required:true,placeholder:'e.g. 1'},
+          {key:'absent',label:'Absent teacher',value:'',required:true,placeholder:'Teacher name'},
+          {key:'cover',label:'Covered by',value:'TBD',placeholder:'Sub name or TBD'},
+          {key:'note',label:'Note (optional)',value:'',placeholder:'e.g. Left work on desk'},
+        ],{okLabel:'Log coverage'});
+        if(!vals)return;
+        const next=ls(SUB_KEY,[]).concat([{date:today,period:vals.period,absent:vals.absent,cover:vals.cover||'TBD',note:vals.note||''}]);
+        persistSubs(next);renderAdminOps();
+      }else{
+        const period=prompt('Period?','1');if(!period)return;
+        const absent=prompt('Absent teacher?');if(!absent)return;
+        const cover=prompt('Covered by? (or "TBD")','TBD')||'TBD';
+        const note=prompt('Note (optional)?','')||'';
+        const next=ls(SUB_KEY,[]).concat([{date:today,period,absent,cover,note}]);
+        persistSubs(next);renderAdminOps();
+      }
     };
     document.getElementById('aoAddSub')?.addEventListener('click',addSub);
     document.getElementById('aoAddSub2')?.addEventListener('click',addSub);
@@ -686,12 +701,24 @@
       });
     });
 
-    document.getElementById('aoLogWalk')?.addEventListener('click',()=>{
-      const teacher=prompt('Teacher walked through?');if(!teacher)return;
-      const focus=prompt('Focus area? (e.g. "checking for understanding")','')||'';
-      const time=prompt('Time? (e.g. "9:15am")',new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}))||'';
-      const next=ls(WALK_KEY,[]).concat([{date:today,time,teacher,focus}]);
-      persistWalks(next);renderAdminOps();
+    document.getElementById('aoLogWalk')?.addEventListener('click',async()=>{
+      const ff=window.FluxMagic?.form;
+      if(ff){
+        const vals=await ff('Log walkthrough',[
+          {key:'teacher',label:'Teacher observed',value:'',required:true,placeholder:'Teacher name'},
+          {key:'focus',label:'Focus area',value:'',placeholder:'e.g. checking for understanding'},
+          {key:'time',label:'Time',value:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),placeholder:'e.g. 9:15 AM'},
+        ],{okLabel:'Log walkthrough'});
+        if(!vals)return;
+        const next=ls(WALK_KEY,[]).concat([{date:today,time:vals.time,teacher:vals.teacher,focus:vals.focus||''}]);
+        persistWalks(next);renderAdminOps();
+      }else{
+        const teacher=prompt('Teacher walked through?');if(!teacher)return;
+        const focus=prompt('Focus area?','')||'';
+        const time=prompt('Time?',new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}))||'';
+        const next=ls(WALK_KEY,[]).concat([{date:today,time,teacher,focus}]);
+        persistWalks(next);renderAdminOps();
+      }
     });
     host.querySelectorAll('.ao-walk-del').forEach(btn=>{
       btn.addEventListener('click',()=>{
@@ -937,10 +964,23 @@
     function persistChecklist(){lsSet(CHECKLIST_KEY,checklist);}
 
     document.getElementById('swAddTicket')?.addEventListener('click',async ()=>{
-      const text=prompt('Request / ticket detail');if(!text)return;
-      const from=prompt('From whom? (name, email, or "drop-in")','drop-in')||'drop-in';
-      const priority=(prompt('Priority? (low / normal / high)','normal')||'normal').toLowerCase();
-      await persistStaffTicketInsert(text,from,priority,myDept,subjectField);
+      const ff=window.FluxMagic?.form;
+      if(ff){
+        const vals=await ff('Log a request',[
+          {key:'text',label:'What\'s the request?',value:'',required:true,placeholder:'Describe the request or issue'},
+          {key:'from',label:'From whom?',value:'drop-in',placeholder:'Name, email, or drop-in'},
+          {key:'priority',label:'Priority',value:'normal',type:'select',options:[
+            {value:'low',label:'Low'},{value:'normal',label:'Normal'},{value:'high',label:'High'}
+          ]},
+        ],{okLabel:'Log request'});
+        if(!vals)return;
+        await persistStaffTicketInsert(vals.text,vals.from||'drop-in',vals.priority||'normal',myDept,subjectField);
+      }else{
+        const text=prompt('Request / ticket detail');if(!text)return;
+        const from=prompt('From whom?','drop-in')||'drop-in';
+        const priority=(prompt('Priority? (low / normal / high)','normal')||'normal').toLowerCase();
+        await persistStaffTicketInsert(text,from,priority,myDept,subjectField);
+      }
       renderStaffWorkboard();
     });
     host.querySelectorAll('.sw-ticket-complete-cb').forEach(cb=>{
@@ -966,10 +1006,12 @@
       });
     });
 
-    document.getElementById('swAddCheck')?.addEventListener('click',()=>{
-      const text=prompt('Add a checklist item for today');if(!text)return;
+    document.getElementById('swAddCheck')?.addEventListener('click',async()=>{
+      const fp=window.FluxMagic?.prompt;
+      const text=fp?await fp('Add a checklist item for today','',{placeholder:'e.g. Print hall passes, Email parents'}):prompt('Add a checklist item for today');
+      if(!text)return;
       checklist[today]=checklist[today]||[];
-      checklist[today].push({text,done:false});
+      checklist[today].push({text:text.trim(),done:false});
       persistChecklist();renderStaffWorkboard();
     });
     host.querySelectorAll('.sw-check-cb').forEach(cb=>{

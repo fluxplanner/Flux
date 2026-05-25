@@ -129,10 +129,13 @@
     return ids.map((id) => ({ id, label: names[id] || 'Student' }));
   }
 
-  function pickCounselorStudentId(mount, label, students) {
+  async function pickCounselorStudentId(mount, label, students) {
     if (!students.length) {
-      const manual = prompt(label + ' (student user ID)');
-      return Promise.resolve(manual ? manual.trim() : null);
+      const fp = window.FluxMagic?.prompt;
+      const manual = fp
+        ? await fp(label + ' (student user ID)', '', { placeholder: 'Paste student user ID' })
+        : prompt(label + ' (student user ID)');
+      return manual ? manual.trim() : null;
     }
     return new Promise((resolve) => {
       const prior = mount.querySelector('.flux-roster-pick-overlay');

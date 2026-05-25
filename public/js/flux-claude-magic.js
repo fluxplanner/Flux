@@ -367,6 +367,148 @@
     init();
   }
 
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── Inline prompt modal (replaces browser prompt()) ──────────── */
+  function fluxPrompt(label, defaultVal, opts) {
+    var o = opts || {};
+    return new Promise(function (resolve) {
+      var id = 'fluxPrompt' + Date.now();
+      var overlay = document.createElement('div');
+      overlay.id = id;
+      overlay.className = 'flux-prompt-overlay';
+      overlay.innerHTML =
+        '<div class="flux-prompt-card">' +
+          '<div class="flux-prompt-label">' + escHtml(label || 'Enter value') + '</div>' +
+          (o.type === 'select'
+            ? '<select class="flux-prompt-input" id="' + id + '_inp">' +
+              (o.options || []).map(function (opt) {
+                var val = typeof opt === 'string' ? opt : opt.value;
+                var lbl = typeof opt === 'string' ? opt : opt.label;
+                var sel = val === defaultVal ? ' selected' : '';
+                return '<option value="' + escHtml(val) + '"' + sel + '>' + escHtml(lbl) + '</option>';
+              }).join('') + '</select>'
+            : '<input class="flux-prompt-input" id="' + id + '_inp" placeholder="' +
+              escHtml(o.placeholder || '') + '" value="' + escHtml(defaultVal || '') + '"' +
+              (o.type === 'time' ? ' type="time"' : '') + '>') +
+          '<div class="flux-prompt-actions">' +
+            '<button class="flux-prompt-cancel" type="button">Cancel</button>' +
+            '<button class="flux-prompt-ok" type="button">' + escHtml(o.okLabel || 'OK') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      var inp = document.getElementById(id + '_inp');
+      var ok = overlay.querySelector('.flux-prompt-ok');
+      var cancel = overlay.querySelector('.flux-prompt-cancel');
+      function done(val) { overlay.remove(); resolve(val); }
+      ok.addEventListener('click', function () { done(inp.value); });
+      cancel.addEventListener('click', function () { done(null); });
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) done(null); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); done(inp.value); } if (e.key === 'Escape') done(null); });
+      requestAnimationFrame(function () {
+        overlay.classList.add('flux-prompt-visible');
+        inp.focus();
+        if (inp.tagName === 'INPUT' && inp.select) inp.select();
+      });
+    });
+  }
+
+  function fluxForm(title, fields, opts) {
+    var o = opts || {};
+    return new Promise(function (resolve) {
+      var id = 'fluxForm' + Date.now();
+      var overlay = document.createElement('div');
+      overlay.id = id;
+      overlay.className = 'flux-prompt-overlay';
+      var fieldsHtml = fields.map(function (f, i) {
+        var fid = id + '_f' + i;
+        if (f.type === 'select') {
+          return '<div class="flux-prompt-field"><label>' + escHtml(f.label) + '</label>' +
+            '<select class="flux-prompt-input" id="' + fid + '">' +
+            (f.options || []).map(function (opt) {
+              var val = typeof opt === 'string' ? opt : opt.value;
+              var lbl = typeof opt === 'string' ? opt : opt.label;
+              return '<option value="' + escHtml(val) + '"' + (val === f.value ? ' selected' : '') + '>' + escHtml(lbl) + '</option>';
+            }).join('') + '</select></div>';
+        }
+        return '<div class="flux-prompt-field"><label>' + escHtml(f.label) + '</label>' +
+          '<input class="flux-prompt-input" id="' + fid + '" placeholder="' +
+          escHtml(f.placeholder || '') + '" value="' + escHtml(f.value || '') + '"' +
+          (f.type === 'time' ? ' type="time"' : '') +
+          (f.required ? ' required' : '') + '></div>';
+      }).join('');
+      overlay.innerHTML =
+        '<div class="flux-prompt-card flux-prompt-card--form">' +
+          '<div class="flux-prompt-title">' + escHtml(title || '') + '</div>' +
+          fieldsHtml +
+          '<div class="flux-prompt-actions">' +
+            '<button class="flux-prompt-cancel" type="button">Cancel</button>' +
+            '<button class="flux-prompt-ok" type="button">' + escHtml(o.okLabel || 'Save') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      function done(result) { overlay.remove(); resolve(result); }
+      function submit() {
+        var vals = {};
+        for (var i = 0; i < fields.length; i++) {
+          var el = document.getElementById(id + '_f' + i);
+          var v = el ? el.value.trim() : '';
+          if (fields[i].required && !v) { el.focus(); el.style.borderColor = 'var(--red,#ff4d6d)'; return; }
+          vals[fields[i].key || fields[i].label] = v;
+        }
+        done(vals);
+      }
+      overlay.querySelector('.flux-prompt-ok').addEventListener('click', submit);
+      overlay.querySelector('.flux-prompt-cancel').addEventListener('click', function () { done(null); });
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) done(null); });
+      overlay.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); submit(); }
+        if (e.key === 'Escape') done(null);
+      });
+      requestAnimationFrame(function () {
+        overlay.classList.add('flux-prompt-visible');
+        var first = document.getElementById(id + '_f0');
+        if (first) {
+          first.focus();
+          if (first.tagName === 'INPUT' && first.select) first.select();
+        }
+      });
+    });
+  }
+
+  /* ── Smooth panel transitions ───────────────────────────────────── */
+  function hookPanelTransitions() {
+    if (!motionOk()) return;
+    var origNav = window.nav;
+    if (typeof origNav !== 'function') return;
+    window.nav = function (panel) {
+      var panels = document.querySelectorAll('.panel');
+      panels.forEach(function (p) {
+        if (p.style.display !== 'none' && !p.hidden) {
+          p.style.opacity = '0';
+          p.style.transform = 'translateY(8px)';
+        }
+      });
+      setTimeout(function () {
+        origNav(panel);
+        var active = document.querySelectorAll('.panel');
+        active.forEach(function (p) {
+          if (p.style.display !== 'none' && !p.hidden) {
+            p.style.transition = 'opacity .25s ease, transform .25s cubic-bezier(.22,1,.36,1)';
+            p.style.opacity = '1';
+            p.style.transform = 'none';
+          }
+        });
+      }, 80);
+    };
+  }
+
   /* ── Public API ───────────────────────────────────────────────── */
   window.FluxMagic = {
     counter: animateCounter,
@@ -377,5 +519,9 @@
     enableEnterSubmit: enableEnterSubmit,
     animateStaffStats: animateStaffStats,
     motionOk: motionOk,
+    prompt: fluxPrompt,
+    form: fluxForm,
   };
+
+  hookPanelTransitions();
 })();

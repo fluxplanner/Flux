@@ -26,6 +26,26 @@
       .replace(/>/g, '&gt;');
   }
 
+  async function fluxAsk(label, defaultVal, opts) {
+    const fp = window.FluxMagic?.prompt;
+    if (fp) return fp(label, defaultVal, opts);
+    const v = prompt(label, defaultVal);
+    return v == null ? null : v;
+  }
+
+  async function fluxAskForm(title, fields, opts) {
+    const ff = window.FluxMagic?.form;
+    if (ff) return ff(title, fields, opts);
+    const out = {};
+    for (const f of fields) {
+      const v = prompt(f.label, f.value || '');
+      if (v == null) return null;
+      if (f.required && !v.trim()) return null;
+      out[f.key || f.label] = v.trim();
+    }
+    return out;
+  }
+
   function fmtT(input) {
     if (typeof window.fluxFmtStaffTime === 'function') return window.fluxFmtStaffTime(input);
     if (typeof window.fluxFormatTime === 'function') return window.fluxFormatTime(input);
@@ -133,8 +153,8 @@
       });
     });
 
-    mount.querySelector('.flux-qg-add')?.addEventListener('click', () => {
-      const title = prompt('Assignment title');
+    mount.querySelector('.flux-qg-add')?.addEventListener('click', async () => {
+      const title = await fluxAsk('Assignment title', '', { placeholder: 'e.g. Chapter 4 quiz' });
       if (!title) return;
       data.columns['To grade'].push({ id: Date.now(), title: title.trim() });
       saveBuckets(data);
@@ -187,7 +207,7 @@
   async function pickStudentId(mount, label) {
     const roster = await fetchRosterStudents();
     if (!roster.length) {
-      const manual = prompt(label + ' (student user ID)');
+      const manual = await fluxAsk(label + ' (student user ID)', '', { placeholder: 'Paste student user ID' });
       return manual ? manual.trim() : null;
     }
     const sel = document.createElement('select');
@@ -283,9 +303,25 @@
     mount.querySelector('#fluxAccomAdd')?.addEventListener('click', async () => {
       const studentId = await pickStudentId(mount, 'Student');
       if (!studentId) return;
-      const need = prompt('Need-to-know (one line for cheat-sheet)');
-      if (!need) return;
-      const cat = (prompt('Category: iep / 504 / ell / health / other', '504') || 'other').toLowerCase();
+      const vals = await fluxAskForm('Add need-to-know', [
+        { key: 'need', label: 'Need-to-know (one line)', value: '', required: true, placeholder: 'e.g. Extended time on tests' },
+        {
+          key: 'category',
+          label: 'Category',
+          value: '504',
+          type: 'select',
+          options: [
+            { value: 'iep', label: 'IEP' },
+            { value: '504', label: '504' },
+            { value: 'ell', label: 'ELL' },
+            { value: 'health', label: 'Health' },
+            { value: 'other', label: 'Other' },
+          ],
+        },
+      ], { okLabel: 'Save' });
+      if (!vals) return;
+      const need = vals.need;
+      const cat = (vals.category || 'other').toLowerCase();
       const client = sb();
       if (!client) return;
       const { error } = await client.from('staff_student_accommodations').insert({
@@ -315,9 +351,24 @@
     mount.querySelector('#fluxParentLogBtn')?.addEventListener('click', async () => {
       const studentId = await pickStudentId(mount, 'Student');
       if (!studentId) return;
-      const channel = (prompt('Channel: call / email / text / in_person', 'email') || 'email').toLowerCase();
-      const summary = prompt('Summary of conversation');
-      if (!summary) return;
+      const vals = await fluxAskForm('Log parent contact', [
+        {
+          key: 'channel',
+          label: 'Channel',
+          value: 'email',
+          type: 'select',
+          options: [
+            { value: 'call', label: 'Call' },
+            { value: 'email', label: 'Email' },
+            { value: 'text', label: 'Text' },
+            { value: 'in_person', label: 'In person' },
+          ],
+        },
+        { key: 'summary', label: 'Summary', value: '', required: true, placeholder: 'Brief conversation notes' },
+      ], { okLabel: 'Log contact' });
+      if (!vals) return;
+      const channel = (vals.channel || 'email').toLowerCase();
+      const summary = vals.summary;
       const client = sb();
       if (!client) return;
       const { error } = await client.from('staff_parent_contact_logs').insert({
@@ -509,11 +560,11 @@
         if (!studentId) return;
         label = roster.find((s) => s.id === studentId)?.label || 'Student';
       } else {
-        label = prompt('Student name') || '';
+        label = (await fluxAsk('Student name', '', { placeholder: 'Student name' })) || '';
         if (!label) return;
         studentId = 'local_' + Date.now();
       }
-      const dest = prompt('Destination (bathroom, nurse, office…)', 'Bathroom') || 'Hall';
+      const dest = (await fluxAsk('Destination', 'Bathroom', { placeholder: 'Bathroom, nurse, office…' })) || 'Hall';
       const all = ls(HALL_KEY, []);
       all.push({ student_id: studentId, student_label: label, destination: dest, out_at: Date.now() });
       lsSet(HALL_KEY, all);
