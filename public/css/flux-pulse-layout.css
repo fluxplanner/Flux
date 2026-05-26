@@ -216,18 +216,15 @@ html.flux-layout-pulse .topbar-title{
   font-weight:800;
 }
 
-/* Topbar new-task chip — glowing primary */
+/* Topbar new-task chip — keep original accent color, just slightly
+ * stronger shadow. (Reverted from Pulse cyan→purple gradient per
+ * user request: "revert the buttons and other things back to its
+ * original color".) */
 html.flux-layout-pulse .topbar-new-task-btn{
-  background:var(--pulse-accent-grad)!important;
-  border:1px solid rgba(var(--accent-rgb),.4)!important;
-  color:#fff!important;
-  box-shadow:
-    0 10px 24px -8px rgba(var(--accent-rgb),.5),
-    inset 0 1px 0 rgba(255,255,255,.22)!important;
   font-weight:700;
+  box-shadow:0 10px 24px -10px rgba(var(--accent-rgb),.45);
 }
 html.flux-layout-pulse .topbar-new-task-btn:hover{
-  filter:brightness(1.08);
   transform:translateY(-1px);
 }
 
@@ -299,40 +296,18 @@ html.flux-layout-pulse .flux-page h3{
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * BUTTONS — primary gradient, secondary glass, tertiary ghost
+ * BUTTONS — reverted to the original brand-accent look per user request.
+ * Pulse no longer paints primary buttons with the cyan→purple gradient.
+ * Cards / sidebar / topbar / ambient background still get Pulse polish.
  * ──────────────────────────────────────────────────────────────────────────── */
-html.flux-layout-pulse button:not(.toggle):not(.nav-item):not(.bnav-item):not(.btn-sec):not(.stab):not(.sidebar-toggle):not(.mob-menu-btn):not(.theme-btn):not(.swatch):not([class*="topbar-"]):not([class*="ob-"]):not(.os-head-btn):not(.os-head-push){
-  background:var(--pulse-accent-grad);
-  border:1px solid rgba(var(--accent-rgb),.42);
-  color:#fff;
-  font-weight:700;
-  border-radius:12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
-    0 10px 24px -10px rgba(var(--accent-rgb),.5);
-  transition:
-    transform .2s var(--pulse-spring),
-    box-shadow .25s ease,
-    filter .2s ease;
-}
-html.flux-layout-pulse button:not(.toggle):not(.nav-item):not(.bnav-item):not(.btn-sec):not(.stab):not(.sidebar-toggle):not(.mob-menu-btn):not(.theme-btn):not(.swatch):not([class*="topbar-"]):not([class*="ob-"]):not(.os-head-btn):not(.os-head-push):hover{
-  transform:translateY(-1px);
-  filter:brightness(1.06);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.28),
-    0 14px 32px -10px rgba(var(--accent-rgb),.6);
-}
-
 html.flux-layout-pulse .btn-sec{
-  background:rgba(255,255,255,.06)!important;
-  border:1px solid rgba(255,255,255,.12)!important;
-  color:var(--pulse-text)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
-  font-weight:600;
+  background:rgba(255,255,255,.05);
+  border-color:rgba(255,255,255,.1);
+  color:var(--pulse-text);
 }
 html.flux-layout-pulse .btn-sec:hover{
-  background:rgba(255,255,255,.1)!important;
-  border-color:rgba(var(--accent-rgb),.28)!important;
+  background:rgba(255,255,255,.08);
+  border-color:rgba(var(--accent-rgb),.24);
   transform:translateY(-1px);
 }
 
@@ -749,17 +724,18 @@ html.flux-layout-pulse .ob-chip.active{
   box-shadow:0 6px 18px -6px rgba(var(--accent-rgb),.45);
 }
 
-/* Primary CTA */
+/* Primary CTA — kept on the original brand accent (no gradient) per user
+ * preference. We still bump the radius / spacing so it feels modern. */
 html.flux-layout-pulse .ob-btn{
   padding:14px 18px !important;border-radius:14px !important;
-  background:linear-gradient(125deg,var(--accent) 0%,var(--purple) 100%) !important;
-  border:1px solid rgba(var(--accent-rgb),.45) !important;color:#fff !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 32px -10px rgba(var(--accent-rgb),.55) !important;
+  background:var(--accent) !important;
+  border:1px solid rgba(var(--accent-rgb),.5) !important;color:#fff !important;
+  box-shadow:0 10px 26px -10px rgba(var(--accent-rgb),.55) !important;
   font-weight:800 !important;letter-spacing:-.01em;
-  transition:transform .2s cubic-bezier(.34,1.56,.64,1),filter .2s ease !important;
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease !important;
   margin-top:28px !important;
 }
-html.flux-layout-pulse .ob-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+html.flux-layout-pulse .ob-btn:hover{transform:translateY(-1px);box-shadow:0 14px 32px -10px rgba(var(--accent-rgb),.65) !important}
 html.flux-layout-pulse .ob-btn-sec{
   background:rgba(255,255,255,.05) !important;
   border:1px solid rgba(255,255,255,.1) !important;
@@ -794,4 +770,96 @@ html.flux-layout-pulse #onboarding input[type=date]{
 html.flux-layout-pulse #onboarding input:focus{
   border-color:rgba(var(--accent-rgb),.55) !important;
   box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * DASHBOARD — STRUCTURAL REDO (bento via CSS Grid)
+ *
+ * The DOM stays the same — we just lay it out as a responsive grid so cards
+ * tile cleanly instead of stacking. Hero/greeting + the new Pulse widgets
+ * (gratitude, important dates, class sections, mobile-only stack) keep their
+ * full-row footprint. Everything else flows into the grid.
+ *
+ * Activated only on desktop+ (>=900px) so the existing mobile layout stays
+ * exactly as the team already polished it.
+ * ──────────────────────────────────────────────────────────────────────────── */
+@media (min-width:900px){
+  html.flux-layout-pulse #dashboard.flux-page{
+    display:grid !important;
+    grid-template-columns:repeat(12,minmax(0,1fr)) !important;
+    grid-auto-rows:min-content !important;
+    gap:16px !important;
+    align-items:start !important;
+  }
+  /* Everything spans the full row by default — only specific items below
+   * opt into narrower grid spans. This preserves any unknown widgets. */
+  html.flux-layout-pulse #dashboard.flux-page > *{
+    grid-column:span 12;
+    min-width:0;
+  }
+  /* Hide-or-keep utility — these are existing children we don't need to
+   * resize but want to fence to a row. */
+  html.flux-layout-pulse #dashboard.flux-page > .dash-mob-stack,
+  html.flux-layout-pulse #dashboard.flux-page > .dash-v2-greet,
+  html.flux-layout-pulse #dashboard.flux-page > .recovery-banner,
+  html.flux-layout-pulse #dashboard.flux-page > #fluxClassAlertBanner,
+  html.flux-layout-pulse #dashboard.flux-page > #weeklyReviewBanner,
+  html.flux-layout-pulse #dashboard.flux-page > .dash-week-strip,
+  html.flux-layout-pulse #dashboard.flux-page > .stats-row{
+    grid-column:span 12;
+  }
+
+  /* Task list — main content, takes 8 of 12 columns */
+  html.flux-layout-pulse #dashboard.flux-page > .card:has(#taskList),
+  html.flux-layout-pulse #dashboard.flux-page > .card:has(.tasks-header){
+    grid-column:span 8;
+  }
+  /* The right rail — important dates + class-sections, take 4 of 12 */
+  html.flux-layout-pulse #dashboard.flux-page > #fluxImportantTodayCard,
+  html.flux-layout-pulse #dashboard.flux-page > #fluxGratitudeCard{
+    grid-column:span 4;
+  }
+  /* Class sections — half-row, paired with the next card */
+  html.flux-layout-pulse #dashboard.flux-page > #fluxClassSectionsCard{
+    grid-column:span 12;
+  }
+  /* Smaller informational cards become half-width to form a 2-up row */
+  html.flux-layout-pulse #dashboard.flux-page > #burnoutWarning,
+  html.flux-layout-pulse #dashboard.flux-page > #subjectHealth,
+  html.flux-layout-pulse #dashboard.flux-page > #workloadForecast,
+  html.flux-layout-pulse #dashboard.flux-page > #gapFiller,
+  html.flux-layout-pulse #dashboard.flux-page > #resumeCard{
+    grid-column:span 6;
+  }
+  /* The cards-only sweep: any .card child that's not a Pulse widget and
+   * not the task list still spans 6 — produces a clean 2-column bento. */
+  html.flux-layout-pulse #dashboard.flux-page > .card:not(:has(#taskList)):not(:has(.tasks-header)):not(#fluxImportantTodayCard):not(#fluxGratitudeCard):not(#fluxClassSectionsCard){
+    grid-column:span 6;
+  }
+  /* Restore full-row for cards that contain wide visualizations or
+   * tables (heuristic: have a wide canvas or grid of >=4 columns). */
+  html.flux-layout-pulse #dashboard.flux-page > .card:has(canvas),
+  html.flux-layout-pulse #dashboard.flux-page > .card:has(table){
+    grid-column:span 12;
+  }
+}
+@media (min-width:1280px){
+  /* On wide screens widen the right rail slightly */
+  html.flux-layout-pulse #dashboard.flux-page > #fluxImportantTodayCard,
+  html.flux-layout-pulse #dashboard.flux-page > #fluxGratitudeCard{
+    grid-column:span 4;
+  }
+}
+
+/* Make the hero card feel more "anchor"-like in the bento — bigger title,
+ * subtle gradient strip. Doesn't touch the existing greeting copy. */
+@media (min-width:900px){
+  html.flux-layout-pulse .dash-v2-greet#dashHero{
+    padding-bottom:18px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  html.flux-layout-pulse .dash-v2-greet-title{
+    font-size:clamp(1.85rem,3vw,2.4rem);
+    letter-spacing:-.02em;
+  }
 }
