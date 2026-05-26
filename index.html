@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>/* Flux Pulse — apply layout class pre-paint to avoid FOUC */(function(){try{var u=localStorage.getItem('flux_layout_theme');var d=localStorage.getItem('flux_layout_default');var t=(u==='pulse'||u==='legacy')?u:(d==='legacy'?'legacy':'pulse');if(t==='pulse')document.documentElement.classList.add('flux-layout-pulse');document.documentElement.setAttribute('data-flux-layout',t);}catch(e){document.documentElement.classList.add('flux-layout-pulse');}})();</script>
 <style>
 /* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
 #app{display:none!important}
@@ -89,6 +90,7 @@
 <link rel="stylesheet" href="public/css/flux-anime-catalog.css">
 <link rel="stylesheet" href="public/css/flux-ui-polish.css">
 <link rel="stylesheet" href="public/css/flux-claude-magic.css">
+<link rel="stylesheet" href="public/css/flux-pulse-layout.css">
 <link rel="stylesheet" href="public/css/flux-personalization.css">
 <link rel="stylesheet" href="public/css/flux-enhancements-v100.css">
 <link rel="stylesheet" href="public/css/flux-mobile-premium.css">
@@ -2673,6 +2675,7 @@
 <script type="module" src="public/js/flux-animations.js"></script>
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
+<script src="public/js/flux-pulse-layout.js"></script>
     <script defer src="public/js/core/debug.js"></script>
     <script defer src="public/js/flux-storage-keys.js"></script>
     <script defer src="public/js/flux-storage-repair.js"></script>

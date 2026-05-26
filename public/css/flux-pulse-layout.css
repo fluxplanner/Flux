@@ -1,0 +1,608 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * FLUX PULSE — modern layout layer (May 2026)
+ * Activated by html.flux-layout-pulse. Reskins shared surfaces across all
+ * planner roles (student, teacher, counselor, staff, admin) without altering
+ * structure. Brand color tokens preserved. Toggle to legacy by removing the
+ * class on <html>.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+html.flux-layout-pulse{
+  --pulse-bg:#06080F;
+  --pulse-bg-deep:#040610;
+  --pulse-panel:rgba(16,22,40,.62);
+  --pulse-panel-strong:rgba(20,26,46,.86);
+  --pulse-card:linear-gradient(165deg,rgba(22,28,48,.78) 0%,rgba(12,16,32,.6) 100%);
+  --pulse-card-hover:linear-gradient(165deg,rgba(28,36,60,.82) 0%,rgba(16,22,40,.66) 100%);
+  --pulse-edge:1px solid rgba(255,255,255,.08);
+  --pulse-edge-strong:1px solid rgba(255,255,255,.14);
+  --pulse-edge-accent:1px solid rgba(var(--accent-rgb),.28);
+  --pulse-glow-cyan:0 0 0 1px rgba(var(--accent-rgb),.22),0 18px 48px rgba(var(--accent-rgb),.16);
+  --pulse-glow-purple:0 0 0 1px rgba(var(--purple-rgb),.22),0 18px 48px rgba(var(--purple-rgb),.16);
+  --pulse-radius:18px;
+  --pulse-radius-lg:24px;
+  --pulse-spring:cubic-bezier(.34,1.56,.64,1);
+  --pulse-smooth:cubic-bezier(.22,1,.36,1);
+  --pulse-accent-grad:linear-gradient(125deg,var(--accent) 0%,var(--purple) 100%);
+  --pulse-accent-grad-rich:linear-gradient(125deg,var(--accent2) 0%,var(--accent) 40%,var(--purple) 100%);
+  --pulse-text:#f3f5fc;
+  --pulse-text-soft:rgba(220,228,250,.66);
+  --pulse-text-muted:rgba(196,206,228,.42);
+}
+
+/* ── Per-role accent tint (subtle, on top of brand) ── */
+html.flux-layout-pulse[data-flux-role="teacher"]{--pulse-role-tint:34,255,136}
+html.flux-layout-pulse[data-flux-role="counselor"]{--pulse-role-tint:251,191,36}
+html.flux-layout-pulse[data-flux-role="admin"]{--pulse-role-tint:167,139,250}
+html.flux-layout-pulse[data-flux-role="staff"]{--pulse-role-tint:124,92,255}
+html.flux-layout-pulse:not([data-flux-role]),
+html.flux-layout-pulse[data-flux-role="student"]{--pulse-role-tint:var(--accent-rgb)}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * LIVING BACKGROUND — fixed canvas-like layers behind the entire app
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse body{
+  background:
+    radial-gradient(ellipse 80% 50% at 10% 0%,rgba(var(--accent-rgb),.08) 0%,transparent 60%),
+    radial-gradient(ellipse 70% 60% at 95% 100%,rgba(var(--purple-rgb),.07) 0%,transparent 60%),
+    linear-gradient(168deg,var(--pulse-bg) 0%,var(--pulse-bg-deep) 100%);
+}
+html.flux-layout-pulse #app::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 56% 38% at 18% 22%,rgba(var(--accent-rgb),.12) 0%,transparent 60%),
+    radial-gradient(ellipse 48% 32% at 82% 78%,rgba(var(--purple-rgb),.1) 0%,transparent 60%),
+    radial-gradient(ellipse 42% 28% at 52% 4%,rgba(var(--pulse-role-tint),.06) 0%,transparent 55%);
+  filter:blur(2px);
+  animation:pulseMeshDrift 28s ease-in-out infinite alternate;
+}
+html.flux-layout-pulse #app::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 22%,transparent 86%);
+  -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 22%,transparent 86%);
+  opacity:.85;
+}
+@keyframes pulseMeshDrift{
+  0%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg) blur(2px)}
+  100%{transform:translate(20px,-14px) scale(1.04);filter:hue-rotate(6deg) blur(2px)}
+}
+@media (prefers-reduced-motion:reduce){
+  html.flux-layout-pulse #app::before{animation:none}
+}
+html.flux-layout-pulse #app > *{position:relative;z-index:1}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * SIDEBAR — frosted-glass rail with luminous accent edge
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .sidebar{
+  background:
+    linear-gradient(180deg,rgba(14,18,32,.86) 0%,rgba(10,14,26,.78) 100%);
+  backdrop-filter:blur(22px) saturate(155%);
+  -webkit-backdrop-filter:blur(22px) saturate(155%);
+  border-right:1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset -1px 0 0 rgba(var(--accent-rgb),.05),
+    18px 0 36px -22px rgba(0,0,0,.7);
+}
+html.flux-layout-pulse .sidebar::after{
+  background:linear-gradient(180deg,
+    transparent 0%,
+    rgba(var(--accent-rgb),.32) 35%,
+    rgba(var(--purple-rgb),.28) 65%,
+    transparent 100%);
+  width:2px;
+  opacity:.7;
+  animation:pulseSidebarEdge 8s ease-in-out infinite alternate;
+}
+@keyframes pulseSidebarEdge{
+  0%{opacity:.45}
+  100%{opacity:.85}
+}
+@media (prefers-reduced-motion:reduce){
+  html.flux-layout-pulse .sidebar::after{animation:none}
+}
+html.flux-layout-pulse .sidebar-header{
+  border-bottom:1px solid rgba(255,255,255,.06);
+  padding-bottom:14px;
+}
+html.flux-layout-pulse .sidebar-logo{
+  background:linear-gradient(125deg,#fff 0%,var(--accent2) 50%,var(--purple) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+
+/* Nav items */
+html.flux-layout-pulse .nav-item{
+  border-radius:12px;
+  padding:9px 12px;
+  font-weight:600;
+  position:relative;
+  color:var(--pulse-text-soft);
+  transition:background .22s var(--pulse-smooth),color .22s ease,transform .22s var(--pulse-spring);
+}
+html.flux-layout-pulse .nav-item:hover{
+  background:rgba(var(--accent-rgb),.07);
+  color:#fff;
+  transform:translateX(2px);
+}
+html.flux-layout-pulse .nav-item.active{
+  color:#fff;
+  background:linear-gradient(115deg,rgba(var(--accent-rgb),.18) 0%,rgba(var(--purple-rgb),.14) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 8px 22px -10px rgba(var(--accent-rgb),.45);
+}
+html.flux-layout-pulse .nav-item.active::before{
+  content:"";position:absolute;left:-4px;top:20%;bottom:20%;width:3px;
+  border-radius:2px;
+  background:linear-gradient(180deg,var(--accent),var(--purple));
+  box-shadow:0 0 12px rgba(var(--accent-rgb),.55);
+  animation:pulseNavIndicator 2.4s ease-in-out infinite alternate;
+}
+@keyframes pulseNavIndicator{
+  0%{opacity:.7;box-shadow:0 0 8px rgba(var(--accent-rgb),.4)}
+  100%{opacity:1;box-shadow:0 0 18px rgba(var(--accent-rgb),.7)}
+}
+html.flux-layout-pulse .nav-item .ni-emoji,
+html.flux-layout-pulse .nav-item .ni-svg-wrap{
+  transition:transform .25s var(--pulse-spring);
+}
+html.flux-layout-pulse .nav-item:hover .ni-emoji,
+html.flux-layout-pulse .nav-item:hover .ni-svg-wrap{
+  transform:scale(1.08) rotate(-3deg);
+}
+html.flux-layout-pulse .nav-item.active .ni-emoji,
+html.flux-layout-pulse .nav-item.active .ni-svg-wrap{
+  filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.5));
+}
+
+html.flux-layout-pulse .nav-group-label{
+  font-size:.58rem;letter-spacing:.22em;
+  color:rgba(196,206,228,.36);
+  font-weight:700;
+  text-transform:uppercase;
+}
+
+/* Sidebar footer (user card) */
+html.flux-layout-pulse .sidebar-footer{
+  border-top:1px solid rgba(255,255,255,.06);
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.18));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * TOPBAR — sticky luminous bar with refined chip cluster
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .topbar{
+  background:linear-gradient(180deg,
+    rgba(14,18,32,.92) 0%,
+    rgba(10,14,26,.78) 100%);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 -1px 0 rgba(var(--accent-rgb),.12),
+    0 8px 28px -10px rgba(0,0,0,.5);
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+}
+html.flux-layout-pulse .topbar-title{
+  background:linear-gradient(125deg,#fff,rgba(220,228,250,.72));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:-.025em;
+  font-weight:800;
+}
+
+/* Topbar new-task chip — glowing primary */
+html.flux-layout-pulse .topbar-new-task-btn{
+  background:var(--pulse-accent-grad)!important;
+  border:1px solid rgba(var(--accent-rgb),.4)!important;
+  color:#fff!important;
+  box-shadow:
+    0 10px 24px -8px rgba(var(--accent-rgb),.5),
+    inset 0 1px 0 rgba(255,255,255,.22)!important;
+  font-weight:700;
+}
+html.flux-layout-pulse .topbar-new-task-btn:hover{
+  filter:brightness(1.08);
+  transform:translateY(-1px);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CARDS — glass tiles with gradient rim & lift
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .card,
+html.flux-layout-pulse .flux-card,
+html.flux-layout-pulse .panel > .card{
+  background:var(--pulse-card);
+  border:var(--pulse-edge);
+  border-radius:var(--pulse-radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 12px 32px -16px rgba(0,0,0,.55);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  position:relative;
+  isolation:isolate;
+  transition:
+    transform .25s var(--pulse-spring),
+    border-color .25s ease,
+    box-shadow .25s ease,
+    background .25s ease;
+}
+html.flux-layout-pulse .card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  padding:1px;
+  background:linear-gradient(140deg,
+    rgba(var(--accent-rgb),.22) 0%,
+    rgba(255,255,255,.02) 40%,
+    transparent 70%,
+    rgba(var(--purple-rgb),.18) 100%);
+  -webkit-mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  opacity:.55;
+  transition:opacity .25s ease;
+}
+html.flux-layout-pulse .card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(var(--accent-rgb),.28);
+  background:var(--pulse-card-hover);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 22px 60px -22px rgba(var(--accent-rgb),.32),
+    0 12px 32px -16px rgba(0,0,0,.6);
+}
+html.flux-layout-pulse .card:hover::before{
+  opacity:.9;
+}
+
+html.flux-layout-pulse .card h3,
+html.flux-layout-pulse .flux-page h3{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  font-weight:800;
+  letter-spacing:-.015em;
+  color:var(--pulse-text);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * BUTTONS — primary gradient, secondary glass, tertiary ghost
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse button:not(.toggle):not(.nav-item):not(.bnav-item):not(.btn-sec):not(.stab):not(.sidebar-toggle):not(.mob-menu-btn):not(.theme-btn):not(.swatch):not([class*="topbar-"]):not([class*="ob-"]):not(.os-head-btn):not(.os-head-push){
+  background:var(--pulse-accent-grad);
+  border:1px solid rgba(var(--accent-rgb),.42);
+  color:#fff;
+  font-weight:700;
+  border-radius:12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    0 10px 24px -10px rgba(var(--accent-rgb),.5);
+  transition:
+    transform .2s var(--pulse-spring),
+    box-shadow .25s ease,
+    filter .2s ease;
+}
+html.flux-layout-pulse button:not(.toggle):not(.nav-item):not(.bnav-item):not(.btn-sec):not(.stab):not(.sidebar-toggle):not(.mob-menu-btn):not(.theme-btn):not(.swatch):not([class*="topbar-"]):not([class*="ob-"]):not(.os-head-btn):not(.os-head-push):hover{
+  transform:translateY(-1px);
+  filter:brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    0 14px 32px -10px rgba(var(--accent-rgb),.6);
+}
+
+html.flux-layout-pulse .btn-sec{
+  background:rgba(255,255,255,.06)!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  color:var(--pulse-text)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+  font-weight:600;
+}
+html.flux-layout-pulse .btn-sec:hover{
+  background:rgba(255,255,255,.1)!important;
+  border-color:rgba(var(--accent-rgb),.28)!important;
+  transform:translateY(-1px);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * INPUTS — refined dark glass
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse input[type=text],
+html.flux-layout-pulse input[type=search],
+html.flux-layout-pulse input[type=url],
+html.flux-layout-pulse input[type=tel],
+html.flux-layout-pulse input[type=date],
+html.flux-layout-pulse input[type=datetime-local],
+html.flux-layout-pulse input[type=month],
+html.flux-layout-pulse input[type=week],
+html.flux-layout-pulse input[type=email],
+html.flux-layout-pulse input[type=password],
+html.flux-layout-pulse input[type=time],
+html.flux-layout-pulse input[type=number],
+html.flux-layout-pulse select,
+html.flux-layout-pulse textarea{
+  background:linear-gradient(180deg,rgba(8,10,18,.7),rgba(10,14,22,.55));
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;
+  color:var(--pulse-text);
+  padding:12px 14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  transition:border-color .2s ease,background .2s ease,box-shadow .2s ease;
+}
+html.flux-layout-pulse input:focus,
+html.flux-layout-pulse select:focus,
+html.flux-layout-pulse textarea:focus{
+  border-color:rgba(var(--accent-rgb),.55);
+  background:rgba(var(--accent-rgb),.04);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14),inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * MODALS — punched-up glass card
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .modal-overlay{
+  background:radial-gradient(ellipse at 50% 0%,rgba(var(--accent-rgb),.06),transparent 50%),rgba(4,6,12,.78);
+  backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+}
+html.flux-layout-pulse .modal-card{
+  background:linear-gradient(165deg,rgba(20,26,46,.88) 0%,rgba(12,16,32,.78) 100%);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px 24px 0 0;
+  box-shadow:
+    0 -8px 60px -10px rgba(var(--accent-rgb),.18),
+    0 -24px 60px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+@media (min-width:720px){
+  html.flux-layout-pulse .modal-card{
+    border-radius:24px;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * BOTTOM NAV (mobile) — frosted bar w/ glow indicator
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .bnav{
+  background:linear-gradient(180deg,rgba(10,14,26,.86),rgba(6,8,16,.94));
+  border-top:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:0 -12px 28px -10px rgba(0,0,0,.5),inset 0 1px 0 rgba(var(--accent-rgb),.1);
+}
+html.flux-layout-pulse .bnav-item{
+  color:rgba(196,206,228,.5);
+  font-weight:600;
+  position:relative;
+  transition:color .2s ease,transform .2s var(--pulse-spring);
+}
+html.flux-layout-pulse .bnav-item.active{
+  color:var(--accent);
+}
+html.flux-layout-pulse .bnav-item.active::before{
+  content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:24px;height:3px;border-radius:0 0 4px 4px;
+  background:linear-gradient(90deg,var(--accent),var(--purple));
+  box-shadow:0 0 12px rgba(var(--accent-rgb),.55);
+}
+html.flux-layout-pulse .bnav-item.active .bni{
+  filter:drop-shadow(0 0 8px rgba(var(--accent-rgb),.55));
+  transform:scale(1.18);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PAGE HEADERS — bigger typographic presence
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .flux-page-header,
+html.flux-layout-pulse .flux-page-header--lead{
+  padding-bottom:14px;
+  margin-bottom:18px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  position:relative;
+}
+html.flux-layout-pulse .flux-page-header::after{
+  content:"";position:absolute;left:0;bottom:-1px;width:64px;height:1px;
+  background:linear-gradient(90deg,var(--accent),var(--purple),transparent);
+}
+html.flux-layout-pulse .flux-page-title,
+html.flux-layout-pulse .flux-page-header h1{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  font-weight:800;
+  letter-spacing:-.025em;
+  background:linear-gradient(125deg,#fff,rgba(220,228,250,.65));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+html.flux-layout-pulse .flux-page-sub{
+  color:var(--pulse-text-soft);
+}
+
+/* Settings stabs */
+html.flux-layout-pulse .stab{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--pulse-text-soft);
+  border-radius:12px;
+  font-weight:600;
+  transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s var(--pulse-spring);
+}
+html.flux-layout-pulse .stab:hover{
+  background:rgba(255,255,255,.07);
+  color:#fff;
+  transform:translateY(-1px);
+}
+html.flux-layout-pulse .stab.active{
+  background:linear-gradient(115deg,rgba(var(--accent-rgb),.2),rgba(var(--purple-rgb),.16));
+  border-color:rgba(var(--accent-rgb),.4);
+  color:#fff;
+  box-shadow:0 8px 20px -10px rgba(var(--accent-rgb),.5);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * TOGGLES & SWATCHES
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .toggle{
+  background:rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.25);
+}
+html.flux-layout-pulse .toggle.on{
+  background:var(--pulse-accent-grad);
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 6px 14px -4px rgba(var(--accent-rgb),.5);
+}
+
+/* Theme buttons in Settings — keep readable */
+html.flux-layout-pulse .theme-btn{
+  background:rgba(255,255,255,.05)!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  color:var(--pulse-text)!important;
+  border-radius:12px!important;
+  padding:11px 14px!important;
+  font-weight:600!important;
+  transition:transform .2s var(--pulse-spring),border-color .2s ease,background .2s ease!important;
+}
+html.flux-layout-pulse .theme-btn:hover{
+  transform:translateY(-2px);
+  border-color:rgba(var(--accent-rgb),.32)!important;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * FAB & FLOATING PANELS
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse #fabBtn,
+html.flux-layout-pulse .fab-main{
+  background:var(--pulse-accent-grad-rich)!important;
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb),.4),
+    0 18px 40px -10px rgba(var(--accent-rgb),.55),
+    0 8px 16px -6px rgba(var(--purple-rgb),.35)!important;
+}
+html.flux-layout-pulse #fabBtn:hover{
+  filter:brightness(1.1);
+  transform:translateY(-3px) scale(1.04);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PULSE BADGE — small "alive" chip we sprinkle into the topbar
+ * ──────────────────────────────────────────────────────────────────────────── */
+.flux-pulse-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 9px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:.58rem;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+  background:linear-gradient(125deg,rgba(var(--accent-rgb),.16),rgba(var(--purple-rgb),.14));
+  border:1px solid rgba(var(--accent-rgb),.32);
+  color:rgba(225,232,250,.92);
+  cursor:default;
+  transition:transform .2s var(--pulse-spring,cubic-bezier(.34,1.56,.64,1)),border-color .2s ease;
+}
+.flux-pulse-badge:hover{transform:translateY(-1px);border-color:rgba(var(--accent-rgb),.5)}
+.flux-pulse-badge-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18),0 0 10px rgba(var(--accent-rgb),.6);
+  animation:pulseBadgeDot 2.4s ease-in-out infinite;
+}
+@keyframes pulseBadgeDot{
+  0%,100%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.15),0 0 8px rgba(var(--accent-rgb),.45)}
+  50%{box-shadow:0 0 0 5px rgba(var(--accent-rgb),.05),0 0 18px rgba(var(--accent-rgb),.85)}
+}
+@media (prefers-reduced-motion:reduce){
+  .flux-pulse-badge-dot{animation:none}
+}
+
+/* Hide the Pulse badge in legacy mode (no html class) */
+html:not(.flux-layout-pulse) .flux-pulse-badge{display:none}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * DASHBOARD HERO TILES — for any role's hero card
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse .dash-hero,
+html.flux-layout-pulse .dash-greeting-card,
+html.flux-layout-pulse .dash-greeting,
+html.flux-layout-pulse .dash-summary-card{
+  background:linear-gradient(165deg,
+    rgba(var(--accent-rgb),.1) 0%,
+    rgba(var(--purple-rgb),.07) 50%,
+    rgba(16,22,40,.7) 100%);
+  border:1px solid rgba(var(--accent-rgb),.18);
+  border-radius:var(--pulse-radius-lg);
+  position:relative;
+  overflow:hidden;
+}
+html.flux-layout-pulse .dash-hero::after,
+html.flux-layout-pulse .dash-greeting-card::after{
+  content:"";position:absolute;inset:-40% -10% auto -10%;height:60%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,rgba(var(--accent-rgb),.18),transparent 65%);
+  filter:blur(40px);opacity:.6;z-index:0;
+}
+html.flux-layout-pulse .dash-hero > *,
+html.flux-layout-pulse .dash-greeting-card > *{position:relative;z-index:1}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PER-ROLE SUBTLE ACCENT TWISTS
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse[data-flux-role="teacher"] .nav-item.active::before,
+html.flux-layout-pulse[data-flux-role="counselor"] .nav-item.active::before,
+html.flux-layout-pulse[data-flux-role="admin"] .nav-item.active::before,
+html.flux-layout-pulse[data-flux-role="staff"] .nav-item.active::before{
+  background:linear-gradient(180deg,rgba(var(--pulse-role-tint),1),var(--accent));
+}
+html.flux-layout-pulse[data-flux-role="teacher"] .bnav-item.active::before,
+html.flux-layout-pulse[data-flux-role="counselor"] .bnav-item.active::before,
+html.flux-layout-pulse[data-flux-role="admin"] .bnav-item.active::before,
+html.flux-layout-pulse[data-flux-role="staff"] .bnav-item.active::before{
+  background:linear-gradient(90deg,rgba(var(--pulse-role-tint),1),var(--accent));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * LOGIN SCREEN — extra Pulse polish on the rebuilt screen
+ * ──────────────────────────────────────────────────────────────────────────── */
+html.flux-layout-pulse #loginScreen{
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%,rgba(var(--accent-rgb),.16) 0%,transparent 55%),
+    radial-gradient(ellipse 90% 60% at 100% 50%,rgba(var(--purple-rgb),.13) 0%,transparent 50%),
+    linear-gradient(168deg,#040610 0%,#0a0e1c 48%,#06080F 100%);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * SETTINGS — Pulse layout switcher card visuals
+ * ──────────────────────────────────────────────────────────────────────────── */
+.flux-pulse-switch{
+  display:flex;gap:10px;margin-top:4px;
+}
+.flux-pulse-switch button{
+  flex:1;
+  padding:14px 16px!important;
+  border-radius:14px!important;
+  font-weight:700!important;
+  font-size:.85rem!important;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),border-color .2s ease,background .2s ease!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:rgba(255,255,255,.04)!important;
+  color:var(--text)!important;
+}
+.flux-pulse-switch button:hover{
+  transform:translateY(-2px);
+  border-color:rgba(var(--accent-rgb),.35)!important;
+}
+.flux-pulse-switch button.active{
+  background:linear-gradient(125deg,rgba(var(--accent-rgb),.2),rgba(var(--purple-rgb),.16))!important;
+  border-color:rgba(var(--accent-rgb),.5)!important;
+  box-shadow:0 12px 28px -10px rgba(var(--accent-rgb),.45),inset 0 1px 0 rgba(255,255,255,.1)!important;
+}
+.flux-pulse-switch-sub{
+  font-size:.62rem;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(220,228,250,.5);
+  font-weight:600;
+}
+.flux-pulse-switch button.active .flux-pulse-switch-sub{
+  color:rgba(220,228,250,.85);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Reduced motion — kill all Pulse-specific animations
+ * ──────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  html.flux-layout-pulse .nav-item.active::before,
+  html.flux-layout-pulse .sidebar::after{animation:none!important}
+  html.flux-layout-pulse .card{transition:none}
+  html.flux-layout-pulse .nav-item:hover{transform:none}
+}
