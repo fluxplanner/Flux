@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script>/* Flux Pulse — apply layout class pre-paint to avoid FOUC */(function(){try{var u=localStorage.getItem('flux_layout_theme');var d=localStorage.getItem('flux_layout_default');var t=(u==='pulse'||u==='legacy')?u:(d==='legacy'?'legacy':'pulse');if(t==='pulse')document.documentElement.classList.add('flux-layout-pulse');document.documentElement.setAttribute('data-flux-layout',t);}catch(e){document.documentElement.classList.add('flux-layout-pulse');}})();</script>
+<script>/* Flux Pulse layout — DISABLED. The layout overhaul is shelved; "Flux Pulse"
+   is now the brand name of the v1 release. We still respect localStorage if
+   a user explicitly opted in via Settings, but the default is legacy. */
+(function(){try{var u=localStorage.getItem('flux_layout_theme');if(u==='pulse')document.documentElement.classList.add('flux-layout-pulse');document.documentElement.setAttribute('data-flux-layout',u==='pulse'?'pulse':'legacy');}catch(e){}})();</script>
 <style>
 /* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
 #app{display:none!important}
@@ -1057,10 +1060,10 @@
         <span class="mode-switch-label">Mode</span>
         <div class="mode-switch-track">
           <button id="modeWorkBtn" type="button" class="mode-btn active" onclick="FluxRole.setMode('work')">
-            <span class="mode-icon" aria-hidden="true">🏫</span><span>Work</span>
+            <span class="mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v9"/><path d="M20 10v9"/><path d="M2 20h20"/><path d="m4 10 8-3 8 3"/><path d="M9 20v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/></svg></span><span>Work</span>
           </button>
           <button id="modePersonalBtn" type="button" class="mode-btn" onclick="FluxRole.setMode('personal')">
-            <span class="mode-icon" aria-hidden="true">🏠</span><span>Personal</span>
+            <span class="mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4 20a8 8 0 0 1 16 0"/></svg></span><span>Personal</span>
           </button>
           <div class="mode-slider" id="modeSlider" aria-hidden="true"></div>
         </div>

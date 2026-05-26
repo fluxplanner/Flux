@@ -5273,7 +5273,8 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   box-shadow:none;
 }
 .mode-btn.active{color:var(--text)}
-.mode-icon{font-size:.9rem}
+.mode-icon{font-size:.9rem;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.mode-icon svg{width:14px;height:14px;display:block;overflow:visible;color:currentColor}
 .mode-slider{
   position:absolute;
   top:3px;

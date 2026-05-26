@@ -8142,10 +8142,20 @@ async function syncToCloud(){
   // localStorage namespace, until the actual teacher signs in for real.
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   if(_syncToCloudInFlight){
-    _syncToCloudQueued=true;
-    return;
+    // Stuck-flag safety: if an in-flight sync silently stalled (network
+    // hang, exception swallowed by an unhandled promise), the flag would
+    // permanently block future syncs. Reset if it's been >30s.
+    if(window._syncInFlightSince&&Date.now()-window._syncInFlightSince>30000){
+      console.warn('[Flux] syncToCloud in-flight flag stuck; resetting');
+      _syncToCloudInFlight=false;
+      window._syncInFlightSince=0;
+    }else{
+      _syncToCloudQueued=true;
+      return;
+    }
   }
   _syncToCloudInFlight=true;
+  window._syncInFlightSince=Date.now();
   const sb=getSB();if(!sb){_syncToCloudInFlight=false;return;}
   if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
@@ -8195,6 +8205,7 @@ async function syncToCloud(){
     setSyncStatus('offline');
   }finally{
     _syncToCloudInFlight=false;
+    window._syncInFlightSince=0;
     if(_syncToCloudQueued){
       _syncToCloudQueued=false;
       void syncToCloud();
@@ -8202,8 +8213,41 @@ async function syncToCloud(){
   }
 }
 
+/* Public sync diagnostics — accessible from the console as window.FluxSync.
+ * Useful when sync feels broken: FluxSync.status() to see state, FluxSync.now()
+ * to force a push+pull, FluxSync.reset() to clear stuck in-flight flags. */
+window.FluxSync={
+  now:function(){try{return forceSyncNow();}catch(e){return Promise.reject(e);}},
+  push:function(){return syncToCloud();},
+  pull:function(){return syncFromCloud();},
+  status:function(){
+    return{
+      signedIn:!!currentUser,
+      userId:currentUser?.id||null,
+      impersonating:!!(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active()),
+      inFlight:!!_syncToCloudInFlight,
+      inFlightSince:window._syncInFlightSince||0,
+      pullInFlight:!!_syncFromCloudInFlight,
+      queued:!!_syncToCloudQueued,
+      lastSyncedAt:load('flux_last_sync',0),
+      failed:!!window._fluxSyncFailed,
+      pushIntervalActive:!!window._syncInterval,
+      pullIntervalActive:!!window._syncPullInterval,
+    };
+  },
+  reset:function(){
+    _syncToCloudInFlight=false;
+    _syncToCloudQueued=false;
+    window._syncInFlightSince=0;
+    try{stopFluxCloudSyncLoops();}catch(_){}
+    try{startFluxCloudSyncLoops();}catch(_){}
+    return window.FluxSync.status();
+  },
+};
+
 async function forceSyncNow(){
-  const btn=event?.target;
+  // event is unreliable when called programmatically; guard it.
+  const btn=(typeof event!=='undefined'&&event)?event.target:null;
   if(btn){btn.textContent='Syncing...';btn.disabled=true;}
   pushSyncUiActivity();
   setSyncStatus('syncing');
@@ -10750,11 +10794,15 @@ async function handleSignedIn(user,session){
     return;
   }
   // ── ACCOUNT SWITCH: wipe previous user's data ──────────────
+  // Hardened: before nuking localStorage we snapshot the previous user's data
+  // under flux_acct_backup_<prevId>_<ts> so it can be restored later if the
+  // wipe was triggered accidentally (e.g. testing two accounts in one
+  // browser). Cloud sync remains the canonical source — this is local rescue.
   const lastId = String(fluxLoadStoredString('flux_last_user_id','')).trim();
   if(lastId && lastId !== user.id){
     // Different account — clear app data but NEVER clear sb-* keys (Supabase auth session)
     // localStorage.clear() was wiping the new OAuth tokens → immediate SIGNED_OUT
-    const survivingKeys=['flux_splash_shown','flux_theme'];
+    const survivingKeys=['flux_splash_shown','flux_theme','flux_role_setup_v1_'+lastId,'flux_role_setup_v1_'+user.id];
     const survived={};
     survivingKeys.forEach(logicalKey=>{
       try{
@@ -10767,6 +10815,27 @@ async function handleSignedIn(user,session){
       const k=localStorage.key(i);
       if(k&&(k.startsWith('sb-')||k.includes('supabase')))survived[k]=localStorage.getItem(k);
     }
+    // Snapshot user data for the OUTGOING user — opt-in restore via FluxAccountRescue
+    try{
+      const snapshot={};
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k)continue;
+        if(k.startsWith('sb-')||k.includes('supabase'))continue;
+        if(survivingKeys.some(s=>fluxNamespacedKey(s)===k))continue;
+        try{snapshot[k]=localStorage.getItem(k);}catch(_){}
+      }
+      const backupKey='flux_acct_backup_'+lastId+'_'+Date.now();
+      try{
+        // Cap the snapshot to ~3MB to avoid blowing past localStorage quota.
+        const serialized=JSON.stringify({user:lastId,at:Date.now(),keys:snapshot});
+        if(serialized.length<3*1024*1024){
+          // Save snapshot AFTER survivingKeys are preserved but BEFORE clear()
+          // so we keep ONE key with everything in it across the wipe.
+          survived[backupKey]=serialized;
+        }
+      }catch(_){}
+    }catch(_){}
     localStorage.clear();
     Object.entries(survived).forEach(([k,v])=>localStorage.setItem(k,v));
     try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}

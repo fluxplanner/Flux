@@ -34,7 +34,9 @@
 
   function getGlobalDefault(){
     var v=read(STORAGE_DEFAULT,null);
-    return v==='legacy'?'legacy':'pulse'; // default is pulse
+    // The Pulse layout is SHELVED for v1. Default is now legacy. Users who
+    // explicitly opted in still get Pulse via the personal preference.
+    return v==='pulse'?'pulse':'legacy';
   }
 
   function getTheme(){

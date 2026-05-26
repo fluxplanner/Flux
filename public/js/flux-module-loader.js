@@ -34,7 +34,7 @@
     { id: 'personal_deep_work', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Deep work blocker', status: 'planned', module: 'FluxPersonalHub' },
     { id: 'sys_command_v2', flag: 'enable_staff_command_v2', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Staff command palette', status: 'beta', module: 'FluxStaffCommand', method: 'registerCommands' },
     { id: 'sys_gmail_quick', flag: 'enable_gmail_educator_import', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Gmail → task quick import', status: 'beta', module: 'FluxStaffCommand', method: 'renderGmailQuickWidget' },
-    { id: 'sys_export_csv', flag: 'enable_staff_productivity_suite', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Export to CSV', status: 'beta', module: 'FluxModuleLoader', method: 'exportEnabledData' },
+    { id: 'sys_export_csv', flag: 'enable_staff_productivity_suite', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Export to CSV', status: 'beta', module: 'FluxModuleLoader', method: 'exportEnabledData', kind: 'command' },
   ];
 
   const PANEL_HOSTS = {
@@ -177,7 +177,11 @@
       .filter((w) => w.visible)
       .sort((a, b) => a.order - b.order)
       .map((w) => mods.find((m) => m.id === w.id))
-      .filter(Boolean);
+      .filter(Boolean)
+      // Items marked kind:'command' are command-palette actions, NOT widgets.
+      // Rendering them auto-invokes their method which fires destructive
+      // side effects (e.g. sys_export_csv was downloading on every render).
+      .filter((m) => m.kind !== 'command');
 
     grid.innerHTML = `
       <div class="flux-widget-grid__toolbar">

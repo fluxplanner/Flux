@@ -168,7 +168,16 @@
   function mountClassSections(){
     if(isDisabled('sections'))return;
     if(!isEducator())return;
-    var host=document.querySelector('#dashboard');
+    // Per teacher feedback: don't crowd the main dashboard with sections.
+    // Mount inside the educator Work hub / their role dashboard instead.
+    // Falls through to a few likely hosts. If none are present, we just
+    // wait — the boot poller will retry as panels mount.
+    var host=
+      document.querySelector('#staffHub')||
+      document.querySelector('#teacherDashboardBody')||
+      document.querySelector('#counselorDashboardBody')||
+      document.querySelector('#staffWorkboard')||
+      null;
     if(!host)return;
     if(document.getElementById('fluxClassSectionsCard'))return;
     var pc=periodCount();
