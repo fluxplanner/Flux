@@ -9447,22 +9447,35 @@ function getRedirectURL(){
 // ══ EMAIL / PASSWORD AUTH ══
 let _authMode='signin'; // 'signin' | 'signup'
 
+function _setLoginEmailBtnText(btn,text){
+  if(!btn)return;
+  const label=btn.querySelector('.login-email-btn-label');
+  if(label)label.textContent=text;
+  else btn.textContent=text;
+}
+
 function toggleAuthMode(){
   _authMode=_authMode==='signin'?'signup':'signin';
   const nameRow=document.getElementById('loginNameRow');
   const btn=document.getElementById('loginEmailBtn');
   const toggleText=document.getElementById('loginToggleText');
   const toggleAction=document.getElementById('loginToggleAction');
+  const title=document.getElementById('loginAuthTitle');
+  const sub=document.getElementById('loginAuthSub');
   if(_authMode==='signup'){
     if(nameRow)nameRow.style.display='block';
-    if(btn)btn.textContent='Create account';
+    _setLoginEmailBtnText(btn,'Create account');
     if(toggleText)toggleText.textContent='Already have an account?';
     if(toggleAction)toggleAction.textContent='Sign in';
+    if(title)title.textContent='Create your account';
+    if(sub)sub.textContent='Start syncing across devices';
   } else {
     if(nameRow)nameRow.style.display='none';
-    if(btn)btn.textContent='Sign in';
+    _setLoginEmailBtnText(btn,'Sign in');
     if(toggleText)toggleText.textContent="Don't have an account?";
     if(toggleAction)toggleAction.textContent='Sign up';
+    if(title)title.textContent='Welcome back';
+    if(sub)sub.textContent='Sign in to sync across devices';
   }
   const errEl=document.getElementById('loginAuthError');
   if(errEl){errEl.textContent='';errEl.classList.remove('show');}
@@ -9482,7 +9495,7 @@ async function handleEmailAuth(){
   if(password.length<6){showAuthError('Password must be at least 6 characters.');return;}
   const sb=getSB();if(!sb){showAuthError('Auth not available.');return;}
   const btn=document.getElementById('loginEmailBtn');
-  if(btn){btn.textContent='...';btn.disabled=true;}
+  if(btn){_setLoginEmailBtnText(btn,'…');btn.disabled=true;}
   try{
     let result;
     if(_authMode==='signup'){
@@ -9493,7 +9506,7 @@ async function handleEmailAuth(){
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
         showAuthError('Check your email for a confirmation link!');
-        if(btn){btn.textContent='Create account';btn.disabled=false;}
+        if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
     } else {
@@ -9502,7 +9515,7 @@ async function handleEmailAuth(){
     }
   }catch(e){
     showAuthError(e.message||'Authentication failed. Please try again.');
-    if(btn){btn.textContent=_authMode==='signup'?'Create account':'Sign in';btn.disabled=false;}
+    if(btn){_setLoginEmailBtnText(btn,_authMode==='signup'?'Create account':'Sign in');btn.disabled=false;}
   }
 }
 
