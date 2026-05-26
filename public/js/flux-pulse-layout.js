@@ -255,6 +255,50 @@
     try{window.nav=wrapped;}catch(_){}
   }
 
+  /* Safety net: if a Supabase user is signed in but the login screen is still
+   * showing (race conditions during OAuth callback can let it linger), force-
+   * hide it. Same idea for the legacy role-select screen, which should never
+   * appear post-login. Cheap — runs once a second for the first 30 seconds
+   * after boot, then stops. */
+  function startAuthVisibilityGuard(){
+    var ticks=0;
+    function tick(){
+      ticks++;
+      try{
+        var signedIn=false;
+        try{signedIn=!!(window.currentUser&&window.currentUser.id);}catch(_){}
+        if(!signedIn){
+          // Also treat presence of a Supabase auth token as "signed in" so
+          // the guard activates during the OAuth callback window.
+          try{
+            for(var i=0;i<localStorage.length;i++){
+              var k=localStorage.key(i);
+              if(k&&k.indexOf('sb-')===0&&k.indexOf('-auth-token')>=0){signedIn=true;break;}
+            }
+          }catch(_){}
+        }
+        if(signedIn){
+          var ls=document.getElementById('loginScreen');
+          if(ls&&(ls.classList.contains('visible')||ls.style.display!=='none')){
+            ls.style.display='none';
+            ls.classList.remove('visible');
+            var app=document.getElementById('app');
+            if(app&&!app.classList.contains('visible')){
+              try{if(typeof window.showApp==='function')window.showApp();}catch(_){}
+            }
+          }
+          var rs=document.getElementById('roleSelectScreen');
+          if(rs&&rs.style.display!=='none'){rs.style.display='none';rs.classList.remove('visible');}
+          // Also clean any lingering post-login role picker overlay.
+          var plrp=document.getElementById('postLoginRolePicker');
+          if(plrp)plrp.remove();
+        }
+      }catch(_){}
+      if(ticks<30)setTimeout(tick,1000);
+    }
+    setTimeout(tick,500);
+  }
+
   function init(){
     apply(getTheme());
     // First-pass attempt now, then bounded polling, then wrap nav once it
@@ -263,6 +307,7 @@
     try{ensureSettingsSwitch();}catch(_){}
     if(isPulse())ensurePulseBadge();
     pollMount();
+    startAuthVisibilityGuard();
     var navTries=0;
     function tryWrapNav(){
       navTries++;

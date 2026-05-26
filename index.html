@@ -636,11 +636,18 @@
     <div class="ob-progress" id="obProgress"></div>
     <div class="ob-card">
 
-      <!-- Step 1: Welcome + Name -->
+      <!-- Step 1: Welcome + Role + Name -->
       <div class="ob-step active" id="ob-step-1">
         <div style="font-size:2rem;margin-bottom:10px">👋</div>
         <div class="ob-title">Welcome to Flux</div>
         <div class="ob-sub">Let's get you set up. This takes about 2 minutes.</div>
+
+        <span class="ob-label">I am a…</span>
+        <div class="ob-chip-wrap ob-role-chips" id="obRoleChips" role="radiogroup" aria-label="I am a">
+          <div class="ob-chip ob-role-chip active" role="radio" aria-checked="true" tabindex="0" onclick="selectObChip(this,'obRole','student')">🎒 Student</div>
+          <div class="ob-chip ob-role-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obRole','staff')">🏫 Staff</div>
+        </div>
+
         <div class="ob-avatar-wrap">
           <div class="ob-avatar" id="obAvatar" onclick="document.getElementById('obPicInput').click()">?
             <input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">
@@ -649,12 +656,14 @@
         </div>
         <span class="ob-label">Your first name</span>
         <input type="text" id="obName" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
-        <span class="ob-label">Grade</span>
-        <div class="ob-chip-wrap" id="obGradeChips">
-          <div class="ob-chip" onclick="selectObChip(this,'obGrade','9')">9th</div>
-          <div class="ob-chip active" onclick="selectObChip(this,'obGrade','10')">10th</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obGrade','11')">11th</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obGrade','12')">12th</div>
+        <div id="obGradeSection">
+          <span class="ob-label">Grade</span>
+          <div class="ob-chip-wrap" id="obGradeChips">
+            <div class="ob-chip" onclick="selectObChip(this,'obGrade','9')">9th</div>
+            <div class="ob-chip active" onclick="selectObChip(this,'obGrade','10')">10th</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obGrade','11')">11th</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obGrade','12')">12th</div>
+          </div>
         </div>
         <button class="ob-btn" onclick="obNext()">Continue →</button>
       </div>

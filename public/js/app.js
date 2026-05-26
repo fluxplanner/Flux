@@ -8933,6 +8933,7 @@ const OB_TOTAL=5;
 let obSelectedGrade='10';
 let obSelectedTrack='';
 let obSelectedFocus='deadlines';
+let obSelectedRole='student'; // 'student' | 'staff' — picked once during onboarding
 let obScheduleImgData=null;
 let obExtractedClasses=[];
 let obSchedulePdfPages=[];
@@ -9057,11 +9058,21 @@ function showObStep(n){
   }
 }
 function selectObChip(el,key,val){
-  el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('active'));
+  el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>{
+    c.classList.remove('active');
+    if(c.getAttribute('role')==='radio')c.setAttribute('aria-checked','false');
+  });
   el.classList.add('active');
+  if(el.getAttribute('role')==='radio')el.setAttribute('aria-checked','true');
   if(key==='obGrade')obSelectedGrade=val;
   if(key==='obTrack')obSelectedTrack=val;
   if(key==='obFocus')obSelectedFocus=val;
+  if(key==='obRole'){
+    obSelectedRole=(val==='staff')?'staff':'student';
+    // Hide the grade field when staff is selected; staff doesn't need it.
+    var gradeSec=document.getElementById('obGradeSection');
+    if(gradeSec)gradeSec.style.display=(obSelectedRole==='staff')?'none':'';
+  }
 }
 function updateObPreview(){
   const name=(document.getElementById('obName')?.value||'').trim();
@@ -9085,9 +9096,30 @@ function obNext(){
     const p=load('profile',{});
     p.name=name;
     p.grade=obSelectedGrade;
+    p.role=obSelectedRole||'student'; // student | staff (sub-role chosen via staff details if staff)
     save('profile',p);
     fluxSaveStoredString('flux_user_name',name.split(' ')[0]);
     _updateSidebarName(name);
+    // Persist the role so the post-login picker never shows again on this device,
+    // and try to upsert to Supabase so it survives across devices too.
+    try{
+      const uid=(typeof currentUser!=='undefined'&&currentUser&&currentUser.id)?currentUser.id:null;
+      if(uid){
+        fluxMarkRoleSetupDone(uid,obSelectedRole==='staff'?'staff':'student',name);
+        try{
+          const sb=(typeof getSB==='function')?getSB():null;
+          if(sb)sb.from('user_roles').upsert({
+            user_id:uid,
+            role:obSelectedRole==='staff'?'staff':'student',
+            display_name:name,
+            updated_at:new Date().toISOString(),
+          }).then(()=>{},()=>{});
+        }catch(_){}
+        try{if(window.FluxRole)FluxRole.current=obSelectedRole==='staff'?'staff':'student';}catch(_){}
+      }
+      // Also stash a guest-fallback flag so post-login picker stays away for guests too
+      save('flux_role_setup_done_v1',{role:obSelectedRole||'student',at:Date.now()});
+    }catch(_){}
   }
   if(obCurrentStep===2){
     const p=load('profile',{});
@@ -15436,11 +15468,38 @@ function showRoleSelectOrLogin(){
 window.showRoleSelectOrLogin=showRoleSelectOrLogin;
 
 /** Render the "I am a…" picker AS AN OVERLAY after sign-in (post-login).
- *  Used by detectUserRoleAndRoute when the user has no role yet. */
+ *  DEPRECATED: As of the onboarding redesign the role is picked exactly
+ *  once on Step 1 of the questionnaire. To prevent the picker from ever
+ *  popping up again, this function now auto-resolves from any signal we
+ *  have (local role-setup cache, onboarding profile, guest-fallback flag)
+ *  and never appends the modal. The function is kept for callers that
+ *  still reference it. */
 function showPostLoginRolePicker(opts){
   return new Promise((resolve)=>{
+    // 1. Per-user cache — preferred.
     const cached=currentUser?.id?fluxGetRoleSetup(currentUser.id):null;
     if(cached?.done)return resolve(cached.role||'student');
+    // 2. Onboarding profile written by Step 1.
+    try{
+      const p=load('profile',{});
+      if(p&&(p.role==='staff'||p.role==='student')){
+        if(currentUser?.id)fluxMarkRoleSetupDone(currentUser.id,p.role,p.name||null);
+        return resolve(p.role);
+      }
+    }catch(_){}
+    // 3. Guest-fallback flag (set by onboarding for users without a Supabase id).
+    try{
+      const g=load('flux_role_setup_done_v1',null);
+      if(g&&(g.role==='student'||g.role==='staff')){
+        if(currentUser?.id)fluxMarkRoleSetupDone(currentUser.id,g.role,null);
+        return resolve(g.role);
+      }
+    }catch(_){}
+    // 4. Default: student. The user can change this later via Settings → Account.
+    if(currentUser?.id)fluxMarkRoleSetupDone(currentUser.id,'student',null);
+    return resolve('student');
+    /* legacy modal below — kept commented for reference; never reached. */
+    /*
     const stale=document.getElementById('postLoginRolePicker');
     if(stale){try{stale.remove();}catch(_){}}
     const ov=document.createElement('div');
@@ -15474,6 +15533,7 @@ function showPostLoginRolePicker(opts){
     const finish=(role)=>{ov.remove();resolve(role);};
     document.getElementById('plrpStudent')?.addEventListener('click',()=>finish('student'));
     document.getElementById('plrpStaff')?.addEventListener('click',()=>finish('staff'));
+    */
   });
 }
 window.showPostLoginRolePicker=showPostLoginRolePicker;
