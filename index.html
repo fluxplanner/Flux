@@ -2004,7 +2004,7 @@
             <button type="button" class="ai-sidebar-hide-btn ai-topbar-hide-btn" id="aiSidebarHideBtnTop" onclick="fluxHideAISidebar()" title="Hide thread sidebar — wider chat" aria-label="Hide chat sidebar">‹</button>
             <img class="ai-topbar-logo" src="public/flux-planner-logo.png" width="32" height="32" alt="" aria-hidden="true" />
             <span class="ai-title">Flux AI</span>
-            <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext()" title="Remove Canvas context from AI">×</button></div>
+            <div id="fluxAiCanvasContextBadge" class="flux-ai-canvas-context ai-canvas-badge--inline" style="display:none" title="Flux AI can see your Canvas page"><span aria-hidden="true">🎓</span> Canvas<span class="visually-hidden"> context active</span><button type="button" onclick="clearFluxCanvasPageContext(this)" title="Remove Canvas context from AI">×</button></div>
           </div>
           <div class="ai-topbar__center" aria-label="AI style">
             <select id="aiModeSelect" class="ai-mode-select" aria-label="AI style" onchange="setFluxAIModeFromSelect(this.value)">

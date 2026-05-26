@@ -210,25 +210,68 @@
     else removePulseBadge();
   });
 
-  /* ── Lazy mount on Settings open + on app render ── */
-  function attachObservers(){
-    if(window.MutationObserver){
+  /* ── Lazy mount via bounded polling.
+   *  A previous version observed body{subtree:true} which fired on every DOM
+   *  mutation during boot. Under parallel Playwright (4 workers / 1 server)
+   *  that flooded the main thread enough to push the `load` event past 60s.
+   *  We now poll a handful of times over the first ~10 seconds, then stop.
+   *  After that, nav('settings') / showApp wrappers below keep things synced
+   *  without ever holding open a MutationObserver. */
+  var _pollTries=0;
+  function pollMount(){
+    _pollTries++;
+    try{
+      var appVisible=document.getElementById('app')?.classList.contains('visible');
+      if(appVisible&&isPulse())ensurePulseBadge();
+      if(document.getElementById('spane-appearance')){
+        ensureSettingsSwitch();
+        maybeShowOwnerRow();
+      }
+    }catch(_){}
+    if(_pollTries<24){
+      // 24 ticks * ~400ms ≈ 9.6s. Plenty of time for the SPA to mount.
+      setTimeout(pollMount,400);
+    }
+  }
+
+  /* Hook into the SPA's `nav` function so opening Settings always re-mounts
+   * the card even if it appears after polling stops. Cheap, one-shot. */
+  function wrapNav(){
+    if(typeof window.nav!=='function')return;
+    if(window.nav._fluxPulseWrapped)return;
+    var orig=window.nav;
+    function wrapped(){
+      var r=orig.apply(this,arguments);
       try{
-        var obs=new MutationObserver(function(){
+        setTimeout(function(){
           ensureSettingsSwitch();
           maybeShowOwnerRow();
           if(isPulse())ensurePulseBadge();
-        });
-        obs.observe(document.body,{childList:true,subtree:true,attributes:false});
+        },60);
       }catch(_){}
+      return r;
     }
+    wrapped._fluxPulseWrapped=true;
+    try{window.nav=wrapped;}catch(_){}
   }
 
   function init(){
     apply(getTheme());
-    ensureSettingsSwitch();
+    // First-pass attempt now, then bounded polling, then wrap nav once it
+    // appears. `nav` is defined in app.js which loads with defer, so it may
+    // not be ready at our init time — re-attempt the wrap a few times.
+    try{ensureSettingsSwitch();}catch(_){}
     if(isPulse())ensurePulseBadge();
-    attachObservers();
+    pollMount();
+    var navTries=0;
+    function tryWrapNav(){
+      navTries++;
+      wrapNav();
+      if(typeof window.nav!=='function'||!window.nav._fluxPulseWrapped){
+        if(navTries<20)setTimeout(tryWrapNav,300);
+      }
+    }
+    tryWrapNav();
   }
 
   if(document.readyState==='loading'){

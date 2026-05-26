@@ -6800,6 +6800,34 @@ function toggleAIChatListCompact(){
   syncAISidebarLayout();
 }
 try{window.fluxRevealAISidebar=fluxRevealAISidebar;window.fluxHideAISidebar=fluxHideAISidebar;}catch(e){}
+
+/** Remove Canvas page context from Flux AI. Hides the badge and clears any
+ * stored Canvas reader payload so the next AI turn no longer carries it.
+ * The Canvas reader feature wires this in; if it's not loaded this is a
+ * safe no-op (just hides the badge). */
+function clearFluxCanvasPageContext(triggerEl){
+  try{
+    var badge=document.getElementById('fluxAiCanvasContextBadge');
+    if(badge)badge.style.display='none';
+  }catch(_){}
+  try{
+    if(window.FluxCanvasReader&&typeof window.FluxCanvasReader.clearPageContext==='function'){
+      window.FluxCanvasReader.clearPageContext();
+    }
+  }catch(_){}
+  try{
+    // Best-effort: clear any commonly-named state buckets the feature may use.
+    if(window._fluxCanvasPageContext)window._fluxCanvasPageContext=null;
+    sessionStorage.removeItem('flux_canvas_page_context');
+  }catch(_){}
+  try{
+    if(triggerEl&&typeof triggerEl.blur==='function')triggerEl.blur();
+  }catch(_){}
+  try{
+    if(typeof showToast==='function')showToast('Canvas context cleared','info');
+  }catch(_){}
+}
+try{window.clearFluxCanvasPageContext=clearFluxCanvasPageContext;}catch(e){}
 if(!window._fluxAISidebarLayoutResizeWired){
   window._fluxAISidebarLayoutResizeWired=true;
   try{
