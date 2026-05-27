@@ -418,9 +418,109 @@
     });
   }
 
+  const STAFF_PH_TAB_KEY = 'flux_staff_ph_tab_v1';
+
+  function readStaffPhTab() {
+    try {
+      const uid = currentUser?.id || 'anon';
+      const raw = localStorage.getItem(`${STAFF_PH_TAB_KEY}_${uid}`);
+      const tabs = window.FluxModuleLoader?.staffPersonalHubTabs?.() || [];
+      if (raw && tabs.some((t) => t.id === raw)) return raw;
+    } catch (_) {}
+    return 'life';
+  }
+
+  function saveStaffPhTab(tabId) {
+    try {
+      const uid = currentUser?.id || 'anon';
+      localStorage.setItem(`${STAFF_PH_TAB_KEY}_${uid}`, tabId);
+    } catch (_) {}
+  }
+
+  function renderStaffPersonalHub() {
+    const host = document.getElementById('staffPersonalHubBody');
+    if (!host) return;
+    const tabs = window.FluxModuleLoader?.staffPersonalHubTabs?.() || [];
+    const activeTab = readStaffPhTab();
+    const suiteOn = window.FluxModuleLoader?.suiteEnabled?.();
+
+    if (!suiteOn || !tabs.length) {
+      host.innerHTML = `
+        <div class="sph-root">
+          <div class="sph-empty">
+            <div class="sph-empty-icon">🧩</div>
+            <div class="sph-empty-title">Personal hub</div>
+            <p class="sph-empty-sub">Enable <code>enable_staff_productivity_suite</code> and <code>enable_personal_hub</code> in Owner Suite for brain dump, grocery list, and mood tracking.</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const tabButtons = tabs
+      .map(
+        (t) =>
+          `<button type="button" class="stab sph-tab ${t.id === activeTab ? 'active' : ''}" data-sph-tab="${esc(t.id)}" role="tab" aria-selected="${t.id === activeTab}">${esc(t.label)}</button>`,
+      )
+      .join('');
+    const tabPanels = tabs
+      .map(
+        (t) =>
+          `<div class="sph-tab-panel" id="staffPhTab_${esc(t.id)}" data-sph-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}></div>`,
+      )
+      .join('');
+
+    host.innerHTML = `
+      <div class="sph-root">
+        <div class="sph-topbar">
+          <div>
+            <div class="sph-greet">Personal hub</div>
+            <div class="sph-greet-sub">Brain dump, errands, mood log, and quick imports — kept off your main dashboard.</div>
+          </div>
+          <div class="sph-topbar-actions" id="staffPhToolbar"></div>
+        </div>
+        <div class="stabs sph-tabs" role="tablist" aria-label="Personal hub sections">${tabButtons}</div>
+        <div class="sph-panels">${tabPanels}</div>
+        <p class="sph-hint">Tip: press <kbd>⌘</kbd><kbd>K</kbd> (or <kbd>Ctrl</kbd><kbd>K</kbd>) for the staff command palette.</p>
+      </div>`;
+
+    host.querySelectorAll('[data-sph-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.sphTab;
+        saveStaffPhTab(id);
+        host.querySelectorAll('[data-sph-tab]').forEach((b) => {
+          const on = b.dataset.sphTab === id;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        host.querySelectorAll('[data-sph-panel]').forEach((p) => {
+          p.hidden = p.dataset.sphPanel !== id;
+        });
+        if (window.FluxModuleLoader?.renderStaffPersonalHubGrids) {
+          FluxModuleLoader.renderStaffPersonalHubGrids(id);
+        }
+      });
+    });
+
+    try {
+      if (window.FluxModuleLoader?.renderStaffPersonalHubGrids) {
+        FluxModuleLoader.renderStaffPersonalHubGrids(activeTab);
+      }
+    } catch (_) {}
+  }
+  window.renderStaffPersonalHub = renderStaffPersonalHub;
+
   function renderStaffPersonalDashboard() {
     const el = document.getElementById('dashboard');
     if (!el) return;
+    try {
+      if (window.FluxStaffDashBoard?.enabled?.() && window.FluxStaffDashBoard.render('dashboard')) {
+        return;
+      }
+    } catch (e) {
+      console.warn('[Flux] Staff dash board render failed', e);
+    }
+    el.querySelector('#fluxWidgetGrid_dashboard')?.remove();
+    el.querySelector('.fsdb-root')?.remove();
     const name =
       (typeof FluxRole !== 'undefined' && FluxRole.profile && FluxRole.profile.display_name) ||
       currentUser?.user_metadata?.full_name ||
@@ -442,6 +542,7 @@
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
         <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Workspace links &amp; bookmarks</div></div>
+        <div class="spd-card" data-spd-nav="staffPersonalHub"><div class="spd-card-icon">🧩</div><div class="spd-card-title">Personal hub</div><div class="spd-card-sub">Brain dump, grocery, mood log</div></div>
       </div>
     </div>`;
     el.querySelectorAll('[data-spd-nav]').forEach((card) => {
@@ -450,6 +551,7 @@
         if (typeof nav === 'function') nav(id);
         if (id === 'staffTasks' && window.FluxStaffPlatform) FluxStaffPlatform.renderStaffTasksPanel();
         if (id === 'staffResources') FluxStaffPlatform.renderResourcesPanel();
+        if (id === 'staffPersonalHub' && typeof window.renderStaffPersonalHub === 'function') renderStaffPersonalHub();
       });
     });
   }
@@ -1585,6 +1687,7 @@
     maybeApplyApprovedStaffVerification,
     renderStaffWorkHub,
     renderStaffPersonalDashboard,
+    renderStaffPersonalHub,
     renderStaffTasksPanel,
     renderMeetingNotesPanel,
     renderPDPanel,

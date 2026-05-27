@@ -1161,8 +1161,24 @@
   }
 
   function refreshStaffDateSurfaces() {
-    const panels = ['lessonHub', 'counselorMeetings', 'adminOps', 'staffWorkboard'];
+    const panels = ['lessonHub', 'counselorMeetings', 'counselorWorkspace', 'adminOps', 'staffWorkboard', 'staffPersonalHub'];
     panels.forEach((panel) => {
+      if (panel === 'counselorWorkspace') {
+        if (document.getElementById('counselorWorkspaceBody')?.querySelector('.cw-root') && typeof window.renderCounselorWorkspace === 'function') {
+          try {
+            window.renderCounselorWorkspace();
+          } catch (_) {}
+        }
+        return;
+      }
+      if (panel === 'staffPersonalHub') {
+        if (document.getElementById('staffPersonalHubBody')?.querySelector('.sph-root') && typeof window.renderStaffPersonalHub === 'function') {
+          try {
+            window.renderStaffPersonalHub();
+          } catch (_) {}
+        }
+        return;
+      }
       if (document.getElementById(`fluxWidgetGrid_${panel}`) && window.FluxModuleLoader?.renderWidgetGrid) {
         try {
           window.FluxModuleLoader.renderWidgetGrid(panel);

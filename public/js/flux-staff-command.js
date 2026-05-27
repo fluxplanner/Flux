@@ -129,9 +129,9 @@
       push(cmds, '💬', 'Open counselor dashboard', 'Staff', 'Caseload & meetings', ['counselor', 'caseload'], () =>
         goWork('counselorDashboard'),
       );
-      push(cmds, '🩺', 'Wellness check-in queue', 'Staff', 'Student flags', ['wellness', 'check-in', 'queue'], () => {
-        goWork('counselorDashboard');
-        if (typeof showToast === 'function') showToast('Enable Wellness queue widget in workspace modules', 'info');
+      push(cmds, '🩺', 'Wellness check-in queue', 'Staff', 'Caseload tools tab', ['wellness', 'check-in', 'queue'], () => {
+        goWork('counselorWorkspace');
+        if (typeof showToast === 'function') showToast('Open Caseload tools → Caseload tab', 'info');
       });
       push(cmds, '📅', 'Counselor appointments', 'Staff', 'Booking panel', ['appointment', 'schedule'], () => {
         goWork('counselorMeetings');
@@ -181,8 +181,9 @@
         () => {
           if (m.scope === 'personal' && window.FluxRole?.setMode) {
             FluxRole.setMode('personal');
-            nav('dashboard');
-          } else if (m.roles.includes('counselor')) goWork('counselorDashboard');
+            if (typeof nav === 'function') nav('staffPersonalHub');
+            if (typeof window.renderStaffPersonalHub === 'function') window.renderStaffPersonalHub();
+          } else if (m.roles.includes('counselor')) goWork('counselorWorkspace');
           else if (m.roles.includes('teacher')) goWork('teacherDashboard');
           else if (m.roles.includes('admin')) goWork('adminOps');
           else goWork('staffWorkboard');
@@ -232,8 +233,9 @@
         action: () => {
           if (m.scope === 'personal' && window.FluxRole?.setMode) {
             FluxRole.setMode('personal');
-            nav('dashboard');
-          } else if (m.roles.includes('counselor')) goWork('counselorDashboard');
+            if (typeof nav === 'function') nav('staffPersonalHub');
+            if (typeof window.renderStaffPersonalHub === 'function') window.renderStaffPersonalHub();
+          } else if (m.roles.includes('counselor')) goWork('counselorWorkspace');
           else if (m.roles.includes('teacher')) goWork('teacherDashboard');
           else if (m.roles.includes('admin')) goWork('adminOps');
           else goWork('staffWorkboard');

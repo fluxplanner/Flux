@@ -76,6 +76,7 @@
       enable_classroom_tools: true, // IAE PR-C: global default
       enable_caseload_engine: true, // IAE PR-C: global default
       enable_personal_hub: true, // IAE PR-C: global default
+      enable_staff_dash_board: true, // Educator personal widget board (mini cal, week, photos)
       enable_staff_command_v2: true, // IAE PR-C: global default
       enable_locale_foundation: true, // IAE PR-C: global default
       enable_ops_health_panel: false,

@@ -27,6 +27,114 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 }
+.flux-widget-grid__cells--embedded {
+  margin-top: 4px;
+}
+.cw-tabs {
+  margin-bottom: 14px;
+}
+.cw-tab-panel {
+  min-height: 120px;
+}
+.cw-hint {
+  margin: 16px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+.cw-hint kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+}
+.cw-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.cw-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.cw-empty-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.cw-empty-sub {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.55;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.sph-root {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.sph-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.sph-greet {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+.sph-greet-sub {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  margin-top: 4px;
+  max-width: 520px;
+  line-height: 1.45;
+}
+.sph-tabs {
+  margin-bottom: 14px;
+}
+.sph-tab-panel {
+  min-height: 120px;
+}
+.sph-hint {
+  margin: 16px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted2);
+}
+.sph-hint kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+}
+.sph-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.sph-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.sph-empty-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.sph-empty-sub {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  line-height: 1.55;
+  max-width: 420px;
+  margin: 0 auto;
+}
 .flux-widget-cell {
   background: var(--card2);
   border: 1px solid var(--border2);

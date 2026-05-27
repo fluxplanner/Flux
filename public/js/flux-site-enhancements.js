@@ -26,7 +26,9 @@
     adminDashboard: 'Admin',
     staffWorkboard: 'Workboard',
     counselorMeetings: 'Meetings',
+    counselorWorkspace: 'Caseload tools',
     staffResources: 'Resources',
+    staffPersonalHub: 'Personal hub',
   };
 
   let _installed = false;

@@ -105,6 +105,7 @@
 <link rel="stylesheet" href="public/css/flux-parent-portal.css">
 <link rel="stylesheet" href="public/css/flux-site-enhancements.css">
 <link rel="stylesheet" href="public/css/flux-staff-productivity.css">
+<link rel="stylesheet" href="public/css/flux-staff-dash-board.css">
 <link rel="stylesheet" href="public/css/flux-a11y.css">
 <link rel="stylesheet" href="public/css/flux-performance.css">
 <link rel="stylesheet" href="public/css/flux-pro.css">
@@ -865,6 +866,7 @@
         <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
         <button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
         <button type="button" class="nav-item" onclick="nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">🗂</span><span class="nl">Caseload tools</span></button>
         <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         <button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
         <button type="button" class="nav-item" onclick="nav('adminDashboard',this);try{renderAdminDashboard()}catch(e){}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
@@ -884,6 +886,7 @@
         <button class="nav-item" onclick="nav('toolbox',this)" data-tab="toolbox"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
+        <button type="button" class="nav-item" onclick="nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">🧩</span><span class="nl">Personal hub</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">Me</div>
@@ -956,6 +959,7 @@
         <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
         <button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
         <button type="button" class="nav-item" onclick="navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
+        <button type="button" class="nav-item" onclick="navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">🗂</span><span class="nl">Caseload tools</span></button>
         <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
         <button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
         <button type="button" class="nav-item" onclick="navMob('adminDashboard');try{renderAdminDashboard()}catch(e){}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
@@ -975,6 +979,7 @@
         <button class="nav-item" onclick="navMob('toolbox')"><span class="ni">🧰</span><span class="nl">Study tools</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
         <button type="button" class="nav-item" onclick="navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
+        <button type="button" class="nav-item" onclick="navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">🧩</span><span class="nl">Personal hub</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label" style="padding:8px 16px 4px">Me</div>
@@ -1232,6 +1237,12 @@
     <div id="staffPD" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Professional development log.</p></header></div>
     <div id="staffWellbeing" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Energy, stress, and check-ins.</p></header></div>
     <div id="staffResources" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Workspace shortcuts, school links, and personal bookmarks.</p></header></div>
+    <div id="staffPersonalHub" class="panel flux-page" data-staff-personal-panel>
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Brain dump, grocery list, mood tracking, and quick tools — separate from your dashboard overview.</p>
+      </header>
+      <div id="staffPersonalHubBody"></div>
+    </div>
     <div id="schoolFeedPanel" class="panel flux-page"><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School-wide posts from staff.</p></header></div>
 
     <!-- ─── CALENDAR ─── -->
@@ -1715,6 +1726,13 @@
       <div id="counselorCaseloadMount" class="counselor-caseload-mount" hidden></div>
       <div id="counselorRiskQueueMount" class="counselor-risk-queue-mount" hidden></div>
       <div id="counselorDashboardBody"></div>
+    </div>
+
+    <div id="counselorWorkspace" class="panel flux-page flux-edu-panel" data-edu-role="counselor">
+      <header class="flux-page-header flux-page-header--lead">
+        <p class="flux-page-sub">Accommodations, parent contacts, meeting notes, wellness queue, referrals, and crisis protocols.</p>
+      </header>
+      <div id="counselorWorkspaceBody"></div>
     </div>
 
     <div id="adminDashboard" class="panel flux-page flux-edu-panel" data-edu-role="admin">
@@ -2702,6 +2720,7 @@
     <script defer src="public/js/flux-deep-links.js"></script>
     <script defer src="public/js/flux-voice-capture.js"></script>
     <script defer src="public/js/flux-screenshot-snip.js"></script>
+    <script defer src="public/js/flux-staff-dash-board.js"></script>
     <script defer src="public/js/flux-staff-platform.js"></script>
     <script defer src="public/js/flux-school-command.js"></script>
     <script defer src="public/js/flux-school-emergency.js"></script>

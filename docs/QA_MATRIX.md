@@ -73,7 +73,9 @@ Migration: `supabase/migrations/20260533700000_counselor_availability_student_re
 | Quick-Grade | `teacher` | Drag card between buckets | Persists in localStorage after reload. |
 | Accommodations | `teacher` | Add need-to-know row | Row in `staff_student_accommodations`; visible to same-school educators with roster/counselor link. |
 | Meeting log | `counselor` | Add private note | Row in `staff_counselor_private_notes`; not readable by teacher test account. |
-| Personal hub | `teacher` | Personal mode → Dashboard | Brain dump / grocery widgets; no row in Supabase for grocery. |
+| Personal hub | `teacher` | Personal mode → Personal hub tab | Brain dump / grocery widgets; no row in Supabase for grocery. |
+| Staff dash board | `counselor` / `teacher` | Enable `enable_staff_dash_board` → Personal mode → Dashboard | Widget board (welcome, mini cal, week strip); drag ⠿ reorder; ↔ resize; + Widget adds photo board / hub modules. |
+| Staff dash board rollback | Owner | Disable `enable_staff_dash_board` | Legacy card dashboard (Tasks / Resources / Personal hub). |
 | Student picker | `teacher` | Load roster → Pick student | Name shown; same student not picked again within 3 rounds. |
 | Classroom timer | `teacher` | Start 5 min preset | Countdown runs; toast at 0:00. |
 | Oops broadcast | `teacher` | Work mode → Oops widget → send message | `teacher_announcements` urgent row; enrolled `student` sees banner on Dashboard. |

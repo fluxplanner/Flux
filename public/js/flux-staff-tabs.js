@@ -6,6 +6,7 @@
 
      · Teacher    → Lesson Hub (#lessonHub)         ─ today's bell schedule
      · Counselor  → Meetings (#counselorMeetings)   ─ Google Calendar feed
+     · Counselor  → Caseload tools (#counselorWorkspace) ─ widget modules (tabbed)
      · Admin      → Operations (#adminOps)          ─ school command center
      · Staff      → Workboard (#staffWorkboard)     ─ department tools
 
@@ -87,6 +88,111 @@
   function firstName(){
     const n=meName();return String(n).split(' ').filter(w=>!['Mr.','Mrs.','Ms.','Dr.'].includes(w))[0]||n;
   }
+
+  const COUNSELOR_WS_TAB_KEY = 'flux_counselor_ws_tab_v1';
+
+  function readCounselorWsTab() {
+    try {
+      const uid =
+        (typeof currentUser !== 'undefined' && currentUser?.id) ||
+        (window.currentUser && window.currentUser.id) ||
+        'anon';
+      const raw = localStorage.getItem(`${COUNSELOR_WS_TAB_KEY}_${uid}`);
+      const tabs = window.FluxModuleLoader?.counselorWorkspaceTabs?.() || [];
+      if (raw && tabs.some((t) => t.id === raw)) return raw;
+    } catch (_) {}
+    return 'caseload';
+  }
+
+  function saveCounselorWsTab(tabId) {
+    try {
+      const uid =
+        (typeof currentUser !== 'undefined' && currentUser?.id) ||
+        (window.currentUser && window.currentUser.id) ||
+        'anon';
+      localStorage.setItem(`${COUNSELOR_WS_TAB_KEY}_${uid}`, tabId);
+    } catch (_) {}
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // COUNSELOR · CASELOAD WORKSPACE (staff productivity widgets)
+  // ════════════════════════════════════════════════════════════════
+  function renderCounselorWorkspace() {
+    const host = document.getElementById('counselorWorkspaceBody');
+    if (!host) return;
+
+    const tabs = window.FluxModuleLoader?.counselorWorkspaceTabs?.() || [];
+    const activeTab = readCounselorWsTab();
+    const suiteOn = window.FluxModuleLoader?.suiteEnabled?.();
+
+    if (!suiteOn || !tabs.length) {
+      host.innerHTML = `
+        <div class="cw-root">
+          <div class="cw-empty">
+            <div class="cw-empty-icon">🗂</div>
+            <div class="cw-empty-title">Caseload tools</div>
+            <p class="cw-empty-sub">Enable <code>enable_staff_productivity_suite</code> and counselor module flags in Owner Suite to use accommodations, meeting logs, wellness queue, and crisis protocols here.</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const tabButtons = tabs
+      .map(
+        (t) =>
+          `<button type="button" class="stab cw-tab ${t.id === activeTab ? 'active' : ''}" data-cw-tab="${esc(t.id)}" role="tab" aria-selected="${t.id === activeTab}">${esc(t.label)}</button>`,
+      )
+      .join('');
+
+    const tabPanels = tabs
+      .map(
+        (t) =>
+          `<div class="cw-tab-panel" id="counselorWsTab_${esc(t.id)}" data-cw-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}></div>`,
+      )
+      .join('');
+
+    host.innerHTML = `
+      <div class="cw-root">
+        <div class="cw-topbar">
+          <div>
+            <div class="cw-greet">Caseload tools</div>
+            <div class="cw-greet-sub">Accommodations, contacts, wellness queue, and crisis protocols — separate from your daily overview.</div>
+          </div>
+          <div class="cw-topbar-actions" id="counselorWsToolbar"></div>
+        </div>
+        <div class="stabs cw-tabs" role="tablist" aria-label="Caseload tool sections">${tabButtons}</div>
+        <div class="cw-panels">${tabPanels}</div>
+        <p class="cw-hint">Tip: press <kbd>⌘</kbd><kbd>K</kbd> (or <kbd>Ctrl</kbd><kbd>K</kbd>) for the staff command palette.</p>
+      </div>`;
+
+    host.querySelectorAll('[data-cw-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.cwTab;
+        saveCounselorWsTab(id);
+        host.querySelectorAll('[data-cw-tab]').forEach((b) => {
+          const on = b.dataset.cwTab === id;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        host.querySelectorAll('[data-cw-panel]').forEach((p) => {
+          p.hidden = p.dataset.cwPanel !== id;
+        });
+        if (window.FluxModuleLoader?.renderCounselorWorkspaceGrids) {
+          FluxModuleLoader.renderCounselorWorkspaceGrids(id);
+        }
+      });
+    });
+
+    try {
+      if (window.FluxGoogle?.refreshStaffHubMounts) FluxGoogle.refreshStaffHubMounts();
+    } catch (_) {}
+    try {
+      if (window.FluxModuleLoader?.renderCounselorWorkspaceGrids) {
+        FluxModuleLoader.renderCounselorWorkspaceGrids(activeTab);
+      }
+    } catch (_) {}
+  }
+  window.renderCounselorWorkspace = renderCounselorWorkspace;
 
   // ════════════════════════════════════════════════════════════════
   // 1) TEACHER · LESSON HUB

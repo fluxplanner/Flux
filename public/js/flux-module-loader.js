@@ -32,7 +32,7 @@
     { id: 'personal_grocery', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Grocery list', status: 'beta', module: 'FluxPersonalHub', method: 'renderGrocery' },
     { id: 'personal_mood_energy', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Mood / energy log', status: 'beta', module: 'FluxPersonalHub', method: 'renderMoodEnergy' },
     { id: 'personal_deep_work', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Deep work blocker', status: 'planned', module: 'FluxPersonalHub' },
-    { id: 'sys_command_v2', flag: 'enable_staff_command_v2', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Staff command palette', status: 'beta', module: 'FluxStaffCommand', method: 'registerCommands' },
+    { id: 'sys_command_v2', flag: 'enable_staff_command_v2', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Staff command palette', status: 'beta', module: 'FluxStaffCommand', method: 'registerCommands', kind: 'command' },
     { id: 'sys_gmail_quick', flag: 'enable_gmail_educator_import', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Gmail → task quick import', status: 'beta', module: 'FluxStaffCommand', method: 'renderGmailQuickWidget' },
     { id: 'sys_export_csv', flag: 'enable_staff_productivity_suite', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Export to CSV', status: 'beta', module: 'FluxModuleLoader', method: 'exportEnabledData', kind: 'command' },
   ];
@@ -41,9 +41,49 @@
     staffWorkboard: 'staffWorkboardBody',
     teacherDashboard: 'teacherDashboardBody',
     counselorDashboard: 'counselorDashboardBody',
+    counselorWorkspace: 'counselorWorkspaceBody',
     adminOps: 'adminOpsBody',
     dashboard: 'dashboard',
+    staffPersonalHub: 'staffPersonalHubBody',
   };
+
+  /** Educator personal-mode widgets (not on main Dashboard). */
+  const STAFF_PERSONAL_HUB_TABS = [
+    {
+      id: 'life',
+      label: 'Life',
+      widgetIds: ['personal_brain_dump', 'personal_grocery'],
+    },
+    {
+      id: 'wellness',
+      label: 'Wellness',
+      widgetIds: ['personal_mood_energy'],
+    },
+    {
+      id: 'tools',
+      label: 'Tools',
+      widgetIds: ['sys_gmail_quick'],
+    },
+  ];
+
+  /** Counselor workspace sub-tabs (widgets live here, not on Overview). */
+  const COUNSELOR_WORKSPACE_TABS = [
+    {
+      id: 'caseload',
+      label: 'Caseload',
+      widgetIds: ['counselor_caseload', 'counselor_wellness_queue', 'counselor_referrals'],
+    },
+    {
+      id: 'records',
+      label: 'Student records',
+      widgetIds: ['classroom_accommodations', 'classroom_parent_log', 'counselor_meeting_log'],
+    },
+    {
+      id: 'crisis',
+      label: 'Crisis',
+      widgetIds: ['counselor_crisis_sheet'],
+    },
+  ];
 
   let _installed = false;
 
@@ -88,7 +128,17 @@
     }
   }
 
+  function isEducatorPersonalMode() {
+    try {
+      return window.FluxRole?.isEducator?.() === true && window.FluxRole?.isPersonalMode?.() === true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function visibleModules(panelId) {
+    if (panelId === 'counselorDashboard') return [];
+    if (panelId === 'dashboard' && isEducatorPersonalMode()) return [];
     const role = currentRole();
     const work = isWorkContext();
     const personal = isPersonalContext();
@@ -103,19 +153,32 @@
       if (m.scope === 'work' && !work) return false;
       if (m.scope === 'personal' && !personal) return false;
       if (m.scope === 'work' && panelId === 'dashboard') return false;
-      if (m.scope === 'personal' && panelId !== 'dashboard') return false;
+      if (m.scope === 'personal' && panelId !== 'staffPersonalHub') return false;
+      if (panelId === 'staffPersonalHub' && m.scope !== 'personal' && m.scope !== 'any') return false;
+      if (panelId === 'counselorWorkspace' && !m.roles.includes('counselor')) return false;
+      if (panelId === 'dashboard' && (m.scope === 'personal' || (m.scope === 'any' && isEducatorPersonalMode())))
+        return false;
       return true;
     });
   }
 
-  function loadLayout() {
+  function loadLayout(panelId) {
     try {
       const uid =
         (typeof currentUser !== 'undefined' && currentUser?.id) ||
         (window.currentUser && window.currentUser.id) ||
         'anon';
       const raw = localStorage.getItem(`${LAYOUT_KEY}_${uid}`);
-      return raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed) return null;
+      if (parsed.panelId === panelId) return parsed;
+      if (panelId === 'counselorWorkspace' && parsed.panelId === 'counselorDashboard') {
+        return { ...parsed, panelId: 'counselorWorkspace' };
+      }
+      if (panelId === 'staffPersonalHub' && parsed.panelId === 'dashboard') {
+        return { ...parsed, panelId: 'staffPersonalHub' };
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -152,43 +215,65 @@
     return null;
   }
 
-  function renderWidgetGrid(panelId) {
+  function renderWidgetGrid(panelId, opts) {
     if (!suiteEnabled()) return;
-    const hostId = PANEL_HOSTS[panelId];
-    if (!hostId) return;
-    const host = document.getElementById(hostId);
+    const options = opts || {};
+    const widgetIdFilter = options.widgetIds || null;
+    const showToolbar = options.showToolbar !== false;
+    const layoutPanelId = options.layoutPanelId || panelId;
+
+    let host = options.container || null;
+    if (!host) {
+      const hostId = PANEL_HOSTS[panelId];
+      if (!hostId) return;
+      host = document.getElementById(hostId);
+    }
     if (!host) return;
 
     const mods = visibleModules(panelId);
-    if (!mods.length) return;
+    if (!mods.length && !widgetIdFilter) return;
 
-    let layout = loadLayout();
-    if (!layout || layout.panelId !== panelId) layout = defaultLayout(panelId, mods);
+    let layout = loadLayout(layoutPanelId);
+    if (!layout || layout.panelId !== layoutPanelId) layout = defaultLayout(layoutPanelId, mods);
 
-    let grid = host.querySelector('.flux-widget-grid');
-    if (!grid) {
+    let grid = options.container ? host : host.querySelector('.flux-widget-grid');
+    const gridId = widgetIdFilter
+      ? `fluxWidgetGrid_${panelId}_${widgetIdFilter.join('_')}`
+      : `fluxWidgetGrid_${panelId}`;
+    if (!grid || (options.container && grid.className !== 'flux-widget-grid')) {
       grid = document.createElement('div');
       grid.className = 'flux-widget-grid';
-      grid.id = `fluxWidgetGrid_${panelId}`;
-      host.prepend(grid);
+      grid.id = gridId;
+      if (options.container) {
+        host.appendChild(grid);
+      } else {
+        host.prepend(grid);
+      }
     }
 
-    const widgets = layout.widgets
+    let widgets = layout.widgets
       .filter((w) => w.visible)
       .sort((a, b) => a.order - b.order)
       .map((w) => mods.find((m) => m.id === w.id))
       .filter(Boolean)
-      // Items marked kind:'command' are command-palette actions, NOT widgets.
-      // Rendering them auto-invokes their method which fires destructive
-      // side effects (e.g. sys_export_csv was downloading on every render).
       .filter((m) => m.kind !== 'command');
 
-    grid.innerHTML = `
-      <div class="flux-widget-grid__toolbar">
+    if (widgetIdFilter) {
+      widgets = widgetIdFilter.map((id) => mods.find((m) => m.id === id)).filter(Boolean);
+    }
+
+    if (!widgets.length) {
+      grid.innerHTML = `<p class="flux-widget-planned">No modules enabled for this section. Turn on flags in Owner Suite or use Customize.</p>`;
+      return;
+    }
+
+    grid.innerHTML = showToolbar
+      ? `<div class="flux-widget-grid__toolbar">
         <span class="flux-widget-grid__title">Workspace modules</span>
-        <button type="button" class="btn-sec flux-widget-grid__configure" data-panel="${esc(panelId)}">Customize</button>
+        <button type="button" class="btn-sec flux-widget-grid__configure" data-panel="${esc(layoutPanelId)}">Customize</button>
       </div>
-      <div class="flux-widget-grid__cells" data-panel="${esc(panelId)}"></div>`;
+      <div class="flux-widget-grid__cells" data-panel="${esc(layoutPanelId)}"></div>`
+      : `<div class="flux-widget-grid__cells flux-widget-grid__cells--embedded" data-panel="${esc(layoutPanelId)}"></div>`;
 
     const cells = grid.querySelector('.flux-widget-grid__cells');
     widgets.forEach((item) => {
@@ -215,7 +300,69 @@
       }
     });
 
-    grid.querySelector('.flux-widget-grid__configure')?.addEventListener('click', () => openConfigureModal(panelId, mods, layout));
+    grid.querySelector('.flux-widget-grid__configure')?.addEventListener('click', () =>
+      openConfigureModal(layoutPanelId, mods, layout),
+    );
+  }
+
+  function renderCounselorWorkspaceGrids(activeTabId) {
+    if (!suiteEnabled()) return false;
+    const tabs = COUNSELOR_WORKSPACE_TABS;
+    const tabId = activeTabId || tabs[0]?.id;
+    tabs.forEach((tab) => {
+      const mount = document.getElementById(`counselorWsTab_${tab.id}`);
+      if (!mount) return;
+      mount.innerHTML = '';
+      if (tab.id !== tabId) return;
+      renderWidgetGrid('counselorWorkspace', {
+        container: mount,
+        widgetIds: tab.widgetIds,
+        showToolbar: false,
+        layoutPanelId: 'counselorWorkspace',
+      });
+    });
+    const toolbarHost = document.getElementById('counselorWsToolbar');
+    if (toolbarHost && !toolbarHost.dataset.wired) {
+      toolbarHost.dataset.wired = '1';
+      const mods = visibleModules('counselorWorkspace');
+      let layout = loadLayout('counselorWorkspace');
+      if (!layout || layout.panelId !== 'counselorWorkspace') layout = defaultLayout('counselorWorkspace', mods);
+      toolbarHost.innerHTML = `<button type="button" class="btn-sec flux-widget-grid__configure" data-panel="counselorWorkspace">Customize modules</button>`;
+      toolbarHost.querySelector('.flux-widget-grid__configure')?.addEventListener('click', () =>
+        openConfigureModal('counselorWorkspace', mods, layout),
+      );
+    }
+    return true;
+  }
+
+  function renderStaffPersonalHubGrids(activeTabId) {
+    if (!suiteEnabled()) return false;
+    const tabs = STAFF_PERSONAL_HUB_TABS;
+    const tabId = activeTabId || tabs[0]?.id;
+    tabs.forEach((tab) => {
+      const mount = document.getElementById(`staffPhTab_${tab.id}`);
+      if (!mount) return;
+      mount.innerHTML = '';
+      if (tab.id !== tabId) return;
+      renderWidgetGrid('staffPersonalHub', {
+        container: mount,
+        widgetIds: tab.widgetIds,
+        showToolbar: false,
+        layoutPanelId: 'staffPersonalHub',
+      });
+    });
+    const toolbarHost = document.getElementById('staffPhToolbar');
+    if (toolbarHost && !toolbarHost.dataset.wired) {
+      toolbarHost.dataset.wired = '1';
+      const mods = visibleModules('staffPersonalHub');
+      let layout = loadLayout('staffPersonalHub');
+      if (!layout || layout.panelId !== 'staffPersonalHub') layout = defaultLayout('staffPersonalHub', mods);
+      toolbarHost.innerHTML = `<button type="button" class="btn-sec flux-widget-grid__configure" data-panel="staffPersonalHub">Customize modules</button>`;
+      toolbarHost.querySelector('.flux-widget-grid__configure')?.addEventListener('click', () =>
+        openConfigureModal('staffPersonalHub', mods, layout),
+      );
+    }
+    return true;
   }
 
   function openConfigureModal(panelId, mods, layout) {
@@ -255,7 +402,13 @@
       });
       saveLayout(layout);
       ov.remove();
-      renderWidgetGrid(panelId);
+      if (panelId === 'counselorWorkspace' && typeof window.renderCounselorWorkspace === 'function') {
+        window.renderCounselorWorkspace();
+      } else if (panelId === 'staffPersonalHub' && typeof window.renderStaffPersonalHub === 'function') {
+        window.renderStaffPersonalHub();
+      } else {
+        renderWidgetGrid(panelId);
+      }
       if (typeof showToast === 'function') showToast('Workspace layout saved', 'success');
     });
   }
@@ -263,6 +416,8 @@
   function onNav(ev) {
     const panel = ev.detail?.panel;
     if (!panel || !PANEL_HOSTS[panel]) return;
+    if (panel === 'counselorWorkspace' || panel === 'staffPersonalHub') return;
+    if (panel === 'dashboard' && isEducatorPersonalMode()) return;
     requestAnimationFrame(() => renderWidgetGrid(panel));
   }
 
@@ -294,6 +449,10 @@
     moduleEnabled,
     visibleModules,
     renderWidgetGrid,
+    renderCounselorWorkspaceGrids,
+    renderStaffPersonalHubGrids,
+    counselorWorkspaceTabs: () => COUNSELOR_WORKSPACE_TABS.slice(),
+    staffPersonalHubTabs: () => STAFF_PERSONAL_HUB_TABS.slice(),
     exportEnabledData,
     SUITE_FLAG,
   };

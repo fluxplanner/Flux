@@ -372,7 +372,10 @@
       if (typeof _api.nav === 'function') _api.nav('counselorDashboard', null);
       if (typeof _api.renderCounselorDashboard === 'function') await _api.renderCounselorDashboard();
       try {
-        if (window.FluxModuleLoader?.renderWidgetGrid) window.FluxModuleLoader.renderWidgetGrid('counselorDashboard');
+        if (typeof window.renderCounselorWorkspace === 'function') await window.renderCounselorWorkspace();
+        else if (window.FluxModuleLoader?.renderCounselorWorkspaceGrids) {
+          window.FluxModuleLoader.renderCounselorWorkspaceGrids('caseload');
+        }
       } catch (_) {}
     } else {
       if (typeof _api.nav === 'function') _api.nav('dashboard', null);

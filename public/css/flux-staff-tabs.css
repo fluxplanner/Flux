@@ -6,21 +6,21 @@
      --card, --card2, --green, --gold, --red, --purple
    ════════════════════════════════════════════════════════════════════════ */
 
-/* ── shared bits used across the 4 tabs ────────────────────────────── */
-.lh-root,.cm-root,.ao-root,.sw-root{
+/* ── shared bits used across staff workspace tabs ─────────────────── */
+.lh-root,.cm-root,.ao-root,.sw-root,.cw-root{
   padding:20px;position:relative;z-index:1;
 }
-.lh-topbar,.cm-topbar,.ao-topbar,.sw-topbar{
+.lh-topbar,.cm-topbar,.ao-topbar,.sw-topbar,.cw-topbar{
   display:flex;align-items:flex-start;justify-content:space-between;
   margin-bottom:18px;flex-wrap:wrap;gap:12px;
 }
-.lh-greet,.cm-greet,.ao-greet,.sw-greet{
+.lh-greet,.cm-greet,.ao-greet,.sw-greet,.cw-greet{
   font-size:1.4rem;font-weight:800;letter-spacing:-.5px;
 }
-.lh-greet-sub,.cm-greet-sub,.ao-greet-sub,.sw-greet-sub{
+.lh-greet-sub,.cm-greet-sub,.ao-greet-sub,.sw-greet-sub,.cw-greet-sub{
   font-size:.78rem;color:var(--muted2);margin-top:3px;
 }
-.lh-topbar-actions,.cm-topbar-actions,.ao-topbar-actions,.sw-topbar-actions{
+.lh-topbar-actions,.cm-topbar-actions,.ao-topbar-actions,.sw-topbar-actions,.cw-topbar-actions{
   display:flex;gap:8px;flex-wrap:wrap;
 }
 .lh-action-btn,.cm-action-btn,.ao-action-btn,.sw-action-btn{

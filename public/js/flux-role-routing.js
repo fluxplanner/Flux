@@ -12,6 +12,7 @@
     'staffWorkboard',
     'lessonHub',
     'counselorMeetings',
+    'counselorWorkspace',
     'adminOps',
     'staffHub',
   ]);
@@ -22,6 +23,7 @@
     'staffPD',
     'staffWellbeing',
     'staffResources',
+    'staffPersonalHub',
   ]);
 
   function role() {
@@ -114,6 +116,9 @@
           if (pid === 'counselorMeetings' && !fr.isCounselor()) {
             return workHomePanel(fr);
           }
+          if (pid === 'counselorWorkspace' && !fr.isCounselor()) {
+            return workHomePanel(fr);
+          }
         } else if (pid === 'school' || EDUCATOR_WORK_PANELS.has(pid)) {
           return 'dashboard';
         }
@@ -184,6 +189,10 @@
         if (fr.isCounselor() && work) return { ok: true };
         return { ok: false, reason: 'counselor_meetings', fallbackId: home };
       }
+      if (pid === 'counselorWorkspace') {
+        if (fr.isCounselor() && work) return { ok: true };
+        return { ok: false, reason: 'counselor_workspace', fallbackId: home };
+      }
       if (pid === 'adminOps') {
         if (fr.current === 'admin' && work) return { ok: true };
         return {
@@ -250,6 +259,7 @@
       'staffWorkboard',
       'lessonHub',
       'counselorMeetings',
+      'counselorWorkspace',
       'adminOps',
       'staffHub',
       'staffTasks',
