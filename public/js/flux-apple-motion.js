@@ -65,12 +65,13 @@ function motion(fn) {
   if (motionAllowed() && typeof fn === 'function') fn();
 }
 
+// Press scale: morph pills already provide nav feedback, so exclude
+// .nav-item/.bnav-item from the press list — that compounds with the morph
+// animation and reads as jitter on tab switch.
 const PRESS_SELECTOR = [
-  'button:not(:disabled):not([data-flux-no-press])',
+  'button:not(:disabled):not([data-flux-no-press]):not(.nav-item):not(.bnav-item)',
   '.btn',
   '.btn-sec',
-  '.nav-item',
-  '.bnav-item',
   '.fab-btn',
   '.fab-action',
   '.fsdb-widget-btn',
@@ -238,6 +239,8 @@ function ensurePillFor(host, shape) {
   return entry;
 }
 
+const _close = (a, b) => Math.abs(a - b) < 0.5;
+
 function placePill(host, target, shape) {
   if (!host || !target) return;
   const entry = ensurePillFor(host, shape);
@@ -264,21 +267,23 @@ function placePill(host, target, shape) {
     entry.lastH = h;
     return;
   }
-  // No-op if values unchanged (avoids triggering spring on noise).
-  if (entry.lastX === x && entry.lastY === y && entry.lastW === w && entry.lastH === h) {
+  // Sub-pixel tolerance dedup — avoids re-firing animation on floating-point noise.
+  if (_close(entry.lastX, x) && _close(entry.lastY, y) && _close(entry.lastW, w) && _close(entry.lastH, h)) {
     pill.dataset.placed = '1';
     return;
   }
   // Animate via animate() — anime.js v4 spring + direct property targets.
   if (motionAllowed()) {
     try {
-      animate(pill, {
+      // Cancel any in-flight animation on this pill so we don't stack tweens.
+      if (entry.currentAnim?.pause) entry.currentAnim.pause();
+      entry.currentAnim = animate(pill, {
         translateX: x,
         translateY: y,
         width: w,
         height: h,
-        duration: 560,
-        ease: spring('smooth'),
+        duration: 340,
+        ease: spring('snappy'),
       });
     } catch (_) {
       pill.style.transform = `translateX(${x}px) translateY(${y}px)`;
@@ -316,30 +321,40 @@ function syncAllPills() {
   PILL_GROUPS.forEach(syncPillGroup);
 }
 
+let _syncScheduled = false;
+function scheduleSyncAllPills() {
+  if (_syncScheduled) return;
+  _syncScheduled = true;
+  // Two rAFs: first lets nav() finish synchronous DOM updates,
+  // second ensures browser has reflowed before we read rects.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      _syncScheduled = false;
+      syncAllPills();
+    });
+  });
+}
+
 function initPillMorph() {
   syncAllPills();
 
-  // Re-sync after panel render/navigation
-  document.addEventListener('flux-nav', () => requestAnimationFrame(syncAllPills));
-  document.addEventListener('flux-dash-board-rendered', () => requestAnimationFrame(syncAllPills));
+  // One coalesced sync per frame, regardless of how many triggers fire.
+  document.addEventListener('flux-nav', scheduleSyncAllPills);
+  document.addEventListener('flux-dash-board-rendered', scheduleSyncAllPills);
 
-  // Click-based morph (instant feedback)
+  // Belt-and-suspenders: also schedule on direct nav-item / bnav-item / tab clicks.
   document.addEventListener(
     'click',
     (e) => {
       const t = e.target;
       if (!(t instanceof Element)) return;
-      for (const g of PILL_GROUPS) {
-        const item = t.closest(g.item);
-        if (!item) continue;
-        const host = item.closest(g.host);
-        if (!host) continue;
-        // Defer one frame so active class is set first
-        requestAnimationFrame(() => placePill(host, item, g.shape));
-        break;
+      if (
+        t.closest('.nav-item, .bnav-item, .stab, .sph-tab, .tmode-btn, .view-btn')
+      ) {
+        scheduleSyncAllPills();
       }
     },
-    { capture: true },
+    { capture: true, passive: true },
   );
 
   // Recalc on resize / orientation
@@ -354,14 +369,15 @@ function initPillMorph() {
   );
   window.addEventListener('orientationchange', () => setTimeout(syncAllPills, 100), { passive: true });
 
-  // Sync when host scrolls (e.g., sidebar nav-scroll)
+  // Sync when a registered host scrolls (sidebar nav-scroll only).
   document.addEventListener(
     'scroll',
     (e) => {
       const host = e.target;
       if (!(host instanceof Element)) return;
       const entry = _pillRegistry.get(host);
-      if (entry && entry.lastTarget) placePill(host, entry.lastTarget, host.querySelector('.flux-morph-pill')?.dataset.shape || 'rect');
+      if (!entry || !entry.lastTarget) return;
+      placePill(host, entry.lastTarget, entry.pill.dataset.shape || 'rect');
     },
     { capture: true, passive: true },
   );

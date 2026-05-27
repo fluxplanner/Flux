@@ -200,10 +200,50 @@ html.flux-apple-motion .tmode-toggle .flux-morph-pill--pill,
 html.flux-apple-motion .tmode-segmented .flux-morph-pill--pill,
 html.flux-apple-motion .dash-toolbar-views .flux-morph-pill--pill,
 html.flux-apple-motion #filterChips .flux-morph-pill--pill {
-  background: var(--accent, #5f8eff);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb, 95, 142, 255), 0.95),
+    rgba(var(--accent-rgb, 95, 142, 255), 0.80)
+  );
   box-shadow:
-    0 4px 14px rgba(var(--accent-rgb, 95, 142, 255), 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 6px 18px rgba(var(--accent-rgb, 95, 142, 255), 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Make sure button label content stays above the pill */
+html.flux-apple-motion .dash-toolbar-views .tmode-btn,
+html.flux-apple-motion .dash-toolbar-views .view-btn,
+html.flux-apple-motion .tmode-toggle .tmode-btn,
+html.flux-apple-motion .tmode-segmented .tmode-btn,
+html.flux-apple-motion #filterChips .tmode-btn,
+html.flux-apple-motion .stabs .stab,
+html.flux-apple-motion .sph-tabs .sph-tab,
+html.flux-apple-motion .view-toggle .view-btn,
+html.flux-apple-motion .view-switcher .view-btn {
+  isolation: isolate;
+}
+
+html.flux-apple-motion .dash-toolbar-views .tmode-btn > *,
+html.flux-apple-motion .dash-toolbar-views .view-btn > *,
+html.flux-apple-motion .tmode-toggle .tmode-btn > *,
+html.flux-apple-motion .tmode-segmented .tmode-btn > *,
+html.flux-apple-motion #filterChips .tmode-btn > *,
+html.flux-apple-motion .stabs .stab > *,
+html.flux-apple-motion .sph-tabs .sph-tab > *,
+html.flux-apple-motion .view-toggle .view-btn > *,
+html.flux-apple-motion .view-switcher .view-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Active segmented item: solid white text + subtle text shadow for legibility on accent pill */
+html.flux-apple-motion .dash-toolbar-views:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion .dash-toolbar-views:has(.flux-morph-pill) .view-btn.active,
+html.flux-apple-motion .tmode-toggle:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion .tmode-segmented:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion #filterChips:has(.flux-morph-pill) .tmode-btn.active {
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 /* ───────── Card / widget enter (fallback when JS hasn't run) ───────── */

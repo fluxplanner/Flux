@@ -1,0 +1,200 @@
+/* ═══════════════════════════════════════════════════════════
+   Flux · Apple Motion Pro (2026)
+   Premium effects: shimmer text, aurora bloom, hover lift,
+   ripple container, focus glow, scroll-reveal initial states.
+   Load after flux-apple-motion.css.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ───────── Shimmer text (headings) ───────── */
+
+html.flux-apple-motion .flux-shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--text, #fff) 0%,
+    var(--text, #fff) 38%,
+    rgba(var(--accent-rgb, 95, 142, 255), 1) 50%,
+    var(--text, #fff) 62%,
+    var(--text, #fff) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 100% 0%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: fluxShimmerSweep 5.6s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+  animation-delay: 0.8s;
+}
+
+@keyframes fluxShimmerSweep {
+  0%, 18% {
+    background-position: 220% 0%;
+  }
+  55%, 100% {
+    background-position: -80% 0%;
+  }
+}
+
+/* ───────── Aurora bloom (premium ambient background) ───────── */
+
+html.flux-aurora-bloom body::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  pointer-events: none;
+  z-index: var(--flux-z-base, 0);
+  background:
+    radial-gradient(40% 35% at 22% 28%, rgba(var(--accent-rgb, 95, 142, 255), 0.14), transparent 65%),
+    radial-gradient(38% 32% at 78% 72%, rgba(var(--purple-rgb, 168, 116, 255), 0.10), transparent 65%),
+    radial-gradient(30% 25% at 50% 100%, rgba(34, 211, 238, 0.08), transparent 70%);
+  filter: blur(20px) saturate(1.1);
+  animation: fluxAuroraDrift 36s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  will-change: transform, opacity;
+  opacity: 0.85;
+}
+
+@keyframes fluxAuroraDrift {
+  0% {
+    transform: translate3d(-2%, 1%, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(2%, -1%, 0) scale(1.04);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(-1%, 2%, 0) scale(1);
+    opacity: 0.82;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.flux-aurora-bloom body::before {
+    animation: none !important;
+  }
+}
+
+/* Don't double-bloom — disable the v100 ambient when bloom is on */
+html.flux-aurora-bloom.flux100-ambient body::after {
+  display: none;
+}
+
+/* ───────── Card hover lift (desktop only, complements tilt) ───────── */
+
+@media (hover: hover) and (pointer: fine) {
+  html.flux-apple-motion .fluxw-card,
+  html.flux-apple-motion .fsdb-widget,
+  html.flux-apple-motion .spd-card,
+  html.flux-apple-motion .sph-card,
+  html.flux-apple-motion .sw-card,
+  html.flux-apple-motion .dashboard-card {
+    transition:
+      box-shadow 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  html.flux-apple-motion .fluxw-card:hover,
+  html.flux-apple-motion .fsdb-widget:hover,
+  html.flux-apple-motion .spd-card:hover,
+  html.flux-apple-motion .sph-card:hover {
+    border-color: rgba(var(--accent-rgb, 95, 142, 255), 0.32);
+    box-shadow:
+      0 24px 48px -16px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.18),
+      0 0 28px -8px rgba(var(--accent-rgb, 95, 142, 255), 0.22);
+  }
+}
+
+/* ───────── Ripple ink (containers managed by JS) ───────── */
+
+html.flux-apple-motion .flux-ripple-ink {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+/* Buttons that get ripple need overflow:hidden — handled inline by JS */
+
+/* ───────── Scroll-reveal initial state ───────── */
+
+html.flux-apple-motion [data-flux-reveal]:not(.flux-reveal-done) {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0) scale(0.97);
+  transition: none;
+}
+
+/* ───────── Number tickers — tabular figures for stable width ───────── */
+
+html.flux-apple-motion .fluxw-stat-num,
+html.flux-apple-motion .s-num,
+html.flux-apple-motion .stat-num,
+html.flux-apple-motion .fsdb-stat-num,
+html.flux-apple-motion .fsdb-widget-num,
+html.flux-apple-motion .flux-stat-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ───────── Page title morph helper ───────── */
+
+html.flux-apple-motion #topbarTitle {
+  will-change: transform, opacity;
+}
+
+/* ───────── Marquee container ───────── */
+
+html.flux-apple-motion [data-flux-marquee] {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* ───────── Subtle floating-on-load for hero CTAs ───────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  html.flux-apple-motion .fab-btn {
+    animation: fluxFabBreathe 5.4s ease-in-out infinite;
+  }
+
+  @keyframes fluxFabBreathe {
+    0%, 100% {
+      box-shadow:
+        0 8px 28px -4px rgba(var(--accent-rgb, 95, 142, 255), 0.38),
+        0 0 0 0 rgba(var(--accent-rgb, 95, 142, 255), 0.25);
+    }
+    50% {
+      box-shadow:
+        0 12px 36px -4px rgba(var(--accent-rgb, 95, 142, 255), 0.55),
+        0 0 0 6px rgba(var(--accent-rgb, 95, 142, 255), 0);
+    }
+  }
+}
+
+/* ───────── Active sidebar nav-item label slide-in (when pill morph happens) ───────── */
+
+html.flux-apple-motion #sidebar .nav-item .ni,
+html.flux-apple-motion #sidebar .nav-item .nl {
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), color 0.32s ease;
+}
+
+html.flux-apple-motion #sidebar .nav-item.active .ni {
+  transform: scale(1.06);
+}
+
+/* ───────── Reduced-motion ───────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html.flux-apple-motion .flux-shimmer-text {
+    animation: none !important;
+    background: var(--text, #fff);
+    -webkit-text-fill-color: var(--text, #fff);
+    color: var(--text, #fff);
+  }
+  html.flux-apple-motion .fab-btn {
+    animation: none !important;
+  }
+}
