@@ -1,0 +1,279 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * FLUX PULSE — Performance tiers (May 2026)
+ *
+ * Layered on top of flux-pulse-layout.css. Controls how much of the Pulse
+ * visual treatment runs based on device capability:
+ *
+ *   data-pulse-tier="full"      — original Pulse, all effects
+ *   data-pulse-tier="standard"  — DEFAULT, lighter blur + fewer continuous
+ *                                  animations, still glassy + glowy
+ *   data-pulse-tier="lite"      — weak devices: solid surfaces, no blur,
+ *                                  no infinite animations, no hue-rotate.
+ *                                  Still uses Pulse colors + edges.
+ *
+ * Setting a tier just toggles overrides — the legacy class is unchanged so
+ * Pulse keeps working with the same selectors. Falls back to standard if no
+ * tier attr is set.
+ *
+ * AUTO mode (data-pulse-auto-tier="1") allows the JS controller to downgrade
+ * dynamically via FPS sampling.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* ───────── STANDARD (default) — reduce blur + drop hue-rotate ───────── */
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) #app::before {
+  /* Smaller blur, no hue-rotate. Still drifts. */
+  filter: blur(1px);
+  animation: pulseMeshDriftLite 40s linear infinite alternate;
+}
+@keyframes pulseMeshDriftLite {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(14px, -10px, 0) scale(1.03); }
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .sidebar {
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .topbar {
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .card,
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .flux-card,
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .panel > .card {
+  backdrop-filter: blur(10px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(135%) !important;
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .modal-overlay {
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .bnav {
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .ob-card {
+  backdrop-filter: blur(14px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(135%) !important;
+}
+
+/* The 40px blur on dash-hero is GPU-expensive — knock to 22px */
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .dash-hero::after,
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .dash-greeting-card::after {
+  filter: blur(22px);
+}
+
+/* Slow the sidebar edge breathing animation (less repaint pressure) */
+html.flux-layout-pulse:not([data-pulse-tier="full"]) .sidebar::after {
+  animation-duration: 14s;
+}
+
+/* ───────── LITE — kill blur + all infinite animations ───────── */
+
+html.flux-layout-pulse[data-pulse-tier="lite"] #app::before {
+  /* Drop the moving mesh entirely — keep one static gradient layer */
+  animation: none !important;
+  filter: none !important;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 18%, rgba(var(--accent-rgb), 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 82% 78%, rgba(var(--purple-rgb), 0.08) 0%, transparent 60%);
+}
+
+/* No dot grid on lite (paint-heavy at scale) */
+html.flux-layout-pulse[data-pulse-tier="lite"] #app::after {
+  display: none;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .sidebar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: linear-gradient(180deg, #0c1020 0%, #080b18 100%) !important;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .sidebar::before {
+  display: none;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .sidebar::after {
+  animation: none !important;
+  opacity: 0.55;
+}
+
+/* Kill nav indicator pulse */
+html.flux-layout-pulse[data-pulse-tier="lite"] .nav-item.active::before {
+  animation: none !important;
+}
+
+/* Kill badge dot pulse */
+html.flux-layout-pulse[data-pulse-tier="lite"] .flux-pulse-badge-dot {
+  animation: none !important;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .topbar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb), 0.08) 0%,
+    #0e1228 38%,
+    #0a0d1c 100%
+  ) !important;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .card,
+html.flux-layout-pulse[data-pulse-tier="lite"] .flux-card,
+html.flux-layout-pulse[data-pulse-tier="lite"] .panel > .card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: linear-gradient(
+    165deg,
+    rgba(22, 28, 50, 0.96) 0%,
+    rgba(12, 16, 30, 0.94) 100%
+  ) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* No card hover lift in lite (re-rasterizes shadow each pixel of Y) */
+html.flux-layout-pulse[data-pulse-tier="lite"] .card:hover {
+  transform: none !important;
+}
+
+/* Drop the gradient rim that uses mask-composite (mid-end GPUs hate it) */
+html.flux-layout-pulse[data-pulse-tier="lite"] .card::before {
+  display: none;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .modal-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(4, 6, 12, 0.92);
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .bnav {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: linear-gradient(180deg, #0c1020 0%, #060810 100%);
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .ob-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: linear-gradient(165deg, #161c34 0%, #0c1020 100%) !important;
+}
+
+html.flux-layout-pulse[data-pulse-tier="lite"] .ob-card::before {
+  display: none;
+}
+
+/* Drop the heavy 40px blur halo on dash hero */
+html.flux-layout-pulse[data-pulse-tier="lite"] .dash-hero::after,
+html.flux-layout-pulse[data-pulse-tier="lite"] .dash-greeting-card::after {
+  display: none;
+}
+
+/* No nav-item hover translate in lite (mobile users still get focus highlight) */
+html.flux-layout-pulse[data-pulse-tier="lite"] .nav-item:hover {
+  transform: none !important;
+}
+
+/* Stab hover translate also off */
+html.flux-layout-pulse[data-pulse-tier="lite"] .stab:hover {
+  transform: none !important;
+}
+
+/* ───────── Pause-on-hidden ───────── */
+/* When the tab is hidden, freeze all pulse animations to save battery.
+   JS sets html.flux-pulse-paused on visibility change. */
+
+html.flux-pulse-paused.flux-layout-pulse #app::before,
+html.flux-pulse-paused.flux-layout-pulse .sidebar::after,
+html.flux-pulse-paused.flux-layout-pulse .nav-item.active::before,
+html.flux-pulse-paused.flux-layout-pulse .flux-pulse-badge-dot {
+  animation-play-state: paused !important;
+}
+
+/* ───────── Settings tier picker (visual) ───────── */
+
+.flux-pulse-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.flux-pulse-tier-grid button {
+  padding: 12px 8px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.2s ease, background 0.2s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--text) !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.flux-pulse-tier-grid button:hover {
+  border-color: rgba(var(--accent-rgb), 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.flux-pulse-tier-grid button.active {
+  background: linear-gradient(
+    125deg,
+    rgba(var(--accent-rgb), 0.22),
+    rgba(var(--purple-rgb), 0.16)
+  ) !important;
+  border-color: rgba(var(--accent-rgb), 0.5) !important;
+  box-shadow:
+    0 10px 24px -10px rgba(var(--accent-rgb), 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.flux-pulse-tier-sub {
+  font-size: 0.55rem;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(220, 228, 250, 0.5);
+  font-weight: 600;
+}
+
+.flux-pulse-tier-grid button.active .flux-pulse-tier-sub {
+  color: rgba(220, 228, 250, 0.85);
+}
+
+.flux-pulse-tier-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.7rem;
+  color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flux-pulse-tier-status .pulse-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.55);
+  flex-shrink: 0;
+}
