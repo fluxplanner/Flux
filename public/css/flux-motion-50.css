@@ -1,0 +1,341 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * Flux Motion 50 — companion CSS for the 50-animation library.
+ * All styles gated by html.flux-mo50 so they're inert when JS hasn't booted.
+ * Tier-aware: html[data-pulse-tier="lite"] strips most effects.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+html.flux-mo50 .flux-mo-char {
+  transform-origin: 50% 60%;
+}
+
+/* 4 · Skeleton shimmer (pure CSS) */
+html.flux-mo50 .skeleton,
+html.flux-mo50 .flux-skeleton,
+html.flux-mo50 [data-flux-skeleton] {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: fluxMoSkel 1.4s linear infinite;
+  border-radius: 8px;
+}
+@keyframes fluxMoSkel {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Lite tier: kill skeleton infinite animation, keep solid placeholder */
+html.flux-mo50[data-pulse-tier="lite"] .skeleton,
+html.flux-mo50[data-pulse-tier="lite"] .flux-skeleton,
+html.flux-mo50[data-pulse-tier="lite"] [data-flux-skeleton] {
+  animation: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 5 · List item domino (CSS one-shot helper) */
+html.flux-mo50 .flux-mo-domino > * {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fluxMoDominoIn 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+html.flux-mo50 .flux-mo-domino > *:nth-child(1) { animation-delay: 0ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(2) { animation-delay: 40ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(3) { animation-delay: 80ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(4) { animation-delay: 120ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(5) { animation-delay: 160ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(6) { animation-delay: 200ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(7) { animation-delay: 240ms; }
+html.flux-mo50 .flux-mo-domino > *:nth-child(n+8) { animation-delay: 280ms; }
+@keyframes fluxMoDominoIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 15 · Icon spin on hover */
+html.flux-mo50 .flux-mo-icon-spin {
+  transition: transform 360ms cubic-bezier(0.34, 1.15, 0.64, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 .nav-item:hover .flux-mo-icon-spin {
+    transform: rotate(-8deg) scale(1.08);
+  }
+  html.flux-mo50 .nav-item.active .flux-mo-icon-spin {
+    transform: rotate(0deg) scale(1.04);
+  }
+}
+
+/* 16 · Border-flow on hover (animated conic outline) */
+html.flux-mo50 .flux-mo-border-flow {
+  position: relative;
+  isolation: isolate;
+}
+html.flux-mo50 .flux-mo-border-flow::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--flux-mo-angle, 0deg),
+    rgba(var(--accent-rgb), 0.85),
+    rgba(var(--purple-rgb), 0.7),
+    rgba(var(--accent-rgb), 0.85)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s ease;
+  z-index: -1;
+}
+@property --flux-mo-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 .flux-mo-border-flow:hover::after {
+    opacity: 1;
+    animation: fluxMoBorderFlow 3.2s linear infinite;
+  }
+}
+@keyframes fluxMoBorderFlow {
+  to { --flux-mo-angle: 360deg; }
+}
+/* Disable in lite tier */
+html.flux-mo50[data-pulse-tier="lite"] .flux-mo-border-flow::after {
+  display: none;
+}
+
+/* 17 · Underline draw on hover */
+html.flux-mo50 .flux-mo-underline-draw {
+  position: relative;
+  text-decoration: none;
+}
+html.flux-mo50 .flux-mo-underline-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 1px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 .flux-mo-underline-draw:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* 18 · Avatar pop scale */
+html.flux-mo50 .flux-mo-avatar-pop {
+  transition: transform 0.32s cubic-bezier(0.34, 1.15, 0.64, 1),
+              box-shadow 0.32s ease;
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 .flux-mo-avatar-pop:hover {
+    transform: scale(1.08) rotate(-2deg);
+    box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.32);
+  }
+}
+
+/* 20 · Image parallax tilt (subtle) */
+html.flux-mo50 [data-flux-parallax] {
+  transform-origin: 50% 50%;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 [data-flux-parallax]:hover img,
+  html.flux-mo50 [data-flux-parallax]:hover .parallax-layer {
+    transform: scale(1.04) translateZ(0);
+  }
+}
+
+/* 24 · Checkbox tick */
+html.flux-mo50 .flux-mo-tick-svg {
+  color: #fff;
+}
+
+/* 26 · Drag pickup lift */
+html.flux-mo50 .flux-mo-draggable {
+  transition: transform 0.22s cubic-bezier(0.34, 1.15, 0.64, 1),
+              box-shadow 0.22s ease;
+}
+html.flux-mo50 .flux-mo-draggable.dragging,
+html.flux-mo50 .flux-mo-draggable[data-flux-dragging="1"] {
+  transform: scale(1.04) translateY(-2px);
+  box-shadow: 0 14px 36px -8px rgba(0, 0, 0, 0.55),
+              0 0 0 1px rgba(var(--accent-rgb), 0.42);
+  cursor: grabbing;
+}
+
+/* 28 · Save button morph */
+html.flux-mo50 [data-flux-save-success].flux-mo-saved {
+  background: linear-gradient(125deg, #22c55e, #14a34a) !important;
+  color: #fff !important;
+  border-color: #14a34a !important;
+}
+
+/* 29 · Plus rotate (+ → ×) when host has .input-active */
+html.flux-mo50 .flux-mo-plus {
+  transition: transform 0.32s cubic-bezier(0.34, 1.15, 0.64, 1);
+}
+html.flux-mo50 .input-active .flux-mo-plus,
+html.flux-mo50 .flux-mo-plus.input-active,
+html.flux-mo50 .flux-mo-plus[aria-expanded="true"] {
+  transform: rotate(45deg);
+}
+
+/* 38 · Star sparkle field (full tier only — already gated in JS) */
+html.flux-mo50.flux-mo-starfield body::after {
+  /* Compose on top of any existing body::after dot grid */
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 75% 18%, rgba(var(--accent-rgb),0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 42% 78%, rgba(var(--purple-rgb),0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 65%, rgba(255,255,255,0.35) 50%, transparent 51%),
+    radial-gradient(1px 1px at 10% 88%, rgba(var(--accent-rgb),0.5) 50%, transparent 51%);
+  z-index: 0;
+  opacity: 0.7;
+  animation: fluxMoStarTwinkle 6s ease-in-out infinite alternate;
+}
+@keyframes fluxMoStarTwinkle {
+  0%   { opacity: 0.55; }
+  100% { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.flux-mo50.flux-mo-starfield body::after { animation: none; }
+}
+
+/* 40 · Scanline shimmer on hero cards */
+html.flux-mo50 .flux-mo-scanline {
+  position: relative;
+  overflow: hidden;
+}
+html.flux-mo50 .flux-mo-scanline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  transform: skewX(-12deg);
+  animation: fluxMoScan 4.8s ease-in-out infinite;
+  animation-delay: 1.6s;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes fluxMoScan {
+  0%   { left: -60%; }
+  20%  { left: 140%; }
+  100% { left: 140%; }
+}
+/* Lite tier: kill the shimmer (no perpetual animation) */
+html.flux-mo50[data-pulse-tier="lite"] .flux-mo-scanline::before {
+  display: none;
+}
+/* Standard tier: slow the shimmer + lower opacity */
+html.flux-mo50[data-pulse-tier="standard"] .flux-mo-scanline::before {
+  animation-duration: 7.6s;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.035) 50%,
+    transparent 100%
+  );
+}
+
+/* 46 · Live pulse dot */
+html.flux-mo50 .flux-mo-live-dot,
+html.flux-mo50 .flux-mo-live-dot .live-dot {
+  position: relative;
+}
+html.flux-mo50 .flux-mo-live-dot::before,
+html.flux-mo50 .live-dot::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.55);
+  animation: fluxMoLivePulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes fluxMoLivePulse {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+html.flux-mo50[data-pulse-tier="lite"] .flux-mo-live-dot::before {
+  animation: none;
+  opacity: 0;
+}
+
+/* 50 · Drag handle hint pulse (first-time) */
+html.flux-mo50 .flux-mo-handle-hint {
+  transition: opacity 0.32s ease, transform 0.32s ease;
+}
+html.flux-mo50 .flux-mo-handle-hint:hover {
+  opacity: 1;
+  transform: scale(1.12);
+}
+/* Tiny hover pulse to draw attention (one-time per page) */
+@media (hover: hover) and (pointer: fine) {
+  html.flux-mo50 .flux-mo-draggable:hover .flux-mo-handle-hint {
+    animation: fluxMoHandleHint 1.6s ease-in-out 1;
+  }
+}
+@keyframes fluxMoHandleHint {
+  0%, 100% { transform: translateX(0) scale(1); }
+  50%      { transform: translateX(2px) scale(1.06); }
+}
+
+/* ───────── Reduced-motion master kill switch ───────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html.flux-mo50 .skeleton,
+  html.flux-mo50 .flux-skeleton,
+  html.flux-mo50 [data-flux-skeleton],
+  html.flux-mo50 .flux-mo-domino > *,
+  html.flux-mo50 .flux-mo-border-flow::after,
+  html.flux-mo50 .flux-mo-scanline::before,
+  html.flux-mo50 .flux-mo-live-dot::before,
+  html.flux-mo50 .flux-mo-handle-hint {
+    animation: none !important;
+    transition: none !important;
+  }
+  html.flux-mo50 .flux-mo-domino > * {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Pause everything when tab hidden (battery saver) */
+html.flux-mo50.flux-pulse-paused .skeleton,
+html.flux-mo50.flux-pulse-paused .flux-skeleton,
+html.flux-mo50.flux-pulse-paused [data-flux-skeleton],
+html.flux-mo50.flux-pulse-paused .flux-mo-border-flow::after,
+html.flux-mo50.flux-pulse-paused .flux-mo-scanline::before,
+html.flux-mo50.flux-pulse-paused .flux-mo-live-dot::before,
+html.flux-mo50.flux-pulse-paused.flux-mo-starfield body::after {
+  animation-play-state: paused !important;
+}

@@ -263,12 +263,14 @@
   /* ───────── Pause animations when tab hidden (battery saver) ───────── */
 
   function bindVisibility() {
-    document.addEventListener('visibilitychange', function () {
+    var sync = function () {
       var html = document.documentElement;
       if (!html) return;
       if (document.hidden) html.classList.add('flux-pulse-paused');
       else html.classList.remove('flux-pulse-paused');
-    });
+    };
+    document.addEventListener('visibilitychange', sync);
+    sync(); // initial state — pause immediately if hidden at boot
   }
 
   /* ───────── Settings UI (tier picker card) ───────── */
