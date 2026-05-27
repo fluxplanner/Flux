@@ -465,11 +465,7 @@
       .join('');
     const tabPanels = tabs
       .map((t) => {
-        const wellnessExtras =
-          t.id === 'wellness'
-            ? '<div class="sph-wellness-extras" id="staffPhWellnessExtras" aria-label="Gratitude and important dates"></div>'
-            : '';
-        return `<div class="sph-tab-panel" id="staffPhTab_${esc(t.id)}" data-sph-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}>${wellnessExtras}<div class="sph-tab-grid" id="staffPhGrid_${esc(t.id)}"></div></div>`;
+        return `<div class="sph-tab-panel" id="staffPhTab_${esc(t.id)}" data-sph-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}><div class="sph-tab-grid" id="staffPhGrid_${esc(t.id)}"></div></div>`;
       })
       .join('');
 
@@ -478,7 +474,7 @@
         <div class="sph-topbar">
           <div>
             <div class="sph-greet">Personal hub</div>
-            <div class="sph-greet-sub">Brain dump, errands, mood log, gratitude, and important dates — kept off your main dashboard.</div>
+            <div class="sph-greet-sub">Brain dump, errands, and mood log — gratitude and important dates live on Mood and Calendar.</div>
           </div>
           <div class="sph-topbar-actions" id="staffPhToolbar"></div>
         </div>

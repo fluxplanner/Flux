@@ -65,13 +65,19 @@ html.flux-apple-motion .bnav-item.active .bni {
 #dashboard:not(.active) > .flux-widget-grid,
 #dashboard:not(.active) #fluxWidgetGrid_dashboard,
 #dashboard:not(.active) .fsdb-root,
+#dashboard:not(.active) > #fluxGratitudeCard,
+#dashboard:not(.active) > #fluxImportantTodayCard,
+#dashboard.flux-dash-panel-hidden > #fluxGratitudeCard,
+#dashboard.flux-dash-panel-hidden > #fluxImportantTodayCard,
 #dashboard.flux-dash-panel-hidden #dashHero,
 #dashboard.flux-dash-panel-hidden #fluxDashSections,
 #dashboard.flux-dash-panel-hidden .dash-mob-stack,
 #dashboard.flux-dash-panel-hidden .dash-alerts,
 #dashboard.flux-dash-vt-hide #dashHero,
 #dashboard.flux-dash-vt-hide #fluxDashSections,
-#dashboard.flux-dash-vt-hide .dash-mob-stack {
+#dashboard.flux-dash-vt-hide .dash-mob-stack,
+#dashboard.flux-dash-vt-hide > #fluxGratitudeCard,
+#dashboard.flux-dash-vt-hide > #fluxImportantTodayCard {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;

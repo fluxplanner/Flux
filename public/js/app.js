@@ -2182,6 +2182,13 @@ function fluxSyncDashboardPanelVisibility(activePanelId){
       hero.style.transform='';
       hero.style.opacity='';
     }
+    ['fluxGratitudeCard','fluxImportantTodayCard'].forEach((id)=>{
+      const el=document.getElementById(id);
+      if(el&&el.parentNode===dash){
+        try{el.remove();}catch(_){}
+      }
+    });
+    try{if(window.FluxWishlist&&typeof FluxWishlist.refresh==='function')FluxWishlist.refresh();}catch(_){}
   }
 }
 window.fluxSyncDashboardPanelVisibility=fluxSyncDashboardPanelVisibility;

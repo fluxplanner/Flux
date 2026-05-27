@@ -4,6 +4,22 @@
  * with .fluxw- to never collide with the rest of the app.
  * ──────────────────────────────────────────────────────────────────────────── */
 
+.flux-wishlist-host {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 16px;
+}
+.flux-wishlist-host--cal {
+  max-width: min(100%, 760px);
+  margin-bottom: 18px;
+}
+#mood .flux-wishlist-host .fluxw-card {
+  margin-bottom: 0;
+}
+
 .fluxw-card{
   display:flex;flex-direction:column;gap:12px;
 }

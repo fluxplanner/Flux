@@ -4,7 +4,7 @@
  * Bundles four small additive features that mount themselves onto the
  * existing dashboard / calendar / task list without touching core app.js.
  *
- *   1. Gratitude journal       — 3 small wins per day (students: dashboard; staff: Personal hub → Wellness)
+ *   1. Gratitude journal       — 3 small wins per day (Mood tab)
  *   2. Class-section planner   — 4 or 6 period slots with name + notes
  *   3. Priority sort toggle    — re-orders #taskList by priority high→low
  *   4. Important-date pinning  — pin any calendar day; gets a star + glow
@@ -47,29 +47,17 @@
     }catch(_){return false;}
   }
 
-  function isStaffPersonalView(){
-    if(isEducator())return true;
-    try{
-      return !!(
-        window.FluxRole&&FluxRole.current==='student'&&
-        FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&
-        typeof currentUser!=='undefined'&&currentUser&&
-        String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'
-      );
-    }catch(_){return false;}
-  }
-
   function isDisabled(name){
     var d=read('flux_wishlist_disabled',{});
     return !!d[name];
   }
 
-  /** Students: #dashboard. Educators: Personal hub → Wellness extras strip. */
-  function wishlistWellnessHost(){
-    if(!isStaffPersonalView()){
-      return document.querySelector('#dashboard')||document.querySelector('.dashboard');
-    }
-    return document.getElementById('staffPhWellnessExtras');
+  function gratitudeHost(){
+    return document.getElementById('fluxWishlistGratitudeHost');
+  }
+
+  function importantDatesHost(){
+    return document.getElementById('fluxWishlistImportantHost');
   }
 
   function detachWishlistFromDashboard(ids){
@@ -101,8 +89,8 @@
 
   function mountGratitudeCard(){
     if(isDisabled('gratitude'))return;
-    if(isStaffPersonalView())detachWishlistFromDashboard(['fluxGratitudeCard','fluxImportantTodayCard']);
-    var host=wishlistWellnessHost();
+    detachWishlistFromDashboard(['fluxGratitudeCard']);
+    var host=gratitudeHost();
     if(!host)return;
     var existing=document.getElementById('fluxGratitudeCard');
     if(existing){
@@ -367,8 +355,8 @@
 
   function mountImportantDateButton(){
     if(isDisabled('importantDates'))return;
-    if(isStaffPersonalView())detachWishlistFromDashboard(['fluxGratitudeCard','fluxImportantTodayCard']);
-    var host=wishlistWellnessHost();
+    detachWishlistFromDashboard(['fluxImportantTodayCard']);
+    var host=importantDatesHost();
     if(!host)return;
     var existing=document.getElementById('fluxImportantTodayCard');
     if(existing){
