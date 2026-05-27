@@ -90,38 +90,16 @@
   50%      { transform: scale(1.08) rotate(3deg); }
 }
 
-/* Streak strip — inline streak + counters in dash hero */
+/* Hero stats strip removed — dashboard already shows streak/stats elsewhere */
+.dash-v2-greet .flux-elv-hero-strip,
 .flux-elv-hero-strip {
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: 10px 18px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb),.04), rgba(var(--purple-rgb),.03));
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 14px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  animation: fluxElvFadeIn .5s cubic-bezier(.22,1,.36,1) both;
-  animation-delay: .1s;
-}
-.flux-elv-hero-strip-item {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: .76rem; font-weight: 600;
-  color: var(--text2, #c5cad8);
-}
-.flux-elv-hero-strip-item b {
-  color: var(--text); font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  font-size: .92rem;
-}
-.flux-elv-hero-strip-item .micro {
-  font-size: .62rem; text-transform: uppercase;
-  letter-spacing: .12em; color: var(--muted2, #7b809a);
-  font-weight: 700; font-family: 'JetBrains Mono', monospace;
-}
-.flux-elv-hero-strip-divider {
-  width: 1px; height: 28px;
-  background: rgba(255,255,255,.07);
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 /* ───── Auto-save indicator pill ───────────────────────────────── */
@@ -426,6 +404,114 @@
   padding: 1px 5px;
   letter-spacing: .08em;
   pointer-events: none;
+}
+
+/* ───── Mobile responsiveness ─────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sub-line: tighter on mobile, smaller chips */
+  .flux-elv-greet-sub {
+    font-size: .76rem;
+    line-height: 1.45;
+    margin-top: 4px;
+  }
+  .flux-elv-greet-sub .flux-elv-chip {
+    font-size: .62rem;
+    padding: 1px 7px;
+    margin: 0 3px 2px 0;
+  }
+  /* Hero strip becomes a horizontal-scroll mini-rail on mobile, no wrap */
+  .flux-elv-hero-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 8px 10px;
+    gap: 8px 14px;
+    margin-top: 10px;
+    border-radius: 12px;
+  }
+  .flux-elv-hero-strip::-webkit-scrollbar { display: none; }
+  .flux-elv-hero-strip-item {
+    flex-shrink: 0;
+    font-size: .7rem;
+  }
+  .flux-elv-hero-strip-item b { font-size: .85rem; }
+  .flux-elv-hero-strip-item .micro {
+    font-size: .56rem; letter-spacing: .1em;
+  }
+  .flux-elv-streak-ring {
+    width: 44px; height: 44px;
+    margin-right: 4px;
+  }
+  .flux-elv-streak-ring__num { font-size: .92rem; }
+  .flux-elv-streak-ring__fire { font-size: .75rem; top: -2px; right: -2px; }
+  .flux-elv-hero-strip-divider { height: 22px; }
+
+  /* Cmd rail: horizontal scroll on mobile, no wrap, smaller chips */
+  .flux-elv-cmd-rail {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 6px -16px 12px;
+    padding: 0 16px;
+    gap: 5px;
+  }
+  .flux-elv-cmd-rail::-webkit-scrollbar { display: none; }
+  .flux-elv-cmd-chip {
+    flex-shrink: 0;
+    font-size: .66rem;
+    padding: 4px 9px 4px 7px;
+    gap: 4px;
+  }
+  .flux-elv-cmd-chip__kbd {
+    font-size: .54rem;
+    padding: 0 3px;
+  }
+  .flux-elv-cmd-chip__icon { font-size: .76rem; }
+  /* Dismiss "✕" chip stays at end of scroll */
+  .flux-elv-cmd-chip[data-elv-act="dismiss"] {
+    margin-left: 6px !important;
+  }
+
+  /* Hint rail: respect bottom nav + safe area + narrow chips */
+  .flux-elv-hint-rail {
+    bottom: calc(12px + var(--bnav-height,62px) + var(--sa-bottom, 0px));
+    padding: 6px 10px;
+    gap: 4px;
+    max-width: calc(100vw - 16px);
+  }
+  .flux-elv-hint-rail__item { font-size: .6rem; padding: 1px 2px; }
+  .flux-elv-hint-rail__kbd { font-size: .56rem; padding: 1px 4px; }
+
+  /* Save pill above bottom nav */
+  .flux-elv-save-pill {
+    bottom: calc(16px + var(--bnav-height,62px) + var(--sa-bottom, 0px));
+    right: 12px;
+    font-size: .68rem;
+    padding: 5px 10px;
+  }
+
+  /* Milestone modal: fits narrow screens */
+  .flux-elv-milestone__card {
+    padding: 28px 22px;
+    border-radius: 20px;
+    max-width: calc(100vw - 32px);
+  }
+  .flux-elv-milestone__num { font-size: 3.4rem; }
+  .flux-elv-milestone__title { font-size: 1.18rem; }
+  .flux-elv-milestone__sub { font-size: .78rem; margin-bottom: 18px; }
+  .flux-elv-milestone__btn { padding: 10px 20px; font-size: .8rem; }
+
+  /* Empty-state art: lighter on mobile */
+  .flux-elv-empty__art { width: 80px; height: 80px; }
+  .flux-elv-empty__art svg { width: 52px; height: 52px; }
+}
+
+/* Very narrow: drop the duplicated stats strip — dash-mob-stats already shows
+   the same info, and screen real estate is precious. Keep sub-line + cmd-rail. */
+@media (max-width: 540px) {
+  .dash-v2-greet .flux-elv-hero-strip { display: none; }
 }
 
 /* ───── Reduced motion safety ───────────────────────────────────── */

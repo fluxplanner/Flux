@@ -3,13 +3,12 @@
  *
  * Layered enhancements that build on existing infrastructure:
  *   1. Smart contextual greeting (time/streak/workload aware)
- *   2. Streak ring widget in dashboard hero
- *   3. Auto-save micro-indicator for notes/textareas
- *   4. Milestone celebrations (5/10/25/50/100/250/500/1000 lifetime tasks)
- *   5. First-visit keyboard hint rail
- *   6. Illustrated empty states (task list)
- *   7. Quick-command chip toolbar on dashboard
- *   8. "Due today" badge auto-tag
+ *   2. Auto-save micro-indicator for notes/textareas
+ *   3. Milestone celebrations (5/10/25/50/100/250/500/1000 lifetime tasks)
+ *   4. First-visit keyboard hint rail
+ *   5. Illustrated empty states (task list)
+ *   6. Quick-command chip toolbar on dashboard
+ *   7. "Due today" badge auto-tag
  *
  * Self-contained IIFE — exposes window.FluxElevate.
  * Respects prefers-reduced-motion and existing FluxStorage.
@@ -123,7 +122,7 @@
     if (!greetEl) return false;
     var ctx = computeContext();
     // The app already renders the H1 greeting itself (with gradient + shimmer); don't fight over it.
-    // We just append a context-aware subline + hero strip below.
+    // We just append a context-aware subline below (no hero stats strip — dash already has stats).
     // Subline (only update if changed to avoid layout thrash)
     var hero = greetEl.closest('.dash-v2-greet') || greetEl.parentElement;
     if (hero) {
@@ -142,65 +141,19 @@
       }
       sub.dataset.elvSub = subHtml;
     }
-    // Hero strip with streak ring (compact)
-    injectHeroStrip(hero, ctx);
+    removeHeroStrip(hero);
     return true;
   }
 
-  /* ── 2. Streak ring in hero strip ──────────────────────────── */
-  function streakRingSvg(streak, target) {
-    var t = target || 7;
-    var pct = Math.min(streak / t, 1);
-    var r = 24, c = 2 * Math.PI * r;
-    var off = c * (1 - pct);
-    return ''
-      + '<svg viewBox="0 0 56 56" aria-hidden="true">'
-      +   '<defs><linearGradient id="fluxElvStreakGrad" x1="0%" y1="0%" x2="100%" y2="100%">'
-      +     '<stop offset="0%" stop-color="var(--accent,#00C2FF)"/>'
-      +     '<stop offset="60%" stop-color="var(--purple,#7C5CFF)"/>'
-      +     '<stop offset="100%" stop-color="var(--green,#22FF88)"/>'
-      +   '</linearGradient></defs>'
-      +   '<circle class="flux-elv-streak-ring__track" cx="28" cy="28" r="' + r + '"/>'
-      +   '<circle class="flux-elv-streak-ring__fill"  cx="28" cy="28" r="' + r + '" '
-      +          'stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>'
-      + '</svg>'
-      + '<div class="flux-elv-streak-ring__num">' + streak + '</div>'
-      + (streak >= 3 ? '<span class="flux-elv-streak-ring__fire">🔥</span>' : '');
-  }
-
-  function injectHeroStrip(hero, ctx) {
+  /** Legacy hero strip (streak ring + done/due counts) — removed; clean up if present. */
+  function removeHeroStrip(hero) {
     if (!hero) return;
-    var sub = hero.querySelector('.flux-elv-greet-sub');
-    var anchor = sub || hero.querySelector('.dash-mob-date-row') || hero.lastElementChild;
-    if (!anchor) return;
-    var strip = hero.querySelector('.flux-elv-hero-strip');
-    var doneToday = (ctx.tasks || []).filter(function (t) {
-      if (!t.done) return false;
-      var ts = t.completedAt || t.updatedAt;
-      if (!ts) return false;
-      return new Date(ts).toISOString().slice(0,10) === ctx.today;
-    }).length;
-    var html = ''
-      + '<div class="flux-elv-streak-ring" title="' + ctx.streak + '-day streak">' + streakRingSvg(ctx.streak) + '</div>'
-      + '<div class="flux-elv-hero-strip-item"><span class="micro">Done today</span> <b>' + doneToday + '</b></div>'
-      + '<div class="flux-elv-hero-strip-divider"></div>'
-      + '<div class="flux-elv-hero-strip-item"><span class="micro">Due</span> <b>' + ctx.todayCount + '</b></div>'
-      + (ctx.overdueCount > 0
-          ? '<div class="flux-elv-hero-strip-divider"></div>'
-          + '<div class="flux-elv-hero-strip-item" style="color:var(--gold,#f5a623)"><span class="micro">Overdue</span> <b>' + ctx.overdueCount + '</b></div>'
-          : '');
-    if (!strip) {
-      strip = document.createElement('div');
-      strip.className = 'flux-elv-hero-strip';
-      strip.innerHTML = html;
-      anchor.insertAdjacentElement('afterend', strip);
-    } else if (strip.dataset.elvHtml !== html) {
-      strip.innerHTML = html;
-    }
-    strip.dataset.elvHtml = html;
+    hero.querySelectorAll('.flux-elv-hero-strip').forEach(function (el) {
+      try { el.remove(); } catch (_) {}
+    });
   }
 
-  /* ── 3. Auto-save indicator ─────────────────────────────────── */
+  /* ── 2. Auto-save indicator ─────────────────────────────────── */
   var _savePill;
   function showSavePill(text) {
     if (!_savePill) {
