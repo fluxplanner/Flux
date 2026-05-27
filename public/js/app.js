@@ -2169,6 +2169,23 @@ function fluxApplyStudentDashboardChrome(showStudentChrome){
 }
 window.fluxApplyStudentDashboardChrome=fluxApplyStudentDashboardChrome;
 
+/** Keep dashboard-only DOM (greeting, tasks, widgets) from appearing on other tabs. */
+function fluxSyncDashboardPanelVisibility(activePanelId){
+  const dash=document.getElementById('dashboard');
+  if(!dash)return;
+  const onDash=activePanelId==='dashboard';
+  dash.classList.toggle('flux-dash-panel-hidden',!onDash);
+  dash.setAttribute('aria-hidden',onDash?'false':'true');
+  if(!onDash){
+    const hero=document.getElementById('dashHero');
+    if(hero){
+      hero.style.transform='';
+      hero.style.opacity='';
+    }
+  }
+}
+window.fluxSyncDashboardPanelVisibility=fluxSyncDashboardPanelVisibility;
+
 /** Educator Personal mode or pending staff — no class subjects on tasks/events. */
 function fluxIsStaffPersonalMode(){
   try{
@@ -3144,6 +3161,7 @@ function nav(id,btn,navOpt){
     applyPanelNav();
   }
   window.__fluxLastNavPanel=id;
+  try{fluxSyncDashboardPanelVisibility(id);}catch(_){}
   const panel=document.getElementById(id);
   try{
     if(window.FluxDebug&&typeof FluxDebug.tracePanels==='function'){

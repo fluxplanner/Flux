@@ -251,19 +251,30 @@
   }
 
   function initParallax() {
-     if (prefersReduced()) return;
+    if (prefersReduced()) return;
     const dashboard = document.getElementById('dashboard');
     const header = document.getElementById('dashHero');
     if (!dashboard || !header) return;
+    const resetHero = () => {
+      header.style.transform = '';
+      header.style.opacity = '';
+    };
     dashboard.addEventListener(
       'scroll',
       () => {
+        if (!dashboard.classList.contains('active')) {
+          resetHero();
+          return;
+        }
         const scrolled = dashboard.scrollTop;
         header.style.transform = `translateY(${scrolled * 0.3}px)`;
         header.style.opacity = String(Math.max(0.55, 1 - scrolled * 0.003));
       },
       { passive: true }
     );
+    document.addEventListener('flux-nav', (e) => {
+      if (e.detail?.panel !== 'dashboard') resetHero();
+    });
   }
 
   function initSidebarResize() {

@@ -245,8 +245,8 @@ function initRipple() {
 // 21st pattern: animated shimmer. CSS-driven gradient with bg-position anim.
 
 const SHIMMER_SELECTOR = [
-  '.dash-v2-greet h1',
-  '.dash-greet',
+  '#dashboard.active .dash-v2-greet h1',
+  '#dashboard.active .dash-greet',
   '.flux-page-header h1',
   '.fluxw-card .fluxw-hd h3',
   '[data-flux-shimmer]',

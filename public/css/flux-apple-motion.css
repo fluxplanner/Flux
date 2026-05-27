@@ -54,6 +54,30 @@ html.flux-apple-motion .bnav-item.active .bni {
   transition: transform 0.42s var(--flux-apple-ease-spring);
 }
 
+/* Dashboard greeting/tasks must not appear on Calendar, Settings, etc. */
+#dashboard:not(.active) #dashHero,
+#dashboard:not(.active) #fluxDashSections,
+#dashboard:not(.active) .dash-mob-stack,
+#dashboard:not(.active) .dash-alerts,
+#dashboard:not(.active) #weeklyReviewBanner,
+#dashboard:not(.active) #recoveryBanner,
+#dashboard:not(.active) #fluxClassAlertBanner,
+#dashboard:not(.active) > .flux-widget-grid,
+#dashboard:not(.active) #fluxWidgetGrid_dashboard,
+#dashboard:not(.active) .fsdb-root,
+#dashboard.flux-dash-panel-hidden #dashHero,
+#dashboard.flux-dash-panel-hidden #fluxDashSections,
+#dashboard.flux-dash-panel-hidden .dash-mob-stack,
+#dashboard.flux-dash-panel-hidden .dash-alerts,
+#dashboard.flux-dash-vt-hide #dashHero,
+#dashboard.flux-dash-vt-hide #fluxDashSections,
+#dashboard.flux-dash-vt-hide .dash-mob-stack {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 /* ───────── Panel entry — JS owns it, CSS fallback only ───────── */
 
 html.flux-apple-motion .main-content .panel.active:not(.flux-panel-enter) {

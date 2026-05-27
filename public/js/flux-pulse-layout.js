@@ -172,44 +172,14 @@
     });
   }
 
-  /* ── Pulse badge: insert a tiny "Pulse active" chip in the topbar-right ── */
-  function ensurePulseBadge(){
-    if(!isPulse())return;
-    var right=document.querySelector('#app.visible .topbar-right')||document.querySelector('.topbar-right');
-    if(!right)return;
-    if(document.getElementById('fluxPulseBadge'))return;
-    var b=document.createElement('button');
-    b.type='button';
-    b.id='fluxPulseBadge';
-    b.className='flux-pulse-badge';
-    b.title='Pulse layout active — click to manage';
-    b.innerHTML='<span class="flux-pulse-badge-dot" aria-hidden="true"></span><span>Pulse</span>';
-    b.addEventListener('click',function(){
-      try{
-        if(typeof window.nav==='function'){
-          window.nav('settings');
-          setTimeout(function(){
-            if(typeof window.switchStab==='function'){
-              var stab=document.querySelector('.stab[onclick*="appearance"]');
-              window.switchStab('appearance',stab||null);
-            }
-            var sw=document.getElementById('fluxPulseSwitchCard');
-            if(sw)sw.scrollIntoView({behavior:'smooth',block:'center'});
-          },120);
-        }
-      }catch(_){}
-    });
-    right.insertBefore(b,right.firstChild);
-  }
   function removePulseBadge(){
     var el=document.getElementById('fluxPulseBadge');
     if(el)el.remove();
   }
 
-  /* ── React to theme changes: maintain badge + sync UI ── */
-  subscribe(function(theme){
-    if(theme==='pulse')ensurePulseBadge();
-    else removePulseBadge();
+  /* ── React to theme changes (topbar Pulse chip removed — settings only) ── */
+  subscribe(function(){
+    removePulseBadge();
   });
 
   /* ── Lazy mount via bounded polling.
@@ -224,7 +194,7 @@
     _pollTries++;
     try{
       var appVisible=document.getElementById('app')?.classList.contains('visible');
-      if(appVisible&&isPulse())ensurePulseBadge();
+      if(appVisible)removePulseBadge();
       if(document.getElementById('spane-appearance')){
         ensureSettingsSwitch();
         maybeShowOwnerRow();
@@ -248,7 +218,7 @@
         setTimeout(function(){
           ensureSettingsSwitch();
           maybeShowOwnerRow();
-          if(isPulse())ensurePulseBadge();
+          removePulseBadge();
         },60);
       }catch(_){}
       return r;
@@ -307,7 +277,7 @@
     // appears. `nav` is defined in app.js which loads with defer, so it may
     // not be ready at our init time — re-attempt the wrap a few times.
     try{ensureSettingsSwitch();}catch(_){}
-    if(isPulse())ensurePulseBadge();
+    removePulseBadge();
     pollMount();
     startAuthVisibilityGuard();
     var navTries=0;

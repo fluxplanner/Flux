@@ -518,6 +518,7 @@ html.flux-layout-pulse #fabBtn:hover{
 
 /* Hide the Pulse badge in legacy mode (no html class) */
 html:not(.flux-layout-pulse) .flux-pulse-badge{display:none}
+#fluxPulseBadge,.flux-pulse-badge{display:none!important}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * DASHBOARD HERO TILES — for any role's hero card

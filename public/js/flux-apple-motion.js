@@ -434,12 +434,30 @@ function panelEnter(panel) {
   });
 }
 
+function hideDashboardChromeForTransition(nextPanelId) {
+  if (nextPanelId === 'dashboard') return;
+  try {
+    if (typeof window.fluxSyncDashboardPanelVisibility === 'function') {
+      window.fluxSyncDashboardPanelVisibility(nextPanelId);
+    }
+  } catch (_) {}
+  const dash = document.getElementById('dashboard');
+  if (dash) dash.classList.add('flux-dash-vt-hide');
+}
+
 function transitionPanels(applyDom, ctx = {}) {
   const panelId = ctx.panelId || '';
   const runAfter = () => {
     _lastPanelId = panelId;
+    try {
+      if (typeof window.fluxSyncDashboardPanelVisibility === 'function') {
+        window.fluxSyncDashboardPanelVisibility(panelId);
+      }
+    } catch (_) {}
+    document.getElementById('dashboard')?.classList.remove('flux-dash-vt-hide');
     requestAnimationFrame(syncAllPills);
   };
+  hideDashboardChromeForTransition(panelId);
   if (!motionAllowed() || typeof document.startViewTransition !== 'function') {
     applyDom();
     runAfter();

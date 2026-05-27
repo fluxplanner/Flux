@@ -118,16 +118,28 @@
     } catch (_) {}
   }
 
+  function clearGoogleSessionCache() {
+    try {
+      window.gmailToken = '';
+      sessionStorage.removeItem('flux_gmail_token');
+    } catch (_) {}
+  }
+
   async function signIn(opts) {
     const sb = typeof window.getSB === 'function' ? window.getSB() : null;
     if (!sb) {
       toast('Auth not available — refresh the page', 'error');
       return;
     }
+    const switchAccount = !!(opts && opts.switchAccount);
     const forceConsent = !!(opts && opts.forceConsent);
     const staffWorkspace = !!(opts && opts.staffWorkspace);
     const hadScopes = typeof load === 'function' && load(LS_SCOPES_OK, false);
-    const prompt = forceConsent || !hadScopes ? 'consent' : 'select_account';
+    const prompt = switchAccount
+      ? 'select_account'
+      : forceConsent || !hadScopes
+        ? 'consent'
+        : 'select_account';
     const scopeList = staffWorkspace ? staffWorkspaceScopesString() : scopesString();
     try {
       if (typeof window.initOAuthPostMessageListener === 'function') window.initOAuthPostMessageListener();
@@ -157,9 +169,11 @@
         w.focus();
       } catch (_) {}
       toast(
-        staffWorkspace
-          ? 'Approve Google access in the pop-up — Workspace, Classroom, and Drive scopes unlock without reloading Flux.'
-          : 'Approve Google access in the pop-up — Gmail, Calendar, Tasks, and Docs unlock together.',
+        switchAccount
+          ? 'Pick the Google account you want in the pop-up — Flux will refresh Gmail, Calendar, Tasks, and Docs for that account.'
+          : staffWorkspace
+            ? 'Approve Google access in the pop-up — Workspace, Classroom, and Drive scopes unlock without reloading Flux.'
+            : 'Approve Google access in the pop-up — Gmail, Calendar, Tasks, and Docs unlock together.',
         'info',
       );
     } catch (e) {
@@ -261,6 +275,13 @@
     return signIn({ forceConsent: true, staffWorkspace: true });
   }
 
+  /** Opens Google account picker (same OAuth pop-up, no full-page redirect). */
+  function signInSwitchAccount(opts) {
+    clearGoogleSessionCache();
+    const staffWorkspace = !!(opts && opts.staffWorkspace) || (canInitStaffHub() && staffHubVisibleNow());
+    return signIn({ switchAccount: true, staffWorkspace });
+  }
+
   function staffHubMountHtml() {
     const linked = isGoogleLinked();
     if (linked) {
@@ -269,6 +290,7 @@
         <h4 class="staff-google-hub-title">Bloomfield Workspace connected</h4>
         <p class="staff-google-hub-sub staff-google-hub-sub--ok">Gmail, Calendar, Classroom (read-only), and Drive (read-only) are active. Open the <strong>Google</strong> tab for imports — workboard state is preserved (no full-page redirect).</p>
         <div class="staff-google-hub-actions">
+          <button type="button" class="btn-sec" onclick="FluxGoogle.signInSwitchAccount({ staffWorkspace: true })">Switch Google account</button>
           <button type="button" class="btn-sec" onclick="FluxGoogle.signInStaffWorkspace()">Refresh Google scopes</button>
           <button type="button" class="btn-sec" onclick="nav('canvas');try{FluxGoogle.renderHub()}catch(e){}">Open Google hub</button>
         </div>
@@ -343,6 +365,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
         Continue with Google
       </button>
+      <button type="button" class="btn-sec g-hub-gate-switch" onclick="FluxGoogle.signInSwitchAccount()">Sign in with a different Google account</button>
       <button type="button" class="btn-sec g-hub-gate-guest" onclick="nav('dashboard')">Back to dashboard</button>
     </div>`;
   }
@@ -356,9 +379,18 @@
       (typeof canvasToken !== 'undefined' && canvasToken && typeof canvasUrl !== 'undefined' && canvasUrl) ||
       (typeof load === 'function' && load('flux_canvas_token', ''));
     return `
-    <div class="g-hub-status" aria-label="Integration status">
-      <span class="g-hub-pill g-hub-pill--on">Google connected${email ? ' · ' + esc(email) : ''}</span>
-      <span class="g-hub-pill ${canvasOn ? 'g-hub-pill--on' : ''}">${canvasOn ? 'Canvas linked' : 'Canvas — finish school login once'}</span>
+    <div class="g-hub-status-bar">
+      <div class="g-hub-status" aria-label="Integration status">
+        <span class="g-hub-pill g-hub-pill--on">Google connected${email ? ' · ' + esc(email) : ''}</span>
+        <span class="g-hub-pill ${canvasOn ? 'g-hub-pill--on' : ''}">${canvasOn ? 'Canvas linked' : 'Canvas — finish school login once'}</span>
+      </div>
+      <div class="g-hub-account-actions">
+        <button type="button" class="g-hub-account-btn login-google-btn login-google-btn--compact" onclick="FluxGoogle.signInSwitchAccount()" title="Open Google account picker">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          <span>Switch Google account</span>
+        </button>
+        <button type="button" class="btn-sec g-hub-account-btn" onclick="FluxGoogle.signInWithFullScopes()" title="Re-approve Gmail, Calendar, Tasks, and Docs permissions">Refresh access</button>
+      </div>
     </div>`;
   }
 
@@ -578,8 +610,10 @@
     ensureToken,
     applyProviderToken,
     signIn,
+    signInSwitchAccount,
     signInStaffWorkspace,
     signInWithFullScopes: (opts) => signIn({ forceConsent: true, ...(opts || {}) }),
+    clearGoogleSessionCache,
     afterSignIn,
     getIntegrationsForCloud,
     restoreIntegrationsFromCloud,
