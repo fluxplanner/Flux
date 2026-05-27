@@ -1119,7 +1119,19 @@
 
   window.fluxCanvasRefresh = function () {
     cacheBust();
-    loadCourses(true).catch(() => {}).finally(renderActiveTab);
+    loadCourses(true)
+      .catch((e) => {
+        console.warn('[Canvas] refresh failed', e);
+        try {
+          if (typeof window.showToast === 'function') {
+            const msg = /401|403|unauth/i.test(String(e && e.message))
+              ? 'Canvas token expired — reconnect in Settings.'
+              : 'Canvas refresh failed. Check connection.';
+            window.showToast(msg, 'warn');
+          }
+        } catch (_) {}
+      })
+      .finally(renderActiveTab);
   };
 
   window.fluxCanvasBulkAddAssignments = function () {

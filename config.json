@@ -1,0 +1,6 @@
+{
+  "ai_proxy_url": "https://lfigdijuqmbensebnevo.supabase.co/functions/v1/ai-proxy",
+  "app_url": "https://azfermohammed.github.io/Fluxplanner/",
+  "version": "2.0.0",
+  "_notes": "This file is fetched by the browser extension at runtime so URLs are NOT hardcoded. Edit this to redeploy the extension to a new Supabase project without rebuilding the extension."
+}

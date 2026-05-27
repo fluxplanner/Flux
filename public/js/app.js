@@ -5764,7 +5764,7 @@ function insHeading(){document.execCommand('formatBlock',false,'<h3>');}
 function insBullet(){document.execCommand('insertUnorderedList',false,null);}
 function insCode(){document.execCommand('insertHTML',false,'<code style="background:var(--border);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:.82em">code</code>');}
 async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${e.message}</div>`;}}
-async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});const data=await res.json();let txt=(data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim();const cards=JSON.parse(txt);if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards.</div>`;}}
+async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});if(!res.ok){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI error (${res.status}). Try again.</div>`;return;}const data=await res.json().catch(()=>null);const rawTxt=(data&&data.content&&data.content[0]&&typeof data.content[0].text==='string')?data.content[0].text:'';let txt=rawTxt.replace(/```json|```/g,'').trim();/* Try to find a JSON array even if AI wrapped it in prose */const m=txt.match(/\[[\s\S]*\]/);if(m)txt=m[0];let cards=null;try{cards=JSON.parse(txt);}catch(parseErr){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI returned malformed flashcards — try again or rephrase the note.</div>`;return;}if(!Array.isArray(cards)||!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">No flashcards extracted. Make sure the note has enough content.</div>`;return;}cards=cards.filter(c=>c&&typeof c==='object'&&(c.q||c.question)&&(c.a||c.answer)).map(c=>({q:String(c.q||c.question),a:String(c.a||c.answer)}));if(!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Couldn't parse any usable cards. Try again.</div>`;return;}if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){console.warn('[Flux] flashcard generation failed',e);resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards: ${esc(e.message||'unknown')}</div>`;}}
 function openFlashcards(){if(!flashcards.length)return;fcIndex=0;fcFlipped=false;document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='block';renderFC();}
 function closeFlashcards(){document.getElementById('flashcardView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function renderFC(){if(!flashcards.length)return;const fc=flashcards[fcIndex];document.getElementById('fcProgress').textContent=`Card ${fcIndex+1} / ${flashcards.length}`;document.getElementById('fcText').textContent=fcFlipped?fc.a:fc.q;document.getElementById('fcCard').style.background=fcFlipped?'rgba(var(--accent-rgb),.1)':'var(--card)';}
@@ -5780,7 +5780,11 @@ function setStress(v){const el=document.getElementById('stressVal');if(el)el.tex
 function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
-function startBreathing(){if(breathingActive){clearInterval(breathTimer);breathingActive=false;document.getElementById('breathBtn').textContent='Start';document.getElementById('breathCircle').style.transform='scale(1)';document.getElementById('breathCircle').textContent='START';return;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];document.getElementById('breathCircle').textContent=p.label+'\n'+countdown;document.getElementById('breathCircle').style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
+function stopBreathing(){if(!breathingActive)return;clearInterval(breathTimer);breathTimer=null;breathingActive=false;const btn=document.getElementById('breathBtn');if(btn)btn.textContent='Start';const circle=document.getElementById('breathCircle');if(circle){circle.style.transform='scale(1)';circle.textContent='START';}}
+function startBreathing(){if(breathingActive){stopBreathing();return;}if(breathTimer){clearInterval(breathTimer);breathTimer=null;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];const circle=document.getElementById('breathCircle');if(!circle){stopBreathing();return;}circle.textContent=p.label+'\n'+countdown;circle.style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
+/* Stop breath + timer when user navigates away from mood/timer panel to prevent
+   ghost intervals running in the background. */
+try{document.addEventListener('flux-nav',(e)=>{const id=e&&e.detail&&e.detail.panel;if(id&&id!=='mood'&&breathingActive)stopBreathing();});}catch(_){}
 
 // ══ TIMER ══
 const TM={pomodoro:{label:'Focus Time',mins:25},short:{label:'Short Break',mins:5},long:{label:'Long Break',mins:15}};
@@ -5791,7 +5795,7 @@ const CIRC=2*Math.PI*88;
 function updateTLengths(){if(tRunning)return;TM.pomodoro.mins=parseInt(document.getElementById('customWork').value)||25;TM.short.mins=parseInt(document.getElementById('customShort').value)||5;if(tMode==='pomodoro'||tMode==='short'){tSecs=TM[tMode].mins*60;tTotal=tSecs;updateTDisplay();}}
 function setTMode(mode,el){if(tRunning)return;tMode=mode;tSecs=TM[mode].mins*60;tTotal=tSecs;document.querySelectorAll('#timer .tmode-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');updateTDisplay();document.getElementById('tLbl').textContent=TM[mode].label;syncFluxPomoPill();}
 function toggleTimer(){tRunning?pauseTimer():startTimer();}
-function startTimer(){tRunning=true;document.getElementById('timerBtn').textContent='⏸ Pause';updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
+function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').textContent='⏸ Pause';updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Resume';syncFluxPomoPill();}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').textContent='▶ Start';updateTDisplay();syncFluxPomoPill();}
 function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').textContent='▶ Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
@@ -8268,12 +8272,23 @@ async function syncToCloud(){
       console.error('Sync error:',error);
       setSyncStatus('offline');
       window._fluxSyncFailed=true;
+      window._fluxConsecutiveSyncFails=(window._fluxConsecutiveSyncFails||0)+1;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
       const el=document.getElementById('syncStatus');
       if(el)el.textContent='Sync failed: '+error.message;
+      /* Toast once per 60s when sync keeps failing — silent failures
+         caused real data loss for guest accounts before. */
+      try{
+        const lastToast=window._fluxLastSyncFailToast||0;
+        if(window._fluxConsecutiveSyncFails>=3&&Date.now()-lastToast>60000&&typeof showToast==='function'){
+          window._fluxLastSyncFailToast=Date.now();
+          showToast('Sync failing — your changes are saved locally. Check connection.','warn');
+        }
+      }catch(_){}
       return;
     }
     window._fluxSyncFailed=false;
+    window._fluxConsecutiveSyncFails=0;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
     setSyncStatus('synced');
     save('flux_last_sync',Date.now());
@@ -8281,8 +8296,16 @@ async function syncToCloud(){
   }catch(e){
     console.error('Sync error:',e);
     window._fluxSyncFailed=true;
+    window._fluxConsecutiveSyncFails=(window._fluxConsecutiveSyncFails||0)+1;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
     setSyncStatus('offline');
+    try{
+      const lastToast=window._fluxLastSyncFailToast||0;
+      if(window._fluxConsecutiveSyncFails>=3&&Date.now()-lastToast>60000&&typeof showToast==='function'){
+        window._fluxLastSyncFailToast=Date.now();
+        showToast('Sync failing — your changes are saved locally. Check connection.','warn');
+      }
+    }catch(_){}
   }finally{
     _syncToCloudInFlight=false;
     window._syncInFlightSince=0;

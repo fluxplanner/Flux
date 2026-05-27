@@ -211,17 +211,34 @@
     return data;
   }
 
-  /** Fetch the owner's published gate from Supabase (used by all clients). */
+  /** Fetch the owner's published gate from Supabase (used by all clients).
+   *  Backoff: after 3 consecutive failures, suppress noisy console warnings
+   *  and skip the call entirely for an exponentially growing window. */
+  let _gateConsecutiveFails=0;
+  let _gateNextRetryAt=0;
   async function fetchOwnerGate(){
+    if(Date.now()<_gateNextRetryAt)return null;
     try{
       const data=await callReleaseAdmin();
+      _gateConsecutiveFails=0;
+      _gateNextRetryAt=0;
       if(data&&Object.prototype.hasOwnProperty.call(data,'gate')){
         if(data.gate)saveGate(data.gate);
         else clearGate();
         return data.gate||null;
       }
     }catch(e){
-      console.warn('[FluxRelease] release-admin fetch failed; falling back',e);
+      _gateConsecutiveFails++;
+      /* Exponential backoff: 0,0,0,30s,60s,120s,...,capped at 10min */
+      if(_gateConsecutiveFails>=3){
+        const backoffMs=Math.min(30000*Math.pow(2,_gateConsecutiveFails-3),600000);
+        _gateNextRetryAt=Date.now()+backoffMs;
+      }
+      /* Only warn on the first 2 fails; after that, suppress to keep
+         the console clean. */
+      if(_gateConsecutiveFails<=2){
+        console.warn('[FluxRelease] release-admin fetch failed; falling back',e);
+      }
     }
     let sb=null;
     try{sb=typeof getSB==='function'?getSB():null;}catch(_){}

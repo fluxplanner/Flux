@@ -500,12 +500,16 @@
       const sys=lvl==='eli5'
         ?'Write a very simple weekly reflection a smart 10-year-old could follow. 3 short bullets.'
         :'Write an IB-level concise weekly reflection: habits, academics, EC balance. 3–4 bullets, formal tone.';
-      const res=await fetch(typeof API!=='undefined'?API.ai:'',{method:'POST',headers:typeof API_HEADERS!=='undefined'?API_HEADERS:{},body:JSON.stringify({
+      const url=(typeof API!=='undefined'&&API&&API.ai)?API.ai:(typeof window!=='undefined'&&window.API&&window.API.ai)?window.API.ai:'';
+      if(!url){el.innerHTML='<span style="color:var(--red)">AI is offline. Try again later.</span>';return;}
+      const headers=(typeof fluxAuthHeaders==='function')?await fluxAuthHeaders():(typeof API_HEADERS!=='undefined'?API_HEADERS:{'Content-Type':'application/json'});
+      const res=await fetch(url,{method:'POST',headers,body:JSON.stringify({
         system:sys,
         messages:[{role:'user',content:`This week: ${doneWeek} tasks completed, ~${sessMins} minutes in focus sessions. Comment on sustainability and next week.`}],
       })});
-      const data=await res.json().catch(()=>({}));
-      const txt=(data.content?.[0]?.text||'').replace(/```[\s\S]*?```/g,'').trim();
+      if(!res.ok){el.innerHTML=`<span style="color:var(--red)">AI error (${res.status})</span>`;return;}
+      const data=await res.json().catch(()=>null);
+      const txt=(data&&data.content&&data.content[0]&&typeof data.content[0].text==='string')?data.content[0].text.replace(/```[\s\S]*?```/g,'').trim():'';
       el.innerHTML=txt?`<div class="flux-mega-aiout">${typeof fmtAI==='function'?fmtAI(txt):esc(txt)}</div>`:`<span style="color:var(--red)">Could not generate.</span>`;
     }catch(e){
       el.innerHTML=`<span style="color:var(--red)">${esc(e.message||'Error')}</span>`;
@@ -528,12 +532,16 @@
     el.innerHTML='<span class="flux-muted">Generating study guide…</span>';
     try{
       const body=strip(note.body||'').slice(0,12000);
-      const res=await fetch(typeof API!=='undefined'?API.ai:'',{method:'POST',headers:typeof API_HEADERS!=='undefined'?API_HEADERS:{},body:JSON.stringify({
+      const url=(typeof API!=='undefined'&&API&&API.ai)?API.ai:(typeof window!=='undefined'&&window.API&&window.API.ai)?window.API.ai:'';
+      if(!url){el.innerHTML='<span style="color:var(--red)">AI is offline. Try again later.</span>';return;}
+      const headers=(typeof fluxAuthHeaders==='function')?await fluxAuthHeaders():(typeof API_HEADERS!=='undefined'?API_HEADERS:{'Content-Type':'application/json'});
+      const res=await fetch(url,{method:'POST',headers,body:JSON.stringify({
         system:sys,
         messages:[{role:'user',content:`From these notes titled "${note.title||'Notes'}":\n\n${body}`}],
       })});
-      const data=await res.json().catch(()=>({}));
-      const txt=(data.content?.[0]?.text||'').replace(/```[\s\S]*?```/g,'').trim();
+      if(!res.ok){el.innerHTML=`<span style="color:var(--red)">AI error (${res.status})</span>`;return;}
+      const data=await res.json().catch(()=>null);
+      const txt=(data&&data.content&&data.content[0]&&typeof data.content[0].text==='string')?data.content[0].text.replace(/```[\s\S]*?```/g,'').trim():'';
       el.innerHTML=txt?`<div class="flux-mega-aiout">${typeof fmtAI==='function'?fmtAI(txt):esc(txt)}</div>`:`<span style="color:var(--red)">No response.</span>`;
     }catch(e){
       el.innerHTML=`<span style="color:var(--red)">${esc(e.message||'Error')}</span>`;

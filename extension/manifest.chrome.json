@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "Flux Planner",
+  "version": "2.0.0",
+  "description": "Flux AI side rail for any page — capture tasks, summarize, run skills.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "sidePanel",
+    "tabs",
+    "contextMenus",
+    "identity",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Flux",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "omnibox": {
+    "keyword": "fx"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar/*", "popup/*", "lib/*", "skills/*", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://azfermohammed.github.io/*",
+      "https://fluxplanner.github.io/*",
+      "https://*.github.io/*",
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*"
+    ]
+  }
+}

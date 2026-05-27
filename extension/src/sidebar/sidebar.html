@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Flux</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" aria-hidden="true"></span>
+      <span>Flux</span>
+    </div>
+    <div class="page-pill" id="pageType">—</div>
+    <button id="openWeb" class="iconbtn" title="Open Flux web app">↗</button>
+  </header>
+
+  <section class="suggestions" id="suggestions" aria-label="Suggestions"></section>
+
+  <main class="chat" id="chat" aria-live="polite"></main>
+
+  <footer class="composer">
+    <textarea id="composer" rows="1" placeholder="Ask Flux, or /slash a skill (Cmd+K)" aria-label="Message"></textarea>
+    <div class="composer-actions">
+      <button id="captureBtn" class="iconbtn" title="Capture this tab">📸</button>
+      <button id="sendBtn" class="primary" title="Send">Send</button>
+    </div>
+  </footer>
+
+  <script type="module" src="sidebar.js"></script>
+</body>
+</html>
