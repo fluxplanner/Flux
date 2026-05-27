@@ -4,7 +4,7 @@
  * Bundles four small additive features that mount themselves onto the
  * existing dashboard / calendar / task list without touching core app.js.
  *
- *   1. Gratitude journal       — 3 small wins per day, dashboard card
+ *   1. Gratitude journal       — 3 small wins per day (students: dashboard; staff: Personal hub → Wellness)
  *   2. Class-section planner   — 4 or 6 period slots with name + notes
  *   3. Priority sort toggle    — re-orders #taskList by priority high→low
  *   4. Important-date pinning  — pin any calendar day; gets a star + glow
@@ -41,9 +41,50 @@
   }
 
   /* ── Disabled-flag check ── */
+  function isEducator(){
+    try{
+      return !!(window.FluxRole&&FluxRole.isEducator&&FluxRole.isEducator());
+    }catch(_){return false;}
+  }
+
+  function isStaffPersonalView(){
+    if(isEducator())return true;
+    try{
+      return !!(
+        window.FluxRole&&FluxRole.current==='student'&&
+        FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&
+        typeof currentUser!=='undefined'&&currentUser&&
+        String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'
+      );
+    }catch(_){return false;}
+  }
+
   function isDisabled(name){
     var d=read('flux_wishlist_disabled',{});
     return !!d[name];
+  }
+
+  /** Students: #dashboard. Educators: Personal hub → Wellness extras strip. */
+  function wishlistWellnessHost(){
+    if(!isStaffPersonalView()){
+      return document.querySelector('#dashboard')||document.querySelector('.dashboard');
+    }
+    return document.getElementById('staffPhWellnessExtras');
+  }
+
+  function detachWishlistFromDashboard(ids){
+    var dash=document.getElementById('dashboard');
+    if(!dash)return;
+    ids.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.parentNode===dash)el.parentNode.removeChild(el);
+    });
+  }
+
+  function placeInHost(card,host){
+    if(!card||!host)return false;
+    if(card.parentNode!==host)host.appendChild(card);
+    return true;
   }
   function setDisabled(name,off){
     var d=read('flux_wishlist_disabled',{});
@@ -60,9 +101,15 @@
 
   function mountGratitudeCard(){
     if(isDisabled('gratitude'))return;
-    var host=document.querySelector('#dashboard')||document.querySelector('.dashboard');
+    if(isStaffPersonalView())detachWishlistFromDashboard(['fluxGratitudeCard','fluxImportantTodayCard']);
+    var host=wishlistWellnessHost();
     if(!host)return;
-    if(document.getElementById('fluxGratitudeCard'))return;
+    var existing=document.getElementById('fluxGratitudeCard');
+    if(existing){
+      placeInHost(existing,host);
+      renderGratitudeList();
+      return;
+    }
     var card=document.createElement('div');
     card.className='card fluxw-card fluxw-gratitude';
     card.id='fluxGratitudeCard';
@@ -156,11 +203,6 @@
    * 2) CLASS-SECTION PLANNER (4 or 6 periods)
    * For educators. A grid of class periods with name + notes; persists.
    * ══════════════════════════════════════════════════════════════════════════ */
-  function isEducator(){
-    try{
-      return !!(window.FluxRole&&FluxRole.isEducator&&FluxRole.isEducator());
-    }catch(_){return false;}
-  }
   function readSections(){return read('flux_class_sections_v1',{});}
   function writeSections(s){write('flux_class_sections_v1',s);}
   function periodCount(){return Number(read('flux_class_period_count',6))||6;}
@@ -325,9 +367,15 @@
 
   function mountImportantDateButton(){
     if(isDisabled('importantDates'))return;
-    var host=document.querySelector('#dashboard');
+    if(isStaffPersonalView())detachWishlistFromDashboard(['fluxGratitudeCard','fluxImportantTodayCard']);
+    var host=wishlistWellnessHost();
     if(!host)return;
-    if(document.getElementById('fluxImportantTodayCard'))return;
+    var existing=document.getElementById('fluxImportantTodayCard');
+    if(existing){
+      placeInHost(existing,host);
+      renderImportantList();
+      return;
+    }
     // Compact bar — slim, doesn't clutter
     var bar=document.createElement('div');
     bar.className='card fluxw-card fluxw-important-bar';
@@ -433,6 +481,7 @@
       wrapFn('renderTasks',applyPrioritySortToDom);
       wrapFn('renderCalendar',paintImportantBadges);
       wrapFn('nav',function(){setTimeout(mountAll,80);});
+      wrapFn('renderStaffPersonalHub',mountAll);
       if(tries<30)setTimeout(tick,400);
     }
     setTimeout(tick,250);

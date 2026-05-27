@@ -340,7 +340,7 @@
     const tabs = STAFF_PERSONAL_HUB_TABS;
     const tabId = activeTabId || tabs[0]?.id;
     tabs.forEach((tab) => {
-      const mount = document.getElementById(`staffPhTab_${tab.id}`);
+      const mount = document.getElementById(`staffPhGrid_${tab.id}`) || document.getElementById(`staffPhTab_${tab.id}`);
       if (!mount) return;
       mount.innerHTML = '';
       if (tab.id !== tabId) return;

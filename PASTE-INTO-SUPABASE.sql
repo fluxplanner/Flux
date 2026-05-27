@@ -271,6 +271,9 @@ CREATE POLICY "counselors_claim_email" ON public.counselors
   )
   WITH CHECK (user_id = auth.uid());
 
+-- Counselor auto-link RPC (JWT or staff_directory school email → counselors row)
+-- See supabase/migrations/20260534100000_ensure_counselor_profile_rpc.sql
+
 -- Seed IAE counselors (idempotent via school email — one row per counselor)
 INSERT INTO public.counselors (name, email, avatar_initial, avatar_color, bio, availability)
 SELECT

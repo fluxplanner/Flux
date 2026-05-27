@@ -8,6 +8,8 @@
   const FLAG = 'enable_staff_dash_board';
   const LAYOUT_KEY = 'flux_staff_dash_board_v1';
   const PHOTO_KEY = 'flux_staff_photo_board_v1';
+  const HINT_SEEN_KEY = 'flux_staff_dash_board_hint_seen_v1';
+  const RETIRED_WIDGET_IDS = new Set(['quick_links', 'tasks_today']);
 
   const WIDTHS = [4, 6, 8, 12];
 
@@ -15,8 +17,6 @@
     { id: 'welcome', title: 'Welcome', defaultW: 8, locked: true },
     { id: 'cal_mini', title: 'Mini calendar', defaultW: 4 },
     { id: 'cal_week', title: 'Week at a glance', defaultW: 12 },
-    { id: 'tasks_today', title: "Today's planner tasks", defaultW: 6 },
-    { id: 'quick_links', title: 'Quick links', defaultW: 6 },
     { id: 'photo_board', title: 'Photo board', defaultW: 6 },
   ];
 
@@ -90,7 +90,7 @@
   }
 
   function defaultLayout() {
-    const ids = ['welcome', 'cal_mini', 'cal_week', 'quick_links', 'tasks_today'];
+    const ids = ['welcome', 'cal_mini', 'cal_week'];
     return {
       widgets: ids.map((id, i) => ({
         id,
@@ -106,7 +106,7 @@
     const cat = catalog();
     if (!layout || !Array.isArray(layout.widgets)) layout = defaultLayout();
     const known = new Set(cat.map((c) => c.id));
-    layout.widgets = layout.widgets.filter((w) => known.has(w.id));
+    layout.widgets = layout.widgets.filter((w) => known.has(w.id) && !RETIRED_WIDGET_IDS.has(w.id));
     cat.forEach((c) => {
       if (c.locked && !layout.widgets.some((w) => w.id === c.id)) {
         layout.widgets.unshift({ id: c.id, w: c.defaultW || 6, visible: true, order: 0 });
@@ -298,6 +298,36 @@
     });
   }
 
+  function maybeShowDashBoardHint() {
+    try {
+      const key = `${HINT_SEEN_KEY}_${uid()}`;
+      if (localStorage.getItem(key) === '1') return;
+      if (document.getElementById('fsdbHintModal')) return;
+      const ov = document.createElement('div');
+      ov.id = 'fsdbHintModal';
+      ov.className = 'modal-overlay fsdb-hint-modal';
+      ov.style.display = 'flex';
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-labelledby', 'fsdbHintTitle');
+      ov.innerHTML = `<div class="modal-card fsdb-hint-card" onclick="event.stopPropagation()">
+        <div class="modal-title" id="fsdbHintTitle">Your personal dashboard</div>
+        <p class="fsdb-hint-copy">Drag widgets by the <strong>⠿</strong> handle, resize with <strong>↔</strong>, and add modules with <strong>+ Widget</strong>. Switch to <strong>Work</strong> for school tools.</p>
+        <button type="button" class="btn" id="fsdbHintDismiss" style="width:100%">Got it</button>
+      </div>`;
+      const dismiss = () => {
+        try {
+          localStorage.setItem(key, '1');
+        } catch (_) {}
+        ov.remove();
+      };
+      ov.addEventListener('click', (e) => {
+        if (e.target === ov) dismiss();
+      });
+      ov.querySelector('#fsdbHintDismiss')?.addEventListener('click', dismiss);
+      document.body.appendChild(ov);
+    } catch (_) {}
+  }
+
   function renderWelcome(mount) {
     const role = (typeof FluxRole !== 'undefined' && FluxRole.current) || 'staff';
     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
@@ -305,29 +335,12 @@
     mount.innerHTML = `
       <div class="fsdb-welcome-hello">${esc(greet)}, ${esc(firstName())}</div>
       <div class="fsdb-welcome-sub">${esc(roleLabel)} · Personal mode · ${esc(fmtLongDay(new Date()))}</div>
-      <div class="fsdb-welcome-hint">Drag widgets by the <strong>⠿</strong> handle, resize with ↔, add modules with <strong>+ Widget</strong>. Switch to <b>Work</b> for school tools.</div>`;
-  }
-
-  function renderQuickLinks(mount) {
-    mount.innerHTML = `
-      <div class="fsdb-quick-grid">
-        <button type="button" class="fsdb-quick-card" data-nav="staffTasks"><div class="fsdb-quick-icon">✅</div><div class="fsdb-quick-label">Tasks</div></button>
-        <button type="button" class="fsdb-quick-card" data-nav="staffResources"><div class="fsdb-quick-icon">📁</div><div class="fsdb-quick-label">Resources</div></button>
-        <button type="button" class="fsdb-quick-card" data-nav="staffPersonalHub"><div class="fsdb-quick-icon">🧩</div><div class="fsdb-quick-label">Personal hub</div></button>
+      <div class="fsdb-welcome-tasks">
+        <div class="fsdb-welcome-tasks-hd">Today's planner tasks</div>
+        <div class="fsdb-welcome-tasks-body"></div>
       </div>`;
-    mount.querySelectorAll('[data-nav]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.nav;
-        if (typeof nav === 'function') nav(id);
-        if (id === 'staffTasks' && window.FluxStaffPlatform?.renderStaffTasksPanel) {
-          FluxStaffPlatform.renderStaffTasksPanel();
-        } else if (id === 'staffResources' && window.FluxStaffPlatform?.renderResourcesPanel) {
-          FluxStaffPlatform.renderResourcesPanel();
-        } else if (id === 'staffPersonalHub' && typeof window.renderStaffPersonalHub === 'function') {
-          renderStaffPersonalHub();
-        }
-      });
-    });
+    const tasksBody = mount.querySelector('.fsdb-welcome-tasks-body');
+    if (tasksBody) renderTasksToday(tasksBody);
   }
 
   function loadPhotos() {
@@ -416,10 +429,6 @@
         return renderMiniCal(mount);
       case 'cal_week':
         return renderWeekView(mount);
-      case 'tasks_today':
-        return renderTasksToday(mount);
-      case 'quick_links':
-        return renderQuickLinks(mount);
       case 'photo_board':
         return renderPhotoBoard(mount);
       default:
@@ -545,6 +554,10 @@
     const host = document.getElementById(hostId || 'dashboard');
     if (!host) return false;
 
+    if (typeof window.fluxApplyStudentDashboardChrome === 'function') {
+      window.fluxApplyStudentDashboardChrome(false);
+    }
+
     host.querySelector('#fluxWidgetGrid_dashboard')?.remove();
     host.querySelector('.staff-personal-dash')?.remove();
     host.querySelector('.fsdb-root')?.remove();
@@ -596,6 +609,8 @@
       render(hostId);
       if (typeof showToast === 'function') showToast('Layout reset', 'success');
     });
+
+    setTimeout(maybeShowDashBoardHint, 400);
 
     return true;
   }

@@ -2161,6 +2161,36 @@ function syncSchoolWorkTabStrip(panelId){
   });
 }
 
+/** Hide student planner chrome on #dashboard (greeting, 7-day pulse, task workspace). */
+function fluxApplyStudentDashboardChrome(showStudentChrome){
+  const dash=document.getElementById('dashboard');
+  if(!dash)return;
+  dash.classList.toggle('flux-educator-dash',!showStudentChrome);
+}
+window.fluxApplyStudentDashboardChrome=fluxApplyStudentDashboardChrome;
+
+/** Educator Personal mode or pending staff — no class subjects on tasks/events. */
+function fluxIsStaffPersonalMode(){
+  try{
+    if(typeof FluxRole==='undefined')return false;
+    if(FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())return true;
+    if(
+      FluxRole.current==='student'&&
+      FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&
+      typeof currentUser!=='undefined'&&currentUser&&
+      String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'
+    )return true;
+  }catch(_){}
+  return false;
+}
+window.fluxIsStaffPersonalMode=fluxIsStaffPersonalMode;
+
+function fluxSyncSubjectUiForRole(){
+  const hide=fluxIsStaffPersonalMode();
+  document.documentElement.classList.toggle('flux-staff-personal-no-subjects',hide);
+}
+window.fluxSyncSubjectUiForRole=fluxSyncSubjectUiForRole;
+
 // ══ MASTER UI APPLICATION FUNCTION ══
 // Single source of truth for "what is visible". Call after FluxRole.load() and after
 // every mode switch. Never manually show/hide individual nav items elsewhere.
@@ -2295,6 +2325,9 @@ function applyRoleUI(){
 
   const bookCounselorBtn=document.querySelector('[data-action="book-counselor"]');
   if(bookCounselorBtn)bookCounselorBtn.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+
+  try{fluxApplyStudentDashboardChrome(studentChromeOn);}catch(_){}
+  try{fluxSyncSubjectUiForRole();}catch(_){}
 
   syncSchoolNavChrome();
 }
@@ -3143,7 +3176,7 @@ function nav(id,btn,navOpt){
     else if(id==='canvas')tTitle.textContent=PANEL_TITLES.google||'Google';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();if((typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')||(pendStaff&&window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function')){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3260,6 +3293,7 @@ document.addEventListener('keydown',e=>{
 // ══ SIDEBAR ══
 // ── Populate subject dropdowns dynamically from user's classes ──
 function populateSubjectSelects(){
+  if(fluxIsStaffPersonalMode())return;
   const subjs=getSubjects();
   const opts='<option value="">No subject</option>'+Object.entries(subjs).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('');
   ['taskSubject','editSubject','noteSubjectTag','timerSubject','addEventSubject'].forEach(id=>{
@@ -3523,7 +3557,8 @@ function addTask(){
   const name=document.getElementById('taskName').value.trim();if(!name)return;
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
-  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:document.getElementById('taskSubject').value,priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringType:_recTypeAdd!=='none'?_recTypeAdd:undefined,recurringWeekly:_recTypeAdd==='weekly'||!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined};
+  const staffPersonal=fluxIsStaffPersonalMode();
+  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:staffPersonal?'':(document.getElementById('taskSubject')?.value||''),priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringType:_recTypeAdd!=='none'?_recTypeAdd:undefined,recurringWeekly:_recTypeAdd==='weekly'||!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined,scope:staffPersonal?'outside':'school'};
   if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_TASK_LIMITS){
     const activeTasks=tasks.filter(t=>!t.done).length;
     const maxTasks=FLUX_PLANS[_entitlement.plan]?.maxActiveTasks??Infinity;
@@ -4209,6 +4244,7 @@ function renderSmartSug(){}
 function openDashAddTaskModal(){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
+  fluxSyncSubjectUiForRole();
   populateSubjectSelects();
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
@@ -4264,7 +4300,7 @@ function completeAllSubtasksInEdit(){
   document.getElementById('editSubtasks').value=lines.join('\n');
   showToast('All subtasks marked complete','success');
 }
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;t.name=document.getElementById('editText').value.trim()||t.name;t.subject=document.getElementById('editSubject').value;t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
@@ -4441,15 +4477,19 @@ function openAddForDate(){
 }
 function showCalAddModal(dateStr){
   const existing=document.getElementById('calAddModal');if(existing)existing.remove();
+  const staffPersonal=fluxIsStaffPersonalMode();
+  const subjectField=staffPersonal?'':`<select id="calModalSubject" style="margin:0"><option value="">No subject</option>${Object.entries(getSubjects()).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('')}</select>`;
+  const optsGrid=staffPersonal
+    ?'<select id="calModalPriority" style="margin:0;width:100%"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>'
+    :`${subjectField}<select id="calModalPriority" style="margin:0"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>`;
   const m=document.createElement('div');
   m.id='calAddModal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)';
   m.innerHTML=`<div style="background:var(--card);border:1px solid var(--border2);border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:24px;animation:slideUp .2s ease">
     <div style="font-size:1rem;font-weight:700;margin-bottom:14px">+ Task for ${new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
     <input type="text" id="calModalName" placeholder="Task name..." style="width:100%;margin-bottom:10px" autofocus>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <select id="calModalSubject" style="margin:0"><option value="">No subject</option>${Object.entries(getSubjects()).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('')}</select>
-      <select id="calModalPriority" style="margin:0"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
+    <div style="display:grid;grid-template-columns:${staffPersonal?'1fr':'1fr 1fr'};gap:8px;margin-bottom:10px">
+      ${optsGrid}
     </div>
     <div style="display:flex;gap:8px">
       <button onclick="document.getElementById('calAddModal').remove()" class="btn-sec" style="flex:1">Cancel</button>
@@ -4463,7 +4503,8 @@ function showCalAddModal(dateStr){
 function submitCalTask(dateStr){
   const name=document.getElementById('calModalName')?.value.trim();
   if(!name)return;
-  const task={id:Date.now(),name,date:dateStr,subject:document.getElementById('calModalSubject')?.value||'',priority:document.getElementById('calModalPriority')?.value||'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),scope:'school'};
+  const staffPersonal=fluxIsStaffPersonalMode();
+  const task={id:Date.now(),name,date:dateStr,subject:staffPersonal?'':(document.getElementById('calModalSubject')?.value||''),priority:document.getElementById('calModalPriority')?.value||'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),scope:staffPersonal?'outside':'school'};
   task.urgencyScore=calcUrgency(task);
   tasks.unshift(task);save('tasks',tasks);
   document.getElementById('calAddModal')?.remove();
@@ -4591,6 +4632,7 @@ function setAddEventScope(scope){
 }
 function openAddEventModal(preferredType){
   const modal=document.getElementById('addEventModal');if(!modal)return;
+  fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
   document.getElementById('addEventDate').value=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
   document.getElementById('addEventTitle').value='';
@@ -4599,7 +4641,8 @@ function openAddEventModal(preferredType){
   const mt=document.getElementById('addEventModalTitle');if(mt)mt.textContent='Add to Calendar';
   const pb=document.getElementById('addEventPrimaryBtn');if(pb)pb.textContent='Add';
   const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='flex';
-  setAddEventScope(preferredType==='ec'?'outside':'school');
+  const defaultScope=preferredType==='ec'?'outside':(fluxIsStaffPersonalMode()?'outside':'school');
+  setAddEventScope(defaultScope);
   setAddEventType(preferredType==='ec'?'ec':'task');
   modal.hidden=false;
   modal.style.display='flex';
@@ -4687,7 +4730,8 @@ function saveAddEvent(){
     }
     savedToast='Event updated';
   }else if(addEventType==='task'){
-    const task={id:Date.now(),name:title,date,time:time||'',subject:document.getElementById('addEventSubject').value,priority:document.getElementById('addEventPriority').value,type:'hw',notes,done:false,rescheduled:0,createdAt:Date.now(),scope};
+    const staffPersonal=fluxIsStaffPersonalMode();
+    const task={id:Date.now(),name:title,date,time:time||'',subject:staffPersonal?'':(document.getElementById('addEventSubject')?.value||''),priority:document.getElementById('addEventPriority').value,type:'hw',notes,done:false,rescheduled:0,createdAt:Date.now(),scope:staffPersonal?'outside':scope};
     task.urgencyScore=calcUrgency(task);tasks.unshift(task);save('tasks',tasks);
     syncKey('tasks',1);
     savedToast='Task added';
@@ -16752,6 +16796,11 @@ async function renderTeacherDashboard(){
   }catch(_){}
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
   try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('teacherDashboard');}catch(_){}
+  try{
+    if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
+      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.teacher-dash-root')||host);
+    }
+  }catch(_){}
 }
 window.renderTeacherDashboard=renderTeacherDashboard;
 
@@ -17515,6 +17564,82 @@ function fluxIsBookableCounselorEmail(email){
   return true;
 }
 
+/** School counselor email from directory / verification (may differ from auth email). */
+async function fluxResolveCounselorSchoolEmail(sb){
+  const authEmail=String(currentUser?.email||'').trim().toLowerCase();
+  if(!sb||!currentUser)return authEmail;
+  try{
+    const {data:dir}=await sb.from('staff_directory')
+      .select('school_email')
+      .eq('claimed_by',currentUser.id)
+      .eq('role','counselor')
+      .eq('active',true)
+      .limit(1)
+      .maybeSingle();
+    const se=String(dir?.school_email||'').trim().toLowerCase();
+    if(se)return se;
+  }catch(_){}
+  try{
+    const {data:svr}=await sb.from('staff_verification_requests')
+      .select('school_email')
+      .eq('user_id',currentUser.id)
+      .limit(1)
+      .maybeSingle();
+    const se=String(svr?.school_email||'').trim().toLowerCase();
+    if(se)return se;
+  }catch(_){}
+  return authEmail;
+}
+
+async function fluxClaimCounselorOrphanByEmail(sb,email){
+  const em=String(email||'').trim();
+  if(!em||!sb||!currentUser)return null;
+  try{
+    const {data:orphList}=await sb.from('counselors')
+      .select('*')
+      .is('user_id',null)
+      .ilike('email',em)
+      .eq('active',true)
+      .order('id',{ascending:true})
+      .limit(1);
+    const orphan=orphList&&orphList[0];
+    if(!orphan?.id)return null;
+    const {data:claimed,error}=await sb.from('counselors')
+      .update({user_id:currentUser.id})
+      .eq('id',orphan.id)
+      .is('user_id',null)
+      .select()
+      .maybeSingle();
+    if(!error&&claimed)return claimed;
+    if(error)window.__fluxCounselorProvisionError=error;
+  }catch(e){window.__fluxCounselorProvisionError=e;}
+  return null;
+}
+
+/** User-facing explanation when counselor row cannot be linked. */
+function fluxCounselorProvisionMessage(sb){
+  const authEmail=String(currentUser?.email||'').trim();
+  const imp=window.FluxImpersonate?.active?.();
+  if(imp&&imp.role==='counselor'){
+    return `No counselor profile found for <strong>${esc(imp.email||'that account')}</strong> in the school directory. Seed <code>counselors</code> in Supabase or sign in as the real counselor (not owner preview only).`;
+  }
+  try{
+    if(typeof isOwner==='function'&&isOwner()&&!fluxIsBookableCounselorEmail(authEmail)){
+      return 'This login is the <strong>platform owner</strong> account — it is not a school counselor profile. Open <strong>Owner control</strong> to impersonate a counselor, or use an admin/work account instead.';
+    }
+  }catch(_){}
+  if(!fluxIsBookableCounselorEmail(authEmail)){
+    return 'This email cannot be used as a bookable counselor. Use your <strong>@bloomfield.org</strong> school account (or ask your admin to link you in Supabase).';
+  }
+  const err=window.__fluxCounselorProvisionError;
+  const code=err?.code||err?.message||'';
+  if(String(code).includes('42501')||String(code).toLowerCase().includes('policy')){
+    return 'Database policies blocked linking your counselor profile. Apply migration <code>20260518120000_counselor_self_provision.sql</code> and <code>20260534100000_ensure_counselor_profile_rpc.sql</code>, then sign out and back in.';
+  }
+  return `Flux could not link your account to a counselor profile. Sign in with the same email as the school directory (e.g. <strong>you@bloomfield.org</strong>), not only a personal Gmail. If you already use your school email, apply the latest Supabase migrations and sign out/in, or ask your admin to set <code>counselors.user_id</code> to your user id.`;
+}
+window.fluxCounselorProvisionMessage=fluxCounselorProvisionMessage;
+
 /** Sync counselors.availability JSON into counselor_availability_slots (lowercase day keys). */
 async function fluxUpsertCounselorAvailabilitySlots(sb,counselorId,availability){
   if(!sb||!counselorId||!availability||typeof availability!=='object')return;
@@ -17544,38 +17669,82 @@ window.fluxUpsertCounselorAvailabilitySlots=fluxUpsertCounselorAvailabilitySlots
 
 async function ensureCounselorRecord(sb,roleHint){
   if(!sb||!currentUser)return null;
-  try{if(typeof isOwner==='function'&&isOwner())return null;}catch(_){}
+  window.__fluxCounselorProvisionError=null;
   const r=roleHint||(typeof FluxRole!=='undefined'&&FluxRole.current)||window._userRole||'student';
   if(r!=='counselor')return null;
+
+  const imp=window.FluxImpersonate?.active?.();
+  if(imp&&imp.role==='counselor'&&imp.email){
+    try{
+      const {data:impRow}=await sb.from('counselors')
+        .select('*')
+        .ilike('email',String(imp.email).trim())
+        .eq('active',true)
+        .order('id',{ascending:true})
+        .limit(1)
+        .maybeSingle();
+      if(impRow){window._counselorRecord=impRow;return impRow;}
+    }catch(_){}
+  }
+
   if(!fluxIsBookableCounselorEmail(currentUser.email))return null;
+  try{
+    if(typeof isOwner==='function'&&isOwner()&&!imp)return null;
+  }catch(_){}
+
   let row=window._counselorRecord;
-  if(row&&row.user_id===currentUser.id)return row;
+  if(row&&row.user_id===currentUser.id&&row.active!==false)return row;
+
+  try{
+    const {data:rpcRow,error:rpcErr}=await sb.rpc('ensure_counselor_profile');
+    if(!rpcErr&&rpcRow){
+      window._counselorRecord=rpcRow;
+      await deactivateExtraCounselorRows(sb,rpcRow.id);
+      if(rpcRow.availability)await fluxUpsertCounselorAvailabilitySlots(sb,rpcRow.id,rpcRow.availability);
+      return rpcRow;
+    }
+    if(rpcErr&&rpcErr.code!=='PGRST202')window.__fluxCounselorProvisionError=rpcErr;
+  }catch(e){
+    if(!String(e?.message||'').includes('PGRST202'))window.__fluxCounselorProvisionError=e;
+  }
+
   try{
     const {data}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).eq('active',true).order('id',{ascending:true}).limit(1).maybeSingle();
     if(data){window._counselorRecord=data;await deactivateExtraCounselorRows(sb,data.id);return data;}
   }catch(_){}
-  const email=(currentUser.email||'').trim();
-  if(email){
-    try{
-      const {data:orphList}=await sb.from('counselors')
-        .select('*')
-        .is('user_id',null)
-        .ilike('email',email)
-        .eq('active',true)
-        .order('id',{ascending:true})
-        .limit(1);
-      const orphan=orphList&&orphList[0];
-      if(orphan?.id){
-        const {data:claimed,error}=await sb.from('counselors')
-          .update({user_id:currentUser.id})
-          .eq('id',orphan.id)
-          .is('user_id',null)
-          .select()
-          .maybeSingle();
-        if(!error&&claimed){window._counselorRecord=claimed;await deactivateExtraCounselorRows(sb,claimed.id);return claimed;}
+
+  try{
+    const {data:inactive}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).eq('active',false).order('id',{ascending:true}).limit(1).maybeSingle();
+    if(inactive?.id){
+      const {data:reactivated,error:reactErr}=await sb.from('counselors')
+        .update({active:true,booking_enabled:true})
+        .eq('id',inactive.id)
+        .select()
+        .maybeSingle();
+      if(!reactErr&&reactivated){
+        window._counselorRecord=reactivated;
+        await deactivateExtraCounselorRows(sb,reactivated.id);
+        if(reactivated.availability)await fluxUpsertCounselorAvailabilitySlots(sb,reactivated.id,reactivated.availability);
+        return reactivated;
       }
-    }catch(_){}
+      if(reactErr)window.__fluxCounselorProvisionError=reactErr;
+    }
+  }catch(_){}
+
+  const authEmail=(currentUser.email||'').trim();
+  const schoolEmail=await fluxResolveCounselorSchoolEmail(sb);
+  const emailsToTry=[...new Set([schoolEmail,authEmail].filter(Boolean).map(e=>String(e).trim().toLowerCase()))];
+  for(const em of emailsToTry){
+    const claimed=await fluxClaimCounselorOrphanByEmail(sb,em);
+    if(claimed){
+      window._counselorRecord=claimed;
+      await deactivateExtraCounselorRows(sb,claimed.id);
+      if(claimed.availability)await fluxUpsertCounselorAvailabilitySlots(sb,claimed.id,claimed.availability);
+      return claimed;
+    }
   }
+
+  const email=schoolEmail||authEmail;
   try{
     let disp=null;
     try{
@@ -17608,8 +17777,24 @@ async function ensureCounselorRecord(sb,roleHint){
       const {data:again}=await sb.from('counselors').select('*').eq('user_id',currentUser.id).maybeSingle();
       if(again){window._counselorRecord=again;await deactivateExtraCounselorRows(sb,again.id);return again;}
     }
-    if(error)console.warn('[Flux] ensureCounselorRecord insert',error);
-  }catch(e){console.warn('[Flux] ensureCounselorRecord',e);}
+    if(error){
+      window.__fluxCounselorProvisionError=error;
+      console.warn('[Flux] ensureCounselorRecord insert',error);
+      if(error.code==='23505'||String(error.message||'').toLowerCase().includes('unique')){
+        for(const em of emailsToTry){
+          const claimed=await fluxClaimCounselorOrphanByEmail(sb,em);
+          if(claimed){
+            window._counselorRecord=claimed;
+            await deactivateExtraCounselorRows(sb,claimed.id);
+            return claimed;
+          }
+        }
+      }
+    }
+  }catch(e){
+    window.__fluxCounselorProvisionError=e;
+    console.warn('[Flux] ensureCounselorRecord',e);
+  }
   return null;
 }
 
@@ -17650,14 +17835,21 @@ async function renderCounselorDashboard(){
   if(!counselorRow){
     if(!window.__fluxWarnedCounselorEnsure){
       window.__fluxWarnedCounselorEnsure=1;
-      console.warn('[Flux] Counselor profile still missing after auto-provision. Apply DB migration 20260518120000_counselor_self_provision.sql (or paste block in PASTE-INTO-SUPABASE.sql) so inserts/claims are allowed by RLS.');
+      console.warn('[Flux] Counselor profile still missing after auto-provision. Apply migrations 20260518120000 + 20260534100000 (or PASTE-INTO-SUPABASE.sql).',window.__fluxCounselorProvisionError);
     }
+    const hint=typeof fluxCounselorProvisionMessage==='function'?fluxCounselorProvisionMessage(sb):'Flux could not link your counselor profile.';
     host.innerHTML=`
       <div class="empty">
         <div class="empty-icon">⚠</div>
         <div class="empty-title">Counselor record not found</div>
-        <div class="empty-sub">Flux could not create or link your counselor profile (often fixed by applying the latest database migration, then signing out and back in). Your school admin can also link your account in Supabase.</div>
+        <div class="empty-sub">${hint}</div>
+        <button type="button" class="btn-sec" style="margin-top:14px" id="fluxCounselorRetryLink">Try again</button>
       </div>`;
+    document.getElementById('fluxCounselorRetryLink')?.addEventListener('click',()=>{
+      window._counselorRecord=null;
+      window.__fluxWarnedCounselorEnsure=0;
+      renderCounselorDashboard();
+    });
     return;
   }
 
@@ -17863,6 +18055,11 @@ async function renderCounselorDashboard(){
     FluxCounselorAppointments.wireAppointmentActions(host,counselorRow.id);
   }
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
+  try{
+    if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
+      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.counselor-dashboard')||host);
+    }
+  }catch(_){}
 }
 window.renderCounselorDashboard=renderCounselorDashboard;
 

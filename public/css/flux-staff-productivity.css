@@ -98,6 +98,15 @@
 .sph-tabs {
   margin-bottom: 14px;
 }
+.sph-wellness-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sph-wellness-extras .fluxw-card {
+  margin: 0;
+}
 .sph-tab-panel {
   min-height: 120px;
 }

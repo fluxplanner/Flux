@@ -405,6 +405,7 @@
         <div class="spd-card" data-spd-nav="staffPD" data-spd-render="pd"><div class="spd-card-icon">🎓</div><div class="spd-card-title">PD</div><div class="spd-card-sub">Professional development log</div></div>
         <div class="spd-card" data-spd-nav="staffWellbeing" data-spd-render="wellbeing"><div class="spd-card-icon">🌿</div><div class="spd-card-title">Wellbeing</div><div class="spd-card-sub">Energy &amp; check-ins</div></div>
       </div>
+      <div class="sr-root sr-root--work" style="margin-top:20px">${staffWorkspacePinsHtml()}</div>
     </div>`;
     el.innerHTML = el.innerHTML.replace(/<motion[^>]*><\/motion>\s*/g, '').replace(/<\/motion>/g, '');
     el.querySelectorAll('[data-spd-nav]').forEach((card) => {
@@ -463,10 +464,13 @@
       )
       .join('');
     const tabPanels = tabs
-      .map(
-        (t) =>
-          `<div class="sph-tab-panel" id="staffPhTab_${esc(t.id)}" data-sph-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}></div>`,
-      )
+      .map((t) => {
+        const wellnessExtras =
+          t.id === 'wellness'
+            ? '<div class="sph-wellness-extras" id="staffPhWellnessExtras" aria-label="Gratitude and important dates"></div>'
+            : '';
+        return `<div class="sph-tab-panel" id="staffPhTab_${esc(t.id)}" data-sph-panel="${esc(t.id)}" role="tabpanel" ${t.id === activeTab ? '' : 'hidden'}>${wellnessExtras}<div class="sph-tab-grid" id="staffPhGrid_${esc(t.id)}"></div></div>`;
+      })
       .join('');
 
     host.innerHTML = `
@@ -474,7 +478,7 @@
         <div class="sph-topbar">
           <div>
             <div class="sph-greet">Personal hub</div>
-            <div class="sph-greet-sub">Brain dump, errands, mood log, and quick imports — kept off your main dashboard.</div>
+            <div class="sph-greet-sub">Brain dump, errands, mood log, gratitude, and important dates — kept off your main dashboard.</div>
           </div>
           <div class="sph-topbar-actions" id="staffPhToolbar"></div>
         </div>
@@ -498,6 +502,9 @@
         if (window.FluxModuleLoader?.renderStaffPersonalHubGrids) {
           FluxModuleLoader.renderStaffPersonalHubGrids(id);
         }
+        try {
+          if (window.FluxWishlist?.refresh) FluxWishlist.refresh();
+        } catch (_) {}
       });
     });
 
@@ -506,12 +513,21 @@
         FluxModuleLoader.renderStaffPersonalHubGrids(activeTab);
       }
     } catch (_) {}
+    try {
+      if (window.FluxWishlist?.refresh) FluxWishlist.refresh();
+    } catch (_) {}
   }
   window.renderStaffPersonalHub = renderStaffPersonalHub;
 
   function renderStaffPersonalDashboard() {
     const el = document.getElementById('dashboard');
     if (!el) return;
+    if (typeof window.fluxApplyStudentDashboardChrome === 'function') {
+      window.fluxApplyStudentDashboardChrome(false);
+    }
+    try {
+      if (window.FluxWishlist?.refresh) FluxWishlist.refresh();
+    } catch (_) {}
     try {
       if (window.FluxStaffDashBoard?.enabled?.() && window.FluxStaffDashBoard.render('dashboard')) {
         return;
@@ -541,7 +557,7 @@
       <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
-        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Workspace links &amp; bookmarks</div></div>
+        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Personal bookmarks</div></div>
         <div class="spd-card" data-spd-nav="staffPersonalHub"><div class="spd-card-icon">🧩</div><div class="spd-card-title">Personal hub</div><div class="spd-card-sub">Brain dump, grocery, mood log</div></div>
       </div>
     </div>`;
@@ -1007,6 +1023,43 @@
     renderWellbeingPanel();
   }
 
+  function staffWorkspacePinsHtml() {
+    const pins = staffResourcePins();
+    return `
+      <section class="sr-section sr-workspace-mount" data-staff-workspace-pins>
+        <h3 class="sr-section-title">Workspace &amp; school</h3>
+        <div class="sr-pin-grid">
+          ${pins
+            .map(
+              (p) =>
+                `<a class="sr-pin" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">
+                  <span class="sr-pin-icon" aria-hidden="true">${p.icon}</span>
+                  <span class="sr-pin-text">
+                    <span class="sr-pin-title">${esc(p.title)}</span>
+                    <span class="sr-pin-blurb">${esc(p.blurb)}</span>
+                  </span>
+                </a>`,
+            )
+            .join('')}
+        </div>
+      </section>`;
+  }
+
+  /** Append Gmail / Drive / school pins to a work-mode panel (teacher, counselor, workboard, work hub). */
+  function mountStaffWorkspacePins(host) {
+    if (!host) return;
+    try {
+      if (typeof FluxRole !== 'undefined' && FluxRole.isPersonalMode && FluxRole.isPersonalMode()) return;
+    } catch (_) {
+      return;
+    }
+    host.querySelector('[data-staff-workspace-pins]')?.remove();
+    const wrap = document.createElement('div');
+    wrap.innerHTML = staffWorkspacePinsHtml();
+    const section = wrap.firstElementChild;
+    if (section) host.appendChild(section);
+  }
+
   function staffResourcePins() {
     const role = (typeof FluxRole !== 'undefined' && FluxRole.current) || 'staff';
     const school =
@@ -1116,31 +1169,14 @@
     await ensureStaffPersonalRow(client);
     const { data } = await client.from('staff_personal_data').select('resources').eq('user_id', currentUser.id).maybeSingle();
     const bookmarks = normalizeStaffBookmarks(data?.resources);
-    const pins = staffResourcePins();
     const fluxShortcuts = [
       { id: 'fx-tasks', label: 'Personal tasks', icon: '✅', action: () => nav && nav('staffTasks') },
-      {
-        id: 'fx-google',
-        label: 'Google hub',
-        icon: '🔗',
-        action: () => {
-          if (typeof nav === 'function') nav('canvas');
-          try {
-            if (window.FluxGoogle && typeof FluxGoogle.renderHub === 'function') FluxGoogle.renderHub();
-          } catch (_) {}
-        },
-        hide: !(
-          typeof FluxRole !== 'undefined' &&
-          FluxRole.isStaffGoogleHubRole &&
-          FluxRole.isStaffGoogleHubRole()
-        ),
-      },
       { id: 'fx-settings', label: 'Settings', icon: '⚙', action: () => nav && nav('settings') },
       { id: 'fx-profile', label: 'Profile', icon: '👤', action: () => nav && nav('profile') },
-    ].filter((s) => !s.hide);
+    ];
 
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Workspace shortcuts, school links, and your saved bookmarks (synced to cloud).</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal bookmarks and in-app shortcuts. Gmail, Drive, and school links are in <strong>Work</strong> mode (Work hub or your role dashboard).</p></div>
       <div class="sr-root">
         <section class="sr-section">
           <h3 class="sr-section-title">In Flux</h3>
@@ -1152,25 +1188,7 @@
               )
               .join('')}
           </div>
-          <p class="sr-hint">Press <strong>Ctrl+K</strong> (Mac: <strong>Cmd+K</strong>) to toggle Work ↔ Personal mode.</p>
-        </section>
-
-        <section class="sr-section">
-          <h3 class="sr-section-title">Workspace &amp; school</h3>
-          <div class="sr-pin-grid">
-            ${pins
-              .map(
-                (p) =>
-                  `<a class="sr-pin" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">
-                    <span class="sr-pin-icon" aria-hidden="true">${p.icon}</span>
-                    <span class="sr-pin-text">
-                      <span class="sr-pin-title">${esc(p.title)}</span>
-                      <span class="sr-pin-blurb">${esc(p.blurb)}</span>
-                    </span>
-                  </a>`,
-              )
-              .join('')}
-          </div>
+          <p class="sr-hint">Press <strong>Ctrl+K</strong> (Mac: <strong>Cmd+K</strong>) to toggle Work ↔ Personal mode for school tools.</p>
         </section>
 
         <section class="sr-section">
@@ -1693,6 +1711,8 @@
     renderPDPanel,
     renderWellbeingPanel,
     renderResourcesPanel,
+    mountStaffWorkspacePins,
+    staffWorkspacePinsHtml,
     renderSchoolFeed,
     renderStaffProfile,
     hydrateOwnerStaffVerification,

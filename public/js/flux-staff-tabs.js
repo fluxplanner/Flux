@@ -1138,6 +1138,11 @@
     });
     try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
     try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('staffWorkboard');}catch(_){}
+    try{
+      if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
+        FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.sw-root')||host);
+      }
+    }catch(_){}
   }
   window.renderStaffWorkboard=renderStaffWorkboard;
 

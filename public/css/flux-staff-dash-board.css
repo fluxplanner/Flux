@@ -1,3 +1,25 @@
+/* Educator personal #dashboard — hide student planner chrome */
+#dashboard.flux-educator-dash #recoveryBanner,
+#dashboard.flux-educator-dash #fluxClassAlertBanner,
+#dashboard.flux-educator-dash #dashHero,
+#dashboard.flux-educator-dash .dash-mob-stack,
+#dashboard.flux-educator-dash #weeklyReviewBanner,
+#dashboard.flux-educator-dash .dash-alerts,
+#dashboard.flux-educator-dash #fluxDashSections,
+#dashboard.flux-educator-dash > .flux-widget-grid,
+#dashboard.flux-educator-dash #fluxWidgetGrid_dashboard,
+#dashboard.flux-educator-dash #fluxGratitudeCard,
+#dashboard.flux-educator-dash #fluxImportantTodayCard {
+  display: none !important;
+}
+
+/* Staff personal mode — no class subject pickers */
+html.flux-staff-personal-no-subjects #addEventSubjectRow,
+html.flux-staff-personal-no-subjects #dashAddTaskModal .irow.modal-labeled-row > div:has(#taskSubject),
+html.flux-staff-personal-no-subjects #editModal .mrow:has(#editSubject) {
+  display: none !important;
+}
+
 /* Flux Staff Dash Board — educator personal widget grid */
 .fsdb-root {
   padding: 16px 20px 28px;
@@ -129,46 +151,43 @@
   color: var(--muted2);
   margin-top: 4px;
 }
-.fsdb-welcome-hint {
-  margin-top: 10px;
-  font-size: 0.75rem;
-  color: var(--text2);
-  line-height: 1.45;
-  padding: 8px 10px;
-  background: rgba(var(--accent-rgb), 0.06);
-  border-radius: 10px;
-  border: 1px solid rgba(var(--accent-rgb), 0.12);
+.fsdb-welcome-tasks {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border2);
 }
-.fsdb-quick-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-@media (max-width: 500px) {
-  .fsdb-quick-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.fsdb-quick-card {
-  text-align: center;
-  padding: 12px 8px;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  background: var(--card);
-  cursor: pointer;
-  transition: border-color 0.2s, transform 0.15s;
-}
-.fsdb-quick-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.35);
-  transform: translateY(-2px);
-}
-.fsdb-quick-icon {
-  font-size: 1.4rem;
-}
-.fsdb-quick-label {
-  font-size: 0.72rem;
+.fsdb-welcome-tasks-hd {
+  font-size: 0.68rem;
   font-weight: 700;
-  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.fsdb-welcome-tasks-body .fsdb-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.8rem;
+}
+.fsdb-welcome-tasks-body .fsdb-empty {
+  font-size: 0.78rem;
+  color: var(--muted2);
+  margin: 0;
+}
+.fsdb-hint-modal {
+  z-index: 650;
+}
+.fsdb-hint-card {
+  max-width: 400px;
+}
+.fsdb-hint-copy {
+  font-size: 0.84rem;
+  color: var(--text2);
+  line-height: 1.5;
+  margin: 0 0 16px;
 }
 .fsdb-mini-cal-nav {
   display: flex;
