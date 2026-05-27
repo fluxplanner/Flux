@@ -3127,15 +3127,24 @@ function nav(id,btn,navOpt){
       });
     }
   }catch(_){}
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active','flux-panel-enter'));
-  if(id!=='canvas'&&typeof window.fluxCanvasCloseMobileSidebar==='function'){
-    try{ window.fluxCanvasCloseMobileSidebar(); }catch(e){}
+  const applyPanelNav=()=>{
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active','flux-panel-enter'));
+    if(id!=='canvas'&&typeof window.fluxCanvasCloseMobileSidebar==='function'){
+      try{ window.fluxCanvasCloseMobileSidebar(); }catch(e){}
+    }
+    const np=document.getElementById(id);
+    if(np){
+      np.classList.add('active','flux-panel-enter');
+      setTimeout(()=>np.classList.remove('flux-panel-enter'),560);
+    }
+  };
+  if(window.FluxAppleMotion?.transitionPanels){
+    try{window.FluxAppleMotion.transitionPanels(applyPanelNav,{panelId:id,fromPanelId:window.__fluxLastNavPanel||''});}catch(e){applyPanelNav();}
+  }else{
+    applyPanelNav();
   }
+  window.__fluxLastNavPanel=id;
   const panel=document.getElementById(id);
-  if(panel){
-    panel.classList.add('active','flux-panel-enter');
-    setTimeout(()=>panel.classList.remove('flux-panel-enter'),560);
-  }
   try{
     if(window.FluxDebug&&typeof FluxDebug.tracePanels==='function'){
       FluxDebug.tracePanels({

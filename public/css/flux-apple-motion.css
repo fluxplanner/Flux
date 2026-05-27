@@ -1,0 +1,394 @@
+/* ═══════════════════════════════════════════════════════════
+   Flux · Apple-style motion (2026)
+   GPU-friendly transforms, iOS-like easing, View Transitions,
+   morphing pills (sidebar, bottom-nav, segmented controls),
+   spring modal/sheet/toast, focus ring spring.
+   Load after flux-motion.css.
+   ═══════════════════════════════════════════════════════════ */
+
+html.flux-apple-motion {
+  --flux-apple-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --flux-apple-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --flux-apple-ease-spring: cubic-bezier(0.34, 1.15, 0.64, 1);
+  --flux-apple-ease-emphasized: cubic-bezier(0.2, 0, 0, 1.0);
+  --flux-apple-duration: 0.46s;
+  --flux-apple-duration-fast: 0.26s;
+  --flux-apple-duration-snap: 0.18s;
+}
+
+/* Compositor-friendly: backface-hidden + isolate transform on interactive UI */
+html.flux-apple-motion .panel,
+html.flux-apple-motion .card,
+html.flux-apple-motion .fsdb-widget,
+html.flux-apple-motion .nav-item,
+html.flux-apple-motion .bnav-item,
+html.flux-apple-motion .stab,
+html.flux-apple-motion .sph-tab,
+html.flux-apple-motion .tmode-btn,
+html.flux-apple-motion .view-btn,
+html.flux-apple-motion button,
+html.flux-apple-motion .btn,
+html.flux-apple-motion .btn-sec,
+html.flux-apple-motion .task-item,
+html.flux-apple-motion .modal-card,
+html.flux-apple-motion .fab-btn,
+html.flux-apple-motion .toast {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.flux-apple-motion .flux-apple-press-target {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Kill the legacy :active scale on bnav icon so JS press owns it. */
+html.flux-apple-motion .bnav-item:active .bni {
+  transform: none !important;
+}
+
+/* Active icon scale still wants a tiny boost — keep this static, JS does the press. */
+html.flux-apple-motion .bnav-item.active .bni {
+  transform: scale(1.12);
+  transition: transform 0.42s var(--flux-apple-ease-spring);
+}
+
+/* ───────── Panel entry — JS owns it, CSS fallback only ───────── */
+
+html.flux-apple-motion .main-content .panel.active:not(.flux-panel-enter) {
+  animation: none !important;
+}
+
+html.flux-apple-motion .panel.active.flux-panel-enter {
+  animation: fluxApplePanelEnter var(--flux-apple-duration) var(--flux-apple-ease-out) both;
+}
+
+@keyframes fluxApplePanelEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.992);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ───────── Morphing pill (sidebar, bottom-nav, segmented controls) ───────── */
+
+html.flux-apple-motion .flux-morph-pill {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  will-change: transform, width, height;
+  display: none;
+}
+
+html.flux-apple-motion .flux-morph-pill[data-placed="1"] {
+  display: block;
+}
+
+/* Pill shape: rect (sidebar/bottom-nav full-cell) */
+html.flux-apple-motion .flux-morph-pill--rect {
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 95, 142, 255), 0.18),
+    rgba(var(--purple-rgb, 168, 116, 255), 0.10)
+  );
+  box-shadow:
+    0 0 24px rgba(var(--accent-rgb, 95, 142, 255), 0.18),
+    inset 0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Pill shape: pill (segmented controls — match button radius) */
+html.flux-apple-motion .flux-morph-pill--pill {
+  border-radius: 999px;
+  background: var(--card2, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Sidebar hosts */
+html.flux-apple-motion #sidebar .nav-scroll,
+html.flux-apple-motion #sidebar .sidebar-nav {
+  position: relative;
+}
+
+html.flux-apple-motion #sidebar .nav-item {
+  position: relative;
+  z-index: 1;
+  transition: color 0.32s var(--flux-apple-ease-out);
+}
+
+/* Bottom-nav host */
+html.flux-apple-motion .bottom-nav {
+  position: fixed;
+}
+
+html.flux-apple-motion .bottom-nav .bnav-item {
+  position: relative;
+  z-index: 1;
+  transition: color 0.32s var(--flux-apple-ease-out);
+}
+
+html.flux-apple-motion .bottom-nav .flux-morph-pill {
+  margin-top: 4px;
+  height: calc(100% - 8px) !important;
+  border-radius: 10px;
+}
+
+/* Segmented control hosts: make pill cover full cell, hide active bg so pill shows */
+html.flux-apple-motion .stabs,
+html.flux-apple-motion .tmode-toggle,
+html.flux-apple-motion .tmode-segmented,
+html.flux-apple-motion .sph-tabs,
+html.flux-apple-motion .view-toggle,
+html.flux-apple-motion .view-switcher,
+html.flux-apple-motion .dash-toolbar-views,
+html.flux-apple-motion #filterChips {
+  position: relative;
+}
+
+html.flux-apple-motion .stabs .stab,
+html.flux-apple-motion .sph-tabs .sph-tab,
+html.flux-apple-motion .view-toggle .view-btn,
+html.flux-apple-motion .view-switcher .view-btn,
+html.flux-apple-motion .tmode-toggle .tmode-btn,
+html.flux-apple-motion .tmode-segmented .tmode-btn,
+html.flux-apple-motion .dash-toolbar-views .tmode-btn,
+html.flux-apple-motion .dash-toolbar-views .view-btn,
+html.flux-apple-motion #filterChips .tmode-btn {
+  position: relative;
+  z-index: 1;
+  transition:
+    color 0.32s var(--flux-apple-ease-out),
+    background 0.28s var(--flux-apple-ease-out);
+}
+
+/* When a morph pill is present, hide the active item's background — pill is the highlight */
+html.flux-apple-motion .stabs:has(.flux-morph-pill) .stab.active,
+html.flux-apple-motion .sph-tabs:has(.flux-morph-pill) .sph-tab.active,
+html.flux-apple-motion .view-toggle:has(.flux-morph-pill) .view-btn.active,
+html.flux-apple-motion .view-switcher:has(.flux-morph-pill) .view-btn.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+html.flux-apple-motion .tmode-toggle:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion .tmode-segmented:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion .dash-toolbar-views:has(.flux-morph-pill) .tmode-btn.active,
+html.flux-apple-motion .dash-toolbar-views:has(.flux-morph-pill) .view-btn.active,
+html.flux-apple-motion #filterChips:has(.flux-morph-pill) .tmode-btn.active {
+  background: transparent;
+  border-color: transparent;
+  color: #fff;
+  box-shadow: none;
+}
+
+/* Tmode / dash-toolbar pill — accent fill */
+html.flux-apple-motion .tmode-toggle .flux-morph-pill--pill,
+html.flux-apple-motion .tmode-segmented .flux-morph-pill--pill,
+html.flux-apple-motion .dash-toolbar-views .flux-morph-pill--pill,
+html.flux-apple-motion #filterChips .flux-morph-pill--pill {
+  background: var(--accent, #5f8eff);
+  box-shadow:
+    0 4px 14px rgba(var(--accent-rgb, 95, 142, 255), 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* ───────── Card / widget enter (fallback when JS hasn't run) ───────── */
+
+html.flux-apple-motion .fsdb-widget.flux-apple-enter,
+html.flux-apple-motion .card.flux-apple-enter {
+  animation: fluxAppleCardIn 0.48s var(--flux-apple-ease-out) both;
+}
+
+@keyframes fluxAppleCardIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* ───────── View Transitions — cross-fade main shell ───────── */
+
+@supports (view-transition-name: none) {
+  html.flux-apple-motion #flux-main {
+    view-transition-name: flux-main;
+  }
+
+  ::view-transition-old(flux-main),
+  ::view-transition-new(flux-main) {
+    animation-duration: 0.42s;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(flux-main) {
+    animation-name: fluxAppleVtOut;
+  }
+
+  ::view-transition-new(flux-main) {
+    animation-name: fluxAppleVtIn;
+  }
+
+  @keyframes fluxAppleVtOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.992);
+      filter: blur(6px);
+    }
+  }
+
+  @keyframes fluxAppleVtIn {
+    from {
+      opacity: 0;
+      transform: scale(1.008);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+  }
+}
+
+/* ───────── Toast / modal / sheet polish ───────── */
+
+html.flux-apple-motion .toast {
+  will-change: transform, opacity;
+  transform-origin: 50% 0%;
+}
+
+html.flux-apple-motion .modal-card {
+  transform-origin: 50% 90%;
+  will-change: transform, opacity;
+}
+
+html.flux-apple-motion .modal-overlay {
+  will-change: opacity, backdrop-filter;
+}
+
+html.flux-apple-motion .more-sheet,
+html.flux-apple-motion .sheet,
+html.flux-apple-motion .bottom-sheet {
+  will-change: transform;
+}
+
+/* ───────── FAB spring polish ───────── */
+
+html.flux-apple-motion .fab-btn,
+html.flux-apple-motion .fab-action {
+  will-change: transform;
+  transition:
+    box-shadow 0.32s var(--flux-apple-ease-out),
+    background 0.32s var(--flux-apple-ease-out);
+}
+
+html.flux-apple-motion .fab-btn:hover {
+  box-shadow:
+    0 12px 36px rgba(var(--accent-rgb, 95, 142, 255), 0.42),
+    0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* ───────── Focus ring spring on inputs ───────── */
+
+html.flux-apple-motion input,
+html.flux-apple-motion textarea,
+html.flux-apple-motion select,
+html.flux-apple-motion [contenteditable="true"] {
+  transition:
+    box-shadow 0.32s var(--flux-apple-ease-out),
+    border-color 0.32s var(--flux-apple-ease-out),
+    background 0.32s var(--flux-apple-ease-out);
+  will-change: transform, box-shadow;
+}
+
+html.flux-apple-motion .flux-apple-focus {
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb, 95, 142, 255), 0.20),
+    0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.55),
+    0 8px 24px rgba(var(--accent-rgb, 95, 142, 255), 0.12) !important;
+}
+
+/* ───────── Magnetic hover lift (desktop) ───────── */
+
+@media (hover: hover) and (pointer: fine) {
+  html.flux-apple-motion .fsdb-widget-btn,
+  html.flux-apple-motion .fsdb-quick-card,
+  html.flux-apple-motion .spd-card {
+    transition:
+      transform 0.42s var(--flux-apple-ease-spring),
+      box-shadow 0.32s var(--flux-apple-ease-out),
+      border-color 0.32s var(--flux-apple-ease-out);
+  }
+}
+
+/* ───────── Reduced motion ───────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html.flux-apple-motion .panel.active.flux-panel-enter,
+  html.flux-apple-motion .fsdb-widget.flux-apple-enter,
+  html.flux-apple-motion .card.flux-apple-enter {
+    animation: none !important;
+  }
+
+  html.flux-apple-motion .flux-apple-press-target,
+  html.flux-apple-motion .toast,
+  html.flux-apple-motion .modal-card,
+  html.flux-apple-motion .more-sheet,
+  html.flux-apple-motion .fab-btn {
+    will-change: auto;
+  }
+
+  html.flux-apple-motion .flux-morph-pill {
+    transition: opacity 0.2s ease;
+  }
+
+  @supports (view-transition-name: none) {
+    ::view-transition-old(flux-main),
+    ::view-transition-new(flux-main) {
+      animation: none !important;
+    }
+  }
+}
+
+/* ───────── Light theme tweaks ───────── */
+
+[data-theme="light"] html.flux-apple-motion .flux-morph-pill--rect {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 95, 142, 255), 0.12),
+    rgba(var(--purple-rgb, 168, 116, 255), 0.06)
+  );
+  box-shadow:
+    0 0 18px rgba(var(--accent-rgb, 95, 142, 255), 0.14),
+    inset 0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.18);
+}
+
+[data-theme="light"] html.flux-apple-motion .flux-morph-pill--pill {
+  background: #fff;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}

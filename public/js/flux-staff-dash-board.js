@@ -611,6 +611,9 @@
     });
 
     setTimeout(maybeShowDashBoardHint, 400);
+    try {
+      document.dispatchEvent(new CustomEvent('flux-dash-board-rendered', { detail: { hostId } }));
+    } catch (_) {}
 
     return true;
   }
