@@ -27,10 +27,12 @@ body[data-flux-cursor="off"] #cursorSpotlight{
   pointer-events:none;
 }
 @media(hover:hover) and (min-width:769px){
-  body[data-flux-cursor="on"]::after{
-    content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
-    background:radial-gradient(260px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.045),transparent 52%);
-    transition:background .18s ease;
+  body[data-flux-cursor="on"]::after,
+  body[data-flux-cursor="off"]::after{
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
   }
 }
 
@@ -393,8 +395,10 @@ h3{letter-spacing:-.012em}
 [data-theme="light"] .flux-skel{background:rgba(0,0,0,.04)}
 [data-theme="light"] .flux-skel::after{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.05) 50%,transparent 100%)}
 [data-theme="light"] .flux-yh-cell{background:rgba(0,0,0,.04)}
-[data-theme="light"] body[data-flux-cursor="on"]::after{
-  background:radial-gradient(260px circle at var(--flux-cursor-x) var(--flux-cursor-y),rgba(var(--accent-rgb),.06),transparent 52%);
+[data-theme="light"] body[data-flux-cursor="on"]::after,
+[data-theme="light"] body[data-flux-cursor="off"]::after{
+  display:none!important;
+  visibility:hidden!important;
 }
 [data-theme="light"] #fluxFocusBar{background:rgba(255,255,255,.92);border-color:rgba(var(--accent-rgb),.3)}
 

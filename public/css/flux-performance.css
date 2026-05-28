@@ -40,6 +40,23 @@ html[data-flux-perf="on"] body[data-flux-cursor="on"]::after{
   visibility:hidden!important;
 }
 
+/* Cursor-follow glow removed site-wide (spotlight, ambient, halo, login) */
+body[data-flux-cursor="on"]::after,
+#fluxCursorAmbient,
+#cursorSpotlight,
+.flux-cursor-halo,
+.login-cursor-glow,
+#loginCursorGlow {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.ref-card::before {
+  display: none !important;
+  opacity: 0 !important;
+}
+
 /* Pause decorative infinite loops (GPU-heavy filter / transform layers) */
 html.flux-reduce-motion .flux-dash-card-inner::after,
 html.flux-reduce-motion .flux-mega-card::after,

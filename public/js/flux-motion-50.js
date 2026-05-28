@@ -295,30 +295,11 @@ function initConfetti() {
 /* ───────── 13. Cursor halo follower (full tier only, desktop only) ───────── */
 
 function initCursorHalo() {
-  if (!isFullTier() || isCoarsePointer() || !motionAllowed()) return;
-  const halo = document.createElement('div');
-  halo.className = 'flux-cursor-halo';
-  halo.setAttribute('aria-hidden', 'true');
-  halo.style.cssText =
-    'position:fixed;top:0;left:0;width:280px;height:280px;border-radius:50%;pointer-events:none;z-index:9998;background:radial-gradient(circle,rgba(var(--accent-rgb),0.10),transparent 65%);transform:translate(-50%,-50%) translate3d(-9999px,-9999px,0);transition:opacity 320ms ease;opacity:0;will-change:transform;';
-  document.body.appendChild(halo);
-  let raf = null;
-  let x = 0,
-    y = 0;
-  document.addEventListener('pointermove', (e) => {
-    x = e.clientX;
-    y = e.clientY;
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = null;
-      halo.style.transform = `translate(-50%,-50%) translate3d(${x}px, ${y}px, 0)`;
-    });
-  }, { passive: true });
-  document.addEventListener('pointerenter', () => (halo.style.opacity = '1'), { once: true });
-  document.addEventListener('mouseout', (e) => {
-    if (!e.relatedTarget) halo.style.opacity = '0';
+  document.querySelectorAll('.flux-cursor-halo').forEach((el) => {
+    try {
+      el.remove();
+    } catch (_) {}
   });
-  document.addEventListener('mouseover', () => (halo.style.opacity = '1'));
 }
 
 /* ───────── 15. Icon spin on hover (sidebar/topbar icons) ───────── */
@@ -814,12 +795,10 @@ function boot() {
   if (window.FluxPulsePerf?.subscribe) {
     window.FluxPulsePerf.subscribe(() => {
       if (!isFullTier()) {
-        // Downgrade: remove cursor halo + starfield
         document.documentElement.classList.remove('flux-mo-starfield');
-        document.querySelector('.flux-cursor-halo')?.remove();
+        initCursorHalo();
       } else {
-        // Upgrade to full: re-mount heavies
-        if (!document.querySelector('.flux-cursor-halo')) initCursorHalo();
+        initCursorHalo();
         if (!document.documentElement.classList.contains('flux-mo-starfield')) initStarField();
       }
     });

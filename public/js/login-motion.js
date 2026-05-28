@@ -87,24 +87,6 @@
   window.stopLoginAmbient=stop;
 })();
 
-/* Login screen — whisper-soft cursor glow (CSS vars on #loginScreen) */
-(function(){
-  let raf=null;
-  function onMove(e){
-    const ls=document.getElementById('loginScreen');
-    if(!ls||ls.style.display==='none'||!ls.classList.contains('visible'))return;
-    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    if(raf)return;
-    raf=requestAnimationFrame(function(){
-      raf=null;
-      const w=Math.max(1,window.innerWidth),h=Math.max(1,window.innerHeight);
-      ls.style.setProperty('--login-cursor-x',(e.clientX/w*100)+'%');
-      ls.style.setProperty('--login-cursor-y',(e.clientY/h*100)+'%');
-    });
-  }
-  document.addEventListener('mousemove',onMove,{passive:true});
-})();
-
 /* Login — magnetic button hover (buttons subtly follow the cursor) */
 (function(){
   if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;

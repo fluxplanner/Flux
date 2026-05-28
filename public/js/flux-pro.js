@@ -43,10 +43,23 @@ function whenReady(fn){
 // Cursor spotlight (subtle radial follow)
 // ────────────────────────────────────────────────────────────────
 function isCursorSpotlightStoredOn(){
-  const stored = proLoad('flux_cursor_spotlight', null);
-  return stored === null ? true : (stored === true || stored === '1' || stored === 1);
+  return false;
+}
+function purgeCursorGlowNodes(){
+  document.body.dataset.fluxCursor = 'off';
+  ['fluxCursorAmbient', 'cursorSpotlight', 'loginCursorGlow'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = 'none';
+    el.style.opacity = '0';
+    try { el.remove(); } catch (_) {}
+  });
+  document.querySelectorAll('.flux-cursor-halo').forEach((el) => {
+    try { el.remove(); } catch (_) {}
+  });
 }
 function applyCursorSpotlightState(on){
+  on = false;
   const noHover = window.matchMedia('(hover: none)').matches;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tooSmall = window.innerWidth < 769;
@@ -71,20 +84,9 @@ function applyCursorSpotlightState(on){
   }catch(_){}
 }
 function initCursorSpotlight(){
-  applyCursorSpotlightState(isCursorSpotlightStoredOn());
-  const noHover = window.matchMedia('(hover: none)').matches;
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(noHover || reducedMotion) return;
-  let raf = null;
-  document.addEventListener('mousemove', e=>{
-    if(document.body.dataset.fluxCursor === 'off') return;
-    if(raf) return;
-    raf = requestAnimationFrame(()=>{
-      document.documentElement.style.setProperty('--flux-cursor-x', e.clientX+'px');
-      document.documentElement.style.setProperty('--flux-cursor-y', e.clientY+'px');
-      raf = null;
-    });
-  }, {passive:true});
+  try { proSave('flux_cursor_spotlight', false); } catch (_) {}
+  purgeCursorGlowNodes();
+  applyCursorSpotlightState(false);
 }
 const _fluxCursorAmbientEnsure = window.FluxCursorSpotlight && window.FluxCursorSpotlight.ensure;
 window.FluxCursorSpotlight = {
@@ -1036,22 +1038,10 @@ function setToggle(el, on){
   el.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
 function wireSettingsToggles(){
-  // Cursor spotlight
   const sel1 = document.getElementById('fluxCursorSpotlightToggle');
-  if(sel1 && !sel1.__wired){
-    sel1.__wired = true;
-    const stored = proLoad('flux_cursor_spotlight', null);
-    const on = stored === null ? true : (stored === true || stored === '1' || stored === 1);
-    setToggle(sel1, on);
-    sel1.addEventListener('click', ()=>{
-      const cur = proLoad('flux_cursor_spotlight', null);
-      const wasOn = cur === null ? true : (cur === true || cur === '1' || cur === 1);
-      const next = !wasOn;
-      proSave('flux_cursor_spotlight', next);
-      applyCursorSpotlightState(next);
-      setToggle(sel1, next);
-      _toast('Cursor spotlight ' + (next ? 'on' : 'off'));
-    });
+  if (sel1) {
+    const row = sel1.closest('.srow');
+    if (row) row.hidden = true;
   }
   // Mesh background
   const sel2 = document.getElementById('fluxMeshBgToggle');

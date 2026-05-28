@@ -132,12 +132,12 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
 .login-glow-2{width:460px;height:460px;bottom:-150px;right:-110px;background:rgba(var(--purple-rgb),.09);animation-duration:24s;animation-delay:-8s}
 .login-glow-3{width:360px;height:360px;top:40%;left:55%;background:rgba(var(--green-rgb),.05);animation-duration:22s;animation-delay:-5s}
 
-.login-cursor-glow{
-  position:fixed;inset:0;pointer-events:none;z-index:1;
-  opacity:.04;
-  mix-blend-mode:soft-light;
-  background:radial-gradient(ellipse 78% 62% at var(--login-cursor-x,50%) var(--login-cursor-y,42%),
-    rgba(var(--accent-rgb),.6) 0%,rgba(var(--purple-rgb),.18) 42%,transparent 70%);
+.login-cursor-glow,
+#loginCursorGlow{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
 }
 .login-particles{
   position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.7;

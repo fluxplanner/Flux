@@ -273,7 +273,6 @@
 <!-- ══ LOGIN SCREEN ══ -->
 <div id="loginScreen" style="display:none">
   <canvas id="loginParticles" class="login-particles" aria-hidden="true"></canvas>
-  <div id="loginCursorGlow" class="login-cursor-glow" aria-hidden="true"></div>
   <div class="login-bg" aria-hidden="true"></div>
   <div class="login-bg-aurora" aria-hidden="true">
     <div class="aurora-blob aurora-blob-1"></div>
@@ -2148,12 +2147,12 @@
             </div>
             <button type="button" class="toggle on" id="fluxPerfSnappyToggle" aria-label="Snappy mode" aria-pressed="true"></button>
           </div>
-          <div class="srow" style="border:none;padding-top:0">
+          <div class="srow" style="border:none;padding-top:0;display:none" hidden aria-hidden="true">
             <div>
               <div class="slabel">Cursor spotlight</div>
-              <div class="ssub">A subtle radial glow follows your cursor on desktop. Adds depth without distraction.</div>
+              <div class="ssub">Removed — cursor-follow glow is off site-wide.</div>
             </div>
-            <button type="button" class="toggle" id="fluxCursorSpotlightToggle" aria-label="Cursor spotlight" aria-pressed="true"></button>
+            <button type="button" class="toggle" id="fluxCursorSpotlightToggle" aria-label="Cursor spotlight" aria-pressed="false" hidden></button>
           </div>
           <div class="srow" style="border:none;padding-top:0">
             <div>

@@ -76,56 +76,10 @@
   }
 
   function initCursorSpotlight() {
-    if (prefersReduced()) return;
-    try {
-      const k = 'flux_cursor_spotlight';
-      const nkk = typeof window.fluxNamespacedKey === 'function' ? window.fluxNamespacedKey(k) : k;
-      const raw = localStorage.getItem(nkk);
-      if (raw != null && raw !== '') {
-        let off = false;
-        try {
-          const v = JSON.parse(raw);
-          off = v === false || v === 0;
-        } catch (_) {
-          off = raw === '0';
-        }
-        if (off) return;
-      }
-    } catch (_) {}
-    if (window.innerWidth < 900) return;
-    if (document.body.dataset.fluxCursor === 'off') return;
-    try {
-      if (document.documentElement.getAttribute('data-flux-perf') === 'on') return;
-    } catch (_) {}
-    if (document.documentElement.getAttribute('data-flux-glass') !== 'off') return;
-    const spotlight = document.createElement('div');
-    spotlight.id = 'cursorSpotlight';
-    spotlight.style.cssText = `position:fixed;pointer-events:none;z-index:1;width:260px;height:260px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(var(--accent-rgb),0.04) 0%,transparent 68%);transition:opacity 0.3s;opacity:0`;
-    document.body.appendChild(spotlight);
-    let raf = 0;
-    let lastX = -999;
-    let lastY = -999;
-    document.addEventListener(
-      'mousemove',
-      (e) => {
-        const dx = Math.abs(e.clientX - lastX);
-        const dy = Math.abs(e.clientY - lastY);
-        if (dx < 18 && dy < 18) return;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        if (raf) return;
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          spotlight.style.left = e.clientX + 'px';
-          spotlight.style.top = e.clientY + 'px';
-          spotlight.style.opacity = '1';
-        });
-      },
-      { passive: true }
-    );
-    document.addEventListener('mouseleave', () => {
-      spotlight.style.opacity = '0';
-    });
+    document.getElementById('cursorSpotlight')?.remove();
+    document.getElementById('fluxCursorAmbient')?.remove();
+    document.querySelectorAll('.flux-cursor-halo').forEach((el) => el.remove());
+    document.body.dataset.fluxCursor = 'off';
   }
 
   function initRippleEffect() {
@@ -208,19 +162,7 @@
     });
   }
 
-  function initCardSpotlight() {
-    document.querySelectorAll('.ref-card, .st-section').forEach((card) => {
-      card.addEventListener(
-        'mousemove',
-        (e) => {
-          const rect = card.getBoundingClientRect();
-          card.style.setProperty('--spotlight-x', e.clientX - rect.left + 'px');
-          card.style.setProperty('--spotlight-y', e.clientY - rect.top + 'px');
-        },
-        { passive: true }
-      );
-    });
-  }
+  function initCardSpotlight() {}
 
   function revealText(el) {
     if (!el || prefersReduced()) return;
