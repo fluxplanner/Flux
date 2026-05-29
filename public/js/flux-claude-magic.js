@@ -482,6 +482,100 @@
     });
   }
 
+  /* ── Command palette (Cmd+K / Ctrl+K) ──────────────────────────── */
+  var _paletteOpen = false;
+  function openCommandPalette() {
+    if (_paletteOpen || document.getElementById('fluxCmdPalette')) return;
+    _paletteOpen = true;
+    var commands = [
+      { icon: '📋', label: 'Tasks', key: 'tasks' },
+      { icon: '📅', label: 'Calendar', key: 'calendar' },
+      { icon: '📝', label: 'Notes', key: 'notes' },
+      { icon: '📊', label: 'GPA Tracker', key: 'gpa' },
+      { icon: '🏫', label: 'School Info', key: 'school' },
+      { icon: '⚙️', label: 'Settings', key: 'settings' },
+      { icon: '🤖', label: 'AI Tutor', key: 'ai' },
+      { icon: '📸', label: 'Vision Import', key: 'vision' },
+      { icon: '🔗', label: 'Canvas & Gmail', key: 'canvas' },
+      { icon: '⏱️', label: 'Focus Timer', key: 'timer' },
+      { icon: '🧮', label: 'Calculator', key: 'calc' },
+      { icon: '😊', label: 'Mood Check-in', key: 'mood' },
+    ];
+    try {
+      if (typeof FluxRole !== 'undefined' && FluxRole.current === 'teacher')
+        commands.unshift({ icon: '📚', label: 'Lesson Hub', key: 'lessonHub' });
+      if (typeof FluxRole !== 'undefined' && FluxRole.current === 'counselor')
+        commands.unshift({ icon: '💬', label: 'Meetings', key: 'counselorMeetings' });
+      if (typeof FluxRole !== 'undefined' && FluxRole.current === 'admin')
+        commands.unshift({ icon: '🏢', label: 'Admin Ops', key: 'adminOps' });
+      if (typeof FluxRole !== 'undefined' && FluxRole.current === 'staff')
+        commands.unshift({ icon: '🔧', label: 'Workboard', key: 'staffWorkboard' });
+    } catch (_) {}
+
+    var overlay = document.createElement('div');
+    overlay.id = 'fluxCmdPalette';
+    overlay.className = 'flux-cmd-overlay';
+    overlay.innerHTML =
+      '<div class="flux-cmd-card">' +
+        '<div class="flux-cmd-search-wrap">' +
+          '<span class="flux-cmd-search-icon">⌘</span>' +
+          '<input class="flux-cmd-search" id="fluxCmdSearch" placeholder="Type a command…" autocomplete="off">' +
+          '<kbd class="flux-cmd-esc">ESC</kbd>' +
+        '</div>' +
+        '<div class="flux-cmd-list" id="fluxCmdList"></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    var allFiltered = commands;
+    function renderList(q) {
+      var list = document.getElementById('fluxCmdList');
+      if (!list) return;
+      var query = (q || '').toLowerCase();
+      allFiltered = commands.filter(function (c) { return !query || c.label.toLowerCase().includes(query); });
+      list.innerHTML = allFiltered.length
+        ? allFiltered.map(function (c, i) {
+            return '<button class="flux-cmd-item' + (i === 0 ? ' flux-cmd-active' : '') + '" data-idx="' + i + '">' +
+              '<span class="flux-cmd-icon">' + c.icon + '</span>' +
+              '<span class="flux-cmd-label">' + c.label + '</span>' +
+            '</button>';
+          }).join('')
+        : '<div class="flux-cmd-empty">No matching commands</div>';
+      list.querySelectorAll('.flux-cmd-item').forEach(function (btn) {
+        var idx = parseInt(btn.dataset.idx, 10);
+        btn.addEventListener('click', function () { close(); if (typeof nav === 'function') nav(allFiltered[idx].key); });
+        btn.addEventListener('mouseenter', function () {
+          list.querySelectorAll('.flux-cmd-item').forEach(function (b) { b.classList.remove('flux-cmd-active'); });
+          btn.classList.add('flux-cmd-active');
+        });
+      });
+    }
+
+    function close() { overlay.remove(); _paletteOpen = false; }
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    var searchEl = document.getElementById('fluxCmdSearch');
+    searchEl.addEventListener('input', function () { renderList(searchEl.value); });
+    searchEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { close(); return; }
+      var list = document.getElementById('fluxCmdList');
+      var items = list ? list.querySelectorAll('.flux-cmd-item') : [];
+      var active = list ? list.querySelector('.flux-cmd-active') : null;
+      var idx = active ? Array.prototype.indexOf.call(items, active) : -1;
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (items[idx + 1]) { if (active) active.classList.remove('flux-cmd-active'); items[idx + 1].classList.add('flux-cmd-active'); } }
+      if (e.key === 'ArrowUp') { e.preventDefault(); if (items[idx - 1]) { if (active) active.classList.remove('flux-cmd-active'); items[idx - 1].classList.add('flux-cmd-active'); } }
+      if (e.key === 'Enter') { e.preventDefault(); if (active) active.click(); }
+    });
+    renderList('');
+    requestAnimationFrame(function () { overlay.classList.add('flux-cmd-visible'); searchEl.focus(); });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      if (_paletteOpen) { var el = document.getElementById('fluxCmdPalette'); if (el) el.remove(); _paletteOpen = false; }
+      else openCommandPalette();
+    }
+  });
+
   /* ── Smooth panel transitions ───────────────────────────────────── */
   function hookPanelTransitions() {
     if (!motionOk()) return;
@@ -509,6 +603,18 @@
     };
   }
 
+  /* ── Keyboard shortcut hint badge ───────────────────────────────── */
+  function addCmdKHint() {
+    var nav = document.querySelector('.nav-bar,.bottom-nav,.sidebar-nav');
+    if (!nav || document.getElementById('fluxCmdKHint')) return;
+    var hint = document.createElement('button');
+    hint.id = 'fluxCmdKHint';
+    hint.className = 'flux-cmdk-hint';
+    hint.innerHTML = '<kbd>⌘K</kbd> Quick nav';
+    hint.addEventListener('click', openCommandPalette);
+    nav.appendChild(hint);
+  }
+
   /* ── Public API ───────────────────────────────────────────────── */
   window.FluxMagic = {
     counter: animateCounter,
@@ -521,7 +627,9 @@
     motionOk: motionOk,
     prompt: fluxPrompt,
     form: fluxForm,
+    commandPalette: openCommandPalette,
   };
 
   hookPanelTransitions();
+  setTimeout(addCmdKHint, 800);
 })();

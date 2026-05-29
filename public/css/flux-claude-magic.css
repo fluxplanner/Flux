@@ -1031,6 +1031,112 @@ select.flux-prompt-input {
 }
 .flux-prompt-ok:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Command palette (Cmd+K)
+   ═══════════════════════════════════════════════════════════════════ */
+.flux-cmd-overlay {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 12vh 20px 20px;
+  opacity: 0; transition: opacity .15s ease;
+}
+.flux-cmd-visible { opacity: 1; }
+.flux-cmd-visible .flux-cmd-card {
+  transform: translateY(0) scale(1); opacity: 1;
+}
+.flux-cmd-card {
+  background: var(--card, #151a2a);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  width: 100%; max-width: 520px;
+  box-shadow: 0 32px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(var(--accent-rgb),.08), 0 0 80px rgba(var(--accent-rgb),.04);
+  overflow: hidden;
+  transform: translateY(-8px) scale(.98); opacity: 0;
+  transition: all .2s cubic-bezier(.22,1,.36,1);
+}
+.flux-cmd-search-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.flux-cmd-search-icon {
+  font-size: .85rem; color: var(--muted2);
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(var(--accent-rgb),.1);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-weight: 700;
+}
+.flux-cmd-search {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-size: .95rem; font-weight: 600;
+  font-family: var(--font-ui, inherit);
+}
+.flux-cmd-search::placeholder { color: var(--muted2); font-weight: 500; }
+.flux-cmd-esc {
+  font-size: .6rem; padding: 3px 7px; border-radius: 5px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  color: var(--muted2); font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+}
+.flux-cmd-list {
+  max-height: 340px; overflow-y: auto;
+  padding: 6px;
+}
+.flux-cmd-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 11px 14px; border-radius: 12px;
+  background: none; border: none;
+  color: var(--text); font-size: .88rem; font-weight: 600;
+  cursor: pointer; font-family: var(--font-ui, inherit);
+  text-align: left; transition: background .1s;
+}
+.flux-cmd-item:hover, .flux-cmd-active {
+  background: rgba(var(--accent-rgb),.08);
+}
+.flux-cmd-active {
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb),.15);
+}
+.flux-cmd-icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: rgba(255,255,255,.05);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .95rem; flex-shrink: 0;
+}
+.flux-cmd-active .flux-cmd-icon {
+  background: rgba(var(--accent-rgb),.12);
+}
+.flux-cmd-label { flex: 1; }
+.flux-cmd-empty {
+  padding: 24px; text-align: center;
+  color: var(--muted2); font-size: .85rem;
+}
+
+/* Cmd+K hint badge */
+.flux-cmdk-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  background: rgba(var(--accent-rgb),.06);
+  border: 1px solid rgba(var(--accent-rgb),.15);
+  color: var(--muted2); font-size: .65rem; font-weight: 600;
+  cursor: pointer; font-family: var(--font-ui, inherit);
+  transition: all .2s ease;
+  margin: 8px auto; white-space: nowrap;
+}
+.flux-cmdk-hint:hover {
+  background: rgba(var(--accent-rgb),.12);
+  color: var(--accent);
+}
+.flux-cmdk-hint kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .6rem; font-weight: 800;
+  padding: 2px 5px; border-radius: 4px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--accent);
+}
+
 /* ── Reduced motion safety ── */
 @media (prefers-reduced-motion: reduce) {
   .flux-particle, .flux-celebrate-ring { display: none !important; }
@@ -1045,6 +1151,6 @@ select.flux-prompt-input {
   .login-gradient-text { animation: none !important; }
   .login-google-btn--compact { animation: none !important; }
   .login-topbar-mark { animation: none !important; }
-  .flux-prompt-card { transition: none !important; transform: none !important; opacity: 1 !important; }
+  .flux-prompt-card, .flux-cmd-card { transition: none !important; transform: none !important; opacity: 1 !important; }
   [class*="flux-"] { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
