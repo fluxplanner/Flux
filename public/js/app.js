@@ -2261,11 +2261,14 @@ function applyRoleUI(){
     '#teacherClassPanel',
   ];
 
+  // Use !important so mobile-only `.bnav-item{display:inline-flex !important}`
+  // in flux-mobile-app.css can't keep a hidden tab taking up grid space
+  // (the original `display:none` lost the specificity battle and left a 69px gap).
   const setMany=(selectors,visible)=>{
     selectors.forEach(s=>{
       document.querySelectorAll(s).forEach(el=>{
-        if(visible){el.style.display='';el.style.visibility='';}
-        else{el.style.display='none';el.style.visibility='hidden';}
+        if(visible){el.style.removeProperty('display');el.style.removeProperty('visibility');}
+        else{el.style.setProperty('display','none','important');el.style.setProperty('visibility','hidden','important');}
       });
     });
   };
@@ -2274,8 +2277,8 @@ function applyRoleUI(){
     document.querySelectorAll('[data-role-tab]').forEach(el=>{
       const want=el.dataset.roleTab;
       const show=visibleRole&&(want===visibleRole||(visibleRole==='admin'&&want==='admin'));
-      if(show){el.style.display='';el.style.visibility='';}
-      else{el.style.display='none';el.style.visibility='hidden';}
+      if(show){el.style.removeProperty('display');el.style.removeProperty('visibility');}
+      else{el.style.setProperty('display','none','important');el.style.setProperty('visibility','hidden','important');}
     });
     document.querySelectorAll('[data-role-group="staff"]').forEach(el=>{
       el.classList.toggle('flux-nav-group-hidden', !visibleRole);
@@ -10579,9 +10582,13 @@ function showLoginOrApp(){
   const onboarded=load('flux_onboarded',false);
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
   const wasGuest=load('flux_was_guest',false);
-  if(wasGuest&&(onboarded||hasData)){
-    showApp();
-    if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
+  if(wasGuest){
+    if(!onboarded&&!hasData){
+      showOnboarding();
+    }else{
+      showApp();
+      if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
+    }
     setSyncStatus('offline');
   }else{
     showLoginScreen();
@@ -10685,6 +10692,23 @@ function showApp(){
   stopLoginDemoRotator();
   if(ls){ls.style.display='none';ls.classList.remove('visible');}
   if(app)app.classList.add('visible');
+  // Hydrate FluxRole for guests / pre-auth entries so applyRoleUI() picks the
+  // right nav chrome. Without this, FluxRole.current stays null for guest mode
+  // and student-only nav tabs (Study, Mood, Goals, Timer, Canvas, Notes) get
+  // hidden — leaving an empty 69px gap on the mobile bottom nav.
+  try{
+    if(typeof FluxRole!=='undefined'&&FluxRole&&!FluxRole.current){
+      let cachedRole=null;
+      try{
+        const raw=localStorage.getItem(fluxNamespacedKey?.('flux_user_profile')||'flux_user_profile');
+        if(raw){const p=JSON.parse(raw);if(p&&p.role)cachedRole=String(p.role);}
+      }catch(_){}
+      FluxRole.current=cachedRole||'student';
+      if(!FluxRole.isEducator?.())FluxRole.mode='personal';
+      window._userRole=FluxRole.current;
+    }
+  }catch(_){}
+  try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   renderSidebars();
   populateSubjectSelects();
   initModFeatures();
@@ -10698,6 +10722,15 @@ function showApp(){
   if(typeof initConnectivityAndNotifications==='function')initConnectivityAndNotifications();
   if(typeof handleDeepLinkParams==='function')handleDeepLinkParams();
   updateNavAriaCurrent('dashboard');
+  // Mark Home active on first paint so the bottom nav doesn't render with zero
+  // tabs highlighted. nav() syncs this on subsequent clicks; showApp() is the
+  // first-render path and was previously skipping it.
+  try{
+    document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
+    const homeBnav=document.querySelector('.bnav-item[data-tab="dashboard"]');
+    if(homeBnav)homeBnav.classList.add('active');
+    document.querySelectorAll('.nav-item[data-tab="dashboard"]').forEach(n=>n.classList.add('active'));
+  }catch(_){}
   // Update user card now that #app is visible
   if(currentUser){
     _updateUserUI(currentUser, currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'');

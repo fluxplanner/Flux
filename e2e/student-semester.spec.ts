@@ -22,7 +22,7 @@ test.describe('Student semester path', () => {
     const row = page.locator('#taskList .task-item').filter({ hasText: 'E2E Algebra homework' });
     await expect(row).toBeVisible();
     await row.locator('.check').first().click({ force: true });
-    await page.locator('#filterChips button', { hasText: 'All' }).click();
+    await page.locator('#filterChips button', { hasText: 'All' }).click({ force: true });
     const doneRow = page.locator('#taskList .task-item').filter({ hasText: 'E2E Algebra homework' });
     await expect(doneRow.locator('.check')).toHaveClass(/done/, { timeout: 10_000 });
   });

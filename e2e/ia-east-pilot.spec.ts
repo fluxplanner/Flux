@@ -18,7 +18,9 @@ test.describe('IA East pilot (harness)', () => {
       timeout: 15_000,
     });
     await expect(page.locator('body')).not.toContainText(/record not found/i);
-    const grid = page.locator('#fluxWidgetGrid_counselorDashboard');
+    await page.locator('[data-tab="counselorWorkspace"]').first().click();
+    await expect(page.locator('#counselorWorkspace.panel.active')).toBeVisible();
+    const grid = page.locator('#counselorWorkspaceBody .flux-widget-grid').first();
     await expect(grid).toBeVisible({ timeout: 15_000 });
   });
 });
