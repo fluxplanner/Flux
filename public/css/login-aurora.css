@@ -1,0 +1,422 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * FLUX PLANNER · login-aurora.css
+ * Full login redesign — "alive" dark-aurora auth experience.
+ * Loaded AFTER login.css so it wins the cascade for the new markup.
+ *
+ * Brand: lemniscate mark, cyan #00C2FF → blue #4DA8FF → purple #7C5CFF.
+ * JS contract preserved by markup (do not rename in HTML):
+ *   #loginScreen(.visible) · #loginParticles · #loginDemoLineLeft/Card
+ *   .login-scroll-section(--visible) · .login-scroll-hero
+ *   #loginFeatures · .login-feature-card[data-color] · .login-feature-icon
+ *   #loginEmailBtn > .login-email-btn-label · #loginAuthError(.show)
+ *   #loginAuthTitle · #loginAuthSub · #loginToggleText · #loginToggleAction
+ *   #loginNameRow · #loginEmail · #loginPassword · #loginDisplayName
+ *   .feat-pills > #featPills · #featPillsLoginCard
+ * Everything is reduced-motion + data-flux-perf safe.
+ * ────────────────────────────────────────────────────────────────────────*/
+
+#loginScreen{
+  --lx-cyan:#00C2FF;
+  --lx-blue:#4DA8FF;
+  --lx-purple:#7C5CFF;
+  --lx-ink:#070b14;
+  --lx-glass:rgba(17,23,38,.55);
+  --lx-glass-2:rgba(22,29,48,.66);
+  --lx-stroke:rgba(255,255,255,.09);
+  --lx-stroke-2:rgba(255,255,255,.14);
+  --lx-text:var(--text,#eaf1ff);
+  --lx-muted:var(--muted2,#9fb0cc);
+  --lx-faint:var(--muted,#6b7a96);
+  --lx-grad:linear-gradient(120deg,#9ee3ff 0%,#00C2FF 34%,#7C5CFF 74%,#c694ff 100%);
+  --lx-radius:24px;
+
+  position:fixed;inset:0;z-index:var(--flux-z-login,9000);
+  display:none;overflow-y:auto;overflow-x:hidden;max-width:100vw;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+  color:var(--lx-text);
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(120% 80% at 50% -10%,rgba(0,194,255,.14),transparent 55%),
+    radial-gradient(90% 70% at 100% 8%,rgba(124,92,255,.13),transparent 55%),
+    radial-gradient(80% 60% at 0% 100%,rgba(0,194,255,.07),transparent 60%),
+    linear-gradient(170deg,#0a0f1c 0%,#070b14 52%,#05070f 100%);
+}
+#loginScreen.visible{display:block}
+#loginScreen *{box-sizing:border-box}
+
+/* ══ Ambient background layers ══════════════════════════════════════════ */
+#loginScreen .lx-particles{
+  position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.9;
+}
+#loginScreen .lx-bg,#loginScreen .lx-aurora,#loginScreen .lx-grid,
+#loginScreen .lx-vignette,#loginScreen .lx-lemni{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+}
+#loginScreen .lx-aurora{overflow:hidden;filter:blur(60px) saturate(135%);opacity:.85}
+#loginScreen .lx-blob{position:absolute;border-radius:50%;mix-blend-mode:screen;will-change:transform}
+#loginScreen .lx-blob-1{width:46vw;height:46vw;left:-8vw;top:-10vh;
+  background:radial-gradient(circle at 30% 30%,rgba(0,194,255,.55),transparent 68%);
+  animation:lxBlob1 26s ease-in-out infinite alternate}
+#loginScreen .lx-blob-2{width:42vw;height:42vw;right:-6vw;top:2vh;
+  background:radial-gradient(circle at 60% 40%,rgba(124,92,255,.5),transparent 68%);
+  animation:lxBlob2 31s ease-in-out infinite alternate}
+#loginScreen .lx-blob-3{width:38vw;height:38vw;left:24vw;bottom:-18vh;
+  background:radial-gradient(circle at 50% 50%,rgba(77,168,255,.42),transparent 70%);
+  animation:lxBlob3 36s ease-in-out infinite alternate}
+@keyframes lxBlob1{0%{transform:translate(0,0) scale(1)}100%{transform:translate(6vw,5vh) scale(1.12)}}
+@keyframes lxBlob2{0%{transform:translate(0,0) scale(1.05)}100%{transform:translate(-5vw,6vh) scale(.92)}}
+@keyframes lxBlob3{0%{transform:translate(0,0) scale(.95)}100%{transform:translate(4vw,-6vh) scale(1.1)}}
+
+#loginScreen .lx-grid{
+  z-index:0;opacity:.5;
+  background-image:
+    linear-gradient(rgba(120,170,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(120,170,255,.05) 1px,transparent 1px);
+  background-size:54px 54px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,transparent 72%);
+          mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,transparent 72%);
+}
+#loginScreen .lx-vignette{
+  z-index:2;
+  background:radial-gradient(140% 110% at 50% 30%,transparent 55%,rgba(3,5,11,.5) 100%);
+}
+
+/* Oversized brand lemniscate ghosted behind the hero */
+#loginScreen .lx-lemni{
+  z-index:0;display:flex;align-items:flex-start;justify-content:center;
+  opacity:.5;
+}
+#loginScreen .lx-lemni svg{
+  width:min(1180px,150vw);height:auto;margin-top:4vh;
+  filter:drop-shadow(0 0 50px rgba(0,194,255,.22));
+}
+#loginScreen .lx-lemni .lx-lemni-path{
+  stroke-dasharray:1900;stroke-dashoffset:1900;
+  animation:lxDraw 2.8s cubic-bezier(.22,1,.36,1) .15s forwards,lxBreathe 9s ease-in-out 3s infinite;
+}
+@keyframes lxDraw{to{stroke-dashoffset:0}}
+@keyframes lxBreathe{0%,100%{opacity:.85}50%{opacity:.45}}
+
+/* ══ Top bar ════════════════════════════════════════════════════════════ */
+#loginScreen .lx-topbar{
+  position:sticky;top:0;z-index:30;
+  backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  background:linear-gradient(180deg,rgba(8,12,22,.96),rgba(8,12,22,.86));
+  border-bottom:1px solid rgba(255,255,255,.07);
+  box-shadow:0 1px 0 rgba(255,255,255,.03),0 12px 30px -18px rgba(0,0,0,.7);
+  padding:max(12px,env(safe-area-inset-top)) clamp(16px,4vw,40px) 12px;
+}
+/* When backdrop-filter is unsupported, fall back to a fully opaque bar */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  #loginScreen .lx-topbar{background:linear-gradient(180deg,#0a0e1a,#080b16)}
+}
+#loginScreen .lx-topbar-inner{
+  max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+#loginScreen .lx-brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:inherit}
+#loginScreen .lx-brand-mark{width:34px;height:34px;display:block;flex-shrink:0}
+#loginScreen .lx-brand-text{display:flex;flex-direction:column;line-height:1}
+#loginScreen .lx-brand-name{font-size:1.18rem;font-weight:800;letter-spacing:-.02em;
+  background:var(--lx-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#loginScreen .lx-brand-tag{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.56rem;
+  letter-spacing:.22em;color:var(--lx-faint);text-transform:uppercase;margin-top:3px}
+#loginScreen .lx-topbar-actions{display:flex;align-items:center;gap:10px}
+#loginScreen .lx-navlink{color:var(--lx-muted);text-decoration:none;font-size:.86rem;font-weight:600;
+  padding:8px 12px;border-radius:10px;transition:color .2s,background .2s}
+#loginScreen .lx-navlink:hover{color:#fff;background:rgba(255,255,255,.06)}
+#loginScreen .lx-ghost-btn{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:.84rem;font-weight:700;color:var(--lx-text);
+  padding:9px 16px;border-radius:12px;
+  border:1px solid var(--lx-stroke-2);background:rgba(255,255,255,.05);
+  transition:transform .18s,border-color .2s,background .2s,box-shadow .2s}
+#loginScreen .lx-ghost-btn:hover{transform:translateY(-1px);border-color:rgba(0,194,255,.5);
+  background:rgba(0,194,255,.1);box-shadow:0 6px 22px rgba(0,194,255,.16)}
+
+/* ══ Layout shell ═══════════════════════════════════════════════════════ */
+#loginScreen .lx-main{position:relative;z-index:10;
+  padding:0 clamp(16px,4vw,40px) calc(40px + env(safe-area-inset-bottom))}
+#loginScreen .lx-wrap{max-width:1240px;margin:0 auto}
+
+/* Scroll reveal (JS toggles .login-scroll-section--visible) */
+#loginScreen .login-scroll-section{opacity:0;transform:translateY(26px);
+  transition:opacity .7s ease,transform .7s cubic-bezier(.22,1,.36,1)}
+#loginScreen .login-scroll-section--visible{opacity:1;transform:none}
+
+/* ══ Hero ═══════════════════════════════════════════════════════════════ */
+#loginScreen .lx-hero{
+  display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:clamp(28px,4vw,64px);
+  align-items:center;min-height:calc(100vh - 78px);min-height:calc(100dvh - 78px);
+  padding:clamp(28px,5vh,72px) 0;max-width:1240px;margin:0 auto;
+}
+/* Grid children must be allowed to shrink below their min-content width,
+   otherwise the headline / demo blow the 1fr track out past the viewport. */
+#loginScreen .lx-hero > *{min-width:0}
+#loginScreen .lx-hero-copy{max-width:600px;min-width:0}
+#loginScreen .lx-badge{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:7px 14px 7px 11px;border-radius:999px;
+  background:rgba(255,255,255,.05);border:1px solid var(--lx-stroke-2);
+  font-size:.74rem;font-weight:700;letter-spacing:.01em;color:#d6e4ff;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+#loginScreen .lx-badge-dot{width:8px;height:8px;border-radius:50%;background:var(--lx-cyan);
+  box-shadow:0 0 0 4px rgba(0,194,255,.2),0 0 12px rgba(0,194,255,.9);
+  animation:lxDot 2.6s ease-in-out infinite}
+@keyframes lxDot{0%,100%{box-shadow:0 0 0 4px rgba(0,194,255,.18),0 0 10px rgba(0,194,255,.7)}
+  50%{box-shadow:0 0 0 6px rgba(0,194,255,.05),0 0 20px rgba(0,194,255,1)}}
+
+#loginScreen .lx-headline{
+  margin:18px 0 0;font-weight:800;letter-spacing:-.025em;line-height:1.04;
+  font-size:clamp(2.5rem,5.6vw,4.1rem);color:#f4f8ff;
+}
+#loginScreen .lx-headline .grad{
+  background:var(--lx-grad);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:lxGrad 9s ease infinite}
+@keyframes lxGrad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+#loginScreen .lx-sub{
+  margin:18px 0 0;font-size:clamp(1rem,1.5vw,1.16rem);line-height:1.62;color:var(--lx-muted);
+  max-width:34ch;
+}
+
+/* Live demo strip */
+#loginScreen .lx-demo{
+  margin-top:24px;padding:14px 16px;border-radius:16px;max-width:440px;
+  background:rgba(10,15,28,.6);border:1px solid var(--lx-stroke);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+#loginScreen .lx-demo-label{display:flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--lx-faint);margin-bottom:8px}
+#loginScreen .lx-demo-pulse{width:7px;height:7px;border-radius:50%;background:#34d399;
+  box-shadow:0 0 0 3px rgba(52,211,153,.18),0 0 9px rgba(52,211,153,.9);
+  animation:lxDot 2.2s ease-in-out infinite}
+#loginScreen .lx-demo-line{margin:0;font-size:.96rem;line-height:1.5;color:#dfeaff;min-height:1.5em}
+#loginScreen .lx-demo-line::after{content:'▍';color:var(--lx-cyan);margin-left:1px;
+  animation:lxCaret 1s steps(1) infinite}
+@keyframes lxCaret{50%{opacity:0}}
+
+/* Highlight chips */
+#loginScreen .lx-highlights{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+#loginScreen .lx-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 13px;border-radius:12px;font-size:.82rem;font-weight:600;color:#e4ecff;
+  background:rgba(255,255,255,.045);border:1px solid var(--lx-stroke);
+  transition:transform .2s,border-color .2s,background .2s}
+#loginScreen .lx-chip:hover{transform:translateY(-2px);border-color:rgba(0,194,255,.4);
+  background:rgba(0,194,255,.08)}
+#loginScreen .lx-chip svg{width:17px;height:17px;flex-shrink:0}
+
+/* Integrations strip */
+#loginScreen .lx-integrations{margin-top:26px}
+#loginScreen .lx-integrations-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--lx-faint);margin-bottom:11px}
+#loginScreen .lx-logos{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#loginScreen .lx-logo{
+  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(255,255,255,.05);border:1px solid var(--lx-stroke);
+  transition:transform .25s ease,border-color .2s,background .2s;
+}
+#loginScreen .lx-logo svg,#loginScreen .lx-logo img{width:22px;height:22px;display:block}
+#loginScreen .lx-logo:hover{transform:translateY(-3px) scale(1.04);
+  border-color:var(--lx-stroke-2);background:rgba(255,255,255,.09)}
+#loginScreen .lx-logo--soft{filter:saturate(0) brightness(1.6);opacity:.86}
+#loginScreen .lx-logo--soft:hover{filter:none;opacity:1}
+
+/* Scrolling feature pills (JS fills #featPills) */
+#loginScreen .feat-pills-wrap{margin-top:24px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+          mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+#loginScreen .feat-pills{display:flex;gap:9px;width:max-content;animation:lxMarquee 38s linear infinite}
+#loginScreen .feat-pills:hover{animation-play-state:paused}
+#loginScreen .feat-pill{flex:0 0 auto;padding:7px 12px;border-radius:999px;font-size:.74rem;
+  font-weight:700;border:1px solid;white-space:nowrap}
+@keyframes lxMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ══ Auth card ══════════════════════════════════════════════════════════ */
+#loginScreen .lx-auth{display:flex;justify-content:center;align-items:stretch;position:relative}
+#loginScreen .lx-auth-card{
+  position:relative;width:100%;max-width:440px;
+  padding:30px clamp(22px,3vw,32px);border-radius:var(--lx-radius);
+  background:linear-gradient(180deg,var(--lx-glass-2),var(--lx-glass));
+  border:1px solid var(--lx-stroke-2);
+  backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);
+  box-shadow:0 30px 80px -28px rgba(0,0,0,.75),0 2px 0 rgba(255,255,255,.06) inset,
+             0 0 0 1px rgba(0,194,255,.04);
+  animation:lxCardIn .7s cubic-bezier(.22,1,.36,1) .1s both;overflow:hidden;
+}
+@keyframes lxCardIn{from{opacity:0;transform:translateY(20px) scale(.985)}to{opacity:1;transform:none}}
+#loginScreen .lx-auth-card::before{ /* sheen */
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 50% -10%,rgba(0,194,255,.12),transparent 60%)}
+#loginScreen .lx-auth-head{display:flex;align-items:center;gap:13px;margin-bottom:22px;position:relative}
+#loginScreen .lx-auth-mark{width:46px;height:46px;flex-shrink:0;border-radius:14px;display:grid;place-items:center;
+  background:rgba(0,194,255,.08);border:1px solid rgba(0,194,255,.2)}
+#loginScreen .lx-auth-mark svg{width:30px;height:30px}
+#loginScreen .lx-auth-title{margin:0;font-size:1.32rem;font-weight:800;letter-spacing:-.01em;color:#f3f8ff}
+#loginScreen .lx-auth-sub{margin:3px 0 0;font-size:.84rem;color:var(--lx-muted)}
+
+#loginScreen .lx-google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:11px;cursor:pointer;
+  padding:13px 16px;border-radius:13px;font-size:.95rem;font-weight:700;
+  color:#1b2130;background:#fff;border:1px solid rgba(255,255,255,.6);
+  transition:transform .18s,box-shadow .2s,filter .2s;position:relative}
+#loginScreen .lx-google:hover{transform:translateY(-1px);
+  box-shadow:0 12px 30px -8px rgba(255,255,255,.32);filter:brightness(.99)}
+#loginScreen .lx-google:active{transform:translateY(0) scale(.99)}
+#loginScreen .lx-google svg{width:19px;height:19px}
+
+#loginScreen .lx-divider{display:flex;align-items:center;gap:12px;margin:18px 0;
+  color:var(--lx-faint);font-size:.72rem;letter-spacing:.04em}
+#loginScreen .lx-divider::before,#loginScreen .lx-divider::after{content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
+
+#loginScreen .lx-auth-error{display:none;margin:0 0 12px;padding:10px 13px;border-radius:11px;
+  font-size:.82rem;line-height:1.4;color:#ffd9d9;
+  background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.34)}
+#loginScreen .lx-auth-error.show{display:block;animation:lxShake .35s ease}
+@keyframes lxShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+#loginScreen .lx-field{display:block;margin-bottom:13px;
+  font-size:.74rem;font-weight:700;letter-spacing:.02em;color:var(--lx-muted)}
+#loginScreen .lx-field .lx-opt{color:var(--lx-faint);font-weight:500}
+#loginScreen .lx-field input{
+  width:100%;margin-top:7px;padding:13px 14px;border-radius:12px;
+  font-size:.95rem;color:#eef4ff;background:rgba(8,12,22,.7);
+  border:1px solid var(--lx-stroke-2);transition:border-color .2s,box-shadow .2s,background .2s;
+  font-family:inherit;-webkit-appearance:none;appearance:none}
+#loginScreen .lx-field input::placeholder{color:#5d6c88}
+#loginScreen .lx-field input:focus{outline:none;border-color:rgba(0,194,255,.6);
+  background:rgba(8,12,22,.9);box-shadow:0 0 0 4px rgba(0,194,255,.14)}
+
+#loginScreen .lx-submit{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;
+  margin-top:4px;padding:14px 18px;border-radius:13px;font-size:.96rem;font-weight:800;
+  color:#04121f;border:none;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,#37cdff,#00C2FF 42%,#7C5CFF 100%);
+  box-shadow:0 14px 34px -12px rgba(0,194,255,.65),0 2px 0 rgba(255,255,255,.25) inset;
+  transition:transform .18s,box-shadow .25s,filter .2s}
+#loginScreen .lx-submit:hover{transform:translateY(-1px);filter:saturate(1.08) brightness(1.04);
+  box-shadow:0 20px 44px -12px rgba(0,194,255,.75)}
+#loginScreen .lx-submit:active{transform:translateY(0) scale(.99)}
+#loginScreen .lx-submit:disabled{opacity:.65;cursor:wait}
+#loginScreen .lx-submit::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(105deg,transparent,rgba(255,255,255,.5),transparent);
+  transform:skewX(-18deg);animation:lxShine 4.5s ease-in-out 1.4s infinite}
+@keyframes lxShine{0%,72%{left:-60%}88%,100%{left:130%}}
+#loginScreen .lx-submit-arrow{font-weight:700;transition:transform .2s}
+#loginScreen .lx-submit:hover .lx-submit-arrow{transform:translateX(3px)}
+
+#loginScreen .lx-toggle{margin-top:15px;text-align:center;font-size:.84rem;color:var(--lx-muted)}
+#loginScreen .lx-toggle-btn{background:none;border:none;cursor:pointer;font:inherit;
+  font-weight:800;color:var(--lx-cyan);padding:2px 4px;border-radius:6px}
+#loginScreen .lx-toggle-btn:hover{text-decoration:underline}
+
+#loginScreen .lx-auth-foot{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+#loginScreen .lx-guest{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  padding:11px 16px;border-radius:12px;font-size:.86rem;font-weight:700;color:var(--lx-text);
+  background:rgba(255,255,255,.04);border:1px solid var(--lx-stroke);
+  transition:transform .18s,border-color .2s,background .2s}
+#loginScreen .lx-guest:hover{transform:translateY(-1px);border-color:var(--lx-stroke-2);
+  background:rgba(255,255,255,.08)}
+#loginScreen .lx-guest-arrow{transition:transform .2s}
+#loginScreen .lx-guest:hover .lx-guest-arrow{transform:translateX(3px)}
+#loginScreen .lx-fineprint{margin:13px 0 0;text-align:center;font-size:.72rem;line-height:1.5;color:var(--lx-faint)}
+#loginScreen .lx-fineprint svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;opacity:.8}
+
+/* Hide JS-driven anime pill host inside the card (kept for JS, not shown) */
+#loginScreen .lx-auth .feat-pills-wrap{display:none}
+
+/* ══ Feature showcase grid ══════════════════════════════════════════════ */
+#loginScreen .lx-section{padding:clamp(40px,8vh,96px) 0 0}
+#loginScreen .lx-section-eyebrow{font-family:'JetBrains Mono',monospace;font-size:.64rem;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--lx-cyan);text-align:center}
+#loginScreen .lx-section-title{margin:10px 0 0;text-align:center;font-weight:800;letter-spacing:-.02em;
+  font-size:clamp(1.7rem,3.4vw,2.5rem);color:#f2f7ff}
+#loginScreen .lx-section-lede{margin:12px auto 0;text-align:center;max-width:56ch;
+  font-size:1rem;line-height:1.6;color:var(--lx-muted)}
+#loginScreen .lx-feature-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:38px}
+#loginScreen .login-feature-card{
+  --fc-color:0,194,255;position:relative;overflow:hidden;cursor:default;
+  display:flex;align-items:flex-start;gap:14px;padding:20px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));
+  border:1px solid var(--lx-stroke);
+  transition:transform .26s cubic-bezier(.22,1,.36,1),border-color .26s,box-shadow .26s,background .26s}
+#loginScreen .login-feature-card::before{content:'';position:absolute;inset:0;opacity:0;
+  background:radial-gradient(120% 100% at 0% 0%,rgba(var(--fc-color),.16),transparent 60%);
+  transition:opacity .3s}
+#loginScreen .login-feature-card:hover{transform:translateY(-5px);
+  border-color:rgba(var(--fc-color),.5);
+  box-shadow:0 22px 50px -22px rgba(var(--fc-color),.55)}
+#loginScreen .login-feature-card:hover::before{opacity:1}
+#loginScreen .login-feature-icon{
+  width:44px;height:44px;flex-shrink:0;border-radius:13px;display:grid;place-items:center;
+  font-size:1.25rem;background:rgba(var(--fc-color),.1);border:1px solid rgba(var(--fc-color),.2);
+  position:relative;z-index:1}
+#loginScreen .login-feature-info{position:relative;z-index:1}
+#loginScreen .login-feature-name{font-size:.98rem;font-weight:800;color:#eef4ff;display:flex;align-items:center;gap:8px}
+#loginScreen .login-feature-desc{margin-top:4px;font-size:.83rem;line-height:1.5;color:var(--lx-muted)}
+#loginScreen .lx-tag-new{font-family:'JetBrains Mono',monospace;font-size:.54rem;font-weight:800;
+  letter-spacing:.12em;padding:2px 6px;border-radius:6px;color:#7CF;
+  background:rgba(0,194,255,.14);border:1px solid rgba(0,194,255,.34)}
+
+/* ══ Footer ═════════════════════════════════════════════════════════════ */
+#loginScreen .lx-foot{padding:clamp(44px,8vh,88px) 0 8px;text-align:center}
+#loginScreen .lx-trust{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:10px 18px;margin-bottom:18px}
+#loginScreen .lx-trust-item{display:inline-flex;align-items:center;gap:8px;font-size:.84rem;
+  font-weight:600;color:#d3def2}
+#loginScreen .lx-trust-ico{width:9px;height:9px;border-radius:50%;background:var(--lx-cyan);
+  box-shadow:0 0 10px rgba(0,194,255,.8)}
+#loginScreen .lx-trust-ico--g{background:#34d399;box-shadow:0 0 10px rgba(52,211,153,.8)}
+#loginScreen .lx-trust-ico--p{background:var(--lx-purple);box-shadow:0 0 10px rgba(124,92,255,.8)}
+#loginScreen .lx-foot-note{font-size:.84rem;color:var(--lx-muted);margin:0 auto;max-width:48ch;line-height:1.55}
+#loginScreen .lx-credit{margin:16px 0 0;font-family:'JetBrains Mono',monospace;font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--lx-faint)}
+
+/* ══ Responsive ═════════════════════════════════════════════════════════ */
+@media (max-width:980px){
+  #loginScreen .lx-hero{grid-template-columns:minmax(0,1fr);gap:36px;min-height:auto;
+    padding:30px 0 12px;text-align:center}
+  /* width:100% so the auto inline-margins center WITHOUT shrink-to-fit
+     (otherwise these grid items size to max-content and overflow the track) */
+  #loginScreen .lx-hero-copy{width:100%;max-width:min(640px,100%);margin-inline:auto}
+  #loginScreen .lx-sub{max-width:46ch;margin-left:auto;margin-right:auto}
+  #loginScreen .lx-badge{margin:0 auto}
+  #loginScreen .lx-demo{width:100%;max-width:100%;margin-inline:auto}
+  #loginScreen .lx-highlights,#loginScreen .lx-logos{justify-content:center}
+  #loginScreen .lx-auth{order:-1}
+  #loginScreen .lx-auth-card{margin:0 auto}
+  #loginScreen .lx-feature-grid{grid-template-columns:repeat(2,1fr)}
+  #loginScreen .lx-lemni{opacity:.32}
+}
+@media (max-width:600px){
+  #loginScreen .lx-main{padding-inline:16px}
+  #loginScreen .lx-headline{font-size:clamp(2.1rem,9vw,2.8rem)}
+  #loginScreen .lx-auth-card{padding:24px 18px}
+  #loginScreen .lx-feature-grid{grid-template-columns:1fr;gap:12px}
+  #loginScreen .lx-brand-tag{display:none}
+  #loginScreen .lx-navlink{display:none}
+  #loginScreen .lx-demo{max-width:none}
+}
+
+/* ══ Motion / perf safety ═══════════════════════════════════════════════ */
+@media (prefers-reduced-motion:reduce){
+  #loginScreen .lx-blob,#loginScreen .lx-badge-dot,#loginScreen .lx-demo-pulse,
+  #loginScreen .lx-headline .grad,#loginScreen .lx-submit::after,
+  #loginScreen .lx-demo-line::after,#loginScreen .feat-pills,
+  #loginScreen .lx-lemni-path,#loginScreen .lx-auth-card{
+    animation:none!important}
+  #loginScreen .lx-lemni-path{stroke-dashoffset:0!important}
+  #loginScreen .login-scroll-section{opacity:1!important;transform:none!important;transition:none!important}
+}
+html[data-flux-perf="on"] #loginScreen .lx-aurora,
+html[data-flux-perf="on"] #loginScreen .lx-lemni,
+html[data-flux-perf="on"] #loginScreen .lx-particles{display:none!important}
+html[data-flux-perf="on"] #loginScreen .lx-blob,
+html[data-flux-perf="on"] #loginScreen .feat-pills,
+html[data-flux-perf="on"] #loginScreen .lx-submit::after{animation:none!important}

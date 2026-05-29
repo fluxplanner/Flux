@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script>/* Flux Pulse layout — DISABLED. The layout overhaul is shelved; "Flux Pulse"
-   is now the brand name of the v1 release. We still respect localStorage if
-   a user explicitly opted in via Settings, but the default is legacy. */
-(function(){try{var u=localStorage.getItem('flux_layout_theme');if(u==='pulse')document.documentElement.classList.add('flux-layout-pulse');document.documentElement.setAttribute('data-flux-layout',u==='pulse'?'pulse':'legacy');}catch(e){}})();</script>
+<script>/* Flux Pulse layout — REMOVED. The experimental "Pulse" reskin caused lag and is
+   gone for good. Force legacy layout for everyone and purge any stale opt-in so
+   users who previously enabled Pulse are migrated back automatically. */
+(function(){try{localStorage.removeItem('flux_layout_theme');localStorage.removeItem('flux_layout_default');var html=document.documentElement;html.classList.remove('flux-layout-pulse');html.setAttribute('data-flux-layout','legacy');}catch(e){}})();</script>
 <style>
 /* Hide main shell until JS adds .visible — must beat layout media queries; also covers first paint before CSS loads */
 #app{display:none!important}
@@ -89,6 +89,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" crossorigin>
 <link rel="stylesheet" href="public/css/styles.css">
 <link rel="stylesheet" href="public/css/login.css">
+<link rel="stylesheet" href="public/css/login-aurora.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
 <link rel="stylesheet" href="public/css/flux-apple-motion.css">
 <link rel="stylesheet" href="public/css/flux-apple-motion-pro.css">
@@ -191,11 +192,8 @@
 <link rel="stylesheet" href="public/css/flux-gmail-educator.css">
 <link rel="stylesheet" href="public/css/flux-event-processors.css">
 <link rel="stylesheet" href="public/css/flux-form-controls.css">
-<!-- Flux Pulse loads LAST so its reskin wins the cascade -->
-<link rel="stylesheet" href="public/css/flux-pulse-layout.css">
-<!-- Pulse perf tiers override pulse-layout — must come AFTER it -->
-<link rel="stylesheet" href="public/css/flux-pulse-perf.css">
-<!-- Motion-50 companion (50 anim/UI effects, perf-tier gated) -->
+<!-- Flux Pulse layout REMOVED (caused lag) — pulse-layout.css + pulse-perf.css no longer loaded -->
+<!-- Motion-50 companion (50 anim/UI effects; defaults to the lighter 'standard' tier now that Pulse is gone) -->
 <link rel="stylesheet" href="public/css/flux-motion-50.css">
 <!-- Connectors + Skills (Claude-style registries) -->
 <link rel="stylesheet" href="public/css/flux-connectors.css">
@@ -273,370 +271,270 @@
 </div>
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="loginScreen" style="display:none">
-  <canvas id="loginParticles" class="login-particles" aria-hidden="true"></canvas>
-  <div class="login-bg" aria-hidden="true"></div>
-  <div class="login-bg-aurora" aria-hidden="true">
-    <div class="aurora-blob aurora-blob-1"></div>
-    <div class="aurora-blob aurora-blob-2"></div>
-    <div class="aurora-blob aurora-blob-3"></div>
-  </div>
-  <div class="login-aurora" aria-hidden="true"></div>
-  <div class="login-grid-pattern" aria-hidden="true"></div>
-  <div class="login-vignette" aria-hidden="true"></div>
-  <div class="login-glow login-glow-1" aria-hidden="true"></div>
-  <div class="login-glow login-glow-2" aria-hidden="true"></div>
-  <div class="login-glow login-glow-3" aria-hidden="true"></div>
 
-  <header class="login-topbar">
-    <div class="login-topbar-inner">
-      <a class="login-topbar-brand" href="#top" aria-label="Flux Planner">
-        <span class="login-topbar-logo" aria-hidden="true">
-          <svg width="28" height="18" viewBox="0 0 60 32" fill="none">
-            <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
-              fill="none" stroke="url(#ltbg)" stroke-width="3.5" stroke-linecap="round"/>
-            <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
-            <defs>
-              <linearGradient id="ltbg" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
-                <stop offset="25%" stop-color="#00bfff"/>
-                <stop offset="75%" stop-color="#7c5cff"/>
-                <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </span>
-        <span class="login-topbar-text">
-          <strong class="login-topbar-mark">Flux</strong>
-          <span class="login-tagline">YOUR SMART SCHOOL PLANNER</span>
+<div id="loginScreen" style="display:none">
+  <canvas id="loginParticles" class="lx-particles" aria-hidden="true"></canvas>
+  <div class="lx-bg" aria-hidden="true"></div>
+  <div class="lx-aurora" aria-hidden="true">
+    <span class="lx-blob lx-blob-1"></span>
+    <span class="lx-blob lx-blob-2"></span>
+    <span class="lx-blob lx-blob-3"></span>
+  </div>
+  <div class="lx-grid" aria-hidden="true"></div>
+  <div class="lx-lemni" aria-hidden="true">
+    <svg viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lxMarkBig" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#00C2FF" stop-opacity="0"/>
+          <stop offset="38%" stop-color="#00C2FF"/>
+          <stop offset="62%" stop-color="#7C5CFF"/>
+          <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g transform="translate(392,340)">
+        <path class="lx-lemni-path" d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+          fill="none" stroke="url(#lxMarkBig)" stroke-width="13" stroke-linecap="round"/>
+      </g>
+    </svg>
+  </div>
+  <div class="lx-vignette" aria-hidden="true"></div>
+
+  <!-- ── Top bar ── -->
+  <header class="lx-topbar">
+    <div class="lx-topbar-inner">
+      <a class="lx-brand" href="#top" aria-label="Flux Planner home">
+        <svg class="lx-brand-mark" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="lxMarkTop" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/>
+              <stop offset="40%" stop-color="#00C2FF"/>
+              <stop offset="60%" stop-color="#7C5CFF"/>
+              <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(392,340)">
+            <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+              fill="none" stroke="url(#lxMarkTop)" stroke-width="26" stroke-linecap="round"/>
+          </g>
+          <circle cx="392" cy="340" r="15" fill="#00C2FF"/>
+          <circle cx="612" cy="300" r="13" fill="#00C2FF"/>
+        </svg>
+        <span class="lx-brand-text">
+          <span class="lx-brand-name">Flux</span>
+          <span class="lx-brand-tag">Smart school planner</span>
         </span>
       </a>
-      <div class="login-topbar-actions">
-        <a class="login-topbar-link" href="#features">Features</a>
-        <button type="button" class="login-skip login-skip--bar" onclick="skipLogin()">Continue as guest</button>
-      </div>
+      <nav class="lx-topbar-actions" aria-label="Login">
+        <a class="lx-navlink" href="#features">Features</a>
+        <button type="button" class="lx-ghost-btn" onclick="skipLogin()">
+          Continue as guest <span aria-hidden="true">→</span>
+        </button>
+      </nav>
     </div>
   </header>
 
-  <main class="login-showcase">
+  <main class="lx-main">
 
-    <section class="login-scroll-section login-scroll-hero" id="top">
-      <div class="login-hero-grid login-showcase-inner flux-ac-hero-mesh">
+    <!-- ── Hero ── -->
+    <section class="login-scroll-section login-scroll-hero lx-hero" id="top">
+      <div class="lx-hero-copy">
+        <span class="lx-badge"><span class="lx-badge-dot" aria-hidden="true"></span>AI-powered planner — for students &amp; schools</span>
+        <h1 class="lx-headline">Your whole school life,<br><span class="grad">in flow.</span></h1>
+        <p class="lx-sub">Flux keeps tasks, classes, notes, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.</p>
 
-        <div class="login-hero-copy">
-          <div class="login-badge flux-ac-glass-chip flux-ac-shimmer-bg">
-            <span class="login-badge-dot" aria-hidden="true"></span>
-            <span>AI-Powered Student Planner</span>
-          </div>
-          <p class="login-eyebrow">Built for students</p>
-          <h1 class="login-left-headline">Your school life,<br><span class="login-gradient-text">organized.</span></h1>
-          <p class="login-left-sub">The all-in-one student planner for tasks, notes, calendar, and extracurriculars — powered by Flux AI.</p>
+        <div class="lx-demo" aria-live="polite">
+          <div class="lx-demo-label"><span class="lx-demo-pulse" aria-hidden="true"></span>Live · ask Flux AI</div>
+          <p class="lx-demo-line" id="loginDemoLineLeft">Quiz me on cellular respiration — 5 questions, AP Bio style.</p>
+          <p class="lx-demo-line" id="loginDemoLineCard" hidden aria-hidden="true"></p>
+        </div>
 
-          <div class="login-hero-demo login-demo-wrap" aria-live="polite">
-            <div class="login-demo-label"><span class="login-demo-pulse" aria-hidden="true"></span>Live preview</div>
-            <p class="login-demo-line" id="loginDemoLineLeft"></p>
-            <p class="login-demo-line visually-hidden" id="loginDemoLineCard" aria-hidden="true"></p>
-          </div>
+        <div class="lx-highlights" aria-label="Highlights">
+          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#7fdcff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Flux AI tutor</span>
+          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar + Google sync</span>
+          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/></svg>4-decimal GPA</span>
+          <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>Co-work rooms</span>
+        </div>
 
-          <div class="login-spotlight-grid" aria-label="Planner highlights">
-            <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">⚡</span><span>Dashboard &amp; streaks</span></div>
-            <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">📊</span><span>Weighted GPA &amp; what-ifs</span></div>
-            <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">🗓</span><span>Calendar &amp; Google sync</span></div>
-            <div class="login-spotlight-item flux-ac-grid-tile flux-ac-soft-bounce-hover"><span class="login-spotlight-ico" aria-hidden="true">✦</span><span>Flux AI study help</span></div>
-          </div>
-
-          <div class="feat-pills-wrap feat-pills-wrap--hero">
-            <div class="feat-pills" id="featPills"></div>
+        <div class="lx-integrations">
+          <div class="lx-integrations-label">Works with your tools</div>
+          <div class="lx-logos">
+            <span class="lx-logo" title="Google"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></span>
+            <span class="lx-logo" title="Google Calendar"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M390.736 121.264H121.264V390.736H390.736V121.264Z" fill="#fff"/><path d="M390.736 512 512 390.736l-60.632-10.344-60.632 10.344-11.066 55.46z" fill="#EA4335"/><path d="M0 390.736v80.842C0 493.912 18.088 512 40.42 512h80.844l12.45-60.632-12.45-60.632-66.066-10.344z" fill="#188038"/><path d="M512 121.264V40.42C512 18.088 493.912 0 471.58 0H390.736c-7.376 30.072-11.065 52.203-11.066 66.392 0 14.188 3.689 32.479 11.066 54.872 26.82 7.68 47.031 11.52 60.632 11.52s33.812-3.839 60.632-11.52z" fill="#1967D2"/><path d="M512 121.264H390.736V390.736H512V121.264Z" fill="#FBBC04"/><path d="M390.736 390.736H121.264V512H390.736V390.736Z" fill="#34A853"/><path d="M390.736 0H40.422C18.088 0 0 18.088 0 40.42V390.736H121.264V121.264H390.736V0Z" fill="#4285F4"/><path d="M176.54 330.308c-10.072-6.804-17.046-16.74-20.852-29.88l23.378-9.632c2.12 8.084 5.825 14.349 11.116 18.796 5.254 4.446 11.654 6.636 19.132 6.636 7.645 0 14.213-2.325 19.704-6.974 5.492-4.648 8.254-10.576 8.254-17.75 0-7.344-2.897-13.34-8.69-17.988-5.794-4.648-13.07-6.972-21.76-6.972h-13.508v-23.14h12.126c7.477 0 13.776-2.022 18.896-6.066 5.12-4.04 7.68-9.566 7.68-16.606 0-6.264-2.29-11.25-6.87-14.988-4.58-3.74-10.376-5.626-17.416-5.626-6.872 0-12.328 1.82-16.37 5.49-4.041 3.681-6.834 8.329-8.582 13.508l-23.14-9.634c3.064-8.69 8.69-16.37 16.942-23.006 8.252-6.636 18.796-9.97 31.596-9.97 9.466 0 17.988 1.82 25.534 5.49 7.544 3.672 13.472 8.758 17.75 15.226 4.28 6.5 6.4 13.776 6.4 21.86 0 8.252-1.986 15.226-5.96 20.952-3.974 5.726-8.86 10.104-14.654 13.17v1.38c7.481 3.085 13.98 8.151 18.796 14.654 4.884 6.568 7.344 14.416 7.344 23.58 0 9.16-2.326 17.346-6.974 24.52-4.648 7.176-11.08 12.834-19.234 16.944-8.184 4.11-17.38 6.2-27.586 6.2-11.824.032-22.736-3.37-32.808-10.174zM320.132 214.298l-25.666 18.56-12.834-19.468 46.046-33.214h17.65v156.666h-25.196z" fill="#4285F4"/></svg></span>
+            <span class="lx-logo" title="Gmail"><svg viewBox="0 49.4 512 399.42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#4285f4" d="M34.91 448.818h81.454V251L0 163.727V413.91c0 19.287 15.622 34.91 34.91 34.91z"/><path fill="#34a853" d="M395.636 448.818h81.455c19.287 0 34.909-15.622 34.909-34.909V163.727L395.636 251z"/><path fill="#fbbc04" d="M395.636 99.727V251L512 163.727v-46.545c0-43.142-49.25-67.782-83.782-41.891z"/><path fill="#ea4335" d="M116.364 251V99.727L256 204.455 395.636 99.727V251L256 355.727z"/><path fill="#c5221f" d="M0 117.182v46.545L116.364 251V99.727L83.782 75.291C49.25 49.4 0 74.04 0 117.18z"/></svg></span>
+            <span class="lx-logo" title="Google Drive"><svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z"/><path fill="#00ac47" d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44A9.06 9.06 0 0 0 0 53h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.798l5.852 11.5z"/><path fill="#00832d" d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"/></svg></span>
+            <span class="lx-logo" title="Google Classroom"><svg viewBox="0 0 578.9 500" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#0F9D58" d="M52.6 52.6h473.7v394.7H52.6z"/><path fill="#57BB8A" d="M394.7 263.2a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6h131.6v-21.6c0-20.8-34.1-37.6-65.8-37.6zm-210.5-19.7a29.6 29.6 0 1 0 0-59.2 29.6 29.6 0 0 0 0 59.2zm0 19.7c-31.7 0-65.8 16.8-65.8 37.6v21.6H250v-21.6c0-20.8-34.1-37.6-65.8-37.6z"/><path fill="#F7F7F7" d="M289.5 236.8a39.5 39.5 0 1 0 0-79 39.5 39.5 0 0 0 0 79zm0 26.4c-44.4 0-92.1 23.6-92.1 52.6v26.3h184.2v-26.3c0-29.1-47.7-52.6-92.1-52.6z"/><path fill="#F1F1F1" d="M342.1 421.1h118.4v26.3H342.1z"/><path fill="#F4B400" d="M539.5 0h-500A39.5 39.5 0 0 0 0 39.5v421.1A39.5 39.5 0 0 0 39.5 500h500a39.5 39.5 0 0 0 39.5-39.5v-421A39.5 39.5 0 0 0 539.5 0zm-13.2 447.4H52.6V52.6h473.7z"/></svg></span>
+            <span class="lx-logo" title="Notion"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#fff"/><path fill="#0f0f10" d="M8.2 6.6 6 6.78v.36l.74.36c.16.07.22.18.22.45v8.04l-1 .12v.42l2.66-.16v-.4l-.86.06V9.04l5.78 7.86 1.74-.1V7.4c0-.27.06-.4.28-.45l.62-.16V6.4l-2.7.18v.4l.9-.05v6.42L8.2 6.6z"/></svg></span>
+            <span class="lx-logo" title="Obsidian"><svg viewBox="0 0 256 332" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid" aria-hidden="true"><path fill="#7C3AED" d="M209.6 305.8c-2 15-16.7 26.7-31.4 22.7-20.7-5.7-44.8-14.7-66.6-16.3l-33.2-2.5a21.9 21.9 0 0 1-14.1-6.6L6.9 244.1a21.9 21.9 0 0 1-4.3-24.4s35.4-77.8 36.8-81.9c1.3-4 6.1-39.3 9-58.3a22 22 0 0 1 7-13L123.2 5.6a22 22 0 0 1 31.9 2.8l57 72.3a23.3 23.3 0 0 1 4.9 14.4c0 13.7 1.2 41.8 8.7 60a238 238 0 0 0 28 46 11 11 0 0 1 .8 12.3c-5 8.5-14.8 24.7-28.8 45.5a112.6 112.6 0 0 0-16 47z"/><path fill="#A98BFF" d="M142.8 197.9c-12.7-31.8-16.5-55.6-15.7-74.6.8-18.9 6.3-33 12.4-45.6l4.7-9.2c4.6-8.9 8.9-17.3 11.3-26.6a61.7 61.7 0 0 0-1.3-34.7c-8.1-8.9-22-9.6-31 1.6L55.4 66.5a22 22 0 0 0-7 13l-8.3 54.7c0 .5-.1 1-.2 1.6 15.2 9.9 34.5 25.9 45 51.3 2 5 3.8 10.3 5 16a157 157 0 0 1 52.8-5.3z"/><path fill="#C4B2FF" d="M178.3 328.5c14.6 4 29.3-7.7 31.3-22.8a120 120 0 0 1 12.5-41c-16.5-35.4-36.4-53.8-58.1-62-23.2-8.6-48.4-5.7-74 .5 5.7 26 2.3 60-19.5 104.3 2.4 1.3 5.2 2 7.9 2.2l34.5 2.6c18.7 1.3 46.6 11 65.4 16.3z"/></svg></span>
           </div>
         </div>
 
-        <aside class="login-hero-auth" aria-label="Sign in">
-          <div class="login-auth-card">
-            <div class="login-auth-card-glow" aria-hidden="true"></div>
-            <div class="login-auth-head">
-              <div class="login-auth-mark" aria-hidden="true">
-                <svg width="40" height="24" viewBox="0 0 60 32" fill="none">
-                  <path d="M30,16 C32,5 46,5 46,16 C46,27 32,27 30,16 C28,27 14,27 14,16 C14,5 28,5 30,16 Z"
-                    fill="none" stroke="url(#ahg)" stroke-width="3.5" stroke-linecap="round"/>
-                  <circle cx="30" cy="16" r="2.5" fill="#00bfff"/>
-                  <defs>
-                    <linearGradient id="ahg" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stop-color="#00bfff" stop-opacity="0"/>
-                      <stop offset="25%" stop-color="#00bfff"/>
-                      <stop offset="75%" stop-color="#7c5cff"/>
-                      <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-              <div>
-                <h2 class="login-auth-title" id="loginAuthTitle">Welcome back</h2>
-                <p class="login-auth-sub" id="loginAuthSub">Sign in to sync across devices</p>
-              </div>
-            </div>
+        <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPills"></div></div>
+      </div>
 
-            <button type="button" class="login-google-btn login-google-btn--compact flux-ac-soft-bounce-hover" onclick="signInWithGoogle()">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="18" height="18">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      <!-- ── Sign-in card ── -->
+      <aside class="lx-auth" aria-label="Sign in">
+        <div class="lx-auth-card">
+          <div class="lx-auth-head">
+            <span class="lx-auth-mark" aria-hidden="true">
+              <svg viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="lxMarkCard" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/>
+                    <stop offset="40%" stop-color="#00C2FF"/>
+                    <stop offset="60%" stop-color="#7C5CFF"/>
+                    <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/>
+                  </linearGradient>
+                </defs>
+                <g transform="translate(392,340)">
+                  <path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z"
+                    fill="none" stroke="url(#lxMarkCard)" stroke-width="28" stroke-linecap="round"/>
+                </g>
+                <circle cx="392" cy="340" r="16" fill="#00C2FF"/>
+                <circle cx="612" cy="300" r="13" fill="#00C2FF"/>
               </svg>
-              <span class="login-google-btn-text">Continue with Google</span>
-            </button>
-
-            <div class="login-auth-divider" aria-hidden="true"><span>or with email</span></div>
-
-            <div id="loginEmailSection">
-              <div class="login-auth-error" id="loginAuthError" role="alert"></div>
-              <div class="login-email-form" id="loginEmailForm">
-                <label class="login-field-label" for="loginEmail">Email
-                  <input type="email" id="loginEmail" name="loginEmail" autocomplete="email" placeholder="you@school.edu">
-                </label>
-                <label class="login-field-label" for="loginPassword">Password
-                  <input type="password" id="loginPassword" name="loginPassword" autocomplete="current-password" placeholder="••••••••">
-                </label>
-                <div id="loginNameRow" style="display:none">
-                  <label class="login-field-label" for="loginDisplayName">Name <span class="login-field-optional">(optional)</span>
-                    <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name">
-                  </label>
-                </div>
-                <button type="button" class="login-email-btn flux-ac-btn-shine flux-ac-focus-ring-ai" id="loginEmailBtn" onclick="handleEmailAuth()">
-                  <span class="login-email-btn-label">Sign in</span>
-                  <span class="login-email-btn-arrow" aria-hidden="true">→</span>
-                </button>
-              </div>
-              <div class="login-auth-toggle">
-                <span id="loginToggleText">Don't have an account?</span>
-                <button type="button" class="login-auth-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
-              </div>
+            </span>
+            <div>
+              <h2 class="lx-auth-title" id="loginAuthTitle">Welcome back</h2>
+              <p class="lx-auth-sub" id="loginAuthSub">Sign in to sync across your devices</p>
             </div>
+          </div>
 
-            <div class="login-auth-footer">
-              <button type="button" class="login-auth-guest" onclick="skipLogin()">
-                <span>Continue as guest</span>
-                <span class="login-auth-guest-arrow" aria-hidden="true">→</span>
+          <button type="button" class="lx-google" onclick="signInWithGoogle()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          <div class="lx-divider" aria-hidden="true">or with email</div>
+
+          <div id="loginEmailSection">
+            <div class="lx-auth-error" id="loginAuthError" role="alert" aria-live="assertive"></div>
+            <div class="lx-form" id="loginEmailForm">
+              <label class="lx-field" for="loginEmail">Email
+                <input type="email" id="loginEmail" name="loginEmail" autocomplete="email" inputmode="email" placeholder="you@school.edu">
+              </label>
+              <label class="lx-field" for="loginPassword">Password
+                <input type="password" id="loginPassword" name="loginPassword" autocomplete="current-password" placeholder="••••••••">
+              </label>
+              <div id="loginNameRow" style="display:none">
+                <label class="lx-field" for="loginDisplayName">Name <span class="lx-opt">(optional)</span>
+                  <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name">
+                </label>
+              </div>
+              <button type="button" class="lx-submit" id="loginEmailBtn" onclick="handleEmailAuth()">
+                <span class="login-email-btn-label">Sign in</span>
+                <span class="lx-submit-arrow" aria-hidden="true">→</span>
               </button>
-              <p class="login-auth-fineprint">Your data stays yours. End-to-end encrypted sync.</p>
+            </div>
+            <div class="lx-toggle">
+              <span id="loginToggleText">Don't have an account?</span>
+              <button type="button" class="lx-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
             </div>
           </div>
 
-          <div class="login-anime-pills-host" aria-hidden="true">
-            <div class="feat-pills" id="featPillsLoginCard"></div>
+          <div class="lx-auth-foot">
+            <button type="button" class="lx-guest" onclick="skipLogin()">
+              Continue as a guest <span class="lx-guest-arrow" aria-hidden="true">→</span>
+            </button>
+            <p class="lx-fineprint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Your data stays yours. Encrypted in transit, synced across your devices.
+            </p>
           </div>
-        </aside>
-
-      </div>
+        </div>
+        <div class="feat-pills-wrap" aria-hidden="true"><div class="feat-pills" id="featPillsLoginCard"></div></div>
+      </aside>
     </section>
 
-    <section class="login-scroll-section login-scroll-ai">
-      <div class="login-showcase-inner login-showcase-split">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Flux AI tutor</h2>
-          <p class="login-section-lede">Ask questions in plain English — get study plans, summaries, and quiz-style practice tailored to your courses.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-chat" aria-hidden="true">
-            <div class="login-mock-chat-head"><span class="login-mock-dot"></span><span class="login-mock-dot"></span><span class="login-mock-dot"></span><span class="login-mock-chat-title">Flux AI</span></div>
-            <div class="login-mock-chat-body">
-              <div class="login-mock-msg login-mock-msg--user"><span>Quiz me on cellular respiration — 5 questions, AP Bio style.</span></div>
-              <div class="login-mock-msg login-mock-msg--ai"><span>Sure — starting with glycolysis: Where does it occur in the cell, and what’s the net ATP yield?</span></div>
-              <div class="login-mock-msg login-mock-msg--typing"><span></span><span></span><span></span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-study">
-      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Study tools</h2>
-          <p class="login-section-lede">Flashcards, Pomodoro focus timer, streaks, and habit-aware scheduling — built for deep work between classes.</p>
-        </div>
-        <div class="login-showcase-visual login-showcase-visual--dual">
-          <div class="login-mock login-mock-cardflip" aria-hidden="true">
-            <div class="login-mock-flip">
-              <div class="login-mock-flip-face login-mock-flip-front"><span class="login-mock-flip-label">Front</span><p> photosynthesis</p></div>
-              <div class="login-mock-flip-face login-mock-flip-back"><span class="login-mock-flip-label">Back</span><p>Light reactions + Calvin cycle; converts CO₂ + H₂O → glucose + O₂.</p></div>
-            </div>
-          </div>
-          <div class="login-mock login-mock-timer" aria-hidden="true">
-            <span class="login-mock-timer-label">Focus</span>
-            <div class="login-mock-timer-ring"></div>
-            <span class="login-mock-timer-time">25:00</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-cal">
-      <div class="login-showcase-inner login-showcase-split">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Smart calendar</h2>
-          <p class="login-section-lede">Tasks, classes, and exams in one timeline — with Google Calendar sync and conflict-aware hints.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-cal" aria-hidden="true">
-            <div class="login-mock-cal-head">March · Week view</div>
-            <div class="login-mock-cal-grid">
-              <div class="login-mock-cal-day"><span>Mon</span><div class="login-mock-cal-block login-mock-cal-block--class">Chem lab</div></div>
-              <div class="login-mock-cal-day"><span>Tue</span><div class="login-mock-cal-block login-mock-cal-block--task">Essay outline</div></div>
-              <div class="login-mock-cal-day"><span>Wed</span><div class="login-mock-cal-block login-mock-cal-block--exam">Calc midterm</div></div>
-              <div class="login-mock-cal-day"><span>Thu</span><div class="login-mock-cal-block login-mock-cal-block--sync">↻ Synced</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-gpa">
-      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">GPA &amp; grades</h2>
-          <p class="login-section-lede">Weighted GPA to four decimals, what-if scenarios, and course-grade breakdowns so you always know where you stand.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-gpa" aria-hidden="true">
-            <div class="login-mock-gpa-row"><span>Cumulative</span><strong>3.847</strong></div>
-            <div class="login-mock-bar"><i style="width:78%"></i></div>
-            <div class="login-mock-gpa-row login-mock-gpa-row--small"><span>What-if +1 on Calc exam</span><strong>3.871</strong></div>
-            <div class="login-mock-bar login-mock-bar--ghost"><i style="width:82%"></i></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-vision">
-      <div class="login-showcase-inner login-showcase-split">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Vision import</h2>
-          <p class="login-section-lede">Snap a syllabus or schedule — Flux reads dates and assignments so you spend less time typing.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-phone" aria-hidden="true">
-            <div class="login-mock-phone-notch"></div>
-            <div class="login-mock-phone-scan"></div>
-            <div class="login-mock-phone-doc">
-              <div class="login-mock-phone-line"></div>
-              <div class="login-mock-phone-line login-mock-phone-line--short"></div>
-              <div class="login-mock-phone-line"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-notes">
-      <div class="login-showcase-inner login-showcase-split login-showcase-split--reverse">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Notes &amp; extras</h2>
-          <p class="login-section-lede">Tagged notes you can query with AI, plus extracurricular tracking with school-fit context.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-notes" aria-hidden="true">
-            <div class="login-mock-note"><span class="login-mock-tag">#chem</span><p>Equilibrium — Le Châtelier cheat sheet</p></div>
-            <div class="login-mock-note"><span class="login-mock-tag">#essay</span><p>Thesis v2 — trim paragraph 3</p></div>
-            <div class="login-mock-ec"><span class="login-mock-ec-ico">🎯</span><div><strong>Robotics club</strong><small>Officer · 4 hrs/wk</small></div></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-sync">
-      <div class="login-showcase-inner login-showcase-split">
-        <div class="login-showcase-copy">
-          <h2 class="login-section-title">Canvas, Gmail, cloud</h2>
-          <p class="login-section-lede">Pull tasks from learning tools and inbox, then keep everything synced across devices with one account.</p>
-        </div>
-        <div class="login-showcase-visual">
-          <div class="login-mock login-mock-sync" aria-hidden="true">
-            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">📧</span><span>Gmail → tasks</span><span class="login-mock-sync-pill">live</span></div>
-            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">🎓</span><span>Canvas hub</span><span class="login-mock-sync-pill">live</span></div>
-            <div class="login-mock-sync-row"><span class="login-mock-sync-ico">☁️</span><span>Cloud sync</span><span class="login-mock-sync-pill ok">ok</span></div>
-            <div class="login-mock-sync-arrow">⇅</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="login-scroll-section login-scroll-grid">
-      <div class="login-showcase-inner">
-        <h2 class="login-section-title login-section-title--center">Everything in one planner</h2>
-        <p class="login-section-lede login-section-lede--center">Tap a capability — same power inside the app.</p>
-        <div class="login-features" id="loginFeatures">
-          <div class="login-feature-card" data-color="99,102,241">
-            <div class="login-feature-icon">✦</div>
+    <!-- ── Feature showcase ── -->
+    <section class="login-scroll-section lx-section" id="features">
+      <div class="lx-wrap">
+        <p class="lx-section-eyebrow">Everything in one planner</p>
+        <h2 class="lx-section-title">Built to carry your whole semester</h2>
+        <p class="lx-section-lede">From a single dashboard for students to full workspaces for teachers, counselors and admins — Flux grows with your school.</p>
+        <div class="lx-feature-grid" id="loginFeatures">
+          <div class="login-feature-card" data-color="0,194,255">
+            <div class="login-feature-icon" aria-hidden="true">✦</div>
             <div class="login-feature-info">
-              <div class="login-feature-name">Flux AI Tutor</div>
-              <div class="login-feature-desc">Study plans, flashcards, exam prep</div>
+              <div class="login-feature-name">Flux AI tutor</div>
+              <div class="login-feature-desc">Plain-English help, study plans, summaries and quiz-style practice across your courses.</div>
             </div>
-            <div class="login-feature-arrow">→</div>
           </div>
-          <div class="login-feature-card" data-color="16,217,160">
-            <div class="login-feature-icon">📷</div>
+          <div class="login-feature-card" data-color="124,92,255">
+            <div class="login-feature-icon" aria-hidden="true">👥</div>
             <div class="login-feature-info">
-              <div class="login-feature-name">Vision Import</div>
-              <div class="login-feature-desc">Snap your schedule — AI reads it</div>
+              <div class="login-feature-name">Co-work rooms <span class="lx-tag-new">NEW</span></div>
+              <div class="login-feature-desc">Open a live room on any task — shared checklist and presence so you study together in real time.</div>
             </div>
-            <div class="login-feature-arrow">→</div>
-          </div>
-          <div class="login-feature-card" data-color="251,191,36">
-            <div class="login-feature-icon">📊</div>
-            <div class="login-feature-info">
-              <div class="login-feature-name">GPA Tracker</div>
-              <div class="login-feature-desc">4-decimal precision, weighted calculator</div>
-            </div>
-            <div class="login-feature-arrow">→</div>
           </div>
           <div class="login-feature-card" data-color="59,130,246">
-            <div class="login-feature-icon">📅</div>
+            <div class="login-feature-icon" aria-hidden="true">📅</div>
             <div class="login-feature-info">
-              <div class="login-feature-name">Smart Calendar</div>
-              <div class="login-feature-desc">Tasks, events, Google Calendar sync</div>
+              <div class="login-feature-name">Smart calendar</div>
+              <div class="login-feature-desc">Tasks, classes and exams on one timeline with two-way Google Calendar sync.</div>
             </div>
-            <div class="login-feature-arrow">→</div>
+          </div>
+          <div class="login-feature-card" data-color="251,191,36">
+            <div class="login-feature-icon" aria-hidden="true">📊</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">GPA &amp; grades</div>
+              <div class="login-feature-desc">Weighted GPA to four decimals, what-if scenarios and per-course breakdowns.</div>
+            </div>
+          </div>
+          <div class="login-feature-card" data-color="16,217,160">
+            <div class="login-feature-icon" aria-hidden="true">📷</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Vision import</div>
+              <div class="login-feature-desc">Snap a syllabus or schedule — Flux reads the dates and builds your tasks.</div>
+            </div>
+          </div>
+          <div class="login-feature-card" data-color="232,121,249">
+            <div class="login-feature-icon" aria-hidden="true">📝</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Notes &amp; flashcards</div>
+              <div class="login-feature-desc">Tagged notes you can query with AI, plus spaced-repetition flashcard decks.</div>
+            </div>
+          </div>
+          <div class="login-feature-card" data-color="167,139,250">
+            <div class="login-feature-icon" aria-hidden="true">⏱</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Focus &amp; habits</div>
+              <div class="login-feature-desc">Pomodoro timer, streaks, habit heatmaps and energy-aware scheduling.</div>
+            </div>
+          </div>
+          <div class="login-feature-card" data-color="52,211,153">
+            <div class="login-feature-icon" aria-hidden="true">🔗</div>
+            <div class="login-feature-info">
+              <div class="login-feature-name">Connected tools</div>
+              <div class="login-feature-desc">Gmail → tasks, Drive &amp; Classroom import, Notion / Obsidian export and iCal feeds.</div>
+            </div>
           </div>
           <div class="login-feature-card" data-color="251,146,60">
-            <div class="login-feature-icon">🎯</div>
+            <div class="login-feature-icon" aria-hidden="true">🏫</div>
             <div class="login-feature-info">
-              <div class="login-feature-name">Extracurriculars</div>
-              <div class="login-feature-desc">Activities, school fit, AI suggestions</div>
+              <div class="login-feature-name">For educators</div>
+              <div class="login-feature-desc">Teacher, counselor and admin workspaces — rosters, lesson hub, caseload and school ops.</div>
             </div>
-            <div class="login-feature-arrow">→</div>
-          </div>
-          <div class="login-feature-card" data-color="192,132,252">
-            <div class="login-feature-icon">☁️</div>
-            <div class="login-feature-info">
-              <div class="login-feature-name">Cloud Sync</div>
-              <div class="login-feature-desc">All devices, one Google account</div>
-            </div>
-            <div class="login-feature-arrow">→</div>
           </div>
         </div>
       </div>
     </section>
 
-    <footer class="login-showcase-footer login-scroll-section login-scroll-foot">
-      <div class="login-showcase-inner">
-        <div class="login-trust">
-          <div class="login-trust-item">
-            <span class="login-trust-icon" aria-hidden="true">✦</span>
-            <span class="login-trust-label">AI Powered</span>
-          </div>
-          <div class="login-trust-sep" aria-hidden="true"></div>
-          <div class="login-trust-item">
-            <span class="login-trust-icon login-trust-icon--green" aria-hidden="true">∞</span>
-            <span class="login-trust-label">Free Forever</span>
-          </div>
-          <div class="login-trust-sep" aria-hidden="true"></div>
-          <div class="login-trust-item">
-            <span class="login-trust-icon login-trust-icon--purple" aria-hidden="true">⇅</span>
-            <span class="login-trust-label">Cloud Sync</span>
-          </div>
+    <!-- ── Footer ── -->
+    <footer class="login-scroll-section lx-foot">
+      <div class="lx-wrap">
+        <div class="lx-trust">
+          <span class="lx-trust-item"><span class="lx-trust-ico" aria-hidden="true"></span>AI-powered</span>
+          <span class="lx-trust-item"><span class="lx-trust-ico lx-trust-ico--g" aria-hidden="true"></span>Free to start</span>
+          <span class="lx-trust-item"><span class="lx-trust-ico lx-trust-ico--p" aria-hidden="true"></span>Cross-device sync</span>
+          <span class="lx-trust-item"><span class="lx-trust-ico" aria-hidden="true"></span>Private by design</span>
         </div>
-        <p class="login-note login-note--footer">Sign in from the top bar to sync across devices — or continue as a guest.</p>
-        <p class="login-dev-credit">Developed by Azfer Mohammed</p>
+        <p class="lx-foot-note">Sign in to sync across devices — or jump in as a guest and add an account whenever you're ready.</p>
+        <p class="lx-credit">Developed by Azfer Mohammed</p>
       </div>
     </footer>
 
@@ -670,9 +568,9 @@
           </div>
           <div style="font-size:.8rem;color:var(--muted2)">Tap to add a photo<br><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace">optional</span></div>
         </div>
-        <span class="ob-label">Your first name</span>
+        <span class="ob-label" id="obNameLabel">Your first name</span>
         <input type="text" id="obName" placeholder="e.g. Jordan" style="margin:0" oninput="updateObPreview()">
-        <div id="obGradeSection">
+        <div id="obGradeSection" data-ob-role="student">
           <span class="ob-label">Grade</span>
           <div class="ob-chip-wrap" id="obGradeChips">
             <div class="ob-chip" onclick="selectObChip(this,'obGrade','9')">9th</div>
@@ -681,30 +579,67 @@
             <div class="ob-chip" onclick="selectObChip(this,'obGrade','12')">12th</div>
           </div>
         </div>
+        <div id="obStaffRoleSection" data-ob-role="staff" style="display:none">
+          <span class="ob-label">Your role at school</span>
+          <div class="ob-chip-wrap" id="obStaffRoleChips" role="radiogroup" aria-label="Staff role">
+            <div class="ob-chip ob-staffrole-chip active" role="radio" aria-checked="true" tabindex="0" onclick="selectObChip(this,'obStaffRole','teacher')">📐 Teacher</div>
+            <div class="ob-chip ob-staffrole-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obStaffRole','counselor')">🧭 Counselor</div>
+            <div class="ob-chip ob-staffrole-chip" role="radio" aria-checked="false" tabindex="0" onclick="selectObChip(this,'obStaffRole','admin')">🏛 Admin / Staff</div>
+          </div>
+        </div>
+        <div class="ob-privacy-note" id="obPrivacyNote">
+          <span class="ob-privacy-ico" aria-hidden="true">🔒</span>
+          <span>Your data is private to you. It’s never sold, shared with your school, or seen by Flux’s developer — protected by per-user database security. <button type="button" class="ob-privacy-link" onclick="openPrivacyFromOnboarding(event)">How Flux protects your data →</button></span>
+        </div>
         <button class="ob-btn" onclick="obNext()">Continue →</button>
       </div>
 
       <!-- Step 2: Quick questionnaire -->
       <div class="ob-step" id="ob-step-2">
         <div style="font-size:2rem;margin-bottom:10px">✨</div>
-        <div class="ob-title">Tailor Flux to you</div>
-        <div class="ob-sub">Two quick questions — we use this for tips, AI context, and what to highlight on your dashboard.</div>
-        <span class="ob-label">Main focus this term</span>
-        <div class="ob-chip-wrap" id="obFocusChips">
-          <div class="ob-chip active" onclick="selectObChip(this,'obFocus','deadlines')">📌 Stay on deadlines</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obFocus','study')">📚 Study habits</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obFocus','balance')">⚖️ Less stress &amp; balance</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obFocus','college')">🎓 College &amp; ECs</div>
+        <div class="ob-title" id="obStep2Title">Tailor Flux to you</div>
+        <div class="ob-sub" id="obStep2Sub">Two quick questions — we use this for tips, AI context, and what to highlight on your dashboard.</div>
+
+        <!-- STUDENT questionnaire -->
+        <div data-ob-role="student">
+          <span class="ob-label">Main focus this term</span>
+          <div class="ob-chip-wrap" id="obFocusChips">
+            <div class="ob-chip active" onclick="selectObChip(this,'obFocus','deadlines')">📌 Stay on deadlines</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obFocus','study')">📚 Study habits</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obFocus','balance')">⚖️ Less stress &amp; balance</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obFocus','college')">🎓 College &amp; ECs</div>
+          </div>
+          <span class="ob-label" style="margin-top:16px">What you’ll use first <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
+          <div class="ob-chip-wrap" id="obFeatureChips">
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="tasks">⚡ Tasks</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="calendar">📅 Calendar</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="timer">⏱ Focus</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="notes">📝 Notes</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="ai">✦ Flux AI</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="extras">🎯 Extracurriculars</div>
+          </div>
         </div>
-        <span class="ob-label" style="margin-top:16px">What you’ll use first <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
-        <div class="ob-chip-wrap" id="obFeatureChips">
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="tasks">⚡ Tasks</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="calendar">📅 Calendar</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="timer">⏱ Focus</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="notes">📝 Notes</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="ai">✦ Flux AI</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-feat="extras">🎯 Extracurriculars</div>
+
+        <!-- STAFF questionnaire -->
+        <div data-ob-role="staff" style="display:none">
+          <span class="ob-label">Main focus this term</span>
+          <div class="ob-chip-wrap" id="obStaffFocusChips">
+            <div class="ob-chip active" onclick="selectObChip(this,'obStaffFocus','planning')">📋 Lesson &amp; meeting planning</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','grading')">✅ Grading &amp; feedback</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','students')">🧑‍🎓 Student follow-ups</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','balance')">⚖️ Workload &amp; balance</div>
+          </div>
+          <span class="ob-label" style="margin-top:16px">What you’ll use first <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
+          <div class="ob-chip-wrap" id="obStaffFeatureChips">
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="tasks">✅ Task workboard</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="calendar">📅 Calendar</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="lessons">📋 Lesson hub</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="meetings">📝 Meeting notes</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="ai">✦ Flux AI</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-feat="wellbeing">💙 Wellbeing</div>
+          </div>
         </div>
+
         <button class="ob-btn" onclick="obNext()">Continue →</button>
         <button type="button" class="ob-btn" id="obRedoSaveBtn" style="display:none;margin-top:10px;background:rgba(var(--accent-rgb),.2);border:1px solid rgba(var(--accent-rgb),.35);color:var(--accent)" onclick="finishQuestionnaireRedoOnly()">Save preferences &amp; close</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
@@ -713,20 +648,33 @@
       <!-- Step 3: School -->
       <div class="ob-step" id="ob-step-3">
         <div style="font-size:2rem;margin-bottom:10px">🏫</div>
-        <div class="ob-title">Your School</div>
-        <div class="ob-sub">Tell us where you go so Flux can personalize your experience.</div>
+        <div class="ob-title" id="obStep3Title">Your School</div>
+        <div class="ob-sub" id="obStep3Sub">Tell us where you go so Flux can personalize your experience.</div>
         <span class="ob-label">School name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
         <input type="text" id="obSchool" placeholder="e.g. Lincoln High School" style="margin:0">
-        <span class="ob-label">Academic Program <span style="color:var(--muted);font-weight:400">(optional)</span></span>
-        <div class="ob-chip-wrap" id="obTrackChips">
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','General')">General</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB MYP')">IB MYP</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB DP')">IB DP</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','AP')">AP</div>
-          <div class="ob-chip" onclick="selectObChip(this,'obTrack','Honours')">Honours</div>
+
+        <!-- STUDENT school details -->
+        <div data-ob-role="student">
+          <span class="ob-label">Academic Program <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+          <div class="ob-chip-wrap" id="obTrackChips">
+            <div class="ob-chip" onclick="selectObChip(this,'obTrack','General')">General</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB MYP')">IB MYP</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obTrack','IB DP')">IB DP</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obTrack','AP')">AP</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obTrack','Honours')">Honours</div>
+          </div>
+          <span class="ob-label">Counselor name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+          <input type="text" id="obCounselor" placeholder="e.g. Ms. Johnson" style="margin:0">
         </div>
-        <span class="ob-label">Counselor name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
-        <input type="text" id="obCounselor" placeholder="e.g. Ms. Johnson" style="margin:0">
+
+        <!-- STAFF school details -->
+        <div data-ob-role="staff" style="display:none">
+          <span class="ob-label" id="obStaffSubjectLabel">Department / subject <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+          <input type="text" id="obStaffSubject" placeholder="e.g. Science, Counseling, Front office" style="margin:0">
+          <span class="ob-label">Room / office <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+          <input type="text" id="obStaffRoom" placeholder="e.g. 204, B-12" style="margin:0">
+        </div>
+
         <button class="ob-btn" onclick="obNext()">Continue →</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
       </div>
@@ -734,8 +682,8 @@
       <!-- Step 4: Schedule upload -->
       <div class="ob-step" id="ob-step-4">
         <div style="font-size:2rem;margin-bottom:10px">📋</div>
-        <div class="ob-title">Your Schedule</div>
-        <div class="ob-sub">Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.</div>
+        <div class="ob-title" id="obStep4Title">Your Schedule</div>
+        <div class="ob-sub" id="obStep4Sub">Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.</div>
         <div class="flux-pdf-import" id="obScheduleImportRoot">
           <div class="flux-pdf-import__blob flux-pdf-import__blob--tr" aria-hidden="true"></div>
           <div class="flux-pdf-import__blob flux-pdf-import__blob--bl" aria-hidden="true"></div>
@@ -801,24 +749,46 @@
         <div class="ob-skip" onclick="obNext()">Skip for now</div>
       </div>
 
-      <!-- Step 5: Study style -->
+      <!-- Step 5: Study style (student) / Working style (staff) -->
       <div class="ob-step" id="ob-step-5">
-        <div style="font-size:2rem;margin-bottom:10px">🧠</div>
-        <div class="ob-title">How do you study?</div>
-        <div class="ob-sub">Flux will personalize AI suggestions based on how you learn best.</div>
-        <span class="ob-label">Learning style <span style="color:var(--muted);font-weight:400">(pick all that apply)</span></span>
-        <div class="ob-chip-wrap">
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="visual">👁 Visual</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="audio">👂 Audio</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="reading">📖 Reading</div>
-          <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="practice">✏️ Practice</div>
+        <div style="font-size:2rem;margin-bottom:10px" id="obStep5Emoji">🧠</div>
+        <div class="ob-title" id="obStep5Title">How do you study?</div>
+        <div class="ob-sub" id="obStep5Sub">Flux will personalize AI suggestions based on how you learn best.</div>
+
+        <!-- STUDENT study style -->
+        <div data-ob-role="student">
+          <span class="ob-label">Learning style <span style="color:var(--muted);font-weight:400">(pick all that apply)</span></span>
+          <div class="ob-chip-wrap">
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="visual">👁 Visual</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="audio">👂 Audio</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="reading">📖 Reading</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-dna="practice">✏️ Practice</div>
+          </div>
+          <span class="ob-label" style="margin-top:16px">Daily study goal</span>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+            <input type="range" id="obStudyGoal" min="0.5" max="6" step="0.5" value="2" style="flex:1;margin:0" oninput="document.getElementById('obGoalLabel').textContent=this.value+'h'">
+            <span id="obGoalLabel" style="font-size:1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);min-width:32px">2h</span>
+          </div>
         </div>
-        <span class="ob-label" style="margin-top:16px">Daily study goal</span>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
-          <input type="range" id="obStudyGoal" min="0.5" max="6" step="0.5" value="2" style="flex:1;margin:0" oninput="document.getElementById('obGoalLabel').textContent=this.value+'h'">
-          <span id="obGoalLabel" style="font-size:1rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);min-width:32px">2h</span>
+
+        <!-- STAFF working style -->
+        <div data-ob-role="staff" style="display:none">
+          <span class="ob-label">When do you do focused work? <span style="color:var(--muted);font-weight:400">(pick all that apply)</span></span>
+          <div class="ob-chip-wrap">
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-style="before">🌅 Before school</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-style="prep">📚 Prep periods</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-style="after">🌆 After school</div>
+            <div class="ob-chip" onclick="this.classList.toggle('active')" data-staff-style="weekend">📆 Weekends</div>
+          </div>
+          <span class="ob-label" style="margin-top:16px">Reminders &amp; nudges</span>
+          <div class="ob-chip-wrap" id="obStaffReminderChips">
+            <div class="ob-chip active" onclick="selectObChip(this,'obStaffReminders','gentle')">🍃 Gentle</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obStaffReminders','balanced')">⚖️ Balanced</div>
+            <div class="ob-chip" onclick="selectObChip(this,'obStaffReminders','focused')">🎯 Keep me on track</div>
+          </div>
         </div>
-        <button class="ob-btn" onclick="obFinish()">Let's go! 🚀</button>
+
+        <button class="ob-btn" onclick="obFinish()" id="obFinishBtn">Let's go! 🚀</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
       </div>
 
@@ -833,7 +803,7 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
     <div class="sidebar-header">
-      <span class="sidebar-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="198" height="50" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
+      <span class="sidebar-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1;display:inline-flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="28" height="28" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkSb" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkSb)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="150" height="38" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
   <defs>
     <linearGradient id="fluxWG" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#E8F4FC"/>
@@ -927,7 +897,7 @@
   <div class="mob-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
   <div class="mob-drawer" id="mobDrawer">
     <div class="mob-drawer-header">
-      <span class="mob-drawer-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="198" height="50" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
+      <span class="mob-drawer-logo" style="-webkit-text-fill-color:initial;background:none;line-height:1;display:inline-flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="28" height="28" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkMd" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkMd)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="150" height="38" aria-hidden="true" overflow="visible" text-rendering="geometricPrecision">
   <defs>
     <linearGradient id="fluxWG2" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#E8F4FC"/>
@@ -2492,7 +2462,7 @@
         <div id="fluxSyncConflictSettingsMount"></div>
         <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
-            <div style="flex-shrink:0;line-height:0"><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
+            <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
               <defs>
                 <linearGradient id="fluxWGAbout" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stop-color="#E8F4FC"/><stop offset="55%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/>
@@ -2545,6 +2515,25 @@
           </div>
         </div>
         <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, notes, extracurriculars, and other planner data on this device</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
+
+        <!-- Privacy promise -->
+        <div class="card" style="border-color:rgba(var(--accent-rgb),.28);background:linear-gradient(165deg,rgba(var(--accent-rgb),.08),transparent 60%)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:1.3rem" aria-hidden="true">🔒</span>
+            <h3 style="margin:0">Your privacy</h3>
+          </div>
+          <p style="font-size:.82rem;color:var(--text2);line-height:1.7;margin:0 0 12px">Flux is private by design. Your tasks, notes, grades, mood entries, and everything else you put in stay <strong>yours</strong>.</p>
+          <ul style="margin:0;padding-left:1.15rem;font-size:.8rem;color:var(--muted2);line-height:1.75">
+            <li><strong>Never sold</strong> or used for advertising — ever.</li>
+            <li><strong>Not shared with your school</strong>, teachers, or counselors unless you choose to (e.g. joining a class).</li>
+            <li><strong>Not visible to Flux’s developer.</strong> Cloud data is protected by per-user row-level security, so your account’s data isn’t readable from other accounts — including the founder’s.</li>
+            <li><strong>Yours to delete.</strong> Clear everything anytime from the Danger Zone above; it’s removed from this device and the cloud.</li>
+            <li><strong>AI context is opt-in.</strong> Flux AI only sees what you send it. Details in the Privacy Policy.</li>
+          </ul>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+            <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Read the full Privacy Policy →</a>
+          </div>
+        </div>
 
         <!-- Privacy & Legal -->
         <div class="card">
@@ -2726,8 +2715,7 @@
 <script defer src="public/js/flux-skills.js"></script>
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
-<script src="public/js/flux-pulse-layout.js"></script>
-<script defer src="public/js/flux-pulse-perf.js"></script>
+<!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 <script defer src="public/js/flux-teacher-wishlist.js"></script>
     <script defer src="public/js/core/debug.js"></script>
     <script defer src="public/js/flux-storage-keys.js"></script>

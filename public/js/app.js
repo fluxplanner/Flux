@@ -6015,6 +6015,9 @@ function applyTheme(key){
   applyThemeVars(key,true);
   document.body.setAttribute('data-theme',key);
   fluxSaveStoredString('flux_theme',key);
+  // Mark that the user explicitly picked a theme, so the dark-first migration
+  // never overrides a deliberate choice (incl. choosing light on purpose).
+  fluxSaveStoredString('flux_theme_user_choice','1');
   const custom=load('flux_custom_colors',{});
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
@@ -6049,13 +6052,26 @@ function loadTheme(){
     delete custom['--accent'];delete custom['--accent-rgb'];
     save('flux_custom_colors',custom);
   }
-  // Auto-detect OS color scheme on first visit
+  // One-time migration: earlier builds auto-set the theme to 'light' from the
+  // device's prefers-color-scheme. That forced an unreadable light theme on
+  // users (e.g. a teacher on a light-mode laptop) who never chose it. Reset
+  // that auto-applied light theme back to dark exactly once. A genuine future
+  // choice via applyTheme() sets flux_theme_user_choice and is never touched.
+  try{
+    if(!fluxLoadStoredString('flux_theme_dark_migration_v1','')){
+      fluxSaveStoredString('flux_theme_dark_migration_v1','1');
+      const stored=String(fluxLoadStoredString('flux_theme','')).trim();
+      const explicit=String(fluxLoadStoredString('flux_theme_user_choice','')).trim();
+      if(stored==='light'&&explicit!=='1')fluxSaveStoredString('flux_theme','dark');
+    }
+  }catch(_){}
+  // Flux is a dark-first product. Do NOT follow the device's light/dark
+  // setting — a teacher on a light-mode laptop was getting an unreadable
+  // light theme. New users always start on dark ('Midnight'); switching to
+  // light is an explicit opt-in via Settings → Look.
   try{
     const cur=String(fluxLoadStoredString('flux_theme','')).trim();
-    if(!cur){
-      const prefersDark=typeof matchMedia==='undefined'||matchMedia('(prefers-color-scheme:dark)').matches;
-      fluxSaveStoredString('flux_theme',prefersDark?'dark':'light');
-    }
+    if(!cur)fluxSaveStoredString('flux_theme','dark');
   }catch(_){}
   const raw=fluxLoadStoredString('flux_theme','dark');
   const key=THEMES[raw]?raw:'dark';
@@ -9084,6 +9100,9 @@ let obSelectedGrade='10';
 let obSelectedTrack='';
 let obSelectedFocus='deadlines';
 let obSelectedRole='student'; // 'student' | 'staff' — picked once during onboarding
+let obSelectedStaffRole='teacher'; // 'teacher' | 'counselor' | 'admin' — staff sub-role
+let obSelectedStaffFocus='planning';
+let obSelectedStaffReminders='gentle';
 let obScheduleImgData=null;
 let obExtractedClasses=[];
 let obSchedulePdfPages=[];
@@ -9095,6 +9114,25 @@ function prefillOnboardingFromProfile(){
   const p=load('profile',{});
   const nameEl=document.getElementById('obName');
   if(nameEl)nameEl.value=(p.name&&String(p.name).trim())?String(p.name).trim():'';
+  // Restore role + staff sub-role so a re-opened questionnaire shows the right
+  // variant. Educators resolved via FluxRole also count as staff here.
+  let isStaff=p.role==='staff'||['teacher','counselor','admin'].includes(String(p.role||''));
+  try{if(!isStaff&&window.FluxRole&&FluxRole.isEducator&&FluxRole.isEducator())isStaff=true;}catch(_){}
+  obSelectedRole=isStaff?'staff':'student';
+  let subRole=p.staffRole||(['teacher','counselor','admin'].includes(String(p.role||''))?p.role:'');
+  try{if(!subRole&&window.FluxRole&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.current!=='staff')subRole=FluxRole.current;}catch(_){}
+  obSelectedStaffRole=['teacher','counselor','admin'].includes(String(subRole))?subRole:'teacher';
+  // Reflect role choice on the step-1 chips
+  document.querySelectorAll('#obRoleChips .ob-role-chip').forEach(c=>{
+    const on=(c.getAttribute('onclick')||'').includes(`'${obSelectedRole}'`);
+    c.classList.toggle('active',on);
+    if(c.getAttribute('role')==='radio')c.setAttribute('aria-checked',on?'true':'false');
+  });
+  document.querySelectorAll('#obStaffRoleChips .ob-staffrole-chip').forEach(c=>{
+    const on=(c.getAttribute('onclick')||'').includes(`'${obSelectedStaffRole}'`);
+    c.classList.toggle('active',on);
+    if(c.getAttribute('role')==='radio')c.setAttribute('aria-checked',on?'true':'false');
+  });
   const g=String(p.grade||obSelectedGrade||'10');
   obSelectedGrade=g;
   const gradeChip=Array.from(document.querySelectorAll('#obGradeChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${g}'`));
@@ -9109,6 +9147,29 @@ function prefillOnboardingFromProfile(){
   document.querySelectorAll('#obFeatureChips .ob-chip').forEach(el=>{
     if(feats.includes(el.dataset.feat))el.classList.add('active');
   });
+  // Staff questionnaire prefill (step 2 + step 5 staff variants)
+  if(obSelectedRole==='staff'){
+    const sf=(p.termFocus&&['planning','grading','students','balance'].includes(String(p.termFocus)))?p.termFocus:'planning';
+    obSelectedStaffFocus=sf;
+    const sfChip=Array.from(document.querySelectorAll('#obStaffFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${sf}'`));
+    if(sfChip)selectObChip(sfChip,'obStaffFocus',sf);
+    document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(c=>c.classList.remove('active'));
+    const sfeats=Array.isArray(p.staffFeatures)&&p.staffFeatures.length?p.staffFeatures:['tasks'];
+    document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(el=>{
+      if(sfeats.includes(el.dataset.staffFeat))el.classList.add('active');
+    });
+    const rem=['gentle','balanced','focused'].includes(String(p.staffReminders))?p.staffReminders:'gentle';
+    obSelectedStaffReminders=rem;
+    const remChip=Array.from(document.querySelectorAll('#obStaffReminderChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${rem}'`));
+    if(remChip)selectObChip(remChip,'obStaffReminders',rem);
+    document.querySelectorAll('.ob-chip[data-staff-style]').forEach(c=>c.classList.remove('active'));
+    const styles=Array.isArray(p.staffWorkStyle)?p.staffWorkStyle:[];
+    document.querySelectorAll('.ob-chip[data-staff-style]').forEach(el=>{
+      if(styles.includes(el.dataset.staffStyle))el.classList.add('active');
+    });
+    const ssub=document.getElementById('obStaffSubject');if(ssub)ssub.value=p.subject||'';
+    try{const tk=(typeof _teacherSchoolKey==='function')?_teacherSchoolKey():null;if(tk){const ts=load(tk,{});const sr=document.getElementById('obStaffRoom');if(sr)sr.value=ts.room||'';if(ssub&&!ssub.value)ssub.value=ts.department||'';}}catch(_){}
+  }
   const si=schoolInfo&&typeof schoolInfo==='object'?schoolInfo:{};
   const sch=document.getElementById('obSchool');if(sch)sch.value=si.schoolName||'';
   const cou=document.getElementById('obCounselor');if(cou)cou.value=si.counselor||'';
@@ -9142,11 +9203,19 @@ function prefillOnboardingFromProfile(){
 function showOnboarding(startStep){
   const step=typeof startStep==='number'&&startStep>=1&&startStep<=OB_TOTAL?Math.floor(startStep):1;
   obCurrentStep=step;
-  document.getElementById('loginScreen')?.classList.remove('visible');
+  const ls=document.getElementById('loginScreen');
+  if(ls){
+    ls.classList.remove('visible');
+    // showLoginScreen() leaves an inline display:block + a higher z-index than
+    // onboarding, which would paint the login screen on top. Force it hidden.
+    ls.style.display='none';
+    try{if(typeof stopLoginAmbient==='function')stopLoginAmbient();}catch(_){}
+  }
   document.getElementById('app')?.classList.remove('visible');
   const ob=document.getElementById('onboarding');
   if(ob)ob.classList.add('visible');
   prefillOnboardingFromProfile();
+  applyObRoleView();
   renderObProgress();
   showObStep(obCurrentStep);
 }
@@ -9217,11 +9286,47 @@ function selectObChip(el,key,val){
   if(key==='obGrade')obSelectedGrade=val;
   if(key==='obTrack')obSelectedTrack=val;
   if(key==='obFocus')obSelectedFocus=val;
+  if(key==='obStaffFocus')obSelectedStaffFocus=val;
+  if(key==='obStaffReminders')obSelectedStaffReminders=val;
+  if(key==='obStaffRole')obSelectedStaffRole=(['teacher','counselor','admin'].includes(val))?val:'teacher';
   if(key==='obRole'){
     obSelectedRole=(val==='staff')?'staff':'student';
-    // Hide the grade field when staff is selected; staff doesn't need it.
-    var gradeSec=document.getElementById('obGradeSection');
-    if(gradeSec)gradeSec.style.display=(obSelectedRole==='staff')?'none':'';
+    applyObRoleView();
+  }
+}
+
+/* Show only the question blocks for the chosen role and swap the role-dependent
+   copy. Student and staff get genuinely different questionnaires; this keeps the
+   step shell shared but the content tailored. */
+function applyObRoleView(){
+  var staff=obSelectedRole==='staff';
+  document.querySelectorAll('#onboarding [data-ob-role]').forEach(function(el){
+    var forStaff=el.getAttribute('data-ob-role')==='staff';
+    el.style.display=(forStaff===staff)?'':'none';
+  });
+  var setText=function(id,txt){var el=document.getElementById(id);if(el)el.textContent=txt;};
+  if(staff){
+    setText('obNameLabel','Your name');
+    setText('obStep2Title','Tailor Flux to your work');
+    setText('obStep2Sub','Two quick questions — we use this for tips, AI context, and what to highlight on your workboard.');
+    setText('obStep3Title','Your School');
+    setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
+    setText('obStep4Title','Your Schedule');
+    setText('obStep4Sub','Upload a PDF or photo of your teaching schedule — AI reads it. Or skip and add periods later.');
+    setText('obStep5Emoji','🗂');
+    setText('obStep5Title','How do you work?');
+    setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
+  }else{
+    setText('obNameLabel','Your first name');
+    setText('obStep2Title','Tailor Flux to you');
+    setText('obStep2Sub','Two quick questions — we use this for tips, AI context, and what to highlight on your dashboard.');
+    setText('obStep3Title','Your School');
+    setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
+    setText('obStep4Title','Your Schedule');
+    setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
+    setText('obStep5Emoji','🧠');
+    setText('obStep5Title','How do you study?');
+    setText('obStep5Sub','Flux will personalize AI suggestions based on how you learn best.');
   }
 }
 function updateObPreview(){
@@ -9247,50 +9352,73 @@ function obNext(){
     p.name=name;
     p.grade=obSelectedGrade;
     p.role=obSelectedRole||'student'; // student | staff (sub-role chosen via staff details if staff)
+    if(obSelectedRole==='staff')p.staffRole=obSelectedStaffRole||'teacher';
     save('profile',p);
     fluxSaveStoredString('flux_user_name',name.split(' ')[0]);
     _updateSidebarName(name);
+    // Staff pick a sub-role (teacher/counselor/admin) on step 1 so they land in
+    // the right workspace; students resolve to 'student'.
+    const effectiveRole=obSelectedRole==='staff'?(obSelectedStaffRole||'teacher'):'student';
     // Persist the role so the post-login picker never shows again on this device,
     // and try to upsert to Supabase so it survives across devices too.
     try{
       const uid=(typeof currentUser!=='undefined'&&currentUser&&currentUser.id)?currentUser.id:null;
       if(uid){
-        fluxMarkRoleSetupDone(uid,obSelectedRole==='staff'?'staff':'student',name);
+        fluxMarkRoleSetupDone(uid,effectiveRole,name);
         try{
           const sb=(typeof getSB==='function')?getSB():null;
           if(sb)sb.from('user_roles').upsert({
             user_id:uid,
-            role:obSelectedRole==='staff'?'staff':'student',
+            role:effectiveRole,
             display_name:name,
             updated_at:new Date().toISOString(),
           }).then(()=>{},()=>{});
         }catch(_){}
-        try{if(window.FluxRole)FluxRole.current=obSelectedRole==='staff'?'staff':'student';}catch(_){}
+        try{if(window.FluxRole)FluxRole.current=effectiveRole;}catch(_){}
       }
       // Also stash a guest-fallback flag so post-login picker stays away for guests too
-      save('flux_role_setup_done_v1',{role:obSelectedRole||'student',at:Date.now()});
+      save('flux_role_setup_done_v1',{role:effectiveRole,at:Date.now()});
     }catch(_){}
   }
   if(obCurrentStep===2){
     const p=load('profile',{});
-    p.termFocus=obSelectedFocus||'deadlines';
-    const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
-    p.plannerFeatures=feats.length?feats:['tasks'];
+    if(obSelectedRole==='staff'){
+      p.termFocus=obSelectedStaffFocus||'planning';
+      const sfeats=Array.from(document.querySelectorAll('#obStaffFeatureChips .ob-chip.active')).map(c=>c.dataset.staffFeat).filter(Boolean);
+      p.staffFeatures=sfeats.length?sfeats:['tasks'];
+    }else{
+      p.termFocus=obSelectedFocus||'deadlines';
+      const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
+      p.plannerFeatures=feats.length?feats:['tasks'];
+    }
     save('profile',p);
   }
   if(obCurrentStep===3){
     schoolInfo.schoolName=document.getElementById('obSchool')?.value.trim()||'';
-    schoolInfo.counselor=document.getElementById('obCounselor')?.value.trim()||'';
-    schoolInfo.locker=document.getElementById('obLocker')?.value.trim()||'';
-    schoolInfo.combo=document.getElementById('obCombo')?.value.trim()||'';
-    save('flux_school',schoolInfo);
     const p=load('profile',{});
-    if(obSelectedTrack){
-      const existing=normalizeProgramList(p.program);
-      if(!existing.includes(obSelectedTrack))existing.push(obSelectedTrack);
-      p.program=existing;
+    if(obSelectedRole==='staff'){
+      // Staff: capture department/subject + room into the teacher school record.
+      const dept=document.getElementById('obStaffSubject')?.value.trim()||'';
+      const room=document.getElementById('obStaffRoom')?.value.trim()||'';
+      if(dept)p.subject=dept;
+      save('profile',p);
+      try{
+        const tk=(typeof _teacherSchoolKey==='function')?_teacherSchoolKey():null;
+        if(tk){const ts=load(tk,{});ts.department=dept;ts.room=room;save(tk,ts);}
+      }catch(_){}
+      save('flux_school',schoolInfo);
+    }else{
+      schoolInfo.counselor=document.getElementById('obCounselor')?.value.trim()||'';
+      schoolInfo.locker=document.getElementById('obLocker')?.value.trim()||'';
+      schoolInfo.combo=document.getElementById('obCombo')?.value.trim()||'';
+      save('flux_school',schoolInfo);
+      if(obSelectedTrack){
+        const existing=normalizeProgramList(p.program);
+        if(!existing.includes(obSelectedTrack))existing.push(obSelectedTrack);
+        p.program=existing;
+      }
+      save('profile',p);
     }
-    save('profile',p);
   }
   if(obCurrentStep===4){
     if(obExtractedClasses.length){classes=obExtractedClasses;save('flux_classes',classes);}
@@ -9299,6 +9427,15 @@ function obNext(){
   showObStep(obCurrentStep+1);
 }
 function obBack(){if(obCurrentStep>1)showObStep(obCurrentStep-1);}
+function openPrivacyFromOnboarding(e){
+  if(e&&e.preventDefault)e.preventDefault();
+  try{
+    const root=document.querySelector('base');
+    const base=root&&root.href?root.href:location.href;
+    window.open(new URL('privacy.html',base).href,'_blank','noopener');
+  }catch(_){window.open('privacy.html','_blank','noopener');}
+}
+window.openPrivacyFromOnboarding=openPrivacyFromOnboarding;
 function obFinish(){
   const wasRedo=!!window._fluxOnboardingRedo;
   window._fluxOnboardingRedo=false;
@@ -9306,11 +9443,20 @@ function obFinish(){
   const sb=document.getElementById('obRedoSaveBtn');
   if(gc)gc.style.display='none';
   if(sb)sb.style.display='none';
-  // Capture DNA + study goal from step 5 if set
-  const dnaChips=document.querySelectorAll('.ob-chip[data-dna].active');
-  if(dnaChips.length){studyDNA=Array.from(dnaChips).map(c=>c.dataset.dna);save('flux_dna',studyDNA);}
-  const goalSlider=document.getElementById('obStudyGoal');
-  if(goalSlider){settings.dailyGoalHrs=parseFloat(goalSlider.value)||2;save('flux_settings',settings);}
+  if(obSelectedRole==='staff'){
+    // Staff: capture working-style + reminder preference from step 5.
+    const styleChips=document.querySelectorAll('.ob-chip[data-staff-style].active');
+    const p=load('profile',{});
+    p.staffWorkStyle=Array.from(styleChips).map(c=>c.dataset.staffStyle);
+    p.staffReminders=obSelectedStaffReminders||'gentle';
+    save('profile',p);
+  }else{
+    // Student: capture learning DNA + daily study goal.
+    const dnaChips=document.querySelectorAll('.ob-chip[data-dna].active');
+    if(dnaChips.length){studyDNA=Array.from(dnaChips).map(c=>c.dataset.dna);save('flux_dna',studyDNA);}
+    const goalSlider=document.getElementById('obStudyGoal');
+    if(goalSlider){settings.dailyGoalHrs=parseFloat(goalSlider.value)||2;save('flux_settings',settings);}
+  }
   save('flux_onboarded',true);
   const ob=document.getElementById('onboarding');if(ob)ob.classList.remove('visible');
   showApp();
@@ -10610,8 +10756,15 @@ function stopLoginDemoRotator(){
 }
 
 let _loginScrollIO=null;
+let _loginScrollFallback=null;
 function teardownLoginScrollAnimations(){
   if(_loginScrollIO){_loginScrollIO.disconnect();_loginScrollIO=null;}
+  if(_loginScrollFallback){
+    const r=document.getElementById('loginScreen');
+    if(r)r.removeEventListener('scroll',_loginScrollFallback);
+    window.removeEventListener('resize',_loginScrollFallback);
+    _loginScrollFallback=null;
+  }
 }
 function initLoginScrollAnimations(){
   teardownLoginScrollAnimations();
@@ -10647,6 +10800,28 @@ function initLoginScrollAnimations(){
     }
     _loginScrollIO.observe(sec);
   });
+  /* Safety net: some engines throttle IntersectionObserver/rAF for an
+     overflow-scrolled container (and headless captures never fire it). A cheap
+     scroll/resize geometry check guarantees sections always reveal so content
+     can never get stuck invisible. */
+  _loginScrollFallback=function(){
+    const vh=root.clientHeight||window.innerHeight||0;
+    let pending=0;
+    root.querySelectorAll('.login-scroll-section:not(.login-scroll-section--visible)').forEach(sec=>{
+      const r=sec.getBoundingClientRect();
+      if(r.top < vh*0.92){
+        sec.classList.add('login-scroll-section--visible');
+        if(_loginScrollIO)try{_loginScrollIO.unobserve(sec);}catch(_){}
+      }else{pending++;}
+    });
+    if(!pending&&_loginScrollFallback){
+      root.removeEventListener('scroll',_loginScrollFallback);
+      window.removeEventListener('resize',_loginScrollFallback);
+    }
+  };
+  root.addEventListener('scroll',_loginScrollFallback,{passive:true});
+  window.addEventListener('resize',_loginScrollFallback,{passive:true});
+  _loginScrollFallback();
 }
 function initLoginDemoRotator(){
   stopLoginDemoRotator();
