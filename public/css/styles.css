@@ -165,7 +165,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:var(-
   background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important;
   flex:1;min-width:0;max-width:100%;white-space:normal;display:flex;align-items:center;overflow:hidden;
 }
-.sidebar-logo:has(svg) svg{width:100%;max-width:min(168px,100%);height:auto;flex-shrink:1}
+.sidebar-logo .flux-logo-svg,.mob-drawer-logo .flux-logo-svg{width:100%;max-width:min(198px,100%);height:auto;flex-shrink:1}
 .sidebar-logo svg,.mob-drawer-logo svg{display:block;vertical-align:top;overflow:visible}
 .flux-logo-svg{overflow:visible;text-rendering:geometricPrecision}
 .sidebar.collapsed .sidebar-logo{opacity:0;width:0}
@@ -499,7 +499,6 @@ body.flux-canvas-ai-split .main-content > #ai.panel.flux-ai-split-visible{
   background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important;
   flex:1;min-width:0;max-width:100%;display:flex;align-items:center;overflow:hidden;
 }
-.mob-drawer-logo:has(svg) svg{width:100%;max-width:min(168px,100%);height:auto;flex-shrink:1}
 .mob-drawer-close{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px;border-radius:8px;transition:var(--transition);transform:none;box-shadow:none}
 .mob-drawer-close:hover{color:var(--text);transform:none;box-shadow:none}
 .mob-drawer-nav{flex:1;overflow-y:auto;padding:8px}
