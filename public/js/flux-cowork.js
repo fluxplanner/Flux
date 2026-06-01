@@ -85,8 +85,18 @@
   }
 
   function persistTasks() {
-    try { if (typeof window.save === 'function') window.save('tasks', window.tasks); } catch (_) {}
-    try { if (typeof window.syncKey === 'function') window.syncKey('tasks', window.tasks); } catch (_) {}
+    // app.js keeps `save` / `syncKey` block-scoped (NOT on window), so a bare
+    // `window.save` check always no-ops here. Prefer the globally-exposed
+    // FluxStorage.save (canonical cross-module write, same key namespacing) so
+    // host check-offs actually survive a reload; keep legacy globals as fallback.
+    try {
+      if (window.FluxStorage && typeof window.FluxStorage.save === 'function') window.FluxStorage.save('tasks', window.tasks);
+      else if (typeof window.save === 'function') window.save('tasks', window.tasks);
+    } catch (_) {}
+    try {
+      if (typeof window.syncKey === 'function') window.syncKey('tasks', window.tasks);
+      else if (window.FluxSync && typeof window.FluxSync.now === 'function') window.FluxSync.now();
+    } catch (_) {}
     try { if (typeof window.renderTasks === 'function') window.renderTasks(); } catch (_) {}
   }
 

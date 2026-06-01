@@ -122,6 +122,11 @@ window.fluxNamespacedKey=fluxNamespacedKey;
 window.fluxImpersonationPrefix=fluxImpersonationPrefix;
 /** ESM helpers (`public/js/core/storage.js`) use this so reads/writes match `fluxNamespacedKey` + impersonation. */
 window.FluxStorage={load,save};
+// Classic-script scope bridge: ~129 reads of `window.save` and ~105 of
+// `window.load` across modules silently no-op without these (top-level
+// `const` is not a window property). Same root cause as the cowork bug.
+window.save=save;
+window.load=load;
 
 // ── Phase 2 · DEV-only diagnostics (no-op unless explicitly enabled) ──
 // Master: window.FLUX_DEBUG = true  OR  localStorage.setItem('FLUX_DEBUG','1')
@@ -2718,6 +2723,22 @@ window.onAddEventExtraPick=onAddEventExtraPick;
 
 // ══ STATE ══
 let tasks=load('tasks',[]);
+// Expose `tasks` on window as a LIVE view of this block-scoped binding.
+// app.js is a classic script, so top-level `let` is NOT a window property —
+// yet ~35 feature modules (Co-work, SRS, bulk-filter, progress-streak,
+// mobile-swipe, elevate, deep-links, …) read `window.tasks`, and helpers like
+// flux-storage-repair / flux-offline-sync only act when it's already defined.
+// A getter/setter closes over the real binding so reads always reflect the
+// current array (even after `tasks=tasks.filter(...)` reassignments) and any
+// `window.tasks = x` write updates the real binding instead of shadowing it.
+try{
+  Object.defineProperty(window,'tasks',{
+    configurable:true,
+    enumerable:true,
+    get:function(){return tasks;},
+    set:function(v){if(Array.isArray(v))tasks=v;},
+  });
+}catch(_){ window.tasks=tasks; }
 let notes=load('flux_notes',[]);
 let habits=load('flux_habits',[]);
 function getFluxHabits(){return habits;}
@@ -2812,6 +2833,37 @@ let currentNoteId=null,noteFilter='all',flashcards=[],fcIndex=0,fcFlipped=false;
 let breathingActive=false,breathTimer=null;
 let sidebarCollapsed=load('flux_sidebar_collapsed',false);
 
+// ── Classic-script scope bridge for top-level `let` state ─────────────
+// Many modules (Notes/Snippets/Flashcards read `window.notes`, Classroom
+// tools read `window.classes`, Canvas hub reads `window.canvasToken`, …)
+// see `undefined` without these because top-level `let` is not a window
+// property. Getter/setter pairs close over the real binding so reads see
+// current state AND `window.X = v` reassignments propagate back.
+(function bridgeStateToWindow(){
+  function bind(name, getter, setter){
+    try{
+      Object.defineProperty(window, name, {
+        configurable:true, enumerable:true,
+        get:getter, set:setter,
+      });
+    }catch(_){ /* already defined / non-configurable; skip */ }
+  }
+  bind('notes',         function(){return notes;},         function(v){if(Array.isArray(v))notes=v;});
+  bind('classes',       function(){return classes;},       function(v){if(Array.isArray(v))classes=v;});
+  bind('sessionLog',    function(){return sessionLog;},    function(v){if(Array.isArray(v))sessionLog=v;});
+  bind('settings',      function(){return settings;},      function(v){if(v&&typeof v==='object')settings=v;});
+  bind('taskFilter',    function(){return taskFilter;},    function(v){taskFilter=v;});
+  bind('currentNoteId', function(){return currentNoteId;}, function(v){currentNoteId=v;});
+  bind('canvasToken',   function(){return canvasToken;},   function(v){canvasToken=v||'';});
+  bind('canvasUrl',     function(){return canvasUrl;},     function(v){canvasUrl=v||'';});
+  bind('gmailToken',    function(){return gmailToken;},    function(v){gmailToken=v;});
+  bind('gmailEmails',   function(){return gmailEmails;},   function(v){if(Array.isArray(v))gmailEmails=v;});
+  bind('tabConfig',     function(){return tabConfig;},     function(v){if(Array.isArray(v))tabConfig=v;});
+  bind('moodHistory',   function(){return moodHistory;},   function(v){if(Array.isArray(v))moodHistory=v;});
+  bind('teacherNotes',  function(){return teacherNotes;},  function(v){if(Array.isArray(v))teacherNotes=v;});
+  bind('schoolInfo',    function(){return schoolInfo;},    function(v){if(v&&typeof v==='object')schoolInfo=v;});
+})();
+
 // ══ SUPABASE + API ══
 const SB_URL='https://lfigdijuqmbensebnevo.supabase.co';
 const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo';
@@ -2822,6 +2874,7 @@ const API={
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
   userFeedback:`${SB_URL}/functions/v1/user-feedback`,
 };
+window.API=API; // flux-ai-mega, flux-skills, etc. read window.API.<endpoint>
 
 async function fluxAuthHeaders(){
   try{
@@ -2919,6 +2972,7 @@ async function fetchAndCacheEntitlement(){
 const G=10.0000; // Physics constant — enforced everywhere
 const precise=n=>Number(n).toFixed(4);
 const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+window.esc=esc; // 144 cross-module reads expected this on window
 /** Settings → Account: lets student-role accounts become educators so Work/Personal mode appears. */
 function syncStudentEducatorUpgradeCard(){
   const card=document.getElementById('studentEducatorUpgradeCard');
@@ -3044,6 +3098,7 @@ window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
 const strip=html=>html.replace(/<[^>]+>/g,'').slice(0,120);
 const todayStr=()=>TODAY.toISOString().slice(0,10);
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
+window.strip=strip; window.todayStr=todayStr; window.fmtTime=fmtTime;
 
 function refreshAIContext(){
   const now=new Date();now.setHours(0,0,0,0);
@@ -15089,6 +15144,7 @@ const FluxBus={
     (this._h[e]||[]).forEach(fn=>{try{fn(d);}catch(err){console.warn('FluxBus error on '+e,err);}});
   },
 };
+window.FluxBus=FluxBus; // 13 cross-module subscribers expected this on window
 
 // ══ TASK DEPENDENCY SYSTEM ═══════════════════════════════════
 function addDependency(taskId,blockedById){

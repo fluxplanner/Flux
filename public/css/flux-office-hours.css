@@ -1,0 +1,203 @@
+/*
+ * Flux · Staff Office Hours
+ * Lightweight on purpose — no backdrop-filter / heavy shadows so it stays
+ * cheap on low-end devices (iPhone 6). Reuses existing theme tokens.
+ */
+
+.flux-oh-card { /* inherits .card */ }
+
+.flux-oh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.flux-oh-badge {
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .12);
+  border: 1px solid rgba(var(--accent-rgb), .26);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.flux-oh-badge--count {
+  color: var(--muted2);
+  background: rgba(255, 255, 255, .05);
+  border-color: var(--border);
+}
+.flux-oh-sub {
+  font-size: .8rem;
+  color: var(--muted2);
+  margin: 6px 0 14px;
+  line-height: 1.5;
+}
+
+/* ── staff: existing slots list ── */
+.flux-oh-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.flux-oh-empty {
+  font-size: .82rem;
+  color: var(--muted2);
+  background: var(--card2);
+  border: 1px dashed var(--border2);
+  border-radius: 12px;
+  padding: 14px;
+  line-height: 1.55;
+}
+.flux-oh-empty code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .1);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.flux-oh-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.flux-oh-row-day {
+  flex-shrink: 0;
+  width: 42px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.flux-oh-row-main { flex: 1; min-width: 0; }
+.flux-oh-row-time { font-size: .86rem; font-weight: 600; color: var(--text); }
+.flux-oh-row-meta {
+  font-size: .74rem;
+  color: var(--muted2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flux-oh-del {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.flux-oh-del:hover { color: var(--red, #f43f5e); background: rgba(244, 63, 94, .1); }
+.flux-oh-del:disabled { opacity: .4; cursor: default; }
+
+/* ── staff: add form ── */
+.flux-oh-form {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.flux-oh-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.flux-oh-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.flux-oh-field > span {
+  font-size: .7rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.flux-oh-field select,
+.flux-oh-field input {
+  margin: 0;
+  width: 100%;
+  font-size: .84rem;
+  padding: 9px 10px;
+}
+.flux-oh-field--wide { grid-column: span 1; }
+.flux-oh-add-btn {
+  align-self: flex-start;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #0a0d18;
+  font-weight: 800;
+  font-size: .84rem;
+  border: none;
+  cursor: pointer;
+}
+.flux-oh-add-btn:hover { filter: brightness(1.06); }
+.flux-oh-add-btn:active { transform: scale(.98); }
+.flux-oh-add-btn:disabled { opacity: .5; cursor: default; transform: none; }
+
+/* ── student: grouped view ── */
+.flux-oh-search {
+  width: 100%;
+  margin: 0 0 12px;
+  font-size: .84rem;
+  padding: 9px 12px;
+}
+.flux-oh-staff-list { display: flex; flex-direction: column; gap: 10px; }
+.flux-oh-staff {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.flux-oh-staff-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.flux-oh-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .76rem;
+  font-weight: 800;
+  color: #0a0d18;
+  background: linear-gradient(135deg, var(--accent), #7c5cff);
+}
+.flux-oh-staff-name { font-size: .9rem; font-weight: 800; color: var(--text); }
+.flux-oh-staff-sub { font-size: .72rem; color: var(--muted2); margin-top: 1px; }
+.flux-oh-staff-slots { display: flex; flex-direction: column; gap: 6px; }
+.flux-oh-srow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.flux-oh-srow:first-child { border-top: none; }
+.flux-oh-srow-day {
+  flex-shrink: 0;
+  width: 38px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.flux-oh-srow-time { font-size: .82rem; font-weight: 600; color: var(--text); }
+.flux-oh-srow-meta { font-size: .74rem; color: var(--muted2); }
+
+/* ── narrow screens (iPhone 6 = 320px CSS px) ── */
+@media (max-width: 520px) {
+  .flux-oh-form-grid { grid-template-columns: 1fr 1fr; }
+  .flux-oh-field--wide { grid-column: 1 / -1; }
+  .flux-oh-add-btn { align-self: stretch; text-align: center; }
+}
+
+/* Honor reduced motion / perf flags already used site-wide. */
+.flux-reduce-motion .flux-oh-add-btn:active { transform: none; }

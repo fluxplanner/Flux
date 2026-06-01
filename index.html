@@ -18,6 +18,18 @@
 (function(){
   try{localStorage.removeItem('flux_liquid_glass');}catch(e){}
   document.documentElement.setAttribute('data-flux-glass','off');
+  /* Low-end device class (iPhone 6-era: <=2 cores, <=2GB RAM, or iOS<=12).
+     Set pre-paint so flux-lowend.css strips GPU-heavy effects with no flash.
+     Capable devices are never flagged, so their look is unchanged. */
+  try{
+    var n=navigator||{},ua=n.userAgent||'',cores=n.hardwareConcurrency||0,mem=n.deviceMemory||0;
+    var oldIOS=false,mm=ua.match(/OS (\d+)_/);
+    if(/iPhone|iPad|iPod/.test(ua)&&mm)oldIOS=parseInt(mm[1],10)<=12;
+    var weak=(cores&&cores<=2)||(mem&&mem<=2)||oldIOS;
+    var pref=null;try{pref=localStorage.getItem('flux_lowend_mode');}catch(e2){}
+    var on=pref==='1'?true:(pref==='0'?false:weak);
+    if(on)document.documentElement.setAttribute('data-flux-lowend','1');
+  }catch(e3){}
 })();
 </script>
 <script>
@@ -203,6 +215,10 @@
 <link rel="stylesheet" href="public/css/flux-elevate.css">
 <!-- Flux Co-work — live shared checklist + presence rooms -->
 <link rel="stylesheet" href="public/css/flux-cowork.css">
+<!-- Flux Office Hours — staff publish weekly drop-in hours; students view -->
+<link rel="stylesheet" href="public/css/flux-office-hours.css">
+<!-- Flux low-end perf layer — gated on html[data-flux-lowend] for old mobile GPUs -->
+<link rel="stylesheet" href="public/css/flux-lowend.css">
 <script type="importmap">
 {
   "imports": {
@@ -2887,6 +2903,7 @@
 <script defer src="public/js/flux-claude-magic.js"></script>
 <script defer src="public/js/flux-elevate.js"></script>
 <script defer src="public/js/flux-cowork.js"></script>
+<script defer src="public/js/flux-office-hours.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>

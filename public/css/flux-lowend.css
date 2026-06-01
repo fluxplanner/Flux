@@ -1,0 +1,83 @@
+/*
+ * Flux · Low-end device performance layer
+ * ------------------------------------------------------------------------
+ * Applies ONLY when html[data-flux-lowend="1"] is set (see the boot detector
+ * in index.html <head>). Targets iPhone-6-era hardware: ≤2 CPU cores, ≤2GB
+ * RAM, or iOS ≤ 12. On capable devices NONE of this applies, so the full
+ * design is unchanged there.
+ *
+ * Goal: keep the layout and color identical, but remove the three things that
+ * actually drop frames on an old mobile GPU:
+ *   1. backdrop-filter (real-time blur) — by far the most expensive
+ *   2. continuously-running decorative animations + full-screen canvases
+ *   3. very large blur radii in shadows / decorative filters
+ */
+
+/* ── 1. Kill all real-time blur (biggest GPU win on old iOS Safari) ── */
+html[data-flux-lowend="1"] *,
+html[data-flux-lowend="1"] *::before,
+html[data-flux-lowend="1"] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Glassy surfaces lose their blur above; give them a solid-enough background
+   so text stays readable (these mirror the existing data-flux-glass=off look). */
+html[data-flux-lowend="1"] .card,
+html[data-flux-lowend="1"] .sidebar,
+html[data-flux-lowend="1"] .topbar,
+html[data-flux-lowend="1"] .bnav,
+html[data-flux-lowend="1"] .flux-ai-composer,
+html[data-flux-lowend="1"] .modal-card,
+html[data-flux-lowend="1"] .edu-modal {
+  background-color: var(--card, #11151f) !important;
+}
+
+/* ── 2. Stop decorative, always-on animation + heavy full-screen canvases ── */
+html[data-flux-lowend="1"] #fluxMeshCanvas,
+html[data-flux-lowend="1"] #loginParticles,
+html[data-flux-lowend="1"] #cursorSpotlight,
+html[data-flux-lowend="1"] #fluxCursorAmbient,
+html[data-flux-lowend="1"] .lx-aurora,
+html[data-flux-lowend="1"] .lx-particles,
+html[data-flux-lowend="1"] .lx-grid,
+html[data-flux-lowend="1"] .role-select-bg {
+  display: none !important;
+}
+
+/* Decorative animated blobs / glows / shimmers: freeze them (keep them visible
+   but static so the look is preserved without per-frame compositing). */
+html[data-flux-lowend="1"] [class*="aurora"],
+html[data-flux-lowend="1"] [class*="-blob"],
+html[data-flux-lowend="1"] [class*="glow"],
+html[data-flux-lowend="1"] [class*="shimmer"],
+html[data-flux-lowend="1"] [class*="-orb"],
+html[data-flux-lowend="1"] .flux-elv-confetti {
+  animation: none !important;
+}
+
+/* Trim long/looping transitions to something cheap; keep instant feedback. */
+html[data-flux-lowend="1"] * {
+  transition-duration: 0.12s !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* ── 3. Tame very large blur radii in decorative filters ── */
+html[data-flux-lowend="1"] [class*="-blob"],
+html[data-flux-lowend="1"] [class*="aurora"],
+html[data-flux-lowend="1"] .lx-blob {
+  filter: none !important;
+}
+
+/* Soften the most expensive multi-layer shadows (keep a light one for depth). */
+html[data-flux-lowend="1"] .card,
+html[data-flux-lowend="1"] .modal-card,
+html[data-flux-lowend="1"] .edu-modal,
+html[data-flux-lowend="1"] .flux-oh-staff {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Smooth scrolling momentum without the heavy paint of sticky blur bars. */
+html[data-flux-lowend="1"] {
+  scroll-behavior: auto !important;
+}
