@@ -1329,5 +1329,9 @@
     updateDatePill,
     renderSettingsCard,
     install,
+    // Exposed so the DOM translator (flux-i18n-dom.js) can reverse-map the
+    // existing dot-keyed translations into source-English→target phrase dicts.
+    STRINGS,
+    UI_STRINGS,
   };
 })();

@@ -79,6 +79,7 @@
       enable_staff_dash_board: true, // Educator personal widget board (mini cal, week, photos)
       enable_staff_command_v2: true, // IAE PR-C: global default
       enable_locale_foundation: true, // IAE PR-C: global default
+      enable_locale_ai_fallback: true, // Full-site translation: AI-batch + cache uncovered UI strings
       enable_ops_health_panel: false,
       enable_dashboard_widget_picker: true, // CORE: hardcoded ON (Phase 37.1 PR-B)
       enable_deep_links: false,
