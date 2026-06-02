@@ -112,4 +112,38 @@ test.describe('Self-controlled DOM translator', () => {
     });
     expect(res.live).toBe('Hecho');
   });
+
+  test('Arabic sets dir=rtl and the RTL stylesheet applies', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    const res = await page.evaluate(async () => {
+      (window as any).FluxI18n.setLocale('ar-SA');
+      await new Promise((r) => setTimeout(r, 300));
+      // Capture direction state WHILE Arabic is active (before we restore below).
+      const dir = document.documentElement.dir;
+      const lang = document.documentElement.lang;
+      // body text-align flips (proves flux-rtl.css cascaded)
+      const bodyAlign = getComputedStyle(document.body).textAlign;
+      // Confirm flux-rtl.css actually shipped the app-shell flip rule (CSSOM),
+      // independent of viewport/!important overrides that vary by test width.
+      let appFlipRule = false;
+      for (const sheet of document.styleSheets) {
+        if (!(sheet.href || '').includes('flux-rtl')) continue;
+        try {
+          for (const r of (sheet as CSSStyleSheet).cssRules) {
+            const sr = (r as CSSStyleRule).selectorText || '';
+            if (sr.includes('#app.visible') && (r as CSSStyleRule).style.flexDirection === 'row-reverse') {
+              appFlipRule = true;
+            }
+          }
+        } catch (_) { /* cross-origin sheet — skip */ }
+      }
+      // restore to English so we don't leave the page in RTL for other state
+      (window as any).FluxI18n.setLocale('en-US');
+      return { dir, lang, bodyAlign, appFlipRule };
+    });
+    expect(res.dir).toBe('rtl');
+    expect(res.lang).toBe('ar');
+    expect(res.bodyAlign).toBe('right');       // flux-rtl.css cascaded
+    expect(res.appFlipRule).toBe(true);        // app-shell row-reverse rule shipped
+  });
 });

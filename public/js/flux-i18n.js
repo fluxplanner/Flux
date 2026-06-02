@@ -999,7 +999,11 @@
 
   function enabled() {
     try {
-      return !!window.FluxFeatureFlags?.isEnabled(FLAG, false);
+      // Pass no fallback so isEnabled() uses the registry default (which is
+      // `true` for enable_locale_foundation). Passing `false` here meant the
+      // whole locale layer stayed off until a flag fetch populated _flags —
+      // including in E2E and on first paint before flags resolve.
+      return !!window.FluxFeatureFlags?.isEnabled(FLAG);
     } catch (_) {
       return false;
     }

@@ -1,0 +1,94 @@
+/* ──────────────────────────────────────────────────────────────────────────
+ * Flux RTL — right-to-left layout for Arabic (html[dir="rtl"]).
+ * FluxI18n sets dir="rtl" on <html> for ar-SA; without this the translated
+ * text rendered in an LTR layout (sidebar on the wrong side, left-aligned
+ * Arabic, mirrored-wrong icons). Scoped entirely under [dir="rtl"] so LTR
+ * locales are completely unaffected.
+ *
+ * Strategy: flip the flex shells with row-reverse, default text to right
+ * alignment, swap the few hard-coded left/right borders, and force code /
+ * numeric / time fields back to LTR so they stay readable.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* Base text direction */
+html[dir="rtl"] body { text-align: right; }
+
+/* App shell: sidebar + main-content are flex children of #app.visible.
+   Reverse so the sidebar sits on the right (the RTL-natural side). */
+html[dir="rtl"] #app.visible { flex-direction: row-reverse; }
+
+/* Sidebar border lives on the right edge in LTR; move it to the left in RTL. */
+html[dir="rtl"] .sidebar {
+  border-right: none;
+  border-left: 1px solid rgba(var(--accent-rgb), .14);
+}
+html[dir="rtl"] .sidebar::after { right: auto; left: 0; }
+
+/* Nav items, list rows, cards: right-align content and flip row direction
+   so icons trail text the RTL way. */
+html[dir="rtl"] .nav-item,
+html[dir="rtl"] .bnav-item,
+html[dir="rtl"] .task-item,
+html[dir="rtl"] .class-row,
+html[dir="rtl"] .info-tile,
+html[dir="rtl"] .flux-oh-row,
+html[dir="rtl"] .flux-oh-srow,
+html[dir="rtl"] .flux-aip-row-head {
+  text-align: right;
+}
+
+/* Flex rows that visually order icon → label should mirror. Use a targeted
+   list rather than a blanket * flip (which would scramble intentionally
+   LTR-ordered controls). */
+html[dir="rtl"] .nav-item,
+html[dir="rtl"] .task-actions,
+html[dir="rtl"] .flux-oh-row,
+html[dir="rtl"] .flux-cowork-item,
+html[dir="rtl"] .dash-toolbar {
+  flex-direction: row-reverse;
+}
+
+/* Inputs / textareas: right-align typed text + placeholders. */
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  text-align: right;
+}
+
+/* AI composer: keep the send button on the natural trailing (left) side. */
+html[dir="rtl"] .ai-input-bar { flex-direction: row-reverse; }
+
+/* Keep inherently-LTR content LTR even inside an RTL page:
+   code, monospace data, numbers, times, room codes, the AI key inputs. */
+html[dir="rtl"] code,
+html[dir="rtl"] pre,
+html[dir="rtl"] kbd,
+html[dir="rtl"] .mono,
+html[dir="rtl"] [data-no-i18n],
+html[dir="rtl"] .flux-cowork-code-value,
+html[dir="rtl"] .flux-aip-key,
+html[dir="rtl"] .flux-oh-srow-time,
+html[dir="rtl"] .flux-oh-row-time,
+html[dir="rtl"] input[type="time"],
+html[dir="rtl"] input[type="date"],
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] input[inputmode="numeric"] {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+/* Day labels in office hours stay left so Mon/Tue read normally. */
+html[dir="rtl"] .flux-oh-srow-day,
+html[dir="rtl"] .flux-oh-row-day {
+  text-align: center;
+}
+
+/* Progress bars / chevrons that imply direction: flip horizontally. */
+html[dir="rtl"] .flux-cowork-progress-fill,
+html[dir="rtl"] .completed-toggle-chevron { transform: scaleX(-1); }
+
+/* Mobile: bottom nav items flow right-to-left too. */
+@media (max-width: 768px) {
+  html[dir="rtl"] .bnav { flex-direction: row-reverse; }
+}
