@@ -1,0 +1,214 @@
+/* ──────────────────────────────────────────────────────────────────────────
+ * FluxAIProviders settings card + /ask response card.
+ * Lightweight, reuses theme tokens, no heavy effects (iPhone 6 friendly).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.flux-aip-card { /* inherits .card */ }
+.flux-aip-badge {
+  display: inline-block;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  padding: 2px 8px;
+  margin-left: 8px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .12);
+  border: 1px solid rgba(var(--accent-rgb), .28);
+  vertical-align: middle;
+}
+.flux-aip-card code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .1);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.flux-aip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flux-aip-row {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.flux-aip-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.flux-aip-icon {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+}
+.flux-aip-row-title { flex: 1; min-width: 0; }
+.flux-aip-row-title strong { font-size: .9rem; font-weight: 800; color: var(--text); }
+.flux-aip-link {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: .72rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.flux-aip-link:hover { text-decoration: underline; }
+
+.flux-aip-pill {
+  flex-shrink: 0;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.flux-aip-pill[data-tone="ok"] {
+  color: #4ade80;
+  background: rgba(74,222,128,.12);
+  border: 1px solid rgba(74,222,128,.32);
+}
+.flux-aip-pill[data-tone="off"] {
+  color: var(--muted2);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+}
+
+.flux-aip-row-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.flux-aip-row-form .flux-aip-key {
+  flex: 1;
+  min-width: 160px;
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem;
+  padding: 9px 12px;
+}
+.flux-aip-row-form button {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.flux-aip-row-form .flux-aip-save {
+  background: var(--accent);
+  color: #0a0d18;
+  border-color: var(--accent);
+}
+.flux-aip-row-form .flux-aip-save:hover { filter: brightness(1.06); }
+.flux-aip-row-form .flux-aip-clear {
+  color: var(--muted);
+  padding: 9px 11px;
+}
+.flux-aip-row-form .flux-aip-clear:hover { color: var(--red, #f43f5e); border-color: rgba(244,63,94,.3); }
+
+.flux-aip-row-models {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.flux-aip-row-models > label {
+  font-size: .72rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.flux-aip-row-models .flux-aip-model {
+  margin: 0;
+  font-size: .82rem;
+  padding: 8px 10px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+}
+.flux-aip-row-models .flux-aip-default {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .76rem;
+  color: var(--muted2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.flux-aip-msg {
+  margin-top: 8px;
+  font-size: .76rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.flux-aip-msg[data-tone="ok"] {
+  color: #4ade80; background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.28);
+}
+.flux-aip-msg[data-tone="warn"] {
+  color: #f59e0b; background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.28);
+}
+.flux-aip-msg[data-tone="err"] {
+  color: #ef4444; background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.28);
+}
+
+/* /ask response card (rendered inline in the AI panel) */
+.flux-ask-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 6px 0;
+}
+.flux-ask-head {
+  font-size: .72rem;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.flux-ask-body {
+  font-size: .88rem;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: normal;
+}
+
+/* Make the AI composer hint chips feel tappable (they prefill the input). */
+.flux-ai-hint__chip[data-ai-chip] {
+  cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.flux-ai-hint__chip[data-ai-chip]:hover,
+.flux-ai-hint__chip[data-ai-chip]:focus-visible {
+  background: rgba(var(--accent-rgb), .14);
+  border-color: rgba(var(--accent-rgb), .4);
+  outline: none;
+}
+
+/* Narrow screens (iPhone 6) */
+@media (max-width: 520px) {
+  .flux-aip-row-form { flex-direction: column; align-items: stretch; }
+  .flux-aip-row-form .flux-aip-key { width: 100%; }
+  .flux-aip-row-form button { width: 100%; }
+  .flux-aip-row-models { flex-direction: column; align-items: stretch; }
+  .flux-aip-row-models .flux-aip-model { max-width: none; }
+}

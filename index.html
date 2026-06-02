@@ -217,6 +217,8 @@
 <link rel="stylesheet" href="public/css/flux-cowork.css">
 <!-- Flux Office Hours — staff publish weekly drop-in hours; students view -->
 <link rel="stylesheet" href="public/css/flux-office-hours.css">
+<!-- Flux AI providers — BYOK settings card + /ask response card -->
+<link rel="stylesheet" href="public/css/flux-ai-providers.css">
 <!-- Flux low-end perf layer — gated on html[data-flux-lowend] for old mobile GPUs -->
 <link rel="stylesheet" href="public/css/flux-lowend.css">
 <script type="importmap">
@@ -2094,9 +2096,10 @@
               </div>
               <div class="flux-ai-hint ai-foot-hint" role="note">
                 <span class="flux-ai-hint__chips">
-                  <span class="flux-ai-hint__chip">/plan</span>
-                  <span class="flux-ai-hint__chip">/optimize</span>
-                  <span class="flux-ai-hint__chip">/fix</span>
+                  <span class="flux-ai-hint__chip" role="button" tabindex="0" data-ai-chip="/plan ">/plan</span>
+                  <span class="flux-ai-hint__chip" role="button" tabindex="0" data-ai-chip="/optimize ">/optimize</span>
+                  <span class="flux-ai-hint__chip" role="button" tabindex="0" data-ai-chip="/fix ">/fix</span>
+                  <span class="flux-ai-hint__chip" role="button" tabindex="0" data-ai-chip="/ask ">/ask</span>
                 </span>
                 <span class="flux-ai-hint__meta">Command palette <kbd class="flux-ai-hint__kbd">⌘K</kbd></span>
               </div>
@@ -2904,6 +2907,9 @@
 <script defer src="public/js/flux-elevate.js"></script>
 <script defer src="public/js/flux-cowork.js"></script>
 <script defer src="public/js/flux-office-hours.js"></script>
+<!-- Flux AI Providers — BYOK multi-provider chat client (Anthropic/OpenAI/Gemini/Groq/Mistral/DeepSeek) -->
+<script defer src="public/js/flux-ai-providers.js"></script>
+<script defer src="public/js/flux-ai-providers-ui.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
