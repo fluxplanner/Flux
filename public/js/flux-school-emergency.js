@@ -123,8 +123,13 @@
     if (error) return { ok: false, error: error.message };
 
     if (m === 'emergency' && message) {
+      // The broadcast row above is what students see realtime; this pinned
+      // announcement is the durable record. Don't fail the whole call if it
+      // can't write (table may not be migrated, RLS may differ), but DO log it
+      // so admins/devs can investigate — silently swallowing during an
+      // emergency is genuinely dangerous.
       try {
-        await sb.from('school_announcements').insert({
+        const { error: annErr } = await sb.from('school_announcements').insert({
           posted_by: window.currentUser.id,
           title: '🚨 EMERGENCY ALERT',
           body: String(message).slice(0, 4000),
@@ -132,7 +137,8 @@
           target_roles: ['student', 'teacher', 'counselor', 'staff', 'admin'],
           pinned: true,
         });
-      } catch (_) {}
+        if (annErr) console.warn('[Flux] emergency announcement card insert failed (broadcast still active):', annErr);
+      } catch (e) { console.warn('[Flux] emergency announcement card threw (broadcast still active):', e); }
     }
 
     saveDismissedMode('');

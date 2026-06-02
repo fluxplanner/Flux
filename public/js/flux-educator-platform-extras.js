@@ -616,9 +616,24 @@
         slot_type: el.dataset.type || 'blocked',
       });
     });
-    await client.from('admin_meeting_slots').delete().eq('admin_id', uid);
+    // Capture both errors — previously these were fire-and-forget and the
+    // admin saw "Availability saved." even when RLS/network rejected, so
+    // students would silently be unable to book.
+    const { error: delErr } = await client.from('admin_meeting_slots').delete().eq('admin_id', uid);
+    if (delErr) {
+      console.warn('[Flux] admin_meeting_slots delete failed', delErr);
+      if (typeof showToast === 'function') showToast('Could not clear old slots: ' + (delErr.message || 'try again'), 'error');
+      return;
+    }
     const toInsert = rows.filter((s) => s.slot_type !== 'blocked');
-    if (toInsert.length) await client.from('admin_meeting_slots').insert(toInsert);
+    if (toInsert.length) {
+      const { error: insErr } = await client.from('admin_meeting_slots').insert(toInsert);
+      if (insErr) {
+        console.warn('[Flux] admin_meeting_slots insert failed', insErr);
+        if (typeof showToast === 'function') showToast('Could not save availability: ' + (insErr.message || 'try again'), 'error');
+        return;
+      }
+    }
     document.querySelector('.edu-fullscreen-modal')?.remove();
     if (typeof showToast === 'function') showToast('Availability saved.', 'success');
   }
@@ -627,18 +642,25 @@
   async function respondToMeetingRequest(requestId, status) {
     const client = sb();
     if (!client || !currentUser) return;
-    const { data: req } = await client
+    // Capture error so admins see RLS/network failures rather than a fake
+    // "Meeting approved" toast when the row never actually changed.
+    const { data: req, error } = await client
       .from('admin_meeting_requests')
       .update({ status, resolved_at: new Date().toISOString() })
       .eq('id', requestId)
       .select('*, user_roles!student_id(display_name)')
       .maybeSingle();
+    if (error) {
+      console.warn('[Flux] admin_meeting_requests update failed', error);
+      if (typeof showToast === 'function') showToast('Could not update meeting: ' + (error.message || 'try again'), 'error');
+      return;
+    }
     if (req && typeof fluxEnsureThreadAndSend === 'function') {
       const msg =
         status === 'approved'
           ? `Your meeting request for ${req.date} at ${req.time_slot} has been approved.`
           : `Your meeting request for ${req.date} could not be accommodated.`;
-      await fluxEnsureThreadAndSend(req.student_id, msg);
+      try { await fluxEnsureThreadAndSend(req.student_id, msg); } catch (e) { console.warn('[Flux] meeting notify', e); }
     }
     if (typeof showToast === 'function')
       showToast(status === 'approved' ? 'Meeting approved' : 'Meeting declined', 'info');
@@ -1321,7 +1343,14 @@
   async function updateAppointmentStatus(appointmentId, status) {
     const client = sb();
     if (!client) return;
-    await client.from('counselor_appointments').update({ status }).eq('id', appointmentId);
+    // Capture error so the user actually sees RLS / network failures instead
+    // of a misleading "Status updated." toast (the fallback path used by
+    // flux-counselor-appointments when respondToAppointmentRequest is absent).
+    const { error } = await client.from('counselor_appointments').update({ status }).eq('id', appointmentId);
+    if (error) {
+      if (typeof showToast === 'function') showToast(error.message || 'Could not update appointment', 'error');
+      return;
+    }
     if (typeof showToast === 'function') showToast('Status updated.', 'info');
   }
   window.updateAppointmentStatus = updateAppointmentStatus;

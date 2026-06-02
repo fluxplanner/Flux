@@ -113,12 +113,20 @@
     StaffSignup.userId = data.user?.id;
     StaffSignup.email = email;
     if (data.user) {
-      await client.from('user_roles').upsert({
+      // Capture error: previously this was fire-and-forget, so a new staff
+      // user with a missing user_role row would still get walked through the
+      // next signup steps — only to hit broken role checks later.
+      const { error: roleErr } = await client.from('user_roles').upsert({
         user_id: data.user.id,
         role: 'student',
         display_name: email.split('@')[0],
         updated_at: new Date().toISOString(),
       });
+      if (roleErr) {
+        console.warn('[Flux] user_roles upsert during staff signup failed', roleErr);
+        setErr('Account created, but profile setup failed. Please refresh and finish signup again.');
+        return;
+      }
     }
     goToStaffStep(2);
   }
@@ -576,11 +584,18 @@
   }
 
   async function saveStaffPersonalTasks(client, tasks) {
-    await client.from('staff_personal_data').upsert({
+    // Return error so callers can react; previously this dropped failures and
+    // staff would think their tasks were saved when they weren't.
+    const { error } = await client.from('staff_personal_data').upsert({
       user_id: currentUser.id,
       tasks,
       updated_at: new Date().toISOString(),
     });
+    if (error) {
+      console.warn('[Flux] saveStaffPersonalTasks failed', error);
+      if (typeof showToast === 'function') showToast('Could not save tasks: ' + (error.message || 'try again'), 'error');
+    }
+    return { ok: !error, error };
   }
 
   function staffTaskRowHtml(t) {
@@ -718,12 +733,17 @@
       const client = sb();
       const title = root.querySelector('#mn_title')?.value?.trim();
       if (!client || !title) return;
-      await client.from('meeting_notes').insert({
+      const { error } = await client.from('meeting_notes').insert({
         user_id: currentUser.id,
         title,
         meeting_date: root.querySelector('#mn_date')?.value || new Date().toISOString().slice(0, 10),
         body: root.querySelector('#mn_body')?.value?.trim() || null,
       });
+      if (error) {
+        console.warn('[Flux] meeting_notes insert failed', error);
+        if (typeof showToast === 'function') showToast('Could not save notes: ' + (error.message || 'try again'), 'error');
+        return;
+      }
       root.remove();
       if (typeof showToast === 'function') showToast('Saved', 'success');
       renderMeetingNotesPanel();
@@ -832,7 +852,7 @@
       }
       const goBtn = r.querySelector('#pd_go');
       if (goBtn) { goBtn.classList.add('flux-btn-loading'); goBtn.textContent = 'Saving…'; }
-      await client.from('professional_development').insert({
+      const { error: pdErr } = await client.from('professional_development').insert({
         user_id: currentUser.id,
         title,
         hours: parseFloat(r.querySelector('#pd_hours')?.value) || 0,
@@ -840,6 +860,12 @@
         pd_type: r.querySelector('#pd_type')?.value || 'course',
         completed_date: r.querySelector('#pd_date')?.value || null,
       });
+      if (pdErr) {
+        console.warn('[Flux] professional_development insert failed', pdErr);
+        if (goBtn) { goBtn.classList.remove('flux-btn-loading'); goBtn.textContent = 'Add PD activity'; }
+        if (typeof showToast === 'function') showToast('Could not save: ' + (pdErr.message || 'try again'), 'error');
+        return;
+      }
       r.remove();
       if (typeof showToast === 'function') showToast('PD activity added', 'success');
       renderPDPanel();
@@ -1006,7 +1032,12 @@
       emotions: WellbeingState.emotions.slice(),
       note: note || null,
     });
-    await client.from('staff_personal_data').upsert({ user_id: currentUser.id, wellbeing_log: logs, updated_at: new Date().toISOString() });
+    const { error: wbErr } = await client.from('staff_personal_data').upsert({ user_id: currentUser.id, wellbeing_log: logs, updated_at: new Date().toISOString() });
+    if (wbErr) {
+      console.warn('[Flux] wellbeing check-in save failed', wbErr);
+      if (typeof showToast === 'function') showToast('Could not save check-in: ' + (wbErr.message || 'try again'), 'error');
+      return;
+    }
     WellbeingState.energy = 0;
     WellbeingState.stress = 0;
     WellbeingState.emotions = [];
@@ -1150,11 +1181,18 @@
   }
 
   async function saveStaffResources(client, resources) {
-    await client.from('staff_personal_data').upsert({
+    // Return the error so callers can surface it; previously this silently
+    // dropped failures and the user thought their links were saved.
+    const { error } = await client.from('staff_personal_data').upsert({
       user_id: currentUser.id,
       resources,
       updated_at: new Date().toISOString(),
     });
+    if (error) {
+      console.warn('[Flux] saveStaffResources failed', error);
+      if (typeof showToast === 'function') showToast('Could not save resources: ' + (error.message || 'try again'), 'error');
+    }
+    return { ok: !error, error };
   }
 
   async function renderResourcesPanel() {
@@ -1553,13 +1591,22 @@
         : ['student', 'teacher', 'counselor', 'staff', 'admin'];
       const goBtn = m.querySelector('#fp_go');
       if (goBtn) { goBtn.classList.add('flux-btn-loading'); goBtn.textContent = 'Posting…'; }
-      await client.from('school_feed').insert({
+      // Capture the error — previously this insert was fire-and-forget, so
+      // staff got a fake "Posted" toast even when RLS rejected or the table
+      // was missing. Keep the modal open on failure so the user can retry.
+      const { error: postErr } = await client.from('school_feed').insert({
         posted_by: currentUser.id,
         post_type: m.querySelector('#fp_type')?.value || 'announcement',
         title,
         body: body || null,
         target_roles: targetRoles,
       });
+      if (postErr) {
+        console.warn('[Flux] school_feed insert failed', postErr);
+        if (goBtn) { goBtn.classList.remove('flux-btn-loading'); goBtn.textContent = 'Post to school feed'; }
+        if (typeof showToast === 'function') showToast('Could not post: ' + (postErr.message || 'unknown error'), 'error');
+        return;
+      }
       m.remove();
       if (typeof showToast === 'function') showToast('Posted to school feed', 'success');
       renderSchoolFeed();

@@ -155,6 +155,47 @@
   padding: 12px 14px;
 }
 .flux-oh-staff-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+/* TODAY / LIVE NOW indicators (student view) — promotes anyone currently
+   in office hours to the top with a subtle accent, so students can see
+   "Mrs. Smith is in her office RIGHT NOW" without scanning a wall of times. */
+.flux-oh-staff.is-live {
+  border-color: rgba(74, 222, 128, 0.45);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.18), 0 2px 10px rgba(74, 222, 128, 0.08);
+}
+.flux-oh-live-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.34);
+  vertical-align: middle;
+}
+.flux-oh-srow.is-today .flux-oh-srow-day { color: var(--accent); }
+.flux-oh-srow.is-live { background: rgba(74, 222, 128, 0.06); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+.flux-oh-today-badge,
+.flux-oh-live-badge {
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.flux-oh-today-badge {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+}
+.flux-oh-live-badge {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.16);
+  border: 1px solid rgba(74, 222, 128, 0.36);
+}
 .flux-oh-avatar {
   flex-shrink: 0;
   width: 34px;
@@ -195,6 +236,11 @@
 /* ── narrow screens (iPhone 6 = 320px CSS px) ── */
 @media (max-width: 520px) {
   .flux-oh-form-grid { grid-template-columns: 1fr 1fr; }
+  /* When a form-grid has exactly 3 fields (day/from/to), promote the first
+     to a full row so From + To pair cleanly below — otherwise "To" sits alone. */
+  .flux-oh-form-grid > .flux-oh-field:first-child:nth-last-child(3) {
+    grid-column: 1 / -1;
+  }
   .flux-oh-field--wide { grid-column: 1 / -1; }
   .flux-oh-add-btn { align-self: stretch; text-align: center; }
 }

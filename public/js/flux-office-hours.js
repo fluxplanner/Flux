@@ -357,6 +357,34 @@
 
   /* ---------- student card (view hours) ---------- */
 
+  // Day name → day_of_week key for "is this slot today?" lookup.
+  // Returns null on weekends (no weekend office hours in current schema).
+  function todayKey() {
+    var i = (new Date()).getDay(); // 0=Sun..6=Sat
+    var map = ['', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', ''];
+    return map[i] || null;
+  }
+
+  // Is the current local time within [start_time, end_time]? (Same-day only;
+  // overnight slots aren't supported by the schema.)
+  function isLiveNow(slot) {
+    if (slot.day_of_week !== todayKey()) return false;
+    var now = new Date();
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    return minutesOf(slot.start_time) <= nowMin && nowMin < minutesOf(slot.end_time);
+  }
+
+  // Promote any group with a "live now" slot to the top; otherwise alpha order.
+  function withLivePriority(groups) {
+    var hot = [], cool = [];
+    (groups || []).forEach(function (g) {
+      var anyLive = g.slots.some(isLiveNow);
+      g._anyLive = anyLive;
+      (anyLive ? hot : cool).push(g);
+    });
+    return hot.concat(cool);
+  }
+
   function studentCardHtml(groups, reason) {
     var body;
     if (reason === 'no_table' || reason === 'offline') {
@@ -365,20 +393,29 @@
     } else if (!groups.length) {
       body = '<div class="flux-oh-empty">No staff office hours have been published yet. Check back soon.</div>';
     } else {
-      body = groups.map(function (g) {
+      var prioritized = withLivePriority(groups);
+      var today = todayKey();
+      body = prioritized.map(function (g) {
         var sub = [ROLE_LABEL[g.role] || 'Staff', g.subject].filter(Boolean).map(esc).join(' · ');
+        var livePill = g._anyLive ? '<span class="flux-oh-live-pill" title="Available right now">● LIVE NOW</span>' : '';
         var rows = g.slots.map(function (s) {
           var meta = [s.location, s.note].filter(Boolean).map(esc).join(' · ');
-          return '<div class="flux-oh-srow">'
+          var live = isLiveNow(s);
+          var todayCls = (today && s.day_of_week === today) ? ' is-today' : '';
+          var liveCls = live ? ' is-live' : '';
+          var todayBadge = (today && s.day_of_week === today && !live) ? '<span class="flux-oh-today-badge">TODAY</span>' : '';
+          var liveBadge = live ? '<span class="flux-oh-live-badge">NOW</span>' : '';
+          return '<div class="flux-oh-srow' + todayCls + liveCls + '">'
             + '<span class="flux-oh-srow-day">' + esc(DAY_LABEL[s.day_of_week] || s.day_of_week) + '</span>'
             + '<span class="flux-oh-srow-time">' + esc(timeRange(s.start_time, s.end_time)) + '</span>'
+            + liveBadge + todayBadge
             + (meta ? '<span class="flux-oh-srow-meta">' + meta + '</span>' : '')
             + '</div>';
         }).join('');
-        return '<div class="flux-oh-staff" data-oh-search="' + esc((g.name + ' ' + g.subject).toLowerCase()) + '">'
+        return '<div class="flux-oh-staff' + (g._anyLive ? ' is-live' : '') + '" data-oh-search="' + esc((g.name + ' ' + g.subject).toLowerCase()) + '">'
           + '<div class="flux-oh-staff-head">'
           +   '<span class="flux-oh-avatar" aria-hidden="true">' + esc(initials(g.name)) + '</span>'
-          +   '<div><div class="flux-oh-staff-name">' + esc(g.name) + '</div>'
+          +   '<div style="flex:1;min-width:0"><div class="flux-oh-staff-name">' + esc(g.name) + livePill + '</div>'
           +   (sub ? '<div class="flux-oh-staff-sub">' + sub + '</div>' : '') + '</div>'
           + '</div>'
           + '<div class="flux-oh-staff-slots">' + rows + '</div>'

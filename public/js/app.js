@@ -3719,14 +3719,22 @@ function toggleTask(id){
   const flush=function(){
     save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);
   };
+  // Animation callback must fire to persist + re-render. If anime.js fails to
+  // load (CDN block) or its onComplete never fires, the task would visually
+  // stay un-checked AND silently fail to save. Safety timer ensures flush
+  // runs within 800ms regardless — animations are ~600ms so this only kicks
+  // in on genuine failure, never preempts the real callback.
+  let _flushed=false;
+  const safeFlush=function(){ if(_flushed)return; _flushed=true; flush(); };
   let skipAnime=false;
   try{
     skipAnime=matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.getAttribute('data-flux-perf')==='on';
   }catch(_){}
   if(t.done&&!wasDone&&card&&typeof window.fluxAnimeOnTaskComplete==='function'&&!skipAnime){
-    window.fluxAnimeOnTaskComplete(card,flush);
+    window.fluxAnimeOnTaskComplete(card,safeFlush);
+    setTimeout(safeFlush,800);
   }else{
-    flush();
+    safeFlush();
   }
 }
 function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
@@ -17744,21 +17752,32 @@ async function submitCreateClass(){
   const errEl=document.getElementById('clsError');
   const setErr=(t)=>{if(errEl){errEl.textContent=t;errEl.style.display='block';}};
   if(!name){setErr('Class name is required');return;}
-  const code=generateClassCode();
-  const {error}=await sb.from('teacher_classes').insert({
-    teacher_id:currentUser.id,
-    class_name:name,
-    class_code:code,
-    subject:subject||null,
-    period:period||null,
-    room:room||null,
-    days:days||null,
-    time_start:time_start||null,
-    time_end:time_end||null,
-    description:desc||null,
-    active:true,
-  });
-  if(error){setErr(error.message);return;}
+  // class_code is UNIQUE in schema. With 32^6 ≈ 1B codes, collisions are
+  // vanishingly rare in practice — but if one happens we'd previously surface
+  // the raw Postgres "duplicate key" error to the teacher. Retry up to 5x
+  // with fresh codes; only fall through to the error path on true failure.
+  let code,error,inserted=false;
+  for(let attempt=0;attempt<5 && !inserted;attempt++){
+    code=generateClassCode();
+    const res=await sb.from('teacher_classes').insert({
+      teacher_id:currentUser.id,
+      class_name:name,
+      class_code:code,
+      subject:subject||null,
+      period:period||null,
+      room:room||null,
+      days:days||null,
+      time_start:time_start||null,
+      time_end:time_end||null,
+      description:desc||null,
+      active:true,
+    });
+    error=res.error;
+    if(!error){inserted=true;break;}
+    // 23505 = unique_violation (Postgres). Only retry that specific error.
+    if(error.code!=='23505' && !/duplicate key|unique/i.test(error.message||''))break;
+  }
+  if(!inserted){setErr((error&&error.message)||'Could not create class — try again.');return;}
   document.getElementById('createClassModal')?.remove();
   showToast(`✓ Class "${name}" created · code ${code}`);
   renderTeacherDashboard();
