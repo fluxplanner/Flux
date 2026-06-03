@@ -290,19 +290,32 @@
   /* ───────── AI batch fallback (optional, cached) ───────── */
 
   let _aiTimer = null;
+  let _aiInFlight = false;          // don't overlap requests
+  let _aiFailures = 0;             // consecutive failures → circuit breaker
+  let _aiDisabledUntil = 0;       // timestamp; skip fallback until then
+  const AI_MAX_FAILURES = 3;
+  const AI_BACKOFF_MS = 5 * 60 * 1000; // 5 min cool-off after repeated failures
+  const _aiSent = new Set();       // phrases already sent this session (don't resend)
+
   function scheduleAIFallback(locale) {
+    if (Date.now() < _aiDisabledUntil) return; // circuit open
     clearTimeout(_aiTimer);
     _aiTimer = setTimeout(() => runAIFallback(locale), 800);
   }
 
   async function runAIFallback(locale) {
+    if (_aiInFlight) return;
+    if (Date.now() < _aiDisabledUntil) return;
     const url = (window.API && window.API.ai) || '';
     if (!url || !_misses.size) return;
     const cache = loadCache(locale);
-    // Only send phrases we don't already have cached, cap batch size for cost.
-    const pending = [..._misses].filter((p) => !cache[p]).slice(0, 60);
+    // Only send phrases we don't already have cached AND haven't sent this
+    // session (prevents re-sending strings the model returned untranslated).
+    const pending = [..._misses].filter((p) => !cache[p] && !_aiSent.has(p)).slice(0, 60);
     if (!pending.length) return;
+    pending.forEach((p) => _aiSent.add(p));
     const langName = ({ 'es-US': 'Spanish', 'fr-FR': 'French', 'ar-SA': 'Arabic' })[locale] || locale;
+    _aiInFlight = true;
     try {
       const headers = (typeof window.fluxAuthHeaders === 'function')
         ? await window.fluxAuthHeaders() : { 'Content-Type': 'application/json' };
@@ -312,28 +325,47 @@
         method: 'POST', headers,
         body: JSON.stringify({ system: sys, messages: [{ role: 'user', content: userMsg }] }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        // Track failures; open the circuit after repeated errors so we stop
+        // hammering a broken/rate-limited endpoint.
+        _aiFailures++;
+        if (_aiFailures >= AI_MAX_FAILURES) {
+          _aiDisabledUntil = Date.now() + AI_BACKOFF_MS;
+          _aiFailures = 0;
+          console.warn('[FluxI18nDOM] AI translation fallback paused 5m after repeated errors');
+        }
+        _aiInFlight = false;
+        return;
+      }
+      _aiFailures = 0; // success resets the breaker
       const data = await res.json().catch(() => null);
       const txt = data && data.content && data.content[0] && data.content[0].text;
-      if (!txt) return;
-      let parsed = null;
-      try {
-        const jsonStart = txt.indexOf('{');
-        const jsonEnd = txt.lastIndexOf('}');
-        if (jsonStart >= 0 && jsonEnd > jsonStart) parsed = JSON.parse(txt.slice(jsonStart, jsonEnd + 1));
-      } catch (_) { return; }
-      if (!parsed || typeof parsed !== 'object') return;
-      let added = 0;
-      Object.keys(parsed).forEach((k) => {
-        const nk = norm(k);
-        if (nk && typeof parsed[k] === 'string' && parsed[k].trim()) { cache[nk] = parsed[k].trim(); added++; }
-      });
-      if (added) {
-        saveCache(locale, cache);
-        // Re-run so the freshly-cached strings get applied.
-        refresh();
+      if (txt) {
+        let parsed = null;
+        try {
+          const jsonStart = txt.indexOf('{');
+          const jsonEnd = txt.lastIndexOf('}');
+          if (jsonStart >= 0 && jsonEnd > jsonStart) parsed = JSON.parse(txt.slice(jsonStart, jsonEnd + 1));
+        } catch (_) { parsed = null; }
+        if (parsed && typeof parsed === 'object') {
+          let added = 0;
+          Object.keys(parsed).forEach((k) => {
+            const nk = norm(k);
+            if (nk && typeof parsed[k] === 'string' && parsed[k].trim()) { cache[nk] = parsed[k].trim(); added++; }
+          });
+          if (added) {
+            saveCache(locale, cache);
+            refresh(); // re-run so freshly-cached strings get applied
+          }
+        }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) {
+      // Network/parse error — count toward the circuit breaker too.
+      _aiFailures++;
+      if (_aiFailures >= AI_MAX_FAILURES) { _aiDisabledUntil = Date.now() + AI_BACKOFF_MS; _aiFailures = 0; }
+    } finally {
+      _aiInFlight = false;
+    }
   }
 
   /* ───────── wire to locale changes + boot ───────── */
