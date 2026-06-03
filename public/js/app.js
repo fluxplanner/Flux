@@ -40,6 +40,10 @@ const FLUX_IMPERSONATION_GLOBAL_PREFIXES=[
   // own tokens.)
   'flux_canvas_','flux_extension_',
   'flux_ai_connections_','flux_ai_model_route_',
+  // BYOK multi-provider AI keys + default route — owner-device-local secrets,
+  // never the impersonated teacher's. Must stay un-prefixed so previewing as a
+  // teacher doesn't hide the owner's keys or write them into a persona bubble.
+  'flux_aiprov_',
   // Per-device / per-auth-user prefs (suffix may include user id)
   'flux_staff_mode_','flux_feature_flags_cache_v1',
   'flux_role_setup_v1_',
