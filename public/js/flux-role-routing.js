@@ -165,6 +165,23 @@
       const edu = fr.isEducator && fr.isEducator();
       const home = work ? workHomePanel(fr) : 'dashboard';
 
+      // The student dashboard (#dashboard) must never render for an educator in
+      // Work mode — that's the "student UI under the work dashboard" leak. The
+      // nav() remap normally redirects dashboard→role-home, but any path that
+      // activates #dashboard without that remap (role-hydration race, deep link,
+      // stale nav) would otherwise fall through to the default ok:true below.
+      // Gate it here so every entry point routes work-mode educators to their
+      // role home instead. (Personal mode keeps #dashboard — that's their own
+      // staff personal dashboard, rendered by renderStaffPersonalDashboard.)
+      if (pid === 'dashboard') {
+        const eduHome = workHomePanel(fr);
+        // Guard against a redirect loop: only bounce if home is a real role panel.
+        if (edu && work && eduHome && eduHome !== 'dashboard') {
+          return { ok: false, reason: 'student_dashboard_in_work', fallbackId: eduHome };
+        }
+        return { ok: true };
+      }
+
       if (pid === 'teacherDashboard') {
         if (fr.isTeacher() && work) return { ok: true };
         return { ok: false, reason: 'teacher_dashboard', fallbackId: home };
