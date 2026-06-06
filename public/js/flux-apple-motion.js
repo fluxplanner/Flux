@@ -390,6 +390,15 @@ let _lastPanelId = null;
 
 function staggerPanelContent(panel) {
   if (!panel) return;
+  // Sweep up any previously-staggered card left at partial opacity from an
+  // interrupted prior tween (user navigated panels mid-reveal). Without this
+  // they'd stay hidden forever because the selector below excludes them.
+  panel.querySelectorAll('.flux-apple-staggered').forEach((el) => {
+    if (el.style.opacity !== '' && parseFloat(el.style.opacity) < 1) {
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('transform');
+    }
+  });
   const els = panel.querySelectorAll(
     [
       '.card:not(.flux-apple-staggered)',
@@ -410,6 +419,15 @@ function staggerPanelContent(panel) {
       delay: stagger(28, { from: 'first' }),
       duration: 460,
       ease: spring('smooth'),
+      // Clear inline styles so an interrupted tween can't leave the card
+      // stuck. Without this, switching panels mid-animation freezes the card
+      // at e.g. opacity 0.44, translateY 18px.
+      onComplete: () => {
+        els.forEach((el) => {
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('transform');
+        });
+      },
     });
   });
 }

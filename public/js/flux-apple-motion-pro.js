@@ -282,6 +282,14 @@ let _revealIO = null;
 function initScrollReveal() {
   if (typeof IntersectionObserver === 'undefined') return;
   if (_revealIO) _revealIO.disconnect();
+  // Always clear inline styles when an animation finishes so an interrupted
+  // tween (e.g. user navigates panels mid-reveal) can't leave a card stuck at
+  // opacity 0.4 / translateY 18px. The .flux-reveal-done class also excludes
+  // the card from REVEAL_SELECTOR so we won't re-process and overwrite it.
+  const clearInline = (el) => {
+    el.style.removeProperty('opacity');
+    el.style.removeProperty('transform');
+  };
   _revealIO = new IntersectionObserver(
     (entries) => {
       const toReveal = entries.filter((e) => e.isIntersecting).map((e) => e.target);
@@ -290,7 +298,12 @@ function initScrollReveal() {
         el.classList.add('flux-reveal-done');
         _revealIO.unobserve(el);
       });
-      if (!motionAllowed()) return;
+      if (!motionAllowed()) {
+        // No animation will run — drop the hidden pre-state immediately so the
+        // card is visible (matches reduced-motion contract).
+        toReveal.forEach(clearInline);
+        return;
+      }
       animate(toReveal, {
         opacity: [0, 1],
         translateY: [22, 0],
@@ -298,6 +311,7 @@ function initScrollReveal() {
         delay: stagger(40, { from: 'first' }),
         duration: 540,
         ease: 'outExpo',
+        onComplete: () => toReveal.forEach(clearInline),
       });
     },
     { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
@@ -312,9 +326,19 @@ function initScrollReveal() {
       _revealIO.observe(el);
     });
   };
+  // Sweep up any cards left stuck from interrupted prior animations: they
+  // already have .flux-reveal-done so the selector above skips them, but the
+  // inline styles still hide them. Clear those on every nav.
+  const sweepStuck = () => {
+    document.querySelectorAll('.flux-reveal-done').forEach((el) => {
+      if (el.style.opacity !== '' && parseFloat(el.style.opacity) < 1) {
+        clearInline(el);
+      }
+    });
+  };
   scan();
-  document.addEventListener('flux-nav', () => requestAnimationFrame(scan));
-  document.addEventListener('flux-dash-board-rendered', () => requestAnimationFrame(scan));
+  document.addEventListener('flux-nav', () => requestAnimationFrame(() => { sweepStuck(); scan(); }));
+  document.addEventListener('flux-dash-board-rendered', () => requestAnimationFrame(() => { sweepStuck(); scan(); }));
 }
 
 /* ───────── 6. Aurora bloom (soft conic background drift) ───────── */

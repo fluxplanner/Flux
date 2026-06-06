@@ -2877,6 +2877,7 @@ const API={
   canvas:`${SB_URL}/functions/v1/canvas-proxy`,
   ecCollegeChat:`${SB_URL}/functions/v1/ec-college-chat`,
   userFeedback:`${SB_URL}/functions/v1/user-feedback`,
+  mcp:`${SB_URL}/functions/v1/mcp`,
 };
 window.API=API; // flux-ai-mega, flux-skills, etc. read window.API.<endpoint>
 
@@ -6300,6 +6301,7 @@ function switchStab(id,el){
   if(id==='data'){
     if(typeof renderStorageMeter==='function')renderStorageMeter();
     try{if(window.FluxStorageRepair?.renderSettingsCard)FluxStorageRepair.renderSettingsCard();}catch(_){}
+    try{if(window.FluxClaudeConnect?.renderSettingsCard)FluxClaudeConnect.renderSettingsCard();}catch(_){}
   }
   if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
   if(id==='account')try{syncStudentEducatorUpgradeCard();}catch(_){}
@@ -8352,6 +8354,26 @@ async function syncToCloud(){
         save('flux_feedback_inbox',merged);
         payload.feedbackInbox=merged;
       }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
+    }
+    // MCP (Claude) may have written tasks server-side since our last pull. Don't
+    // clobber them: if the remote mcpMeta.rev advanced, fold in any remote-only
+    // tasks before pushing. Mirrors the feedbackInbox read-merge-write above.
+    // Flag-gated so users without the connector pay no extra round-trip.
+    if(window.FluxFeatureFlags?.isEnabled?.('enable_claude_mcp',false)){
+      try{
+        const {data:rrow}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
+        const rd=rrow&&rrow.data;
+        const rRev=(rd&&rd.mcpMeta&&rd.mcpMeta.rev)||0;
+        if(rRev>(window._fluxMcpSeenRev||0)&&rd&&Array.isArray(rd.tasks)){
+          const have=new Set((payload.tasks||[]).map(t=>String(t&&t.id)));
+          const merged=(payload.tasks||[]).slice();
+          let added=0;
+          rd.tasks.forEach(rt=>{if(rt&&!have.has(String(rt.id))){merged.push(rt);added++;}});
+          if(added){payload.tasks=merged;try{tasks=merged;save('tasks',merged);}catch(_){}}
+          payload.mcpMeta=rd.mcpMeta;
+          window._fluxMcpSeenRev=rRev;
+        }
+      }catch(_){}
     }
     const{error}=await sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:new Date().toISOString()},{onConflict:'id'});
     if(error){
@@ -17131,7 +17153,7 @@ async function renderTeacherDashboard(){
   try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('teacherDashboard');}catch(_){}
   try{
     if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
-      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.teacher-dash-root')||host);
+      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.teacher-dash-root')||host,{placement:'after-stats'});
     }
   }catch(_){}
 }
@@ -18401,7 +18423,7 @@ async function renderCounselorDashboard(){
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
   try{
     if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
-      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.counselor-dashboard')||host);
+      FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.counselor-dashboard')||host,{placement:'after-stats'});
     }
   }catch(_){}
 }
