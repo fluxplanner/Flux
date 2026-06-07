@@ -128,6 +128,7 @@
 <link rel="stylesheet" href="public/css/flux-ai-panel.css">
 <link rel="stylesheet" href="public/css/flux-periodic.css">
 <link rel="stylesheet" href="public/css/flux-toolbox.css">
+<link rel="stylesheet" href="public/css/flux-study-hub.css">
 <link rel="stylesheet" href="public/css/flux-visual.css">
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
 <link rel="stylesheet" href="public/css/flux-staff-tabs.css">
@@ -183,6 +184,7 @@
 <link rel="stylesheet" href="public/css/flux-email-task-inbox.css">
 <link rel="stylesheet" href="public/css/flux-automation-hooks.css">
 <link rel="stylesheet" href="public/css/flux-ical-subscribe.css">
+<link rel="stylesheet" href="public/css/flux-claude-connect.css">
 <link rel="stylesheet" href="public/css/flux-ics-timetable-import.css">
 <link rel="stylesheet" href="public/css/flux-sport-practice-pack.css">
 <link rel="stylesheet" href="public/css/flux-cs-snippet-library.css">
@@ -2480,6 +2482,7 @@
         </div>
         <div id="fluxStorageRepairMount"></div>
         <div id="fluxSyncConflictSettingsMount"></div>
+        <div id="fluxClaudeConnectMount"></div>
         <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
             <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
@@ -2864,6 +2867,7 @@
     <script defer src="public/js/flux-email-task-inbox.js"></script>
     <script defer src="public/js/flux-automation-hooks.js"></script>
     <script defer src="public/js/flux-ical-subscribe.js"></script>
+    <script defer src="public/js/flux-claude-connect.js"></script>
     <script defer src="public/js/flux-ics-timetable-import.js"></script>
     <script defer src="public/js/flux-sport-practice-pack.js"></script>
 <script defer src="public/js/flux-google-docs.js"></script>
@@ -2896,6 +2900,8 @@
 <script defer src="public/js/flux-toolbox.js"></script>
 <!-- Flux Toolbox DP/MYP expansion — new subject tools + rebalanced categories -->
 <script defer src="public/js/flux-toolbox-dp.js"></script>
+<!-- Flux Study Hub — redesigned Study Tools: zperiod-style Chemistry flagship + curated subject directories. Overrides window.renderToolbox; load LAST so it wins. -->
+<script defer src="public/js/flux-study-hub.js"></script>
 <script defer src="public/js/flux-cs-snippet-library.js"></script>
 <script defer src="public/js/flux-periodic-srs-quiz.js"></script>
 <script defer src="public/js/flux-flashcard-generator.js"></script>

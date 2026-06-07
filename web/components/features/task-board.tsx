@@ -20,7 +20,8 @@ import { TaskCard } from "@/components/features/task-card";
 import type { Task } from "@/components/features/task-types";
 
 type TaskBoardProps = {
-  initial: Task[];
+  tasks: Task[];
+  onTasksChange: (tasks: Task[]) => void;
 };
 
 const listVariants = {
@@ -31,8 +32,7 @@ const listVariants = {
   },
 };
 
-export function TaskBoard({ initial }: TaskBoardProps) {
-  const [items, setItems] = React.useState<Task[]>(initial);
+export function TaskBoard({ tasks, onTasksChange }: TaskBoardProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -40,12 +40,10 @@ export function TaskBoard({ initial }: TaskBoardProps) {
   function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    setItems((prev) => {
-      const oldIdx = prev.findIndex((x) => x.id === active.id);
-      const newIdx = prev.findIndex((x) => x.id === over.id);
-      if (oldIdx < 0 || newIdx < 0) return prev;
-      return arrayMove(prev, oldIdx, newIdx);
-    });
+    const oldIdx = tasks.findIndex((x) => x.id === active.id);
+    const newIdx = tasks.findIndex((x) => x.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    onTasksChange(arrayMove(tasks, oldIdx, newIdx));
   }
 
   return (
@@ -54,14 +52,14 @@ export function TaskBoard({ initial }: TaskBoardProps) {
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
     >
-      <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <motion.ul
           className="flex flex-col gap-3"
           variants={listVariants}
           initial="hidden"
           animate="show"
         >
-          {items.map((task) => (
+          {tasks.map((task) => (
             <li key={task.id}>
               <TaskCard task={task} sortable />
             </li>

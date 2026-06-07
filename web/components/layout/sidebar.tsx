@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Brain, CalendarDays, PanelLeft } from "lucide-react";
+import { LayoutDashboard, Brain, BookOpen, CalendarDays, Users, PanelLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/planner", icon: CalendarDays, label: "Planner" },
+  { href: "/units", icon: BookOpen, label: "Units" },
+  { href: "/classes", icon: Users, label: "Classes" },
   { href: "/ai", icon: Brain, label: "Flux AI" },
 ];
 
@@ -90,13 +92,13 @@ export function Sidebar() {
         {expanded ? (
           <>
             <div className="font-mono text-[0.62rem] uppercase tracking-wider text-zinc-400">
-              Flux Next
+              Flux Planner
             </div>
-            <p className="mt-1 leading-relaxed">Linear · Apple · Notion energy</p>
+            <p className="mt-1 leading-relaxed">v2.0.0</p>
           </>
         ) : (
           <div className="text-center font-mono text-[0.58rem] text-zinc-500">
-            v0
+            v2
           </div>
         )}
       </motion.div>

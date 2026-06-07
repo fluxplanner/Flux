@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  BookOpen,
   Calculator,
   CalendarDays,
   Home,
   MessageSquareText,
   Search,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
@@ -82,6 +84,12 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
               <Command.Item value="planner calendar tasks" onSelect={() => go("/planner")}>
                 <CalendarDays size={16} /> Planner
               </Command.Item>
+              <Command.Item value="units curriculum lessons subjects" onSelect={() => go("/units")}>
+                <BookOpen size={16} /> Units &amp; Curriculum
+              </Command.Item>
+              <Command.Item value="classes roster teacher staff students" onSelect={() => go("/classes")}>
+                <Users size={16} /> My Classes
+              </Command.Item>
               <Command.Item value="flux ai chat tutor" onSelect={() => go("/ai")}>
                 <MessageSquareText size={16} /> Flux AI
               </Command.Item>
@@ -92,12 +100,10 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
                 <Sparkles size={16} /> Sign-in experience
               </Command.Item>
               <Command.Item
-                value="gpa calculator hypothetical"
-                onSelect={() => {
-                  setNext(false);
-                }}
+                value="gpa calculator grade hypothetical"
+                onSelect={() => go("/planner")}
               >
-                <Calculator size={16} /> GPA hypothetical (wired later)
+                <Calculator size={16} /> GPA calculator (coming soon)
               </Command.Item>
             </Command.Group>
           </Command.List>

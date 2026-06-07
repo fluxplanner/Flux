@@ -1050,10 +1050,12 @@
     renderWellbeingPanel();
   }
 
-  function staffWorkspacePinsHtml() {
+  function staffWorkspacePinsHtml(options) {
+    const opts = options || {};
+    const inline = opts.placement === 'after-stats' || opts.inline === true;
     const pins = staffResourcePins();
     return `
-      <section class="sr-section sr-workspace-mount" data-staff-workspace-pins>
+      <section class="sr-section sr-workspace-mount${inline ? ' sr-workspace-mount--inline' : ''}" data-staff-workspace-pins>
         <h3 class="sr-section-title">Workspace &amp; school</h3>
         <div class="sr-pin-grid">
           ${pins
@@ -1072,19 +1074,35 @@
       </section>`;
   }
 
-  /** Append Gmail / Drive / school pins to a work-mode panel (teacher, counselor, workboard, work hub). */
-  function mountStaffWorkspacePins(host) {
+  /**
+   * Mount Gmail / Drive / school pins into a work-mode panel (teacher, counselor, workboard, work hub).
+   * @param {HTMLElement} host
+   * @param {{placement?:'after-stats'|'append', inline?:boolean}} [options]
+   *   placement:'after-stats' inserts a slim strip right under the stats row instead of
+   *   appending a full-width section below the whole grid.
+   */
+  function mountStaffWorkspacePins(host, options) {
     if (!host) return;
     try {
       if (typeof FluxRole !== 'undefined' && FluxRole.isPersonalMode && FluxRole.isPersonalMode()) return;
     } catch (_) {
       return;
     }
+    const opts = options || {};
     host.querySelector('[data-staff-workspace-pins]')?.remove();
     const wrap = document.createElement('div');
-    wrap.innerHTML = staffWorkspacePinsHtml();
+    wrap.innerHTML = staffWorkspacePinsHtml(opts);
     const section = wrap.firstElementChild;
-    if (section) host.appendChild(section);
+    if (!section) return;
+    let anchor = null;
+    if (opts.placement === 'after-stats') {
+      anchor = host.querySelector('.teacher-stats-strip, .teacher-stats, .counselor-stats-strip, .staff-stats-strip');
+    }
+    if (anchor && anchor.parentNode) {
+      anchor.insertAdjacentElement('afterend', section);
+    } else {
+      host.appendChild(section);
+    }
   }
 
   function staffResourcePins() {
