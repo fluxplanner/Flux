@@ -3828,8 +3828,9 @@ function showTOS(){
       <button onclick="this.closest('[style]').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;padding:4px">✕</button>
     </div>
     <div style="font-size:.8rem;color:var(--muted2);line-height:1.9;font-family:'JetBrains Mono',monospace">
-      <div style="font-weight:700;color:var(--text);margin-bottom:6px">Last updated: March 2026</div>
-      <p>By using Flux Planner you agree to these terms. Flux is provided free of charge as a student productivity tool.</p>
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px">Last updated: June 2026</div>
+      <p>By using Flux Planner you agree to these terms. Flux is a student and educator productivity tool provided free of charge.</p>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:8px"><a href="terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Read the full Terms of Service →</a></p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">1. Use</div>
       <p>Flux is for personal, non-commercial educational use. You may not resell, redistribute, or misuse the platform.</p>
       <div style="font-weight:700;color:var(--text);margin:12px 0 4px">2. Your Data</div>
@@ -16884,6 +16885,17 @@ async function fluxFetchStudentNames(sb,studentIds){
   return out;
 }
 
+
+function teacherGoogleStatusChipHtml(){
+  try{
+    if(!window.FluxGoogle?.canInitStaffHub?.()||typeof FluxRole==='undefined'||!FluxRole.isWorkMode?.())return '';
+    if(FluxGoogle.isGoogleLinked?.()){
+      return '<button type="button" class="teacher-google-chip teacher-google-chip--on" data-action="open-google-hub" title="Google Workspace connected — open Google tab">Google connected</button>';
+    }
+    return '<button type="button" class="teacher-google-chip" data-action="connect-google-workspace" title="Connect Gmail, Calendar, Classroom, and Drive">Connect Google</button>';
+  }catch(_){return '';}
+}
+
 async function renderTeacherDashboard(){
   const host=document.getElementById('teacherDashboardBody');
   if(!host||!currentUser)return;
@@ -17005,6 +17017,7 @@ async function renderTeacherDashboard(){
           <div class="teacher-topbar-sub">${esc(FluxRole.profile?.subject||'')}${FluxRole.profile?.subject?' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
         <div class="teacher-topbar-actions">
+          ${teacherGoogleStatusChipHtml()}
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
           <button class="teacher-action-btn" data-action="new-class"><span>📚</span> New Class</button>
           <button class="teacher-action-btn" data-action="new-announcement"><span>📢</span> Announce</button>
@@ -17038,6 +17051,8 @@ async function renderTeacherDashboard(){
         <span style="flex:1;font-size:.84rem;font-weight:600">${pendingJoins.length} student${pendingJoins.length===1?'':'s'} waiting to join your class${pendingJoins.length===1?'':'es'}</span>
         <button type="button" class="teacher-action-btn" data-action="review-joins" style="flex-shrink:0">Review</button>
       </div>`:''}
+
+      <div id="teacherDashModulesMount" class="teacher-modules-mount" aria-label="Workspace modules"></div>
 
       <div class="teacher-main-grid">
         <div class="teacher-col">
@@ -17127,6 +17142,12 @@ async function renderTeacherDashboard(){
   host.querySelectorAll('[data-action="teacher-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxTeacherCopilot?.open)FluxTeacherCopilot.open();
   }));
+  host.querySelectorAll('[data-action="open-google-hub"]').forEach(b=>b.addEventListener('click',()=>{
+    try{nav('canvas');FluxGoogle.renderHub?.();}catch(_){}
+  }));
+  host.querySelectorAll('[data-action="connect-google-workspace"]').forEach(b=>b.addEventListener('click',()=>{
+    try{FluxGoogle.signInStaffWorkspace?.();}catch(_){}
+  }));
   host.querySelectorAll('[data-action="review-joins"]').forEach(b=>b.addEventListener('click',()=>openTeacherPendingJoinsModal()));
   host.querySelectorAll('[data-action="review-recovery"]').forEach(b=>b.addEventListener('click',async()=>{
     if(window.FluxAssignmentRecovery?.openPendingModal){
@@ -17150,7 +17171,12 @@ async function renderTeacherDashboard(){
     if(window.FluxTeacherWellness?.wire)FluxTeacherWellness.wire(host);
   }catch(_){}
   try{if(window.FluxGoogle?.refreshStaffHubMounts)FluxGoogle.refreshStaffHubMounts();}catch(_){}
-  try{if(window.FluxModuleLoader?.renderWidgetGrid)FluxModuleLoader.renderWidgetGrid('teacherDashboard');}catch(_){}
+  try{
+    const modulesMount=host.querySelector('#teacherDashModulesMount');
+    if(window.FluxModuleLoader?.renderWidgetGrid&&modulesMount){
+      FluxModuleLoader.renderWidgetGrid('teacherDashboard',{container:modulesMount});
+    }
+  }catch(_){}
   try{
     if(window.FluxStaffPlatform?.mountStaffWorkspacePins){
       FluxStaffPlatform.mountStaffWorkspacePins(host.querySelector('.teacher-dash-root')||host,{placement:'after-stats'});

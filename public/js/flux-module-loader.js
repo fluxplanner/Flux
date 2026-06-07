@@ -230,6 +230,13 @@
     }
     if (!host) return;
 
+    if (panelId === 'teacherDashboard' && !options.container) {
+      const dashMount = document.getElementById('teacherDashboardBody')?.querySelector('#teacherDashModulesMount');
+      if (dashMount) {
+        return renderWidgetGrid(panelId, { ...options, container: dashMount });
+      }
+    }
+
     const mods = visibleModules(panelId);
     if (!mods.length && !widgetIdFilter) return;
 
@@ -242,7 +249,7 @@
       : `fluxWidgetGrid_${panelId}`;
     if (!grid || (options.container && grid.className !== 'flux-widget-grid')) {
       grid = document.createElement('div');
-      grid.className = 'flux-widget-grid';
+      grid.className = 'flux-widget-grid' + (options.container?.classList?.contains('teacher-modules-mount') ? ' flux-widget-grid--in-dash' : '');
       grid.id = gridId;
       if (options.container) {
         host.appendChild(grid);
@@ -418,6 +425,12 @@
     if (!panel || !PANEL_HOSTS[panel]) return;
     if (panel === 'counselorWorkspace' || panel === 'staffPersonalHub') return;
     if (panel === 'dashboard' && isEducatorPersonalMode()) return;
+    if (panel === 'teacherDashboard') {
+      if (typeof window.renderTeacherDashboard === 'function') {
+        requestAnimationFrame(() => void window.renderTeacherDashboard());
+      }
+      return;
+    }
     requestAnimationFrame(() => renderWidgetGrid(panel));
   }
 

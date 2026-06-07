@@ -317,6 +317,11 @@
     }
     const show = staffHubVisibleNow();
     document.querySelectorAll('.staff-google-hub-mount').forEach((el) => {
+      if (el.id === 'staff-google-hub-mount-teacher') {
+        el.hidden = true;
+        el.innerHTML = '';
+        return;
+      }
       if (!show) {
         el.hidden = true;
         return;

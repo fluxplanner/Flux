@@ -30,44 +30,51 @@
   <a href="./" class="back">← Back to Flux Planner</a>
   <div class="logo">Flux Planner</div>
   <h1>Privacy Policy</h1>
-  <div class="updated">Last updated: March 2026</div>
+  <div class="updated">Last updated: June 2026</div>
 
   <div class="card">
-    <p>Flux Planner is a student productivity tool by <strong>Azfer Mohammed</strong>, built for students. This policy explains what data we collect, how we use it, and how we protect it.</p>
+    <p>Flux Planner is a student and educator productivity tool by <strong>Azfer Mohammed</strong>. This policy explains what data we collect, how we use it, and how we protect it — for students, teachers, counselors, and staff.</p>
   </div>
 
   <h2>1. What We Collect</h2>
   <p>We collect only what's necessary to make the app work:</p>
   <ul>
-    <li><strong>Google Account info</strong> — your name, email, and profile photo when you sign in with Google</li>
-    <li><strong>Planner data</strong> — tasks, grades, notes, habits, goals, and schedule you enter into the app</li>
-    <li><strong>Gmail data</strong> — we read email subjects and senders only (read-only access, only if you connect Gmail)</li>
-    <li><strong>Google Calendar data</strong> — we read upcoming events (read-only access, only if you connect Calendar)</li>
-    <li><strong>School info</strong> — locker number, student ID, and class schedule you optionally enter</li>
+    <li><strong>Account info</strong> — name, email, and profile photo when you sign in (Google or guest upgrade)</li>
+    <li><strong>Planner data</strong> — tasks, grades, notes, habits, goals, schedule, and study tools you enter</li>
+    <li><strong>Educator data</strong> — classes, assignments, submissions, announcements, and messages you create as a teacher or staff member (stored in Supabase with row-level security)</li>
+    <li><strong>Gmail data</strong> — email subjects and senders only (read-only, only if you connect Gmail)</li>
+    <li><strong>Google Calendar</strong> — upcoming events (read-only, only if you connect Calendar)</li>
+    <li><strong>Google Classroom &amp; Drive</strong> — read-only course/file metadata for educator imports when you connect Workspace</li>
+    <li><strong>Canvas LMS</strong> — course and assignment data when you authorize your school Canvas login</li>
+    <li><strong>School info</strong> — locker, student ID, class schedule, and role profile you optionally enter</li>
+    <li><strong>Device-local data</strong> — some staff widgets (e.g. Quick-Grade buckets, workspace layout) stay on your browser unless synced elsewhere by you</li>
   </ul>
 
   <h2>2. How We Use Your Data</h2>
   <ul>
-    <li>To sync your planner data across your devices</li>
-    <li>To power the Flux AI tutor (your context is sent to Groq's API to generate responses)</li>
-    <li>To show your upcoming Gmail tasks and Calendar events inside the app</li>
-    <li>We never sell, share, or use your data for advertising</li>
+    <li>To sync your planner and educator data across your devices</li>
+    <li>To power Flux AI and optional connected models (only what you send or enable)</li>
+    <li>To show Gmail tasks, Calendar events, and Google/Canvas imports inside the app</li>
+    <li>To run optional Claude MCP connections you explicitly authorize</li>
+    <li>We never sell your data or use it for advertising</li>
   </ul>
 
   <h2>3. Where Data Is Stored</h2>
   <ul>
-    <li><strong>Supabase</strong> — your planner data is stored securely in a Supabase PostgreSQL database with row-level security. Only you can access your own data.</li>
-    <li><strong>Your device</strong> — data is also cached locally in your browser's localStorage for offline access</li>
-    <li><strong>Groq API</strong> — chat text is sent to Groq (groq.com) for processing; Groq's privacy policy applies.</li>
-    <li><strong>Google Gemini</strong> — when you attach an image for analysis, that request is sent to Google's Gemini API; Google's terms and privacy policy apply.</li>
+    <li><strong>Supabase</strong> — planner and educator data in PostgreSQL with row-level security; users can only access their own rows unless school flows you enable allow otherwise</li>
+    <li><strong>Your device</strong> — localStorage and sessionStorage cache for offline use and staff widget layout</li>
+    <li><strong>AI providers</strong> — Groq (default chat), Google Gemini (vision), and optional models you connect; each provider's policy applies to content you send</li>
+    <li><strong>Claude MCP</strong> — OAuth tokens are stored hashed server-side; only allowlisted planner keys are readable/writable via the connector</li>
   </ul>
 
   <h2>4. Google API Scopes We Request</h2>
   <ul>
-    <li><code>gmail.readonly</code> — to show your school emails inside the app as tasks</li>
-    <li><code>calendar.readonly</code> — to show upcoming events on your planner calendar</li>
-    <li>We do not modify, delete, or send any emails or calendar events</li>
-    <li>We do not share Google user data with third parties except as described above</li>
+    <li><code>gmail.readonly</code> — show email subjects/senders as tasks</li>
+    <li><code>calendar.readonly</code> and <code>calendar.events</code> — read events; write only when you explicitly use calendar features that create events</li>
+    <li><code>classroom.courses.readonly</code> — educator course imports (read-only)</li>
+    <li><code>drive.readonly</code> — educator file imports (read-only)</li>
+    <li>We do not send email on your behalf or modify Drive files without your action</li>
+    <li>We do not sell or share Google user data with third parties except AI/import processors you authorize</li>
   </ul>
 
   <h2>5. Data Retention & Deletion</h2>
@@ -77,7 +84,7 @@
   <p>Flux Planner is designed for high school students (14+). We do not knowingly collect data from children under 13. If you are under 13, please do not use this app.</p>
 
   <h2>7. Contact</h2>
-  <p>Questions about privacy? Email <a href="mailto:azfermohammed21@gmail.com">azfermohammed21@gmail.com</a></p>
+  <p>Questions about privacy? Email <a href="mailto:azfermohammed21@gmail.com">azfermohammed21@gmail.com</a>. See also our <a href="terms.html">Terms of Service</a>.</p>
 </div>
 </body>
 </html>

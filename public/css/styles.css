@@ -5530,6 +5530,17 @@ body{
    EDUCATOR PANELS — Teacher dashboard, class cards, drill-down view
    ═══════════════════════════════════════════════════════════════════ */
 .teacher-dash-root{padding:20px;position:relative;z-index:1}
+.teacher-modules-mount{margin-bottom:20px}
+.teacher-google-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 12px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
+  color:var(--muted2);font-size:.72rem;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.teacher-google-chip:hover{border-color:rgba(var(--accent-rgb),.35);color:var(--text)}
+.teacher-google-chip--on{border-color:rgba(52,168,83,.35);color:#34a853;background:rgba(52,168,83,.08)}
 .teacher-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
 .teacher-greeting-text{font-size:1.4rem;font-weight:800;letter-spacing:-.5px}
 .teacher-topbar-sub{font-size:.78rem;color:var(--muted2);margin-top:3px}

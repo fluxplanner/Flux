@@ -1705,9 +1705,8 @@
     <!-- ─── PROFILE ─── -->
     <!-- ─── TEACHER DASHBOARD (visible only for teacher accounts) ─── -->
     <div id="teacherDashboard" class="panel flux-page flux-edu-panel" data-edu-role="teacher">
-      <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Classes, assignments, submissions, and messages.</p>
-      </header>
+      <!-- Greeting + date live inside .teacher-dash-root (rendered by renderTeacherDashboard);
+           a static page header here would just duplicate that chrome and push content down. -->
       <div id="staff-google-hub-mount-teacher" class="staff-google-hub-mount" hidden></div>
       <div id="teacherDashboardBody"></div>
     </div>
@@ -2584,7 +2583,7 @@
           </ul>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
             <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Privacy Policy →</a>
-            <button type="button" onclick="showTOS()" class="btn-sec" style="padding:6px 14px;font-size:.78rem">Terms of Service →</button>
+            <a href="terms.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Terms of Service →</a>
           </div>
         </div>
       </div>

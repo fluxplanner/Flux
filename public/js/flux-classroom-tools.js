@@ -112,6 +112,51 @@
     lsSet(BUCKET_KEY, data);
   }
 
+  function moveBucketCard(data, fromCol, cardId, toCol) {
+    const list = data.columns[fromCol];
+    if (!list) return false;
+    const idx = list.findIndex((c) => String(c.id) === String(cardId));
+    if (idx < 0) return false;
+    const [card] = list.splice(idx, 1);
+    if (!data.columns[toCol]) data.columns[toCol] = [];
+    data.columns[toCol].push(card);
+    return true;
+  }
+
+  function wireQuickGradeDrop(drop, col, data, mount) {
+    let dragDepth = 0;
+    drop.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dragDepth += 1;
+      drop.classList.add('flux-qg-drop--over');
+    });
+    drop.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    drop.addEventListener('dragleave', () => {
+      dragDepth -= 1;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        drop.classList.remove('flux-qg-drop--over');
+      }
+    });
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragDepth = 0;
+      drop.classList.remove('flux-qg-drop--over');
+      const from = e.dataTransfer.getData('text/plain');
+      if (!from) return;
+      const sep = from.indexOf('::');
+      if (sep < 0) return;
+      const fromCol = from.slice(0, sep);
+      const cardId = from.slice(sep + 2);
+      if (!moveBucketCard(data, fromCol, cardId, col)) return;
+      saveBuckets(data);
+      renderQuickGrade(mount);
+    });
+  }
+
   function renderQuickGrade(mount) {
     const data = loadBuckets();
     mount.innerHTML = `
@@ -133,24 +178,7 @@
       (data.columns[col] || []).forEach((card, idx) => {
         drop.appendChild(cardEl(card, col, idx));
       });
-      drop.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        drop.classList.add('flux-qg-drop--over');
-      });
-      drop.addEventListener('dragleave', () => drop.classList.remove('flux-qg-drop--over'));
-      drop.addEventListener('drop', (e) => {
-        e.preventDefault();
-        drop.classList.remove('flux-qg-drop--over');
-        const from = e.dataTransfer.getData('text/plain');
-        if (!from) return;
-        const [fc, fi] = from.split('::');
-        const card = data.columns[fc]?.splice(parseInt(fi, 10), 1)[0];
-        if (card) {
-          data.columns[col].push(card);
-          saveBuckets(data);
-          renderQuickGrade(mount);
-        }
-      });
+      wireQuickGradeDrop(drop, col, data, mount);
     });
 
     mount.querySelector('.flux-qg-add')?.addEventListener('click', async () => {
@@ -168,7 +196,8 @@
     el.draggable = true;
     el.textContent = card.title;
     el.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', `${col}::${idx}`);
+      e.dataTransfer.setData('text/plain', `${col}::${card.id}`);
+      e.dataTransfer.effectAllowed = 'move';
     });
     return el;
   }
