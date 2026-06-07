@@ -186,6 +186,10 @@
 .fsh-iconbtn:hover { transform:translateY(-2px); } .fsh-iconbtn:active { box-shadow:var(--fsh-neu-in); transform:translateY(0); }
 .fsh-shellbars { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
 .fsh-shellbar { font-size:12px; padding:5px 10px; border-radius:9px; background:rgba(var(--fsh-accent-rgb),.12); border:1px solid rgba(var(--fsh-accent-rgb),.25); }
+#fshAtomCanvas { width:100%; }
+#fshAtomCanvas canvas { display:block; margin:0 auto; cursor:grab; touch-action:none; border-radius:14px; }
+#fshAtomCanvas canvas:active { cursor:grabbing; }
+.fsh-atom-hint { position:absolute; bottom:10px; left:0; right:0; text-align:center; font-size:11.5px; color:var(--fsh-mut); pointer-events:none; }
 
 /* ── shared form controls (tools/sims) ─────────────────────────────────── */
 .fsh-range { -webkit-appearance:none; appearance:none; height:5px; border-radius:999px; background:rgba(255,255,255,.12); outline:none; flex:1; min-width:120px; }
