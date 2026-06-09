@@ -464,6 +464,7 @@
   function moveTabGlide() {
     const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
     const a = tabs.querySelector('.fsh-chem-tab.active'); if (!a) return; g.style.left = a.offsetLeft + 'px'; g.style.width = a.offsetWidth + 'px';
+    try { a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
   }
 
   // ── search ───────────────────────────────────────────────────────────────

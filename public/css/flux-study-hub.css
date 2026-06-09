@@ -60,6 +60,7 @@
 .fsh-search .fsh-search-ico { position:absolute; left:15px; top:50%; transform:translateY(-50%); opacity:.6; font-size:15px; pointer-events:none; }
 .fsh-search .fsh-search-clear { position:absolute; right:8px; top:50%; transform:translateY(-50%); border:0; background:rgba(255,255,255,.06); color:var(--fsh-ink-2); width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:15px; line-height:1; display:grid; place-items:center; }
 .fsh-search .fsh-search-clear:hover { background:rgba(255,255,255,.12); }
+.fsh-search .fsh-search-clear[hidden] { display:none !important; }
 
 /* ── SUBJECT RAIL ──────────────────────────────────────────────────────── */
 .fsh-rail-wrap { position:relative; margin:18px 0 4px; }
@@ -99,8 +100,9 @@
 
 /* ── TAB / SUB-NAV (chemistry tabs + generic subject tool nav) ─────────── */
 .fsh-chem { display:flex; flex-direction:column; gap:18px; }
-.fsh-chem-tabs { display:inline-flex; gap:4px; padding:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); align-self:flex-start; position:relative; flex-wrap:wrap; max-width:100%; }
-.fsh-chem-tab { border:0; background:transparent; color:var(--fsh-ink-2); cursor:pointer; padding:9px 18px; border-radius:999px; font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; position:relative; z-index:1; transition:color .2s; }
+.fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); align-self:flex-start; width:fit-content; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; }
+.fsh-chem-tabs::-webkit-scrollbar { height:0; display:none; }
+.fsh-chem-tab { border:0; background:transparent; color:var(--fsh-ink-2); cursor:pointer; padding:9px 18px; border-radius:999px; font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; position:relative; z-index:1; transition:color .2s; flex:0 0 auto; white-space:nowrap; }
 .fsh-chem-tab .fsh-ct-ico { font-size:15px; }
 .fsh-chem-tab.active { color:#04121b; }
 .fsh-chem-tab-glide { position:absolute; top:5px; bottom:5px; border-radius:999px; z-index:0; background:linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%)); box-shadow:0 8px 20px -8px rgba(var(--fsh-accent-rgb),.6); transition:left .32s cubic-bezier(.3,.9,.2,1), width .32s cubic-bezier(.3,.9,.2,1); }
@@ -323,7 +325,10 @@
 @media (max-width:680px){
   .fsh-hero { padding:18px 16px 2px; } .fsh-rail { padding:6px 16px 12px; } .fsh-stage { padding:6px 16px 36px; }
   .fsh-search { min-width:100%; } .fsh-tools-grid { grid-template-columns:1fr; }
+  .fsh-stage { padding-bottom:100px; }
 }
+.fsh-pt-scroll { -webkit-overflow-scrolling:touch; }
+.fsh-rail { -webkit-overflow-scrolling:touch; }
 @media (prefers-reduced-motion:reduce){
   .fsh-shell { animation:none !important; }
   .fsh-panel, .fsh-eq .coef { animation:none !important; }
