@@ -53,20 +53,36 @@
       document.getElementById('cofSvg').addEventListener('click', (e) => { const g = e.target.closest('.fsh-ring-seg'); if (!g) return; cofSel = +g.dataset.i; renderCircle(body); });
     }
 
-    // ── Elements of Music wheel ──────────────────────────────────────────────
-    const ELEMENTS = [['Pitch', 'How high or low — notes & melody'], ['Rhythm', 'Patterns of sound in time'], ['Tempo', 'Speed of the beat (BPM)'], ['Dynamics', 'Loud ↔ soft (p, f, cresc.)'], ['Timbre', 'Tone colour of an instrument'], ['Texture', 'Layers — mono/homo/polyphony'], ['Harmony', 'Chords & how they combine'], ['Form', 'Structure — ABA, verse-chorus']];
-    let elSel = 0;
-    function renderElements(body) {
-      const cx = 220, cy = 220, rO = 205, rI = 96, n = ELEMENTS.length, step = 360 / n;
-      const segs = ELEMENTS.map((el, i) => {
-        const a1 = i * step - step / 2, a2 = i * step + step / 2, mid = i * step;
-        const [tx, ty] = pol(cx, cy, (rO + rI) / 2, mid); const hue = 200 + i * 18;
-        return `<g class="fsh-ring-seg${i === elSel ? ' active' : ''}" data-i="${i}"><path d="${wedge(cx, cy, rI, rO, a1, a2)}" fill="hsl(${hue} 50% ${i === elSel ? 52 : 38}%)" stroke="rgba(0,0,0,.25)"></path><text class="fsh-ring-label" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">${esc(el[0])}</text></g>`;
-      }).join('');
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">◎ Elements of Music</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">The building blocks every analysis comes back to. Tap a segment.</p>
-        <div class="fsh-ring-wrap"><svg class="fsh-ring-svg" id="elSvg" viewBox="0 0 440 440" role="img" aria-label="Elements of music">${segs}<circle cx="${cx}" cy="${cy}" r="${rI - 4}" fill="rgba(8,11,20,.6)" stroke="var(--fsh-line)"></circle><text class="fsh-ring-center" x="${cx}" y="${cy + 6}">MUSIC</text></svg>
-        <div class="fsh-keyinfo" id="elInfo"><h3 style="margin:0 0 6px;font-size:19px">${esc(ELEMENTS[elSel][0])}</h3><p style="color:var(--fsh-ink-2);font-size:14px;line-height:1.6">${esc(ELEMENTS[elSel][1])}</p></div></div></div>`;
-      document.getElementById('elSvg').addEventListener('click', (e) => { const g = e.target.closest('.fsh-ring-seg'); if (!g) return; elSel = +g.dataset.i; renderElements(body); });
+    // ── Dimensions & metadimensions (classic IB listening framework) ─────────
+    const DIMS = [['Timbre', 'Tone colour — what makes instruments sound different.'], ['Melody', 'A memorable, shaped succession of pitches.'], ['Harmony', 'Pitches sounded together — chords and their progression.'], ['Dynamics', 'Levels and changes of loudness (p, f, cresc.).'], ['Articulation', 'How notes are attacked and released (staccato, legato).'], ['Texture', 'How many layers there are and how they relate.'], ['Meter', 'The grouping of beats into regular patterns.'], ['Tempo', 'The speed of the beat (BPM).'], ['Form', 'The overall structure — ABA, verse–chorus, sonata.']];
+    const METADIMS = [['Style', 'Characteristic features shared by a body of music.'], ['Architecture', 'Large-scale design and proportion of a work.'], ['Affective qualities', 'The emotions and moods the music evokes.'], ['Sense of ensemble', 'How performers interact and balance together.'], ['Personal context', "The listener's or creator's own experience & response."], ['Cultural context', 'The society and traditions the music belongs to.'], ['Historical context', 'The time period and its conventions.'], ['Sense of simultaneity', 'How several musical events are perceived at once.'], ['Genre', 'The category or type of music (jazz, opera, …).']];
+    let dimSel = { kind: 'dim', i: 0 };
+    const wrap2 = (s) => { if (s.length <= 13) return [s]; const w = s.split(' '); if (w.length < 2) return [s]; let best = 1, bd = 1e9; for (let k = 1; k < w.length; k++) { const a = w.slice(0, k).join(' '), b = w.slice(k).join(' '); const d = Math.abs(a.length - b.length); if (d < bd) { bd = d; best = k; } } return [w.slice(0, best).join(' '), w.slice(best).join(' ')]; };
+    function dimInfo() { const d = dimSel.kind === 'core' ? ['Pitch & Rhythm', 'The two fundamental dimensions — every musical idea is built on organised pitch and time.'] : (dimSel.kind === 'meta' ? METADIMS[dimSel.i] : DIMS[dimSel.i]); const tag = dimSel.kind === 'core' ? 'Core' : dimSel.kind === 'meta' ? 'Metadimension' : 'Dimension'; return `<div class="fsh-keyinfo"><div class="fsh-note" style="margin:0 0 4px">${tag}</div><h3 style="margin:0 0 8px;font-size:21px">${esc(d[0])}</h3><p style="color:var(--fsh-ink-2);font-size:14px;line-height:1.65">${esc(d[1])}</p></div>`; }
+    function renderDimensions(body) {
+      const cx = 235, cy = 235;
+      const pill = (label, deg, r, kind, i) => {
+        const [x, y] = pol(cx, cy, r, deg); const active = dimSel.kind === kind && dimSel.i === i;
+        const lines = wrap2(label); const tw = Math.max(48, Math.min(134, Math.max.apply(null, lines.map((l) => l.length)) * 6.6)); const th = lines.length > 1 ? 30 : 22;
+        const rgb = kind === 'meta' ? '176,108,240' : 'var(--fsh-accent-rgb)';
+        return `<g class="fsh-ring-seg" data-kind="${kind}" data-i="${i}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})" style="cursor:pointer">
+          <rect x="${(-tw / 2).toFixed(1)}" y="${(-th / 2).toFixed(1)}" width="${tw.toFixed(1)}" height="${th}" rx="${Math.min(11, th / 2)}" style="fill:rgba(${rgb},${active ? '.5' : '.2'})" stroke="${active ? '#ffffff' : 'rgba(255,255,255,.16)'}" stroke-width="${active ? 2 : 1}"></rect>
+          ${lines.map((l, li) => `<text text-anchor="middle" dominant-baseline="central" y="${lines.length > 1 ? li * 12 - 6 : 0}" style="fill:#fff;font:600 11px ui-sans-serif,system-ui;pointer-events:none">${esc(l)}</text>`).join('')}</g>`;
+      };
+      const metas = METADIMS.map((m, i) => pill(m[0], i * 40, 196, 'meta', i)).join('');
+      const dims = DIMS.map((d, i) => pill(d[0], i * 40 + 20, 122, 'dim', i)).join('');
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">◎ Dimensions &amp; metadimensions</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">The classic listening framework — <b>dimensions</b> describe the sound itself; <b>metadimensions</b> describe context &amp; meaning. Tap any label.</p>
+        <div class="fsh-ring-wrap"><svg class="fsh-ring-svg" id="dimSvg" viewBox="0 0 470 470" role="img" aria-label="Music dimensions and metadimensions" style="max-width:480px">
+          <circle cx="${cx}" cy="${cy}" r="228" style="fill:rgba(176,108,240,.06)" stroke="var(--fsh-line)"></circle>
+          <circle cx="${cx}" cy="${cy}" r="170" style="fill:rgba(var(--fsh-accent-rgb),.06)" stroke="var(--fsh-line)"></circle>
+          <circle cx="${cx}" cy="${cy}" r="74" fill="rgba(8,11,20,.55)" style="stroke:rgba(var(--fsh-accent-rgb),.4)"></circle>
+          <text x="${cx}" y="26" text-anchor="middle" style="fill:rgba(255,255,255,.5);font:700 12px ui-sans-serif,system-ui;letter-spacing:.08em">METADIMENSIONS</text>
+          <text x="${cx}" y="86" text-anchor="middle" style="fill:rgba(255,255,255,.5);font:700 11px ui-sans-serif,system-ui;letter-spacing:.06em">DIMENSIONS</text>
+          ${metas}${dims}
+          <g class="fsh-ring-seg" data-kind="core" data-i="0" style="cursor:pointer"><circle cx="${cx}" cy="${cy}" r="60" fill="transparent"></circle><text x="${cx}" y="${cy - 9}" text-anchor="middle" style="fill:#fff;font:800 18px ui-sans-serif,system-ui;pointer-events:none">Pitch</text><text x="${cx}" y="${cy + 15}" text-anchor="middle" style="fill:#fff;font:800 18px ui-sans-serif,system-ui;pointer-events:none">Rhythm</text></g>
+        </svg>
+        <div id="dimInfo">${dimInfo()}</div></div></div>`;
+      document.getElementById('dimSvg').addEventListener('click', (e) => { const g = e.target.closest('.fsh-ring-seg'); if (!g) return; dimSel = { kind: g.dataset.kind, i: +g.dataset.i }; renderDimensions(body); });
     }
 
     // ── Scale / chord explorer ───────────────────────────────────────────────
@@ -112,7 +128,7 @@
 
     H.register('music', [
       { id: 'circle', name: 'Circle of 5ths', icon: '🎼', desc: 'circle of fifths key signature relative minor chords ring', render: renderCircle, ai: { name: 'circleOfFifths', description: 'Key info. Arg: a major key like "G".', params: { key: 'string' }, run: (a) => { const row = COF.find((r) => r[1].toUpperCase() === String(a).trim().toUpperCase()) || COF[0]; return { key: row[1] + ' major', signature: row[3], relativeMinor: row[2], scale: scaleOf(row[0], MAJ_DEG), chords: diatonic(row[0]).map((c) => c.roman + ' ' + c.chord) }; } } },
-      { id: 'elements', name: 'Elements', icon: '◎', desc: 'elements of music pitch rhythm dynamics timbre ring wheel', render: renderElements },
+      { id: 'dimensions', name: 'Dimensions', icon: '◎', desc: 'dimensions metadimensions music ring pitch rhythm timbre style context', render: renderDimensions },
       { id: 'explorer', name: 'Scales & chords', icon: '🎹', desc: 'scale chord explorer piano notes major minor', render: renderExplorer, ai: { name: 'scaleNotes', description: 'Scale notes. Arg: "C Major".', params: { root: 'string', type: 'string' }, run: (a) => { const m = String(a).trim().match(/^([A-G][#♯b♭]?)\s+(.+)$/i); if (!m) throw new Error('Use "C Major"'); const root = PC.indexOf(m[1].replace('#', '♯').replace('b', '♭').toUpperCase()); const pat = SCALES[Object.keys(SCALES).find((k) => k.toLowerCase() === m[2].toLowerCase())] || SCALES.Major; return scaleOf(root < 0 ? 0 : root, pat); } } },
       { id: 'intervals', name: 'Intervals', icon: '📏', desc: 'intervals semitones music theory', render: renderIntervals },
     ]);

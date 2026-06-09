@@ -286,7 +286,7 @@
   // atom
   function shellFill(z) { const cap = [2, 8, 18, 32, 32, 18, 8], out = []; let rem = z; for (const c of cap) { if (rem <= 0) break; out.push(Math.min(c, rem)); rem -= c; } return out; }
   // interactive 3D atom — canvas, perspective, depth-sorted electron spheres, drag-orbit + scroll-zoom
-  let atomRot = { yaw: 0.5, pitch: -0.42 }, atomZoom = 1, atomRAF = 0, atomDrag = null;
+  let atomRot = { yaw: 0, pitch: -0.95 }, atomZoom = 1, atomRAF = 0, atomDrag = null;
   const rotXp = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; };
   const rotYp = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; };
   function atomSideHTML(e) {
@@ -321,28 +321,28 @@
       if (Math.abs(W - (wrap.clientWidth || W)) > 1) size();
       const acc = (root && getComputedStyle(root).getPropertyValue('--fsh-accent').trim()) || '#34d0ff';
       const accRgb = (root && getComputedStyle(root).getPropertyValue('--fsh-accent-rgb').trim()) || '52,208,255';
-      const shells = shellFill(e.n);
-      if (!atomDrag && !reduced) atomRot.yaw += dt / 1000 * 0.35 * atomSpeed;
-      const cx = W / 2, cy = Hh / 2, F = 640, base = Math.min(W, Hh) * 0.12 * atomZoom;
+      const shells = shellFill(e.n), tsec = reduced ? 0 : now / 1000;
+      const cx = W / 2, cy = Hh / 2, F = 470, base = Math.min(W, Hh) * 0.11 * atomZoom;
       const cosY = Math.cos(atomRot.yaw), sinY = Math.sin(atomRot.yaw), cosP = Math.cos(atomRot.pitch), sinP = Math.sin(atomRot.pitch);
       const proj = (p) => { const x1 = p[0] * cosY + p[2] * sinY, z1 = -p[0] * sinY + p[2] * cosY, y1 = p[1]; const y2 = y1 * cosP - z1 * sinP, z2 = y1 * sinP + z1 * cosP; const s = F / (F - z2); return { x: cx + x1 * s, y: cy + y2 * s, z: z2, s }; };
       ctx.clearRect(0, 0, W, Hh);
-      const rings = [], blobs = [];
+      const rings = [], blobs = []; let maxR = 1;
       shells.forEach((cnt, i) => {
-        const R = base * (2.1 + i * 1.55), incl = (i * 41 + 24) * Math.PI / 180, node = (i * 57) * Math.PI / 180;
-        const pts = []; for (let k = 0; k <= 60; k++) { const a = k / 60 * 2 * Math.PI; pts.push(proj(rotYp(rotXp([R * Math.cos(a), R * Math.sin(a), 0], incl), node))); }
+        const R = base * (1.7 + i * 1.45); maxR = Math.max(maxR, R);
+        const pts = []; for (let k = 0; k <= 64; k++) { const a = k / 64 * 2 * Math.PI; pts.push(proj([R * Math.cos(a), R * Math.sin(a), 0])); }
         rings.push(pts);
-        const phase = (now / 1000) * 0.7 * Math.max(0.05, atomSpeed) / (i * 0.35 + 1);
-        for (let j = 0; j < cnt; j++) { const a = j / cnt * 2 * Math.PI + phase; const pr = proj(rotYp(rotXp([R * Math.cos(a), R * Math.sin(a), 0], incl), node)); blobs.push({ x: pr.x, y: pr.y, z: pr.z, s: pr.s, R }); }
+        const phase = tsec * 0.6 * Math.max(0.04, atomSpeed) / (i * 0.28 + 1) + i * 0.7;
+        for (let j = 0; j < cnt; j++) { const a = j / cnt * 2 * Math.PI + phase; const pr = proj([R * Math.cos(a), R * Math.sin(a), 0]); blobs.push({ x: pr.x, y: pr.y, z: pr.z, s: pr.s }); }
       });
-      ctx.strokeStyle = 'rgba(' + accRgb + ',.28)'; ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(' + accRgb + ',.22)';
       rings.forEach((pts) => { ctx.beginPath(); pts.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); });
       const items = blobs.map((b) => ({ z: b.z, el: b })); items.push({ z: 0, nucleus: true });
       items.sort((a, b) => a.z - b.z);
+      const sphere = (x, y, r, col) => { const hx = x - r * 0.38, hy = y - r * 0.42; const g = ctx.createRadialGradient(hx, hy, r * 0.08, x, y, r * 1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(0.18, '#e9fbff'); g.addColorStop(0.55, col); g.addColorStop(1, '#04101b'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); const sb = ctx.shadowBlur; ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1, r * 0.2), 0, 7); ctx.fill(); ctx.shadowBlur = sb; };
       items.forEach((it) => {
-        if (it.nucleus) { const pr = proj([0, 0, 0]); const r = 16 * pr.s; const g = ctx.createRadialGradient(pr.x - r * .35, pr.y - r * .35, r * .2, pr.x, pr.y, r); g.addColorStop(0, '#fff'); g.addColorStop(.55, acc); g.addColorStop(1, '#06121b'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pr.x, pr.y, r, 0, 7); ctx.fill(); ctx.fillStyle = '#06121b'; ctx.font = '700 ' + (12 * pr.s) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e.s, pr.x, pr.y); return; }
-        const b = it.el, depth = Math.max(0, Math.min(1, (b.z + b.R) / (2 * b.R))), r = Math.max(2, 6 * b.s);
-        ctx.globalAlpha = 0.5 + 0.5 * depth; const g = ctx.createRadialGradient(b.x - r * .4, b.y - r * .4, r * .2, b.x, b.y, r); g.addColorStop(0, '#fff'); g.addColorStop(1, acc); ctx.fillStyle = g; ctx.shadowColor = acc; ctx.shadowBlur = 9 * depth; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        if (it.nucleus) { const pr = proj([0, 0, 0]); const r = 20 * pr.s; ctx.shadowColor = acc; ctx.shadowBlur = 24; sphere(pr.x, pr.y, r, acc); ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(4,16,27,.92)'; ctx.font = '800 ' + (13 * pr.s) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e.s, pr.x, pr.y); return; }
+        const b = it.el, depth = Math.max(0, Math.min(1, (b.z + maxR) / (2 * maxR))), r = Math.max(2.5, 7 * b.s);
+        ctx.globalAlpha = 0.45 + 0.55 * depth; ctx.shadowColor = acc; ctx.shadowBlur = 12 * depth; sphere(b.x, b.y, r, acc); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       });
       atomRAF = requestAnimationFrame(frame);
     }
@@ -429,16 +429,18 @@
     window.print();
   }
 
-  const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['worksheet','📝','Worksheet'],['classic','🧰','Classic']];
+  const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['worksheet','📝','Worksheet']];
   function renderChemBody() {
     const b = $('fshChemBody'); if (!b) return;
-    if (state.chemTab === 'classic') { renderClassic(b, 'chemistry'); return; }
+    if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
     b.innerHTML = state.chemTab === 'table' ? renderTableTab() : state.chemTab === 'atom' ? renderAtomTab() : state.chemTab === 'tools' ? renderToolsTab() : state.chemTab === 'ions' ? renderIonsTab() : renderWorksheetTab();
     if (state.chemTab === 'table') applyPtFilter();
     else if (state.chemTab === 'atom') setTimeout(mountAtom3D, 0);
   }
   function renderChem() {
-    $('fshStage').innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${CHEM_TABS.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t[0] ? ' active' : ''}" data-tab="${t[0]}"><span class="fsh-ct-ico">${t[1]}</span>${t[2]}</button>`).join('')}</div><div class="fsh-chem-body" id="fshChemBody"></div></div>` + refStrip('chemistry');
+    const tabs = CHEM_TABS.concat(legacyChipsFor('chemistry').map((c) => ['lg-' + c.id, c.icon || '🧰', c.label || c.id]));
+    if (!tabs.some((t) => t[0] === state.chemTab)) state.chemTab = 'table';
+    $('fshStage').innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tabs.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t[0] ? ' active' : ''}" data-tab="${esc(t[0])}"><span class="fsh-ct-ico">${t[1]}</span>${esc(t[2])}</button>`).join('')}</div><div class="fsh-chem-body" id="fshChemBody"></div></div>` + refStrip('chemistry');
     renderChemBody(); requestAnimationFrame(moveTabGlide);
   }
 
@@ -522,6 +524,7 @@
       const ws = t.closest('[data-ws]');
       if (ws) { const g = ws.dataset.ws, v = ws.dataset.v; if (g === 'type') { wsCfg.types.has(v) ? wsCfg.types.delete(v) : wsCfg.types.add(v); } else if (g === 'diff') wsCfg.diff = v; else if (g === 'count') wsCfg.count = +v; else if (g === 'mode') wsCfg.mode = v; wsGenerate(); renderChemBody(); requestAnimationFrame(moveTabGlide); return; }
       const act = t.closest('[data-act]'); if (!act) return; const a = act.dataset.act;
+      if (a === 'lg-open') { const md = act.dataset.mode; if (md === 'link' && act.dataset.nav && window.nav) window.nav(act.dataset.nav); else if (act.dataset.fn && typeof window[act.dataset.fn] === 'function') window[act.dataset.fn](); return; }
       if (a === 'balance') { const i = $('fshBalIn'); balInput = i ? i.value : balInput; $('fshBalOut').innerHTML = balOut(); }
       else if (a === 'ins-arrow') { const i = $('fshBalIn'); if (i) { i.value = i.value.replace(/\s*$/, '') + ' → '; i.focus(); balInput = i.value; $('fshBalOut').innerHTML = balOut(); } }
       else if (a === 'molar') { const i = $('fshMolIn'); molInput = i ? i.value : molInput; $('fshMolOut').innerHTML = molOut(); }
@@ -530,7 +533,7 @@
       else if (a === 'gas') { const o = $('fshGasOut'); try { const r = gasSolve({ P: num('fshG_P'), V: num('fshG_V'), n: num('fshG_n'), T: num('fshG_T') }); o.innerHTML = `<span class="big">${esc([r.P, r.V, r.n, r.T].join(' · '))}</span>`; } catch (e) { o.innerHTML = `<span class="fsh-err">${esc(e.message)}</span>`; } }
       else if (a === 'view-atom') { atomN = +act.dataset.n; state.chemTab = 'atom'; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'atom')); renderChemBody(); requestAnimationFrame(moveTabGlide); }
       else if (a === 'atom-prev' || a === 'atom-next') { atomN = Math.max(1, Math.min(elements().length, atomN + (a === 'atom-next' ? 1 : -1))); updateAtomInfo(); }
-      else if (a === 'atom-reset') { atomRot = { yaw: 0.5, pitch: -0.42 }; atomZoom = 1; }
+      else if (a === 'atom-reset') { atomRot = { yaw: 0, pitch: -0.95 }; atomZoom = 1; }
       else if (a === 'ws-gen') { wsGenerate(); $('fshWsPreview').innerHTML = wsPreview(); }
       else if (a === 'ws-print') { wsPrint(); }
     });
@@ -559,8 +562,8 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'molar-mass': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'biology', 'math-analysis': 'math', 'math-formulas': 'math', 'graphing': 'math', 'matrix': 'math', 'stats': 'math', 'geo-ref': 'math', 'gopo-ref': 'history', 'hist-skills': 'history', 'hist-map': 'history', 'timeline': 'history', 'map-quiz': 'history', 'econ-formulas': 'econ', 'fin-calc': 'econ', 'lit-ref': 'english', 'lit-devices': 'english', 'grammar': 'english', 'essay': 'english', 'cite-notes': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'ipa': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'arts-ref': 'music', 'dp-dimensions': 'music', 'dp-chart': 'music', 'cs-ref': 'cs' };
-    const SKIP = { 'periodic-tbl': 1 };
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'biology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'history', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
+    const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
@@ -570,25 +573,17 @@
     _legacyIdx = idx; return idx;
   }
   const legacyChipsFor = (sub) => { const idx = buildLegacyIndex(); return (idx && idx[sub]) || []; };
-  function renderClassic(body, sub) {
-    const chips = legacyChipsFor(sub);
-    if (!chips.length) { body.innerHTML = '<div class="fsh-panel"><div class="fsh-card" style="padding:22px"><p class="fsh-note">No classic tools for this subject.</p></div></div>'; return; }
-    body.innerHTML = `<div class="fsh-panel"><div class="fsh-section-head"><span class="fsh-sh-ico">🧰</span><span><h2>Classic tools</h2><p>Your original Flux study tools, merged back in</p></span></div>
-      <div class="fsh-chips-row" id="fshClassicChips">${chips.map((c, i) => `<button type="button" class="fsh-cat-chip" data-ci="${i}">${c.icon || '•'} ${esc(c.label || c.id)}</button>`).join('')}</div>
-      <div id="fshClassicMount" style="margin-top:14px"></div></div>`;
-    const mount = body.querySelector('#fshClassicMount');
-    const open = (c) => { mount.innerHTML = ''; try {
-      if (c.mode === 'inline' && window.fluxToolbox && window.fluxToolbox.renderToolIntoBody) window.fluxToolbox.renderToolIntoBody(mount, c.sub, c.tid);
-      else if (c.mode === 'modal' && typeof window[c.fn] === 'function') { window[c.fn](); mount.innerHTML = `<p class="fsh-note">Opened “${esc(c.label)}” in a window.</p>`; }
-      else if (c.mode === 'link' && typeof window.nav === 'function') { window.nav(c.nav); }
-      else mount.innerHTML = '<p class="fsh-note">This tool isn’t available right now.</p>';
-    } catch (e3) { mount.innerHTML = `<p class="fsh-err">${esc(e3.message)}</p>`; } };
-    body.querySelectorAll('#fshClassicChips [data-ci]').forEach((b, i) => b.addEventListener('click', () => { body.querySelectorAll('#fshClassicChips .fsh-cat-chip').forEach((x) => x.classList.remove('active')); b.classList.add('active'); open(chips[i]); }));
-    const fi = chips.findIndex((c) => c.mode === 'inline'); if (fi >= 0) { const btns = body.querySelectorAll('#fshClassicChips [data-ci]'); btns[fi].classList.add('active'); open(chips[fi]); }
+  function renderLegacyTool(body, chip) {
+    if (chip.mode === 'inline' && window.fluxToolbox && window.fluxToolbox.renderToolIntoBody) {
+      body.innerHTML = '<div class="fsh-panel" id="fshLgMount"></div>';
+      try { window.fluxToolbox.renderToolIntoBody($('fshLgMount'), chip.sub, chip.tid); } catch (e3) { body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e3.message)}</div></div>`; }
+      return;
+    }
+    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '🧰'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${esc(chip.desc || 'Your original Flux tool — opens in a focused window.')}</p><button type="button" class="fsh-btn" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">Open ${esc(chip.label || 'tool')}</button></div></div>`;
   }
   function mergeLegacyOnce() {
     if (_merged) return; const idx = buildLegacyIndex(); if (!idx) return; _merged = true;
-    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, [{ id: 'classic', name: 'Classic', icon: '🧰', desc: 'classic original tools ' + idx[sub].map((c) => c.label).join(' '), render: (b) => renderClassic(b, sub) }]); });
+    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, idx[sub].map((chip) => ({ id: 'lg-' + chip.id, name: chip.label || chip.id, icon: chip.icon || '🧰', desc: 'classic ' + (chip.desc || chip.label || ''), render: (b) => renderLegacyTool(b, chip) }))); });
   }
   function renderHub() { if (!$('fshRoot')) { if (!buildShell()) return; } mergeLegacyOnce(); renderStage(); }
   window.renderToolbox = renderHub;
