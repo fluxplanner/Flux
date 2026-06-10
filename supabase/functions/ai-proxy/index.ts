@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     }
     userId = null;
   } else {
-    userId = auth.userId;
+    userId = auth.userId ?? null;
   }
 
   let body: {
@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
     systemPrompt?: string;
     /** Groq returns a single JSON object (requires "json" in messages per API rules). */
     responseFormat?: "json_object";
+    /** Stream the reply as SSE (`data: {"delta":"…"}` … `data: [DONE]`). Text-only. */
+    stream?: boolean;
+    /**
+     * Agentic tool loop: round 1 is the user's message, rounds 2+ are hidden
+     * TOOL RESULTS continuations of the same turn — only round 1 is metered.
+     */
+    loopRound?: number;
     routing?: {
       mode?: string;
       openaiCompatible?: {
@@ -81,7 +88,10 @@ Deno.serve(async (req) => {
     }
 
     // Image calls aren't currently metered against the text quota.
-    if (!hasImage) {
+    // Agent-loop continuations (rounds 2+) of one user turn are charged once, on round 1.
+    const loopRound = Number(body.loopRound) || 1;
+    const isLoopContinuation = loopRound > 1 && loopRound <= 8;
+    if (!hasImage && !isLoopContinuation) {
       const usage = await checkAndIncrementAIUsage(userId, entitlement);
       if (!usage.allowed) {
         return json({
@@ -100,13 +110,22 @@ Deno.serve(async (req) => {
     }
 
     if (entitlement.plan === "free" && !body.model) {
-      body.model = "llama-3.1-8b-instant";
+      // Tool-calling turns need a model that can emit well-formed flux_tool JSON;
+      // the 8B model fumbles it. Plain chat still gets the cheap model.
+      const sys = String(body.system ?? body.systemPrompt ?? "");
+      body.model = sys.includes("flux_tool")
+        ? "llama-3.3-70b-versatile"
+        : "llama-3.1-8b-instant";
     }
   }
 
   if (!isBYOK && !hasImage && !body.model) {
     body.model = "llama-3.3-70b-versatile";
   }
+
+  // SSE streaming: text chat only (vision and json_object stay request/response).
+  const wantStream = body.stream === true && !hasImage &&
+    body.responseFormat !== "json_object";
 
   let text: string;
   try {
@@ -118,22 +137,33 @@ Deno.serve(async (req) => {
         if (chargedQuota && userId) await refundAIUsage(userId);
         return json({ error: "routing_incomplete_openai" }, 400, origin);
       }
-      text = await callOpenAICompatible(body, {
+      const cfg = {
         apiKey: rc.apiKey.trim(),
         baseUrl: (rc.baseUrl || "").trim(),
         model: rc.model.trim(),
-      });
+      };
+      if (wantStream) {
+        const upstream = await openOpenAICompatibleStream(body, cfg);
+        return pipeSSE(upstream, openaiDelta, origin);
+      }
+      text = await callOpenAICompatible(body, cfg);
     } else if (routeMode === "anthropic_messages") {
       const rc = body.routing?.anthropic;
       if (!rc?.apiKey?.trim() || !rc?.model?.trim()) {
         if (chargedQuota && userId) await refundAIUsage(userId);
         return json({ error: "routing_incomplete_anthropic" }, 400, origin);
       }
-      text = await callAnthropicMessages(body, {
-        apiKey: rc.apiKey.trim(),
-        model: rc.model.trim(),
-      });
+      const cfg = { apiKey: rc.apiKey.trim(), model: rc.model.trim() };
+      if (wantStream) {
+        const upstream = await openAnthropicStream(body, cfg);
+        return pipeSSE(upstream, anthropicDelta, origin);
+      }
+      text = await callAnthropicMessages(body, cfg);
     } else {
+      if (wantStream) {
+        const upstream = await openGroqStream(body);
+        return pipeSSE(upstream, openaiDelta, origin);
+      }
       text = await callGroq(body);
     }
   } catch (e) {
@@ -152,6 +182,209 @@ Deno.serve(async (req) => {
   return json({ content: [{ type: "text", text }] }, 200, origin);
 });
 
+/* ───────── SSE streaming ─────────
+ * Providers stream their own SSE shapes; we normalize to
+ *   data: {"delta":"…"}  …  data: [DONE]
+ * so the client only ever parses one format. Errors before the upstream
+ * connection opens flow through the normal JSON error path (quota refunded);
+ * mid-stream errors are emitted as a {"error":…} event.
+ */
+
+function openaiDelta(j: unknown): string | undefined {
+  const o = j as { choices?: Array<{ delta?: { content?: string } }> };
+  return o?.choices?.[0]?.delta?.content || undefined;
+}
+
+function anthropicDelta(j: unknown): string | undefined {
+  const o = j as { type?: string; delta?: { text?: string } };
+  return o?.type === "content_block_delta" ? (o.delta?.text || undefined) : undefined;
+}
+
+function pipeSSE(
+  upstream: Response,
+  extract: (j: unknown) => string | undefined,
+  origin: string,
+): Response {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = upstream.body!.getReader();
+  let buf = "";
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (obj: unknown) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let nl;
+          while ((nl = buf.indexOf("\n")) >= 0) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (!data || data === "[DONE]") continue;
+            try {
+              const t = extract(JSON.parse(data));
+              if (t) emit({ delta: t });
+            } catch {
+              // Partial/non-JSON keepalive line — skip.
+            }
+          }
+        }
+      } catch (e) {
+        emit({ error: String(e) });
+      }
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+    cancel() {
+      try {
+        reader.cancel();
+      } catch { /* upstream already closed */ }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      ...corsHeaders(origin),
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+    },
+  });
+}
+
+async function openGroqStream(body: {
+  messages?: Array<{ role: string; content: unknown }>;
+  message?: string;
+  model?: string;
+  system?: string;
+  systemPrompt?: string;
+}): Promise<Response> {
+  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
+  const payload = buildOpenAIChatPayload(body, body.model ?? "llama-3.3-70b-versatile");
+  payload.stream = true;
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok || !res.body) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Groq error ${res.status}: ${err}`);
+  }
+  return res;
+}
+
+async function openOpenAICompatibleStream(
+  body: {
+    messages?: Array<{ role: string; content: unknown }>;
+    message?: string;
+    model?: string;
+    system?: string;
+    systemPrompt?: string;
+  },
+  rc: { apiKey: string; baseUrl: string; model: string },
+): Promise<Response> {
+  const payload = buildOpenAIChatPayload(body, rc.model || body.model || "gpt-4o-mini");
+  payload.stream = true;
+  const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${rc.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok || !res.body) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`OpenAI-compatible error ${res.status}: ${err}`);
+  }
+  return res;
+}
+
+async function openAnthropicStream(
+  body: {
+    messages?: Array<{ role: string; content: unknown }>;
+    system?: string;
+    systemPrompt?: string;
+  },
+  rc: { apiKey: string; model: string },
+): Promise<Response> {
+  const { system, messages } = buildAnthropicPayload(body);
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": rc.apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: rc.model,
+      max_tokens: 2048,
+      system,
+      messages,
+      stream: true,
+    }),
+  });
+  if (!res.ok || !res.body) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Anthropic error ${res.status}: ${err}`);
+  }
+  return res;
+}
+
+function openaiCompatibleUrl(baseUrl: string): string {
+  let base = baseUrl.replace(/\/+$/, "");
+  if (!base) base = "https://api.openai.com/v1";
+  if (!/^https?:\/\/.+/i.test(base)) {
+    throw new Error("OpenAI-compatible base URL must start with http:// or https://");
+  }
+  return base.endsWith("/chat/completions")
+    ? base
+    : base.endsWith("/v1")
+    ? `${base}/chat/completions`
+    : `${base}/v1/chat/completions`;
+}
+
+function buildAnthropicPayload(body: {
+  messages?: Array<{ role: string; content: unknown }>;
+  system?: string;
+  systemPrompt?: string;
+}): {
+  system: string;
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+} {
+  const systemParts: string[] = [];
+  const topSys = body.system ?? body.systemPrompt;
+  if (topSys) systemParts.push(String(topSys));
+
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
+  for (const m of raw) {
+    const roleStr = String(m.role || "");
+    if (roleStr === "system") {
+      systemParts.push(
+        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+      );
+      continue;
+    }
+    messages.push({
+      role: roleStr === "assistant" ? "assistant" : "user",
+      content:
+        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+    });
+  }
+  return { system: systemParts.join("\n\n").slice(0, 200000), messages };
+}
+
 async function callOpenAICompatible(
   body: {
     messages?: Array<{ role: string; content: unknown }>;
@@ -166,19 +399,7 @@ async function callOpenAICompatible(
   const model = rc.model || body.model || "gpt-4o-mini";
   const payload = buildOpenAIChatPayload(body, model);
 
-  let base = rc.baseUrl.replace(/\/+$/, "");
-  if (!base) base = "https://api.openai.com/v1";
-  if (!/^https?:\/\/.+/i.test(base)) {
-    throw new Error("OpenAI-compatible base URL must start with http:// or https://");
-  }
-
-  const url = base.endsWith("/chat/completions")
-    ? base
-    : base.endsWith("/v1")
-    ? `${base}/chat/completions`
-    : `${base}/v1/chat/completions`;
-
-  const res = await fetch(url, {
+  const res = await fetch(openaiCompatibleUrl(rc.baseUrl), {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${rc.apiKey}`,
@@ -203,28 +424,7 @@ async function callAnthropicMessages(
   },
   rc: { apiKey: string; model: string },
 ): Promise<string> {
-  const systemParts: string[] = [];
-  const topSys = body.system ?? body.systemPrompt;
-  if (topSys) systemParts.push(String(topSys));
-
-  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
-
-  const raw = Array.isArray(body.messages) ? [...body.messages] : [];
-  for (const m of raw) {
-    const roleStr = String(m.role || "");
-    if (roleStr === "system") {
-      systemParts.push(
-        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-      );
-      continue;
-    }
-    const role = roleStr === "assistant" ? "assistant" : "user";
-    messages.push({
-      role,
-      content:
-        typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-    });
-  }
+  const { system, messages } = buildAnthropicPayload(body);
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -236,7 +436,7 @@ async function callAnthropicMessages(
     body: JSON.stringify({
       model: rc.model,
       max_tokens: 2048,
-      system: systemParts.join("\n\n").slice(0, 200000),
+      system,
       messages,
     }),
   });

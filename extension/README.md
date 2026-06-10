@@ -21,27 +21,23 @@ extension/
   manifest.firefox.json      MV3 + sidebar_action + activeTab
   manifest.safari.json       Safari Web Extension wrapper
   src/
-    background.ts            Service worker: AI proxy + auth bridge + capture
-    content.ts               Page reader (Canvas/Gmail/Docs/YT/etc.)
+    background.js            Service worker: AI proxy + auth bridge + capture
+                             + "fx" omnibox + context menus
+    content.js               Page reader (Canvas/Gmail/Docs/YT/etc.)
     sidebar/                 Side-rail UI (chat + skills + actions)
       sidebar.html
       sidebar.js
       sidebar.css
-    popup/                   Browser-action popup (sign-in entry)
+    popup/                   Browser-action popup (sign-in entry + planner host)
       popup.html
       popup.js
-    omnibox/                 "fx" omnibox keyword handler
-      omnibox.js
-    skills/                  Same skill runners as web app, ported
     lib/
       browser-shim.js        chrome.* / browser.* polyfill
-      storage.js             session→local TTL polyfill
-      auth.js                PKCE; safari uses window.opener fallback
-      api.js                 Calls flux AI proxy
+                             (incl. storage.session → local TTL fallback)
+      api.js                 Planner config loader + AI proxy client
       page-context.js        Per-page extractors
   icons/
-  build.mjs                  esbuild → per-browser bundles
-  web-ext.config.cjs         for `web-ext run --target=firefox`
+  build.mjs                  esbuild → per-browser bundles (dist/<target>)
 ```
 
 ## Cross-browser strategy

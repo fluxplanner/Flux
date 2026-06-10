@@ -7862,6 +7862,49 @@ function execActions(reply){
   if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();}
   return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;
 }
+/** Read the ai-proxy SSE stream, painting partial text into the thinking bubble as it arrives. */
+async function fluxReadAIStream(res,thinkEl,thinkAnim){
+  const reader=res.body.getReader();
+  const dec=new TextDecoder();
+  let buf='',full='',started=false,lastPaint=0,streamErr='';
+  const bub=thinkEl?thinkEl.querySelector('.ai-bub'):null;
+  const paint=(force)=>{
+    if(!bub)return;
+    const now=Date.now();
+    if(!force&&now-lastPaint<90)return;
+    lastPaint=now;
+    // Hide tool/action blocks while they stream in — the post-pass renders the final text.
+    const visible=full.split(/`{3,}\s*(?:flux_tool|actions|skill)/i)[0].trim();
+    if(visible){
+      bub.innerHTML=fmtAI(visible);
+      try{const wrap=document.getElementById('aiMsgs');if(wrap)wrap.scrollTop=wrap.scrollHeight;}catch(e){}
+    }
+  };
+  for(;;){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let nl;
+    while((nl=buf.indexOf('\n'))>=0){
+      const line=buf.slice(0,nl).trim();
+      buf=buf.slice(nl+1);
+      if(line.indexOf('data:')!==0)continue;
+      const data=line.slice(5).trim();
+      if(!data||data==='[DONE]')continue;
+      let j=null;try{j=JSON.parse(data);}catch(e){continue;}
+      if(j&&j.error){streamErr=String(j.error);continue;}
+      if(j&&typeof j.delta==='string'&&j.delta){
+        if(!started){started=true;try{thinkAnim?.cancel?.();}catch(e){}}
+        full+=j.delta;
+        paint(false);
+      }
+    }
+  }
+  paint(true);
+  if(!full&&streamErr)throw new Error(streamErr);
+  return full;
+}
+
 async function sendAI(optionalUserText, depth, sendOpts){
   const d=typeof depth==='number'?depth:0;
   const opts=sendOpts||{};
@@ -7877,7 +7920,8 @@ async function sendAI(optionalUserText, depth, sendOpts){
   if(!nested&&!text&&!aiPendingImg)return;
   if(nested&&!text)return;
   if(!nested&&btn.disabled)return;
-  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
+  // Hidden agent-loop rounds continue an already-charged turn — never gate them here.
+  if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS&&!opts.hidden){
     const dailyUsed=_entitlement.usage?.daily_used??0;
     const dailyLimit=_entitlement.usage?.daily_limit??FLUX_FREE_LIMITS.AI_DAILY_MESSAGES;
     if(dailyUsed>=dailyLimit){
@@ -7938,6 +7982,8 @@ async function sendAI(optionalUserText, depth, sendOpts){
       if(routeExtra&&typeof routeExtra==='object')Object.assign(body,routeExtra);
     }catch(e){}
     if(imgSnapshot){body.imageBase64=imgSnapshot.data;body.mimeType=imgSnapshot.mime;}
+    body.loopRound=opts.hidden?d+1:1; // rounds 2+ of one agentic turn are metered once, on round 1
+    if(!imgSnapshot)body.stream=true; // SSE streaming (proxy falls back to JSON for vision/json mode)
     if(window.FluxOrchestrator&&FluxOrchestrator.thinkingStep)FluxOrchestrator.thinkingStep('Calling model with planner + agent context…');
     const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify(body)});
     if(!res.ok){
@@ -7969,9 +8015,15 @@ async function sendAI(optionalUserText, depth, sendOpts){
       }
       throw new Error(errData.error||'HTTP '+res.status);
     }
-    const data=await res.json();
-    const reply=data.content?.[0]?.text||"I didn't get a response — try again.";
-    if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
+    let reply;
+    const ctype=String(res.headers.get('content-type')||'');
+    if(ctype.indexOf('text/event-stream')>=0&&res.body){
+      reply=await fluxReadAIStream(res,thinkEl,thinkAnim)||"I didn't get a response — try again.";
+    }else{
+      const data=await res.json();
+      reply=data.content?.[0]?.text||"I didn't get a response — try again.";
+    }
+    if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS&&!opts.hidden){
       _entitlement.usage=_entitlement.usage||{};
       _entitlement.usage.daily_used=(_entitlement.usage.daily_used??0)+1;
       updatePlanUI();
