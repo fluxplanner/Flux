@@ -1,131 +1,207 @@
 /**
  * sidebar.js — side rail UI controller.
  *
- * Flow:
- *   • Fetches the current tab's page context from the background SW.
- *   • Renders suggestions based on detected page type.
- *   • Routes user input: `/<slash>` → run skill, plain text → call AI proxy.
- *   • Parses ```skill``` blocks from AI replies and forwards them to the content script.
+ * Flux always sees the current tab:
+ *   • Every send pulls a FRESH page snapshot via FLUX_GET_PAGE_SNAPSHOT
+ *     (background falls back to scripting.executeScript, so it works even on
+ *     tabs that were open before the extension installed).
+ *   • With "Live" on (default), a screenshot of the tab is attached to every
+ *     message → the vision model literally sees the screen, Gemini-style.
+ *   • Tab switches / navigations update the context bar in real time.
  *
- * Skills are kept aligned with the web app's flux-skills.js by intent
- * (same slash names + behaviours). The runners that need DOM (in-page actions)
- * delegate to content.js via runtime messaging.
+ * Replies stream token-by-token over a long-lived port to the background.
  */
-import { ext, runtime, tabs } from '../lib/browser-shim.js';
+import { ext, runtime } from '../lib/browser-shim.js';
 
 const elChat = document.getElementById('chat');
+const elHello = document.getElementById('hello');
 const elComposer = document.getElementById('composer');
 const elSend = document.getElementById('sendBtn');
 const elCapture = document.getElementById('captureBtn');
 const elSugg = document.getElementById('suggestions');
-const elPage = document.getElementById('pageType');
+const elCtxBar = document.getElementById('contextBar');
+const elCtxTitle = document.getElementById('ctxTitle');
+const elCtxFavicon = document.getElementById('ctxFavicon');
+const elLive = document.getElementById('liveToggle');
+const elNewChat = document.getElementById('newChat');
 const elOpenWeb = document.getElementById('openWeb');
+const elAttachPreview = document.getElementById('attachPreview');
+const elAttachImg = document.getElementById('attachImg');
+const elAttachRemove = document.getElementById('attachRemove');
 
-let lastTabId = null;
-let lastContext = null;
+let liveView = true;            // attach a screenshot to every send
+let pendingImage = null;        // manual 📷 capture waiting to be sent
+let history = [];               // [{role, content}] — text only
+let busy = false;
 
-/* ───────── Suggestions by page type ───────── */
+/* ───────── Tiny markdown renderer (escapes first — no raw HTML) ───────── */
 
-const SUGGESTIONS = {
-  canvas: ['/summarize this assignment', '/quiz-me on this page', 'Add this to Flux'],
-  gmail: ['Draft a reply', 'Add this to Flux', '/summarize this thread'],
-  gdocs: ['/critique', '/expand the outline', '/summarize'],
-  youtube: ['/summarize this video', '/flashcards from this'],
-  gclassroom: ['Sync to Flux', '/plan around these deadlines'],
-  generic: ['/summarize this page', '/flashcards from selection', 'Add this to Flux'],
-};
-
-function renderSuggestions(type) {
-  elPage.textContent = type;
-  const list = SUGGESTIONS[type] || SUGGESTIONS.generic;
-  elSugg.innerHTML = list.map((s) => `<button class="sugg" data-prompt="${escAttr(s)}">${escHtml(s)}</button>`).join('');
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
-
-elSugg.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-prompt]');
-  if (!b) return;
-  elComposer.value = b.getAttribute('data-prompt');
-  elComposer.focus();
-});
+function md(raw) {
+  let s = escHtml(raw);
+  // fenced code
+  s = s.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${code.replace(/\n$/, '')}</code></pre>`);
+  // inline code
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  // headings
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+       .replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // bold / italic
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+       .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  // links (escaped → match &lt; free URLs)
+  s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // lists: group consecutive bullet/numbered lines
+  s = s.replace(/(?:^|\n)((?:[-*] .+(?:\n|$))+)/g, (m, block) =>
+    '\n<ul>' + block.trim().split('\n').map((l) => `<li>${l.replace(/^[-*] /, '')}</li>`).join('') + '</ul>');
+  s = s.replace(/(?:^|\n)((?:\d+[.)] .+(?:\n|$))+)/g, (m, block) =>
+    '\n<ol>' + block.trim().split('\n').map((l) => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>');
+  // paragraphs
+  return s.split(/\n{2,}/).map((p) => {
+    const t = p.trim();
+    if (!t) return '';
+    if (/^<(pre|ul|ol|h\d)/.test(t)) return t;
+    return '<p>' + t.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+}
 
 /* ───────── Chat rendering ───────── */
 
-function append(role, text, opts) {
+function hideHello() { if (elHello) elHello.style.display = 'none'; }
+
+function appendUser(text) {
+  hideHello();
   const div = document.createElement('div');
-  div.className = 'msg ' + role + (opts && opts.skill ? ' skill' : '');
+  div.className = 'msg user';
   div.textContent = text;
   elChat.appendChild(div);
   elChat.scrollTop = elChat.scrollHeight;
   return div;
 }
 
-/* ───────── Boot — fetch intent + context ───────── */
-
-async function bootIntent() {
-  const r = await runtime.sendMessage({ type: 'FLUX_GET_INTENT' });
-  if (!r || !r.ok || !r.intent) return;
-  const intent = r.intent;
-  switch (intent.action) {
-    case 'addTask':
-      elComposer.value = 'Add task: ' + (intent.text || intent.url || '');
-      break;
-    case 'summarize':
-      elComposer.value = '/summarize ' + (intent.text || 'this page');
-      handleSend();
-      break;
-    case 'flashcards':
-      elComposer.value = '/flashcards ' + (intent.text || '');
-      handleSend();
-      break;
-    case 'cite':
-      elComposer.value = '/cite ' + (intent.text || intent.url || '');
-      handleSend();
-      break;
-    case 'omniboxQuickAdd':
-      elComposer.value = 'Add task: ' + intent.text;
-      handleSend();
-      break;
-  }
+function appendBot() {
+  hideHello();
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>';
+  elChat.appendChild(div);
+  elChat.scrollTop = elChat.scrollHeight;
+  return div;
 }
 
-async function bootContext() {
-  const tab = await tabs.active();
-  if (!tab) return;
-  lastTabId = tab.id;
-  // Wait briefly for content.js to broadcast
-  await new Promise((r) => setTimeout(r, 400));
-  // Fall back: ask via direct message if cache miss
+function setBot(div, text, { error = false, sawScreen = false } = {}) {
+  div.classList.toggle('error', !!error);
+  const note = sawScreen ? '<div class="vision-note">👁 answered from a screenshot of your tab</div>' : '';
+  div.innerHTML = note + (error ? escHtml(text) : md(text));
+  elChat.scrollTop = elChat.scrollHeight;
+}
+
+/* ───────── Context bar ───────── */
+
+let ctxRefreshTimer = null;
+
+async function refreshContext() {
   try {
-    const r = await runtime.sendMessage({ type: 'FLUX_GET_CONFIG' });
-    if (r && !r.ok) console.warn('[Flux sidebar] config fetch failed', r.error);
-  } catch (_) {}
-  try {
-    const ctx = await fetchTabContext(tab.id);
-    if (ctx) {
-      lastContext = ctx;
-      renderSuggestions(ctx.type || 'generic');
-    } else {
-      renderSuggestions('generic');
+    const r = await runtime.sendMessage({ type: 'FLUX_GET_PAGE_SNAPSHOT' });
+    const snap = r && r.ok ? r.snapshot : null;
+    if (!snap) {
+      elCtxTitle.textContent = 'No tab in view';
+      elCtxFavicon.hidden = true;
+      return;
     }
-  } catch (e) {
-    console.warn('[Flux sidebar] context fetch failed', e);
-    renderSuggestions('generic');
+    elCtxBar.classList.toggle('restricted', !!snap.restricted);
+    elCtxTitle.textContent = snap.restricted
+      ? 'Browser page — Flux can’t read this one'
+      : (snap.title || snap.url || 'this tab');
+    if (snap.favIconUrl && /^https?:/.test(snap.favIconUrl)) {
+      elCtxFavicon.src = snap.favIconUrl;
+      elCtxFavicon.hidden = false;
+    } else {
+      elCtxFavicon.hidden = true;
+    }
+    renderSuggestions(snap);
+  } catch (_) {
+    elCtxTitle.textContent = 'this tab';
   }
 }
 
-async function fetchTabContext(tabId) {
-  return new Promise((resolve) => {
-    ext.runtime.sendMessage({ type: 'FLUX_GET_TAB_CONTEXT', tabId }, (r) => {
-      if (r && r.ok) return resolve(r.context);
-      resolve(null);
-    });
-  });
+function scheduleCtxRefresh() {
+  if (ctxRefreshTimer) clearTimeout(ctxRefreshTimer);
+  ctxRefreshTimer = setTimeout(refreshContext, 250);
 }
 
-/* ───────── Send handler ───────── */
+try {
+  ext.tabs.onActivated?.addListener(scheduleCtxRefresh);
+  ext.tabs.onUpdated?.addListener((tabId, info) => {
+    if (info && (info.status === 'complete' || info.title)) scheduleCtxRefresh();
+  });
+  if (ext.windows && ext.windows.onFocusChanged) {
+    ext.windows.onFocusChanged.addListener(scheduleCtxRefresh);
+  }
+} catch (_) {}
+
+/* ───────── Suggestions ───────── */
+
+function suggestionsFor(snap) {
+  const h = (() => { try { return new URL(snap.url || '').hostname; } catch (_) { return ''; } })();
+  if (/instructure|canvaslms/.test(h)) return ['Summarize this assignment', 'What’s due and when?', 'Quiz me on this'];
+  if (/youtube\./.test(h)) return ['Summarize this video', 'Key takeaways', 'Make flashcards'];
+  if (/docs\.google/.test(h)) return ['Critique my writing', 'Continue this draft', 'Tighten this up'];
+  if (/mail\.google/.test(h)) return ['Draft a reply', 'Summarize this thread'];
+  if (/deltamath|khanacademy|ixl\.|mathway/.test(h)) return ['Walk me through this problem', 'Explain the concept', 'Check my answer'];
+  if (/wikipedia/.test(h)) return ['Summarize this article', 'Explain like I’m 12', 'Make flashcards'];
+  return ['Summarize this page', 'Explain what I’m looking at', 'Make flashcards from this'];
+}
+
+function renderSuggestions(snap) {
+  const list = snap && !snap.restricted ? suggestionsFor(snap) : ['What can you do?'];
+  elSugg.innerHTML = list
+    .map((s) => `<button class="sugg" data-prompt="${escHtml(s)}">${escHtml(s)}</button>`)
+    .join('');
+}
+
+elSugg.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-prompt]');
+  if (!b) return;
+  elComposer.value = b.getAttribute('data-prompt');
+  handleSend();
+});
+
+/* ───────── Live view toggle + manual capture ───────── */
+
+elLive.addEventListener('click', async () => {
+  liveView = !liveView;
+  elLive.classList.toggle('on', liveView);
+  try { await ext.storage.local.set({ flux_live_view: liveView }); } catch (_) {}
+});
+
+elCapture.addEventListener('click', async () => {
+  try {
+    const r = await runtime.sendMessage({ type: 'FLUX_CAPTURE_TAB' });
+    if (!r || !r.ok || !r.dataUrl) throw new Error(r?.error || 'capture failed');
+    pendingImage = r.dataUrl;
+    elAttachImg.src = r.dataUrl;
+    elAttachPreview.hidden = false;
+    elComposer.focus();
+  } catch (e) {
+    const div = appendBot();
+    setBot(div, 'Couldn’t capture the tab: ' + e.message, { error: true });
+  }
+});
+
+elAttachRemove.addEventListener('click', () => {
+  pendingImage = null;
+  elAttachPreview.hidden = true;
+});
+
+/* ───────── Send ───────── */
 
 elComposer.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -133,159 +209,203 @@ elComposer.addEventListener('keydown', (e) => {
     handleSend();
   }
 });
+elComposer.addEventListener('input', () => {
+  elComposer.style.height = 'auto';
+  elComposer.style.height = Math.min(elComposer.scrollHeight, 120) + 'px';
+});
 elSend.addEventListener('click', handleSend);
+
+const SYSTEM = [
+  'You are Flux — a sharp, friendly AI living in the user’s browser side rail (part of Flux Planner).',
+  'You can SEE the user’s current tab: a text snapshot of the page is included below, and often a screenshot too. Treat them as what the user is looking at right now.',
+  'When the user says "this page", "this question", "this problem" — they mean the page context. Never claim you can’t see the page when context is present.',
+  'For homework problems: give the answer AND a tight explanation of how to get it.',
+  'Be direct and concise. Use markdown. Short paragraphs, bullets where they help.',
+].join('\n');
+
+function contextString(snap) {
+  if (!snap || snap.restricted) return '';
+  const parts = [
+    `URL: ${snap.url || ''}`,
+    `Title: ${snap.title || ''}`,
+  ];
+  if (snap.selection) parts.push(`User's selected text:\n${snap.selection}`);
+  if (snap.text) parts.push(`Page text:\n${snap.text}`);
+  return parts.join('\n');
+}
 
 async function handleSend() {
   const text = (elComposer.value || '').trim();
-  if (!text) return;
+  if (!text || busy) return;
+  busy = true;
+  elSend.disabled = true;
   elComposer.value = '';
-  append('user', text);
+  elComposer.style.height = 'auto';
 
-  // Slash command?
-  if (text.startsWith('/')) {
-    const thinking = append('bot', 'Running…', { skill: true });
+  appendUser(text);
+  const botDiv = appendBot();
+
+  try {
+    // 1. Fresh snapshot of whatever tab the user is on right now.
+    let snap = null;
     try {
-      const r = await runSkill(text);
-      thinking.textContent = r.render || r.message || 'Done.';
-    } catch (e) {
-      thinking.textContent = 'Skill failed: ' + (e.message || 'unknown');
-    }
-    return;
-  }
+      const r = await runtime.sendMessage({ type: 'FLUX_GET_PAGE_SNAPSHOT' });
+      snap = r && r.ok ? r.snapshot : null;
+    } catch (_) {}
 
-  // Plain AI message — include lastContext as a hint.
-  const thinking = append('bot', 'Thinking…');
-  try {
-    const r = await runtime.sendMessage({
-      type: 'FLUX_CALL_AI',
-      payload: {
-        system: 'You are Flux AI inside a browser side rail. The user is on a page; consider its context. Be concise.',
-        messages: [{ role: 'user', content: text }],
-        context: lastContext ? `Page type: ${lastContext.type}. URL: ${lastContext.url || ''}.\n` + (lastContext.text || '').slice(0, 4000) : '',
-      },
+    // 2. Screenshot: manual attach wins; otherwise Live view, or auto-fallback
+    //    when the page has no extractable text (canvas-rendered apps).
+    let imageDataUrl = pendingImage;
+    const textLen = (snap && snap.text ? snap.text.length : 0);
+    if (!imageDataUrl && !snap?.restricted && (liveView || textLen < 400)) {
+      try {
+        const cap = await runtime.sendMessage({ type: 'FLUX_CAPTURE_TAB' });
+        if (cap && cap.ok && cap.dataUrl) imageDataUrl = cap.dataUrl;
+      } catch (_) {}
+    }
+    pendingImage = null;
+    elAttachPreview.hidden = true;
+
+    history.push({ role: 'user', content: text });
+    if (history.length > 16) history = history.slice(-16);
+
+    const payload = {
+      system: SYSTEM,
+      messages: history.slice(),
+      context: contextString(snap),
+    };
+
+    let sawScreen = false;
+    if (imageDataUrl) {
+      const m = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (m) {
+        payload.imageBase64 = m[2];
+        payload.mimeType = m[1];
+        sawScreen = true;
+      }
+    }
+
+    const full = await streamAI(payload, (partial) => {
+      setBot(botDiv, partial, { sawScreen });
     });
-    if (!r || !r.ok) {
-      thinking.textContent = 'AI error: ' + (r?.error || 'unknown');
-      return;
-    }
-    thinking.textContent = r.text || '(no reply)';
-    parseSkillBlock(r.text);
+
+    const reply = full || 'I didn’t get a response — try again.';
+    setBot(botDiv, reply, { sawScreen });
+    history.push({ role: 'assistant', content: reply });
   } catch (e) {
-    thinking.textContent = 'Error: ' + e.message;
+    setBot(botDiv, 'Error: ' + (e.message || 'something went wrong') +
+      '\nIf this keeps happening, reload the extension or check the Planner host in the popup.', { error: true });
+    history.pop(); // drop the failed user turn so retries are clean
   }
+
+  busy = false;
+  elSend.disabled = false;
+  elComposer.focus();
 }
 
-function parseSkillBlock(text) {
-  const m = text && text.match(/```skill\s*(\{[\s\S]*?\})\s*```/);
-  if (!m) return;
-  let payload;
-  try { payload = JSON.parse(m[1]); } catch (_) { return; }
-  if (payload && payload.id) {
-    runSkill('/' + payload.id + ' ' + (payload.args || '')).catch(() => {});
-  }
-}
-
-/* ───────── Capture button (screenshot current tab) ───────── */
-
-elCapture.addEventListener('click', async () => {
-  try {
-    const r = await runtime.sendMessage({ type: 'FLUX_CAPTURE_TAB' });
-    if (!r || !r.ok) {
-      append('bot', 'Capture failed: ' + (r?.error || 'unknown'));
+/** Stream via the background port; falls back to one-shot FLUX_CALL_AI. */
+function streamAI(payload, onPartial) {
+  return new Promise((resolve, reject) => {
+    let port = null;
+    try {
+      port = ext.runtime.connect({ name: 'flux-ai-stream' });
+    } catch (_) {
+      port = null;
+    }
+    if (!port) {
+      runtime.sendMessage({ type: 'FLUX_CALL_AI', payload })
+        .then((r) => (r && r.ok ? resolve(r.text || '') : reject(new Error(r?.error || 'AI error'))))
+        .catch(reject);
       return;
     }
-    const img = document.createElement('img');
-    img.src = r.dataUrl;
-    img.style.cssText = 'max-width:100%;border-radius:10px;border:1px solid var(--border);margin-top:6px';
-    const wrap = append('bot', 'Captured tab:');
-    wrap.appendChild(img);
-  } catch (e) {
-    append('bot', 'Capture error: ' + e.message);
-  }
+    let full = '';
+    let settled = false;
+    let paintTimer = null;
+    const paint = () => {
+      paintTimer = null;
+      if (full) onPartial(full);
+    };
+    port.onMessage.addListener((m) => {
+      if (!m || settled) return;
+      if (m.type === 'delta') {
+        full += m.delta || '';
+        if (!paintTimer) paintTimer = setTimeout(paint, 80);
+      } else if (m.type === 'done') {
+        settled = true;
+        try { port.disconnect(); } catch (_) {}
+        resolve(m.text || full);
+      } else if (m.type === 'error') {
+        settled = true;
+        try { port.disconnect(); } catch (_) {}
+        reject(new Error(m.error || 'AI error'));
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      if (!settled) {
+        settled = true;
+        if (full) resolve(full);
+        else reject(new Error('Connection to Flux dropped — try again.'));
+      }
+    });
+    try {
+      port.postMessage({ type: 'FLUX_STREAM_AI', payload });
+    } catch (e) {
+      settled = true;
+      reject(e);
+    }
+  });
+}
+
+/* ───────── New chat / open planner ───────── */
+
+elNewChat.addEventListener('click', () => {
+  history = [];
+  elChat.querySelectorAll('.msg').forEach((n) => n.remove());
+  if (elHello) elHello.style.display = '';
+  elComposer.focus();
 });
-
-/* ───────── Open Flux web app ───────── */
 
 elOpenWeb.addEventListener('click', async () => {
   const r = await runtime.sendMessage({ type: 'FLUX_GET_CONFIG' });
-  const url = (r && r.ok && r.config && r.config.app_url) || 'https://azfermohammed.github.io/Fluxplanner/';
+  const url = (r && r.ok && r.config && r.config.app_url) || 'https://fluxplanner.github.io/Flux/';
   ext.tabs.create({ url });
 });
 
-/* ───────── Skill runners (subset wired locally; AI-backed ones go through proxy) ───────── */
+/* ───────── Context-menu / omnibox intents ───────── */
 
-async function runSkill(text) {
-  const m = text.match(/^\/([a-z][a-z0-9_-]*)(?:\s+([\s\S]*))?$/i);
-  if (!m) return { render: 'Not a skill command.' };
-  const id = m[1].toLowerCase();
-  const args = (m[2] || '').trim();
-
-  // In-page skills (run on the active tab)
-  if (id === 'summarize' || id === 'summarize-page') {
-    const tab = await tabs.active();
-    const txt = await getActiveTabText(tab.id);
-    if (!txt) return { render: 'Nothing to summarize.' };
-    const r = await runtime.sendMessage({
-      type: 'FLUX_CALL_AI',
-      payload: {
-        system: 'Summarize the page text in 5 tight bullets. No filler.',
-        messages: [{ role: 'user', content: 'Summarize.' }],
-        context: txt,
-      },
-    });
-    return { render: r?.text || 'No reply' };
+async function bootIntent() {
+  let r = null;
+  try { r = await runtime.sendMessage({ type: 'FLUX_GET_INTENT' }); } catch (_) {}
+  if (!r || !r.ok || !r.intent) return;
+  const intent = r.intent;
+  const sel = intent.text ? `\n\nSelected text:\n${intent.text}` : '';
+  switch (intent.action) {
+    case 'summarize':
+      elComposer.value = 'Summarize this' + (intent.text ? ' selection' : ' page') + '.' + sel;
+      return handleSend();
+    case 'flashcards':
+      elComposer.value = 'Make flashcards from this.' + sel;
+      return handleSend();
+    case 'cite':
+      elComposer.value = 'Give me an APA citation for this page.' + sel;
+      return handleSend();
+    case 'addTask':
+    case 'omniboxQuickAdd':
+      elComposer.value = 'Add to my planner: ' + (intent.text || intent.url || '');
+      elComposer.focus();
+      return;
   }
-
-  if (id === 'flashcards') {
-    const sel = await getActiveTabSelection();
-    const src = args || sel || (lastContext && lastContext.text) || '';
-    if (!src) return { render: 'Select text first, or pass content after /flashcards.' };
-    const r = await runtime.sendMessage({
-      type: 'FLUX_CALL_AI',
-      payload: {
-        system: 'Generate 8-12 flashcards as a JSON array of {"q":"...","a":"..."}. Respond ONLY with the JSON array.',
-        messages: [{ role: 'user', content: src.slice(0, 6000) }],
-      },
-    });
-    return { render: r?.text || 'No flashcards generated.' };
-  }
-
-  if (id === 'cite') {
-    const ref = args || (lastContext && (lastContext.url || lastContext.title)) || '';
-    const r = await runtime.sendMessage({
-      type: 'FLUX_CALL_AI',
-      payload: {
-        system: 'Generate an APA citation for the reference. Output only the citation.',
-        messages: [{ role: 'user', content: ref }],
-      },
-    });
-    return { render: r?.text || 'No citation.' };
-  }
-
-  // Default — pass to AI as a freeform skill
-  const r = await runtime.sendMessage({
-    type: 'FLUX_CALL_AI',
-    payload: {
-      system: `The user invoked skill /${id}. Respond appropriately. Args: ${args || '(none)'}`,
-      messages: [{ role: 'user', content: args || id }],
-    },
-  });
-  return { render: r?.text || 'No reply.' };
-}
-
-async function getActiveTabText(tabId) {
-  return new Promise((resolve) => {
-    ext.tabs.sendMessage(tabId, { type: 'FLUX_GET_PAGE_TEXT' }, (r) => resolve(r && r.text));
-  });
-}
-async function getActiveTabSelection() {
-  const tab = await tabs.active();
-  if (!tab) return '';
-  return new Promise((resolve) => {
-    ext.tabs.sendMessage(tab.id, { type: 'FLUX_GET_SELECTION' }, (r) => resolve(r && r.text));
-  });
 }
 
 /* ───────── Boot ───────── */
 
-bootContext().then(bootIntent);
+(async function boot() {
+  try {
+    const r = await ext.storage.local.get('flux_live_view');
+    if (r && typeof r.flux_live_view === 'boolean') liveView = r.flux_live_view;
+  } catch (_) {}
+  elLive.classList.toggle('on', liveView);
+  await refreshContext();
+  await bootIntent();
+  elComposer.focus();
+})();

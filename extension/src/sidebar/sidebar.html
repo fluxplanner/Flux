@@ -9,22 +9,45 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="dot" aria-hidden="true"></span>
-      <span>Flux</span>
+      <svg class="lemni" viewBox="0 0 48 24" aria-hidden="true"><path d="M24 12c-4-5-7-9-13-9C5.5 3 2 7 2 12s3.5 9 9 9c6 0 9-4 13-9zm0 0c4-5 7-9 13-9 5.5 0 9 4 9 9s-3.5 9-9 9c-6 0-9-4-13-9z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <span class="brand-name">Flux</span>
     </div>
-    <div class="page-pill" id="pageType">—</div>
-    <button id="openWeb" class="iconbtn" title="Open Flux web app">↗</button>
+    <div class="top-actions">
+      <button id="newChat" class="iconbtn" title="New chat">＋</button>
+      <button id="openWeb" class="iconbtn" title="Open Flux Planner">↗</button>
+    </div>
   </header>
+
+  <div class="context-bar" id="contextBar" title="Flux can see this tab">
+    <img id="ctxFavicon" class="ctx-favicon" alt="" hidden>
+    <span class="ctx-eye" id="ctxEye">👁</span>
+    <span class="ctx-title" id="ctxTitle">Looking at this tab…</span>
+    <button id="liveToggle" class="live-toggle on" title="Live view: attach a screenshot of the tab to every message">
+      <span class="live-dot"></span>Live
+    </button>
+  </div>
 
   <section class="suggestions" id="suggestions" aria-label="Suggestions"></section>
 
-  <main class="chat" id="chat" aria-live="polite"></main>
+  <main class="chat" id="chat" aria-live="polite">
+    <div class="hello" id="hello">
+      <div class="hello-orb"></div>
+      <h2>Hey, I can see your tab.</h2>
+      <p>Ask about anything on screen — homework questions, articles, videos. With <b>Live</b> on, I look at a fresh screenshot every time you send.</p>
+    </div>
+  </main>
 
-  <footer class="composer">
-    <textarea id="composer" rows="1" placeholder="Ask Flux, or /slash a skill (Cmd+K)" aria-label="Message"></textarea>
-    <div class="composer-actions">
-      <button id="captureBtn" class="iconbtn" title="Capture this tab">📸</button>
-      <button id="sendBtn" class="primary" title="Send">Send</button>
+  <footer class="composer-wrap">
+    <div class="attach-preview" id="attachPreview" hidden>
+      <img id="attachImg" alt="Attached screenshot">
+      <button id="attachRemove" class="attach-x" title="Remove">✕</button>
+    </div>
+    <div class="composer">
+      <textarea id="composer" rows="1" placeholder="Ask about this page…" aria-label="Message"></textarea>
+      <button id="captureBtn" class="iconbtn" title="Attach a screenshot of this tab">📷</button>
+      <button id="sendBtn" class="sendbtn" title="Send" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
     </div>
   </footer>
 

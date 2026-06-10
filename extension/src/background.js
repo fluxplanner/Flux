@@ -21,7 +21,7 @@ import {
   sessionStorage as sessx,
   localStorage as lsx,
 } from './lib/browser-shim.js';
-import { getConfig, callAI } from './lib/api.js';
+import { getConfig, callAI, callAIStream } from './lib/api.js';
 
 /* ───────── Lifecycle ───────── */
 
@@ -162,7 +162,86 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: !!context, context: context || null });
       })();
       return true;
+    case 'FLUX_GET_PAGE_SNAPSHOT':
+      // Fresh, on-demand snapshot of a tab. Never depends on the content
+      // script being loaded — falls back to scripting.executeScript, which
+      // works on tabs that were already open before the extension installed.
+      getPageSnapshot(msg.tabId)
+        .then((snapshot) => sendResponse({ ok: true, snapshot }))
+        .catch((e) => sendResponse({ ok: false, error: e.message }));
+      return true;
   }
+});
+
+/* ───────── On-demand page snapshot ───────── */
+
+async function getPageSnapshot(tabId) {
+  let tab = null;
+  try {
+    tab = tabId ? await ext.tabs.get(tabId) : await tabs.active();
+  } catch (_) {
+    tab = await tabs.active();
+  }
+  if (!tab || !tab.id) throw new Error('No active tab');
+  const url = tab.url || '';
+  const base = {
+    tabId: tab.id,
+    url,
+    title: tab.title || '',
+    favIconUrl: tab.favIconUrl || '',
+  };
+  // Browser-internal pages can't be read.
+  if (!/^https?:/i.test(url)) {
+    return { ...base, restricted: true, text: '', selection: '' };
+  }
+  // 1. Content script (has the smarter per-site extractors).
+  try {
+    const r = await tabs.sendMessage(tab.id, { type: 'FLUX_GET_PAGE_TEXT' });
+    if (r && r.text) {
+      let selection = '';
+      try {
+        const s = await tabs.sendMessage(tab.id, { type: 'FLUX_GET_SELECTION' });
+        selection = (s && s.text) || '';
+      } catch (_) {}
+      return { ...base, text: r.text, selection, via: 'content-script' };
+    }
+  } catch (_) { /* not injected in this tab — fall through */ }
+  // 2. Inject an extractor directly.
+  if (ext.scripting && ext.scripting.executeScript) {
+    const results = await ext.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const sel = String(window.getSelection ? window.getSelection() : '').trim();
+        const main = document.querySelector('article, main, [role="main"]') || document.body;
+        const text = (main && main.innerText ? main.innerText : '')
+          .replace(/[ \t]+/g, ' ')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
+          .slice(0, 12000);
+        return { text, selection: sel.slice(0, 4000), title: document.title || '' };
+      },
+    });
+    const r = results && results[0] && results[0].result;
+    if (r) return { ...base, title: r.title || base.title, text: r.text || '', selection: r.selection || '', via: 'scripting' };
+  }
+  return { ...base, text: '', selection: '', via: 'none' };
+}
+
+/* ───────── Streaming AI over a port (sendMessage can't stream) ───────── */
+
+ext.runtime.onConnect.addListener((port) => {
+  if (!port || port.name !== 'flux-ai-stream') return;
+  port.onMessage.addListener(async (msg) => {
+    if (!msg || msg.type !== 'FLUX_STREAM_AI') return;
+    try {
+      const { text } = await callAIStream(msg.payload || {}, (delta) => {
+        try { port.postMessage({ type: 'delta', delta }); } catch (_) {}
+      });
+      try { port.postMessage({ type: 'done', text }); } catch (_) {}
+    } catch (e) {
+      try { port.postMessage({ type: 'error', error: e.message }); } catch (_) {}
+    }
+  });
 });
 
 /* ───────── External messaging from the web app (shared auth) ───────── */

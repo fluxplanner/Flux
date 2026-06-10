@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Flux Planner",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Flux AI side rail for any page — capture tasks, summarize, run skills.",
   "browser_specific_settings": {
     "gecko": {
