@@ -32,6 +32,85 @@ test.describe('Study tools — DP expansion', () => {
     ]);
   });
 
+  test('quick-access strip records recents and deep-links back to a tool', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const res = await page.evaluate(async () => {
+      const hub = (window as any).fluxStudyHub;
+      hub.selectSubject('physics');
+      await new Promise((r) => setTimeout(r, 300));
+      hub.selectSubject('chemistry');
+      await new Promise((r) => setTimeout(r, 300));
+      const chips = [...document.querySelectorAll('#fshQuick .fsh-qchip')].map((c) => ({
+        sid: (c as HTMLElement).dataset.sid,
+        tid: (c as HTMLElement).dataset.tid,
+      }));
+      // click the physics chip — should switch subject back to physics
+      const phys = [...document.querySelectorAll('#fshQuick .fsh-qchip')].find(
+        (c) => (c as HTMLElement).dataset.sid === 'physics',
+      ) as HTMLElement;
+      phys?.click();
+      await new Promise((r) => setTimeout(r, 300));
+      return {
+        chips,
+        activeSubject: (document.querySelector('#fshRail .fsh-pill.active') as HTMLElement)?.dataset.sub,
+      };
+    });
+    expect(res.chips.length).toBeGreaterThanOrEqual(2);
+    expect(res.chips[0].sid).toBe('chemistry'); // most recent first
+    expect(res.chips.some((c) => c.sid === 'physics')).toBe(true);
+    expect(res.activeSubject).toBe('physics');
+  });
+
+  test('search finds chemistry built-in tabs and subjects; "/" focuses hub search only on Study tab', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const search = await page.evaluate(async () => {
+      const si = document.getElementById('fshSearch') as HTMLInputElement;
+      si.value = 'atom';
+      si.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 250));
+      const atomHit = [...document.querySelectorAll('#fshStage .fsh-res-title')].some(
+        (e) => e.textContent === '3D Atom Model',
+      );
+      si.value = 'physics';
+      si.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 250));
+      const subjHit = !!document.querySelector('#fshStage [data-act="open-sub"][data-sid="physics"]');
+      si.value = '';
+      si.dispatchEvent(new Event('input', { bubbles: true }));
+      return { atomHit, subjHit };
+    });
+    expect(search.atomHit, 'search "atom" should surface the 3D Atom chemistry tab').toBe(true);
+    expect(search.subjHit, 'search "physics" should surface the subject shortcut').toBe(true);
+
+    // "/" focuses the hub search while on the Study tab…
+    const onStudy = await page.evaluate(async () => {
+      (document.activeElement as HTMLElement)?.blur();
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      return document.activeElement?.id;
+    });
+    expect(onStudy).toBe('fshSearch');
+
+    // …and still opens the app AI panel from any other tab
+    const offStudy = await page.evaluate(async () => {
+      (window as any).nav?.('dashboard');
+      await new Promise((r) => setTimeout(r, 150));
+      (document.activeElement as HTMLElement)?.blur();
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 300));
+      return { panel: (window as any).__fluxLastNavPanel, focused: document.activeElement?.id };
+    });
+    // the app's own "/" shortcut must still win off the Study tab
+    expect(offStudy.panel).toBe('ai');
+    expect(offStudy.focused).not.toBe('fshSearch');
+  });
+
   test('all new DP reference tools open with content and tabs', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     const res = await page.evaluate(async () => {

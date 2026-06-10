@@ -17,9 +17,10 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LS_KEY = 'flux_study_hub';
 
-  let state = { subject: 'chemistry', chemTab: 'table', tool: {} };
+  let state = { subject: 'chemistry', chemTab: 'table', tool: {}, recent: [] };
   try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
   if (!state.tool) state.tool = {};
+  if (!Array.isArray(state.recent)) state.recent = [];
   const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} };
 
   let selEl = 6, atomN = 6, atomSpeed = 1, searchQ = '';
@@ -432,7 +433,9 @@
   const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['worksheet','📝','Worksheet']];
   function renderChemBody() {
     const b = $('fshChemBody'); if (!b) return;
-    if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
+    if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { recordRecent('chemistry', 'chem:' + state.chemTab, chip.label || chip.id, chip.icon || '🧰'); renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
+    const ct = CHEM_TABS.find((t) => t[0] === state.chemTab);
+    if (ct) recordRecent('chemistry', 'chem:' + ct[0], CHEM_QUICK_NAME[ct[0]] || ct[2], ct[1]);
     b.innerHTML = state.chemTab === 'table' ? renderTableTab() : state.chemTab === 'atom' ? renderAtomTab() : state.chemTab === 'tools' ? renderToolsTab() : state.chemTab === 'ions' ? renderIonsTab() : renderWorksheetTab();
     if (state.chemTab === 'table') applyPtFilter();
     else if (state.chemTab === 'atom') setTimeout(mountAtom3D, 0);
@@ -450,12 +453,13 @@
     const stage = $('fshStage');
     if (!tools.length) { stage.innerHTML = soonHTML(sid) + refStrip(sid); return; }
     let active = state.tool[sid]; if (!tools.some((t) => t.id === active)) active = tools[0].id; state.tool[sid] = active; save();
+    const at = tools.find((t) => t.id === active); if (at) recordRecent(sid, at.id, at.name, at.icon);
     stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tools.map((t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`).join('')}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
     const body = $('fshSubBody'), tool = tools.find((t) => t.id === active);
     try { tool.render(body); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
     requestAnimationFrame(moveTabGlide);
   }
-  function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} — native tools coming next pass</h3><p>I'm rolling out bespoke in-app ${esc(s.name)} tools in upcoming passes. For now, here are the best interactive sites.</p></div>`; }
+  function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} tools didn't load</h3><p>The ${esc(s.name)} module isn't available right now — try reloading. Meanwhile, here are the best interactive sites.</p></div>`; }
   function refStrip(sid) {
     const r = REF[sid]; if (!r || !r.length) return '';
     return `<div class="fsh-section-head" style="margin-top:26px"><span class="fsh-sh-ico">↗</span><span><h2>Reference sites</h2><p>Trusted external interactives — opens in a new tab</p></span></div><div class="fsh-grid">${r.map(([n, h, u]) => `<a class="fsh-res" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><div class="fsh-res-head"><span class="fsh-res-logo">${esc(n.slice(0, 2).toUpperCase())}</span><span><span class="fsh-res-title">${esc(n)}</span><span class="fsh-res-host">${esc(h)}</span></span></div><span class="fsh-res-open">Open site →</span></a>`).join('')}</div>`;
@@ -468,13 +472,51 @@
   }
 
   // ── search ───────────────────────────────────────────────────────────────
+  const CHEM_SEARCH = [
+    ['chem:table', '⊞', 'Periodic Table', 'periodic table elements groups categories'],
+    ['chem:atom', '◎', '3D Atom Model', '3d atom model bohr electron shells orbit nucleus'],
+    ['chem:tools', '⚗', 'Chem Calculators', 'balance balancer equation molar mass ph gas law dilution calculator'],
+    ['chem:ions', '±', 'Ions & Solubility', 'ions polyatomic solubility table constants'],
+    ['chem:worksheet', '📝', 'Worksheet Maker', 'worksheet practice problems generator print quiz redox'],
+  ];
   function renderSearch() {
     const q = searchQ.trim().toLowerCase();
-    const toolHits = []; Object.keys(registry).forEach((sid) => (registry[sid] || []).forEach((t) => { if (t.render && (t.name + ' ' + (t.desc || '')).toLowerCase().includes(q)) toolHits.push({ sid, t }); }));
+    const toolHits = [];
+    CHEM_SEARCH.forEach(([tid, ico, name, kw]) => { if ((name + ' ' + kw).toLowerCase().includes(q)) toolHits.push({ sid: 'chemistry', t: { id: tid, icon: ico, name } }); });
+    legacyChipsFor('chemistry').forEach((c) => { if (((c.label || '') + ' ' + (c.desc || '')).toLowerCase().includes(q)) toolHits.push({ sid: 'chemistry', t: { id: 'chem:lg-' + c.id, icon: c.icon || '🧰', name: c.label || c.id } }); });
+    Object.keys(registry).forEach((sid) => (registry[sid] || []).forEach((t) => { if (t.render && (t.name + ' ' + (t.desc || '')).toLowerCase().includes(q)) toolHits.push({ sid, t }); }));
+    const subHits = SUBJECTS.filter((s) => s.name.toLowerCase().includes(q));
     const elHits = elements().filter((e) => e.name.toLowerCase().includes(q) || e.s.toLowerCase() === q).slice(0, 8);
-    $('fshStage').innerHTML = `<div class="fsh-panel"><div class="fsh-section-head"><span class="fsh-sh-ico">⌕</span><span><h2>Results for "${esc(searchQ)}"</h2><p>${toolHits.length} tools · ${elHits.length} elements</p></span></div>
+    const none = !toolHits.length && !elHits.length && !subHits.length;
+    $('fshStage').innerHTML = `<div class="fsh-panel"><div class="fsh-section-head"><span class="fsh-sh-ico">⌕</span><span><h2>Results for "${esc(searchQ)}"</h2><p>${toolHits.length} tools · ${subHits.length} subjects · ${elHits.length} elements</p></span></div>
+      ${subHits.length ? `<div class="fsh-chips-row" style="margin-bottom:16px">${subHits.map((s) => `<button type="button" class="fsh-qchip" data-act="open-sub" data-sid="${s.id}"><span class="qi">${s.ico}</span>${esc(s.name)} →</button>`).join('')}</div>` : ''}
       ${elHits.length ? `<div class="fsh-grid" style="margin-bottom:18px">${elHits.map((e) => `<button type="button" class="fsh-res" data-act="open-el" data-n="${e.n}" style="text-align:left"><div class="fsh-res-head"><span class="fsh-res-logo fsh-el" data-cat="${e.cat}" style="background:var(--el-c)">${esc(e.s)}</span><span><span class="fsh-res-title">${esc(e.name)}</span><span class="fsh-res-host">Element ${e.n} · ${e.mass} u</span></span></div><span class="fsh-res-open">Open in periodic table →</span></button>`).join('')}</div>` : ''}
-      ${toolHits.length ? `<div class="fsh-grid">${toolHits.map((h) => `<button type="button" class="fsh-res" data-act="open-tool" data-sid="${h.sid}" data-tid="${h.t.id}" style="text-align:left"><div class="fsh-res-head"><span class="fsh-res-logo">${h.t.icon || '•'}</span><span><span class="fsh-res-title">${esc(h.t.name)}</span><span class="fsh-res-host">${esc(subjById(h.sid).name)}</span></span></div><span class="fsh-res-open">Open tool →</span></button>`).join('')}</div>` : (elHits.length ? '' : `<p style="color:var(--fsh-mut)">No matches yet — more subjects arrive in later passes.</p>`)}</div>`;
+      ${toolHits.length ? `<div class="fsh-grid">${toolHits.map((h) => `<button type="button" class="fsh-res" data-act="open-tool" data-sid="${h.sid}" data-tid="${h.t.id}" style="text-align:left"><div class="fsh-res-head"><span class="fsh-res-logo">${h.t.icon || '•'}</span><span><span class="fsh-res-title">${esc(h.t.name)}</span><span class="fsh-res-host">${esc(subjById(h.sid).name)}</span></span></div><span class="fsh-res-open">Open tool →</span></button>`).join('')}</div>` : ''}
+      ${none ? `<p style="color:var(--fsh-mut)">No matches — try a tool name ("balancer"), an element ("Fe"), or a subject ("physics").</p>` : ''}</div>`;
+  }
+
+  // ── quick access (recently used tools) ───────────────────────────────────
+  const CHEM_QUICK_NAME = { table: 'Periodic Table', atom: '3D Atom', tools: 'Chem Calculators', ions: 'Ions & Solubility', worksheet: 'Worksheet Maker' };
+  function recordRecent(sid, tid, name, icon) {
+    if (!name) return;
+    state.recent = state.recent.filter((r) => !(r.sid === sid && r.tid === tid));
+    state.recent.unshift({ sid, tid, name, icon: icon || '•' });
+    state.recent = state.recent.slice(0, 8);
+    save(); renderQuick();
+  }
+  function renderQuick() {
+    const q = $('fshQuick'); if (!q) return;
+    const items = state.recent.slice(0, 6);
+    if (!items.length) { q.hidden = true; q.innerHTML = ''; return; }
+    q.hidden = false;
+    q.innerHTML = `<span class="fsh-quick-label">Recent</span>` + items.map((r) => `<button type="button" class="fsh-qchip" data-sid="${esc(r.sid)}" data-tid="${esc(r.tid)}" title="${esc(subjById(r.sid).name)} · ${esc(r.name)}"><span class="qi">${r.icon}</span>${esc(r.name)}</button>`).join('');
+  }
+  function openToolRef(sid, tid) {
+    searchQ = ''; const si = $('fshSearch'); if (si) si.value = ''; const sc = $('fshSearchClear'); if (sc) sc.hidden = true;
+    state.subject = sid;
+    if (sid === 'chemistry' && tid && tid.indexOf('chem:') === 0) state.chemTab = tid.slice(5);
+    else if (tid) state.tool[sid] = tid;
+    save(); selectSubject(sid);
   }
 
   // ── stage dispatch ───────────────────────────────────────────────────────
@@ -495,23 +537,51 @@
   function buildShell() {
     const host = $('stSections'); if (!host) return false;
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
-    host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Interactive, built-in tools for each subject — no tab-hopping. More subjects land each pass.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button></div></div>
+    host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
       <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${SUBJECTS.map((s) => `<button type="button" class="fsh-pill${s.id === state.subject ? ' active' : ''}${s.flagship ? ' flagship' : ''}" data-sub="${s.id}"><span class="fsh-pill-ico">${s.ico}</span>${esc(s.name)}</button>`).join('')}</div></div>
+      <div class="fsh-quick" id="fshQuick" hidden></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;
-    wire(); return true;
+    wire(); renderQuick(); return true;
   }
   function wire() {
     const root = $('fshRoot'); if (!root || root.__wired) return; root.__wired = true;
     $('fshRail').addEventListener('click', (e) => { const p = e.target.closest('.fsh-pill'); if (p) selectSubject(p.dataset.sub); });
     const si = $('fshSearch'), sc = $('fshSearchClear');
     si.addEventListener('input', () => { searchQ = si.value; sc.hidden = !searchQ; renderStage(); });
+    si.addEventListener('keydown', (e) => { if (e.key === 'Escape') { searchQ = ''; si.value = ''; sc.hidden = true; renderStage(); si.blur(); } });
     sc.addEventListener('click', () => { searchQ = ''; si.value = ''; sc.hidden = true; renderStage(); });
+
+    $('fshQuick').addEventListener('click', (e) => { const c = e.target.closest('.fsh-qchip'); if (c) openToolRef(c.dataset.sid, c.dataset.tid); });
+    $('fshRail').addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const pills = [...document.querySelectorAll('#fshRail .fsh-pill')];
+      const i = pills.indexOf(document.activeElement); if (i < 0) return;
+      e.preventDefault();
+      const next = pills[(i + (e.key === 'ArrowRight' ? 1 : -1) + pills.length) % pills.length];
+      next.focus(); selectSubject(next.dataset.sub);
+    });
+    if (!window.__fshKeys) {
+      window.__fshKeys = true;
+      // capture phase + stopPropagation: on the Study tab "/" focuses tool search
+      // instead of the app-wide "/" → AI panel shortcut in app.js
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+        const t = e.target;
+        if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+        // __fluxLastNavPanel updates synchronously in nav(); the panel's .active
+        // class lingers ~500ms during the leave transition, so don't trust it alone
+        const cur = window.__fluxLastNavPanel || (($('toolbox') || {}).classList && $('toolbox').classList.contains('active') ? 'toolbox' : '');
+        if (cur !== 'toolbox' || !$('fshRoot')) return;
+        const inp = $('fshSearch'); if (inp) { e.preventDefault(); e.stopPropagation(); inp.focus(); inp.select(); }
+      }, true);
+    }
 
     $('fshStage').addEventListener('click', (e) => {
       const t = e.target;
       const a0 = t.closest('[data-act]');
-      if (a0 && a0.dataset.act === 'open-el') { searchQ = ''; si.value = ''; sc.hidden = true; selEl = +a0.dataset.n; state.subject = 'chemistry'; state.chemTab = 'table'; save(); selectSubject('chemistry'); return; }
-      if (a0 && a0.dataset.act === 'open-tool') { searchQ = ''; si.value = ''; sc.hidden = true; state.subject = a0.dataset.sid; state.tool[a0.dataset.sid] = a0.dataset.tid; save(); selectSubject(a0.dataset.sid); return; }
+      if (a0 && a0.dataset.act === 'open-el') { selEl = +a0.dataset.n; openToolRef('chemistry', 'chem:table'); return; }
+      if (a0 && a0.dataset.act === 'open-tool') { openToolRef(a0.dataset.sid, a0.dataset.tid); return; }
+      if (a0 && a0.dataset.act === 'open-sub') { openToolRef(a0.dataset.sid, ''); return; }
       const chemTab = t.closest('.fsh-chem-tab[data-tab]');
       if (chemTab) { state.chemTab = chemTab.dataset.tab; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab)); renderChemBody(); requestAnimationFrame(moveTabGlide); return; }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');
