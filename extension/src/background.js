@@ -143,25 +143,6 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
         })
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true;
-    case 'FLUX_PAGE_CONTEXT':
-      // Content script broadcasts page context — cache it so the sidebar can fetch.
-      sessx.set('flux_page_context_' + (sender.tab?.id || 0), msg.context, 600)
-        .then(() => sendResponse({ ok: true }))
-        .catch(() => sendResponse({ ok: false }));
-      return true;
-    case 'FLUX_GET_TAB_CONTEXT':
-      // Sidebar asks for the cached context of a tab (falls back to a live ask).
-      (async () => {
-        let context = await sessx.get('flux_page_context_' + (msg.tabId || 0)).catch(() => null);
-        if (!context && msg.tabId) {
-          try {
-            const r = await tabs.sendMessage(msg.tabId, { type: 'FLUX_GET_PAGE_TEXT' });
-            if (r && r.text) context = { type: 'generic', url: '', text: r.text };
-          } catch (_) {}
-        }
-        sendResponse({ ok: !!context, context: context || null });
-      })();
-      return true;
     case 'FLUX_GET_PAGE_SNAPSHOT':
       // Fresh, on-demand snapshot of a tab. Never depends on the content
       // script being loaded — falls back to scripting.executeScript, which
