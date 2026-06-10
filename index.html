@@ -113,6 +113,7 @@
 <link rel="stylesheet" href="public/css/flux-mobile-premium.css">
 <link rel="stylesheet" href="public/css/flux-ai-orchestrator.css">
 <link rel="stylesheet" href="public/css/flux-ai-orch-layer.css">
+<link rel="stylesheet" href="public/css/flux-agent-loop.css">
 <link rel="stylesheet" href="public/css/flux-offline-sync.css">
 <link rel="stylesheet" href="public/css/flux-syllabus-conflict.css">
 <link rel="stylesheet" href="public/css/flux-voice-capture.css">
@@ -1597,6 +1598,7 @@
           <button onclick="deleteNote()" class="btn-sec" style="padding:6px 10px;font-size:.78rem;color:var(--red)">Delete</button>
           <button onclick="generateFlashcardsFromNote()" style="padding:6px 12px;font-size:.78rem;background:rgba(var(--accent-rgb),.2);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent)">🃏 Flashcards</button>
           <button onclick="summarizeNoteWithAI()" style="padding:6px 12px;font-size:.78rem;background:rgba(192,132,252,.15);border:1px solid rgba(192,132,252,.3);color:var(--purple)">✦ Summarize</button>
+          <button type="button" onclick="if(window.askFlux){const t=document.getElementById('noteTitleInput')?.value||'';const b=(document.getElementById('noteEditor')?.innerText||'').slice(0,3500);askFlux('Help me with this note — quiz me on it, find gaps, or explain the hard parts:',{context:'Note: '+t+'\n'+b});}" style="padding:6px 12px;font-size:.78rem;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">✦ Ask Flux</button>
           <label style="padding:6px 10px;font-size:.78rem;border-radius:8px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);cursor:pointer">📷 Import<input type="file" accept="image/*" style="display:none" onchange="importNoteFromPhoto(event)"></label>
         </div>
         <div class="rtbar">
@@ -2887,6 +2889,7 @@
 <script defer src="public/js/flux-ai-mega.js"></script>
 <script defer src="public/js/flux-ai-orchestrator.js"></script>
 <script defer src="public/js/flux-ai-orch-layer.js"></script>
+<script defer src="public/js/flux-agent-loop.js"></script>
 <script defer src="public/js/flux-syllabus-conflict.js"></script>
 <script defer src="public/js/flux-offline-sync.js"></script>
 <script defer src="public/js/flux-layered-memory.js"></script>

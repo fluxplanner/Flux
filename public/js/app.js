@@ -7043,8 +7043,10 @@ function loadAIChat(id){
   wrap.innerHTML='';
   if(sugs)sugs.style.display=chat.messages.length?'none':'flex';
   chat.messages.forEach(m=>{
+    // agent-loop feedback messages are model-only context — never re-render them
+    if(m.role==='user'&&typeof m.content==='string'&&m.content.startsWith('TOOL RESULTS'))return;
     if(m.role==='user')appendMsg('user',m.content);
-    else if(m.role==='assistant')appendMsg('bot',m.content);
+    else if(m.role==='assistant'&&m.content&&m.content!=='(ran tools)')appendMsg('bot',m.content);
   });
   renderAIChatTabs();
   // Scroll to bottom
@@ -7860,9 +7862,10 @@ function execActions(reply){
   if(changed){save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();}
   return results.length?`<div style="padding:8px 10px;background:rgba(var(--accent-rgb),.08);border-radius:8px;font-size:.8rem;border:1px solid rgba(var(--accent-rgb),.2)">${results.join('<br>')}</div>`:null;
 }
-async function sendAI(optionalUserText, depth){
+async function sendAI(optionalUserText, depth, sendOpts){
   const d=typeof depth==='number'?depth:0;
-  try{if(window.FluxDebug&&typeof FluxDebug.ai==='function')FluxDebug.ai('sendAI',{depth:d,hasOptional:typeof optionalUserText==='string'&&optionalUserText.length>0});}catch(e){}
+  const opts=sendOpts||{};
+  try{if(window.FluxDebug&&typeof FluxDebug.ai==='function')FluxDebug.ai('sendAI',{depth:d,hidden:!!opts.hidden,hasOptional:typeof optionalUserText==='string'&&optionalUserText.length>0});}catch(e){}
   if(d>5){
     showToast('Skill chain stopped (too many nested steps).','warning');
     return;
@@ -7873,7 +7876,7 @@ async function sendAI(optionalUserText, depth){
   const text=nested?optionalUserText.trim():input.value.trim();
   if(!nested&&!text&&!aiPendingImg)return;
   if(nested&&!text)return;
-  if(btn.disabled)return;
+  if(!nested&&btn.disabled)return;
   if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_AI_LIMITS){
     const dailyUsed=_entitlement.usage?.daily_used??0;
     const dailyLimit=_entitlement.usage?.daily_limit??FLUX_FREE_LIMITS.AI_DAILY_MESSAGES;
@@ -7891,7 +7894,7 @@ async function sendAI(optionalUserText, depth){
     appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
     aiPendingImg=null;
     const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
-  }else{
+  }else if(!opts.hidden){
     appendMsg('user',text);
   }
   const userMsg=nested?text:(text||(imgSnapshot?'Please analyze this image.':''));
@@ -7986,6 +7989,7 @@ async function sendAI(optionalUserText, depth){
     const ar=execActions(reply);
     let clean=reply;
     const toolsRun=[];
+    try{if(window.FluxAgentLoop&&FluxAgentLoop.beginTurn)FluxAgentLoop.beginTurn();}catch(e){}
     if(window.FluxAiOrchestration?.enabled?.()&&FluxAiOrchestration.processAssistantReply){
       if(FluxOrchestrator?.thinkingStep)FluxOrchestrator.thinkingStep('Parsing tools & updating scratch pad…');
       FluxAiOrchestration.processAssistantReply(reply,toolsRun);
@@ -8013,10 +8017,26 @@ async function sendAI(optionalUserText, depth){
       document.getElementById('aiMsgs').appendChild(confDiv);
       confDiv.scrollIntoView({behavior:'smooth',block:'end'});
     }
-    aiHistory.push({role:'assistant',content:clean});
+    aiHistory.push({role:'assistant',content:clean||'(ran tools)'});
     if(aiHistory.length>24)aiHistory=aiHistory.slice(-24);
     saveCurrentChat();
     try{if(window.FluxAICore&&typeof FluxAICore.afterExchange==='function')FluxAICore.afterExchange(userMsg,clean);}catch(e){}
+    // ── Agent loop: feed tool results back so the model can continue (Claude-style) ──
+    let agentResults=[];
+    try{if(window.FluxAgentLoop&&FluxAgentLoop.takeTurnResults)agentResults=FluxAgentLoop.takeTurnResults()||[];}catch(e){}
+    const maxRounds=(window.FluxAgentLoop&&FluxAgentLoop.MAX_ROUNDS)||4;
+    if(agentResults.length&&d<maxRounds){
+      let roundEl=null;
+      try{
+        const wrap=document.getElementById('aiMsgs');
+        if(wrap){roundEl=document.createElement('div');roundEl.className='flux-agent-round';roundEl.textContent=`Working with tool results (round ${d+1})…`;wrap.appendChild(roundEl);roundEl.scrollIntoView({behavior:'smooth',block:'end'});}
+      }catch(e){}
+      let fb='';
+      try{fb=JSON.stringify(agentResults);}catch(e){fb='[]';}
+      if(fb.length>14000)fb=fb.slice(0,14000)+'…(truncated)';
+      await sendAI('TOOL RESULTS (round '+(d+1)+') — continue your answer using these. Call more tools only if needed; otherwise answer the student now.\n'+fb,d+1,{hidden:true});
+      try{roundEl&&roundEl.remove();}catch(e){}
+    }
     for(const p of skillFollowUps){
       if(typeof p==='string'&&p.trim())await sendAI(p.trim(),d+1);
     }
