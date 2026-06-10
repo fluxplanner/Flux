@@ -14,9 +14,14 @@ const CONFIG_CACHE_KEY = 'flux_config';
 const HOST_OVERRIDE_KEY = 'flux_planner_host';
 
 const FALLBACK_CONFIG = {
-  // Replace at install time via popup → Planner host
-  ai_proxy_url: '',
-  app_url: 'https://azfermohammed.github.io/Fluxplanner/',
+  // Baked-in defaults so the extension works out of the box; the live
+  // <app_url>/config.json overrides these, and popup → "Planner host"
+  // overrides where that config is fetched from.
+  ai_proxy_url: 'https://lfigdijuqmbensebnevo.supabase.co/functions/v1/ai-proxy',
+  app_url: 'https://fluxplanner.github.io/Flux/',
+  // Supabase publishable anon key (same one the web app ships in app.js) —
+  // the platform rejects requests with no Authorization header.
+  anon_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaWdkaWp1cW1iZW5zZWJuZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjEzMDgsImV4cCI6MjA4ODkzNzMwOH0.qG1d9DLKrs0qqLgAp-6UGdaU7xWvlg2sWq-oD-y2kVo',
 };
 
 let _configPromise = null;
@@ -31,7 +36,9 @@ export async function getConfig({ refresh = false } = {}) {
     try {
       const res = await fetch(url, { cache: 'no-cache' });
       if (res.ok) {
-        const v = await res.json();
+        // Merge over the baked-in defaults so an older config.json that lacks
+        // newer fields (e.g. anon_key) still yields a complete config.
+        const v = { ...FALLBACK_CONFIG, ...(await res.json()) };
         await lsx.set(CONFIG_CACHE_KEY, { v, exp: Date.now() + 24 * 3600 * 1000 });
         return v;
       }
@@ -74,6 +81,12 @@ export async function callAI({ system, messages, model, context }) {
 
 async function getAuthHeaders() {
   const tok = await lsx.get('flux_auth_token');
-  if (!tok) return {};
-  return { 'Authorization': 'Bearer ' + tok };
+  if (tok) return { 'Authorization': 'Bearer ' + tok };
+  // Signed out: authenticate as anon, like the web app does — Supabase
+  // rejects requests with no Authorization header at the platform level.
+  const cfg = await getConfig();
+  if (cfg.anon_key) {
+    return { 'Authorization': 'Bearer ' + cfg.anon_key, 'apikey': cfg.anon_key };
+  }
+  return {};
 }
