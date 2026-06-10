@@ -128,6 +128,7 @@
       enable_calc_history: false,
       enable_cowork: true, // Live shared checklist + presence for any task (Co-work rooms)
       enable_office_hours: true, // Staff publish weekly drop-in hours; students view on School page
+      enable_claude_mcp: false, // Connect Flux to Claude (MCP) — opt-in connector, off by default
     };
   }
 

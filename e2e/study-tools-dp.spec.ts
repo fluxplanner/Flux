@@ -2,24 +2,33 @@ import { test, expect } from '@playwright/test';
 import { gotoScenario } from './helpers';
 
 test.describe('Study tools — DP expansion', () => {
-  test('toolbox renders the rebalanced IB subject groups', async ({ page }) => {
+  test('toolbox renders the native study-hub subject rail', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as any).nav?.('toolbox'));
     await page.waitForTimeout(800);
 
-    const sections = await page.evaluate(() =>
-      [...document.querySelectorAll('#stSubjectHost .st-section .st-section-name')].map(
-        (e) => (e.textContent || '').trim(),
+    // The Study Hub rebuild replaced the legacy #stSubjectHost IB sections with a
+    // native subject rail (#fshRoot/#fshRail). Assert by data-sub so the icon glyph
+    // inside each pill doesn't pollute the comparison.
+    const { hubRendered, subjects } = await page.evaluate(() => ({
+      hubRendered: !!document.getElementById('fshRoot'),
+      subjects: [...document.querySelectorAll('#fshRail .fsh-pill')].map(
+        (e) => (e as HTMLElement).dataset.sub || '',
       ),
-    );
-    expect(sections).toEqual([
-      'Sciences',
-      'Mathematics',
-      'Individuals & Societies',
-      'Language & Literature',
-      'Language Acquisition',
-      'The Arts',
-      'Computer Science',
+    }));
+    expect(hubRendered, 'native study hub (#fshRoot) did not render').toBe(true);
+    expect(subjects).toEqual([
+      'chemistry',
+      'physics',
+      'math',
+      'music',
+      'biology',
+      'cs',
+      'econ',
+      'english',
+      'history',
+      'languages',
+      'astronomy',
     ]);
   });
 
