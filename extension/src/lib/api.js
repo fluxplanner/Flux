@@ -52,10 +52,14 @@ export async function callAI({ system, messages, model, context }) {
   const cfg = await getConfig();
   if (!cfg.ai_proxy_url) throw new Error('AI proxy URL not configured. Open the extension popup and set Planner host.');
   const auth = await getAuthHeaders();
+  // The proxy only understands {system, messages, model} — fold page context
+  // into the system prompt so the model actually sees it.
+  let sys = system || '';
+  if (context) sys += '\n\n## Current page context\n' + String(context).slice(0, 6000);
   const res = await fetch(cfg.ai_proxy_url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },
-    body: JSON.stringify({ system, messages, model, context }),
+    body: JSON.stringify({ system: sys, messages, model }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

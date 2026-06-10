@@ -71,20 +71,34 @@ it calls the AI proxy via `src/lib/api.js`. AI responses can include a fenced
 `\`\`\`skill\`\`\`` block that the extension parses and executes — same as in
 the web app.
 
+## Install (unpacked, while unlisted)
+
+```bash
+npm run ext:all        # builds dist/chrome, dist/firefox, dist/safari
+```
+
+- **Chrome / Edge / Brave / Arc**: chrome://extensions → Developer mode → "Load unpacked" → `dist/chrome`
+- **Firefox**: about:debugging → This Firefox → "Load Temporary Add-on…" → `dist/firefox/manifest.json`
+- **Safari**: `xcrun safari-web-extension-converter dist/safari` → run the generated Xcode project
+
+The extension reads `config.json` from the planner host at boot (AI proxy +
+app URL) — change hosts from the popup without rebuilding.
+
 ## Status
 
 | Component         | State    |
 |-------------------|----------|
 | Manifests         | shipped  |
 | Browser shim      | shipped  |
-| Background        | shipped  |
+| Background        | shipped (incl. FLUX_GET_TAB_CONTEXT) |
 | Content reader    | shipped  |
-| Side rail UI      | shipped  |
+| Side rail UI      | shipped (page context reaches the model) |
 | Popup             | shipped  |
 | Omnibox `fx`      | shipped  |
 | Context menus     | shipped  |
-| OAuth             | scaffold |
-| Build pipeline    | shipped  |
-| Safari packaging  | pending  |
+| Icons             | shipped  |
+| OAuth             | scaffold (proxy accepts anonymous calls) |
+| Build pipeline    | shipped (`npm run ext:all`) |
+| Safari packaging  | converter-ready (Xcode wrapper not committed) |
 
 Once stable, `chrome-extension/` and `flux-extension/` can be deleted.

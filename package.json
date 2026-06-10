@@ -5,10 +5,15 @@
     "test:flags": "node scripts/test-flag-integrity.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "ext:chrome": "node extension/build.mjs --target=chrome",
+    "ext:firefox": "node extension/build.mjs --target=firefox",
+    "ext:safari": "node extension/build.mjs --target=safari",
+    "ext:all": "node extension/build.mjs --target=chrome && node extension/build.mjs --target=firefox && node extension/build.mjs --target=safari"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",
+    "esbuild": "^0.28.0",
     "serve": "^14.2.4"
   }
 }

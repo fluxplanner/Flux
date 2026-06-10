@@ -9,6 +9,9 @@ supabase/.temp/
 # Dependencies (if added later)
 node_modules/
 
+# Extension build output (rebuild with: npm run ext:all)
+/dist/
+
 # Playwright
 /test-results/
 /playwright-report/
