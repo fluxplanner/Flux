@@ -87,6 +87,25 @@ try {
   else if (hasNote) ok('vision (Live view) answer: ' + t2.replace(/^.*?tab/, '').trim().slice(0, 90) + '…');
   else fail('vision note missing on Live-view answer', t2.slice(0, 120));
 
+  // 4. Math answer renders as real fractions (flux-tex), not raw LaTeX.
+  await sidebar.locator('#liveToggle').click(); // live off — text path
+  await sidebar.locator('#composer').fill('Compute $\\frac{3}{4} + \\frac{1}{8}$ and give the result as a fraction in LaTeX.');
+  await sidebar.locator('#sendBtn').click();
+  await sidebar.waitForFunction(
+    () => {
+      const bots = document.querySelectorAll('.msg.bot');
+      const b = bots[bots.length - 1];
+      return b && !b.querySelector('.thinking') && (b.textContent || '').length > 5;
+    },
+    null,
+    { timeout: 60000 },
+  );
+  const bot3 = sidebar.locator('.msg.bot').last();
+  const mathRendered = (await bot3.locator('.tx').count()) > 0;
+  const rawDollars = /\$\\?frac|\\frac\{/.test((await bot3.textContent()) || '');
+  if (mathRendered && !rawDollars) ok('LaTeX renders as real math (.tx present, no raw \\frac)');
+  else fail('math did not render', 'tx=' + mathRendered + ' raw=' + rawDollars);
+
   await sidebar.screenshot({ path: 'test-results/ext-sidebar.png', fullPage: true });
   ok('screenshot saved → test-results/ext-sidebar.png');
 } catch (e) {

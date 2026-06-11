@@ -12,6 +12,7 @@
  * Replies stream token-by-token over a long-lived port to the background.
  */
 import { ext, runtime } from '../lib/browser-shim.js';
+import FluxTex from '../../../public/js/flux-tex.js';
 
 const elChat = document.getElementById('chat');
 const elHello = document.getElementById('hello');
@@ -43,6 +44,13 @@ function escHtml(s) {
 }
 
 function md(raw) {
+  // LaTeX math → placeholders now, rendered HTML at the end (flux-tex.js).
+  let texSlots = null;
+  try {
+    const ex = FluxTex.extract(raw);
+    raw = ex.text;
+    texSlots = ex.slots;
+  } catch (_) {}
   let s = escHtml(raw);
   // fenced code
   s = s.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, (_, lang, code) =>
@@ -64,12 +72,15 @@ function md(raw) {
   s = s.replace(/(?:^|\n)((?:\d+[.)] .+(?:\n|$))+)/g, (m, block) =>
     '\n<ol>' + block.trim().split('\n').map((l) => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>');
   // paragraphs
-  return s.split(/\n{2,}/).map((p) => {
+  s = s.split(/\n{2,}/).map((p) => {
     const t = p.trim();
     if (!t) return '';
     if (/^<(pre|ul|ol|h\d)/.test(t)) return t;
     return '<p>' + t.replace(/\n/g, '<br>') + '</p>';
   }).join('');
+  // re-insert rendered math
+  try { if (texSlots) s = FluxTex.restore(s, texSlots); } catch (_) {}
+  return s;
 }
 
 /* ───────── Chat rendering ───────── */
@@ -221,6 +232,8 @@ const SYSTEM = [
   'When the user says "this page", "this question", "this problem" — they mean the page context. Never claim you can’t see the page when context is present.',
   'For homework problems: give the answer AND a tight explanation of how to get it.',
   'Be direct and concise. Use markdown. Short paragraphs, bullets where they help.',
+  'Voice: talk like a good tutor, not a textbook. NEVER write "Step 1:", "Step 2:" walkthrough headers, never say "The final answer is:", and never use \\boxed{}. Explain the key move in a sentence or two, show the work naturally, then end with the answer in **bold**.',
+  'Math: write all math in LaTeX between $...$ (inline) or $$...$$ (display) — it renders beautifully. e.g. $a_n = 45 \\cdot \\left(-\\tfrac{1}{3}\\right)^{n-1}$. Never leave raw LaTeX outside $ delimiters.',
 ].join('\n');
 
 function contextString(snap) {

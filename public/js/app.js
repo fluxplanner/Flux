@@ -7135,6 +7135,13 @@ function filterAIResponse(text){
 function fmtAI(raw){
   let t=String(raw);
 
+  // 0. LaTeX math → placeholders now, real HTML at the end (flux-tex.js),
+  // so $\frac{1}{3}$ renders as a stacked fraction instead of raw TeX.
+  let _texSlots=null;
+  try{
+    if(window.FluxTex){const ex=FluxTex.extract(t);t=ex.text;_texSlots=ex.slots;}
+  }catch(e){}
+
   // 1. Fence code blocks  ```lang\n...\n```
   t=t.replace(/```(\w*)\n?([\s\S]*?)```/g,(_, lang, code)=>{
     const esc_code=code.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -7188,6 +7195,11 @@ function fmtAI(raw){
 
   // 12. Newlines to <br> (but not inside block elements)
   t=t.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+
+  // 13. Re-insert rendered math
+  try{
+    if(_texSlots&&window.FluxTex)t=FluxTex.restore(t,_texSlots);
+  }catch(e){}
 
   return t;
 }
@@ -7766,6 +7778,7 @@ WHAT YOU NEVER DO:
 - Never repeat what the student just said back to them as an introduction to your response.
 - Never end with "Is there anything else I can help you with?" or "Let me know if you have any other questions" or similar.
 - Never be sycophantic.
+- Never write robotic "Step 1: ... Step 2: ..." walkthrough headers, never say "The final answer is:", and never use \\boxed{}. Explain like a good tutor: the key idea in a sentence, the work shown naturally, the answer in **bold** at the end.
 
 WHAT YOU ALWAYS DO:
 - Get to the point in the first sentence.
@@ -7775,6 +7788,7 @@ WHAT YOU ALWAYS DO:
 - If a question has a straightforward answer, give it. Do not hedge a simple answer with unnecessary caveats.
 - When you disagree with what a student is about to do, say so clearly and explain why. Be honest, not just agreeable.
 - Treat the student as an intelligent person capable of handling honest information.
+- Write math in LaTeX between $...$ (inline) or $$...$$ (display) — it renders as real fractions and exponents in the chat, e.g. $a_n = 45 \\cdot \\left(-\\tfrac{1}{3}\\right)^{n-1}$.
 
 CONTEXT:
 You have access to the student's full planner — their tasks, classes, schedule, goals, and notes. Use this context actively. When they ask about plans, notes, or projects, use planner data from the snapshot. When they ask "what should I do next", look at their actual tasks and give a specific recommendation based on urgency and their schedule. Do not give generic productivity advice when you have their real data.
@@ -10851,6 +10865,7 @@ async function initAuth(){
     
     // STEP 2: Sign in or show login
     if(session?.user){
+      fluxExtAuthBroadcast(session);
       await handleSignedIn(session.user,session);
     }else{
       showLoginOrApp();
@@ -10859,6 +10874,7 @@ async function initAuth(){
     // STEP 3: Listen for future auth changes
     sb.auth.onAuthStateChange(async(event,s)=>{
       if(event==='SIGNED_IN'&&s?.user){
+        fluxExtAuthBroadcast(s);
         // Hide login immediately
         const ls=document.getElementById('loginScreen');
         if(ls){ls.style.display='none';ls.classList.remove('visible');}
@@ -10870,9 +10886,11 @@ async function initAuth(){
         }
       }
       else if(event==='SIGNED_OUT'){
+        try{window.postMessage({type:'FLUX_EXT_LOGOUT'},location.origin);}catch(e){}
         handleSignedOut();
       }
       else if(event==='TOKEN_REFRESHED'&&s?.user&&currentUser){
+        fluxExtAuthBroadcast(s);
         _updateUserUI(s.user,s.user.user_metadata?.full_name||s.user.email?.split('@')[0]);
       }
     });
@@ -10884,6 +10902,39 @@ async function initAuth(){
       showToast('Network issue — you can still try signing in.','warning',6000);
     }
   }
+}
+
+// ── Extension auth handoff ──
+// The side-rail extension opens the planner with ?ext_auth=1. After sign-in we
+// hand the session to the extension's content script via postMessage; the
+// extension stores it and closes this tab. The flag survives the OAuth
+// round-trip in sessionStorage. On ordinary visits we still broadcast (no
+// close) so the extension stays signed in.
+function fluxExtAuthPending(){
+  try{
+    if(new URLSearchParams(location.search).has('ext_auth')){sessionStorage.setItem('flux_ext_auth','1');return true;}
+    return sessionStorage.getItem('flux_ext_auth')==='1';
+  }catch(e){return false;}
+}
+function fluxExtAuthBroadcast(session){
+  try{
+    if(!session?.access_token)return;
+    const closeTab=fluxExtAuthPending();
+    window.postMessage({
+      type:'FLUX_EXT_AUTH_TOKEN',
+      closeTab,
+      session:{
+        access_token:session.access_token,
+        refresh_token:session.refresh_token||'',
+        expires_at:session.expires_at||0,
+        email:session.user?.email||'',
+      },
+    },location.origin);
+    if(closeTab){
+      try{sessionStorage.removeItem('flux_ext_auth');}catch(e){}
+      if(typeof showToast==='function')showToast('Signed in — heading back to your page…','success');
+    }
+  }catch(e){}
 }
 
 function showLoginOrApp(){

@@ -1,0 +1,71 @@
+/* flux-tex.css — rendered math (flux-tex.js) in AI chat: ChatGPT-style
+ * stacked fractions, roots, boxed answers. Shared classes with the
+ * extension side rail (its copy lives in extension sidebar.css). */
+
+.tx {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.08em;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.tx-block {
+  display: block;
+  text-align: center;
+  margin: 10px 0;
+  font-size: 1.18em;
+  white-space: normal;
+}
+
+.tx i {
+  font-style: italic;
+  font-family: inherit;
+}
+
+.tx sup, .tx sub {
+  font-size: 0.7em;
+  line-height: 1;
+}
+
+.tx-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 2px;
+  line-height: 1.2;
+  font-size: 0.95em;
+}
+
+.tx-num {
+  display: block;
+  padding: 0 4px 1px;
+  border-bottom: 1px solid currentColor;
+}
+
+.tx-den {
+  display: block;
+  padding: 1px 4px 0;
+}
+
+.tx-sqrt { white-space: nowrap; }
+
+.tx-sqrtbody {
+  border-top: 1px solid currentColor;
+  padding: 0 2px;
+}
+
+.tx-rootidx {
+  font-size: 0.6em;
+  margin-right: -2px;
+}
+
+.tx-boxed {
+  display: inline-block;
+  border: 1.5px solid var(--accent, #5f8eff);
+  border-radius: 8px;
+  padding: 3px 10px;
+  margin: 2px 0;
+}
+
+.tx-up { font-style: normal; }
