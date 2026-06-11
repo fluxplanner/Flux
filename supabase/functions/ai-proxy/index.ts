@@ -257,6 +257,33 @@ function pipeSSE(
   });
 }
 
+/**
+ * Per-model rate limits are independent on Groq, so when one model is
+ * saturated we step down the ladder instead of surfacing a raw 429.
+ */
+const GROQ_MODEL_LADDER = [
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+];
+
+function groqFallbackChain(model: string): string[] {
+  const chain = [model];
+  for (const m of GROQ_MODEL_LADDER) if (!chain.includes(m)) chain.push(m);
+  return chain;
+}
+
+function isRetryableGroqStatus(status: number): boolean {
+  return status === 429 || status === 498 || status === 499 || status >= 500;
+}
+
+function isRetryableGroqError(e: unknown): boolean {
+  const s = String(e);
+  return /Groq error (429|498|499|5\d\d)/.test(s) ||
+    /rate.?limit/i.test(s) || /over capacity/i.test(s);
+}
+
 async function openGroqStream(body: {
   messages?: Array<{ role: string; content: unknown }>;
   message?: string;
@@ -266,21 +293,25 @@ async function openGroqStream(body: {
 }): Promise<Response> {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
   if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
-  const payload = buildOpenAIChatPayload(body, body.model ?? "llama-3.3-70b-versatile");
-  payload.stream = true;
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${GROQ_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok || !res.body) {
+  let lastErr = "";
+  for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
+    const payload = buildOpenAIChatPayload(body, model);
+    payload.stream = true;
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok && res.body) return res;
     const err = await res.text().catch(() => "");
-    throw new Error(`Groq error ${res.status}: ${err}`);
+    lastErr = `Groq error ${res.status}: ${err}`;
+    if (!isRetryableGroqStatus(res.status)) break;
+    console.warn(`ai-proxy: ${model} unavailable (${res.status}), falling back`);
   }
-  return res;
+  throw new Error(lastErr || "Groq error: all models unavailable");
 }
 
 async function openOpenAICompatibleStream(
@@ -517,9 +548,17 @@ async function callGroq(body: {
   systemPrompt?: string;
   responseFormat?: "json_object";
 }): Promise<string> {
-  const model = body.model ?? "llama-3.3-70b-versatile";
-  const payload = buildOpenAIChatPayload(body, model);
-  return await postGroqChatCompletion(payload);
+  let lastErr: unknown = null;
+  for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
+    try {
+      return await postGroqChatCompletion(buildOpenAIChatPayload(body, model));
+    } catch (e) {
+      lastErr = e;
+      if (!isRetryableGroqError(e)) throw e;
+      console.warn(`ai-proxy: ${model} unavailable, falling back`);
+    }
+  }
+  throw lastErr ?? new Error("Groq error: all models unavailable");
 }
 
 /** Vision when `GEMINI_API_KEY` is unset — same stack as `gemini-proxy` (Groq + Llama 4 Scout). */
@@ -609,13 +648,28 @@ async function callVision(body: {
   const forceGroq =
     Deno.env.get("AI_PROXY_VISION_PROVIDER")?.trim().toLowerCase() === "groq";
 
+  // Groq vision rate-limited → Gemini can cover (and vice versa below).
+  const groqVisionWithGeminiFallback = async (): Promise<string> => {
+    try {
+      return await callGroqVision(body);
+    } catch (e) {
+      if (isRetryableGroqError(e) && geminiKey) {
+        console.warn(
+          "ai-proxy: Groq vision failed (rate limit), using Gemini",
+        );
+        return await callGemini(body);
+      }
+      throw e;
+    }
+  };
+
   if (forceGroq) {
     if (!groqKey) {
       throw new Error(
         "AI_PROXY_VISION_PROVIDER=groq but GROQ_API_KEY is not set",
       );
     }
-    return await callGroqVision(body);
+    return await groqVisionWithGeminiFallback();
   }
 
   if (geminiKey) {
@@ -635,7 +689,7 @@ async function callVision(body: {
   if (!groqKey) {
     throw new Error("No GEMINI_API_KEY or GROQ_API_KEY for vision");
   }
-  return await callGroqVision(body);
+  return await groqVisionWithGeminiFallback();
 }
 
 async function callGemini(body: {

@@ -307,8 +307,12 @@ async function handleSend() {
     setBot(botDiv, reply, { sawScreen });
     history.push({ role: 'assistant', content: reply });
   } catch (e) {
-    setBot(botDiv, 'Error: ' + (e.message || 'something went wrong') +
-      '\nIf this keeps happening, reload the extension or check the Planner host in the popup.', { error: true });
+    const msg = String(e && e.message || '');
+    const friendly = /429|rate.?limit|over capacity/i.test(msg)
+      ? 'Flux is handling a lot of traffic right now — give it a few seconds and ask again.'
+      : 'Error: ' + (msg || 'something went wrong') +
+        '\nIf this keeps happening, reload the extension or check the Planner host in the popup.';
+    setBot(botDiv, friendly, { error: true });
     history.pop(); // drop the failed user turn so retries are clean
   }
 
