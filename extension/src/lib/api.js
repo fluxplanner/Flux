@@ -55,22 +55,50 @@ export async function setPlannerHost(host) {
 }
 
 /** Call the AI proxy. messages should follow the planner's existing shape. */
-export async function callAI({ system, messages, model, context, imageBase64, mimeType }) {
-  const res = await openAIRequest({ system, messages, model, context, imageBase64, mimeType, stream: false });
-  const data = await res.json().catch(() => null);
-  const txt = data && data.content && data.content[0] && typeof data.content[0].text === 'string'
-    ? data.content[0].text
+export async function callAI(payload) {
+  const { text } = await callAIStream(payload, null);
+  return { text };
+}
+
+/**
+ * Screenshots go through a two-stage pipeline: the vision model is only the
+ * EYES (it transcribes the question/diagram literally — that it does well),
+ * then the strong reasoning model does the actual solving. One-stage vision
+ * models flub math constantly; this is the difference between Flux getting
+ * homework right and wrong.
+ */
+async function transcribeScreen({ imageBase64, mimeType, messages }) {
+  const last = messages && messages.length
+    ? String(messages[messages.length - 1].content || '')
     : '';
-  return { text: txt, raw: data };
+  const res = await openAIRequest({
+    system: 'You are the eyes of a tutoring assistant. Transcribe EXACTLY what is on the user\'s screen that is relevant to their request: the full question text, every answer choice, all given values and units, and a precise description of any diagram, graph, table, or equation. Be literal and complete. Do NOT solve, answer, or comment.',
+    messages: [{ role: 'user', content: 'Transcribe the relevant parts of my screen. My request is: ' + last.slice(0, 500) }],
+    imageBase64,
+    mimeType,
+    stream: false,
+  });
+  const data = await res.json().catch(() => null);
+  return data?.content?.[0]?.text || '';
 }
 
 /**
  * Streaming variant — onDelta(textChunk) fires as tokens arrive.
  * Resolves with the full text. Falls back to a single JSON reply when the
- * proxy doesn't stream (vision requests, older deployments).
+ * proxy doesn't stream (direct vision, older deployments).
  */
 export async function callAIStream({ system, messages, model, context, imageBase64, mimeType }, onDelta) {
-  const res = await openAIRequest({ system, messages, model, context, imageBase64, mimeType, stream: true });
+  let sys = system || '';
+  if (imageBase64) {
+    const seen = await transcribeScreen({ imageBase64, mimeType, messages }).catch(() => '');
+    if (seen) {
+      sys += '\n\n## What is on the user\'s screen right now (transcribed from a live screenshot)\n' + seen.slice(0, 8000);
+      imageBase64 = null;
+      mimeType = null;
+    }
+    // Transcription failed → fall through with the image (direct vision).
+  }
+  const res = await openAIRequest({ system: sys, messages, model, context, imageBase64, mimeType, stream: !imageBase64 });
   const ctype = String(res.headers.get('content-type') || '');
   if (ctype.indexOf('text/event-stream') < 0 || !res.body) {
     const data = await res.json().catch(() => null);

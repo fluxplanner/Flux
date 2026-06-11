@@ -110,17 +110,17 @@ Deno.serve(async (req) => {
     }
 
     if (entitlement.plan === "free" && !body.model) {
-      // Tool-calling turns need a model that can emit well-formed flux_tool JSON;
-      // the 8B model fumbles it. Plain chat still gets the cheap model.
+      // Tool-calling turns need a model that can emit well-formed flux_tool
+      // JSON and reason; plain chat gets the smaller (still capable) model.
       const sys = String(body.system ?? body.systemPrompt ?? "");
       body.model = sys.includes("flux_tool")
-        ? "llama-3.3-70b-versatile"
-        : "llama-3.1-8b-instant";
+        ? "openai/gpt-oss-120b"
+        : "openai/gpt-oss-20b";
     }
   }
 
   if (!isBYOK && !hasImage && !body.model) {
-    body.model = "llama-3.3-70b-versatile";
+    body.model = "openai/gpt-oss-120b";
   }
 
   // SSE streaming: text chat only (vision and json_object stay request/response).
@@ -479,7 +479,9 @@ function buildOpenAIChatPayload(
   const payload: Record<string, unknown> = {
     model,
     messages,
-    max_tokens: jsonMode ? 1024 : 2048,
+    // Reasoning models (gpt-oss) spend completion budget thinking before
+    // answering — keep enough headroom that long solutions don't truncate.
+    max_tokens: jsonMode ? 1024 : 4096,
     temperature: jsonMode ? 0.2 : 0.7,
   };
   if (jsonMode) payload.response_format = { type: "json_object" };
