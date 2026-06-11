@@ -166,10 +166,12 @@
     t = t.replace(/\\\(([\s\S]+?)\\\)/g, function (_, m) { return push(m, false); });
     t = t.replace(/\$([^$\n]+?)\$/g, function (m0, m) { return isMathy(m) ? push(m, false) : m0; });
     t = extractBare(t, push);
+    // Last resort: stray LaTeX spacing macros that escaped extraction.
+    t = t.replace(/\\[;,!]/g, ' ');
     return { text: t, slots: slots };
   }
 
-  var BARE_CMD = /\\(frac|tfrac|dfrac|sqrt|boxed|cdot|times|div|pm|leq|geq|neq|approx|infty|pi|theta|alpha|beta|gamma|lambda|mu|sigma|omega|sum|prod|int|left|right|text|sin|cos|tan|log|ln)\b/;
+  var BARE_CMD = /\\(?:(?:frac|tfrac|dfrac|sqrt|boxed|cdot|times|div|pm|leq|geq|neq|approx|infty|pi|theta|alpha|beta|gamma|lambda|mu|sigma|omega|sum|prod|int|left|right|text|sin|cos|tan|log|ln)(?![a-zA-Z])|[;,!:])/;
 
   /**
    * Models routinely emit LaTeX with no $...$ delimiters at all. Find runs
@@ -184,7 +186,7 @@
       if (!m) { out += t.slice(i); return out; }
       var start = i + m.index;
       var L = start;
-      while (L > i && /[0-9=+\-*/^_ ({[]/.test(t[L - 1])) L--;
+      while (L > i && /[0-9=+\-*/^_ ({[−≈×·÷±≤≥≠|]/.test(t[L - 1])) L--;
       while (L < start && t[L] === ' ') L++;
       var R = start, depth = 0;
       while (R < t.length) {
@@ -193,13 +195,14 @@
         if (c === '{') { depth++; R++; continue; }
         if (c === '}') { depth--; R++; continue; }
         if (depth > 0) { R++; continue; }
+        if (c === '\\' && /[;,!:]/.test(t[R + 1] || '')) { R += 2; continue; }
         if (/[.,;:!?]/.test(c) && (R + 1 >= t.length || /\s/.test(t[R + 1]))) break;
         if (/[a-zA-Z]/.test(c) && t[R - 1] !== '\\' && !/[a-zA-Z\\]/.test(t[R - 1] || '')) {
           // start of a letter run in open math — bail before prose words
           var run = /^[a-zA-Z]+/.exec(t.slice(R))[0];
           if (run.length > 3) break;
         }
-        if (!/[0-9a-zA-Z\\{}()\[\]^_+\-=*/ .,|']/.test(c)) break;
+        if (!/[0-9a-zA-Z\\{}()\[\]^_+\-=*/ .,|'−≈×·÷±≤≥≠°]/.test(c)) break;
         R++;
       }
       while (R > start && t[R - 1] === ' ') R--;

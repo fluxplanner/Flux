@@ -318,7 +318,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .chat::-webkit-scrollbar-thumb { background: var(--bg-softer); border-radius: 4px; }
 
 /* ── Rendered math (flux-tex.js) — keep in sync with public/css/flux-tex.css ── */
-.tx { font-family: Georgia, 'Times New Roman', serif; font-size: 1.08em; line-height: 1.45; white-space: nowrap; }
+.tx { font-family: Georgia, 'Times New Roman', serif; font-size: 1.08em; line-height: 1.45; white-space: normal; overflow-wrap: break-word; }
 .tx-block { display: block; text-align: center; margin: 10px 0; font-size: 1.18em; white-space: normal; }
 .tx i { font-style: italic; font-family: inherit; }
 .tx sup, .tx sub { font-size: 0.7em; line-height: 1; }

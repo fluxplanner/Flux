@@ -6,7 +6,9 @@
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.08em;
   line-height: 1.45;
-  white-space: nowrap;
+  /* long equations must wrap with the prose — nowrap caused sideways scroll */
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .tx-block {
