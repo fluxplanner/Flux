@@ -23,6 +23,7 @@
     "packageJson": {
       "dependencies": [
         "npm:@playwright/test@^1.51.1",
+        "npm:esbuild@0.28",
         "npm:serve@^14.2.4"
       ]
     }
