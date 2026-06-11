@@ -16,8 +16,38 @@ $('openSidebar').addEventListener('click', async () => {
 
 $('openWeb').addEventListener('click', async () => {
   const cfg = await getConfig();
-  ext.tabs.create({ url: cfg.app_url || 'https://azfermohammed.github.io/Fluxplanner/' });
+  ext.tabs.create({ url: cfg.app_url || 'https://fluxplanner.github.io/Flux/' });
 });
+
+/* Sign in: open the planner with ?ext_auth=1 — after login it hands the
+ * session back to the extension and the tab closes itself. */
+async function refreshAuthUI() {
+  let r = null;
+  try { r = await runtime.sendMessage({ type: 'FLUX_GET_AUTH' }); } catch (_) {}
+  const btn = $('signIn');
+  if (r && r.ok && r.signedIn) {
+    btn.textContent = 'Sign out' + (r.email ? ' (' + r.email + ')' : '');
+    btn.dataset.mode = 'out';
+  } else {
+    btn.textContent = 'Sign in to Flux';
+    btn.dataset.mode = 'in';
+  }
+}
+
+$('signIn').addEventListener('click', async () => {
+  if ($('signIn').dataset.mode === 'out') {
+    try { await runtime.sendMessage({ type: 'FLUX_LOGOUT_FROM_WEB' }); } catch (_) {}
+    $('status').textContent = '✓ Signed out.';
+    refreshAuthUI();
+    return;
+  }
+  const cfg = await getConfig();
+  const base = (cfg.app_url || 'https://fluxplanner.github.io/Flux/').replace(/\/+$/, '');
+  ext.tabs.create({ url: base + '/?ext_auth=1' });
+  window.close();
+});
+
+refreshAuthUI();
 
 getConfig().then((cfg) => {
   const host = (cfg && cfg.app_url) || '';

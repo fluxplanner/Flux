@@ -109,7 +109,8 @@ function appendBot() {
 
 function setBot(div, text, { error = false, sawScreen = false } = {}) {
   div.classList.toggle('error', !!error);
-  const note = sawScreen ? '<div class="vision-note">👁 answered from a screenshot of your tab</div>' : '';
+  const EYE_SVG = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const note = sawScreen ? '<div class="vision-note">' + EYE_SVG + ' answered from a screenshot of your tab</div>' : '';
   div.innerHTML = note + (error ? escHtml(text) : md(text));
   elChat.scrollTop = elChat.scrollHeight;
 }

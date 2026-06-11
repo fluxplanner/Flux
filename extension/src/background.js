@@ -143,6 +143,38 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
         })
         .catch((e) => sendResponse({ ok: false, error: e.message }));
       return true;
+    case 'FLUX_AUTH_FROM_WEB':
+      // Session handoff from the planner page (relayed by content.js).
+      (async () => {
+        const senderUrl = (sender && (sender.url || sender.tab?.url)) || '';
+        const allowed = await isPlannerOrigin(senderUrl);
+        if (!allowed) { sendResponse({ ok: false, error: 'origin mismatch' }); return; }
+        const s = msg.session || {};
+        if (!s.access_token) { sendResponse({ ok: false, error: 'no token' }); return; }
+        await lsx.set('flux_auth_session', {
+          access_token: s.access_token,
+          refresh_token: s.refresh_token || '',
+          expires_at: s.expires_at || 0,
+          email: s.email || '',
+        });
+        sendResponse({ ok: true });
+        // Tab was opened just to sign in (?ext_auth=1) — close it and land
+        // the user back where they were.
+        if (msg.closeTab && sender.tab && sender.tab.id != null) {
+          setTimeout(() => { try { ext.tabs.remove(sender.tab.id); } catch (_) {} }, 700);
+        }
+      })();
+      return true;
+    case 'FLUX_LOGOUT_FROM_WEB':
+      lsx.remove('flux_auth_session')
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    case 'FLUX_GET_AUTH':
+      lsx.get('flux_auth_session')
+        .then((s) => sendResponse({ ok: true, signedIn: !!(s && s.access_token), email: (s && s.email) || '' }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
     case 'FLUX_GET_PAGE_SNAPSHOT':
       // Fresh, on-demand snapshot of a tab. Never depends on the content
       // script being loaded — falls back to scripting.executeScript, which
@@ -153,6 +185,19 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
   }
 });
+
+/** Only accept auth handoffs from the configured planner origin (or localhost dev). */
+async function isPlannerOrigin(url) {
+  let origin = '';
+  try { origin = new URL(url).origin; } catch (_) { return false; }
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  try {
+    const cfg = await getConfig();
+    return !!cfg.app_url && new URL(cfg.app_url).origin === origin;
+  } catch (_) {
+    return false;
+  }
+}
 
 /* ───────── On-demand page snapshot ───────── */
 

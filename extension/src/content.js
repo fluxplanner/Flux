@@ -10,6 +10,24 @@
 import { ext } from './lib/browser-shim.js';
 import { extractContext } from './lib/page-context.js';
 
+// Auth handoff from the planner page (app.js fluxExtAuthBroadcast): relay the
+// session to the background, which verifies the sender origin, stores it, and
+// closes this tab when it was opened just for sign-in (?ext_auth=1).
+window.addEventListener('message', (e) => {
+  if (e.source !== window || e.origin !== location.origin) return;
+  const d = e.data;
+  if (!d || typeof d.type !== 'string') return;
+  try {
+    if (d.type === 'FLUX_EXT_AUTH_TOKEN' && d.session) {
+      const p = ext.runtime.sendMessage({ type: 'FLUX_AUTH_FROM_WEB', session: d.session, closeTab: !!d.closeTab });
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } else if (d.type === 'FLUX_EXT_LOGOUT') {
+      const p = ext.runtime.sendMessage({ type: 'FLUX_LOGOUT_FROM_WEB' });
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
+  } catch (_) { /* extension reloaded — old script is orphaned */ }
+});
+
 ext.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return;
   if (msg.type === 'FLUX_GET_PAGE_TEXT') {

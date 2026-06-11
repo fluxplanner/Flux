@@ -129,13 +129,46 @@ async function openAIRequest({ system, messages, model, context, imageBase64, mi
 }
 
 async function getAuthHeaders() {
-  const tok = await lsx.get('flux_auth_token');
-  if (tok) return { 'Authorization': 'Bearer ' + tok };
+  const cfg = await getConfig();
+  const bearer = (tok) => {
+    const h = { 'Authorization': 'Bearer ' + tok };
+    if (cfg.anon_key) h['apikey'] = cfg.anon_key;
+    return h;
+  };
+  // Signed-in session handed off from the planner tab (see background.js
+  // FLUX_AUTH_FROM_WEB); refresh it when it's about to expire.
+  const sess = await lsx.get('flux_auth_session');
+  if (sess && sess.access_token) {
+    const expSoon = sess.expires_at && Date.now() / 1000 > sess.expires_at - 60;
+    if (!expSoon) return bearer(sess.access_token);
+    if (sess.refresh_token) {
+      const next = await refreshSession(sess, cfg).catch(() => null);
+      if (next) return bearer(next.access_token);
+    }
+    // Expired and unrefreshable — drop it and fall through to anon.
+    await lsx.remove('flux_auth_session').catch(() => {});
+  }
   // Signed out: authenticate as anon, like the web app does — Supabase
   // rejects requests with no Authorization header at the platform level.
-  const cfg = await getConfig();
-  if (cfg.anon_key) {
-    return { 'Authorization': 'Bearer ' + cfg.anon_key, 'apikey': cfg.anon_key };
-  }
+  if (cfg.anon_key) return bearer(cfg.anon_key);
   return {};
+}
+
+async function refreshSession(sess, cfg) {
+  const base = new URL(cfg.ai_proxy_url).origin; // https://<ref>.supabase.co
+  const res = await fetch(base + '/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': cfg.anon_key || '' },
+    body: JSON.stringify({ refresh_token: sess.refresh_token }),
+  });
+  if (!res.ok) throw new Error('refresh failed: ' + res.status);
+  const j = await res.json();
+  const next = {
+    access_token: j.access_token,
+    refresh_token: j.refresh_token || sess.refresh_token,
+    expires_at: j.expires_at || Math.floor(Date.now() / 1000) + (j.expires_in || 3600),
+    email: sess.email || j.user?.email || '',
+  };
+  await lsx.set('flux_auth_session', next);
+  return next;
 }

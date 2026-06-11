@@ -9,18 +9,24 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <svg class="lemni" viewBox="0 0 48 24" aria-hidden="true"><path d="M24 12c-4-5-7-9-13-9C5.5 3 2 7 2 12s3.5 9 9 9c6 0 9-4 13-9zm0 0c4-5 7-9 13-9 5.5 0 9 4 9 9s-3.5 9-9 9c-6 0-9-4-13-9z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <img class="brand-logo" src="../icons/icon-48.png" alt="Flux logo">
       <span class="brand-name">Flux</span>
     </div>
     <div class="top-actions">
-      <button id="newChat" class="iconbtn" title="New chat">＋</button>
-      <button id="openWeb" class="iconbtn" title="Open Flux Planner">↗</button>
+      <button id="newChat" class="iconbtn" title="New chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button id="openWeb" class="iconbtn" title="Open Flux Planner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </button>
     </div>
   </header>
 
   <div class="context-bar" id="contextBar" title="Flux can see this tab">
     <img id="ctxFavicon" class="ctx-favicon" alt="" hidden>
-    <span class="ctx-eye" id="ctxEye">👁</span>
+    <span class="ctx-eye" id="ctxEye" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+    </span>
     <span class="ctx-title" id="ctxTitle">Looking at this tab…</span>
     <button id="liveToggle" class="live-toggle on" title="Live view: attach a screenshot of the tab to every message">
       <span class="live-dot"></span>Live
@@ -40,11 +46,15 @@
   <footer class="composer-wrap">
     <div class="attach-preview" id="attachPreview" hidden>
       <img id="attachImg" alt="Attached screenshot">
-      <button id="attachRemove" class="attach-x" title="Remove">✕</button>
+      <button id="attachRemove" class="attach-x" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
     <div class="composer">
       <textarea id="composer" rows="1" placeholder="Ask about this page…" aria-label="Message"></textarea>
-      <button id="captureBtn" class="iconbtn" title="Attach a screenshot of this tab">📷</button>
+      <button id="captureBtn" class="iconbtn" title="Attach a screenshot of this tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
       <button id="sendBtn" class="sendbtn" title="Send" aria-label="Send">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>

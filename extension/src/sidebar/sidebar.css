@@ -41,7 +41,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   flex: 0 0 auto;
 }
 .brand { display: flex; align-items: center; gap: 7px; }
-.lemni { width: 26px; height: 14px; color: var(--accent); }
+.brand-logo { width: 22px; height: 22px; object-fit: contain; }
 .brand-name {
   font-weight: 700;
   font-size: 14.5px;
@@ -69,6 +69,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   transition: background 0.15s, color 0.15s;
 }
 .iconbtn:hover { background: var(--bg-softer); color: var(--text); }
+.iconbtn svg { width: 15px; height: 15px; }
 
 /* ── Context bar: what Flux sees ── */
 .context-bar {
@@ -84,7 +85,8 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   min-height: 32px;
 }
 .ctx-favicon { width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto; }
-.ctx-eye { font-size: 12px; flex: 0 0 auto; opacity: 0.85; }
+.ctx-eye { flex: 0 0 auto; opacity: 0.85; display: inline-flex; }
+.ctx-eye svg { width: 13px; height: 13px; }
 .ctx-title {
   flex: 1 1 auto;
   white-space: nowrap;
@@ -265,10 +267,10 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   border: none;
   background: #262c47;
   color: var(--text);
-  font-size: 10px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
+.attach-x svg { width: 10px; height: 10px; }
 
 .composer {
   display: flex;
