@@ -41,14 +41,14 @@ export function asPromise(fn, ...args) {
 /* ───────── Sidebar / side panel ───────── */
 
 export const sidebar = {
-  /** Open the side rail for a tab if the browser supports it. */
+  /**
+   * Open the side rail. Some Chromium shells (Arc, notably) implement the
+   * chrome.sidePanel API but never render a panel — the call "succeeds" and
+   * nothing appears. So after opening we verify a SIDE_PANEL context really
+   * exists and otherwise pop the rail out as a window, which works everywhere.
+   */
   open: async ({ tabId } = {}) => {
-    try {
-      if (ext.sidePanel && ext.sidePanel.open) return ext.sidePanel.open({ tabId });
-      if (ext.sidebarAction && ext.sidebarAction.open) return ext.sidebarAction.open();
-      if (ext.action && ext.action.openPopup) return ext.action.openPopup();
-    } catch (e) {
-      // No side rail on this browser — fallback: open sidebar.html in a popup window.
+    const popout = () => {
       if (ext.windows && ext.windows.create) {
         return ext.windows.create({
           url: ext.runtime.getURL('sidebar/sidebar.html'),
@@ -57,8 +57,33 @@ export const sidebar = {
           height: 720,
         });
       }
+      return null;
+    };
+    try {
+      if (ext.sidePanel && ext.sidePanel.open) {
+        let target = { tabId };
+        if (tabId == null && ext.windows && ext.windows.getCurrent) {
+          const win = await ext.windows.getCurrent();
+          target = { windowId: win.id };
+        }
+        await ext.sidePanel.open(target);
+        if (ext.runtime.getContexts) {
+          await new Promise((r) => setTimeout(r, 450));
+          const ctxs = await ext.runtime
+            .getContexts({ contextTypes: ['SIDE_PANEL'] })
+            .catch(() => null);
+          if (!ctxs || ctxs.length === 0) return popout();
+        }
+        return;
+      }
+      if (ext.sidebarAction && ext.sidebarAction.open) return ext.sidebarAction.open();
+      if (ext.action && ext.action.openPopup) return ext.action.openPopup();
+    } catch (e) {
+      const w = popout();
+      if (w) return w;
       throw e;
     }
+    return popout();
   },
   setPanelEnabled: async (tabId, enabled = true) => {
     if (ext.sidePanel && ext.sidePanel.setOptions) {
