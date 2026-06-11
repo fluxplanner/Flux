@@ -507,14 +507,18 @@ function buildOpenAIChatPayload(
     messages = [{ role: "user", content: body.message ?? "" }];
   }
   const jsonMode = body.responseFormat === "json_object";
+  const isGptOss = /gpt-oss/.test(model);
   const payload: Record<string, unknown> = {
     model,
     messages,
     // Reasoning models (gpt-oss) spend completion budget thinking before
     // answering — keep enough headroom that long solutions don't truncate.
-    max_tokens: jsonMode ? 1024 : 4096,
+    max_tokens: jsonMode ? 1024 : (isGptOss ? 8192 : 4096),
     temperature: jsonMode ? 0.2 : 0.7,
   };
+  // Think hard by default: the biggest free accuracy lever on gpt-oss, and
+  // Groq is fast enough that the extra thinking stays responsive.
+  if (isGptOss && !jsonMode) payload.reasoning_effort = "high";
   if (jsonMode) payload.response_format = { type: "json_object" };
   return payload;
 }
