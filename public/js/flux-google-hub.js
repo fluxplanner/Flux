@@ -362,7 +362,7 @@
   function googleSignInGateHtml() {
     return `
     <div class="g-hub-gate">
-      <div class="g-hub-gate-icon" aria-hidden="true">🔗</div>
+      <div class="g-hub-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div>
       <h2 class="g-hub-gate-title flux-color-title">Connect Google</h2>
       <p class="g-hub-gate-sub">One sign-in unlocks <strong>Gmail</strong>, <strong>Google Tasks</strong>, <strong>Calendar</strong>, and <strong>Docs</strong> for every Flux account — students, staff, and guests upgrading to sync.</p>
       <p class="g-hub-gate-sub g-hub-gate-sub--muted">Canvas uses your school login (Google SSO when your district supports it). After the first Canvas link, Flux remembers it on your account.</p>
@@ -425,22 +425,22 @@
 
   function hubTabsList() {
     const tabs = [
-      { id: 'tasks', label: 'Tasks', icon: '✅' },
-      { id: 'calendar', label: 'Calendar', icon: '📅' },
-      { id: 'gmail', label: 'Gmail', icon: '📧' },
-      { id: 'docs', label: 'Docs', icon: '📄' },
+      { id: 'tasks', label: 'Tasks', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' },
+      { id: 'calendar', label: 'Calendar', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' },
+      { id: 'gmail', label: 'Gmail', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>' },
+      { id: 'docs', label: 'Docs', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>' },
     ];
     try {
       if (window.FluxClassroomSync?.enabled?.()) {
-        tabs.push({ id: 'classroom', label: 'Classroom', icon: '🏫' });
+        tabs.push({ id: 'classroom', label: 'Classroom', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01M8 14h.01M16 14h.01M12 14h.01"/></svg>' });
       }
     } catch (_) {}
     try {
       if (window.FluxDriveImport?.enabled?.()) {
-        tabs.push({ id: 'drive', label: 'Drive', icon: '📂' });
+        tabs.push({ id: 'drive', label: 'Drive', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' });
       }
     } catch (_) {}
-    tabs.push({ id: 'canvas', label: 'Canvas', icon: '🎓' });
+    tabs.push({ id: 'canvas', label: 'Canvas', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>' });
     return tabs;
   }
 
