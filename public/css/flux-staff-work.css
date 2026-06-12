@@ -1,0 +1,94 @@
+/* flux-staff-work.css — redesigned staff Work hub (renderStaffWorkHub).
+ * New spdx-* namespace; the legacy .spd-grid/.spd-card cards are reused
+ * unchanged below the new command-center sections. */
+
+.spdx-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.spdx-stats { display: flex; gap: 10px; }
+.spdx-stat {
+  min-width: 92px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  text-align: center;
+}
+.spdx-stat b { display: block; font-size: 1.25rem; color: var(--accent); }
+.spdx-stat span {
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted2);
+}
+
+.spdx-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.spdx-act {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit; font-size: 0.78rem; font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.spdx-act:hover {
+  border-color: var(--accent);
+  background: rgba(95, 142, 255, 0.12);
+  color: var(--accent);
+}
+.spdx-act svg { opacity: 0.8; }
+
+.spdx-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.spdx-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.spdx-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted2);
+}
+
+.spdx-list { display: flex; flex-direction: column; gap: 6px; }
+.spdx-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.84rem; min-width: 0;
+}
+.spdx-row-tag {
+  flex: 0 0 auto;
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px; padding: 2px 8px;
+}
+.spdx-tag-ev { background: rgba(95, 142, 255, 0.14); color: var(--accent); }
+.spdx-tag-task { background: rgba(251, 191, 36, 0.14); color: #fbbf24; }
+.spdx-tag-bk { background: rgba(52, 211, 153, 0.14); color: #34d399; }
+.spdx-row-name {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.spdx-row-meta { flex: 0 0 auto; font-size: 0.7rem; color: var(--muted2); }
+
+.spdx-empty { font-size: 0.8rem; color: var(--muted2); padding: 4px 0; }
+
+.spdx-ico { color: var(--accent); display: inline-flex; }
+
+@media (max-width: 640px) {
+  .spdx-cols { grid-template-columns: 1fr; }
+  .spdx-stats { width: 100%; }
+  .spdx-stat { flex: 1 1 0; min-width: 0; }
+}

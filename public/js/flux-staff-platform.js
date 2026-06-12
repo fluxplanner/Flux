@@ -401,17 +401,60 @@
       if (typeof nav === 'function') nav(id);
       if (renderFn) renderFn();
     };
+    const I = (paths, w) => `<svg viewBox="0 0 24 24" width="${w || 16}" height="${w || 16}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+    const ICONS = {
+      clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+      gradcap: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>',
+      heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>',
+      calcheck: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>',
+      check: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+      grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+    };
+    const today = (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10));
+    const events = ((typeof load === 'function' && load('flux_events', [])) || []).filter((e2) => e2.date === today);
+    const openTasks = ((typeof window.tasks !== 'undefined' && window.tasks) || []).filter((t) => !t.done);
+    const dueSoon = openTasks.filter((t) => t.date && t.date <= today);
     el.innerHTML = `
-    <div class="staff-personal-dash">
-      <div class="spd-greeting">
-        <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
-        <div class="spd-sub">${esc(roleLabel)} · Work mode · ${esc(fmtLongDay(new Date()))}</div>
+    <div class="staff-personal-dash spdx-root">
+      <header class="spdx-hero">
+        <div>
+          <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
+          <div class="spd-sub">${esc(roleLabel)} · Work mode · ${esc(fmtLongDay(new Date()))}</div>
+        </div>
+        <div class="spdx-stats">
+          <div class="spdx-stat"><b>${events.length}</b><span>events today</span></div>
+          <div class="spdx-stat"><b>${dueSoon.length}</b><span>tasks due</span></div>
+          <div class="spdx-stat"><b id="spdxStatBookings">–</b><span>booked this week</span></div>
+        </div>
+      </header>
+      <div class="spdx-actions">
+        <button type="button" class="spdx-act" data-spdx-act="meeting">${I(ICONS.plus, 14)} Meeting note</button>
+        <button type="button" class="spdx-act" data-spdx-act="pd">${I(ICONS.plus, 14)} Log PD</button>
+        <button type="button" class="spdx-act" data-spdx-act="wellbeing">${I(ICONS.heart, 14)} Check-in</button>
+        <button type="button" class="spdx-act" data-spdx-act="availability">${I(ICONS.calcheck, 14)} Availability</button>
+        <button type="button" class="spdx-act" data-spdx-act="tasks">${I(ICONS.check, 14)} My tasks</button>
+        <button type="button" class="spdx-act" data-spdx-act="google">${I(ICONS.grid, 14)} Google hub</button>
       </div>
-      <div class="spd-mode-hint"><span class="spd-mode-icon">🏫</span><span>Meetings, PD, and wellbeing live here. Use <b>Calendar</b> in Main for your planner schedule.</span></div>
+      <div class="spdx-cols">
+        <section class="spdx-card">
+          <h3>Today</h3>
+          <div class="spdx-list">${
+            events.length || dueSoon.length
+              ? events.slice(0, 4).map((e2) => `<div class="spdx-row"><span class="spdx-row-tag spdx-tag-ev">${esc(e2.time || 'all day')}</span><span class="spdx-row-name">${esc(e2.title || 'Event')}</span></div>`).join('')
+                + dueSoon.slice(0, 4).map((t) => `<div class="spdx-row"><span class="spdx-row-tag spdx-tag-task">task</span><span class="spdx-row-name">${esc(t.name || 'Task')}</span></div>`).join('')
+              : '<div class="spdx-empty">Clear day — nothing due and no events.</div>'
+          }</div>
+        </section>
+        <section class="spdx-card">
+          <h3>Booked with you</h3>
+          <div class="spdx-list" id="spdxBookings"><div class="spdx-empty">Checking…</div></div>
+        </section>
+      </div>
       <div class="spd-grid">
-        <div class="spd-card" data-spd-nav="staffMeetingNotes" data-spd-render="meetingNotes"><div class="spd-card-icon">📋</div><div class="spd-card-title">Meetings</div><div class="spd-card-sub">Notes, decisions, action items</div></div>
-        <div class="spd-card" data-spd-nav="staffPD" data-spd-render="pd"><div class="spd-card-icon">🎓</div><div class="spd-card-title">PD</div><div class="spd-card-sub">Professional development log</div></div>
-        <div class="spd-card" data-spd-nav="staffWellbeing" data-spd-render="wellbeing"><div class="spd-card-icon">🌿</div><div class="spd-card-title">Wellbeing</div><div class="spd-card-sub">Energy &amp; check-ins</div></div>
+        <div class="spd-card" data-spd-nav="staffMeetingNotes" data-spd-render="meetingNotes"><div class="spd-card-icon spdx-ico">${I(ICONS.clipboard, 20)}</div><div class="spd-card-title">Meetings</div><div class="spd-card-sub">Notes, decisions, action items</div></div>
+        <div class="spd-card" data-spd-nav="staffPD" data-spd-render="pd"><div class="spd-card-icon spdx-ico">${I(ICONS.gradcap, 20)}</div><div class="spd-card-title">PD</div><div class="spd-card-sub">Professional development log</div></div>
+        <div class="spd-card" data-spd-nav="staffWellbeing" data-spd-render="wellbeing"><div class="spd-card-icon spdx-ico">${I(ICONS.heart, 20)}</div><div class="spd-card-title">Wellbeing</div><div class="spd-card-sub">Energy &amp; check-ins</div></div>
       </div>
       <div class="sr-root sr-root--work" style="margin-top:20px">${staffWorkspacePinsHtml()}</div>
     </div>`;
@@ -425,6 +468,53 @@
         else if (kind === 'wellbeing') go(id, () => renderWellbeingPanel());
       });
     });
+    el.querySelectorAll('[data-spdx-act]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const a = btn.getAttribute('data-spdx-act');
+        if (a === 'meeting') { go('staffMeetingNotes', () => renderMeetingNotesPanel()); setTimeout(() => { try { openNewMeetingNoteModal(); } catch (_) {} }, 250); }
+        else if (a === 'pd') { go('staffPD', () => renderPDPanel()); setTimeout(() => { try { openAddPDModal(); } catch (_) {} }, 250); }
+        else if (a === 'wellbeing') go('staffWellbeing', () => renderWellbeingPanel());
+        else if (a === 'availability') go('school');
+        else if (a === 'tasks') go('staffTasks', () => renderStaffTasksPanel());
+        else if (a === 'google') go('canvas');
+      });
+    });
+    fillWorkHubBookings();
+  }
+
+  // "Booked with you": upcoming office-hour bookings on my slots (read-only,
+  // degrades silently when the booking migration isn't applied yet).
+  async function fillWorkHubBookings() {
+    const list = document.getElementById('spdxBookings');
+    const stat = document.getElementById('spdxStatBookings');
+    if (!list) return;
+    const empty = (msg) => { list.innerHTML = `<div class="spdx-empty">${msg}</div>`; if (stat) stat.textContent = '0'; };
+    try {
+      const client = sb();
+      const u = (typeof currentUser !== 'undefined' && currentUser) || null;
+      if (!client || !u) return empty('Sign in to see bookings.');
+      const slotsRes = await client.from('staff_office_hours').select('id,day_of_week,start_time,end_time').eq('staff_id', u.id);
+      const slots = (slotsRes && !slotsRes.error && slotsRes.data) || [];
+      if (!slots.length) return empty('No availability published yet — add slots on the School page.');
+      const ids = slots.map((s) => s.id);
+      const q = client.from('office_hour_bookings').select('*');
+      if (typeof q.in !== 'function') return empty('No bookings yet.');
+      const bkRes = await q.in('slot_id', ids);
+      const slotById = {}; slots.forEach((s) => { slotById[s.id] = s; });
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+      const bks = ((bkRes && !bkRes.error && bkRes.data) || [])
+        .filter((b) => b.week_start >= weekAgo)
+        .sort((a, b) => (a.week_start < b.week_start ? -1 : 1))
+        .slice(0, 6);
+      if (!bks.length) return empty('No bookings yet — slots are open.');
+      if (stat) stat.textContent = String(bks.length);
+      list.innerHTML = bks.map((b) => {
+        const s = slotById[b.slot_id] || {};
+        const when = [s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1, 3) : '', s.start_time || ''].filter(Boolean).join(' ');
+        return `<div class="spdx-row"><span class="spdx-row-tag spdx-tag-bk">${esc(when || 'slot')}</span><span class="spdx-row-name">${esc(b.student_name || 'Student')}</span><span class="spdx-row-meta">wk of ${esc(b.week_start)}</span></div>`;
+      }).join('');
+    } catch (_) { empty('No bookings yet.'); }
   }
 
   const STAFF_PH_TAB_KEY = 'flux_staff_ph_tab_v1';
