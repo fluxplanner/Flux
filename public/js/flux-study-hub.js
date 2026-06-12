@@ -315,10 +315,33 @@
     size();
     const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
     let last = performance.now();
+    // ── nucleus: golden-spiral packed proton/neutron cluster (ZPeriod-style) ──
+    let nucFor = 0, nucleons = [];
+    function packNucleus(e) {
+      nucFor = e.n;
+      const mass = Math.round(massOf(e.s) || e.n * 2);
+      const protons = e.n, total = Math.max(1, protons + Math.max(0, mass - protons));
+      const shown = Math.min(44, total);
+      let pLeft = Math.max(1, Math.round(shown * protons / total));
+      const GA = Math.PI * (3 - Math.sqrt(5));
+      nucleons = [];
+      for (let i = 0; i < shown; i++) {
+        const t = (i + 0.5) / shown, rr = Math.cbrt(t), ph = Math.acos(1 - 2 * t), th = GA * i;
+        const kind = (i % 2 === 0 && pLeft > 0) ? (pLeft--, 'p') : (pLeft >= shown - i ? (pLeft--, 'p') : 'n');
+        nucleons.push({ p: [rr * Math.sin(ph) * Math.cos(th), rr * Math.sin(ph) * Math.sin(th), rr * Math.cos(ph)], kind });
+      }
+    }
+    // ── each shell gets its own orbital plane (tilt + golden-angle node) ──
+    const ringPoint = (R, a, ci, si, cn, sn) => {
+      const x = R * Math.cos(a), y = R * Math.sin(a);
+      const y1 = y * ci, z1 = y * si;
+      return [x * cn + z1 * sn, y1, -x * sn + z1 * cn];
+    };
     function frame(now) {
       if (!document.body.contains(cvs)) { cancelAnimationFrame(atomRAF); atomRAF = 0; return; }
-      const dt = Math.min(60, now - last); last = now;
+      last = now;
       const e = elByN(atomN) || elements()[0]; if (!e) { atomRAF = requestAnimationFrame(frame); return; }
+      if (nucFor !== e.n) packNucleus(e);
       if (Math.abs(W - (wrap.clientWidth || W)) > 1) size();
       const acc = (root && getComputedStyle(root).getPropertyValue('--fsh-accent').trim()) || '#34d0ff';
       const accRgb = (root && getComputedStyle(root).getPropertyValue('--fsh-accent-rgb').trim()) || '52,208,255';
@@ -327,24 +350,82 @@
       const cosY = Math.cos(atomRot.yaw), sinY = Math.sin(atomRot.yaw), cosP = Math.cos(atomRot.pitch), sinP = Math.sin(atomRot.pitch);
       const proj = (p) => { const x1 = p[0] * cosY + p[2] * sinY, z1 = -p[0] * sinY + p[2] * cosY, y1 = p[1]; const y2 = y1 * cosP - z1 * sinP, z2 = y1 * sinP + z1 * cosP; const s = F / (F - z2); return { x: cx + x1 * s, y: cy + y2 * s, z: z2, s }; };
       ctx.clearRect(0, 0, W, Hh);
-      const rings = [], blobs = []; let maxR = 1;
+      // vignette backdrop
+      const bg = ctx.createRadialGradient(cx, cy, 8, cx, cy, Math.max(W, Hh) * 0.62);
+      bg.addColorStop(0, 'rgba(' + accRgb + ',0.10)'); bg.addColorStop(0.45, 'rgba(' + accRgb + ',0.03)'); bg.addColorStop(1, 'rgba(2,6,16,0)');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, Hh);
+      const items = []; let maxR = 1;
       shells.forEach((cnt, i) => {
         const R = base * (1.7 + i * 1.45); maxR = Math.max(maxR, R);
-        const pts = []; for (let k = 0; k <= 64; k++) { const a = k / 64 * 2 * Math.PI; pts.push(proj([R * Math.cos(a), R * Math.sin(a), 0])); }
-        rings.push(pts);
+        const incl = Math.min(1.15, 0.35 + i * 0.26), node = i * 2.39996;
+        const ci = Math.cos(incl), si = Math.sin(incl), cn = Math.cos(node), sn = Math.sin(node);
+        // orbit ring (depth-faded in two passes: back half dimmer)
+        ctx.lineWidth = 1.2;
+        for (let pass = 0; pass < 2; pass++) {
+          ctx.beginPath();
+          let started = false;
+          for (let k = 0; k <= 96; k++) {
+            const a = k / 96 * 2 * Math.PI;
+            const pr = proj(ringPoint(R, a, ci, si, cn, sn));
+            const backHalf = pr.z < 0;
+            if ((pass === 0) === backHalf) { if (started) ctx.lineTo(pr.x, pr.y); else { ctx.moveTo(pr.x, pr.y); started = true; } }
+            else started = false;
+          }
+          ctx.strokeStyle = 'rgba(' + accRgb + (pass === 0 ? ',.10)' : ',.30)');
+          ctx.stroke();
+        }
         const phase = tsec * 0.6 * Math.max(0.04, atomSpeed) / (i * 0.28 + 1) + i * 0.7;
-        for (let j = 0; j < cnt; j++) { const a = j / cnt * 2 * Math.PI + phase; const pr = proj([R * Math.cos(a), R * Math.sin(a), 0]); blobs.push({ x: pr.x, y: pr.y, z: pr.z, s: pr.s }); }
+        for (let j = 0; j < cnt; j++) {
+          const a = j / cnt * 2 * Math.PI + phase;
+          const pr = proj(ringPoint(R, a, ci, si, cn, sn));
+          // motion trail: short fading arc behind the electron
+          if (!reduced) {
+            for (let k = 1; k <= 5; k++) {
+              const tp = proj(ringPoint(R, a - k * 0.085, ci, si, cn, sn));
+              ctx.globalAlpha = 0.16 * (1 - k / 6);
+              ctx.fillStyle = acc;
+              ctx.beginPath(); ctx.arc(tp.x, tp.y, Math.max(1, 4.6 * tp.s * (1 - k / 7)), 0, 7); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+          }
+          items.push({ z: pr.z, x: pr.x, y: pr.y, s: pr.s, kind: 'e' });
+        }
       });
-      ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(' + accRgb + ',.22)';
-      rings.forEach((pts) => { ctx.beginPath(); pts.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); });
-      const items = blobs.map((b) => ({ z: b.z, el: b })); items.push({ z: 0, nucleus: true });
+      // nucleus cluster (slow tumble), depth-sorted with the electrons
+      const nucR = base * 0.85, tum = tsec * 0.25;
+      const ct = Math.cos(tum), st = Math.sin(tum);
+      nucleons.forEach((nu) => {
+        const p = nu.p, x1 = p[0] * ct + p[2] * st, z1 = -p[0] * st + p[2] * ct;
+        const pr = proj([x1 * nucR, p[1] * nucR, z1 * nucR]);
+        items.push({ z: pr.z, x: pr.x, y: pr.y, s: pr.s, kind: nu.kind });
+      });
       items.sort((a, b) => a.z - b.z);
-      const sphere = (x, y, r, col) => { const hx = x - r * 0.38, hy = y - r * 0.42; const g = ctx.createRadialGradient(hx, hy, r * 0.08, x, y, r * 1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(0.18, '#e9fbff'); g.addColorStop(0.55, col); g.addColorStop(1, '#04101b'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); const sb = ctx.shadowBlur; ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(hx, hy, Math.max(1, r * 0.2), 0, 7); ctx.fill(); ctx.shadowBlur = sb; };
+      const sphere = (x, y, r, col, dark) => { const hx = x - r * 0.38, hy = y - r * 0.42; const g = ctx.createRadialGradient(hx, hy, r * 0.08, x, y, r * 1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(0.2, '#f2f6ff'); g.addColorStop(0.55, col); g.addColorStop(1, dark || '#04101b'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+      const depthOf = (z) => Math.max(0, Math.min(1, (z + maxR) / (2 * maxR)));
       items.forEach((it) => {
-        if (it.nucleus) { const pr = proj([0, 0, 0]); const r = 20 * pr.s; ctx.shadowColor = acc; ctx.shadowBlur = 24; sphere(pr.x, pr.y, r, acc); ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(4,16,27,.92)'; ctx.font = '800 ' + (13 * pr.s) + 'px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e.s, pr.x, pr.y); return; }
-        const b = it.el, depth = Math.max(0, Math.min(1, (b.z + maxR) / (2 * maxR))), r = Math.max(2.5, 7 * b.s);
-        ctx.globalAlpha = 0.45 + 0.55 * depth; ctx.shadowColor = acc; ctx.shadowBlur = 12 * depth; sphere(b.x, b.y, r, acc); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        const depth = depthOf(it.z);
+        if (it.kind === 'e') {
+          const r = Math.max(2.5, 6.4 * it.s);
+          ctx.globalAlpha = 0.45 + 0.55 * depth;
+          ctx.shadowColor = acc; ctx.shadowBlur = 14 * depth;
+          sphere(it.x, it.y, r, acc);
+          ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+          return;
+        }
+        const r = Math.max(2.2, base * 0.30 * it.s);
+        const proton = it.kind === 'p';
+        ctx.globalAlpha = 0.6 + 0.4 * depth;
+        ctx.shadowColor = proton ? '#ff6f61' : '#7d8fb3';
+        ctx.shadowBlur = proton ? 10 * depth : 5 * depth;
+        sphere(it.x, it.y, r, proton ? '#ff6f61' : '#8b9bb8', proton ? '#3a0d0d' : '#0d1322');
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       });
+      // element badge (top-left, off the model)
+      ctx.fillStyle = 'rgba(' + accRgb + ',.9)';
+      ctx.font = '800 15px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(e.s, 14, 12);
+      ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.font = '600 11px system-ui';
+      ctx.fillText(e.name + ' · Z=' + e.n, 14, 31);
       atomRAF = requestAnimationFrame(frame);
     }
     cancelAnimationFrame(atomRAF); atomRAF = 0; frame(performance.now());
