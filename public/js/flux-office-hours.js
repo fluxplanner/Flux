@@ -246,6 +246,103 @@
       .catch(function (e) { toast(e.message || 'Could not remove', 'error'); return false; });
   }
 
+  /* ---------- bookings ---------- */
+
+  var BOOK_TABLE = 'office_hour_bookings';
+  var DAY_NUM = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5 };
+
+  // Next calendar occurrence of a slot: today counts while the slot hasn't
+  // ended yet; otherwise the next matching weekday.
+  function nextOccurrence(slot, nowDate) {
+    var now = nowDate ? new Date(nowDate) : new Date();
+    var target = DAY_NUM[slot.day_of_week];
+    if (!target) return null;
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var delta = (target - d.getDay() + 7) % 7;
+    if (delta === 0) {
+      var nowMin = now.getHours() * 60 + now.getMinutes();
+      if (nowMin >= minutesOf(slot.end_time)) delta = 7;
+    }
+    d.setDate(d.getDate() + delta);
+    return d;
+  }
+
+  function isoDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Monday of the week containing d (weekend rolls forward to next Monday).
+  function mondayOf(d) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var dow = x.getDay();
+    x.setDate(x.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1 - dow));
+    return isoDate(x);
+  }
+
+  function fmtShortDate(d) {
+    try { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); } catch (_) { return isoDate(d); }
+  }
+
+  // weeks: array of ISO mondays → { '<week>': Set(slotIds) } or null when the
+  // backend can't tell us (missing rpc / old deploy) — then nothing is hidden.
+  function fetchBookedSlotIds(weeks) {
+    var sb = getSB();
+    if (!sb || typeof sb.rpc !== 'function') return Promise.resolve(null);
+    var uniq = []; (weeks || []).forEach(function (w) { if (w && uniq.indexOf(w) === -1) uniq.push(w); });
+    if (!uniq.length) return Promise.resolve({});
+    return Promise.all(uniq.map(function (w) {
+      return sb.rpc('get_booked_slots', { p_week_start: w })
+        .then(function (res) { return { w: w, ids: res.error ? null : (res.data || []).map(function (r) { return r.slot_id || r; }) }; })
+        .catch(function () { return { w: w, ids: null }; });
+    })).then(function (parts) {
+      var out = {}; var anyKnown = false;
+      parts.forEach(function (p) { if (p.ids) { anyKnown = true; out[p.w] = {}; p.ids.forEach(function (id) { out[p.w][id] = 1; }); } });
+      return anyKnown ? out : null;
+    });
+  }
+
+  function fetchMyBookings() {
+    var sb = getSB(); var u = getCurrentUser();
+    if (!sb || !u) return Promise.resolve([]);
+    return sb.from(BOOK_TABLE).select('*').eq('student_id', u.id)
+      .then(function (res) { return res.error ? [] : (res.data || []); })
+      .catch(function () { return []; });
+  }
+
+  function fetchSlotBookings(slotIds) {
+    var sb = getSB();
+    if (!sb || !slotIds || !slotIds.length) return Promise.resolve([]);
+    var q = sb.from(BOOK_TABLE).select('*');
+    if (typeof q.in !== 'function') return Promise.resolve([]);
+    return q.in('slot_id', slotIds)
+      .then(function (res) { return res.error ? [] : (res.data || []); })
+      .catch(function () { return []; });
+  }
+
+  function bookSlot(slot, weekISO) {
+    var sb = getSB(); var u = getCurrentUser();
+    if (!sb || !u) { toast('Sign in to book office hours', 'warning'); return Promise.resolve(false); }
+    var name = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || (u.email || '').split('@')[0] || 'Student';
+    return sb.from(BOOK_TABLE).insert({ slot_id: slot.id, student_id: u.id, student_name: name, week_start: weekISO })
+      .then(function (res) {
+        if (res.error) {
+          var dup = res.error.code === '23505' || /duplicate|unique/i.test(res.error.message || '');
+          toast(dup ? 'Just taken — another student booked this slot.' : (tableMissing(res.error) ? 'Booking isn’t set up yet — ask your school to run the latest migration.' : (res.error.message || 'Could not book')), dup ? 'warning' : 'error');
+          return false;
+        }
+        return true;
+      })
+      .catch(function (e) { toast(e.message || 'Could not book', 'error'); return false; });
+  }
+
+  function cancelBooking(id) {
+    var sb = getSB(); var u = getCurrentUser();
+    if (!sb || !u || !id) return Promise.resolve(false);
+    return sb.from(BOOK_TABLE).delete().eq('id', id)
+      .then(function (res) { return !res.error; })
+      .catch(function () { return false; });
+  }
+
   /* ---------- staff card (set hours) ---------- */
 
   function timeOptions(sel) {
@@ -259,23 +356,42 @@
     return out;
   }
 
-  function staffCardHtml(slots, reason) {
+  function staffCardHtml(slots, reason, bookings) {
     var sorted = sortSlots(slots);
+    var bkBySlot = {};
+    var curWeek = mondayOf(new Date());
+    (bookings || []).forEach(function (b) {
+      if (b.week_start >= curWeek) (bkBySlot[b.slot_id] = bkBySlot[b.slot_id] || []).push(b);
+    });
     var listHtml;
     if (reason === 'no_table') {
       listHtml = '<div class="flux-oh-empty">Office Hours storage isn’t set up yet. Ask the owner to run <code>OFFICE-HOURS-MIGRATION.sql</code>.</div>';
     } else if (reason === 'offline') {
       listHtml = '<div class="flux-oh-empty">Sign in with your school account to publish office hours students can see.</div>';
     } else if (!sorted.length) {
-      listHtml = '<div class="flux-oh-empty">No office hours published yet. Add your first slot below — students will see it on their School page.</div>';
+      listHtml = '<div class="flux-oh-empty">No availability yet. Add your first slot below — students see it instantly and can book it.</div>';
     } else {
+      var lastDay = null;
       listHtml = sorted.map(function (s) {
         var meta = [s.location, s.note].filter(Boolean).map(esc).join(' · ');
-        return '<div class="flux-oh-row" data-oh-id="' + esc(s.id) + '">'
-          + '<div class="flux-oh-row-day">' + esc(DAY_LABEL[s.day_of_week] || s.day_of_week) + '</div>'
+        var dayHead = '';
+        if (s.day_of_week !== lastDay) {
+          lastDay = s.day_of_week;
+          dayHead = '<div class="flux-oh-dayhead">' + esc(DAY_FULL[s.day_of_week] || s.day_of_week) + '</div>';
+        }
+        var bks = (bkBySlot[s.id] || []).sort(function (a, b2) { return a.week_start < b2.week_start ? -1 : 1; });
+        var bkHtml = bks.length
+          ? '<div class="flux-oh-row-bks">' + bks.map(function (b) {
+              return '<span class="flux-oh-bk" title="Booked">' + esc(b.student_name || 'Student') + ' · ' + esc(b.week_start) + '</span>';
+            }).join('') + '</div>'
+          : '';
+        return dayHead + '<div class="flux-oh-row" data-oh-id="' + esc(s.id) + '">'
           + '<div class="flux-oh-row-main">'
-          + '<div class="flux-oh-row-time">' + esc(timeRange(s.start_time, s.end_time)) + '</div>'
+          + '<div class="flux-oh-row-time">' + esc(timeRange(s.start_time, s.end_time))
+          + (bks.length ? '<span class="flux-oh-row-bkcount">' + bks.length + ' booked</span>' : '<span class="flux-oh-row-open">open</span>')
+          + '</div>'
           + (meta ? '<div class="flux-oh-row-meta">' + meta + '</div>' : '')
+          + bkHtml
           + '</div>'
           + '<button type="button" class="flux-oh-del" data-oh-del="' + esc(s.id) + '" aria-label="Remove slot" title="Remove">✕</button>'
           + '</div>';
@@ -286,30 +402,39 @@
     return ''
       + '<div class="card flux-oh-card" id="fluxOfficeHoursStaffCard">'
       + '<div class="flux-oh-head">'
-      +   '<h3 style="margin:0">Office hours</h3>'
-      +   '<span class="flux-oh-badge">Students can see these</span>'
+      +   '<h3 style="margin:0">Availability</h3>'
+      +   '<span class="flux-oh-badge">Students see &amp; book these</span>'
       + '</div>'
-      + '<p class="flux-oh-sub">Publish weekly times when students can drop in for help. Visible to every student on their School page.</p>'
+      + '<p class="flux-oh-sub">Weekly drop-in times. One student can book each slot per week — booked slots disappear for everyone else.</p>'
       + '<div class="flux-oh-list">' + listHtml + '</div>'
       + '<div class="flux-oh-form">'
+      +   '<div class="flux-oh-form-label">Add a weekly slot</div>'
+      +   '<input type="hidden" id="fluxOhDay" value="monday">'
+      +   '<div class="flux-oh-daychips" role="group" aria-label="Day of week">'
+      +     DAYS.map(function (d, i) { return '<button type="button" class="flux-oh-daychip' + (i === 0 ? ' active' : '') + '" data-oh-daychip="' + d + '"' + disabled + '>' + esc(DAY_LABEL[d]) + '</button>'; }).join('')
+      +   '</div>'
       +   '<div class="flux-oh-form-grid">'
-      +     '<label class="flux-oh-field"><span>Day</span><select id="fluxOhDay"' + disabled + '>'
-      +       DAYS.map(function (d) { return '<option value="' + d + '">' + esc(DAY_FULL[d]) + '</option>'; }).join('')
-      +     '</select></label>'
       +     '<label class="flux-oh-field"><span>From</span><select id="fluxOhStart"' + disabled + '>' + timeOptions('15:00') + '</select></label>'
       +     '<label class="flux-oh-field"><span>To</span><select id="fluxOhEnd"' + disabled + '>' + timeOptions('15:30') + '</select></label>'
+      +     '<label class="flux-oh-field flux-oh-field--wide"><span>Location</span><input id="fluxOhLoc" type="text" maxlength="80" placeholder="Room 204, Library…"' + disabled + '></label>'
       +   '</div>'
       +   '<div class="flux-oh-form-grid">'
-      +     '<label class="flux-oh-field flux-oh-field--wide"><span>Location</span><input id="fluxOhLoc" type="text" maxlength="80" placeholder="e.g. Room 204, Library"' + disabled + '></label>'
-      +     '<label class="flux-oh-field flux-oh-field--wide"><span>Note (optional)</span><input id="fluxOhNote" type="text" maxlength="120" placeholder="e.g. Drop-in, no appointment"' + disabled + '></label>'
+      +     '<label class="flux-oh-field flux-oh-field--wide"><span>Note (optional)</span><input id="fluxOhNote" type="text" maxlength="120" placeholder="e.g. College apps, math help, drop-in"' + disabled + '></label>'
+      +     '<button type="button" class="flux-oh-add-btn" id="fluxOhAddBtn"' + disabled + '>Publish slot</button>'
       +   '</div>'
-      +   '<button type="button" class="flux-oh-add-btn" id="fluxOhAddBtn"' + disabled + '>Add office hours</button>'
       + '</div>'
       + '</div>';
   }
 
   function wireStaffCard(card) {
     if (!card) return;
+    card.querySelectorAll('[data-oh-daychip]').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        card.querySelectorAll('[data-oh-daychip]').forEach(function (c) { c.classList.toggle('active', c === chip); });
+        var hidden = card.querySelector('#fluxOhDay');
+        if (hidden) hidden.value = chip.getAttribute('data-oh-daychip');
+      });
+    });
     card.querySelectorAll('[data-oh-del]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var id = btn.getAttribute('data-oh-del');
@@ -345,13 +470,16 @@
 
   function refreshStaff(card) {
     fetchMine().then(function (res) {
-      var fresh = document.getElementById('fluxOfficeHoursStaffCard');
-      if (!fresh) return;
-      var tmp = document.createElement('div');
-      tmp.innerHTML = staffCardHtml(res.rows, res.reason);
-      var next = tmp.firstChild;
-      fresh.parentNode.replaceChild(next, fresh);
-      wireStaffCard(next);
+      var ids = (res.rows || []).map(function (s) { return s.id; }).filter(Boolean);
+      fetchSlotBookings(ids).then(function (bookings) {
+        var fresh = document.getElementById('fluxOfficeHoursStaffCard');
+        if (!fresh) return;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = staffCardHtml(res.rows, res.reason, bookings);
+        var next = tmp.firstChild;
+        fresh.parentNode.replaceChild(next, fresh);
+        wireStaffCard(next);
+      });
     });
   }
 
@@ -385,7 +513,8 @@
     return hot.concat(cool);
   }
 
-  function studentCardHtml(groups, reason) {
+  function studentCardHtml(groups, reason, bk) {
+    bk = bk || { mine: {}, taken: null, canBook: false };
     var body;
     if (reason === 'no_table' || reason === 'offline') {
       // Quietly render nothing meaningful — don't nag students about backend setup.
@@ -399,19 +528,33 @@
         var sub = [ROLE_LABEL[g.role] || 'Staff', g.subject].filter(Boolean).map(esc).join(' · ');
         var livePill = g._anyLive ? '<span class="flux-oh-live-pill" title="Available right now">● LIVE NOW</span>' : '';
         var rows = g.slots.map(function (s) {
+          var occ = nextOccurrence(s);
+          var wk = occ ? mondayOf(occ) : null;
+          var mine = wk ? bk.mine[s.id + '|' + wk] : null;
+          // Booked by someone else → other students don't see the slot at all.
+          if (!mine && wk && bk.taken && bk.taken[wk] && bk.taken[wk][s.id]) return '';
           var meta = [s.location, s.note].filter(Boolean).map(esc).join(' · ');
           var live = isLiveNow(s);
           var todayCls = (today && s.day_of_week === today) ? ' is-today' : '';
           var liveCls = live ? ' is-live' : '';
           var todayBadge = (today && s.day_of_week === today && !live) ? '<span class="flux-oh-today-badge">TODAY</span>' : '';
           var liveBadge = live ? '<span class="flux-oh-live-badge">NOW</span>' : '';
-          return '<div class="flux-oh-srow' + todayCls + liveCls + '">'
+          var bookUi = '';
+          if (mine) {
+            bookUi = '<span class="flux-oh-booked-badge">Booked · ' + esc(fmtShortDate(occ)) + '</span>'
+              + '<button type="button" class="flux-oh-cancel-btn" data-oh-cancel="' + esc(mine.id) + '">Cancel</button>';
+          } else if (bk.canBook && wk) {
+            bookUi = '<button type="button" class="flux-oh-book-btn" data-oh-book="' + esc(s.id) + '" data-oh-week="' + esc(wk) + '">Book · ' + esc(fmtShortDate(occ)) + '</button>';
+          }
+          return '<div class="flux-oh-srow' + todayCls + liveCls + (mine ? ' is-mine' : '') + '">'
             + '<span class="flux-oh-srow-day">' + esc(DAY_LABEL[s.day_of_week] || s.day_of_week) + '</span>'
             + '<span class="flux-oh-srow-time">' + esc(timeRange(s.start_time, s.end_time)) + '</span>'
             + liveBadge + todayBadge
             + (meta ? '<span class="flux-oh-srow-meta">' + meta + '</span>' : '')
+            + (bookUi ? '<span class="flux-oh-srow-book">' + bookUi + '</span>' : '')
             + '</div>';
         }).join('');
+        if (!rows) return ''; // every slot this week is taken — hide the group
         return '<div class="flux-oh-staff' + (g._anyLive ? ' is-live' : '') + '" data-oh-search="' + esc((g.name + ' ' + g.subject).toLowerCase()) + '">'
           + '<div class="flux-oh-staff-head">'
           +   '<span class="flux-oh-avatar" aria-hidden="true">' + esc(initials(g.name)) + '</span>'
@@ -420,7 +563,7 @@
           + '</div>'
           + '<div class="flux-oh-staff-slots">' + rows + '</div>'
           + '</div>';
-      }).join('');
+      }).join('') || '<div class="flux-oh-empty">All published slots are booked this week — check back next week.</div>';
     }
 
     var showFilter = groups.length > 3;
@@ -441,6 +584,8 @@
     return parts.map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?';
   }
 
+  var _slotById = {};
+
   function wireStudentCard(card) {
     if (!card) return;
     var search = card.querySelector('#fluxOhSearch');
@@ -453,18 +598,54 @@
         });
       });
     }
+    card.addEventListener('click', function (ev) {
+      var bookBtn = ev.target.closest('[data-oh-book]');
+      if (bookBtn) {
+        var slot = _slotById[bookBtn.getAttribute('data-oh-book')];
+        var wk = bookBtn.getAttribute('data-oh-week');
+        if (!slot || !wk) return;
+        bookBtn.disabled = true;
+        bookSlot(slot, wk).then(function (ok) {
+          if (ok) toast('Booked — it’s yours. It’s now hidden from other students.', 'success');
+          refreshStudent(card);
+        });
+        return;
+      }
+      var cancelBtn = ev.target.closest('[data-oh-cancel]');
+      if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBooking(cancelBtn.getAttribute('data-oh-cancel')).then(function (ok) {
+          if (ok) toast('Booking cancelled', 'info');
+          refreshStudent(card);
+        });
+      }
+    });
   }
 
   function refreshStudent(card) {
     fetchAllActive(false).then(function (res) {
-      var fresh = document.getElementById('fluxOfficeHoursStudentCard');
-      if (!fresh) return;
-      var groups = groupByStaff((res.rows || []).filter(function (r) { return validSlot(r); }));
-      var tmp = document.createElement('div');
-      tmp.innerHTML = studentCardHtml(groups, res.reason);
-      var next = tmp.firstChild;
-      fresh.parentNode.replaceChild(next, fresh);
-      wireStudentCard(next);
+      var slots = (res.rows || []).filter(function (r) { return validSlot(r); });
+      _slotById = {};
+      var weeks = [];
+      slots.forEach(function (s) {
+        _slotById[s.id] = s;
+        var occ = nextOccurrence(s);
+        if (occ) weeks.push(mondayOf(occ));
+      });
+      Promise.all([fetchBookedSlotIds(weeks), fetchMyBookings()]).then(function (r2) {
+        var taken = r2[0];
+        var mine = {};
+        (r2[1] || []).forEach(function (b) { mine[b.slot_id + '|' + b.week_start] = b; });
+        var canBook = !!getSB() && !!getCurrentUser() && !isStaff();
+        var fresh = document.getElementById('fluxOfficeHoursStudentCard');
+        if (!fresh) return;
+        var groups = groupByStaff(slots);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = studentCardHtml(groups, res.reason, { mine: mine, taken: taken, canBook: canBook });
+        var next = tmp.firstChild;
+        fresh.parentNode.replaceChild(next, fresh);
+        wireStudentCard(next);
+      });
     });
   }
 
@@ -542,6 +723,9 @@
     _groupByStaff: groupByStaff,
     _fmtTime: fmtTime,
     _validSlot: validSlot,
+    _nextOccurrence: nextOccurrence,
+    _mondayOf: mondayOf,
+    _studentCardHtml: studentCardHtml,
   };
 
   function boot() {

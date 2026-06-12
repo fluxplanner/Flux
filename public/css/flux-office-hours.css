@@ -247,3 +247,68 @@
 
 /* Honor reduced motion / perf flags already used site-wide. */
 .flux-reduce-motion .flux-oh-add-btn:active { transform: none; }
+
+/* ── bookings + redesigned availability editor ── */
+
+.flux-oh-form-label {
+  font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted2); margin: 14px 0 8px;
+}
+
+.flux-oh-daychips { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.flux-oh-daychip {
+  flex: 1 1 0; min-width: 48px; padding: 8px 0; text-align: center;
+  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px; color: var(--muted); font: inherit; font-size: .78rem; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.flux-oh-daychip:hover { border-color: var(--accent); color: var(--text); }
+.flux-oh-daychip.active {
+  background: rgba(95, 142, 255, .16); border-color: var(--accent); color: var(--accent);
+}
+
+.flux-oh-dayhead {
+  font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted2); margin: 12px 0 4px;
+}
+.flux-oh-dayhead:first-child { margin-top: 0; }
+
+.flux-oh-row-bkcount, .flux-oh-row-open {
+  font-size: .64rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  border-radius: 999px; padding: 2px 8px; margin-left: 8px; vertical-align: 1px;
+}
+.flux-oh-row-bkcount { background: rgba(251, 191, 36, .14); color: #fbbf24; }
+.flux-oh-row-open { background: rgba(52, 211, 153, .12); color: #34d399; }
+
+.flux-oh-row-bks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.flux-oh-bk {
+  font-size: .7rem; background: rgba(95, 142, 255, .12); color: var(--accent);
+  border-radius: 999px; padding: 2px 9px;
+}
+
+.flux-oh-srow-book { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.flux-oh-book-btn {
+  background: rgba(95, 142, 255, .15); border: 1px solid rgba(95, 142, 255, .4);
+  color: var(--accent); border-radius: 999px; padding: 3px 11px;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.flux-oh-book-btn:hover { background: var(--accent); color: #fff; }
+.flux-oh-book-btn:disabled { opacity: .5; cursor: default; }
+
+.flux-oh-booked-badge {
+  font-size: .68rem; font-weight: 800; letter-spacing: .04em;
+  background: rgba(52, 211, 153, .14); color: #34d399;
+  border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+}
+.flux-oh-cancel-btn {
+  background: none; border: none; color: var(--muted2); font: inherit; font-size: .7rem;
+  cursor: pointer; text-decoration: underline; padding: 2px 4px;
+}
+.flux-oh-cancel-btn:hover { color: #f87171; }
+
+.flux-oh-srow.is-mine { background: rgba(52, 211, 153, .05); border-radius: 10px; }
+
+@media (max-width: 520px) {
+  .flux-oh-srow-book { margin-left: 0; width: 100%; margin-top: 4px; }
+}
