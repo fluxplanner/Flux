@@ -650,7 +650,13 @@
       try { window.fluxToolbox.renderToolIntoBody($('fshLgMount'), chip.sub, chip.tid); } catch (e3) { body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e3.message)}</div></div>`; }
       return;
     }
-    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '🧰'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${esc(chip.desc || 'Your original Flux tool — opens in a focused window.')}</p><button type="button" class="fsh-btn" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">Open ${esc(chip.label || 'tool')}</button></div></div>`;
+    // Clicking the chip opens the tool directly — no intermediate button.
+    let opened = false;
+    try {
+      if (chip.mode === 'link' && chip.nav && window.nav) { window.nav(chip.nav); opened = true; }
+      else if (chip.fn && typeof window[chip.fn] === 'function') { window[chip.fn](); opened = true; }
+    } catch (e4) { opened = false; }
+    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${opened ? 'Opened — it’s on screen now.' : esc(chip.desc || 'Could not open this tool automatically.')} <button type="button" class="fsh-btn fsh-btn--ghost" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">${opened ? 'Reopen' : 'Open ' + esc(chip.label || 'tool')}</button></p></div></div>`;
   }
   function mergeLegacyOnce() {
     if (_merged) return; const idx = buildLegacyIndex(); if (!idx) return; _merged = true;
