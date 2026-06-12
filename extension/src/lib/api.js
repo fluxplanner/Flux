@@ -144,6 +144,14 @@ async function openAIRequest({ system, messages, model, context, imageBase64, mi
   const body = { system: sys, messages, model };
   if (imageBase64) { body.imageBase64 = imageBase64; body.mimeType = mimeType || 'image/png'; }
   else if (stream) body.stream = true;
+  // BYOK: route text turns through the user's own model when the planner
+  // handed us a routing config (vision stays on the proxy's vision stack).
+  if (!imageBase64) {
+    try {
+      const routing = await lsx.get('flux_ai_routing');
+      if (routing && routing.mode) body.routing = routing;
+    } catch (_) {}
+  }
   const res = await fetch(cfg.ai_proxy_url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },

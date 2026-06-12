@@ -7919,6 +7919,34 @@ async function fluxReadAIStream(res,thinkEl,thinkAnim){
   return full;
 }
 
+// ── Self-check: after a mathy answer, quietly re-derive it in a hidden,
+// uncharged round (loopRound 2) and surface a correction only if the model
+// catches its own mistake. Catches most arithmetic slips for free.
+const FLUX_MATHY_RE=/(\d[\d\s.,]*[+\-×*/^=]|\$[^$]+\$|\\frac|\\sqrt|\bsolve\b|\bcalculate\b|\bhow (?:much|many|fast|far)\b|m\/s|\bkg\b|\bnewtons?\b|≈)/i;
+async function maybeSelfCheckAnswer(question,answer){
+  if(!FLUX_MATHY_RE.test(question)||!FLUX_MATHY_RE.test(answer))return;
+  try{
+    const body={
+      system:'You are a meticulous checker. The conversation ends with a student question and an assistant answer. Independently re-derive the final answer. If the assistant\'s final answer is correct, reply with exactly: VERIFIED. If it is wrong, reply with "Correction:" followed by a one-or-two sentence fix and the corrected final answer (math in $...$).',
+      messages:aiHistory.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)})).concat([{role:'user',content:'Check the last answer now.'}]),
+      loopRound:2,
+    };
+    try{
+      const routeExtra=window.FluxAIConnections&&typeof FluxAIConnections.getRoutingPayload==='function'?FluxAIConnections.getRoutingPayload():null;
+      if(routeExtra&&typeof routeExtra==='object')Object.assign(body,routeExtra);
+    }catch(e){}
+    const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify(body)});
+    if(!res.ok)return;
+    const data=await res.json().catch(()=>null);
+    const out=(data?.content?.[0]?.text||'').trim();
+    if(!out||/^VERIFIED\b/i.test(out))return;
+    if(!/^correction\b/i.test(out))return; // only surface explicit corrections
+    appendMsg('bot','**I double-checked and need to correct myself.** '+out);
+    aiHistory.push({role:'assistant',content:out});
+    saveCurrentChat();
+  }catch(e){}
+}
+
 async function sendAI(optionalUserText, depth, sendOpts){
   const d=typeof depth==='number'?depth:0;
   const opts=sendOpts||{};
@@ -7982,6 +8010,7 @@ async function sendAI(optionalUserText, depth, sendOpts){
     else if(window.FluxOrchestrator&&FluxOrchestrator.augmentSystemPrompt)system=FluxOrchestrator.augmentSystemPrompt(baseSys,text);
     if(window.FluxLayeredMemory?.enabled?.()&&FluxLayeredMemory.appendToSystem)system=FluxLayeredMemory.appendToSystem(system);
     if(window.FluxAIConnections&&typeof FluxAIConnections.appendToSystem==='function')system=FluxAIConnections.appendToSystem(system);
+    try{if(window.FluxKnowledge&&typeof FluxKnowledge.appendToSystem==='function')system=FluxKnowledge.appendToSystem(system,text);}catch(e){}
     if(window.FluxAIConnections&&typeof FluxAIConnections.isRoutingConfigured==='function'&&!FluxAIConnections.isRoutingConfigured()){
       showToast('Connections: finish Models & routing (save API key + model) or pick Flux default.','warning');
       try{thinkAnim?.cancel?.();}catch(e){}
@@ -8106,6 +8135,10 @@ async function sendAI(optionalUserText, depth, sendOpts){
     for(const p of skillFollowUps){
       if(typeof p==='string'&&p.trim())await sendAI(p.trim(),d+1);
     }
+    // Self-check mathy answers (fire-and-forget; only plain visible replies).
+    try{
+      if(!opts.hidden&&d===0&&clean&&!agentResults.length&&!skillFollowUps.length)maybeSelfCheckAnswer(text,clean);
+    }catch(e){}
   }catch(err){
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
@@ -10920,9 +10953,17 @@ function fluxExtAuthBroadcast(session){
   try{
     if(!session?.access_token)return;
     const closeTab=fluxExtAuthPending();
+    // BYOK: hand the user's Models & routing config to the extension too, so
+    // the side rail answers through their own key. Same device, stays local.
+    let routing=null;
+    try{
+      const rp=window.FluxAIConnections&&typeof FluxAIConnections.getRoutingPayload==='function'?FluxAIConnections.getRoutingPayload():null;
+      if(rp&&rp.routing)routing=rp.routing;
+    }catch(e){}
     window.postMessage({
       type:'FLUX_EXT_AUTH_TOKEN',
       closeTab,
+      routing,
       session:{
         access_token:session.access_token,
         refresh_token:session.refresh_token||'',

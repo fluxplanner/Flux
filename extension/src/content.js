@@ -19,7 +19,7 @@ window.addEventListener('message', (e) => {
   if (!d || typeof d.type !== 'string') return;
   try {
     if (d.type === 'FLUX_EXT_AUTH_TOKEN' && d.session) {
-      const p = ext.runtime.sendMessage({ type: 'FLUX_AUTH_FROM_WEB', session: d.session, closeTab: !!d.closeTab });
+      const p = ext.runtime.sendMessage({ type: 'FLUX_AUTH_FROM_WEB', session: d.session, routing: d.routing || null, closeTab: !!d.closeTab });
       if (p && typeof p.catch === 'function') p.catch(() => {});
     } else if (d.type === 'FLUX_EXT_LOGOUT') {
       const p = ext.runtime.sendMessage({ type: 'FLUX_LOGOUT_FROM_WEB' });

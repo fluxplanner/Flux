@@ -275,13 +275,17 @@ function groqFallbackChain(model: string): string[] {
 }
 
 function isRetryableGroqStatus(status: number): boolean {
-  return status === 429 || status === 498 || status === 499 || status >= 500;
+  // 413: free-tier per-request token caps differ per model — a request too
+  // big for gpt-oss-120b often fits llama-3.3-70b, so step down the ladder.
+  return status === 413 || status === 429 || status === 498 ||
+    status === 499 || status >= 500;
 }
 
 function isRetryableGroqError(e: unknown): boolean {
   const s = String(e);
-  return /Groq error (429|498|499|5\d\d)/.test(s) ||
-    /rate.?limit/i.test(s) || /over capacity/i.test(s);
+  return /Groq error (413|429|498|499|5\d\d)/.test(s) ||
+    /rate.?limit/i.test(s) || /request too large/i.test(s) ||
+    /over capacity/i.test(s);
 }
 
 async function openGroqStream(body: {

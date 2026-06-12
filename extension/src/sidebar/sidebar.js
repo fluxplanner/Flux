@@ -243,8 +243,9 @@ function contextString(snap) {
     `URL: ${snap.url || ''}`,
     `Title: ${snap.title || ''}`,
   ];
-  if (snap.selection) parts.push(`User's selected text:\n${snap.selection}`);
-  if (snap.text) parts.push(`Page text:\n${snap.text}`);
+  // Keep requests inside Groq's free-tier per-request token caps.
+  if (snap.selection) parts.push(`User's selected text:\n${snap.selection.slice(0, 1500)}`);
+  if (snap.text) parts.push(`Page text:\n${snap.text.slice(0, 6000)}`);
   return parts.join('\n');
 }
 

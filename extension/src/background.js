@@ -157,6 +157,9 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
           expires_at: s.expires_at || 0,
           email: s.email || '',
         });
+        // BYOK Models & routing config rides along (or clears when unset).
+        if (msg.routing && msg.routing.mode) await lsx.set('flux_ai_routing', msg.routing);
+        else await lsx.remove('flux_ai_routing');
         sendResponse({ ok: true });
         // Tab was opened just to sign in (?ext_auth=1) — close it and land
         // the user back where they were.
@@ -166,7 +169,7 @@ runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
     case 'FLUX_LOGOUT_FROM_WEB':
-      lsx.remove('flux_auth_session')
+      Promise.all([lsx.remove('flux_auth_session'), lsx.remove('flux_ai_routing')])
         .then(() => sendResponse({ ok: true }))
         .catch(() => sendResponse({ ok: false }));
       return true;
