@@ -132,6 +132,7 @@
 <link rel="stylesheet" href="public/css/flux-study-hub.css">
 <link rel="stylesheet" href="public/css/flux-tex.css">
 <link rel="stylesheet" href="public/css/flux-knowledge.css">
+<link rel="stylesheet" href="public/css/flux-notebook.css">
 <link rel="stylesheet" href="public/css/flux-visual.css">
 <link rel="stylesheet" href="public/css/flux-reftool-history.css">
 <link rel="stylesheet" href="public/css/flux-staff-tabs.css">
@@ -2060,6 +2061,7 @@
               <span class="ai-topbar-attach__ico" aria-hidden="true">📎</span>
               <span class="visually-hidden">Attach image</span>
             </label>
+            <button type="button" class="ai-topbar-btn" onclick="window.FluxNotebook&&FluxNotebook.open()" title="NotebookLM-style workspace: sources, grounded chat, quizzes" aria-label="Open Flux Notebook">Notebook</button>
             <button type="button" class="ai-topbar-btn" onclick="window.FluxKnowledge&&FluxKnowledge.openManager()" title="Class materials Flux studies from when answering" aria-label="Knowledge base">Knowledge</button>
             <button type="button" class="ai-topbar-btn" onclick="clearAIChat()" title="Clear this chat thread" aria-label="Clear chat">Clear</button>
             <button type="button" class="ai-topbar-btn ai-topbar-btn--accent" onclick="explainMyWeek()" title="Summarize the week with your planner context" aria-label="Summarize this week">✦ Week</button>
@@ -2754,6 +2756,7 @@
     <script defer src="public/js/flux-site-enhancements.js"></script>
     <script defer src="public/js/flux-tex.js"></script>
     <script defer src="public/js/flux-knowledge.js"></script>
+    <script defer src="public/js/flux-notebook.js"></script>
     <script defer src="public/js/app.js"></script>
     <script defer src="public/js/flux-deep-links.js"></script>
     <script defer src="public/js/flux-voice-capture.js"></script>
