@@ -8,17 +8,33 @@
   const STORAGE_CUSTOM = 'flux_ai_connections_custom_v1';
   const STORAGE_MODEL = 'flux_ai_model_route_v1';
 
+  // Stroke-icon set (lucide-style) so the connections grid carries no emoji.
+  var _ci = function (paths, extra) {
+    return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"' + (extra || '') + '>' + paths + '</svg>';
+  };
+  var CONN_ICON = {
+    mail: _ci('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>'),
+    calendar: _ci('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+    check: _ci('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+    file: _ci('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>'),
+    book: _ci('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'),
+    play: _ci('<rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/>'),
+    cap: _ci('<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>'),
+    edit: _ci('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>'),
+    code: _ci('<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>'),
+    chat: _ci('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'),
+  };
   const DEFS = [
-    { id: 'gmail', group: 'Google', icon: '📧', title: 'Gmail', hint: 'Injects anonymized inbox subject lines into Flux AI context when Google is linked.', needsGoogle: true },
-    { id: 'gcalendar', group: 'Google', icon: '🗓', title: 'Google Calendar', hint: 'Same Google login as Flux. Calendar already feeds your planner snapshot; Flux AI assumes you use it.', needsGoogle: true },
-    { id: 'google_tasks', group: 'Google', icon: '✅', title: 'Google Tasks', hint: 'Open tasks from your default Google Tasks list (Canvas tab → Google Tasks). Flux AI can reference due items when enabled.', needsGoogle: true },
-    { id: 'google_docs', group: 'Google', icon: '📄', title: 'Google Docs', hint: 'Use Settings → Google Docs to connect the API. Set a primary doc URL; Flux AI pulls plain text before each message when this is on.', needsGoogle: false },
-    { id: 'notebooklm', group: 'Google', icon: '📓', title: 'NotebookLM', hint: 'No public developer API — enable this pin so Flux knows you use NotebookLM. Link Google Docs you keep beside notebooks, paste summaries in the note, and connect Google Docs for live excerpts.', needsGoogle: false },
-    { id: 'youtube', group: 'Google', icon: '▶', title: 'YouTube', hint: 'No OAuth yet. When on, Flux AI can cite study playlists, explain concepts visually, and help you scaffold watch notes.', needsGoogle: false },
-    { id: 'canvas', group: 'Planner', icon: '🎓', title: 'Canvas LMS', hint: 'Uses your Canvas tab connection + pinned reader text.', needsGoogle: false },
-    { id: 'notion_like', group: 'Productivity', icon: '📝', title: 'Wikis & notes apps', hint: 'Generic toggle for Notion/Obsidian style notes — Flux invites pasting snippets and keeps structure suggestions tool-agnostic.', needsGoogle: false },
-    { id: 'github', group: 'Build', icon: '⌘', title: 'Code & repos', hint: 'When on, Flux can help interpret errors, scaffold commits, and review diffs — you paste snippets or CI logs.', needsGoogle: false },
-    { id: 'slack_discord', group: 'Teams', icon: '💬', title: 'Slack / Discord', hint: 'No API keys stored. Helps draft messages or summarize threads when you paste them.', needsGoogle: false },
+    { id: 'gmail', group: 'Google', logoSvg: CONN_ICON.mail, title: 'Gmail', hint: 'Injects anonymized inbox subject lines into Flux AI context when Google is linked.', needsGoogle: true },
+    { id: 'gcalendar', group: 'Google', logoSvg: CONN_ICON.calendar, title: 'Google Calendar', hint: 'Same Google login as Flux. Calendar already feeds your planner snapshot; Flux AI assumes you use it.', needsGoogle: true },
+    { id: 'google_tasks', group: 'Google', logoSvg: CONN_ICON.check, title: 'Google Tasks', hint: 'Open tasks from your default Google Tasks list (Canvas tab → Google Tasks). Flux AI can reference due items when enabled.', needsGoogle: true },
+    { id: 'google_docs', group: 'Google', logoSvg: CONN_ICON.file, title: 'Google Docs', hint: 'Use Settings → Google Docs to connect the API. Set a primary doc URL; Flux AI pulls plain text before each message when this is on.', needsGoogle: false },
+    { id: 'notebooklm', group: 'Google', logoSvg: CONN_ICON.book, title: 'NotebookLM', hint: 'No public developer API — enable this pin so Flux knows you use NotebookLM. Link Google Docs you keep beside notebooks, paste summaries in the note, and connect Google Docs for live excerpts.', needsGoogle: false },
+    { id: 'youtube', group: 'Google', logoSvg: CONN_ICON.play, title: 'YouTube', hint: 'No OAuth yet. When on, Flux AI can cite study playlists, explain concepts visually, and help you scaffold watch notes.', needsGoogle: false },
+    { id: 'canvas', group: 'Planner', logoSvg: CONN_ICON.cap, title: 'Canvas LMS', hint: 'Uses your Canvas tab connection + pinned reader text.', needsGoogle: false },
+    { id: 'notion_like', group: 'Productivity', logoSvg: CONN_ICON.edit, title: 'Wikis & notes apps', hint: 'Generic toggle for Notion/Obsidian style notes — Flux invites pasting snippets and keeps structure suggestions tool-agnostic.', needsGoogle: false },
+    { id: 'github', group: 'Build', logoSvg: CONN_ICON.code, title: 'Code & repos', hint: 'When on, Flux can help interpret errors, scaffold commits, and review diffs — you paste snippets or CI logs.', needsGoogle: false },
+    { id: 'slack_discord', group: 'Teams', logoSvg: CONN_ICON.chat, title: 'Slack / Discord', hint: 'No API keys stored. Helps draft messages or summarize threads when you paste them.', needsGoogle: false },
   ];
 
   /** @typedef {{enabled?:boolean,live?:boolean,note?:string}} ConnItem */
@@ -367,7 +383,7 @@
       card.innerHTML =
         '<div class="flux-conn-card-top">' +
         '<span class="flux-conn-ico">' +
-        esc(d.icon) +
+        (d.logoSvg || esc(d.icon)) +
         '</span>' +
         '<div class="flux-conn-meta">' +
         '<div class="flux-conn-name">' +

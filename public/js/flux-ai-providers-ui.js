@@ -61,7 +61,7 @@
           return `
             <div class="flux-aip-row" data-prov="${esc(p.id)}">
               <div class="flux-aip-row-head">
-                <span class="flux-aip-icon" aria-hidden="true">${esc(p.icon)}</span>
+                <span class="flux-aip-icon" aria-hidden="true">${p.logoSvg || esc(p.icon)}</span>
                 <div class="flux-aip-row-title">
                   <strong>${esc(p.name)}</strong>
                   <a class="flux-aip-link" href="${esc(p.site)}" target="_blank" rel="noopener noreferrer">Get key →</a>

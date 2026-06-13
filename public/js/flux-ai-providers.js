@@ -40,6 +40,7 @@
       id: 'anthropic',
       name: 'Anthropic (Claude)',
       icon: '🅰️',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#D97757" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5v6M12 14.5v6M3.5 12h6M14.5 12h6M6 6l3.2 3.2M14.8 14.8 18 18M18 6l-3.2 3.2M9.2 14.8 6 18"/></svg>',
       site: 'https://console.anthropic.com/settings/keys',
       keyHint: 'Starts with sk-ant-…',
       models: [
@@ -77,6 +78,7 @@
       id: 'openai',
       name: 'OpenAI (GPT)',
       icon: '◯',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#10A37F" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 19 7v10l-7 4-7-4V7z"/><circle cx="12" cy="12" r="3.2"/></svg>',
       site: 'https://platform.openai.com/api-keys',
       keyHint: 'Starts with sk-…',
       models: [
@@ -106,6 +108,7 @@
       id: 'google',
       name: 'Google (Gemini)',
       icon: '✦',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2c.5 5 4.5 9 9.5 10-5 .5-9 4.5-9.5 9.5-.5-5-4.5-9-9.5-9.5C7.5 11 11.5 7 12 2z" fill="#4285F4"/></svg>',
       site: 'https://aistudio.google.com/app/apikey',
       keyHint: 'From Google AI Studio',
       models: [
@@ -137,6 +140,7 @@
       id: 'groq',
       name: 'Groq (very fast)',
       icon: '⚡',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#F55036"/></svg>',
       site: 'https://console.groq.com/keys',
       keyHint: 'Free tier with rate limits',
       models: [
@@ -167,6 +171,7 @@
       id: 'mistral',
       name: 'Mistral',
       icon: '🇫🇷',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="3.6" fill="#FFD000"/><rect x="3" y="10.2" width="18" height="3.6" fill="#FF8205"/><rect x="3" y="15.4" width="18" height="3.6" fill="#FA500F"/></svg>',
       site: 'https://console.mistral.ai/api-keys',
       keyHint: 'From console.mistral.ai',
       models: [
@@ -195,6 +200,7 @@
       id: 'deepseek',
       name: 'DeepSeek',
       icon: '🔷',
+      logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 9c4.2 0 6.3 3.2 10.2 3.2 3 0 5-1.6 6-4.2.4 6.2-3.8 10.5-9 10.5-4.2 0-7.4-3.2-7.4-7.3 0-.9.2-1.6.6-2.2z" fill="#4D6BFE"/></svg>',
       site: 'https://platform.deepseek.com/api_keys',
       keyHint: 'From platform.deepseek.com',
       models: [
