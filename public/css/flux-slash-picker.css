@@ -1,0 +1,75 @@
+/* flux-slash-picker.css — Discord-style slash-command autocomplete popup */
+
+.flux-slash-pop {
+  position: fixed;
+  z-index: 10070;
+  display: none;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--card2, #11162a);
+  border: 1px solid var(--border2, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+  padding: 6px;
+}
+
+.flux-slash-head {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--muted2, #7b809a);
+  padding: 6px 10px 4px;
+}
+
+.flux-slash-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.flux-slash-row.sel,
+.flux-slash-row:hover {
+  background: var(--accent-soft, rgba(95, 142, 255, 0.14));
+}
+
+.flux-slash-ico {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent, #5f8eff);
+}
+
+.flux-slash-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.flux-slash-cmd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text, #f3f5fc);
+}
+.flux-slash-desc {
+  font-size: 0.72rem;
+  color: var(--muted2, #7b809a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flux-slash-name {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--muted, #9aa0b4);
+  max-width: 40%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 560px) {
+  .flux-slash-name { display: none; }
+}
