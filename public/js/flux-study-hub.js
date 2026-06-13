@@ -287,7 +287,7 @@
   // atom
   function shellFill(z) { const cap = [2, 8, 18, 32, 32, 18, 8], out = []; let rem = z; for (const c of cap) { if (rem <= 0) break; out.push(Math.min(c, rem)); rem -= c; } return out; }
   // interactive 3D atom — canvas, perspective, depth-sorted electron spheres, drag-orbit + scroll-zoom
-  let atomRot = { yaw: 0, pitch: -0.95 }, atomZoom = 1, atomRAF = 0, atomDrag = null;
+  let atomRot = { yaw: 0, pitch: -1.15 }, atomZoom = 1, atomRAF = 0, atomDrag = null;
   const rotXp = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; };
   const rotYp = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; };
   function atomSideHTML(e) {
@@ -357,8 +357,9 @@
       const items = []; let maxR = 1;
       shells.forEach((cnt, i) => {
         const R = base * (1.7 + i * 1.45); maxR = Math.max(maxR, R);
-        const incl = Math.min(1.15, 0.35 + i * 0.26), node = i * 2.39996;
-        const ci = Math.cos(incl), si = Math.sin(incl), cn = Math.cos(node), sn = Math.sin(node);
+        // All shells share one flat orbital plane (incl = node = 0) — the
+        // viewer tilts the whole atom with drag instead of per-shell tilts.
+        const ci = 1, si = 0, cn = 1, sn = 0;
         // orbit ring (depth-faded in two passes: back half dimmer)
         ctx.lineWidth = 1.2;
         for (let pass = 0; pass < 2; pass++) {
@@ -431,7 +432,7 @@
     cancelAnimationFrame(atomRAF); atomRAF = 0; frame(performance.now());
     cvs.style.touchAction = 'none';
     cvs.addEventListener('pointerdown', (ev) => { atomDrag = { x: ev.clientX, y: ev.clientY, yaw: atomRot.yaw, pitch: atomRot.pitch }; try { cvs.setPointerCapture(ev.pointerId); } catch (e2) {} });
-    cvs.addEventListener('pointermove', (ev) => { if (!atomDrag) return; atomRot.yaw = atomDrag.yaw + (ev.clientX - atomDrag.x) * 0.01; atomRot.pitch = Math.max(-1.45, Math.min(1.45, atomDrag.pitch + (ev.clientY - atomDrag.y) * 0.01)); });
+    cvs.addEventListener('pointermove', (ev) => { if (!atomDrag) return; atomRot.yaw = atomDrag.yaw + (ev.clientX - atomDrag.x) * 0.01; atomRot.pitch = atomDrag.pitch + (ev.clientY - atomDrag.y) * 0.01; });
     const end = () => { atomDrag = null; }; cvs.addEventListener('pointerup', end); cvs.addEventListener('pointercancel', end);
     cvs.addEventListener('wheel', (ev) => { ev.preventDefault(); atomZoom = Math.max(0.5, Math.min(2.6, atomZoom * (1 - ev.deltaY * 0.0012))); }, { passive: false });
   }
@@ -685,7 +686,7 @@
       else if (a === 'gas') { const o = $('fshGasOut'); try { const r = gasSolve({ P: num('fshG_P'), V: num('fshG_V'), n: num('fshG_n'), T: num('fshG_T') }); o.innerHTML = `<span class="big">${esc([r.P, r.V, r.n, r.T].join(' · '))}</span>`; } catch (e) { o.innerHTML = `<span class="fsh-err">${esc(e.message)}</span>`; } }
       else if (a === 'view-atom') { atomN = +act.dataset.n; state.chemTab = 'atom'; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'atom')); renderChemBody(); requestAnimationFrame(moveTabGlide); }
       else if (a === 'atom-prev' || a === 'atom-next') { atomN = Math.max(1, Math.min(elements().length, atomN + (a === 'atom-next' ? 1 : -1))); updateAtomInfo(); }
-      else if (a === 'atom-reset') { atomRot = { yaw: 0, pitch: -0.95 }; atomZoom = 1; }
+      else if (a === 'atom-reset') { atomRot = { yaw: 0, pitch: -1.15 }; atomZoom = 1; }
       else if (a === 'ws-gen') { wsGenerate(); $('fshWsPreview').innerHTML = wsPreview(); }
       else if (a === 'ws-print') { wsPrint(); }
     });
