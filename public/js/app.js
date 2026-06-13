@@ -10615,6 +10615,24 @@ function initScrollLayout(){
 const FLUX_OAUTH_PM_SUCCESS='flux-oauth-success';
 const FLUX_OAUTH_PM_ERROR='flux-oauth-error';
 
+async function _fluxOnOAuthSuccess(){
+  const sb=getSB();
+  if(!sb)return;
+  const{data:{session}}=await sb.auth.getSession();
+  if(session?.user){
+    await handleSignedIn(session.user,session);
+    if(typeof showToast==='function')showToast('Signed in with Google','success');
+  }else if(typeof showToast==='function'){
+    showToast('Could not read session — try refreshing the page.','warning');
+  }
+  // Close the OAuth popup from the parent side (always works for windows we
+  // opened, even when window.opener was dropped — e.g. Arc, new-tab fallback).
+  try{
+    const pop=window.open('','fluxGoogleOAuth');
+    if(pop&&!pop.closed)pop.close();
+  }catch(_){}
+}
+
 function initOAuthPostMessageListener(){
   if(window.__fluxOAuthPmListener)return;
   window.__fluxOAuthPmListener=true;
@@ -10625,20 +10643,22 @@ function initOAuthPostMessageListener(){
       return;
     }
     if(ev.data.type!==FLUX_OAUTH_PM_SUCCESS)return;
-    const sb=getSB();
-    if(!sb)return;
-    const{data:{session}}=await sb.auth.getSession();
-    if(session?.user){
-      await handleSignedIn(session.user,session);
-      if(typeof showToast==='function')showToast('Signed in with Google','success');
-    }else if(typeof showToast==='function'){
-      showToast('Could not read session — try refreshing the page.','warning');
-    }
-    try{
-      const pop=window.open('','fluxGoogleOAuth');
-      if(pop&&!pop.closed)pop.close();
-    }catch(_){}
+    await _fluxOnOAuthSuccess();
   });
+  // BroadcastChannel fallback: the callback tab can't postMessage when
+  // window.opener is null (Arc / popup-blocked → new tab). This channel
+  // reaches the original tab regardless so it can finish sign-in and close
+  // the stray callback tab.
+  try{
+    if('BroadcastChannel' in window&&!window.__fluxOAuthBc){
+      const bc=new BroadcastChannel('flux-oauth');
+      window.__fluxOAuthBc=bc;
+      bc.onmessage=async (e)=>{
+        if(!e||!e.data||e.data.type!==FLUX_OAUTH_PM_SUCCESS)return;
+        await _fluxOnOAuthSuccess();
+      };
+    }
+  }catch(_){}
 }
 
 async function signInWithGoogleKeepData(){
@@ -10873,28 +10893,47 @@ async function initAuth(){
 
     const oauthPopupNotify=()=>{
       const op=window.opener;
-      if(!op||op.closed)return false;
       const errInUrl=!!(params.get('error')||hash.includes('error='));
       let errMsg='Could not complete sign-in. Try again.';
       if(errInUrl){
         const raw=params.get('error_description')||params.get('error')||'Sign-in failed';
         try{errMsg=decodeURIComponent(String(raw).replace(/\+/g,' '));}catch(e){errMsg=String(raw);}
       }
-      try{
-        if(session?.user)op.postMessage({type:FLUX_OAUTH_PM_SUCCESS},location.origin);
-        else op.postMessage({type:FLUX_OAUTH_PM_ERROR,message:errMsg},location.origin);
-      }catch(e){console.warn('OAuth postMessage',e);}
       const ok=!!session?.user;
+      // Notify the original tab by every channel we have: opener postMessage
+      // (when available) AND BroadcastChannel (works even when opener is null,
+      // which is what left the callback tab stuck open in Arc).
+      try{
+        if(op&&!op.closed){
+          op.postMessage({type:ok?FLUX_OAUTH_PM_SUCCESS:FLUX_OAUTH_PM_ERROR,message:ok?undefined:errMsg},location.origin);
+        }
+      }catch(e){console.warn('OAuth postMessage',e);}
+      try{
+        if('BroadcastChannel' in window){
+          const bc=new BroadcastChannel('flux-oauth');
+          bc.postMessage({type:ok?FLUX_OAUTH_PM_SUCCESS:FLUX_OAUTH_PM_ERROR,message:ok?undefined:errMsg});
+          setTimeout(()=>{try{bc.close();}catch(_){}} ,500);
+        }
+      }catch(_){}
       const title=ok?'Signed in':'Sign-in did not finish';
       const sub=ok
         ?'This window will close — continue in your other Flux tab.'
         :'You can close this window and try again from the other tab.';
       document.body.innerHTML='<div style="font-family:system-ui,sans-serif;padding:48px 24px;text-align:center;color:#e8ecff;background:#0B0F1A;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px"><p style="font-weight:600;margin:0;font-size:16px">'+title+'</p><p style="opacity:.72;font-size:14px;margin:0;max-width:280px;line-height:1.5">'+sub+'</p></div>';
-      setTimeout(()=>{try{window.close();}catch(e){}},ok?280:400);
+      // Try to self-close; if the browser blocks it (no opener), the parent
+      // tab closes us via the named-window handle, and as a last resort we
+      // bounce to the clean app so no dead callback page lingers.
+      setTimeout(()=>{
+        try{window.close();}catch(e){}
+        setTimeout(()=>{ if(!window.closed){ try{ location.replace(window.location.pathname); }catch(_){} } },600);
+      },ok?280:400);
       return true;
     };
 
-    if(isOAuthCallback&&window.opener&&!window.opener.closed){
+    // Treat as a popup if we have an opener OR were opened under the OAuth
+    // window name (Arc keeps the name but drops opener).
+    const looksLikePopup=(window.opener&&!window.opener.closed)||window.name==='fluxGoogleOAuth';
+    if(isOAuthCallback&&looksLikePopup){
       if(oauthPopupNotify())return;
     }
     
@@ -11634,7 +11673,23 @@ async function handleSignedIn(user,session){
   const onboardedLegacy=load('flux_onboarded',false);
   const onboarded=onboardedNew||onboardedLegacy;
   const hasLocalData=tasks.length>0||notes.length>0||classes.length>0;
-  const isFirstTime=!onboarded&&!hasLocalData;
+  // A user who already has a server-persisted role row (user_roles) has an
+  // account — never re-run onboarding for them, even if the local
+  // flux_onboarding_done flag is missing (new device / cleared storage /
+  // an onboarding that was closed without finishing). This is what caused
+  // teachers to be re-prompted to "make a new account" on every sign-in.
+  let hasServerRole=false;
+  try{
+    const pr=FluxRole.profile;
+    hasServerRole=!!(pr&&pr.role&&!pr._fromLocalSetup&&
+      ['teacher','counselor','staff','admin','student'].includes(String(pr.role)));
+  }catch(_){}
+  // Belt-and-braces: if the server says they're an educator, mark onboarding
+  // done locally so nothing downstream re-triggers it.
+  if(hasServerRole&&isStaffRole&&!onboardedNew){
+    try{save(onboardedNewKey,true);save('flux_onboarded',true);}catch(_){}
+  }
+  const isFirstTime=!onboarded&&!hasLocalData&&!hasServerRole;
 
   if(isFirstTime){
     if(isStaffRole){

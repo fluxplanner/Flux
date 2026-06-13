@@ -87,7 +87,10 @@
   opacity:.5;
 }
 #loginScreen .lx-lemni svg{
-  width:min(1180px,150vw);height:auto;margin-top:4vh;
+  /* Scale by BOTH width and height so the mark stays fully visible in short
+     browser tabs (the lemniscate is ~2:1, so cap height too) and sits a touch
+     higher than before. */
+  width:min(1100px,140vw);height:auto;max-height:46vh;margin-top:2vh;
   filter:drop-shadow(0 0 50px rgba(0,194,255,.22));
 }
 #loginScreen .lx-lemni .lx-lemni-path{
@@ -173,7 +176,14 @@
 #loginScreen .lx-headline .grad{
   background:var(--lx-grad);background-size:200% 100%;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  /* Promote to its own compositing layer — animating background-position on a
+     background-clip:text element flickers ("blinks in and out") on Chromium
+     unless the layer is stabilized. */
+  will-change:background-position;transform:translateZ(0);backface-visibility:hidden;
   animation:lxGrad 9s ease infinite}
+@media (prefers-reduced-motion:reduce){
+  #loginScreen .lx-headline .grad{animation:none;background-position:0 50%}
+}
 @keyframes lxGrad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 #loginScreen .lx-sub{
   margin:18px 0 0;font-size:clamp(1rem,1.5vw,1.16rem);line-height:1.62;color:var(--lx-muted);
