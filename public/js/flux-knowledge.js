@@ -123,6 +123,121 @@
     lsSave(lsLoad().filter(function (d) { return d.id !== id; }));
   }
 
+  /* ───────── file upload (PDF text + image OCR via vision) ───────── */
+
+  var PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var _pdfjsP = null;
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (_pdfjsP) return _pdfjsP;
+    _pdfjsP = new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = PDFJS_SRC;
+      s.onload = function () {
+        try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (e) {}
+        res(window.pdfjsLib);
+      };
+      s.onerror = function () { rej(new Error('Could not load the PDF reader.')); };
+      document.head.appendChild(s);
+    });
+    return _pdfjsP;
+  }
+
+  function readArrayBuffer(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(new Error('Could not read the file.')); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  function readDataURL(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(new Error('Could not read the file.')); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function extractPdfText(file) {
+    return loadPdfJs().then(function (pdfjsLib) {
+      return readArrayBuffer(file).then(function (buf) {
+        return pdfjsLib.getDocument({ data: buf }).promise.then(function (pdf) {
+          var pages = Math.min(pdf.numPages, 50);
+          var chain = Promise.resolve('');
+          for (var i = 1; i <= pages; i++) {
+            (function (n) {
+              chain = chain.then(function (acc) {
+                if (acc.length >= MAX_DOC_CHARS) return acc;
+                return pdf.getPage(n).then(function (page) {
+                  return page.getTextContent().then(function (tc) {
+                    var txt = tc.items.map(function (it) { return it.str; }).join(' ');
+                    return acc + '\n' + txt;
+                  });
+                });
+              });
+            })(i);
+          }
+          return chain.then(function (text) { return text.replace(/\s+\n/g, '\n').trim(); });
+        });
+      });
+    });
+  }
+
+  /** Image → text via the planner's vision proxy (Flux AI must be loaded). */
+  function extractImageText(file) {
+    return readDataURL(file).then(function (dataUrl) {
+      var m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+      if (!m) throw new Error('Unsupported image.');
+      var API = window.API || (window.__FluxExtensionAPI && window.__FluxExtensionAPI.API);
+      if (!API || !API.ai || typeof window.fluxAuthHeaders !== 'function') {
+        throw new Error('Sign in / open Flux AI first so images can be read.');
+      }
+      return window.fluxAuthHeaders().then(function (headers) {
+        return fetch(API.ai, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            system: 'Transcribe everything legible in this image — text, equations, diagram labels, table values. Be literal and complete; output only the transcription.',
+            messages: [{ role: 'user', content: 'Transcribe this image for my notes.' }],
+            imageBase64: m[2],
+            mimeType: m[1],
+          }),
+        });
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        return (j && j.content && j.content[0] && j.content[0].text) || '';
+      });
+    });
+  }
+
+  function handleFiles(fileList, onDone) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) { onDone && onDone(); return; }
+    var msg = document.getElementById('fkbUpMsg');
+    var setMsg = function (t) { if (msg) { msg.hidden = false; msg.textContent = t; } };
+    var i = 0;
+    function next() {
+      if (i >= files.length) { setMsg(files.length + ' file(s) added to knowledge.'); onDone && onDone(); return; }
+      var f = files[i++];
+      var isPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+      var isImg = /^image\//i.test(f.type);
+      setMsg('Reading ' + f.name + '… (' + i + '/' + files.length + ')');
+      var p = isPdf ? extractPdfText(f) : isImg ? extractImageText(f) : Promise.reject(new Error('Unsupported file type.'));
+      p.then(function (text) {
+        text = String(text || '').trim();
+        if (!text) throw new Error('No readable text found in ' + f.name + '.');
+        add(f.name.replace(/\.[^.]+$/, ''), text, isPdf ? 'PDF' : 'Image');
+        next();
+      }).catch(function (err) {
+        setMsg(err.message || ('Could not read ' + f.name));
+        next();
+      });
+    }
+    next();
+  }
+
   /* ───────── Manager UI ───────── */
 
   function esc(s) {
@@ -150,8 +265,13 @@
           '<textarea id="fkbContent" placeholder="Paste the material here…" rows="6"></textarea>' +
           '<div class="fkb-row fkb-row--end">' +
             '<span class="fkb-count" id="fkbCount">0 / ' + MAX_DOC_CHARS + '</span>' +
+            '<label class="fkb-btn fkb-btn--ghost" id="fkbUploadBtn" tabindex="0">' +
+              'Upload PDF / image' +
+              '<input type="file" id="fkbFile" accept="application/pdf,image/*" multiple hidden>' +
+            '</label>' +
             '<button class="fkb-btn" id="fkbAdd">Add to knowledge</button>' +
           '</div>' +
+          '<div class="fkb-upmsg" id="fkbUpMsg" hidden></div>' +
         '</div>' +
         '<div class="fkb-list" id="fkbList"></div>' +
       '</div>';
@@ -201,6 +321,12 @@
       if (e.target.id === 'fkbContent') {
         var cnt = document.getElementById('fkbCount');
         if (cnt) cnt.textContent = e.target.value.length + ' / ' + MAX_DOC_CHARS;
+      }
+    });
+    ov.addEventListener('change', function (e) {
+      if (e.target.id === 'fkbFile') {
+        handleFiles(e.target.files, renderList);
+        e.target.value = '';
       }
     });
     document.addEventListener('keydown', escClose);
