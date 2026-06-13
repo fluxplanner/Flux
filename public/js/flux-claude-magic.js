@@ -605,6 +605,7 @@
 
   /* ── Keyboard shortcut hint badge ───────────────────────────────── */
   function addCmdKHint() {
+    return; // Cmd+K hint badge removed per product direction
     var nav = document.querySelector('.nav-bar,.bottom-nav,.sidebar-nav');
     if (!nav || document.getElementById('fluxCmdKHint')) return;
     var hint = document.createElement('button');

@@ -10490,6 +10490,8 @@ function renderCmdResults(){
 // Keyboard hint tooltip
 function showKeyHint(){
   const hint=document.getElementById('keyHint');
+  if(hint)hint.style.display='none';
+  return; // keyboard hint tooltip removed per product direction
   if(!hint||load('flux_keyhint_dismissed',false))return;
   setTimeout(()=>{
     hint.style.display='flex';

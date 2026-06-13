@@ -299,6 +299,7 @@
 
   /* ── 5. First-visit hint rail ──────────────────────────────── */
   function maybeShowHintRail() {
+    return; // keyboard-shortcut hint rail removed per product direction
     if (load(STORAGE_KEY_HINT_SEEN, false)) return;
     // Skip on mobile (narrow). Guard against innerWidth=0 from headless captures.
     if (window.innerWidth > 0 && window.innerWidth < 700) return;
@@ -367,6 +368,7 @@
 
   /* ── 7. Quick-command chip toolbar (dashboard) ─────────────── */
   function injectCmdRail() {
+    return; // quick-command / keyboard-shortcut rail removed per product direction
     if (load(STORAGE_KEY_CMD_RAIL, false)) return;
     var hero = document.querySelector('#dashboard .dash-v2-greet');
     if (!hero) return;
