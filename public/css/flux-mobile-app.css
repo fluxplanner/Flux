@@ -1213,6 +1213,19 @@ body.flux-panic .task-card.flux-task-urgent{
 @keyframes refToolSlideUp{ from{ transform: translateY(14px); opacity:0 } to{ transform: translateY(0); opacity:1 } }
 [data-theme="light"] .ref-tool-modal{ background: #fff; border-color: rgba(0,0,0,.08); }
 
+/* Inline rendering (Study Hub): the same tool, mounted in the panel body as a
+   normal interface instead of a popup overlay. */
+.ref-tool-inline{
+  background: var(--card2, rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: refToolFadeIn .18s ease both;
+}
+.ref-tool-inline .ref-tool-head--inline{ border-bottom: 1px solid rgba(255,255,255,.06); }
+.ref-tool-inline .ref-tool-body{ max-height: none; }
+[data-theme="light"] .ref-tool-inline{ background: #fff; border-color: rgba(0,0,0,.08); }
+
 .ref-tool-head{
   display: flex;
   align-items: center;

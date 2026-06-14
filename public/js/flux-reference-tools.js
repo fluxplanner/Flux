@@ -36,17 +36,55 @@
   // ─────────────────────────────────────────────────────────────────
   // Shared modal
   // ─────────────────────────────────────────────────────────────────
+  // When set (once), the next openToolModal renders INLINE into this element
+  // instead of a fixed overlay — used by the Study Hub so reference tools
+  // appear in the panel like a normal interface, not a popup.
+  let _inlineHostOnce = null;
+  function setInlineHost(el){ _inlineHostOnce = el || null; }
+
   function openToolModal({ id, emoji, title, tabs, renderBody, onTabChange, wide }){
+    const inlineHost = _inlineHostOnce;
+    _inlineHostOnce = null;
+
+    const savedTab = readToolTab(id);
+    const initialTab = (tabs && tabs.find(t => t.id === savedTab)) ? savedTab : (tabs && tabs[0] ? tabs[0].id : null);
+    const tabButtons = tabs ? tabs.map(t => `<button type="button" class="ref-tool-tab ${t.id===initialTab?'active':''}" data-tab="${esc(t.id)}">${esc(t.label)}</button>`).join('') : '';
+
+    // ── Inline path: render into the provided host, no overlay ──
+    if(inlineHost){
+      inlineHost.innerHTML = `
+        <div class="ref-tool-inline${wide ? ' ref-tool-inline--wide' : ''}">
+          <div class="ref-tool-head ref-tool-head--inline">
+            <span class="ref-tool-emoji" aria-hidden="true">${emoji || '🧩'}</span>
+            <div class="ref-tool-title">${esc(title || '')}</div>
+          </div>
+          ${tabs ? `<div class="ref-tool-tabs" role="tablist">${tabButtons}</div>` : ''}
+          <div class="ref-tool-body" id="refToolBody"></div>
+        </div>`;
+      const ibody = inlineHost.querySelector('#refToolBody');
+      const renderInlineTab = (tabId) => {
+        if(typeof renderBody === 'function') renderBody(ibody, tabId);
+        if(typeof onTabChange === 'function') onTabChange(tabId);
+        if(tabs){
+          inlineHost.querySelectorAll('.ref-tool-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+          writeToolTab(id, tabId);
+        }
+      };
+      if(tabs){
+        inlineHost.querySelectorAll('.ref-tool-tab').forEach(b => {
+          b.addEventListener('click', () => renderInlineTab(b.dataset.tab));
+        });
+      }
+      renderInlineTab(initialTab);
+      return inlineHost;
+    }
+
+    // ── Overlay path (default) ──
     closeToolModal();
     const overlay = document.createElement('div');
     overlay.className = 'ref-tool-overlay';
     overlay.id = 'refToolOverlay';
     if(wide) overlay.classList.add('ref-overlay--wide');
-
-    const savedTab = readToolTab(id);
-    const initialTab = (tabs && tabs.find(t => t.id === savedTab)) ? savedTab : (tabs && tabs[0] ? tabs[0].id : null);
-
-    const tabButtons = tabs ? tabs.map(t => `<button type="button" class="ref-tool-tab ${t.id===initialTab?'active':''}" data-tab="${esc(t.id)}">${esc(t.label)}</button>`).join('') : '';
 
     overlay.innerHTML = `
       <div class="ref-tool-modal" role="dialog" aria-modal="true" aria-labelledby="refToolTitle">
@@ -103,6 +141,9 @@
   }
 
   try{ window.fluxCloseToolModal = closeToolModal; }catch(e){}
+  // Public hook so the Study Hub can request the next reference tool render
+  // inline into a panel element instead of as an overlay popup.
+  try{ window.FluxRefTools = Object.assign(window.FluxRefTools || {}, { setInlineHost: setInlineHost }); }catch(e){}
 
   // ─────────────────────────────────────────────────────────────────
   // TOOL 1 — Math Formula Sheet

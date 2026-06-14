@@ -732,6 +732,27 @@
       try { window.fluxToolbox.renderToolIntoBody($('fshLgMount'), chip.sub, chip.tid); } catch (e3) { body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e3.message)}</div></div>`; }
       return;
     }
+    // Reference tools (chip.fn → openToolModal) render INLINE into the panel
+    // body instead of popping a modal: ask flux-reference-tools to mount the
+    // next tool into our body, then invoke the tool's open function.
+    if (chip.fn && typeof window[chip.fn] === 'function' && window.FluxRefTools && typeof window.FluxRefTools.setInlineHost === 'function') {
+      body.innerHTML = '<div class="fsh-panel" id="fshLgMount"></div>';
+      try {
+        window.FluxRefTools.setInlineHost($('fshLgMount'));
+        window[chip.fn]();
+        // If the tool ignored the inline host (didn't route through
+        // openToolModal), fall back to a clear "opened" note.
+        if (!$('fshLgMount').querySelector('.ref-tool-inline')) {
+          window.FluxRefTools.setInlineHost(null);
+          body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>Opened — it’s on screen now.</p></div></div>`;
+        }
+        return;
+      } catch (e5) {
+        try { window.FluxRefTools.setInlineHost(null); } catch (e6) {}
+        body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e5.message)}</div></div>`;
+        return;
+      }
+    }
     // Clicking the chip opens the tool directly — no intermediate button.
     let opened = false;
     try {
