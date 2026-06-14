@@ -1584,6 +1584,7 @@
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <input type="text" id="noteSearch" placeholder="Search notes..." style="flex:1;margin:0" oninput="renderNotesList()">
           <button onclick="openNewNote()">+ New</button>
+          <button type="button" class="btn-sec" onclick="window.FluxKnowledge&&FluxKnowledge.openManager()" title="Flux's knowledge base — class materials the AI studies from" style="white-space:nowrap">Knowledge</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
           <button onclick="setNoteFilter('all',this)" class="tmode-btn active">All</button>
