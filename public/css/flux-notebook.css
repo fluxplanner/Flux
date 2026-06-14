@@ -41,7 +41,31 @@
 }
 .fnb-x:hover { opacity: 1; background: rgba(255, 255, 255, 0.07); }
 
+/* View tabs — switch between Chat / Sources / Studio so it isn't cluttered */
+.fnb-viewtabs { display: flex; gap: 4px; margin: 0 auto 0 16px; }
+.fnb-viewtab {
+  background: none; border: none; color: var(--muted, #9aa0b4);
+  font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  padding: 6px 12px; border-radius: 9px; transition: all 0.15s;
+}
+.fnb-viewtab:hover { color: var(--text, #f3f5fc); background: rgba(255, 255, 255, 0.05); }
+.fnb-viewtab.active { color: var(--accent, #5f8eff); background: var(--accent-soft, rgba(95,142,255,0.14)); }
+
 .fnb-cols { display: flex; flex: 1 1 auto; min-height: 0; }
+/* Tab-driven: show only the active pane, full width */
+.fnb-cols[data-view] .fnb-sources,
+.fnb-cols[data-view] .fnb-chat,
+.fnb-cols[data-view] .fnb-studio { display: none; }
+.fnb-cols[data-view="sources"] .fnb-sources,
+.fnb-cols[data-view="chat"] .fnb-chat,
+.fnb-cols[data-view="studio"] .fnb-studio { display: flex; flex: 1 1 auto; width: auto; max-height: none; border: none; }
+.fnb-cols[data-view="studio"] .fnb-studio {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px; align-content: start; padding: 16px; overflow-y: auto;
+}
+.fnb-cols[data-view="studio"] .fnb-studio .fnb-col-head { grid-column: 1 / -1; }
+.fnb-cols[data-view="studio"] .fnb-gen { margin: 0; padding: 16px 14px; }
+.fnb-cols[data-view="sources"] .fnb-sources { flex-direction: column; }
 
 .fnb-col-head {
   display: flex; align-items: center; justify-content: space-between;

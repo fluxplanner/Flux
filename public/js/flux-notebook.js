@@ -127,9 +127,14 @@
       '<div class="fnb" role="dialog" aria-label="Flux Notebook">' +
         '<header class="fnb-top">' +
           '<div class="fnb-brand"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Flux Notebook</div>' +
+          '<div class="fnb-viewtabs" role="tablist">' +
+            '<button class="fnb-viewtab active" data-view="chat" role="tab">Chat</button>' +
+            '<button class="fnb-viewtab" data-view="sources" role="tab">Sources</button>' +
+            '<button class="fnb-viewtab" data-view="studio" role="tab">Studio</button>' +
+          '</div>' +
           '<button class="fnb-x" id="fnbClose" aria-label="Close">✕</button>' +
         '</header>' +
-        '<div class="fnb-cols">' +
+        '<div class="fnb-cols" data-view="chat">' +
           '<aside class="fnb-sources">' +
             '<div class="fnb-col-head">Sources <button class="fnb-mini" id="fnbAddSrc">+ Add</button></div>' +
             '<div class="fnb-src-list" id="fnbSrcList"></div>' +
@@ -415,6 +420,15 @@
     document.addEventListener('keydown', escClose);
     ov.addEventListener('click', function (e) {
       if (e.target.id === 'fnbClose') return close();
+      var vt = e.target.closest('.fnb-viewtab');
+      if (vt) {
+        var view = vt.getAttribute('data-view');
+        var cols = ov.querySelector('.fnb-cols');
+        if (cols) cols.setAttribute('data-view', view);
+        ov.querySelectorAll('.fnb-viewtab').forEach(function (b) { b.classList.toggle('active', b === vt); });
+        if (view === 'chat') { var inp = document.getElementById('fnbInput'); if (inp) inp.focus(); }
+        return;
+      }
       if (e.target.id === 'fnbAddSrc') return openAddModal();
       if (e.target.id === 'fnbSend' || e.target.closest('#fnbSend')) return sendChat();
 
