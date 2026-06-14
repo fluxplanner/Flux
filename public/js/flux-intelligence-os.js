@@ -379,10 +379,67 @@
     var card = document.getElementById('fiDashCard');
     var moreBtn = card && card.querySelector('[data-fi-open]');
     if (moreBtn) moreBtn.addEventListener('click', openCenter);
+    // Data is loaded by the time the card renders — safe to consider the
+    // once-a-day proactive notification here.
+    maybeNotifyDaily();
   }
 
   var _t = null;
   function scheduleCard() { clearTimeout(_t); _t = setTimeout(dashCard, 120); }
+
+  /* ───────── once-a-day proactive briefing notification ─────────
+   * Makes Flux reach OUT instead of waiting to be opened. Shows one banner
+   * per calendar day with the headline signal + a button into the Center.
+   * (A deployed daily-briefing Edge Function can pre-compute server-side and
+   * drop a row the client reads; this client path is the always-on fallback.) */
+  function lastBriefDate() { try { return typeof load === 'function' ? load('flux_last_briefing_date', '') : ''; } catch (e) { return ''; } }
+  function markBriefed(d) { try { if (typeof save === 'function') save('flux_last_briefing_date', d); } catch (e) {} }
+
+  function maybeNotifyDaily() {
+    var today = todayISO();
+    if (lastBriefDate() === today) return;
+    var dash = document.getElementById('dashboard');
+    if (!dash || dash.classList.contains('flux-edu-panel')) return; // students only
+    var a;
+    try { a = analyze(); } catch (e) { return; }
+    if (!a.insights.length && !a.briefing.topTask) return; // nothing worth surfacing yet
+    markBriefed(today);
+    var head = a.briefing.topRisk ? a.briefing.topRisk.title
+      : (a.briefing.topTask ? 'Start with ' + a.briefing.topTask.name : 'You\'re on track');
+    var ban = document.createElement('div');
+    ban.className = 'fi-daily-banner';
+    ban.innerHTML =
+      '<span class="fi-daily-spark">✦</span>' +
+      '<div class="fi-daily-text"><b>Your daily briefing is ready</b><span>' + esc(head) +
+        ' · ' + a.insights.length + ' signal' + (a.insights.length === 1 ? '' : 's') + '</span></div>' +
+      '<button type="button" class="fi-daily-open">Open</button>' +
+      '<button type="button" class="fi-daily-x" aria-label="Dismiss">✕</button>';
+    document.body.appendChild(ban);
+    requestAnimationFrame(function () { ban.classList.add('show'); });
+    var close = function () { ban.classList.remove('show'); setTimeout(function () { ban.remove(); }, 280); };
+    ban.querySelector('.fi-daily-open').addEventListener('click', function () { close(); openCenter(); });
+    ban.querySelector('.fi-daily-x').addEventListener('click', close);
+    setTimeout(function () { if (document.body.contains(ban)) close(); }, 12000);
+    // If the overnight server briefing has been computed, prefer its headline.
+    fetchServerBriefing().then(function (sb) {
+      if (sb && sb.headline && document.body.contains(ban)) {
+        var t = ban.querySelector('.fi-daily-text span');
+        if (t) t.textContent = sb.headline + (sb.signals && sb.signals.length ? ' · ' + sb.signals.length + ' signal' + (sb.signals.length === 1 ? '' : 's') : '');
+      }
+    });
+  }
+
+  /** Best-effort read of today's server-computed briefing row (optional). */
+  function fetchServerBriefing() {
+    try {
+      var client = typeof getSB === 'function' ? getSB() : null;
+      var uid = (window.currentUser && window.currentUser.id) || null;
+      if (!client || !uid) return Promise.resolve(null);
+      return client.from('flux_daily_briefings').select('payload').eq('user_id', uid).eq('brief_date', todayISO()).maybeSingle()
+        .then(function (r) { return r && r.data ? r.data.payload : null; })
+        .catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
 
   function boot() {
     try {

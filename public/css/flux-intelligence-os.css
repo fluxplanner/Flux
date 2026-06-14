@@ -76,3 +76,34 @@
   border: none; border-radius: 9px; padding: 6px 13px; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
 }
 .fi-card-act:hover { filter: brightness(1.08); }
+
+/* Once-a-day proactive briefing banner */
+.fi-daily-banner {
+  position: fixed; right: 18px; top: 18px; z-index: 9000;
+  display: flex; align-items: center; gap: 11px;
+  max-width: min(380px, calc(100vw - 36px));
+  padding: 12px 12px 12px 14px;
+  background: var(--card, #11162a); border: 1px solid rgba(95,142,255,0.35);
+  border-radius: 14px; box-shadow: 0 16px 50px rgba(0,0,0,0.5);
+  transform: translateY(-16px); opacity: 0; transition: transform 0.28s cubic-bezier(.22,1,.36,1), opacity 0.28s;
+}
+.fi-daily-banner.show { transform: none; opacity: 1; }
+.fi-daily-spark {
+  font-size: 1.1rem; flex: 0 0 auto;
+  background: linear-gradient(90deg, var(--accent, #5f8eff), var(--accent-2, #a874ff));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.fi-daily-text { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.fi-daily-text b { font-size: 0.86rem; }
+.fi-daily-text span { font-size: 0.75rem; color: var(--muted2, #7b809a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-daily-open {
+  flex: 0 0 auto; background: linear-gradient(125deg, var(--accent, #5f8eff), var(--accent-2, #a874ff));
+  color: #fff; border: none; border-radius: 9px; padding: 7px 13px; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.fi-daily-open:hover { filter: brightness(1.08); }
+.fi-daily-x { flex: 0 0 auto; background: none; border: none; color: var(--muted2, #7b809a); cursor: pointer; font-size: 0.8rem; padding: 4px 6px; border-radius: 7px; }
+.fi-daily-x:hover { color: var(--text, #fff); background: rgba(255,255,255,0.06); }
+
+@media (max-width: 600px) {
+  .fi-daily-banner { right: 10px; left: 10px; top: 10px; max-width: none; }
+}
