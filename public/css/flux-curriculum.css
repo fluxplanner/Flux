@@ -1,0 +1,113 @@
+/* flux-curriculum.css — Core requirements tracker on the profile */
+
+.fxc-card .fxc-sub {
+  font-size: 0.76rem;
+  color: var(--muted2, #7b809a);
+  margin: 2px 0 14px;
+  line-height: 1.5;
+}
+
+.fxc-curric { margin-bottom: 16px; }
+.fxc-curric:last-child { margin-bottom: 0; }
+
+.fxc-curric-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.fxc-pct {
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--muted, #9aa0b4);
+}
+
+.fxc-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.fxc-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent, #5f8eff), var(--accent-2, #a874ff));
+  transition: width 0.3s ease;
+}
+
+.fxc-group { margin-bottom: 10px; }
+.fxc-group-name {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted2, #7b809a);
+  margin: 0 0 5px 2px;
+}
+
+.fxc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  padding: 8px 11px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text, #f3f5fc);
+  transition: border-color 0.15s, background 0.15s;
+}
+.fxc-item:hover { border-color: var(--accent, #5f8eff); }
+
+.fxc-check {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid var(--muted2, #7b809a);
+  position: relative;
+  transition: all 0.15s;
+}
+.fxc-doing .fxc-check {
+  border-color: #fbbf24;
+  background: radial-gradient(circle, #fbbf24 0 38%, transparent 42%);
+}
+.fxc-done .fxc-check {
+  border-color: #34d399;
+  background: #34d399;
+}
+.fxc-done .fxc-check::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 1px;
+  width: 4px; height: 8px;
+  border: solid #06281d;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.fxc-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.fxc-name { font-size: 0.84rem; font-weight: 600; }
+.fxc-done .fxc-name { text-decoration: line-through; opacity: 0.6; }
+.fxc-detail { font-size: 0.7rem; color: var(--muted2, #7b809a); }
+
+.fxc-state {
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted, #9aa0b4);
+}
+.fxc-doing .fxc-state { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+.fxc-done .fxc-state { background: rgba(52, 211, 153, 0.16); color: #34d399; }
