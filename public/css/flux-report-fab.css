@@ -1,0 +1,48 @@
+/* flux-report-fab.css — floating Report button (flux-report-fab.js) */
+
+.flux-report-fab {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 7000;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 22, 38, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text, #f3f5fc);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+  opacity: 0.72;
+  transition: opacity 0.15s, transform 0.12s, border-color 0.15s;
+}
+.flux-report-fab:hover {
+  opacity: 1;
+  border-color: var(--accent, #5f8eff);
+  transform: translateY(-1px);
+}
+.flux-report-fab:active { transform: translateY(0); }
+.flux-report-fab svg { color: var(--accent, #5f8eff); flex: 0 0 auto; }
+
+[data-theme="light"] .flux-report-fab {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1a1f2e;
+}
+
+/* On mobile, lift above the bottom nav and shrink to an icon-only pill. */
+@media (max-width: 760px) {
+  .flux-report-fab {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    left: 12px;
+    padding: 9px;
+  }
+  .flux-report-fab__label { display: none; }
+}
