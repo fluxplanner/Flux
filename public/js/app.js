@@ -5831,6 +5831,21 @@ function backToNotesList(){document.getElementById('notesEditorView').style.disp
 function saveNote(){const title=document.getElementById('noteTitleInput').value.trim()||'Untitled';const body=document.getElementById('noteEditor').innerHTML;const subject=document.getElementById('noteSubjectTag').value;const starred=document.getElementById('starBtn').textContent==='⭐';if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.title=title;n.body=body;n.subject=subject;n.starred=starred;n.updatedAt=Date.now();}}else{const n={id:Date.now(),title,body,subject,starred,flashcards:[],createdAt:Date.now(),updatedAt:Date.now()};notes.unshift(n);currentNoteId=n.id;}save('flux_notes',notes);syncKey('notes',notes);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 function deleteNote(){if(!currentNoteId)return;if(!confirm('Delete this note?'))return;notes=notes.filter(n=>n.id!==currentNoteId);save('flux_notes',notes);backToNotesList();}
 function toggleStarNote(){const btn=document.getElementById('starBtn');btn.textContent=btn.textContent==='⭐'?'☆':'⭐';}
+// Send the open note into Flux's knowledge base (notes stay where they are).
+function sendNoteToKnowledge(){
+  try{
+    if(!window.FluxKnowledge||typeof FluxKnowledge.add!=='function'){if(typeof showToast==='function')showToast('Knowledge base not loaded yet.','warning');return;}
+    const title=(document.getElementById('noteTitleInput')?.value||'').trim();
+    const bodyEl=document.getElementById('noteEditor');
+    const body=bodyEl?(bodyEl.innerText||bodyEl.textContent||'').trim():'';
+    if(!body){if(typeof showToast==='function')showToast('Write something in the note first.','warning');return;}
+    const subjSel=document.getElementById('noteSubjectTag');
+    const subj=subjSel&&subjSel.selectedIndex>0?(subjSel.options[subjSel.selectedIndex].textContent||'').trim():'';
+    FluxKnowledge.add(title||'Note',body,subj);
+    if(typeof showToast==='function')showToast('Added to Knowledge — Flux will study from it.','success');
+  }catch(e){if(typeof showToast==='function')showToast(e.message||'Could not add to Knowledge.','error');}
+}
+try{window.sendNoteToKnowledge=sendNoteToKnowledge;}catch(e){}
 function fmt(cmd){document.execCommand(cmd,false,null);}
 function insHeading(){document.execCommand('formatBlock',false,'<h3>');}
 function insBullet(){document.execCommand('insertUnorderedList',false,null);}
