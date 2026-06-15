@@ -1,0 +1,49 @@
+/* flux-knowledge-hub.css — Notes/Knowledge/Notebook unified tab (flux-knowledge-hub.js) */
+
+.fkh-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.fkh-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted, #9aa0b4);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fkh-tab:hover { color: var(--text, #f3f5fc); }
+.fkh-tab.active { color: var(--accent, #5f8eff); border-bottom-color: var(--accent, #5f8eff); }
+
+.fkh-pane[hidden] { display: none; }
+.fkh-fallback { opacity: 0.6; font-size: 0.85rem; text-align: center; padding: 28px 0; }
+
+/* Inline knowledge manager: drop the modal chrome, fill the panel. */
+.fkb-modal--inline {
+  width: 100%;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.fkb-modal--inline .fkb-head,
+.fkb-modal--inline .fkb-add,
+.fkb-modal--inline .fkb-list { padding-left: 0; padding-right: 0; }
+
+/* Inline notebook: drop the overlay frame, give it real height in-panel. */
+.fnb-inline-wrap { display: block; }
+.fnb--inline {
+  width: 100%;
+  height: min(72vh, 720px);
+  border-radius: 16px;
+}
+@media (max-width: 760px) {
+  .fnb--inline { height: 78vh; }
+}

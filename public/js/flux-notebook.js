@@ -119,12 +119,14 @@
 
   var chatLog = []; // session-only [{role, content}]
 
-  function open() {
+  function open(mount) {
     close();
+    var inline = !!(mount && mount.nodeType === 1);
     var ov = document.createElement('div');
-    ov.id = 'fnbOverlay';
+    if (inline) { ov.className = 'fnb-inline-wrap'; }
+    else { ov.id = 'fnbOverlay'; }
     ov.innerHTML =
-      '<div class="fnb" role="dialog" aria-label="Flux Notebook">' +
+      '<div class="fnb' + (inline ? ' fnb--inline' : '') + '" role="dialog" aria-label="Flux Notebook">' +
         '<header class="fnb-top">' +
           '<div class="fnb-brand"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Flux Notebook</div>' +
           '<div class="fnb-viewtabs" role="tablist">' +
@@ -132,7 +134,7 @@
             '<button class="fnb-viewtab" data-view="sources" role="tab">Sources</button>' +
             '<button class="fnb-viewtab" data-view="studio" role="tab">Studio</button>' +
           '</div>' +
-          '<button class="fnb-x" id="fnbClose" aria-label="Close">✕</button>' +
+          (inline ? '' : '<button class="fnb-x" id="fnbClose" aria-label="Close">✕</button>') +
         '</header>' +
         '<div class="fnb-cols" data-view="chat">' +
           '<aside class="fnb-sources">' +
@@ -159,7 +161,8 @@
           '</aside>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(ov);
+    if (inline) { mount.innerHTML = ''; mount.appendChild(ov); }
+    else { document.body.appendChild(ov); }
     renderSources();
     wire(ov);
   }

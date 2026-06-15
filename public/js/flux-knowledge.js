@@ -246,16 +246,13 @@
     });
   }
 
-  function openManager() {
-    closeManager();
-    var ov = document.createElement('div');
-    ov.id = 'fkbOverlay';
-    ov.innerHTML =
-      '<div class="fkb-modal" role="dialog" aria-label="Flux knowledge base">' +
+  // Inner manager markup (shared by the modal + the inline hub tab).
+  function managerInnerHtml(inline) {
+    return '<div class="fkb-modal' + (inline ? ' fkb-modal--inline' : '') + '" role="dialog" aria-label="Flux knowledge base">' +
         '<div class="fkb-head">' +
           '<div><div class="fkb-title">Knowledge base</div>' +
           '<div class="fkb-sub">Paste notes, formula sheets, rubrics — Flux uses them when they match your question.</div></div>' +
-          '<button class="fkb-x" id="fkbClose" aria-label="Close">✕</button>' +
+          (inline ? '' : '<button class="fkb-x" id="fkbClose" aria-label="Close">✕</button>') +
         '</div>' +
         '<div class="fkb-add">' +
           '<div class="fkb-row">' +
@@ -275,11 +272,13 @@
         '</div>' +
         '<div class="fkb-list" id="fkbList"></div>' +
       '</div>';
-    document.body.appendChild(ov);
+  }
 
+  // Wire add/list/upload onto a root container (modal or inline hub tab).
+  function wireManager(root, onClose) {
     var renderList = function () {
       var docs = lsLoad();
-      var el = document.getElementById('fkbList');
+      var el = root.querySelector('#fkbList');
       if (!el) return;
       el.innerHTML = docs.length
         ? docs.slice().reverse().map(function (d) {
@@ -295,40 +294,46 @@
         : '<div class="fkb-empty">Nothing saved yet. Add your first formula sheet or notes above.</div>';
     };
     renderList();
-
-    ov.addEventListener('click', function (e) {
-      if (e.target === ov || e.target.id === 'fkbClose') return closeManager();
+    root.addEventListener('click', function (e) {
+      if (onClose && (e.target === root || e.target.id === 'fkbClose')) return onClose();
       var del = e.target.closest('.fkb-del');
       if (del) { remove(del.getAttribute('data-id')); renderList(); return; }
       if (e.target.id === 'fkbAdd') {
-        var t = document.getElementById('fkbTitle');
-        var s = document.getElementById('fkbSubject');
-        var c = document.getElementById('fkbContent');
+        var t = root.querySelector('#fkbTitle'), s = root.querySelector('#fkbSubject'), c = root.querySelector('#fkbContent');
         if (!c.value.trim()) { c.focus(); return; }
         try {
           add(t.value.trim() || c.value.trim().slice(0, 60), c.value, s.value.trim());
           t.value = ''; s.value = ''; c.value = '';
-          var cnt = document.getElementById('fkbCount');
-          if (cnt) cnt.textContent = '0 / ' + MAX_DOC_CHARS;
+          var cnt = root.querySelector('#fkbCount'); if (cnt) cnt.textContent = '0 / ' + MAX_DOC_CHARS;
           renderList();
           try { if (typeof showToast === 'function') showToast('Added — Flux will use it when it matches.', 'success'); } catch (e2) {}
-        } catch (err) {
-          try { if (typeof showToast === 'function') showToast(err.message, 'error'); } catch (e2) {}
-        }
+        } catch (err) { try { if (typeof showToast === 'function') showToast(err.message, 'error'); } catch (e2) {} }
       }
     });
-    ov.addEventListener('input', function (e) {
+    root.addEventListener('input', function (e) {
       if (e.target.id === 'fkbContent') {
-        var cnt = document.getElementById('fkbCount');
-        if (cnt) cnt.textContent = e.target.value.length + ' / ' + MAX_DOC_CHARS;
+        var cnt = root.querySelector('#fkbCount'); if (cnt) cnt.textContent = e.target.value.length + ' / ' + MAX_DOC_CHARS;
       }
     });
-    ov.addEventListener('change', function (e) {
-      if (e.target.id === 'fkbFile') {
-        handleFiles(e.target.files, renderList);
-        e.target.value = '';
-      }
+    root.addEventListener('change', function (e) {
+      if (e.target.id === 'fkbFile') { handleFiles(e.target.files, renderList); e.target.value = ''; }
     });
+  }
+
+  // Inline render into a hub tab (no overlay, no close button).
+  function renderInline(host) {
+    if (!host) return;
+    host.innerHTML = managerInnerHtml(true);
+    wireManager(host, null);
+  }
+
+  function openManager() {
+    closeManager();
+    var ov = document.createElement('div');
+    ov.id = 'fkbOverlay';
+    ov.innerHTML = managerInnerHtml(false);
+    document.body.appendChild(ov);
+    wireManager(ov, closeManager);
     document.addEventListener('keydown', escClose);
   }
 
@@ -340,6 +345,7 @@
   }
 
   window.FluxKnowledge = {
+    renderInline: renderInline,
     appendToSystem: appendToSystem,
     openManager: openManager,
     closeManager: closeManager,

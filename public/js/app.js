@@ -1447,7 +1447,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notes',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Knowledge',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
