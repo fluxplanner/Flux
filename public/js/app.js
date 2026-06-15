@@ -8026,6 +8026,7 @@ async function sendAI(optionalUserText, depth, sendOpts){
     if(window.FluxLayeredMemory?.enabled?.()&&FluxLayeredMemory.appendToSystem)system=FluxLayeredMemory.appendToSystem(system);
     if(window.FluxAIConnections&&typeof FluxAIConnections.appendToSystem==='function')system=FluxAIConnections.appendToSystem(system);
     try{if(window.FluxKnowledge&&typeof FluxKnowledge.appendToSystem==='function')system=FluxKnowledge.appendToSystem(system,text);}catch(e){}
+    try{if(window.FluxBenchmarks&&typeof FluxBenchmarks.appendToSystem==='function')system=FluxBenchmarks.appendToSystem(system);}catch(e){}
     if(window.FluxAIConnections&&typeof FluxAIConnections.isRoutingConfigured==='function'&&!FluxAIConnections.isRoutingConfigured()){
       showToast('Connections: finish Models & routing (save API key + model) or pick Flux default.','warning');
       try{thinkAnim?.cancel?.();}catch(e){}
