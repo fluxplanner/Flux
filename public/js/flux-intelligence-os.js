@@ -111,7 +111,10 @@
     var open = tasks().filter(function (t) { return t && !t.done; });
     var loadToday = open.filter(function (t) { return t.date && t.date <= today; });
     var minutes = loadToday.reduce(function (s, t) { return s + (+t.estTime || 30); }, 0);
+    // Capacity is calibrated per-student from their real on-time completion
+    // history (flux-eval); falls back to 180 min before there's any history.
     var CAPACITY = 180;
+    try { if (window.FluxEval && FluxEval.capacityMin) CAPACITY = FluxEval.capacityMin(); } catch (e) {}
     if (minutes > CAPACITY) {
       out.push({
         engine: 'Scheduling', severity: minutes > CAPACITY * 1.6 ? 'risk' : 'warn',
@@ -299,6 +302,15 @@
     catch (e) { return iso; }
   }
 
+  // Flux's own track record, once there's enough resolved history to be honest.
+  function accuracyFoot() {
+    try {
+      var a = window.FluxEval && FluxEval.accuracy && FluxEval.accuracy();
+      if (a && a.n >= 5) return ' · planning accuracy ' + a.pct + '% (n=' + a.n + ')';
+    } catch (e) {}
+    return '';
+  }
+
   function briefingHtml() {
     var a = analyze();
     var b = a.briefing;
@@ -319,7 +331,7 @@
         '<button type="button" class="fi-brief-more" data-fi-open>Full briefing →</button>' +
       '</div>' +
       top + riskLine + dl +
-      '<div class="fi-brief-foot">Burnout: <b class="fi-' + (b.burnout === 'Healthy' ? 'ok' : 'bad') + '">' + b.burnout + '</b> · ' + a.insights.length + ' signals from ' + b.engineCount + ' engines</div>' +
+      '<div class="fi-brief-foot">Burnout: <b class="fi-' + (b.burnout === 'Healthy' ? 'ok' : 'bad') + '">' + b.burnout + '</b> · ' + a.insights.length + ' signals from ' + b.engineCount + ' engines' + accuracyFoot() + '</div>' +
       '</div>';
   }
 
@@ -379,6 +391,9 @@
     var card = document.getElementById('fiDashCard');
     var moreBtn = card && card.querySelector('[data-fi-open]');
     if (moreBtn) moreBtn.addEventListener('click', openCenter);
+    // Eval loop: record today's expected-to-finish tasks so accuracy can be
+    // measured (and capacity recalibrated) once the day is past.
+    try { if (window.FluxEval && FluxEval.recordDaily) FluxEval.recordDaily(); } catch (e) {}
     // Data is loaded by the time the card renders — safe to consider the
     // once-a-day proactive notification here.
     maybeNotifyDaily();

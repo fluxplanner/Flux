@@ -136,6 +136,8 @@
 <link rel="stylesheet" href="public/css/flux-curriculum.css">
 <link rel="stylesheet" href="public/css/flux-report-fab.css">
 <link rel="stylesheet" href="public/css/flux-intelligence-os.css">
+<link rel="stylesheet" href="public/css/flux-rubric.css">
+<link rel="stylesheet" href="public/css/flux-opportunities.css">
 <link rel="stylesheet" href="public/css/flux-slash-picker.css">
 <link rel="stylesheet" href="public/css/flux-staff-work.css">
 <link rel="stylesheet" href="public/css/flux-visual.css">
@@ -2069,6 +2071,7 @@
               <span class="visually-hidden">Attach image</span>
             </label>
             <button type="button" class="ai-topbar-btn" onclick="window.FluxNotebook&&FluxNotebook.open()" title="NotebookLM-style workspace: sources, grounded chat, quizzes" aria-label="Open Flux Notebook">Notebook</button>
+            <button type="button" class="ai-topbar-btn" onclick="window.FluxRubric&&FluxRubric.open()" title="Grade a draft against a rubric before you submit" aria-label="Grade against rubric">Grade</button>
             <button type="button" class="ai-topbar-btn" onclick="window.FluxKnowledge&&FluxKnowledge.openManager()" title="Class materials Flux studies from when answering" aria-label="Knowledge base">Knowledge</button>
             <button type="button" class="ai-topbar-btn" onclick="clearAIChat()" title="Clear this chat thread" aria-label="Clear chat">Clear</button>
             <button type="button" class="ai-topbar-btn ai-topbar-btn--accent" onclick="explainMyWeek()" title="Summarize the week with your planner context" aria-label="Summarize this week">✦ Week</button>
@@ -2857,7 +2860,10 @@
 <script defer src="public/js/flux-personalization.js"></script>
 <script defer src="public/js/flux-estimate-learn.js"></script>
 <script defer src="public/js/flux-intelligence.js"></script>
+<script defer src="public/js/flux-eval.js"></script>
 <script defer src="public/js/flux-intelligence-os.js"></script>
+<script defer src="public/js/flux-rubric.js"></script>
+<script defer src="public/js/flux-opportunities.js"></script>
 <script defer src="public/js/flux-task-ux.js"></script>
 <script defer src="public/js/flux-mobile-swipe.js"></script>
 <script defer src="public/js/flux-task-context.js"></script>
