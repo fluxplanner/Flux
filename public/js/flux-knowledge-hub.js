@@ -15,7 +15,7 @@
 
   var PANEL = 'notes';
   var built = false;
-  var rendered = { knowledge: false, notebook: false };
+  var rendered = { knowledge: false };
 
   function panel() { return document.getElementById(PANEL); }
 
@@ -32,8 +32,7 @@
     bar.className = 'fkh-tabs';
     bar.innerHTML =
       '<button class="fkh-tab active" data-fkh="notes">Notes</button>' +
-      '<button class="fkh-tab" data-fkh="knowledge">Knowledge</button>' +
-      '<button class="fkh-tab" data-fkh="notebook">Notebook</button>';
+      '<button class="fkh-tab" data-fkh="knowledge">Knowledge</button>';
     var header = p.querySelector('.flux-page-header');
     if (header && header.parentNode === p) header.insertAdjacentElement('afterend', bar);
     else p.insertBefore(bar, p.firstChild);
@@ -47,12 +46,7 @@
     kHost.className = 'fkh-pane fkh-pane--knowledge';
     kHost.setAttribute('data-fkh-pane', 'knowledge');
     kHost.hidden = true;
-    var nHost = document.createElement('div');
-    nHost.className = 'fkh-pane fkh-pane--notebook';
-    nHost.setAttribute('data-fkh-pane', 'notebook');
-    nHost.hidden = true;
     stack.insertAdjacentElement('afterend', kHost);
-    kHost.insertAdjacentElement('afterend', nHost);
 
     bar.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-fkh]');
@@ -70,11 +64,6 @@
       var kh = p.querySelector('[data-fkh-pane="knowledge"]');
       try { if (window.FluxKnowledge && FluxKnowledge.renderInline) { FluxKnowledge.renderInline(kh); rendered.knowledge = true; } }
       catch (e) { kh.innerHTML = '<div class="fkh-fallback">Knowledge isn\'t available right now.</div>'; }
-    }
-    if (which === 'notebook' && !rendered.notebook) {
-      var nh = p.querySelector('[data-fkh-pane="notebook"]');
-      try { if (window.FluxNotebook && FluxNotebook.open) { FluxNotebook.open(nh); rendered.notebook = true; } }
-      catch (e) { nh.innerHTML = '<div class="fkh-fallback">Notebook isn\'t available right now.</div>'; }
     }
   }
 
