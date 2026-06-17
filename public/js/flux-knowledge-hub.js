@@ -1,21 +1,21 @@
 /**
- * flux-knowledge-hub.js — unifies Notes + Knowledge + Notebook into one tab.
+ * flux-knowledge-hub.js — the former "Notes" panel is now purely Knowledge.
  *
- * The sidebar "Notes" entry is relabelled "Knowledge" and its panel (#notes)
- * becomes a 3-tab hub:
- *   • Notes     — the existing rich notes editor (untouched, just shown/hidden)
- *   • Knowledge — the knowledge-doc manager, rendered inline (FluxKnowledge.renderInline)
- *   • Notebook  — the NotebookLM workspace, rendered inline (FluxNotebook.open(mount))
+ * Notes has been fully replaced by the Knowledge base. The sidebar entry +
+ * page title read "Knowledge", the old notes editor UI is hidden, and the
+ * knowledge-doc manager (FluxKnowledge.renderInline) fills the panel.
+ * (Notebook is its own separate sidebar tab — not here.)
  *
- * Lazy: Knowledge/Notebook only render the first time their tab is opened.
- * Self-contained IIFE; no app edits required beyond loading this file.
+ * The underlying notes data/functions are left intact in app.js so deep links
+ * and "Send to Knowledge" keep working; only the Notes *surface* is retired.
+ *
+ * Self-contained IIFE.
  */
 (function () {
   'use strict';
 
   var PANEL = 'notes';
   var built = false;
-  var rendered = { knowledge: false };
 
   function panel() { return document.getElementById(PANEL); }
 
@@ -27,44 +27,34 @@
     if (!stack) return;
     built = true;
 
-    // Tab bar inserted right after the panel header.
-    var bar = document.createElement('div');
-    bar.className = 'fkh-tabs';
-    bar.innerHTML =
-      '<button class="fkh-tab active" data-fkh="notes">Notes</button>' +
-      '<button class="fkh-tab" data-fkh="knowledge">Knowledge</button>';
+    // Hide the legacy Notes editor surface entirely.
+    stack.style.display = 'none';
+    stack.setAttribute('aria-hidden', 'true');
+
+    // Knowledge fills the panel.
+    var host = document.createElement('div');
+    host.id = 'fkhKnowledgeHost';
+    host.className = 'fkh-pane fkh-pane--knowledge';
     var header = p.querySelector('.flux-page-header');
-    if (header && header.parentNode === p) header.insertAdjacentElement('afterend', bar);
-    else p.insertBefore(bar, p.firstChild);
+    if (header && header.parentNode === p) header.insertAdjacentElement('afterend', host);
+    else p.insertBefore(host, stack);
 
-    // Notes pane = the existing stack (tagged so we can show/hide it).
-    stack.classList.add('fkh-pane', 'fkh-pane--notes');
-    stack.setAttribute('data-fkh-pane', 'notes');
-
-    // Mounts for the other two tabs.
-    var kHost = document.createElement('div');
-    kHost.className = 'fkh-pane fkh-pane--knowledge';
-    kHost.setAttribute('data-fkh-pane', 'knowledge');
-    kHost.hidden = true;
-    stack.insertAdjacentElement('afterend', kHost);
-
-    bar.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-fkh]');
-      if (btn) show(btn.getAttribute('data-fkh'));
-    });
+    renderKnowledge(host);
   }
 
-  function show(which) {
-    var p = panel();
-    if (!p) return;
-    p.querySelectorAll('.fkh-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-fkh') === which); });
-    p.querySelectorAll('[data-fkh-pane]').forEach(function (pane) { pane.hidden = pane.getAttribute('data-fkh-pane') !== which; });
-
-    if (which === 'knowledge' && !rendered.knowledge) {
-      var kh = p.querySelector('[data-fkh-pane="knowledge"]');
-      try { if (window.FluxKnowledge && FluxKnowledge.renderInline) { FluxKnowledge.renderInline(kh); rendered.knowledge = true; } }
-      catch (e) { kh.innerHTML = '<div class="fkh-fallback">Knowledge isn\'t available right now.</div>'; }
-    }
+  function renderKnowledge(host) {
+    try {
+      if (window.FluxKnowledge && FluxKnowledge.renderInline) { FluxKnowledge.renderInline(host); return; }
+    } catch (e) {}
+    host.innerHTML = '<div class="fkh-fallback">Knowledge isn\'t available right now.</div>';
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      if (window.FluxKnowledge && FluxKnowledge.renderInline) {
+        clearInterval(iv);
+        try { FluxKnowledge.renderInline(host); } catch (e) {}
+      } else if (tries > 20) clearInterval(iv);
+    }, 250);
   }
 
   /* Relabel the sidebar nav entries "Notes" → "Knowledge". */
@@ -74,7 +64,7 @@
       if (nl && /^\s*Notes\s*$/.test(nl.textContent)) nl.textContent = 'Knowledge';
     });
     var sub = panel() && panel().querySelector('.flux-page-sub');
-    if (sub) sub.textContent = 'Notes, your knowledge base, and Notebook — all in one place.';
+    if (sub) sub.textContent = 'Your knowledge base — class materials, formula sheets, and notes Flux studies from.';
   }
 
   function boot() {
@@ -90,5 +80,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FluxKnowledgeHub = { show: show };
+  window.FluxKnowledgeHub = { build: build };
 })();

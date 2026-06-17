@@ -2788,7 +2788,8 @@ const DEFAULT_TABS=[
   {id:'ai',icon:'✦',label:'Flux AI',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
   {id:'canvas',icon:'G',label:'Google',visible:true},
-  {id:'notes',icon:'📝',label:'Notes',visible:true},
+  {id:'notes',icon:'📝',label:'Knowledge',visible:true},
+  {id:'notebook',icon:'📓',label:'Notebook',visible:true},
   {id:'timer',icon:'⏱',label:'Focus Timer',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
@@ -2802,6 +2803,19 @@ tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='referen
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
 // Legacy tab label (older builds / stored flux_tabs)
 tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))t.label='Flux AI';});
+// Notes is now the Knowledge base; relabel older stored configs.
+tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Knowledge';});
+// Notebook moved to its own sidebar tab — place it right after Knowledge if newly added.
+(function placeNotebookTab(){
+  const ni=tabConfig.findIndex(t=>t.id==='notebook');
+  const ki=tabConfig.findIndex(t=>t.id==='notes');
+  if(ni<0||ki<0)return;
+  if(ni!==ki+1){
+    const [row]=tabConfig.splice(ni,1);
+    const nki=tabConfig.findIndex(t=>t.id==='notes');
+    tabConfig.splice(nki+1,0,row);
+  }
+})();
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
   if(/gmail/i.test(String(t.label||''))||t.label==='Canvas'||!t.label)t.label='Google';
@@ -3412,6 +3426,7 @@ const NAV_TAB_SVGS={
   more:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
   school:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v9"/><path d="M20 10v9"/><path d="M2 20h20"/><path d="m4 10 8-3 8 3"/><path d="M9 20v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/></svg>`,
   notes:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>`,
+  notebook:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>`,
   timer:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 6V3"/><path d="M9 2h6"/><path d="M12 12l3.5-2.5"/></svg>`,
   /* Google hub (Gmail, Tasks, Calendar, Docs, Canvas LMS) */
   google:`<svg class="nt-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`,
@@ -3523,7 +3538,7 @@ function renderSidebars(){
   const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
   const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
   const includeWorkspaceNav=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
-  const schoolIds=['canvas','notes','timer','toolbox'];
+  const schoolIds=['canvas','notes','notebook','timer','toolbox'];
   const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
     const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
     const lab=esc(tc?.label||id);
