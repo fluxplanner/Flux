@@ -125,5 +125,70 @@
   function stats() { return { raw: get(), traits: profile() }; }
   function reset() { save_(KEY, blank()); }
 
-  window.FluxLearnerProfile = { record: record, appendToSystem: appendToSystem, profile: profile, stats: stats, reset: reset };
+  /* ───────── transparency card: "How Flux explains to you" ───────── */
+
+  var LEVEL_TXT = { foundational: 'Plain-language, concrete examples', 'on-level': 'Balanced explanations', advanced: 'Precise, moves quickly' };
+  var LENGTH_TXT = { terse: 'Keeps it short', moderate: 'Medium-length', detailed: 'Thorough answers' };
+  var TONE_TXT = { casual: 'Warm & conversational', neutral: 'Neutral tone', formal: 'Formal tone' };
+
+  function chip(label) { return '<span class="flp-chip">' + label + '</span>'; }
+
+  function ensureStyles() {
+    if (document.getElementById('flpStyles')) return;
+    var s = document.createElement('style');
+    s.id = 'flpStyles';
+    s.textContent =
+      '.flp-card .flp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}' +
+      '.flp-card .flp-head h3{margin:0}' +
+      '.flp-ico{font-size:1.2rem;color:var(--accent)}' +
+      '.flp-sub,.flp-empty{font-size:.8rem;color:var(--muted2);line-height:1.6;margin:0 0 12px}' +
+      '.flp-empty{margin-bottom:0}' +
+      '.flp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}' +
+      '.flp-chip{font-size:.74rem;padding:4px 10px;border-radius:999px;background:rgba(var(--accent-rgb),.12);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.22)}' +
+      '.flp-clarity-top{display:flex;justify-content:space-between;font-size:.74rem;color:var(--muted2);margin-bottom:5px}' +
+      '.flp-meter{height:7px;border-radius:999px;background:var(--card2);overflow:hidden}' +
+      '.flp-meter>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),rgba(var(--accent-rgb),.6));transition:width .4s ease}' +
+      '.flp-clarity-note{font-size:.72rem;color:var(--muted);margin-top:6px}' +
+      '.flp-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}' +
+      '.flp-n{font-size:.72rem;color:var(--muted);font-family:"JetBrains Mono",monospace}' +
+      '.flp-reset{padding:6px 12px;font-size:.76rem}';
+    document.head.appendChild(s);
+  }
+
+  function renderCard(host) {
+    host = host || document.getElementById('fluxLearnerCard');
+    if (!host) return;
+    ensureStyles();
+    var t = profile();
+    if (!t) {
+      host.innerHTML = '<div class="card flp-card"><div class="flp-head">' +
+        '<span class="flp-ico" aria-hidden="true">✦</span><h3>How Flux explains to you</h3></div>' +
+        '<p class="flp-empty">Flux is still getting to know how you learn. Chat with Flux AI a few times and it will start adapting its explanations to your style — pitched to your level, and clearer when something doesn\'t click.</p></div>';
+      return;
+    }
+    var chips = [chip(LEVEL_TXT[t.level]), chip(LENGTH_TXT[t.length]), chip(TONE_TXT[t.tone])];
+    if (t.wantsSimple) chips.push(chip('Leads with the simple idea'));
+    if (t.wantsDepth) chips.push(chip('Shows the reasoning'));
+    var clarityPct = Math.round((typeof t.clarity === 'number' ? t.clarity : 0.5) * 100);
+    var clarityLabel = t.struggling ? 'Flux is simplifying — recent answers needed another pass'
+      : clarityPct >= 70 ? 'Explanations are landing well'
+      : 'Explanations are landing okay';
+    host.innerHTML = '<div class="card flp-card"><div class="flp-head">' +
+      '<span class="flp-ico" aria-hidden="true">✦</span><h3>How Flux explains to you</h3></div>' +
+      '<p class="flp-sub">Flux quietly adapts to how you write and what helps you understand. It only keeps these summary traits — never your messages.</p>' +
+      '<div class="flp-chips">' + chips.join('') + '</div>' +
+      '<div class="flp-clarity"><div class="flp-clarity-top"><span>Comprehension</span><span>' + clarityPct + '%</span></div>' +
+      '<div class="flp-meter"><i style="width:' + clarityPct + '%"></i></div>' +
+      '<div class="flp-clarity-note">' + clarityLabel + '</div></div>' +
+      '<div class="flp-foot"><span class="flp-n">Learned from ' + t.n + ' message' + (t.n === 1 ? '' : 's') + '</span>' +
+      '<button type="button" class="btn-sec flp-reset">Reset what Flux learned</button></div></div>';
+    var btn = host.querySelector('.flp-reset');
+    if (btn) btn.addEventListener('click', function () {
+      reset();
+      renderCard(host);
+      try { if (typeof showToast === 'function') showToast('Reset — Flux will learn your style again from scratch.', 'info'); } catch (e) {}
+    });
+  }
+
+  window.FluxLearnerProfile = { record: record, appendToSystem: appendToSystem, profile: profile, stats: stats, reset: reset, renderCard: renderCard };
 })();
