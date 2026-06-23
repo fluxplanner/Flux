@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
   let userId: string | null = null;
   const auth = await verifyUserJWT(req);
-  if ("error" in auth && auth.error) {
+  if ("error" in auth) {
     if (PAYMENTS_ENABLED) {
       return json({ error: auth.error }, auth.status, origin);
     }

@@ -1,13 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Clean discriminated union: `"error" in auth` is a real discriminant, so the
+// shared `if ("error" in auth && auth.error)` guard narrows `auth` to AuthResult
+// (userId: string) in the success path across every function.
 export interface AuthResult {
   userId: string;
   email: string;
-  error?: never;
 }
 export interface AuthError {
-  userId?: never;
-  email?: never;
   error: string;
   status: number;
 }
