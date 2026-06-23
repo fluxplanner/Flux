@@ -115,6 +115,23 @@
       .then(function (t) { return { title: url.replace(/^https?:\/\//, '').slice(0, 80), content: t }; });
   }
 
+  /** Google-style web search via the Jina reader search endpoint (s.jina.ai). */
+  function webSearch(q) {
+    return fetch('https://s.jina.ai/' + encodeURIComponent(q), {
+      headers: { 'Accept': 'application/json', 'X-Respond-With': 'no-content' },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Search failed (' + r.status + ').');
+        return r.json();
+      })
+      .then(function (j) {
+        var rows = (j && j.data) || [];
+        return rows.slice(0, 8).map(function (it) {
+          return { title: it.title || it.url, url: it.url, desc: (it.description || it.snippet || '').slice(0, 160) };
+        }).filter(function (x) { return x.url; });
+      });
+  }
+
   /* ───────── overlay UI ───────── */
 
   var chatLog = []; // session-only [{role, content}]
@@ -202,7 +219,8 @@
       '<div class="fnb-modal">' +
         '<div class="fnb-modal-head">Add a source <button class="fnb-x" id="fnbModalClose">✕</button></div>' +
         '<div class="fnb-tabs">' +
-          '<button class="fnb-tab active" data-t="search">Search</button>' +
+          '<button class="fnb-tab active" data-t="search">Wikipedia</button>' +
+          '<button class="fnb-tab" data-t="web">Web search</button>' +
           '<button class="fnb-tab" data-t="paste">Paste text</button>' +
           '<button class="fnb-tab" data-t="url">From URL</button>' +
           '<button class="fnb-tab" data-t="kb">My knowledge</button>' +
@@ -247,6 +265,31 @@
         wikiFetch(r.getAttribute('data-title')).then(function (a) {
           addSource(a.title, a.content, 'wiki', 'https://en.wikipedia.org/wiki/' + encodeURIComponent(a.title));
           renderSources(); closeModal(); toast('Added "' + a.title + '"', 'success');
+        }).catch(function (err) { toast(err.message, 'error'); r.disabled = false; r.style.opacity = ''; });
+      });
+    } else if (t === 'web') {
+      b.innerHTML = '<div class="fnb-row"><input id="fnbWQ" placeholder="Search the web for sources…"><button class="fnb-btn" id="fnbWGo">Search</button></div><div id="fnbWRes" class="fnb-results"></div>';
+      var goW = function () {
+        var q = (document.getElementById('fnbWQ').value || '').trim();
+        if (!q) return;
+        var res = document.getElementById('fnbWRes');
+        res.innerHTML = '<div class="fnb-empty">Searching the web…</div>';
+        webSearch(q).then(function (hits) {
+          res.innerHTML = hits.length
+            ? hits.map(function (h) { return '<button class="fnb-result" data-url="' + esc(h.url) + '"><b>' + esc(h.title) + '</b><span>' + esc(h.desc || h.url) + '</span></button>'; }).join('')
+            : '<div class="fnb-empty">No results.</div>';
+        }).catch(function () { res.innerHTML = '<div class="fnb-empty">Web search is unavailable right now — try From URL.</div>'; });
+      };
+      document.getElementById('fnbWGo').addEventListener('click', goW);
+      document.getElementById('fnbWQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') goW(); });
+      b.addEventListener('click', function (e) {
+        var r = e.target.closest('.fnb-result');
+        if (!r) return;
+        r.disabled = true; r.style.opacity = '0.5';
+        var u = r.getAttribute('data-url');
+        urlFetch(u).then(function (a) {
+          addSource(a.title, a.content, 'url', u);
+          renderSources(); closeModal(); toast('Imported from the web', 'success');
         }).catch(function (err) { toast(err.message, 'error'); r.disabled = false; r.style.opacity = ''; });
       });
     } else if (t === 'paste') {

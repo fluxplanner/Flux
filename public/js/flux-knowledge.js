@@ -328,6 +328,13 @@
   }
 
   function openManager() {
+    // Knowledge now lives as its own full panel (the former "Notes" tab). If that
+    // inline manager is mounted, route there instead of spawning a duplicate
+    // overlay — two managers would share element IDs (#fkbTitle, #fkbList, …).
+    if (document.querySelector('.fkb-modal--inline') && typeof window.nav === 'function') {
+      closeManager();
+      try { window.nav('notes'); return; } catch (e) {}
+    }
     closeManager();
     var ov = document.createElement('div');
     ov.id = 'fkbOverlay';
