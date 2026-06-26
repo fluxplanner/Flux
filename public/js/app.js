@@ -10962,10 +10962,9 @@ async function initAuth(){
       return true;
     };
 
-    // Treat as a popup if we have an opener OR were opened under the OAuth
-    // window name (Arc keeps the name but drops opener).
-    const looksLikePopup=(window.opener&&!window.opener.closed)||window.name==='fluxGoogleOAuth';
-    if(isOAuthCallback&&looksLikePopup){
+    // Any OAuth callback tab should notify the original and close itself —
+    // whether it's a true popup (has opener) or a new tab (no opener, e.g. Arc).
+    if(isOAuthCallback){
       if(oauthPopupNotify())return;
     }
     
