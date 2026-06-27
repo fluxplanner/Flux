@@ -105,31 +105,120 @@
     });
   }
 
-  function urlFetch(url) {
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    return fetch('https://r.jina.ai/' + url, { headers: { 'X-Return-Format': 'text' } })
-      .then(function (r) {
-        if (!r.ok) throw new Error('Could not read that page (' + r.status + ').');
-        return r.text();
-      })
-      .then(function (t) { return { title: url.replace(/^https?:\/\//, '').slice(0, 80), content: t }; });
+  /* CORS-friendly text fetch. The old Jina endpoints (s./r.jina.ai) now require
+     an API key (401), so we proxy through AllOrigins (no key) and fall back to
+     corsproxy.io if it's down. */
+  function proxyText(targetUrl) {
+    var encoded = encodeURIComponent(targetUrl);
+    var endpoints = [
+      'https://corsproxy.io/?url=' + encoded,
+      'https://api.allorigins.win/raw?url=' + encoded,
+    ];
+    var i = 0;
+    function tryNext() {
+      if (i >= endpoints.length) return Promise.reject(new Error('Could not reach that page.'));
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 9000);
+      return fetch(endpoints[i++], ctrl ? { signal: ctrl.signal } : undefined)
+        .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('status ' + r.status); return r.text(); })
+        .catch(function () { clearTimeout(timer); return tryNext(); });
+    }
+    return tryNext();
   }
 
-  /** Google-style web search via the Jina reader search endpoint (s.jina.ai). */
+  function htmlToText(html) {
+    try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll('script,style,noscript,svg,header,footer,nav,form,iframe').forEach(function (n) { n.remove(); });
+      var main = doc.querySelector('article') || doc.querySelector('main') || doc.body || doc;
+      return (main.textContent || '').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+    } catch (e) {
+      return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    }
+  }
+
+  function urlFetch(url) {
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    return proxyText(url).then(function (raw) {
+      var text = htmlToText(raw);
+      if (!text || text.length < 40) throw new Error('Could not read meaningful text from that page.');
+      var title = url.replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 80);
+      try { var d = new DOMParser().parseFromString(raw, 'text/html'); if (d.title) title = d.title.trim().slice(0, 120); } catch (e) {}
+      return { title: title, content: text };
+    });
+  }
+
+  /** Web search. Tries a CORS proxy → DuckDuckGo HTML (rich results); falls back
+   *  to DuckDuckGo's instant-answer API (always CORS-enabled) so results still
+   *  appear when the proxies are slow or down. No API key needed. */
   function webSearch(q) {
-    return fetch('https://s.jina.ai/' + encodeURIComponent(q), {
-      headers: { 'Accept': 'application/json', 'X-Respond-With': 'no-content' },
-    })
-      .then(function (r) {
-        if (!r.ok) throw new Error('Search failed (' + r.status + ').');
-        return r.json();
-      })
+    var ddg = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q);
+    return proxyText(ddg).then(function (html) {
+      var rows = [];
+      try {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('.result__a').forEach(function (a) {
+          if (rows.length >= 8) return;
+          var href = a.getAttribute('href') || '';
+          var m = href.match(/[?&]uddg=([^&]+)/);
+          var real = m ? decodeURIComponent(m[1]) : href;
+          if (real.indexOf('//') === 0) real = 'https:' + real;
+          var card = (a.closest && a.closest('.result')) || a.parentNode;
+          var snip = card && card.querySelector ? card.querySelector('.result__snippet') : null;
+          rows.push({ title: (a.textContent || real).trim(), url: real, desc: ((snip && snip.textContent) || '').trim().slice(0, 160) });
+        });
+      } catch (e) {}
+      rows = rows.filter(function (x) { return /^https?:\/\//.test(x.url); });
+      return rows.length ? rows : fallbackSearch(q);
+    }).catch(function () { return fallbackSearch(q); });
+  }
+
+  /** Fallback search: DuckDuckGo Instant Answer API — CORS-enabled, no proxy/key. */
+  function ddgInstant(q) {
+    var u = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(q) + '&format=json&no_html=1&skip_disambig=1';
+    return fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+      var rows = [];
+      if (j.AbstractURL) rows.push({ title: j.Heading || j.AbstractSource || q, url: j.AbstractURL, desc: (j.AbstractText || '').slice(0, 160) });
+      function pushTopic(t) {
+        if (rows.length >= 8 || !t) return;
+        if (t.FirstURL && t.Text) rows.push({ title: t.Text.split(' - ')[0].slice(0, 90), url: t.FirstURL, desc: (t.Text || '').slice(0, 160) });
+        else if (t.Topics) t.Topics.forEach(pushTopic);
+      }
+      (j.RelatedTopics || []).forEach(pushTopic);
+      return rows.filter(function (x) { return /^https?:\/\//.test(x.url); });
+    });
+  }
+
+  /** Wikipedia full-text search (CORS-enabled, no key) → source-style results. */
+  function wikiWebResults(q) {
+    return fetch('https://en.wikipedia.org/w/rest.php/v1/search/page?q=' + encodeURIComponent(q) + '&limit=8')
+      .then(function (r) { return r.json(); })
       .then(function (j) {
-        var rows = (j && j.data) || [];
-        return rows.slice(0, 8).map(function (it) {
-          return { title: it.title || it.url, url: it.url, desc: (it.description || it.snippet || '').slice(0, 160) };
-        }).filter(function (x) { return x.url; });
+        return (j.pages || []).map(function (p) {
+          return {
+            title: p.title,
+            url: 'https://en.wikipedia.org/wiki/' + encodeURIComponent(p.key || p.title),
+            desc: (p.description || (p.excerpt || '').replace(/<[^>]+>/g, '')).slice(0, 160),
+          };
+        });
       });
+  }
+
+  /** No-proxy fallback that always returns relevant sources: DuckDuckGo instant
+   *  answers blended with Wikipedia full-text search, deduped by URL. Both are
+   *  CORS-enabled, so this works even when every proxy is down. */
+  function fallbackSearch(q) {
+    return Promise.all([
+      ddgInstant(q).catch(function () { return []; }),
+      wikiWebResults(q).catch(function () { return []; }),
+    ]).then(function (parts) {
+      var seen = {}, out = [];
+      parts[0].concat(parts[1]).forEach(function (x) {
+        if (out.length >= 8 || !x || !x.url || seen[x.url]) return;
+        seen[x.url] = 1; out.push(x);
+      });
+      return out;
+    });
   }
 
   /* ───────── overlay UI ───────── */
@@ -409,9 +498,21 @@
     timeline: { label: 'Timeline', sys: 'Extract a chronological timeline from the sources (date or sequence → event, one line each, markdown list). If the content is not chronological, organize it as an ordered learning path instead. Cite [n].' },
   };
 
+  /** Switch the notebook between its Chat / Sources / Studio columns. */
+  function setView(view) {
+    var cols = document.querySelector('.fnb-cols');
+    if (cols) cols.setAttribute('data-view', view);
+    document.querySelectorAll('.fnb-viewtab').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-view') === view);
+    });
+  }
+
   function runGenerator(kind) {
     var ctx = sourceContext();
     if (!ctx.srcs.length) { toast('Add (and check) at least one source first.', 'warning'); return; }
+    // Generated output is appended to the chat column, which is hidden on the
+    // Studio view — switch to Chat so the user actually sees it generate.
+    setView('chat');
     if (kind === 'quiz') return runQuiz(ctx);
     var g = GEN[kind];
     if (!g) return;

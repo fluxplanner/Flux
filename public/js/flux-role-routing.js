@@ -11,6 +11,7 @@
     'adminDashboard',
     'staffWorkboard',
     'lessonHub',
+    'teacherResources',
     'counselorMeetings',
     'counselorWorkspace',
     'adminOps',
@@ -201,6 +202,10 @@
       if (pid === 'lessonHub') {
         if (fr.isTeacher() && work) return { ok: true };
         return { ok: false, reason: 'lesson_hub', fallbackId: home };
+      }
+      if (pid === 'teacherResources') {
+        if (fr.isTeacher() && work) return { ok: true };
+        return { ok: false, reason: 'teacher_resources', fallbackId: home };
       }
       if (pid === 'counselorMeetings') {
         if (fr.isCounselor() && work) return { ok: true };

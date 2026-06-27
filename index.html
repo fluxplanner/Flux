@@ -135,6 +135,9 @@
 <link rel="stylesheet" href="public/css/flux-notebook.css">
 <link rel="stylesheet" href="public/css/flux-curriculum.css">
 <link rel="stylesheet" href="public/css/flux-report-fab.css">
+<link rel="stylesheet" href="public/css/flux-quick-notepad.css">
+<link rel="stylesheet" href="public/css/flux-teacher-resources.css">
+<link rel="stylesheet" href="public/css/flux-import-hub.css">
 <link rel="stylesheet" href="public/css/flux-intelligence-os.css">
 <link rel="stylesheet" href="public/css/flux-rubric.css">
 <link rel="stylesheet" href="public/css/flux-knowledge-hub.css">
@@ -1779,6 +1782,9 @@
       <div id="lessonHubBody"></div>
     </div>
 
+    <!-- ─── TEACHER · TEACHING RESOURCES (free/OER web resources, Work mode) ─── -->
+    <div id="teacherResources" class="panel flux-page flux-edu-panel" data-edu-role="teacher"></div>
+
     <!-- ─── COUNSELOR · MEETINGS (Google Calendar integrated) ─── -->
     <div id="counselorMeetings" class="panel flux-page flux-edu-panel" data-edu-role="counselor">
       <header class="flux-page-header flux-page-header--lead">
@@ -2149,6 +2155,7 @@
       <header class="flux-page-header flux-page-header--lead">
         <p class="flux-page-sub">Look, alerts, account, tabs, and data &amp; info.</p>
       </header>
+      <button type="button" class="btn-sec" style="margin:0 0 14px;display:inline-flex;align-items:center;gap:8px" onclick="if(typeof window.openImportHub==='function')window.openImportHub()">📥 Import everything into Flux</button>
       <div class="stabs flux-settings-stabs" role="tablist" aria-label="Settings sections">
         <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchStab('appearance',this)">Look</button>
         <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('notifications',this)">Alerts</button>
@@ -2782,6 +2789,9 @@
     <script defer src="public/js/flux-slash-picker.js"></script>
     <script defer src="public/js/flux-curriculum.js"></script>
     <script defer src="public/js/flux-report-fab.js"></script>
+    <script defer src="public/js/flux-quick-notepad.js"></script>
+    <script defer src="public/js/flux-teacher-resources.js"></script>
+    <script defer src="public/js/flux-import-hub.js"></script>
     <script defer src="public/js/app.js"></script>
     <script defer src="public/js/flux-deep-links.js"></script>
     <script defer src="public/js/flux-voice-capture.js"></script>

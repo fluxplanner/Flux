@@ -1,0 +1,101 @@
+/* flux-quick-notepad.css — floating educator scratchpad (work + personal). */
+
+.flux-qnote-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  border-radius: 999px;
+  background: var(--card2, #161b2e);
+  color: var(--text, #e8ecff);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  transition: transform .12s ease, background .15s ease, border-color .15s ease;
+}
+.flux-qnote-fab:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent, #6ea8ff);
+  color: var(--accent, #6ea8ff);
+}
+.flux-qnote-fab:active { transform: translateY(0) scale(.97); }
+.flux-qnote-fab__label { line-height: 1; }
+
+.flux-qnote-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 70px;
+  z-index: 1201;
+  width: min(360px, calc(100vw - 36px));
+  display: flex;
+  flex-direction: column;
+  background: var(--card, #11162a);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .5);
+  overflow: hidden;
+  transform-origin: bottom right;
+  opacity: 0;
+  transform: translateY(8px) scale(.98);
+  transition: opacity .16s ease, transform .16s ease;
+}
+.flux-qnote-panel.open { opacity: 1; transform: translateY(0) scale(1); }
+
+.flux-qnote-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, .08));
+}
+.flux-qnote-title { font-weight: 700; font-size: .9rem; color: var(--text, #e8ecff); }
+.flux-qnote-status { margin-left: auto; font-size: .7rem; color: var(--muted, #8b93b5); min-height: 1em; }
+.flux-qnote-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0; line-height: 1;
+  border: none; border-radius: 7px; background: transparent;
+  color: var(--muted, #8b93b5); cursor: pointer; font-size: .9rem;
+}
+.flux-qnote-x:hover { background: rgba(255, 255, 255, .07); color: var(--text, #e8ecff); }
+
+.flux-qnote-text {
+  border: none;
+  outline: none;
+  resize: vertical;
+  width: 100%;
+  min-height: 200px;
+  max-height: 50vh;
+  padding: 12px;
+  background: transparent;
+  color: var(--text, #e8ecff);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.flux-qnote-text::placeholder { color: var(--muted, #8b93b5); }
+
+.flux-qnote-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, .08));
+  font-size: .68rem;
+  color: var(--muted, #8b93b5);
+}
+
+/* Lift above the mobile bottom nav so it never sits under it. */
+@media (max-width: 768px) {
+  .flux-qnote-fab { bottom: 76px; right: 12px; }
+  .flux-qnote-panel { bottom: 128px; right: 12px; }
+}
+
+[data-theme="light"] .flux-qnote-fab { background: #fff; }
+[data-theme="light"] .flux-qnote-panel { background: #fff; }

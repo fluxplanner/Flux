@@ -1,0 +1,42 @@
+/* flux-import-hub.css — unified "Import into Flux" modal. */
+
+.fih-modal {
+  max-width: 520px;
+  width: min(520px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fih-head { display: flex; align-items: center; gap: 8px; }
+.fih-title { margin: 0; font-size: 1.05rem; flex: 1; }
+.fih-x {
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1; border: none; border-radius: 7px; background: transparent;
+  color: var(--muted, #8b93b5); cursor: pointer; font-size: .95rem;
+}
+.fih-x:hover { background: rgba(255, 255, 255, .07); color: var(--text, #e8ecff); }
+
+.fih-note { margin: 0 0 8px; font-size: .78rem; color: var(--muted, #8b93b5); line-height: 1.45; }
+
+.fih-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+
+.fih-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .1));
+  border-radius: 12px;
+  background: var(--card2, rgba(255, 255, 255, .03));
+  color: inherit;
+  cursor: pointer;
+  transition: border-color .12s ease, transform .12s ease, background .12s ease;
+}
+.fih-card:hover { border-color: var(--accent, #6ea8ff); transform: translateY(-1px); }
+.fih-card-ico { font-size: 1.4rem; flex: 0 0 auto; width: 28px; text-align: center; }
+.fih-card-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.fih-card-title { font-weight: 700; font-size: .9rem; color: var(--text, #e8ecff); }
+.fih-card-desc { font-size: .78rem; color: var(--muted, #8b93b5); line-height: 1.4; }
+.fih-card-arrow { flex: 0 0 auto; color: var(--accent, #6ea8ff); font-size: 1.1rem; }

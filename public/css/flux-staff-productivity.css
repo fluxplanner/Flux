@@ -247,6 +247,30 @@
   font-size: 0.8rem;
   cursor: pointer;
 }
+.flux-widget-config-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.flux-widget-config-move { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.flux-widget-config-move button {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  border-radius: 6px;
+  background: var(--card2, rgba(255, 255, 255, .04));
+  color: var(--text, #e8ecff);
+  cursor: pointer;
+}
+.flux-widget-config-move button:hover { border-color: var(--accent, #6ea8ff); color: var(--accent, #6ea8ff); }
 .flux-picker-result {
   margin-top: 10px;
   text-align: center;

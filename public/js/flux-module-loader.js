@@ -7,16 +7,16 @@
   'use strict';
 
   const SUITE_FLAG = 'enable_staff_productivity_suite';
-  const LAYOUT_KEY = 'flux_staff_widget_layout_v1';
+  const LAYOUT_KEY = 'flux_staff_widget_layout_v2'; // v2: lean default (only defaultOn modules visible)
 
   const CATALOG = [
-    { id: 'classroom_quick_grade', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Quick-Grade buckets', status: 'beta', module: 'FluxClassroomTools', method: 'renderQuickGrade' },
+    { id: 'classroom_quick_grade', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Quick-Grade buckets', status: 'beta', module: 'FluxClassroomTools', method: 'renderQuickGrade', defaultOn: true },
     { id: 'classroom_accommodations', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Accommodation cheat-sheet', status: 'beta', module: 'FluxClassroomTools', method: 'renderAccommodations' },
     { id: 'classroom_student_picker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Random student picker', status: 'beta', module: 'FluxClassroomTools', method: 'renderStudentPicker' },
-    { id: 'classroom_parent_log', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog' },
+    { id: 'classroom_parent_log', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog', defaultOn: true },
     { id: 'classroom_hall_pass', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Hall pass registry', status: 'beta', module: 'FluxClassroomTools', method: 'renderHallPass' },
-    { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket' },
-    { id: 'classroom_timer', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Classroom timer', status: 'beta', module: 'FluxClassroomTools', method: 'renderClassroomTimer' },
+    { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket', defaultOn: true },
+    { id: 'classroom_timer', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Classroom timer', status: 'beta', module: 'FluxClassroomTools', method: 'renderClassroomTimer', defaultOn: true },
     { id: 'classroom_oops_broadcast', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Oops broadcast', status: 'beta', module: 'FluxClassroomTools', method: 'renderOopsBroadcast' },
     { id: 'admin_duty_alerts', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Duty roster alerts', status: 'beta', module: 'FluxAdminWidgets', method: 'renderDutyAlerts' },
     { id: 'admin_sub_swap', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Sub-coverage swap', status: 'beta', module: 'FluxAdminWidgets', method: 'renderSubSwap' },
@@ -195,9 +195,19 @@
   }
 
   function defaultLayout(panelId, mods) {
+    // Lean by default: if any module on this panel is flagged defaultOn, only
+    // those show on a fresh layout (everything else is opt-in via Customize).
+    // Panels with no defaultOn flags keep the old behaviour (all non-planned on)
+    // so we never render an empty grid.
+    const anyDefault = mods.some((m) => m.defaultOn === true);
     return {
       panelId,
-      widgets: mods.map((m, i) => ({ id: m.id, visible: m.status !== 'planned', order: i, size: 'md' })),
+      widgets: mods.map((m, i) => ({
+        id: m.id,
+        visible: m.status !== 'planned' && (anyDefault ? m.defaultOn === true : true),
+        order: i,
+        size: 'md',
+      })),
     };
   }
 
@@ -243,13 +253,18 @@
     let layout = loadLayout(layoutPanelId);
     if (!layout || layout.panelId !== layoutPanelId) layout = defaultLayout(layoutPanelId, mods);
 
-    let grid = options.container ? host : host.querySelector('.flux-widget-grid');
     const gridId = widgetIdFilter
       ? `fluxWidgetGrid_${panelId}_${widgetIdFilter.join('_')}`
       : `fluxWidgetGrid_${panelId}`;
-    if (!grid || (options.container && grid.className !== 'flux-widget-grid')) {
+    // Reuse an existing grid inside the host. In container mode we must look for
+    // the grid *child* (host is the mount itself) — otherwise a re-render after
+    // Customize appends a second grid and the modules show twice.
+    let grid = options.container
+      ? host.querySelector(':scope > .flux-widget-grid')
+      : host.querySelector('.flux-widget-grid');
+    if (!grid) {
       grid = document.createElement('div');
-      grid.className = 'flux-widget-grid' + (options.container?.classList?.contains('teacher-modules-mount') ? ' flux-widget-grid--in-dash' : '');
+      grid.className = 'flux-widget-grid' + (host.classList && host.classList.contains('teacher-modules-mount') ? ' flux-widget-grid--in-dash' : '');
       grid.id = gridId;
       if (options.container) {
         host.appendChild(grid);
@@ -379,20 +394,28 @@
     ov.id = 'fluxWidgetConfigureModal';
     ov.className = 'modal-overlay';
     ov.style.display = 'flex';
-    const rows = layout.widgets
+    // Rows follow the saved order so up/down reordering here is meaningful.
+    const ordered = layout.widgets.slice().sort((a, b) => a.order - b.order);
+    const rows = ordered
       .map((w) => {
         const m = mods.find((x) => x.id === w.id);
         if (!m) return '';
-        return `<label class="flux-widget-config-row">
-          <input type="checkbox" data-wid="${esc(w.id)}" ${w.visible ? 'checked' : ''}/>
-          <span>${esc(m.title)} <em>(${esc(m.status)})</em></span>
-        </label>`;
+        return `<div class="flux-widget-config-row" data-wid="${esc(w.id)}">
+          <label class="flux-widget-config-toggle">
+            <input type="checkbox" data-wid="${esc(w.id)}" ${w.visible ? 'checked' : ''}/>
+            <span>${esc(m.title)} <em>(${esc(m.status)})</em></span>
+          </label>
+          <span class="flux-widget-config-move">
+            <button type="button" class="flux-widget-config-up" aria-label="Move up" title="Move up">↑</button>
+            <button type="button" class="flux-widget-config-down" aria-label="Move down" title="Move down">↓</button>
+          </span>
+        </div>`;
       })
       .join('');
     ov.innerHTML = `<div class="modal flux-widget-config-modal">
       <h3>Customize workspace</h3>
-      <p style="font-size:.78rem;color:var(--muted2)">Toggle modules for <strong>${esc(panelId)}</strong>. Layout is stored on this device only.</p>
-      <div class="flux-widget-config-list">${rows}</div>
+      <p style="font-size:.78rem;color:var(--muted2)">Toggle modules on/off and reorder them with ↑ ↓. Layout is stored on this device only.</p>
+      <div class="flux-widget-config-list" id="fluxWidgetConfigList">${rows}</div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button type="button" class="btn" id="fluxWidgetConfigSave">Save</button>
         <button type="button" class="btn-sec" onclick="document.getElementById('fluxWidgetConfigureModal').remove()">Cancel</button>
@@ -402,7 +425,22 @@
     ov.addEventListener('click', (e) => {
       if (e.target === ov) ov.remove();
     });
+    const list = ov.querySelector('#fluxWidgetConfigList');
+    list?.addEventListener('click', (e) => {
+      const up = e.target.closest('.flux-widget-config-up');
+      const down = e.target.closest('.flux-widget-config-down');
+      if (!up && !down) return;
+      const row = e.target.closest('.flux-widget-config-row');
+      if (!row) return;
+      if (up && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
+      else if (down && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+    });
     document.getElementById('fluxWidgetConfigSave')?.addEventListener('click', () => {
+      // Order from the DOM row order; visibility from the checkboxes.
+      Array.from(list.querySelectorAll('.flux-widget-config-row')).forEach((r, idx) => {
+        const w = layout.widgets.find((x) => x.id === r.getAttribute('data-wid'));
+        if (w) w.order = idx;
+      });
       layout.widgets.forEach((w) => {
         const cb = ov.querySelector(`input[data-wid="${w.id}"]`);
         if (cb) w.visible = cb.checked;

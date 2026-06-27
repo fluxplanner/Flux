@@ -1,5 +1,5 @@
 /* ── FLUX PLANNER · Service Worker — network-first fix ── */
-const STATIC = 'flux-static-v65';
+const STATIC = 'flux-static-v66';
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
 const APP_ORIGIN = self.location.origin;
@@ -51,6 +51,12 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
   // Cache API only supports http(s). Skip chrome-extension:, chrome:, blob:, etc.
   if (!isCacheableScheme(url)) return;
+
+  // Never touch cross-origin requests. Third-party fetches (notebook web search
+  // & URL import via CORS proxies, Wikipedia, etc.) must reach the network
+  // untouched — otherwise the network-first/offline fallbacks below can replace
+  // a failed third-party response with our own index.html, corrupting results.
+  try { if (new URL(url).origin !== APP_ORIGIN) return; } catch (_) { return; }
 
   // Never intercept: API calls, Supabase, Groq, Google, POST requests
   if (

@@ -457,21 +457,14 @@
   }
 
   function boot() {
+    // Dashboard Flux Intelligence surface removed per product decision — no
+    // briefing card injection and no daily banner. The window.FluxIntelligence
+    // API below stays exported so anything that calls it directly still works,
+    // but nothing auto-renders onto the dashboard anymore.
     try {
-      if (window.FluxBus && FluxBus.on) {
-        ['task_added', 'task_completed', 'task_updated', 'tasks_changed', 'session_ended', 'mood_logged']
-          .forEach(function (ev) { FluxBus.on(ev, scheduleCard); });
-      }
+      var existing = document.getElementById('fiDashCard');
+      if (existing) existing.remove();
     } catch (e) {}
-    try {
-      var dash = document.getElementById('dashboard');
-      if (dash && window.MutationObserver) {
-        new MutationObserver(function () {
-          if (dash.classList.contains('active') && !document.getElementById('fiDashCard')) scheduleCard();
-        }).observe(dash, { childList: true });
-      }
-    } catch (e) {}
-    scheduleCard();
   }
 
   window.FluxIntelligence = {
