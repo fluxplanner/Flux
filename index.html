@@ -102,6 +102,8 @@
 <link rel="stylesheet" href="public/css/styles.css">
 <link rel="stylesheet" href="public/css/login.css">
 <link rel="stylesheet" href="public/css/login-aurora.css">
+<link rel="stylesheet" href="public/css/flux-login-split.css">
+<link rel="stylesheet" href="public/css/flux-modern-ui.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
 <link rel="stylesheet" href="public/css/flux-apple-motion.css">
 <link rel="stylesheet" href="public/css/flux-apple-motion-pro.css">
@@ -226,6 +228,7 @@
 <link rel="stylesheet" href="public/css/flux-motion-50.css">
 <!-- Connectors + Skills (Claude-style registries) -->
 <link rel="stylesheet" href="public/css/flux-connectors.css">
+<link rel="stylesheet" href="public/css/flux-integrations-hub.css">
 <link rel="stylesheet" href="public/css/flux-skills.css">
 <link rel="stylesheet" href="public/css/flux-teacher-wishlist.css">
 <!-- Flux Elevate — high-impact polish layer, loads after Pulse so its rules win -->
@@ -825,8 +828,32 @@
           </div>
         </div>
 
-        <button class="ob-btn" onclick="obFinish()" id="obFinishBtn">Let's go! 🚀</button>
+        <button class="ob-btn" onclick="obNext()">Continue →</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
+      </div>
+
+      <!-- Step 6: Connect your tools (Akiflow-style picker) -->
+      <div class="ob-step" id="ob-step-6">
+        <div class="ob-ai-profile" aria-hidden="true" style="margin:0 auto 18px;max-width:340px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px 18px;text-align:left">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:1.1rem">✦</span>
+            <span style="font-weight:700;font-size:.9rem">Your AI profile</span>
+            <span id="obAiProfilePct" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent)">60%</span>
+          </div>
+          <div style="height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">
+            <div id="obAiProfileBar" style="height:100%;width:60%;border-radius:999px;background:linear-gradient(90deg,#00c2ff,#7c5cff);transition:width .5s ease"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.78rem;color:var(--muted2)">
+            <span aria-hidden="true">🧩</span><span>Integrations</span>
+            <span id="obAiProfileTools" style="margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--accent)">0 picked</span>
+          </div>
+        </div>
+        <div class="ob-title">Which <span style="background:linear-gradient(90deg,#00c2ff,#7c5cff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">tools</span> do you want to connect?</div>
+        <div class="ob-sub">Pick everything you use — Google connects right away, the rest light up from Settings → Connectors as they come online.</div>
+        <div id="obIntegrationsPicker"></div>
+        <button class="ob-btn" onclick="obNext()" id="obFinishBtn">Let's go! 🚀</button>
+        <button class="ob-btn-sec" onclick="obBack()">← Back</button>
+        <div class="ob-skip" onclick="obNext()">Skip for now</div>
       </div>
 
     </div>
@@ -2771,9 +2798,12 @@
 <script type="module" src="public/js/flux-apple-motion-pro.js"></script>
 <script type="module" src="public/js/flux-motion-50.js"></script>
 <script defer src="public/js/flux-connectors.js"></script>
+<script defer src="public/js/flux-integrations-hub.js"></script>
+<script defer src="public/js/flux-modern-ui.js"></script>
 <script defer src="public/js/flux-skills.js"></script>
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
+<script defer src="public/js/flux-login-split.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 <script defer src="public/js/flux-teacher-wishlist.js"></script>
     <script defer src="public/js/core/debug.js"></script>
@@ -2940,6 +2970,7 @@
 <script defer src="public/js/flux-ai-orchestrator.js"></script>
 <script defer src="public/js/flux-ai-orch-layer.js"></script>
 <script defer src="public/js/flux-agent-loop.js"></script>
+<script defer src="public/js/flux-ai-planner-skills.js"></script>
 <script defer src="public/js/flux-syllabus-conflict.js"></script>
 <script defer src="public/js/flux-offline-sync.js"></script>
 <script defer src="public/js/flux-layered-memory.js"></script>

@@ -9339,7 +9339,7 @@ function explainMyWeek(){
 
 // ══ ONBOARDING ══
 let obCurrentStep=1;
-const OB_TOTAL=5;
+const OB_TOTAL=6;
 let obSelectedGrade='10';
 let obSelectedTrack='';
 let obSelectedFocus='deadlines';
@@ -9519,6 +9519,30 @@ function showObStep(n){
     bindScheduleImportDropzones();
     ensurePdfJsLoaded().catch(()=>{});
   }
+  if(n===6){
+    const mount=document.getElementById('obIntegrationsPicker');
+    try{
+      if(mount&&!mount.dataset.mounted&&window.FluxIntegrationsHub){
+        FluxIntegrationsHub.renderPickerInto(mount);
+        mount.dataset.mounted='1';
+        mount.addEventListener('click',updateObAiProfileCard);
+      }
+    }catch(_){}
+    updateObAiProfileCard();
+  }
+}
+/* "Your AI profile" mini-card on the tools step — fills toward 95% as tools are picked. */
+function updateObAiProfileCard(){
+  try{
+    const n=(window.FluxIntegrationsHub&&FluxIntegrationsHub.getSelected)?FluxIntegrationsHub.getSelected().length:0;
+    const pct=Math.min(95,60+n*5);
+    const bar=document.getElementById('obAiProfileBar');
+    const lbl=document.getElementById('obAiProfilePct');
+    const cnt=document.getElementById('obAiProfileTools');
+    if(bar)bar.style.width=pct+'%';
+    if(lbl)lbl.textContent=pct+'%';
+    if(cnt)cnt.textContent=n+' picked';
+  }catch(_){}
 }
 function selectObChip(el,key,val){
   el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>{
@@ -9667,7 +9691,15 @@ function obNext(){
   if(obCurrentStep===4){
     if(obExtractedClasses.length){classes=obExtractedClasses;save('flux_classes',classes);}
   }
-  if(obCurrentStep===5){obFinish();return;}
+  if(obCurrentStep===6){
+    // Akiflow-style tools picker — persist choices, then finish (step-5 chips
+    // are read directly off the DOM inside obFinish, so passing through step 6
+    // doesn't lose them).
+    const p=load('profile',{});
+    p.integrations=(window.FluxIntegrationsHub&&typeof FluxIntegrationsHub.getSelected==='function')?FluxIntegrationsHub.getSelected():[];
+    save('profile',p);
+    obFinish();return;
+  }
   showObStep(obCurrentStep+1);
 }
 function obBack(){if(obCurrentStep>1)showObStep(obCurrentStep-1);}

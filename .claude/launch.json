@@ -4,7 +4,7 @@
     {
       "name": "flux-planner",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-l", "3344", "."],
+      "runtimeArgs": ["-y", "serve", "-l", "3344", "."],
       "port": 3344
     },
     {

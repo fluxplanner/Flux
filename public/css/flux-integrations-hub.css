@@ -1,0 +1,149 @@
+/* ═══ FluxIntegrationsHub — Akiflow-style brand-tile gallery ═══ */
+
+.fih-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:14px;
+  width:100%;
+}
+
+.fih-tile{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:26px 12px 20px;
+  background:#fff;
+  border:1px solid rgba(15,15,20,.06);
+  /* !important: flux-motion.css pill-radius rule for buttons would oval these tiles */
+  border-radius:16px !important;
+  box-shadow:0 1px 3px rgba(10,12,30,.10),0 8px 24px -18px rgba(10,12,30,.25);
+  cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease,outline-color .18s ease;
+  outline:2px solid transparent;
+  outline-offset:2px;
+  font:inherit;
+}
+.fih-tile:hover{
+  transform:translateY(-3px);
+  box-shadow:0 4px 10px rgba(10,12,30,.14),0 16px 36px -18px rgba(10,12,30,.35);
+}
+.fih-tile.selected{
+  outline-color:var(--accent,#7c5cff);
+  box-shadow:0 0 0 4px rgba(var(--accent-rgb,124,92,255),.18),0 8px 24px -14px rgba(var(--accent-rgb,124,92,255),.5);
+}
+.fih-logo{width:46px;height:46px;display:block}
+.fih-logo svg{width:100%;height:100%;display:block}
+.fih-label{
+  font-size:.95rem;
+  font-weight:600;
+  color:#20222b;
+  letter-spacing:-.01em;
+}
+.fih-check{
+  position:absolute;
+  top:8px;right:8px;
+  width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;
+  background:var(--accent,#7c5cff);
+  color:#fff;
+  font-size:.7rem;
+  font-weight:800;
+  opacity:0;
+  transform:scale(.5);
+  transition:opacity .15s ease,transform .15s ease;
+}
+.fih-tile.selected .fih-check{opacity:1;transform:scale(1)}
+
+.fih-chip{
+  position:absolute;
+  bottom:6px;
+  font-size:.58rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:#8a8fa3;
+  background:rgba(15,15,20,.05);
+  padding:2px 8px;
+  border-radius:999px;
+}
+.fih-chip-on{color:#0d8a4f;background:rgba(34,197,94,.14)}
+.fih-chip-req{color:#7c5cff;background:rgba(124,92,255,.12)}
+
+/* ── Hub modal ── */
+.fih-overlay{
+  position:fixed;inset:0;z-index:10050;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(8,9,16,.62);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  opacity:0;
+  transition:opacity .22s ease;
+  padding:20px;
+}
+.fih-overlay.visible{opacity:1}
+.fih-modal{
+  position:relative;
+  width:min(880px,100%);
+  max-height:88vh;
+  overflow-y:auto;
+  background:var(--panel,#14151d);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:22px;
+  padding:36px 34px 30px;
+  transform:translateY(10px);
+  transition:transform .22s ease;
+}
+.fih-overlay.visible .fih-modal{transform:translateY(0)}
+.fih-title{
+  margin:0 0 6px;
+  text-align:center;
+  font-size:1.65rem;
+  font-weight:800;
+  letter-spacing:-.02em;
+  color:var(--text,#eef0f7);
+}
+.fih-title em{
+  font-style:normal;
+  background:linear-gradient(90deg,#00c2ff,#7c5cff);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.fih-sub{
+  margin:0 auto 24px;
+  max-width:520px;
+  text-align:center;
+  font-size:.85rem;
+  color:var(--muted,#9aa0b4);
+}
+.fih-close{
+  position:absolute;top:14px;right:14px;
+  width:32px;height:32px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.05);
+  color:var(--muted,#9aa0b4);
+  cursor:pointer;
+  font-size:.85rem;
+}
+.fih-close:hover{color:var(--text,#fff);background:rgba(255,255,255,.1)}
+
+.fih-open-btn{margin:0 0 14px;display:inline-flex;align-items:center;gap:6px}
+
+/* ── Onboarding picker mount ── */
+#obIntegrationsPicker{margin:18px 0 6px}
+#obIntegrationsPicker .fih-grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:11px}
+#obIntegrationsPicker .fih-tile{padding:18px 8px 14px;border-radius:14px !important}
+#obIntegrationsPicker .fih-logo{width:36px;height:36px}
+#obIntegrationsPicker .fih-label{font-size:.8rem}
+
+@media (max-width:640px){
+  .fih-modal{padding:26px 16px 20px}
+  .fih-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+  .fih-tile{padding:18px 8px 14px}
+  .fih-logo{width:36px;height:36px}
+}

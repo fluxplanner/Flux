@@ -476,7 +476,10 @@ function transitionPanels(applyDom, ctx = {}) {
     requestAnimationFrame(syncAllPills);
   };
   hideDashboardChromeForTransition(panelId);
-  if (!motionAllowed() || typeof document.startViewTransition !== 'function') {
+  // On phones the View Transitions API snapshots the whole page and crossfades,
+  // which is the main cause of tab-switch lag on mobile. Switch instantly there.
+  var isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  if (!motionAllowed() || isNarrow || typeof document.startViewTransition !== 'function') {
     applyDom();
     runAfter();
     return;

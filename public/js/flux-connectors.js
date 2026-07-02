@@ -413,6 +413,124 @@
     status: () => 'connected',
   });
 
+  // 17 · Asana
+  register({
+    id: 'asana',
+    name: 'Asana',
+    icon: '🔴',
+    category: 'productivity',
+    auth_kind: 'oauth',
+    description: 'Two-way task sync with Asana projects.',
+    supports: ['tasks'],
+    status: () => 'coming_soon',
+  });
+
+  // 18 · Jira
+  register({
+    id: 'jira',
+    name: 'Jira',
+    icon: '🔷',
+    category: 'productivity',
+    auth_kind: 'oauth',
+    description: 'Pull assigned Jira issues into your workboard.',
+    supports: ['tasks'],
+    role: 'staff',
+    status: () => 'coming_soon',
+  });
+
+  // 19 · ClickUp
+  register({
+    id: 'clickup',
+    name: 'ClickUp',
+    icon: '🌈',
+    category: 'productivity',
+    auth_kind: 'oauth',
+    description: 'Sync ClickUp tasks and due dates into Flux.',
+    supports: ['tasks'],
+    status: () => 'coming_soon',
+  });
+
+  // 20 · Calendly
+  register({
+    id: 'calendly',
+    name: 'Calendly',
+    icon: '📆',
+    category: 'productivity',
+    auth_kind: 'none',
+    description: 'Show Calendly bookings on your calendar via its .ics feed.',
+    supports: ['calendar'],
+    status: () => {
+      const feeds = (() => { try { return JSON.parse(ls('flux_ical_feeds', '[]')); } catch (_) { return []; } })();
+      return Array.isArray(feeds) && feeds.some((f) => /calendly/i.test((f && (f.url || f)) || '')) ? 'connected' : 'off';
+    },
+    connect: async () => {
+      if (typeof window.FluxIcalSubscribe?.openDialog === 'function') {
+        window.FluxIcalSubscribe.openDialog();
+        if (typeof window.showToast === 'function') window.showToast('Paste your Calendly .ics link (Calendly → Account → Calendar sync).', 'info');
+        return true;
+      }
+      return false;
+    },
+  });
+
+  // 21 · Todoist
+  register({
+    id: 'todoist',
+    name: 'Todoist',
+    icon: '✅',
+    category: 'productivity',
+    auth_kind: 'api_key',
+    description: 'Import your Todoist tasks into Flux.',
+    supports: ['tasks'],
+    status: () => 'coming_soon',
+  });
+
+  // 22 · Trello
+  register({
+    id: 'trello',
+    name: 'Trello',
+    icon: '📋',
+    category: 'productivity',
+    auth_kind: 'oauth',
+    description: 'Mirror Trello cards as Flux tasks.',
+    supports: ['tasks'],
+    status: () => 'coming_soon',
+  });
+
+  // 23 · Zapier — works today through the email task inbox
+  register({
+    id: 'zapier',
+    name: 'Zapier',
+    icon: '⚡',
+    category: 'automation',
+    auth_kind: 'none',
+    description: 'Any Zap that sends email can create Flux tasks via your task-inbox address.',
+    supports: ['automation', 'tasks'],
+    status: () => (window.FluxEmailTaskInbox ? 'connected' : 'off'),
+    connect: async () => {
+      if (window.FluxEmailTaskInbox?.open) { window.FluxEmailTaskInbox.open(); return true; }
+      if (typeof window.showToast === 'function') window.showToast('Enable the Email task inbox in Settings, then point your Zap at that address.', 'info');
+      return false;
+    },
+  });
+
+  // 24 · IFTTT — same email-inbox bridge as Zapier
+  register({
+    id: 'ifttt',
+    name: 'IFTTT',
+    icon: '🔁',
+    category: 'automation',
+    auth_kind: 'none',
+    description: 'IFTTT applets that send email can create Flux tasks via your task-inbox address.',
+    supports: ['automation', 'tasks'],
+    status: () => (window.FluxEmailTaskInbox ? 'connected' : 'off'),
+    connect: async () => {
+      if (window.FluxEmailTaskInbox?.open) { window.FluxEmailTaskInbox.open(); return true; }
+      if (typeof window.showToast === 'function') window.showToast('Enable the Email task inbox in Settings, then point your applet at that address.', 'info');
+      return false;
+    },
+  });
+
   /* ───────── Settings UI mount ───────── */
 
   const TONE_COLORS = {
