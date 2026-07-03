@@ -24,6 +24,10 @@
     const sb = typeof window.getSB === 'function' ? window.getSB() : null;
     if (!sb) { toast('Auth not available — please refresh.', 'error'); return; }
     try {
+      // Same popup + postMessage handshake Google sign-in uses. Without this
+      // listener the popup finishes OAuth but the opener never picks up the
+      // session — which made these buttons look dead.
+      if (typeof window.initOAuthPostMessageListener === 'function') window.initOAuthPostMessageListener();
       const redirectTo = typeof window.getRedirectURL === 'function' ? window.getRedirectURL() : window.location.origin;
       const { data, error } = await sb.auth.signInWithOAuth({
         provider,
@@ -36,7 +40,13 @@
       try { w.focus(); } catch (_) {}
     } catch (e) {
       console.warn('[FluxLoginSplit] ' + provider + ' OAuth failed', e);
-      toast(label + ' sign-in isn’t enabled on this Flux instance yet — use Google or email for now.', 'error');
+      const notEnabled = /not enabled|unsupported provider|validation_failed/i.test(String((e && e.message) || ''));
+      toast(
+        notEnabled
+          ? label + ' sign-in isn’t switched on for this school yet — use Google or email for now.'
+          : 'Could not start ' + label + ' sign-in — check your connection and try again.',
+        'error'
+      );
     }
   }
   window.signInWithMicrosoft = () => oauth('azure', 'Microsoft');
@@ -62,44 +72,11 @@
     googleBtn.after(ms, ap);
   }
 
-  function injectProfileCard() {
-    const copy = document.querySelector('#loginScreen .lx-hero-copy');
-    if (!copy || document.querySelector('.lxs-profile')) return;
-    const card = document.createElement('div');
-    card.className = 'lxs-profile';
-    card.setAttribute('aria-hidden', 'true');
-    card.innerHTML = `
-      <div class="lxs-profile-spark">✦</div>
-      <div class="lxs-profile-title">Your AI profile</div>
-      <div class="lxs-profile-meter">
-        <span class="lxs-profile-pct">0%</span>
-        <div class="lxs-profile-track"><div class="lxs-profile-fill"></div></div>
-      </div>
-      <div class="lxs-profile-row"><span class="lxs-profile-ico">🧩</span><span>Integrations</span><span class="lxs-profile-val lxs-profile-g">${GOOGLE_SVG}</span></div>
-      <div class="lxs-profile-row"><span class="lxs-profile-ico">👤</span><span>Role</span><span class="lxs-profile-val lxs-profile-pill">Student / Staff / Family</span></div>`;
-    const demo = copy.querySelector('.lx-demo');
-    (demo || copy.firstElementChild).after(card);
-
-    // Animate the meter 0 → 90% once visible.
-    const fill = card.querySelector('.lxs-profile-fill');
-    const pct = card.querySelector('.lxs-profile-pct');
-    let v = 0;
-    const target = 90;
-    function tick() {
-      v = Math.min(target, v + Math.max(1, (target - v) * 0.06));
-      fill.style.width = v + '%';
-      pct.textContent = Math.round(v) + '%';
-      if (v < target) requestAnimationFrame(tick);
-    }
-    const io = 'IntersectionObserver' in window
-      ? new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); requestAnimationFrame(tick); } })
-      : null;
-    if (io) io.observe(card); else requestAnimationFrame(tick);
-  }
+  // "Your AI profile" hero card removed (July 2026) — user feedback: it read
+  // as gimmicky on the login screen. OAuth buttons stay.
 
   function boot() {
     injectOAuthButtons();
-    injectProfileCard();
     document.documentElement.classList.add('flux-login-split');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -1647,6 +1647,11 @@ const FluxRole={
     // technically still impersonating someone else.
     try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
+    // Work and Personal keep separate task/event views — refresh the shared
+    // surfaces so nothing from the other mode lingers on screen.
+    try{if(typeof renderTasks==='function')renderTasks();}catch(_){}
+    try{if(typeof renderCalendar==='function')renderCalendar();}catch(_){}
+    try{if(typeof renderStats==='function')renderStats();}catch(_){}
     try{
       if(typeof FluxBus!=='undefined')FluxBus.emit('role_mode_changed',{mode,role:this.current});
     }catch(_){}
@@ -2218,6 +2223,18 @@ function fluxIsStaffPersonalMode(){
 }
 window.fluxIsStaffPersonalMode=fluxIsStaffPersonalMode;
 
+/** Educators keep Work and Personal planners separate: scope 'outside' =
+ *  personal life, anything else = work/school. Students see everything. */
+function fluxTaskVisibleInMode(t){
+  try{
+    if(typeof FluxRole==='undefined'||!FluxRole.isEducator||!FluxRole.isEducator())return true;
+    const personal=FluxRole.isPersonalMode&&FluxRole.isPersonalMode();
+    const outside=!!t&&t.scope==='outside';
+    return personal?outside:!outside;
+  }catch(_){return true;}
+}
+window.fluxTaskVisibleInMode=fluxTaskVisibleInMode;
+
 function fluxSyncSubjectUiForRole(){
   const hide=fluxIsStaffPersonalMode();
   document.documentElement.classList.toggle('flux-staff-personal-no-subjects',hide);
@@ -2366,6 +2383,7 @@ function applyRoleUI(){
 
   try{fluxApplyStudentDashboardChrome(studentChromeOn);}catch(_){}
   try{fluxSyncSubjectUiForRole();}catch(_){}
+  try{renderAISugs();}catch(_){}
 
   syncSchoolNavChrome();
 }
@@ -3289,7 +3307,7 @@ function nav(id,btn,navOpt){
     else if(id==='canvas')tTitle.textContent=PANEL_TITLES.google||'Google';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),notebook:()=>{try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),notebook:()=>{try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3483,6 +3501,7 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const n=(id,useThis)=>isMob?`navMob('${id}')`:(useThis?`nav('${id}',this)`:`nav('${id}')`);
   const workspace=`<div class="nav-group flux-nav-group-hidden" data-role-group="staff">
 <div class="nav-group-label"${Lp}>Workspace</div>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni">💬</span><span class="nl">Messages</span></button>
 <button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
 <button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni">📚</span><span class="nl">Resources</span></button>
 <button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
@@ -3520,10 +3539,13 @@ ${googleNavPersonal}`;
 }
 
 function renderSidebars(){
+  // Max 5 tabs per section (user request): Plan 4 · Learn 5 (School + Feed +
+  // the 3 schoolIds below) · Me & Life 5. Google lives under Me & Life as an
+  // account/integration surface.
   const groups=[
-    {label:'Plan',ids:['dashboard','calendar','ai']},
-    {label:'Learn',ids:['canvas','notes','timer','toolbox']},
-    {label:'Me & Life',ids:['profile','goals','mood','settings']},
+    {label:'Plan',ids:['dashboard','calendar','ai','timer']},
+    {label:'Learn',ids:['notes','notebook','toolbox']},
+    {label:'Me & Life',ids:['profile','goals','mood','canvas','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   const schoolTab=tabConfig.find(t=>t.id==='school')||DEFAULT_TABS.find(t=>t.id==='school');
@@ -3541,7 +3563,7 @@ function renderSidebars(){
   const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
   const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
   const includeWorkspaceNav=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
-  const schoolIds=['canvas','notes','notebook','timer','toolbox'];
+  const schoolIds=['notes','notebook','toolbox'];
   const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
     const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
     const lab=esc(tc?.label||id);
@@ -4190,7 +4212,7 @@ function renderTasks(){
   const el0=document.getElementById('taskList');
   if(el0){el0.style.display='';el0.style.gridTemplateColumns='';el0.style.gap='';el0.style.alignItems='';}
   const now=new Date();now.setHours(0,0,0,0);
-  let list=[...tasks];
+  let list=tasks.filter(fluxTaskVisibleInMode);
   if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
     list=FluxSmartLists.applyFilter(list,taskFilter);
     list.sort((a,b)=>{
@@ -4457,7 +4479,13 @@ function changeMonth(d){
     apply();
   }
 }
-function selectDay(d){calSelected=d;renderCalendar();document.getElementById('calAddBtn').style.display='inline-flex';}
+function selectDay(d){
+  calSelected=d;renderCalendar();
+  const b=document.getElementById('calAddBtn');if(b)b.style.display='inline-flex';
+  // Click-to-add: any day tap opens the quick-add sheet for that date
+  // (Google Calendar behavior). Cancel keeps the day selected.
+  try{openAddForDate();}catch(_){}
+}
 
 // ── Calendar glass date picker (month title dropdown; task-focused) ──
 let calGlassMode='month';
@@ -4645,9 +4673,9 @@ function renderCalendar(){
   document.getElementById('calMonthLabel').textContent=months[calMonth]+' '+calYear;
   const first=new Date(calYear,calMonth,1).getDay(),days=new Date(calYear,calMonth+1,0).getDate(),prevDays=new Date(calYear,calMonth,0).getDate();
   const now=new Date();now.setHours(0,0,0,0);
-  const tMap={};tasks.filter(t=>t.date).forEach(t=>{const d=new Date(t.date+'T00:00:00');if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!tMap[k])tMap[k]=[];tMap[k].push(t);}});
+  const tMap={};tasks.filter(t=>t.date&&fluxTaskVisibleInMode(t)).forEach(t=>{const d=new Date(t.date+'T00:00:00');if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!tMap[k])tMap[k]=[];tMap[k].push(t);}});
   const evMap={};
-  (load('flux_events',[])).filter(e=>e.date).forEach(e=>{
+  (load('flux_events',[])).filter(e=>e.date&&fluxTaskVisibleInMode(e)).forEach(e=>{
     const d=new Date(e.date+'T12:00:00');
     if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!evMap[k])evMap[k]=[];evMap[k].push(e);}
   });
@@ -7281,32 +7309,137 @@ function getFluxAIModeInstructions(){
   if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable.\n</mode_overtime>`;
   return'';
 }
+/** Role-aware AI starter menu. `fill:true` chips only prefill the composer
+ *  (templates the user should finish) instead of firing immediately. */
+function getAISugGroups(){
+  let role='student',work=false;
+  try{
+    if(typeof FluxRole!=='undefined'){role=FluxRole.current||'student';work=!!(FluxRole.isWorkMode&&FluxRole.isWorkMode());}
+  }catch(_){}
+  const educatorAtWork=work&&['teacher','counselor','admin','staff'].includes(role);
+  if(educatorAtWork&&role==='teacher'){
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your classes, assignments, roster, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my teaching day',      prompt:'Plan my day around my classes — prep, grading, and any meetings.'},
+          {ico:'📥', label:"What needs grading?",       prompt:'What assignments still need grading, and which class is most behind?'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now between classes?'},
+        ]},
+        {label:'Classes & students',sugs:[
+          {ico:'📋', label:'Draft a lesson plan',       prompt:'Draft a lesson plan for: ',fill:true},
+          {ico:'✉️', label:'Write a parent email',      prompt:'Draft a short, warm parent email about: ',fill:true},
+          {ico:'🧪', label:'Make a quiz or worksheet',  prompt:'Create a 10-question quiz on: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my work week around classes and deadlines'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on everything overdue.'},
+        ]},
+      ],
+    };
+  }
+  if(educatorAtWork&&role==='counselor'){
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your appointments, caseload, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my day',               prompt:'Plan my day around my appointments and meetings.'},
+          {ico:'📞', label:'Prep my next meeting',      prompt:'Help me prep for my next student appointment — what should I review?'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now?'},
+        ]},
+        {label:'Students',sugs:[
+          {ico:'✉️', label:'Draft a check-in email',    prompt:'Draft a supportive check-in email to a student about: ',fill:true},
+          {ico:'📝', label:'Summarize meeting notes',   prompt:'Summarize these meeting notes into action items: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my week around appointments'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on overdue follow-ups.'},
+        ]},
+      ],
+    };
+  }
+  if(educatorAtWork){ // admin / staff
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your tasks, meetings, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my day',               prompt:'Plan my day around my meetings and tasks.'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now?'},
+          {ico:'📊', label:'How is my week looking?',   prompt:'Summarize my week — meetings, deadlines, and open tasks.'},
+        ]},
+        {label:'Write it for me',sugs:[
+          {ico:'✉️', label:'Draft an email',            prompt:'Draft a professional email about: ',fill:true},
+          {ico:'📣', label:'Draft an announcement',     prompt:'Draft a school announcement about: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my work week'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on overdue items.'},
+        ]},
+      ],
+    };
+  }
+  return{
+    greet:'How can I help you today?',
+    sub:'Ask anything — I can read your tasks, calendar, notes, and Canvas when it helps.',
+    groups:[
+      {label:'Right now',sugs:[
+        {ico:'📅', label:"What's due this week?",     prompt:"What's due this week?"},
+        {ico:'⚡', label:'What should I work on?',    prompt:'What should I work on right now?'},
+        {ico:'🛠', label:'Fix overdue items',         prompt:'/fix — help me catch up on overdue work.'},
+      ]},
+      {label:'Plan ahead',sugs:[
+        {ico:'🧭', label:'Plan my week',              prompt:'/plan — study plan using my tasks'},
+        {ico:'🎯', label:'Optimize my schedule',      prompt:'/optimize — review my plan and suggest improvements.'},
+        {ico:'📊', label:'How am I doing?',           prompt:'How am I doing overall? Summarize my progress and what to focus on.'},
+      ]},
+      {label:'Study with me',sugs:[
+        {ico:'🃏', label:'Quiz me on a topic',        prompt:'Quiz me on: ',fill:true},
+        {ico:'💡', label:'Explain something',         prompt:'Explain this like I’m seeing it for the first time: ',fill:true},
+      ]},
+    ],
+  };
+}
 function renderAISugs(){
   const el=document.getElementById('aiSugs');
   if(!el)return;
+  const cfg=getAISugGroups();
+  const head=document.querySelector('#fluxAiGreeting .flux-ai-greeting__head');
+  const sub=document.querySelector('#fluxAiGreeting .flux-ai-greeting__sub');
+  if(head)head.textContent=cfg.greet;
+  if(sub)sub.textContent=cfg.sub;
   el.innerHTML='';
-  const sugs=[
-    {ico:'📅', label:"What's due this week?",        prompt:"What's due this week?"},
-    {ico:'⚡', label:"What should I work on now?",   prompt:"What should I work on right now?"},
-    {ico:'🧭', label:"Plan my week",                 prompt:"/plan — study plan using my tasks"},
-    {ico:'📊', label:"How am I doing overall?",      prompt:"How am I doing overall? Summarize my progress and what to focus on."},
-    {ico:'🎯', label:"Optimize my schedule",         prompt:"/optimize — review my plan and suggest improvements."},
-    {ico:'🛠', label:"Fix overdue items",            prompt:"/fix — help me catch up on overdue work."},
-  ];
-  sugs.forEach(s=>{
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='ai-sug';
-    btn.innerHTML=`<span class="ai-sug__ico" aria-hidden="true">${s.ico}</span><span class="ai-sug__lbl">${s.label}</span>`;
-    btn.setAttribute('aria-label',s.label);
-    btn.onclick=()=>{
-      const inp=document.getElementById('aiInput');
-      if(inp){inp.value=s.prompt;try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}}
-      sendAI();
-    };
-    el.appendChild(btn);
+  el.classList.add('ai-sugs--grouped');
+  cfg.groups.forEach(g=>{
+    const grp=document.createElement('div');
+    grp.className='ai-sug-group';
+    const lab=document.createElement('div');
+    lab.className='ai-sug-group__label';
+    lab.textContent=g.label;
+    grp.appendChild(lab);
+    const row=document.createElement('div');
+    row.className='ai-sug-group__row';
+    g.sugs.forEach(s=>{
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='ai-sug'+(s.fill?' ai-sug--fill':'');
+      btn.innerHTML=`<span class="ai-sug__ico" aria-hidden="true">${s.ico}</span><span class="ai-sug__lbl">${s.label}</span>${s.fill?'<span class="ai-sug__edit" aria-hidden="true">✎</span>':''}`;
+      btn.setAttribute('aria-label',s.label);
+      btn.onclick=()=>{
+        const inp=document.getElementById('aiInput');
+        if(inp){inp.value=s.prompt;try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}}
+        if(s.fill){if(inp){inp.focus();try{inp.setSelectionRange(inp.value.length,inp.value.length);}catch(_){}}return;}
+        sendAI();
+      };
+      row.appendChild(btn);
+    });
+    grp.appendChild(row);
+    el.appendChild(grp);
   });
 }
+window.renderAISugs=renderAISugs;
 function handleAIImg(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();

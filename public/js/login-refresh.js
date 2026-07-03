@@ -19,6 +19,15 @@
     }
   };
 
+  // Audience-gated marketing sections: [data-aud-show="student"] only renders
+  // on the student tab, [data-aud-show="staff"] only on the staff tab.
+  function applyAudience(aud) {
+    var want = aud === 'teacher' ? 'staff' : 'student';
+    document.querySelectorAll('[data-aud-show]').forEach(function (el) {
+      el.classList.toggle('lx-aud-hidden', el.getAttribute('data-aud-show') !== want);
+    });
+  }
+
   function init() {
     var tabs = document.querySelectorAll('#loginScreen .lx-aud-tab');
     var headline = document.getElementById('lxHeadline');
@@ -26,6 +35,8 @@
     var demo = document.getElementById('loginDemoLineLeft');
     var copyWrap = document.querySelector('#loginScreen .lx-hero-copy');
     if (!tabs.length || !headline || !sub) return;
+
+    applyAudience('student');
 
     tabs.forEach(function (tab) {
       tab.addEventListener('click', function () {
@@ -36,6 +47,7 @@
           t.classList.toggle('is-on', t === tab);
           t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
         });
+        applyAudience(aud);
         if (copyWrap) copyWrap.classList.add('lx-aud-swapping');
         setTimeout(function () {
           headline.innerHTML = c.headline;

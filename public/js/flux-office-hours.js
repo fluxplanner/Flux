@@ -219,6 +219,7 @@
       end_time: slot.end_time,
       location: slot.location || null,
       note: slot.note || null,
+      booking_mode: slot.booking_mode === 'request' ? 'request' : 'instant',
       is_active: true,
       updated_at: new Date().toISOString(),
     };
@@ -319,13 +320,24 @@
       .catch(function () { return []; });
   }
 
+  function isRequestMode(slot) {
+    return slot && slot.booking_mode === 'request';
+  }
+
   function bookSlot(slot, weekISO) {
     var sb = getSB(); var u = getCurrentUser();
     if (!sb || !u) { toast('Sign in to book office hours', 'warning'); return Promise.resolve(false); }
     var name = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || (u.email || '').split('@')[0] || 'Student';
-    return sb.from(BOOK_TABLE).insert({ slot_id: slot.id, student_id: u.id, student_name: name, week_start: weekISO })
+    var status = isRequestMode(slot) ? 'pending' : 'confirmed';
+    var row = { slot_id: slot.id, student_id: u.id, student_name: name, week_start: weekISO, status: status };
+    return sb.from(BOOK_TABLE).insert(row)
       .then(function (res) {
         if (res.error) {
+          // Older DB without the status column — retry the legacy shape.
+          if (/status/.test(String(res.error.message || '')) && res.error.code === 'PGRST204') {
+            delete row.status;
+            return sb.from(BOOK_TABLE).insert(row).then(function (r2) { return !r2.error; });
+          }
           var dup = res.error.code === '23505' || /duplicate|unique/i.test(res.error.message || '');
           toast(dup ? 'Just taken — another student booked this slot.' : (tableMissing(res.error) ? 'Booking isn’t set up yet — ask your school to run the latest migration.' : (res.error.message || 'Could not book')), dup ? 'warning' : 'error');
           return false;
@@ -333,6 +345,25 @@
         return true;
       })
       .catch(function (e) { toast(e.message || 'Could not book', 'error'); return false; });
+  }
+
+  // Staff: confirm one request (auto-declines competing pendings for the same
+  // slot+week) or decline a single request.
+  function respondToBooking(bookingId, nextStatus, siblings) {
+    var sb = getSB(); var u = getCurrentUser();
+    if (!sb || !u || !bookingId) return Promise.resolve(false);
+    return sb.from(BOOK_TABLE).update({ status: nextStatus }).eq('id', bookingId)
+      .then(function (res) {
+        if (res.error) { toast(res.error.message || 'Could not update request', 'error'); return false; }
+        var losers = (siblings || []).filter(function (b) { return b.id !== bookingId && b.status === 'pending'; });
+        if (nextStatus === 'confirmed' && losers.length) {
+          return sb.from(BOOK_TABLE).update({ status: 'declined' })
+            .in('id', losers.map(function (b) { return b.id; }))
+            .then(function () { return true; });
+        }
+        return true;
+      })
+      .catch(function (e) { toast(e.message || 'Could not update request', 'error'); return false; });
   }
 
   function cancelBooking(id) {
@@ -359,10 +390,32 @@
   function staffCardHtml(slots, reason, bookings) {
     var sorted = sortSlots(slots);
     var bkBySlot = {};
+    var pending = [];
     var curWeek = mondayOf(new Date());
     (bookings || []).forEach(function (b) {
-      if (b.week_start >= curWeek) (bkBySlot[b.slot_id] = bkBySlot[b.slot_id] || []).push(b);
+      if (b.week_start < curWeek) return;
+      if (b.status === 'declined') return;
+      (bkBySlot[b.slot_id] = bkBySlot[b.slot_id] || []).push(b);
+      if (b.status === 'pending') pending.push(b);
     });
+    var slotById = {};
+    sorted.forEach(function (s) { slotById[s.id] = s; });
+    var pendingHtml = '';
+    if (pending.length) {
+      pendingHtml = '<div class="flux-oh-pending-block">'
+        + '<div class="flux-oh-pending-head">Signup requests <span class="flux-oh-pending-count">' + pending.length + ' pending</span></div>'
+        + pending.map(function (b) {
+            var s = slotById[b.slot_id] || {};
+            var when = (DAY_LABEL[s.day_of_week] || '') + ' · ' + timeRange(s.start_time, s.end_time) + ' · week of ' + b.week_start;
+            return '<div class="flux-oh-pending-row">'
+              + '<div class="flux-oh-pending-main"><strong>' + esc(b.student_name || 'Student') + '</strong>'
+              + '<span class="flux-oh-pending-when">' + esc(when) + '</span></div>'
+              + '<button type="button" class="flux-oh-approve-btn" data-oh-approve="' + esc(b.id) + '" data-oh-slot="' + esc(b.slot_id) + '" data-oh-wk="' + esc(b.week_start) + '">Approve</button>'
+              + '<button type="button" class="flux-oh-declreq-btn" data-oh-declreq="' + esc(b.id) + '">Decline</button>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+    }
     var listHtml;
     if (reason === 'no_table') {
       listHtml = '<div class="flux-oh-empty">Office Hours storage isn’t set up yet. Ask the owner to run <code>OFFICE-HOURS-MIGRATION.sql</code>.</div>';
@@ -380,15 +433,21 @@
           dayHead = '<div class="flux-oh-dayhead">' + esc(DAY_FULL[s.day_of_week] || s.day_of_week) + '</div>';
         }
         var bks = (bkBySlot[s.id] || []).sort(function (a, b2) { return a.week_start < b2.week_start ? -1 : 1; });
-        var bkHtml = bks.length
-          ? '<div class="flux-oh-row-bks">' + bks.map(function (b) {
+        var confirmed = bks.filter(function (b) { return b.status !== 'pending'; });
+        var pendingCt = bks.length - confirmed.length;
+        var bkHtml = confirmed.length
+          ? '<div class="flux-oh-row-bks">' + confirmed.map(function (b) {
               return '<span class="flux-oh-bk" title="Booked">' + esc(b.student_name || 'Student') + ' · ' + esc(b.week_start) + '</span>';
             }).join('') + '</div>'
           : '';
+        var modeBadge = isRequestMode(s)
+          ? '<span class="flux-oh-mode-badge flux-oh-mode-badge--req" title="Students request, you approve">approval</span>'
+          : '<span class="flux-oh-mode-badge" title="Students book instantly">instant</span>';
         return dayHead + '<div class="flux-oh-row" data-oh-id="' + esc(s.id) + '">'
           + '<div class="flux-oh-row-main">'
-          + '<div class="flux-oh-row-time">' + esc(timeRange(s.start_time, s.end_time))
-          + (bks.length ? '<span class="flux-oh-row-bkcount">' + bks.length + ' booked</span>' : '<span class="flux-oh-row-open">open</span>')
+          + '<div class="flux-oh-row-time">' + esc(timeRange(s.start_time, s.end_time)) + modeBadge
+          + (confirmed.length ? '<span class="flux-oh-row-bkcount">' + confirmed.length + ' booked</span>' : '<span class="flux-oh-row-open">open</span>')
+          + (pendingCt ? '<span class="flux-oh-row-pending">' + pendingCt + ' pending</span>' : '')
           + '</div>'
           + (meta ? '<div class="flux-oh-row-meta">' + meta + '</div>' : '')
           + bkHtml
@@ -406,10 +465,16 @@
       +   '<span class="flux-oh-badge">Students see &amp; book these</span>'
       + '</div>'
       + '<p class="flux-oh-sub">Weekly drop-in times. One student can book each slot per week — booked slots disappear for everyone else.</p>'
+      + pendingHtml
       + '<div class="flux-oh-list">' + listHtml + '</div>'
       + '<div class="flux-oh-form">'
       +   '<div class="flux-oh-form-label">Add a weekly slot</div>'
       +   '<input type="hidden" id="fluxOhDay" value="monday">'
+      +   '<input type="hidden" id="fluxOhMode" value="instant">'
+      +   '<div class="flux-oh-modechips" role="group" aria-label="How students sign up">'
+      +     '<button type="button" class="flux-oh-modechip active" data-oh-modechip="instant"' + disabled + '>⚡ Instant book</button>'
+      +     '<button type="button" class="flux-oh-modechip" data-oh-modechip="request"' + disabled + '>✋ Request first</button>'
+      +   '</div>'
       +   '<div class="flux-oh-daychips" role="group" aria-label="Day of week">'
       +     DAYS.map(function (d, i) { return '<button type="button" class="flux-oh-daychip' + (i === 0 ? ' active' : '') + '" data-oh-daychip="' + d + '"' + disabled + '>' + esc(DAY_LABEL[d]) + '</button>'; }).join('')
       +   '</div>'
@@ -426,6 +491,8 @@
       + '</div>';
   }
 
+  var _staffBookings = [];
+
   function wireStaffCard(card) {
     if (!card) return;
     card.querySelectorAll('[data-oh-daychip]').forEach(function (chip) {
@@ -433,6 +500,35 @@
         card.querySelectorAll('[data-oh-daychip]').forEach(function (c) { c.classList.toggle('active', c === chip); });
         var hidden = card.querySelector('#fluxOhDay');
         if (hidden) hidden.value = chip.getAttribute('data-oh-daychip');
+      });
+    });
+    card.querySelectorAll('[data-oh-modechip]').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        card.querySelectorAll('[data-oh-modechip]').forEach(function (c) { c.classList.toggle('active', c === chip); });
+        var hidden = card.querySelector('#fluxOhMode');
+        if (hidden) hidden.value = chip.getAttribute('data-oh-modechip');
+      });
+    });
+    card.querySelectorAll('[data-oh-approve]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-oh-approve');
+        var slotId = btn.getAttribute('data-oh-slot');
+        var wk = btn.getAttribute('data-oh-wk');
+        var siblings = _staffBookings.filter(function (b) { return b.slot_id === slotId && b.week_start === wk; });
+        btn.disabled = true;
+        respondToBooking(id, 'confirmed', siblings).then(function (ok) {
+          if (ok) { toast('Request approved — the slot is theirs.', 'success'); refreshStaff(card); }
+          else btn.disabled = false;
+        });
+      });
+    });
+    card.querySelectorAll('[data-oh-declreq]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.disabled = true;
+        respondToBooking(btn.getAttribute('data-oh-declreq'), 'declined', []).then(function (ok) {
+          if (ok) { toast('Request declined', 'info'); refreshStaff(card); }
+          else btn.disabled = false;
+        });
       });
     });
     card.querySelectorAll('[data-oh-del]').forEach(function (btn) {
@@ -454,6 +550,7 @@
           end_time: (card.querySelector('#fluxOhEnd') || {}).value,
           location: (card.querySelector('#fluxOhLoc') || {}).value,
           note: (card.querySelector('#fluxOhNote') || {}).value,
+          booking_mode: (card.querySelector('#fluxOhMode') || {}).value,
         };
         if (!validSlot(slot)) {
           toast('Pick a day and an end time later than the start time', 'warning');
@@ -472,6 +569,7 @@
     fetchMine().then(function (res) {
       var ids = (res.rows || []).map(function (s) { return s.id; }).filter(Boolean);
       fetchSlotBookings(ids).then(function (bookings) {
+        _staffBookings = bookings || [];
         var fresh = document.getElementById('fluxOfficeHoursStaffCard');
         if (!fresh) return;
         var tmp = document.createElement('div');
@@ -540,11 +638,19 @@
           var todayBadge = (today && s.day_of_week === today && !live) ? '<span class="flux-oh-today-badge">TODAY</span>' : '';
           var liveBadge = live ? '<span class="flux-oh-live-badge">NOW</span>' : '';
           var bookUi = '';
-          if (mine) {
+          if (mine && mine.status === 'pending') {
+            bookUi = '<span class="flux-oh-booked-badge flux-oh-booked-badge--pending">Requested · awaiting approval</span>'
+              + '<button type="button" class="flux-oh-cancel-btn" data-oh-cancel="' + esc(mine.id) + '">Withdraw</button>';
+          } else if (mine && mine.status === 'declined') {
+            bookUi = '<span class="flux-oh-booked-badge flux-oh-booked-badge--declined">Declined</span>'
+              + (bk.canBook && wk ? '<button type="button" class="flux-oh-book-btn" data-oh-book="' + esc(s.id) + '" data-oh-week="' + esc(wk) + '">Request again</button>' : '');
+          } else if (mine) {
             bookUi = '<span class="flux-oh-booked-badge">Booked · ' + esc(fmtShortDate(occ)) + '</span>'
               + '<button type="button" class="flux-oh-cancel-btn" data-oh-cancel="' + esc(mine.id) + '">Cancel</button>';
           } else if (bk.canBook && wk) {
-            bookUi = '<button type="button" class="flux-oh-book-btn" data-oh-book="' + esc(s.id) + '" data-oh-week="' + esc(wk) + '">Book · ' + esc(fmtShortDate(occ)) + '</button>';
+            bookUi = isRequestMode(s)
+              ? '<button type="button" class="flux-oh-book-btn flux-oh-book-btn--req" data-oh-book="' + esc(s.id) + '" data-oh-week="' + esc(wk) + '">Request · ' + esc(fmtShortDate(occ)) + '</button>'
+              : '<button type="button" class="flux-oh-book-btn" data-oh-book="' + esc(s.id) + '" data-oh-week="' + esc(wk) + '">Book · ' + esc(fmtShortDate(occ)) + '</button>';
           }
           return '<div class="flux-oh-srow' + todayCls + liveCls + (mine ? ' is-mine' : '') + '">'
             + '<span class="flux-oh-srow-day">' + esc(DAY_LABEL[s.day_of_week] || s.day_of_week) + '</span>'
@@ -606,7 +712,11 @@
         if (!slot || !wk) return;
         bookBtn.disabled = true;
         bookSlot(slot, wk).then(function (ok) {
-          if (ok) toast('Booked — it’s yours. It’s now hidden from other students.', 'success');
+          if (ok) {
+            toast(isRequestMode(slot)
+              ? 'Request sent — you’ll get the slot once the teacher approves.'
+              : 'Booked — it’s yours. It’s now hidden from other students.', 'success');
+          }
           refreshStudent(card);
         });
         return;

@@ -1099,13 +1099,6 @@
         updated_at: new Date().toISOString(),
       });
     });
-    const { error } = await client
-      .from('counselor_availability_slots')
-      .upsert(slots, { onConflict: 'counselor_id,day_of_week,time_slot' });
-    if (error) {
-      if (typeof showToast === 'function') showToast(error.message, 'error');
-      return;
-    }
     const availMap = {};
     slots
       .filter((s) => s.is_available)
@@ -1113,9 +1106,32 @@
         if (!availMap[s.day_of_week]) availMap[s.day_of_week] = [];
         availMap[s.day_of_week].push(s.time_slot);
       });
-    await client.from('counselors').update({ availability: availMap }).eq('id', counselorId);
-    if (typeof window.fluxUpsertCounselorAvailabilitySlots === 'function') {
-      await window.fluxUpsertCounselorAvailabilitySlots(client, counselorId, availMap);
+    // SECURITY DEFINER RPC owns the write path: it claims email-matched
+    // counselor rows whose user_id is still NULL, which direct upserts can't
+    // pass RLS for. Fall back to direct writes only when the RPC is missing.
+    const { error: rpcErr } = await client.rpc('save_counselor_availability', {
+      p_counselor_id: counselorId,
+      p_availability: availMap,
+    });
+    if (rpcErr && rpcErr.code === 'PGRST202') {
+      const { error } = await client
+        .from('counselor_availability_slots')
+        .upsert(slots, { onConflict: 'counselor_id,day_of_week,time_slot' });
+      if (error) {
+        if (typeof showToast === 'function') showToast(error.message, 'error');
+        return;
+      }
+      await client.from('counselors').update({ availability: availMap }).eq('id', counselorId);
+    } else if (rpcErr) {
+      if (typeof showToast === 'function') {
+        showToast(
+          /not allowed/i.test(rpcErr.message || '')
+            ? 'This counselor profile belongs to another account, so its availability can’t be edited from here.'
+            : rpcErr.message || 'Could not save availability',
+          'error'
+        );
+      }
+      return;
     }
     document.querySelector('.edu-fullscreen-modal')?.remove();
     if (typeof showToast === 'function') showToast('Availability saved.', 'success');

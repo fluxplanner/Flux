@@ -16,6 +16,7 @@
     'counselorWorkspace',
     'adminOps',
     'staffHub',
+    'staffMessages',
   ]);
 
   const STAFF_PERSONAL_PANELS = new Set([
@@ -222,6 +223,10 @@
           reason: 'admin_ops',
           fallbackId: fr.current === 'staff' ? 'staffWorkboard' : home,
         };
+      }
+      if (pid === 'staffMessages') {
+        if (edu && work) return { ok: true };
+        return { ok: false, reason: 'staff_messages', fallbackId: home };
       }
       if (pid === 'staffHub') {
         if (edu && work && (fr.isStaff() || fr.isCounselor())) return { ok: true };

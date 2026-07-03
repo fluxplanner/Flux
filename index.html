@@ -238,6 +238,8 @@
 <link rel="stylesheet" href="public/css/flux-cowork.css">
 <!-- Flux Office Hours — staff publish weekly drop-in hours; students view -->
 <link rel="stylesheet" href="public/css/flux-office-hours.css">
+<!-- Flux Staff Messages — DMs + group chats between staff -->
+<link rel="stylesheet" href="public/css/flux-staff-messages.css">
 <!-- Flux AI providers — BYOK settings card + /ask response card -->
 <link rel="stylesheet" href="public/css/flux-ai-providers.css">
 <!-- Flux low-end perf layer — gated on html[data-flux-lowend] for old mobile GPUs -->
@@ -499,12 +501,12 @@
       </aside>
     </section>
 
-    <!-- ── Feature showcase ── -->
-    <section class="login-scroll-section lx-section" id="features">
+    <!-- ── Feature showcase (student audience) ── -->
+    <section class="login-scroll-section lx-section" id="features" data-aud-show="student">
       <div class="lx-wrap">
-        <p class="lx-section-eyebrow">Everything in one planner</p>
+        <p class="lx-section-eyebrow">For students</p>
         <h2 class="lx-section-title">Built to carry your whole semester</h2>
-        <p class="lx-section-lede">From a single dashboard for students to full workspaces for teachers, counselors and admins — Flux grows with your school.</p>
+        <p class="lx-section-lede">Every class, deadline, grade and study session in one calm dashboard — with an AI that actually knows your schedule.</p>
         <div class="lx-feature-grid" id="loginFeatures">
           <div class="login-feature-card" data-color="0,194,255">
             <div class="login-feature-icon" aria-hidden="true">✦</div>
@@ -563,10 +565,10 @@
             </div>
           </div>
           <div class="login-feature-card" data-color="251,146,60">
-            <div class="login-feature-icon" aria-hidden="true">🏫</div>
+            <div class="login-feature-icon" aria-hidden="true">🙋</div>
             <div class="login-feature-info">
-              <div class="login-feature-name">For educators</div>
-              <div class="login-feature-desc">Teacher, counselor and admin workspaces — rosters, lesson hub, caseload and school ops.</div>
+              <div class="login-feature-name">Office hours &amp; counselors <span class="lx-tag-new">NEW</span></div>
+              <div class="login-feature-desc">See when teachers are free, grab a drop-in slot, and book counselor time in two taps.</div>
             </div>
           </div>
         </div>
@@ -585,8 +587,8 @@
       </div>
     </section>
 
-    <!-- ── For educators ── -->
-    <section class="login-scroll-section lx-section" id="educators">
+    <!-- ── For educators (staff audience) ── -->
+    <section class="login-scroll-section lx-section" id="educators" data-aud-show="staff">
       <div class="lx-wrap">
         <p class="lx-section-eyebrow lx-eyebrow-vi">For teachers, counselors &amp; admins</p>
         <h2 class="lx-section-title">A workspace for work.<br>A planner for life. One account.</h2>
@@ -624,17 +626,29 @@
         <p class="lx-section-eyebrow lx-eyebrow-am">Why people stay</p>
         <h2 class="lx-section-title">Built with real students and staff</h2>
         <div class="lx-quote-grid">
-          <figure class="lx-quote">
+          <figure class="lx-quote" data-aud-show="student">
             <blockquote>The AI quizzed me on exactly the units I was weakest in. My chem grade went up a full letter this quarter.</blockquote>
             <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#00c2ff,#3b82f6)">A</span><span><b>Aisha</b><small>11th grade · AP Chemistry</small></span></figcaption>
           </figure>
-          <figure class="lx-quote">
+          <figure class="lx-quote" data-aud-show="student">
+            <blockquote>I snapped a photo of my syllabus and my entire semester appeared in the calendar. That was the moment I switched.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#10d9a0,#00c2ff)">J</span><span><b>Jordan</b><small>College freshman</small></span></figcaption>
+          </figure>
+          <figure class="lx-quote" data-aud-show="staff">
             <blockquote>Work mode / personal mode is the feature I didn't know I needed. Sunday planning takes 20 minutes now — and it stays at school.</blockquote>
             <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#7c5cff,#f472b6)">M</span><span><b>Mr. Delgado</b><small>Biology teacher</small></span></figcaption>
           </figure>
-          <figure class="lx-quote">
-            <blockquote>I snapped a photo of my syllabus and my entire semester appeared in the calendar. That was the moment I switched.</blockquote>
-            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#10d9a0,#00c2ff)">J</span><span><b>Jordan</b><small>College freshman</small></span></figcaption>
+          <figure class="lx-quote" data-aud-show="staff">
+            <blockquote>My students book my office hours straight from their planner — no email chains. Approvals happen in one tap between classes.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#fbbf24,#f472b6)">R</span><span><b>Ms. Rivera</b><small>School counselor</small></span></figcaption>
+          </figure>
+          <figure class="lx-quote" data-aud-show="student">
+            <blockquote>Co-work rooms got my study group through finals week. We knocked out the whole review checklist together.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#e879f9,#7c5cff)">P</span><span><b>Priya</b><small>10th grade</small></span></figcaption>
+          </figure>
+          <figure class="lx-quote" data-aud-show="staff">
+            <blockquote>Staff messaging finally lives where my planning does. Our whole grade-level team runs a group chat inside Flux now.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#34d399,#3b82f6)">K</span><span><b>Mr. Kim</b><small>Math department lead</small></span></figcaption>
           </figure>
         </div>
       </div>
@@ -1370,6 +1384,7 @@
 
     <!-- ─── EDUCATOR PERSONAL (staff) ─── -->
     <div id="staffHub" class="panel flux-page" data-educator-work-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meetings, professional development, and wellbeing.</p></header></div>
+    <div id="staffMessages" class="panel flux-page" data-educator-work-panel><header class="flux-page-header flux-page-header--lead"><h2 style="margin:0">Messages</h2><p class="flux-page-sub">Direct messages and group chats with your colleagues.</p></header></div>
     <div id="staffTasks" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal tasks and errands (synced).</p></header></div>
     <div id="staffMeetingNotes" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meetings, decisions, and action items.</p></header></div>
     <div id="staffPD" class="panel flux-page" data-staff-personal-panel><header class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Professional development log.</p></header></div>
@@ -3104,6 +3119,7 @@
 <script defer src="public/js/flux-elevate.js"></script>
 <script defer src="public/js/flux-cowork.js"></script>
 <script defer src="public/js/flux-office-hours.js"></script>
+<script defer src="public/js/flux-staff-messages.js"></script>
 <!-- Flux AI Providers — BYOK multi-provider chat client (Anthropic/OpenAI/Gemini/Groq/Mistral/DeepSeek) -->
 <script defer src="public/js/flux-ai-providers.js"></script>
 <script defer src="public/js/flux-ai-providers-ui.js"></script>

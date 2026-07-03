@@ -82,3 +82,42 @@
 @media(prefers-reduced-motion:reduce){
   .nav-item .ni,.card:not(.fih-tile),.panel,.btn-sec{transition:none}
 }
+
+/* ── Flux AI starter menu v2: grouped, role-aware suggestions ── */
+.ai-sugs--grouped {
+  display: flex !important;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.ai-sugs--grouped[style*="display: none"] { display: none !important; }
+.ai-sug-group__label {
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted2, #8b93a7);
+  margin: 0 0 6px 2px;
+}
+.ai-sug-group__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-sugs--grouped .ai-sug {
+  flex: 1 1 auto;
+  min-width: 150px;
+  justify-content: flex-start;
+  text-align: left;
+}
+.ai-sug--fill { border-style: dashed !important; }
+.ai-sug__edit {
+  margin-left: auto;
+  opacity: .45;
+  font-size: .74rem;
+}
+@media (max-width: 560px) {
+  .ai-sugs--grouped .ai-sug { min-width: calc(50% - 8px); }
+}

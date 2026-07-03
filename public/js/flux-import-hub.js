@@ -127,4 +127,68 @@
   }
 
   window.openImportHub = open;
+
+  /* ── Back-to-school banner ──────────────────────────────────────────
+   * July–September: a dismissible dashboard banner surfaces the import hub
+   * so new-year setup (classes, schedule, grades) is one tap away instead
+   * of buried in Settings. Re-injects when the dashboard re-renders. */
+
+  var BANNER_ID = 'fluxImportSeasonBanner';
+
+  function bannerDismissKey() {
+    return 'flux_import_banner_dismissed_' + new Date().getFullYear();
+  }
+
+  function bannerSeasonActive() {
+    var m = new Date().getMonth(); // 6=Jul 7=Aug 8=Sep
+    return m === 6 || m === 7 || m === 8;
+  }
+
+  function injectBanner() {
+    if (!bannerSeasonActive()) return;
+    try { if (localStorage.getItem(bannerDismissKey()) === '1') return; } catch (e) {}
+    if (document.getElementById(BANNER_ID)) return;
+    var dash = document.getElementById('dashboard');
+    if (!dash || !dash.classList.contains('active')) return;
+    var edu = isEducator();
+    var banner = document.createElement('div');
+    banner.id = BANNER_ID;
+    banner.className = 'fih-season-banner';
+    banner.innerHTML =
+      '<span class="fih-season-ico" aria-hidden="true">🎒</span>' +
+      '<span class="fih-season-text"><strong>New school year?</strong> ' +
+      (edu ? 'Import your classes, rosters, and calendar in one place.'
+           : 'Import your classes, schedule, and grades in one place — takes a minute.') +
+      '</span>' +
+      '<button type="button" class="fih-season-go" data-fih-go>Import now</button>' +
+      '<button type="button" class="fih-season-x" data-fih-dismiss aria-label="Dismiss">✕</button>';
+    banner.addEventListener('click', function (e) {
+      if (e.target.closest('[data-fih-go]')) { open(); return; }
+      if (e.target.closest('[data-fih-dismiss]')) {
+        try { localStorage.setItem(bannerDismissKey(), '1'); } catch (err) {}
+        banner.remove();
+      }
+    });
+    dash.prepend(banner);
+  }
+
+  function watchDashboard() {
+    var dash = document.getElementById('dashboard');
+    if (!dash || !window.MutationObserver) return;
+    var t = null;
+    new MutationObserver(function () {
+      if (document.getElementById(BANNER_ID)) return;
+      clearTimeout(t);
+      t = setTimeout(injectBanner, 250);
+    }).observe(dash, { childList: true, attributes: true, attributeFilter: ['class'] });
+  }
+
+  function bootBanner() {
+    injectBanner();
+    watchDashboard();
+    setTimeout(injectBanner, 2500); // after first dashboard render settles
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootBanner);
+  else bootBanner();
 })();
