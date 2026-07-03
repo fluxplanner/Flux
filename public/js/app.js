@@ -3521,9 +3521,9 @@ ${googleNavPersonal}`;
 
 function renderSidebars(){
   const groups=[
-    {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['canvas','notes','timer','toolbox']},
-    {label:'Me',ids:['profile','goals','mood','settings']},
+    {label:'Plan',ids:['dashboard','calendar','ai']},
+    {label:'Learn',ids:['canvas','notes','timer','toolbox']},
+    {label:'Me & Life',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   const schoolTab=tabConfig.find(t=>t.id==='school')||DEFAULT_TABS.find(t=>t.id==='school');
@@ -3554,26 +3554,26 @@ function renderSidebars(){
   }).join('');
   const schoolTopSide=(visibleIds.has('school')?augSide.schoolClassicBtn:'')+augSide.schoolStripAndFeed;
   const schoolTopMob=(visibleIds.has('school')?augMob.schoolClassicBtn:'')+augMob.schoolStripAndFeed;
-  const schoolGroupSide=`<div class="nav-group"><div class="nav-group-label">School</div>${schoolTopSide}${schoolItemsSide}${augSide.staffPersonal}</div>`;
-  const schoolGroupMob=`<div class="nav-group"><div class="nav-group-label" style="padding:8px 16px 4px">School</div>${schoolTopMob}${schoolItemsMob}${augMob.staffPersonal}</div>`;
+  const schoolGroupSide=`<div class="nav-group"><div class="nav-group-label">Learn</div>${schoolTopSide}${schoolItemsSide}${augSide.staffPersonal}</div>`;
+  const schoolGroupMob=`<div class="nav-group"><div class="nav-group-label" style="padding:8px 16px 4px">Learn</div>${schoolTopMob}${schoolItemsMob}${augMob.staffPersonal}</div>`;
 
   const sidebarNav=document.querySelector('.sidebar-nav');
   if(sidebarNav){
     sidebarNav.innerHTML=[
-      buildStdGroup('Main',groups[0].ids,'nav')+(includeWorkspaceNav?augSide.mainWorkHubBtn:''),
+      buildStdGroup('Plan',groups[0].ids,'nav')+(includeWorkspaceNav?augSide.mainWorkHubBtn:''),
       includeWorkspaceNav?augSide.workspace:'',
       schoolGroupSide,
-      buildStdGroup('Me',groups[2].ids,'nav'),
+      buildStdGroup('Me & Life',groups[2].ids,'nav'),
     ].join('');
   }
 
   const drawerNav=document.querySelector('.mob-drawer-nav');
   if(drawerNav){
     drawerNav.innerHTML=[
-      buildStdGroup('Main',groups[0].ids,'navMob','padding:8px 16px 4px')+(includeWorkspaceNav?augMob.mainWorkHubBtn:''),
+      buildStdGroup('Plan',groups[0].ids,'navMob','padding:8px 16px 4px')+(includeWorkspaceNav?augMob.mainWorkHubBtn:''),
       includeWorkspaceNav?augMob.workspace:'',
       schoolGroupMob,
-      buildStdGroup('Me',groups[2].ids,'navMob','padding:8px 16px 4px'),
+      buildStdGroup('Me & Life',groups[2].ids,'navMob','padding:8px 16px 4px'),
     ].join('');
   }
 

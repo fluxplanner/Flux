@@ -28,10 +28,10 @@
     { id: 'counselor_referrals', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Referral tracker', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderReferralTracker' },
     { id: 'counselor_appointments', flag: 'enable_counselor_caseload', roles: ['counselor'], scope: 'work', title: 'Appointment scheduler', status: 'live', module: 'FluxCounselorAppointments' },
     { id: 'personal_brain_dump', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Brain dump', status: 'beta', module: 'FluxPersonalHub', method: 'renderBrainDump' },
-    { id: 'personal_commute', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Commute tracker', status: 'planned', module: 'FluxPersonalHub' },
+    { id: 'personal_commute', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Commute tracker', status: 'beta', module: 'FluxPersonalHub', method: 'renderCommute' },
     { id: 'personal_grocery', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Grocery list', status: 'beta', module: 'FluxPersonalHub', method: 'renderGrocery' },
     { id: 'personal_mood_energy', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Mood / energy log', status: 'beta', module: 'FluxPersonalHub', method: 'renderMoodEnergy' },
-    { id: 'personal_deep_work', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Deep work blocker', status: 'planned', module: 'FluxPersonalHub' },
+    { id: 'personal_deep_work', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Deep work blocker', status: 'beta', module: 'FluxPersonalHub', method: 'renderDeepWork' },
     { id: 'sys_command_v2', flag: 'enable_staff_command_v2', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Staff command palette', status: 'beta', module: 'FluxStaffCommand', method: 'registerCommands', kind: 'command' },
     { id: 'sys_gmail_quick', flag: 'enable_gmail_educator_import', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Gmail → task quick import', status: 'beta', module: 'FluxStaffCommand', method: 'renderGmailQuickWidget' },
     { id: 'sys_export_csv', flag: 'enable_staff_productivity_suite', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'any', title: 'Export to CSV', status: 'beta', module: 'FluxModuleLoader', method: 'exportEnabledData', kind: 'command' },
@@ -52,12 +52,12 @@
     {
       id: 'life',
       label: 'Life',
-      widgetIds: ['personal_brain_dump', 'personal_grocery'],
+      widgetIds: ['personal_brain_dump', 'personal_grocery', 'personal_commute'],
     },
     {
       id: 'wellness',
       label: 'Wellness',
-      widgetIds: ['personal_mood_energy'],
+      widgetIds: ['personal_mood_energy', 'personal_deep_work'],
     },
     {
       id: 'tools',

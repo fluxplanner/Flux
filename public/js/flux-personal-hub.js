@@ -121,10 +121,105 @@
     });
   }
 
+  function renderCommute(mount) {
+    const log = loadK('commute', []);
+    const avg = log.length ? Math.round(log.reduce((s, e) => s + e.mins, 0) / log.length) : null;
+    const last = log.length ? log[log.length - 1] : null;
+    mount.innerHTML = `
+      <p class="flux-widget-hint">Log this morning's door-to-desk time — Flux learns your average.</p>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" id="fluxCommuteMins" min="1" max="240" placeholder="min" style="width:70px;font-size:.78rem"/>
+        <button type="button" class="btn-sec" id="fluxCommuteLog">Log commute</button>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted2);margin-top:8px" id="fluxCommuteStats">
+        ${avg != null ? `Average: <b>${avg} min</b> over ${log.length} trip${log.length === 1 ? '' : 's'}` : 'No trips logged yet'}
+        ${last ? ` · last: ${last.mins} min (${new Date(last.at).toLocaleDateString()})` : ''}
+      </div>`;
+    mount.querySelector('#fluxCommuteLog')?.addEventListener('click', () => {
+      const mins = parseInt(mount.querySelector('#fluxCommuteMins')?.value || '', 10);
+      if (!mins || mins < 1) {
+        if (typeof showToast === 'function') showToast('Enter commute minutes first', 'info');
+        return;
+      }
+      log.push({ mins, at: Date.now() });
+      if (log.length > 90) log.shift();
+      saveK('commute', log);
+      renderCommute(mount);
+      if (typeof showToast === 'function') showToast('Commute logged', 'success');
+    });
+  }
+
+  let _dwTimer = null;
+  function renderDeepWork(mount) {
+    const state = loadK('deep_work', { sessions: [], until: null });
+    const now = Date.now();
+    if (state.until && state.until <= now) state.until = null; // expired session
+    const weekAgo = now - 7 * 864e5;
+    const weekMins = state.sessions.filter((s) => s.at > weekAgo).reduce((s, e) => s + e.mins, 0);
+    const active = state.until && state.until > now;
+
+    const paint = () => {
+      const remaining = active ? Math.max(0, state.until - Date.now()) : 0;
+      const mm = Math.floor(remaining / 60000);
+      const ss = Math.floor((remaining % 60000) / 1000);
+      mount.innerHTML = active
+        ? `
+        <p class="flux-widget-hint">Deep work running — hold the line.</p>
+        <div style="font-size:1.6rem;font-weight:800;letter-spacing:-.02em">${mm}:${String(ss).padStart(2, '0')}</div>
+        <button type="button" class="btn-sec" style="margin-top:6px" id="fluxDwStop">End early</button>`
+        : `
+        <p class="flux-widget-hint">Block out a stretch for planning or grading. Local only.</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="btn-sec" data-dw="25">25 min</button>
+          <button type="button" class="btn-sec" data-dw="50">50 min</button>
+          <button type="button" class="btn-sec" data-dw="90">90 min</button>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted2);margin-top:8px">This week: <b>${weekMins} min</b> of deep work</div>`;
+      if (active) {
+        mount.querySelector('#fluxDwStop')?.addEventListener('click', () => {
+          state.until = null;
+          saveK('deep_work', state);
+          if (_dwTimer) { clearInterval(_dwTimer); _dwTimer = null; }
+          renderDeepWork(mount);
+        });
+      } else {
+        mount.querySelectorAll('[data-dw]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const mins = parseInt(btn.getAttribute('data-dw'), 10);
+            state.until = Date.now() + mins * 60000;
+            state.sessions.push({ mins, at: Date.now() });
+            if (state.sessions.length > 200) state.sessions.shift();
+            saveK('deep_work', state);
+            renderDeepWork(mount);
+            if (typeof showToast === 'function') showToast(`Deep work: ${mins} minutes — go.`, 'success');
+          });
+        });
+      }
+    };
+    paint();
+    if (_dwTimer) { clearInterval(_dwTimer); _dwTimer = null; }
+    if (active) {
+      _dwTimer = setInterval(() => {
+        if (!document.body.contains(mount)) { clearInterval(_dwTimer); _dwTimer = null; return; }
+        if (state.until && state.until <= Date.now()) {
+          state.until = null;
+          saveK('deep_work', state);
+          clearInterval(_dwTimer); _dwTimer = null;
+          if (typeof showToast === 'function') showToast('Deep work session complete 🎉', 'success');
+          renderDeepWork(mount);
+          return;
+        }
+        paint();
+      }, 1000);
+    }
+  }
+
   window.FluxPersonalHub = {
     renderBrainDump,
     renderGrocery,
     renderMoodEnergy,
+    renderCommute,
+    renderDeepWork,
     loadK,
     saveK,
     isLocalOnly: true,

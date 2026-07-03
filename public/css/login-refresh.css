@@ -1,0 +1,134 @@
+/* ════════════════════════════════════════════════════════════════════════
+   FLUX · login-refresh.css — July 2026 login/introductory screen refresh.
+   Loads AFTER login.css / login-aurora.css / flux-login-split.css so its
+   rules win. Styles the new audience toggle, stat band, educator split,
+   quotes and CTA band added to #loginScreen, plus auth-card polish.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── audience toggle ─────────────────────────────────────────────────── */
+#loginScreen .lx-aud-toggle{
+  display:inline-flex;gap:4px;margin:18px 0 22px;padding:4px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:999px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+#loginScreen .lx-aud-tab{
+  appearance:none;border:none;cursor:pointer;font:inherit;
+  font-size:.86rem;font-weight:700;letter-spacing:.01em;
+  color:#9aa2ba;background:transparent;border-radius:999px;
+  padding:9px 18px;transition:color .18s ease,background .18s ease,box-shadow .18s ease;
+}
+#loginScreen .lx-aud-tab:hover{color:#e8ecf6}
+#loginScreen .lx-aud-tab.is-on{
+  color:#fff;background:linear-gradient(100deg,rgba(0,194,255,.28),rgba(124,92,255,.32));
+  box-shadow:0 4px 18px rgba(0,150,255,.25),inset 0 0 0 1px rgba(140,190,255,.35);
+}
+#loginScreen .lx-hero-copy .lx-headline,
+#loginScreen .lx-hero-copy .lx-sub{transition:opacity .22s ease,transform .22s ease}
+#loginScreen .lx-hero-copy.lx-aud-swapping .lx-headline,
+#loginScreen .lx-hero-copy.lx-aud-swapping .lx-sub{opacity:0;transform:translateY(6px)}
+
+/* ── stat band ───────────────────────────────────────────────────────── */
+#loginScreen .lx-stats-sec{padding-top:12px;padding-bottom:12px}
+#loginScreen .lx-statband{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;overflow:hidden;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);
+  border-radius:20px;
+}
+#loginScreen .lx-statcell{
+  background:rgba(10,12,20,.82);text-align:center;padding:26px 14px;
+}
+#loginScreen .lx-statcell b{
+  display:block;font-size:1.85rem;font-weight:900;letter-spacing:-.03em;line-height:1.1;
+}
+#loginScreen .lx-statcell b.grad{
+  background:linear-gradient(100deg,#00c2ff,#7c5cff);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+#loginScreen .lx-statcell span{font-size:.82rem;color:#6b7288}
+@media(max-width:720px){#loginScreen .lx-statband{grid-template-columns:repeat(2,1fr)}}
+
+/* ── section eyebrow variants ────────────────────────────────────────── */
+#loginScreen .lx-eyebrow-vi{color:#a98bff}
+#loginScreen .lx-eyebrow-am{color:#ffb54d}
+
+/* ── educator split ──────────────────────────────────────────────────── */
+#loginScreen .lx-edu-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:34px;text-align:left;
+}
+@media(max-width:860px){#loginScreen .lx-edu-grid{grid-template-columns:1fr}}
+#loginScreen .lx-edu-card{
+  background:linear-gradient(180deg,rgba(20,23,36,.92),rgba(12,14,22,.92));
+  border:1px solid rgba(124,92,255,.28);border-radius:22px;padding:28px;
+  transition:transform .18s ease,border-color .18s ease;
+}
+#loginScreen .lx-edu-card:hover{transform:translateY(-3px);border-color:rgba(124,92,255,.5)}
+#loginScreen .lx-edu-card--life{border-color:rgba(16,217,160,.24)}
+#loginScreen .lx-edu-card--life:hover{border-color:rgba(16,217,160,.45)}
+#loginScreen .lx-edu-card h3{
+  font-size:1.22rem;font-weight:850;letter-spacing:-.02em;margin:0 0 4px;color:#eef0f7;
+}
+#loginScreen .lx-edu-sub{color:#9aa2ba;font-size:.9rem;margin:0 0 18px}
+#loginScreen .lx-edu-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+#loginScreen .lx-edu-list li{display:flex;gap:11px;align-items:flex-start;font-size:.92rem;color:#c8cede;line-height:1.5}
+#loginScreen .lx-edu-list b{color:#eef0f7}
+#loginScreen .lx-edu-chk{
+  flex:none;width:21px;height:21px;border-radius:7px;display:grid;place-items:center;
+  font-size:.7rem;font-weight:900;margin-top:2px;
+  background:rgba(124,92,255,.16);color:#a98bff;border:1px solid rgba(124,92,255,.4);
+}
+#loginScreen .lx-edu-chk--g{
+  background:rgba(16,217,160,.13);color:#10d9a0;border-color:rgba(16,217,160,.35);
+}
+
+/* ── quotes ──────────────────────────────────────────────────────────── */
+#loginScreen .lx-quote-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;
+  margin-top:34px;text-align:left;
+}
+#loginScreen .lx-quote{
+  margin:0;background:rgba(15,18,29,.85);border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;padding:24px;
+}
+#loginScreen .lx-quote blockquote{
+  margin:0 0 16px;font-size:.94rem;color:#d4d9e6;line-height:1.6;
+}
+#loginScreen .lx-quote blockquote::before{
+  content:'“';color:#00c2ff;font-size:1.35rem;font-weight:900;margin-right:2px;
+}
+#loginScreen .lx-quote figcaption{display:flex;align-items:center;gap:11px}
+#loginScreen .lx-quote-av{
+  width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  font-weight:800;font-size:.85rem;color:#fff;flex:none;
+}
+#loginScreen .lx-quote figcaption b{display:block;font-size:.86rem;color:#eef0f7}
+#loginScreen .lx-quote figcaption small{display:block;font-size:.75rem;color:#6b7288}
+
+/* ── CTA band ────────────────────────────────────────────────────────── */
+#loginScreen .lx-cta-band{
+  text-align:center;border-radius:26px;padding:60px 28px;
+  background:linear-gradient(160deg,rgba(0,194,255,.10),rgba(124,92,255,.13));
+  border:1px solid rgba(124,92,255,.28);
+}
+#loginScreen .lx-cta-band h2{
+  font-size:clamp(1.6rem,3.4vw,2.4rem);font-weight:900;letter-spacing:-.03em;
+  margin:0 0 10px;color:#eef0f7;
+}
+#loginScreen .lx-cta-band p{color:#9aa2ba;margin:0 0 26px;font-size:1rem}
+#loginScreen .lx-cta-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+#loginScreen .lx-cta-main{width:auto;padding-left:26px;padding-right:26px}
+
+/* ── auth card polish ────────────────────────────────────────────────── */
+#loginScreen .lx-auth-card{
+  border-color:rgba(140,190,255,.22);
+  box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,194,255,.06),
+             0 0 60px rgba(0,150,255,.07);
+}
+#loginScreen .lx-auth-card:focus-within{
+  border-color:rgba(0,194,255,.4);
+  box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,194,255,.18),
+             0 0 70px rgba(0,150,255,.13);
+}
+#loginScreen .lx-field input:focus{
+  border-color:rgba(0,194,255,.55);
+  box-shadow:0 0 0 3px rgba(0,194,255,.14);
+}

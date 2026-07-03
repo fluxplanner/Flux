@@ -103,6 +103,7 @@
 <link rel="stylesheet" href="public/css/login.css">
 <link rel="stylesheet" href="public/css/login-aurora.css">
 <link rel="stylesheet" href="public/css/flux-login-split.css">
+<link rel="stylesheet" href="public/css/login-refresh.css">
 <link rel="stylesheet" href="public/css/flux-modern-ui.css">
 <link rel="stylesheet" href="public/css/flux-motion.css">
 <link rel="stylesheet" href="public/css/flux-apple-motion.css">
@@ -243,6 +244,8 @@
 <link rel="stylesheet" href="public/css/flux-lowend.css">
 <!-- Flux RTL — right-to-left layout, gated on html[dir="rtl"] (Arabic) -->
 <link rel="stylesheet" href="public/css/flux-rtl.css">
+<!-- Flux Refresh '26 — site-wide visual refresh layer, must load LAST -->
+<link rel="stylesheet" href="public/css/flux-refresh-26.css">
 <script type="importmap">
 {
   "imports": {
@@ -379,8 +382,14 @@
     <section class="login-scroll-section login-scroll-hero lx-hero" id="top">
       <div class="lx-hero-copy">
         <span class="lx-badge"><span class="lx-badge-dot" aria-hidden="true"></span>AI-powered planner — for students &amp; schools</span>
-        <h1 class="lx-headline">Your whole school life,<br><span class="grad">in flow.</span></h1>
-        <p class="lx-sub">Flux keeps tasks, classes, notes, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.</p>
+
+        <div class="lx-aud-toggle" role="tablist" aria-label="Who is Flux for">
+          <button type="button" class="lx-aud-tab is-on" id="lxAudStudent" role="tab" aria-selected="true" data-aud="student">🎒 For students</button>
+          <button type="button" class="lx-aud-tab" id="lxAudTeacher" role="tab" aria-selected="false" data-aud="teacher">🏫 For teachers &amp; staff</button>
+        </div>
+
+        <h1 class="lx-headline" id="lxHeadline">Your whole school life,<br><span class="grad">in flow.</span></h1>
+        <p class="lx-sub" id="lxSub">Flux keeps tasks, classes, notes, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.</p>
 
         <div class="lx-demo" aria-live="polite">
           <div class="lx-demo-label"><span class="lx-demo-pulse" aria-hidden="true"></span>Live · ask Flux AI</div>
@@ -559,6 +568,87 @@
               <div class="login-feature-name">For educators</div>
               <div class="login-feature-desc">Teacher, counselor and admin workspaces — rosters, lesson hub, caseload and school ops.</div>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── By the numbers ── -->
+    <section class="login-scroll-section lx-section lx-stats-sec" aria-label="Flux by the numbers">
+      <div class="lx-wrap">
+        <div class="lx-statband">
+          <div class="lx-statcell"><b class="grad">11</b><span>native study subjects</span></div>
+          <div class="lx-statcell"><b class="grad">57+</b><span>built-in study tools</span></div>
+          <div class="lx-statcell"><b class="grad">38</b><span>AI actions it can run</span></div>
+          <div class="lx-statcell"><b class="grad">16</b><span>app integrations</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── For educators ── -->
+    <section class="login-scroll-section lx-section" id="educators">
+      <div class="lx-wrap">
+        <p class="lx-section-eyebrow lx-eyebrow-vi">For teachers, counselors &amp; admins</p>
+        <h2 class="lx-section-title">A workspace for work.<br>A planner for life. One account.</h2>
+        <p class="lx-section-lede">Staff accounts flip between <b>Work mode</b> and <b>Personal mode</b> — lesson plans and caseloads never mix with your grocery list, and your evenings stay yours.</p>
+        <div class="lx-edu-grid">
+          <div class="lx-edu-card">
+            <h3>💼 Work mode</h3>
+            <p class="lx-edu-sub">Role-aware tools that follow your job title.</p>
+            <ul class="lx-edu-list">
+              <li><span class="lx-edu-chk">✓</span><span><b>Lesson Hub</b> — today's bell schedule, lesson notes and class-by-class planning.</span></li>
+              <li><span class="lx-edu-chk">✓</span><span><b>Gradebook &amp; classes</b> — rosters, grades and per-student progress at a glance.</span></li>
+              <li><span class="lx-edu-chk">✓</span><span><b>Counselor caseload</b> — meetings, student lists and caseload widgets in one view.</span></li>
+              <li><span class="lx-edu-chk">✓</span><span><b>Admin operations</b> — announcements, school calendar and user management.</span></li>
+              <li><span class="lx-edu-chk">✓</span><span><b>Office hours</b> — publish drop-in hours students can actually find.</span></li>
+            </ul>
+          </div>
+          <div class="lx-edu-card lx-edu-card--life">
+            <h3>🌿 Personal mode</h3>
+            <p class="lx-edu-sub">Everything after the last bell.</p>
+            <ul class="lx-edu-list">
+              <li><span class="lx-edu-chk lx-edu-chk--g">✓</span><span><b>Personal tasks</b> — errands, appointments and life admin, fully separate from school.</span></li>
+              <li><span class="lx-edu-chk lx-edu-chk--g">✓</span><span><b>Personal hub</b> — your own dashboard of what matters outside the building.</span></li>
+              <li><span class="lx-edu-chk lx-edu-chk--g">✓</span><span><b>Wellbeing</b> — check-ins and balance tracking, because burnout helps nobody.</span></li>
+              <li><span class="lx-edu-chk lx-edu-chk--g">✓</span><span><b>Development</b> — PD hours and growth goals on your own terms.</span></li>
+              <li><span class="lx-edu-chk lx-edu-chk--g">✓</span><span><b>Your Google, your way</b> — personal Gmail, Drive and Calendar stay personal.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Voices ── -->
+    <section class="login-scroll-section lx-section" aria-label="What people say">
+      <div class="lx-wrap">
+        <p class="lx-section-eyebrow lx-eyebrow-am">Why people stay</p>
+        <h2 class="lx-section-title">Built with real students and staff</h2>
+        <div class="lx-quote-grid">
+          <figure class="lx-quote">
+            <blockquote>The AI quizzed me on exactly the units I was weakest in. My chem grade went up a full letter this quarter.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#00c2ff,#3b82f6)">A</span><span><b>Aisha</b><small>11th grade · AP Chemistry</small></span></figcaption>
+          </figure>
+          <figure class="lx-quote">
+            <blockquote>Work mode / personal mode is the feature I didn't know I needed. Sunday planning takes 20 minutes now — and it stays at school.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#7c5cff,#f472b6)">M</span><span><b>Mr. Delgado</b><small>Biology teacher</small></span></figcaption>
+          </figure>
+          <figure class="lx-quote">
+            <blockquote>I snapped a photo of my syllabus and my entire semester appeared in the calendar. That was the moment I switched.</blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#10d9a0,#00c2ff)">J</span><span><b>Jordan</b><small>College freshman</small></span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Final CTA ── -->
+    <section class="login-scroll-section lx-section" aria-label="Get started">
+      <div class="lx-wrap">
+        <div class="lx-cta-band">
+          <h2>Try it before you even sign up.</h2>
+          <p>Jump in as a guest, poke every tool, and add an account only when it earns it.</p>
+          <div class="lx-cta-actions">
+            <button type="button" class="lx-submit lx-cta-main" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">Create your account <span aria-hidden="true">↑</span></button>
+            <button type="button" class="lx-ghost-btn" onclick="skipLogin()">Continue as guest <span aria-hidden="true">→</span></button>
           </div>
         </div>
       </div>
@@ -2804,6 +2894,7 @@
 <script defer src="public/js/splash.js"></script>
 <script defer src="public/js/login-motion.js"></script>
 <script defer src="public/js/flux-login-split.js"></script>
+<script defer src="public/js/login-refresh.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 <script defer src="public/js/flux-teacher-wishlist.js"></script>
     <script defer src="public/js/core/debug.js"></script>

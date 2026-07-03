@@ -572,7 +572,7 @@
         <div class="sph-topbar">
           <div>
             <div class="sph-greet">Personal hub</div>
-            <div class="sph-greet-sub">Brain dump, errands, and mood log — gratitude and important dates live on Mood and Calendar.</div>
+            <div class="sph-greet-sub">Brain dump, errands, commute, deep-work blocks and mood log — your life outside the building, kept out of school scope.</div>
           </div>
           <div class="sph-topbar-actions" id="staffPhToolbar"></div>
         </div>
