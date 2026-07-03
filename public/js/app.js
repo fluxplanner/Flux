@@ -11046,7 +11046,10 @@ async function getSessionAfterOAuth(sb){
   let{data:{session}}=await sb.auth.getSession();
   const hash=window.location.hash;
   const params=new URLSearchParams(window.location.search);
-  const oauthPending=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error');
+  // Named OAuth popups count as pending even when supabase-js already
+  // stripped the tokens from the URL — the code exchange may still be in
+  // flight, and returning null here would flash a false failure screen.
+  const oauthPending=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||!!window.__fluxIsOAuthPopupTab;
   if(session||!oauthPending)return session;
   for(let i=0;i<150;i++){
     await new Promise(r=>setTimeout(r,100));
@@ -11073,7 +11076,14 @@ async function initAuth(){
   try{
     const hash=window.location.hash;
     const params=new URLSearchParams(window.location.search);
-    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error');
+    // The popup's window.name ('fluxGoogleOAuth', 'flux<provider>OAuth', …)
+    // survives the whole OAuth redirect chain. URL tokens alone are not
+    // enough: supabase-js (detectSessionInUrl) can consume ?code / #access_token
+    // before we read them here, which made the popup look like a normal tab,
+    // boot the planner, and leave the user with the app open twice.
+    const isOAuthPopup=/^flux\w*OAuth$/i.test(String(window.name||''));
+    window.__fluxIsOAuthPopupTab=isOAuthPopup;
+    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup;
 
     if(!isOAuthCallback){
       const reach=await pingSupabaseReachable(sb);
@@ -11121,12 +11131,17 @@ async function initAuth(){
         ?'This window will close — continue in your other Flux tab.'
         :'You can close this window and try again from the other tab.';
       document.body.innerHTML='<div style="font-family:system-ui,sans-serif;padding:48px 24px;text-align:center;color:#e8ecff;background:#0B0F1A;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px"><p style="font-weight:600;margin:0;font-size:16px">'+title+'</p><p style="opacity:.72;font-size:14px;margin:0;max-width:280px;line-height:1.5">'+sub+'</p></div>';
-      // Try to self-close; if the browser blocks it (no opener), the parent
-      // tab closes us via the named-window handle, and as a last resort we
-      // bounce to the clean app so no dead callback page lingers.
+      // Clear the popup marker so a manual reload of this tab (if the user
+      // keeps it) behaves like a normal tab again.
+      try{window.name='';}catch(_){}
+      // Try to self-close; the parent also closes us via the named-window
+      // handle. Only same-tab redirects (no popup) may bounce back into the
+      // app — a popup must never reopen the planner beside the original tab.
       setTimeout(()=>{
         try{window.close();}catch(e){}
-        setTimeout(()=>{ if(!window.closed){ try{ location.replace(window.location.pathname); }catch(_){} } },600);
+        if(!isOAuthPopup){
+          setTimeout(()=>{ if(!window.closed){ try{ location.replace(window.location.pathname); }catch(_){} } },600);
+        }
       },ok?280:400);
       return true;
     };
@@ -11147,6 +11162,8 @@ async function initAuth(){
 
     // STEP 3: Listen for future auth changes
     sb.auth.onAuthStateChange(async(event,s)=>{
+      // OAuth popup tabs only relay the session — they never boot the planner.
+      if(window.__fluxIsOAuthPopupTab)return;
       if(event==='SIGNED_IN'&&s?.user){
         fluxExtAuthBroadcast(s);
         // Hide login immediately
