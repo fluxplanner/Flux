@@ -568,7 +568,7 @@
 
     root.innerHTML=`
 <div class="flux-mega-card card">
-  <h3 class="flux-mega-title">🧠 Flux AI Command Center</h3>
+  <h3 class="flux-mega-title">Flux AI Command Center</h3>
   <p class="flux-mega-sub">History-aware estimates, schedule relief, study order, and optional AI for guides & reflections.</p>
   ${(()=>{
     const ts=typeof todayStr==='function'?todayStr():'';

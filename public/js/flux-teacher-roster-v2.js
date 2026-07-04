@@ -142,7 +142,7 @@
 
     const listHtml =
       enrolled === 0 && pend === 0
-        ? `<div class="teacher-empty"><div class="te-icon">👥</div><div class="te-title">No students yet</div><div class="te-sub">Share your class code — students appear here after they join or you approve a request.</div></div>`
+        ? `<div class="teacher-empty"><div class="te-icon"></div><div class="te-title">No students yet</div><div class="te-sub">Share your class code — students appear here after they join or you approve a request.</div></div>`
         : students
             .map((s) => {
               const dn = displayName(nameMap, s.student_id);
@@ -212,7 +212,7 @@
 
   function joinButtonHtml() {
     if (!enabled()) return null;
-    return '🔗 Join a Teacher Class (request approval)';
+    return 'Join a Teacher Class (request approval)';
   }
 
   async function submitStudentJoinRequest(sb, userId, code, note) {

@@ -196,7 +196,7 @@
     panel.innerHTML = `
       <div class="flux-shutdown-v2-card">
         <div class="flux-shutdown-v2-head">
-          <span class="flux-shutdown-v2-icon" aria-hidden="true">🌙</span>
+          <span class="flux-shutdown-v2-icon" aria-hidden="true"></span>
           <div>
             <h2 class="flux-shutdown-v2-title">Daily Shutdown</h2>
             <p class="flux-shutdown-v2-date">${esc(dateLabel)}</p>
@@ -249,7 +249,7 @@
     btn.type = 'button';
     btn.id = 'fluxShutdownEntryBtn';
     btn.className = 'flux-shutdown-entry-btn';
-    btn.textContent = '🌙 Shutdown';
+    btn.textContent = 'Shutdown';
     btn.title = 'Daily shutdown — reflect and preview tomorrow';
     btn.addEventListener('click', () => {
       run();

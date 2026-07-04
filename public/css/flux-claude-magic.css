@@ -301,7 +301,7 @@
   letter-spacing: .06em;
   vertical-align: middle;
 }
-.flux-cc-badge::before { content: '⚡ '; }
+.flux-cc-badge::before { content: ''; }
 
 /* ── Input focus glow ── */
 #staffOnboarding input:focus,

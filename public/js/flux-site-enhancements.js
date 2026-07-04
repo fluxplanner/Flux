@@ -609,9 +609,9 @@
     card.innerHTML = `<h3>Quick report</h3>
       <p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px">One-tap categories for feedback.</p>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <button type="button" class="btn-sec" data-cat="bug">🐛 Bug</button>
-        <button type="button" class="btn-sec" data-cat="idea">💡 Idea</button>
-        <button type="button" class="btn-sec" data-cat="ux">✨ UX</button>
+        <button type="button" class="btn-sec" data-cat="bug">Bug</button>
+        <button type="button" class="btn-sec" data-cat="idea">Idea</button>
+        <button type="button" class="btn-sec" data-cat="ux">UX</button>
       </div>`;
     card.querySelectorAll('button').forEach((b) => {
       b.onclick = () => {
@@ -759,7 +759,7 @@
         const max = (habits || []).reduce((m, h) => Math.max(m, h.streak || 0), 0);
         if (max >= 7) {
           localStorage.setItem(key, '1');
-          toast(`🔥 ${max}-day habit streak!`, 'success', 4000);
+          toast(`${max}-day habit streak!`, 'success', 4000);
         }
       } catch (_) {}
     });
@@ -779,7 +779,7 @@
         const due = (cards || []).filter((c) => c && c.due && new Date(c.due) <= new Date()).length;
         if (srsEl && due > 0) {
           srsEl.style.display = 'inline-flex';
-          srsEl.textContent = `📚 ${due} review`;
+          srsEl.textContent = `${due} review`;
         }
       } catch (_) {}
       const mom = document.getElementById('momentumPill');
@@ -788,7 +788,7 @@
           const s = FluxMomentumV2.score();
           if (s != null) {
             mom.style.display = 'inline-flex';
-            mom.textContent = `⚡ ${Math.round(s)}`;
+            mom.textContent = `${Math.round(s)}`;
           }
         } catch (_) {}
       }

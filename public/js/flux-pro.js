@@ -400,7 +400,7 @@ function renderPinnedTask(){
   const doneCls = t.done ? ' style="text-decoration:line-through;opacity:.55"' : '';
   host.innerHTML = `
     <div class="flux-pinned-task">
-      <div class="flux-pin-icon">📌</div>
+      <div class="flux-pin-icon"></div>
       <div class="flux-pin-body">
         <div class="flux-pin-kicker">PINNED</div>
         <div class="flux-pin-name"${doneCls}>${escapeHtml(t.name||t.text||'Task')}</div>
@@ -753,7 +753,7 @@ function maybeShowReflectionPrompt(){
   const total = todayTasks.length;
   host.innerHTML = `
     <div class="flux-reflect-banner" id="fluxReflectBanner">
-      <div class="flux-reflect-icon">🌙</div>
+      <div class="flux-reflect-icon"></div>
       <div class="flux-reflect-body">
         <div class="flux-reflect-title">How was today?</div>
         <div class="flux-reflect-sub">${done} of ${total} planned tasks done. Take a minute to reflect with Flux AI.</div>

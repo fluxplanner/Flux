@@ -388,7 +388,7 @@ ${
     btn.type = 'button';
     btn.className = 'tmode-btn flux-srsd-review-btn';
     btn.setAttribute('data-srsd-filter', '1');
-    btn.textContent = '🔄 #review';
+    btn.textContent = '#review';
     btn.addEventListener('click', () => {
       if (typeof window.setNoteFilter === 'function') window.setNoteFilter('review', btn);
     });
@@ -420,7 +420,7 @@ ${
     if (!btn) return;
     const note = notesList().find((n) => n.id === window.currentNoteId);
     const on = note && isReviewNote(note);
-    btn.textContent = on ? '🔄 #review ✓' : '🔄 #review';
+    btn.textContent = on ? '#review ✓' : '#review';
     btn.classList.toggle('active', !!on);
   }
 
@@ -484,7 +484,7 @@ ${
         const sub = getSubjects()[n.subject];
         const due = dueBadgeForNote(n.id);
         const cardCount = getSourceCards(n).length;
-        return `<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title || 'Untitled')}</div>${n.starred ? '<span style="color:var(--gold)">⭐</span>' : ''}${cardCount ? `<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${cardCount}</span>` : ''}${due ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">🔄 ${due}</span>` : ''}</div>${sub ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>` : ''}<div class="note-preview">${esc(strip(n.body || ''))}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div></div>`;
+        return `<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title || 'Untitled')}</div>${n.starred ? '<span style="color:var(--gold)"></span>' : ''}${cardCount ? `<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">${cardCount}</span>` : ''}${due ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">${due}</span>` : ''}</div>${sub ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>` : ''}<div class="note-preview">${esc(strip(n.body || ''))}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div></div>`;
       })
       .join('');
     refreshBanner();
@@ -512,7 +512,7 @@ ${
         if (!titleRow || titleRow.querySelector('[data-srsd-due]')) return;
         titleRow.insertAdjacentHTML(
           'beforeend',
-          `<span data-srsd-due class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">🔄 ${due}</span>`,
+          `<span data-srsd-due class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">${due}</span>`,
         );
       });
     };

@@ -430,7 +430,7 @@ function showAILimitReached(){
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:420px;text-align:center;box-shadow:var(--shadow-float)">
-      <div style="font-size:2rem;margin-bottom:12px">🤖</div>
+      <div style="font-size:2rem;margin-bottom:12px"></div>
       <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Daily AI limit reached</div>
       <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
         You've used ${daily} of ${dailyLimit} AI messages today on the ${plan==='free'?'Free':'Pro'} plan.
@@ -697,7 +697,7 @@ function checkTrialExpiry(){
   banner.id=bannerId;
   banner.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(var(--accent-rgb),.4);border-radius:14px;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-float);z-index:500;max-width:420px;width:calc(100% - 40px);animation:slideUp .3s var(--ease-spring)';
   banner.innerHTML=`
-    <span style="font-size:1.2rem">⏳</span>
+    <span style="font-size:1.2rem"></span>
     <div style="flex:1;min-width:0">
       <div style="font-size:.82rem;font-weight:700">${daysLeft===1?'Trial ends tomorrow':`Trial ends in ${daysLeft} days`}</div>
       <div style="font-size:.72rem;color:var(--muted2)">Subscribe to keep Pro access</div>
@@ -891,7 +891,7 @@ function renderDynamicFocus(){
     const startLbl=nextClass.timeStart?fmtTime(nextClass.timeStart):'P'+nextClass.period;
     const detailInner=`<div class="focus-card flux-focus-class-card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:1.4rem">📍</div>
+        <div style="font-size:1.4rem"></div>
         <div>
           <div class="focus-label">Next class</div>
           <div style="font-size:.95rem;font-weight:700;margin-top:2px">${esc(nextClass.name)}${nextClass.room?' · Rm '+esc(nextClass.room):''}</div>
@@ -902,7 +902,7 @@ function renderDynamicFocus(){
         </div>
       </div>
       ${gapSug?`<div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.15);border-radius:10px;padding:10px 14px;font-size:.8rem">
-        <span style="color:var(--muted2)">💡 Gap task:</span> <strong>${esc(gapSug.name)}</strong>
+        <span style="color:var(--muted2)">Gap task:</span> <strong>${esc(gapSug.name)}</strong>
         <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem;margin-left:6px">~${gapSug.estTime}min</span>
       </div>`:''}
     </div>`;
@@ -911,7 +911,7 @@ function renderDynamicFocus(){
       const sum=`${todayClasses.length} class${todayClasses.length===1?'':'es'} · Next: ${nextClass.name} · ${startLbl}`;
       classBlock=`<div class="flux-schedule-focus-shell card" style="padding:0;overflow:hidden;margin-bottom:14px;border:1px solid rgba(var(--accent-rgb),.15)">
         <button type="button" class="flux-schedule-collapsed-toggle" onclick="toggleDashScheduleExpanded()" aria-expanded="${exp?'true':'false'}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:transparent;border:none;color:var(--text);font:inherit;cursor:pointer;text-align:left">
-          <span style="font-size:.82rem;font-weight:600">📅 <span style="color:var(--muted2);font-weight:500">${esc(sum)}</span></span>
+          <span style="font-size:.82rem;font-weight:600"><span style="color:var(--muted2);font-weight:500">${esc(sum)}</span></span>
           <span class="flux-schedule-chev" aria-hidden="true" style="flex-shrink:0;color:var(--muted);font-size:.75rem">${exp?'▴':'▾'}</span>
         </button>
         <div class="flux-schedule-focus-detail" style="display:${exp?'block':'none'};padding:0 12px 12px">${detailInner}</div>
@@ -1062,11 +1062,11 @@ function toggleReveal(fieldId,btnId){
   field.dataset.hidden=isHidden?'false':'true';
   if(isHidden){
     field.textContent=field.dataset.value||'—';
-    btn.textContent='🙈';
+    btn.textContent='';
   } else {
     const len=(field.dataset.value||'').length||4;
     field.textContent='•'.repeat(len);
-    btn.textContent='👁';
+    btn.textContent='';
   }
 }
 
@@ -1239,7 +1239,7 @@ function renderExamConflictBanner(){
   const bad=Object.entries(by).filter(([,a])=>a.length>=2);
   if(!bad.length){el.style.display='none';el.innerHTML='';return;}
   el.style.display='block';
-  el.innerHTML='<strong>⚠️ Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
+  el.innerHTML='<strong>Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
 }
 function renderScheduleConflictNotices(){
   let syllabusOn=false;
@@ -2048,7 +2048,7 @@ function renderImpersonationBanner(){
   document.body.classList.add('flux-has-impersonate-banner');
   const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin',student:'Student'})[a.role]||a.role;
   bar.innerHTML=`
-    <span style="font-size:.95rem;flex:0 0 auto">🧪</span>
+    <span style="font-size:.95rem;flex:0 0 auto"></span>
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Testing as <b>${esc(a.name||'(unnamed)')}</b> — ${esc(roleLabel)}${a.subject?' · '+esc(a.subject):''}</span>
     <span style="opacity:.8;font-size:.66rem;letter-spacing:.04em;flex:0 0 auto">OWNER</span>
     <button type="button" id="fluxImpersonateExit" style="flex:0 0 auto;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:.7rem;cursor:pointer">Exit</button>`;
@@ -2074,7 +2074,7 @@ function openImpersonatePicker(){
   ov.innerHTML=`
     <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-size:1.4rem">🧪</span>
+        <span style="font-size:1.4rem"></span>
         <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
       </div>
       <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
@@ -2635,7 +2635,7 @@ function ecGoalEventsForDate(dateStr){
   return (ecGoals||[]).filter(g=>g.deadline===dateStr&&!g.done).map(g=>({
     id:'ecg_'+g.id,
     goalId:g.id,
-    title:'🎯 '+g.title,
+    title:''+g.title,
     time:'',
     date:dateStr,
     scope:'outside',
@@ -3460,7 +3460,7 @@ const NAV_TAB_SVGS={
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
-  /* School feed / announcements — megaphone (replaces 📢 in sidebar) */
+  /* School feed / announcements — megaphone (replaces in sidebar) */
   schoolFeedPanel:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`,
   announce:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`,
 };
@@ -3499,25 +3499,25 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const n=(id,useThis)=>isMob?`navMob('${id}')`:(useThis?`nav('${id}',this)`:`nav('${id}')`);
   const workspace=`<div class="nav-group flux-nav-group-hidden" data-role-group="staff">
 <div class="nav-group-label"${Lp}>Workspace</div>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni">💬</span><span class="nl">Messages</span></button>
-<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
-<button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni">📚</span><span class="nl">Resources</span></button>
-<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
-<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
-<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📚</span><span class="nl">Classes</span></button>
-<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">🗂</span><span class="nl">Caseload tools</span></button>
-<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
-<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
-<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">👥</span><span class="nl">Users</span></button>
-<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni"></span><span class="nl">Messages</span></button>
+<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Lesson Hub</span></button>
+<button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni"></span><span class="nl">Meetings</span></button>
+<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
+<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Classes</span></button>
+<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
+<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Students</span></button>
+<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Users</span></button>
+<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
 <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('announce')}</span><span class="nl">Announce</span></button>
 </div>`;
   const schoolClassicBtn=`<button type="button" class="nav-item" data-school-nav-classic onclick="${n('school',true)}" data-tab="school"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">${schoolClassicLabelEscaped}</span></button>`;
   const mainWorkHubBtn=`<button type="button" class="nav-item" data-educator-work-main onclick="${isMob?`navMob('staffHub');try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`:`nav('staffHub',this);try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`}" data-tab="staffHub" style="display:none" aria-label="Work hub"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span><span class="nl">Work hub</span></button>`;
   const schoolStripAndFeed=`<div id="${stripId}" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
-<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni">🏫</span><span class="nl">Info</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni"></span><span class="nl">Info</span></button>
 <button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" title="School feed"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>
 </div>
 <button type="button" class="nav-item" data-school-feed-student-only onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" data-tab="schoolFeedPanel"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>`;
@@ -3525,9 +3525,9 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
   const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
   const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
-  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">🧩</span><span class="nl">Personal hub</span></button>
+  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Tasks</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Personal hub</span></button>
 ${googleNavPersonal}`;
   return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
@@ -3947,7 +3947,7 @@ function updateDashHero(opts){
   grad.className='dash-v2-greet-gradient';
   grad.textContent=line;
   greet.appendChild(grad);
-  greet.appendChild(document.createTextNode(' 👋'));
+  greet.appendChild(document.createTextNode(''));
   const playIntro=!(opts&&opts.skipIntro)&&greet.dataset.fluxGreetIntroDone!=='1';
   try{
     if(playIntro&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -4329,8 +4329,8 @@ function renderTasks(){
     const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
-    const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
-    const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'');
+    const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
+    const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
     const snz='';
     let ghostHtml='';
     if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
@@ -4351,7 +4351,7 @@ function renderTasks(){
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
-<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas">🎓</span>':''} ${depBadge}</div>
+<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas"></span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
 ${sub?`<span class="task-chip task-chip-subject">${sub.icon?sub.icon+' ':''}${sub.short}</span>`:''}
 ${priChip}
@@ -4365,10 +4365,10 @@ ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
-${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options">🔁</button>`:''}
+${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options"></button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
-${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link">🔗</button>`:''}
-${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar">📅</button>`:''}
+${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link"></button>`:''}
+${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar"></button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
@@ -4433,7 +4433,7 @@ function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id
   const depEl=document.getElementById('editDeps');
   if(depEl){
     const current=(t.blockedBy||[]).map(bid=>tasks.find(x=>x.id===bid)).filter(Boolean);
-    const currentHtml=current.map(b=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.15);border-radius:6px;margin-bottom:3px;font-size:.78rem"><span style="flex:1">${b.done?'✓ ':'🔒 '}${esc(b.name)}</span><button onclick="removeDependency(${id},${b.id});openEdit(${id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:0;transform:none;box-shadow:none">✕</button></div>`).join('');
+    const currentHtml=current.map(b=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.15);border-radius:6px;margin-bottom:3px;font-size:.78rem"><span style="flex:1">${b.done?'✓ ':''}${esc(b.name)}</span><button onclick="removeDependency(${id},${b.id});openEdit(${id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:0;transform:none;box-shadow:none">✕</button></div>`).join('');
     depEl.innerHTML=(currentHtml||'<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">No dependencies</div>')+'<details style="margin-top:6px"><summary style="font-size:.72rem;color:var(--accent);cursor:pointer;font-weight:600">+ Add dependency</summary><div style="margin-top:6px">'+renderDepSelector(id)+'</div></details>';
   }
   document.getElementById('editModal').style.display='flex';
@@ -4760,7 +4760,7 @@ function renderCalDay(){
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='g'){
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">🎯</span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem"></span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
     }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
@@ -4963,7 +4963,7 @@ function renderWeeklyRulesList(){
     const sch=fluxEventScope(r)==='school';
     const isEc=fluxIsEcCalendarItem(r);
     const border=isEc?'rgba(251,191,36,.35)':'var(--border2)';
-    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">🎯 EC</span>':'';
+    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">EC</span>':'';
     return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--card2);border-radius:10px;margin-bottom:6px;border:1px solid ${border}"><div style="min-width:0"><div style="font-weight:600">${esc(r.title)}${badge}</div><div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${days}${r.time?' · '+esc(r.time):''}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="toggleWeeklyRuleScope('${r.id}')" title="School vs outside">${sch?'🏫':'🌐'}</button><button type="button" class="btn-sec" style="padding:4px 10px;font-size:.72rem" onclick="deleteWeeklyRule('${r.id}')">Remove</button></div></div>`;
   }).join('');
 }
@@ -5390,17 +5390,17 @@ function renderSchool(){
   if(comboEl){
     comboEl.value=schoolInfo.combo||'';
     comboEl.type='password';
-    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='👁';cb.setAttribute('title','Show');}
+    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='';cb.setAttribute('title','Show');}
   }
   if(counselorEl)counselorEl.value=schoolInfo.counselor||'';
   if(sidEl){
     sidEl.value=schoolInfo.studentID||'';
     sidEl.type='password';
-    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='👁';sb.setAttribute('title','Show');}
+    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='';sb.setAttribute('title','Show');}
   }
   const cl=document.getElementById('classesList');
   if(!cl)return;
-  if(!classes.length){cl.innerHTML='<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No classes yet</div><div class="empty-sub">Add classes below or import from a photo</div></div>';}
+  if(!classes.length){cl.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No classes yet</div><div class="empty-sub">Add classes below or import from a photo</div></div>';}
   else{
     const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
     const colorMap={};
@@ -5647,7 +5647,7 @@ function renderExtrasList(){
         </div>
         ${e.desc ? `<div style="font-size:.75rem;color:var(--muted2);margin-top:3px;line-height:1.4">${esc(e.desc)}</div>` : ''}
       </div>
-      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;flex-shrink:0;font-weight:600">📅</button>
+      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;flex-shrink:0;font-weight:600"></button>
       <button onclick="editExtra(${e.id})" title="Edit" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✎</button>
       <button onclick="removeExtra(${e.id})" title="Delete" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>
     </div>`;
@@ -6015,7 +6015,7 @@ function checkProgramUpgrade(p){
     // Show upgrade notification
     const notif=document.createElement('div');
     notif.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;padding:14px 24px;border-radius:14px;font-size:.88rem;font-weight:700;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:floatIn .3s ease';
-    notif.innerHTML='🎓 Welcome to IB DP! Your program has been updated.';
+    notif.innerHTML='Welcome to IB DP! Your program has been updated.';
     document.body.appendChild(notif);
     setTimeout(()=>notif.remove(),4000);
     save('flux_onboarded',true);
@@ -6078,12 +6078,12 @@ function renderProfile(){
 
   const done=tasks.filter(t=>t.done).length;
   const badges=[];
-  if(done>=40)badges.push({t:'🏆 On a roll',c:'badge-gold'});
+  if(done>=40)badges.push({t:'On a roll',c:'badge-gold'});
   if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});
-  if(tStreak>=7)badges.push({t:'🔥 Study Streak',c:'badge-red'});
+  if(tStreak>=7)badges.push({t:'Study Streak',c:'badge-red'});
   if(programs.includes('IB DP'))badges.push({t:'📚 IB DP',c:'badge-blue'});
   if(programs.includes('IB MYP'))badges.push({t:'📖 IB MYP',c:'badge-purple'});
-  if(notes.length>=10)badges.push({t:'📝 Note Taker',c:'badge-purple'});
+  if(notes.length>=10)badges.push({t:'Note Taker',c:'badge-purple'});
   const badgeEl=document.getElementById('profileBadges');
   if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';
 
@@ -6113,35 +6113,35 @@ const THEMES={
   dark:{
     // Theme 2026 default — GitHub-dark surfaces × Discord blurple accent
     // (must stay in sync with flux-theme-2026.css tokens).
-    label:'🌙 Midnight',
+    label:'Midnight',
     vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
   },
   light:{
-    label:'☀️ Cloud',
+    label:'Cloud',
     vars:{'--bg':'#f0f2f8','--bg2':'#e4e8f2','--card':'#ffffff','--card2':'#f5f7ff','--card-solid':'#ffffff','--border':'rgba(0,0,0,.09)','--border2':'rgba(0,0,0,.13)','--text':'#1a1d2e','--muted':'#6b7280','--muted2':'#4b5563','--accent':'#6366f1','--accent-rgb':'99,102,241','--green':'#059669','--red':'#dc2626','--gold':'#d97706','--purple':'#9333ea','--orange':'#ea580c'}
   },
   aurora:{
-    label:'🌌 Aurora',
+    label:'Aurora',
     vars:{'--bg':'#060a12','--bg2':'#080d18','--card':'#08101e','--card2':'#0a1424','--card-solid':'#08101e','--border':'rgba(100,200,255,.09)','--border2':'rgba(100,200,255,.14)','--text':'#e0f0ff','--muted':'#5a7a9a','--muted2':'#7a9aba','--accent':'#22d3ee','--accent-rgb':'34,211,238','--green':'#34d399','--red':'#f87171','--gold':'#fbbf24','--purple':'#818cf8','--orange':'#fb923c'}
   },
   ember:{
-    label:'🔥 Ember',
+    label:'Ember',
     vars:{'--bg':'#0d0804','--bg2':'#120a05','--card':'#1c1008','--card2':'#221408','--card-solid':'#1c1008','--border':'rgba(255,120,40,.09)','--border2':'rgba(255,120,40,.14)','--text':'#fff4ec','--muted':'#8a5a3a','--muted2':'#b07a5a','--accent':'#f97316','--accent-rgb':'249,115,22','--green':'#fbbf24','--red':'#ef4444','--gold':'#f59e0b','--purple':'#fb923c','--orange':'#f97316'}
   },
   forest:{
-    label:'🌿 Forest',
+    label:'Forest',
     vars:{'--bg':'#060d08','--bg2':'#080f0a','--card':'#0a140c','--card2':'#0d1a0f','--card-solid':'#0a140c','--border':'rgba(80,200,100,.09)','--border2':'rgba(80,200,100,.14)','--text':'#e8f5ea','--muted':'#4a7a52','--muted2':'#6a9a72','--accent':'#22c55e','--accent-rgb':'34,197,94','--green':'#4ade80','--red':'#f87171','--gold':'#fbbf24','--purple':'#a3e635','--orange':'#fb923c'}
   },
   rose:{
-    label:'🌸 Rose',
+    label:'Rose',
     vars:{'--bg':'#0d0608','--bg2':'#120809','--card':'#1c0a0e','--card2':'#220c12','--card-solid':'#1c0a0e','--border':'rgba(255,100,130,.09)','--border2':'rgba(255,100,130,.14)','--text':'#fff0f3','--muted':'#8a4a58','--muted2':'#b07080','--accent':'#f43f5e','--accent-rgb':'244,63,94','--green':'#fb7185','--red':'#e11d48','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
   },
   ocean:{
-    label:'🌊 Deep Ocean',
+    label:'Deep Ocean',
     vars:{'--bg':'#020810','--bg2':'#030a14','--card':'#04101e','--card2':'#061424','--card-solid':'#04101e','--border':'rgba(30,100,200,.11)','--border2':'rgba(30,100,200,.17)','--text':'#dceeff','--muted':'#3a5a7a','--muted2':'#5a80a0','--accent':'#3b82f6','--accent-rgb':'59,130,246','--green':'#22d3ee','--red':'#f87171','--gold':'#fbbf24','--purple':'#818cf8','--orange':'#fb923c'}
   },
   candy:{
-    label:'🍬 Candy',
+    label:'Candy',
     vars:{'--bg':'#0e0814','--bg2':'#120a18','--card':'#14101e','--card2':'#1a1428','--card-solid':'#14101e','--border':'rgba(200,100,255,.09)','--border2':'rgba(200,100,255,.14)','--text':'#f5e8ff','--muted':'#7a4a9a','--muted2':'#a070c0','--accent':'#a855f7','--accent-rgb':'168,85,247','--green':'#f472b6','--red':'#f43f5e','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
   },
 };
@@ -6638,7 +6638,7 @@ function hasDevPerm(perm){
   return getMyDevPerms().includes(perm);
 }
 
-/** Sections the owner can show/hide on ⚡ Dev Panel for dev accounts (owner always sees all + this editor). */
+/** Sections the owner can show/hide on Dev Panel for dev accounts (owner always sees all + this editor). */
 const DEV_PANEL_SECTION_META=[
   {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
   {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
@@ -6675,7 +6675,7 @@ function renderDevPanelLayoutEditorHtml(){
   const map=getDevPanelSectionsMap();
   return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
     <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
-    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in ⚡ Dev Panel. You always see every section.</div>
+    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in Dev Panel. You always see every section.</div>
     ${DEV_PANEL_SECTION_META.map(s=>{
       const on=map[s.id];
       return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
@@ -6784,7 +6784,7 @@ function buildModPanelCardHtml(embed){
 
       ${showDevModeBlock?`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:.87rem;font-weight:700">🧪 Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
+        <div><div style="font-size:.87rem;font-weight:700">Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
         <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
       </div>`:''}
 
@@ -6799,7 +6799,7 @@ function buildModPanelCardHtml(embed){
       }).join('')}`:''}
 
       ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">🗑 Clear My Data</button>`:''}
+        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">Clear My Data</button>`:''}
         ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
       </div>`:''}
 
@@ -6816,7 +6816,7 @@ function buildModPanelCardHtml(embed){
             <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
           </div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'🚀 Push this build to all users'}</button>
+          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'Push this build to all users'}</button>
         </div>`;
       })():''}
 
@@ -6979,7 +6979,7 @@ function updateDynamicFocus(){
   if(!nextClass){
     el.innerHTML=`<div class="focus-card">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="font-size:1.6rem">🌙</div>
+        <div style="font-size:1.6rem"></div>
         <div><div class="focus-time" style="font-size:1.4rem">No more classes</div><div class="focus-label">Free for the rest of the day</div></div>
       </div>
     </div>`;
@@ -7846,7 +7846,7 @@ function openAddSkillModal() {
       <div style="font-size:1rem;font-weight:800;margin-bottom:4px">Add Custom Skill</div>
       <div style="font-size:.78rem;color:var(--muted2);margin-bottom:16px">Define what Flux can do when this skill is triggered</div>
       <div class="mrow"><label>Skill Name</label><input id="customSkillName" placeholder="e.g. Create Flashcards"></div>
-      <div class="mrow"><label>Icon (emoji)</label><input id="customSkillIcon" placeholder="📚" maxlength="4"></div>
+      <div class="mrow"><label>Icon (emoji)</label><input id="customSkillIcon" placeholder="" maxlength="4"></div>
       <div class="mrow"><label>Description</label><input id="customSkillDesc" placeholder="What this skill does"></div>
       <div class="mrow"><label>Instructions for AI</label><textarea id="customSkillPrompt" style="min-height:80px" placeholder="When this skill is used…"></textarea></div>
       <div style="display:flex;gap:8px;margin-top:16px">
@@ -7864,7 +7864,7 @@ function openAddSkillModal() {
 
 function saveCustomSkill() {
   const name = document.getElementById('customSkillName')?.value.trim();
-  const icon = document.getElementById('customSkillIcon')?.value.trim() || '⚡';
+  const icon = document.getElementById('customSkillIcon')?.value.trim() || '';
   const desc = document.getElementById('customSkillDesc')?.value.trim();
   const prompt = document.getElementById('customSkillPrompt')?.value.trim();
   if (!name || !desc) {
@@ -8018,7 +8018,7 @@ REASONING: For complex questions \u2014 scheduling trade-offs, physics problems,
 HONESTY: Distinguish between what you can see in the planner data, what you can reason about, and what the student should verify elsewhere. Never fabricate. If unsure, say so.
 
 NUMBERS: Physics: g = 10\u2009m/s\u00b2 unless explicitly stated otherwise.
-${getStudyDNAPrompt()}
+${getStudyDNAPrompt()}${(window.FluxBrain&&typeof FluxBrain.prompt==='function')?FluxBrain.prompt():''}
 DEPTH: Default to high-leverage help: trace logic from first principles when it helps, show alternate approaches, stress-test edge cases, and surface common mistakes. When speed matters, lead with the decisive result then optional depth. For work that will be turned in for a grade, build mastery—full solutions with different numbers, outlines, checklists, and verification steps the student can execute—so they understand and can defend their own write-up.
 </how_you_work>
 ${(()=>{
@@ -8169,7 +8169,7 @@ async function sendAI(optionalUserText, depth, sendOpts){
   const _aiSugsEl=document.getElementById('aiSugs');if(_aiSugsEl)_aiSugsEl.style.display='none';
   const imgSnapshot=nested?null:aiPendingImg;
   if(!nested){
-    appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
+    appendMsg('user',text||(imgSnapshot?'Analyze image':''));
     aiPendingImg=null;
     const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
   }else if(!opts.hidden){
@@ -9134,7 +9134,7 @@ function fluxRenderMaintenanceOverlay(){
     ov.style.cssText='position:fixed;inset:0;z-index:10080;background:radial-gradient(circle at 50% 35%,#101a30 0%,#06080f 70%);color:#e6edf6;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;text-align:center';
     ov.innerHTML=`
       <div style="max-width:480px">
-        <div style="font-size:3rem;margin-bottom:14px">🛠</div>
+        <div style="font-size:3rem;margin-bottom:14px"></div>
         <div style="font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;font-family:JetBrains Mono,monospace;color:#fbbf24;margin-bottom:10px">Flux is under update</div>
         <h1 style="margin:0 0 12px;font-size:1.8rem;font-weight:900;letter-spacing:-.02em">Just a moment…</h1>
         <p data-maint-msg style="margin:0 0 24px;font-size:1rem;line-height:1.55;color:#8a93a7">${String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c])}</p>
@@ -9740,7 +9740,7 @@ function applyObRoleView(){
     setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
     setText('obStep4Title','Your Schedule');
     setText('obStep4Sub','Upload a PDF or photo of your teaching schedule — AI reads it. Or skip and add periods later.');
-    setText('obStep5Emoji','🗂');
+    setText('obStep5Emoji','');
     setText('obStep5Title','How do you work?');
     setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
   }else{
@@ -9751,7 +9751,7 @@ function applyObRoleView(){
     setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
     setText('obStep4Title','Your Schedule');
     setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
-    setText('obStep5Emoji','🧠');
+    setText('obStep5Emoji','');
     setText('obStep5Title','How do you study?');
     setText('obStep5Sub','Flux will personalize AI suggestions based on how you learn best.');
   }
@@ -10959,7 +10959,7 @@ function showGuestDisclaimer(){
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:30px 24px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
-      <div style="font-size:2.2rem;margin-bottom:14px">👤</div>
+      <div style="font-size:2.2rem;margin-bottom:14px"></div>
       <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
       <div style="font-size:.84rem;color:var(--muted2);line-height:1.75;margin-bottom:22px">
         Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
@@ -11702,7 +11702,7 @@ async function handleSignedIn(user,session){
       window._counselorRecord=null;
       window.__fluxWarnedCounselorEnsure=0;
     }catch(_){}
-    console.log('🔄 Account switched — wiped previous user data');
+    console.log('Account switched — wiped previous user data');
     try{
       const dg=document.getElementById('dashGreeting');
       if(dg){delete dg.dataset.fluxGreetKey;delete dg.dataset.fluxGreetIntroDone;}
@@ -12128,23 +12128,23 @@ function handleSignedOut(){
 function buildFeatPillsHtml(){
   const pills=[
     {label:'✦ Flux AI Tutor',c:'#6366f1'},
-    {label:'📷 Vision Import',c:'#10d9a0'},
-    {label:'📊 4-decimal GPA',c:'#fbbf24'},
+    {label:'Vision Import',c:'#10d9a0'},
+    {label:'4-decimal GPA',c:'#fbbf24'},
     {label:'⏱ Focus timer',c:'#a78bfa'},
-    {label:'📅 Smart calendar',c:'#3b82f6'},
-    {label:'☁️ Cloud sync',c:'#10d9a0'},
-    {label:'🃏 AI flashcards',c:'#e879f9'},
-    {label:'🚨 Panic mode',c:'#f43f5e'},
-    {label:'📧 Gmail → tasks',c:'#fb923c'},
-    {label:'📝 Tagged notes',c:'#6366f1'},
-    {label:'🎯 Extracurriculars',c:'#fbbf24'},
-    {label:'🧠 Cognitive load',c:'#22c55e'},
-    {label:'📛 Exam conflicts',c:'#f472b6'},
-    {label:'🌙 Themes & accent',c:'#38bdf8'},
-    {label:'📈 Grade what-if',c:'#eab308'},
-    {label:'🎓 Canvas & Gmail',c:'#94a3b8'},
-    {label:'😊 Mood check-ins',c:'#fb7185'},
-    {label:'🔗 iCal / Google',c:'#34d399'},
+    {label:'Smart calendar',c:'#3b82f6'},
+    {label:'Cloud sync',c:'#10d9a0'},
+    {label:'AI flashcards',c:'#e879f9'},
+    {label:'Panic mode',c:'#f43f5e'},
+    {label:'Gmail → tasks',c:'#fb923c'},
+    {label:'Tagged notes',c:'#6366f1'},
+    {label:'Extracurriculars',c:'#fbbf24'},
+    {label:'Cognitive load',c:'#22c55e'},
+    {label:'Exam conflicts',c:'#f472b6'},
+    {label:'Themes & accent',c:'#38bdf8'},
+    {label:'Grade what-if',c:'#eab308'},
+    {label:'Canvas & Gmail',c:'#94a3b8'},
+    {label:'Mood check-ins',c:'#fb7185'},
+    {label:'iCal / Google',c:'#34d399'},
   ];
   const all=[...pills,...pills];
   return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
@@ -12184,7 +12184,7 @@ function initTopbar(){
   function updateEnergyPill(){
     const energy=readFluxEnergyLevel();
     const emojis=['','😴','😕','😐','😊','🚀'];
-    const el=document.getElementById('topbarEnergy');if(el)el.textContent=emojis[energy]||'😐';
+    const el=document.getElementById('topbarEnergy');if(el)el.textContent=emojis[energy]||'';
   }
   updateEnergyPill();
   const _orig=window.setEnergy;
@@ -12273,7 +12273,7 @@ function showSectionLoading(containerId,rows=3){
 function showError(containerId,msg,retryFnStr){
   const el=document.getElementById(containerId);if(!el)return;
   el.innerHTML=`<div style="text-align:center;padding:32px 16px">
-    <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+    <div style="font-size:2rem;margin-bottom:10px"></div>
     <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:5px">Something went wrong</div>
     <div style="font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.6">${esc(msg||'Please try again.')}</div>
     ${retryFnStr?`<button onclick="${retryFnStr}" style="font-size:.78rem;padding:7px 18px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">↺ Try again</button>`:''}
@@ -12442,7 +12442,7 @@ function renderPredictiveGapFill(){
   el.innerHTML=`
     <div class="card flux-gap-card">
       <div class="flux-gap-head">
-        <span class="flux-gap-icon" aria-hidden="true">🧩</span>
+        <span class="flux-gap-icon" aria-hidden="true"></span>
         <div>
           <div class="flux-gap-kicker">Predictive gap-fill</div>
           <h3 class="flux-gap-title">Free pockets between classes</h3>
@@ -12507,7 +12507,7 @@ function handleCheckoutReturn(){
       modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
       modal.innerHTML=`
         <div style="background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:20px;padding:32px;width:100%;max-width:400px;text-align:center;box-shadow:var(--shadow-float)">
-          <div style="font-size:3rem;margin-bottom:14px">🎉</div>
+          <div style="font-size:3rem;margin-bottom:14px"></div>
           <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Welcome to Flux Pro!</div>
           <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
             You now have access to all Pro features.
@@ -12646,7 +12646,7 @@ function generateSRSReviews(originalTask){
     const d=new Date(base);d.setDate(d.getDate()+days);
     const review={
       id:Date.now()+Math.random(),
-      name:'🔄 Review: '+originalTask.name,
+      name:'Review: '+originalTask.name,
       subject:originalTask.subject||'',
       priority:'low',
       type:'study',
@@ -12661,7 +12661,7 @@ function generateSRSReviews(originalTask){
     tasks.push(review);
   });
   save('tasks',tasks);
-  showToast('🔄 3 spaced reviews scheduled (1d, 7d, 30d)','success');
+  showToast('3 spaced reviews scheduled (1d, 7d, 30d)','success');
   syncKey('tasks',tasks);
 }
 
@@ -12752,7 +12752,7 @@ async function dailyShutdown(){
   panel.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(12px)';
   panel.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:24px;max-width:480px;width:100%;padding:28px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.6)">
-      <div style="font-size:2rem;margin-bottom:8px">🌙</div>
+      <div style="font-size:2rem;margin-bottom:8px"></div>
       <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px;margin-bottom:4px">Daily Shutdown</div>
       <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:20px">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
@@ -12809,14 +12809,14 @@ function showAutoNext(){
 
 // ══ TASK TEMPLATES ════════════════════════════════════════════
 const TASK_TEMPLATES=[
-  {name:'Homework',type:'hw',estTime:30,difficulty:2,priority:'med',icon:'📝'},
-  {name:'Study Session',type:'study',estTime:60,difficulty:3,priority:'med',icon:'📖'},
+  {name:'Homework',type:'hw',estTime:30,difficulty:2,priority:'med',icon:''},
+  {name:'Study Session',type:'study',estTime:60,difficulty:3,priority:'med',icon:''},
   {name:'Essay',type:'essay',estTime:120,difficulty:4,priority:'high',icon:'✍'},
-  {name:'Lab Report',type:'lab',estTime:90,difficulty:4,priority:'high',icon:'🧪'},
-  {name:'Project Milestone',type:'project',estTime:60,difficulty:3,priority:'high',icon:'🎯'},
-  {name:'Test Prep',type:'test',estTime:45,difficulty:4,priority:'high',icon:'📋'},
-  {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:'📚'},
-  {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:'🔢'},
+  {name:'Lab Report',type:'lab',estTime:90,difficulty:4,priority:'high',icon:''},
+  {name:'Project Milestone',type:'project',estTime:60,difficulty:3,priority:'high',icon:''},
+  {name:'Test Prep',type:'test',estTime:45,difficulty:4,priority:'high',icon:''},
+  {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:''},
+  {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:''},
 ];
 try{window.TASK_TEMPLATES=TASK_TEMPLATES;}catch(_){}
 function showTemplateMenu(){
@@ -12839,8 +12839,8 @@ function showTemplateMenu(){
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">📚 Exam week (3 tasks)</button>
-      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">🧩 Project milestones (3 tasks)</button>
+      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Exam week (3 tasks)</button>
+      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Project milestones (3 tasks)</button>
     </div>
   </div>`;
   document.body.appendChild(menu);
@@ -12900,7 +12900,7 @@ function startVoiceInput(){
   const btn=document.getElementById('voiceBtn');
   if(!btn)return;
   const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;
-  r.onstart=()=>{if(btn){btn.textContent='🎙 Listening...';btn.style.color='var(--red)';}};
+  r.onstart=()=>{if(btn){btn.textContent='Listening...';btn.style.color='var(--red)';}};
   r.onresult=e=>{
     const text=e.results[0][0].transcript;
     const qa=document.getElementById('taskName')||document.getElementById('quickAddInput');
@@ -12910,10 +12910,10 @@ function startVoiceInput(){
     if(parsed.priority){const pi=document.getElementById('taskPriority');if(pi)pi.value=parsed.priority;}
     if(parsed.type){const ti=document.getElementById('taskType');if(ti)ti.value=parsed.type;}
     if(parsed.estTime){const ei=document.getElementById('taskEstTime');if(ei)ei.value=parsed.estTime;}
-    showToast('🎙 "'+text+'"','info');
+    showToast('"'+text+'"','info');
   };
   r.onerror=()=>showToast('Voice input error','error');
-  r.onend=()=>{if(btn){btn.textContent='🎙';btn.style.color='';}};
+  r.onend=()=>{if(btn){btn.textContent='';btn.style.color='';}};
   r.start();
 }
 
@@ -13050,7 +13050,7 @@ function addMomentum(){
       if(pe&&window.FluxAnim?.momentumPop)FluxAnim.momentumPop(pe);
     }catch(e){}
   }
-  if(_momentum>=3)showToast('🔥 '+_momentum+'× Momentum! Keep going!','success');
+  if(_momentum>=3)showToast(''+_momentum+'× Momentum! Keep going!','success');
   if(_momentum>=5)spawnConfetti();
 }
 function updateMomentumUI(){
@@ -13065,7 +13065,7 @@ function updateMomentumUI(){
   if(el){
     el.classList.remove('flux-momentum-v2-pill');
     if(_momentum>=2){
-      el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
+      el.style.display='flex';el.textContent=''+_momentum+'×';
       el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
       el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
       el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
@@ -13473,7 +13473,7 @@ async function importNoteFromPhoto(event){
   const file=event.target.files[0];if(!file)return;
   const resEl=document.getElementById('aiNoteResult');
   resEl.style.display='block';
-  resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">📷 Reading image with Gemini AI...</div>';
+  resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Reading image with Gemini AI...</div>';
   try{
     const base64=await fileToBase64(file);
     const txt=await callGemini(base64,file.type,
@@ -13503,7 +13503,7 @@ async function importScheduleFromPhoto(event,resultElId){
   const errBox=document.getElementById('schoolScheduleImportError');
   const overlay=document.getElementById('schoolSchedulePdfOverlay');
   if(errBox){errBox.textContent='';errBox.setAttribute('hidden','');}
-  if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini AI...</div>';}
+  if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">Reading schedule with Gemini AI...</div>';}
   let base64;
   let mime;
   try{
@@ -13873,7 +13873,7 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
   if(!q){if(!silent)showToast('Quiz not found — refresh Canvas','warning');return;}
   if(canvasQuizTaskExists(courseId,quizId)){if(!silent)showToast('Already in planner','info');return;}
   const due=q.due_at?q.due_at.slice(0,10):'';
-  const name=('📝 '+(q.title||'Quiz')).slice(0,240);
+  const name=(''+(q.title||'Quiz')).slice(0,240);
   const t={
     id:Date.now()+Math.random(),
     name,
@@ -13941,7 +13941,7 @@ function upsertTeacherNoteFromCanvas(t,courseList){
 function addCanvasAnnouncementAsNoteIfNew(an){
   const aid=an.id;
   if(aid==null||notes.some(n=>n.canvasAnnouncementId===aid))return false;
-  const title=('📢 '+(an.title||'Announcement')).slice(0,200);
+  const title=(''+(an.title||'Announcement')).slice(0,200);
   const body=canvasStripHtml(an.message||'').slice(0,12000);
   notes.unshift({
     id:Date.now()+Math.random(),
@@ -13965,7 +13965,7 @@ function addCanvasDiscussionAsNoteIfNew(disc){
   const body=`${disc.course_name||'Course'}\n\n${msg||'(Open in Canvas for thread)'}`;
   notes.unshift({
     id:Date.now()+Math.random(),
-    title:`💬 ${title}`,
+    title:`${title}`,
     body,
     subject:'',
     starred:false,
@@ -14100,7 +14100,7 @@ function addCanvasAnnouncementToPlanner(announcementId){
   const an=(fluxCanvasHubData?.announcements||[]).find(x=>x.id===aid);
   if(!an){showToast('Announcement not found — refresh Canvas','warning');return;}
   if(tasks.some(t=>t.canvasAnnouncementId===aid)){showToast('Already in planner','info');return;}
-  const title=('📢 '+String(an.title||'Announcement')).slice(0,240);
+  const title=(''+String(an.title||'Announcement')).slice(0,240);
   const due=an.posted_at?an.posted_at.slice(0,10):'';
   const body=String(an.message||'').replace(/<[^>]+>/g,'').slice(0,800);
   const t={
@@ -14545,7 +14545,7 @@ async function loadGmail(){
   await ensureGmailTokenFromSession();
   if(!gmailToken){
     el.innerHTML=`<div class="card" style="text-align:center;padding:28px 20px">
-      <div style="font-size:2rem;margin-bottom:12px">📧</div>
+      <div style="font-size:2rem;margin-bottom:12px"></div>
       <div style="font-size:.95rem;font-weight:700;margin-bottom:8px">Connect Gmail</div>
       <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px;line-height:1.6">Sign in with Google to view your school emails and add them as tasks.</div>
       <button onclick="(window.FluxGoogle&&FluxGoogle.signIn)?FluxGoogle.signIn():signInWithGoogle()" style="width:100%;padding:12px;display:flex;align-items:center;justify-content:center;gap:10px">
@@ -14613,7 +14613,7 @@ function showKanban(){
   overlay.id='kanbanOverlay';
   overlay.style.cssText='position:fixed;inset:0;z-index:800;background:var(--bg);overflow:auto;animation:fadeIn .2s ease';
   const cols=['todo','inprogress','done'];
-  const colLabels={'todo':'📋 To Do','inprogress':'⚡ In Progress','done':'✅ Done'};
+  const colLabels={'todo':'To Do','inprogress':'In Progress','done':'Done'};
   const colColors={'todo':'var(--accent)','inprogress':'var(--gold)','done':'var(--green)'};
   
   // Assign kanban col to tasks
@@ -14741,7 +14741,7 @@ function renderWorkloadForecast(){
       ${days.map(d=>`<div class="${d.label==='Today'?'is-today':''}">${d.label}</div>`).join('')}
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;font-size:.65rem;color:var(--muted)">
-      <span>🟢 &lt;60min</span><span>🟡 60–3h</span><span>🔴 &gt;3h</span>
+      <span>&lt;60min</span><span>60–3h</span><span>&gt;3h</span>
     </div></div>`;
   el.innerHTML=html;
   requestAnimationFrame(()=>{
@@ -14758,7 +14758,7 @@ function renderWorkloadForecast(){
   if(burnoutEl){
     if(heavyDays>=3||overdueTasks>=4){
       burnoutEl.style.display='block';
-      burnoutEl.innerHTML=`<span style="font-size:.85rem">⚠️</span> <div><div style="font-weight:700;font-size:.82rem">Burnout Risk Detected</div><div style="font-size:.72rem;color:var(--muted2);margin-top:2px">${heavyDays>=3?`${heavyDays} heavy days this week`:''}${heavyDays>=3&&overdueTasks>=4?' · ':''}${overdueTasks>=4?`${overdueTasks} overdue tasks`:''} — consider redistributing</div></div>`;
+      burnoutEl.innerHTML=`<span style="font-size:.85rem"></span> <div><div style="font-weight:700;font-size:.82rem">Burnout Risk Detected</div><div style="font-size:.72rem;color:var(--muted2);margin-top:2px">${heavyDays>=3?`${heavyDays} heavy days this week`:''}${heavyDays>=3&&overdueTasks>=4?' · ':''}${overdueTasks>=4?`${overdueTasks} overdue tasks`:''} — consider redistributing</div></div>`;
     } else {
       burnoutEl.style.display='none';
     }
@@ -14850,7 +14850,7 @@ function endDeepWork(completed){
   if(completed&&_dwTask){
     const t=tasks.find(x=>x.id===_dwTask.id);
     if(t&&!t.done){t.done=true;t.completedAt=Date.now();spawnConfetti();save('tasks',tasks);renderStats();renderTasks();checkAllPanic();syncKey('tasks',tasks);}
-    showToast('🎯 Session complete! Great work.');
+    showToast('Session complete! Great work.');
   }
   _dwTask=null;_dwSecs=0;_dwPaused=false;
 }
@@ -14919,7 +14919,7 @@ function renderGapFiller(){
   const gap=gaps[0];
   const suggestion=moveable[0];
   el.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:1rem">💡</span>
+    <span style="font-size:1rem"></span>
     <div style="flex:1;font-size:.78rem">
       <span style="color:var(--muted2)">Free time ${gap.label} —</span> 
       <strong>${esc(suggestion.name)}</strong> 
@@ -14971,7 +14971,7 @@ function saveEffort(taskId){
   save('tasks',tasks);
   if(window.FluxEstimateLearn&&t.subject)FluxEstimateLearn.record(t.subject,t.estTime||0,actual);
   document.querySelector('[style*="fixed"][style*="rgba(0,0,0,.5)"]')?.remove();
-  showToast(actual>=(t.estTime||0)?'Took longer than expected 📊':'Done faster than expected ⚡');
+  showToast(actual>=(t.estTime||0)?'Took longer than expected':'Done faster than expected');
 }
 
 // ══ STUDY ROADMAP GENERATOR ══
@@ -15068,7 +15068,7 @@ function startPresentMode(){
               <div style="flex:1;font-size:.82rem;font-weight:600">${esc(t.name)}</div>
               <div style="font-size:.7rem;color:var(--muted)">${due}</div>
             </div>`;
-          }).join(''):'<div style="color:var(--muted);font-size:.82rem">All caught up! 🎉</div>'}
+          }).join(''):'<div style="color:var(--muted);font-size:.82rem">All caught up!</div>'}
         </div>
         
         <!-- Workload chart -->
@@ -15302,7 +15302,7 @@ function renderKanban(){
           <div style="padding-left:8px">
             <div style="font-size:.84rem;font-weight:600;margin-bottom:4px">${esc(t.name)}</div>
             ${sub?`<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:${sub.color}22;color:${sub.color};font-family:'JetBrains Mono',monospace">${sub.short}</span>`:''}
-            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">📅 ${fmtFluxDue(t.date)}</span>`:''}
+            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">${fmtFluxDue(t.date)}</span>`:''}
             <div style="display:flex;justify-content:flex-end;margin-top:6px">
               <button onclick="toggleTask(${t.id})" style="font-size:.65rem;padding:3px 8px;background:rgba(var(--green-rgb),.1);border:1px solid rgba(var(--green-rgb),.2);color:var(--green);border-radius:6px;cursor:pointer;transform:none;box-shadow:none">Done</button>
             </div>
@@ -15333,7 +15333,7 @@ function renderTimeline(){
   const withDates=tasks.filter(t=>t.date&&!t.done).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const noDates=tasks.filter(t=>!t.date&&!t.done);
   if(!withDates.length&&!noDates.length){
-    el.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No upcoming tasks</div><div class="empty-sub">Add tasks with due dates to see the timeline</div></div>';
+    el.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No upcoming tasks</div><div class="empty-sub">Add tasks with due dates to see the timeline</div></div>';
     return;
   }
   // Group by date
@@ -15444,7 +15444,7 @@ function startSession(){
   _sessionStart=Date.now();
   _sessionTasksDone=0;
   save('flux_session_start',_sessionStart);
-  showToast('📍 Session started — focus up!','info');
+  showToast('Session started — focus up!','info');
 }
 
 function endSession(){
@@ -15455,14 +15455,14 @@ function endSession(){
   sessions.push(session);if(sessions.length>50)sessions.shift();
   save('flux_sessions',sessions);
   _sessionStart=null;save('flux_session_start',null);
-  showToast(`✅ Session ended — ${dur}min, ${_sessionTasksDone} tasks done`);
+  showToast(`Session ended — ${dur}min, ${_sessionTasksDone} tasks done`);
   renderSessionStats();
 }
 
 function renderSessionStats(){
   const el=document.getElementById('sessionStatsCard');if(!el)return;
   const sessions=load('flux_sessions',[]);
-  if(!sessions.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No sessions yet</div><div class="empty-sub">Start a session to track your work</div></div>';return;}
+  if(!sessions.length){el.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No sessions yet</div><div class="empty-sub">Start a session to track your work</div></div>';return;}
   const totalMin=sessions.reduce((s,x)=>s+(x.durationMin||0),0);
   const avgMin=Math.round(totalMin/sessions.length);
   const totalDone=sessions.reduce((s,x)=>s+(x.tasksDone||0),0);
@@ -15654,7 +15654,7 @@ function addDependency(taskId,blockedById){
   if(t.blockedBy.includes(blockedById))return;
   t.blockedBy.push(blockedById);
   save('tasks',tasks);renderTasks();syncKey('tasks',tasks);
-  showToast('🔗 Dependency added','info');
+  showToast('Dependency added','info');
 }
 function removeDependency(taskId,blockedById){
   const t=tasks.find(x=>x.id===taskId);if(!t||!t.blockedBy)return;
@@ -15675,7 +15675,7 @@ function getDependentTasks(taskId){
 function renderDepBadge(task){
   if(!isBlocked(task))return'';
   const blockers=getBlockerNames(task);
-  return `<span class="dep-badge" title="Blocked by: ${blockers.map(esc).join(', ')}" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;padding:2px 6px;border-radius:6px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.2);color:var(--red);font-weight:600;cursor:help">🔒 ${blockers.length}</span>`;
+  return `<span class="dep-badge" title="Blocked by: ${blockers.map(esc).join(', ')}" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;padding:2px 6px;border-radius:6px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.2);color:var(--red);font-weight:600;cursor:help">${blockers.length}</span>`;
 }
 function renderDepSelector(taskId){
   const t=tasks.find(x=>x.id===taskId);if(!t)return'';
@@ -15691,7 +15691,7 @@ FluxBus.on('task_completed',function(task){
     const n=unlocked.length;
     showToast(
       n===1
-        ? `🔓 You just unlocked "${unlocked[0].name}"! 🔥`
+        ? `You just unlocked "${unlocked[0].name}"!`
         : `🔥 Chain reaction — you just unlocked ${n} dependent task${n===1?'':'s'}!`,
       'success',
     );
@@ -15728,15 +15728,15 @@ function explainTaskRanking(task){
     const days=Math.floor((due-now)/86400000);
     if(days<0)reasons.push('⚠ Overdue by '+Math.abs(days)+' day'+(Math.abs(days)>1?'s':''));
     else if(days===0)reasons.push('📅 Due today');
-    else if(days<=2)reasons.push('⏰ Due in '+days+' day'+(days>1?'s':''));
+    else if(days<=2)reasons.push('Due in '+days+' day'+(days>1?'s':''));
   }
   if(task.priority==='high')reasons.push('🔴 High priority');
   const energy=readFluxEnergyLevel();
-  if(energy<=2&&(task.difficulty||3)<=2)reasons.push('💡 Easy task fits low energy');
+  if(energy<=2&&(task.difficulty||3)<=2)reasons.push('Easy task fits low energy');
   if(energy>=4&&['project','essay'].includes(task.type))reasons.push('🚀 Complex task fits high energy');
-  if(task.estTime&&task.estTime<=15)reasons.push('⚡ Quick win (~'+task.estTime+'min)');
-  if(isBlocked(task))reasons.push('🔒 Blocked by '+getBlockerNames(task).length+' task(s)');
-  if((task.rescheduled||0)>=2)reasons.push('🔄 Rescheduled '+task.rescheduled+'× — needs attention');
+  if(task.estTime&&task.estTime<=15)reasons.push('Quick win (~'+task.estTime+'min)');
+  if(isBlocked(task))reasons.push('Blocked by '+getBlockerNames(task).length+' task(s)');
+  if((task.rescheduled||0)>=2)reasons.push('Rescheduled '+task.rescheduled+'× — needs attention');
   return reasons;
 }
 function renderWhyTooltip(task){
@@ -15771,19 +15771,19 @@ function checkMicroCoaching(){
 
   if(_momentum>=3&&_momentum<6){
     _lastCoachTime=now;
-    showCoachPrompt("You're in flow — keep the momentum going! 🔥");
+    showCoachPrompt("You're in flow — keep the momentum going!");
     return;
   }
   const quickWins=tasks.filter(t=>!t.done&&(t.estTime||30)<=10&&t.date===todayStr());
   if(quickWins.length&&_momentum<2){
     _lastCoachTime=now;
-    showCoachPrompt('⚡ Quick win available: "'+quickWins[0].name+'" (~'+( quickWins[0].estTime||10)+'min)');
+    showCoachPrompt('Quick win available: "'+quickWins[0].name+'" (~'+( quickWins[0].estTime||10)+'min)');
     return;
   }
   const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<new Date(new Date().toDateString()));
   if(overdue.length>=3){
     _lastCoachTime=now;
-    showCoachPrompt('📋 '+overdue.length+' overdue tasks. Use the Overdue filter to focus on what matters.');
+    showCoachPrompt(''+overdue.length+' overdue tasks. Use the Overdue filter to focus on what matters.');
     return;
   }
 }
@@ -15801,15 +15801,15 @@ function showCoachPrompt(msg){
 
 // ══ SILENT ACHIEVEMENTS ══════════════════════════════════════
 const ACHIEVEMENTS={
-  first_task:{title:'First Step',desc:'Created your first task',icon:'🌱'},
-  ten_tasks:{title:'Productive',desc:'Completed 10 tasks',icon:'📋'},
-  fifty_tasks:{title:'Machine',desc:'Completed 50 tasks',icon:'⚙️'},
-  streak_3:{title:'On Fire',desc:'3× momentum streak',icon:'🔥'},
-  streak_7:{title:'Unstoppable',desc:'7× momentum streak',icon:'💥'},
+  first_task:{title:'First Step',desc:'Created your first task',icon:''},
+  ten_tasks:{title:'Productive',desc:'Completed 10 tasks',icon:''},
+  fifty_tasks:{title:'Machine',desc:'Completed 50 tasks',icon:''},
+  streak_3:{title:'On Fire',desc:'3× momentum streak',icon:''},
+  streak_7:{title:'Unstoppable',desc:'7× momentum streak',icon:''},
   first_session:{title:'Focus Starter',desc:'Completed a focus session',icon:'⏱'},
-  ten_sessions:{title:'Deep Worker',desc:'10 focus sessions',icon:'🧠'},
-  chain_unlock:{title:'Chain Reaction',desc:'Unlocked 3+ tasks at once',icon:'⚡'},
-  all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:'✨'},
+  ten_sessions:{title:'Deep Worker',desc:'10 focus sessions',icon:''},
+  chain_unlock:{title:'Chain Reaction',desc:'Unlocked 3+ tasks at once',icon:''},
+  all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:''},
 };
 let _achievements=load('flux_achievements',[]);
 function checkAchievement(id){
@@ -16323,7 +16323,7 @@ function checkTomorrowLoad(){
     const lastWarn=fluxLoadStoredString('flux_tomorrow_warn','');
     if(lastWarn===todayStr())return;
     fluxSaveStoredString('flux_tomorrow_warn',todayStr());
-    showToast(`⚡ Tomorrow: ${tmTasks.length} tasks (~${mins}m) — prep tonight!`,'warning');
+    showToast(`Tomorrow: ${tmTasks.length} tasks (~${mins}m) — prep tonight!`,'warning');
   }catch(e){}
 }
 
@@ -16448,12 +16448,12 @@ function showPostLoginRolePicker(opts){
         <p style="text-align:center;color:var(--muted2);font-size:.92rem;margin:0 0 26px">Pick your role so Flux sets up the right dashboard for you.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:520px;margin:0 auto">
           <button type="button" id="plrpStudent" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),rgba(124,92,255,.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
-            <div style="font-size:2rem;margin-bottom:6px">🎒</div>
+            <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Student</div>
             <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Assignments, study plans, AI tutor, and your counselor.</div>
           </button>
           <button type="button" id="plrpStaff" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(124,92,255,.08),rgba(var(--accent-rgb),.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
-            <div style="font-size:2rem;margin-bottom:6px">🏫</div>
+            <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Staff</div>
             <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Teacher, counselor, or admin. Post assignments and manage your class.</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
@@ -16528,7 +16528,7 @@ function showStaffDetailsForm(){
         ${ownerHere?`
         <div id="sdfDevBox" style="margin-bottom:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(124,92,255,.10),rgba(255,92,124,.10));border:1px dashed rgba(124,92,255,.55);border-radius:12px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:1rem">🧪</span>
+            <span style="font-size:1rem"></span>
             <span style="font-size:.74rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#cbb6ff">Dev preview (owner only)</span>
           </div>
           <p style="font-size:.74rem;color:var(--muted2);margin:0 0 10px;line-height:1.5">Skip the email check and walk through the planner as the selected teacher while you build it out. Each teacher's preview lives in its own local sandbox — your owner data never leaks in, and nothing syncs to the cloud while preview is active.</p>
@@ -16583,7 +16583,7 @@ function showStaffDetailsForm(){
       // preview mode for this teacher" — the dev box below handles it.
       if(!matches&&ownerHere){
         hintEl.style.color='#cbb6ff';
-        hintEl.innerHTML=`🧪 Owner: pick "Continue as preview" below to walk through as <b>${esc(rec.name)}</b>.`;
+        hintEl.innerHTML=`Owner: pick "Continue as preview" below to walk through as <b>${esc(rec.name)}</b>.`;
         return;
       }
       hintEl.style.color=matches?'#7be09a':'var(--red)';
@@ -16934,15 +16934,15 @@ window.runTeacherOnboarding=runTeacherOnboarding;
 function renderTeacherOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🏫</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome to Flux for Teachers</h2>
       <p class="onboard-step-sub">Your teacher dashboard lets you create classes, post assignments, and see your students' progress — all in one place.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span>📚</span> Create classes with auto-generated join codes</div>
-        <div class="onboard-feature"><span>📝</span> Post assignments that appear in student planners</div>
-        <div class="onboard-feature"><span>💬</span> Message students and parents directly</div>
-        <div class="onboard-feature"><span>📊</span> See real-time student progress + completion rates</div>
-        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+        <div class="onboard-feature"><span></span> Create classes with auto-generated join codes</div>
+        <div class="onboard-feature"><span></span> Post assignments that appear in student planners</div>
+        <div class="onboard-feature"><span></span> Message students and parents directly</div>
+        <div class="onboard-feature"><span></span> See real-time student progress + completion rates</div>
+        <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="toWelcomeNext">Get Started →</button>
     </div>`;
@@ -16954,7 +16954,7 @@ function renderTeacherOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Your Teaching Profile</h2>
       <p class="onboard-step-sub">This is how students and parents will see you in Flux.</p>
       <div class="mrow"><label>Full Name *</label>
@@ -17006,7 +17006,7 @@ window.saveTeacherProfile_andNext=saveTeacherProfile_andNext;
 function renderTeacherOnboard_Classes(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">📚</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Create Your Classes</h2>
       <p class="onboard-step-sub">Create at least one class. Students join by entering the class code you'll share. You can add more later.</p>
       <div id="classBuilderList"></div>
@@ -17107,7 +17107,7 @@ window.saveTeacherClasses_andNext=saveTeacherClasses_andNext;
 function renderTeacherOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🎉</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're all set!</h2>
       <p class="onboard-step-sub">Your teacher account is ready. Share your class codes with students so they can join.</p>
       <div id="teacherClassCodes" style="margin:20px 0"></div>
@@ -17148,14 +17148,14 @@ window.runCounselorOnboarding=runCounselorOnboarding;
 function renderCounselorOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">💬</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome, Counselor</h2>
       <p class="onboard-step-sub">Your Flux counselor dashboard lets you manage student appointments, communicate directly, and track student wellbeing.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span>📅</span> Students book appointments from your availability</div>
-        <div class="onboard-feature"><span>💬</span> Direct messaging with any student</div>
-        <div class="onboard-feature"><span>📋</span> View student notes and goals (with permission)</div>
-        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+        <div class="onboard-feature"><span></span> Students book appointments from your availability</div>
+        <div class="onboard-feature"><span></span> Direct messaging with any student</div>
+        <div class="onboard-feature"><span></span> View student notes and goals (with permission)</div>
+        <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="cWelcomeNext">Set Up Account →</button>
     </div>`;
@@ -17167,7 +17167,7 @@ function renderCounselorOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Counselor Profile</h2>
       <p class="onboard-step-sub">This is how students will see you when booking appointments.</p>
       <div class="mrow"><label>Full Name *</label>
@@ -17203,7 +17203,7 @@ function renderCounselorOnboard_Availability(container){
   const slots=['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM'];
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">📅</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Set Your Availability</h2>
       <p class="onboard-step-sub">Students can only book during the slots you select. You can update this anytime.</p>
       <div style="overflow-x:auto">
@@ -17258,7 +17258,7 @@ window.saveCounselorAvailability_andNext=saveCounselorAvailability_andNext;
 function renderCounselorOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">✅</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're set up!</h2>
       <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now book appointments during your available slots.</p>
       <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
@@ -17279,7 +17279,7 @@ window.runStaffOnboarding=runStaffOnboarding;
 function renderStaffOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🏫</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Staff Account</h2>
       <p class="onboard-step-sub">Your staff account gives you school-wide tools in Work mode, plus a full personal planner in Personal mode. Switch between them anytime.</p>
       <button class="onboard-next-btn" id="stWelcomeNext">Continue →</button>
@@ -17292,7 +17292,7 @@ function renderStaffOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Your Staff Profile</h2>
       <div class="mrow"><label>Full Name *</label>
         <input id="st_name" placeholder="e.g. Mr. Lee" value="${esc(presetName)}">
@@ -17325,7 +17325,7 @@ function renderStaffOnboard_Profile(container){
 function renderStaffOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">✨</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome aboard!</h2>
       <p class="onboard-step-sub">Use the Mode toggle in the top bar to switch between Work and Personal whenever you want.</p>
       <button class="onboard-next-btn" id="stFinishBtn">Get Started →</button>
@@ -17483,8 +17483,8 @@ async function renderTeacherDashboard(){
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
-          <button class="teacher-action-btn" data-action="new-class"><span>📚</span> New Class</button>
-          <button class="teacher-action-btn" data-action="new-announcement"><span>📢</span> Announce</button>
+          <button class="teacher-action-btn" data-action="new-class"><span></span> New Class</button>
+          <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
           ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
@@ -17511,7 +17511,7 @@ async function renderTeacherDashboard(){
       ${window.FluxAssignmentRecovery?.bannerHtml?.(pendingRecovery.length)||''}
       ${pendingJoins.length>0?`
       <div class="flux-join-request-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.28);border-radius:14px">
-        <span style="font-size:1.2rem">🔔</span>
+        <span style="font-size:1.2rem"></span>
         <span style="flex:1;font-size:.84rem;font-weight:600">${pendingJoins.length} student${pendingJoins.length===1?'':'s'} waiting to join your class${pendingJoins.length===1?'':'es'}</span>
         <button type="button" class="teacher-action-btn" data-action="review-joins" style="flex-shrink:0">Review</button>
       </div>`:''}
@@ -17526,7 +17526,7 @@ async function renderTeacherDashboard(){
           </div>
           ${classesRows.length===0?`
             <div class="teacher-empty">
-              <div class="te-icon">📚</div>
+              <div class="te-icon"></div>
               <div class="te-title">No classes yet</div>
               <div class="te-sub">Create a class and share the code with your students</div>
               <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create First Class</button>
@@ -17535,7 +17535,7 @@ async function renderTeacherDashboard(){
 
         <div class="teacher-col">
           ${dueSoon.length>0?`
-            <div class="teacher-section-head"><h3>⚡ Due in 3 Days</h3></div>
+            <div class="teacher-section-head"><h3>Due in 3 Days</h3></div>
             <div class="teacher-due-list">
               ${dueSoon.map(a=>`
                 <div class="teacher-due-row">
@@ -17882,7 +17882,7 @@ async function openTeacherClassView(classId,options){
         <div>
           <h2 style="font-size:1.3rem;font-weight:800">${esc(cls.class_name||'')}</h2>
           <div style="font-size:.78rem;color:var(--muted2)">Code: <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:1.5px">${esc(cls.class_code||'')}</span> · ${rosterStudents.length} student${rosterStudents.length===1?'':'s'}</div>
-          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?'🕐 '+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
+          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?''+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
         </div>
         <button type="button" id="tcvEditSchedule" style="padding:8px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);cursor:pointer;font-size:.78rem;font-weight:700">Edit schedule</button>
         ${window.FluxTeacherLessonAI?.classButtonHtml?.(classId,cls.class_name,cls.subject)||''}
@@ -18038,7 +18038,7 @@ function renderJoinClassButton(){
   btn.id='joinClassBtn';
   btn.type='button';
   const v2Label=window.FluxTeacherRosterV2?.joinButtonHtml?.();
-  btn.innerHTML=v2Label||'🔗 Join a Teacher Class';
+  btn.innerHTML=v2Label||'Join a Teacher Class';
   btn.className=v2Label?'flux-roster-join-btn-v2':'';
   btn.style.cssText=v2Label?'': 'width:100%;padding:11px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;font-weight:600;cursor:pointer;margin:10px 0';
   btn.addEventListener('click',openJoinClassModal);
@@ -18823,7 +18823,7 @@ async function renderCounselorDashboard(){
           <div class="teacher-greeting">${esc(getTimeGreeting())}, ${esc(greetFirst)}</div>
           <div class="teacher-date">${subjLine?esc(subjLine)+' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
-        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">📅 Edit availability</button>
+        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">Edit availability</button>
         ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
 
@@ -18974,7 +18974,7 @@ async function renderMyCounselorSection(){
       <div class="card">
         <h3>School counselor</h3>
         <div class="empty">
-          <div class="empty-icon">💬</div>
+          <div class="empty-icon"></div>
           <div class="empty-title">No counselor selected</div>
           <div class="empty-sub">Pick your counselor to book appointments and send messages.</div>
         </div>
@@ -19010,8 +19010,8 @@ async function renderMyCounselorSection(){
         </div>
       </div>
       <div style="display:flex;gap:8px;margin:14px 0">
-        <button id="bookApptBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">📅 Book appointment</button>
-        <button id="msgCounselorBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">💬 Message</button>
+        <button id="bookApptBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">Book appointment</button>
+        <button id="msgCounselorBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">Message</button>
       </div>
       ${upcoming.length?`
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Upcoming appointments</div>
@@ -19100,7 +19100,7 @@ function openCounselorSelectModal(){
       return;
     }
     const bookable=(data||[]).filter(c=>fluxIsBookableCounselorEmail(c.email));
-    if(!bookable.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤷</div><div class="empty-title">No counselors available</div></div>';return;}
+    if(!bookable.length){list.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No counselors available</div></div>';return;}
     list.innerHTML=bookable.map(c=>`
       <button type="button" class="counselor-select-card" data-counselor-id="${esc(c.id)}">
         <div class="counselor-avatar" style="background:${esc(c.avatar_color||'#7c5cff')}">${esc(c.avatar_initial||(c.name||'?')[0])}</div>

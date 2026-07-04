@@ -326,13 +326,13 @@
     if (!recTypeOf(task)) return '';
     if (!enabled()) {
       return task.recurringWeekly
-        ? `<span class="task-chip task-chip-recurring" title="${esc(T('recur.legacy_weekly'))}">🔁 ${esc(T('recur.weekly'))}</span>`
+        ? `<span class="task-chip task-chip-recurring" title="${esc(T('recur.legacy_weekly'))}">${esc(T('recur.weekly'))}</span>`
         : '';
     }
     ensureSeries(task);
     const series = task.seriesId ? getSeriesMap()[task.seriesId] : null;
     const endHint = series?.endAfter ? ` · ${T('recur.end_chip', { n: series.endAfter })}` : '';
-    return `<span class="task-chip task-chip-recurring" title="${esc(T('recur.chip_title'))}">🔁 ${esc(labelFor(recTypeOf(task)))}${esc(endHint)}</span>`;
+    return `<span class="task-chip task-chip-recurring" title="${esc(T('recur.chip_title'))}">${esc(labelFor(recTypeOf(task)))}${esc(endHint)}</span>`;
   }
 
   document.addEventListener('keydown', (e) => {

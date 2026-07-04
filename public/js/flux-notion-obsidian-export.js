@@ -314,7 +314,7 @@
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.className = 'btn-sec';
-    copyBtn.textContent = '📋';
+    copyBtn.textContent = '';
     copyBtn.title = T('nox.copy_hint');
     copyBtn.addEventListener('click', copyCurrentMarkdown);
 

@@ -31,7 +31,7 @@ const elAttachImg = document.getElementById('attachImg');
 const elAttachRemove = document.getElementById('attachRemove');
 
 let liveView = true;            // attach a screenshot to every send
-let pendingImage = null;        // manual 📷 capture waiting to be sent
+let pendingImage = null;        // manual capture waiting to be sent
 let history = [];               // [{role, content}] — text only
 let busy = false;
 

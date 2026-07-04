@@ -460,7 +460,7 @@
   display: flex; align-items: center; gap: 10px;
 }
 .tb-title::before{
-  content:'🧰'; font-size: 1.05em;
+  content:''; font-size: 1.05em;
   filter: drop-shadow(0 0 8px rgba(var(--accent-rgb),.28));
 }
 .tb-sub{

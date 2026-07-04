@@ -388,7 +388,7 @@
       }
       // Page / file / external URL -> save as a Flux note with the link.
       const body = `${courseName}\n\nFrom Canvas module: ${data.module_name || ""}\n\nLink: ${data.html_url || ""}`;
-      pushNote(`📚 ${data.title || "Module item"}`, body, "canvasModuleItemKey", data.itemKey || null);
+      pushNote(`${data.title || "Module item"}`, body, "canvasModuleItemKey", data.itemKey || null);
       showToast("Module item saved as note ✓", "success");
       btn.disabled = true; btn.textContent = "✓ Saved";
       btn.classList.add("cv-add-btn--done");
@@ -426,7 +426,7 @@
 
     if (kind === "file") {
       const body = `${courseName}\n\n${data.display_name || data.filename || "File"}\n\n${data.url || ""}`;
-      pushNote(`📎 ${data.display_name || data.filename || "File"}`, body, "canvasFileId", data.id);
+      pushNote(`${data.display_name || data.filename || "File"}`, body, "canvasFileId", data.id);
       btn.disabled = true; btn.textContent = "✓ Saved";
       btn.classList.add("cv-add-btn--done");
       return;

@@ -413,7 +413,7 @@
     btn.type = 'button';
     btn.className = 'tmode-btn flux-wiki-filter-btn';
     btn.setAttribute('data-wiki-filter', '1');
-    btn.textContent = '🔗 Linked';
+    btn.textContent = 'Linked';
     btn.addEventListener('click', () => {
       if (typeof window.setNoteFilter === 'function') window.setNoteFilter('linked', btn);
     });
@@ -449,7 +449,7 @@
         const sub = getSubjects()[n.subject];
         const lc = linkBadgeCount(n);
         const bc = backlinksForNote(n).length;
-        return `<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title || 'Untitled')}</div>${n.starred ? '<span style="color:var(--gold)">⭐</span>' : ''}<span class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">🔗 ${lc}</span>${bc ? `<span class="badge" style="padding:2px 6px;font-size:.6rem;background:rgba(var(--purple-rgb),.12);color:var(--purple)">← ${bc}</span>` : ''}</div>${sub ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>` : ''}<div class="note-preview">${esc(stripHtml(n.body || ''))}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div></div>`;
+        return `<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title || 'Untitled')}</div>${n.starred ? '<span style="color:var(--gold)"></span>' : ''}<span class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">${lc}</span>${bc ? `<span class="badge" style="padding:2px 6px;font-size:.6rem;background:rgba(var(--purple-rgb),.12);color:var(--purple)">← ${bc}</span>` : ''}</div>${sub ? `<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>` : ''}<div class="note-preview">${esc(stripHtml(n.body || ''))}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div></div>`;
       })
       .join('');
     refreshBanner();
@@ -479,7 +479,7 @@
         if (!titleRow || titleRow.querySelector('[data-wiki-badge]')) return;
         titleRow.insertAdjacentHTML(
           'beforeend',
-          `<span data-wiki-badge class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">🔗 ${lc}</span>`,
+          `<span data-wiki-badge class="badge badge-blue" style="padding:2px 6px;font-size:.6rem">${lc}</span>`,
         );
       });
     };

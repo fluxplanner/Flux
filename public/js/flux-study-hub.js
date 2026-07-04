@@ -446,16 +446,16 @@
       <div class="fsh-tool fsh-card"><h3>⚗ Molar mass</h3><p class="sub">Parse any formula — try Ca(OH)2 or (NH4)2SO4.</p>
         <div class="fsh-field"><input id="fshMolIn" class="fsh-input" value="${esc(molInput)}" spellcheck="false"><button type="button" class="fsh-btn" data-act="molar">Compute</button></div>
         <div class="fsh-eq-out" id="fshMolOut">${molOut()}</div></div>
-      <div class="fsh-tool fsh-card"><h3>🧪 pH &amp; dilution</h3><p class="sub">pH from [H⁺], and C₁V₁ = C₂V₂.</p>
+      <div class="fsh-tool fsh-card"><h3>pH &amp; dilution</h3><p class="sub">pH from [H⁺], and C₁V₁ = C₂V₂.</p>
         <div class="fsh-label"><span>[H⁺] (mol/L)</span></div><div class="fsh-field"><input id="fshPhIn" class="fsh-input" value="1e-3"><button type="button" class="fsh-btn" data-act="ph">pH</button></div><div class="fsh-out" id="fshPhOut"></div>
         <div class="fsh-label" style="margin-top:16px"><span>Dilution — leave one blank</span></div>
         <div class="fsh-field"><input id="fshD_c1" class="fsh-input short" placeholder="C₁"><input id="fshD_v1" class="fsh-input short" placeholder="V₁"><input id="fshD_c2" class="fsh-input short" placeholder="C₂"><input id="fshD_v2" class="fsh-input short" placeholder="V₂"><button type="button" class="fsh-btn" data-act="dil">Solve</button></div><div class="fsh-out" id="fshDilOut"></div></div>
-      <div class="fsh-tool fsh-card"><h3>🎈 Ideal gas law</h3><p class="sub">PV = nRT — fill any three, leave one blank.</p>
+      <div class="fsh-tool fsh-card"><h3>Ideal gas law</h3><p class="sub">PV = nRT — fill any three, leave one blank.</p>
         <div class="fsh-field"><input id="fshG_P" class="fsh-input short" placeholder="P kPa"><input id="fshG_V" class="fsh-input short" placeholder="V L"><input id="fshG_n" class="fsh-input short" placeholder="n mol"><input id="fshG_T" class="fsh-input short" placeholder="T K"><button type="button" class="fsh-btn" data-act="gas">Solve</button></div><div class="fsh-out" id="fshGasOut"></div></div>
-      <div class="fsh-tool fsh-card"><h3>🧫 Solubility table</h3><p class="sub">Common ionic compounds in water (25 °C).</p>
+      <div class="fsh-tool fsh-card"><h3>Solubility table</h3><p class="sub">Common ionic compounds in water (25 °C).</p>
         <div class="fsh-sol-scroll"><table class="fsh-sol"><thead><tr><th></th>${SOL_ANIONS.map((a) => `<th>${a}</th>`).join('')}</tr></thead><tbody>${SOL_CATIONS.map((cat, i) => `<tr><th>${cat}</th>${SOL_GRID[i].map((s) => `<td data-s="${s}">${s === 's' ? 'sl' : s}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
         <div class="fsh-sol-legend"><span><i style="background:rgba(52,211,153,.5)"></i>Soluble</span><span><i style="background:rgba(251,191,36,.5)"></i>Slightly</span><span><i style="background:rgba(248,113,113,.5)"></i>Insoluble</span></div></div>
-      <div class="fsh-tool fsh-card"><h3>📐 Constants</h3><p class="sub">Data-booklet values.</p><div class="fsh-const">${CONSTANTS.map((c) => `<div class="fsh-prop"><div class="k">${esc(c[0])}</div><div class="v" style="font-size:13px">${esc(c[1])}</div></div>`).join('')}</div></div>
+      <div class="fsh-tool fsh-card"><h3>Constants</h3><p class="sub">Data-booklet values.</p><div class="fsh-const">${CONSTANTS.map((c) => `<div class="fsh-prop"><div class="k">${esc(c[0])}</div><div class="v" style="font-size:13px">${esc(c[1])}</div></div>`).join('')}</div></div>
     </div></div>`;
   }
   function renderIonsTab() {
@@ -484,7 +484,7 @@
       <div class="fsh-ws-group"><label>Difficulty</label>${seg('diff', [['all','All'],['easy','Easy'],['medium','Medium'],['hard','Hard']])}</div>
       <div class="fsh-ws-group"><label>Questions</label>${seg('count', [['5','5'],['10','10'],['15','15'],['20','20']])}</div>
       <div class="fsh-ws-group"><label>Mode</label>${seg('mode', [['balance','Balance'],['type','Identify'],['combined','Combined']])}</div></div>
-      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap"><button type="button" class="fsh-btn" data-act="ws-gen">↻ Generate new set</button><button type="button" class="fsh-btn ghost" data-act="ws-print">🖨 Print / Save PDF</button><span style="align-self:center;color:var(--fsh-mut);font-size:12.5px">${wsGen.length} shown · ${avail} available for these filters</span></div>
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap"><button type="button" class="fsh-btn" data-act="ws-gen">↻ Generate new set</button><button type="button" class="fsh-btn ghost" data-act="ws-print">Print / Save PDF</button><span style="align-self:center;color:var(--fsh-mut);font-size:12.5px">${wsGen.length} shown · ${avail} available for these filters</span></div>
       <div class="fsh-ws-preview" id="fshWsPreview">${wsPreview()}</div></div></div>`;
   }
   function wsPrint() {

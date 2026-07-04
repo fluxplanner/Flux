@@ -8,6 +8,12 @@
       "port": 3344
     },
     {
+      "name": "flux-planner-py",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3346", "--bind", "127.0.0.1"],
+      "port": 3346
+    },
+    {
       "name": "web-next-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

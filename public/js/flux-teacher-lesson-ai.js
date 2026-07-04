@@ -236,12 +236,12 @@
 
   function dashboardButtonHtml() {
     if (!enabled()) return '';
-    return '<button type="button" class="teacher-action-btn" data-action="lesson-ai"><span>✨</span> Lesson AI</button>';
+    return '<button type="button" class="teacher-action-btn" data-action="lesson-ai"><span></span> Lesson AI</button>';
   }
 
   function classButtonHtml(classId, className, subject) {
     if (!enabled()) return '';
-    return `<button type="button" class="teacher-action-btn flux-lesson-ai-class-btn" data-lesson-ai-class="${esc(classId)}" data-lesson-class-name="${esc(className || '')}" data-lesson-subject="${esc(subject || '')}">✨ Lesson plan</button>`;
+    return `<button type="button" class="teacher-action-btn flux-lesson-ai-class-btn" data-lesson-ai-class="${esc(classId)}" data-lesson-class-name="${esc(className || '')}" data-lesson-subject="${esc(subject || '')}">Lesson plan</button>`;
   }
 
   function install() {

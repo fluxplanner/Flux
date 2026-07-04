@@ -214,7 +214,7 @@
               <button type="button" class="flux-live-class-action" id="fluxLiveClassCopyCode">Copy code ${esc(ctx.classCode)}</button>
               <button type="button" class="flux-live-class-action" id="fluxLiveClassNewAsg">+ Assignment</button>
               <button type="button" class="flux-live-class-action" id="fluxLiveClassAnnounce">Announce</button>
-              ${window.FluxTeacherLessonAI?.enabled?.() ? '<button type="button" class="flux-live-class-action" id="fluxLiveClassLessonAi">✨ Lesson plan</button>' : ''}
+              ${window.FluxTeacherLessonAI?.enabled?.() ? '<button type="button" class="flux-live-class-action" id="fluxLiveClassLessonAi">Lesson plan</button>' : ''}
               ${window.FluxTeacherCopilot?.enabled?.() ? '<button type="button" class="flux-live-class-action" id="fluxLiveClassCopilot">✦ Copilot</button>' : ''}
             </div>
           </section>

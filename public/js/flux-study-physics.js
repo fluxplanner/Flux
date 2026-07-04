@@ -24,7 +24,7 @@
 
     // ── Projectile motion ──────────────────────────────────────────────────
     function renderProjectile(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🎯 Projectile motion</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Launch angle &amp; speed → live trajectory, range, peak height and flight time.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Projectile motion</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Launch angle &amp; speed → live trajectory, range, peak height and flight time.</p>
         <div id="pjCanvas"></div>
         <div class="fsh-sim-controls">${slider('pjAng', 'Angle', 5, 85, 45, 1, '°')}${slider('pjVel', 'Speed', 5, 60, 30, 1, ' m/s')}${slider('pjG', 'Gravity', 1, 25, 9.8, 0.1, ' m/s²')}</div>
         <div class="fsh-sim-readout"><div class="fsh-readout-pill">Range<b id="pjR">–</b></div><div class="fsh-readout-pill">Peak height<b id="pjH">–</b></div><div class="fsh-readout-pill">Flight time<b id="pjT">–</b></div></div></div>`;
@@ -67,7 +67,7 @@
     }
     function renderSuvat(body) {
       const f = (id, l, u) => `<div class="fsh-ws-group"><div class="fsh-label"><span>${l}</span></div><input id="sv_${id}" class="fsh-input" placeholder="${u}"></div>`;
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📏 Kinematics (SUVAT)</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Enter any three; leave the rest blank to solve for them.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Kinematics (SUVAT)</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Enter any three; leave the rest blank to solve for them.</p>
         <div class="fsh-ws-controls">${f('u', 'u — initial velocity', 'm/s')}${f('v', 'v — final velocity', 'm/s')}${f('a', 'a — acceleration', 'm/s²')}${f('t', 't — time', 's')}${f('s', 's — displacement', 'm')}</div>
         <div style="margin-top:14px"><button type="button" class="fsh-btn" id="svGo">Solve</button></div><div class="fsh-out" id="svOut"></div></div>`;
       const get = (id) => { const x = document.getElementById('sv_' + id).value; return x === '' ? null : parseFloat(x); };
@@ -88,7 +88,7 @@
     }
     function renderOhms(body) {
       const f = (id, l) => `<div class="fsh-ws-group"><div class="fsh-label"><span>${l}</span></div><input id="oh_${id}" class="fsh-input"></div>`;
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">⚡ Ohm's law &amp; power</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">V = IR, P = VI. Enter any two.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Ohm's law &amp; power</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">V = IR, P = VI. Enter any two.</p>
         <div class="fsh-ws-controls">${f('V', 'V — voltage (V)')}${f('I', 'I — current (A)')}${f('R', 'R — resistance (Ω)')}${f('P', 'P — power (W)')}</div>
         <div style="margin-top:14px"><button type="button" class="fsh-btn" id="ohGo">Solve</button></div><div class="fsh-out" id="ohOut"></div></div>`;
       const get = (id) => { const x = document.getElementById('oh_' + id).value; return x === '' ? null : parseFloat(x); };
@@ -116,7 +116,7 @@
 
     // ── Formula sheet ──────────────────────────────────────────────────────
     const FORMULAS = [['Kinematics', 'v = u + at'], ['', 's = ut + ½at²'], ['', 'v² = u² + 2as'], ['Force', 'F = ma'], ['Momentum', 'p = mv'], ['Work', 'W = Fd cosθ'], ['Kinetic E', 'Eₖ = ½mv²'], ['Potential E', 'Eₚ = mgh'], ["Ohm's law", 'V = IR'], ['Power', 'P = VI = I²R'], ['Wave', 'v = fλ'], ['Frequency', 'f = 1/T'], ['Gravitation', 'F = Gm₁m₂/r²'], ['Pressure', 'P = F/A'], ['Density', 'ρ = m/V'], ['Hooke', 'F = kx']];
-    function renderFormulas(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">📚 Formula sheet</h3><div class="fsh-formula-list">${FORMULAS.map((f) => `<div class="fsh-formula"><div class="nm">${esc(f[0] || '·')}</div><div class="fx">${esc(f[1])}</div></div>`).join('')}</div></div>`; }
+    function renderFormulas(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Formula sheet</h3><div class="fsh-formula-list">${FORMULAS.map((f) => `<div class="fsh-formula"><div class="nm">${esc(f[0] || '·')}</div><div class="fx">${esc(f[1])}</div></div>`).join('')}</div></div>`; }
 
     H.register('physics', [
       { id: 'projectile', name: 'Projectile', icon: '🎯', desc: 'projectile motion launch trajectory range height', render: renderProjectile, ai: { name: 'projectile', description: 'Projectile range/height/time. Arg: "angle=45 v=30 g=9.8".', params: { angle: 'deg', v: 'm/s', g: 'm/s2' }, run: (a) => { const o = typeof a === 'string' ? kv(a) : a; const ang = (o.angle || 45) * Math.PI / 180, v = o.v || 30, g = o.g || 9.8; return { range: +(v * v * Math.sin(2 * ang) / g).toFixed(2), peak: +((v * v * Math.sin(ang) * Math.sin(ang)) / (2 * g)).toFixed(2), time: +(2 * v * Math.sin(ang) / g).toFixed(2) }; } } },

@@ -409,7 +409,7 @@
     div.style.cssText='position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 30% 20%,rgba(var(--accent-rgb),.18),transparent 60%),rgba(4,7,14,.96);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);color:var(--text,#e6edf6);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
     div.innerHTML=`
       <div style="max-width:460px;width:100%;text-align:center">
-        <div style="font-size:2.6rem;margin-bottom:14px">🛠</div>
+        <div style="font-size:2.6rem;margin-bottom:14px"></div>
         <div style="font-size:1.3rem;font-weight:800;letter-spacing:-.01em;margin-bottom:8px">Update under review</div>
         <div style="font-size:.85rem;color:var(--muted2,#8a93a7);line-height:1.55">This build is not rolled out to everyone yet. The owner can turn on <b>Update mode</b> in Owner → Release to gate the public; once they push this build, this screen clears. If you think this is a mistake, try <b>Check again</b> or contact support.</div>
         ${notes}
@@ -479,7 +479,7 @@
     root.innerHTML=`
       <div style="background:var(--card,#121826);border:1px solid rgba(251,191,36,.4);border-radius:20px;padding:22px;width:100%;max-width:460px;box-shadow:0 32px 80px rgba(0,0,0,.55);color:var(--text,#e6edf6)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <span style="font-size:1.5rem">🚀</span>
+          <span style="font-size:1.5rem"></span>
           <div style="flex:1">
             <div style="font-size:1.05rem;font-weight:800">Push update to all users</div>
             <div style="font-size:.7rem;color:var(--muted,#5b6473);font-family:JetBrains Mono,monospace">preview · ${esc(buildLabel(FLUX_BUILD_ID))}</div>

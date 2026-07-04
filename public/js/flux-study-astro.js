@@ -29,7 +29,7 @@
       <div class="row"><span>Moons</span><span>${p.moons}</span></div><div class="row"><span>Day length</span><span>${esc(p.day)}</span></div>
       <p style="margin-top:12px;color:var(--fsh-ink-2);font-size:13.5px;line-height:1.6">${esc(p.fact)}</p></div>`; }
     function renderOrrery(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🪐 Solar system</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Planets orbit at their real relative speeds. Tap a planet (or chip) for facts.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Solar system</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Planets orbit at their real relative speeds. Tap a planet (or chip) for facts.</p>
         <div class="fsh-ring-wrap"><div id="orCanvas"></div><div id="orInfo">${planetInfoHTML(astroSel)}</div></div>
         <div class="fsh-chips-row" style="margin-top:14px">${PLANETS.map((p, i) => `<button type="button" class="fsh-cat-chip" data-pl="${i}"><span class="dot" style="background:${p.c}"></span>${esc(p.n)}</button>`).join('')}</div></div>`;
       const cv = mkCanvas(document.getElementById('orCanvas'), 340); const t0 = performance.now(); let dots = [];
@@ -64,12 +64,12 @@
       return `<svg width="60" height="60" viewBox="0 0 60 60"><defs><clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs><circle cx="${cx}" cy="${cy}" r="${r}" fill="#2a3144"/><g clip-path="url(#${id})"><circle cx="${cx + offset}" cy="${cy}" r="${r}" fill="#eef2ff"/></g><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,.25)"/></svg>`;
     }
     function renderMoon(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">🌙 Moon phases</h3><div class="fsh-ion-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${PHASES.map((p) => `<div class="fsh-ion" style="text-align:center">${moonSVG(p[1])}<div class="n" style="margin-top:6px">${esc(p[0])}</div></div>`).join('')}</div></div>`;
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Moon phases</h3><div class="fsh-ion-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${PHASES.map((p) => `<div class="fsh-ion" style="text-align:center">${moonSVG(p[1])}<div class="n" style="margin-top:6px">${esc(p[0])}</div></div>`).join('')}</div></div>`;
     }
 
     // ── Planet facts grid ────────────────────────────────────────────────────
     function renderFacts(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">✨ Planet facts</h3><div class="fsh-formula-list">${PLANETS.map((p) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${p.c};margin-right:6px"></span>${esc(p.n)}</div><div class="nm" style="margin-top:4px">${p.p} yr orbit · ${p.moons} moons · ${p.d}× Earth</div><div class="nm" style="color:var(--fsh-ink-2)">${esc(p.fact)}</div></div>`).join('')}</div></div>`;
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Planet facts</h3><div class="fsh-formula-list">${PLANETS.map((p) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${p.c};margin-right:6px"></span>${esc(p.n)}</div><div class="nm" style="margin-top:4px">${p.p} yr orbit · ${p.moons} moons · ${p.d}× Earth</div><div class="nm" style="color:var(--fsh-ink-2)">${esc(p.fact)}</div></div>`).join('')}</div></div>`;
     }
 
     H.register('astronomy', [

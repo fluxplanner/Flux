@@ -563,8 +563,8 @@
     const label = T('calch.palette');
     if (!qq || keys.some(k => k.includes(qq) || qq.includes('calc') || qq.includes('plot'))) {
       return [
-        { label: '📐 ' + label, sub: T('calch.palette_sub'), _keys: keys, action: () => openHistory('tape') },
-        { label: '📈 ' + T('calch.save_plot'), sub: T('calch.palette_plot_sub'), _keys: ['save plot', 'graph'], action: () => savePlotFromToolbox() },
+        { label: '' + label, sub: T('calch.palette_sub'), _keys: keys, action: () => openHistory('tape') },
+        { label: '' + T('calch.save_plot'), sub: T('calch.palette_plot_sub'), _keys: ['save plot', 'graph'], action: () => savePlotFromToolbox() },
       ];
     }
     return [];

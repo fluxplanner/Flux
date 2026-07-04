@@ -61,7 +61,7 @@
     const devCard = (d) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit">${esc(d[0])}</div><div class="nm" style="margin-top:4px;font-size:12px">${esc(d[1])}</div><div class="nm" style="font-style:italic;color:var(--fsh-ink-2)">${esc(d[2])}</div></div>`;
     function renderDevices(body) {
       const list = DEVICES.filter((d) => (d[0] + ' ' + d[1]).toLowerCase().includes(devQ.toLowerCase()));
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📖 Literary devices</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Definitions with examples — search to filter.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Literary devices</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Definitions with examples — search to filter.</p>
         <div class="fsh-search" style="max-width:320px;margin-bottom:14px"><span class="fsh-search-ico">⌕</span><input id="devSearch" type="search" placeholder="Search devices…" value="${esc(devQ)}"></div>
         <div class="fsh-formula-list" id="devList">${list.map(devCard).join('') || '<p style="color:var(--fsh-mut)">No matches.</p>'}</div></div>`;
       const s = document.getElementById('devSearch'); s.addEventListener('input', () => { devQ = s.value; const l2 = DEVICES.filter((d) => (d[0] + ' ' + d[1]).toLowerCase().includes(devQ.toLowerCase())); document.getElementById('devList').innerHTML = l2.map(devCard).join('') || '<p style="color:var(--fsh-mut)">No matches.</p>'; });
@@ -71,13 +71,13 @@
     const POS = [['Noun', 'Person, place, thing or idea — dog, London, joy'], ['Verb', 'Action or state — run, is, believe'], ['Adjective', 'Describes a noun — bright, tall'], ['Adverb', 'Describes a verb/adj — quickly, very'], ['Pronoun', 'Replaces a noun — she, it, they'], ['Preposition', 'Relation in time/space — on, after, with'], ['Conjunction', 'Joins clauses — and, but, because'], ['Interjection', 'Exclamation — wow, ouch']];
     const COMMAS = ['Separate items in a list (Oxford comma optional).', 'After an introductory phrase: "After lunch, we left."', 'Before a coordinating conjunction joining two independent clauses.', 'Around non-essential information: "My brother, a doctor, called."', 'Do NOT join two sentences with only a comma (comma splice).'];
     function renderGrammar(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 10px;font-size:16px">📘 Parts of speech</h3><div class="fsh-formula-list">${POS.map((p) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit">${esc(p[0])}</div><div class="nm" style="margin-top:3px;font-size:12px">${esc(p[1])}</div></div>`).join('')}</div>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 10px;font-size:16px">Parts of speech</h3><div class="fsh-formula-list">${POS.map((p) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit">${esc(p[0])}</div><div class="nm" style="margin-top:3px;font-size:12px">${esc(p[1])}</div></div>`).join('')}</div>
         <h3 style="margin:18px 0 10px;font-size:16px">✏ Comma rules</h3><div class="fsh-mm-rows">${COMMAS.map((c) => `<div class="fsh-mm-row" style="display:block">${esc(c)}</div>`).join('')}</div></div>`;
     }
 
     // ── Essay scaffold ───────────────────────────────────────────────────────
     function renderEssay(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🖊 Essay scaffold</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Draft a thesis, then build PEEL body paragraphs.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Essay scaffold</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Draft a thesis, then build PEEL body paragraphs.</p>
         <div class="fsh-ws-controls"><div class="fsh-ws-group"><div class="fsh-label"><span>Topic</span></div><input id="es_topic" class="fsh-input" placeholder="e.g. social media"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Your claim</span></div><input id="es_claim" class="fsh-input" placeholder="does more harm than good"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Reason 1</span></div><input id="es_r1" class="fsh-input"></div>

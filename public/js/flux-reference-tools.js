@@ -55,7 +55,7 @@
       inlineHost.innerHTML = `
         <div class="ref-tool-inline${wide ? ' ref-tool-inline--wide' : ''}">
           <div class="ref-tool-head ref-tool-head--inline">
-            <span class="ref-tool-emoji" aria-hidden="true">${emoji || '🧩'}</span>
+            <span class="ref-tool-emoji" aria-hidden="true">${emoji || ''}</span>
             <div class="ref-tool-title">${esc(title || '')}</div>
           </div>
           ${tabs ? `<div class="ref-tool-tabs" role="tablist">${tabButtons}</div>` : ''}
@@ -89,7 +89,7 @@
     overlay.innerHTML = `
       <div class="ref-tool-modal" role="dialog" aria-modal="true" aria-labelledby="refToolTitle">
         <div class="ref-tool-head">
-          <span class="ref-tool-emoji" aria-hidden="true">${emoji || '🧩'}</span>
+          <span class="ref-tool-emoji" aria-hidden="true">${emoji || ''}</span>
           <div class="ref-tool-title" id="refToolTitle">${esc(title || '')}</div>
           <button type="button" class="ref-tool-close" aria-label="Close" onclick="fluxCloseToolModal()">✕</button>
         </div>

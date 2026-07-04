@@ -16,7 +16,7 @@
 
     // ── Supply & demand ──────────────────────────────────────────────────────
     function renderSD(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📉 Supply &amp; demand</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Shift the curves and watch the market equilibrium move.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Supply &amp; demand</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Shift the curves and watch the market equilibrium move.</p>
         <div id="sdCanvas"></div>
         <div class="fsh-sim-controls">${slider('sdD', 'Demand shift', 20, 120, 90, 1, '')}${slider('sdS', 'Supply shift', 0, 80, 10, 1, '')}${slider('sdSl', 'Slope', 1, 6, 3, 0.5, '')}</div>
         <div class="fsh-sim-readout"><div class="fsh-readout-pill">Eq. price<b id="sdP">–</b></div><div class="fsh-readout-pill">Eq. quantity<b id="sdQ">–</b></div></div></div>`;
@@ -47,7 +47,7 @@
     }
     function renderElasticity(body) {
       const f = (id, l) => `<div class="fsh-ws-group"><div class="fsh-label"><span>${l}</span></div><input id="el_${id}" class="fsh-input"></div>`;
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📊 Price elasticity (PED)</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Midpoint method between two price/quantity points.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Price elasticity (PED)</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Midpoint method between two price/quantity points.</p>
         <div class="fsh-ws-controls">${f('p1', 'Price 1')}${f('q1', 'Quantity 1')}${f('p2', 'Price 2')}${f('q2', 'Quantity 2')}</div>
         <div style="margin-top:14px"><button type="button" class="fsh-btn" id="elGo">Compute</button></div><div class="fsh-out" id="elOut"></div></div>`;
       const get = (id) => { const x = document.getElementById('el_' + id).value; return x === '' ? null : parseFloat(x); };
@@ -61,7 +61,7 @@
       return { future: +A.toFixed(2), interest: +(A - P).toFixed(2) };
     }
     function renderCompound(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">💰 Compound interest</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">A = P(1 + r/n)<sup>nt</sup></p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Compound interest</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">A = P(1 + r/n)<sup>nt</sup></p>
         <div class="fsh-ws-controls"><div class="fsh-ws-group"><div class="fsh-label"><span>Principal</span></div><input id="ci_p" class="fsh-input" value="1000"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Rate % / yr</span></div><input id="ci_r" class="fsh-input" value="5"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Years</span></div><input id="ci_t" class="fsh-input" value="10"></div>

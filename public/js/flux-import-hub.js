@@ -155,7 +155,7 @@
     banner.id = BANNER_ID;
     banner.className = 'fih-season-banner';
     banner.innerHTML =
-      '<span class="fih-season-ico" aria-hidden="true">🎒</span>' +
+      '<span class="fih-season-ico" aria-hidden="true"></span>' +
       '<span class="fih-season-text"><strong>New school year?</strong> ' +
       (edu ? 'Import your classes, rosters, and calendar in one place.'
            : 'Import your classes, schedule, and grades in one place — takes a minute.') +

@@ -472,8 +472,8 @@
       +   '<input type="hidden" id="fluxOhDay" value="monday">'
       +   '<input type="hidden" id="fluxOhMode" value="instant">'
       +   '<div class="flux-oh-modechips" role="group" aria-label="How students sign up">'
-      +     '<button type="button" class="flux-oh-modechip active" data-oh-modechip="instant"' + disabled + '>⚡ Instant book</button>'
-      +     '<button type="button" class="flux-oh-modechip" data-oh-modechip="request"' + disabled + '>✋ Request first</button>'
+      +     '<button type="button" class="flux-oh-modechip active" data-oh-modechip="instant"' + disabled + '>Instant book</button>'
+      +     '<button type="button" class="flux-oh-modechip" data-oh-modechip="request"' + disabled + '>Request first</button>'
       +   '</div>'
       +   '<div class="flux-oh-daychips" role="group" aria-label="Day of week">'
       +     DAYS.map(function (d, i) { return '<button type="button" class="flux-oh-daychip' + (i === 0 ? ' active' : '') + '" data-oh-daychip="' + d + '"' + disabled + '>' + esc(DAY_LABEL[d]) + '</button>'; }).join('')

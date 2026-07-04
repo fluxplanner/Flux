@@ -208,7 +208,7 @@
     const counts=loadNavCounts();
     const topNav=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} (${v})`).join(' · ')||'—';
     el.innerHTML=`<div class="card flux-patterns-card">
-      <h3>🧬 My patterns</h3>
+      <h3>My patterns</h3>
       <div class="flux-patterns-grid">
         <div><div class="flux-pat-k">Peak focus</div><p class="flux-pat-p">${esc(pk.detail||'—')}</p></div>
         <div><div class="flux-pat-k">Sleep target</div><p class="flux-pat-p">${esc(sleep.line)}</p></div>

@@ -253,7 +253,7 @@
     var threadHtml;
     if (!active) {
       threadHtml = '<div class="fsm-thread-empty">'
-        + '<div class="fsm-thread-empty-icon">💬</div>'
+        + '<div class="fsm-thread-empty-icon"></div>'
         + '<p>Pick a conversation, or start a new one.</p>'
         + '<button type="button" class="fsm-new-btn" data-fsm-new>+ New message</button>'
         + '</div>';
@@ -276,7 +276,7 @@
         +   '<span class="fsm-avatar' + (active.is_group ? ' fsm-avatar--group' : '') + '">' + (active.is_group ? '👥' : esc(initials(convoTitle(active)))) + '</span>'
         +   '<div class="fsm-thread-title-wrap"><div class="fsm-thread-title">' + esc(convoTitle(active)) + '</div>'
         +   '<div class="fsm-thread-sub">' + sub + '</div></div>'
-        +   (active.is_group ? '<button type="button" class="fsm-addppl" data-fsm-addppl title="Add people">+👤</button>' : '')
+        +   (active.is_group ? '<button type="button" class="fsm-addppl" data-fsm-addppl title="Add people">+</button>' : '')
         + '</div>'
         + '<div class="fsm-msgs" id="fsmMsgs">' + msgs + '</div>'
         + '<div class="fsm-composer">'

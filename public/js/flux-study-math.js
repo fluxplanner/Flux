@@ -26,7 +26,7 @@
     // ── Graphing calculator ─────────────────────────────────────────────────
     let gExpr = 'sin(x)', gExpr2 = '0.2*x^2 - 3', gZoom = 10;
     function renderGraph(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📈 Graphing calculator</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Plot y = f(x). Use x, +−*/^, and sin cos tan sqrt ln log abs exp pi.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Plot y = f(x). Use x, +−*/^, and sin cos tan sqrt ln log abs exp pi.</p>
         <div class="fsh-field"><input id="gIn1" class="fsh-input" value="${esc(gExpr)}" spellcheck="false"></div>
         <div class="fsh-field" style="margin-top:8px"><input id="gIn2" class="fsh-input" value="${esc(gExpr2)}" spellcheck="false" placeholder="optional second function"><button type="button" class="fsh-btn" id="gPlot">Plot</button></div>
         <div class="fsh-field" style="margin-top:10px;align-items:center"><span style="font-size:12px;color:var(--fsh-mut)">Zoom</span><input id="gZoom" class="fsh-range" type="range" min="2" max="40" step="1" value="${gZoom}"></div>
@@ -55,7 +55,7 @@
 
     // ── Unit circle ──────────────────────────────────────────────────────────
     function renderUnitCircle(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🧭 Unit circle</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Drag the angle to read sin, cos and tan.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Unit circle</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Drag the angle to read sin, cos and tan.</p>
         <div id="ucCanvas"></div><div class="fsh-field" style="margin-top:12px;align-items:center"><span style="font-size:12px;color:var(--fsh-mut)">Angle</span><input id="ucAng" class="fsh-range" type="range" min="0" max="360" step="1" value="30"></div>
         <div class="fsh-sim-readout" id="ucOut"></div></div>`;
       const cv = mkCanvas(document.getElementById('ucCanvas'), 300);
@@ -116,7 +116,7 @@
     // ── Normal distribution ──────────────────────────────────────────────────
     function cdf(z) { const t = 1 / (1 + 0.2316419 * Math.abs(z)); const d = 0.3989423 * Math.exp(-z * z / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; }
     function renderNormal(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🔔 Normal distribution</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Shade P(X ≤ x) under the bell curve.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Normal distribution</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Shade P(X ≤ x) under the bell curve.</p>
         <div id="ndCanvas"></div>
         <div class="fsh-sim-controls"><div class="fsh-ws-group"><div class="fsh-label"><span>Mean μ</span><b id="ndM_v">0</b></div><input id="ndM" class="fsh-range" type="range" min="-5" max="5" step="0.1" value="0"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Std σ</span><b id="ndS_v">1</b></div><input id="ndS" class="fsh-range" type="range" min="0.3" max="4" step="0.1" value="1"></div>

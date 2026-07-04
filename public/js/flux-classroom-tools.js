@@ -422,7 +422,7 @@
 
     mount.innerHTML = `
       <p class="flux-widget-hint">Fair pick — skips students called in the last ${PICKER_COOLDOWN} rounds.</p>
-      <button type="button" class="btn" id="fluxPickerSpin" style="width:100%">🎲 Pick student</button>
+      <button type="button" class="btn" id="fluxPickerSpin" style="width:100%">Pick student</button>
       <div id="fluxPickerResult" class="flux-picker-result"></div>
       <button type="button" class="btn-sec" id="fluxPickerLoadRoster" style="width:100%;margin-top:6px;font-size:.72rem">Load names from my classes</button>`;
 
@@ -624,7 +624,7 @@
       </select>
       <input id="fluxOopsTitle" placeholder="Title (e.g. Class moved)" style="width:100%;margin-bottom:6px;font-size:.78rem;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text)"/>
       <textarea id="fluxOopsBody" rows="3" placeholder="Message for students" style="width:100%;font-size:.78rem;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);color:var(--text)"></textarea>
-      <button type="button" class="btn" id="fluxOopsSend" style="width:100%;margin-top:8px">📢 Broadcast now</button>`;
+      <button type="button" class="btn" id="fluxOopsSend" style="width:100%;margin-top:8px">Broadcast now</button>`;
 
     mount.querySelector('#fluxOopsSend')?.addEventListener('click', async () => {
       const title = (mount.querySelector('#fluxOopsTitle')?.value || 'Class update').trim();
@@ -714,7 +714,7 @@
     const top = visible[0];
     banner.style.display = 'flex';
     banner.innerHTML = `
-      <span class="flux-class-alert-icon" aria-hidden="true">📢</span>
+      <span class="flux-class-alert-icon" aria-hidden="true"></span>
       <div class="flux-class-alert-body">
         <strong>${esc(top.title)}</strong>
         <p>${esc(top.content)}</p>

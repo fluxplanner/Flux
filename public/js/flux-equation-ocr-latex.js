@@ -311,7 +311,7 @@
     btn.id = 'fluxEocrBtn';
     btn.style.cssText =
       'padding:6px 10px;font-size:.78rem;border-radius:8px;background:rgba(192,132,252,.12);border:1px solid rgba(192,132,252,.28);color:var(--purple);cursor:pointer';
-    btn.textContent = '📐 ' + T('eocr.btn');
+    btn.textContent = '' + T('eocr.btn');
     btn.title = T('eocr.btn_hint');
     btn.addEventListener('click', (e) => {
       e.preventDefault();

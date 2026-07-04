@@ -361,16 +361,16 @@
       return window.TASK_TEMPLATES;
     }
     return [
-      { name: 'Homework', type: 'hw', estTime: 30, difficulty: 2, priority: 'med', icon: '📝' },
-      { name: 'Study Session', type: 'study', estTime: 60, difficulty: 3, priority: 'med', icon: '📖' },
-      { name: 'Test Prep', type: 'test', estTime: 45, difficulty: 4, priority: 'high', icon: '📋' },
+      { name: 'Homework', type: 'hw', estTime: 30, difficulty: 2, priority: 'med', icon: '' },
+      { name: 'Study Session', type: 'study', estTime: 60, difficulty: 3, priority: 'med', icon: '' },
+      { name: 'Test Prep', type: 'test', estTime: 45, difficulty: 4, priority: 'high', icon: '' },
     ];
   }
 
   function packCardHtml(pack) {
     const desc = pack.descKey ? T(pack.descKey) : pack.desc || '';
     return `<button type="button" class="flux-ttm-pack" data-ttm-apply="${esc(pack.id)}">
-  <div class="flux-ttm-pack-icon">${esc(pack.icon || '📦')}</div>
+  <div class="flux-ttm-pack-icon">${esc(pack.icon || '')}</div>
   <div class="flux-ttm-pack-name">${esc(pack.name)}</div>
   <div class="flux-ttm-pack-meta">${esc(T('ttm.task_count', { n: pack.tasks.length }))}</div>
   ${desc ? `<div class="flux-ttm-pack-desc">${esc(desc)}</div>` : ''}
@@ -439,7 +439,7 @@
           .map(
             (p) => `<div class="flux-ttm-imported-row">
   <div>
-    <div class="flux-ttm-pack-name">${esc(p.icon || '📦')} ${esc(p.name)}</div>
+    <div class="flux-ttm-pack-name">${esc(p.icon || '')} ${esc(p.name)}</div>
     <div class="flux-ttm-pack-meta">${esc(T('ttm.task_count', { n: p.tasks.length }))}</div>
   </div>
   <div style="display:flex;gap:6px">
@@ -456,7 +456,7 @@
     const quickHtml = quickList
       .map(
         (t, idx) => `<button type="button" class="flux-ttm-pack" data-ttm-quick-idx="${idx}">
-  <div class="flux-ttm-pack-icon">${esc(t.icon || '📝')}</div>
+  <div class="flux-ttm-pack-icon">${esc(t.icon || '')}</div>
   <div class="flux-ttm-pack-name">${esc(t.name)}</div>
   <div class="flux-ttm-pack-meta">${esc(t.estTime)}min · ${esc(T('ttm.diff', { n: t.difficulty }))}</div>
 </button>`,

@@ -174,6 +174,80 @@ table{border-color:var(--border2)}
 th{color:var(--muted2);font-weight:600}
 tr:hover td{background:rgba(177,186,196,.04)}
 
+/* ── Settings 2026 — tab bar on-theme, panes organized ───────────── */
+.flux-page .stabs,
+#settings.flux-page .flux-settings-stabs,
+#settings.flux-page > .stabs{
+  display:flex;flex-wrap:nowrap;gap:4px;
+  padding:5px!important;
+  background:#0b0f14!important;
+  border:1px solid var(--border2)!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.flux-page .stabs::-webkit-scrollbar{display:none}
+.flux-page .stab{
+  flex:1 1 auto;
+  border-radius:10px!important;
+  padding:8px 14px!important;
+  font-size:.8rem!important;font-weight:600!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:var(--muted2)!important;
+  box-shadow:none!important;
+  transition:background .14s ease,color .14s ease;
+}
+.flux-page .stab:hover{background:#1a2029!important;color:var(--text)!important}
+.flux-page .stab.active{
+  background:rgba(var(--accent-rgb),.16)!important;
+  border-color:rgba(var(--accent-rgb),.35)!important;
+  color:var(--text)!important;
+}
+[data-theme="light"] .flux-page .stabs,
+[data-theme="light"] #settings.flux-page > .stabs{
+  background:#f6f8fa!important;border-color:#d0d7de!important;
+}
+[data-theme="light"] .flux-page .stab{color:#57606a!important}
+[data-theme="light"] .flux-page .stab:hover{background:#eaeef2!important;color:#1f2328!important}
+[data-theme="light"] .flux-page .stab.active{color:#1f2328!important}
+
+.flux-settings-panes .card{margin-bottom:12px}
+.flux-settings-panes .card h3{font-size:.95rem;margin-top:0}
+
+/* Theme picker — flat buttons with color dots (no emoji) */
+.theme-btn{
+  display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;
+  background:#161b22!important;
+  border:1px solid var(--border2)!important;
+  border-radius:10px!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+  font-weight:600;
+}
+.theme-btn:hover{background:#1a2029!important;border-color:var(--border3)!important;box-shadow:none!important}
+.theme-btn.active,.theme-btn[data-active="1"]{border-color:rgba(var(--accent-rgb),.55)!important;background:rgba(var(--accent-rgb),.1)!important}
+.theme-dot{
+  width:14px;height:14px;border-radius:50%;flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.swatch{border-radius:50%;box-shadow:none}
+.swatch.active{outline:2px solid var(--text);outline-offset:2px}
+
+/* ── 2026 polish — typography, focus, misc chrome ────────────────── */
+h1,h2,h3,h4{letter-spacing:-.015em}
+:focus-visible{outline:2px solid rgba(88,166,255,.65);outline-offset:2px;border-radius:4px}
+.flux-page-header--lead::after{background:linear-gradient(90deg,var(--accent),var(--purple))}
+.nav-item.active{box-shadow:inset 2px 0 0 var(--accent)}
+.nav-group-label::after{background:linear-gradient(90deg,rgba(var(--accent-rgb),.3),transparent)}
+
+/* Iconified emoji glyphs — sit nicely in labels and headers */
+.fxi{opacity:.9}
+.slabel .fxi-wrap,h3 .fxi-wrap{color:var(--muted2)}
+.more-sheet-icon svg{display:block;margin:0 auto}
+
 /* Keep motion calm — respect users who ask for less */
 @media (prefers-reduced-motion:reduce){
   .nav-item,.btn,.btn-sec,.card{transition:none}

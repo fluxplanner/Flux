@@ -49,7 +49,7 @@
     btn.classList.toggle('flux-voice-mic-btn--listening', listening);
     btn.setAttribute('aria-pressed', listening ? 'true' : 'false');
     btn.setAttribute('aria-label', listening ? T('voice.stop') : T('voice.start'));
-    btn.textContent = listening ? '⏹' : '🎤';
+    btn.textContent = listening ? '⏹' : '';
   }
 
   function applyTranscript(text, finalPass) {
@@ -148,7 +148,7 @@
     btn.type = 'button';
     btn.id = 'fluxVoiceMicBtn';
     btn.className = 'flux-voice-mic-btn';
-    btn.textContent = '🎤';
+    btn.textContent = '';
     btn.setAttribute('aria-label', T('voice.start'));
     btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', (e) => {

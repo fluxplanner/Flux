@@ -22,14 +22,14 @@
   var STORAGE_KEY_CMD_RAIL = 'flux_elv_cmd_rail_dismissed_v1';
 
   var MILESTONES = [
-    { n: 5,    title: 'First five down',           sub: 'You\'re building momentum.', emoji: '🌱' },
-    { n: 10,   title: 'Ten tasks crushed',         sub: 'Habits are forming.',        emoji: '⚡' },
-    { n: 25,   title: 'Quarter-century of focus',  sub: 'You show up every day.',    emoji: '🚀' },
-    { n: 50,   title: 'Half a hundred',            sub: 'Consistency is your edge.', emoji: '🔥' },
-    { n: 100,  title: 'Centurion',                 sub: 'A hundred completed tasks. Wild.', emoji: '🏆' },
-    { n: 250,  title: 'Two-fifty club',            sub: 'You\'re a Flux power user.', emoji: '💎' },
-    { n: 500,  title: 'Five hundred milestone',    sub: 'Genuinely impressive.',      emoji: '👑' },
-    { n: 1000, title: 'Thousand-task legend',      sub: 'You built a planet of focus.', emoji: '🌌' },
+    { n: 5,    title: 'First five down',           sub: 'You\'re building momentum.', emoji: '' },
+    { n: 10,   title: 'Ten tasks crushed',         sub: 'Habits are forming.',        emoji: '' },
+    { n: 25,   title: 'Quarter-century of focus',  sub: 'You show up every day.',    emoji: '' },
+    { n: 50,   title: 'Half a hundred',            sub: 'Consistency is your edge.', emoji: '' },
+    { n: 100,  title: 'Centurion',                 sub: 'A hundred completed tasks. Wild.', emoji: '' },
+    { n: 250,  title: 'Two-fifty club',            sub: 'You\'re a Flux power user.', emoji: '' },
+    { n: 500,  title: 'Five hundred milestone',    sub: 'Genuinely impressive.',      emoji: '' },
+    { n: 1000, title: 'Thousand-task legend',      sub: 'You built a planet of focus.', emoji: '' },
   ];
 
   function motionOk() {
@@ -104,7 +104,7 @@
 
   function smartSubLine(ctx) {
     var parts = [];
-    if (ctx.streak >= 2) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">🔥 ' + ctx.streak + '‑day streak</span>');
+    if (ctx.streak >= 2) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">' + ctx.streak + '‑day streak</span>');
     if (ctx.todayCount > 0) parts.push('<span class="flux-elv-chip">' + ctx.todayCount + ' due today</span>');
     if (ctx.overdueCount > 0) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">' + ctx.overdueCount + ' overdue</span>');
     if (!parts.length) parts.push('<span class="flux-elv-chip flux-elv-chip--ok">Clear runway</span>');
