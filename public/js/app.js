@@ -6117,8 +6117,10 @@ const THEMES={
     vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
   },
   light:{
+    // Theme 2026 light — GitHub-light surfaces × Discord blurple accent
+    // (must stay in sync with the [data-theme="light"] block in flux-theme-2026.css).
     label:'Cloud',
-    vars:{'--bg':'#f0f2f8','--bg2':'#e4e8f2','--card':'#ffffff','--card2':'#f5f7ff','--card-solid':'#ffffff','--border':'rgba(0,0,0,.09)','--border2':'rgba(0,0,0,.13)','--text':'#1a1d2e','--muted':'#6b7280','--muted2':'#4b5563','--accent':'#6366f1','--accent-rgb':'99,102,241','--green':'#059669','--red':'#dc2626','--gold':'#d97706','--purple':'#9333ea','--orange':'#ea580c'}
+    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
   },
   aurora:{
     label:'Aurora',

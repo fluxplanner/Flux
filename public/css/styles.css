@@ -5473,7 +5473,10 @@ html[data-flux-glass="on"] .more-sheet{
   background:transparent !important;
 }
 body{
-  background:rgb(7,8,15) !important;
+  /* Panels are transparent; the body is the app canvas. Must follow the
+     theme token or light mode paints cards on a black void (the old mesh
+     canvas this section was built for no longer exists). */
+  background:var(--bg) !important;
 }
 .section-header,.panel-section-title{
   background:transparent !important;

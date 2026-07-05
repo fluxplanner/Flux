@@ -524,8 +524,17 @@
       ];
     }
 
+    // The canvas is the app's backdrop (panels are transparent) — its fill
+    // must track the active theme or light mode sits on a black void.
+    let bgFill = 'rgb(7, 8, 15)';
+    let bgTick = 0;
+    function refreshBgFill() {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+      if (v) bgFill = v;
+    }
     function draw() {
-      ctx.fillStyle = 'rgb(7, 8, 15)';
+      if (bgTick++ % 30 === 0) refreshBgFill();
+      ctx.fillStyle = bgFill;
       ctx.fillRect(0, 0, W, H);
       for (let i = 0; i < nodes.length; i++) {
         nodes[i].update(t);
