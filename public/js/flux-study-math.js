@@ -13,14 +13,59 @@
     function mkCanvas(host, h) { const wrap = document.createElement('div'); wrap.className = 'fsh-canvas-wrap'; const c = document.createElement('canvas'); wrap.appendChild(c); host.appendChild(wrap); const ctx = c.getContext('2d'); function size() { const w = wrap.clientWidth || 620; const dpr = Math.min(2, window.devicePixelRatio || 1); c.width = w * dpr; c.height = h * dpr; c.style.height = h + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { w, h }; } return { c, ctx, size, alive: () => document.body.contains(c) }; }
 
     // ── expression compiler (safe-ish) ──────────────────────────────────────
+    // Null prototypes so names like "constructor" can't resolve via the chain.
+    const FNS = Object.assign(Object.create(null), {
+      sin: Math.sin, cos: Math.cos, tan: Math.tan, asin: Math.asin, acos: Math.acos,
+      atan: Math.atan, sqrt: Math.sqrt, abs: Math.abs, ln: Math.log, log: Math.log10,
+      exp: Math.exp, floor: Math.floor, ceil: Math.ceil, round: Math.round,
+      sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, sign: Math.sign,
+      pow: Math.pow, max: Math.max, min: Math.min,
+    });
+    const CONSTS = Object.assign(Object.create(null), { pi: Math.PI, e: Math.E });
     function compile(src) {
-      let e = String(src).replace(/\s+/g, ''); if (!e) throw new Error('Enter a function of x');
-      const rest = e.replace(/\b(sin|cos|tan|asin|acos|atan|sqrt|abs|ln|log|exp|pi|e|floor|ceil|round|sinh|cosh|tanh|sign|pow|max|min)\b/g, '').replace(/[0-9x+\-*/^().,]/g, '');
-      if (rest.length) throw new Error('Unsupported: ' + rest);
-      e = e.replace(/\^/g, '**')
-        .replace(/\b(sin|cos|tan|asin|acos|atan|sqrt|abs|exp|floor|ceil|round|sinh|cosh|tanh|sign|pow|max|min)\b/g, 'Math.$1')
-        .replace(/\bln\b/g, 'Math.log').replace(/\blog\b/g, 'Math.log10').replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E');
-      return new Function('x', 'return (' + e + ');'); // eslint-disable-line no-new-func
+      const e = String(src).replace(/\s+/g, ''); if (!e) throw new Error('Enter a function of x');
+      // Tokenize against a fixed whitelist — anything else is rejected up front,
+      // so evaluation never touches the JS engine (no new Function / eval).
+      const toks = []; let i = 0;
+      while (i < e.length) {
+        const ch = e[i];
+        if (/[0-9.]/.test(ch)) {
+          const m = e.slice(i).match(/^\d*\.?\d+(?:[eE][+-]?\d+)?/);
+          if (!m) throw new Error('Unsupported: ' + ch);
+          toks.push({ t: 'num', v: parseFloat(m[0]) }); i += m[0].length;
+        } else if (/[a-z]/i.test(ch)) {
+          const m = e.slice(i).match(/^[a-z]+/i); const w = m[0].toLowerCase();
+          if (w === 'x') toks.push({ t: 'x' });
+          else if (w in CONSTS) toks.push({ t: 'num', v: CONSTS[w] });
+          else if (w in FNS) toks.push({ t: 'fn', v: w });
+          else throw new Error('Unsupported: ' + w);
+          i += m[0].length;
+        } else if ('+-*/^(),'.includes(ch)) { toks.push({ t: ch }); i++; }
+        else throw new Error('Unsupported: ' + ch);
+      }
+      // Recursive-descent parse to a closure tree; precedence: ^ > unary- > */ > +-
+      let p = 0;
+      const peek = () => toks[p], eat = (t) => { if (!toks[p] || toks[p].t !== t) throw new Error('Bad expression'); return toks[p++]; };
+      function sum() { let l = term(); while (peek() && (peek().t === '+' || peek().t === '-')) { const op = toks[p++].t; const r = term(); const a = l, plus = op === '+'; l = (x) => plus ? a(x) + r(x) : a(x) - r(x); } return l; }
+      function term() { let l = unary(); while (peek() && (peek().t === '*' || peek().t === '/')) { const op = toks[p++].t; const r = unary(); const a = l, mul = op === '*'; l = (x) => mul ? a(x) * r(x) : a(x) / r(x); } return l; }
+      function unary() { if (peek() && peek().t === '-') { p++; const r = unary(); return (x) => -r(x); } if (peek() && peek().t === '+') { p++; return unary(); } return power(); }
+      function power() { const b = atom(); if (peek() && peek().t === '^') { p++; const ex = unary(); return (x) => Math.pow(b(x), ex(x)); } return b; }
+      function atom() {
+        const tk = peek(); if (!tk) throw new Error('Bad expression');
+        if (tk.t === 'num') { p++; const v = tk.v; return () => v; }
+        if (tk.t === 'x') { p++; return (x) => x; }
+        if (tk.t === '(') { p++; const inner = sum(); eat(')'); return inner; }
+        if (tk.t === 'fn') {
+          p++; const f = FNS[tk.v]; eat('(');
+          const args = [sum()]; while (peek() && peek().t === ',') { p++; args.push(sum()); }
+          eat(')');
+          return (x) => f.apply(null, args.map((a) => a(x)));
+        }
+        throw new Error('Bad expression');
+      }
+      const root = sum();
+      if (p !== toks.length) throw new Error('Bad expression');
+      return root;
     }
 
     // ── Graphing calculator ─────────────────────────────────────────────────
