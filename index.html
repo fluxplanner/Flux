@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data:; worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api.anthropic.com https://api.openai.com https://api.groq.com https://api.mistral.ai https://en.wikipedia.org https://api.duckduckgo.com https://html.duckduckgo.com https://corsproxy.io https://api.allorigins.win https://tessdata.projectnaptha.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com">
 <script>/* Flux Pulse layout — REMOVED. The experimental "Pulse" reskin caused lag and is
    gone for good. Force legacy layout for everyone and purge any stale opt-in so
    users who previously enabled Pulse are migrated back automatically. */
@@ -2917,55 +2917,11 @@
 
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
-<script type="module" src="public/js/flux-anime-catalog.js"></script>
-<script type="module" src="public/js/flux-animations.js"></script>
-<script type="module" src="public/js/flux-apple-motion.js"></script>
-<script type="module" src="public/js/flux-apple-motion-pro.js"></script>
-<script type="module" src="public/js/flux-motion-50.js"></script>
-<script defer src="public/js/flux-iconify.js"></script>
-<script defer src="public/js/flux-connectors.js"></script>
-<script defer src="public/js/flux-integrations-hub.js"></script>
-<script defer src="public/js/flux-modern-ui.js"></script>
-<script defer src="public/js/flux-skills.js"></script>
-<script defer src="public/js/splash.js"></script>
-<script defer src="public/js/login-motion.js"></script>
-<script defer src="public/js/flux-login-split.js"></script>
-<script defer src="public/js/login-refresh.js"></script>
+<!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
+<script type="module" src="public/bundles/flux-vendor.js"></script>
+<script defer src="public/bundles/flux-core.js"></script>
+<script defer src="public/bundles/flux-features.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
-<script defer src="public/js/flux-teacher-wishlist.js"></script>
-    <script defer src="public/js/core/debug.js"></script>
-    <script defer src="public/js/flux-storage-keys.js"></script>
-    <script defer src="public/js/flux-storage-repair.js"></script>
-    <script defer src="public/js/flux-role-routing.js"></script>
-    <script defer src="public/js/flux-e2e-harness.js"></script>
-    <script defer src="public/js/flux-ui-modals.js"></script>
-    <script defer src="public/js/flux-site-enhancements.js"></script>
-    <script defer src="public/js/flux-tex.js"></script>
-    <script defer src="public/js/flux-knowledge.js"></script>
-    <script defer src="public/js/flux-notebook.js"></script>
-    <script defer src="public/js/flux-slash-picker.js"></script>
-    <script defer src="public/js/flux-curriculum.js"></script>
-    <script defer src="public/js/flux-report-fab.js"></script>
-    <script defer src="public/js/flux-quick-notepad.js"></script>
-    <script defer src="public/js/flux-teacher-resources.js"></script>
-    <script defer src="public/js/flux-import-hub.js"></script>
-    <script defer src="public/js/app.js"></script>
-    <script defer src="public/js/flux-brain.js"></script>
-    <script defer src="public/js/flux-deep-links.js"></script>
-    <script defer src="public/js/flux-voice-capture.js"></script>
-    <script defer src="public/js/flux-screenshot-snip.js"></script>
-    <script defer src="public/js/flux-staff-dash-board.js"></script>
-    <script defer src="public/js/flux-staff-platform.js"></script>
-    <script defer src="public/js/flux-school-command.js"></script>
-    <script defer src="public/js/flux-school-emergency.js"></script>
-    <script defer src="public/js/flux-district-rollup.js"></script>
-    <script defer src="public/js/flux-school-ops.js"></script>
-    <script defer src="public/js/flux-educator-platform-extras.js"></script>
-    <script defer src="public/js/flux-visual.js"></script>
-    <script defer src="public/js/flux-extension-bridge.js"></script>
-    <script defer src="public/js/flux-ai-core.js"></script>
-<script type="module" src="public/js/flux-kit-bootstrap.js"></script>
-<script defer src="public/js/flux-ai-connections.js"></script>
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
 <div id="fluxFeedbackModal" class="flux-feedback-modal" aria-hidden="true" role="dialog" aria-labelledby="fluxFeedbackTitle" aria-modal="true">
@@ -2991,160 +2947,11 @@
     </div>
   </div>
 </div>
-<script defer src="public/js/flux-staff-directory.js"></script>
-<script defer src="public/js/flux-school-registry.js"></script>
-<script defer src="public/js/flux-feature-flags.js"></script>
-<script defer src="public/js/flux-i18n.js"></script>
 <!-- Flux self-controlled DOM translator (replaces Google Translate widget) -->
-<script defer src="public/js/flux-i18n-dom.js"></script>
-<script defer src="public/js/flux-telemetry.js"></script>
-<script defer src="public/js/flux-event-bus.js"></script>
-<script defer src="public/js/flux-error-reporter.js"></script>
-<script defer src="public/js/flux-event-processors.js"></script>
-<script defer src="public/js/flux-momentum-v2.js"></script>
-<script defer src="public/js/flux-cognitive-v2.js"></script>
-<script defer src="public/js/flux-friction.js"></script>
-<script defer src="public/js/flux-shutdown-v2.js"></script>
-<script defer src="public/js/flux-ghost-draft-v2.js"></script>
-<script defer src="public/js/flux-neuro-dashboard.js"></script>
-<script defer src="public/js/flux-srs-v2.js"></script>
-<script defer src="public/js/flux-predict-v2.js"></script>
-<script defer src="public/js/flux-teacher-dash-v2.js"></script>
-<script defer src="public/js/flux-teacher-assign-intel.js"></script>
-<script defer src="public/js/flux-teacher-roster-v2.js"></script>
-<script defer src="public/js/flux-teacher-live-class.js"></script>
-<script defer src="public/js/flux-teacher-lesson-ai.js"></script>
-<script defer src="public/js/flux-teacher-copilot.js"></script>
-<script defer src="public/js/flux-assignment-recovery.js"></script>
-<script defer src="public/js/flux-teacher-wellness.js"></script>
-<script defer src="public/js/flux-counselor-consent.js"></script>
-<script defer src="public/js/flux-counselor-copilot.js"></script>
-<script defer src="public/js/flux-counselor-appointments.js"></script>
-<script defer src="public/js/flux-counselor-caseload.js"></script>
-<script defer src="public/js/flux-counselor-wellness-timeline.js"></script>
-<script defer src="public/js/flux-counselor-risk-queue.js"></script>
-    <script defer src="public/js/flux-module-loader.js"></script>
-    <script defer src="public/js/flux-classroom-tools.js"></script>
-    <script defer src="public/js/flux-caseload-engine.js"></script>
-    <script defer src="public/js/flux-personal-hub.js"></script>
-    <script defer src="public/js/flux-staff-command.js"></script>
-    <script defer src="public/js/flux-ops-health.js"></script>
-    <script defer src="public/js/flux-admin-widgets.js"></script>
-    <script defer src="public/js/flux-staff-tabs.js"></script>
-<script defer src="public/js/flux-canvas-panel.js"></script>
-<script defer src="public/js/flux-classroom-sync.js"></script>
-<script defer src="public/js/flux-drive-import.js"></script>
-<script defer src="public/js/flux-google-hub.js"></script>
-<script defer src="public/js/flux-google-tasks.js"></script>
-<script defer src="public/js/flux-release-gate.js"></script>
-<script defer src="public/js/flux-personalization.js"></script>
-<script defer src="public/js/flux-estimate-learn.js"></script>
-<script defer src="public/js/flux-intelligence.js"></script>
-<script defer src="public/js/flux-eval.js"></script>
-<script defer src="public/js/flux-benchmarks.js"></script>
-<script defer src="public/js/flux-learner-profile.js"></script>
-<script defer src="public/js/flux-intelligence-os.js"></script>
-<script defer src="public/js/flux-rubric.js"></script>
-<script defer src="public/js/flux-knowledge-hub.js"></script>
-<script defer src="public/js/flux-opportunities.js"></script>
-<script defer src="public/js/flux-task-ux.js"></script>
-<script defer src="public/js/flux-mobile-swipe.js"></script>
-<script defer src="public/js/flux-task-context.js"></script>
-<script defer src="public/js/flux-gcal-push.js"></script>
-    <script defer src="public/js/flux-gcal-2way.js"></script>
-    <script defer src="public/js/flux-gcal-busy.js"></script>
-    <script defer src="public/js/flux-recurring-v2.js"></script>
-    <script defer src="public/js/flux-subject-themes.js"></script>
-    <script defer src="public/js/flux-cmd-palette-v2.js"></script>
-    <script defer src="public/js/flux-global-search-v2.js"></script>
-    <script defer src="public/js/flux-smart-lists.js"></script>
-    <script defer src="public/js/flux-bulk-filter.js"></script>
-    <script defer src="public/js/flux-focus-intent.js"></script>
-    <script defer src="public/js/flux-habit-heatmap.js"></script>
-    <script defer src="public/js/flux-pomodoro-presets.js"></script>
-    <script defer src="public/js/flux-meeting-mode.js"></script>
-    <script defer src="public/js/flux-mood-velocity.js"></script>
-    <script defer src="public/js/flux-event-buffer.js"></script>
-    <script defer src="public/js/flux-travel-time.js"></script>
-    <script defer src="public/js/flux-ambient-weather.js"></script>
-    <script defer src="public/js/flux-energy-scheduling.js"></script>
-    <script defer src="public/js/flux-rest-day-plan.js"></script>
-    <script defer src="public/js/flux-geofence.js"></script>
-    <script defer src="public/js/flux-exam-prep-plan.js"></script>
-    <script defer src="public/js/flux-syllabus-week-scaffold.js"></script>
-    <script defer src="public/js/flux-task-template-marketplace.js"></script>
-    <script defer src="public/js/flux-focus-score.js"></script>
-    <script defer src="public/js/flux-email-task-inbox.js"></script>
-    <script defer src="public/js/flux-automation-hooks.js"></script>
-    <script defer src="public/js/flux-ical-subscribe.js"></script>
-    <script defer src="public/js/flux-claude-connect.js"></script>
-    <script defer src="public/js/flux-ics-timetable-import.js"></script>
-    <script defer src="public/js/flux-sport-practice-pack.js"></script>
-<script defer src="public/js/flux-google-docs.js"></script>
-    <script defer src="public/js/flux-docs-ghost-sync.js"></script>
-    <script defer src="public/js/flux-gmail-educator.js"></script>
-<script defer src="public/js/flux-references.js"></script>
-<script defer src="public/js/flux-reference-tools.js"></script>
-<script defer src="public/js/flux-progress-streak.js"></script>
-<script defer src="public/js/flux-perf-boot.js"></script>
-<script defer src="public/js/flux-reftool-chem.js"></script>
-<script defer src="public/js/flux-reftool-bio.js"></script>
-<script defer src="public/js/flux-reftool-history.js"></script>
-<script defer src="public/js/flux-reftool-lang.js"></script>
-<script defer src="public/js/flux-reftool-units.js"></script>
-<script defer src="public/js/flux-unit-converter-favorites.js"></script>
-<script defer src="public/js/flux-reftool-cs.js"></script>
-<script defer src="public/js/flux-ai-mega.js"></script>
-<script defer src="public/js/flux-ai-orchestrator.js"></script>
-<script defer src="public/js/flux-ai-orch-layer.js"></script>
-<script defer src="public/js/flux-agent-loop.js"></script>
-<script defer src="public/js/flux-ai-planner-skills.js"></script>
-<script defer src="public/js/flux-syllabus-conflict.js"></script>
-<script defer src="public/js/flux-offline-sync.js"></script>
-<script defer src="public/js/flux-layered-memory.js"></script>
-<script defer src="public/js/flux-parent-portal.js"></script>
-<script defer src="public/js/flux-a11y.js"></script>
-<script defer src="public/js/flux-enhancements-v100.js"></script>
-<script defer src="public/js/flux-master-backlog.js"></script>
-<script defer src="public/js/owner-suite.js"></script>
-<script defer src="public/js/flux-pro.js"></script>
-<script defer src="public/js/flux-periodic.js"></script>
-<script defer src="public/js/flux-toolbox.js"></script>
 <!-- Flux Toolbox DP/MYP expansion — new subject tools + rebalanced categories -->
-<script defer src="public/js/flux-toolbox-dp.js"></script>
 <!-- Flux Study Hub — redesigned Study Tools: zperiod-style Chemistry flagship + curated subject directories. Overrides window.renderToolbox; load LAST so it wins. -->
-<script defer src="public/js/flux-study-hub.js"></script>
 <!-- Flux Study Hub subject modules (Pass 1) — bespoke native tools registered into the hub -->
-<script defer src="public/js/flux-study-physics.js"></script>
-<script defer src="public/js/flux-study-math.js"></script>
-<script defer src="public/js/flux-study-music.js"></script>
-<script defer src="public/js/flux-study-bio.js"></script>
-<script defer src="public/js/flux-study-cs.js"></script>
-<script defer src="public/js/flux-study-econ.js"></script>
-<script defer src="public/js/flux-study-english.js"></script>
-<script defer src="public/js/flux-study-history.js"></script>
-<script defer src="public/js/flux-study-lang.js"></script>
-<script defer src="public/js/flux-study-astro.js"></script>
-<script defer src="public/js/flux-cs-snippet-library.js"></script>
-<script defer src="public/js/flux-periodic-srs-quiz.js"></script>
-<script defer src="public/js/flux-flashcard-generator.js"></script>
-<script defer src="public/js/flux-srs-deck-mode.js"></script>
-<script defer src="public/js/flux-latex-live-preview.js"></script>
-<script defer src="public/js/flux-equation-ocr-latex.js"></script>
-<script defer src="public/js/flux-wiki-backlinks.js"></script>
-<script defer src="public/js/flux-notion-obsidian-export.js"></script>
-<script defer src="public/js/flux-mind-map-tasks.js"></script>
-<script defer src="public/js/flux-handwriting-to-text.js"></script>
-<script defer src="public/js/flux-citation-helper.js"></script>
-<script defer src="public/js/flux-calc-history.js"></script>
-<script defer src="public/js/flux-claude-magic.js"></script>
-<script defer src="public/js/flux-elevate.js"></script>
-<script defer src="public/js/flux-cowork.js"></script>
-<script defer src="public/js/flux-office-hours.js"></script>
-<script defer src="public/js/flux-staff-messages.js"></script>
 <!-- Flux AI Providers — BYOK multi-provider chat client (Anthropic/OpenAI/Gemini/Groq/Mistral/DeepSeek) -->
-<script defer src="public/js/flux-ai-providers.js"></script>
-<script defer src="public/js/flux-ai-providers-ui.js"></script>
 
 <!-- ── MOBILE "MORE" BOTTOM SHEET ── -->
 <div class="more-sheet-overlay" id="moreSheetOverlay" onclick="closeMobileSheet()" aria-hidden="true"></div>
