@@ -1,6 +1,9 @@
 # Supabase CLI local state
 supabase/.temp/
 
+# Internal docs — local-only; GitHub Pages serves everything tracked on main
+docs-internal/
+
 # OS / editor
 .cursor/
 .DS_Store
