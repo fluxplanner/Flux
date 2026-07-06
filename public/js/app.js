@@ -3132,7 +3132,7 @@ async function startUpgradeToSchoolWorkspace(){
 }
 window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
 
-const strip=html=>html.replace(/<[^>]+>/g,'').slice(0,120);
+const strip=html=>esc(String(html??'').replace(/<[^>]*>?/g,'')).slice(0,120);
 const todayStr=()=>TODAY.toISOString().slice(0,10);
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
 window.strip=strip; window.todayStr=todayStr; window.fmtTime=fmtTime;
@@ -5042,7 +5042,7 @@ async function syncGoogleCalendar(opts){
       }).join('');
     }
   }catch(e){
-    if(statusEl)statusEl.innerHTML=`<div style="color:var(--red);font-size:.78rem">${e.message}</div>`;
+    if(statusEl)statusEl.innerHTML=`<div style="color:var(--red);font-size:.78rem">${esc(e.message)}</div>`;
   }
 }
 function addGCalEventAsTask(encodedName,date){
@@ -5740,7 +5740,7 @@ async function ecAISuggest(){
     const reply = data.content?.[0]?.text || 'Could not generate suggestions.';
     resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
   } catch(e) {
-    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${esc(e.message)}</div>`;
   }
 }
 
@@ -5763,7 +5763,7 @@ async function ecAIAnalyze(){
     const reply = data.content?.[0]?.text || 'Could not generate analysis.';
     resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
   } catch(e) {
-    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${esc(e.message)}</div>`;
   }
 }
 
@@ -5884,7 +5884,7 @@ async function sendEcCollegeChat(){
   }
 }
 
-function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
+function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${esc(sub.short)}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
@@ -5910,7 +5910,7 @@ function fmt(cmd){document.execCommand(cmd,false,null);}
 function insHeading(){document.execCommand('formatBlock',false,'<h3>');}
 function insBullet(){document.execCommand('insertUnorderedList',false,null);}
 function insCode(){document.execCommand('insertHTML',false,'<code style="background:var(--border);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:.82em">code</code>');}
-async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${e.message}</div>`;}}
+async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${esc(e.message)}</div>`;}}
 async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});if(!res.ok){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI error (${res.status}). Try again.</div>`;return;}const data=await res.json().catch(()=>null);const rawTxt=(data&&data.content&&data.content[0]&&typeof data.content[0].text==='string')?data.content[0].text:'';let txt=rawTxt.replace(/```json|```/g,'').trim();/* Try to find a JSON array even if AI wrapped it in prose */const m=txt.match(/\[[\s\S]*\]/);if(m)txt=m[0];let cards=null;try{cards=JSON.parse(txt);}catch(parseErr){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI returned malformed flashcards — try again or rephrase the note.</div>`;return;}if(!Array.isArray(cards)||!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">No flashcards extracted. Make sure the note has enough content.</div>`;return;}cards=cards.filter(c=>c&&typeof c==='object'&&(c.q||c.question)&&(c.a||c.answer)).map(c=>({q:String(c.q||c.question),a:String(c.a||c.answer)}));if(!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Couldn't parse any usable cards. Try again.</div>`;return;}if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){console.warn('[Flux] flashcard generation failed',e);resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards: ${esc(e.message||'unknown')}</div>`;}}
 function openFlashcards(){if(!flashcards.length)return;fcIndex=0;fcFlipped=false;document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='block';renderFC();}
 function closeFlashcards(){document.getElementById('flashcardView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
@@ -6073,7 +6073,7 @@ function renderProfile(){
 
   const pic=fluxLoadStoredString('flux_profile_pic','');
   const av=document.getElementById('pAvatar');
-  if(av)av.innerHTML=(pic?`<img src="${pic}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
+  if(av)av.innerHTML=(pic?`<img src="${escapeAttr(pic)}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const done=tasks.filter(t=>t.done).length;
@@ -6097,14 +6097,14 @@ function renderProfile(){
   if(confEl){
     const subjEntries=Object.entries(subjs);
     if(!subjEntries.length){confEl.innerHTML='<div style="color:var(--muted);font-size:.82rem">Add your classes in School Info to see confidence sliders.</div>';return;}
-    confEl.innerHTML=subjEntries.map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${s.short}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');
+    confEl.innerHTML=subjEntries.map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${esc(s.short)}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');
   }
 
   studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});
   try{if(window.FluxGoogle&&typeof FluxGoogle.updateSettingsCard==='function')FluxGoogle.updateSettingsCard();}catch(_){}
 }
 
-function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fluxSaveStoredString('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
+function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fluxSaveStoredString('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${escapeAttr(ev.target.result)}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
 function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
@@ -6752,7 +6752,7 @@ function buildModPanelCardHtml(embed){
         ${devAccounts.length?devAccounts.map((d,i)=>`
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:.82rem;font-weight:700;flex:1">${d.email}</span>
+              <span style="font-size:.82rem;font-weight:700;flex:1">${esc(d.email)}</span>
               <button onclick="removeDevAccount(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:2px 6px">✕ Remove</button>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -6772,7 +6772,7 @@ function buildModPanelCardHtml(embed){
         <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
         <div>
           <div style="font-size:1rem;font-weight:800">${role==='owner'?'Owner Panel':'Dev Panel'}</div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${currentUser?.email}</div>
+          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(currentUser?.email||'')}</div>
         </div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
           <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
@@ -9769,7 +9769,7 @@ function handleObPic(event){
   reader.onload=e=>{
     fluxSaveStoredString('flux_profile_pic',e.target.result);
     const av=document.getElementById('obAvatar');
-    if(av)av.innerHTML=`<img src="${e.target.result}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
+    if(av)av.innerHTML=`<img src="${escapeAttr(e.target.result)}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
   };
   reader.readAsDataURL(file);
 }
@@ -13487,7 +13487,7 @@ async function importNoteFromPhoto(event){
     }
     resEl.innerHTML='<div style="color:var(--green);font-size:.82rem">✓ Content added to note. Save when ready.</div>';
   }catch(e){
-    resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read image: ${e.message}</div>`;
+    resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read image: ${esc(e.message)}</div>`;
   }
 }
 
@@ -13530,7 +13530,7 @@ async function importScheduleFromPhoto(event,resultElId){
     schoolSchedulePdfPages=[];
     renderSchoolSchedulePages();
     if(errBox){errBox.textContent=e.message||'Could not prepare file.';errBox.removeAttribute('hidden');}
-    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read file: ${e.message}</div>`;
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read file: ${esc(e.message)}</div>`;
     if(overlay)overlay.setAttribute('hidden','');
     return;
   }finally{
@@ -13554,7 +13554,7 @@ async function importScheduleFromPhoto(event,resultElId){
     if(resEl)resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Imported ${classes.length} classes! Check School Info tab.</div>`;
     syncKey('classes',classes);
   }catch(e){
-    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${e.message}</div>`;
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${esc(e.message)}</div>`;
   }
 }
 

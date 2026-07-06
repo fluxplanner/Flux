@@ -1460,7 +1460,7 @@
       } else if (typeof FluxRole !== 'undefined' && FluxRole.isPersonalMode && FluxRole.isPersonalMode()) {
         badges.push({ t: 'Personal mode', c: 'badge-purple' });
       }
-      badgeEl.innerHTML = badges.map((b) => `<span class="badge ${b.c}">${b.t}</span>`).join('');
+      badgeEl.innerHTML = badges.map((b) => `<span class="badge ${b.c}">${esc(b.t)}</span>`).join('');
     }
   }
 

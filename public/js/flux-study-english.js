@@ -13,7 +13,7 @@
     // ── Citation builder ─────────────────────────────────────────────────────
     let citeType = 'web';
     function buildCite(t, f) {
-      const A = f.author ? (f.author.endsWith('.') ? f.author : f.author + '.') : '';
+      const A = f.author ? esc(f.author.endsWith('.') ? f.author : f.author + '.') : '';
       const yr = f.year || 'n.d.';
       if (t === 'book') {
         return {
