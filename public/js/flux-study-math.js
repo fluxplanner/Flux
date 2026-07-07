@@ -30,7 +30,7 @@
       while (i < e.length) {
         const ch = e[i];
         if (/[0-9.]/.test(ch)) {
-          const m = e.slice(i).match(/^\d*\.?\d+(?:[eE][+-]?\d+)?/);
+          const m = e.slice(i).match(/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/);
           if (!m) throw new Error('Unsupported: ' + ch);
           toks.push({ t: 'num', v: parseFloat(m[0]) }); i += m[0].length;
         } else if (/[a-z]/i.test(ch)) {
