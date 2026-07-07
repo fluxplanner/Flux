@@ -2,7 +2,9 @@
   "name": "flux-planner",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "build:web": "node scripts/build-web-bundles.mjs",
+    "check:bundles": "node scripts/check-bundles-fresh.mjs",
     "test:flags": "node scripts/test-flag-integrity.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
