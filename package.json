@@ -18,5 +18,8 @@
     "@playwright/test": "^1.51.1",
     "esbuild": "^0.28.0",
     "serve": "^14.2.4"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.1"
   }
 }
