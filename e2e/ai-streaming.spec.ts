@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, watchForViolations, assertNoCspOrConsoleViolations } from './helpers';
 
 /**
  * fluxReadAIStream parses the ai-proxy SSE format:
@@ -40,8 +40,13 @@ function makeStream(page: import('@playwright/test').Page, chunks: string[]) {
 
 test.describe('Flux AI streaming client', () => {
   test.beforeEach(async ({ page }) => {
+    await watchForViolations(page);
     await gotoScenario(page, 'student-semester');
     await page.waitForFunction(() => typeof (window as any).fluxReadAIStream === 'function');
+  });
+
+  test.afterEach(async ({ page }) => {
+    assertNoCspOrConsoleViolations(page);
   });
 
   test('accumulates deltas across chunk boundaries and paints the bubble', async ({ page }) => {

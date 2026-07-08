@@ -64,3 +64,61 @@ export async function openSidebarTab(page: Page, tab: string) {
   await item.click();
   await expect(page.locator(`#${tab}.panel.active`)).toBeVisible({ timeout: 15_000 });
 }
+
+// ── CSP / console-error guard (zero tolerance) ────────────────────────────────
+// Attaches listeners for `securitypolicyviolation` events and console errors,
+// then lets a spec assert that none fired. Call watchForViolations(page) BEFORE
+// the first navigation, and assertNoCspOrConsoleViolations(page) at the end of
+// the test. The log is keyed by page (WeakMap), so it is safe under fullyParallel.
+
+type ViolationLog = { csp: string[]; consoleErrors: string[] };
+const _violationLogs = new WeakMap<Page, ViolationLog>();
+
+/**
+ * Begin recording CSP violations and console errors for `page`. Must be awaited
+ * before the first navigation so the init script + binding install in time.
+ */
+export async function watchForViolations(page: Page): Promise<void> {
+  const log: ViolationLog = { csp: [], consoleErrors: [] };
+  _violationLogs.set(page, log);
+
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    // Browser network resource-load failures (e.g. a backend REST/RPC 404)
+    // surface as console 'error' messages but are not JS errors or a security
+    // signal — exclude them so the guard targets real console.error() calls and
+    // uncaught exceptions (pageerror), not HTTP status noise.
+    if (text.startsWith('Failed to load resource')) return;
+    log.consoleErrors.push(text);
+  });
+  page.on('pageerror', (err) => {
+    log.consoleErrors.push(`pageerror: ${err.message}`);
+  });
+
+  // CSP violations fire the in-page `securitypolicyviolation` event; forward
+  // each to Node via a binding installed on every document before scripts run.
+  await page.exposeFunction('__fluxReportCsp', (detail: string) => {
+    log.csp.push(detail);
+  });
+  await page.addInitScript(() => {
+    document.addEventListener('securitypolicyviolation', (e) => {
+      const ev = e as SecurityPolicyViolationEvent;
+      const where = ev.blockedURI || ev.sourceFile || '(inline)';
+      try {
+        (window as unknown as { __fluxReportCsp?: (d: string) => void })
+          .__fluxReportCsp?.(`${ev.violatedDirective} blocked ${where}`);
+      } catch (_) { /* binding not ready yet — ignore */ }
+    });
+  });
+}
+
+/** Assert zero CSP violations and zero console errors were recorded for `page`. */
+export function assertNoCspOrConsoleViolations(page: Page): void {
+  const log = _violationLogs.get(page) ?? { csp: [], consoleErrors: [] };
+  expect(log.csp, `CSP violations detected:\n${log.csp.join('\n')}`).toEqual([]);
+  expect(
+    log.consoleErrors,
+    `console errors detected:\n${log.consoleErrors.join('\n')}`,
+  ).toEqual([]);
+}

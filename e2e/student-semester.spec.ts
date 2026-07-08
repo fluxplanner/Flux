@@ -1,9 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario, openSidebarTab } from './helpers';
+import {
+  gotoScenario,
+  openSidebarTab,
+  watchForViolations,
+  assertNoCspOrConsoleViolations,
+} from './helpers';
 
 test.describe('Student semester path', () => {
   test.beforeEach(async ({ page }) => {
+    await watchForViolations(page);
     await gotoScenario(page, 'student-semester');
+  });
+
+  test.afterEach(async ({ page }) => {
+    assertNoCspOrConsoleViolations(page);
   });
 
   test('dashboard shows seeded semester tasks', async ({ page }) => {

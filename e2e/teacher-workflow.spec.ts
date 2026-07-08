@@ -1,9 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, watchForViolations, assertNoCspOrConsoleViolations } from './helpers';
 
 test.describe('Teacher workflow path', () => {
   test.beforeEach(async ({ page }) => {
+    await watchForViolations(page);
     await gotoScenario(page, 'teacher-workflow');
+  });
+
+  test.afterEach(async ({ page }) => {
+    assertNoCspOrConsoleViolations(page);
   });
 
   test('teacher nav and dashboard shell load', async ({ page }) => {
