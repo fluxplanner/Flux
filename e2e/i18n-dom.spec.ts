@@ -123,11 +123,12 @@ test.describe('Self-controlled DOM translator', () => {
       const lang = document.documentElement.lang;
       // body text-align flips (proves flux-rtl.css cascaded)
       const bodyAlign = getComputedStyle(document.body).textAlign;
-      // Confirm flux-rtl.css actually shipped the app-shell flip rule (CSSOM),
+      // Confirm the flux-rtl app-shell flip rule actually shipped (CSSOM),
       // independent of viewport/!important overrides that vary by test width.
+      // The per-file flux-rtl.css is now concatenated into the flux.css bundle,
+      // so scan every same-origin sheet for the rule rather than keying on href.
       let appFlipRule = false;
       for (const sheet of document.styleSheets) {
-        if (!(sheet.href || '').includes('flux-rtl')) continue;
         try {
           for (const r of (sheet as CSSStyleSheet).cssRules) {
             const sr = (r as CSSStyleRule).selectorText || '';
@@ -135,7 +136,7 @@ test.describe('Self-controlled DOM translator', () => {
               appFlipRule = true;
             }
           }
-        } catch (_) { /* cross-origin sheet — skip */ }
+        } catch (_) { /* cross-origin sheet (e.g. Google Fonts) — skip */ }
       }
       // restore to English so we don't leave the page in RTL for other state
       (window as any).FluxI18n.setLocale('en-US');
