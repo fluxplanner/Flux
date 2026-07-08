@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /*
- * Guard: public/bundles/* must be in sync with public/js source.
+ * Guard: public/bundles/* must be in sync with public/js + public/css source.
  *
- * index.html loads 3 built bundles (flux-vendor/core/features), NOT the
- * per-file public/js/*.js scripts. Editing public/js without rebuilding
- * means the change never ships. This check rebuilds the bundles and then
- * asserts the working-tree output matches what is staged/committed
- * (`git diff` of public/bundles is empty). Used by both CI and the
+ * index.html loads 4 built bundles (flux-vendor/core/features JS + flux.css),
+ * NOT the per-file public/js/*.js scripts or public/css/*.css stylesheets.
+ * Editing public/js or public/css without rebuilding means the change never
+ * ships. This check rebuilds the bundles and then asserts the working-tree
+ * output matches what is staged/committed (`git diff` of public/bundles is
+ * empty — covers every bundle, JS and CSS alike). Used by both CI and the
  * pre-commit hook.
  *
- * Exit 0 = bundles fresh. Exit 1 = stale (someone edited public/js without
- * running `npm run build:web`).
+ * Exit 0 = bundles fresh. Exit 1 = stale (someone edited public/js or
+ * public/css without running `npm run build:web`).
  */
 import { execSync } from 'node:child_process';
 
@@ -37,7 +38,7 @@ try {
 }
 
 if (stale) {
-  console.error('\n✖ Bundles are STALE — public/js changes are not reflected in public/bundles/.');
+  console.error('\n✖ Bundles are STALE — public/js or public/css changes are not reflected in public/bundles/.');
   console.error('  Fix:');
   console.error('    1. npm run build:web');
   console.error('    2. git add public/bundles/');
@@ -46,4 +47,4 @@ if (stale) {
   process.exit(1);
 }
 
-console.log('✓ Bundles are up to date with public/js source.');
+console.log('✓ Bundles are up to date with public/js + public/css source.');

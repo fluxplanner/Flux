@@ -1,7 +1,8 @@
 name: Bundle freshness
 
-# index.html ships 3 built bundles (public/bundles/*), not the per-file
-# public/js/*.js scripts. This fails the build if someone edited public/js
+# index.html ships 4 built bundles (public/bundles/* — flux-vendor/core/features
+# JS plus flux.css), not the per-file public/js/*.js scripts or public/css/*.css
+# stylesheets. This fails the build if someone edited public/js or public/css
 # without running `npm run build:web`, so stale bundles can never merge.
 
 on:
@@ -25,5 +26,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify public/bundles is rebuilt from public/js
+      - name: Verify public/bundles is rebuilt from public/js + public/css
         run: node scripts/check-bundles-fresh.mjs

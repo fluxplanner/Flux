@@ -1,14 +1,15 @@
 #!/bin/sh
-# Flux pre-commit: keep public/bundles/* in sync with public/js source.
-# index.html ships the built bundles, not per-file scripts — a public/js edit
-# that isn't rebuilt never ships. Only runs when public/js or public/bundles
-# is staged, so most commits are unaffected.
+# Flux pre-commit: keep public/bundles/* in sync with public/js + public/css.
+# index.html ships the built bundles (JS + flux.css), not per-file scripts or
+# stylesheets — a public/js or public/css edit that isn't rebuilt never ships.
+# Only runs when public/js, public/css, or public/bundles is staged, so most
+# commits are unaffected.
 #
 # Enable once with:  git config core.hooksPath .githooks
 # (npm install wires this automatically via the "prepare" script.)
 
-if git diff --cached --name-only | grep -qE '^public/js/|^public/bundles/'; then
-  echo "[pre-commit] public/js changed — checking bundle freshness…"
+if git diff --cached --name-only | grep -qE '^public/js/|^public/css/|^public/bundles/'; then
+  echo "[pre-commit] public/js or public/css changed — checking bundle freshness…"
   if ! node scripts/check-bundles-fresh.mjs; then
     echo "[pre-commit] Commit blocked: rebuild bundles (npm run build:web), stage public/bundles/, and bump service-worker.js STATIC."
     exit 1

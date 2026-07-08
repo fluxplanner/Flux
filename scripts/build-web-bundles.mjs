@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Build 3 web bundles from scripts/web-bundle-manifest.json:
+ * Build 4 web bundles from scripts/web-bundle-manifest.json:
  *   - flux-vendor.js   ESM module bundle of the 6 type=module scripts
  *                      (animejs stays external, resolved by the importmap);
  *                      flux-kit-bootstrap's ./core|features|ui|utils tree is
@@ -9,6 +9,10 @@
  *                      app.js, minified.
  *   - flux-features.js classic concat of the remaining 164 defer scripts,
  *                      minified.
+ *   - flux.css         literal concat of the 139 per-page <link> stylesheets
+ *                      in exact cascade order, css-minified. esbuild never
+ *                      reorders rules across selectors, so overrides are
+ *                      preserved. (Google Fonts stays a separate <link>.)
  *
  * The classic bundles are LITERAL concatenation (join with "\n;\n" to kill
  * trailing line-comments + guard against ASI) then esbuild transform-minify.
@@ -68,10 +72,31 @@ async function buildVendor(name, files) {
   return { name, files: files.length, bytes: code.length };
 }
 
+async function buildCss(name, files) {
+  // Literal concatenation in manifest order (== the original <link> sequence in
+  // index.html), then esbuild css-minify. esbuild never reorders rules across
+  // selectors, so the cascade / override order is preserved exactly. Safe here
+  // because none of the sources use @import, @charset, @layer, or relative
+  // url() file refs (verified) — so concatenation can't corrupt the CSS.
+  const parts = files.map((rel) => {
+    const abs = path.join(ROOT, rel);
+    return `/* ==== ${rel} ==== */\n${fs.readFileSync(abs, 'utf8')}`;
+  });
+  const res = await esbuild.transform(parts.join('\n'), {
+    loader: 'css',
+    minify: true,
+    legalComments: 'none',
+  });
+  const outFile = path.join(OUT, name);
+  fs.writeFileSync(outFile, res.code);
+  return { name, files: files.length, bytes: res.code.length };
+}
+
 const results = [];
 results.push(await buildVendor('flux-vendor.js', manifest.vendor));
 results.push(await buildClassic('flux-core.js', manifest.core));
 results.push(await buildClassic('flux-features.js', manifest.features));
+results.push(await buildCss('flux.css', manifest.css));
 
 for (const r of results) {
   console.log(`  ${r.name.padEnd(20)} ${String(r.files).padStart(3)} files  ${(r.bytes / 1024).toFixed(0)} KB`);
