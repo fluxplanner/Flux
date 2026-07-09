@@ -1367,26 +1367,94 @@ function getSubjects(){
   classes.forEach((c,i)=>{
     if(!c.name)return;
     const cleanName=cleanClassName(c.name);
+    const baseName=parseClassLevel(c.name).baseName;
     const key='CLS'+(c.id||i);
-    subjs[key]={name:cleanName,short:cleanName.length>8?cleanName.slice(0,3).toUpperCase():cleanName,color:c.color||SUBJECT_COLORS[i%SUBJECT_COLORS.length]};
+    subjs[key]={name:cleanName,short:cleanName.length>8?baseName.slice(0,3).toUpperCase():cleanName,color:c.color||SUBJECT_COLORS[i%SUBJECT_COLORS.length]};
     if(c.icon)subjs[key].icon=c.icon;
   });
   try{if(window.FluxSubjectThemes?.enrich)FluxSubjectThemes.enrich(subjs);}catch(_){}
   return subjs;
 }
-// ── CLEAN CLASS NAME — strips prefixes and grade numbers ──
+// ── COURSE IDENTITY ──
+// Course level (AP/IB/Honors…) drives weighted GPA, transcript language, and
+// AI context, and period letters carry A/B-day meaning — so the display name
+// and period label are never stripped. parseClassLevel() reads the level OUT
+// of the name into a structured field; the full name stays intact.
+const FLUX_CLASS_LEVEL_PREFIXES=[
+  [/^IB\s+MYP\b/i,'IB MYP'],
+  [/^IB\s+DP\b/i,'IB DP'],
+  [/^IB\s+SL\b/i,'IB SL'],
+  [/^IB\s+HL\b/i,'IB HL'],
+  [/^IB\b/i,'IB'],
+  [/^MYP\b/i,'IB MYP'],
+  [/^DP\b/i,'IB DP'],
+  [/^Pre-?AP\b/i,'Pre-AP'],
+  [/^AP\b/i,'AP'],
+  [/^(Honors|Honours)\b/i,'Honors'],
+  [/^Advanced\b/i,'Advanced'],
+  [/^(CP|College\s+Prep)\b/i,'CP'],
+];
+function parseClassLevel(name){
+  const raw=String(name||'').trim().replace(/\s+/g,' ');
+  if(!raw)return{name:raw,level:'',baseName:raw};
+  let level='';let base=raw;
+  for(const[re,lv]of FLUX_CLASS_LEVEL_PREFIXES){
+    const m=base.match(re);
+    if(m){level=lv;base=base.slice(m[0].length).trim();break;}
+  }
+  // Trailing IB tier markers: "IB DP Chemistry HL", "Biology SL"
+  const tier=base.match(/\s+(HL|SL)$/);
+  if(tier){
+    const t=tier[1].toUpperCase();
+    if(/^IB\s+(HL|SL)$/.test(level))level='IB '+t;
+    else level=level?level+' '+t:'IB '+t;
+    base=base.slice(0,tier.index).trim();
+  }
+  if(!base)base=raw;
+  return{name:raw,level,baseName:base};
+}
+/** GPA weight boost for a parsed course level (+1.0 AP/IB, +0.5 Honors-tier). */
+function fluxCourseWeightBoost(level){
+  const lv=String(level||'').toUpperCase();
+  if(!lv)return 0;
+  if(/\b(AP|IB|DP|HL|SL)\b/.test(lv))return 1.0;
+  if(/\b(HONORS|ADVANCED|PRE-AP|CP)\b/.test(lv))return 0.5;
+  return 0;
+}
+/** Level for a class object — stored field first, else parsed from the name. */
+function fluxClassLevel(c){
+  if(!c)return'';
+  if(typeof c.level==='string')return c.level;
+  return parseClassLevel(c.name).level;
+}
+/** Period badge text — verbatim label ("A1", "P3") wins over the numeric sort key. */
+function fluxClassPeriodBadge(c){
+  if(!c)return'';
+  const lbl=String(c.periodLabel||'').trim();
+  if(lbl)return lbl;
+  return formatClassPeriodField(c)||String(c.period??'');
+}
+// cleanClassName no longer strips — it only normalizes whitespace. The old
+// stripping behavior corrupted course identity (AP Biology → Biology) across
+// onboarding, Canvas import, and school classes. Already-stripped stored names
+// can't be recovered; nothing is stripped going forward.
 function cleanClassName(name){
   if(!name)return name;
-  // Remove common academic prefixes (case insensitive)
-  let clean = name.trim();
-  // Remove prefixes like "IB MYP", "AP", "Honors", "Grade 10", etc.
-  clean = clean.replace(/^(IB\s+MYP|IB\s+DP|IB\s+SL|IB\s+HL|MYP|IB|DP|SL|HL|AP|Honors|Honours|Advanced|Regular|CP|College\s+Prep)\s+/gi, '');
-  // Remove trailing grade numbers like "10", "9", "11", "12" or "10th", "Grade 10"
-  clean = clean.replace(/\s+(?:Grade\s+)?\d{1,2}(?:st|nd|rd|th)?\s*$/i, '');
-  // Remove leading grade number patterns like "10 " at start
-  clean = clean.replace(/^\d{1,2}\s+/, '');
-  return clean.trim() || name.trim();
+  return String(name).trim().replace(/\s+/g,' ')||String(name).trim();
 }
+/** Lowercased match key for fuzzy course-name comparison ONLY (never stored/displayed). */
+function fluxClassMatchKey(name){
+  const p=parseClassLevel(name);
+  return p.baseName
+    .toLowerCase()
+    .replace(/\b(ap|ib|myp|dp|sl|hl|honors|honours|advanced|college prep|cp)\b/gi,'')
+    .replace(/\s+(?:grade\s+)?\d{1,2}(?:st|nd|rd|th)?\s*$/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+window.parseClassLevel=parseClassLevel;
+window.fluxCourseWeightBoost=fluxCourseWeightBoost;
+window.fluxClassLevel=fluxClassLevel;
 
 // SUBJECTS is a live getter — always reflects current classes
 function SUBJECTS_GET(){return getSubjects();}
@@ -2786,6 +2854,16 @@ let sessionLog=load('flux_session_log',[]);
 let settings=load('flux_settings',{panic:true,quiet:true,dndStart:'07:50',dndEnd:'14:30',dailyGoalHrs:2,notifyBrowser:false,notifyDueSoon:true,classScheduleDisplay:'full'});
 let schoolInfo=load('flux_school',{locker:'',combo:'',counselor:'',studentID:''});
 let classes=load('flux_classes',[]);
+// Backfill structured course metadata on legacy entries. Names are never
+// rewritten — pre-fix stripped names are unrecoverable, and nothing is
+// stripped going forward (see parseClassLevel/cleanClassName).
+(function(){
+  let changed=false;
+  (Array.isArray(classes)?classes:[]).forEach(c=>{
+    if(c&&c.name&&typeof c.level!=='string'){c.level=parseClassLevel(c.name).level;changed=true;}
+  });
+  if(changed)try{save('flux_classes',classes);}catch(_){}
+})();
 let teacherNotes=load('flux_teacher_notes',[]);
 
 /** Done tasks missing completedAt get a best-effort timestamp (streaks, week strip, AI actions). Safe to run often. */
@@ -5145,10 +5223,13 @@ function fluxPlannerEntryFromTeacherClass(tc,teacherName){
   const {period,days}=parseClassPeriodInput(tc.period||'1',fbDays);
   const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
   const existing=Array.isArray(classes)?classes.find(c=>c.teacherClassCode===code):null;
+  const fullName=cleanClassName(tc.class_name||'Class');
   return{
     id:existing?.id||(code?Math.abs(code.split('').reduce((h,c)=>((h<<5)-h)+c.charCodeAt(0)|0,0))||Date.now():Date.now()),
     period,
-    name:cleanClassName(tc.class_name||'Class'),
+    periodLabel:String(tc.period||'').trim(),
+    name:fullName,
+    level:parseClassLevel(fullName).level,
     teacher:teacherName||'',
     room:tc.room||'',
     days:days||fbDays||'',
@@ -5244,7 +5325,7 @@ function addClass(){
   }
   const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
   const cleanedName=cleanClassName(name);
-  classes.push({id:Date.now(),period,name:cleanedName,teacher,room,days,timeStart,timeEnd,color:color||COLORS[classes.length%COLORS.length]});
+  classes.push({id:Date.now(),period,periodLabel:String(rawPeriod||'').trim(),name:cleanedName,level:parseClassLevel(cleanedName).level,teacher,room,days,timeStart,timeEnd,color:color||COLORS[classes.length%COLORS.length]});
   classes.sort((a,b)=>a.period-b.period);
   save('flux_classes',classes);
   const cd=document.getElementById('classDays');if(cd)cd.value=days;
@@ -5413,7 +5494,7 @@ function renderSchool(){
       const renderClassRow=(c,col)=>{
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       };
       cl.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -5431,7 +5512,7 @@ function renderSchool(){
         const col=colorMap[c.id];
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       }).join('');
     }
   }
@@ -5510,7 +5591,7 @@ function editClass(id){
     document.body.appendChild(m);
   }
   document.getElementById('editClassModal').dataset.classId=id;
-  document.getElementById('ecPeriod').value=formatClassPeriodField(c);
+  document.getElementById('ecPeriod').value=fluxClassPeriodBadge(c);
   document.getElementById('ecName').value=c.name||'';
   document.getElementById('ecTeacher').value=c.teacher||'';
   document.getElementById('ecRoom').value=c.room||'';
@@ -5528,8 +5609,10 @@ function saveEditClass(){
   const fbDays=document.getElementById('ecDays').value;
   const parsed=parseClassPeriodInput(rawP,fbDays);
   c.period=parsed.period;
+  c.periodLabel=String(rawP||'').trim();
   c.days=parsed.days;
-  c.name=document.getElementById('ecName').value.trim()||c.name;
+  c.name=cleanClassName(document.getElementById('ecName').value.trim())||c.name;
+  c.level=parseClassLevel(c.name).level;
   c.teacher=document.getElementById('ecTeacher').value.trim();
   c.room=document.getElementById('ecRoom').value.trim();
   c.timeStart=document.getElementById('ecStart').value;
@@ -7947,7 +8030,11 @@ function buildAIPrompt(){
   const calEvAi=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T00:00:00');return d>=now&&d<=in7;});
   calEvAi.sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));
   const calEvents=calEvAi.map(e=>`- [EVENT|${e.date}${e.time?' '+e.time:''}|${fluxEventScope(e)==='school'?'SCHOOL':'OUT'}]: ${e.title}`).join('\n')||'None';
-  const todayClasses=classes.filter(c=>c.name).map(c=>`P${c.period}: ${c.name}${c.teacher?' ('+c.teacher+')':''}`).join(', ')||'Not set up';
+  const todayClasses=classes.filter(c=>c.name).map(c=>{
+    const lv=fluxClassLevel(c);
+    const lvNote=lv&&!String(c.name).toUpperCase().includes(lv.toUpperCase())?' ['+lv+']':'';
+    return`${fluxClassPeriodBadge(c)||('P'+c.period)}: ${c.name}${lvNote}${c.teacher?' ('+c.teacher+')':''}`;
+  }).join(', ')||'Not set up';
 
   const activeTaskLines=tasks.filter(t=>!t.done).slice(0,20).map(fmt).join('\n')||'None';
   const upcomingLines=ctx.upcoming.length?ctx.upcoming.map(fmt).join('\n'):'None';
@@ -10182,11 +10269,16 @@ async function analyzeScheduleImg(){
     const start=txt.indexOf('[');const end=txt.lastIndexOf(']');
     if(start===-1||end===-1)throw new Error('No class list found. Try a clearer photo.');
     const parsed=JSON.parse(txt.slice(start,end+1));
-    obExtractedClasses=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:cleanClassName(c.name||'Class '+(i+1)),teacher:c.teacher||'',room:c.room||''}));
+    obExtractedClasses=parsed.map((c,i)=>{
+      const rawP=String(c.period??'').trim();
+      const parsedP=parseClassPeriodInput(rawP,'');
+      const fullName=cleanClassName(c.name||'Class '+(i+1));
+      return{id:Date.now()+i,period:rawP?parsedP.period:i+1,periodLabel:rawP,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher:c.teacher||'',room:c.room||''};
+    });
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -10200,7 +10292,7 @@ function renderObExtractedClasses(){
   if(!obExtractedClasses.length){el.innerHTML='';el.style.display='none';return;}
   el.style.display='block';
   el.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ '+obExtractedClasses.length+' class'+(obExtractedClasses.length===1?'':'es')+'</div>'+
-    obExtractedClasses.map((c,i)=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div><button type="button" class="ob-class-del" aria-label="Remove" onclick="removeObClass(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px">×</button></div>`).join('');
+    obExtractedClasses.map((c,i)=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div><button type="button" class="ob-class-del" aria-label="Remove" onclick="removeObClass(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px">×</button></div>`).join('');
 }
 function addObClass(){
   const pEl=document.getElementById('obManualPeriod');
@@ -10208,9 +10300,12 @@ function addObClass(){
   const tEl=document.getElementById('obManualTeacher');
   const name=(nEl?.value||'').trim();
   if(!name){if(nEl){nEl.focus();}if(typeof showToast==='function')showToast('Enter a class name','info');return;}
-  const period=parseInt(pEl?.value||'',10)||(obExtractedClasses.length+1);
+  const rawPeriod=(pEl?.value||'').trim();
+  const parsedP=parseClassPeriodInput(rawPeriod,'');
+  const period=rawPeriod?parsedP.period:(obExtractedClasses.length+1);
   const teacher=(tEl?.value||'').trim();
-  obExtractedClasses.push({id:Date.now()+obExtractedClasses.length,period,name:cleanClassName(name),teacher,room:''});
+  const fullName=cleanClassName(name);
+  obExtractedClasses.push({id:Date.now()+obExtractedClasses.length,period,periodLabel:rawPeriod,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher,room:''});
   if(pEl)pEl.value='';
   if(nEl)nEl.value='';
   if(tEl)tEl.value='';
@@ -13548,7 +13643,12 @@ async function importScheduleFromPhoto(event,resultElId){
     jsonStr=jsonStr.slice(start,end+1);
     const parsed=JSON.parse(jsonStr);
     if(!Array.isArray(parsed)||!parsed.length)throw new Error('No classes detected. Try a clearer photo of your schedule.');
-    classes=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:cleanClassName(c.name||'Class '+(i+1)),teacher:c.teacher||'',room:c.room||''}));
+    classes=parsed.map((c,i)=>{
+      const rawP=String(c.period??'').trim();
+      const parsedP=parseClassPeriodInput(rawP,'');
+      const fullName=cleanClassName(c.name||'Class '+(i+1));
+      return{id:Date.now()+i,period:rawP?parsedP.period:i+1,periodLabel:rawP,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher:c.teacher||'',room:c.room||''};
+    });
     save('flux_classes',classes);
     renderSchool();populateSubjectSelects();
     if(resEl)resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Imported ${classes.length} classes! Check School Info tab.</div>`;
@@ -13896,9 +13996,11 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
 
 function upsertClassFromCanvasCourse(c,primaryTeacher){
   const name=cleanClassName(c.name||c.course_code||'Course');
+  const level=parseClassLevel(name).level;
   const ex=classes.find(x=>x.canvasCourseId===c.id);
   if(ex){
     ex.name=name;
+    ex.level=level;
     if(primaryTeacher)ex.teacher=primaryTeacher;
     return;
   }
@@ -13912,6 +14014,7 @@ function upsertClassFromCanvasCourse(c,primaryTeacher){
     id:Date.now()+Math.random(),
     period:maxP+1,
     name,
+    level,
     teacher:primaryTeacher||'',
     room:'',
     days:'',
@@ -14123,12 +14226,11 @@ function addCanvasAnnouncementToPlanner(announcementId){
 }
 
 function canvasFluxSubjectKeyFromCourseName(courseName){
-  const strip=s=>String(s||'').toLowerCase().replace(/\b(ap|ib|honors|honours)\b/gi,'').replace(/\s+/g,' ').trim();
-  const t=strip(cleanClassName(courseName||''));
+  const t=fluxClassMatchKey(courseName||'');
   if(!t)return'';
   for(const c of classes){
     if(!c.name)continue;
-    const cn=strip(cleanClassName(c.name));
+    const cn=fluxClassMatchKey(c.name);
     if(!cn)continue;
     if(cn===t||t.includes(cn)||cn.includes(t))return'CLS'+c.id;
   }

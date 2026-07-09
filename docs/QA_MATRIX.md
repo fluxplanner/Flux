@@ -312,6 +312,24 @@ Migration: `20260530300000_pomodoro_subject_presets.sql` · Doc: `docs/P13-POMOD
 
 ---
 
+## 0aa. P0 A1 — course identity preserved (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Onboarding manual add | `student` | Step 4 → period `A1`, name `AP Biology` | Chip shows **AP Biology** with badge **A1** (not "Biology" / "1") |
+| School tab add | `student` | Add class `IB DP Chemistry HL`, period `B4` | Row keeps full name; badge `B4`; stored `level` = `IB DP HL` |
+| Trailing numeral | `student` | Add `Spanish 3` | Name stays `Spanish 3` (numeral survives) |
+| Canvas import | `student` | Sync courses with `AP `/`Honors ` prefixes | My Classes keeps prefixes; `level` populated |
+| Schedule photo | `student` | Import schedule image | Extracted names unstripped; period labels verbatim |
+| Edit class | `student` | Edit name to `Honors English 10` | `level` recomputed to `Honors`; name intact |
+| AI context | `student` | Ask Flux "what classes do I have today" | Reply uses full names incl. AP/IB prefix |
+| Legacy data | `student` | Existing stripped classes | Untouched (no rename), `level` backfilled from name |
+| Mobile 390px | `student` | School tab | Period badges (`A1`) don't overflow the chip |
+
+Unit: `test/unit/parse-class-level.test.mjs` · No migration (localStorage-only fields `level`, `periodLabel`)
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
