@@ -82,15 +82,12 @@ export async function watchForViolations(page: Page): Promise<void> {
   const log: ViolationLog = { csp: [], consoleErrors: [] };
   _violationLogs.set(page, log);
 
+  // Exclusion-free: every console error counts, including browser network
+  // resource-load 404s. The one known source of such noise (the not-yet-deployed
+  // get_benchmarks RPC) is now gated off in flux-benchmarks.js, so the guard can
+  // be strict — any 404 that appears is a real regression.
   page.on('console', (msg) => {
-    if (msg.type() !== 'error') return;
-    const text = msg.text();
-    // Browser network resource-load failures (e.g. a backend REST/RPC 404)
-    // surface as console 'error' messages but are not JS errors or a security
-    // signal — exclude them so the guard targets real console.error() calls and
-    // uncaught exceptions (pageerror), not HTTP status noise.
-    if (text.startsWith('Failed to load resource')) return;
-    log.consoleErrors.push(text);
+    if (msg.type() === 'error') log.consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => {
     log.consoleErrors.push(`pageerror: ${err.message}`);

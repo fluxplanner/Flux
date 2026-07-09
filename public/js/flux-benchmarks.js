@@ -19,6 +19,14 @@
   var _cache = null, _fetched = 0;
   var TTL = 6 * 3600 * 1000;
 
+  // The flux_benchmarks table + get_benchmarks RPC ship in migration
+  // 20260614120000_flux_benchmarks.sql, which is NOT yet applied to production —
+  // so client.rpc('get_benchmarks') 404s on every refresh (browser-logged network
+  // noise; the JS already degrades to "no priors"). Gate the call off until that
+  // migration + the compute-benchmarks Edge Function are deployed, then flip this
+  // to true. Until then we skip priors injection and make zero network calls.
+  var BACKEND_DEPLOYED = false;
+
   function sb() { try { return typeof getSB === 'function' ? getSB() : null; } catch (e) { return null; } }
   function load_(k, f) { try { return typeof load === 'function' ? load(k, f) : f; } catch (e) { return f; } }
   function save_(k, v) { try { if (typeof save === 'function') save(k, v); } catch (e) {} }
@@ -35,6 +43,7 @@
   }
 
   function refresh() {
+    if (!BACKEND_DEPLOYED) return Promise.resolve(null); // RPC not deployed — skip priors, no 404
     var client = sb();
     if (!client || typeof client.rpc !== 'function') return Promise.resolve(null);
     return client.rpc('get_benchmarks').then(function (res) {
