@@ -564,6 +564,18 @@ function springModalClose(overlay, card, done) {
 
 function springSheetOpen(sheet, overlay) {
   motion(() => {
+    // The open/closed STATE lives in CSS classes (.open) — these inline
+    // animation styles must not outlive the animation, or a later
+    // class-based close can't take effect (wedged-sheet bug). Clear them
+    // when the spring settles, with a timeout fallback in case the
+    // animation is interrupted and never completes.
+    const clearInline = () => {
+      try {
+        if (sheet) sheet.style.transform = '';
+        if (overlay) overlay.style.opacity = '';
+      } catch (_) {}
+    };
+    setTimeout(clearInline, 700);
     if (overlay) {
       animate(overlay, {
         opacity: [0, 1],
@@ -572,11 +584,19 @@ function springSheetOpen(sheet, overlay) {
       });
     }
     if (sheet) {
-      animate(sheet, {
+      const anim = animate(sheet, {
         translateY: ['100%', '0%'],
         duration: 560,
         ease: spring('release'),
+        onComplete: clearInline,
       });
+      // Let the owner (closeMobileSheet) kill a mid-flight open spring so a
+      // close during the 560ms window can't be overwritten by later frames.
+      sheet._fluxSheetOpenCancel = () => {
+        try { anim.cancel ? anim.cancel() : anim.pause?.(); } catch (_) {}
+        clearInline();
+        delete sheet._fluxSheetOpenCancel;
+      };
       const items = sheet.querySelectorAll('.more-sheet-item');
       if (items.length) {
         animate(items, {

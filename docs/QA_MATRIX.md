@@ -330,6 +330,22 @@ Unit: `test/unit/parse-class-level.test.mjs` · No migration (localStorage-only 
 
 ---
 
+## 0ab. P0 A2 — mobile More sheet dismissal (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| X button | any | 390px → More → tap X | Sheet slides away; page scroll restored |
+| Item tap | any | More → tap Timer | Navigates to Timer AND sheet closes |
+| Escape | any | More → Esc | Sheet closes (even if `.open` class already lost) |
+| Overlay tap | any | More → tap dimmed area | Sheet closes |
+| Rapid cycling | any | Open/close ×10 fast | Never wedges; sheet still functional |
+| Reopen race | any | Close then reopen within 300ms | Sheet stays open (fallback timer cancelled) |
+| Swipe down | any | Drag sheet down >90px | Sheet closes |
+
+E2E: `e2e/mobile-more-sheet.spec.ts` (390×844 viewport)
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

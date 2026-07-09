@@ -3433,10 +3433,14 @@ function nav(id,btn,navOpt){
 function navMob(id,opt){closeDrawer();closeMobileSheet();nav(id,null,opt);}
 
 // ── Mobile "More" bottom sheet ──
+let _moreSheetCloseTimer=null;
 function openMobileSheet(){
   const ov=document.getElementById('moreSheetOverlay');
   const sh=document.getElementById('moreSheet');
   if(!ov||!sh)return;
+  // A reopen must cancel the pending close fallback, or it would fire and
+  // shut the sheet the user just opened.
+  if(_moreSheetCloseTimer){clearTimeout(_moreSheetCloseTimer);_moreSheetCloseTimer=null;}
   ov.classList.add('open');
   sh.classList.add('open');
   ov.setAttribute('aria-hidden','false');
@@ -3448,25 +3452,39 @@ function closeMobileSheet(){
   const ov=document.getElementById('moreSheetOverlay');
   const sh=document.getElementById('moreSheet');
   if(!ov||!sh)return;
+  // Idempotent, animation-independent. The anime.js open spring leaves inline
+  // transform/opacity that override the stylesheet's closed state — if close
+  // relied on class removal alone (or an animation callback that might never
+  // run), the sheet wedged permanently visible. Assert the closed state
+  // synchronously; the .28s CSS transition plays the slide-down cosmetically.
   const done=()=>{
+    try{if(typeof sh._fluxSheetOpenCancel==='function')sh._fluxSheetOpenCancel();}catch(_){}
+    sh.style.transform='';sh.style.opacity='';sh.style.display='';
+    ov.style.opacity='';ov.style.display='';
     ov.classList.remove('open');
     sh.classList.remove('open');
     ov.setAttribute('aria-hidden','true');
     sh.setAttribute('aria-hidden','true');
     document.body.style.overflow='';
   };
-  try{
-    if(window.FluxAnim?.sheetClose)FluxAnim.sheetClose(sh,ov,done);
-    else done();
-  }catch(e){done();}
+  done();
+  // Async re-asserts must not fight a reopen — only apply while still closed.
+  const reassert=()=>{if(!sh.classList.contains('open'))done();};
+  try{if(window.FluxAnim?.sheetClose)FluxAnim.sheetClose(sh,ov,reassert);}catch(e){}
+  // Hard fallback: re-assert closed state after any motion layer finishes.
+  if(_moreSheetCloseTimer)clearTimeout(_moreSheetCloseTimer);
+  _moreSheetCloseTimer=setTimeout(()=>{_moreSheetCloseTimer=null;reassert();},300);
 }
 window.openMobileSheet=openMobileSheet;
 window.closeMobileSheet=closeMobileSheet;
-// Close sheet on Escape
+// Close sheet on Escape — visibility judged by geometry, not class state:
+// a wedged sheet can be fully visible with no .open class.
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     const sh=document.getElementById('moreSheet');
-    if(sh&&sh.classList.contains('open'))closeMobileSheet();
+    if(!sh)return;
+    const r=sh.getBoundingClientRect();
+    if(r.height>0&&r.top<window.innerHeight)closeMobileSheet();
   }
 });
 // Swipe-down to dismiss the sheet
