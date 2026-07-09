@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /*
  * Build 4 web bundles from scripts/web-bundle-manifest.json:
- *   - flux-vendor.js   ESM module bundle of the 6 type=module scripts
- *                      (animejs stays external, resolved by the importmap);
- *                      flux-kit-bootstrap's ./core|features|ui|utils tree is
- *                      bundled in.
+ *   - flux-vendor.js   ESM module bundle of the 7 type=module scripts. The npm
+ *                      deps @supabase/supabase-js and animejs are bundled in
+ *                      (both pinned exact in package.json — nothing loads from a
+ *                      CDN at runtime); flux-kit-bootstrap's
+ *                      ./core|features|ui|utils tree is bundled in too.
  *   - flux-core.js     classic concat of the 27 defer scripts up to & incl.
  *                      app.js, minified.
  *   - flux-features.js classic concat of the remaining 164 defer scripts,
@@ -62,7 +63,6 @@ async function buildVendor(name, files) {
     minify: true,
     pure: PURE,
     legalComments: 'none',
-    external: ['animejs'], // resolved at runtime via the importmap
     write: false,
   });
   fs.unlinkSync(entryPath);

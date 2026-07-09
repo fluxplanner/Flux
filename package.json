@@ -21,6 +21,7 @@
     "serve": "^14.2.4"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.110.1"
+    "@supabase/supabase-js": "2.110.1",
+    "animejs": "4.5.0"
   }
 }
