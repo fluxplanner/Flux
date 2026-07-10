@@ -28,6 +28,26 @@ test.describe('Student semester path', () => {
     await expect(page.locator('#calendar')).toBeVisible();
   });
 
+  test('B5.3: task list windows past 100 items and chunks in on scroll', async ({ page }) => {
+    await page.evaluate(() => {
+      const w = window as any;
+      for (let i = 0; i < 250; i++) {
+        w.tasks.push({ id: 900000 + i, name: 'Bulk task ' + i, date: '', subject: '', priority: 'med', type: 'hw', estTime: 0, difficulty: 3, notes: '', subtasks: [], done: false, rescheduled: 0, createdAt: Date.now() });
+      }
+      w.renderTasks();
+    });
+    // First window only + sentinel.
+    await expect(page.locator('#taskList .task-item')).toHaveCount(100);
+    const sentinel = page.locator('#taskList [data-flux-sentinel]');
+    await expect(sentinel).toHaveCount(1);
+    // Scroll the sentinel into range → next chunk streams in.
+    await sentinel.scrollIntoViewIfNeeded();
+    await expect.poll(
+      async () => page.locator('#taskList .task-item').count(),
+      { timeout: 10_000 },
+    ).toBeGreaterThan(100);
+  });
+
   test('can complete a seeded task', async ({ page }) => {
     const row = page.locator('#taskList .task-item').filter({ hasText: 'E2E Algebra homework' });
     await expect(row).toBeVisible();

@@ -4370,6 +4370,43 @@ function renderStats(){
   // Belt-and-suspenders: keep the "due in 12h" banner in sync with current task state
   if(typeof checkAllPanic==='function')checkAllPanic();
 }
+// ── LIST WINDOWING (B5.3) ──
+// Past FLUX_LIST_WINDOW items a list renders in chunks: the first window
+// synchronously, the rest as an IntersectionObserver sentinel scrolls into
+// range. No dependency, no absolute positioning — every rendered card is
+// byte-identical to the unwindowed version, so DnD/selection/animations
+// behave exactly the same on the cards that exist.
+const FLUX_LIST_WINDOW=100;
+function fluxWindowedListHtml(items,renderFn,key){
+  if(items.length<=FLUX_LIST_WINDOW)return{html:items.map(renderFn).join(''),rest:null};
+  const head=items.slice(0,FLUX_LIST_WINDOW).map(renderFn).join('');
+  const restCount=items.length-FLUX_LIST_WINDOW;
+  return{
+    html:head+`<div class="flux-list-sentinel" data-flux-sentinel="${key}" style="padding:14px;text-align:center;color:var(--muted);font-size:.78rem">Loading ${restCount} more…</div>`,
+    rest:items.slice(FLUX_LIST_WINDOW),
+  };
+}
+function fluxArmListSentinel(container,rest,renderFn,chunk){
+  if(!container||!rest||!rest.length)return;
+  const sentinel=container.querySelector('[data-flux-sentinel]');
+  if(!sentinel)return;
+  const step=chunk||FLUX_LIST_WINDOW;
+  let idx=0;
+  if(!('IntersectionObserver' in window)){
+    sentinel.insertAdjacentHTML('beforebegin',rest.map(renderFn).join(''));
+    sentinel.remove();
+    return;
+  }
+  const io=new IntersectionObserver((entries)=>{
+    if(!entries.some(e=>e.isIntersecting))return;
+    const frag=rest.slice(idx,idx+step);
+    idx+=frag.length;
+    try{sentinel.insertAdjacentHTML('beforebegin',frag.map(renderFn).join(''));}catch(_){}
+    if(idx>=rest.length){io.disconnect();sentinel.remove();}
+    else sentinel.textContent=`Loading ${rest.length-idx} more…`;
+  },{rootMargin:'600px'});
+  io.observe(sentinel);
+}
 function renderTasks(){
   const el0=document.getElementById('taskList');
   if(el0){el0.style.display='';el0.style.gridTemplateColumns='';el0.style.gap='';el0.style.alignItems='';}
@@ -4523,7 +4560,8 @@ ${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn 
 </div>
 </div>`;
   };
-  let html=active.map(renderCard).join('');
+  const win=fluxWindowedListHtml(active,renderCard,'tasks');
+  let html=win.html;
   if(done.length){
     const showDone=load('flux_show_completed',false);
     html+=`<div class="completed-toggle ${showDone?'':'collapsed'}" onclick="toggleCompletedTasks()">
@@ -4538,6 +4576,7 @@ ${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn 
   const listChanged=listSig!==prevSig;
   el.dataset.fluxTaskListSig=listSig;
   el.innerHTML=html;
+  fluxArmListSentinel(el,win.rest,renderCard);
   requestAnimationFrame(()=>{
     try{
       const items=[...el.querySelectorAll('.task-item')];
@@ -6037,7 +6076,12 @@ async function sendEcCollegeChat(){
   }
 }
 
-function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${esc(sub.short)}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
+function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}
+  const renderNoteCard=n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${esc(sub.short)}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;};
+  list.sort((a,b)=>b.updatedAt-a.updatedAt);
+  const win=fluxWindowedListHtml(list,renderNoteCard,'notes');
+  el.innerHTML=win.html;
+  fluxArmListSentinel(el,win.rest,renderNoteCard);}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
