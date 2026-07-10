@@ -418,6 +418,20 @@ Verified live: burst of 4 notices renders 1-at-a-time in priority order with ach
 
 ---
 
+## 0ag. B2 — floating-widget layout contract (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Timer pill @390px | `student` | Start pomodoro, check Dashboard/Mood/Calendar/AI | Pill docks in the top bar (ring+time, no label); stats row readable; composer attach tappable |
+| Report @390px | any | Look for floating bubble; open More sheet | No fab; "Report" item in the sheet opens the feedback modal |
+| Report desktop | any | Bottom-left fab | Present; bottom offset = `--flux-dock-clearance` |
+| Toasts @390px | any | Trigger a toast | Bottom = `--flux-dock-clearance` (clears `.bnav` + safe area) |
+| Tokens | dev | Inspect `:root` | `--flux-dock-clearance` 20px desktop / bnav+12+safe-area mobile; fab z-index uses `--flux-z-pomo-pill` (no new `!important`) |
+
+E2E: B2 tests in `e2e/mobile-more-sheet.spec.ts` (fab hidden + sheet item; pill in topbar clearing `.bnav`) — verified at 390×844.
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

@@ -64,6 +64,34 @@ test.describe('Mobile More sheet lifecycle', () => {
     await expectSheetClosed(page);
   });
 
+  test('B2: Report item lives in the sheet and the floating fab is hidden at phone width', async ({ page }) => {
+    // The bottom-left Report fab overlapped the date header and stats row at
+    // 390px — it collapses into the More sheet on <768px.
+    await expect(page.locator('#fluxReportFab')).toBeHidden();
+    await page.locator('#moreBtn').click();
+    await expectSheetOpen(page);
+    await expect(page.locator('.more-sheet-item[data-action="report"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expectSheetClosed(page);
+  });
+
+  test('B2: pomo pill docks into the top bar and clears the bottom nav', async ({ page }) => {
+    const geom = await page.evaluate(() => {
+      const pill = document.getElementById('fluxPomoPill')!;
+      pill.hidden = false;
+      (pill as HTMLElement).style.display = 'flex';
+      const r = pill.getBoundingClientRect();
+      const bnav = document.querySelector('.bottom-nav')?.getBoundingClientRect();
+      const topbar = document.querySelector('.topbar')?.getBoundingClientRect();
+      return {
+        inTopbar: !!topbar && r.top >= topbar.top && r.bottom <= topbar.bottom + 6,
+        clearsBnav: !bnav || r.bottom < bnav.top,
+      };
+    });
+    expect(geom.inTopbar).toBe(true);
+    expect(geom.clearsBnav).toBe(true);
+  });
+
   test('open → overlay tap closes', async ({ page }) => {
     await page.locator('#moreBtn').click();
     await expectSheetOpen(page);

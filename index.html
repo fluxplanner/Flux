@@ -2822,6 +2822,10 @@
     <button type="button" class="more-sheet-item" data-nav-tab="profile" onclick="navMob('profile')">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg></span><span class="more-sheet-label">Profile</span>
     </button>
+    <!-- B2: the floating Report fab collapses into this item on <768px -->
+    <button type="button" class="more-sheet-item" data-action="report" onclick="closeMobileSheet();try{openFluxFeedbackModal()}catch(e){}">
+      <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></span><span class="more-sheet-label">Report</span>
+    </button>
     <button type="button" class="more-sheet-item" data-action="book-counselor" onclick="closeMobileSheet();try{openCounselorBookingFromAnywhere()}catch(e){}" style="display:none">
       <span class="more-sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span><span class="more-sheet-label">Book counselor</span>
     </button>

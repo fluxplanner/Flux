@@ -12,10 +12,17 @@
   --sa-right: env(safe-area-inset-right, 0px);
   --bnav-height: 62px;
   --topbar-mob-height: 54px;
+  /* B2 floating-dock contract: every fixed bottom-corner widget (toasts,
+     pills, fabs) offsets by this so nothing overlaps .bnav, sheets, or the
+     composer. Overridden inside the mobile media query below. */
+  --flux-dock-clearance: 20px;
 }
 
 /* Mobile-only safe-area + nav-clearance */
 @media (max-width: 768px){
+  :root{
+    --flux-dock-clearance: calc(var(--bnav-height) + 12px + var(--sa-bottom));
+  }
   .topbar{
     padding-top: max(8px, var(--sa-top));
   }
@@ -2333,12 +2340,20 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   color: var(--muted2);
 }
 @media (max-width: 768px){
+  /* B2: on phones the pill docks into the top bar chip area (centered in the
+     empty gap between brand and actions) instead of floating over the stats
+     row / AI composer at the bottom. Compact: ring + time only. */
   .flux-pomo-pill:not([hidden]){
     left: 50%;
     transform: translateX(-50%);
-    bottom: calc(var(--bnav-height) + 10px + var(--sa-bottom));
+    top: calc(max(8px, var(--sa-top)) + 7px);
+    bottom: auto;
+    padding: 5px 12px;
+    gap: 7px;
+    font-size: .78rem;
   }
   .flux-pomo-pill:active{ transform: translateX(-50%) scale(.97); }
+  .flux-pomo-pill .flux-pomo-pill-lbl{ display: none; }
 }
 @media (min-width: 769px){
   .flux-pomo-pill:not([hidden]){

@@ -1118,8 +1118,7 @@ function _renderToastItem(item,onDone){
     stack.id='fluxToastStack';
     stack.setAttribute('aria-live','polite');
     stack.setAttribute('aria-atomic','false');
-    const isMob=window.innerWidth<768;
-    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:${isMob?'calc(16px + var(--bnav-height,62px) + var(--sa-bottom,0px))':'20px'};z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
+    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:var(--flux-dock-clearance,20px);z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
     document.body.appendChild(stack);
   }
   const t=document.createElement('div');
