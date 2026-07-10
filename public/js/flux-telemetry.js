@@ -23,6 +23,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    sub_plan_published: {
+      persist: true,
+      category: 'educator',
+      description: 'C3: teacher published a sub-plan share code (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     sign_in: {
       persist: true,
       category: 'platform',

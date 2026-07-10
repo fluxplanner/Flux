@@ -147,6 +147,17 @@ Probes: student of school A must not read school B's rows; student INSERT/UPDATE
 
 ---
 
+## 13. Sub-Plan Generator (`20260710110000_sub_plans.sql`, C3)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_sub_plans` | Owner teacher only (no public SELECT policy — anonymous access exists solely through `flux_get_sub_plan(code)`) | Owner teacher only (FOR ALL + WITH CHECK) |
+| `flux_sub_plan_views` | Owner teacher of the parent plan (audit trail) | Only inside the SECURITY DEFINER RPC (view audit rows) |
+
+`flux_get_sub_plan(p_code)` — SECURITY DEFINER, granted to `anon` + `authenticated`; rejects codes <10 chars, returns `expired` after 48h `expires_at`, inserts an audit row (truncated user-agent) on every successful view. Probes: direct `select * from flux_sub_plans` as anon/another teacher returns zero rows; RPC with a wrong code returns `not_found` without an audit row; RPC after expiry returns `expired`.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

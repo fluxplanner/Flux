@@ -534,6 +534,23 @@ Migration: `20260710100000_school_schedules.sql` (reversible) · RLS: `docs/RLS_
 
 ---
 
+## 0an. C3 — Sub-Plan Generator (`enable_sub_plans` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `teacher` | Lesson Hub → "Sub-plan template" | Legacy clipboard copy (unchanged) |
+| Composer | `teacher` | Flag on → same button | Modal: per-period plans from today's Lesson Hub notes + finish-early/emergency/contact sections |
+| Print | `teacher` | Modal → Print | Clean printable page (white, table schedule) |
+| Publish | `teacher` | Modal → Publish share code | 48h link copied; `sub_plan_published` telemetry |
+| Sub view | signed-out | Open `?subplan=CODE` | Read-only plan renders with no account; audit row written |
+| Expiry | signed-out | Open a 48h+ old link | "This share link has expired" message |
+| Privacy | any | Direct table select | Zero rows (owner-only RLS; RPC is the only public path) |
+| Audit trail | `teacher` | After sub views | Owner can read `flux_sub_plan_views` rows |
+
+Migration: `20260710110000_sub_plans.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §13 · Doc: `docs/P32-SUB-PLANS.md` · E2E: `e2e/sub-plans.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
