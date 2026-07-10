@@ -401,6 +401,23 @@ Migration: `20260709110000_flux_ai_guard.sql` (reversible) · RLS: `docs/RLS_AUD
 
 ---
 
+## 0af. B1 — one notification system (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Single toast | `student` | Complete first task (fires conflict + badge + Up-next) | ONE toast at a time, drained sequentially with ~250ms gaps; conflict banner stays in-panel |
+| Priority | `student` | Queue conflict + info + achievement together | Order: conflict → achievement → info |
+| Coalescing | `student` | Earn 2 badges in one action | ONE toast: "2 badges earned — tap to view" → Profile |
+| Up next | `student` | Complete a task with more pending | "Up next: … — tap to start" toast (no floating pill over rows) |
+| Coach prompt | `student` | Trigger overdue coach nudge | Routed through the same queue (no top-right card) |
+| Tour vs modal | `student` | Replay tour, then open New Task modal | Tooltip never appears/advances while the modal is open; resumes after close |
+| Tooltip opacity | `student` | Tour step 2 over sidebar, all themes | Tooltip background fully opaque (`--flux-elev-bg`); no text bleed-through |
+| Mobile 390px | `student` | Toast burst with bottom nav visible | Toasts clear `.bnav`; single column, no overlap |
+
+Verified live: burst of 4 notices renders 1-at-a-time in priority order with achievements coalesced.
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

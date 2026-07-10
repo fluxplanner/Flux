@@ -7,6 +7,9 @@
   --bg:#0B0F1A; --bg2:#0e1424; --bg3:#121826;
   /* Semi-transparent surfaces so backdrop blur reads as liquid glass */
   --card:rgba(21,29,48,.58); --card2:rgba(26,35,53,.52); --card3:rgba(31,42,64,.48); --card-solid:#121826;
+  /* Elevated-surface background — ALWAYS fully opaque (tour tooltips, popovers
+     above text). Themes may retint it but must never add alpha. */
+  --flux-elev-bg:#121826;
   --border:rgba(255,255,255,.065); --border2:rgba(255,255,255,.1); --border3:rgba(255,255,255,.15);
   --accent:#00C2FF; --accent-rgb:0,194,255; --accent2:#4ddbff; --accent-glow:rgba(0,194,255,.28);
   /* Glass tint follows accent hue — overridden by updateLogoColor() for custom accents */
@@ -1502,6 +1505,7 @@ body[data-theme="light"]{
   --card2:rgba(250,252,255,.96);
   --card3:rgba(243,246,252,.94);
   --card-solid:#ffffff;
+  --flux-elev-bg:#ffffff;
   --border:rgba(0,0,0,.07);
   --border2:rgba(0,0,0,.1);
   --border3:rgba(0,0,0,.14);
@@ -2124,15 +2128,15 @@ button[onclick*="generateStudyRoadmap"]:hover{
 .tour-tooltip{
   position:fixed;z-index:var(--flux-z-palette);
   top:0;left:0;
-  background:var(--card-solid,#121826);
+  /* Fully opaque elevation token — the tooltip sits over live UI text and
+     must never let sidebar labels bleed through (B1). */
+  background:var(--flux-elev-bg,var(--card-solid,#121826));
   border:1px solid rgba(var(--accent-rgb),.4);
   border-radius:14px;
   padding:16px 18px;
   width:min(320px,calc(100vw - 24px));
   max-width:calc(100vw - 24px);
   box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);
-  backdrop-filter:blur(18px) saturate(160%);
-  -webkit-backdrop-filter:blur(18px) saturate(160%);
   opacity:0;
   visibility:hidden;
   transform:translateY(8px);

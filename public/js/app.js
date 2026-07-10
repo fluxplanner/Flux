@@ -1077,10 +1077,41 @@ function maskPrivateField(el,value){
   el.textContent='•'.repeat(Math.min(value.length,8));
 }
 
-// ══ TOAST NOTIFICATIONS ══
-function showToast(msg,type='success',durationMs=3000){
+// ══ TOAST NOTIFICATIONS — single queue (B1) ══
+// One toast visible at a time; queued by priority (crisis > conflict >
+// achievement > info) and drained with a 250ms stagger. Achievements coalesce
+// into one "N badges earned" toast instead of stacking popups over task rows.
+const FLUX_TOAST_PRIORITY={crisis:0,conflict:1,error:2,achievement:3,warning:4,success:5,info:5};
+let _toastQueue=[];
+let _toastShowing=false;
+function showToast(msg,type='success',durationMs=3000,opts={}){
   const live=document.getElementById('toastLive');if(live)live.textContent=msg;
-  // Ensure toast stack container exists — newest toast is prepended so it sits on top
+  const kind=opts.kind||type;
+  if(kind==='achievement'){
+    const q=_toastQueue.find(i=>i.kind==='achievement');
+    if(q){
+      q.count=(q.count||1)+1;
+      q.msg=q.count+' badges earned — tap to view';
+      q.onClick=()=>{try{nav('profile');}catch(_){}};
+      return;
+    }
+  }
+  _toastQueue.push({msg,type,durationMs:durationMs||3000,kind,count:1,onClick:opts.onClick});
+  // Stable sort: priority tiers first, insertion order within a tier.
+  _toastQueue.sort((a,b)=>(FLUX_TOAST_PRIORITY[a.kind]??5)-(FLUX_TOAST_PRIORITY[b.kind]??5));
+  _drainToastQueue();
+}
+function _drainToastQueue(){
+  if(_toastShowing)return;
+  const item=_toastQueue.shift();
+  if(!item)return;
+  _toastShowing=true;
+  _renderToastItem(item,()=>{
+    _toastShowing=false;
+    setTimeout(_drainToastQueue,250);
+  });
+}
+function _renderToastItem(item,onDone){
   let stack=document.getElementById('fluxToastStack');
   if(!stack){
     stack=document.createElement('div');
@@ -1093,33 +1124,46 @@ function showToast(msg,type='success',durationMs=3000){
   }
   const t=document.createElement('div');
   t.className='toast-item';
-  const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)'};
-  const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f'};
+  const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)',achievement:'var(--accent)',conflict:'var(--gold)',crisis:'var(--red)'};
+  const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f',achievement:'#fff',conflict:'#080a0f',crisis:'#fff'};
+  const paint=colors[item.type]||colors[item.kind]||colors.success;
+  const ink=textColors[item.type]||textColors[item.kind]||'#080a0f';
   const reduce=document.documentElement.classList.contains('flux-reduce-motion');
-  t.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:stretch;pointer-events:auto;background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
+  t.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:stretch;pointer-events:auto;background:${paint};color:${ink};
     border-radius:12px;font-size:.82rem;font-weight:700;max-width:100%;
     ${reduce?'':'animation:fluxToastIn .3s cubic-bezier(.34,1.56,.64,1) both;'}overflow:hidden;
-    box-shadow:0 4px 20px rgba(0,0,0,.4);`;
+    box-shadow:0 4px 20px rgba(0,0,0,.4);${item.onClick?'cursor:pointer;':''}`;
   const msgRow=document.createElement('div');
   msgRow.style.cssText='padding:10px 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-  msgRow.textContent=msg;
+  msgRow.textContent=item.msg;
   const prog=document.createElement('div');
   prog.className='toast-progress';
   t.appendChild(msgRow);
   t.appendChild(prog);
-  // Prepend so newest sits visually on top of column-reverse stack
   stack.prepend(t);
+  let finished=false;
+  const finish=()=>{
+    if(finished)return;
+    finished=true;
+    try{t.remove();}catch(e){}
+    onDone&&onDone();
+  };
+  if(item.onClick){
+    t.addEventListener('click',()=>{try{item.onClick();}catch(_){}finish();});
+  }
   try{
     if(!reduce&&window.FluxAnim?.toastIn)FluxAnim.toastIn(t);
+    if(item.kind==='achievement'&&window.FluxVisual?.spawnAchievementConfetti)FluxVisual.spawnAchievementConfetti(t);
   }catch(e){}
   setTimeout(()=>{
-    const out=()=>{try{t.remove();}catch(e){}};
+    if(finished)return;
     if(!reduce&&window.FluxAnim?.toastOut){
-      try{FluxAnim.toastOut(t,out);}catch(e){out();}
+      try{FluxAnim.toastOut(t,finish);}catch(e){finish();}
+      setTimeout(finish,600); // animation-independent fallback
     }else{
-      t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(out,220);
+      t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(finish,220);
     }
-  },durationMs||3000);
+  },item.durationMs);
 }
 
 // ══ ACCESSIBILITY · SNOOZE · BULK · EXAM CONFLICTS ══
@@ -12953,24 +12997,15 @@ window.dailyShutdown=dailyShutdown;
 
 
 // ══ AUTO-NEXT TASK SUGGESTION ═════════════════════════════════
-let _autoNextTimer=null;
 function showAutoNext(){
-  const existing=document.getElementById('autoNextBar');if(existing)existing.remove();
   const next=smartSortTasks(tasks.filter(t=>!t.done&&t.date)).slice(0,1)[0]||tasks.filter(t=>!t.done).slice(0,1)[0];
   if(!next)return;
-  const bar=document.createElement('div');
-  bar.id='autoNextBar';
-  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3000;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideUpToast .3s var(--ease-spring);max-width:400px;width:90%';
-  bar.innerHTML=`
-    <div style="flex:1;min-width:0">
-      <div style="font-size:.65rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:1px">Up next</div>
-      <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(next.name)}</div>
-    </div>
-    <button onclick="document.getElementById('autoNextBar').remove();nav('dashboard');setTimeout(()=>startDeepWork(${next.id}),200)" style="padding:6px 14px;border-radius:10px;font-size:.75rem;font-weight:700;background:var(--accent);border:none;color:#fff;cursor:pointer;white-space:nowrap">Start →</button>
-    <button onclick="document.getElementById('autoNextBar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>`;
-  document.body.appendChild(bar);
-  clearTimeout(_autoNextTimer);
-  _autoNextTimer=setTimeout(()=>{const el=document.getElementById('autoNextBar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},8000);
+  // Through the single toast queue (B1) — the old floating "Up next" pill
+  // stacked over other notices right after task completion.
+  showToast('Up next: '+next.name+' — tap to start','info',8000,{
+    kind:'info',
+    onClick:()=>{try{nav('dashboard');setTimeout(()=>startDeepWork(next.id),200);}catch(_){}},
+  });
 }
 
 
@@ -13472,9 +13507,18 @@ function startOnboardingTour(){
     tip.style.top=Math.round(top)+'px';
     tip.style.left=Math.round(left)+'px';
   }
+  // B1: the tour must never start or advance while a modal/overlay is open —
+  // it once opened its tooltip on top of the New Task modal. Poll until the
+  // surface is clear (FluxOverlays covers palette/quick-add/search/sheet;
+  // the .modal-overlay scan covers legacy modals).
+  function tourSurfaceBusy(){
+    try{if(window.FluxOverlays&&FluxOverlays.anyOpen())return true;}catch(_){}
+    return[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
+  }
   function showStep(){
     document.querySelectorAll('.tour-tooltip').forEach(e=>e.remove());
     if(step>=steps.length){cleanupTour();markTourCompleted();return;}
+    if(tourSurfaceBusy()){setTimeout(showStep,800);return;}
     const s=steps[step];
     const run=()=>{
       const candidates=document.querySelectorAll(s.sel);
@@ -15962,14 +16006,9 @@ function checkMicroCoaching(){
   }
 }
 function showCoachPrompt(msg){
-  const existing=document.getElementById('coachPrompt');if(existing)existing.remove();
-  const el=document.createElement('div');
-  el.id='coachPrompt';
-  el.style.cssText='position:fixed;top:70px;right:20px;z-index:3000;max-width:300px;padding:12px 16px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:.8rem;color:var(--text2);animation:slideDown .3s var(--ease-spring);backdrop-filter:blur(12px);cursor:pointer';
-  el.innerHTML=`<div style="display:flex;align-items:flex-start;gap:8px"><div style="flex:1">${esc(msg)}</div><button onclick="this.closest('#coachPrompt').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0;flex-shrink:0;transform:none;box-shadow:none">✕</button></div>`;
-  el.onclick=e=>{if(e.target===el||e.target.closest('#coachPrompt'))el.remove();};
-  document.body.appendChild(el);
-  setTimeout(()=>{const c=document.getElementById('coachPrompt');if(c){c.style.opacity='0';c.style.transition='opacity .4s';setTimeout(()=>c.remove(),400);}},8000);
+  // Through the single toast queue (B1) — coach nudges no longer float their
+  // own card over the topbar while other notices are showing.
+  showToast(msg,'info',8000,{kind:'info'});
 }
 
 
@@ -15992,12 +16031,12 @@ function checkAchievement(id){
   _achievements.push(id);
   save('flux_achievements',_achievements);
   syncKey('achievements',_achievements);
-  const el=document.createElement('div');
-  el.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:3500;padding:10px 18px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:.8rem;display:flex;align-items:center;gap:10px;animation:slideUpToast .3s var(--ease-spring);backdrop-filter:blur(12px)';
-  el.innerHTML=`<span style="font-size:1.2rem">${a.icon}</span><div><div style="font-weight:700;font-size:.78rem;color:var(--accent)">${a.title}</div><div style="font-size:.68rem;color:var(--muted2)">${a.desc}</div></div>`;
-  document.body.appendChild(el);
-  try{if(window.FluxVisual&&typeof FluxVisual.spawnAchievementConfetti==='function')FluxVisual.spawnAchievementConfetti(el);}catch(e){}
-  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .5s';setTimeout(()=>el.remove(),500);},3500);
+  // Through the single toast queue (B1): achievements coalesce and never
+  // stack their own popup over task rows or other notices.
+  showToast(`${a.title} — ${a.desc}`,'success',3500,{
+    kind:'achievement',
+    onClick:()=>{try{nav('profile');}catch(_){}},
+  });
 }
 
 // Wire achievements to events
