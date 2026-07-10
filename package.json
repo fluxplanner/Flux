@@ -17,6 +17,7 @@
     "ext:all": "node extension/build.mjs --target=chrome && node extension/build.mjs --target=firefox && node extension/build.mjs --target=safari"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.51.1",
     "esbuild": "^0.28.0",
     "serve": "^14.2.4"

@@ -3490,6 +3490,7 @@ function openMobileSheet(){
   sh.setAttribute('aria-hidden','false');
   document.body.style.overflow='hidden';
   if(window.FluxOverlays)FluxOverlays.push('moreSheet',closeMobileSheet);
+  try{window.FluxA11y?.trapFocus?.(sh);}catch(e){}
   try{if(window.FluxAnim?.sheetOpen)FluxAnim.sheetOpen(sh,ov);}catch(e){}
 }
 function closeMobileSheet(){
@@ -3502,6 +3503,7 @@ function closeMobileSheet(){
   // run), the sheet wedged permanently visible. Assert the closed state
   // synchronously; the .28s CSS transition plays the slide-down cosmetically.
   const done=()=>{
+    try{window.FluxA11y?.releaseFocus?.(sh);}catch(_){}
     try{if(typeof sh._fluxSheetOpenCancel==='function')sh._fluxSheetOpenCancel();}catch(_){}
     sh.style.transform='';sh.style.opacity='';sh.style.display='';
     ov.style.opacity='';ov.style.display='';
@@ -4596,11 +4598,13 @@ function openDashAddTaskModal(){
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
+  try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
 }
 function closeDashAddTaskModal(){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
+  try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
   try{
@@ -4628,11 +4632,13 @@ function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id
     const em=document.getElementById('editModal');
     const c=em?.querySelector('.modal-card');
     if(em&&window.FluxAnim?.modalOpen)FluxAnim.modalOpen(em,c||em);
+    if(em)window.FluxA11y?.trapFocus?.(em);
   }catch(e){}
 }
 function closeEdit(){
   const m=document.getElementById('editModal');
   if(!m){editingId=null;return;}
+  try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';editingId=null;};
   try{
@@ -10659,6 +10665,7 @@ function openCommandPalette(){
     </div>`;
   document.body.appendChild(overlay);
   FluxOverlays.push('cmdPalette',closeCommandPalette);
+  try{window.FluxA11y?.trapFocus?.(overlay);}catch(e){}
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeCommandPalette();});
   const input=document.getElementById('cmdInput');
   input.addEventListener('input',renderCmdResults);
@@ -10673,7 +10680,7 @@ function openCommandPalette(){
 }
 function closeCommandPalette(){
   const el=document.getElementById('cmdPalette');
-  if(el)el.remove();
+  if(el){try{window.FluxA11y?.releaseFocus?.(el);}catch(e){}el.remove();}
   _cpOpen=false;
   FluxOverlays.pop('cmdPalette');
 }
@@ -15073,10 +15080,14 @@ function showDayTasksPopup(dateStr){
       <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
       ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
     </div>`}).join('')}
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;margin-top:12px;padding:8px">Close</button>
+    <button type="button" class="flux-day-popup-close" style="width:100%;margin-top:12px;padding:8px">Close</button>
   </div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  const closePopup=()=>{try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}m.remove();};
+  m.querySelector('.flux-day-popup-close')?.addEventListener('click',closePopup);
+  m.addEventListener('click',e=>{if(e.target===m)closePopup();});
   document.body.appendChild(m);
+  try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
+  try{m.querySelector('.flux-day-popup-close')?.focus();}catch(e){}
 }
 
 // ══ DEEP WORK MODE ══
@@ -15689,6 +15700,13 @@ function initFullKeyboardNav(){
     if(inInput)return;
 
     if(e.key==='Tab'){
+      // B6: never fight tab order inside overlays/modals — FluxA11y's focus
+      // trap owns containment there. This global roving-focus loop used to
+      // hijack Tab document-wide and yank focus out of the New Task modal
+      // onto the sidebar.
+      if(window.FluxOverlays?.anyOpen?.())return;
+      const openModal=[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
+      if(openModal)return;
       e.preventDefault();
       const els=getFocusable();
       if(!els.length)return;

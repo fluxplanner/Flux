@@ -480,6 +480,23 @@ Note: B5.5 (five-way app.js source split) deferred to its own PR — the bundle 
 
 ---
 
+## 0ak. B6 — keyboard & focus a11y (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Modal trap | any | New Task modal → Tab ×25 | Focus cycles inside; never escapes to sidebar |
+| Focus return | any | Open modal → Esc | Focus returns to the invoking button |
+| Edit Task / palette / More sheet / day popup | any | Same trap + return behavior | Contained + returned |
+| Global Tab hijack | any | Tab with a modal open | The roving-focus loop yields (used to yank focus to the sidebar) |
+| Focus ring | any | Tab anywhere, all 8 themes | 2px accent `:focus-visible` ring; mouse clicks paint none |
+| Toast region | SR | `#toastLive` | `aria-live="polite"` (present) |
+| More sheet | SR | `#moreSheet` | `role="dialog" aria-modal="true"` (present) |
+| axe scans | CI | `npx playwright test a11y` | 0 critical violations on New Task modal + topbar/sidebar |
+
+E2E: `e2e/a11y.spec.ts` (6 tests, axe-core) · Trap lives in `FluxA11y` (canonical a11y owner), unflagged (WCAG core)
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

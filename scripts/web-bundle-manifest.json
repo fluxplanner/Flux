@@ -343,6 +343,7 @@
     "public/css/flux-lowend.css",
     "public/css/flux-rtl.css",
     "public/css/flux-refresh-26.css",
-    "public/css/flux-theme-2026.css"
+    "public/css/flux-theme-2026.css",
+    "public/css/flux-a11y-focus.css"
   ]
 }
