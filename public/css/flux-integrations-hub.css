@@ -136,6 +136,14 @@
 
 /* ── Onboarding picker mount ── */
 #obIntegrationsPicker{margin:18px 0 6px}
+/* B4: dev/automation tiles collapse behind this reveal */
+.fih-more-toggle{
+  display:block;margin:12px auto 4px;padding:7px 16px;
+  background:var(--card2,rgba(255,255,255,.04));border:1px solid var(--border2,rgba(255,255,255,.1));
+  border-radius:999px;color:var(--muted2,#8b949e);font-size:.78rem;font-weight:700;cursor:pointer;
+}
+.fih-more-toggle:hover{color:var(--text,#fff);border-color:var(--accent,#5865F2)}
+.fih-grid-secondary{margin-top:10px}
 #obIntegrationsPicker .fih-grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:11px}
 #obIntegrationsPicker .fih-tile{padding:18px 8px 14px;border-radius:14px !important}
 #obIntegrationsPicker .fih-logo{width:36px;height:36px}

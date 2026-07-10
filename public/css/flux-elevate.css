@@ -388,12 +388,14 @@
   font-size: .85rem; line-height: 1;
 }
 
-/* ───── Smart "due soon" task glow ─────────────────────────────── */
+/* ───── Smart "due soon" task badge ─────────────────────────────
+   Real element (flux-elevate.js appends it). The card's ::before is the
+   3px priority stripe — putting content there clipped "TODAY" to a
+   vertical "ODAY" sliver (B4). */
 .task-item.flux-elv-due-today {
   position: relative;
 }
-.task-item.flux-elv-due-today::before {
-  content: 'TODAY';
+.flux-elv-today-badge {
   position: absolute; top: 6px; right: 8px;
   font-size: .58rem; font-weight: 800;
   font-family: 'JetBrains Mono', monospace;
@@ -403,6 +405,7 @@
   border-radius: 4px;
   padding: 1px 5px;
   letter-spacing: .08em;
+  white-space: nowrap;
   pointer-events: none;
 }
 

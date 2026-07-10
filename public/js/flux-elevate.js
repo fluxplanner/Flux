@@ -404,14 +404,31 @@
   }
 
   /* ── 8. Tag tasks due today ────────────────────────────────── */
+  // Real badge element, NOT ::before: the task card's ::before is the 3px
+  // priority stripe (width:3px !important in styles.css), so a content
+  // badge on the same pseudo-element rendered as a 3px-wide vertical
+  // letter stack clipped to "ODAY" (B4).
+  function syncTodayBadge(el, on) {
+    var b = el.querySelector('.flux-elv-today-badge');
+    if (on && !b) {
+      b = document.createElement('span');
+      b.className = 'flux-elv-today-badge';
+      b.textContent = 'TODAY';
+      b.setAttribute('aria-hidden', 'true');
+      el.appendChild(b);
+    } else if (!on && b) {
+      b.remove();
+    }
+  }
   function tagDueTodayTasks() {
     var today = getTodayStr();
     var items = document.querySelectorAll('#taskList .task-item');
     items.forEach(function (el) {
       var id = el.getAttribute('data-task-id'); if (!id) return;
       var t = (window.tasks || []).find(function (x) { return String(x.id) === String(id); });
-      if (!t || t.done) { el.classList.remove('flux-elv-due-today'); return; }
-      el.classList.toggle('flux-elv-due-today', t.date === today);
+      var on = !!t && !t.done && t.date === today;
+      el.classList.toggle('flux-elv-due-today', on);
+      syncTodayBadge(el, on);
     });
   }
 

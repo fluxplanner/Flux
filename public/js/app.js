@@ -1558,7 +1558,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Knowledge',notebook:'Notebook',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -3686,9 +3686,12 @@ function ensureNbkSubtabs(){
     const strip=document.createElement('div');
     strip.className='fx-nbk-subtabs';
     strip.setAttribute('role','tablist');
+    // B4: the destination is "Notebook" everywhere; Notes list is the default
+    // sub-view (panel id 'notes'), Knowledge (the NotebookLM workspace,
+    // panel id 'notebook') stays a sub-tab. Labels were previously swapped.
     strip.innerHTML=
-      `<button type="button" role="tab" data-nbk-go="notebook" aria-selected="${pid==='notebook'}" class="${pid==='notebook'?'active':''}">📓 Notebook</button>`+
-      `<button type="button" role="tab" data-nbk-go="notes" aria-selected="${pid==='notes'}" class="${pid==='notes'?'active':''}">🧠 Knowledge</button>`;
+      `<button type="button" role="tab" data-nbk-go="notes" aria-selected="${pid==='notes'}" class="${pid==='notes'?'active':''}">📓 Notes</button>`+
+      `<button type="button" role="tab" data-nbk-go="notebook" aria-selected="${pid==='notebook'}" class="${pid==='notebook'?'active':''}">🧠 Knowledge</button>`;
     strip.querySelectorAll('[data-nbk-go]').forEach(b=>{
       b.addEventListener('click',()=>{const id=b.dataset.nbkGo;if(id!==pid)nav(id);});
     });
@@ -10664,7 +10667,7 @@ function renderCmdResults(){
     {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
     {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
     ...(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()?[]:[{icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}}]),
-    {icon:'📝',label:'Notes',action:()=>{nav('notes');closeCommandPalette();}},
+    {icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}},
     {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
@@ -10673,7 +10676,7 @@ function renderCmdResults(){
     {icon:'🎓',label:'Canvas LMS panel',action:()=>{closeCommandPalette();nav('canvas');}},
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
-  navItems.forEach(n=>{if(cpMatch(n.label,'',[]))cmds.push({...n,cat:'Navigate',id:'nav:'+n.label});});
+  navItems.forEach(n=>{if(cpMatch(n.label,'',n._keys||[]))cmds.push({...n,cat:'Navigate',id:'nav:'+n.label});});
 
   if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
     const workLbl='Switch to Work mode';
@@ -10879,6 +10882,10 @@ function renderCmdResults(){
       const l=String(c.label||'').toLowerCase();
       if(l===q)return 0;
       if(l.startsWith(q))return 1;
+      // Alias keys count like the label ("notes" must still rank Notebook first).
+      const keys=(c._keys||[]).map(k=>String(k).toLowerCase());
+      if(keys.includes(q))return 0;
+      if(keys.some(k=>k.startsWith(q)))return 1;
       return 2;
     };
     cmds.sort((a,b)=>tier(a)-tier(b));
@@ -11590,7 +11597,30 @@ function initLoginDemoRotator(){
   _loginDemoInterval=setInterval(apply,4200);
 }
 
+// B4: after successful app entry the landing/login chrome is DETACHED from
+// the document — screen readers were reading the entire marketing page behind
+// the app, and it keeps ~256KB out of the live DOM. showLoginScreen
+// re-attaches, so sign-out flows that don't reload still work.
+let _fluxDetachedChrome=null;
+function detachLandingChrome(){
+  if(_fluxDetachedChrome)return;
+  const nodes=[];
+  ['loginScreen','roleSelectScreen'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.parentNode){nodes.push({el,parent:el.parentNode,next:el.nextSibling});el.remove();}
+  });
+  if(nodes.length)_fluxDetachedChrome=nodes;
+}
+function reattachLandingChrome(){
+  if(!_fluxDetachedChrome)return;
+  _fluxDetachedChrome.forEach(({el,parent,next})=>{
+    try{parent.insertBefore(el,next&&next.parentNode===parent?next:null);}
+    catch(_){try{document.body.appendChild(el);}catch(__){}}
+  });
+  _fluxDetachedChrome=null;
+}
 function showLoginScreen(){
+  reattachLandingChrome();
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof teardownFluxAnimeApp==='function')teardownFluxAnimeApp();
@@ -11683,6 +11713,9 @@ function showApp(){
   if(typeof updatePlanUI==='function')updatePlanUI();
   try{if(typeof renderSkillsPanel==='function')renderSkillsPanel();}catch(e){}
   try{if(typeof initFluxExtensionIdSettings==='function')initFluxExtensionIdSettings();}catch(e){}
+  // B4: drop the marketing/login chrome out of the live document once the app
+  // is up (delayed past the login teardown animations).
+  setTimeout(()=>{try{detachLandingChrome();}catch(_){}},600);
 }
 
 function initFluxExtensionIdSettings(){

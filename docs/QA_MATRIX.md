@@ -448,6 +448,22 @@ Script: `scripts/contrast-audit.mjs` · Verified live: light theme wordmark comp
 
 ---
 
+## 0ai. B4 — small visual defects (bug fixes, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| TODAY badge | `student` | Task due today | Full "TODAY" chip top-right (real element, no 3px ::before sliver / "ODAY") |
+| Notebook naming | `student` | Sidebar, panel header, ⌘K, More sheet | All say **Notebook**; land on Notes list; sub-tabs "📓 Notes" (default) / "🧠 Knowledge" |
+| Palette alias | any | ⌘K → type `notes` → Enter | Notebook ranks first (alias keys); navigates, no junk task |
+| Integrations order | `student` | Onboarding step 6 | Google, Classroom, Canvas, Calendar, Notion, Todoist lead |
+| More tools | `student` | Onboarding step 6 | Jira/Linear/GitHub/Zapier/IFTTT hidden behind "More tools ▾" |
+| Coming soon | `student` | Picker tiles without live connectors | Honest "Coming soon" chip |
+| Landing DOM | any | Sign in → inspect DOM | `#loginScreen`/`#roleSelectScreen` detached (SR silence, ~256KB lighter); sign-out reattaches |
+
+E2E: palette/notebook/knowledge/more-sheet/semester suites 20/20 green.
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
