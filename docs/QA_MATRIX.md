@@ -383,6 +383,24 @@ Migration: `20260709100000_ai_action_confirm_flag.sql` (reversible) · E2E: `e2e
 
 ---
 
+## 0ae. P0 A5 — AI proxy auth hardening (server-side, no flag; env-tunable)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| No auth header | — | POST ai-proxy without Authorization | 401, no provider call |
+| Garbage token | — | POST with `Bearer junk` | 401 even with `PAYMENTS_ENABLED=false` |
+| Guest chat | signed-out app | Use Flux AI signed out | Works on `gpt-oss-20b`; capped 20 req/day per IP+UA+fingerprint (`AI_PROXY_GUEST_DAILY`) |
+| Guest over cap | signed-out | 21st request in a day | 429 `guest_daily_limit` with sign-in nudge |
+| Guest vision (ai-proxy) | signed-out | Image request | 401 `auth_required` |
+| Guest vision (gemini-proxy) | signed-out | Onboarding schedule photo import | Works; capped 10/day (`GEMINI_PROXY_GUEST_DAILY`) — pre-signup flow preserved |
+| Signed-in, payments off | `student` | Heavy AI use | Capped 300 req/day (`AI_PROXY_USER_DAILY`); guard outage fails OPEN for signed-in, CLOSED for guests |
+| Kill switch | ops | `AI_PROXY_ALLOW_GUESTS=false` | All unauthenticated traffic 401 |
+| RLS probe | any client | `select * from flux_ai_guard` / `flux_bump_ai_guard('x')` | Denied (service-role only) |
+
+Migration: `20260709110000_flux_ai_guard.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §11 · E2E: `e2e/ai-proxy.spec.ts` (hardened block gated on `AI_PROXY_HARDENED=1` until deployed)
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

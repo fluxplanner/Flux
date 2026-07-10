@@ -126,6 +126,16 @@ Run **`docs/P1-RLS-VERIFICATION.md`** and **`supabase/scripts/verify_rls_policie
 
 ---
 
+## 11. AI proxy rate guard (`20260709110000_flux_ai_guard.sql`, P0 A5)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_ai_guard` | Nobody via PostgREST — RLS enabled with **no policies**; service role only (edge functions) | Service role only, through SECURITY DEFINER RPC `flux_bump_ai_guard` (EXECUTE revoked from `anon`/`authenticated`/PUBLIC) |
+
+Buckets are hashed (`guest:<sha256(ip|ua|fingerprint)>`, `user:<uid>`); rows TTL-swept after 2 days inside the RPC. Probes: `select * from flux_ai_guard` as anon/authenticated must return zero rows / permission denied; `select flux_bump_ai_guard('x')` as anon/authenticated must fail.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

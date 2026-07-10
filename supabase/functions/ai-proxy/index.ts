@@ -5,8 +5,21 @@ import {
   checkAndIncrementAIUsage,
   refundAIUsage,
 } from "../_shared/plan.ts";
+import {
+  bumpDailyGuard,
+  clientIp,
+  isAnonRoleJwt,
+  sha256Hex,
+} from "../_shared/rate-limit.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
+// P0 A5: auth is required independent of payments. Guest mode (the app signed
+// out sends the anon key as Bearer) keeps working through a narrow,
+// table-backed allowance; disable entirely with AI_PROXY_ALLOW_GUESTS=false.
+const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "true") === "true";
+const GUEST_DAILY = Number(Deno.env.get("AI_PROXY_GUEST_DAILY") ?? "20");
+const USER_DAILY = Number(Deno.env.get("AI_PROXY_USER_DAILY") ?? "300");
+const GUEST_MODEL = "openai/gpt-oss-20b";
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
@@ -21,7 +34,12 @@ Deno.serve(async (req) => {
   let userId: string | null = null;
   const auth = await verifyUserJWT(req);
   if ("error" in auth && auth.error) {
-    if (PAYMENTS_ENABLED) {
+    // A failed JWT never falls through to a free ride anymore (the old
+    // payments-off path let anyone with the public anon key burn provider
+    // quota). Only the app's guest mode — Bearer = the project's anon-role
+    // JWT — may proceed, and it is rate-guarded below once the body parses.
+    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!ALLOW_GUESTS || !isAnonRoleJwt(bearer)) {
       return json({ error: auth.error }, auth.status, origin);
     }
     userId = null;
@@ -70,6 +88,42 @@ Deno.serve(async (req) => {
   const routeMode = body.routing?.mode ?? "";
   const isBYOK = routeMode === "openai_compatible" ||
     routeMode === "anthropic_messages";
+
+  if (!userId) {
+    // Guest allowance: text-only, low model tier, hard per-IP+fingerprint
+    // daily cap. Fail CLOSED — anonymous traffic never rides a guard outage.
+    if (hasImage) {
+      return json({
+        error: "auth_required",
+        message: "Sign in to use image analysis.",
+      }, 401, origin);
+    }
+    const fp = typeof (body as { fingerprint?: unknown }).fingerprint === "string"
+      ? (body as { fingerprint: string }).fingerprint.slice(0, 128)
+      : "";
+    const bucket = "guest:" + await sha256Hex(
+      [clientIp(req), req.headers.get("user-agent") ?? "", fp].join("|"),
+    );
+    const count = await bumpDailyGuard(bucket);
+    if (count === null || count > GUEST_DAILY) {
+      return json({
+        error: "guest_daily_limit",
+        message: "Guest limit reached — sign in to keep using Flux AI.",
+        daily_limit: GUEST_DAILY,
+      }, 429, origin);
+    }
+    if (!isBYOK) body.model = GUEST_MODEL;
+  } else if (!PAYMENTS_ENABLED && !isBYOK) {
+    // Payment metering off ≠ unmetered: a basic per-user daily abuse stop.
+    // Fail OPEN — signed-in users shouldn't lose AI to a guard hiccup.
+    const count = await bumpDailyGuard("user:" + userId);
+    if (count !== null && count > USER_DAILY) {
+      return json({
+        error: "daily_limit_reached",
+        daily_limit: USER_DAILY,
+      }, 429, origin);
+    }
+  }
 
   let entitlement: Entitlement | null = null;
   // Whether we already debited a quota point (so we can refund on AI errors).
