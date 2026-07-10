@@ -464,6 +464,22 @@ E2E: palette/notebook/knowledge/more-sheet/semester suites 20/20 green.
 
 ---
 
+## 0aj. B5 — Chromebook performance (B5.1–B5.4; B5.5 deferred)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Fonts | any | DevTools network, cold load | Zero requests to fonts.googleapis/gstatic; two local woff2 (~79KB); text swaps in (`font-display:swap`) |
+| Observers | dev | Count document-wide MutationObservers | 1 shared body walker (+1 self-disconnecting #app watcher at boot); i18n + emoji still live-update |
+| List windowing | `student` | 250+ tasks / notes | 100 cards + "Loading N more…" sentinel; scroll streams chunks; complete/DnD unchanged |
+| SW versioning | dev | `npm run build:web` twice | Deterministic hashed names; BUILD stamped automatically; NO manual STATIC bump |
+| Repeat visit | any | Second load (installed PWA) | Bundles served cache-first from precache; only index.html hits network (with nav preload) |
+| Offline | any | Airplane mode → reload | Cached shell + bundles boot |
+| Lighthouse (mobile, cold) | — | Local run 2026-07-10 | Perf **59** · FCP 2.6s · LCP 8.3s · TBT 180ms (baseline recorded; cold-visit LCP is bundle download under simulated slow-4G — repeat visits ride the precache; ≥85 needs per-panel code-splitting, staged separately) |
+
+Note: B5.5 (five-way app.js source split) deferred to its own PR — the bundle is a literal concat so the split ships zero byte changes, while the unit-test extractors + contrast CI gate parse app.js directly and would all need re-pointing; risk without runtime benefit mid-hardening.
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
