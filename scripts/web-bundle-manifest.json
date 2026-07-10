@@ -202,7 +202,8 @@
     "public/js/flux-office-hours.js",
     "public/js/flux-staff-messages.js",
     "public/js/flux-ai-providers.js",
-    "public/js/flux-ai-providers-ui.js"
+    "public/js/flux-ai-providers-ui.js",
+    "public/js/flux-now-engine.js"
   ],
   "css": [
     "public/css/styles.css",
@@ -344,6 +345,7 @@
     "public/css/flux-rtl.css",
     "public/css/flux-refresh-26.css",
     "public/css/flux-theme-2026.css",
+    "public/css/flux-now-engine.css",
     "public/css/flux-a11y-focus.css"
   ]
 }

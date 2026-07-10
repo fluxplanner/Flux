@@ -4002,6 +4002,8 @@ function updateTopbarStats(){
 function updateNextClassPill(){
   const pill=document.getElementById('topbarNextClass');
   if(!pill||!classes||!classes.length)return;
+  // C1: when the FluxNow strip is on, it owns "what's next" — one surface.
+  if(window.FluxNow?.enabled?.()){pill.style.display='none';window.FluxNow.renderStrip();return;}
   const schedMode=getClassScheduleDisplayMode();
   if(schedMode==='hidden'||schedMode==='collapsed'){pill.style.display='none';return;}
   const ab=AB_MAP[todayStr()];
@@ -8198,6 +8200,7 @@ You have access to the student's full planner — their tasks, classes, schedule
 <student_context>
 Student: ${name}${grade?' \u00b7 Grade '+grade:''}${program?' \u00b7 '+program:''}
 Today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+${(()=>{try{return window.FluxNow?.aiContext?window.FluxNow.aiContext():'';}catch(_){return'';}})()}
 ${mood?`Recent check-in: mood ${mood.mood}/5 \u00b7 stress ${mood.stress}/10 \u00b7 sleep ${mood.sleep}h`:''}
 Classes today: ${todayClasses}
 

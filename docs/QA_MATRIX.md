@@ -497,6 +497,25 @@ E2E: `e2e/a11y.spec.ts` (6 tests, axe-core) · Trap lives in `FluxA11y` (canonic
 
 ---
 
+## 0al. C1 — FluxNow bell-aware strip (`enable_now_engine` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Boot app | No visible strip; legacy next-class pill unchanged |
+| In period | `student` | Timed class in session | Strip: "AP Biology · Rm 204 — 35 min left." |
+| Passing | `student` | Between classes | "You have Spanish 3 in Rm 110 in 8 min." |
+| Before/after | `student` | Outside bells | Calm sentences; never countdown-panic tone |
+| Weekend/holiday | any | Sat/Sun or rest day | "Weekend — no bells today." / "No school today — rest up." |
+| Educator | `teacher` | Work mode, teaching schedule | "You teach 3B in Rm 204 in 6 min." phrasing |
+| Tap | any | Tap strip | Calendar timeline opens; `now_strip_opened` telemetry |
+| AI context | `student` | Ask Flux anything | Prompt carries "School time right now: …" |
+| Pill unification | `student` | Flag on | Legacy `topbarNextClass` pill hidden — one surface |
+| Mobile 390px | any | Strip under topbar | Full-width, single line, tappable |
+
+Migration: `20260710090000_now_engine_flag.sql` (reversible) · Doc: `docs/P30-NOW-ENGINE.md` · Unit: `test/unit/now-engine.test.mjs` · E2E: `e2e/now-engine.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

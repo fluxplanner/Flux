@@ -15,6 +15,14 @@
 
   /** @type {Record<string, { persist: boolean, category: string, description: string, normalize?: (raw: unknown) => Record<string, unknown> }>} */
   const CATALOG = {
+    now_strip_opened: {
+      persist: true,
+      category: 'student',
+      description: 'C1: tapped the FluxNow strip to open the day timeline (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     sign_in: {
       persist: true,
       category: 'platform',
