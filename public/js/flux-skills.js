@@ -811,16 +811,10 @@
 
   /* ───────── Boot ───────── */
 
-  function bindShortcut() {
-    document.addEventListener('keydown', (e) => {
-      const k = (e.key || '').toLowerCase();
-      if ((e.metaKey || e.ctrlKey) && k === 'k') {
-        e.preventDefault();
-        openPalette();
-      }
-    });
-  }
-  bindShortcut();
+  // ⌘K binding removed: app.js owns the command palette (canonical owner,
+  // Area 19). This module's duplicate listener stacked a third palette on
+  // the same keypress. The skills palette stays reachable via
+  // FluxSkillsV2.openPalette / FluxSkills.openPalette.
 
   /* AI integration — parse ```skill``` blocks from AI responses */
   document.addEventListener('flux-ai-response', async (e) => {

@@ -568,13 +568,9 @@
     requestAnimationFrame(function () { overlay.classList.add('flux-cmd-visible'); searchEl.focus(); });
   }
 
-  document.addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      if (_paletteOpen) { var el = document.getElementById('fluxCmdPalette'); if (el) el.remove(); _paletteOpen = false; }
-      else openCommandPalette();
-    }
-  });
+  // ⌘K binding removed: app.js owns the command palette (canonical owner,
+  // Area 19). This module's duplicate listener made one keypress stack a
+  // second palette on top of the real one and steal its focus.
 
   /* ── Smooth panel transitions ───────────────────────────────────── */
   function hookPanelTransitions() {

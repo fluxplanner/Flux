@@ -346,6 +346,23 @@ E2E: `e2e/mobile-more-sheet.spec.ts` (390×844 viewport)
 
 ---
 
+## 0ac. P0 A3 — palette / quick-add keyboard discipline (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Single palette | any | ⌘K | Exactly ONE palette (`#cmdPalette`), input focused |
+| Junk-task repro | any | ⌘K → type `notes` → Enter | Navigates to Notes; NO task created |
+| Shortcut suppression | any | Palette open → press `n`/`t`/`c`/`g` | Nothing fires beneath; no quick-add on top |
+| Escape = top only | any | Quick-add open → ⌘K → Esc | Palette closes, quick-add stays; 2nd Esc closes quick-add |
+| ⌘K toggle | any | ⌘K twice | Palette opens, then closes |
+| Quick-add Enter | any | `n` → type task → Enter | Task created (quick-add is top) |
+| Add-task via palette | any | ⌘K → type text → ↓ to "Add task" → Enter | Task created deliberately (not default) |
+| Educator ⌘K | educator | ⌘K in staff mode | Still toggles Work/Personal (unchanged) |
+
+E2E: `e2e/palette-keyboard.spec.ts` · Canonical owner: `FluxOverlays` (Area 19)
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

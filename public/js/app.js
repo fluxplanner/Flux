@@ -3446,6 +3446,7 @@ function openMobileSheet(){
   ov.setAttribute('aria-hidden','false');
   sh.setAttribute('aria-hidden','false');
   document.body.style.overflow='hidden';
+  if(window.FluxOverlays)FluxOverlays.push('moreSheet',closeMobileSheet);
   try{if(window.FluxAnim?.sheetOpen)FluxAnim.sheetOpen(sh,ov);}catch(e){}
 }
 function closeMobileSheet(){
@@ -3466,6 +3467,7 @@ function closeMobileSheet(){
     ov.setAttribute('aria-hidden','true');
     sh.setAttribute('aria-hidden','true');
     document.body.style.overflow='';
+    if(window.FluxOverlays)FluxOverlays.pop('moreSheet');
   };
   done();
   // Async re-asserts must not fight a reopen — only apply while still closed.
@@ -3478,11 +3480,15 @@ function closeMobileSheet(){
 window.openMobileSheet=openMobileSheet;
 window.closeMobileSheet=closeMobileSheet;
 // Close sheet on Escape — visibility judged by geometry, not class state:
-// a wedged sheet can be fully visible with no .open class.
+// a wedged sheet can be fully visible with no .open class. Defers to the
+// overlay stack when something else is on top (Escape pops top only); a
+// wedged sheet is no longer on the stack, so the empty-stack path still
+// recovers it.
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     const sh=document.getElementById('moreSheet');
     if(!sh)return;
+    if(window.FluxOverlays&&FluxOverlays.anyOpen()&&!FluxOverlays.isTop('moreSheet'))return;
     const r=sh.getBoundingClientRect();
     if(r.height>0&&r.top<window.innerHeight)closeMobileSheet();
   }
@@ -9587,6 +9593,7 @@ function openQuickAddWithText(text){
   panel.setAttribute('role','dialog');
   panel.setAttribute('aria-modal','true');
   panel.setAttribute('aria-label','Quick add task');
+  if(window.FluxOverlays)FluxOverlays.push('quickAdd',closeQuickAdd);
   const input=document.getElementById('quickAddInput');
   if(input){input.value=text||'';input.focus();updateQuickAddPreview(text||'');}
   refreshQuickAddDatalist();
@@ -10459,6 +10466,24 @@ function fabFocus(){
   nav('timer');
 }
 
+// ── OVERLAY STACK — single owner for "what's on top" (Area 19) ──
+// Palette, quick-add, global search, shortcut overlay, and the mobile More
+// sheet register here on open. While anything is on the stack, global
+// single-key shortcuts (N/T/G/C/K/…) are suppressed, and Escape closes ONLY
+// the top entry — never everything at once. Other modules (tour engine,
+// notifications) can observe via the 'flux-overlay-change' event.
+const FluxOverlays={
+  _stack:[],
+  _emit(){try{document.dispatchEvent(new CustomEvent('flux-overlay-change',{detail:{open:this.anyOpen(),top:this.top()?.id||null}}));}catch(_){}},
+  push(id,close){this._stack=this._stack.filter(o=>o.id!==id);this._stack.push({id,close});this._emit();},
+  pop(id){const n=this._stack.length;this._stack=this._stack.filter(o=>o.id!==id);if(this._stack.length!==n)this._emit();},
+  top(){return this._stack[this._stack.length-1]||null;},
+  isTop(id){return this.top()?.id===id;},
+  anyOpen(){return this._stack.length>0;},
+  closeTop(){const t=this.top();if(!t)return false;try{t.close();}catch(_){}this.pop(t.id);return true;},
+};
+window.FluxOverlays=FluxOverlays;
+
 // ══ KEYBOARD SHORTCUTS ══
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
@@ -10469,6 +10494,8 @@ function initKeyboardShortcuts(){
         openGlobalSearch();
         return;
       }
+      // ⌘K while the palette is open toggles it closed.
+      if(_cpOpen){closeCommandPalette();return;}
       try{
         const staffPalette=window.FluxStaffCommand?.enabled?.();
         if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&!staffPalette){
@@ -10497,6 +10524,9 @@ function initKeyboardShortcuts(){
     const tag=document.activeElement?.tagName;
     if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
     if(e.metaKey||e.ctrlKey||e.altKey)return;
+    // Any open overlay swallows single-key shortcuts entirely — a palette
+    // that lost focus must never let "n" spawn quick-add on top of it.
+    if(FluxOverlays.anyOpen())return;
     switch(e.key){
       case 'n': case 'N': case 't': case 'T':
         e.preventDefault();
@@ -10538,17 +10568,24 @@ function openCommandPalette(){
       <div class="cmd-palette-footer">⌘⇧K / Ctrl+Shift+K search · ↑↓ choose · Enter run · Esc close</div>
     </div>`;
   document.body.appendChild(overlay);
+  FluxOverlays.push('cmdPalette',closeCommandPalette);
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeCommandPalette();});
   const input=document.getElementById('cmdInput');
-  input.focus();
   input.addEventListener('input',renderCmdResults);
   input.addEventListener('keydown',handleCmdKey);
+  // Guaranteed focus: motion layers can steal focus during the open
+  // animation, after which stray keystrokes hit global shortcuts instead
+  // of the palette. Focus now and re-assert on the next frames.
+  input.focus();
+  requestAnimationFrame(()=>{if(document.activeElement!==input)input.focus();});
+  setTimeout(()=>{const i=document.getElementById('cmdInput');if(i&&document.activeElement!==i)i.focus();},120);
   renderCmdResults();
 }
 function closeCommandPalette(){
   const el=document.getElementById('cmdPalette');
   if(el)el.remove();
   _cpOpen=false;
+  FluxOverlays.pop('cmdPalette');
 }
 let _cmdIdx=0;
 function handleCmdKey(e){
@@ -10556,7 +10593,8 @@ function handleCmdKey(e){
   if(e.key==='ArrowDown'){e.preventDefault();_cmdIdx=Math.min(_cmdIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
   else if(e.key==='ArrowUp'){e.preventDefault();_cmdIdx=Math.max(_cmdIdx-1,0);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
   else if(e.key==='Enter'){e.preventDefault();const active=document.querySelector('.cmd-active');if(active)active.click();}
-  else if(e.key==='Escape'){closeCommandPalette();}
+  // Escape intentionally not handled here — it bubbles to the global
+  // handler, which closes only the top of the overlay stack.
 }
 function renderCmdResults(){
   const q=(document.getElementById('cmdInput')?.value||'').toLowerCase().trim();
@@ -10642,9 +10680,11 @@ function renderCmdResults(){
   }).slice(0,5);
   matchTasks.forEach(t=>cmds.push({icon:'✓',label:t.name,sub:t.date?'Due '+t.date:'',cat:'Tasks',action:()=>{nav('dashboard');closeCommandPalette();setTimeout(()=>{const el=document.querySelector('[data-task-id="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth'});},300);}}));
   
-  // Add task shortcut
+  // Add task shortcut — appended, never the default selection. When it was
+  // unshifted first, Enter after typing a navigation query ("notes")
+  // silently created a junk task instead of navigating.
   if(q&&!q.startsWith('/')){
-    cmds.unshift({icon:'＋',label:'Add task: "'+q+'"',cat:'Actions',action:()=>{
+    cmds.push({icon:'＋',label:'Add task: "'+q+'"',cat:'Actions',action:()=>{
       const t={id:Date.now(),name:q,date:'',subject:'',priority:'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now()};
       t.urgencyScore=calcUrgency(t);tasks.unshift(t);save('tasks',tasks);
       renderStats();renderTasks();renderCalendar();syncKey('tasks',tasks);
@@ -10787,6 +10827,18 @@ function renderCmdResults(){
   }
   if(window.FluxCmdPaletteV2?.refineCommands){
     try{cmds=FluxCmdPaletteV2.refineCommands(cmds,q);}catch(_){}
+  }
+  // Relevance tiers so the default (Enter) selection is what the user typed:
+  // exact label match > label prefix > everything else. Stable sort keeps the
+  // curated order within each tier.
+  if(q){
+    const tier=c=>{
+      const l=String(c.label||'').toLowerCase();
+      if(l===q)return 0;
+      if(l.startsWith(q))return 1;
+      return 2;
+    };
+    cmds.sort((a,b)=>tier(a)-tier(b));
   }
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
@@ -16053,6 +16105,7 @@ function openGlobalSearch(){
   const overlay=document.getElementById('searchOverlay');
   if(!overlay)return;
   overlay.classList.add('open');
+  FluxOverlays.push('searchOverlay',closeGlobalSearch);
   const input=document.getElementById('globalSearchInput');
   if(input){input.value='';input.focus();}
   document.getElementById('globalSearchResults').innerHTML='';
@@ -16060,6 +16113,7 @@ function openGlobalSearch(){
 function closeGlobalSearch(){
   const overlay=document.getElementById('searchOverlay');
   if(overlay)overlay.classList.remove('open');
+  FluxOverlays.pop('searchOverlay');
 }
 let _globalSearchDebounce=null;
 function handleGlobalSearch(q){
@@ -16118,6 +16172,7 @@ function openQuickAdd(){
   panel.setAttribute('role','dialog');
   panel.setAttribute('aria-modal','true');
   panel.setAttribute('aria-label','Quick add task');
+  FluxOverlays.push('quickAdd',closeQuickAdd);
   const input=document.getElementById('quickAddInput');
   if(input){input.value='';input.focus();}
   updateQuickAddPreview('');
@@ -16132,6 +16187,7 @@ function closeQuickAdd(){
     panel.removeAttribute('aria-label');
   }
   updateQuickAddPreview('');
+  FluxOverlays.pop('quickAdd');
 }
 function resolveQuickAddParse(raw){
   if(!raw||!String(raw).trim())return null;
@@ -16247,19 +16303,18 @@ function parseNaturalTask(raw){
   return{name,date,priority,type,subject};
 }
 
-// ── Global Escape (search, quick-add, palette, modals) + quick-add Enter ──
+// ── Global Escape (top of overlay stack only) + quick-add Enter ──
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    const pal=document.getElementById('cmdPalette');
-    const qa=document.getElementById('quickAddPanel');
-    const so=document.getElementById('searchOverlay');
-    const qOpen=qa?.classList.contains('open');
-    const sOpen=so?.classList.contains('open');
-    if(pal||qOpen||sOpen)e.preventDefault();
+    // Escape pops ONLY the top of the overlay stack — closing everything at
+    // once destroyed lower layers the user still wanted (palette over modal).
+    if(FluxOverlays.anyOpen()){
+      e.preventDefault();
+      FluxOverlays.closeTop();
+      return;
+    }
+    // Legacy fallback for surfaces not (yet) registered with the stack.
     closeDashAddTaskModal();
-    closeGlobalSearch();
-    closeQuickAdd();
-    closeCommandPalette();
     document.querySelectorAll('.modal-overlay').forEach(m=>{
       if(m.style.display!=='none'&&m.id&&m.id!=='dashAddTaskModal')closeModal(m.id);
     });
@@ -16267,6 +16322,10 @@ document.addEventListener('keydown',function(e){
     return;
   }
   if(e.key==='Enter'&&document.activeElement?.id==='quickAddInput'){
+    // Enter creates a task only while quick-add is the TOP overlay — stray
+    // keystrokes routed here while another surface is stacked above must
+    // never silently create junk tasks.
+    if(FluxOverlays.anyOpen()&&!FluxOverlays.isTop('quickAdd'))return;
     e.preventDefault();submitQuickAdd();
   }
 });
@@ -16341,16 +16400,23 @@ function openShortcutOverlay(){
   overlay.innerHTML=`<div class="shortcut-dialog" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
     <div class="shortcut-header">
       <span class="shortcut-title">Keyboard Shortcuts</span>
-      <button type="button" onclick="document.getElementById('shortcutOverlay').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
+      <button type="button" onclick="closeShortcutOverlay()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
     </div>
     <div class="shortcut-grid">
       ${groups.map(col).join('')}
     </div>
     <div style="font-size:.7rem;color:var(--muted);text-align:center;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">Press <kbd class="shortcut-kbd" style="font-size:.65rem">?</kbd> or <kbd class="shortcut-kbd" style="font-size:.65rem">Esc</kbd> to close</div>
   </div>`;
-  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeShortcutOverlay();});
   document.body.appendChild(overlay);
+  FluxOverlays.push('shortcutOverlay',closeShortcutOverlay);
 }
+function closeShortcutOverlay(){
+  const o=document.getElementById('shortcutOverlay');
+  if(o)o.remove();
+  FluxOverlays.pop('shortcutOverlay');
+}
+window.closeShortcutOverlay=closeShortcutOverlay;
 
 // ── Feature: Inline date picker on task card ──
 function openInlineDatePicker(taskId,el){
