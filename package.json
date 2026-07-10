@@ -5,6 +5,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "build:web": "node scripts/build-web-bundles.mjs",
     "check:bundles": "node scripts/check-bundles-fresh.mjs",
+    "check:contrast": "node scripts/contrast-audit.mjs",
     "test:flags": "node scripts/test-flag-integrity.mjs",
     "test:unit": "node --test test/unit/*.test.mjs",
     "test:e2e": "playwright test",

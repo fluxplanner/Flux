@@ -38,11 +38,13 @@
 }
 .fluxw-card .fluxw-sub{
   font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
-  color:rgba(220,228,250,.5);font-family:'JetBrains Mono',monospace;
+  /* Theme tokens, not hardcoded light-blue alpha — the old values were
+     near-invisible on light themes (B3: Gratitude / Important Dates). */
+  color:var(--muted);font-family:'JetBrains Mono',monospace;
   margin-left:auto;
 }
 .fluxw-empty{
-  font-size:.78rem;color:rgba(220,228,250,.42);line-height:1.5;
+  font-size:.78rem;color:var(--muted2);line-height:1.5;
   padding:14px 0 4px;text-align:center;
   font-family:'Plus Jakarta Sans',system-ui,sans-serif;
 }

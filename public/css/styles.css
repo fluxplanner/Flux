@@ -10,6 +10,10 @@
   /* Elevated-surface background — ALWAYS fully opaque (tour tooltips, popovers
      above text). Themes may retint it but must never add alpha. */
   --flux-elev-bg:#121826;
+  /* Logo wordmark (B3): near-white on dark themes; the light block overrides
+     to ink so the "Flux" gradient start and "Planner" sub never wash out. */
+  --flux-wordmark:#e8f4fc;
+  --flux-wordmark-sub:#c5d4e8;
   --border:rgba(255,255,255,.065); --border2:rgba(255,255,255,.1); --border3:rgba(255,255,255,.15);
   --accent:#00C2FF; --accent-rgb:0,194,255; --accent2:#4ddbff; --accent-glow:rgba(0,194,255,.28);
   /* Glass tint follows accent hue — overridden by updateLogoColor() for custom accents */
@@ -1506,6 +1510,8 @@ body[data-theme="light"]{
   --card3:rgba(243,246,252,.94);
   --card-solid:#ffffff;
   --flux-elev-bg:#ffffff;
+  --flux-wordmark:#1f2328;
+  --flux-wordmark-sub:#57606a;
   --border:rgba(0,0,0,.07);
   --border2:rgba(0,0,0,.1);
   --border3:rgba(0,0,0,.14);

@@ -432,6 +432,22 @@ E2E: B2 tests in `e2e/mobile-more-sheet.spec.ts` (fab hidden + sheet item; pill 
 
 ---
 
+## 0ah. B3 — light-theme contrast pass (bug fix, no flag; CI-gated)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Sidebar logo | any | Switch to Cloud (light) | "Flux" wordmark + "Planner" sub dark and legible (`--flux-wordmark*` tokens) |
+| Gratitude card | `student` | Mood → Gratitude, light theme | "THREE SMALL WINS TODAY" + empty state readable (theme tokens, no hardcoded alpha) |
+| Important Dates | `student` | Dashboard, light theme | "None yet" readable |
+| Task meta chips | `student` | Task rows, all 8 themes | `--muted2` chips ≥ 4.5:1 on card |
+| Settings descriptions | any | Settings, all 8 themes | Secondary text ≥ 4.5:1 |
+| CI gate | dev | `npm run check:contrast` | 8 themes × 4 pairs AA; fails build otherwise (bundle-freshness workflow step) |
+| Theme retune | dev | rose/ocean/candy `--muted` | Brightened (`#9d5f6d`/`#4f7396`/`#8a5fad`) to ≥3:1 on card |
+
+Script: `scripts/contrast-audit.mjs` · Verified live: light theme wordmark computed `rgb(31,35,40)` on white.
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

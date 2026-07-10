@@ -66,6 +66,9 @@
 body[data-theme="light"]{
   --bg3:#e7ebf0;
   --card3:#eef1f4;
+  --flux-elev-bg:#ffffff;
+  --flux-wordmark:#1f2328;
+  --flux-wordmark-sub:#57606a;
   --accent2:#4552d9;
   --accent-hover:#4a56e2;
   --accent-glow:rgba(88,101,242,.20);

@@ -28,3 +28,6 @@ jobs:
 
       - name: Verify public/bundles is rebuilt from public/js + public/css
         run: node scripts/check-bundles-fresh.mjs
+
+      - name: Theme contrast gate (WCAG AA, B3)
+        run: node scripts/contrast-audit.mjs
