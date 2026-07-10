@@ -23,6 +23,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 
@@ -33,6 +34,16 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'web-bund
 const PURE = ['console.log', 'console.info', 'console.debug'];
 
 fs.mkdirSync(OUT, { recursive: true });
+
+/* B5.4: bundles ship under content-hashed names (flux-core.<sha1-8>.js).
+ * index.html references and the service worker's BUILD constant are rewritten
+ * here on every build — the manual "bump STATIC in service-worker.js" ritual
+ * is dead. Hashed names are immutable, so the SW can cache-first them. */
+const hash8 = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
+function hashedName(base, code) {
+  const i = base.lastIndexOf('.');
+  return `${base.slice(0, i)}.${hash8(code)}${base.slice(i)}`;
+}
 
 async function buildClassic(name, files) {
   const parts = files.map((rel) => {
@@ -46,9 +57,9 @@ async function buildClassic(name, files) {
     legalComments: 'none',
     // No `format` — keep top-level global scope untouched.
   });
-  const outFile = path.join(OUT, name);
-  fs.writeFileSync(outFile, res.code);
-  return { name, files: files.length, bytes: res.code.length };
+  const out = hashedName(name, res.code);
+  fs.writeFileSync(path.join(OUT, out), res.code);
+  return { name, out, files: files.length, bytes: res.code.length };
 }
 
 async function buildVendor(name, files) {
@@ -67,9 +78,9 @@ async function buildVendor(name, files) {
   });
   fs.unlinkSync(entryPath);
   const code = res.outputFiles[0].text;
-  const outFile = path.join(OUT, name);
-  fs.writeFileSync(outFile, code);
-  return { name, files: files.length, bytes: code.length };
+  const out = hashedName(name, code);
+  fs.writeFileSync(path.join(OUT, out), code);
+  return { name, out, files: files.length, bytes: code.length };
 }
 
 async function buildCss(name, files) {
@@ -87,9 +98,9 @@ async function buildCss(name, files) {
     minify: true,
     legalComments: 'none',
   });
-  const outFile = path.join(OUT, name);
-  fs.writeFileSync(outFile, res.code);
-  return { name, files: files.length, bytes: res.code.length };
+  const out = hashedName(name, res.code);
+  fs.writeFileSync(path.join(OUT, out), res.code);
+  return { name, out, files: files.length, bytes: res.code.length };
 }
 
 const results = [];
@@ -98,7 +109,44 @@ results.push(await buildClassic('flux-core.js', manifest.core));
 results.push(await buildClassic('flux-features.js', manifest.features));
 results.push(await buildCss('flux.css', manifest.css));
 
-for (const r of results) {
-  console.log(`  ${r.name.padEnd(20)} ${String(r.files).padStart(3)} files  ${(r.bytes / 1024).toFixed(0)} KB`);
+/* ── Post-build wiring (B5.4) ── */
+
+// 1. Prune stale bundle outputs (older hashes) so git status stays exact.
+const keep = new Set([...results.map((r) => r.out), 'precache-manifest.json']);
+for (const f of fs.readdirSync(OUT)) {
+  if (!keep.has(f) && /^flux(-\w+)?\.[0-9a-f]{8}\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f));
+  if (!keep.has(f) && /^flux(-\w+)?\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f)); // pre-hash era outputs
 }
-console.log('Bundles written to public/bundles/');
+
+// 2. Rewrite index.html bundle references to the hashed names.
+const INDEX = path.join(ROOT, 'index.html');
+let indexHtml = fs.readFileSync(INDEX, 'utf8');
+for (const r of results) {
+  // Bundle base names are plain [a-z-] (flux, flux-core, …) — no escaping needed.
+  const base = r.name.replace(/\.(js|css)$/, '');
+  const ext = r.name.endsWith('.css') ? 'css' : 'js';
+  const re = new RegExp(`public/bundles/${base}(\\.[0-9a-f]{8})?\\.${ext}`, 'g');
+  indexHtml = indexHtml.replace(re, `public/bundles/${r.out}`);
+}
+fs.writeFileSync(INDEX, indexHtml);
+
+// 3. Precache manifest + BUILD stamp in the service worker (auto-versioned —
+//    never bump STATIC by hand again).
+const build = hash8(results.map((r) => r.out).join('|'));
+fs.writeFileSync(
+  path.join(OUT, 'precache-manifest.json'),
+  JSON.stringify({ build, assets: results.map((r) => 'public/bundles/' + r.out) }, null, 2) + '\n',
+);
+const SW = path.join(ROOT, 'service-worker.js');
+let sw = fs.readFileSync(SW, 'utf8');
+const stamped = sw.replace(/const BUILD = '[^']*';/, `const BUILD = '${build}';`);
+if (stamped === sw && !sw.includes(`const BUILD = '${build}';`)) {
+  console.warn('  ! service-worker.js has no BUILD constant to stamp — SW versioning skipped');
+} else {
+  fs.writeFileSync(SW, stamped);
+}
+
+for (const r of results) {
+  console.log(`  ${r.out.padEnd(30)} ${String(r.files).padStart(3)} files  ${(r.bytes / 1024).toFixed(0)} KB`);
+}
+console.log(`Bundles written to public/bundles/ (build ${build})`);
