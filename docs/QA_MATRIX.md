@@ -363,6 +363,26 @@ E2E: `e2e/palette-keyboard.spec.ts` · Canonical owner: `FluxOverlays` (Area 19)
 
 ---
 
+## 0ad. P0 A4 — AI propose-then-confirm (`enable_ai_action_confirm` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | AI adds tasks via tools | Legacy behavior: executes immediately (unchanged) |
+| Subtask intent | `student` | "Break my lab report into subtasks" | Proposal card in chat; NO tasks created yet |
+| Apply | `student` | Tap Apply on card | Subtasks appear under the existing task; no top-level flood; no conflict banner |
+| Pacing | `student` | Inspect applied subtasks | Advisory dates spread across open days BEFORE parent due date; rest days skipped; nothing dumped on today |
+| Checkbox subset | `student` | Uncheck some rows → Apply | Only checked changes applied |
+| Cancel | `student` | Tap Cancel | "Cancelled — nothing changed"; planner untouched |
+| Undo group | `student` | Apply → "Undo AI changes" | Prior state restored exactly (tasks + created notes) |
+| Single creation | `student` | AI adds ONE task | Auto-applies + inline Undo chip |
+| Modify existing | `student` | AI updates/completes/deletes a task | Always proposed, never silent |
+| Model loop | `student` | After proposal | TOOL RESULTS says `queued: proposal`; model summarizes, doesn't re-call |
+| Mobile 390px | `student` | Proposal card in chat | Card, checkboxes, buttons fully tappable |
+
+Migration: `20260709100000_ai_action_confirm_flag.sql` (reversible) · E2E: `e2e/agent-loop.spec.ts` (A4 tests) · Note: `addSubtasks` tool is only advertised to the model while the flag is on
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
