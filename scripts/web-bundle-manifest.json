@@ -1,6 +1,7 @@
 {
   "vendor": [
     "public/js/flux-supabase-vendor.js",
+    "public/js/core/dom-walker.js",
     "public/js/flux-anime-catalog.js",
     "public/js/flux-animations.js",
     "public/js/flux-apple-motion.js",

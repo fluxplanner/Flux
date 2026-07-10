@@ -254,7 +254,9 @@
 
   function startObserver() {
     if (_observer || !window.MutationObserver) return;
-    _observer = new MutationObserver((mutations) => {
+    // B5.2: handler unchanged — but it rides the shared FluxDomWalker instead
+    // of a second document-wide characterData observer.
+    const handler = (mutations) => {
       if (_writing) return;                 // ignore our own writes
       if (/^en/i.test(_currentLocale)) return;
       if (!_dict) return;
@@ -283,7 +285,12 @@
           }
         });
       } finally { _writing = false; }
-    });
+    };
+    if (window.FluxDomWalker && FluxDomWalker.subscribe('i18n-dom', handler)) {
+      _observer = { disconnect: () => FluxDomWalker.unsubscribe('i18n-dom') };
+      return;
+    }
+    _observer = new MutationObserver(handler);
     _observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 

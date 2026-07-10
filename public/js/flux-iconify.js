@@ -290,13 +290,20 @@
 
   function start() {
     try { walk(document.body); } catch (e) {}
-    var mo = new MutationObserver(function (muts) {
+    // B5.2: same record loop, but riding the shared FluxDomWalker instead of
+    // a second document-wide characterData observer.
+    var handler = function (muts) {
       for (var i = 0; i < muts.length; i++) {
         var mu = muts[i];
         if (mu.type === 'characterData') { schedule(mu.target); continue; }
         for (var j = 0; j < mu.addedNodes.length; j++) schedule(mu.addedNodes[j]);
       }
-    });
+    };
+    if (window.FluxDomWalker && FluxDomWalker.subscribe('iconify', handler)) {
+      window.__fluxIconifyObserver = { disconnect: function () { FluxDomWalker.unsubscribe('iconify'); } };
+      return;
+    }
+    var mo = new MutationObserver(handler);
     mo.observe(document.body, { childList: true, subtree: true, characterData: true });
     window.__fluxIconifyObserver = mo;
   }

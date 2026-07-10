@@ -806,15 +806,23 @@ function tryBootWhenAppVisible() {
     boot();
     return;
   }
+  const onVisible = () => {
+    boot();
+    if (typeof window.initFluxAnimeApp === 'function') {
+      try {
+        window.initFluxAnimeApp();
+      } catch (_) {}
+    }
+  };
+  // B5.2: shared narrow #app watcher instead of a subtree-wide class observer.
+  if (window.FluxDomWalker?.onAppVisible) {
+    FluxDomWalker.onAppVisible(onVisible);
+    return;
+  }
   const obs = new MutationObserver(() => {
     if (document.getElementById('app')?.classList.contains('visible')) {
       obs.disconnect();
-      boot();
-      if (typeof window.initFluxAnimeApp === 'function') {
-        try {
-          window.initFluxAnimeApp();
-        } catch (_) {}
-      }
+      onVisible();
     }
   });
   obs.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class'] });
