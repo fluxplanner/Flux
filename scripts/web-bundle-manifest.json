@@ -203,7 +203,8 @@
     "public/js/flux-staff-messages.js",
     "public/js/flux-ai-providers.js",
     "public/js/flux-ai-providers-ui.js",
-    "public/js/flux-now-engine.js"
+    "public/js/flux-now-engine.js",
+    "public/js/flux-school-schedules.js"
   ],
   "css": [
     "public/css/styles.css",

@@ -136,6 +136,17 @@ Buckets are hashed (`guest:<sha256(ip|ua|fingerprint)>`, `user:<uid>`); rows TTL
 
 ---
 
+## 12. District Schedule Authority (`20260710100000_school_schedules.sql`, C2)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_school_bell_schedules` | Same-school members (any authenticated user whose `user_roles.school` matches) | Same-school `admin` role only (FOR ALL + WITH CHECK) |
+| `flux_school_calendar_days` | Same-school members | Same-school `admin` role only (FOR ALL + WITH CHECK) |
+
+Probes: student of school A must not read school B's rows; student INSERT/UPDATE must fail; teacher/counselor writes must fail (admin only); user with blank `user_roles.school` reads zero rows.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

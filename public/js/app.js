@@ -1518,7 +1518,13 @@ function loadRestDaysList(){
   return arr.filter(r=>r&&r.date&&/^\d{4}-\d{2}-\d{2}$/.test(r.date));
 }
 function saveRestDaysList(arr){save(REST_DAYS_KEY,arr);}
-function isBreak(d){return loadRestDaysList().some(r=>r.date===d);}
+function isBreak(d){
+  if(loadRestDaysList().some(r=>r.date===d))return true;
+  // C2: district-published closures behave exactly like rest days — every
+  // consumer (date spreading, calendar chips, AI pacing) skips them with
+  // zero data mutation; flag off ⇒ isClosed is never consulted.
+  try{return !!(window.FluxSchoolSchedules?.enabled?.()&&FluxSchoolSchedules.isClosed(d));}catch(_){return false;}
+}
 function restDayKind(d){const r=loadRestDaysList().find(x=>x.date===d);return r?r.kind:null;}
 function nextNonRestForward(ds){
   let d=new Date(ds+'T12:00:00');

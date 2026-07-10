@@ -131,6 +131,7 @@
       enable_claude_mcp: false, // Connect Flux to Claude (MCP) — opt-in connector, off by default
       enable_ai_action_confirm: false, // P0 A4: AI bulk/modifying tool calls become an Apply/Cancel proposal card + undo group
       enable_now_engine: false, // C1: bell-aware FluxNow strip + AI school-time context
+      enable_school_schedules: false, // C2: district bell variants + calendar closures (admin-published)
     };
   }
 

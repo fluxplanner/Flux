@@ -516,6 +516,24 @@ Migration: `20260710090000_now_engine_flag.sql` (reversible) · Doc: `docs/P30-N
 
 ---
 
+## 0am. C2 — District Schedule Authority (`enable_school_schedules` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Publish variant | `admin` | Admin Ops → Schedule authority → "2-hr delay" + periods | Variant row saved; visible to school members |
+| Calendar painter | `admin` | Pick date → assign variant/closed → Publish | `flux_school_calendar_days` row; members' planners reflect it |
+| Broadcast snow day | `admin` | Pick date → Broadcast snow day | Closure row + calm broadcast via emergency pipeline |
+| Closure = rest day | `student` | Closed day published | `isBreak()` true; date spreading/calendar/AI skip it; NO mutation of the student's rest days |
+| Reflow proposal | `student` | Closure lands on a day with due tasks | Toast proposal → tap moves tasks to next open day → undo snackbar restores |
+| FluxNow | any | Closure today (both flags on) | Strip: "Snow day — no school today." (holiday state) |
+| Role gate | `student`/`teacher` | Admin card / writes | Card absent; RLS rejects writes (admin only) |
+| Cross-school | any | Member of school A | Sees zero rows from school B (RLS probe) |
+| Flag off | any | Cache present | Completely inert — no rest-day effect, no card, no fetches |
+
+Migration: `20260710100000_school_schedules.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §12 · Doc: `docs/P31-SCHOOL-SCHEDULES.md` · E2E: `e2e/school-schedules.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
