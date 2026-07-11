@@ -647,6 +647,26 @@ Migration: `20260711120000_study_rooms_v2.sql` (reversible) · RLS: `docs/RLS_AU
 
 ---
 
+## 0at. C9 — Seasons & streak cosmetics (`enable_seasons` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Finish a focus session | No XP store touched; no card in Settings |
+| Earn | `student` | Focus session (flag on) | +10 sparks; streak starts/continues |
+| Daily caps | `student` | 5 sessions in a day | Only 3 count; shutdown ritual counts once |
+| Quiet hours | `student` | Sessions yesterday, none in DND | +10 bonus once next day |
+| Rest freeze | `student` | Sick day midweek, then return | Streak CONTINUES (never punish rest) |
+| Weekend | `student` | Fri → Mon | Streak continues |
+| Missed day | `student` | Skip a school day, no rest logged | Streak resets to 1 (no shaming copy) |
+| Unlock | `student` | Cross 25 sparks | ONE coalesced toast; cosmetic appears in Settings |
+| Apply | `student` | Tap unlocked accent | `--accent` updates + persists via existing accent storage |
+| Locked | `student` | Attempt locked id | Rejected; dashed chip shows threshold |
+| No grades | — | Any surface | Zero grade/GPA linkage anywhere (unit-scanned) |
+
+Migration: `20260711130000_seasons_flag.sql` (reversible) · Doc: `docs/P43-SEASONS.md` · Unit: `test/unit/seasons.test.mjs` · E2E: `e2e/seasons.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

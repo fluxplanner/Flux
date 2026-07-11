@@ -34,6 +34,7 @@
     cognitiveV2Last: 'flux_cognitive_v2_last_v1',
     schoolSchedCache: 'flux_school_sched_cache_v1', // C2: district calendar/variant cache
     gradeGps: 'flux_grade_gps_v1', // C4: per-class grade history + category weights
+    seasons: 'flux_seasons_v1', // C9: healthy-habit XP, streak, cosmetic unlocks
     featureFlagsCacheMs: 5 * 60 * 1000,
   };
 

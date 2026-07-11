@@ -39,6 +39,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    season_cosmetic_unlocked: {
+      persist: true,
+      category: 'student',
+      description: 'C9: a seasonal cosmetic unlocked via healthy habits (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     study_room_template_started: {
       persist: true,
       category: 'student',
