@@ -136,6 +136,7 @@
       enable_grade_gps: false, // C4: per-class grade trajectory + weights + protect-my-A plan
       enable_accommodation_cards: false, // C5: counselor-managed accommodations, aggregate chips for teachers
       enable_family_digest: false, // C6: weekly guardian digest (wins first), student-controlled categories
+      enable_web_push: false, // C7: due-soon Web Push reminders (server-enforced quiet hours)
     };
   }
 

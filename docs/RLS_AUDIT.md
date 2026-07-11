@@ -184,6 +184,16 @@ The `family-digest` edge function gates on CRON_SECRET/service-role, checks the 
 
 ---
 
+## 16. Web Push (`20260711110000_web_push.sql`, C7)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `push_subscriptions` | Owner only | Owner only (FOR ALL + WITH CHECK); sender runs service-role |
+
+The `notify-push` function gates on CRON_SECRET/service-role, honors the flag-registry kill switch, enforces quiet hours (`settings.quiet` + DND window) and a hard 21:00–07:00 overnight suppression server-side, and prunes 404/410 endpoints. Probes: user A cannot read/delete user B's subscriptions; anon INSERT fails; unauthenticated POST to notify-push returns 401.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

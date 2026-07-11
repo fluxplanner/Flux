@@ -7,7 +7,7 @@
  *   - hashed bundles            → cache-first (content-hashed = immutable)
  *   - other same-origin assets  → stale-while-revalidate
  */
-const BUILD = '27683880';
+const BUILD = 'a9c59a51';
 const STATIC = 'flux-static-' + BUILD;
 /** Directory of this script (e.g. /Fluxplanner/ or /) — works on GitHub Pages and local dev */
 const APP_BASE = self.location.pathname.replace(/\/[^/]+$/, '/');
@@ -134,4 +134,33 @@ self.addEventListener('fetch', e => {
       .catch(() => cached || caches.match(INDEX_HTML));
     return cached || refresh;
   })());
+});
+
+/* ── C7: Web Push (flag enable_web_push) ──
+ * These fire only for users who opted in from Settings → Alerts (the flag
+ * gates subscription creation; quiet hours + panic mode are enforced
+ * server-side in the notify-push function before anything is sent). */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) {}
+  e.waitUntil(self.registration.showNotification(d.title || 'Flux Planner', {
+    body: d.body || '',
+    tag: d.tag || 'flux-due-soon',
+    icon: APP_ORIGIN + APP_BASE + 'icons/icon-192.png',
+    badge: APP_ORIGIN + APP_BASE + 'icons/icon-192.png',
+    data: { url: d.url || (APP_ORIGIN + APP_BASE) },
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || (APP_ORIGIN + APP_BASE);
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.startsWith(APP_ORIGIN + APP_BASE) && 'focus' in c) return c.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });

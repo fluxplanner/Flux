@@ -39,6 +39,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    web_push_opt_in: {
+      persist: true,
+      category: 'student',
+      description: 'C7: user enabled push reminders on a device (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     family_digest_prefs_changed: {
       persist: true,
       category: 'student',

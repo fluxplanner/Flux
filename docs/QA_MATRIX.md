@@ -609,6 +609,25 @@ Migration: `20260711100000_family_digest.sql` (reversible) · RLS: `docs/RLS_AUD
 
 ---
 
+## 0ar. C7 — Web push (`enable_web_push` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Settings | No reminders card; notify-push self-skips |
+| Opt in | any | Settings → toggle on | Permission prompt → subscription row; "Reminders on" |
+| Opt out | any | Toggle off | Unsubscribed AND row deleted |
+| Denied permission | any | Block the prompt | Toggle reverts; human error message, no throw |
+| No VAPID key | any | Deploy without keys | "not configured" message; sender skips (`no_vapid_keys`) |
+| Delivery | any | Task due tomorrow, app closed | ONE calm notification; click focuses/opens the app |
+| Quiet hours | any | During DND window with `quiet` on | Nothing sends (server-enforced) |
+| Overnight | any | 21:00–07:00 | Nothing sends regardless of settings |
+| Dead endpoint | — | Expired subscription | 404/410 pruned from the table |
+| Chromebook | any | Installed PWA, 4GB device | Cold start < 2s (record trace numbers) |
+
+Migration: `20260711110000_web_push.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §16 · Doc: `docs/P41-WEB-PUSH.md` · E2E: `e2e/web-push.spec.ts` · Function: `supabase/functions/notify-push`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |
