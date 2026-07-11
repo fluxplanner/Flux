@@ -590,6 +590,25 @@ Migration: `20260711090000_accommodation_cards.sql` (reversible) · RLS: `docs/R
 
 ---
 
+## 0aq. C6 — Family digest (`enable_family_digest` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Family sharing | No digest controls; cron self-skips (`flag_off`) |
+| Controls | `student` | Flag on, ACTIVE link | Digest block: opt-in (default OFF), language en/es/fr, Wins + Upcoming checkboxes |
+| Pending link | `student` | Link not yet claimed | No digest controls (active links only) |
+| Save | `student` | Toggle opt-in → change language | "Saved" toast; `flux_parent_links` row updated; `family_digest_prefs_changed` telemetry |
+| Parent tamper | `parent` | UPDATE digest prefs | RLS rejects (student-owned) |
+| Cron | — | Weekly run, opted-in link | One `flux_family_digests` row per link+week; wins FIRST, then upcoming; guardian's language |
+| Grades | — | Any payload | Never contains grades/scores at any setting |
+| Categories | `student` | Uncheck everything | Cron skips the link entirely (nothing shared) |
+| Transparency | `student` | Read own `flux_family_digests` | Sees exact shared payloads, week by week |
+| No email key | — | RESEND_API_KEY unset | Digest recorded `status='rendered'`, no send, no error |
+
+Migration: `20260711100000_family_digest.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §15 · Doc: `docs/P40-FAMILY-DIGEST.md` · E2E: `e2e/family-digest.spec.ts` · Function: `supabase/functions/family-digest`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

@@ -173,6 +173,17 @@ Probes: teacher direct `select` on the table returns zero rows; chips RPC with a
 
 ---
 
+## 15. Family Digest (`20260711100000_family_digest.sql`, C6)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_parent_links` (+digest columns) | unchanged (P7-PARENT: student own rows; parent active link) | Student owns all digest prefs (existing `flux_parent_links_student_all`); parents cannot change them |
+| `flux_family_digests` | Student (own digests — transparency); guardian of the ACTIVE link | Service role only (weekly cron); no authenticated write policies |
+
+The `family-digest` edge function gates on CRON_SECRET/service-role, checks the flag registry as a kill switch, processes only `digest_opt_in = true` links, and never includes grades in any payload. Probes: parent cannot UPDATE digest prefs; revoked-link guardian reads zero digests; student sees exactly the payload rows generated about them; anon/authenticated INSERT into `flux_family_digests` fails.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

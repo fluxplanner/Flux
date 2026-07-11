@@ -39,6 +39,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    family_digest_prefs_changed: {
+      persist: true,
+      category: 'student',
+      description: 'C6: student changed family-digest sharing preferences (no payload — the link row is the record)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     accommodation_details_opened: {
       persist: true,
       category: 'educator',

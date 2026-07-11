@@ -75,6 +75,62 @@
     }
   }
 
+  /* ── C6 family digest (flag enable_family_digest) ──
+     Students own their flux_parent_links rows (RLS), so the digest prefs
+     read/write the columns directly — consent-first, default opt-in OFF,
+     categories wins+upcoming only. Grades are never a category. */
+  function digestEnabled() {
+    try {
+      return !!window.FluxFeatureFlags?.isEnabled('enable_family_digest', false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function loadDigestPrefs() {
+    const client = sb();
+    if (!client || !digestEnabled()) return new Map();
+    try {
+      const { data } = await client
+        .from('flux_parent_links')
+        .select('id, digest_opt_in, digest_language, digest_categories');
+      return new Map((data || []).map((r) => [r.id, r]));
+    } catch (_) {
+      return new Map();
+    }
+  }
+
+  async function saveDigestPrefs(linkId, prefs) {
+    const client = sb();
+    if (!client) return false;
+    const { error } = await client
+      .from('flux_parent_links')
+      .update({
+        digest_opt_in: !!prefs.optIn,
+        digest_language: ['en', 'es', 'fr'].includes(prefs.language) ? prefs.language : 'en',
+        digest_categories: (prefs.categories || []).filter((c) => ['wins', 'upcoming'].includes(c)),
+      })
+      .eq('id', linkId);
+    return !error;
+  }
+
+  function digestControlsHtml(inv, pref) {
+    if (!digestEnabled() || inv.status !== 'active') return '';
+    const p = pref || { digest_opt_in: false, digest_language: 'en', digest_categories: ['wins', 'upcoming'] };
+    const cats = Array.isArray(p.digest_categories) ? p.digest_categories : ['wins', 'upcoming'];
+    return `<div class="flux-parent-digest" data-digest-link="${esc(inv.link_id)}" style="margin:6px 0 2px;padding:8px 10px;background:var(--card2);border-radius:10px;font-size:.76rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" data-dg-opt ${p.digest_opt_in ? 'checked' : ''}> Weekly family digest</label>
+      <select data-dg-lang style="margin:0;padding:2px 6px;font-size:.74rem">
+        <option value="en" ${p.digest_language === 'en' ? 'selected' : ''}>English</option>
+        <option value="es" ${p.digest_language === 'es' ? 'selected' : ''}>Español</option>
+        <option value="fr" ${p.digest_language === 'fr' ? 'selected' : ''}>Français</option>
+      </select>
+      <label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" data-dg-cat="wins" ${cats.includes('wins') ? 'checked' : ''}> Wins</label>
+      <label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" data-dg-cat="upcoming" ${cats.includes('upcoming') ? 'checked' : ''}> Upcoming week</label>
+      <span style="color:var(--muted);font-size:.66rem">Never includes grades. You can stop this anytime.</span>
+    </div>`;
+  }
+
   async function loadStudentInvites() {
     const client = sb();
     if (!client) return [];
@@ -229,6 +285,7 @@
     }
     if (card) card.style.display = '';
     const invites = await loadStudentInvites();
+    const digestPrefs = await loadDigestPrefs();
     const tierOpts = TIERS.map(
       (t) => `<option value="${t.id}">${esc(t.title)}</option>`,
     ).join('');
@@ -247,7 +304,7 @@
                   : ''
               }
               <button type="button" class="btn sm ghost" data-revoke-student="${esc(inv.link_id)}">Revoke</button>
-            </div>`;
+            </div>${digestControlsHtml(inv, digestPrefs.get(inv.link_id))}`;
             })
             .join('');
 
@@ -285,6 +342,22 @@
         renderStudentSettings();
       });
     });
+
+    // C6: digest prefs save on any control change (student-owned rows).
+    host.querySelectorAll('.flux-parent-digest').forEach((box) => {
+      const save = async () => {
+        const ok = await saveDigestPrefs(box.getAttribute('data-digest-link'), {
+          optIn: box.querySelector('[data-dg-opt]')?.checked,
+          language: box.querySelector('[data-dg-lang]')?.value,
+          categories: [...box.querySelectorAll('[data-dg-cat]')]
+            .filter((c) => c.checked)
+            .map((c) => c.getAttribute('data-dg-cat')),
+        });
+        toast(ok ? 'Family digest settings saved' : 'Could not save digest settings', ok ? 'success' : 'error');
+        if (ok) try { window.FluxTelemetry?.track?.('family_digest_prefs_changed', {}); } catch (_) {}
+      };
+      box.querySelectorAll('input,select').forEach((el) => el.addEventListener('change', save));
+    });
   }
 
   async function updateNavVisibility() {
@@ -319,6 +392,9 @@
     createInvite,
     claimInvite,
     isParentRole,
+    // C6 digest surface (underscore: e2e probe + internal reuse)
+    _digestControlsHtml: digestControlsHtml,
+    saveDigestPrefs,
   };
 
   window.renderParentPortal = renderPortal;
