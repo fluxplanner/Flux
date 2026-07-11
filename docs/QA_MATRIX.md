@@ -571,6 +571,25 @@ Migration: `20260710120000_grade_gps_flag.sql` (reversible) · Doc: `docs/P38-GR
 
 ---
 
+## 0ap. C5 — Accommodation cards (`enable_accommodation_cards` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | All panels | No accommodation cards anywhere |
+| Counselor add | `counselor` | Workspace → Accommodations → save | Row saved (same school); consent defaults to private |
+| Teacher chips | `teacher` | Dashboard → Accommodations card | "2 students: extended time" per class — NO names, NO notes |
+| Wrong class | `teacher` | Chips RPC with a class code they don't own | `not_your_class` |
+| Detail (consented) | `teacher` | Tap chip, class has `staff_visible` rows | Names + notes for consented rows only + "audited" notice |
+| Detail (private) | `teacher` | Tap chip, no consented rows | "Ask their counselor" CTA — zero identity leak |
+| Audit | `student` | After teacher viewed details | Settings panel shows "Staff viewed your shared details N times" |
+| Transparency | `student` | Settings → What staff can see about me | Each row labeled "shared with my teachers" / "private — count only" |
+| Cross-school | `counselor` | School X counselor | Zero rows from school Y (RLS probe) |
+| Direct table | `teacher` | `select * from flux_student_accommodations` | Zero rows (no teacher policy) |
+
+Migration: `20260711090000_accommodation_cards.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §14 · Doc: `docs/P39-ACCOMMODATION-CARDS.md` · E2E: `e2e/accommodation-cards.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

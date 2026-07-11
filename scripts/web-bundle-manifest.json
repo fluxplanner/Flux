@@ -206,7 +206,8 @@
     "public/js/flux-now-engine.js",
     "public/js/flux-school-schedules.js",
     "public/js/flux-sub-plans.js",
-    "public/js/flux-grade-gps.js"
+    "public/js/flux-grade-gps.js",
+    "public/js/flux-accommodation-cards.js"
   ],
   "css": [
     "public/css/styles.css",

@@ -158,6 +158,21 @@ Probes: student of school A must not read school B's rows; student INSERT/UPDATE
 
 ---
 
+## 14. Accommodation Cards (`20260711090000_accommodation_cards.sql`, C5)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_student_accommodations` | Same-school `counselor` role; the student (own rows only). **No teacher policy** — teachers go through the RPCs. | Same-school `counselor` role only (FOR ALL + WITH CHECK) |
+| `flux_accommodation_audit` | The student (own trail); same-school counselors | Only inside the SECURITY DEFINER detail RPC |
+
+RPCs (SECURITY DEFINER, `authenticated` only):
+- `flux_teacher_accommodation_chips(class_code)` — rejects callers who don't own the active class; returns `[{kind, n}]` aggregates over the class roster — **no names, no notes**, private rows included in counts by design.
+- `flux_teacher_accommodation_details(class_code)` — same ownership check; returns name+kind+note ONLY for `consent_state='staff_visible'` rows; inserts one audit row per returned accommodation (student-readable).
+
+Probes: teacher direct `select` on the table returns zero rows; chips RPC with another teacher's class code returns `not_your_class`; details RPC never returns `consent_state='private'` rows; every details call with N consented rows adds N audit rows; student A cannot read student B's accommodations or audit trail; counselor of school X sees zero rows from school Y.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

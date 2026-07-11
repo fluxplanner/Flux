@@ -39,6 +39,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    accommodation_details_opened: {
+      persist: true,
+      category: 'educator',
+      description: 'C5: teacher opened the accommodation detail modal (no payload — the identifying record is the server-side audit row)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     sign_in: {
       persist: true,
       category: 'platform',
