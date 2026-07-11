@@ -551,6 +551,26 @@ Migration: `20260710110000_sub_plans.sql` (reversible) · RLS: `docs/RLS_AUDIT.m
 
 ---
 
+## 0ao. C4 — Grade GPS (`enable_grade_gps` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | School tab | No Grade GPS card, no snapshots recorded |
+| Card | `student` | Flag on → School tab | Per-class rows: grade %, level chip, weighted GPA, sparkline |
+| Weighted GPA | `student` | AP class at 92.4% | Shows `weighted GPA 4.7` (3.7 + 1.0 AP boost from A1's `level`) |
+| No grade yet | `student` | Class with no history | Shows `—`, never 0.0 GPA |
+| Record | `student` | Enter 94.5 → Record | History point added; sparkline updates |
+| Canvas snapshot | `student` | Canvas hub synced | One `current_score` point per class per day (max 120 kept) |
+| Weights editor | `student` | Weights → add rows → Save | Categories saved per class; count chip updates |
+| Syllabus scan | `student` | Weights → Scan syllabus photo | Extracted categories land in EDITABLE rows; Save confirms |
+| Protect my A | `student` | Quiz (15%) in 4 days → button | A4 proposal card in Flux AI: 2 study blocks dated BEFORE the quiz, med priority; nothing applied until Apply; undoable |
+| Rest days | `student` | Closure/rest day before the quiz | Study blocks skip it (isBreak-aware, incl. C2 closures) |
+| Mobile 390px | `student` | School tab | Rows wrap; buttons tappable; sparkline visible |
+
+Migration: `20260710120000_grade_gps_flag.sql` (reversible) · Doc: `docs/P38-GRADE-GPS.md` · Unit: `test/unit/grade-gps.test.mjs` · E2E: `e2e/grade-gps.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

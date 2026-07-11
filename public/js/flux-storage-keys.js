@@ -33,6 +33,7 @@
     momentumV2: 'flux_momentum_v2_v1',
     cognitiveV2Last: 'flux_cognitive_v2_last_v1',
     schoolSchedCache: 'flux_school_sched_cache_v1', // C2: district calendar/variant cache
+    gradeGps: 'flux_grade_gps_v1', // C4: per-class grade history + category weights
     featureFlagsCacheMs: 5 * 60 * 1000,
   };
 

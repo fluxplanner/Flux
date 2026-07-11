@@ -133,6 +133,7 @@
       enable_now_engine: false, // C1: bell-aware FluxNow strip + AI school-time context
       enable_school_schedules: false, // C2: district bell variants + calendar closures (admin-published)
       enable_sub_plans: false, // C3: printable sub plan + expiring read-only share code
+      enable_grade_gps: false, // C4: per-class grade trajectory + weights + protect-my-A plan
     };
   }
 

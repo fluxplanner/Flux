@@ -31,6 +31,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    grade_gps_plan_proposed: {
+      persist: true,
+      category: 'student',
+      description: 'C4: Protect-my-A study blocks proposed via the A4 card (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     sign_in: {
       persist: true,
       category: 'platform',

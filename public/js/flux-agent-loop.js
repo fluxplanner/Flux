@@ -256,6 +256,7 @@
     return writes.some((c) => ['updateTask', 'completeTask', 'deleteTask', 'addSubtasks'].includes(c.name));
   }
   let _lastApply = null;
+  let _proposeImpl = null; // set by wireOrchestrator (A4 card renderer)
   function beginUndoGroup() {
     _lastApply = { tasksJson: '', noteIds: [] };
     try { if (haveTasks()) _lastApply.tasksJson = JSON.stringify(tasks); } catch (e) {}
@@ -461,6 +462,16 @@
     }
 
 
+    // C4 (Grade GPS) and other surfaces reuse the exact A4 proposal-card +
+    // apply/undo machinery for programmatic bulk changes. Stored on a
+    // module slot — wireOrchestrator can run before the bottom export exists.
+    _proposeImpl = function (calls) {
+      const writes = (calls || []).filter((c) => c && MUTATING.has(c.name));
+      if (!writes.length) return false;
+      renderProposalCard(writes);
+      return true;
+    };
+
     const origAug = FO.augmentSystemPrompt;
     FO.augmentSystemPrompt = function (base, userText) {
       let extra = `
@@ -590,6 +601,7 @@ Your \`\`\`flux_tool\`\`\` blocks execute client-side immediately after your rep
     takeTurnResults,
     askFlux,
     undoLastAIChanges,
+    proposeChanges(calls) { return _proposeImpl ? _proposeImpl(calls) : false; },
     tools: TOOLS,
     registerTool(name, def, run) {
       if (!name || TOOLS[name] || typeof run !== 'function') return false;
