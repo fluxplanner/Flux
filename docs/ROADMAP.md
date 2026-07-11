@@ -409,6 +409,28 @@ This breaks the [Ultimate Master Cursor Prompt](./MASTER-PROMPT-INDEX.md) into *
 
 For new work beyond Phase 37, extend Phase 37 rows or add steps in `docs/ROADMAP.md`.
 
+## Phase 38 — District-ready hardening & standout features (2026-07)
+
+P0 fixes (A), UX/perf hardening (B), and ten flagged district differentiators (C) from the 2026-07-09 live review. One commit per step; every C feature has a reversible migration (where tables exist), QA rows, telemetry, an e2e happy path, and a stated rollback.
+
+| Step | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| 38.A1–A5 | `P0-FIXES` | Course identity, More-sheet dismissal, palette/quick-add keyboard, AI propose-then-confirm (`enable_ai_action_confirm`), ai-proxy auth | Done |
+| 38.B1–B6 | `HARDENING` | Notification queue, floating dock, light-theme contrast + CI audit, visual defects, Chromebook perf (fonts/walker/windowing/hashed-SW precache), keyboard+focus a11y | Done (B5.5 app.js split deferred) |
+| 38.C1 | `P30-NOW-ENGINE` | Bell-aware FluxNow strip + AI school-time context (`enable_now_engine`) | Done |
+| 38.C2 | `P31-SCHOOL-SCHEDULES` | District bell variants + calendar closures, reflow via rest-day engine (`enable_school_schedules`) | Done |
+| 38.C3 | `P32-SUB-PLANS` | Printable sub plans + 48h audited share codes (`enable_sub_plans`) | Done |
+| 38.C4 | `P38-GRADE-GPS` | Grade trajectory, syllabus weights, Protect-my-A via A4 card (`enable_grade_gps`) | Done |
+| 38.C5 | `P39-ACCOMMODATION-CARDS` | Consent-gated accommodations, aggregate teacher chips, audit (`enable_accommodation_cards`; supersedes P8.2 cheat-sheet) | Done |
+| 38.C6 | `P40-FAMILY-DIGEST` | Weekly guardian digest, student-controlled, i18n (`enable_family_digest`) | Done |
+| 38.C7 | `P41-WEB-PUSH` | Web Push due-soon reminders, server-enforced quiet hours (`enable_web_push`) | Done |
+| 38.C8 | `P42-STUDY-ROOMS-V2` | Class templates, teacher study hall, name guard, group-focus cosmetics (`enable_study_rooms_v2`) | Done |
+| 38.C9 | `P43-SEASONS` | Healthy-habit seasonal cosmetics, rest-day streak freeze (`enable_seasons`) | Done |
+| 38.C10 | `P44-ASK-TEACHER` | Task-linked teacher handoff + Lesson Hub triage queue (`enable_ask_teacher`) | Done |
+| 38.D | `PHASE-D` | e2e sweep, QA rows, RLS probes for all new tables, CSP verdict, docs | Done (see `docs/P45-DISTRICT-CLOSEOUT.md`) |
+
+**Phase 38 exit:** all ten C flags default OFF (enable per school via `flux_school_feature_flags`); rollback = disable flag, zero residue; deploy checklist (VAPID keys, weekly/hourly crons, migrations) in the P40/P41 docs.
+
 1. Read `docs/PHASE_7_CLOSEOUT.md` (or `docs/PHASE_1_CLOSEOUT.md` for stabilization checks).  
 2. Run `npm run test:e2e` before large UI changes.  
 3. Implement behind a feature flag unless the change is a pure fix.  

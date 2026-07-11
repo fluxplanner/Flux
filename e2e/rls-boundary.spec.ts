@@ -34,6 +34,16 @@ const HIGH_RISK_TABLES = [
   'teacher_student_notes',         // teacher notes on students
   'office_hour_bookings',          // bookings
   'counselor_appointments',        // bookings
+  // District C-phase tables (RLS_AUDIT §12–§17)
+  'flux_school_bell_schedules',    // C2 — members read, admin write
+  'flux_school_calendar_days',     // C2
+  'flux_sub_plans',                // C3 — owner-only; public path is the code RPC
+  'flux_sub_plan_views',           // C3 audit trail
+  'flux_student_accommodations',   // C5 — counselor write, student self-read; NO teacher policy
+  'flux_accommodation_audit',      // C5 audit trail
+  'flux_family_digests',           // C6 — student + active guardian read only
+  'push_subscriptions',            // C7 — owner-only device subscriptions
+  'flux_study_rooms',              // C8 — host-only registry
 ];
 
 type Creds = { email: string; password: string };

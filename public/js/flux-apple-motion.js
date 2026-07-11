@@ -486,6 +486,14 @@ function transitionPanels(applyDom, ctx = {}) {
   }
   try {
     const vt = document.startViewTransition(() => applyDom());
+    // A second nav can skip an in-flight transition; the skipped one's
+    // ready/updateCallbackDone promises reject ("Transition was skipped")
+    // and surface as pageerrors if nothing handles them. finished still
+    // drives runAfter either way.
+    if (vt) {
+      Promise.resolve(vt.ready).catch(() => {});
+      Promise.resolve(vt.updateCallbackDone).catch(() => {});
+    }
     Promise.resolve(vt?.finished).then(runAfter).catch(runAfter);
   } catch (_) {
     applyDom();

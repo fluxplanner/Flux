@@ -39,6 +39,10 @@ const seed = async (page: import('@playwright/test').Page, on: boolean) => {
     w.nav('school');
     w.FluxGradeGPS.renderCards();
   }, on);
+  // nav('school') also schedules a snapshot+re-render ~300ms later; let it
+  // settle so interactions don't race a DOM rebuild (typed input would be
+  // wiped between fill() and click()).
+  await page.waitForTimeout(600);
 };
 
 test.describe('Grade GPS', () => {
