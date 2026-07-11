@@ -628,6 +628,25 @@ Migration: `20260711110000_web_push.sql` (reversible) · RLS: `docs/RLS_AUDIT.md
 
 ---
 
+## 0as. C8 — Study Rooms v2 (`enable_study_rooms_v2` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | School / Lesson Hub | No v2 cards; cowork v1 byte-identical |
+| Templates | `student` | School → Study rooms → tap a class | Co-work room opens on the next open task for that class |
+| No task | `student` | Template with no open class task | Helpful toast, no dead room |
+| Name guard | `student` | Room label with profanity/leet/spacing evasion | Rejected with kind copy; clean labels pass |
+| Registry | `student` host | Room open | One `flux_study_rooms` row, 60s heartbeats, deactivated on leave |
+| Study hall | `teacher` | Lesson Hub | Live rooms for OWN classes: label + count + age only — no codes, no content |
+| Wrong class | `teacher` | RPC with a class they don't own | `not_your_class` |
+| Group focus | 2+ `student` | 25 min together | ONE cosmetic grant (`FluxSeasons.earn` or calm toast); never grades-based |
+| Privacy | any | Direct table select as non-host | Zero rows |
+| Mobile 390px | `student` | Template chips | Wrap cleanly, tappable |
+
+Migration: `20260711120000_study_rooms_v2.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §17 · Doc: `docs/P42-STUDY-ROOMS-V2.md` · E2E: `e2e/study-rooms-v2.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

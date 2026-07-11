@@ -194,6 +194,16 @@ The `notify-push` function gates on CRON_SECRET/service-role, honors the flag-re
 
 ---
 
+## 17. Study Rooms v2 (`20260711120000_study_rooms_v2.sql`, C8)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_study_rooms` | Host only (registry rows). **No general SELECT** — teachers use the RPC. Room CONTENT never touches the server (ephemeral channel broadcast). | Host only (FOR ALL + WITH CHECK) |
+
+`flux_teacher_study_hall(class_code)` — SECURITY DEFINER, `authenticated` only; rejects callers who don't own the active class; returns `[{label, participants, started_at}]` — **no room codes** (teachers monitor, they don't join) and no content; stale rows (>10 min without heartbeat) filtered. Probes: student cannot read another host's registry rows; RPC with another teacher's class code returns `not_your_class`; RPC response contains no `code` field.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

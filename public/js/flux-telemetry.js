@@ -39,6 +39,22 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    study_room_template_started: {
+      persist: true,
+      category: 'student',
+      description: 'C8: started a co-work room from a class template (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    study_room_group_focus: {
+      persist: true,
+      category: 'student',
+      description: 'C8: ≥2 students held 25 min of group focus in a room (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     web_push_opt_in: {
       persist: true,
       category: 'student',

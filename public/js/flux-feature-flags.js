@@ -137,6 +137,7 @@
       enable_accommodation_cards: false, // C5: counselor-managed accommodations, aggregate chips for teachers
       enable_family_digest: false, // C6: weekly guardian digest (wins first), student-controlled categories
       enable_web_push: false, // C7: due-soon Web Push reminders (server-enforced quiet hours)
+      enable_study_rooms_v2: false, // C8: class room templates, teacher study-hall counts, group-focus cosmetics
     };
   }
 
