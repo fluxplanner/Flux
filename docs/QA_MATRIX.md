@@ -667,6 +667,24 @@ Migration: `20260711130000_seasons_flag.sql` (reversible) · Doc: `docs/P43-SEAS
 
 ---
 
+## 0au. C10 — Ask-Your-Teacher (`enable_ask_teacher` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Edit a class-linked task | No "Ask my teacher" chip; `openForTask` inert |
+| Chip gate | `student` | Edit modal on a task whose class has a joined code | Chip renders; unlinked classes get none |
+| Composer | `student` | Tap chip | Card: task + class + due + editable "what I tried"; preview = exact message |
+| Send | `student` | Send (live teacher link) | Message lands in existing thread (participant-only RLS); `ask_teacher_sent` telemetry |
+| Rate limit | `student` | 4th ask in a day | Calm refusal ("ask fresh tomorrow, or catch them in class"); no modal |
+| No teacher link | `student` | Class without a joined code | Helpful toast pointing to the School tab join flow |
+| Triage queue | `teacher` | Lesson Hub after asks | "Student questions" card: name + task line only; Open messages CTA |
+| Privacy | `teacher` | Queue content | Only marker-prefixed messages the teacher already received — no new data surface |
+| Mobile 390px | `student` | Composer | Card fits, textarea usable, buttons tappable |
+
+Migration: `20260711140000_ask_teacher_flag.sql` (reversible) · Doc: `docs/P44-ASK-TEACHER.md` · E2E: `e2e/ask-teacher.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

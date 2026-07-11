@@ -35,6 +35,7 @@
     schoolSchedCache: 'flux_school_sched_cache_v1', // C2: district calendar/variant cache
     gradeGps: 'flux_grade_gps_v1', // C4: per-class grade history + category weights
     seasons: 'flux_seasons_v1', // C9: healthy-habit XP, streak, cosmetic unlocks
+    askTeacher: 'flux_ask_teacher_v1', // C10: per-day ask-my-teacher rate limit
     featureFlagsCacheMs: 5 * 60 * 1000,
   };
 

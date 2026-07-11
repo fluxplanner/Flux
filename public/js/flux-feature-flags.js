@@ -139,6 +139,7 @@
       enable_web_push: false, // C7: due-soon Web Push reminders (server-enforced quiet hours)
       enable_study_rooms_v2: false, // C8: class room templates, teacher study-hall counts, group-focus cosmetics
       enable_seasons: false, // C9: healthy-habit seasonal cosmetics (never grades-based)
+      enable_ask_teacher: false, // C10: task-linked ask-my-teacher handoff + Lesson Hub triage queue
     };
   }
 

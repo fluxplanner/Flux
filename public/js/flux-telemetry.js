@@ -39,6 +39,14 @@
         return { schema_version: SCHEMA_VERSION };
       },
     },
+    ask_teacher_sent: {
+      persist: true,
+      category: 'student',
+      description: 'C10: student sent an ask-my-teacher context card (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     season_cosmetic_unlocked: {
       persist: true,
       category: 'student',
