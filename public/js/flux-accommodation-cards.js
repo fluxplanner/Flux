@@ -270,6 +270,16 @@
       if (p === 'counselorWorkspace' || p === 'counselorDashboard') setTimeout(injectCounselorCard, 500);
       if (p === 'settings') setTimeout(injectStudentPanel, 500);
     });
+    // C5 supersedes P8.2's classroom_accommodations cheat-sheet (which shows
+    // full need_to_know text to roster teachers with no consent gate or
+    // audit). Districts must run ONE system — see P39 doc for the migration.
+    setTimeout(() => {
+      try {
+        if (enabled() && window.FluxFeatureFlags?.isEnabled('classroom_accommodations', false)) {
+          console.warn('[FluxAccommodations] Both enable_accommodation_cards (C5) and classroom_accommodations (P8.2 beta) are on — disable the P8.2 cheat-sheet; C5 is the consent-safe successor (docs/P39-ACCOMMODATION-CARDS.md).');
+        }
+      } catch (_) {}
+    }, 3000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

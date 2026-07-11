@@ -32,6 +32,19 @@ with a student transparency panel.
   flag seed; reversible (header). RLS audit: `docs/RLS_AUDIT.md` §14.
 - No localStorage keys.
 
+## Relationship to P8.2's cheat-sheet (`staff_student_accommodations`)
+
+P8.2 shipped a beta "accommodation cheat-sheet" (`classroom_accommodations`
+flag, `FluxClassroomTools`) where any roster-linked teacher reads the full
+`need_to_know` text — no consent gate, no audit, staff-authored. **C5
+supersedes it for district deployments.** Do not enable both flags (the C5
+module logs a console warning if you do). Migration path: counselors
+re-enter accommodations in C5, or run a one-time
+`INSERT INTO flux_student_accommodations (student_id, school, kind, note, consent_state, created_by)
+SELECT student_id, school, category, need_to_know, 'private', author_id
+FROM staff_student_accommodations WHERE active` — everything lands
+`private` so nothing becomes teacher-visible without fresh consent.
+
 ## Telemetry
 
 `accommodation_details_opened` (educator, persist, **no payload** — the
