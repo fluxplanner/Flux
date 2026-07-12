@@ -188,6 +188,21 @@
     requestAnimationFrame(step);
   }
 
+  /**
+   * Directional enter for a swapped-in panel (onboarding steps, view swaps).
+   * dir: 'fwd' | 'back'. Staggers common child chips/rows inside. No-op when
+   * motion is off — the panel just appears (its .active class already shows it).
+   */
+  function stepTransition(inEl, dir) {
+    if (!inEl || !active()) return;
+    inEl.style.setProperty('--ob-dir', dir === 'back' ? '-1' : '1');
+    inEl.classList.remove('flux-ob-enter');
+    void inEl.offsetWidth; // restart the animation on re-entry
+    const kids = inEl.querySelectorAll('.ob-chip, .ob-integration-card, .ob-card');
+    kids.forEach((k, i) => k.style.setProperty('--stagger-i', String(i)));
+    inEl.classList.add('flux-ob-enter');
+  }
+
   /** Fire count-up when the element first scrolls into view. */
   function countUpOnView(el) {
     if (!el || el.dataset.fluxCountWired) return;
@@ -224,13 +239,13 @@
 
   const API = {
     FLAG, active, borderBeam, shimmerText, breathingGlow, tiltCard, spotlight,
-    magnet, staggerList, countUp, countUpOnView, wire,
+    magnet, staggerList, countUp, countUpOnView, stepTransition, wire,
     // pure helpers (exported for tests)
     easeOutCubic, parseTarget, formatCount,
   };
   window.FluxMotion = API;
   // Extend the canonical animation owner when it's present (app context).
   if (window.FluxAnim) Object.assign(window.FluxAnim, {
-    borderBeam, shimmerText, breathingGlow, tiltCard, spotlight, magnet, staggerList, countUp,
+    borderBeam, shimmerText, breathingGlow, tiltCard, spotlight, magnet, staggerList, countUp, stepTransition,
   });
 })();

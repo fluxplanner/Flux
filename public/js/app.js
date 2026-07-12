@@ -9885,9 +9885,12 @@ function renderObProgress(){
   }).join('');
 }
 function showObStep(n){
+  // Direction is computed against the OUTGOING step (obCurrentStep still holds it).
+  const dir=n>=obCurrentStep?'fwd':'back';
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
   const s=document.getElementById('ob-step-'+n);if(s)s.classList.add('active');
   obCurrentStep=n;renderObProgress();
+  try{if(s&&window.FluxMotion?.stepTransition)FluxMotion.stepTransition(s,dir);}catch(_){}
   const redo=!!window._fluxOnboardingRedo;
   const gc=document.getElementById('obRedoGlobalCancel');
   const sb=document.getElementById('obRedoSaveBtn');

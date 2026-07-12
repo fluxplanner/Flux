@@ -78,6 +78,31 @@ test.describe('OriginKit motion primitives', () => {
     expect(text).toBe('57+');
   });
 
+  test('onboarding steps get a directional enter + chip stagger (M2)', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      const ob = document.getElementById('onboarding');
+      if (ob) { ob.style.display = 'flex'; ob.classList.add('active', 'visible'); }
+      if (typeof w.showObStep !== 'function') return { error: 'no showObStep' };
+      w.showObStep(1);
+      w.showObStep(2); // forward
+      const s2 = document.getElementById('ob-step-2');
+      const fwdDir = s2?.style.getPropertyValue('--ob-dir');
+      const fwdEnter = s2?.classList.contains('flux-ob-enter');
+      const chip = s2?.querySelector('.ob-chip') as HTMLElement | null;
+      const chipIdx = chip?.style.getPropertyValue('--stagger-i');
+      w.showObStep(1); // back
+      const s1 = document.getElementById('ob-step-1');
+      return { fwdDir, fwdEnter, chipIdx, backDir: s1?.style.getPropertyValue('--ob-dir') };
+    });
+    expect(r.error).toBeUndefined();
+    expect(r.fwdEnter).toBe(true);
+    expect(r.fwdDir).toBe('1');   // forward slides in from the right
+    expect(r.backDir).toBe('-1'); // back slides in from the left
+    if (r.chipIdx !== undefined && r.chipIdx !== '') expect(r.chipIdx).toBe('0');
+  });
+
   test('tiltCard wiring is idempotent (no double-bind)', async ({ page }) => {
     await gotoScenario(page, 'guest');
     const r = await page.evaluate(() => {

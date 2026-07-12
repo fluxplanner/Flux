@@ -70,8 +70,17 @@ Disable the flag (or set `data-flux-perf="on"` on `<html>`): all primitives
 go inert, classes stop animating (CSS belt), `data-flux-*` attributes are
 harmless no-ops. Drop the flag row via the migration rollback. No residue.
 
-## Next increments (planned, not built here)
+## M2 — Onboarding step transitions (done)
 
-M2 onboarding step transitions · M3 gamification unlock ceremonies
-(seasons/shutdown) · M4 educator-panel stagger + AI stream shimmer · M5
+`FluxMotion.stepTransition(inEl, dir)` gives the 6-step onboarding a
+directional slide+fade (forward from the right, back from the left) with a
+child-chip stagger, plus a pop on the newly-active progress dot. Wired in
+`showObStep` (direction computed against the outgoing step before
+`obCurrentStep` updates). Reduced-motion / perf / lowend safe; e2e covers
+the directional `--ob-dir` + stagger index.
+
+## Next increments (planned)
+
+M3 gamification unlock ceremonies (seasons/shutdown) · M4 educator-panel
+stagger + AI stream shimmer · M5 broad wire-everywhere sweep · (later)
 Lottie pipeline (`enable_lottie_delight`) for empty states + celebrations.

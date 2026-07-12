@@ -93,9 +93,35 @@
 }
 .flux-stagger.flux-stagger-in > * { opacity: 1; transform: none; }
 
+/* ── Step transition ── directional enter for swapped-in panels (onboarding). */
+.flux-ob-enter { animation: flux-ob-in .34s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes flux-ob-in {
+  from { opacity: 0; transform: translateX(calc(var(--ob-dir, 1) * 26px)); }
+  to { opacity: 1; transform: none; }
+}
+.flux-ob-enter .ob-chip,
+.flux-ob-enter .ob-card,
+.flux-ob-enter .ob-integration-card {
+  animation: flux-ob-chip-in .42s cubic-bezier(.2,.8,.2,1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 42ms + 80ms);
+}
+@keyframes flux-ob-chip-in {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Onboarding progress dots re-render per step; pop the newly-active one. */
+.ob-dot.active { animation: flux-dot-pop .42s cubic-bezier(.2,.8,.3,1.4) both; }
+@keyframes flux-dot-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
 /* Hard override: never animate against a stated reduced-motion preference,
    even if a class lingers from a mode switch. */
 @media (prefers-reduced-motion: reduce) {
+  .ob-dot.active { animation: none !important; }
+  .flux-ob-enter,
+  .flux-ob-enter .ob-chip,
+  .flux-ob-enter .ob-card,
+  .flux-ob-enter .ob-integration-card { animation: none !important; }
   .flux-beam.flux-beam-live::after,
   .flux-shimmer-text.flux-shimmer-live,
   .flux-breathe { animation: none !important; }
