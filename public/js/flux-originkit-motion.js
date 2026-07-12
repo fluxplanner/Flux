@@ -259,6 +259,16 @@
     adminDashboard: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
     adminOps: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
     ai: { spotlight: [], stagger: ['.flux-ai-proposal'] },
+    // M5 broad sweep — spotlight is hover-only (no perpetual rAF, zero cost
+    // until hover), so it's safe on data-adjacent student panels. Task list
+    // and calendar grid are intentionally NOT enhanced (busy data views).
+    settings: { spotlight: ['.card'], stagger: [] },
+    mood: { spotlight: ['.card'], stagger: [] },
+    goals: { spotlight: ['.card'], stagger: [] },
+    timer: { spotlight: ['.card'], stagger: [] },
+    toolbox: { spotlight: ['.card', '.st-tool', '.study-tool-card'], stagger: [] },
+    notes: { spotlight: ['.note-card'], stagger: ['#notesList'] },
+    profile: { spotlight: ['.card'], stagger: [] },
   };
   function autoEnhance(panelId) {
     if (!active()) return;

@@ -106,8 +106,27 @@ The live AI SSE bubble was deliberately left untouched (protected stream
 path); AI text treatment is the greeting shimmer (M1) + proposal-card
 stagger here.
 
-## M5 — Broad sweep (next)
+## M5 — Broad student-panel sweep (done)
 
-Extend the `ENHANCE` map + `data-flux-*` attributes to the student panels
-(dashboard, settings, toolbox, notes, calendar). (Later) Lottie pipeline
-(`enable_lottie_delight`) for empty states + season confetti packs.
+Extended the `ENHANCE` map to `settings`, `mood`, `goals`, `timer`,
+`toolbox`, `notes`, `profile` — hover-only spotlight on their cards (no
+perpetual rAF, zero cost until hover) plus `#notesList` stagger. The
+top-bar **New task** button gets `data-flux-magnet`. Deliberately **not**
+enhanced: the dashboard task list and calendar grid (busy data views —
+the audit's "no motion on task/calendar heavy views" guidance); e2e
+asserts they stay bare. Live: 43 settings cards + 5 mood cards spotlit,
+magnet CTA wired, zero console errors.
+
+## Coverage summary (M1–M5)
+
+Landing (count-up/tilt/spotlight/stagger/beam/magnet) · onboarding
+transitions · dashboard + AI greeting shimmer · seasons/shutdown
+ceremonies · educator dashboards + AI proposal cards · student panels
+(settings/mood/goals/timer/toolbox/notes/profile) + New-task magnet.
+All behind `enable_originkit_motion`, all reduced-motion/perf/lowend safe.
+
+## Later (not built)
+
+Lottie pipeline (`enable_lottie_delight`) for illustrated empty states +
+per-season confetti packs — needs an asset pipeline (Jitter exports) and a
+`lottie-web` loader; scoped separately.

@@ -155,6 +155,34 @@ test.describe('OriginKit motion primitives', () => {
     expect(r.enhancedUnderReduce).toBe(0);
   });
 
+  test('student panels get the broad spotlight sweep + magnet CTA (M5)', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    // top-bar New Task button auto-wires magnet
+    await expect
+      .poll(() => page.evaluate(() => !!document.querySelector('.topbar-new-task-btn.flux-magnet')))
+      .toBe(true);
+    await page.evaluate(() => (window as any).nav?.('settings'));
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('#settings .card.flux-spotlight').length), { timeout: 4000 })
+      .toBeGreaterThan(0);
+  });
+
+  test('busy data views (task list, calendar) are NOT auto-enhanced', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      // dashboard + calendar are absent from the ENHANCE map by design
+      w.FluxMotion.autoEnhance('dashboard');
+      w.FluxMotion.autoEnhance('calendar');
+      return {
+        taskListSpot: document.querySelectorAll('#taskList .flux-spotlight').length,
+        calSpot: document.querySelectorAll('#calendar .flux-spotlight').length,
+      };
+    });
+    expect(r.taskListSpot).toBe(0);
+    expect(r.calSpot).toBe(0);
+  });
+
   test('tiltCard wiring is idempotent (no double-bind)', async ({ page }) => {
     await gotoScenario(page, 'guest');
     const r = await page.evaluate(() => {
