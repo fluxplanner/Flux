@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.cc229d4b.css">
+<link rel="stylesheet" href="public/bundles/flux.b804eba5.css">
 </head>
 <body>
 <noscript>
@@ -1110,7 +1110,7 @@
 
       <header class="dash-v2-greet" id="dashHero">
         <div class="dash-hero-row">
-        <h1 class="dash-v2-greet-title" id="dashGreeting">Good evening</h1>
+        <h1 class="dash-v2-greet-title" id="dashGreeting" data-flux-shimmer>Good evening</h1>
         </div>
         <!-- MOBILE-ONLY date + A/B pill strip (below the greeting) -->
         <div class="dash-mob-date-row">
@@ -2099,7 +2099,7 @@
             <div id="aiMsgsWrap" class="ai-chat-area flux-ai-scroll">
               <div class="flux-ai-thread flux-ac-message-stack ai-thread-col">
                 <div class="flux-ai-greeting" id="fluxAiGreeting" aria-hidden="true">
-                  <h1 class="flux-ai-greeting__head">How can I help you today?</h1>
+                  <h1 class="flux-ai-greeting__head" data-flux-shimmer>How can I help you today?</h1>
                   <p class="flux-ai-greeting__sub">Ask anything — I can read your tasks, calendar, notes, and Canvas when it helps.</p>
                 </div>
                 <div class="ai-sugs" id="aiSugs"></div>
@@ -2768,7 +2768,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.d8d8fbd7.js"></script>
 <script defer src="public/bundles/flux-core.8e565520.js"></script>
-<script defer src="public/bundles/flux-features.a39c635a.js"></script>
+<script defer src="public/bundles/flux-features.45c82a41.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

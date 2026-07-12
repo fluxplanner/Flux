@@ -1,0 +1,107 @@
+/* OriginKit-ported motion primitives (flag enable_originkit_motion).
+   JS gates on reduced-motion/perf/lowend; these rules add a CSS belt so a
+   lingering class can never animate against a user's stated preference. */
+
+/* ── Border beam ── CTA / insight-card animated accent ring. */
+.flux-beam {
+  position: relative;
+  --beam-color: var(--accent, #6366f1);
+  --beam-dur: 3400ms;
+}
+.flux-beam::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--beam-a, 0deg),
+    transparent 0deg, var(--beam-color) 40deg, transparent 120deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: .35;
+  pointer-events: none;
+}
+@property --beam-a { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.flux-beam.flux-beam-live::after { opacity: 1; animation: flux-beam-spin var(--beam-dur) linear infinite; }
+@keyframes flux-beam-spin { to { --beam-a: 360deg; } }
+
+/* ── Shimmer text ── moving gradient sweep (AI stream / greeting). */
+.flux-shimmer-text.flux-shimmer-live {
+  background: linear-gradient(100deg,
+    currentColor 0%, currentColor 38%,
+    color-mix(in srgb, var(--accent, #8b5cf6) 90%, #fff) 50%,
+    currentColor 62%, currentColor 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: flux-shimmer-sweep 2.6s ease-in-out infinite;
+}
+@keyframes flux-shimmer-sweep { 0% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+
+/* ── Breathing glow ── calm, non-alarming pulse (timer / at-risk cell). */
+.flux-breathe { animation: flux-breathe 3.8s ease-in-out infinite; }
+@keyframes flux-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 99,102,241), .0); }
+  50% { box-shadow: 0 0 22px 2px rgba(var(--accent-rgb, 99,102,241), .28); }
+}
+
+/* ── Tilt card ── pointer-reactive 3D + glare. */
+.flux-tilt {
+  --tilt-x: 0deg; --tilt-y: 0deg; --glare-x: 50%; --glare-y: 50%;
+  transform: perspective(700px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1);
+  will-change: transform;
+}
+.flux-tilt.flux-tilt-active { transition: transform .06s linear; }
+.flux-tilt::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(200px circle at var(--glare-x) var(--glare-y),
+    rgba(255,255,255,.14), transparent 60%);
+  opacity: 0; transition: opacity .2s ease;
+}
+.flux-tilt.flux-tilt-active::before { opacity: 1; }
+
+/* ── Spotlight ── pointer-follow radial highlight on cards. */
+.flux-spotlight { position: relative; --spot-x: 50%; --spot-y: 50%; }
+.flux-spotlight::after {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(340px circle at var(--spot-x) var(--spot-y),
+    rgba(var(--accent-rgb, 99,102,241), .10), transparent 62%);
+  opacity: 0; transition: opacity .3s ease;
+}
+.flux-spotlight:hover::after { opacity: 1; }
+
+/* ── Magnet ── pointer-follow translate for buttons. */
+.flux-magnet {
+  --mag-x: 0px; --mag-y: 0px;
+  transform: translate(var(--mag-x), var(--mag-y));
+  transition: transform .18s cubic-bezier(.2,.8,.2,1);
+}
+
+/* ── Stagger list ── domino reveal on scroll-in. */
+.flux-stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.8,.2,1);
+  transition-delay: calc(var(--stagger-i, 0) * 55ms);
+}
+.flux-stagger.flux-stagger-in > * { opacity: 1; transform: none; }
+
+/* Hard override: never animate against a stated reduced-motion preference,
+   even if a class lingers from a mode switch. */
+@media (prefers-reduced-motion: reduce) {
+  .flux-beam.flux-beam-live::after,
+  .flux-shimmer-text.flux-shimmer-live,
+  .flux-breathe { animation: none !important; }
+  .flux-shimmer-text.flux-shimmer-live {
+    -webkit-text-fill-color: currentColor; color: inherit; background: none;
+  }
+  .flux-tilt, .flux-magnet { transform: none !important; transition: none !important; }
+  .flux-stagger > * { opacity: 1 !important; transform: none !important; transition: none !important; }
+}

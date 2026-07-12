@@ -202,13 +202,13 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
     <p class="hero-note rv">Works in the browser · installs as an app · syncs across devices</p>
 
     <div class="aud">
-      <a class="aud-card stu rv" href="index.html">
+      <a class="aud-card stu rv" href="index.html" data-flux-tilt="6" data-flux-spotlight>
         <div class="aud-ico"></div>
         <h3>I'm a student</h3>
         <p>Turn assignments, exams and chaos into a plan Flux keeps for you — then study smarter with an AI tutor that knows your courses.</p>
         <span class="aud-go">Plan my semester →</span>
       </a>
-      <a class="aud-card tea rv" href="index.html">
+      <a class="aud-card tea rv" href="index.html" data-flux-tilt="6" data-flux-spotlight>
         <div class="aud-ico"></div>
         <h3>I'm a teacher / staff</h3>
         <p>Lesson hub, gradebook, caseload tools and school ops — with a separate personal side so work stays at work.</p>
@@ -217,10 +217,10 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
     </div>
 
     <div class="stats rv" aria-label="Flux by the numbers">
-      <div class="stat"><b class="grad-txt">11</b><span>native study subjects</span></div>
-      <div class="stat"><b class="grad-txt">57+</b><span>built-in study tools</span></div>
-      <div class="stat"><b class="grad-txt">16</b><span>app integrations</span></div>
-      <div class="stat"><b class="grad-txt">4</b><span>decimal-precision GPA</span></div>
+      <div class="stat"><b class="grad-txt" data-flux-countup>11</b><span>native study subjects</span></div>
+      <div class="stat"><b class="grad-txt" data-flux-countup>57+</b><span>built-in study tools</span></div>
+      <div class="stat"><b class="grad-txt" data-flux-countup>16</b><span>app integrations</span></div>
+      <div class="stat"><b class="grad-txt" data-flux-countup>4</b><span>decimal-precision GPA</span></div>
     </div>
   </section>
 
@@ -229,15 +229,15 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
     <p class="eyebrow rv" style="color:var(--cy)">For students</p>
     <h2 class="rv">Stop managing school.<br>Start finishing it.</h2>
     <p class="lede rv">Everything a semester throws at you, absorbed into one system that plans, reminds, quizzes and tracks — so the only thing left to do is the work itself.</p>
-    <div class="cards">
-      <div class="card rv"><div class="ico">✦</div><h4>Flux AI tutor</h4><p>Ask anything in plain English. Flux explains it the way <em>you</em> learn, builds study plans, and quizzes you until it sticks.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Smart calendar</h4><p>Tasks, classes and exams on one timeline with two-way Google Calendar sync and conflict warnings before they bite.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>GPA to 4 decimals</h4><p>Weighted GPA, what-if scenarios and per-course breakdowns — know exactly what that next test is worth.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Vision import</h4><p>Snap a photo of a syllabus or schedule. Flux reads the dates and builds your tasks automatically.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Co-work rooms <span class="tag">LIVE</span></h4><p>Open a live room on any task — shared checklist and presence, so you and your friends actually study together.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Notes &amp; flashcards</h4><p>A knowledge base you can query with AI, plus spaced-repetition decks generated straight from your notes.</p></div>
-      <div class="card rv"><div class="ico">⏱</div><h4>Focus &amp; streaks</h4><p>Pomodoro timer, streak rings, habit heatmaps and energy-aware scheduling that respects how you actually work.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Mood &amp; balance</h4><p>Mood check-ins, journaling and time-poverty alerts — because grades aren't the only thing worth tracking.</p></div>
+    <div class="cards" data-flux-stagger=".card">
+      <div class="card rv" data-flux-spotlight><div class="ico">✦</div><h4>Flux AI tutor</h4><p>Ask anything in plain English. Flux explains it the way <em>you</em> learn, builds study plans, and quizzes you until it sticks.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Smart calendar</h4><p>Tasks, classes and exams on one timeline with two-way Google Calendar sync and conflict warnings before they bite.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>GPA to 4 decimals</h4><p>Weighted GPA, what-if scenarios and per-course breakdowns — know exactly what that next test is worth.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Vision import</h4><p>Snap a photo of a syllabus or schedule. Flux reads the dates and builds your tasks automatically.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Co-work rooms <span class="tag">LIVE</span></h4><p>Open a live room on any task — shared checklist and presence, so you and your friends actually study together.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Notes &amp; flashcards</h4><p>A knowledge base you can query with AI, plus spaced-repetition decks generated straight from your notes.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico">⏱</div><h4>Focus &amp; streaks</h4><p>Pomodoro timer, streak rings, habit heatmaps and energy-aware scheduling that respects how you actually work.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Mood &amp; balance</h4><p>Mood check-ins, journaling and time-poverty alerts — because grades aren't the only thing worth tracking.</p></div>
     </div>
 
     <h2 class="rv" style="margin-top:80px;font-size:clamp(1.4rem,2.6vw,1.9rem)">A real study lab for <span class="grad-txt">11 subjects</span> — not just links</h2>
@@ -284,10 +284,10 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
     <h2 class="rv">An AI that does things,<br>not just says things.</h2>
     <p class="lede rv">Flux AI is wired into the whole planner with 38 real tools. Tell it what you need — it plans your day, files your tasks, builds flashcards and opens the right study tool for the job.</p>
     <div class="cards">
-      <div class="card rv"><div class="ico"></div><h4>"Plan my day"</h4><p>Flux weighs deadlines, difficulty and your energy, then lays out a realistic schedule — not a fantasy one.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Quick capture</h4><p>"Essay Friday, quiz Tuesday, dentist at 4" — one message becomes three perfectly-filed items.</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Learns how you learn</h4><p>Flux adapts its explanations to you and tightens them every time you say "I didn't get that."</p></div>
-      <div class="card rv"><div class="ico"></div><h4>Opens real tools</h4><p>Ask about stoichiometry and Flux can open the equation balancer with your problem already loaded.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>"Plan my day"</h4><p>Flux weighs deadlines, difficulty and your energy, then lays out a realistic schedule — not a fantasy one.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Quick capture</h4><p>"Essay Friday, quiz Tuesday, dentist at 4" — one message becomes three perfectly-filed items.</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Learns how you learn</h4><p>Flux adapts its explanations to you and tightens them every time you say "I didn't get that."</p></div>
+      <div class="card rv" data-flux-spotlight><div class="ico"></div><h4>Opens real tools</h4><p>Ask about stoichiometry and Flux can open the equation balancer with your problem already loaded.</p></div>
     </div>
     <div class="intg rv">
       <span>Google Calendar</span><span>Gmail</span><span>Drive</span><span>Classroom</span><span>Notion</span><span>Obsidian</span><span>Canvas</span><span>Outlook</span><span>Apple Calendar</span><span>Todoist</span><span>Spotify</span><span>iCal feeds</span><span>+ 4 more</span>
@@ -312,7 +312,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
       <h2>Try it before you even sign up.</h2>
       <p>Jump in as a guest, poke every tool, and add an account only when it earns it.</p>
       <div class="hero-ctas">
-        <a class="btn btn-pri" href="index.html">Open Flux Planner →</a>
+        <a class="btn btn-pri" href="index.html" data-flux-beam data-flux-magnet>Open Flux Planner →</a>
       </div>
       <p class="hero-note" style="margin-top:16px">Free to start · your data stays yours · install as a PWA from the browser menu</p>
     </section>
@@ -340,6 +340,8 @@ footer{border-top:1px solid var(--line);padding:36px 0 46px;color:var(--dim);fon
   els.forEach(function(e){io.observe(e)});
 })();
 </script>
+<link rel="stylesheet" href="public/css/flux-originkit-motion.css">
 <script defer src="public/js/flux-iconify.js"></script>
+<script defer src="public/js/flux-originkit-motion.js"></script>
 </body>
 </html>
