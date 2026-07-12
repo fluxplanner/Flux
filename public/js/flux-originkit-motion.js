@@ -246,6 +246,53 @@
     } catch (_) { run(); }
   }
 
+  /* ── per-panel auto-enhance (no markup edits needed) ──
+     Async-rendered panels (educator dashboards, AI results) carry no
+     data-flux-* attributes; this applies spotlight/stagger by real class
+     name when the panel becomes active. Idempotent (each primitive marks
+     its element wired), so the double-pass below is safe. */
+  const ENHANCE = {
+    teacherDashboard: { spotlight: ['.card', '.td-card'], stagger: ['.lh-list'] },
+    lessonHub: { spotlight: ['.lh-class-card', '.card'], stagger: ['.lh-list'] },
+    counselorDashboard: { spotlight: ['.card', '.cc-card'], stagger: [] },
+    counselorWorkspace: { spotlight: ['.card'], stagger: [] },
+    adminDashboard: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
+    adminOps: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
+    ai: { spotlight: [], stagger: ['.flux-ai-proposal'] },
+  };
+  function autoEnhance(panelId) {
+    if (!active()) return;
+    const cfg = ENHANCE[panelId];
+    const panel = document.getElementById(panelId);
+    if (!cfg || !panel) return;
+    (cfg.spotlight || []).forEach((sel) => panel.querySelectorAll(sel).forEach(spotlight));
+    (cfg.stagger || []).forEach((sel) => panel.querySelectorAll(sel).forEach((c) => staggerList(c)));
+  }
+
+  /**
+   * Educator/AI panels render async (Supabase round-trips) at unpredictable
+   * times. Enhance now, then watch the panel for ~2.5s and re-enhance as
+   * content lands (primitives are idempotent), then disconnect.
+   */
+  function autoEnhanceWatched(panelId) {
+    if (!active() || !ENHANCE[panelId]) return;
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    autoEnhance(panelId);
+    let t = null;
+    let obs;
+    try {
+      obs = new MutationObserver(() => {
+        if (t) return;
+        t = setTimeout(() => { t = null; autoEnhance(panelId); }, 80);
+      });
+      obs.observe(panel, { childList: true, subtree: true });
+      setTimeout(() => { try { obs.disconnect(); } catch (_) {} }, 2500);
+    } catch (_) {
+      setTimeout(() => autoEnhance(panelId), 700);
+    }
+  }
+
   /* ── auto-wiring from data attributes (idempotent) ── */
 
   function wire(root) {
@@ -261,14 +308,19 @@
 
   function boot() {
     wire(document);
-    document.addEventListener('flux-nav', () => setTimeout(() => wire(document), 60));
+    document.addEventListener('flux-nav', (e) => {
+      const panelId = e && e.detail && e.detail.panel;
+      setTimeout(() => wire(document), 60);
+      // Educator/AI panels render async — watch + re-enhance as content lands.
+      if (panelId) autoEnhanceWatched(panelId);
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
   const API = {
     FLAG, active, borderBeam, shimmerText, breathingGlow, tiltCard, spotlight,
-    magnet, staggerList, countUp, countUpOnView, stepTransition, celebrate, wire,
+    magnet, staggerList, countUp, countUpOnView, stepTransition, celebrate, autoEnhance, wire,
     // pure helpers (exported for tests)
     easeOutCubic, parseTarget, formatCount,
   };

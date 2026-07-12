@@ -90,7 +90,24 @@ reduced-motion), and the `shutdown_completed` emit site. Motion-gated;
 reduced-motion renders nothing. E2E: mount+self-remove, pointer-through,
 reduced-motion no-op.
 
-## Next increments (planned)
+## M4 — Educator panels + AI cards (done)
 
-M4 educator-panel stagger + AI stream shimmer · M5 broad wire-everywhere
-sweep · (later) Lottie pipeline (`enable_lottie_delight`) for empty states.
+`autoEnhance(panelId)` applies spotlight/stagger to async-rendered panels
+**by real class name** — no markup edits to 30+ renderers. A per-panel
+`ENHANCE` map lists selectors (`.lh-class-card`, `.ao-stat`,
+`.flux-ai-proposal`, …). Because educator dashboards render after Supabase
+round-trips at unpredictable times, `autoEnhanceWatched` runs it once then
+attaches a MutationObserver for ~2.5s, re-enhancing as content lands (all
+primitives idempotent), then disconnects. Fired from the `flux-nav` handler.
+E2E: lesson-hub class cards spotlit + list staggered after async render;
+no-op for unlisted panels and under reduced-motion.
+
+The live AI SSE bubble was deliberately left untouched (protected stream
+path); AI text treatment is the greeting shimmer (M1) + proposal-card
+stagger here.
+
+## M5 — Broad sweep (next)
+
+Extend the `ENHANCE` map + `data-flux-*` attributes to the student panels
+(dashboard, settings, toolbox, notes, calendar). (Later) Lottie pipeline
+(`enable_lottie_delight`) for empty states + season confetti packs.

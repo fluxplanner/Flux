@@ -128,6 +128,33 @@ test.describe('OriginKit motion primitives', () => {
     expect(count).toBe(0);
   });
 
+  test('educator panels auto-enhance async cards (M4)', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await page.evaluate(() => (window as any).nav?.('lessonHub'));
+    // The watcher re-enhances as the async render lands.
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('#lessonHub .lh-class-card.flux-spotlight').length), { timeout: 4000 })
+      .toBeGreaterThan(0);
+    const staggered = await page.evaluate(() => document.querySelectorAll('#lessonHub .lh-list.flux-stagger').length);
+    expect(staggered).toBeGreaterThan(0);
+  });
+
+  test('autoEnhance is a no-op for unlisted panels and under reduced-motion', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      // unlisted panel id → nothing happens, no throw
+      w.FluxMotion.autoEnhance('definitely-not-a-panel');
+      // reduced-motion → inert even for a listed panel
+      document.documentElement.classList.add('flux-reduce-motion');
+      w.FluxMotion.autoEnhance('lessonHub');
+      const enhancedUnderReduce = document.querySelectorAll('#lessonHub .flux-spotlight').length;
+      document.documentElement.classList.remove('flux-reduce-motion');
+      return { enhancedUnderReduce };
+    });
+    expect(r.enhancedUnderReduce).toBe(0);
+  });
+
   test('tiltCard wiring is idempotent (no double-bind)', async ({ page }) => {
     await gotoScenario(page, 'guest');
     const r = await page.evaluate(() => {
