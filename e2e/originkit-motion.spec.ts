@@ -103,6 +103,31 @@ test.describe('OriginKit motion primitives', () => {
     if (r.chipIdx !== undefined && r.chipIdx !== '') expect(r.chipIdx).toBe('0');
   });
 
+  test('celebrate() mounts a ceremony overlay and self-removes (M3)', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    const mounted = await page.evaluate(() => {
+      (window as any).FluxMotion.celebrate('unlock', { label: 'Unlocked: Tidepool accent', hold: 200 });
+      const ov = document.querySelector('.flux-celebrate.flux-celebrate-unlock');
+      return { present: !!ov, label: ov?.querySelector('.flux-celebrate-label')?.textContent, pointerThrough: ov ? getComputedStyle(ov).pointerEvents : null };
+    });
+    expect(mounted.present).toBe(true);
+    expect(mounted.label).toBe('Unlocked: Tidepool accent');
+    expect(mounted.pointerThrough).toBe('none'); // never blocks the UI
+    // self-removes after hold + fade
+    await expect.poll(() => page.evaluate(() => document.querySelectorAll('.flux-celebrate').length)).toBe(0);
+  });
+
+  test('celebrate is inert under reduced-motion (no overlay)', async ({ page }) => {
+    await gotoScenario(page, 'guest');
+    const count = await page.evaluate(() => {
+      document.documentElement.classList.add('flux-reduce-motion');
+      (window as any).FluxMotion.celebrate('unlock', { label: 'x' });
+      document.documentElement.classList.remove('flux-reduce-motion');
+      return document.querySelectorAll('.flux-celebrate').length;
+    });
+    expect(count).toBe(0);
+  });
+
   test('tiltCard wiring is idempotent (no double-bind)', async ({ page }) => {
     await gotoScenario(page, 'guest');
     const r = await page.evaluate(() => {

@@ -79,8 +79,18 @@ child-chip stagger, plus a pop on the newly-active progress dot. Wired in
 `obCurrentStep` updates). Reduced-motion / perf / lowend safe; e2e covers
 the directional `--ob-dir` + stagger index.
 
+## M3 — Gamification unlock ceremonies (done)
+
+`FluxMotion.celebrate(kind, opts)` — the audit's single celebration owner.
+`'unlock'` = accent wash + confetti + label card (seasons cosmetic unlock);
+`'calm'` = soft wash, no confetti (shutdown ritual complete); `'win'` =
+confetti only. Full-viewport, pointer-through, self-removing (~1.15s + fade).
+Wired: `FluxSeasons.earn` newUnlocks branch (keeps the actionable toast for
+reduced-motion), and the `shutdown_completed` emit site. Motion-gated;
+reduced-motion renders nothing. E2E: mount+self-remove, pointer-through,
+reduced-motion no-op.
+
 ## Next increments (planned)
 
-M3 gamification unlock ceremonies (seasons/shutdown) · M4 educator-panel
-stagger + AI stream shimmer · M5 broad wire-everywhere sweep · (later)
-Lottie pipeline (`enable_lottie_delight`) for empty states + celebrations.
+M4 educator-panel stagger + AI stream shimmer · M5 broad wire-everywhere
+sweep · (later) Lottie pipeline (`enable_lottie_delight`) for empty states.

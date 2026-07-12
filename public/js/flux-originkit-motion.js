@@ -189,6 +189,35 @@
   }
 
   /**
+   * Centralized celebration moment (audit's single celebrate() owner).
+   * kind: 'unlock' (accent wash + confetti + label card) | 'calm' (soft wash,
+   * no confetti — shutdown ritual) | 'win' (confetti only). Full-viewport,
+   * pointer-through, self-removing. No-op when motion is off.
+   */
+  function celebrate(kind, opts) {
+    if (!active()) return;
+    const o = opts || {};
+    const k = kind || 'win';
+    const ov = document.createElement('div');
+    ov.className = 'flux-celebrate flux-celebrate-' + k;
+    if (o.label) {
+      const t = document.createElement('div');
+      t.className = 'flux-celebrate-label';
+      t.textContent = o.label;
+      ov.appendChild(t);
+    }
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => ov.classList.add('flux-celebrate-in'));
+    if (k !== 'calm' && typeof window.spawnConfetti === 'function') {
+      try { window.spawnConfetti(); } catch (_) {}
+    }
+    setTimeout(() => {
+      ov.classList.remove('flux-celebrate-in');
+      setTimeout(() => ov.remove(), 420);
+    }, o.hold || 1150);
+  }
+
+  /**
    * Directional enter for a swapped-in panel (onboarding steps, view swaps).
    * dir: 'fwd' | 'back'. Staggers common child chips/rows inside. No-op when
    * motion is off — the panel just appears (its .active class already shows it).
@@ -239,13 +268,13 @@
 
   const API = {
     FLAG, active, borderBeam, shimmerText, breathingGlow, tiltCard, spotlight,
-    magnet, staggerList, countUp, countUpOnView, stepTransition, wire,
+    magnet, staggerList, countUp, countUpOnView, stepTransition, celebrate, wire,
     // pure helpers (exported for tests)
     easeOutCubic, parseTarget, formatCount,
   };
   window.FluxMotion = API;
   // Extend the canonical animation owner when it's present (app context).
   if (window.FluxAnim) Object.assign(window.FluxAnim, {
-    borderBeam, shimmerText, breathingGlow, tiltCard, spotlight, magnet, staggerList, countUp, stepTransition,
+    borderBeam, shimmerText, breathingGlow, tiltCard, spotlight, magnet, staggerList, countUp, stepTransition, celebrate,
   });
 })();

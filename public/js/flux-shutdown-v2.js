@@ -158,6 +158,9 @@
         FluxBus.emit('shutdown_completed', { date: stats.ts, energy });
       }
     } catch (_) {}
+    // M3: a calm "session complete" moment (soft accent wash, no confetti —
+    // shutdown is a wind-down, not a party). Motion-gated; reduced-motion off.
+    try { window.FluxMotion?.celebrate?.('calm', { label: 'Shutdown complete — rest well.' }); } catch (_) {}
   }
 
   function renderTomorrowList(items) {

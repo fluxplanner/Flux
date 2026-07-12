@@ -138,6 +138,9 @@
     lsSave(KEY, r.state);
     if (r.newUnlocks.length) {
       const names = r.newUnlocks.map((c) => c.label).join(', ');
+      // M3 ceremony: accent wash + confetti + label (motion-gated); the toast
+      // still carries the actionable "Settings → Appearance" for reduced-motion.
+      try { window.FluxMotion?.celebrate?.('unlock', { label: `Unlocked: ${names}` }); } catch (_) {}
       showToast?.(`Unlocked: ${names} — Settings → Appearance. 🎁`, 'success', 7000, { kind: 'achievement' });
       try { window.FluxTelemetry?.track?.('season_cosmetic_unlocked', {}); } catch (_) {}
     }
