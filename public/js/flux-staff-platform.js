@@ -1609,18 +1609,39 @@
     renderStaffProfileStatsGrid(stats);
   }
 
+  // Panel-level notice so the feed never renders as a blank page.
+  function schoolFeedNotice(el, message) {
+    el.innerHTML = `
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School feed — announcements, resources, and events</p></div>
+      <div style="max-width:720px;margin:0 auto;padding:16px">
+        <div style="text-align:center;padding:28px;color:var(--muted2)"><div style="font-size:.85rem">${esc(message)}</div></div>
+      </div>`;
+  }
+
   async function renderSchoolFeed() {
     const el = document.getElementById('schoolFeedPanel');
-    if (!el || !currentUser) return;
+    if (!el) return;
+    if (!currentUser) {
+      schoolFeedNotice(el, 'Sign in to see posts from your school.');
+      return;
+    }
     const client = sb();
-    if (!client) return;
-    const { data: posts } = await client
+    if (!client) {
+      schoolFeedNotice(el, "Can't reach your school right now — check your connection and try again.");
+      return;
+    }
+    const { data: posts, error: feedError } = await client
       .from('school_feed')
       .select('*')
       .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(25);
+    // Don't let a failed request masquerade as "no posts yet".
+    if (feedError) {
+      schoolFeedNotice(el, "Couldn't load the school feed — check your connection and try again.");
+      return;
+    }
     const canPost = typeof FluxRole !== 'undefined' && FluxRole.isEducator && FluxRole.isEducator();
     const postTypeIcon = { announcement: '📢', resource: '📁', event: '📅', alert: '🚨' };
     el.innerHTML = `

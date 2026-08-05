@@ -3659,7 +3659,7 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 <button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
 <button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
 <button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Classes</span></button>
-<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
+<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
 <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
 <button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Students</span></button>
@@ -19979,13 +19979,50 @@ function buildEduModal(id,innerHTML){
   const modal=document.createElement('div');
   modal.id=id;
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.setAttribute('role','dialog');
+  modal.setAttribute('aria-modal','true');
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:26px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-float,0 16px 48px rgba(0,0,0,.5))">
       ${innerHTML}
     </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
-  modal.querySelectorAll('.edu-modal-close').forEach(b=>b.addEventListener('click',()=>modal.remove()));
+  // Name the dialog from its own heading so screen readers announce it.
+  const heading=modal.querySelector('h1,h2,h3,h4');
+  if(heading){
+    if(!heading.id)heading.id=id+'_title';
+    modal.setAttribute('aria-labelledby',heading.id);
+  }
+  // Restore focus to whatever opened the modal once it closes.
+  const opener=document.activeElement;
+  const close=()=>{
+    document.removeEventListener('keydown',onKeydown,true);
+    if(window.FluxOverlays)FluxOverlays.pop(id);
+    modal.remove();
+    try{if(opener&&document.contains(opener))opener.focus();}catch(_){}
+  };
+  const focusables=()=>[...modal.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetWidth||el.offsetHeight||el.getClientRects().length);
+  function onKeydown(e){
+    if(e.key!=='Tab')return;
+    if(!document.contains(modal))return;
+    // Only the topmost overlay owns the keyboard.
+    if(window.FluxOverlays&&!FluxOverlays.isTop(id))return;
+    // Trap Tab inside the dialog.
+    const f=focusables();
+    if(!f.length){e.preventDefault();return;}
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&(document.activeElement===first||!modal.contains(document.activeElement))){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+  document.addEventListener('keydown',onKeydown,true);
+  // Escape is deliberately NOT handled here: the global handler pops only the
+  // top of the overlay stack, so a palette opened over this modal closes first.
+  if(window.FluxOverlays)FluxOverlays.push(id,close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  modal.querySelectorAll('.edu-modal-close').forEach(b=>b.addEventListener('click',close));
+  // Move focus into the dialog (first field, else the dialog itself).
+  const target=focusables()[0];
+  if(target)try{target.focus();}catch(_){}
+  else{modal.setAttribute('tabindex','-1');try{modal.focus();}catch(_){}}
   return modal;
 }
 

@@ -137,7 +137,10 @@
       showToast('Pick a class on the overview, then open the Grades tab.', 'info');
   }
   function openTeacherMessages() {
-    if (typeof showToast === 'function') showToast('Use Messages on the teacher overview.', 'info');
+    if (typeof nav === 'function') nav('staffMessages');
+    try {
+      if (typeof renderStaffMessages === 'function') renderStaffMessages();
+    } catch (_) {}
   }
   function openJoinRequestsManager() {
     if (typeof openTeacherPendingJoinsModal === 'function') openTeacherPendingJoinsModal();
@@ -149,7 +152,10 @@
     } catch (_) {}
   }
   function openCounselorStudentList() {
-    if (typeof showToast === 'function') showToast('Student caseload list — use Messages and appointments for now.', 'info');
+    if (typeof nav === 'function') nav('counselorDashboard');
+    try {
+      renderCounselorDashboard();
+    } catch (_) {}
   }
   function openAnnouncementsManager() {
     openPostAnnouncementModal('admin');
