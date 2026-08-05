@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.9a0f4f92.css">
+<link rel="stylesheet" href="public/bundles/flux.b787871e.css">
 </head>
 <body>
 <noscript>
@@ -603,12 +603,12 @@
 
         <!-- STUDENT questionnaire -->
         <div data-ob-role="student">
-          <span class="ob-label">Main focus this term</span>
+          <span class="ob-label">Main focus this term <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
           <div class="ob-chip-wrap" id="obFocusChips">
-            <div class="ob-chip active" onclick="selectObChip(this,'obFocus','deadlines')">Stay on deadlines</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obFocus','study')">Study habits</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obFocus','balance')">Less stress &amp; balance</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obFocus','college')">College &amp; ECs</div>
+            <div class="ob-chip active" role="checkbox" aria-checked="true" onclick="toggleObChipMulti(this,'obFocus','deadlines')">Stay on deadlines</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obFocus','study')">Study habits</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obFocus','balance')">Less stress &amp; balance</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obFocus','college')">College &amp; ECs</div>
           </div>
           <span class="ob-label" style="margin-top:16px">What you’ll use first <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
           <div class="ob-chip-wrap" id="obFeatureChips">
@@ -623,12 +623,12 @@
 
         <!-- STAFF questionnaire -->
         <div data-ob-role="staff" style="display:none">
-          <span class="ob-label">Main focus this term</span>
+          <span class="ob-label">Main focus this term <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
           <div class="ob-chip-wrap" id="obStaffFocusChips">
-            <div class="ob-chip active" onclick="selectObChip(this,'obStaffFocus','planning')">Lesson &amp; meeting planning</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','grading')">Grading &amp; feedback</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','students')">Student follow-ups</div>
-            <div class="ob-chip" onclick="selectObChip(this,'obStaffFocus','balance')">Workload &amp; balance</div>
+            <div class="ob-chip active" role="checkbox" aria-checked="true" onclick="toggleObChipMulti(this,'obStaffFocus','planning')">Lesson &amp; meeting planning</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obStaffFocus','grading')">Grading &amp; feedback</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obStaffFocus','students')">Student follow-ups</div>
+            <div class="ob-chip" role="checkbox" aria-checked="false" onclick="toggleObChipMulti(this,'obStaffFocus','balance')">Workload &amp; balance</div>
           </div>
           <span class="ob-label" style="margin-top:16px">What you’ll use first <span style="color:var(--muted);font-weight:400">(pick any)</span></span>
           <div class="ob-chip-wrap" id="obStaffFeatureChips">
@@ -2773,8 +2773,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.d8d8fbd7.js"></script>
-<script defer src="public/bundles/flux-core.73c1683b.js"></script>
-<script defer src="public/bundles/flux-features.6c8dc181.js"></script>
+<script defer src="public/bundles/flux-core.15d0ceac.js"></script>
+<script defer src="public/bundles/flux-features.3947731f.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

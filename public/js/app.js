@@ -9720,10 +9720,13 @@ let obCurrentStep=1;
 const OB_TOTAL=6;
 let obSelectedGrade='10';
 let obSelectedTrack='';
-let obSelectedFocus='deadlines';
+// Term focus is multi-select: students/staff routinely have more than one.
+// Stored as an array; profile.termFocus keeps the first pick as a string so
+// anything still reading the old single-value shape keeps working.
+let obSelectedFocus=['deadlines'];
 let obSelectedRole='student'; // 'student' | 'staff' — picked once during onboarding
 let obSelectedStaffRole='teacher'; // 'teacher' | 'counselor' | 'admin' — staff sub-role
-let obSelectedStaffFocus='planning';
+let obSelectedStaffFocus=['planning'];
 let obSelectedStaffReminders='gentle';
 let obScheduleImgData=null;
 let obExtractedClasses=[];
@@ -9759,11 +9762,19 @@ function prefillOnboardingFromProfile(){
   obSelectedGrade=g;
   const gradeChip=Array.from(document.querySelectorAll('#obGradeChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${g}'`));
   if(gradeChip)selectObChip(gradeChip,'obGrade',g);
-  let focus=(p.termFocus&&String(p.termFocus).trim())?String(p.termFocus).trim():'deadlines';
-  let focusChip=Array.from(document.querySelectorAll('#obFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${focus}'`));
-  if(!focusChip){focus='deadlines';focusChip=Array.from(document.querySelectorAll('#obFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes("'deadlines'"));}
-  obSelectedFocus=focus;
-  if(focusChip)selectObChip(focusChip,'obFocus',focus);
+  // termFocuses is the current shape; fall back to the legacy single termFocus.
+  let focuses=Array.isArray(p.termFocuses)&&p.termFocuses.length
+    ? p.termFocuses.map(f=>String(f).trim()).filter(Boolean)
+    : [(p.termFocus&&String(p.termFocus).trim())?String(p.termFocus).trim():'deadlines'];
+  const focusChips=Array.from(document.querySelectorAll('#obFocusChips .ob-chip'));
+  focusChips.forEach(c=>c.classList.remove('active'));
+  let matched=focuses.filter(f=>focusChips.some(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`)));
+  if(!matched.length)matched=['deadlines'];
+  matched.forEach(f=>{
+    const chip=focusChips.find(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`));
+    if(chip)chip.classList.add('active');
+  });
+  obSelectedFocus=matched;
   document.querySelectorAll('#obFeatureChips .ob-chip').forEach(c=>c.classList.remove('active'));
   const feats=Array.isArray(p.plannerFeatures)&&p.plannerFeatures.length?p.plannerFeatures:['tasks'];
   document.querySelectorAll('#obFeatureChips .ob-chip').forEach(el=>{
@@ -9771,10 +9782,17 @@ function prefillOnboardingFromProfile(){
   });
   // Staff questionnaire prefill (step 2 + step 5 staff variants)
   if(obSelectedRole==='staff'){
-    const sf=(p.termFocus&&['planning','grading','students','balance'].includes(String(p.termFocus)))?p.termFocus:'planning';
-    obSelectedStaffFocus=sf;
-    const sfChip=Array.from(document.querySelectorAll('#obStaffFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${sf}'`));
-    if(sfChip)selectObChip(sfChip,'obStaffFocus',sf);
+    const STAFF_FOCUS=['planning','grading','students','balance'];
+    let sfs=(Array.isArray(p.termFocuses)&&p.termFocuses.length?p.termFocuses:[p.termFocus])
+      .map(f=>String(f||'').trim()).filter(f=>STAFF_FOCUS.includes(f));
+    if(!sfs.length)sfs=['planning'];
+    const sfChips=Array.from(document.querySelectorAll('#obStaffFocusChips .ob-chip'));
+    sfChips.forEach(c=>c.classList.remove('active'));
+    sfs.forEach(f=>{
+      const chip=sfChips.find(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`));
+      if(chip)chip.classList.add('active');
+    });
+    obSelectedStaffFocus=sfs;
     document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(c=>c.classList.remove('active'));
     const sfeats=Array.isArray(p.staffFeatures)&&p.staffFeatures.length?p.staffFeatures:['tasks'];
     document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(el=>{
@@ -9860,7 +9878,8 @@ function cancelQuestionnaireRedo(){
 
 function finishQuestionnaireRedoOnly(){
   const p=load('profile',{});
-  p.termFocus=obSelectedFocus||'deadlines';
+  p.termFocuses=(obSelectedFocus&&obSelectedFocus.length)?obSelectedFocus.slice():['deadlines'];
+  p.termFocus=p.termFocuses[0];
   const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
   p.plannerFeatures=feats.length?feats:['tasks'];
   save('profile',p);
@@ -9925,6 +9944,23 @@ function updateObAiProfileCard(){
     if(cnt)cnt.textContent=n+' picked';
   }catch(_){}
 }
+/* Multi-select sibling of selectObChip, for "main focus this term". Keeps at
+   least one chip active so the questionnaire can never be answered with
+   nothing — clicking the last active chip is a no-op rather than a dead end. */
+function toggleObChipMulti(el,key,val){
+  const wrap=el.closest('.ob-chip-wrap,.ob-chips');
+  const isActive=el.classList.contains('active');
+  if(isActive&&wrap&&wrap.querySelectorAll('.ob-chip.active').length<=1)return;
+  el.classList.toggle('active');
+  if(el.getAttribute('role')==='checkbox')el.setAttribute('aria-checked',el.classList.contains('active')?'true':'false');
+  const picked=wrap?Array.from(wrap.querySelectorAll('.ob-chip.active')).map(c=>{
+    const m=(c.getAttribute('onclick')||'').match(/,'([^']+)'\)/);
+    return m?m[1]:null;
+  }).filter(Boolean):[val];
+  if(key==='obFocus')obSelectedFocus=picked;
+  if(key==='obStaffFocus')obSelectedStaffFocus=picked;
+}
+
 function selectObChip(el,key,val){
   el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>{
     c.classList.remove('active');
@@ -9934,8 +9970,8 @@ function selectObChip(el,key,val){
   if(el.getAttribute('role')==='radio')el.setAttribute('aria-checked','true');
   if(key==='obGrade')obSelectedGrade=val;
   if(key==='obTrack')obSelectedTrack=val;
-  if(key==='obFocus')obSelectedFocus=val;
-  if(key==='obStaffFocus')obSelectedStaffFocus=val;
+  if(key==='obFocus')obSelectedFocus=[val];
+  if(key==='obStaffFocus')obSelectedStaffFocus=[val];
   if(key==='obStaffReminders')obSelectedStaffReminders=val;
   if(key==='obStaffRole')obSelectedStaffRole=(['teacher','counselor','admin'].includes(val))?val:'teacher';
   if(key==='obRole'){
@@ -10032,11 +10068,13 @@ function obNext(){
   if(obCurrentStep===2){
     const p=load('profile',{});
     if(obSelectedRole==='staff'){
-      p.termFocus=obSelectedStaffFocus||'planning';
+      p.termFocuses=(obSelectedStaffFocus&&obSelectedStaffFocus.length)?obSelectedStaffFocus.slice():['planning'];
+      p.termFocus=p.termFocuses[0];
       const sfeats=Array.from(document.querySelectorAll('#obStaffFeatureChips .ob-chip.active')).map(c=>c.dataset.staffFeat).filter(Boolean);
       p.staffFeatures=sfeats.length?sfeats:['tasks'];
     }else{
-      p.termFocus=obSelectedFocus||'deadlines';
+      p.termFocuses=(obSelectedFocus&&obSelectedFocus.length)?obSelectedFocus.slice():['deadlines'];
+      p.termFocus=p.termFocuses[0];
       const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
       p.plannerFeatures=feats.length?feats:['tasks'];
     }

@@ -683,8 +683,21 @@
       if(tab==='preview'){
         const dir=window.FluxStaffDirectory;
         if(!dir||!Array.isArray(dir.all)||!dir.all.length){
+          // The directory hydrates lazily, and only during onboarding / role
+          // detection — so opening this tab first left it permanently empty,
+          // and "refresh the page" never helped because nothing here called
+          // hydrate(). Kick it off now and repaint when it lands.
+          if(dir&&typeof dir.hydrate==='function'&&!window.__osDirHydrating){
+            window.__osDirHydrating=true;
+            Promise.resolve(dir.hydrate())
+              .catch(()=>{})
+              .then(()=>{
+                window.__osDirHydrating=false;
+                if(window.__osActiveTab==='preview')paint();
+              });
+          }
           return`<div style="padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--muted2);font-size:.82rem;line-height:1.55">
-            Staff directory hasn't loaded yet. Refresh the page and reopen this tab. (Loaded from <code style="font-size:.7rem">public/js/flux-staff-directory.js</code>.)
+            ${window.__osDirHydrating?'Loading the staff directory…':'No active staff found in the directory. Add rows to <b>public.staff_directory</b> (with <code style="font-size:.7rem">active = true</code>), then reopen this tab.'}
           </div>`;
         }
         const active=(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active())||null;

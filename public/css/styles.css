@@ -150,6 +150,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:var(-
 .ob-privacy-link{display:inline;background:none;border:none;padding:0;margin-top:2px;color:var(--accent);font-weight:700;font-size:.76rem;cursor:pointer;font-family:inherit}
 .ob-privacy-link:hover{text-decoration:underline}
 .ob-title{font-size:1.5rem;font-weight:800;margin-bottom:6px;letter-spacing:-.5px}
+/* Had no rule at all, so it fell back to the UA default face while every
+   sibling used the theme font. Matches .onboard-skip-btn. */
+.ob-skip{display:block;width:100%;text-align:center;padding:10px;margin-top:8px;font-family:inherit;font-size:.8rem;font-weight:600;color:var(--muted2);cursor:pointer;transition:color var(--t-base) var(--ease)}
+.ob-skip:hover{color:var(--text)}
 .ob-sub{font-size:.875rem;color:var(--muted2);margin-bottom:24px;line-height:1.65}
 .ob-label{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:5px;margin-top:18px}
 .ob-btn{width:100%;padding:14px;border-radius:14px;font-size:.95rem;font-weight:700;margin-top:24px;background:var(--accent);border:none;color:#fff;cursor:pointer;transition:var(--transition);letter-spacing:-.2px;box-shadow:0 4px 16px rgba(var(--accent-rgb),.35)}
@@ -4016,8 +4020,11 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 
 /* ── PDF / schedule import (Flux · vanilla port of pdf-preview-page) ── */
 .flux-pdf-import{
-  --pdf-accent:#facc15;
-  --pdf-accent-dim:rgba(250,204,21,.2);
+  /* Themed off the Flux accent so this tracks every theme pack, instead of the
+     imported component's original hard-coded yellow. */
+  --pdf-accent:var(--accent);
+  --pdf-accent-dim:rgba(var(--accent-rgb),.2);
+  --pdf-on-accent:#04121a;
   position:relative;
   overflow:hidden;
   border-radius:var(--r-lg);
@@ -4065,8 +4072,8 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .flux-pdf-import__drop{
   position:relative;
   width:100%;
-  max-width:420px;
-  padding:clamp(22px,4vw,36px);
+  max-width:520px;
+  padding:clamp(30px,5vw,48px);
   background:rgba(255,255,255,.04);
   border-radius:var(--r);
   cursor:pointer;
@@ -4074,7 +4081,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   outline:none;
 }
 .flux-pdf-import__drop:focus-visible{
-  box-shadow:0 0 0 2px rgba(250,204,21,.45);
+  box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45);
 }
 .flux-pdf-import__drop::before{
   content:'';
@@ -4097,15 +4104,15 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 .flux-pdf-import__icon-stack{
   position:relative;
-  width:80px;
-  height:80px;
-  margin:0 auto 10px;
+  width:96px;
+  height:96px;
+  margin:0 auto 14px;
 }
 .flux-pdf-import__icon-main{
-  width:80px;height:80px;
-  border-radius:18px;
+  width:96px;height:96px;
+  border-radius:22px;
   background:var(--pdf-accent);
-  color:#0a0a0a;
+  color:var(--pdf-on-accent);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -4128,7 +4135,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
   transition:transform .2s var(--ease-spring);
 }
 .flux-pdf-import__drop:hover .flux-pdf-import__icon-plus{transform:scale(1.08)}
-.flux-pdf-import__svg{width:40px;height:40px}
+.flux-pdf-import__svg{width:48px;height:48px}
 .flux-pdf-import__svg--sm{width:18px;height:18px}
 .flux-pdf-import__title{
   text-align:center;
