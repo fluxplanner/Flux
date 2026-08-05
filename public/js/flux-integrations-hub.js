@@ -88,14 +88,25 @@
       </button>`;
   }
 
+  // Connectors that aren't built yet are hidden rather than shown as "Coming
+  // soon" — a grid advertising 11 things that don't work reads as a broken
+  // product. Anything the user already requested stays visible so their
+  // wishlist entry isn't orphaned. Shipping a connector (status stops being
+  // coming_soon) brings its tile back automatically; no list to maintain.
+  function visibleTiles() {
+    const wished = loadArr(WISH_KEY);
+    return TILES.filter((t) => tileStatus(t) !== 'coming_soon' || wished.includes(t.id));
+  }
+
   function gridHTML(mode) {
+    const tiles = visibleTiles();
     if (mode !== 'picker') {
-      return `<div class="fih-grid" data-fih-mode="${mode}">${TILES.map((t) => tileHTML(t, mode)).join('')}</div>`;
+      return `<div class="fih-grid" data-fih-mode="${mode}">${tiles.map((t) => tileHTML(t, mode)).join('')}</div>`;
     }
     // Onboarding picker: student tools up front, dev/automation tools behind
     // an explicit "More tools" reveal (B4).
-    const primary = TILES.filter((t) => !t.secondary);
-    const secondary = TILES.filter((t) => t.secondary);
+    const primary = tiles.filter((t) => !t.secondary);
+    const secondary = tiles.filter((t) => t.secondary);
     return `<div class="fih-grid" data-fih-mode="picker">${primary.map((t) => tileHTML(t, 'picker')).join('')}</div>
       <button type="button" class="fih-more-toggle" aria-expanded="false">More tools ▾</button>
       <div class="fih-grid fih-grid-secondary" data-fih-mode="picker" hidden>${secondary.map((t) => tileHTML(t, 'picker')).join('')}</div>`;
