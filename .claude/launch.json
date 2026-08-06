@@ -25,6 +25,13 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", ".", "-l", "4173"],
       "port": 4173
+    },
+    {
+      "name": "troy-martial-arts",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3400"],
+      "port": 3400,
+      "cwd": ".troy-preview"
     }
   ]
 }
