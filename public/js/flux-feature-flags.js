@@ -140,6 +140,7 @@
       enable_study_rooms_v2: false, // C8: class room templates, teacher study-hall counts, group-focus cosmetics
       enable_seasons: false, // C9: healthy-habit seasonal cosmetics (never grades-based)
       enable_ask_teacher: false, // C10: task-linked ask-my-teacher handoff + Lesson Hub triage queue
+      enable_counselor_help_tickets: false, // C11: student help tickets to their counselor — open/in-progress/resolved + urgent wellbeing escalation
       enable_originkit_motion: true, // OriginKit-ported motion primitives (subtle; hard-disabled by reduced-motion/perf/lowend)
     };
   }
