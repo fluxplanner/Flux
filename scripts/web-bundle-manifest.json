@@ -212,6 +212,7 @@
     "public/js/flux-study-rooms-v2.js",
     "public/js/flux-seasons.js",
     "public/js/flux-ask-teacher.js",
+    "public/js/flux-help-tickets.js",
     "public/js/flux-originkit-motion.js"
   ],
   "css": [

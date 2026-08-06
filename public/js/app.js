@@ -19275,6 +19275,12 @@ async function renderCounselorDashboard(){
     const rqMount=document.getElementById('counselorRiskQueueMount');
     if(window.FluxCounselorRiskQueue?.wire&&rqMount)FluxCounselorRiskQueue.wire(rqMount,sb);
   }catch(_){}
+  try{
+    // C11 help-ticket triage (urgent first). Own try block: a ticket-fetch
+    // failure must not take the rest of the dashboard down with it.
+    if(window.FluxHelpTickets?.injectCounselorTriage)
+      await FluxHelpTickets.injectCounselorTriage(sb,counselorRow.id);
+  }catch(_){}
   host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();
   }));
@@ -19422,6 +19428,11 @@ async function renderMyCounselorSection(){
   try{
     if(window.FluxCaseloadEngine?.enabled?.()&&window.FluxCaseloadEngine?.renderStudentWellnessCheckin)
       await FluxCaseloadEngine.renderStudentWellnessCheckin(host,counselor);
+  }catch(_){}
+  try{
+    // C11: "Ask for help" + the student's own ticket statuses.
+    if(window.FluxHelpTickets?.injectStudentSection)
+      await FluxHelpTickets.injectStudentSection(host,counselor);
   }catch(_){}
 }
 window.renderMyCounselorSection=renderMyCounselorSection;

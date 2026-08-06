@@ -44,6 +44,8 @@ const HIGH_RISK_TABLES = [
   'flux_family_digests',           // C6 — student + active guardian read only
   'push_subscriptions',            // C7 — owner-only device subscriptions
   'flux_study_rooms',              // C8 — host-only registry
+  'flux_help_tickets',             // C11 — student reads own only; counselor reads own caseload
+  'flux_help_ticket_notes',        // C11 — counselor-private; NO student policy exists at all
 ];
 
 type Creds = { email: string; password: string };

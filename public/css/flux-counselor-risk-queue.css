@@ -41,6 +41,15 @@
   background: var(--card2);
 }
 
+/* A student who asked for help by name and marked it urgent. Sorts above every
+   inferred signal and carries a heavier edge so it reads as "a person is
+   waiting", not "a metric moved". */
+.flux-risk-queue-row--urgent {
+  border-color: rgba(244, 63, 94, 0.65);
+  background: rgba(244, 63, 94, 0.1);
+  border-left: 3px solid rgba(244, 63, 94, 0.9);
+}
+
 .flux-risk-queue-row--high {
   border-color: rgba(244, 63, 94, 0.35);
   background: rgba(244, 63, 94, 0.06);

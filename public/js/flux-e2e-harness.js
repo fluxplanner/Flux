@@ -189,9 +189,60 @@
       user_metadata: { full_name: 'E2E User' },
     };
 
+    /* C11 help tickets need a mock with an actual memory: the feature reads
+     * back what it wrote (student sees status; counselor moves it through
+     * open → in_progress → resolved). Seed via window.__fluxE2EHelpTickets.
+     * Scoped to this one table so every other table's result is unchanged. */
+    function helpTicketStore() {
+      if (!Array.isArray(window.__fluxE2EHelpTickets)) window.__fluxE2EHelpTickets = [];
+      return window.__fluxE2EHelpTickets;
+    }
+
+    function matchesFilters(row, filters) {
+      return (filters || []).every((f) => {
+        if (f.op === 'eq') return String(row[f.col]) === String(f.val);
+        if (f.op === 'neq') return String(row[f.col]) !== String(f.val);
+        return true;
+      });
+    }
+
+    function helpTicketResult(state) {
+      const store = helpTicketStore();
+      // Every path returns COPIES. A real PostgREST client deserializes fresh
+      // JSON per request, so handing out live references would let a caller's
+      // earlier read mutate under it — a lie about the transport that hides
+      // exactly the status-transition bugs these tests exist to catch.
+      const copy = (r) => ({ ...r });
+      if (state.op === 'insert' || state.op === 'upsert') {
+        const row = {
+          id: `e2e-ticket-${store.length + 1}`,
+          status: 'open',
+          urgency: 'normal',
+          assigned_to: null,
+          created_at: new Date().toISOString(),
+          ...(state.payload || {}),
+        };
+        store.push(row);
+        return { data: [copy(row)], error: null };
+      }
+      if (state.op === 'update') {
+        const hits = store.filter((r) => matchesFilters(r, state.filters));
+        hits.forEach((r) => Object.assign(r, state.payload || {}));
+        return { data: hits.map(copy), error: null };
+      }
+      if (state.op === 'delete') {
+        window.__fluxE2EHelpTickets = store.filter((r) => !matchesFilters(r, state.filters));
+        return { data: [], error: null };
+      }
+      const rows = store.filter((r) => matchesFilters(r, state.filters)).map(copy);
+      if (state.single) return { data: rows[0] || null, error: null };
+      return { data: rows, error: null };
+    }
+
     function buildResult(table, state) {
       const empty = { data: [], error: null };
       const single = (row) => ({ data: row, error: null });
+      if (table === 'flux_help_tickets') return helpTicketResult(state);
       if (table === 'counselors' && scenario === 'counselor-path') {
         if (state.op === 'insert' || state.op === 'update') return single(counselorRow);
         if (state.single) return single(counselorRow);
@@ -215,7 +266,15 @@
         select() {
           return api;
         },
-        eq() {
+        // eq/neq record into state.filters (declared since the first version of
+        // this mock but never populated) so tables with a real backing store can
+        // filter. Tables without one ignore state.filters exactly as before.
+        eq(col, val) {
+          state.filters.push({ op: 'eq', col, val });
+          return api;
+        },
+        neq(col, val) {
+          state.filters.push({ op: 'neq', col, val });
           return api;
         },
         is() {
@@ -224,7 +283,13 @@
         ilike() {
           return api;
         },
+        like() {
+          return api;
+        },
         gte() {
+          return api;
+        },
+        lte() {
           return api;
         },
         order() {
@@ -236,12 +301,24 @@
         in() {
           return api;
         },
-        insert() {
+        insert(payload) {
           state.op = 'insert';
+          state.payload = payload;
           return api;
         },
-        update() {
+        // Present so cloud-sync paths don't throw in e2e (they call .upsert()).
+        upsert(payload) {
+          state.op = 'upsert';
+          state.payload = payload;
+          return api;
+        },
+        update(payload) {
           state.op = 'update';
+          state.payload = payload;
+          return api;
+        },
+        delete() {
+          state.op = 'delete';
           return api;
         },
         maybeSingle() {

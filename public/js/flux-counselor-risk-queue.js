@@ -6,10 +6,13 @@
   'use strict';
 
   const DISMISS_KEY = 'flux_counselor_alerts_dismissed_v1';
-  const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
+  // 'urgent' outranks everything: it is the only band a student sets themselves
+  // (C11 help tickets), and a person asking for help beats an inferred metric.
+  const SEVERITY_ORDER = { urgent: -1, high: 0, medium: 1, low: 2 };
   const SNAPSHOT_DAYS = 14;
 
   const SIGNAL_LABELS = {
+    help_ticket_urgent: 'Urgent help request',
     engagement_priority: 'Priority outreach',
     engagement_watch: 'Engagement watch',
     momentum_drop: 'Momentum dip',
@@ -202,6 +205,18 @@
       });
     });
 
+    // C11: urgent help tickets join the queue ahead of every inferred signal.
+    // Fetched outside the consented-students loop on purpose — a student who
+    // files a named urgent request has consented by the act of filing it, so
+    // this must not be gated on their insights tier. Never dismissible here.
+    let urgentTickets = [];
+    try {
+      if (window.FluxHelpTickets?.loadUrgentQueueItems) {
+        urgentTickets = await window.FluxHelpTickets.loadUrgentQueueItems(sb, counselorDbId);
+      }
+    } catch (_) {}
+
+    items.push(...urgentTickets);
     items.sort(
       (a, b) =>
         (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
@@ -210,6 +225,7 @@
     return {
       items,
       dismissedCount: dismissed.size,
+      urgentTicketCount: urgentTickets.length,
       counselorDbId,
     };
   }
@@ -237,7 +253,14 @@
                   ? `<button type="button" data-risk-timeline="${esc(it.studentId)}" data-risk-name="${esc(it.displayName)}">Timeline</button>`
                   : ''
               }
-              <button type="button" data-risk-dismiss="${esc(it.key)}">Dismiss</button>
+              ${
+                /* An urgent help ticket is resolved on the ticket, never swiped
+                   away from the queue — dismissing a wellbeing escalation is
+                   exactly the silent drop this path exists to prevent. */
+                it.ticketId
+                  ? '<button type="button" data-risk-ticket>Open ticket</button>'
+                  : `<button type="button" data-risk-dismiss="${esc(it.key)}">Dismiss</button>`
+              }
             </div>
           </article>`,
             )
@@ -277,6 +300,19 @@
         const name = btn.getAttribute('data-risk-name') || 'Student';
         if (id && sb && window.FluxCounselorWellnessTimeline?.openForStudent) {
           FluxCounselorWellnessTimeline.openForStudent(sb, id, name);
+        }
+      });
+    });
+    // "Open ticket" jumps to the triage section rather than dismissing.
+    host.querySelectorAll('[data-risk-ticket]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mount = document.getElementById('counselorHelpTicketsMount');
+        if (!mount) return;
+        mount.hidden = false;
+        try {
+          mount.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (_) {
+          mount.scrollIntoView();
         }
       });
     });
