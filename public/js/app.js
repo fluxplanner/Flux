@@ -937,7 +937,7 @@ function renderDynamicFocus(){
 function checkTimePoverty(){
   const banner=document.getElementById('timePovertyBanner');if(!banner)return;
   const now=new Date();
-  const todayStr=now.toISOString().slice(0,10);
+  const todayStr=fluxLocalYMD(now);
 
   if(typeof isBreak==='function'&&isBreak(todayStr)){
     const rk=typeof restDayKind==='function'?restDayKind(todayStr):'lazy';
@@ -1221,7 +1221,7 @@ function fluxBulkReschedule(){
   if(!_bulkIds.size){ showToast('Nothing selected','info'); return; }
   // Simple prompt-based date entry; leverages existing date inputs elsewhere if needed
   const today=new Date(); today.setHours(0,0,0,0);
-  const iso=today.toISOString().slice(0,10);
+  const iso=fluxLocalYMD(today);
   const input=prompt('Reschedule selected tasks to (YYYY-MM-DD):', iso);
   if(!input)return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(input)){ showToast('Invalid date format','error'); return; }
@@ -1530,7 +1530,7 @@ function nextNonRestForward(ds){
   let d=new Date(ds+'T12:00:00');
   for(let i=0;i<56;i++){
     d.setDate(d.getDate()+1);
-    const s=d.toISOString().slice(0,10);
+    const s=fluxLocalYMD(d);
     if(!isBreak(s))return s;
   }
   return ds;
@@ -1539,7 +1539,7 @@ function prevNonRestBackward(ds){
   let d=new Date(ds+'T12:00:00');
   for(let i=0;i<56;i++){
     d.setDate(d.getDate()-1);
-    const s=d.toISOString().slice(0,10);
+    const s=fluxLocalYMD(d);
     if(!isBreak(s))return s;
   }
   return ds;
@@ -2814,7 +2814,7 @@ function openEcCalendarScheduleModal(extraId){
   if(sub)sub.textContent=`Schedule "${ex.name}" on your planner calendar.`;
   const te=document.getElementById('ecSchedTime');if(te)te.value='';
   const de=document.getElementById('ecSchedDate');
-  if(de)de.value=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  if(de)de.value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   document.querySelectorAll('input[name="ecWd"]').forEach(c=>{c.checked=false;});
   setEcScheduleType('weekly');
   modal.style.display='flex';
@@ -3260,7 +3260,11 @@ async function startUpgradeToSchoolWorkspace(){
 window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
 
 const strip=html=>esc(String(html??'').replace(/<[^>]*>?/g,'')).slice(0,120);
-const todayStr=()=>TODAY.toISOString().slice(0,10);
+// Canonical "today" for every surface (23 modules delegate to window.todayStr).
+// Must be LOCAL and live: toISOString() rolls over at UTC midnight, which put
+// this a day ahead of the calendar and FluxNow (both fluxLocalYMD) every evening
+// in the Americas, so closures/rest days keyed here missed their lookups.
+const todayStr=()=>fluxLocalYMD(new Date());
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
 window.strip=strip; window.todayStr=todayStr; window.fmtTime=fmtTime;
 
@@ -3926,7 +3930,7 @@ function toggleTask(id){
       else if(recType==='biweekly')nd.setDate(nd.getDate()+14);
       else if(recType==='monthly')nd.setMonth(nd.getMonth()+1);
       const labels={weekly:'Next week',biweekly:'Biweekly',monthly:'Next month'};
-      const nt={id:Date.now()+Math.random(),name:t.name,date:nd.toISOString().slice(0,10),subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',estTime:t.estTime||0,difficulty:t.difficulty||3,notes:t.notes||'',subtasks:(t.subtasks||[]).map(s=>({text:s.text,done:false})),done:false,rescheduled:0,createdAt:Date.now(),recurringType:recType,recurringWeekly:recType==='weekly',waitingOn:t.waitingOn,srsEnabled:false};
+      const nt={id:Date.now()+Math.random(),name:t.name,date:fluxLocalYMD(nd),subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',estTime:t.estTime||0,difficulty:t.difficulty||3,notes:t.notes||'',subtasks:(t.subtasks||[]).map(s=>({text:s.text,done:false})),done:false,rescheduled:0,createdAt:Date.now(),recurringType:recType,recurringWeekly:recType==='weekly',waitingOn:t.waitingOn,srsEnabled:false};
       nt.urgencyScore=calcUrgency(nt);tasks.unshift(nt);showToast((labels[recType]||'Repeat')+' repeat added','info');
       }
     }
@@ -4148,7 +4152,7 @@ function renderDashWeekStrip(){
     d.setDate(d.getDate()+i);
     days.push(d);
   }
-  const weekStart=days[0].toISOString().slice(0,10);
+  const weekStart=fluxLocalYMD(days[0]);
   const estMins=t=>{
     const m=parseInt(t.estTime,10);
     return Number.isFinite(m)&&m>0?m:30;
@@ -4158,7 +4162,7 @@ function renderDashWeekStrip(){
     return t.date<weekStart?weekStart:t.date;
   };
     const byDay=days.map(day=>{
-    const ds=day.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(day);
     let mins=0,n=0;
     tasks.forEach(t=>{
       if(effectiveDue(t)!==ds)return;
@@ -4229,7 +4233,7 @@ function fluxRenderDashMob(){
   if(!dateEl)return; // only present on new mobile scaffold
   const today=new Date();
   today.setHours(0,0,0,0);
-  const todayIso=today.toISOString().slice(0,10);
+  const todayIso=fluxLocalYMD(today);
   // Date strip: "Friday, Apr 24"
   try{
     dateEl.textContent=fmtFluxDate(today,'weekday');
@@ -4838,7 +4842,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function openAddForDate(){
-  const dateStr=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  const dateStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   // Show inline add-task modal in calendar instead of navigating away
   showCalAddModal(dateStr);
 }
@@ -5001,7 +5005,7 @@ function openAddEventModal(preferredType){
   const modal=document.getElementById('addEventModal');if(!modal)return;
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
-  document.getElementById('addEventDate').value=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  document.getElementById('addEventDate').value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   document.getElementById('addEventTitle').value='';
   document.getElementById('addEventNotes').value='';
   const te=document.getElementById('addEventTime');if(te)te.value='';
@@ -6156,7 +6160,7 @@ function toggleTimer(){tRunning?pauseTimer():startTimer();}
 function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -6178,7 +6182,7 @@ function renderSubjectBudget(){
     return`<div class="flux-subject-budget-row" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.8rem;font-weight:600">${s.short}</span></div><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:${c}">${done}h / ${target}h</span></div><div class="budget-bar flux-budget-bar"><div class="budget-fill" style="width:${pct}%;background:linear-gradient(90deg,${s.color},rgba(var(--accent-rgb),.85))"></div></div></div>`;
   }).join('')+'</div>';
 }
-function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=d.toISOString().slice(0,10);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
+function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const base=new Date();const weekStart=new Date(base);weekStart.setDate(base.getDate()-base.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=fluxLocalYMD(d);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
 
 // ══ PROFILE ══
 function normalizeProgramList(raw){
@@ -7903,7 +7907,7 @@ FluxSkills.register({
           id: Date.now() + Math.random(),
           name: `Study: ${topic}`,
           subject,
-          date: d.toISOString().slice(0, 10),
+          date: fluxLocalYMD(d),
           priority: daysLeft <= 3 ? 'high' : 'med',
           estTime: 45,
           type: 'study',
@@ -8673,7 +8677,7 @@ function buildFullPlannerContextForAI(opts){
   add('Tasks — last 40 completed',clip(tasks.filter(t=>t.done).slice(-40).map(fmtT).join('\n')||'(none)',3200));
 
   const noteBlock=notes.slice(0,50).map(n=>{
-    const dt=n.updatedAt?new Date(n.updatedAt).toISOString().slice(0,10):'—';
+    const dt=n.updatedAt?fluxLocalYMD(new Date(n.updatedAt)):'—';
     return `• "${plain(n.title,100)}" subj:${n.subject||'—'} ${dt} ★${n.starred?'y':'n'} fc:${(n.flashcards||[]).length}\n  ${plain(n.body,500)}`;
   }).join('\n');
   add('Notes (≤50, excerpted)',noteBlock||'(none)');
@@ -12985,7 +12989,7 @@ function generateSRSReviews(originalTask){
   }catch(_){}
   if(!originalTask.srsEnabled)return;
   const intervals=[1,7,30];
-  const base=new Date(originalTask.date||todayStr()+'T00:00:00');
+  const base=new Date((originalTask.date||todayStr())+'T00:00:00');
   intervals.forEach(days=>{
     const d=new Date(base);d.setDate(d.getDate()+days);
     const review={
@@ -12994,7 +12998,7 @@ function generateSRSReviews(originalTask){
       subject:originalTask.subject||'',
       priority:'low',
       type:'study',
-      date:d.toISOString().slice(0,10),
+      date:fluxLocalYMD(d),
       estTime:Math.round((originalTask.estTime||30)*0.5),
       difficulty:Math.max(1,(originalTask.difficulty||3)-1),
       notes:'SRS review — original task: '+originalTask.name,
@@ -13087,7 +13091,7 @@ async function dailyShutdown(){
   const existing=document.getElementById('shutdownPanel');
   if(existing){existing.remove();return;}
   const today=todayStr();
-  const completed=tasks.filter(t=>t.done&&t.completedAt&&new Date(t.completedAt).toISOString().slice(0,10)===today);
+  const completed=tasks.filter(t=>t.done&&t.completedAt&&fluxLocalYMD(new Date(t.completedAt))===today);
   const planned=tasks.filter(t=>t.date===today);
   const eff=planned.length?Math.round((completed.length/planned.length)*100):100;
   const totalMins=sessionLog.filter(s=>s.date===today).reduce((sum,s)=>sum+s.mins,0);
@@ -15060,10 +15064,10 @@ function renderWorkloadForecast(){
   const days=[];
   for(let i=0;i<7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const dayTasks=tasks.filter(t=>!t.done&&t.date===ds);
     const mins=dayTasks.reduce((s,t)=>s+(t.estTime||20),0);
-    const label=fmtFluxCalDay(d.toISOString().slice(0,10),i);
+    const label=fmtFluxCalDay(ds,i);
     days.push({label,mins,count:dayTasks.length,date:ds,tasks:dayTasks});
   }
   const maxMins=Math.max(...days.map(d=>d.mins),0);
@@ -15257,10 +15261,10 @@ function renderGapFiller(){
   const gaps=[];
   for(let i=1;i<=7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const dayCount=tasks.filter(t=>!t.done&&t.date===ds).length;
     if(dayCount===0){
-      const label=i===1?(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(d.toISOString().slice(0,10))||'tomorrow'):fmtFluxDate(d,'weekday');
+      const label=i===1?(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(ds)||'tomorrow'):fmtFluxDate(d,'weekday');
       gaps.push({label,date:ds,d});
     }
   }
@@ -15342,7 +15346,7 @@ function generateStudyRoadmap(taskId){
   const created=[];
   for(let i=1;i<=sessions;i++){
     const d=new Date(now);d.setDate(now.getDate()+Math.floor(i*(daysUntil-1)/sessions));
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const sessionNames=['Review notes','Practice problems','Make flashcards','Past paper','Final review'];
     const newTask={
       id:Date.now()+i,
@@ -15380,9 +15384,9 @@ function startPresentMode(){
   const days7=[];
   for(let i=0;i<7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const count=tasks.filter(t=>!t.done&&t.date===ds).length;
-    days7.push({label:fmtFluxCalDay(d.toISOString().slice(0,10),i),count});
+    days7.push({label:fmtFluxCalDay(ds,i),count});
   }
   const maxC=Math.max(...days7.map(d=>d.count),1);
   
@@ -15542,7 +15546,7 @@ function parseNLTask(text){
         if(diff<=0)diff+=7;
         d.setDate(d.getDate()+diff);
       }
-      result.date=d.toISOString().slice(0,10);
+      result.date=fluxLocalYMD(d);
     }
     t=t.replace(dateMatch[0],'').replace(/due|by|on/gi,'').trim();
   }
@@ -15701,7 +15705,7 @@ function renderTimeline(){
     const isToday=d.getTime()===now.getTime();
     const isPast=d<now;
     const diff=Math.round((d-now)/86400000);
-    const iso=d.toISOString().slice(0,10);
+    const iso=fluxLocalYMD(d);
     const label=(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(iso))||(isToday?'Today':diff===1?'Tomorrow':fmtFluxDate(d,'short'));
     return`<div style="display:flex;gap:12px;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
@@ -16455,14 +16459,14 @@ function parseNaturalTask(raw){
     const lower=w.toLowerCase().replace(/[.,!?]/g,'');
     if(lower==='tomorrow'&&!date){
       const d=new Date(today);d.setDate(d.getDate()+1);
-      date=d.toISOString().slice(0,10);
+      date=fluxLocalYMD(d);
     }else if(lower==='today'&&!date){
       date=todayStr();
     }else if(days[lower]!==undefined&&!date){
       const target=days[lower];const curr=today.getDay();
       let diff=target-curr;if(diff<=0)diff+=7;
       const d=new Date(today);d.setDate(d.getDate()+diff);
-      date=d.toISOString().slice(0,10);
+      date=fluxLocalYMD(d);
     }else if((lower==='high'||lower==='urgent'||lower==='important')&&priority==='med'){
       priority='high';
     }else if(lower==='low'){
@@ -16614,7 +16618,7 @@ function openInlineDatePicker(taskId,el){
   const left=Math.max(8,Math.min(rect.left,window.innerWidth-240));
   picker.style.top=top+'px';picker.style.left=left+'px';
   const today=todayStr();
-  const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);const tmStr=tomorrow.toISOString().slice(0,10);
+  const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);const tmStr=fluxLocalYMD(tomorrow);
   picker.innerHTML=`<div style="font-size:.72rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Change Due Date</div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
       <button type="button" onclick="setTaskDateInline(${taskId},'${today}',this.closest('#inlineDatePicker'))" class="btn-sec" style="font-size:.7rem;padding:4px 8px">Today</button>
@@ -16686,7 +16690,7 @@ function renderSidebarMiniStats(){}
 function checkTomorrowLoad(){
   try{
     const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);
-    const tmStr=tomorrow.toISOString().slice(0,10);
+    const tmStr=fluxLocalYMD(tomorrow);
     const tmTasks=tasks.filter(t=>!t.done&&t.date===tmStr);
     if(tmTasks.length<3)return;
     const mins=tmTasks.reduce((s,t)=>s+(t.estTime||30),0);
@@ -19080,7 +19084,10 @@ async function renderCounselorDashboard(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // counselor_appointments.date is a DATE (calendar day), so bound it by the
+  // local day — a UTC slice reads as tomorrow after ~7pm in the Americas and
+  // hides the rest of today's appointments.
+  const today=fluxLocalYMD(new Date());
   let appointments=[];let pendingAppts=[];let messages=[];
   let studentNames={};
   try{
@@ -19355,7 +19362,8 @@ async function renderMyCounselorSection(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // DATE column — bound by local day (see counselor dashboard above).
+  const today=fluxLocalYMD(new Date());
   let upcoming=[];
   try{
     const {data}=await sb.from('counselor_appointments')
@@ -19527,7 +19535,7 @@ function openBookAppointmentModal(counselorId){
     const dow=d.getDay();
     if(dow===0||dow===6)continue;
     days.push({
-      date:d.toISOString().slice(0,10),
+      date:fluxLocalYMD(d),
       label:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
       dayName:d.toLocaleDateString('en-US',{weekday:'long'}).toLowerCase(),
     });
@@ -19964,7 +19972,8 @@ async function loadTeacherAssignments(){
       .select('id,title,description,type,priority,due_date,due_time,estimated_minutes,points_possible,class_code,created_at,teacher_id')
       .in('class_code',myClassCodes)
       .eq('visible',true)
-      .gte('due_date',new Date().toISOString().slice(0,10));
+      // due_date is a DATE (paired with a separate due_time), so compare local days.
+      .gte('due_date',fluxLocalYMD(new Date()));
     assignments=data||[];
   }catch(_){}
   if(!assignments.length){
