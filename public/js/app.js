@@ -3260,7 +3260,11 @@ async function startUpgradeToSchoolWorkspace(){
 window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
 
 const strip=html=>esc(String(html??'').replace(/<[^>]*>?/g,'')).slice(0,120);
-const todayStr=()=>fluxLocalYMD(TODAY);
+// Canonical "today" for every surface (23 modules delegate to window.todayStr).
+// Must be LOCAL and live: toISOString() rolls over at UTC midnight, which put
+// this a day ahead of the calendar and FluxNow (both fluxLocalYMD) every evening
+// in the Americas, so closures/rest days keyed here missed their lookups.
+const todayStr=()=>fluxLocalYMD(new Date());
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
 window.strip=strip; window.todayStr=todayStr; window.fmtTime=fmtTime;
 
@@ -6156,7 +6160,7 @@ function toggleTimer(){tRunning?pauseTimer():startTimer();}
 function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -6178,7 +6182,7 @@ function renderSubjectBudget(){
     return`<div class="flux-subject-budget-row" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.8rem;font-weight:600">${s.short}</span></div><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:${c}">${done}h / ${target}h</span></div><div class="budget-bar flux-budget-bar"><div class="budget-fill" style="width:${pct}%;background:linear-gradient(90deg,${s.color},rgba(var(--accent-rgb),.85))"></div></div></div>`;
   }).join('')+'</div>';
 }
-function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=fluxLocalYMD(d);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
+function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const base=new Date();const weekStart=new Date(base);weekStart.setDate(base.getDate()-base.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=fluxLocalYMD(d);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
 
 // ══ PROFILE ══
 function normalizeProgramList(raw){
@@ -19080,7 +19084,10 @@ async function renderCounselorDashboard(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // counselor_appointments.date is a DATE (calendar day), so bound it by the
+  // local day — a UTC slice reads as tomorrow after ~7pm in the Americas and
+  // hides the rest of today's appointments.
+  const today=fluxLocalYMD(new Date());
   let appointments=[];let pendingAppts=[];let messages=[];
   let studentNames={};
   try{
@@ -19355,7 +19362,8 @@ async function renderMyCounselorSection(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // DATE column — bound by local day (see counselor dashboard above).
+  const today=fluxLocalYMD(new Date());
   let upcoming=[];
   try{
     const {data}=await sb.from('counselor_appointments')
@@ -19964,7 +19972,8 @@ async function loadTeacherAssignments(){
       .select('id,title,description,type,priority,due_date,due_time,estimated_minutes,points_possible,class_code,created_at,teacher_id')
       .in('class_code',myClassCodes)
       .eq('visible',true)
-      .gte('due_date',new Date().toISOString().slice(0,10));
+      // due_date is a DATE (paired with a separate due_time), so compare local days.
+      .gte('due_date',fluxLocalYMD(new Date()));
     assignments=data||[];
   }catch(_){}
   if(!assignments.length){
