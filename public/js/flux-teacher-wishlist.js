@@ -103,7 +103,7 @@
     card.id='fluxGratitudeCard';
     card.innerHTML=
       '<div class="fluxw-hd">'+
-        '<span class="fluxw-emoji" aria-hidden="true">🌿</span>'+
+        '<span class="fluxw-emoji" aria-hidden="true"></span>'+
         '<h3>Gratitude</h3>'+
         '<span class="fluxw-sub">Three small wins today</span>'+
       '</div>'+
@@ -216,7 +216,7 @@
     card.id='fluxClassSectionsCard';
     card.innerHTML=
       '<div class="fluxw-hd">'+
-        '<span class="fluxw-emoji" aria-hidden="true">🏫</span>'+
+        '<span class="fluxw-emoji" aria-hidden="true"></span>'+
         '<h3>Today\'s sections</h3>'+
         '<span class="fluxw-sub" id="fluxSectionSub">'+pc+' periods</span>'+
         '<select class="fluxw-period-count" id="fluxPeriodCount" aria-label="Number of class periods" onchange="FluxWishlist.setPeriodCount(this.value)">'+
@@ -284,7 +284,7 @@
     btn.className='fluxw-pri-toggle';
     btn.title='Sort by importance (high → low)';
     btn.setAttribute('aria-pressed',prioritySortOn()?'true':'false');
-    btn.innerHTML='<span aria-hidden="true">⚡</span><span>By importance</span>';
+    btn.innerHTML='<span aria-hidden="true"></span><span>By importance</span>';
     btn.addEventListener('click',function(){
       write('flux_priority_sort',!prioritySortOn());
       btn.setAttribute('aria-pressed',prioritySortOn()?'true':'false');

@@ -1,0 +1,164 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * Flux Modern UI — Akiflow-calibre restyle, Flux identity intact.
+ *
+ * Scoped to html.flux-modern (on by default via flux-modern-ui.js, toggle in
+ * Settings → Appearance). Strategy: re-tune the design tokens in styles.css
+ * so the whole app inherits the calmer, flatter, more confident look, then
+ * spot-polish the highest-traffic chrome (sidebar, cards, buttons, inputs,
+ * modals, scrollbars).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+html.flux-modern{
+  /* Surfaces: a touch more solid, borders a touch more visible — Akiflow's
+     "quiet panel" look instead of heavy glass glow. */
+  --card:rgba(22,28,45,.78);
+  --card2:rgba(27,34,53,.72);
+  --card3:rgba(32,41,62,.66);
+  --border:rgba(255,255,255,.08);
+  --border2:rgba(255,255,255,.12);
+  --glass:blur(20px) saturate(150%);
+  --glass-soft:blur(14px) saturate(140%);
+  --glass-tint:linear-gradient(155deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+  --liquid-edge:inset 0 1px 0 rgba(255,255,255,.07);
+  --shadow-card:0 4px 20px rgba(0,0,0,.30),var(--liquid-edge);
+  --shadow-float:0 18px 50px rgba(0,0,0,.45),var(--liquid-edge);
+  --shadow-glow:0 0 0 1px rgba(var(--purple-rgb),.30),0 8px 30px rgba(var(--purple-rgb),.16);
+}
+
+html.flux-modern body{
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ── Headings: tighter, more confident ── */
+html.flux-modern h1,
+html.flux-modern h2,
+html.flux-modern .panel-title,
+html.flux-modern .card-title{
+  letter-spacing:-.02em;
+}
+
+/* ── Sidebar: flatter, calmer, Akiflow-style active pill ── */
+html.flux-modern .sidebar{
+  background:linear-gradient(180deg,#0d1120 0%,#0b0f1a 100%);
+  border-right:1px solid rgba(255,255,255,.06);
+}
+html.flux-modern .nav-item{
+  border-radius:11px;
+  padding:9px 11px;
+}
+html.flux-modern .nav-item:hover{
+  background:rgba(255,255,255,.05);
+  color:var(--text2);
+}
+html.flux-modern .nav-item.active{
+  background:linear-gradient(120deg,rgba(var(--purple-rgb),.18),rgba(var(--accent-rgb),.10));
+  color:var(--text);
+  box-shadow:inset 0 0 0 1px rgba(var(--purple-rgb),.22);
+}
+html.flux-modern .nav-group-label{
+  letter-spacing:.12em;
+  opacity:.8;
+}
+
+/* ── Cards ── */
+html.flux-modern .card{
+  border-radius:var(--r);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-card);
+}
+html.flux-modern .card:hover{
+  border-color:var(--border2);
+}
+
+/* ── Buttons: gradient primary, ghost secondary ── */
+html.flux-modern .btn{
+  border-radius:12px;
+  background:linear-gradient(120deg,#0891d1,#7c5cff);
+  border:none;
+  color:#fff;
+  font-weight:700;
+  letter-spacing:.01em;
+  box-shadow:0 8px 22px -10px rgba(var(--purple-rgb),.7);
+  transition:filter var(--t-base) var(--ease),transform var(--t-base) var(--ease),box-shadow var(--t-base) var(--ease);
+}
+html.flux-modern .btn:hover{
+  filter:brightness(1.1);
+  transform:translateY(-1px);
+}
+html.flux-modern .btn:active{transform:translateY(0)}
+html.flux-modern .btn-sec{
+  border-radius:12px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+}
+html.flux-modern .btn-sec:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.16);
+}
+
+/* ── Inputs: crisp focus ring instead of glow ── */
+html.flux-modern input[type="text"],
+html.flux-modern input[type="email"],
+html.flux-modern input[type="password"],
+html.flux-modern input[type="number"],
+html.flux-modern input[type="date"],
+html.flux-modern input[type="time"],
+html.flux-modern input[type="search"],
+html.flux-modern select,
+html.flux-modern textarea{
+  border-radius:11px;
+  transition:border-color var(--t-base) var(--ease),box-shadow var(--t-base) var(--ease);
+}
+html.flux-modern input:focus,
+html.flux-modern select:focus,
+html.flux-modern textarea:focus{
+  border-color:rgba(var(--purple-rgb),.65);
+  box-shadow:0 0 0 3px rgba(var(--purple-rgb),.20);
+  outline:none;
+}
+
+/* ── Modals / overlays ── */
+html.flux-modern .modal,
+html.flux-modern .modal-content,
+html.flux-modern [class*="modal-card"]{
+  border-radius:var(--r-lg);
+}
+
+/* ── Onboarding shell picks up the same language ── */
+html.flux-modern .ob-card{
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 30px 90px -40px rgba(0,0,0,.8);
+}
+html.flux-modern .ob-btn{
+  border-radius:12px;
+  background:linear-gradient(120deg,#0891d1,#7c5cff);
+  border:none;
+  font-weight:700;
+  box-shadow:0 10px 26px -12px rgba(var(--purple-rgb),.8);
+}
+html.flux-modern .ob-chip{
+  border-radius:11px;
+}
+html.flux-modern .ob-chip.active{
+  background:linear-gradient(120deg,rgba(var(--purple-rgb),.22),rgba(var(--accent-rgb),.12));
+  box-shadow:inset 0 0 0 1px rgba(var(--purple-rgb),.35);
+}
+
+/* ── Scrollbars: slim + quiet ── */
+html.flux-modern ::-webkit-scrollbar{width:9px;height:9px}
+html.flux-modern ::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,.14);
+  border-radius:999px;
+  border:2px solid transparent;
+  background-clip:content-box;
+}
+html.flux-modern ::-webkit-scrollbar-thumb:hover{background-color:rgba(255,255,255,.24)}
+html.flux-modern ::-webkit-scrollbar-track{background:transparent}
+
+/* ── Reduced motion stays respected ── */
+@media (prefers-reduced-motion:reduce){
+  html.flux-modern .btn,
+  html.flux-modern .nav-item{transition:none}
+}

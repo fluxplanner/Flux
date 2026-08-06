@@ -334,14 +334,14 @@
     if (!toolbar || document.getElementById('fluxFcgStudyBtn')) return;
 
     const genBtn = toolbar.querySelector('[onclick*="generateFlashcardsFromNote"]');
-    if (genBtn) genBtn.textContent = '🃏 ' + T('fcg.generate');
+    if (genBtn) genBtn.textContent = '' + T('fcg.generate');
 
     const studyBtn = document.createElement('button');
     studyBtn.id = 'fluxFcgStudyBtn';
     studyBtn.type = 'button';
     studyBtn.className = 'btn-sec';
     studyBtn.style.cssText = 'padding:6px 12px;font-size:.78rem';
-    studyBtn.textContent = '🃏 ' + T('fcg.study_saved');
+    studyBtn.textContent = '' + T('fcg.study_saved');
     studyBtn.addEventListener('click', studyNoteCards);
     if (genBtn) genBtn.insertAdjacentElement('afterend', studyBtn);
   }

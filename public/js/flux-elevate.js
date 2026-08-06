@@ -22,14 +22,14 @@
   var STORAGE_KEY_CMD_RAIL = 'flux_elv_cmd_rail_dismissed_v1';
 
   var MILESTONES = [
-    { n: 5,    title: 'First five down',           sub: 'You\'re building momentum.', emoji: '🌱' },
-    { n: 10,   title: 'Ten tasks crushed',         sub: 'Habits are forming.',        emoji: '⚡' },
-    { n: 25,   title: 'Quarter-century of focus',  sub: 'You show up every day.',    emoji: '🚀' },
-    { n: 50,   title: 'Half a hundred',            sub: 'Consistency is your edge.', emoji: '🔥' },
-    { n: 100,  title: 'Centurion',                 sub: 'A hundred completed tasks. Wild.', emoji: '🏆' },
-    { n: 250,  title: 'Two-fifty club',            sub: 'You\'re a Flux power user.', emoji: '💎' },
-    { n: 500,  title: 'Five hundred milestone',    sub: 'Genuinely impressive.',      emoji: '👑' },
-    { n: 1000, title: 'Thousand-task legend',      sub: 'You built a planet of focus.', emoji: '🌌' },
+    { n: 5,    title: 'First five down',           sub: 'You\'re building momentum.', emoji: '' },
+    { n: 10,   title: 'Ten tasks crushed',         sub: 'Habits are forming.',        emoji: '' },
+    { n: 25,   title: 'Quarter-century of focus',  sub: 'You show up every day.',    emoji: '' },
+    { n: 50,   title: 'Half a hundred',            sub: 'Consistency is your edge.', emoji: '' },
+    { n: 100,  title: 'Centurion',                 sub: 'A hundred completed tasks. Wild.', emoji: '' },
+    { n: 250,  title: 'Two-fifty club',            sub: 'You\'re a Flux power user.', emoji: '' },
+    { n: 500,  title: 'Five hundred milestone',    sub: 'Genuinely impressive.',      emoji: '' },
+    { n: 1000, title: 'Thousand-task legend',      sub: 'You built a planet of focus.', emoji: '' },
   ];
 
   function motionOk() {
@@ -104,7 +104,7 @@
 
   function smartSubLine(ctx) {
     var parts = [];
-    if (ctx.streak >= 2) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">🔥 ' + ctx.streak + '‑day streak</span>');
+    if (ctx.streak >= 2) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">' + ctx.streak + '‑day streak</span>');
     if (ctx.todayCount > 0) parts.push('<span class="flux-elv-chip">' + ctx.todayCount + ' due today</span>');
     if (ctx.overdueCount > 0) parts.push('<span class="flux-elv-chip flux-elv-chip--warm">' + ctx.overdueCount + ' overdue</span>');
     if (!parts.length) parts.push('<span class="flux-elv-chip flux-elv-chip--ok">Clear runway</span>');
@@ -404,14 +404,31 @@
   }
 
   /* ── 8. Tag tasks due today ────────────────────────────────── */
+  // Real badge element, NOT ::before: the task card's ::before is the 3px
+  // priority stripe (width:3px !important in styles.css), so a content
+  // badge on the same pseudo-element rendered as a 3px-wide vertical
+  // letter stack clipped to "ODAY" (B4).
+  function syncTodayBadge(el, on) {
+    var b = el.querySelector('.flux-elv-today-badge');
+    if (on && !b) {
+      b = document.createElement('span');
+      b.className = 'flux-elv-today-badge';
+      b.textContent = 'TODAY';
+      b.setAttribute('aria-hidden', 'true');
+      el.appendChild(b);
+    } else if (!on && b) {
+      b.remove();
+    }
+  }
   function tagDueTodayTasks() {
     var today = getTodayStr();
     var items = document.querySelectorAll('#taskList .task-item');
     items.forEach(function (el) {
       var id = el.getAttribute('data-task-id'); if (!id) return;
       var t = (window.tasks || []).find(function (x) { return String(x.id) === String(id); });
-      if (!t || t.done) { el.classList.remove('flux-elv-due-today'); return; }
-      el.classList.toggle('flux-elv-due-today', t.date === today);
+      var on = !!t && !t.done && t.date === today;
+      el.classList.toggle('flux-elv-due-today', on);
+      syncTodayBadge(el, on);
     });
   }
 

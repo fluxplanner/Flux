@@ -312,6 +312,379 @@ Migration: `20260530300000_pomodoro_subject_presets.sql` · Doc: `docs/P13-POMOD
 
 ---
 
+## 0aa. P0 A1 — course identity preserved (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Onboarding manual add | `student` | Step 4 → period `A1`, name `AP Biology` | Chip shows **AP Biology** with badge **A1** (not "Biology" / "1") |
+| School tab add | `student` | Add class `IB DP Chemistry HL`, period `B4` | Row keeps full name; badge `B4`; stored `level` = `IB DP HL` |
+| Trailing numeral | `student` | Add `Spanish 3` | Name stays `Spanish 3` (numeral survives) |
+| Canvas import | `student` | Sync courses with `AP `/`Honors ` prefixes | My Classes keeps prefixes; `level` populated |
+| Schedule photo | `student` | Import schedule image | Extracted names unstripped; period labels verbatim |
+| Edit class | `student` | Edit name to `Honors English 10` | `level` recomputed to `Honors`; name intact |
+| AI context | `student` | Ask Flux "what classes do I have today" | Reply uses full names incl. AP/IB prefix |
+| Legacy data | `student` | Existing stripped classes | Untouched (no rename), `level` backfilled from name |
+| Mobile 390px | `student` | School tab | Period badges (`A1`) don't overflow the chip |
+
+Unit: `test/unit/parse-class-level.test.mjs` · No migration (localStorage-only fields `level`, `periodLabel`)
+
+---
+
+## 0ab. P0 A2 — mobile More sheet dismissal (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| X button | any | 390px → More → tap X | Sheet slides away; page scroll restored |
+| Item tap | any | More → tap Timer | Navigates to Timer AND sheet closes |
+| Escape | any | More → Esc | Sheet closes (even if `.open` class already lost) |
+| Overlay tap | any | More → tap dimmed area | Sheet closes |
+| Rapid cycling | any | Open/close ×10 fast | Never wedges; sheet still functional |
+| Reopen race | any | Close then reopen within 300ms | Sheet stays open (fallback timer cancelled) |
+| Swipe down | any | Drag sheet down >90px | Sheet closes |
+
+E2E: `e2e/mobile-more-sheet.spec.ts` (390×844 viewport)
+
+---
+
+## 0ac. P0 A3 — palette / quick-add keyboard discipline (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Single palette | any | ⌘K | Exactly ONE palette (`#cmdPalette`), input focused |
+| Junk-task repro | any | ⌘K → type `notes` → Enter | Navigates to Notes; NO task created |
+| Shortcut suppression | any | Palette open → press `n`/`t`/`c`/`g` | Nothing fires beneath; no quick-add on top |
+| Escape = top only | any | Quick-add open → ⌘K → Esc | Palette closes, quick-add stays; 2nd Esc closes quick-add |
+| ⌘K toggle | any | ⌘K twice | Palette opens, then closes |
+| Quick-add Enter | any | `n` → type task → Enter | Task created (quick-add is top) |
+| Add-task via palette | any | ⌘K → type text → ↓ to "Add task" → Enter | Task created deliberately (not default) |
+| Educator ⌘K | educator | ⌘K in staff mode | Still toggles Work/Personal (unchanged) |
+
+E2E: `e2e/palette-keyboard.spec.ts` · Canonical owner: `FluxOverlays` (Area 19)
+
+---
+
+## 0ad. P0 A4 — AI propose-then-confirm (`enable_ai_action_confirm` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | AI adds tasks via tools | Legacy behavior: executes immediately (unchanged) |
+| Subtask intent | `student` | "Break my lab report into subtasks" | Proposal card in chat; NO tasks created yet |
+| Apply | `student` | Tap Apply on card | Subtasks appear under the existing task; no top-level flood; no conflict banner |
+| Pacing | `student` | Inspect applied subtasks | Advisory dates spread across open days BEFORE parent due date; rest days skipped; nothing dumped on today |
+| Checkbox subset | `student` | Uncheck some rows → Apply | Only checked changes applied |
+| Cancel | `student` | Tap Cancel | "Cancelled — nothing changed"; planner untouched |
+| Undo group | `student` | Apply → "Undo AI changes" | Prior state restored exactly (tasks + created notes) |
+| Single creation | `student` | AI adds ONE task | Auto-applies + inline Undo chip |
+| Modify existing | `student` | AI updates/completes/deletes a task | Always proposed, never silent |
+| Model loop | `student` | After proposal | TOOL RESULTS says `queued: proposal`; model summarizes, doesn't re-call |
+| Mobile 390px | `student` | Proposal card in chat | Card, checkboxes, buttons fully tappable |
+
+Migration: `20260709100000_ai_action_confirm_flag.sql` (reversible) · E2E: `e2e/agent-loop.spec.ts` (A4 tests) · Note: `addSubtasks` tool is only advertised to the model while the flag is on
+
+---
+
+## 0ae. P0 A5 — AI proxy auth hardening (server-side, no flag; env-tunable)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| No auth header | — | POST ai-proxy without Authorization | 401, no provider call |
+| Garbage token | — | POST with `Bearer junk` | 401 even with `PAYMENTS_ENABLED=false` |
+| Guest chat | signed-out app | Use Flux AI signed out | Works on `gpt-oss-20b`; capped 20 req/day per IP+UA+fingerprint (`AI_PROXY_GUEST_DAILY`) |
+| Guest over cap | signed-out | 21st request in a day | 429 `guest_daily_limit` with sign-in nudge |
+| Guest vision (ai-proxy) | signed-out | Image request | 401 `auth_required` |
+| Guest vision (gemini-proxy) | signed-out | Onboarding schedule photo import | Works; capped 10/day (`GEMINI_PROXY_GUEST_DAILY`) — pre-signup flow preserved |
+| Signed-in, payments off | `student` | Heavy AI use | Capped 300 req/day (`AI_PROXY_USER_DAILY`); guard outage fails OPEN for signed-in, CLOSED for guests |
+| Kill switch | ops | `AI_PROXY_ALLOW_GUESTS=false` | All unauthenticated traffic 401 |
+| RLS probe | any client | `select * from flux_ai_guard` / `flux_bump_ai_guard('x')` | Denied (service-role only) |
+
+Migration: `20260709110000_flux_ai_guard.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §11 · E2E: `e2e/ai-proxy.spec.ts` (hardened block gated on `AI_PROXY_HARDENED=1` until deployed)
+
+---
+
+## 0af. B1 — one notification system (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Single toast | `student` | Complete first task (fires conflict + badge + Up-next) | ONE toast at a time, drained sequentially with ~250ms gaps; conflict banner stays in-panel |
+| Priority | `student` | Queue conflict + info + achievement together | Order: conflict → achievement → info |
+| Coalescing | `student` | Earn 2 badges in one action | ONE toast: "2 badges earned — tap to view" → Profile |
+| Up next | `student` | Complete a task with more pending | "Up next: … — tap to start" toast (no floating pill over rows) |
+| Coach prompt | `student` | Trigger overdue coach nudge | Routed through the same queue (no top-right card) |
+| Tour vs modal | `student` | Replay tour, then open New Task modal | Tooltip never appears/advances while the modal is open; resumes after close |
+| Tooltip opacity | `student` | Tour step 2 over sidebar, all themes | Tooltip background fully opaque (`--flux-elev-bg`); no text bleed-through |
+| Mobile 390px | `student` | Toast burst with bottom nav visible | Toasts clear `.bnav`; single column, no overlap |
+
+Verified live: burst of 4 notices renders 1-at-a-time in priority order with achievements coalesced.
+
+---
+
+## 0ag. B2 — floating-widget layout contract (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Timer pill @390px | `student` | Start pomodoro, check Dashboard/Mood/Calendar/AI | Pill docks in the top bar (ring+time, no label); stats row readable; composer attach tappable |
+| Report @390px | any | Look for floating bubble; open More sheet | No fab; "Report" item in the sheet opens the feedback modal |
+| Report desktop | any | Bottom-left fab | Present; bottom offset = `--flux-dock-clearance` |
+| Toasts @390px | any | Trigger a toast | Bottom = `--flux-dock-clearance` (clears `.bnav` + safe area) |
+| Tokens | dev | Inspect `:root` | `--flux-dock-clearance` 20px desktop / bnav+12+safe-area mobile; fab z-index uses `--flux-z-pomo-pill` (no new `!important`) |
+
+E2E: B2 tests in `e2e/mobile-more-sheet.spec.ts` (fab hidden + sheet item; pill in topbar clearing `.bnav`) — verified at 390×844.
+
+---
+
+## 0ah. B3 — light-theme contrast pass (bug fix, no flag; CI-gated)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Sidebar logo | any | Switch to Cloud (light) | "Flux" wordmark + "Planner" sub dark and legible (`--flux-wordmark*` tokens) |
+| Gratitude card | `student` | Mood → Gratitude, light theme | "THREE SMALL WINS TODAY" + empty state readable (theme tokens, no hardcoded alpha) |
+| Important Dates | `student` | Dashboard, light theme | "None yet" readable |
+| Task meta chips | `student` | Task rows, all 8 themes | `--muted2` chips ≥ 4.5:1 on card |
+| Settings descriptions | any | Settings, all 8 themes | Secondary text ≥ 4.5:1 |
+| CI gate | dev | `npm run check:contrast` | 8 themes × 4 pairs AA; fails build otherwise (bundle-freshness workflow step) |
+| Theme retune | dev | rose/ocean/candy `--muted` | Brightened (`#9d5f6d`/`#4f7396`/`#8a5fad`) to ≥3:1 on card |
+
+Script: `scripts/contrast-audit.mjs` · Verified live: light theme wordmark computed `rgb(31,35,40)` on white.
+
+---
+
+## 0ai. B4 — small visual defects (bug fixes, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| TODAY badge | `student` | Task due today | Full "TODAY" chip top-right (real element, no 3px ::before sliver / "ODAY") |
+| Notebook naming | `student` | Sidebar, panel header, ⌘K, More sheet | All say **Notebook**; land on Notes list; sub-tabs "📓 Notes" (default) / "🧠 Knowledge" |
+| Palette alias | any | ⌘K → type `notes` → Enter | Notebook ranks first (alias keys); navigates, no junk task |
+| Integrations order | `student` | Onboarding step 6 | Google, Classroom, Canvas, Calendar, Notion, Todoist lead |
+| More tools | `student` | Onboarding step 6 | Jira/Linear/GitHub/Zapier/IFTTT hidden behind "More tools ▾" |
+| Coming soon | `student` | Picker tiles without live connectors | Honest "Coming soon" chip |
+| Landing DOM | any | Sign in → inspect DOM | `#loginScreen`/`#roleSelectScreen` detached (SR silence, ~256KB lighter); sign-out reattaches |
+
+E2E: palette/notebook/knowledge/more-sheet/semester suites 20/20 green.
+
+---
+
+## 0aj. B5 — Chromebook performance (B5.1–B5.4; B5.5 deferred)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Fonts | any | DevTools network, cold load | Zero requests to fonts.googleapis/gstatic; two local woff2 (~79KB); text swaps in (`font-display:swap`) |
+| Observers | dev | Count document-wide MutationObservers | 1 shared body walker (+1 self-disconnecting #app watcher at boot); i18n + emoji still live-update |
+| List windowing | `student` | 250+ tasks / notes | 100 cards + "Loading N more…" sentinel; scroll streams chunks; complete/DnD unchanged |
+| SW versioning | dev | `npm run build:web` twice | Deterministic hashed names; BUILD stamped automatically; NO manual STATIC bump |
+| Repeat visit | any | Second load (installed PWA) | Bundles served cache-first from precache; only index.html hits network (with nav preload) |
+| Offline | any | Airplane mode → reload | Cached shell + bundles boot |
+| Lighthouse (mobile, cold) | — | Local run 2026-07-10 | Perf **59** · FCP 2.6s · LCP 8.3s · TBT 180ms (baseline recorded; cold-visit LCP is bundle download under simulated slow-4G — repeat visits ride the precache; ≥85 needs per-panel code-splitting, staged separately) |
+
+Note: B5.5 (five-way app.js source split) deferred to its own PR — the bundle is a literal concat so the split ships zero byte changes, while the unit-test extractors + contrast CI gate parse app.js directly and would all need re-pointing; risk without runtime benefit mid-hardening.
+
+---
+
+## 0ak. B6 — keyboard & focus a11y (bug fix, no flag)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Modal trap | any | New Task modal → Tab ×25 | Focus cycles inside; never escapes to sidebar |
+| Focus return | any | Open modal → Esc | Focus returns to the invoking button |
+| Edit Task / palette / More sheet / day popup | any | Same trap + return behavior | Contained + returned |
+| Global Tab hijack | any | Tab with a modal open | The roving-focus loop yields (used to yank focus to the sidebar) |
+| Focus ring | any | Tab anywhere, all 8 themes | 2px accent `:focus-visible` ring; mouse clicks paint none |
+| Toast region | SR | `#toastLive` | `aria-live="polite"` (present) |
+| More sheet | SR | `#moreSheet` | `role="dialog" aria-modal="true"` (present) |
+| axe scans | CI | `npx playwright test a11y` | 0 critical violations on New Task modal + topbar/sidebar |
+
+E2E: `e2e/a11y.spec.ts` (6 tests, axe-core) · Trap lives in `FluxA11y` (canonical a11y owner), unflagged (WCAG core)
+
+---
+
+## 0al. C1 — FluxNow bell-aware strip (`enable_now_engine` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Boot app | No visible strip; legacy next-class pill unchanged |
+| In period | `student` | Timed class in session | Strip: "AP Biology · Rm 204 — 35 min left." |
+| Passing | `student` | Between classes | "You have Spanish 3 in Rm 110 in 8 min." |
+| Before/after | `student` | Outside bells | Calm sentences; never countdown-panic tone |
+| Weekend/holiday | any | Sat/Sun or rest day | "Weekend — no bells today." / "No school today — rest up." |
+| Educator | `teacher` | Work mode, teaching schedule | "You teach 3B in Rm 204 in 6 min." phrasing |
+| Tap | any | Tap strip | Calendar timeline opens; `now_strip_opened` telemetry |
+| AI context | `student` | Ask Flux anything | Prompt carries "School time right now: …" |
+| Pill unification | `student` | Flag on | Legacy `topbarNextClass` pill hidden — one surface |
+| Mobile 390px | any | Strip under topbar | Full-width, single line, tappable |
+
+Migration: `20260710090000_now_engine_flag.sql` (reversible) · Doc: `docs/P30-NOW-ENGINE.md` · Unit: `test/unit/now-engine.test.mjs` · E2E: `e2e/now-engine.spec.ts`
+
+---
+
+## 0am. C2 — District Schedule Authority (`enable_school_schedules` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Publish variant | `admin` | Admin Ops → Schedule authority → "2-hr delay" + periods | Variant row saved; visible to school members |
+| Calendar painter | `admin` | Pick date → assign variant/closed → Publish | `flux_school_calendar_days` row; members' planners reflect it |
+| Broadcast snow day | `admin` | Pick date → Broadcast snow day | Closure row + calm broadcast via emergency pipeline |
+| Closure = rest day | `student` | Closed day published | `isBreak()` true; date spreading/calendar/AI skip it; NO mutation of the student's rest days |
+| Reflow proposal | `student` | Closure lands on a day with due tasks | Toast proposal → tap moves tasks to next open day → undo snackbar restores |
+| FluxNow | any | Closure today (both flags on) | Strip: "Snow day — no school today." (holiday state) |
+| Role gate | `student`/`teacher` | Admin card / writes | Card absent; RLS rejects writes (admin only) |
+| Cross-school | any | Member of school A | Sees zero rows from school B (RLS probe) |
+| Flag off | any | Cache present | Completely inert — no rest-day effect, no card, no fetches |
+
+Migration: `20260710100000_school_schedules.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §12 · Doc: `docs/P31-SCHOOL-SCHEDULES.md` · E2E: `e2e/school-schedules.spec.ts`
+
+---
+
+## 0an. C3 — Sub-Plan Generator (`enable_sub_plans` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `teacher` | Lesson Hub → "Sub-plan template" | Legacy clipboard copy (unchanged) |
+| Composer | `teacher` | Flag on → same button | Modal: per-period plans from today's Lesson Hub notes + finish-early/emergency/contact sections |
+| Print | `teacher` | Modal → Print | Clean printable page (white, table schedule) |
+| Publish | `teacher` | Modal → Publish share code | 48h link copied; `sub_plan_published` telemetry |
+| Sub view | signed-out | Open `?subplan=CODE` | Read-only plan renders with no account; audit row written |
+| Expiry | signed-out | Open a 48h+ old link | "This share link has expired" message |
+| Privacy | any | Direct table select | Zero rows (owner-only RLS; RPC is the only public path) |
+| Audit trail | `teacher` | After sub views | Owner can read `flux_sub_plan_views` rows |
+
+Migration: `20260710110000_sub_plans.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §13 · Doc: `docs/P32-SUB-PLANS.md` · E2E: `e2e/sub-plans.spec.ts`
+
+---
+
+## 0ao. C4 — Grade GPS (`enable_grade_gps` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | School tab | No Grade GPS card, no snapshots recorded |
+| Card | `student` | Flag on → School tab | Per-class rows: grade %, level chip, weighted GPA, sparkline |
+| Weighted GPA | `student` | AP class at 92.4% | Shows `weighted GPA 4.7` (3.7 + 1.0 AP boost from A1's `level`) |
+| No grade yet | `student` | Class with no history | Shows `—`, never 0.0 GPA |
+| Record | `student` | Enter 94.5 → Record | History point added; sparkline updates |
+| Canvas snapshot | `student` | Canvas hub synced | One `current_score` point per class per day (max 120 kept) |
+| Weights editor | `student` | Weights → add rows → Save | Categories saved per class; count chip updates |
+| Syllabus scan | `student` | Weights → Scan syllabus photo | Extracted categories land in EDITABLE rows; Save confirms |
+| Protect my A | `student` | Quiz (15%) in 4 days → button | A4 proposal card in Flux AI: 2 study blocks dated BEFORE the quiz, med priority; nothing applied until Apply; undoable |
+| Rest days | `student` | Closure/rest day before the quiz | Study blocks skip it (isBreak-aware, incl. C2 closures) |
+| Mobile 390px | `student` | School tab | Rows wrap; buttons tappable; sparkline visible |
+
+Migration: `20260710120000_grade_gps_flag.sql` (reversible) · Doc: `docs/P38-GRADE-GPS.md` · Unit: `test/unit/grade-gps.test.mjs` · E2E: `e2e/grade-gps.spec.ts`
+
+---
+
+## 0ap. C5 — Accommodation cards (`enable_accommodation_cards` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | All panels | No accommodation cards anywhere |
+| Counselor add | `counselor` | Workspace → Accommodations → save | Row saved (same school); consent defaults to private |
+| Teacher chips | `teacher` | Dashboard → Accommodations card | "2 students: extended time" per class — NO names, NO notes |
+| Wrong class | `teacher` | Chips RPC with a class code they don't own | `not_your_class` |
+| Detail (consented) | `teacher` | Tap chip, class has `staff_visible` rows | Names + notes for consented rows only + "audited" notice |
+| Detail (private) | `teacher` | Tap chip, no consented rows | "Ask their counselor" CTA — zero identity leak |
+| Audit | `student` | After teacher viewed details | Settings panel shows "Staff viewed your shared details N times" |
+| Transparency | `student` | Settings → What staff can see about me | Each row labeled "shared with my teachers" / "private — count only" |
+| Cross-school | `counselor` | School X counselor | Zero rows from school Y (RLS probe) |
+| Direct table | `teacher` | `select * from flux_student_accommodations` | Zero rows (no teacher policy) |
+
+Migration: `20260711090000_accommodation_cards.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §14 · Doc: `docs/P39-ACCOMMODATION-CARDS.md` · E2E: `e2e/accommodation-cards.spec.ts`
+
+---
+
+## 0aq. C6 — Family digest (`enable_family_digest` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Settings → Family sharing | No digest controls; cron self-skips (`flag_off`) |
+| Controls | `student` | Flag on, ACTIVE link | Digest block: opt-in (default OFF), language en/es/fr, Wins + Upcoming checkboxes |
+| Pending link | `student` | Link not yet claimed | No digest controls (active links only) |
+| Save | `student` | Toggle opt-in → change language | "Saved" toast; `flux_parent_links` row updated; `family_digest_prefs_changed` telemetry |
+| Parent tamper | `parent` | UPDATE digest prefs | RLS rejects (student-owned) |
+| Cron | — | Weekly run, opted-in link | One `flux_family_digests` row per link+week; wins FIRST, then upcoming; guardian's language |
+| Grades | — | Any payload | Never contains grades/scores at any setting |
+| Categories | `student` | Uncheck everything | Cron skips the link entirely (nothing shared) |
+| Transparency | `student` | Read own `flux_family_digests` | Sees exact shared payloads, week by week |
+| No email key | — | RESEND_API_KEY unset | Digest recorded `status='rendered'`, no send, no error |
+
+Migration: `20260711100000_family_digest.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §15 · Doc: `docs/P40-FAMILY-DIGEST.md` · E2E: `e2e/family-digest.spec.ts` · Function: `supabase/functions/family-digest`
+
+---
+
+## 0ar. C7 — Web push (`enable_web_push` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Settings | No reminders card; notify-push self-skips |
+| Opt in | any | Settings → toggle on | Permission prompt → subscription row; "Reminders on" |
+| Opt out | any | Toggle off | Unsubscribed AND row deleted |
+| Denied permission | any | Block the prompt | Toggle reverts; human error message, no throw |
+| No VAPID key | any | Deploy without keys | "not configured" message; sender skips (`no_vapid_keys`) |
+| Delivery | any | Task due tomorrow, app closed | ONE calm notification; click focuses/opens the app |
+| Quiet hours | any | During DND window with `quiet` on | Nothing sends (server-enforced) |
+| Overnight | any | 21:00–07:00 | Nothing sends regardless of settings |
+| Dead endpoint | — | Expired subscription | 404/410 pruned from the table |
+| Chromebook | any | Installed PWA, 4GB device | Cold start < 2s (record trace numbers) |
+
+Migration: `20260711110000_web_push.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §16 · Doc: `docs/P41-WEB-PUSH.md` · E2E: `e2e/web-push.spec.ts` · Function: `supabase/functions/notify-push`
+
+---
+
+## 0as. C8 — Study Rooms v2 (`enable_study_rooms_v2` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | School / Lesson Hub | No v2 cards; cowork v1 byte-identical |
+| Templates | `student` | School → Study rooms → tap a class | Co-work room opens on the next open task for that class |
+| No task | `student` | Template with no open class task | Helpful toast, no dead room |
+| Name guard | `student` | Room label with profanity/leet/spacing evasion | Rejected with kind copy; clean labels pass |
+| Registry | `student` host | Room open | One `flux_study_rooms` row, 60s heartbeats, deactivated on leave |
+| Study hall | `teacher` | Lesson Hub | Live rooms for OWN classes: label + count + age only — no codes, no content |
+| Wrong class | `teacher` | RPC with a class they don't own | `not_your_class` |
+| Group focus | 2+ `student` | 25 min together | ONE cosmetic grant (`FluxSeasons.earn` or calm toast); never grades-based |
+| Privacy | any | Direct table select as non-host | Zero rows |
+| Mobile 390px | `student` | Template chips | Wrap cleanly, tappable |
+
+Migration: `20260711120000_study_rooms_v2.sql` (reversible) · RLS: `docs/RLS_AUDIT.md` §17 · Doc: `docs/P42-STUDY-ROOMS-V2.md` · E2E: `e2e/study-rooms-v2.spec.ts`
+
+---
+
+## 0at. C9 — Seasons & streak cosmetics (`enable_seasons` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | `student` | Finish a focus session | No XP store touched; no card in Settings |
+| Earn | `student` | Focus session (flag on) | +10 sparks; streak starts/continues |
+| Daily caps | `student` | 5 sessions in a day | Only 3 count; shutdown ritual counts once |
+| Quiet hours | `student` | Sessions yesterday, none in DND | +10 bonus once next day |
+| Rest freeze | `student` | Sick day midweek, then return | Streak CONTINUES (never punish rest) |
+| Weekend | `student` | Fri → Mon | Streak continues |
+| Missed day | `student` | Skip a school day, no rest logged | Streak resets to 1 (no shaming copy) |
+| Unlock | `student` | Cross 25 sparks | ONE coalesced toast; cosmetic appears in Settings |
+| Apply | `student` | Tap unlocked accent | `--accent` updates + persists via existing accent storage |
+| Locked | `student` | Attempt locked id | Rejected; dashed chip shows threshold |
+| No grades | — | Any surface | Zero grade/GPA linkage anywhere (unit-scanned) |
+
+Migration: `20260711130000_seasons_flag.sql` (reversible) · Doc: `docs/P43-SEASONS.md` · Unit: `test/unit/seasons.test.mjs` · E2E: `e2e/seasons.spec.ts`
+
+---
+
+## 0au. C10 — Ask-Your-Teacher (`enable_ask_teacher` off by default)
+
+| Feature | Role | Test action | Expected result |
+|---------|------|-------------|-----------------|
+| Flag off | any | Edit a class-linked task | No "Ask my teacher" chip; `openForTask` inert |
+| Chip gate | `student` | Edit modal on a task whose class has a joined code | Chip renders; unlinked classes get none |
+| Composer | `student` | Tap chip | Card: task + class + due + editable "what I tried"; preview = exact message |
+| Send | `student` | Send (live teacher link) | Message lands in existing thread (participant-only RLS); `ask_teacher_sent` telemetry |
+| Rate limit | `student` | 4th ask in a day | Calm refusal ("ask fresh tomorrow, or catch them in class"); no modal |
+| No teacher link | `student` | Class without a joined code | Helpful toast pointing to the School tab join flow |
+| Triage queue | `teacher` | Lesson Hub after asks | "Student questions" card: name + task line only; Open messages CTA |
+| Privacy | `teacher` | Queue content | Only marker-prefixed messages the teacher already received — no new data surface |
+| Mobile 390px | `student` | Composer | Card fits, textarea usable, buttons tappable |
+
+Migration: `20260711140000_ask_teacher_flag.sql` (reversible) · Doc: `docs/P44-ASK-TEACHER.md` · E2E: `e2e/ask-teacher.spec.ts`
+
+---
+
 ## 10a. Meeting mode (`enable_meeting_mode` off by default)
 
 | Feature | Role | Test action | Expected result |

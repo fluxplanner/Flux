@@ -47,7 +47,7 @@
           <text class="fsh-ring-label" x="${mx.toFixed(1)}" y="${my.toFixed(1)}">${esc(k[1])}</text>
           <text class="fsh-ring-label min" x="${nx.toFixed(1)}" y="${ny.toFixed(1)}">${esc(k[2])}</text></g>`;
       }).join('');
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🎼 Circle of Fifths</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Tap a key for its signature, relative minor and diatonic chords.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Circle of Fifths</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Tap a key for its signature, relative minor and diatonic chords.</p>
         <div class="fsh-ring-wrap"><svg class="fsh-ring-svg" id="cofSvg" viewBox="0 0 460 460" role="img" aria-label="Circle of fifths">${segs}<circle cx="${cx}" cy="${cy}" r="${rI - 4}" fill="rgba(8,11,20,.6)" stroke="var(--fsh-line)"></circle><text class="fsh-ring-center" x="${cx}" y="${cy - 6}">5ths</text><text class="fsh-ring-label min" x="${cx}" y="${cy + 16}">major · minor</text></svg>
         <div id="cofInfo">${cofInfoHTML(cofSel)}</div></div></div>`;
       document.getElementById('cofSvg').addEventListener('click', (e) => { const g = e.target.closest('.fsh-ring-seg'); if (!g) return; cofSel = +g.dataset.i; renderCircle(body); });
@@ -107,7 +107,7 @@
       const pattern = (scMode === 'scale' ? SCALES : CHORDS)[scType];
       const pcs = pattern.map((s) => ((scRoot + s) % 12 + 12) % 12);
       const names = pattern.map((s) => noteName(scRoot + s));
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🎹 Scale &amp; chord explorer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a root and type — see the notes light up, then hear them.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Scale &amp; chord explorer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a root and type — see the notes light up, then hear them.</p>
         <div class="fsh-field" style="flex-wrap:wrap">
           <select id="scRoot" class="fsh-input" style="flex:0 0 90px">${PC.map((p, i) => `<option value="${i}"${i === scRoot ? ' selected' : ''}>${p}</option>`).join('')}</select>
           <div class="fsh-seg" id="scModeSeg"><button type="button" data-mode="scale" class="${scMode === 'scale' ? 'active' : ''}">Scale</button><button type="button" data-mode="chord" class="${scMode === 'chord' ? 'active' : ''}">Chord</button></div>

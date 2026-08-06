@@ -237,7 +237,7 @@
       el.style.display = s.composite >= 28 ? 'flex' : 'none';
       const tip = DOMAINS.map((d) => `${d[0].toUpperCase()}:${Math.round(s[d])}`).join(' ');
       el.title = `Momentum ${s.composite}/100 — ${tip}`;
-      el.innerHTML = `<span class="flux-mv2-score">🔥 ${s.composite}</span><span class="flux-mv2-domains" aria-hidden="true">${DOMAINS.map(
+      el.innerHTML = `<span class="flux-mv2-score">${s.composite}</span><span class="flux-mv2-domains" aria-hidden="true">${DOMAINS.map(
         (d) =>
           `<span class="flux-mv2-bar flux-mv2-${d}" style="--mv2-p:${s[d]}%" title="${d}"></span>`,
       ).join('')}</span>`;

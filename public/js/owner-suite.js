@@ -557,7 +557,7 @@
 
         <div style="background:linear-gradient(135deg,rgba(251,191,36,.10),rgba(245,158,11,.04));border:1px solid rgba(251,191,36,.32);border-radius:16px;padding:18px;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <span style="font-size:1.4rem">🚀</span>
+            <span style="font-size:1.4rem"></span>
             <div style="flex:1">
               <div style="font-weight:800;font-size:1rem;color:var(--gold,#fbbf24)">Push the current build</div>
               <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Pushes this preview build to every signed-in user. They'll pick it up on next load or auto-poll.</div>
@@ -588,7 +588,7 @@
 
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span style="font-size:1.4rem">📢</span>
+            <span style="font-size:1.4rem"></span>
             <div style="flex:1">
               <div style="font-weight:800;font-size:1rem">Sign-in popup message</div>
               <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Shown as a pop-up modal the next time each user signs in (or reloads). Each new message bumps the revision so users see it again.</div>
@@ -600,15 +600,15 @@
           <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Body</label>
           <textarea id="osPopupBody" placeholder="Heads up — Flux is launching a brand new Canvas integration. Check it out!" style="width:100%;min-height:80px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:10px">${popupText}</textarea>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" onclick="ownerSaveSignInPopup({bump:true})" style="flex:1;min-width:180px;padding:11px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">📨 Broadcast to all users</button>
-            <button type="button" onclick="ownerPreviewSignInPopup()" style="padding:11px 14px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">👁 Preview</button>
+            <button type="button" onclick="ownerSaveSignInPopup({bump:true})" style="flex:1;min-width:180px;padding:11px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Broadcast to all users</button>
+            <button type="button" onclick="ownerPreviewSignInPopup()" style="padding:11px 14px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Preview</button>
             <button type="button" onclick="ownerClearSignInPopup()" style="padding:11px 14px;font-size:.76rem;border-radius:12px;background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.28);color:var(--red,#ff4d6d);font-weight:700;cursor:pointer">Clear</button>
           </div>
         </div>
 
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span style="font-size:1.4rem">🔔</span>
+            <span style="font-size:1.4rem"></span>
             <div style="flex:1">
               <div style="font-weight:800;font-size:1rem">Toast announcement</div>
               <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">Subtle inline banner shown to users on next sign-in (less intrusive than a popup). Useful for ongoing notices.</div>
@@ -624,7 +624,7 @@
 
         <div style="background:var(--card2);border:1px solid rgba(255,77,109,.32);border-radius:16px;padding:18px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-            <span style="font-size:1.4rem">💣</span>
+            <span style="font-size:1.4rem"></span>
             <div style="font-weight:800;font-size:1rem;color:var(--red,#ff4d6d)">Hard reset</div>
           </div>
           <div style="font-size:.74rem;color:var(--muted2);line-height:1.5;margin-bottom:12px">These wipe LOCAL state on this device only (Supabase data is untouched).  Use to test the empty-state UX.</div>
@@ -661,7 +661,7 @@
           </div>
         </div>
         <div style="background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.25);border-radius:14px;padding:14px;margin-bottom:14px">
-          <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">🔐 Platform reality (read this)</div>
+          <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">Platform reality (read this)</div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55">
             Flux stores each user’s data in their own <b>user_data</b> row. <b>Auth administration</b> (list/ban/delete/reset) runs through the owner-only <b>release-admin</b> Edge Function with the service role — open the <button type="button" onclick="window.__osSetTab&&window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);padding:2px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button> tab. This browser still ships only the <b>anon</b> key; impersonation and org SSO policies stay in Supabase.
           </div>
@@ -683,8 +683,21 @@
       if(tab==='preview'){
         const dir=window.FluxStaffDirectory;
         if(!dir||!Array.isArray(dir.all)||!dir.all.length){
+          // The directory hydrates lazily, and only during onboarding / role
+          // detection — so opening this tab first left it permanently empty,
+          // and "refresh the page" never helped because nothing here called
+          // hydrate(). Kick it off now and repaint when it lands.
+          if(dir&&typeof dir.hydrate==='function'&&!window.__osDirHydrating){
+            window.__osDirHydrating=true;
+            Promise.resolve(dir.hydrate())
+              .catch(()=>{})
+              .then(()=>{
+                window.__osDirHydrating=false;
+                if(window.__osActiveTab==='preview')paint();
+              });
+          }
           return`<div style="padding:18px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--muted2);font-size:.82rem;line-height:1.55">
-            Staff directory hasn't loaded yet. Refresh the page and reopen this tab. (Loaded from <code style="font-size:.7rem">public/js/flux-staff-directory.js</code>.)
+            ${window.__osDirHydrating?'Loading the staff directory…':'No active staff found in the directory. Add rows to <b>public.staff_directory</b> (with <code style="font-size:.7rem">active = true</code>), then reopen this tab.'}
           </div>`;
         }
         const active=(window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active())||null;
@@ -723,7 +736,7 @@
         }
         const banner=active
           ? `<div style="margin-bottom:14px;padding:14px 16px;background:linear-gradient(135deg,rgba(124,92,255,.16),rgba(255,92,124,.12));border:1px solid rgba(124,92,255,.4);border-radius:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-              <div style="font-size:1.4rem">🧪</div>
+              <div style="font-size:1.4rem"></div>
               <div style="flex:1;min-width:200px">
                 <div style="font-size:.86rem;font-weight:800;color:var(--text)">Currently previewing as ${esc(active.name||'(unnamed)')}</div>
                 <div style="font-size:.7rem;color:var(--muted2);font-family:JetBrains Mono,monospace;margin-top:2px">${esc(active.email||'no email')} · ${esc(ROLE_LABEL[active.role]||active.role)} · ${esc(active.mode||'work')} mode</div>
@@ -732,7 +745,7 @@
               <button type="button" onclick="ownerPreviewExit()" style="flex-shrink:0;padding:9px 14px;font-size:.78rem;font-weight:800;border-radius:10px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.22);color:#fff;cursor:pointer">Exit preview</button>
             </div>`
           : `<div style="margin-bottom:14px;padding:14px 16px;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.22);border-radius:14px;display:flex;align-items:center;gap:14px">
-              <div style="font-size:1.4rem">👑</div>
+              <div style="font-size:1.4rem"></div>
               <div style="flex:1">
                 <div style="font-size:.86rem;font-weight:800;color:var(--text)">Signed in as owner</div>
                 <div style="font-size:.7rem;color:var(--muted2);margin-top:2px;line-height:1.5">Pick any staff member below to walk through the planner as them. Each preview lives in an isolated localStorage bubble — no Supabase writes, no leaks between accounts.</div>
@@ -755,7 +768,7 @@
             ${group('Staff &amp; Admin',staffOnly)}
           </div>
           <div style="margin-top:18px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:12px;font-size:.7rem;color:var(--muted2);line-height:1.6">
-            <b style="color:var(--text)">How preview works.</b> Switching in overlays the chosen identity on top of your owner auth session and re-points every <code style="font-size:.65rem">load()</code> / <code style="font-size:.65rem">save()</code> call to <code style="font-size:.65rem">imp:&lt;email&gt;:</code>. The cloud sync (<code style="font-size:.65rem">syncToCloud</code>, <code style="font-size:.65rem">syncFromCloud</code>, keepalive) short-circuits while preview is active so the bubble never reaches anyone's Supabase row. Exit at any time from this tab, the floating "🧪 Test as…" pill, or the top banner.
+            <b style="color:var(--text)">How preview works.</b> Switching in overlays the chosen identity on top of your owner auth session and re-points every <code style="font-size:.65rem">load()</code> / <code style="font-size:.65rem">save()</code> call to <code style="font-size:.65rem">imp:&lt;email&gt;:</code>. The cloud sync (<code style="font-size:.65rem">syncToCloud</code>, <code style="font-size:.65rem">syncFromCloud</code>, keepalive) short-circuits while preview is active so the bubble never reaches anyone's Supabase row. Exit at any time from this tab, the floating "Test as…" pill, or the top banner.
           </div>`;
       }
 
@@ -835,7 +848,7 @@
             </div>
           </div>
           ${gate&&gate.pushedBy?`<div style="font-size:.7rem;color:var(--muted2);margin-bottom:12px">Last push by <b>${esc(gate.pushedBy)}</b> · ${esc(new Date(gate.pushedAt||0).toLocaleString())}${gate.notes?`<br><span style="color:var(--muted)">Notes:</span> ${esc(gate.notes)}`:''}</div>`:''}
-          <button type="button" id="osReleasePushBtn" ${isLive?'disabled':''} style="width:100%;padding:12px;font-size:.9rem;font-weight:800;border-radius:12px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ This build is already released':'🚀 Push '+esc(buildLabel)+' to all users'}</button>
+          <button type="button" id="osReleasePushBtn" ${isLive?'disabled':''} style="width:100%;padding:12px;font-size:.9rem;font-weight:800;border-radius:12px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ This build is already released':'Push '+esc(buildLabel)+' to all users'}</button>
           <div style="margin-top:10px;font-size:.66rem;color:var(--muted);line-height:1.5">
             ${stagingOn&&diff?'Users currently see the "Update under review" screen. Push when you\'re ready to roll out.':stagingOn&&isLive?'Update mode is on but this build is already pushed — turn update mode off if you don\'t need the gate for the next deploy.':'Update mode is off — everyone gets the current deploy. Turn it on only when you want to preview a build before the public sees it.'}
           </div>
@@ -1132,7 +1145,7 @@
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-bottom:14px">
           <b>Impersonation</b> requires a dedicated Admin API workflow — never the anon key. Session revoke / ban flows for arbitrary users live under <button type="button" onclick="window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);padding:3px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button>.
         </div>
-        <button type="button" onclick="document.getElementById('ownerSuite')?.remove();openModPanel();" style="padding:10px 16px;font-size:.78rem;border-radius:12px;margin-bottom:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)">⚡ Open classic Dev Panel</button>
+        <button type="button" onclick="document.getElementById('ownerSuite')?.remove();openModPanel();" style="padding:10px 16px;font-size:.78rem;border-radius:12px;margin-bottom:10px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3)">Open classic Dev Panel</button>
         <button type="button" onclick="forceSyncNow()" style="display:block;width:100%;padding:10px;margin-bottom:8px;font-size:.78rem;border-radius:10px">⟳ Force sync now</button>
         <button type="button" onclick="clearCache()" style="display:block;width:100%;padding:10px;font-size:.78rem;border-radius:10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">⚠ Nuclear: clear local cache (typed confirm)</button>`;
 
@@ -1208,7 +1221,7 @@
     }catch(_){}
     const pushBtnHeader=`
       <button type="button" id="osHeaderPushBtn" onclick="window.__osSetTab&&window.__osSetTab('release')" class="os-head-push" title="${__isLive?'This build is live — open Release panel':'Open Release panel to push this build'}">
-        <span class="os-head-push__icon" aria-hidden="true">🚀</span>
+        <span class="os-head-push__icon" aria-hidden="true"></span>
         <span class="os-head-push__text">
           <span class="os-head-push__lbl">${__isLive?'Build live':'Push update'}</span>
           <span class="os-head-push__sub">${esc(__buildLabel)}</span>
@@ -1220,7 +1233,7 @@
       <div class="owner-suite-card owner-suite-card--v2" style="max-width:${cardMax};${embedUi?'margin:0 auto;':''}">
         <header class="os-head">
           <div class="os-head__title">
-            <span class="os-head__crown" aria-hidden="true">👑</span>
+            <span class="os-head__crown" aria-hidden="true"></span>
             <div>
               <div class="os-head__name flux-color-title">Owner Command Center</div>
               <div class="os-head__meta">${esc(currentUser?.email||'')} · god-mode for your data plane</div>

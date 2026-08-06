@@ -11,10 +11,12 @@
     'adminDashboard',
     'staffWorkboard',
     'lessonHub',
+    'teacherResources',
     'counselorMeetings',
     'counselorWorkspace',
     'adminOps',
     'staffHub',
+    'staffMessages',
   ]);
 
   const STAFF_PERSONAL_PANELS = new Set([
@@ -202,6 +204,10 @@
         if (fr.isTeacher() && work) return { ok: true };
         return { ok: false, reason: 'lesson_hub', fallbackId: home };
       }
+      if (pid === 'teacherResources') {
+        if (fr.isTeacher() && work) return { ok: true };
+        return { ok: false, reason: 'teacher_resources', fallbackId: home };
+      }
       if (pid === 'counselorMeetings') {
         if (fr.isCounselor() && work) return { ok: true };
         return { ok: false, reason: 'counselor_meetings', fallbackId: home };
@@ -218,8 +224,18 @@
           fallbackId: fr.current === 'staff' ? 'staffWorkboard' : home,
         };
       }
+      if (pid === 'staffMessages') {
+        if (edu && work) return { ok: true };
+        return { ok: false, reason: 'staff_messages', fallbackId: home };
+      }
       if (pid === 'staffHub') {
-        if (edu && work && (fr.isStaff() || fr.isCounselor())) return { ok: true };
+        // Teachers included: the hub is generic staff ground (today's events, tasks
+        // due, meeting notes, PD log, wellbeing check-in, availability) with nothing
+        // counselor- or admin-privileged. The sidebar already offers it to every
+        // educator (app.js `data-educator-work-main`), so excluding teachers here
+        // left them with a button that always bounced. Platform admins are not
+        // 'teacher', so they still fall through to the adminOps redirect below.
+        if (edu && work && (fr.isStaff() || fr.isCounselor() || fr.isTeacher())) return { ok: true };
         if (edu && work && fr.isPlatformAdmin && fr.isPlatformAdmin()) {
           return { ok: false, reason: 'staff_hub_admin_use_ops', fallbackId: 'adminOps' };
         }

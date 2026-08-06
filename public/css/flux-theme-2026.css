@@ -1,0 +1,331 @@
+/* ════════════════════════════════════════════════════════════════════
+   FLUX · Theme 2026 — GitHub structure × Discord warmth.
+   Token-override layer: loads LAST. Crisp solid surfaces + hairline
+   borders (GitHub), rounded pills, blurple accent, friendly hover
+   motion (Discord). All colors chosen for WCAG AA on their surfaces.
+
+   Dual-theme: every rule consumes tokens; :root carries the dark
+   (Midnight) values, body[data-theme="light"] re-maps the full set for
+   Cloud. The 17 base tokens (bg/card/border/text/accent/status) are
+   ALSO set inline by app.js THEMES — keep both palettes in sync there.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Surfaces — GitHub dark scale */
+  --bg:#0d1117; --bg2:#10161f; --bg3:#161b22;
+  --card:rgba(22,27,34,.92); --card2:rgba(28,33,40,.92); --card3:rgba(33,38,45,.92);
+  --card-solid:#161b22;
+  --flux-elev-bg:#161b22;
+  --border:#242b33; --border2:#30363d; --border3:#3d444d;
+
+  /* Accent — Discord blurple (≈5.2:1 with white text) */
+  --accent:#5865F2; --accent-rgb:88,101,242; --accent2:#8b9cff;
+  --accent-hover:#6875f5;
+  --accent-glow:rgba(88,101,242,.30);
+
+  /* Status — GitHub scale (AA on #0d1117) */
+  --green:#3fb950; --green-rgb:63,185,80;
+  --red:#f85149; --red-rgb:248,81,73;
+  --gold:#d29922; --gold-rgb:210,153,34; --gold-badge:#e3b341;
+  --purple:#a371f7; --purple-rgb:163,113,247;
+  --orange:#f0883e; --blue:#58a6ff;
+
+  /* Text — GitHub grays */
+  --text:#e6edf3; --text2:#b6bfca; --muted:#6e7681; --muted2:#8b949e;
+
+  /* Structural chrome */
+  --rail:#0b0f14;                    /* sidebar / segmented-control wells */
+  --hover:#1a2029;                   /* neutral hover fill */
+  --btn2:#21262d; --btn2-hover:#2a313a; --btn2-border-h:#4b535d;
+  --input-bg:#0d1117;
+  --scroll:#30363d; --scroll-hover:#3d444d;
+  --topbar-bg:rgba(11,15,20,.9);
+  --overlay:rgba(1,4,9,.7);
+  --row-hover:rgba(177,186,196,.04);
+  --focus-ring:rgba(88,166,255,.22); --focus-outline:rgba(88,166,255,.65);
+  --dot-edge:rgba(255,255,255,.08);
+
+  /* Geometry — between GitHub's 6px and Discord's 16px */
+  --r:12px; --r-sm:8px; --r-lg:16px; --r-xl:20px;
+
+  /* Flatten the liquid-glass era: lighter blur, calmer edges */
+  --glass:blur(12px) saturate(120%);
+  --glass-soft:blur(8px) saturate(112%);
+  --glass-tint:linear-gradient(180deg,rgba(255,255,255,.025) 0%,rgba(255,255,255,0) 100%);
+  --liquid-edge:inset 0 1px 0 rgba(255,255,255,.045);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.35);
+  --shadow-card:0 2px 10px rgba(0,0,0,.32),var(--liquid-edge);
+  --shadow-float:0 12px 36px rgba(1,4,9,.65);
+  --shadow-glow:0 0 0 1px rgba(var(--accent-rgb),.4),0 6px 24px rgba(var(--accent-rgb),.16);
+}
+
+/* ── Light (Cloud) — GitHub-light surfaces, same structure ─────────
+   Only tokens NOT managed inline by app.js THEMES live here at body
+   level; the 17 base tokens come from THEMES.light so the custom-color
+   settings keep working. */
+body[data-theme="light"]{
+  --bg3:#e7ebf0;
+  --card3:#eef1f4;
+  --flux-elev-bg:#ffffff;
+  --flux-wordmark:#1f2328;
+  --flux-wordmark-sub:#57606a;
+  --accent2:#4552d9;
+  --accent-hover:#4a56e2;
+  --accent-glow:rgba(88,101,242,.20);
+  --green-rgb:26,127,55;
+  --red-rgb:207,34,46;
+  --gold-rgb:154,103,0; --gold-badge:#9a6700;
+  --purple-rgb:130,80,223;
+  --blue:#0969da;
+  --text2:#424a53;
+
+  --rail:#eef1f5;
+  --hover:#e4e9ee;
+  --btn2:#f3f5f8; --btn2-hover:#e9edf2; --btn2-border-h:#9aa4af;
+  --input-bg:#ffffff;
+  --scroll:#c8d1da; --scroll-hover:#aab6c2;
+  --topbar-bg:rgba(255,255,255,.86);
+  --overlay:rgba(24,30,37,.45);
+  --row-hover:rgba(31,35,40,.04);
+  --focus-ring:rgba(9,105,218,.16); --focus-outline:rgba(9,105,218,.6);
+  --dot-edge:rgba(0,0,0,.14);
+
+  --glass-tint:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 100%);
+  --liquid-edge:inset 0 1px 0 rgba(255,255,255,.85);
+  --shadow-sm:0 1px 2px rgba(31,35,40,.06);
+  --shadow-card:0 1px 3px rgba(31,35,40,.05),0 8px 24px rgba(66,74,83,.08);
+  --shadow-float:0 16px 40px rgba(31,35,40,.18);
+  --shadow-glow:0 0 0 1px rgba(var(--accent-rgb),.35),0 6px 24px rgba(var(--accent-rgb),.14);
+}
+
+/* ── Base chrome ─────────────────────────────────────────────────── */
+body{background:var(--bg)}
+
+/* Sidebar — Discord channel-rail feel on a GitHub canvas */
+.sidebar{background:var(--rail);border-right:1px solid var(--border)}
+.sidebar-nav .nav-group-label{
+  color:var(--muted);font-size:.62rem;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+}
+.nav-item{border-radius:10px;color:var(--muted2)}
+.nav-item:hover{background:var(--hover);color:var(--text)}
+.nav-item.active{
+  background:rgba(var(--accent-rgb),.14);color:var(--text);
+}
+body[data-theme="light"] .nav-item.active{background:rgba(var(--accent-rgb),.12);color:var(--accent2)}
+.nav-item.active::before{
+  content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);
+  width:3px;height:60%;border-radius:99px;background:var(--accent);
+  box-shadow:none;
+}
+
+/* Topbar — solid, hairline-separated (GitHub header) */
+.topbar{
+  background:var(--topbar-bg);backdrop-filter:var(--glass-soft);
+  border-bottom:1px solid var(--border);
+}
+
+/* ── Cards / panels ──────────────────────────────────────────────── */
+.card,.spd-card,.fsdb-widget{
+  background:var(--card-solid);
+  border:1px solid var(--border2);
+  border-radius:var(--r);
+  box-shadow:var(--shadow-sm);
+}
+.card:hover,.fsdb-widget:hover{border-color:var(--border3)}
+.card h3{color:var(--text);letter-spacing:-.01em}
+
+/* Page headers */
+.flux-page-header .flux-page-sub{color:var(--muted2)}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn,.btn-sec,.edu-action-btn,.appt-btn,.ai-topbar-btn,
+.flux-oh-book-btn,.fsm-new-btn,.fsm-start-btn{
+  border-radius:10px;font-weight:600;
+  transition:background .14s ease,border-color .14s ease,color .14s ease,transform .1s ease;
+}
+.btn:active,.btn-sec:active,.edu-action-btn:active{transform:scale(.985)}
+.btn-sec{
+  background:var(--btn2);border:1px solid var(--border3);color:var(--text2);
+}
+.btn-sec:hover{background:var(--btn2-hover);border-color:var(--btn2-border-h);color:var(--text)}
+.edu-action-btn.primary,.fsm-start-btn{
+  background:var(--accent);border:1px solid transparent;color:#fff;
+}
+.edu-action-btn.primary:hover,.fsm-start-btn:hover:not(:disabled){background:var(--accent-hover)}
+
+/* ── Inputs — GitHub focus ring ──────────────────────────────────── */
+input[type="text"],input[type="search"],input[type="email"],input[type="password"],
+input[type="number"],input[type="date"],input[type="time"],input[type="url"],
+select,textarea{
+  background:var(--input-bg);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);
+  transition:border-color .12s ease,box-shadow .12s ease;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--blue);
+  box-shadow:0 0 0 3px var(--focus-ring);
+}
+::placeholder{color:var(--muted)}
+
+/* ── Scrollbars — thin, GitHub-style ─────────────────────────────── */
+*{scrollbar-width:thin;scrollbar-color:var(--scroll) transparent}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:99px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ── Modals ──────────────────────────────────────────────────────── */
+.modal,.fsm-modal-card,.efm-inner{
+  background:var(--card-solid);border:1px solid var(--border2);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-float);
+}
+.modal-overlay,.fsm-modal{background:var(--overlay);backdrop-filter:blur(6px)}
+
+/* ── Selection / misc brand ──────────────────────────────────────── */
+::selection{background:rgba(var(--accent-rgb),.35);color:#fff}
+body[data-theme="light"] ::selection{background:rgba(var(--accent-rgb),.20);color:var(--text)}
+a,.ai-link{color:var(--blue)}
+kbd,.flux-ai-hint__kbd{
+  background:var(--card-solid);border:1px solid var(--border2);border-bottom-width:2px;
+  border-radius:6px;color:var(--text2);
+}
+
+/* ── Chips / badges ──────────────────────────────────────────────── */
+.flux-oh-mode-badge,.appt-status-badge,.flux-oh-row-pending,.flux-oh-pending-count{
+  border-radius:99px;font-weight:700;letter-spacing:.03em;
+}
+.flux-oh-mode-badge{background:var(--btn2);border:1px solid var(--border2);color:var(--muted2)}
+.flux-oh-mode-badge--req{background:rgba(var(--gold-rgb),.12);border-color:rgba(var(--gold-rgb),.4);color:var(--gold-badge)}
+
+/* ── Notebook ⇄ Knowledge sub-tabs (merged tab) ──────────────────── */
+.fx-nbk-subtabs{
+  display:inline-flex;gap:4px;margin:0 0 14px;
+  background:var(--rail);border:1px solid var(--border2);
+  border-radius:12px;padding:4px;
+}
+.fx-nbk-subtabs button{
+  border:none;background:none;color:var(--muted2);cursor:pointer;
+  font:inherit;font-size:.8rem;font-weight:700;
+  padding:7px 16px;border-radius:8px;
+  transition:background .14s ease,color .14s ease;
+}
+.fx-nbk-subtabs button:hover{color:var(--text);background:var(--hover)}
+.fx-nbk-subtabs button.active{background:rgba(var(--accent-rgb),.16);color:var(--text)}
+body[data-theme="light"] .fx-nbk-subtabs button.active{color:var(--accent2)}
+
+/* ── AI panel polish on the new canvas ───────────────────────────── */
+.ai-sug{
+  background:var(--card-solid);border:1px solid var(--border2);border-radius:12px;
+}
+.ai-sug:hover{border-color:var(--accent);background:var(--hover)}
+.ai-bub.bot{background:var(--card-solid);border:1px solid var(--border)}
+.ai-bub.user{background:rgba(var(--accent-rgb),.16)}
+body[data-theme="light"] .ai-bub.user{background:rgba(var(--accent-rgb),.10)}
+.ai-input-bar{background:var(--input-bg);border:1px solid var(--border2);border-radius:14px}
+.ai-send{background:var(--accent)}
+.ai-send:hover{background:var(--accent-hover)}
+
+/* Staff messages on the new canvas */
+.fsm-list-col,.fsm-thread-col{background:var(--card-solid);border-color:var(--border2)}
+.fsm-msg-bubble{background:var(--btn2)}
+.fsm-msg.mine .fsm-msg-bubble{background:rgba(var(--accent-rgb),.2)}
+body[data-theme="light"] .fsm-msg.mine .fsm-msg-bubble{background:rgba(var(--accent-rgb),.12)}
+
+/* Tables (gradebook etc.) */
+table{border-color:var(--border2)}
+th{color:var(--muted2);font-weight:600}
+tr:hover td{background:var(--row-hover)}
+
+/* ── Settings 2026 — tab bar on-theme, panes organized ───────────── */
+.flux-page .stabs,
+#settings.flux-page .flux-settings-stabs,
+#settings.flux-page > .stabs{
+  display:flex;flex-wrap:nowrap;gap:4px;
+  padding:5px!important;
+  background:var(--rail)!important;
+  border:1px solid var(--border2)!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.flux-page .stabs::-webkit-scrollbar{display:none}
+.flux-page .stab{
+  flex:1 1 auto;
+  border-radius:10px!important;
+  padding:8px 14px!important;
+  font-size:.8rem!important;font-weight:600!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:var(--muted2)!important;
+  box-shadow:none!important;
+  transition:background .14s ease,color .14s ease;
+}
+.flux-page .stab:hover{background:var(--hover)!important;color:var(--text)!important}
+.flux-page .stab.active{
+  background:rgba(var(--accent-rgb),.16)!important;
+  border-color:rgba(var(--accent-rgb),.35)!important;
+  color:var(--text)!important;
+}
+body[data-theme="light"] .flux-page .stab.active{
+  background:rgba(var(--accent-rgb),.10)!important;
+  color:var(--accent2)!important;
+}
+
+.flux-settings-panes .card{margin-bottom:12px}
+.flux-settings-panes .card h3{font-size:.95rem;margin-top:0}
+
+/* Theme picker — flat buttons with color dots (no emoji) */
+.theme-btn{
+  display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;
+  background:var(--card-solid)!important;
+  border:1px solid var(--border2)!important;
+  border-radius:10px!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+  font-weight:600;
+}
+.theme-btn:hover{background:var(--hover)!important;border-color:var(--border3)!important;box-shadow:none!important}
+.theme-btn.active,.theme-btn[data-active="1"]{border-color:rgba(var(--accent-rgb),.55)!important;background:rgba(var(--accent-rgb),.1)!important}
+.theme-dot{
+  width:14px;height:14px;border-radius:50%;flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px var(--dot-edge);
+}
+.swatch{border-radius:50%;box-shadow:none}
+.swatch.active{outline:2px solid var(--text);outline-offset:2px}
+
+/* ── 2026 polish — typography, focus, misc chrome ────────────────── */
+h1,h2,h3,h4{letter-spacing:-.015em}
+:focus-visible{outline:2px solid var(--focus-outline);outline-offset:2px;border-radius:4px}
+.flux-page-header--lead::after{background:linear-gradient(90deg,var(--accent),var(--purple))}
+.nav-item.active{box-shadow:inset 2px 0 0 var(--accent)}
+.nav-group-label::after{background:linear-gradient(90deg,rgba(var(--accent-rgb),.3),transparent)}
+
+/* Iconified emoji glyphs — sit nicely in labels and headers */
+.fxi{opacity:.9}
+.slabel .fxi-wrap,h3 .fxi-wrap{color:var(--muted2)}
+.more-sheet-icon svg{display:block;margin:0 auto}
+
+/* ── Light-mode sweep — overrides for earlier dark-first layers ──── */
+/* flux-modern-ui paints a dark sidebar gradient at html.flux-modern
+   specificity; flux-refresh-26 keeps old cyan focus rings. These land
+   last in the cascade at equal-or-higher specificity. */
+html.flux-modern body[data-theme="light"] .sidebar{
+  background:var(--rail);border-right:1px solid var(--border);
+}
+body[data-theme="light"] .nav-group-label{color:var(--muted)}
+body[data-theme="light"] .nav-group-label::after{background:linear-gradient(90deg,rgba(var(--accent-rgb),.25),transparent)}
+body[data-theme="light"] .flux-page-sub{color:var(--muted2)}
+body[data-theme="light"] #app input:focus,
+body[data-theme="light"] #app select:focus,
+body[data-theme="light"] #app textarea:focus{
+  border-color:var(--blue);box-shadow:0 0 0 3px var(--focus-ring);
+}
+body[data-theme="light"] .card:not(.fih-tile):hover{border-color:var(--border3)}
+
+/* Keep motion calm — respect users who ask for less */
+@media (prefers-reduced-motion:reduce){
+  .nav-item,.btn,.btn-sec,.card{transition:none}
+}

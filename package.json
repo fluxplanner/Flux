@@ -2,7 +2,12 @@
   "name": "flux-planner",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "build:web": "node scripts/build-web-bundles.mjs",
+    "check:bundles": "node scripts/check-bundles-fresh.mjs",
+    "check:contrast": "node scripts/contrast-audit.mjs",
     "test:flags": "node scripts/test-flag-integrity.mjs",
+    "test:unit": "node --test test/unit/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -12,8 +17,13 @@
     "ext:all": "node extension/build.mjs --target=chrome && node extension/build.mjs --target=firefox && node extension/build.mjs --target=safari"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.51.1",
     "esbuild": "^0.28.0",
     "serve": "^14.2.4"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.1",
+    "animejs": "4.5.0"
   }
 }

@@ -129,6 +129,19 @@
       enable_cowork: true, // Live shared checklist + presence for any task (Co-work rooms)
       enable_office_hours: true, // Staff publish weekly drop-in hours; students view on School page
       enable_claude_mcp: false, // Connect Flux to Claude (MCP) — opt-in connector, off by default
+      enable_ai_action_confirm: false, // P0 A4: AI bulk/modifying tool calls become an Apply/Cancel proposal card + undo group
+      enable_now_engine: false, // C1: bell-aware FluxNow strip + AI school-time context
+      enable_school_schedules: false, // C2: district bell variants + calendar closures (admin-published)
+      enable_sub_plans: false, // C3: printable sub plan + expiring read-only share code
+      enable_grade_gps: false, // C4: per-class grade trajectory + weights + protect-my-A plan
+      enable_accommodation_cards: false, // C5: counselor-managed accommodations, aggregate chips for teachers
+      enable_family_digest: false, // C6: weekly guardian digest (wins first), student-controlled categories
+      enable_web_push: false, // C7: due-soon Web Push reminders (server-enforced quiet hours)
+      enable_study_rooms_v2: false, // C8: class room templates, teacher study-hall counts, group-focus cosmetics
+      enable_seasons: false, // C9: healthy-habit seasonal cosmetics (never grades-based)
+      enable_ask_teacher: false, // C10: task-linked ask-my-teacher handoff + Lesson Hub triage queue
+      enable_counselor_help_tickets: false, // C11: student help tickets to their counselor — open/in-progress/resolved + urgent wellbeing escalation
+      enable_originkit_motion: true, // OriginKit-ported motion primitives (subtle; hard-disabled by reduced-motion/perf/lowend)
     };
   }
 

@@ -4,8 +4,20 @@ import {
   checkAndIncrementAIUsage,
   refundAIUsage,
 } from "../_shared/plan.ts";
+import {
+  bumpDailyGuard,
+  clientIp,
+  isAnonRoleJwt,
+  sha256Hex,
+} from "../_shared/rate-limit.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
+// P0 A5 (mirrors ai-proxy): auth required independent of payments. Guest mode
+// stays allowed for the pre-signup onboarding schedule import, but tightly
+// metered — vision calls are the most expensive thing we proxy.
+const ALLOW_GUESTS = (Deno.env.get("AI_PROXY_ALLOW_GUESTS") ?? "true") === "true";
+const GUEST_DAILY = Number(Deno.env.get("GEMINI_PROXY_GUEST_DAILY") ?? "10");
+const USER_DAILY = Number(Deno.env.get("AI_PROXY_USER_DAILY") ?? "300");
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
@@ -19,14 +31,18 @@ Deno.serve(async (req) => {
   let userId: string | null = null;
   const auth = await verifyUserJWT(req);
   if ("error" in auth) {
-    if (PAYMENTS_ENABLED) {
+    // A failed JWT never falls through to a free ride anymore. Only guest
+    // mode (Bearer = the project's anon-role JWT) may proceed, rate-guarded
+    // below — the pre-signup onboarding schedule import depends on it.
+    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!ALLOW_GUESTS || !isAnonRoleJwt(bearer)) {
       return json({ error: auth.error }, auth.status, origin);
     }
   } else {
-    userId = auth.userId;
+    userId = auth.userId ?? null;
   }
 
-  let body: { imageBase64?: string; mimeType?: string; prompt?: string };
+  let body: { imageBase64?: string; mimeType?: string; prompt?: string; fingerprint?: string };
   try {
     body = await req.json();
   } catch {
@@ -35,6 +51,29 @@ Deno.serve(async (req) => {
 
   if (!body.imageBase64 || !body.prompt) {
     return json({ error: "Missing params" }, 400, origin);
+  }
+
+  if (!userId) {
+    // Guest vision guard — fail CLOSED for anonymous traffic.
+    const fp = typeof body.fingerprint === "string" ? body.fingerprint.slice(0, 128) : "";
+    const bucket = "guestv:" + await sha256Hex(
+      [clientIp(req), req.headers.get("user-agent") ?? "", fp].join("|"),
+    );
+    const count = await bumpDailyGuard(bucket);
+    if (count === null || count > GUEST_DAILY) {
+      return json({
+        error: "guest_daily_limit",
+        message: "Guest limit reached — sign in to keep importing.",
+        daily_limit: GUEST_DAILY,
+      }, 429, origin);
+    }
+  } else if (!PAYMENTS_ENABLED) {
+    // Basic per-user daily abuse stop even without payment metering.
+    // Fail OPEN for signed-in users.
+    const count = await bumpDailyGuard("user:" + userId);
+    if (count !== null && count > USER_DAILY) {
+      return json({ error: "daily_limit_reached", daily_limit: USER_DAILY }, 429, origin);
+    }
   }
 
   let chargedQuota = false;

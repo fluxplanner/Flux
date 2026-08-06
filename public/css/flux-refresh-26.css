@@ -1,0 +1,123 @@
+/* ════════════════════════════════════════════════════════════════════════
+   FLUX · flux-refresh-26.css — July 2026 site-wide visual refresh.
+   Loads LAST so its rules win the cascade. Scope: app shell only —
+   sidebar categories, cards, panels, page headers, buttons, inputs,
+   scrollbars. Deliberately excludes #fshRoot (Study Hub owns its look)
+   and .fih-tile (integrations hub tiles).
+   Perf: transform/color transitions only — no blur/filter on large areas
+   (Pulse layout was removed for lag; do not regress that).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── sidebar: category labels become real section headers ────────────── */
+.nav-group{margin-bottom:6px}
+.nav-group-label{
+  display:flex;align-items:center;gap:8px;
+  font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(154,162,186,.75);
+}
+.nav-group-label::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(0,194,255,.25),rgba(124,92,255,.12),transparent);
+}
+.nav-item{border-radius:12px}
+.nav-item .ni{transition:transform .15s ease}
+.nav-item:hover .ni{transform:translateX(1px) scale(1.06)}
+.nav-item.active{
+  background:linear-gradient(100deg,rgba(0,194,255,.14),rgba(124,92,255,.14));
+  box-shadow:inset 2px 0 0 #00c2ff;
+}
+
+/* ── page headers: gradient lead accent ──────────────────────────────── */
+.flux-page-header{letter-spacing:-.02em}
+.flux-page-header--lead{position:relative;padding-bottom:10px}
+.flux-page-header--lead::after{
+  content:'';position:absolute;left:0;bottom:0;width:44px;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,#00c2ff,#7c5cff);
+}
+.flux-page-sub{color:rgba(154,162,186,.9)}
+
+/* ── cards & panels: crisper edges, calmer depth ─────────────────────── */
+.card:not(.fih-tile),.panel{
+  border-radius:16px;
+  transition:border-color .16s ease,transform .16s ease;
+}
+.card:not(.fih-tile):hover{border-color:rgba(140,190,255,.22)}
+
+/* ── secondary buttons: consistent radius + hover ────────────────────── */
+.btn-sec{
+  border-radius:11px;
+  transition:background .15s ease,border-color .15s ease,transform .12s ease;
+}
+.btn-sec:hover{transform:translateY(-1px)}
+.btn-sec:active{transform:translateY(0)}
+
+/* ── inputs: unified focus ring ──────────────────────────────────────── */
+#app input[type="text"]:focus,
+#app input[type="email"]:focus,
+#app input[type="date"]:focus,
+#app input[type="time"]:focus,
+#app input[type="number"]:focus,
+#app input[type="search"]:focus,
+#app select:focus,
+#app textarea:focus{
+  outline:none;
+  border-color:rgba(0,194,255,.5);
+  box-shadow:0 0 0 3px rgba(0,194,255,.12);
+}
+
+/* ── scrollbars (WebKit + Firefox) ───────────────────────────────────── */
+*{scrollbar-width:thin;scrollbar-color:rgba(124,132,160,.35) transparent}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{
+  background:rgba(124,132,160,.3);border-radius:8px;
+  border:2px solid transparent;background-clip:content-box;
+}
+::-webkit-scrollbar-thumb:hover{background:rgba(140,190,255,.45);background-clip:content-box;border:2px solid transparent}
+
+/* ── selection color on brand ────────────────────────────────────────── */
+::selection{background:rgba(0,194,255,.28)}
+
+/* ── reduced motion: kill the micro-transitions ──────────────────────── */
+@media(prefers-reduced-motion:reduce){
+  .nav-item .ni,.card:not(.fih-tile),.panel,.btn-sec{transition:none}
+}
+
+/* ── Flux AI starter menu v2: grouped, role-aware suggestions ── */
+.ai-sugs--grouped {
+  display: flex !important;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.ai-sugs--grouped[style*="display: none"] { display: none !important; }
+.ai-sug-group__label {
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted2, #8b93a7);
+  margin: 0 0 6px 2px;
+}
+.ai-sug-group__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-sugs--grouped .ai-sug {
+  flex: 1 1 auto;
+  min-width: 150px;
+  justify-content: flex-start;
+  text-align: left;
+}
+.ai-sug--fill { border-style: dashed !important; }
+.ai-sug__edit {
+  margin-left: auto;
+  opacity: .45;
+  font-size: .74rem;
+}
+@media (max-width: 560px) {
+  .ai-sugs--grouped .ai-sug { min-width: calc(50% - 8px); }
+}

@@ -349,6 +349,32 @@
       '<p class="flux-conn-desc">Flux AI reads your planner + anything you activate here — like Claude’s connectors.\n      Gmail + Calendar use Google sign-in; <strong>Google Docs</strong> adds a separate consent (Settings → Google Docs).\n      <strong>NotebookLM</strong> has no public API — use Docs + pasted notes as a bridge.\n      Route chats through <strong>OpenAI-compatible</strong> or <strong>Anthropic</strong> with keys stored only in this browser, or add custom pins.</p>';
     root.appendChild(header);
 
+    // Key-storage disclosure + one-click wipe. BYOK provider keys are only ever
+    // held in this browser's localStorage and forwarded solely to the user's own
+    // Flux proxy over HTTPS. "Forget stored keys" clears every local store that
+    // can hold a key or connection state — STORAGE_MODEL (the actual API key),
+    // plus STORAGE_ITEMS and STORAGE_CUSTOM.
+    var privacy = document.createElement('div');
+    privacy.className = 'flux-conn-micro';
+    privacy.style.cssText =
+      'display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin:2px 0 8px';
+    privacy.innerHTML =
+      '<span>🔒 API keys you add stay only in this browser and are sent only to your own Flux proxy over HTTPS — never to third parties.</span>' +
+      '<button type="button" class="flux-conn-ghost" id="fluxAiConnForgetAll">Forget stored keys</button>';
+    root.appendChild(privacy);
+    var forgetAllBtn = privacy.querySelector('#fluxAiConnForgetAll');
+    if (forgetAllBtn) {
+      forgetAllBtn.onclick = function () {
+        if (typeof window.confirm === 'function' &&
+            !window.confirm('Forget all AI keys and connection settings stored in this browser?')) return;
+        save(STORAGE_MODEL, { mode: 'flux_default', apiKey: '', baseUrl: '', modelId: '' });
+        save(STORAGE_ITEMS, {});
+        save(STORAGE_CUSTOM, []);
+        if (typeof showToast === 'function') showToast('Forgot stored keys + connections on this device', 'info');
+        renderConnectionsPanel(true);
+      };
+    }
+
     var grid = document.createElement('div');
     grid.className = 'flux-conn-grid';
 

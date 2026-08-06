@@ -75,6 +75,102 @@ test.describe('Flux AI agent loop', () => {
     expect(res.visibleToolResultsBubbles, 'TOOL RESULTS must stay hidden').toBe(0);
   });
 
+  test('A4: bulk subtask breakdown becomes a proposal card — Apply creates subtasks, Undo restores', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForTimeout(1200);
+
+    // Flag on + seed the existing parent task the student refers to.
+    await page.evaluate(async () => {
+      (window as any).FLUX_EXPERIMENTS = { ...((window as any).FLUX_EXPERIMENTS || {}), enable_ai_action_confirm: true };
+      if ((window as any).FluxFeatureFlags?.load) await (window as any).FluxFeatureFlags.load({ force: true });
+      const due = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
+      (window as any).tasks.unshift({
+        id: 424242, name: 'Lab report', date: due, priority: 'med', type: 'lab',
+        subject: '', estTime: 120, notes: '', subtasks: [], done: false, rescheduled: 0, createdAt: Date.now(),
+      });
+      (window as any).save('tasks', (window as any).tasks);
+    });
+
+    // Script the model: it calls addSubtasks against the existing task.
+    const sub = ['Outline', 'Data tables', 'Graphs', 'Methods', 'Results', 'Discussion', 'Proofread'];
+    let round = 0;
+    await page.route('**/functions/v1/ai-proxy*', async (route) => {
+      round++;
+      const text = round === 1
+        ? 'Breaking your lab report into steps.\n```flux_tool\n{"name":"addSubtasks","args":{"parent":"Lab report","subtasks":' + JSON.stringify(sub) + '}}\n```'
+        : 'I proposed 7 subtasks for your lab report — review the card and hit Apply.';
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ text }] }) });
+    });
+
+    await page.evaluate(() => (window as any).nav('ai'));
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const inp = document.getElementById('aiInput') as HTMLTextAreaElement;
+      inp.value = 'Can you break my lab report into subtasks?';
+      (window as any).sendAI();
+    });
+
+    // Proposal card renders; NOTHING has been applied yet.
+    await expect(page.locator('.flux-ai-proposal')).toBeVisible({ timeout: 10_000 });
+    const before = await page.evaluate(() => ({
+      topLevel: (window as any).tasks.filter((t: any) => !t.done).length,
+      subtasks: (window as any).tasks.find((t: any) => t.id === 424242)?.subtasks.length,
+    }));
+    expect(before.subtasks).toBe(0);
+
+    // Apply → 7 subtasks under the parent, no new top-level tasks, no conflict flood.
+    await page.locator('.flux-ai-prop-apply').click();
+    const after = await page.evaluate(() => {
+      const parent = (window as any).tasks.find((t: any) => t.id === 424242);
+      const today = (window as any).todayStr();
+      return {
+        topLevel: (window as any).tasks.filter((t: any) => !t.done).length,
+        subtasks: parent.subtasks.length,
+        allDueToday: (window as any).tasks.filter((t: any) => !t.done && t.date === today).length,
+        pacedBeforeDue: parent.subtasks.every((s: any) => !s.date || s.date < parent.date),
+      };
+    });
+    expect(after.subtasks).toBe(7);
+    expect(after.topLevel).toBe(before.topLevel); // no top-level flood
+    expect(after.pacedBeforeDue).toBe(true);      // spread before the due date, never dumped on today
+
+    // Undo restores exactly.
+    await page.locator('.flux-ai-undo-link').click();
+    const undone = await page.evaluate(() =>
+      (window as any).tasks.find((t: any) => t.id === 424242)?.subtasks.length);
+    expect(undone).toBe(0);
+  });
+
+  test('A4: multiple top-level creations need Apply; Cancel leaves the planner untouched', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForTimeout(1200);
+    await page.evaluate(async () => {
+      (window as any).FLUX_EXPERIMENTS = { ...((window as any).FLUX_EXPERIMENTS || {}), enable_ai_action_confirm: true };
+      if ((window as any).FluxFeatureFlags?.load) await (window as any).FluxFeatureFlags.load({ force: true });
+    });
+    let round = 0;
+    await page.route('**/functions/v1/ai-proxy*', async (route) => {
+      round++;
+      const text = round === 1
+        ? '```flux_tool\n{"name":"addTask","args":{"name":"P1"}}\n```\n```flux_tool\n{"name":"addTask","args":{"name":"P2"}}\n```\n```flux_tool\n{"name":"addTask","args":{"name":"P3"}}\n```'
+        : 'Proposed three tasks — your call.';
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ text }] }) });
+    });
+    const count = () => page.evaluate(() => (window as any).tasks.length);
+    const before = await count();
+    await page.evaluate(() => (window as any).nav('ai'));
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      (document.getElementById('aiInput') as HTMLTextAreaElement).value = 'plan my week';
+      (window as any).sendAI();
+    });
+    await expect(page.locator('.flux-ai-proposal')).toBeVisible({ timeout: 10_000 });
+    expect(await count()).toBe(before);
+    await page.locator('.flux-ai-prop-cancel').click();
+    expect(await count()).toBe(before);
+    await expect(page.locator('.flux-ai-proposal')).toContainText('Cancelled');
+  });
+
   test('askFlux prefills the AI composer with context from anywhere', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(1200);

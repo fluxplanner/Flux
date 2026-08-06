@@ -126,6 +126,84 @@ Run **`docs/P1-RLS-VERIFICATION.md`** and **`supabase/scripts/verify_rls_policie
 
 ---
 
+## 11. AI proxy rate guard (`20260709110000_flux_ai_guard.sql`, P0 A5)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_ai_guard` | Nobody via PostgREST — RLS enabled with **no policies**; service role only (edge functions) | Service role only, through SECURITY DEFINER RPC `flux_bump_ai_guard` (EXECUTE revoked from `anon`/`authenticated`/PUBLIC) |
+
+Buckets are hashed (`guest:<sha256(ip|ua|fingerprint)>`, `user:<uid>`); rows TTL-swept after 2 days inside the RPC. Probes: `select * from flux_ai_guard` as anon/authenticated must return zero rows / permission denied; `select flux_bump_ai_guard('x')` as anon/authenticated must fail.
+
+---
+
+## 12. District Schedule Authority (`20260710100000_school_schedules.sql`, C2)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_school_bell_schedules` | Same-school members (any authenticated user whose `user_roles.school` matches) | Same-school `admin` role only (FOR ALL + WITH CHECK) |
+| `flux_school_calendar_days` | Same-school members | Same-school `admin` role only (FOR ALL + WITH CHECK) |
+
+Probes: student of school A must not read school B's rows; student INSERT/UPDATE must fail; teacher/counselor writes must fail (admin only); user with blank `user_roles.school` reads zero rows.
+
+---
+
+## 13. Sub-Plan Generator (`20260710110000_sub_plans.sql`, C3)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_sub_plans` | Owner teacher only (no public SELECT policy — anonymous access exists solely through `flux_get_sub_plan(code)`) | Owner teacher only (FOR ALL + WITH CHECK) |
+| `flux_sub_plan_views` | Owner teacher of the parent plan (audit trail) | Only inside the SECURITY DEFINER RPC (view audit rows) |
+
+`flux_get_sub_plan(p_code)` — SECURITY DEFINER, granted to `anon` + `authenticated`; rejects codes <10 chars, returns `expired` after 48h `expires_at`, inserts an audit row (truncated user-agent) on every successful view. Probes: direct `select * from flux_sub_plans` as anon/another teacher returns zero rows; RPC with a wrong code returns `not_found` without an audit row; RPC after expiry returns `expired`.
+
+---
+
+## 14. Accommodation Cards (`20260711090000_accommodation_cards.sql`, C5)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_student_accommodations` | Same-school `counselor` role; the student (own rows only). **No teacher policy** — teachers go through the RPCs. | Same-school `counselor` role only (FOR ALL + WITH CHECK) |
+| `flux_accommodation_audit` | The student (own trail); same-school counselors | Only inside the SECURITY DEFINER detail RPC |
+
+RPCs (SECURITY DEFINER, `authenticated` only):
+- `flux_teacher_accommodation_chips(class_code)` — rejects callers who don't own the active class; returns `[{kind, n}]` aggregates over the class roster — **no names, no notes**, private rows included in counts by design.
+- `flux_teacher_accommodation_details(class_code)` — same ownership check; returns name+kind+note ONLY for `consent_state='staff_visible'` rows; inserts one audit row per returned accommodation (student-readable).
+
+Probes: teacher direct `select` on the table returns zero rows; chips RPC with another teacher's class code returns `not_your_class`; details RPC never returns `consent_state='private'` rows; every details call with N consented rows adds N audit rows; student A cannot read student B's accommodations or audit trail; counselor of school X sees zero rows from school Y.
+
+---
+
+## 15. Family Digest (`20260711100000_family_digest.sql`, C6)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_parent_links` (+digest columns) | unchanged (P7-PARENT: student own rows; parent active link) | Student owns all digest prefs (existing `flux_parent_links_student_all`); parents cannot change them |
+| `flux_family_digests` | Student (own digests — transparency); guardian of the ACTIVE link | Service role only (weekly cron); no authenticated write policies |
+
+The `family-digest` edge function gates on CRON_SECRET/service-role, checks the flag registry as a kill switch, processes only `digest_opt_in = true` links, and never includes grades in any payload. Probes: parent cannot UPDATE digest prefs; revoked-link guardian reads zero digests; student sees exactly the payload rows generated about them; anon/authenticated INSERT into `flux_family_digests` fails.
+
+---
+
+## 16. Web Push (`20260711110000_web_push.sql`, C7)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `push_subscriptions` | Owner only | Owner only (FOR ALL + WITH CHECK); sender runs service-role |
+
+The `notify-push` function gates on CRON_SECRET/service-role, honors the flag-registry kill switch, enforces quiet hours (`settings.quiet` + DND window) and a hard 21:00–07:00 overnight suppression server-side, and prunes 404/410 endpoints. Probes: user A cannot read/delete user B's subscriptions; anon INSERT fails; unauthenticated POST to notify-push returns 401.
+
+---
+
+## 17. Study Rooms v2 (`20260711120000_study_rooms_v2.sql`, C8)
+
+| Table | Who can read | Who can write |
+|-------|----------------|---------------|
+| `flux_study_rooms` | Host only (registry rows). **No general SELECT** — teachers use the RPC. Room CONTENT never touches the server (ephemeral channel broadcast). | Host only (FOR ALL + WITH CHECK) |
+
+`flux_teacher_study_hall(class_code)` — SECURITY DEFINER, `authenticated` only; rejects callers who don't own the active class; returns `[{label, participants, started_at}]` — **no room codes** (teachers monitor, they don't join) and no content; stale rows (>10 min without heartbeat) filtered. Probes: student cannot read another host's registry rows; RPC with another teacher's class code returns `not_your_class`; RPC response contains no `code` field.
+
+---
+
 ## Rollback
 
 RLS changes ship as **new** migrations with `DROP POLICY IF EXISTS` + `CREATE POLICY`. Revert = new migration restoring old policy **only** if legally required; prefer forward fix.

@@ -312,3 +312,65 @@
 @media (max-width: 520px) {
   .flux-oh-srow-book { margin-left: 0; width: 100%; margin-top: 4px; }
 }
+
+/* ── Booking mode (instant vs approval) + signup requests ── */
+.flux-oh-modechips { display: flex; gap: 6px; margin: 6px 0 8px; }
+.flux-oh-modechip {
+  background: rgba(148, 163, 184, .08); border: 1px solid rgba(148, 163, 184, .22);
+  color: var(--muted2); border-radius: 999px; padding: 4px 12px;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.flux-oh-modechip.active {
+  background: rgba(95, 142, 255, .16); border-color: rgba(95, 142, 255, .5); color: var(--accent);
+}
+.flux-oh-modechip:disabled { opacity: .5; cursor: default; }
+
+.flux-oh-mode-badge {
+  font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: rgba(52, 211, 153, .12); color: #34d399;
+  border-radius: 999px; padding: 2px 7px; margin-left: 7px; vertical-align: 1px;
+}
+.flux-oh-mode-badge--req { background: rgba(251, 191, 36, .13); color: #fbbf24; }
+
+.flux-oh-row-pending {
+  font-size: .64rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  background: rgba(251, 191, 36, .14); color: #fbbf24;
+  border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 1px;
+}
+
+.flux-oh-pending-block {
+  border: 1px solid rgba(251, 191, 36, .25); background: rgba(251, 191, 36, .05);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
+}
+.flux-oh-pending-head {
+  font-size: .78rem; font-weight: 800; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.flux-oh-pending-count {
+  font-size: .62rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  background: rgba(251, 191, 36, .16); color: #fbbf24; border-radius: 999px; padding: 2px 8px;
+}
+.flux-oh-pending-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  border-top: 1px solid rgba(148, 163, 184, .1);
+}
+.flux-oh-pending-row:first-of-type { border-top: none; }
+.flux-oh-pending-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: .8rem; }
+.flux-oh-pending-when { font-size: .7rem; color: var(--muted2); }
+.flux-oh-approve-btn {
+  background: rgba(52, 211, 153, .14); border: 1px solid rgba(52, 211, 153, .4); color: #34d399;
+  border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .72rem; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.flux-oh-approve-btn:hover { background: #34d399; color: #06251b; }
+.flux-oh-declreq-btn {
+  background: none; border: 1px solid rgba(148, 163, 184, .25); color: var(--muted2);
+  border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .72rem; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.flux-oh-declreq-btn:hover { border-color: #f87171; color: #f87171; }
+.flux-oh-approve-btn:disabled, .flux-oh-declreq-btn:disabled { opacity: .5; cursor: default; }
+
+.flux-oh-booked-badge--pending { background: rgba(251, 191, 36, .14); color: #fbbf24; }
+.flux-oh-booked-badge--declined { background: rgba(248, 113, 113, .12); color: #f87171; }
+.flux-oh-book-btn--req { border-style: dashed; }

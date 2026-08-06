@@ -3,8 +3,8 @@
 .flux-report-fab {
   position: fixed;
   left: 16px;
-  bottom: 16px;
-  z-index: 7000;
+  bottom: var(--flux-dock-clearance, 16px);
+  z-index: var(--flux-z-pomo-pill, 310);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -37,12 +37,9 @@
   color: #1a1f2e;
 }
 
-/* On mobile, lift above the bottom nav and shrink to an icon-only pill. */
-@media (max-width: 760px) {
-  .flux-report-fab {
-    bottom: calc(64px + env(safe-area-inset-bottom));
-    left: 12px;
-    padding: 9px;
-  }
-  .flux-report-fab__label { display: none; }
+/* B2: on phones the fab collapses into the More sheet ("Report a problem"
+   item) — a floating bubble at this width overlapped the date header, stats
+   row, and bottom-sheet chips. */
+@media (max-width: 768px) {
+  .flux-report-fab { display: none; }
 }

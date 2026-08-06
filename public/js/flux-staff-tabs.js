@@ -129,7 +129,7 @@
       host.innerHTML = `
         <div class="cw-root">
           <div class="cw-empty">
-            <div class="cw-empty-icon">🗂</div>
+            <div class="cw-empty-icon"></div>
             <div class="cw-empty-title">Caseload tools</div>
             <p class="cw-empty-sub">Enable <code>enable_staff_productivity_suite</code> and counselor module flags in Owner Suite to use accommodations, meeting logs, wellness queue, and crisis protocols here.</p>
           </div>
@@ -264,10 +264,10 @@
             <div class="lh-greet-sub">${esc(dateLabel)}${abLabel?' · '+esc(abLabel):''} · ${classes.length} class${classes.length===1?'':'es'} on the schedule</div>
           </div>
           <div class="lh-topbar-actions">
-            ${window.FluxDriveImport?.enabled?.()?'<button class="lh-action-btn" id="lhDriveImportBtn">📂 Drive import</button>':''}
-            <button class="lh-action-btn" id="lhSubPlanBtn">📄 Sub-plan template</button>
-            <button class="lh-action-btn" id="lhExitTicketBtn">🎫 Exit ticket</button>
-            <button class="lh-action-btn primary" id="lhBroadcastBtn">📢 Announce</button>
+            ${window.FluxDriveImport?.enabled?.()?'<button class="lh-action-btn" id="lhDriveImportBtn">Drive import</button>':''}
+            <button class="lh-action-btn" id="lhSubPlanBtn">Sub-plan template</button>
+            <button class="lh-action-btn" id="lhExitTicketBtn">Exit ticket</button>
+            <button class="lh-action-btn primary" id="lhBroadcastBtn">Announce</button>
           </div>
         </div>
 
@@ -280,7 +280,7 @@
 
         ${classes.length===0?`
           <div class="lh-empty">
-            <div class="lh-empty-icon">📚</div>
+            <div class="lh-empty-icon"></div>
             <div class="lh-empty-title">No classes yet</div>
             <div class="lh-empty-sub">Add the periods you teach in <a href="javascript:nav('school')">School Info</a> and they'll show up here.</div>
           </div>`:`
@@ -447,7 +447,7 @@
       host.innerHTML=`
         <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
         <div class="cm-connect">
-          <div class="cm-connect-icon">📅</div>
+          <div class="cm-connect-icon"></div>
           <h3>Connect Google Calendar</h3>
           <p>Sign in with Google to see your meetings, IEPs, parent calls, and college sessions in one place.</p>
           <button class="cm-connect-btn" id="cmConnectBtn">Connect Google →</button>
@@ -521,8 +521,8 @@
               ${start?`<span class="cm-date">${esc(fmtDate(start))}</span>`:''}
             </div>
             <div class="cm-title">${esc(ev.summary||'(no title)')}</div>
-            ${ev.location?`<div class="cm-loc">📍 ${esc(ev.location)}</div>`:''}
-            ${att.length?`<div class="cm-att">👥 ${att.map(esc).join(', ')}${(ev.attendees||[]).length>3?' +'+((ev.attendees||[]).length-3)+' more':''}</div>`:''}
+            ${ev.location?`<div class="cm-loc">${esc(ev.location)}</div>`:''}
+            ${att.length?`<div class="cm-att">${att.map(esc).join(', ')}${(ev.attendees||[]).length>3?' +'+((ev.attendees||[]).length-3)+' more':''}</div>`:''}
             <textarea class="cm-note" data-evid="${esc(ev.id)}" placeholder="Private session notes (saved locally only)…">${esc(noteVal)}</textarea>
             <div class="cm-card-actions">
               <a class="cm-link" href="${esc(link)}" target="_blank" rel="noopener">Open in Calendar</a>
@@ -564,7 +564,7 @@
 
         ${events.length===0?`
           <div class="cm-empty">
-            <div class="cm-empty-icon">🌤</div>
+            <div class="cm-empty-icon"></div>
             <div class="cm-empty-title">Clear schedule for the next 30 days</div>
             <div class="cm-empty-sub">Anything you put on Google Calendar will appear here automatically.</div>
           </div>`:`
@@ -692,7 +692,7 @@
           <div class="ao-topbar-actions">
             <button class="ao-action-btn" id="aoAddSub">+ Sub coverage</button>
             <button class="ao-action-btn" id="aoLogWalk">+ Walkthrough</button>
-            <button class="ao-action-btn primary" id="aoFacAnnounce">📢 Faculty announcement</button>
+            <button class="ao-action-btn primary" id="aoFacAnnounce">Faculty announcement</button>
           </div>
         </div>
 
@@ -741,10 +741,10 @@
 
             <div class="ao-section-head" style="margin-top:18px"><h3>Quick links</h3></div>
             <div class="ao-quick">
-              <button class="ao-quick-btn" data-link="https://docs.google.com/document/u/0/?ftv=1&tgif=d">📝 New Doc (incident report)</button>
-              <button class="ao-quick-btn" data-link="https://meet.google.com/new">🎥 Start Meet (parent call)</button>
-              <button class="ao-quick-btn" data-link="https://calendar.google.com/calendar/u/0/r/eventedit">📅 New calendar event</button>
-              <button class="ao-quick-btn" data-link="https://drive.google.com/drive/recent">📂 Recent Drive</button>
+              <button class="ao-quick-btn" data-link="https://docs.google.com/document/u/0/?ftv=1&tgif=d">New Doc (incident report)</button>
+              <button class="ao-quick-btn" data-link="https://meet.google.com/new">Start Meet (parent call)</button>
+              <button class="ao-quick-btn" data-link="https://calendar.google.com/calendar/u/0/r/eventedit">New calendar event</button>
+              <button class="ao-quick-btn" data-link="https://drive.google.com/drive/recent">Recent Drive</button>
             </div>
           </div>
 
@@ -1058,10 +1058,10 @@
 
             <div class="sw-section-head" style="margin-top:18px"><h3>Quick tools</h3></div>
             <div class="sw-quick">
-              <button class="sw-quick-btn" data-link="https://docs.google.com/document/u/0/?ftv=1&tgif=d">📝 New Doc</button>
-              <button class="sw-quick-btn" data-link="https://drive.google.com/drive/recent">📂 Drive</button>
+              <button class="sw-quick-btn" data-link="https://docs.google.com/document/u/0/?ftv=1&tgif=d">New Doc</button>
+              <button class="sw-quick-btn" data-link="https://drive.google.com/drive/recent">Drive</button>
               <button class="sw-quick-btn" data-link="https://mail.google.com/mail/u/0/#inbox">✉ Inbox</button>
-              <button class="sw-quick-btn" data-link="https://calendar.google.com/calendar/u/0/r">📅 Calendar</button>
+              <button class="sw-quick-btn" data-link="https://calendar.google.com/calendar/u/0/r">Calendar</button>
             </div>
           </div>
         </div>

@@ -4,8 +4,8 @@
  */
 (function(){
   const FLUX_BACKLOG_CATEGORIES=[
-    {cat:'🧠 AI / intelligence (mega)',items:[]},
-    {cat:'📅 Calendar / time (mega)',items:[
+    {cat:'AI / intelligence (mega)',items:[]},
+    {cat:'Calendar / time (mega)',items:[
       'Visual time blocks shrink/grow based on stress',
       '“Time debt” indicator (like sleep debt but for tasks)',
       'Dynamic free time heatmap per day',
@@ -22,7 +22,7 @@
       'Show “true available time” (not just empty slots)',
       'Predict when you\'ll finish your day',
     ]},
-    {cat:'🧩 Task system (mega)',items:[
+    {cat:'Task system (mega)',items:[
       'Task “energy requirement” (low/medium/high brainpower)',
       'Match tasks to current energy level',
       'Task difficulty auto-adjusts based on performance',
@@ -39,7 +39,7 @@
       'Detect duplicate tasks',
       'Task aging indicator (how long it\'s been ignored)',
     ]},
-    {cat:'🎯 Focus / productivity (mega)',items:[
+    {cat:'Focus / productivity (mega)',items:[
       'Focus mode with dynamic background reacting to progress',
       '“Flow state detected” indicator',
       'Music sync (Spotify / ambient loops)',
@@ -55,7 +55,7 @@
       'Timer adapts length based on fatigue',
       'Visual progress ring that feels alive',
     ]},
-    {cat:'🎮 Gamification (mega)',items:[
+    {cat:'Gamification (mega)',items:[
       'XP tied to difficulty, not just completion',
       'Level unlocks features/themes',
       'Skill tree for productivity habits',
@@ -69,8 +69,8 @@
       'Animated streak flame that evolves',
       'Personal best records (most focused hours, etc.)',
     ]},
-    {cat:'🧬 Personalization (mega)',items:[]},
-    {cat:'📊 Insights / analytics (mega)',items:[
+    {cat:'Personalization (mega)',items:[]},
+    {cat:'Insights / analytics (mega)',items:[
       '“Why you’re falling behind” analysis',
       'Weekly productivity report card',
       'Subject efficiency graph',
@@ -82,7 +82,7 @@
       '“You study better on Tuesdays” insights',
       'Long-term improvement tracking',
     ]},
-    {cat:'🏫 School / IB / academics (mega)',items:[
+    {cat:'School / IB / academics (mega)',items:[
       'IB tracker becomes visual progress map',
       'CAS logging automation',
       'EE milestone tracker with deadlines',
@@ -93,7 +93,7 @@
       'Class difficulty auto-adjustment',
       'Teacher-specific patterns (if data available)',
     ]},
-    {cat:'📂 Notes (mega)',items:[
+    {cat:'Notes (mega)',items:[
       'Turn notes into flashcards instantly',
       'AI summaries + key points',
       'Highlight → ask AI directly',
@@ -104,7 +104,7 @@
       'Auto-organize messy notes',
       'Voice notes → structured text',
     ]},
-    {cat:'🌐 Integrations (mega)',items:[
+    {cat:'Integrations (mega)',items:[
       'Auto-import Google Classroom assignments',
       'Gmail → detect assignments from emails',
       'Calendar 2-way sync improvements',
@@ -112,7 +112,7 @@
       'File attachments (Drive integration)',
       'Notification sync across devices',
     ]},
-    {cat:'🎨 UI / UX (mega)',items:[
+    {cat:'UI / UX (mega)',items:[
       'Microinteractions on EVERYTHING',
       'Hover states feel alive (not static)',
       'Subtle parallax on dashboard',
@@ -124,7 +124,7 @@
       'Sound design (optional, subtle)',
       'UI feels “liquid” not rigid',
     ]},
-    {cat:'⚡ Performance / engineering (mega)',items:[
+    {cat:'Performance / engineering (mega)',items:[
       'Virtualized lists everywhere',
       'Background sync queue',
       'Optimistic UI updates',
@@ -135,7 +135,7 @@
       'Reduce re-renders aggressively',
       'Memory usage optimization',
     ]},
-    {cat:'🧩 Unique differentiators (mega)',items:[
+    {cat:'Unique differentiators (mega)',items:[
       '“Academic weapon mode” (extreme productivity)',
       '“Life dashboard” combining school + habits + mood',
       '“Future you” simulation',
@@ -148,7 +148,7 @@
       'Smart “minimum viable day” when overwhelmed',
       '“Win the day” checklist auto-generated each morning',
     ]},
-    {cat:'⭐ Build these first (priority)',items:[
+    {cat:'Build these first (priority)',items:[
       'AI schedule optimizer (#20)',
       'Time prediction engine (#1)',
       'Burnout detection (#12)',

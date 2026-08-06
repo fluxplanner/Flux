@@ -476,13 +476,24 @@ function transitionPanels(applyDom, ctx = {}) {
     requestAnimationFrame(syncAllPills);
   };
   hideDashboardChromeForTransition(panelId);
-  if (!motionAllowed() || typeof document.startViewTransition !== 'function') {
+  // On phones the View Transitions API snapshots the whole page and crossfades,
+  // which is the main cause of tab-switch lag on mobile. Switch instantly there.
+  var isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  if (!motionAllowed() || isNarrow || typeof document.startViewTransition !== 'function') {
     applyDom();
     runAfter();
     return;
   }
   try {
     const vt = document.startViewTransition(() => applyDom());
+    // A second nav can skip an in-flight transition; the skipped one's
+    // ready/updateCallbackDone promises reject ("Transition was skipped")
+    // and surface as pageerrors if nothing handles them. finished still
+    // drives runAfter either way.
+    if (vt) {
+      Promise.resolve(vt.ready).catch(() => {});
+      Promise.resolve(vt.updateCallbackDone).catch(() => {});
+    }
     Promise.resolve(vt?.finished).then(runAfter).catch(runAfter);
   } catch (_) {
     applyDom();
@@ -561,6 +572,18 @@ function springModalClose(overlay, card, done) {
 
 function springSheetOpen(sheet, overlay) {
   motion(() => {
+    // The open/closed STATE lives in CSS classes (.open) — these inline
+    // animation styles must not outlive the animation, or a later
+    // class-based close can't take effect (wedged-sheet bug). Clear them
+    // when the spring settles, with a timeout fallback in case the
+    // animation is interrupted and never completes.
+    const clearInline = () => {
+      try {
+        if (sheet) sheet.style.transform = '';
+        if (overlay) overlay.style.opacity = '';
+      } catch (_) {}
+    };
+    setTimeout(clearInline, 700);
     if (overlay) {
       animate(overlay, {
         opacity: [0, 1],
@@ -569,11 +592,19 @@ function springSheetOpen(sheet, overlay) {
       });
     }
     if (sheet) {
-      animate(sheet, {
+      const anim = animate(sheet, {
         translateY: ['100%', '0%'],
         duration: 560,
         ease: spring('release'),
+        onComplete: clearInline,
       });
+      // Let the owner (closeMobileSheet) kill a mid-flight open spring so a
+      // close during the 560ms window can't be overwritten by later frames.
+      sheet._fluxSheetOpenCancel = () => {
+        try { anim.cancel ? anim.cancel() : anim.pause?.(); } catch (_) {}
+        clearInline();
+        delete sheet._fluxSheetOpenCancel;
+      };
       const items = sheet.querySelectorAll('.more-sheet-item');
       if (items.length) {
         animate(items, {
@@ -783,15 +814,23 @@ function tryBootWhenAppVisible() {
     boot();
     return;
   }
+  const onVisible = () => {
+    boot();
+    if (typeof window.initFluxAnimeApp === 'function') {
+      try {
+        window.initFluxAnimeApp();
+      } catch (_) {}
+    }
+  };
+  // B5.2: shared narrow #app watcher instead of a subtree-wide class observer.
+  if (window.FluxDomWalker?.onAppVisible) {
+    FluxDomWalker.onAppVisible(onVisible);
+    return;
+  }
   const obs = new MutationObserver(() => {
     if (document.getElementById('app')?.classList.contains('visible')) {
       obs.disconnect();
-      boot();
-      if (typeof window.initFluxAnimeApp === 'function') {
-        try {
-          window.initFluxAnimeApp();
-        } catch (_) {}
-      }
+      onVisible();
     }
   });
   obs.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class'] });

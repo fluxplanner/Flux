@@ -259,7 +259,7 @@
     btn.type = 'button';
     btn.id = 'fluxSnipBtn';
     btn.className = 'flux-snip-btn';
-    btn.textContent = '✂️';
+    btn.textContent = '';
     btn.title = T('snip.btn_title');
     btn.setAttribute('aria-label', T('snip.btn_title'));
     btn.addEventListener('click', (e) => {

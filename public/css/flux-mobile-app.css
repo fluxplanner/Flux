@@ -12,10 +12,17 @@
   --sa-right: env(safe-area-inset-right, 0px);
   --bnav-height: 62px;
   --topbar-mob-height: 54px;
+  /* B2 floating-dock contract: every fixed bottom-corner widget (toasts,
+     pills, fabs) offsets by this so nothing overlaps .bnav, sheets, or the
+     composer. Overridden inside the mobile media query below. */
+  --flux-dock-clearance: 20px;
 }
 
 /* Mobile-only safe-area + nav-clearance */
 @media (max-width: 768px){
+  :root{
+    --flux-dock-clearance: calc(var(--bnav-height) + 12px + var(--sa-bottom));
+  }
   .topbar{
     padding-top: max(8px, var(--sa-top));
   }
@@ -58,9 +65,9 @@
 .more-sheet-overlay{
   position: fixed;
   inset: 0;
-  background: rgba(4,8,18,.52);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  backdrop-filter: blur(14px) saturate(160%);
+  background: rgba(2,5,12,.74);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
   z-index: var(--flux-z-more-sheet-back);
   opacity: 0;
   pointer-events: none;
@@ -72,13 +79,14 @@
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: var(--flux-z-more-sheet-front);
-  background: linear-gradient(180deg, rgba(22,28,44,.82) 0%, rgba(10,14,24,.94) 100%);
-  border-top: 1px solid rgba(var(--accent-rgb),.12);
+  /* Fully opaque so page content never bleeds through the sheet (the old
+     translucent gradient relied on backdrop-filter and looked broken when it
+     wasn't applied). */
+  background: linear-gradient(180deg, #161c2c 0%, #0a0e18 100%);
+  border-top: 1px solid rgba(var(--accent-rgb),.18);
   border-radius: 22px 22px 0 0;
   padding: 14px 18px calc(28px + var(--sa-bottom));
-  box-shadow: 0 -24px 64px rgba(0,0,0,.55), 0 -1px 0 rgba(255,255,255,.06) inset, 0 0 48px rgba(var(--accent-rgb),.06);
-  -webkit-backdrop-filter: blur(22px) saturate(165%);
-  backdrop-filter: blur(22px) saturate(165%);
+  box-shadow: 0 -24px 64px rgba(0,0,0,.6), 0 -1px 0 rgba(255,255,255,.06) inset;
   transform: translateY(110%);
   transition: transform .28s cubic-bezier(.2,.85,.3,1);
   max-height: 88vh;
@@ -86,6 +94,8 @@
   -webkit-overflow-scrolling: touch;
 }
 .more-sheet.open{ transform: translateY(0); }
+[data-theme="light"] .more-sheet{ background: linear-gradient(180deg,#ffffff 0%,#eef2fa 100%); border-top-color: rgba(0,0,0,.08); }
+[data-theme="light"] .more-sheet-overlay{ background: rgba(15,22,38,.42); }
 
 .more-sheet-head{
   position: sticky; top: 0;
@@ -960,6 +970,14 @@ html[data-flux-perf="on"] #flux-main .quick-add{
 
 /* Panel enter: flux-motion.css defines @keyframes fluxPanelEnter + .panel.active.flux-panel-enter.
    Tab .panel.active uses panelReveal in styles.css (do not duplicate @keyframes fluxPanelIn here — name collision). */
+
+/* Snappy tab switches on phones — the stacked entrance animations (panelIn +
+   fluxPanelEnter + panelReveal) compounded the perceived lag. Show instantly. */
+@media (max-width: 768px) {
+  .panel,
+  .panel.active,
+  .panel.active.flux-panel-enter { animation: none !important; }
+}
 
 /* Modal animations (shared) — any element that has .flux-modal-anim gets a spring fade */
 @keyframes fluxModalIn {
@@ -2322,12 +2340,20 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   color: var(--muted2);
 }
 @media (max-width: 768px){
+  /* B2: on phones the pill docks into the top bar chip area (centered in the
+     empty gap between brand and actions) instead of floating over the stats
+     row / AI composer at the bottom. Compact: ring + time only. */
   .flux-pomo-pill:not([hidden]){
     left: 50%;
     transform: translateX(-50%);
-    bottom: calc(var(--bnav-height) + 10px + var(--sa-bottom));
+    top: calc(max(8px, var(--sa-top)) + 7px);
+    bottom: auto;
+    padding: 5px 12px;
+    gap: 7px;
+    font-size: .78rem;
   }
   .flux-pomo-pill:active{ transform: translateX(-50%) scale(.97); }
+  .flux-pomo-pill .flux-pomo-pill-lbl{ display: none; }
 }
 @media (min-width: 769px){
   .flux-pomo-pill:not([hidden]){

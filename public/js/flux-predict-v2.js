@@ -160,7 +160,7 @@
     const loadLine =
       load.level !== 'ok'
         ? `<div class="flux-predict-row flux-predict-row--${load.level}">
-            <span class="flux-predict-row-icon" aria-hidden="true">📊</span>
+            <span class="flux-predict-row-icon" aria-hidden="true"></span>
             <div>
               <div class="flux-predict-row-title">Next 7 days look ${load.level === 'high' ? 'heavy' : 'busy'}</div>
               <div class="flux-predict-row-meta">~${load.dueMins}m planned across ${load.dueCount} task${load.dueCount === 1 ? '' : 's'} (heuristic capacity ~${load.capacityMins}m)</div>
@@ -170,7 +170,7 @@
 
     const cogLine = cog
       ? `<div class="flux-predict-row flux-predict-row--cog">
-          <span class="flux-predict-row-icon" aria-hidden="true">🧠</span>
+          <span class="flux-predict-row-icon" aria-hidden="true"></span>
           <div>
             <div class="flux-predict-row-title">Cognitive load: ${esc(cog.label || cog.level)} (${cog.score}%)</div>
             <div class="flux-predict-row-meta">Insight only — no tasks will be moved or created.</div>
@@ -196,7 +196,7 @@
     host.innerHTML = `
       <div class="card flux-predict-card">
         <div class="flux-predict-head">
-          <span class="flux-predict-icon" aria-hidden="true">🔮</span>
+          <span class="flux-predict-icon" aria-hidden="true"></span>
           <div>
             <div class="flux-predict-kicker">Predictive insights</div>
             <h3 class="flux-predict-title">Read-only — you stay in control</h3>
@@ -239,7 +239,7 @@
     el.innerHTML = `
       <div class="card flux-gap-card flux-predict-gap">
         <div class="flux-gap-head">
-          <span class="flux-gap-icon" aria-hidden="true">🧩</span>
+          <span class="flux-gap-icon" aria-hidden="true"></span>
           <div>
             <div class="flux-gap-kicker">Predictive gap-fill</div>
             <h3 class="flux-gap-title">Free pockets between classes</h3>

@@ -119,7 +119,7 @@
       d.setDate(d.getDate() + days);
       const review = {
         id: Date.now() + Math.random(),
-        name: `🔄 Review: ${String(parentTask.name || 'Task').slice(0, 80)}`,
+        name: `Review: ${String(parentTask.name || 'Task').slice(0, 80)}`,
         subject: parentTask.subject || '',
         priority: 'low',
         type: 'study',
@@ -163,7 +163,7 @@
 
     if (typeof showToast === 'function') {
       showToast(
-        `🔄 ${created.length} spaced review${created.length > 1 ? 's' : ''} scheduled (${created.map((r) => r.srsIntervalDays + 'd').join(', ')})`,
+        `${created.length} spaced review${created.length > 1 ? 's' : ''} scheduled (${created.map((r) => r.srsIntervalDays + 'd').join(', ')})`,
         'success',
       );
     }
@@ -216,7 +216,7 @@
         label = `Review +${du}d`;
       }
       const cls = ` srs-review flux-srs-review--${tier}`;
-      const badge = `<span class="flux-srs-badge flux-srs-badge--${tier}" title="Spaced repetition review">🔄 ${escapeHtml(label)}</span>`;
+      const badge = `<span class="flux-srs-badge flux-srs-badge--${tier}" title="Spaced repetition review">${escapeHtml(label)}</span>`;
       return {
         className: cls,
         badgeHtml: badge,
@@ -226,7 +226,7 @@
 
     if (task.srsEnabled && !task.done && !task.srsReviewsScheduled) {
       const badge =
-        '<span class="flux-srs-badge flux-srs-badge--pending" title="Reviews schedule when you complete this task">🔄 SRS on</span>';
+        '<span class="flux-srs-badge flux-srs-badge--pending" title="Reviews schedule when you complete this task">SRS on</span>';
       return { className: '', badgeHtml: badge, dataAttrs: ' data-srs-enabled="1"' };
     }
 
@@ -275,7 +275,7 @@
       return;
     }
     chip.hidden = false;
-    chip.textContent = `🔄 ${due.length} review${due.length > 1 ? 's' : ''} due`;
+    chip.textContent = `${due.length} review${due.length > 1 ? 's' : ''} due`;
   }
 
   function wireBus() {

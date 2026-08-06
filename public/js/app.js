@@ -430,7 +430,7 @@ function showAILimitReached(){
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px;width:100%;max-width:420px;text-align:center;box-shadow:var(--shadow-float)">
-      <div style="font-size:2rem;margin-bottom:12px">🤖</div>
+      <div style="font-size:2rem;margin-bottom:12px"></div>
       <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Daily AI limit reached</div>
       <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
         You've used ${daily} of ${dailyLimit} AI messages today on the ${plan==='free'?'Free':'Pro'} plan.
@@ -697,7 +697,7 @@ function checkTrialExpiry(){
   banner.id=bannerId;
   banner.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(var(--accent-rgb),.4);border-radius:14px;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-float);z-index:500;max-width:420px;width:calc(100% - 40px);animation:slideUp .3s var(--ease-spring)';
   banner.innerHTML=`
-    <span style="font-size:1.2rem">⏳</span>
+    <span style="font-size:1.2rem"></span>
     <div style="flex:1;min-width:0">
       <div style="font-size:.82rem;font-weight:700">${daysLeft===1?'Trial ends tomorrow':`Trial ends in ${daysLeft} days`}</div>
       <div style="font-size:.72rem;color:var(--muted2)">Subscribe to keep Pro access</div>
@@ -891,7 +891,7 @@ function renderDynamicFocus(){
     const startLbl=nextClass.timeStart?fmtTime(nextClass.timeStart):'P'+nextClass.period;
     const detailInner=`<div class="focus-card flux-focus-class-card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:1.4rem">📍</div>
+        <div style="font-size:1.4rem"></div>
         <div>
           <div class="focus-label">Next class</div>
           <div style="font-size:.95rem;font-weight:700;margin-top:2px">${esc(nextClass.name)}${nextClass.room?' · Rm '+esc(nextClass.room):''}</div>
@@ -902,7 +902,7 @@ function renderDynamicFocus(){
         </div>
       </div>
       ${gapSug?`<div style="background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.15);border-radius:10px;padding:10px 14px;font-size:.8rem">
-        <span style="color:var(--muted2)">💡 Gap task:</span> <strong>${esc(gapSug.name)}</strong>
+        <span style="color:var(--muted2)">Gap task:</span> <strong>${esc(gapSug.name)}</strong>
         <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem;margin-left:6px">~${gapSug.estTime}min</span>
       </div>`:''}
     </div>`;
@@ -911,7 +911,7 @@ function renderDynamicFocus(){
       const sum=`${todayClasses.length} class${todayClasses.length===1?'':'es'} · Next: ${nextClass.name} · ${startLbl}`;
       classBlock=`<div class="flux-schedule-focus-shell card" style="padding:0;overflow:hidden;margin-bottom:14px;border:1px solid rgba(var(--accent-rgb),.15)">
         <button type="button" class="flux-schedule-collapsed-toggle" onclick="toggleDashScheduleExpanded()" aria-expanded="${exp?'true':'false'}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:transparent;border:none;color:var(--text);font:inherit;cursor:pointer;text-align:left">
-          <span style="font-size:.82rem;font-weight:600">📅 <span style="color:var(--muted2);font-weight:500">${esc(sum)}</span></span>
+          <span style="font-size:.82rem;font-weight:600"><span style="color:var(--muted2);font-weight:500">${esc(sum)}</span></span>
           <span class="flux-schedule-chev" aria-hidden="true" style="flex-shrink:0;color:var(--muted);font-size:.75rem">${exp?'▴':'▾'}</span>
         </button>
         <div class="flux-schedule-focus-detail" style="display:${exp?'block':'none'};padding:0 12px 12px">${detailInner}</div>
@@ -937,7 +937,7 @@ function renderDynamicFocus(){
 function checkTimePoverty(){
   const banner=document.getElementById('timePovertyBanner');if(!banner)return;
   const now=new Date();
-  const todayStr=now.toISOString().slice(0,10);
+  const todayStr=fluxLocalYMD(now);
 
   if(typeof isBreak==='function'&&isBreak(todayStr)){
     const rk=typeof restDayKind==='function'?restDayKind(todayStr):'lazy';
@@ -1062,11 +1062,11 @@ function toggleReveal(fieldId,btnId){
   field.dataset.hidden=isHidden?'false':'true';
   if(isHidden){
     field.textContent=field.dataset.value||'—';
-    btn.textContent='🙈';
+    btn.textContent='';
   } else {
     const len=(field.dataset.value||'').length||4;
     field.textContent='•'.repeat(len);
-    btn.textContent='👁';
+    btn.textContent='';
   }
 }
 
@@ -1077,49 +1077,92 @@ function maskPrivateField(el,value){
   el.textContent='•'.repeat(Math.min(value.length,8));
 }
 
-// ══ TOAST NOTIFICATIONS ══
-function showToast(msg,type='success',durationMs=3000){
+// ══ TOAST NOTIFICATIONS — single queue (B1) ══
+// One toast visible at a time; queued by priority (crisis > conflict >
+// achievement > info) and drained with a 250ms stagger. Achievements coalesce
+// into one "N badges earned" toast instead of stacking popups over task rows.
+const FLUX_TOAST_PRIORITY={crisis:0,conflict:1,error:2,achievement:3,warning:4,success:5,info:5};
+let _toastQueue=[];
+let _toastShowing=false;
+function showToast(msg,type='success',durationMs=3000,opts={}){
   const live=document.getElementById('toastLive');if(live)live.textContent=msg;
-  // Ensure toast stack container exists — newest toast is prepended so it sits on top
+  const kind=opts.kind||type;
+  if(kind==='achievement'){
+    const q=_toastQueue.find(i=>i.kind==='achievement');
+    if(q){
+      q.count=(q.count||1)+1;
+      q.msg=q.count+' badges earned — tap to view';
+      q.onClick=()=>{try{nav('profile');}catch(_){}};
+      return;
+    }
+  }
+  _toastQueue.push({msg,type,durationMs:durationMs||3000,kind,count:1,onClick:opts.onClick});
+  // Stable sort: priority tiers first, insertion order within a tier.
+  _toastQueue.sort((a,b)=>(FLUX_TOAST_PRIORITY[a.kind]??5)-(FLUX_TOAST_PRIORITY[b.kind]??5));
+  _drainToastQueue();
+}
+function _drainToastQueue(){
+  if(_toastShowing)return;
+  const item=_toastQueue.shift();
+  if(!item)return;
+  _toastShowing=true;
+  _renderToastItem(item,()=>{
+    _toastShowing=false;
+    setTimeout(_drainToastQueue,250);
+  });
+}
+function _renderToastItem(item,onDone){
   let stack=document.getElementById('fluxToastStack');
   if(!stack){
     stack=document.createElement('div');
     stack.id='fluxToastStack';
     stack.setAttribute('aria-live','polite');
     stack.setAttribute('aria-atomic','false');
-    const isMob=window.innerWidth<768;
-    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:${isMob?'calc(16px + var(--bnav-height,62px) + var(--sa-bottom,0px))':'20px'};z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
+    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:var(--flux-dock-clearance,20px);z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
     document.body.appendChild(stack);
   }
   const t=document.createElement('div');
   t.className='toast-item';
-  const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)'};
-  const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f'};
+  const colors={success:'var(--green)',error:'var(--red)',info:'var(--accent)',warning:'var(--gold)',achievement:'var(--accent)',conflict:'var(--gold)',crisis:'var(--red)'};
+  const textColors={success:'#080a0f',error:'#fff',info:'#fff',warning:'#080a0f',achievement:'#fff',conflict:'#080a0f',crisis:'#fff'};
+  const paint=colors[item.type]||colors[item.kind]||colors.success;
+  const ink=textColors[item.type]||textColors[item.kind]||'#080a0f';
   const reduce=document.documentElement.classList.contains('flux-reduce-motion');
-  t.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:stretch;pointer-events:auto;background:${colors[type]||colors.success};color:${textColors[type]||'#080a0f'};
+  t.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:stretch;pointer-events:auto;background:${paint};color:${ink};
     border-radius:12px;font-size:.82rem;font-weight:700;max-width:100%;
     ${reduce?'':'animation:fluxToastIn .3s cubic-bezier(.34,1.56,.64,1) both;'}overflow:hidden;
-    box-shadow:0 4px 20px rgba(0,0,0,.4);`;
+    box-shadow:0 4px 20px rgba(0,0,0,.4);${item.onClick?'cursor:pointer;':''}`;
   const msgRow=document.createElement('div');
   msgRow.style.cssText='padding:10px 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-  msgRow.textContent=msg;
+  msgRow.textContent=item.msg;
   const prog=document.createElement('div');
   prog.className='toast-progress';
   t.appendChild(msgRow);
   t.appendChild(prog);
-  // Prepend so newest sits visually on top of column-reverse stack
   stack.prepend(t);
+  let finished=false;
+  const finish=()=>{
+    if(finished)return;
+    finished=true;
+    try{t.remove();}catch(e){}
+    onDone&&onDone();
+  };
+  if(item.onClick){
+    t.addEventListener('click',()=>{try{item.onClick();}catch(_){}finish();});
+  }
   try{
     if(!reduce&&window.FluxAnim?.toastIn)FluxAnim.toastIn(t);
+    if(item.kind==='achievement'&&window.FluxVisual?.spawnAchievementConfetti)FluxVisual.spawnAchievementConfetti(t);
   }catch(e){}
   setTimeout(()=>{
-    const out=()=>{try{t.remove();}catch(e){}};
+    if(finished)return;
     if(!reduce&&window.FluxAnim?.toastOut){
-      try{FluxAnim.toastOut(t,out);}catch(e){out();}
+      try{FluxAnim.toastOut(t,finish);}catch(e){finish();}
+      setTimeout(finish,600); // animation-independent fallback
     }else{
-      t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(out,220);
+      t.style.opacity='0';t.style.transition='opacity .2s,transform .2s';t.style.transform='translateY(8px)';setTimeout(finish,220);
     }
-  },durationMs||3000);
+  },item.durationMs);
 }
 
 // ══ ACCESSIBILITY · SNOOZE · BULK · EXAM CONFLICTS ══
@@ -1178,7 +1221,7 @@ function fluxBulkReschedule(){
   if(!_bulkIds.size){ showToast('Nothing selected','info'); return; }
   // Simple prompt-based date entry; leverages existing date inputs elsewhere if needed
   const today=new Date(); today.setHours(0,0,0,0);
-  const iso=today.toISOString().slice(0,10);
+  const iso=fluxLocalYMD(today);
   const input=prompt('Reschedule selected tasks to (YYYY-MM-DD):', iso);
   if(!input)return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(input)){ showToast('Invalid date format','error'); return; }
@@ -1239,7 +1282,7 @@ function renderExamConflictBanner(){
   const bad=Object.entries(by).filter(([,a])=>a.length>=2);
   if(!bad.length){el.style.display='none';el.innerHTML='';return;}
   el.style.display='block';
-  el.innerHTML='<strong>⚠️ Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
+  el.innerHTML='<strong>Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
 }
 function renderScheduleConflictNotices(){
   let syllabusOn=false;
@@ -1367,26 +1410,94 @@ function getSubjects(){
   classes.forEach((c,i)=>{
     if(!c.name)return;
     const cleanName=cleanClassName(c.name);
+    const baseName=parseClassLevel(c.name).baseName;
     const key='CLS'+(c.id||i);
-    subjs[key]={name:cleanName,short:cleanName.length>8?cleanName.slice(0,3).toUpperCase():cleanName,color:c.color||SUBJECT_COLORS[i%SUBJECT_COLORS.length]};
+    subjs[key]={name:cleanName,short:cleanName.length>8?baseName.slice(0,3).toUpperCase():cleanName,color:c.color||SUBJECT_COLORS[i%SUBJECT_COLORS.length]};
     if(c.icon)subjs[key].icon=c.icon;
   });
   try{if(window.FluxSubjectThemes?.enrich)FluxSubjectThemes.enrich(subjs);}catch(_){}
   return subjs;
 }
-// ── CLEAN CLASS NAME — strips prefixes and grade numbers ──
+// ── COURSE IDENTITY ──
+// Course level (AP/IB/Honors…) drives weighted GPA, transcript language, and
+// AI context, and period letters carry A/B-day meaning — so the display name
+// and period label are never stripped. parseClassLevel() reads the level OUT
+// of the name into a structured field; the full name stays intact.
+const FLUX_CLASS_LEVEL_PREFIXES=[
+  [/^IB\s+MYP\b/i,'IB MYP'],
+  [/^IB\s+DP\b/i,'IB DP'],
+  [/^IB\s+SL\b/i,'IB SL'],
+  [/^IB\s+HL\b/i,'IB HL'],
+  [/^IB\b/i,'IB'],
+  [/^MYP\b/i,'IB MYP'],
+  [/^DP\b/i,'IB DP'],
+  [/^Pre-?AP\b/i,'Pre-AP'],
+  [/^AP\b/i,'AP'],
+  [/^(Honors|Honours)\b/i,'Honors'],
+  [/^Advanced\b/i,'Advanced'],
+  [/^(CP|College\s+Prep)\b/i,'CP'],
+];
+function parseClassLevel(name){
+  const raw=String(name||'').trim().replace(/\s+/g,' ');
+  if(!raw)return{name:raw,level:'',baseName:raw};
+  let level='';let base=raw;
+  for(const[re,lv]of FLUX_CLASS_LEVEL_PREFIXES){
+    const m=base.match(re);
+    if(m){level=lv;base=base.slice(m[0].length).trim();break;}
+  }
+  // Trailing IB tier markers: "IB DP Chemistry HL", "Biology SL"
+  const tier=base.match(/\s+(HL|SL)$/);
+  if(tier){
+    const t=tier[1].toUpperCase();
+    if(/^IB\s+(HL|SL)$/.test(level))level='IB '+t;
+    else level=level?level+' '+t:'IB '+t;
+    base=base.slice(0,tier.index).trim();
+  }
+  if(!base)base=raw;
+  return{name:raw,level,baseName:base};
+}
+/** GPA weight boost for a parsed course level (+1.0 AP/IB, +0.5 Honors-tier). */
+function fluxCourseWeightBoost(level){
+  const lv=String(level||'').toUpperCase();
+  if(!lv)return 0;
+  if(/\b(AP|IB|DP|HL|SL)\b/.test(lv))return 1.0;
+  if(/\b(HONORS|ADVANCED|PRE-AP|CP)\b/.test(lv))return 0.5;
+  return 0;
+}
+/** Level for a class object — stored field first, else parsed from the name. */
+function fluxClassLevel(c){
+  if(!c)return'';
+  if(typeof c.level==='string')return c.level;
+  return parseClassLevel(c.name).level;
+}
+/** Period badge text — verbatim label ("A1", "P3") wins over the numeric sort key. */
+function fluxClassPeriodBadge(c){
+  if(!c)return'';
+  const lbl=String(c.periodLabel||'').trim();
+  if(lbl)return lbl;
+  return formatClassPeriodField(c)||String(c.period??'');
+}
+// cleanClassName no longer strips — it only normalizes whitespace. The old
+// stripping behavior corrupted course identity (AP Biology → Biology) across
+// onboarding, Canvas import, and school classes. Already-stripped stored names
+// can't be recovered; nothing is stripped going forward.
 function cleanClassName(name){
   if(!name)return name;
-  // Remove common academic prefixes (case insensitive)
-  let clean = name.trim();
-  // Remove prefixes like "IB MYP", "AP", "Honors", "Grade 10", etc.
-  clean = clean.replace(/^(IB\s+MYP|IB\s+DP|IB\s+SL|IB\s+HL|MYP|IB|DP|SL|HL|AP|Honors|Honours|Advanced|Regular|CP|College\s+Prep)\s+/gi, '');
-  // Remove trailing grade numbers like "10", "9", "11", "12" or "10th", "Grade 10"
-  clean = clean.replace(/\s+(?:Grade\s+)?\d{1,2}(?:st|nd|rd|th)?\s*$/i, '');
-  // Remove leading grade number patterns like "10 " at start
-  clean = clean.replace(/^\d{1,2}\s+/, '');
-  return clean.trim() || name.trim();
+  return String(name).trim().replace(/\s+/g,' ')||String(name).trim();
 }
+/** Lowercased match key for fuzzy course-name comparison ONLY (never stored/displayed). */
+function fluxClassMatchKey(name){
+  const p=parseClassLevel(name);
+  return p.baseName
+    .toLowerCase()
+    .replace(/\b(ap|ib|myp|dp|sl|hl|honors|honours|advanced|college prep|cp)\b/gi,'')
+    .replace(/\s+(?:grade\s+)?\d{1,2}(?:st|nd|rd|th)?\s*$/i,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+window.parseClassLevel=parseClassLevel;
+window.fluxCourseWeightBoost=fluxCourseWeightBoost;
+window.fluxClassLevel=fluxClassLevel;
 
 // SUBJECTS is a live getter — always reflects current classes
 function SUBJECTS_GET(){return getSubjects();}
@@ -1407,13 +1518,19 @@ function loadRestDaysList(){
   return arr.filter(r=>r&&r.date&&/^\d{4}-\d{2}-\d{2}$/.test(r.date));
 }
 function saveRestDaysList(arr){save(REST_DAYS_KEY,arr);}
-function isBreak(d){return loadRestDaysList().some(r=>r.date===d);}
+function isBreak(d){
+  if(loadRestDaysList().some(r=>r.date===d))return true;
+  // C2: district-published closures behave exactly like rest days — every
+  // consumer (date spreading, calendar chips, AI pacing) skips them with
+  // zero data mutation; flag off ⇒ isClosed is never consulted.
+  try{return !!(window.FluxSchoolSchedules?.enabled?.()&&FluxSchoolSchedules.isClosed(d));}catch(_){return false;}
+}
 function restDayKind(d){const r=loadRestDaysList().find(x=>x.date===d);return r?r.kind:null;}
 function nextNonRestForward(ds){
   let d=new Date(ds+'T12:00:00');
   for(let i=0;i<56;i++){
     d.setDate(d.getDate()+1);
-    const s=d.toISOString().slice(0,10);
+    const s=fluxLocalYMD(d);
     if(!isBreak(s))return s;
   }
   return ds;
@@ -1422,7 +1539,7 @@ function prevNonRestBackward(ds){
   let d=new Date(ds+'T12:00:00');
   for(let i=0;i<56;i++){
     d.setDate(d.getDate()-1);
-    const s=d.toISOString().slice(0,10);
+    const s=fluxLocalYMD(d);
     if(!isBreak(s))return s;
   }
   return ds;
@@ -1447,7 +1564,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Knowledge',notebook:'Notebook',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -1647,6 +1764,11 @@ const FluxRole={
     // technically still impersonating someone else.
     try{if(typeof _refreshUserUI==='function')_refreshUserUI();}catch(_){}
     if(typeof updateModeSwitchUI==='function')updateModeSwitchUI();
+    // Work and Personal keep separate task/event views — refresh the shared
+    // surfaces so nothing from the other mode lingers on screen.
+    try{if(typeof renderTasks==='function')renderTasks();}catch(_){}
+    try{if(typeof renderCalendar==='function')renderCalendar();}catch(_){}
+    try{if(typeof renderStats==='function')renderStats();}catch(_){}
     try{
       if(typeof FluxBus!=='undefined')FluxBus.emit('role_mode_changed',{mode,role:this.current});
     }catch(_){}
@@ -2043,7 +2165,7 @@ function renderImpersonationBanner(){
   document.body.classList.add('flux-has-impersonate-banner');
   const roleLabel=({teacher:'Teacher',counselor:'Counselor',staff:'Staff',admin:'Admin',student:'Student'})[a.role]||a.role;
   bar.innerHTML=`
-    <span style="font-size:.95rem;flex:0 0 auto">🧪</span>
+    <span style="font-size:.95rem;flex:0 0 auto"></span>
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Testing as <b>${esc(a.name||'(unnamed)')}</b> — ${esc(roleLabel)}${a.subject?' · '+esc(a.subject):''}</span>
     <span style="opacity:.8;font-size:.66rem;letter-spacing:.04em;flex:0 0 auto">OWNER</span>
     <button type="button" id="fluxImpersonateExit" style="flex:0 0 auto;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:.7rem;cursor:pointer">Exit</button>`;
@@ -2069,7 +2191,7 @@ function openImpersonatePicker(){
   ov.innerHTML=`
     <div style="max-width:560px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="font-size:1.4rem">🧪</span>
+        <span style="font-size:1.4rem"></span>
         <h2 style="margin:0;font-size:1.2rem;font-weight:900" class="flux-color-title">Owner test mode</h2>
       </div>
       <p style="font-size:.82rem;color:var(--muted2);margin:0 0 16px">Impersonate any role or staff member to test their planner. Your real Supabase data is untouched. Exit at any time.</p>
@@ -2218,6 +2340,18 @@ function fluxIsStaffPersonalMode(){
 }
 window.fluxIsStaffPersonalMode=fluxIsStaffPersonalMode;
 
+/** Educators keep Work and Personal planners separate: scope 'outside' =
+ *  personal life, anything else = work/school. Students see everything. */
+function fluxTaskVisibleInMode(t){
+  try{
+    if(typeof FluxRole==='undefined'||!FluxRole.isEducator||!FluxRole.isEducator())return true;
+    const personal=FluxRole.isPersonalMode&&FluxRole.isPersonalMode();
+    const outside=!!t&&t.scope==='outside';
+    return personal?outside:!outside;
+  }catch(_){return true;}
+}
+window.fluxTaskVisibleInMode=fluxTaskVisibleInMode;
+
 function fluxSyncSubjectUiForRole(){
   const hide=fluxIsStaffPersonalMode();
   document.documentElement.classList.toggle('flux-staff-personal-no-subjects',hide);
@@ -2248,12 +2382,14 @@ function applyRoleUI(){
     '.sidebar .nav-item[data-tab="toolbox"]',
     '.sidebar .nav-item[data-tab="canvas"]:not([data-educator-google])',
     '.sidebar .nav-item[data-tab="notes"]',
+    '.sidebar .nav-item[data-tab="notebook"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]',
     '.mob-drawer .nav-item[onclick*="\'goals\'"]',
     '.mob-drawer .nav-item[onclick*="\'timer\'"]',
     '.mob-drawer .nav-item[onclick*="\'toolbox\'"]',
     '.mob-drawer .nav-item[onclick*="\'canvas\'"]:not([data-educator-google])',
     '.mob-drawer .nav-item[onclick*="\'notes\'"]',
+    '.mob-drawer .nav-item[onclick*="\'notebook\'"]',
     '.bnav-item[data-tab="mood"]',
     '.bnav-item[data-tab="goals"]',
     '.bnav-item[data-tab="timer"]',
@@ -2364,6 +2500,15 @@ function applyRoleUI(){
 
   try{fluxApplyStudentDashboardChrome(studentChromeOn);}catch(_){}
   try{fluxSyncSubjectUiForRole();}catch(_){}
+  try{renderAISugs();}catch(_){}
+  // Hide any nav group whose items are all role-hidden (e.g. the student
+  // "Learn" group for educators in Work mode) so no dangling label renders.
+  try{
+    document.querySelectorAll('.sidebar-nav .nav-group,.mob-drawer-nav .nav-group').forEach(g=>{
+      const any=Array.from(g.querySelectorAll('.nav-item')).some(b=>getComputedStyle(b).display!=='none');
+      g.style.display=any?'':'none';
+    });
+  }catch(_){}
 
   syncSchoolNavChrome();
 }
@@ -2398,9 +2543,9 @@ function applyModeToNav(isWork){
     '[data-nav="mood"]','[data-nav="goals"]','[data-nav="habits"]','[data-nav="canvas"]','[data-nav="study"]',
     '#nav-mood','#nav-goals','#nav-habits','#nav-canvas','#nav-study',
     '.nav-item[data-tab="mood"]','.nav-item[data-tab="goals"]','.nav-item[data-tab="habits"]',
-    '.nav-item[data-tab="canvas"]:not([data-educator-google])','.nav-item[data-tab="toolbox"]','.nav-item[data-tab="timer"]','.nav-item[data-tab="notes"]',
+    '.nav-item[data-tab="canvas"]:not([data-educator-google])','.nav-item[data-tab="toolbox"]','.nav-item[data-tab="timer"]','.nav-item[data-tab="notes"]','.nav-item[data-tab="notebook"]',
     '.mob-drawer .nav-item[onclick*="\'mood\'"]','.mob-drawer .nav-item[onclick*="\'goals\'"]',
-    '.mob-drawer .nav-item[onclick*="\'canvas\'"]:not([data-educator-google])','.mob-drawer .nav-item[onclick*="\'toolbox\'"]','.mob-drawer .nav-item[onclick*="\'timer\'"]','.mob-drawer .nav-item[onclick*="\'notes\'"]',
+    '.mob-drawer .nav-item[onclick*="\'canvas\'"]:not([data-educator-google])','.mob-drawer .nav-item[onclick*="\'toolbox\'"]','.mob-drawer .nav-item[onclick*="\'timer\'"]','.mob-drawer .nav-item[onclick*="\'notes\'"]','.mob-drawer .nav-item[onclick*="\'notebook\'"]',
   ];
   studentOnlyTabs.forEach(sel=>{
     document.querySelectorAll(sel).forEach(el=>{
@@ -2607,7 +2752,7 @@ function ecGoalEventsForDate(dateStr){
   return (ecGoals||[]).filter(g=>g.deadline===dateStr&&!g.done).map(g=>({
     id:'ecg_'+g.id,
     goalId:g.id,
-    title:'🎯 '+g.title,
+    title:''+g.title,
     time:'',
     date:dateStr,
     scope:'outside',
@@ -2669,7 +2814,7 @@ function openEcCalendarScheduleModal(extraId){
   if(sub)sub.textContent=`Schedule "${ex.name}" on your planner calendar.`;
   const te=document.getElementById('ecSchedTime');if(te)te.value='';
   const de=document.getElementById('ecSchedDate');
-  if(de)de.value=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  if(de)de.value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   document.querySelectorAll('input[name="ecWd"]').forEach(c=>{c.checked=false;});
   setEcScheduleType('weekly');
   modal.style.display='flex';
@@ -2758,6 +2903,16 @@ let sessionLog=load('flux_session_log',[]);
 let settings=load('flux_settings',{panic:true,quiet:true,dndStart:'07:50',dndEnd:'14:30',dailyGoalHrs:2,notifyBrowser:false,notifyDueSoon:true,classScheduleDisplay:'full'});
 let schoolInfo=load('flux_school',{locker:'',combo:'',counselor:'',studentID:''});
 let classes=load('flux_classes',[]);
+// Backfill structured course metadata on legacy entries. Names are never
+// rewritten — pre-fix stripped names are unrecoverable, and nothing is
+// stripped going forward (see parseClassLevel/cleanClassName).
+(function(){
+  let changed=false;
+  (Array.isArray(classes)?classes:[]).forEach(c=>{
+    if(c&&c.name&&typeof c.level!=='string'){c.level=parseClassLevel(c.name).level;changed=true;}
+  });
+  if(changed)try{save('flux_classes',classes);}catch(_){}
+})();
 let teacherNotes=load('flux_teacher_notes',[]);
 
 /** Done tasks missing completedAt get a best-effort timestamp (streaks, week strip, AI actions). Safe to run often. */
@@ -2788,8 +2943,7 @@ const DEFAULT_TABS=[
   {id:'ai',icon:'✦',label:'Flux AI',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
   {id:'canvas',icon:'G',label:'Google',visible:true},
-  {id:'notes',icon:'📝',label:'Knowledge',visible:true},
-  {id:'notebook',icon:'📓',label:'Notebook',visible:true},
+  {id:'notes',icon:'📓',label:'Notebook',visible:true},
   {id:'timer',icon:'⏱',label:'Focus Timer',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
@@ -2798,24 +2952,15 @@ const DEFAULT_TABS=[
   {id:'settings',icon:'⚙',label:'Settings',visible:true},
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
-tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references'&&t.id!=='grades'&&t.id!=='workspace');
+// 'notebook' merged into 'notes' (one Notebook tab with Knowledge as a sub-view)
+tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references'&&t.id!=='grades'&&t.id!=='workspace'&&t.id!=='notebook');
+{const _nt=tabConfig.find(t=>t.id==='notes');if(_nt&&(_nt.label==='Knowledge'||_nt.label==='Notes')){_nt.label='Notebook';_nt.icon='📓';}}
 // Ensure new tabs get added if missing
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
 // Legacy tab label (older builds / stored flux_tabs)
 tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))t.label='Flux AI';});
-// Notes is now the Knowledge base; relabel older stored configs.
-tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Knowledge';});
-// Notebook moved to its own sidebar tab — place it right after Knowledge if newly added.
-(function placeNotebookTab(){
-  const ni=tabConfig.findIndex(t=>t.id==='notebook');
-  const ki=tabConfig.findIndex(t=>t.id==='notes');
-  if(ni<0||ki<0)return;
-  if(ni!==ki+1){
-    const [row]=tabConfig.splice(ni,1);
-    const nki=tabConfig.findIndex(t=>t.id==='notes');
-    tabConfig.splice(nki+1,0,row);
-  }
-})();
+// 'notes' hosts the merged Notebook tab (Knowledge is a sub-view inside it).
+tabConfig.forEach(t=>{if(t.id==='notes'&&(/^notes$/i.test(String(t.label||''))||!t.label))t.label='Notebook';});
 tabConfig.forEach(t=>{
   if(t.id!=='canvas')return;
   if(/gmail/i.test(String(t.label||''))||t.label==='Canvas'||!t.label)t.label='Google';
@@ -3114,8 +3259,12 @@ async function startUpgradeToSchoolWorkspace(){
 }
 window.startUpgradeToSchoolWorkspace=startUpgradeToSchoolWorkspace;
 
-const strip=html=>html.replace(/<[^>]+>/g,'').slice(0,120);
-const todayStr=()=>TODAY.toISOString().slice(0,10);
+const strip=html=>esc(String(html??'').replace(/<[^>]*>?/g,'')).slice(0,120);
+// Canonical "today" for every surface (23 modules delegate to window.todayStr).
+// Must be LOCAL and live: toISOString() rolls over at UTC midnight, which put
+// this a day ahead of the calendar and FluxNow (both fluxLocalYMD) every evening
+// in the Americas, so closures/rest days keyed here missed their lookups.
+const todayStr=()=>fluxLocalYMD(new Date());
 const fmtTime=t=>{if(!t)return'';const[h,m]=t.split(':').map(Number);const ampm=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;};
 window.strip=strip; window.todayStr=todayStr; window.fmtTime=fmtTime;
 
@@ -3287,7 +3436,7 @@ function nav(id,btn,navOpt){
     else if(id==='canvas')tTitle.textContent=PANEL_TITLES.google||'Google';
     else tTitle.textContent=PANEL_TITLES[id]||id;
   }
-  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>renderNotesList(),notebook:()=>{try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
+  const fns={dashboard:()=>{try{const pendStaff=typeof currentUser!=='undefined'&&currentUser&&String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff'&&FluxRole.current==='student'&&FluxRole.isPersonalMode();const eduDash=(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode())||pendStaff;if(eduDash){fluxApplyStudentDashboardChrome(false);if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){FluxStaffPlatform.renderStaffPersonalDashboard();return;}}fluxApplyStudentDashboardChrome(true);}catch(e){}renderStats();renderTasks();renderCountdown();renderSmartSug();checkTimePoverty();renderWorkloadForecast();renderSubjectHealth();renderGapFiller();renderScheduleConflictNotices();if(window.FluxPersonal){FluxPersonal.applyDashboardOrder();if(FluxPersonal.applyDashboardVisibility)FluxPersonal.applyDashboardVisibility();}},calendar:()=>{if(window.FluxPersonal&&FluxPersonal.applyCalendarOrder)FluxPersonal.applyCalendarOrder();loadCalScheduleUI();renderCalendar();const gcalStatusEl=document.getElementById('gcalStatus');if(gcalStatusEl&&!gcalStatusEl.innerHTML)syncGoogleCalendar();},school:()=>renderSchool(),notes:()=>{ensureNbkSubtabs();renderNotesList();},notebook:()=>{ensureNbkSubtabs();try{const m=document.getElementById('notebookMount');if(m&&!m.dataset.fnbReady&&window.FluxNotebook&&FluxNotebook.open){FluxNotebook.open(m);m.dataset.fnbReady='1';}}catch(e){}},goals:()=>{renderExtrasList();renderSchoolsList();renderECGoals();initEcCollegeChatSelect();renderEcChatMessages();initEcCollegeChatListeners();},mood:()=>{renderMoodHistory();renderAffirmation();loadJournalLineUI();},timer:()=>{updateTDisplay();renderTDots();updateTStats();renderSubjectBudget();renderFocusHeatmap();},profile:()=>renderProfile(),ai:()=>{renderAISugs();initAIChats();try{if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function')FluxAIConnections.renderConnectionsPanel();}catch(e){}},settings:()=>{renderNoHWList();renderTabCustomizer();renderAboutStats();loadSettingsUI();try{if(window.FluxParentPortal?.renderStudentSettings)FluxParentPortal.renderStudentSettings();}catch(e){}try{if(window.FluxLearnerProfile?.renderCard)FluxLearnerProfile.renderCard();}catch(e){}},canvas:()=>renderCanvasHubPanel(),toolbox:()=>{if(typeof window.renderToolbox==='function')window.renderToolbox();},flux_control:()=>{if(typeof renderFluxControlTab==='function')renderFluxControlTab();},teacherDashboard:()=>{try{renderTeacherDashboard();}catch(e){}},counselorDashboard:()=>{try{renderCounselorDashboard();}catch(e){}},counselorWorkspace:()=>{try{renderCounselorWorkspace();}catch(e){}},adminDashboard:()=>{try{renderAdminDashboard();}catch(e){}},lessonHub:()=>{try{renderLessonHub();}catch(e){}},teacherResources:()=>{try{if(typeof renderTeacherResources==='function')renderTeacherResources();}catch(e){}},counselorMeetings:()=>{try{renderCounselorMeetings();}catch(e){}},adminOps:()=>{try{renderAdminOps();}catch(e){}},staffWorkboard:()=>{try{renderStaffWorkboard();}catch(e){}},staffTasks:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffTasksPanel==='function')FluxStaffPlatform.renderStaffTasksPanel();}catch(e){}},staffMeetingNotes:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderMeetingNotesPanel==='function')FluxStaffPlatform.renderMeetingNotesPanel();}catch(e){}},staffPD:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderPDPanel==='function')FluxStaffPlatform.renderPDPanel();}catch(e){}},staffWellbeing:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderWellbeingPanel==='function')FluxStaffPlatform.renderWellbeingPanel();}catch(e){}},staffResources:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderResourcesPanel==='function')FluxStaffPlatform.renderResourcesPanel();}catch(e){}},staffPersonalHub:()=>{try{if(typeof renderStaffPersonalHub==='function')renderStaffPersonalHub();}catch(e){}},schoolFeedPanel:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderSchoolFeed==='function')FluxStaffPlatform.renderSchoolFeed();}catch(e){}},staffHub:()=>{try{if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffWorkHub==='function')FluxStaffPlatform.renderStaffWorkHub();}catch(e){}},staffMessages:()=>{try{if(typeof renderStaffMessages==='function')renderStaffMessages();}catch(e){}},parentPortal:()=>{try{if(window.renderParentPortal)renderParentPortal();}catch(e){}}};
   fns[id]?.();
   if(id==='canvas'){
     try{
@@ -3337,40 +3486,66 @@ function nav(id,btn,navOpt){
 function navMob(id,opt){closeDrawer();closeMobileSheet();nav(id,null,opt);}
 
 // ── Mobile "More" bottom sheet ──
+let _moreSheetCloseTimer=null;
 function openMobileSheet(){
   const ov=document.getElementById('moreSheetOverlay');
   const sh=document.getElementById('moreSheet');
   if(!ov||!sh)return;
+  // A reopen must cancel the pending close fallback, or it would fire and
+  // shut the sheet the user just opened.
+  if(_moreSheetCloseTimer){clearTimeout(_moreSheetCloseTimer);_moreSheetCloseTimer=null;}
   ov.classList.add('open');
   sh.classList.add('open');
   ov.setAttribute('aria-hidden','false');
   sh.setAttribute('aria-hidden','false');
   document.body.style.overflow='hidden';
+  if(window.FluxOverlays)FluxOverlays.push('moreSheet',closeMobileSheet);
+  try{window.FluxA11y?.trapFocus?.(sh);}catch(e){}
   try{if(window.FluxAnim?.sheetOpen)FluxAnim.sheetOpen(sh,ov);}catch(e){}
 }
 function closeMobileSheet(){
   const ov=document.getElementById('moreSheetOverlay');
   const sh=document.getElementById('moreSheet');
   if(!ov||!sh)return;
+  // Idempotent, animation-independent. The anime.js open spring leaves inline
+  // transform/opacity that override the stylesheet's closed state — if close
+  // relied on class removal alone (or an animation callback that might never
+  // run), the sheet wedged permanently visible. Assert the closed state
+  // synchronously; the .28s CSS transition plays the slide-down cosmetically.
   const done=()=>{
+    try{window.FluxA11y?.releaseFocus?.(sh);}catch(_){}
+    try{if(typeof sh._fluxSheetOpenCancel==='function')sh._fluxSheetOpenCancel();}catch(_){}
+    sh.style.transform='';sh.style.opacity='';sh.style.display='';
+    ov.style.opacity='';ov.style.display='';
     ov.classList.remove('open');
     sh.classList.remove('open');
     ov.setAttribute('aria-hidden','true');
     sh.setAttribute('aria-hidden','true');
     document.body.style.overflow='';
+    if(window.FluxOverlays)FluxOverlays.pop('moreSheet');
   };
-  try{
-    if(window.FluxAnim?.sheetClose)FluxAnim.sheetClose(sh,ov,done);
-    else done();
-  }catch(e){done();}
+  done();
+  // Async re-asserts must not fight a reopen — only apply while still closed.
+  const reassert=()=>{if(!sh.classList.contains('open'))done();};
+  try{if(window.FluxAnim?.sheetClose)FluxAnim.sheetClose(sh,ov,reassert);}catch(e){}
+  // Hard fallback: re-assert closed state after any motion layer finishes.
+  if(_moreSheetCloseTimer)clearTimeout(_moreSheetCloseTimer);
+  _moreSheetCloseTimer=setTimeout(()=>{_moreSheetCloseTimer=null;reassert();},300);
 }
 window.openMobileSheet=openMobileSheet;
 window.closeMobileSheet=closeMobileSheet;
-// Close sheet on Escape
+// Close sheet on Escape — visibility judged by geometry, not class state:
+// a wedged sheet can be fully visible with no .open class. Defers to the
+// overlay stack when something else is on top (Escape pops top only); a
+// wedged sheet is no longer on the stack, so the empty-stack path still
+// recovers it.
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     const sh=document.getElementById('moreSheet');
-    if(sh&&sh.classList.contains('open'))closeMobileSheet();
+    if(!sh)return;
+    if(window.FluxOverlays&&FluxOverlays.anyOpen()&&!FluxOverlays.isTop('moreSheet'))return;
+    const r=sh.getBoundingClientRect();
+    if(r.height>0&&r.top<window.innerHeight)closeMobileSheet();
   }
 });
 // Swipe-down to dismiss the sheet
@@ -3442,7 +3617,7 @@ const NAV_TAB_SVGS={
   references:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>`,
   periodic:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   gmail:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>`,
-  /* School feed / announcements — megaphone (replaces 📢 in sidebar) */
+  /* School feed / announcements — megaphone (replaces in sidebar) */
   schoolFeedPanel:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`,
   announce:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`,
 };
@@ -3481,27 +3656,25 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const n=(id,useThis)=>isMob?`navMob('${id}')`:(useThis?`nav('${id}',this)`:`nav('${id}')`);
   const workspace=`<div class="nav-group flux-nav-group-hidden" data-role-group="staff">
 <div class="nav-group-label"${Lp}>Workspace</div>
-<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">📋</span><span class="nl">Lesson Hub</span></button>
-<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">📞</span><span class="nl">Meetings</span></button>
-<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">🏛</span><span class="nl">Operations</span></button>
-<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">🛠</span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('teacherDashboard');try{renderTeacherDashboard()}catch(e){}`:`nav('teacherDashboard',this);try{renderTeacherDashboard()}catch(e){}`}" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📚</span><span class="nl">Classes</span></button>
-<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">📊</span><span class="nl">Gradebook</span></button>
-<button type="button" class="nav-item" onclick="openTeacherMessages()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">💬</span><span class="nl">Messages</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorDashboard');try{renderCounselorDashboard()}catch(e){}`:`nav('counselorDashboard',this);try{renderCounselorDashboard()}catch(e){}`}" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">🏠</span><span class="nl">Overview</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">🗂</span><span class="nl">Caseload tools</span></button>
-<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
-<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">👥</span><span class="nl">Students</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('adminDashboard');try{renderAdminDashboard()}catch(e){}`:`nav('adminDashboard',this);try{renderAdminDashboard()}catch(e){}`}" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">🏫</span><span class="nl">School</span></button>
-<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">👥</span><span class="nl">Users</span></button>
-<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">📅</span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni"></span><span class="nl">Messages</span></button>
+<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Lesson Hub</span></button>
+<button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni"></span><span class="nl">Meetings</span></button>
+<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
+<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Classes</span></button>
+<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
+<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Students</span></button>
+<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Users</span></button>
+<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
 <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('announce')}</span><span class="nl">Announce</span></button>
 </div>`;
   const schoolClassicBtn=`<button type="button" class="nav-item" data-school-nav-classic onclick="${n('school',true)}" data-tab="school"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">${schoolClassicLabelEscaped}</span></button>`;
   const mainWorkHubBtn=`<button type="button" class="nav-item" data-educator-work-main onclick="${isMob?`navMob('staffHub');try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`:`nav('staffHub',this);try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`}" data-tab="staffHub" style="display:none" aria-label="Work hub"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span><span class="nl">Work hub</span></button>`;
   const schoolStripAndFeed=`<div id="${stripId}" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
-<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni">🏫</span><span class="nl">Info</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni"></span><span class="nl">Info</span></button>
 <button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" title="School feed"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>
 </div>
 <button type="button" class="nav-item" data-school-feed-student-only onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" data-tab="schoolFeedPanel"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>`;
@@ -3509,18 +3682,44 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
   const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
   const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
-  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">✅</span><span class="nl">Tasks</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">📁</span><span class="nl">Resources</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">🧩</span><span class="nl">Personal hub</span></button>
+  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Tasks</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Personal hub</span></button>
 ${googleNavPersonal}`;
   return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
 
+/** One sidebar entry, two views: Notebook (default) + Knowledge live behind a
+ *  shared segmented strip injected at the top of both panels. */
+function ensureNbkSubtabs(){
+  ['notes','notebook'].forEach(pid=>{
+    const p=document.getElementById(pid);
+    if(!p||p.querySelector('.fx-nbk-subtabs'))return;
+    const strip=document.createElement('div');
+    strip.className='fx-nbk-subtabs';
+    strip.setAttribute('role','tablist');
+    // B4: the destination is "Notebook" everywhere; Notes list is the default
+    // sub-view (panel id 'notes'), Knowledge (the NotebookLM workspace,
+    // panel id 'notebook') stays a sub-tab. Labels were previously swapped.
+    strip.innerHTML=
+      `<button type="button" role="tab" data-nbk-go="notes" aria-selected="${pid==='notes'}" class="${pid==='notes'?'active':''}">📓 Notes</button>`+
+      `<button type="button" role="tab" data-nbk-go="notebook" aria-selected="${pid==='notebook'}" class="${pid==='notebook'?'active':''}">🧠 Knowledge</button>`;
+    strip.querySelectorAll('[data-nbk-go]').forEach(b=>{
+      b.addEventListener('click',()=>{const id=b.dataset.nbkGo;if(id!==pid)nav(id);});
+    });
+    p.prepend(strip);
+  });
+}
+window.ensureNbkSubtabs=ensureNbkSubtabs;
+
 function renderSidebars(){
+  // Max 5 tabs per section (user request): Plan 4 · Learn 5 (School + Feed +
+  // Notebook (merged w/ Knowledge sub-view) + Study tools + Google) ·
+  // Me & Life 4.
   const groups=[
-    {label:'Main',ids:['dashboard','calendar','ai']},
-    {label:'School',ids:['canvas','notes','timer','toolbox']},
-    {label:'Me',ids:['profile','goals','mood','settings']},
+    {label:'Plan',ids:['dashboard','calendar','ai','timer']},
+    {label:'Learn',ids:['notes','toolbox','canvas']},
+    {label:'Me & Life',ids:['profile','goals','mood','settings']},
   ];
   const visibleIds=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   const schoolTab=tabConfig.find(t=>t.id==='school')||DEFAULT_TABS.find(t=>t.id==='school');
@@ -3538,7 +3737,7 @@ function renderSidebars(){
   const augSide=buildEducatorNavAugmentation(false,schoolClassicLabel);
   const augMob=buildEducatorNavAugmentation(true,schoolClassicLabel);
   const includeWorkspaceNav=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
-  const schoolIds=['canvas','notes','notebook','timer','toolbox'];
+  const schoolIds=['notes','toolbox','canvas'];
   const schoolItemsSide=schoolIds.filter(id=>visibleIds.has(id)).map(id=>{
     const tc=tabConfig.find(t=>t.id===id)||DEFAULT_TABS.find(t=>t.id===id);
     const lab=esc(tc?.label||id);
@@ -3551,26 +3750,26 @@ function renderSidebars(){
   }).join('');
   const schoolTopSide=(visibleIds.has('school')?augSide.schoolClassicBtn:'')+augSide.schoolStripAndFeed;
   const schoolTopMob=(visibleIds.has('school')?augMob.schoolClassicBtn:'')+augMob.schoolStripAndFeed;
-  const schoolGroupSide=`<div class="nav-group"><div class="nav-group-label">School</div>${schoolTopSide}${schoolItemsSide}${augSide.staffPersonal}</div>`;
-  const schoolGroupMob=`<div class="nav-group"><div class="nav-group-label" style="padding:8px 16px 4px">School</div>${schoolTopMob}${schoolItemsMob}${augMob.staffPersonal}</div>`;
+  const schoolGroupSide=`<div class="nav-group"><div class="nav-group-label">Learn</div>${schoolTopSide}${schoolItemsSide}${augSide.staffPersonal}</div>`;
+  const schoolGroupMob=`<div class="nav-group"><div class="nav-group-label" style="padding:8px 16px 4px">Learn</div>${schoolTopMob}${schoolItemsMob}${augMob.staffPersonal}</div>`;
 
   const sidebarNav=document.querySelector('.sidebar-nav');
   if(sidebarNav){
     sidebarNav.innerHTML=[
-      buildStdGroup('Main',groups[0].ids,'nav')+(includeWorkspaceNav?augSide.mainWorkHubBtn:''),
+      buildStdGroup('Plan',groups[0].ids,'nav')+(includeWorkspaceNav?augSide.mainWorkHubBtn:''),
       includeWorkspaceNav?augSide.workspace:'',
       schoolGroupSide,
-      buildStdGroup('Me',groups[2].ids,'nav'),
+      buildStdGroup('Me & Life',groups[2].ids,'nav'),
     ].join('');
   }
 
   const drawerNav=document.querySelector('.mob-drawer-nav');
   if(drawerNav){
     drawerNav.innerHTML=[
-      buildStdGroup('Main',groups[0].ids,'navMob','padding:8px 16px 4px')+(includeWorkspaceNav?augMob.mainWorkHubBtn:''),
+      buildStdGroup('Plan',groups[0].ids,'navMob','padding:8px 16px 4px')+(includeWorkspaceNav?augMob.mainWorkHubBtn:''),
       includeWorkspaceNav?augMob.workspace:'',
       schoolGroupMob,
-      buildStdGroup('Me',groups[2].ids,'navMob','padding:8px 16px 4px'),
+      buildStdGroup('Me & Life',groups[2].ids,'navMob','padding:8px 16px 4px'),
     ].join('');
   }
 
@@ -3731,7 +3930,7 @@ function toggleTask(id){
       else if(recType==='biweekly')nd.setDate(nd.getDate()+14);
       else if(recType==='monthly')nd.setMonth(nd.getMonth()+1);
       const labels={weekly:'Next week',biweekly:'Biweekly',monthly:'Next month'};
-      const nt={id:Date.now()+Math.random(),name:t.name,date:nd.toISOString().slice(0,10),subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',estTime:t.estTime||0,difficulty:t.difficulty||3,notes:t.notes||'',subtasks:(t.subtasks||[]).map(s=>({text:s.text,done:false})),done:false,rescheduled:0,createdAt:Date.now(),recurringType:recType,recurringWeekly:recType==='weekly',waitingOn:t.waitingOn,srsEnabled:false};
+      const nt={id:Date.now()+Math.random(),name:t.name,date:fluxLocalYMD(nd),subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',estTime:t.estTime||0,difficulty:t.difficulty||3,notes:t.notes||'',subtasks:(t.subtasks||[]).map(s=>({text:s.text,done:false})),done:false,rescheduled:0,createdAt:Date.now(),recurringType:recType,recurringWeekly:recType==='weekly',waitingOn:t.waitingOn,srsEnabled:false};
       nt.urgencyScore=calcUrgency(nt);tasks.unshift(nt);showToast((labels[recType]||'Repeat')+' repeat added','info');
       }
     }
@@ -3813,6 +4012,8 @@ function updateTopbarStats(){
 function updateNextClassPill(){
   const pill=document.getElementById('topbarNextClass');
   if(!pill||!classes||!classes.length)return;
+  // C1: when the FluxNow strip is on, it owns "what's next" — one surface.
+  if(window.FluxNow?.enabled?.()){pill.style.display='none';window.FluxNow.renderStrip();return;}
   const schedMode=getClassScheduleDisplayMode();
   if(schedMode==='hidden'||schedMode==='collapsed'){pill.style.display='none';return;}
   const ab=AB_MAP[todayStr()];
@@ -3908,7 +4109,7 @@ function updateDashHero(opts){
   grad.className='dash-v2-greet-gradient';
   grad.textContent=line;
   greet.appendChild(grad);
-  greet.appendChild(document.createTextNode(' 👋'));
+  greet.appendChild(document.createTextNode(''));
   const playIntro=!(opts&&opts.skipIntro)&&greet.dataset.fluxGreetIntroDone!=='1';
   try{
     if(playIntro&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -3951,7 +4152,7 @@ function renderDashWeekStrip(){
     d.setDate(d.getDate()+i);
     days.push(d);
   }
-  const weekStart=days[0].toISOString().slice(0,10);
+  const weekStart=fluxLocalYMD(days[0]);
   const estMins=t=>{
     const m=parseInt(t.estTime,10);
     return Number.isFinite(m)&&m>0?m:30;
@@ -3961,7 +4162,7 @@ function renderDashWeekStrip(){
     return t.date<weekStart?weekStart:t.date;
   };
     const byDay=days.map(day=>{
-    const ds=day.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(day);
     let mins=0,n=0;
     tasks.forEach(t=>{
       if(effectiveDue(t)!==ds)return;
@@ -4032,7 +4233,7 @@ function fluxRenderDashMob(){
   if(!dateEl)return; // only present on new mobile scaffold
   const today=new Date();
   today.setHours(0,0,0,0);
-  const todayIso=today.toISOString().slice(0,10);
+  const todayIso=fluxLocalYMD(today);
   // Date strip: "Friday, Apr 24"
   try{
     dateEl.textContent=fmtFluxDate(today,'weekday');
@@ -4183,11 +4384,48 @@ function renderStats(){
   // Belt-and-suspenders: keep the "due in 12h" banner in sync with current task state
   if(typeof checkAllPanic==='function')checkAllPanic();
 }
+// ── LIST WINDOWING (B5.3) ──
+// Past FLUX_LIST_WINDOW items a list renders in chunks: the first window
+// synchronously, the rest as an IntersectionObserver sentinel scrolls into
+// range. No dependency, no absolute positioning — every rendered card is
+// byte-identical to the unwindowed version, so DnD/selection/animations
+// behave exactly the same on the cards that exist.
+const FLUX_LIST_WINDOW=100;
+function fluxWindowedListHtml(items,renderFn,key){
+  if(items.length<=FLUX_LIST_WINDOW)return{html:items.map(renderFn).join(''),rest:null};
+  const head=items.slice(0,FLUX_LIST_WINDOW).map(renderFn).join('');
+  const restCount=items.length-FLUX_LIST_WINDOW;
+  return{
+    html:head+`<div class="flux-list-sentinel" data-flux-sentinel="${key}" style="padding:14px;text-align:center;color:var(--muted);font-size:.78rem">Loading ${restCount} more…</div>`,
+    rest:items.slice(FLUX_LIST_WINDOW),
+  };
+}
+function fluxArmListSentinel(container,rest,renderFn,chunk){
+  if(!container||!rest||!rest.length)return;
+  const sentinel=container.querySelector('[data-flux-sentinel]');
+  if(!sentinel)return;
+  const step=chunk||FLUX_LIST_WINDOW;
+  let idx=0;
+  if(!('IntersectionObserver' in window)){
+    sentinel.insertAdjacentHTML('beforebegin',rest.map(renderFn).join(''));
+    sentinel.remove();
+    return;
+  }
+  const io=new IntersectionObserver((entries)=>{
+    if(!entries.some(e=>e.isIntersecting))return;
+    const frag=rest.slice(idx,idx+step);
+    idx+=frag.length;
+    try{sentinel.insertAdjacentHTML('beforebegin',frag.map(renderFn).join(''));}catch(_){}
+    if(idx>=rest.length){io.disconnect();sentinel.remove();}
+    else sentinel.textContent=`Loading ${rest.length-idx} more…`;
+  },{rootMargin:'600px'});
+  io.observe(sentinel);
+}
 function renderTasks(){
   const el0=document.getElementById('taskList');
   if(el0){el0.style.display='';el0.style.gridTemplateColumns='';el0.style.gap='';el0.style.alignItems='';}
   const now=new Date();now.setHours(0,0,0,0);
-  let list=[...tasks];
+  let list=tasks.filter(fluxTaskVisibleInMode);
   if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
     list=FluxSmartLists.applyFilter(list,taskFilter);
     list.sort((a,b)=>{
@@ -4290,8 +4528,8 @@ function renderTasks(){
     const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
-    const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">⏳ ${esc(t.waitingOn)}</span>`:'';
-    const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">🔁 Weekly</span>`:'');
+    const waitChip=t.waitingOn?`<span class="task-chip" title="Waiting on">${esc(t.waitingOn)}</span>`:'';
+    const recChip=(window.FluxRecurring?.chipHtml?FluxRecurring.chipHtml(t):'')||(t.recurringWeekly?`<span class="task-chip task-chip-recurring" title="Repeats weekly when completed">Weekly</span>`:'');
     const snz='';
     let ghostHtml='';
     if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.cardHtml==='function'){
@@ -4312,7 +4550,7 @@ function renderTasks(){
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
-<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas">🎓</span>':''} ${depBadge}</div>
+<div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas"></span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
 ${sub?`<span class="task-chip task-chip-subject">${sub.icon?sub.icon+' ':''}${sub.short}</span>`:''}
 ${priChip}
@@ -4326,17 +4564,18 @@ ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
-${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options">🔁</button>`:''}
+${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options"></button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
-${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link">🔗</button>`:''}
-${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar">📅</button>`:''}
+${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link"></button>`:''}
+${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar"></button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
 </div>
 </div>`;
   };
-  let html=active.map(renderCard).join('');
+  const win=fluxWindowedListHtml(active,renderCard,'tasks');
+  let html=win.html;
   if(done.length){
     const showDone=load('flux_show_completed',false);
     html+=`<div class="completed-toggle ${showDone?'':'collapsed'}" onclick="toggleCompletedTasks()">
@@ -4351,6 +4590,7 @@ ${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn 
   const listChanged=listSig!==prevSig;
   el.dataset.fluxTaskListSig=listSig;
   el.innerHTML=html;
+  fluxArmListSentinel(el,win.rest,renderCard);
   requestAnimationFrame(()=>{
     try{
       const items=[...el.querySelectorAll('.task-item')];
@@ -4370,11 +4610,13 @@ function openDashAddTaskModal(){
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
+  try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
   setTimeout(()=>document.getElementById('taskName')?.focus(),80);
 }
 function closeDashAddTaskModal(){
   const m=document.getElementById('dashAddTaskModal');
   if(!m)return;
+  try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';};
   try{
@@ -4394,7 +4636,7 @@ function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id
   const depEl=document.getElementById('editDeps');
   if(depEl){
     const current=(t.blockedBy||[]).map(bid=>tasks.find(x=>x.id===bid)).filter(Boolean);
-    const currentHtml=current.map(b=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.15);border-radius:6px;margin-bottom:3px;font-size:.78rem"><span style="flex:1">${b.done?'✓ ':'🔒 '}${esc(b.name)}</span><button onclick="removeDependency(${id},${b.id});openEdit(${id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:0;transform:none;box-shadow:none">✕</button></div>`).join('');
+    const currentHtml=current.map(b=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.15);border-radius:6px;margin-bottom:3px;font-size:.78rem"><span style="flex:1">${b.done?'✓ ':''}${esc(b.name)}</span><button onclick="removeDependency(${id},${b.id});openEdit(${id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:0;transform:none;box-shadow:none">✕</button></div>`).join('');
     depEl.innerHTML=(currentHtml||'<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">No dependencies</div>')+'<details style="margin-top:6px"><summary style="font-size:.72rem;color:var(--accent);cursor:pointer;font-weight:600">+ Add dependency</summary><div style="margin-top:6px">'+renderDepSelector(id)+'</div></details>';
   }
   document.getElementById('editModal').style.display='flex';
@@ -4402,11 +4644,13 @@ function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id
     const em=document.getElementById('editModal');
     const c=em?.querySelector('.modal-card');
     if(em&&window.FluxAnim?.modalOpen)FluxAnim.modalOpen(em,c||em);
+    if(em)window.FluxA11y?.trapFocus?.(em);
   }catch(e){}
 }
 function closeEdit(){
   const m=document.getElementById('editModal');
   if(!m){editingId=null;return;}
+  try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}
   const card=m.querySelector('.modal-card');
   const hide=()=>{m.style.display='none';editingId=null;};
   try{
@@ -4454,7 +4698,13 @@ function changeMonth(d){
     apply();
   }
 }
-function selectDay(d){calSelected=d;renderCalendar();document.getElementById('calAddBtn').style.display='inline-flex';}
+function selectDay(d){
+  calSelected=d;renderCalendar();
+  const b=document.getElementById('calAddBtn');if(b)b.style.display='inline-flex';
+  // Click-to-add: any day tap opens the quick-add sheet for that date
+  // (Google Calendar behavior). Cancel keeps the day selected.
+  try{openAddForDate();}catch(_){}
+}
 
 // ── Calendar glass date picker (month title dropdown; task-focused) ──
 let calGlassMode='month';
@@ -4592,7 +4842,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function openAddForDate(){
-  const dateStr=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  const dateStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   // Show inline add-task modal in calendar instead of navigating away
   showCalAddModal(dateStr);
 }
@@ -4642,9 +4892,9 @@ function renderCalendar(){
   document.getElementById('calMonthLabel').textContent=months[calMonth]+' '+calYear;
   const first=new Date(calYear,calMonth,1).getDay(),days=new Date(calYear,calMonth+1,0).getDate(),prevDays=new Date(calYear,calMonth,0).getDate();
   const now=new Date();now.setHours(0,0,0,0);
-  const tMap={};tasks.filter(t=>t.date).forEach(t=>{const d=new Date(t.date+'T00:00:00');if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!tMap[k])tMap[k]=[];tMap[k].push(t);}});
+  const tMap={};tasks.filter(t=>t.date&&fluxTaskVisibleInMode(t)).forEach(t=>{const d=new Date(t.date+'T00:00:00');if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!tMap[k])tMap[k]=[];tMap[k].push(t);}});
   const evMap={};
-  (load('flux_events',[])).filter(e=>e.date).forEach(e=>{
+  (load('flux_events',[])).filter(e=>e.date&&fluxTaskVisibleInMode(e)).forEach(e=>{
     const d=new Date(e.date+'T12:00:00');
     if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const k=d.getDate();if(!evMap[k])evMap[k]=[];evMap[k].push(e);}
   });
@@ -4715,7 +4965,7 @@ function renderCalDay(){
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
     if(k==='g'){
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">🎯</span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem"></span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--gold)">EC milestone</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div></div><button type="button" onclick="event.stopPropagation();nav('goals')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.78rem;padding:2px 6px">Open</button></div>`;
     }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
@@ -4755,7 +5005,7 @@ function openAddEventModal(preferredType){
   const modal=document.getElementById('addEventModal');if(!modal)return;
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
-  document.getElementById('addEventDate').value=new Date(calYear,calMonth,calSelected).toISOString().slice(0,10);
+  document.getElementById('addEventDate').value=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
   document.getElementById('addEventTitle').value='';
   document.getElementById('addEventNotes').value='';
   const te=document.getElementById('addEventTime');if(te)te.value='';
@@ -4918,7 +5168,7 @@ function renderWeeklyRulesList(){
     const sch=fluxEventScope(r)==='school';
     const isEc=fluxIsEcCalendarItem(r);
     const border=isEc?'rgba(251,191,36,.35)':'var(--border2)';
-    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">🎯 EC</span>':'';
+    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">EC</span>':'';
     return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--card2);border-radius:10px;margin-bottom:6px;border:1px solid ${border}"><div style="min-width:0"><div style="font-weight:600">${esc(r.title)}${badge}</div><div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${days}${r.time?' · '+esc(r.time):''}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="toggleWeeklyRuleScope('${r.id}')" title="School vs outside">${sch?'🏫':'🌐'}</button><button type="button" class="btn-sec" style="padding:4px 10px;font-size:.72rem" onclick="deleteWeeklyRule('${r.id}')">Remove</button></div></div>`;
   }).join('');
 }
@@ -4997,7 +5247,7 @@ async function syncGoogleCalendar(opts){
       }).join('');
     }
   }catch(e){
-    if(statusEl)statusEl.innerHTML=`<div style="color:var(--red);font-size:.78rem">${e.message}</div>`;
+    if(statusEl)statusEl.innerHTML=`<div style="color:var(--red);font-size:.78rem">${esc(e.message)}</div>`;
   }
 }
 function addGCalEventAsTask(encodedName,date){
@@ -5100,10 +5350,13 @@ function fluxPlannerEntryFromTeacherClass(tc,teacherName){
   const {period,days}=parseClassPeriodInput(tc.period||'1',fbDays);
   const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
   const existing=Array.isArray(classes)?classes.find(c=>c.teacherClassCode===code):null;
+  const fullName=cleanClassName(tc.class_name||'Class');
   return{
     id:existing?.id||(code?Math.abs(code.split('').reduce((h,c)=>((h<<5)-h)+c.charCodeAt(0)|0,0))||Date.now():Date.now()),
     period,
-    name:cleanClassName(tc.class_name||'Class'),
+    periodLabel:String(tc.period||'').trim(),
+    name:fullName,
+    level:parseClassLevel(fullName).level,
     teacher:teacherName||'',
     room:tc.room||'',
     days:days||fbDays||'',
@@ -5199,7 +5452,7 @@ function addClass(){
   }
   const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
   const cleanedName=cleanClassName(name);
-  classes.push({id:Date.now(),period,name:cleanedName,teacher,room,days,timeStart,timeEnd,color:color||COLORS[classes.length%COLORS.length]});
+  classes.push({id:Date.now(),period,periodLabel:String(rawPeriod||'').trim(),name:cleanedName,level:parseClassLevel(cleanedName).level,teacher,room,days,timeStart,timeEnd,color:color||COLORS[classes.length%COLORS.length]});
   classes.sort((a,b)=>a.period-b.period);
   save('flux_classes',classes);
   const cd=document.getElementById('classDays');if(cd)cd.value=days;
@@ -5345,17 +5598,17 @@ function renderSchool(){
   if(comboEl){
     comboEl.value=schoolInfo.combo||'';
     comboEl.type='password';
-    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='👁';cb.setAttribute('title','Show');}
+    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='';cb.setAttribute('title','Show');}
   }
   if(counselorEl)counselorEl.value=schoolInfo.counselor||'';
   if(sidEl){
     sidEl.value=schoolInfo.studentID||'';
     sidEl.type='password';
-    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='👁';sb.setAttribute('title','Show');}
+    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='';sb.setAttribute('title','Show');}
   }
   const cl=document.getElementById('classesList');
   if(!cl)return;
-  if(!classes.length){cl.innerHTML='<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No classes yet</div><div class="empty-sub">Add classes below or import from a photo</div></div>';}
+  if(!classes.length){cl.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No classes yet</div><div class="empty-sub">Add classes below or import from a photo</div></div>';}
   else{
     const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
     const colorMap={};
@@ -5368,7 +5621,7 @@ function renderSchool(){
       const renderClassRow=(c,col)=>{
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       };
       cl.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -5386,7 +5639,7 @@ function renderSchool(){
         const col=colorMap[c.id];
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${c.period}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       }).join('');
     }
   }
@@ -5465,7 +5718,7 @@ function editClass(id){
     document.body.appendChild(m);
   }
   document.getElementById('editClassModal').dataset.classId=id;
-  document.getElementById('ecPeriod').value=formatClassPeriodField(c);
+  document.getElementById('ecPeriod').value=fluxClassPeriodBadge(c);
   document.getElementById('ecName').value=c.name||'';
   document.getElementById('ecTeacher').value=c.teacher||'';
   document.getElementById('ecRoom').value=c.room||'';
@@ -5483,8 +5736,10 @@ function saveEditClass(){
   const fbDays=document.getElementById('ecDays').value;
   const parsed=parseClassPeriodInput(rawP,fbDays);
   c.period=parsed.period;
+  c.periodLabel=String(rawP||'').trim();
   c.days=parsed.days;
-  c.name=document.getElementById('ecName').value.trim()||c.name;
+  c.name=cleanClassName(document.getElementById('ecName').value.trim())||c.name;
+  c.level=parseClassLevel(c.name).level;
   c.teacher=document.getElementById('ecTeacher').value.trim();
   c.room=document.getElementById('ecRoom').value.trim();
   c.timeStart=document.getElementById('ecStart').value;
@@ -5602,7 +5857,7 @@ function renderExtrasList(){
         </div>
         ${e.desc ? `<div style="font-size:.75rem;color:var(--muted2);margin-top:3px;line-height:1.4">${esc(e.desc)}</div>` : ''}
       </div>
-      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;flex-shrink:0;font-weight:600">📅</button>
+      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;flex-shrink:0;font-weight:600"></button>
       <button onclick="editExtra(${e.id})" title="Edit" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✎</button>
       <button onclick="removeExtra(${e.id})" title="Delete" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>
     </div>`;
@@ -5695,7 +5950,7 @@ async function ecAISuggest(){
     const reply = data.content?.[0]?.text || 'Could not generate suggestions.';
     resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
   } catch(e) {
-    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${esc(e.message)}</div>`;
   }
 }
 
@@ -5718,7 +5973,7 @@ async function ecAIAnalyze(){
     const reply = data.content?.[0]?.text || 'Could not generate analysis.';
     resEl.innerHTML = `<div style="font-size:.84rem;line-height:1.6;color:var(--text)">${fmtAI(reply)}</div>`;
   } catch(e) {
-    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${e.message}</div>`;
+    resEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Error: ${esc(e.message)}</div>`;
   }
 }
 
@@ -5839,7 +6094,12 @@ async function sendEcCollegeChat(){
   }
 }
 
-function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}el.innerHTML=list.sort((a,b)=>b.updatedAt-a.updatedAt).map(n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${sub.short}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;}).join('');}
+function renderNotesList(){const el=document.getElementById('notesList');if(!el)return;const q=(document.getElementById('noteSearch').value||'').toLowerCase();let list=[...notes];if(noteFilter==='starred')list=list.filter(n=>n.starred);if(noteFilter==='flashcards')list=list.filter(n=>n.flashcards?.length);if(q)list=list.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q));if(!list.length){el.innerHTML='<div class="empty">No notes yet. Tap + New to create one.</div>';return;}
+  const renderNoteCard=n=>{const sub=getSubjects()[n.subject];return`<div class="note-card" onclick="openNote(${n.id})"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="note-title">${esc(n.title||'Untitled')}</div>${n.starred?'<span style="color:var(--gold)">⭐</span>':''}${n.flashcards?.length?`<span class="badge badge-purple" style="padding:2px 6px;font-size:.6rem">🃏 ${n.flashcards.length}</span>`:''}</div>${sub?`<span class="badge badge-blue" style="padding:2px 6px;font-size:.62rem;margin-bottom:4px">${esc(sub.short)}</span>`:''}${(n.fluxTags||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(n.fluxTags||[]).map(tg=>`<span class="badge" style="padding:2px 6px;font-size:.58rem;background:rgba(var(--purple-rgb),.12);color:var(--purple);border-radius:6px">${esc(tg)}</span>`).join('')}</div>`:''}<div class="note-preview">${strip(n.body||'')}</div><div style="font-size:.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:5px">${new Date(n.updatedAt||Date.now()).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div>`;};
+  list.sort((a,b)=>b.updatedAt-a.updatedAt);
+  const win=fluxWindowedListHtml(list,renderNoteCard,'notes');
+  el.innerHTML=win.html;
+  fluxArmListSentinel(el,win.rest,renderNoteCard);}
 function openNewNote(){currentNoteId=null;document.getElementById('noteTitleInput').value='';document.getElementById('noteEditor').innerHTML='';document.getElementById('noteSubjectTag').value='';document.getElementById('starBtn').textContent='☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
 function openNote(id){const n=notes.find(x=>x.id===id);if(!n)return;currentNoteId=id;document.getElementById('noteTitleInput').value=n.title||'';document.getElementById('noteEditor').innerHTML=n.body||'';document.getElementById('noteSubjectTag').value=n.subject||'';document.getElementById('starBtn').textContent=n.starred?'⭐':'☆';document.getElementById('aiNoteResult').style.display='none';document.getElementById('notesListView').style.display='none';document.getElementById('notesEditorView').style.display='block';const shareBtn=document.getElementById('noteShareLinkBtn');if(shareBtn)shareBtn.style.display=window.FluxDeepLinks?.enabled?.()?'inline-flex':'none';}
 function backToNotesList(){document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='none';document.getElementById('notesListView').style.display='block';renderNotesList();}
@@ -5865,7 +6125,7 @@ function fmt(cmd){document.execCommand(cmd,false,null);}
 function insHeading(){document.execCommand('formatBlock',false,'<h3>');}
 function insBullet(){document.execCommand('insertUnorderedList',false,null);}
 function insCode(){document.execCommand('insertHTML',false,'<code style="background:var(--border);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:.82em">code</code>');}
-async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${e.message}</div>`;}}
+async function summarizeNoteWithAI(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div class="ai-bub bot"><div class="ai-think"><span></span><span></span><span></span></div></div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Summarize the following student note concisely in bullet points.',messages:[{role:'user',content:body}]})});const data=await res.json();resEl.innerHTML=`<div class="ai-bub bot" style="max-width:100%">${fmtAI(data.content?.[0]?.text||'Could not summarize.')}</div>`;}catch(e){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">${esc(e.message)}</div>`;}}
 async function generateFlashcardsFromNote(){const body=strip(document.getElementById('noteEditor').innerHTML);if(!body.trim())return;const resEl=document.getElementById('aiNoteResult');resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Generating flashcards...</div>';try{const res=await fetch(API.ai,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({system:'Generate 8-12 flashcards from these notes. Respond ONLY with a JSON array of {"q":"question","a":"answer"} objects.',messages:[{role:'user',content:body}]})});if(!res.ok){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI error (${res.status}). Try again.</div>`;return;}const data=await res.json().catch(()=>null);const rawTxt=(data&&data.content&&data.content[0]&&typeof data.content[0].text==='string')?data.content[0].text:'';let txt=rawTxt.replace(/```json|```/g,'').trim();/* Try to find a JSON array even if AI wrapped it in prose */const m=txt.match(/\[[\s\S]*\]/);if(m)txt=m[0];let cards=null;try{cards=JSON.parse(txt);}catch(parseErr){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">AI returned malformed flashcards — try again or rephrase the note.</div>`;return;}if(!Array.isArray(cards)||!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">No flashcards extracted. Make sure the note has enough content.</div>`;return;}cards=cards.filter(c=>c&&typeof c==='object'&&(c.q||c.question)&&(c.a||c.answer)).map(c=>({q:String(c.q||c.question),a:String(c.a||c.answer)}));if(!cards.length){resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Couldn't parse any usable cards. Try again.</div>`;return;}if(currentNoteId){const n=notes.find(x=>x.id===currentNoteId);if(n){n.flashcards=cards;save('flux_notes',notes);}}flashcards=cards;fcIndex=0;fcFlipped=false;resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Generated ${cards.length} flashcards!</div>`;openFlashcards();}catch(e){console.warn('[Flux] flashcard generation failed',e);resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Error generating flashcards: ${esc(e.message||'unknown')}</div>`;}}
 function openFlashcards(){if(!flashcards.length)return;fcIndex=0;fcFlipped=false;document.getElementById('notesEditorView').style.display='none';document.getElementById('flashcardView').style.display='block';renderFC();}
 function closeFlashcards(){document.getElementById('flashcardView').style.display='none';document.getElementById('notesEditorView').style.display='block';}
@@ -5900,7 +6160,7 @@ function toggleTimer(){tRunning?pauseTimer():startTimer();}
 function startTimer(){if(tInterval){clearInterval(tInterval);tInterval=null;}tRunning=true;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause';updateTDisplay();syncFluxPomoPill();tInterval=setInterval(()=>{tSecs--;updateTDisplay();if(tSecs<=0)timerDone();},1000);}
 function pauseTimer(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Resume';syncFluxPomoPill();}
 function resetTimer(){tRunning=false;clearInterval(tInterval);tSecs=TM[tMode].mins*60;tTotal=tSecs;document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';updateTDisplay();syncFluxPomoPill();}
-function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date(TODAY);y.setDate(TODAY.getDate()-1);tStreak=tLastDate===y.toISOString().slice(0,10)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
+function timerDone(){tRunning=false;clearInterval(tInterval);document.getElementById('timerBtn').innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Start';syncFluxPomoPill();if(tMode==='pomodoro'){tDone++;tMins+=TM.pomodoro.mins;const ts=todayStr();if(tLastDate!==ts){const y=new Date();y.setDate(y.getDate()-1);tStreak=tLastDate===fluxLocalYMD(y)?tStreak+1:1;tLastDate=ts;save('t_date',tLastDate);}const sub=document.getElementById('timerSubject')?.value||'';sessionLog.push({date:ts,mins:TM.pomodoro.mins,subject:sub,hour:new Date().getHours()});save('flux_session_log',sessionLog);if(typeof FluxBus!=='undefined')FluxBus.emit('session_ended',{mins:TM.pomodoro.mins,subject:sub,date:ts,hour:new Date().getHours()});if(sub){subjectBudgets[sub]=(subjectBudgets[sub]||0)+(TM.pomodoro.mins/60);save('flux_budgets',subjectBudgets);}save('t_sessions',tDone);save('t_minutes',tMins);save('t_streak',tStreak);updateTStats();renderTDots();renderSubjectBudget();renderFocusHeatmap();
 showSessionRecap(sub,TM.pomodoro.mins);
 setTimeout(()=>{const mode=tDone%4===0?'long':'short';const btns=document.querySelectorAll('#timer .tmode-btn');setTMode(mode,btns[mode==='long'?2:1]);},400);}else{setTimeout(()=>{setTMode('pomodoro',document.querySelectorAll('#timer .tmode-btn')[0]);},400);}}
 function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');const td=document.getElementById('tDisplay');if(td)td.textContent=txt;const pillT=document.getElementById('fluxPomoPillTime');if(pillT)pillT.textContent=txt;const offset=CIRC*(1-tSecs/tTotal);const ring=document.getElementById('timerRing');if(ring){ring.style.strokeDasharray=CIRC;ring.style.strokeDashoffset=offset;}try{if(window.FluxVisual&&typeof FluxVisual.updateTimerRingGlow==='function'&&tTotal>0)FluxVisual.updateTimerRingGlow((tSecs/tTotal)*100);}catch(e){}const mini=document.getElementById('fluxPomoMiniRing');if(mini&&window.FluxAnim?.updateMiniRing){try{const p=tTotal>0?tSecs/tTotal:0;FluxAnim.updateMiniRing(mini,p);}catch(e){}}syncFluxPomoPill();}
@@ -5922,7 +6182,7 @@ function renderSubjectBudget(){
     return`<div class="flux-subject-budget-row" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.8rem;font-weight:600">${s.short}</span></div><span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:${c}">${done}h / ${target}h</span></div><div class="budget-bar flux-budget-bar"><div class="budget-fill" style="width:${pct}%;background:linear-gradient(90deg,${s.color},rgba(var(--accent-rgb),.85))"></div></div></div>`;
   }).join('')+'</div>';
 }
-function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const weekStart=new Date(TODAY);weekStart.setDate(TODAY.getDate()-TODAY.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=d.toISOString().slice(0,10);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
+function renderFocusHeatmap(){const el=document.getElementById('focusHeatmap');if(!el)return;el.classList.add('flux-focus-heatmap');const base=new Date();const weekStart=new Date(base);weekStart.setDate(base.getDate()-base.getDay()+1);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];el.innerHTML=days.map((day,i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);const ds=fluxLocalYMD(d);const mins=sessionLog.filter(s=>s.date===ds).reduce((sum,s)=>sum+s.mins,0);const intensity=Math.min(mins/180,1);const isToday=ds===todayStr();const txt=intensity>.08?'var(--text)':'var(--muted2)';return`<div class="flux-fh-cell" style="flex:1;text-align:center"><div class="flux-fh-block" style="height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(var(--accent-rgb),${(intensity*.92+.08).toFixed(3)}),rgba(var(--purple-rgb),${(intensity*.55).toFixed(3)}));border:1px solid ${isToday?'var(--accent)':'var(--border)'};box-shadow:${mins>60?'0 0 12px rgba(var(--accent-rgb),.15)':'none'};display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'JetBrains Mono',monospace;color:${txt};font-weight:700">${mins>0?mins+'m':'—'}</div><div style="font-size:.58rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace">${day}</div></div>`;}).join('');}
 
 // ══ PROFILE ══
 function normalizeProgramList(raw){
@@ -5970,7 +6230,7 @@ function checkProgramUpgrade(p){
     // Show upgrade notification
     const notif=document.createElement('div');
     notif.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;padding:14px 24px;border-radius:14px;font-size:.88rem;font-weight:700;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:floatIn .3s ease';
-    notif.innerHTML='🎓 Welcome to IB DP! Your program has been updated.';
+    notif.innerHTML='Welcome to IB DP! Your program has been updated.';
     document.body.appendChild(notif);
     setTimeout(()=>notif.remove(),4000);
     save('flux_onboarded',true);
@@ -6028,17 +6288,17 @@ function renderProfile(){
 
   const pic=fluxLoadStoredString('flux_profile_pic','');
   const av=document.getElementById('pAvatar');
-  if(av)av.innerHTML=(pic?`<img src="${pic}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
+  if(av)av.innerHTML=(pic?`<img src="${escapeAttr(pic)}" loading="lazy" decoding="async" alt="">`:name.charAt(0).toUpperCase())+`<input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const done=tasks.filter(t=>t.done).length;
   const badges=[];
-  if(done>=40)badges.push({t:'🏆 On a roll',c:'badge-gold'});
+  if(done>=40)badges.push({t:'On a roll',c:'badge-gold'});
   if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});
-  if(tStreak>=7)badges.push({t:'🔥 Study Streak',c:'badge-red'});
+  if(tStreak>=7)badges.push({t:'Study Streak',c:'badge-red'});
   if(programs.includes('IB DP'))badges.push({t:'📚 IB DP',c:'badge-blue'});
   if(programs.includes('IB MYP'))badges.push({t:'📖 IB MYP',c:'badge-purple'});
-  if(notes.length>=10)badges.push({t:'📝 Note Taker',c:'badge-purple'});
+  if(notes.length>=10)badges.push({t:'Note Taker',c:'badge-purple'});
   const badgeEl=document.getElementById('profileBadges');
   if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';
 
@@ -6052,50 +6312,54 @@ function renderProfile(){
   if(confEl){
     const subjEntries=Object.entries(subjs);
     if(!subjEntries.length){confEl.innerHTML='<div style="color:var(--muted);font-size:.82rem">Add your classes in School Info to see confidence sliders.</div>';return;}
-    confEl.innerHTML=subjEntries.map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${s.short}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');
+    confEl.innerHTML=subjEntries.map(([k,s])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div><span style="font-size:.82rem;font-weight:600">${esc(s.short)}</span></div><span style="font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700" id="cv-${k}">${confidences[k]||5}/10</span></div><input type="range" min="1" max="10" value="${confidences[k]||5}" oninput="document.getElementById('cv-${k}').textContent=this.value+'/10';confidences['${k}']=parseInt(this.value)" style="width:100%"></div>`).join('');
   }
 
   studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});
   try{if(window.FluxGoogle&&typeof FluxGoogle.updateSettingsCard==='function')FluxGoogle.updateSettingsCard();}catch(_){}
 }
 
-function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fluxSaveStoredString('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${ev.target.result}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
+function handlePicUpload(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fluxSaveStoredString('flux_profile_pic',ev.target.result);const av=document.getElementById('pAvatar');if(av)av.innerHTML=`<img src="${escapeAttr(ev.target.result)}" loading="lazy" decoding="async" alt=""><input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">`;if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();};r.readAsDataURL(file);}
 function setDNA(type){const idx=studyDNA.indexOf(type);if(idx>=0)studyDNA.splice(idx,1);else studyDNA.push(type);save('flux_dna',studyDNA);document.querySelectorAll('[id^=dna-]').forEach(b=>b.classList.remove('active'));studyDNA.forEach(d=>{const btn=document.getElementById('dna-'+d);if(btn)btn.classList.add('active');});const tips={visual:'Use diagrams, charts, color-coded notes.',audio:'Read aloud, record yourself, use podcasts.',reading:'Textbooks, detailed notes, rewrite summaries.',practice:'Do problems, flashcards, practice tests.'};const el=document.getElementById('studyDNAResult');if(el)el.textContent=studyDNA.map(d=>tips[d]).join(' ');renderTasks();}
 function saveConfidences(){save('flux_conf',confidences);const b=event?.target;if(b){b.textContent='✓ Saved';setTimeout(()=>b.textContent='Save',1500);}}
 
 // ══ THEMES ══
 const THEMES={
   dark:{
-    label:'🌙 Midnight',
-    vars:{'--bg':'#0a0b10','--bg2':'#0d0e15','--card':'#161826','--card2':'#1a1d2c','--card-solid':'#161826','--border':'rgba(255,255,255,.07)','--border2':'rgba(255,255,255,.1)','--text':'#eef0f7','--muted':'#6b7280','--muted2':'#9ca3af','--accent':'#00bfff','--accent-rgb':'0,191,255','--green':'#10d9a0','--red':'#f43f5e','--gold':'#fbbf24','--purple':'#c084fc','--orange':'#fb923c'}
+    // Theme 2026 default — GitHub-dark surfaces × Discord blurple accent
+    // (must stay in sync with flux-theme-2026.css tokens).
+    label:'Midnight',
+    vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
   },
   light:{
-    label:'☀️ Cloud',
-    vars:{'--bg':'#f0f2f8','--bg2':'#e4e8f2','--card':'#ffffff','--card2':'#f5f7ff','--card-solid':'#ffffff','--border':'rgba(0,0,0,.09)','--border2':'rgba(0,0,0,.13)','--text':'#1a1d2e','--muted':'#6b7280','--muted2':'#4b5563','--accent':'#6366f1','--accent-rgb':'99,102,241','--green':'#059669','--red':'#dc2626','--gold':'#d97706','--purple':'#9333ea','--orange':'#ea580c'}
+    // Theme 2026 light — GitHub-light surfaces × Discord blurple accent
+    // (must stay in sync with the [data-theme="light"] block in flux-theme-2026.css).
+    label:'Cloud',
+    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
   },
   aurora:{
-    label:'🌌 Aurora',
+    label:'Aurora',
     vars:{'--bg':'#060a12','--bg2':'#080d18','--card':'#08101e','--card2':'#0a1424','--card-solid':'#08101e','--border':'rgba(100,200,255,.09)','--border2':'rgba(100,200,255,.14)','--text':'#e0f0ff','--muted':'#5a7a9a','--muted2':'#7a9aba','--accent':'#22d3ee','--accent-rgb':'34,211,238','--green':'#34d399','--red':'#f87171','--gold':'#fbbf24','--purple':'#818cf8','--orange':'#fb923c'}
   },
   ember:{
-    label:'🔥 Ember',
+    label:'Ember',
     vars:{'--bg':'#0d0804','--bg2':'#120a05','--card':'#1c1008','--card2':'#221408','--card-solid':'#1c1008','--border':'rgba(255,120,40,.09)','--border2':'rgba(255,120,40,.14)','--text':'#fff4ec','--muted':'#8a5a3a','--muted2':'#b07a5a','--accent':'#f97316','--accent-rgb':'249,115,22','--green':'#fbbf24','--red':'#ef4444','--gold':'#f59e0b','--purple':'#fb923c','--orange':'#f97316'}
   },
   forest:{
-    label:'🌿 Forest',
+    label:'Forest',
     vars:{'--bg':'#060d08','--bg2':'#080f0a','--card':'#0a140c','--card2':'#0d1a0f','--card-solid':'#0a140c','--border':'rgba(80,200,100,.09)','--border2':'rgba(80,200,100,.14)','--text':'#e8f5ea','--muted':'#4a7a52','--muted2':'#6a9a72','--accent':'#22c55e','--accent-rgb':'34,197,94','--green':'#4ade80','--red':'#f87171','--gold':'#fbbf24','--purple':'#a3e635','--orange':'#fb923c'}
   },
   rose:{
-    label:'🌸 Rose',
-    vars:{'--bg':'#0d0608','--bg2':'#120809','--card':'#1c0a0e','--card2':'#220c12','--card-solid':'#1c0a0e','--border':'rgba(255,100,130,.09)','--border2':'rgba(255,100,130,.14)','--text':'#fff0f3','--muted':'#8a4a58','--muted2':'#b07080','--accent':'#f43f5e','--accent-rgb':'244,63,94','--green':'#fb7185','--red':'#e11d48','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
+    label:'Rose',
+    vars:{'--bg':'#0d0608','--bg2':'#120809','--card':'#1c0a0e','--card2':'#220c12','--card-solid':'#1c0a0e','--border':'rgba(255,100,130,.09)','--border2':'rgba(255,100,130,.14)','--text':'#fff0f3','--muted':'#9d5f6d','--muted2':'#b07080','--accent':'#f43f5e','--accent-rgb':'244,63,94','--green':'#fb7185','--red':'#e11d48','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
   },
   ocean:{
-    label:'🌊 Deep Ocean',
-    vars:{'--bg':'#020810','--bg2':'#030a14','--card':'#04101e','--card2':'#061424','--card-solid':'#04101e','--border':'rgba(30,100,200,.11)','--border2':'rgba(30,100,200,.17)','--text':'#dceeff','--muted':'#3a5a7a','--muted2':'#5a80a0','--accent':'#3b82f6','--accent-rgb':'59,130,246','--green':'#22d3ee','--red':'#f87171','--gold':'#fbbf24','--purple':'#818cf8','--orange':'#fb923c'}
+    label:'Deep Ocean',
+    vars:{'--bg':'#020810','--bg2':'#030a14','--card':'#04101e','--card2':'#061424','--card-solid':'#04101e','--border':'rgba(30,100,200,.11)','--border2':'rgba(30,100,200,.17)','--text':'#dceeff','--muted':'#4f7396','--muted2':'#5a80a0','--accent':'#3b82f6','--accent-rgb':'59,130,246','--green':'#22d3ee','--red':'#f87171','--gold':'#fbbf24','--purple':'#818cf8','--orange':'#fb923c'}
   },
   candy:{
-    label:'🍬 Candy',
-    vars:{'--bg':'#0e0814','--bg2':'#120a18','--card':'#14101e','--card2':'#1a1428','--card-solid':'#14101e','--border':'rgba(200,100,255,.09)','--border2':'rgba(200,100,255,.14)','--text':'#f5e8ff','--muted':'#7a4a9a','--muted2':'#a070c0','--accent':'#a855f7','--accent-rgb':'168,85,247','--green':'#f472b6','--red':'#f43f5e','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
+    label:'Candy',
+    vars:{'--bg':'#0e0814','--bg2':'#120a18','--card':'#14101e','--card2':'#1a1428','--card-solid':'#14101e','--border':'rgba(200,100,255,.09)','--border2':'rgba(200,100,255,.14)','--text':'#f5e8ff','--muted':'#8a5fad','--muted2':'#a070c0','--accent':'#a855f7','--accent-rgb':'168,85,247','--green':'#f472b6','--red':'#f43f5e','--gold':'#fbbf24','--purple':'#e879f9','--orange':'#fb923c'}
   },
 };
 
@@ -6180,8 +6444,18 @@ function loadTheme(){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#00bfff')).replace(/^"|"$/g,'');
-  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255')).replace(/^"|"$/g,'');
+  // One-time 2026 migration: users still on the old default cyan get the new
+  // default blurple; deliberately-picked custom accents are left alone.
+  try{
+    if(!fluxLoadStoredString('flux_accent_2026','')&&
+       String(fluxLoadStoredString('flux_accent','')).replace(/^"|"$/g,'').toLowerCase()==='#00bfff'){
+      fluxSaveStoredString('flux_accent',theme.vars['--accent']||'#5865F2');
+      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242');
+    }
+    fluxSaveStoredString('flux_accent_2026','1');
+  }catch(_){}
+  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#5865F2')).replace(/^"|"$/g,'');
+  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242')).replace(/^"|"$/g,'');
   fluxSaveStoredString('flux_accent',acc);
   fluxSaveStoredString('flux_accent_rgb',rgb);
   document.documentElement.style.setProperty('--accent',acc);
@@ -6581,7 +6855,7 @@ function hasDevPerm(perm){
   return getMyDevPerms().includes(perm);
 }
 
-/** Sections the owner can show/hide on ⚡ Dev Panel for dev accounts (owner always sees all + this editor). */
+/** Sections the owner can show/hide on Dev Panel for dev accounts (owner always sees all + this editor). */
 const DEV_PANEL_SECTION_META=[
   {id:'devMode',label:'Dev Mode toggle',desc:'Flip local dev mode for testing'},
   {id:'featureFlags',label:'Feature flags',desc:'Planner tab visibility toggles'},
@@ -6618,7 +6892,7 @@ function renderDevPanelLayoutEditorHtml(){
   const map=getDevPanelSectionsMap();
   return`<div class="dev-panel-layout-editor-wrap" style="margin-bottom:16px;padding:12px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:12px">
     <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">Dev panel layout</div>
-    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in ⚡ Dev Panel. You always see every section.</div>
+    <div style="font-size:.72rem;color:var(--muted2);margin-bottom:10px;line-height:1.45">Toggle what <b>dev accounts</b> see in Dev Panel. You always see every section.</div>
     ${DEV_PANEL_SECTION_META.map(s=>{
       const on=map[s.id];
       return`<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem">
@@ -6693,7 +6967,7 @@ function buildModPanelCardHtml(embed){
         ${devAccounts.length?devAccounts.map((d,i)=>`
           <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:.82rem;font-weight:700;flex:1">${d.email}</span>
+              <span style="font-size:.82rem;font-weight:700;flex:1">${esc(d.email)}</span>
               <button onclick="removeDevAccount(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:2px 6px">✕ Remove</button>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -6713,7 +6987,7 @@ function buildModPanelCardHtml(embed){
         <div style="font-size:1.4rem">${role==='owner'?'👑':'⚡'}</div>
         <div>
           <div style="font-size:1rem;font-weight:800">${role==='owner'?'Owner Panel':'Dev Panel'}</div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${currentUser?.email}</div>
+          <div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(currentUser?.email||'')}</div>
         </div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
           <span style="font-size:.65rem;padding:3px 8px;border-radius:20px;background:${role==='owner'?'rgba(251,191,36,.15)':'rgba(var(--accent-rgb),.12)'};border:1px solid ${role==='owner'?'rgba(251,191,36,.3)':'rgba(var(--accent-rgb),.25)'};color:${role==='owner'?'var(--gold)':'var(--accent)'};font-family:JetBrains Mono,monospace">${role.toUpperCase()} · ${isDevMode()?'DEV':'LIVE'}</span>
@@ -6727,7 +7001,7 @@ function buildModPanelCardHtml(embed){
 
       ${showDevModeBlock?`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:.87rem;font-weight:700">🧪 Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
+        <div><div style="font-size:.87rem;font-weight:700">Dev Mode</div><div style="font-size:.72rem;color:var(--muted)">Test features before pushing to users</div></div>
         <button onclick="toggleDevMode()" style="padding:6px 16px;font-size:.78rem;background:${devMode?'var(--green)':'rgba(255,255,255,.06)'};border:1px solid ${devMode?'var(--green)':'var(--border2)'};color:${devMode?'#080a0f':'var(--muted2)'}">${devMode?'ON':'OFF'}</button>
       </div>`:''}
 
@@ -6742,7 +7016,7 @@ function buildModPanelCardHtml(embed){
       }).join('')}`:''}
 
       ${showActionsBlock?`<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">🗑 Clear My Data</button>`:''}
+        ${showClearBtn?`<button onclick="clearMyPlannerData()" style="flex:1;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);font-size:.78rem;min-width:120px">Clear My Data</button>`:''}
         ${showForceSync?`<button onclick="forceSyncNow()" style="flex:1;font-size:.78rem;min-width:100px">⟳ Force Sync</button>`:''}
       </div>`:''}
 
@@ -6759,7 +7033,7 @@ function buildModPanelCardHtml(embed){
             <span style="margin-left:auto;font-size:.62rem;color:var(--muted);font-family:JetBrains Mono,monospace">${isLive?'live':'preview'}</span>
           </div>
           <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:10px">Preview build <b style="color:var(--text)">${preview}</b> · users on <b style="color:var(--text)">${released}</b>${isLive?' ✓':''}</div>
-          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'🚀 Push this build to all users'}</button>
+          <button type="button" onclick="window.FluxRelease&&window.FluxRelease.openPushDialog()" ${isLive?'disabled':''} style="width:100%;padding:8px;font-size:.78rem;font-weight:700;border-radius:10px;background:${isLive?'var(--card2)':'linear-gradient(135deg,#fbbf24,#f59e0b)'};border:1px solid ${isLive?'var(--border)':'rgba(251,191,36,.4)'};color:${isLive?'var(--muted)':'#080a0f'};cursor:${isLive?'default':'pointer'};opacity:${isLive?0.6:1}">${isLive?'✓ Build already released':'Push this build to all users'}</button>
         </div>`;
       })():''}
 
@@ -6922,7 +7196,7 @@ function updateDynamicFocus(){
   if(!nextClass){
     el.innerHTML=`<div class="focus-card">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="font-size:1.6rem">🌙</div>
+        <div style="font-size:1.6rem"></div>
         <div><div class="focus-time" style="font-size:1.4rem">No more classes</div><div class="focus-label">Free for the rest of the day</div></div>
       </div>
     </div>`;
@@ -7278,32 +7552,137 @@ function getFluxAIModeInstructions(){
   if(mode==='overtime')return`\n<mode_overtime>\nOvertime mode: the student needs to move now. Lead with the single most important action, then tight concrete bullets with time-boxes. Cut theory unless it directly unlocks a decision. Keep replies short and scannable.\n</mode_overtime>`;
   return'';
 }
+/** Role-aware AI starter menu. `fill:true` chips only prefill the composer
+ *  (templates the user should finish) instead of firing immediately. */
+function getAISugGroups(){
+  let role='student',work=false;
+  try{
+    if(typeof FluxRole!=='undefined'){role=FluxRole.current||'student';work=!!(FluxRole.isWorkMode&&FluxRole.isWorkMode());}
+  }catch(_){}
+  const educatorAtWork=work&&['teacher','counselor','admin','staff'].includes(role);
+  if(educatorAtWork&&role==='teacher'){
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your classes, assignments, roster, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my teaching day',      prompt:'Plan my day around my classes — prep, grading, and any meetings.'},
+          {ico:'📥', label:"What needs grading?",       prompt:'What assignments still need grading, and which class is most behind?'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now between classes?'},
+        ]},
+        {label:'Classes & students',sugs:[
+          {ico:'📋', label:'Draft a lesson plan',       prompt:'Draft a lesson plan for: ',fill:true},
+          {ico:'✉️', label:'Write a parent email',      prompt:'Draft a short, warm parent email about: ',fill:true},
+          {ico:'🧪', label:'Make a quiz or worksheet',  prompt:'Create a 10-question quiz on: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my work week around classes and deadlines'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on everything overdue.'},
+        ]},
+      ],
+    };
+  }
+  if(educatorAtWork&&role==='counselor'){
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your appointments, caseload, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my day',               prompt:'Plan my day around my appointments and meetings.'},
+          {ico:'📞', label:'Prep my next meeting',      prompt:'Help me prep for my next student appointment — what should I review?'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now?'},
+        ]},
+        {label:'Students',sugs:[
+          {ico:'✉️', label:'Draft a check-in email',    prompt:'Draft a supportive check-in email to a student about: ',fill:true},
+          {ico:'📝', label:'Summarize meeting notes',   prompt:'Summarize these meeting notes into action items: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my week around appointments'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on overdue follow-ups.'},
+        ]},
+      ],
+    };
+  }
+  if(educatorAtWork){ // admin / staff
+    return{
+      greet:'What can I take off your plate?',
+      sub:'I can read your tasks, meetings, and calendar when it helps.',
+      groups:[
+        {label:'Today',sugs:[
+          {ico:'🗓', label:'Plan my day',               prompt:'Plan my day around my meetings and tasks.'},
+          {ico:'⚡', label:'What should I do now?',     prompt:'What should I work on right now?'},
+          {ico:'📊', label:'How is my week looking?',   prompt:'Summarize my week — meetings, deadlines, and open tasks.'},
+        ]},
+        {label:'Write it for me',sugs:[
+          {ico:'✉️', label:'Draft an email',            prompt:'Draft a professional email about: ',fill:true},
+          {ico:'📣', label:'Draft an announcement',     prompt:'Draft a school announcement about: ',fill:true},
+        ]},
+        {label:'Stay sane',sugs:[
+          {ico:'🧭', label:'Plan my week',              prompt:'/plan — plan my work week'},
+          {ico:'🛠', label:'Catch me up',               prompt:'/fix — help me catch up on overdue items.'},
+        ]},
+      ],
+    };
+  }
+  return{
+    greet:'How can I help you today?',
+    sub:'Ask anything — I can read your tasks, calendar, notes, and Canvas when it helps.',
+    groups:[
+      {label:'Right now',sugs:[
+        {ico:'📅', label:"What's due this week?",     prompt:"What's due this week?"},
+        {ico:'⚡', label:'What should I work on?',    prompt:'What should I work on right now?'},
+        {ico:'🛠', label:'Fix overdue items',         prompt:'/fix — help me catch up on overdue work.'},
+      ]},
+      {label:'Plan ahead',sugs:[
+        {ico:'🧭', label:'Plan my week',              prompt:'/plan — study plan using my tasks'},
+        {ico:'🎯', label:'Optimize my schedule',      prompt:'/optimize — review my plan and suggest improvements.'},
+        {ico:'📊', label:'How am I doing?',           prompt:'How am I doing overall? Summarize my progress and what to focus on.'},
+      ]},
+      {label:'Study with me',sugs:[
+        {ico:'🃏', label:'Quiz me on a topic',        prompt:'Quiz me on: ',fill:true},
+        {ico:'💡', label:'Explain something',         prompt:'Explain this like I’m seeing it for the first time: ',fill:true},
+      ]},
+    ],
+  };
+}
 function renderAISugs(){
   const el=document.getElementById('aiSugs');
   if(!el)return;
+  const cfg=getAISugGroups();
+  const head=document.querySelector('#fluxAiGreeting .flux-ai-greeting__head');
+  const sub=document.querySelector('#fluxAiGreeting .flux-ai-greeting__sub');
+  if(head)head.textContent=cfg.greet;
+  if(sub)sub.textContent=cfg.sub;
   el.innerHTML='';
-  const sugs=[
-    {ico:'📅', label:"What's due this week?",        prompt:"What's due this week?"},
-    {ico:'⚡', label:"What should I work on now?",   prompt:"What should I work on right now?"},
-    {ico:'🧭', label:"Plan my week",                 prompt:"/plan — study plan using my tasks"},
-    {ico:'📊', label:"How am I doing overall?",      prompt:"How am I doing overall? Summarize my progress and what to focus on."},
-    {ico:'🎯', label:"Optimize my schedule",         prompt:"/optimize — review my plan and suggest improvements."},
-    {ico:'🛠', label:"Fix overdue items",            prompt:"/fix — help me catch up on overdue work."},
-  ];
-  sugs.forEach(s=>{
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='ai-sug';
-    btn.innerHTML=`<span class="ai-sug__ico" aria-hidden="true">${s.ico}</span><span class="ai-sug__lbl">${s.label}</span>`;
-    btn.setAttribute('aria-label',s.label);
-    btn.onclick=()=>{
-      const inp=document.getElementById('aiInput');
-      if(inp){inp.value=s.prompt;try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}}
-      sendAI();
-    };
-    el.appendChild(btn);
+  el.classList.add('ai-sugs--grouped');
+  cfg.groups.forEach(g=>{
+    const grp=document.createElement('div');
+    grp.className='ai-sug-group';
+    const lab=document.createElement('div');
+    lab.className='ai-sug-group__label';
+    lab.textContent=g.label;
+    grp.appendChild(lab);
+    const row=document.createElement('div');
+    row.className='ai-sug-group__row';
+    g.sugs.forEach(s=>{
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='ai-sug'+(s.fill?' ai-sug--fill':'');
+      btn.innerHTML=`<span class="ai-sug__ico" aria-hidden="true">${s.ico}</span><span class="ai-sug__lbl">${s.label}</span>${s.fill?'<span class="ai-sug__edit" aria-hidden="true">✎</span>':''}`;
+      btn.setAttribute('aria-label',s.label);
+      btn.onclick=()=>{
+        const inp=document.getElementById('aiInput');
+        if(inp){inp.value=s.prompt;try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){}}
+        if(s.fill){if(inp){inp.focus();try{inp.setSelectionRange(inp.value.length,inp.value.length);}catch(_){}}return;}
+        sendAI();
+      };
+      row.appendChild(btn);
+    });
+    grp.appendChild(row);
+    el.appendChild(grp);
   });
 }
+window.renderAISugs=renderAISugs;
 function handleAIImg(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -7528,7 +7907,7 @@ FluxSkills.register({
           id: Date.now() + Math.random(),
           name: `Study: ${topic}`,
           subject,
-          date: d.toISOString().slice(0, 10),
+          date: fluxLocalYMD(d),
           priority: daysLeft <= 3 ? 'high' : 'med',
           estTime: 45,
           type: 'study',
@@ -7684,7 +8063,7 @@ function openAddSkillModal() {
       <div style="font-size:1rem;font-weight:800;margin-bottom:4px">Add Custom Skill</div>
       <div style="font-size:.78rem;color:var(--muted2);margin-bottom:16px">Define what Flux can do when this skill is triggered</div>
       <div class="mrow"><label>Skill Name</label><input id="customSkillName" placeholder="e.g. Create Flashcards"></div>
-      <div class="mrow"><label>Icon (emoji)</label><input id="customSkillIcon" placeholder="📚" maxlength="4"></div>
+      <div class="mrow"><label>Icon (emoji)</label><input id="customSkillIcon" placeholder="" maxlength="4"></div>
       <div class="mrow"><label>Description</label><input id="customSkillDesc" placeholder="What this skill does"></div>
       <div class="mrow"><label>Instructions for AI</label><textarea id="customSkillPrompt" style="min-height:80px" placeholder="When this skill is used…"></textarea></div>
       <div style="display:flex;gap:8px;margin-top:16px">
@@ -7702,7 +8081,7 @@ function openAddSkillModal() {
 
 function saveCustomSkill() {
   const name = document.getElementById('customSkillName')?.value.trim();
-  const icon = document.getElementById('customSkillIcon')?.value.trim() || '⚡';
+  const icon = document.getElementById('customSkillIcon')?.value.trim() || '';
   const desc = document.getElementById('customSkillDesc')?.value.trim();
   const prompt = document.getElementById('customSkillPrompt')?.value.trim();
   if (!name || !desc) {
@@ -7783,7 +8162,11 @@ function buildAIPrompt(){
   const calEvAi=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T00:00:00');return d>=now&&d<=in7;});
   calEvAi.sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b));
   const calEvents=calEvAi.map(e=>`- [EVENT|${e.date}${e.time?' '+e.time:''}|${fluxEventScope(e)==='school'?'SCHOOL':'OUT'}]: ${e.title}`).join('\n')||'None';
-  const todayClasses=classes.filter(c=>c.name).map(c=>`P${c.period}: ${c.name}${c.teacher?' ('+c.teacher+')':''}`).join(', ')||'Not set up';
+  const todayClasses=classes.filter(c=>c.name).map(c=>{
+    const lv=fluxClassLevel(c);
+    const lvNote=lv&&!String(c.name).toUpperCase().includes(lv.toUpperCase())?' ['+lv+']':'';
+    return`${fluxClassPeriodBadge(c)||('P'+c.period)}: ${c.name}${lvNote}${c.teacher?' ('+c.teacher+')':''}`;
+  }).join(', ')||'Not set up';
 
   const activeTaskLines=tasks.filter(t=>!t.done).slice(0,20).map(fmt).join('\n')||'None';
   const upcomingLines=ctx.upcoming.length?ctx.upcoming.map(fmt).join('\n'):'None';
@@ -7827,6 +8210,7 @@ You have access to the student's full planner — their tasks, classes, schedule
 <student_context>
 Student: ${name}${grade?' \u00b7 Grade '+grade:''}${program?' \u00b7 '+program:''}
 Today: ${TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+${(()=>{try{return window.FluxNow?.aiContext?window.FluxNow.aiContext():'';}catch(_){return'';}})()}
 ${mood?`Recent check-in: mood ${mood.mood}/5 \u00b7 stress ${mood.stress}/10 \u00b7 sleep ${mood.sleep}h`:''}
 Classes today: ${todayClasses}
 
@@ -7856,7 +8240,7 @@ REASONING: For complex questions \u2014 scheduling trade-offs, physics problems,
 HONESTY: Distinguish between what you can see in the planner data, what you can reason about, and what the student should verify elsewhere. Never fabricate. If unsure, say so.
 
 NUMBERS: Physics: g = 10\u2009m/s\u00b2 unless explicitly stated otherwise.
-${getStudyDNAPrompt()}
+${getStudyDNAPrompt()}${(window.FluxBrain&&typeof FluxBrain.prompt==='function')?FluxBrain.prompt():''}
 DEPTH: Default to high-leverage help: trace logic from first principles when it helps, show alternate approaches, stress-test edge cases, and surface common mistakes. When speed matters, lead with the decisive result then optional depth. For work that will be turned in for a grade, build mastery—full solutions with different numbers, outlines, checklists, and verification steps the student can execute—so they understand and can defend their own write-up.
 </how_you_work>
 ${(()=>{
@@ -8007,7 +8391,7 @@ async function sendAI(optionalUserText, depth, sendOpts){
   const _aiSugsEl=document.getElementById('aiSugs');if(_aiSugsEl)_aiSugsEl.style.display='none';
   const imgSnapshot=nested?null:aiPendingImg;
   if(!nested){
-    appendMsg('user',text||(imgSnapshot?'📷 Analyze image':''));
+    appendMsg('user',text||(imgSnapshot?'Analyze image':''));
     aiPendingImg=null;
     const prev=document.getElementById('aiImgPreview');if(prev)prev.style.display='none';
   }else if(!opts.hidden){
@@ -8293,7 +8677,7 @@ function buildFullPlannerContextForAI(opts){
   add('Tasks — last 40 completed',clip(tasks.filter(t=>t.done).slice(-40).map(fmtT).join('\n')||'(none)',3200));
 
   const noteBlock=notes.slice(0,50).map(n=>{
-    const dt=n.updatedAt?new Date(n.updatedAt).toISOString().slice(0,10):'—';
+    const dt=n.updatedAt?fluxLocalYMD(new Date(n.updatedAt)):'—';
     return `• "${plain(n.title,100)}" subj:${n.subject||'—'} ${dt} ★${n.starred?'y':'n'} fc:${(n.flashcards||[]).length}\n  ${plain(n.body,500)}`;
   }).join('\n');
   add('Notes (≤50, excerpted)',noteBlock||'(none)');
@@ -8972,7 +9356,7 @@ function fluxRenderMaintenanceOverlay(){
     ov.style.cssText='position:fixed;inset:0;z-index:10080;background:radial-gradient(circle at 50% 35%,#101a30 0%,#06080f 70%);color:#e6edf6;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;text-align:center';
     ov.innerHTML=`
       <div style="max-width:480px">
-        <div style="font-size:3rem;margin-bottom:14px">🛠</div>
+        <div style="font-size:3rem;margin-bottom:14px"></div>
         <div style="font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;font-family:JetBrains Mono,monospace;color:#fbbf24;margin-bottom:10px">Flux is under update</div>
         <h1 style="margin:0 0 12px;font-size:1.8rem;font-weight:900;letter-spacing:-.02em">Just a moment…</h1>
         <p data-maint-msg style="margin:0 0 24px;font-size:1rem;line-height:1.55;color:#8a93a7">${String(msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c])}</p>
@@ -9318,6 +9702,7 @@ function openQuickAddWithText(text){
   panel.setAttribute('role','dialog');
   panel.setAttribute('aria-modal','true');
   panel.setAttribute('aria-label','Quick add task');
+  if(window.FluxOverlays)FluxOverlays.push('quickAdd',closeQuickAdd);
   const input=document.getElementById('quickAddInput');
   if(input){input.value=text||'';input.focus();updateQuickAddPreview(text||'');}
   refreshQuickAddDatalist();
@@ -9336,13 +9721,16 @@ function explainMyWeek(){
 
 // ══ ONBOARDING ══
 let obCurrentStep=1;
-const OB_TOTAL=5;
+const OB_TOTAL=6;
 let obSelectedGrade='10';
 let obSelectedTrack='';
-let obSelectedFocus='deadlines';
+// Term focus is multi-select: students/staff routinely have more than one.
+// Stored as an array; profile.termFocus keeps the first pick as a string so
+// anything still reading the old single-value shape keeps working.
+let obSelectedFocus=['deadlines'];
 let obSelectedRole='student'; // 'student' | 'staff' — picked once during onboarding
 let obSelectedStaffRole='teacher'; // 'teacher' | 'counselor' | 'admin' — staff sub-role
-let obSelectedStaffFocus='planning';
+let obSelectedStaffFocus=['planning'];
 let obSelectedStaffReminders='gentle';
 let obScheduleImgData=null;
 let obExtractedClasses=[];
@@ -9378,11 +9766,19 @@ function prefillOnboardingFromProfile(){
   obSelectedGrade=g;
   const gradeChip=Array.from(document.querySelectorAll('#obGradeChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${g}'`));
   if(gradeChip)selectObChip(gradeChip,'obGrade',g);
-  let focus=(p.termFocus&&String(p.termFocus).trim())?String(p.termFocus).trim():'deadlines';
-  let focusChip=Array.from(document.querySelectorAll('#obFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${focus}'`));
-  if(!focusChip){focus='deadlines';focusChip=Array.from(document.querySelectorAll('#obFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes("'deadlines'"));}
-  obSelectedFocus=focus;
-  if(focusChip)selectObChip(focusChip,'obFocus',focus);
+  // termFocuses is the current shape; fall back to the legacy single termFocus.
+  let focuses=Array.isArray(p.termFocuses)&&p.termFocuses.length
+    ? p.termFocuses.map(f=>String(f).trim()).filter(Boolean)
+    : [(p.termFocus&&String(p.termFocus).trim())?String(p.termFocus).trim():'deadlines'];
+  const focusChips=Array.from(document.querySelectorAll('#obFocusChips .ob-chip'));
+  focusChips.forEach(c=>c.classList.remove('active'));
+  let matched=focuses.filter(f=>focusChips.some(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`)));
+  if(!matched.length)matched=['deadlines'];
+  matched.forEach(f=>{
+    const chip=focusChips.find(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`));
+    if(chip)chip.classList.add('active');
+  });
+  obSelectedFocus=matched;
   document.querySelectorAll('#obFeatureChips .ob-chip').forEach(c=>c.classList.remove('active'));
   const feats=Array.isArray(p.plannerFeatures)&&p.plannerFeatures.length?p.plannerFeatures:['tasks'];
   document.querySelectorAll('#obFeatureChips .ob-chip').forEach(el=>{
@@ -9390,10 +9786,17 @@ function prefillOnboardingFromProfile(){
   });
   // Staff questionnaire prefill (step 2 + step 5 staff variants)
   if(obSelectedRole==='staff'){
-    const sf=(p.termFocus&&['planning','grading','students','balance'].includes(String(p.termFocus)))?p.termFocus:'planning';
-    obSelectedStaffFocus=sf;
-    const sfChip=Array.from(document.querySelectorAll('#obStaffFocusChips .ob-chip')).find(c=>(c.getAttribute('onclick')||'').includes(`'${sf}'`));
-    if(sfChip)selectObChip(sfChip,'obStaffFocus',sf);
+    const STAFF_FOCUS=['planning','grading','students','balance'];
+    let sfs=(Array.isArray(p.termFocuses)&&p.termFocuses.length?p.termFocuses:[p.termFocus])
+      .map(f=>String(f||'').trim()).filter(f=>STAFF_FOCUS.includes(f));
+    if(!sfs.length)sfs=['planning'];
+    const sfChips=Array.from(document.querySelectorAll('#obStaffFocusChips .ob-chip'));
+    sfChips.forEach(c=>c.classList.remove('active'));
+    sfs.forEach(f=>{
+      const chip=sfChips.find(c=>(c.getAttribute('onclick')||'').includes(`'${f}'`));
+      if(chip)chip.classList.add('active');
+    });
+    obSelectedStaffFocus=sfs;
     document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(c=>c.classList.remove('active'));
     const sfeats=Array.isArray(p.staffFeatures)&&p.staffFeatures.length?p.staffFeatures:['tasks'];
     document.querySelectorAll('#obStaffFeatureChips .ob-chip').forEach(el=>{
@@ -9479,7 +9882,8 @@ function cancelQuestionnaireRedo(){
 
 function finishQuestionnaireRedoOnly(){
   const p=load('profile',{});
-  p.termFocus=obSelectedFocus||'deadlines';
+  p.termFocuses=(obSelectedFocus&&obSelectedFocus.length)?obSelectedFocus.slice():['deadlines'];
+  p.termFocus=p.termFocuses[0];
   const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
   p.plannerFeatures=feats.length?feats:['tasks'];
   save('profile',p);
@@ -9504,9 +9908,12 @@ function renderObProgress(){
   }).join('');
 }
 function showObStep(n){
+  // Direction is computed against the OUTGOING step (obCurrentStep still holds it).
+  const dir=n>=obCurrentStep?'fwd':'back';
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
   const s=document.getElementById('ob-step-'+n);if(s)s.classList.add('active');
   obCurrentStep=n;renderObProgress();
+  try{if(s&&window.FluxMotion?.stepTransition)FluxMotion.stepTransition(s,dir);}catch(_){}
   const redo=!!window._fluxOnboardingRedo;
   const gc=document.getElementById('obRedoGlobalCancel');
   const sb=document.getElementById('obRedoSaveBtn');
@@ -9516,7 +9923,48 @@ function showObStep(n){
     bindScheduleImportDropzones();
     ensurePdfJsLoaded().catch(()=>{});
   }
+  if(n===6){
+    const mount=document.getElementById('obIntegrationsPicker');
+    try{
+      if(mount&&!mount.dataset.mounted&&window.FluxIntegrationsHub){
+        FluxIntegrationsHub.renderPickerInto(mount);
+        mount.dataset.mounted='1';
+        mount.addEventListener('click',updateObAiProfileCard);
+      }
+    }catch(_){}
+    updateObAiProfileCard();
+  }
 }
+/* "Your AI profile" mini-card on the tools step — fills toward 95% as tools are picked. */
+function updateObAiProfileCard(){
+  try{
+    const n=(window.FluxIntegrationsHub&&FluxIntegrationsHub.getSelected)?FluxIntegrationsHub.getSelected().length:0;
+    const pct=Math.min(95,60+n*5);
+    const bar=document.getElementById('obAiProfileBar');
+    const lbl=document.getElementById('obAiProfilePct');
+    const cnt=document.getElementById('obAiProfileTools');
+    if(bar)bar.style.width=pct+'%';
+    if(lbl)lbl.textContent=pct+'%';
+    if(cnt)cnt.textContent=n+' picked';
+  }catch(_){}
+}
+/* Multi-select sibling of selectObChip, for "main focus this term". Keeps at
+   least one chip active so the questionnaire can never be answered with
+   nothing — clicking the last active chip is a no-op rather than a dead end. */
+function toggleObChipMulti(el,key,val){
+  const wrap=el.closest('.ob-chip-wrap,.ob-chips');
+  const isActive=el.classList.contains('active');
+  if(isActive&&wrap&&wrap.querySelectorAll('.ob-chip.active').length<=1)return;
+  el.classList.toggle('active');
+  if(el.getAttribute('role')==='checkbox')el.setAttribute('aria-checked',el.classList.contains('active')?'true':'false');
+  const picked=wrap?Array.from(wrap.querySelectorAll('.ob-chip.active')).map(c=>{
+    const m=(c.getAttribute('onclick')||'').match(/,'([^']+)'\)/);
+    return m?m[1]:null;
+  }).filter(Boolean):[val];
+  if(key==='obFocus')obSelectedFocus=picked;
+  if(key==='obStaffFocus')obSelectedStaffFocus=picked;
+}
+
 function selectObChip(el,key,val){
   el.closest('.ob-chip-wrap,.ob-chips').querySelectorAll('.ob-chip').forEach(c=>{
     c.classList.remove('active');
@@ -9526,8 +9974,8 @@ function selectObChip(el,key,val){
   if(el.getAttribute('role')==='radio')el.setAttribute('aria-checked','true');
   if(key==='obGrade')obSelectedGrade=val;
   if(key==='obTrack')obSelectedTrack=val;
-  if(key==='obFocus')obSelectedFocus=val;
-  if(key==='obStaffFocus')obSelectedStaffFocus=val;
+  if(key==='obFocus')obSelectedFocus=[val];
+  if(key==='obStaffFocus')obSelectedStaffFocus=[val];
   if(key==='obStaffReminders')obSelectedStaffReminders=val;
   if(key==='obStaffRole')obSelectedStaffRole=(['teacher','counselor','admin'].includes(val))?val:'teacher';
   if(key==='obRole'){
@@ -9554,7 +10002,7 @@ function applyObRoleView(){
     setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
     setText('obStep4Title','Your Schedule');
     setText('obStep4Sub','Upload a PDF or photo of your teaching schedule — AI reads it. Or skip and add periods later.');
-    setText('obStep5Emoji','🗂');
+    setText('obStep5Emoji','');
     setText('obStep5Title','How do you work?');
     setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
   }else{
@@ -9565,7 +10013,7 @@ function applyObRoleView(){
     setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
     setText('obStep4Title','Your Schedule');
     setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
-    setText('obStep5Emoji','🧠');
+    setText('obStep5Emoji','');
     setText('obStep5Title','How do you study?');
     setText('obStep5Sub','Flux will personalize AI suggestions based on how you learn best.');
   }
@@ -9581,7 +10029,7 @@ function handleObPic(event){
   reader.onload=e=>{
     fluxSaveStoredString('flux_profile_pic',e.target.result);
     const av=document.getElementById('obAvatar');
-    if(av)av.innerHTML=`<img src="${e.target.result}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
+    if(av)av.innerHTML=`<img src="${escapeAttr(e.target.result)}"><input type="file" id="obPicInput" accept="image/*" style="display:none" onchange="handleObPic(event)">`;
   };
   reader.readAsDataURL(file);
 }
@@ -9624,11 +10072,13 @@ function obNext(){
   if(obCurrentStep===2){
     const p=load('profile',{});
     if(obSelectedRole==='staff'){
-      p.termFocus=obSelectedStaffFocus||'planning';
+      p.termFocuses=(obSelectedStaffFocus&&obSelectedStaffFocus.length)?obSelectedStaffFocus.slice():['planning'];
+      p.termFocus=p.termFocuses[0];
       const sfeats=Array.from(document.querySelectorAll('#obStaffFeatureChips .ob-chip.active')).map(c=>c.dataset.staffFeat).filter(Boolean);
       p.staffFeatures=sfeats.length?sfeats:['tasks'];
     }else{
-      p.termFocus=obSelectedFocus||'deadlines';
+      p.termFocuses=(obSelectedFocus&&obSelectedFocus.length)?obSelectedFocus.slice():['deadlines'];
+      p.termFocus=p.termFocuses[0];
       const feats=Array.from(document.querySelectorAll('#obFeatureChips .ob-chip.active')).map(c=>c.dataset.feat).filter(Boolean);
       p.plannerFeatures=feats.length?feats:['tasks'];
     }
@@ -9664,7 +10114,15 @@ function obNext(){
   if(obCurrentStep===4){
     if(obExtractedClasses.length){classes=obExtractedClasses;save('flux_classes',classes);}
   }
-  if(obCurrentStep===5){obFinish();return;}
+  if(obCurrentStep===6){
+    // Akiflow-style tools picker — persist choices, then finish (step-5 chips
+    // are read directly off the DOM inside obFinish, so passing through step 6
+    // doesn't lose them).
+    const p=load('profile',{});
+    p.integrations=(window.FluxIntegrationsHub&&typeof FluxIntegrationsHub.getSelected==='function')?FluxIntegrationsHub.getSelected():[];
+    save('profile',p);
+    obFinish();return;
+  }
   showObStep(obCurrentStep+1);
 }
 function obBack(){if(obCurrentStep>1)showObStep(obCurrentStep-1);}
@@ -9986,11 +10444,16 @@ async function analyzeScheduleImg(){
     const start=txt.indexOf('[');const end=txt.lastIndexOf(']');
     if(start===-1||end===-1)throw new Error('No class list found. Try a clearer photo.');
     const parsed=JSON.parse(txt.slice(start,end+1));
-    obExtractedClasses=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:cleanClassName(c.name||'Class '+(i+1)),teacher:c.teacher||'',room:c.room||''}));
+    obExtractedClasses=parsed.map((c,i)=>{
+      const rawP=String(c.period??'').trim();
+      const parsedP=parseClassPeriodInput(rawP,'');
+      const fullName=cleanClassName(c.name||'Class '+(i+1));
+      return{id:Date.now()+i,period:rawP?parsedP.period:i+1,periodLabel:rawP,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher:c.teacher||'',room:c.room||''};
+    });
     if(resultEl){
       resultEl.style.display='block';
       resultEl.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ Found '+obExtractedClasses.length+' classes</div>'+
-        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
+        obExtractedClasses.map(c=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${c.teacher}${c.room?' · Rm '+c.room:''}</div></div></div>`).join('');
     }
   }catch(e){
     if(resultEl){resultEl.style.display='block';resultEl.innerHTML='<div style="color:var(--red);font-size:.82rem">Could not read schedule. Add classes manually in the School tab.</div>';}
@@ -10004,7 +10467,7 @@ function renderObExtractedClasses(){
   if(!obExtractedClasses.length){el.innerHTML='';el.style.display='none';return;}
   el.style.display='block';
   el.innerHTML='<div style="color:var(--green);font-weight:700;margin-bottom:8px;font-size:.82rem">✓ '+obExtractedClasses.length+' class'+(obExtractedClasses.length===1?'':'es')+'</div>'+
-    obExtractedClasses.map((c,i)=>`<div class="ob-class-row"><div class="ob-class-period">${c.period}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div><button type="button" class="ob-class-del" aria-label="Remove" onclick="removeObClass(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px">×</button></div>`).join('');
+    obExtractedClasses.map((c,i)=>`<div class="ob-class-row"><div class="ob-class-period">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.85rem;font-weight:700">${esc(c.name)}</div><div style="font-size:.7rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(c.teacher||'')}${c.room?' · Rm '+esc(c.room):''}</div></div><button type="button" class="ob-class-del" aria-label="Remove" onclick="removeObClass(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 4px">×</button></div>`).join('');
 }
 function addObClass(){
   const pEl=document.getElementById('obManualPeriod');
@@ -10012,9 +10475,12 @@ function addObClass(){
   const tEl=document.getElementById('obManualTeacher');
   const name=(nEl?.value||'').trim();
   if(!name){if(nEl){nEl.focus();}if(typeof showToast==='function')showToast('Enter a class name','info');return;}
-  const period=parseInt(pEl?.value||'',10)||(obExtractedClasses.length+1);
+  const rawPeriod=(pEl?.value||'').trim();
+  const parsedP=parseClassPeriodInput(rawPeriod,'');
+  const period=rawPeriod?parsedP.period:(obExtractedClasses.length+1);
   const teacher=(tEl?.value||'').trim();
-  obExtractedClasses.push({id:Date.now()+obExtractedClasses.length,period,name:cleanClassName(name),teacher,room:''});
+  const fullName=cleanClassName(name);
+  obExtractedClasses.push({id:Date.now()+obExtractedClasses.length,period,periodLabel:rawPeriod,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher,room:''});
   if(pEl)pEl.value='';
   if(nEl)nEl.value='';
   if(tEl)tEl.value='';
@@ -10150,6 +10616,24 @@ function fabFocus(){
   nav('timer');
 }
 
+// ── OVERLAY STACK — single owner for "what's on top" (Area 19) ──
+// Palette, quick-add, global search, shortcut overlay, and the mobile More
+// sheet register here on open. While anything is on the stack, global
+// single-key shortcuts (N/T/G/C/K/…) are suppressed, and Escape closes ONLY
+// the top entry — never everything at once. Other modules (tour engine,
+// notifications) can observe via the 'flux-overlay-change' event.
+const FluxOverlays={
+  _stack:[],
+  _emit(){try{document.dispatchEvent(new CustomEvent('flux-overlay-change',{detail:{open:this.anyOpen(),top:this.top()?.id||null}}));}catch(_){}},
+  push(id,close){this._stack=this._stack.filter(o=>o.id!==id);this._stack.push({id,close});this._emit();},
+  pop(id){const n=this._stack.length;this._stack=this._stack.filter(o=>o.id!==id);if(this._stack.length!==n)this._emit();},
+  top(){return this._stack[this._stack.length-1]||null;},
+  isTop(id){return this.top()?.id===id;},
+  anyOpen(){return this._stack.length>0;},
+  closeTop(){const t=this.top();if(!t)return false;try{t.close();}catch(_){}this.pop(t.id);return true;},
+};
+window.FluxOverlays=FluxOverlays;
+
 // ══ KEYBOARD SHORTCUTS ══
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
@@ -10160,6 +10644,8 @@ function initKeyboardShortcuts(){
         openGlobalSearch();
         return;
       }
+      // ⌘K while the palette is open toggles it closed.
+      if(_cpOpen){closeCommandPalette();return;}
       try{
         const staffPalette=window.FluxStaffCommand?.enabled?.();
         if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&!staffPalette){
@@ -10188,6 +10674,9 @@ function initKeyboardShortcuts(){
     const tag=document.activeElement?.tagName;
     if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
     if(e.metaKey||e.ctrlKey||e.altKey)return;
+    // Any open overlay swallows single-key shortcuts entirely — a palette
+    // that lost focus must never let "n" spawn quick-add on top of it.
+    if(FluxOverlays.anyOpen())return;
     switch(e.key){
       case 'n': case 'N': case 't': case 'T':
         e.preventDefault();
@@ -10229,17 +10718,25 @@ function openCommandPalette(){
       <div class="cmd-palette-footer">⌘⇧K / Ctrl+Shift+K search · ↑↓ choose · Enter run · Esc close</div>
     </div>`;
   document.body.appendChild(overlay);
+  FluxOverlays.push('cmdPalette',closeCommandPalette);
+  try{window.FluxA11y?.trapFocus?.(overlay);}catch(e){}
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeCommandPalette();});
   const input=document.getElementById('cmdInput');
-  input.focus();
   input.addEventListener('input',renderCmdResults);
   input.addEventListener('keydown',handleCmdKey);
+  // Guaranteed focus: motion layers can steal focus during the open
+  // animation, after which stray keystrokes hit global shortcuts instead
+  // of the palette. Focus now and re-assert on the next frames.
+  input.focus();
+  requestAnimationFrame(()=>{if(document.activeElement!==input)input.focus();});
+  setTimeout(()=>{const i=document.getElementById('cmdInput');if(i&&document.activeElement!==i)i.focus();},120);
   renderCmdResults();
 }
 function closeCommandPalette(){
   const el=document.getElementById('cmdPalette');
-  if(el)el.remove();
+  if(el){try{window.FluxA11y?.releaseFocus?.(el);}catch(e){}el.remove();}
   _cpOpen=false;
+  FluxOverlays.pop('cmdPalette');
 }
 let _cmdIdx=0;
 function handleCmdKey(e){
@@ -10247,7 +10744,8 @@ function handleCmdKey(e){
   if(e.key==='ArrowDown'){e.preventDefault();_cmdIdx=Math.min(_cmdIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
   else if(e.key==='ArrowUp'){e.preventDefault();_cmdIdx=Math.max(_cmdIdx-1,0);items.forEach((el,i)=>el.classList.toggle('cmd-active',i===_cmdIdx));}
   else if(e.key==='Enter'){e.preventDefault();const active=document.querySelector('.cmd-active');if(active)active.click();}
-  else if(e.key==='Escape'){closeCommandPalette();}
+  // Escape intentionally not handled here — it bubbles to the global
+  // handler, which closes only the top of the overlay stack.
 }
 function renderCmdResults(){
   const q=(document.getElementById('cmdInput')?.value||'').toLowerCase().trim();
@@ -10274,7 +10772,7 @@ function renderCmdResults(){
     {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
     {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
     ...(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()?[]:[{icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}}]),
-    {icon:'📝',label:'Notes',action:()=>{nav('notes');closeCommandPalette();}},
+    {icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}},
     {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
@@ -10283,7 +10781,7 @@ function renderCmdResults(){
     {icon:'🎓',label:'Canvas LMS panel',action:()=>{closeCommandPalette();nav('canvas');}},
     {icon:'⚙️',label:'Settings',action:()=>{nav('settings');closeCommandPalette();}},
   ];
-  navItems.forEach(n=>{if(cpMatch(n.label,'',[]))cmds.push({...n,cat:'Navigate',id:'nav:'+n.label});});
+  navItems.forEach(n=>{if(cpMatch(n.label,'',n._keys||[]))cmds.push({...n,cat:'Navigate',id:'nav:'+n.label});});
 
   if(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()){
     const workLbl='Switch to Work mode';
@@ -10333,9 +10831,11 @@ function renderCmdResults(){
   }).slice(0,5);
   matchTasks.forEach(t=>cmds.push({icon:'✓',label:t.name,sub:t.date?'Due '+t.date:'',cat:'Tasks',action:()=>{nav('dashboard');closeCommandPalette();setTimeout(()=>{const el=document.querySelector('[data-task-id="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth'});},300);}}));
   
-  // Add task shortcut
+  // Add task shortcut — appended, never the default selection. When it was
+  // unshifted first, Enter after typing a navigation query ("notes")
+  // silently created a junk task instead of navigating.
   if(q&&!q.startsWith('/')){
-    cmds.unshift({icon:'＋',label:'Add task: "'+q+'"',cat:'Actions',action:()=>{
+    cmds.push({icon:'＋',label:'Add task: "'+q+'"',cat:'Actions',action:()=>{
       const t={id:Date.now(),name:q,date:'',subject:'',priority:'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now()};
       t.urgencyScore=calcUrgency(t);tasks.unshift(t);save('tasks',tasks);
       renderStats();renderTasks();renderCalendar();syncKey('tasks',tasks);
@@ -10345,6 +10845,7 @@ function renderCmdResults(){
   
   // Actions
   const actions=[
+    {icon:'📥',label:'Import into Flux (everything)',cat:'Actions',action:()=>{closeCommandPalette();if(typeof window.openImportHub==='function')window.openImportHub();}},
     {icon:'🔄',label:'Force Sync',cat:'Actions',action:()=>{closeCommandPalette();forceSyncNow();}},
     {icon:'🎯',label:'Start Deep Work Mode',cat:'Actions',action:()=>{closeCommandPalette();startDeepWork();}},
     {icon:'📆',label:'Explain my week (Flux AI)',cat:'Actions',action:()=>{closeCommandPalette();explainMyWeek();}},
@@ -10477,6 +10978,22 @@ function renderCmdResults(){
   }
   if(window.FluxCmdPaletteV2?.refineCommands){
     try{cmds=FluxCmdPaletteV2.refineCommands(cmds,q);}catch(_){}
+  }
+  // Relevance tiers so the default (Enter) selection is what the user typed:
+  // exact label match > label prefix > everything else. Stable sort keeps the
+  // curated order within each tier.
+  if(q){
+    const tier=c=>{
+      const l=String(c.label||'').toLowerCase();
+      if(l===q)return 0;
+      if(l.startsWith(q))return 1;
+      // Alias keys count like the label ("notes" must still rank Notebook first).
+      const keys=(c._keys||[]).map(k=>String(k).toLowerCase());
+      if(keys.includes(q))return 0;
+      if(keys.some(k=>k.startsWith(q)))return 1;
+      return 2;
+    };
+    cmds.sort((a,b)=>tier(a)-tier(b));
   }
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
@@ -10764,7 +11281,7 @@ function showGuestDisclaimer(){
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:30px 24px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
-      <div style="font-size:2.2rem;margin-bottom:14px">👤</div>
+      <div style="font-size:2.2rem;margin-bottom:14px"></div>
       <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px">Continuing as Guest</div>
       <div style="font-size:.84rem;color:var(--muted2);line-height:1.75;margin-bottom:22px">
         Your data will be saved <strong style="color:var(--gold)">on this device only</strong>.<br>
@@ -10877,7 +11394,10 @@ async function getSessionAfterOAuth(sb){
   let{data:{session}}=await sb.auth.getSession();
   const hash=window.location.hash;
   const params=new URLSearchParams(window.location.search);
-  const oauthPending=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error');
+  // Named OAuth popups count as pending even when supabase-js already
+  // stripped the tokens from the URL — the code exchange may still be in
+  // flight, and returning null here would flash a false failure screen.
+  const oauthPending=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||!!window.__fluxIsOAuthPopupTab;
   if(session||!oauthPending)return session;
   for(let i=0;i<150;i++){
     await new Promise(r=>setTimeout(r,100));
@@ -10904,7 +11424,14 @@ async function initAuth(){
   try{
     const hash=window.location.hash;
     const params=new URLSearchParams(window.location.search);
-    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error');
+    // The popup's window.name ('fluxGoogleOAuth', 'flux<provider>OAuth', …)
+    // survives the whole OAuth redirect chain. URL tokens alone are not
+    // enough: supabase-js (detectSessionInUrl) can consume ?code / #access_token
+    // before we read them here, which made the popup look like a normal tab,
+    // boot the planner, and leave the user with the app open twice.
+    const isOAuthPopup=/^flux\w*OAuth$/i.test(String(window.name||''));
+    window.__fluxIsOAuthPopupTab=isOAuthPopup;
+    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup;
 
     if(!isOAuthCallback){
       const reach=await pingSupabaseReachable(sb);
@@ -10952,20 +11479,24 @@ async function initAuth(){
         ?'This window will close — continue in your other Flux tab.'
         :'You can close this window and try again from the other tab.';
       document.body.innerHTML='<div style="font-family:system-ui,sans-serif;padding:48px 24px;text-align:center;color:#e8ecff;background:#0B0F1A;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px"><p style="font-weight:600;margin:0;font-size:16px">'+title+'</p><p style="opacity:.72;font-size:14px;margin:0;max-width:280px;line-height:1.5">'+sub+'</p></div>';
-      // Try to self-close; if the browser blocks it (no opener), the parent
-      // tab closes us via the named-window handle, and as a last resort we
-      // bounce to the clean app so no dead callback page lingers.
+      // Clear the popup marker so a manual reload of this tab (if the user
+      // keeps it) behaves like a normal tab again.
+      try{window.name='';}catch(_){}
+      // Try to self-close; the parent also closes us via the named-window
+      // handle. Only same-tab redirects (no popup) may bounce back into the
+      // app — a popup must never reopen the planner beside the original tab.
       setTimeout(()=>{
         try{window.close();}catch(e){}
-        setTimeout(()=>{ if(!window.closed){ try{ location.replace(window.location.pathname); }catch(_){} } },600);
+        if(!isOAuthPopup){
+          setTimeout(()=>{ if(!window.closed){ try{ location.replace(window.location.pathname); }catch(_){} } },600);
+        }
       },ok?280:400);
       return true;
     };
 
-    // Treat as a popup if we have an opener OR were opened under the OAuth
-    // window name (Arc keeps the name but drops opener).
-    const looksLikePopup=(window.opener&&!window.opener.closed)||window.name==='fluxGoogleOAuth';
-    if(isOAuthCallback&&looksLikePopup){
+    // Any OAuth callback tab should notify the original and close itself —
+    // whether it's a true popup (has opener) or a new tab (no opener, e.g. Arc).
+    if(isOAuthCallback){
       if(oauthPopupNotify())return;
     }
     
@@ -10979,6 +11510,8 @@ async function initAuth(){
 
     // STEP 3: Listen for future auth changes
     sb.auth.onAuthStateChange(async(event,s)=>{
+      // OAuth popup tabs only relay the session — they never boot the planner.
+      if(window.__fluxIsOAuthPopupTab)return;
       if(event==='SIGNED_IN'&&s?.user){
         fluxExtAuthBroadcast(s);
         // Hide login immediately
@@ -11169,7 +11702,30 @@ function initLoginDemoRotator(){
   _loginDemoInterval=setInterval(apply,4200);
 }
 
+// B4: after successful app entry the landing/login chrome is DETACHED from
+// the document — screen readers were reading the entire marketing page behind
+// the app, and it keeps ~256KB out of the live DOM. showLoginScreen
+// re-attaches, so sign-out flows that don't reload still work.
+let _fluxDetachedChrome=null;
+function detachLandingChrome(){
+  if(_fluxDetachedChrome)return;
+  const nodes=[];
+  ['loginScreen','roleSelectScreen'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.parentNode){nodes.push({el,parent:el.parentNode,next:el.nextSibling});el.remove();}
+  });
+  if(nodes.length)_fluxDetachedChrome=nodes;
+}
+function reattachLandingChrome(){
+  if(!_fluxDetachedChrome)return;
+  _fluxDetachedChrome.forEach(({el,parent,next})=>{
+    try{parent.insertBefore(el,next&&next.parentNode===parent?next:null);}
+    catch(_){try{document.body.appendChild(el);}catch(__){}}
+  });
+  _fluxDetachedChrome=null;
+}
 function showLoginScreen(){
+  reattachLandingChrome();
   const ls=document.getElementById('loginScreen');
   const app=document.getElementById('app');
   if(typeof teardownFluxAnimeApp==='function')teardownFluxAnimeApp();
@@ -11262,6 +11818,9 @@ function showApp(){
   if(typeof updatePlanUI==='function')updatePlanUI();
   try{if(typeof renderSkillsPanel==='function')renderSkillsPanel();}catch(e){}
   try{if(typeof initFluxExtensionIdSettings==='function')initFluxExtensionIdSettings();}catch(e){}
+  // B4: drop the marketing/login chrome out of the live document once the app
+  // is up (delayed past the login teardown animations).
+  setTimeout(()=>{try{detachLandingChrome();}catch(_){}},600);
 }
 
 function initFluxExtensionIdSettings(){
@@ -11491,7 +12050,7 @@ async function handleSignedIn(user,session){
       window._counselorRecord=null;
       window.__fluxWarnedCounselorEnsure=0;
     }catch(_){}
-    console.log('🔄 Account switched — wiped previous user data');
+    console.log('Account switched — wiped previous user data');
     try{
       const dg=document.getElementById('dashGreeting');
       if(dg){delete dg.dataset.fluxGreetKey;delete dg.dataset.fluxGreetIntroDone;}
@@ -11917,23 +12476,23 @@ function handleSignedOut(){
 function buildFeatPillsHtml(){
   const pills=[
     {label:'✦ Flux AI Tutor',c:'#6366f1'},
-    {label:'📷 Vision Import',c:'#10d9a0'},
-    {label:'📊 4-decimal GPA',c:'#fbbf24'},
+    {label:'Vision Import',c:'#10d9a0'},
+    {label:'4-decimal GPA',c:'#fbbf24'},
     {label:'⏱ Focus timer',c:'#a78bfa'},
-    {label:'📅 Smart calendar',c:'#3b82f6'},
-    {label:'☁️ Cloud sync',c:'#10d9a0'},
-    {label:'🃏 AI flashcards',c:'#e879f9'},
-    {label:'🚨 Panic mode',c:'#f43f5e'},
-    {label:'📧 Gmail → tasks',c:'#fb923c'},
-    {label:'📝 Tagged notes',c:'#6366f1'},
-    {label:'🎯 Extracurriculars',c:'#fbbf24'},
-    {label:'🧠 Cognitive load',c:'#22c55e'},
-    {label:'📛 Exam conflicts',c:'#f472b6'},
-    {label:'🌙 Themes & accent',c:'#38bdf8'},
-    {label:'📈 Grade what-if',c:'#eab308'},
-    {label:'🎓 Canvas & Gmail',c:'#94a3b8'},
-    {label:'😊 Mood check-ins',c:'#fb7185'},
-    {label:'🔗 iCal / Google',c:'#34d399'},
+    {label:'Smart calendar',c:'#3b82f6'},
+    {label:'Cloud sync',c:'#10d9a0'},
+    {label:'AI flashcards',c:'#e879f9'},
+    {label:'Panic mode',c:'#f43f5e'},
+    {label:'Gmail → tasks',c:'#fb923c'},
+    {label:'Tagged notes',c:'#6366f1'},
+    {label:'Extracurriculars',c:'#fbbf24'},
+    {label:'Cognitive load',c:'#22c55e'},
+    {label:'Exam conflicts',c:'#f472b6'},
+    {label:'Themes & accent',c:'#38bdf8'},
+    {label:'Grade what-if',c:'#eab308'},
+    {label:'Canvas & Gmail',c:'#94a3b8'},
+    {label:'Mood check-ins',c:'#fb7185'},
+    {label:'iCal / Google',c:'#34d399'},
   ];
   const all=[...pills,...pills];
   return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
@@ -11973,7 +12532,7 @@ function initTopbar(){
   function updateEnergyPill(){
     const energy=readFluxEnergyLevel();
     const emojis=['','😴','😕','😐','😊','🚀'];
-    const el=document.getElementById('topbarEnergy');if(el)el.textContent=emojis[energy]||'😐';
+    const el=document.getElementById('topbarEnergy');if(el)el.textContent=emojis[energy]||'';
   }
   updateEnergyPill();
   const _orig=window.setEnergy;
@@ -12062,7 +12621,7 @@ function showSectionLoading(containerId,rows=3){
 function showError(containerId,msg,retryFnStr){
   const el=document.getElementById(containerId);if(!el)return;
   el.innerHTML=`<div style="text-align:center;padding:32px 16px">
-    <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+    <div style="font-size:2rem;margin-bottom:10px"></div>
     <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:5px">Something went wrong</div>
     <div style="font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.6">${esc(msg||'Please try again.')}</div>
     ${retryFnStr?`<button onclick="${retryFnStr}" style="font-size:.78rem;padding:7px 18px;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">↺ Try again</button>`:''}
@@ -12231,7 +12790,7 @@ function renderPredictiveGapFill(){
   el.innerHTML=`
     <div class="card flux-gap-card">
       <div class="flux-gap-head">
-        <span class="flux-gap-icon" aria-hidden="true">🧩</span>
+        <span class="flux-gap-icon" aria-hidden="true"></span>
         <div>
           <div class="flux-gap-kicker">Predictive gap-fill</div>
           <h3 class="flux-gap-title">Free pockets between classes</h3>
@@ -12296,7 +12855,7 @@ function handleCheckoutReturn(){
       modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
       modal.innerHTML=`
         <div style="background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:20px;padding:32px;width:100%;max-width:400px;text-align:center;box-shadow:var(--shadow-float)">
-          <div style="font-size:3rem;margin-bottom:14px">🎉</div>
+          <div style="font-size:3rem;margin-bottom:14px"></div>
           <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Welcome to Flux Pro!</div>
           <div style="font-size:.85rem;color:var(--muted2);line-height:1.6;margin-bottom:20px">
             You now have access to all Pro features.
@@ -12430,16 +12989,16 @@ function generateSRSReviews(originalTask){
   }catch(_){}
   if(!originalTask.srsEnabled)return;
   const intervals=[1,7,30];
-  const base=new Date(originalTask.date||todayStr()+'T00:00:00');
+  const base=new Date((originalTask.date||todayStr())+'T00:00:00');
   intervals.forEach(days=>{
     const d=new Date(base);d.setDate(d.getDate()+days);
     const review={
       id:Date.now()+Math.random(),
-      name:'🔄 Review: '+originalTask.name,
+      name:'Review: '+originalTask.name,
       subject:originalTask.subject||'',
       priority:'low',
       type:'study',
-      date:d.toISOString().slice(0,10),
+      date:fluxLocalYMD(d),
       estTime:Math.round((originalTask.estTime||30)*0.5),
       difficulty:Math.max(1,(originalTask.difficulty||3)-1),
       notes:'SRS review — original task: '+originalTask.name,
@@ -12450,7 +13009,7 @@ function generateSRSReviews(originalTask){
     tasks.push(review);
   });
   save('tasks',tasks);
-  showToast('🔄 3 spaced reviews scheduled (1d, 7d, 30d)','success');
+  showToast('3 spaced reviews scheduled (1d, 7d, 30d)','success');
   syncKey('tasks',tasks);
 }
 
@@ -12532,7 +13091,7 @@ async function dailyShutdown(){
   const existing=document.getElementById('shutdownPanel');
   if(existing){existing.remove();return;}
   const today=todayStr();
-  const completed=tasks.filter(t=>t.done&&t.completedAt&&new Date(t.completedAt).toISOString().slice(0,10)===today);
+  const completed=tasks.filter(t=>t.done&&t.completedAt&&fluxLocalYMD(new Date(t.completedAt))===today);
   const planned=tasks.filter(t=>t.date===today);
   const eff=planned.length?Math.round((completed.length/planned.length)*100):100;
   const totalMins=sessionLog.filter(s=>s.date===today).reduce((sum,s)=>sum+s.mins,0);
@@ -12541,7 +13100,7 @@ async function dailyShutdown(){
   panel.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(12px)';
   panel.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:24px;max-width:480px;width:100%;padding:28px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.6)">
-      <div style="font-size:2rem;margin-bottom:8px">🌙</div>
+      <div style="font-size:2rem;margin-bottom:8px"></div>
       <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px;margin-bottom:4px">Daily Shutdown</div>
       <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:20px">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
@@ -12575,37 +13134,28 @@ window.dailyShutdown=dailyShutdown;
 
 
 // ══ AUTO-NEXT TASK SUGGESTION ═════════════════════════════════
-let _autoNextTimer=null;
 function showAutoNext(){
-  const existing=document.getElementById('autoNextBar');if(existing)existing.remove();
   const next=smartSortTasks(tasks.filter(t=>!t.done&&t.date)).slice(0,1)[0]||tasks.filter(t=>!t.done).slice(0,1)[0];
   if(!next)return;
-  const bar=document.createElement('div');
-  bar.id='autoNextBar';
-  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3000;background:var(--card);border:1px solid rgba(var(--accent-rgb),.3);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideUpToast .3s var(--ease-spring);max-width:400px;width:90%';
-  bar.innerHTML=`
-    <div style="flex:1;min-width:0">
-      <div style="font-size:.65rem;color:var(--accent);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:1px">Up next</div>
-      <div style="font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(next.name)}</div>
-    </div>
-    <button onclick="document.getElementById('autoNextBar').remove();nav('dashboard');setTimeout(()=>startDeepWork(${next.id}),200)" style="padding:6px 14px;border-radius:10px;font-size:.75rem;font-weight:700;background:var(--accent);border:none;color:#fff;cursor:pointer;white-space:nowrap">Start →</button>
-    <button onclick="document.getElementById('autoNextBar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px">✕</button>`;
-  document.body.appendChild(bar);
-  clearTimeout(_autoNextTimer);
-  _autoNextTimer=setTimeout(()=>{const el=document.getElementById('autoNextBar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},8000);
+  // Through the single toast queue (B1) — the old floating "Up next" pill
+  // stacked over other notices right after task completion.
+  showToast('Up next: '+next.name+' — tap to start','info',8000,{
+    kind:'info',
+    onClick:()=>{try{nav('dashboard');setTimeout(()=>startDeepWork(next.id),200);}catch(_){}},
+  });
 }
 
 
 // ══ TASK TEMPLATES ════════════════════════════════════════════
 const TASK_TEMPLATES=[
-  {name:'Homework',type:'hw',estTime:30,difficulty:2,priority:'med',icon:'📝'},
-  {name:'Study Session',type:'study',estTime:60,difficulty:3,priority:'med',icon:'📖'},
+  {name:'Homework',type:'hw',estTime:30,difficulty:2,priority:'med',icon:''},
+  {name:'Study Session',type:'study',estTime:60,difficulty:3,priority:'med',icon:''},
   {name:'Essay',type:'essay',estTime:120,difficulty:4,priority:'high',icon:'✍'},
-  {name:'Lab Report',type:'lab',estTime:90,difficulty:4,priority:'high',icon:'🧪'},
-  {name:'Project Milestone',type:'project',estTime:60,difficulty:3,priority:'high',icon:'🎯'},
-  {name:'Test Prep',type:'test',estTime:45,difficulty:4,priority:'high',icon:'📋'},
-  {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:'📚'},
-  {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:'🔢'},
+  {name:'Lab Report',type:'lab',estTime:90,difficulty:4,priority:'high',icon:''},
+  {name:'Project Milestone',type:'project',estTime:60,difficulty:3,priority:'high',icon:''},
+  {name:'Test Prep',type:'test',estTime:45,difficulty:4,priority:'high',icon:''},
+  {name:'Reading',type:'reading',estTime:30,difficulty:2,priority:'low',icon:''},
+  {name:'Problem Set',type:'hw',estTime:45,difficulty:4,priority:'med',icon:''},
 ];
 try{window.TASK_TEMPLATES=TASK_TEMPLATES;}catch(_){}
 function showTemplateMenu(){
@@ -12628,8 +13178,8 @@ function showTemplateMenu(){
     </div>
     <div style="margin-top:14px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px">Multi-task packs</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">📚 Exam week (3 tasks)</button>
-      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">🧩 Project milestones (3 tasks)</button>
+      <button type="button" onclick="applyExamWeekPack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Exam week (3 tasks)</button>
+      <button type="button" onclick="applyProjectMilestonePack()" style="padding:12px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;text-align:left;cursor:pointer;font-weight:700;font-size:.82rem">Project milestones (3 tasks)</button>
     </div>
   </div>`;
   document.body.appendChild(menu);
@@ -12689,7 +13239,7 @@ function startVoiceInput(){
   const btn=document.getElementById('voiceBtn');
   if(!btn)return;
   const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;
-  r.onstart=()=>{if(btn){btn.textContent='🎙 Listening...';btn.style.color='var(--red)';}};
+  r.onstart=()=>{if(btn){btn.textContent='Listening...';btn.style.color='var(--red)';}};
   r.onresult=e=>{
     const text=e.results[0][0].transcript;
     const qa=document.getElementById('taskName')||document.getElementById('quickAddInput');
@@ -12699,10 +13249,10 @@ function startVoiceInput(){
     if(parsed.priority){const pi=document.getElementById('taskPriority');if(pi)pi.value=parsed.priority;}
     if(parsed.type){const ti=document.getElementById('taskType');if(ti)ti.value=parsed.type;}
     if(parsed.estTime){const ei=document.getElementById('taskEstTime');if(ei)ei.value=parsed.estTime;}
-    showToast('🎙 "'+text+'"','info');
+    showToast('"'+text+'"','info');
   };
   r.onerror=()=>showToast('Voice input error','error');
-  r.onend=()=>{if(btn){btn.textContent='🎙';btn.style.color='';}};
+  r.onend=()=>{if(btn){btn.textContent='';btn.style.color='';}};
   r.start();
 }
 
@@ -12839,7 +13389,7 @@ function addMomentum(){
       if(pe&&window.FluxAnim?.momentumPop)FluxAnim.momentumPop(pe);
     }catch(e){}
   }
-  if(_momentum>=3)showToast('🔥 '+_momentum+'× Momentum! Keep going!','success');
+  if(_momentum>=3)showToast(''+_momentum+'× Momentum! Keep going!','success');
   if(_momentum>=5)spawnConfetti();
 }
 function updateMomentumUI(){
@@ -12854,7 +13404,7 @@ function updateMomentumUI(){
   if(el){
     el.classList.remove('flux-momentum-v2-pill');
     if(_momentum>=2){
-      el.style.display='flex';el.textContent='🔥 '+_momentum+'×';
+      el.style.display='flex';el.textContent=''+_momentum+'×';
       el.style.background=_momentum>=5?'rgba(244,63,94,.2)':'rgba(251,191,36,.15)';
       el.style.border='1px solid '+(_momentum>=5?'rgba(244,63,94,.3)':'rgba(251,191,36,.25)');
       el.style.color=_momentum>=5?'var(--red)':'var(--gold)';
@@ -13094,9 +13644,18 @@ function startOnboardingTour(){
     tip.style.top=Math.round(top)+'px';
     tip.style.left=Math.round(left)+'px';
   }
+  // B1: the tour must never start or advance while a modal/overlay is open —
+  // it once opened its tooltip on top of the New Task modal. Poll until the
+  // surface is clear (FluxOverlays covers palette/quick-add/search/sheet;
+  // the .modal-overlay scan covers legacy modals).
+  function tourSurfaceBusy(){
+    try{if(window.FluxOverlays&&FluxOverlays.anyOpen())return true;}catch(_){}
+    return[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
+  }
   function showStep(){
     document.querySelectorAll('.tour-tooltip').forEach(e=>e.remove());
     if(step>=steps.length){cleanupTour();markTourCompleted();return;}
+    if(tourSurfaceBusy()){setTimeout(showStep,800);return;}
     const s=steps[step];
     const run=()=>{
       const candidates=document.querySelectorAll(s.sel);
@@ -13262,7 +13821,7 @@ async function importNoteFromPhoto(event){
   const file=event.target.files[0];if(!file)return;
   const resEl=document.getElementById('aiNoteResult');
   resEl.style.display='block';
-  resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">📷 Reading image with Gemini AI...</div>';
+  resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem">Reading image with Gemini AI...</div>';
   try{
     const base64=await fileToBase64(file);
     const txt=await callGemini(base64,file.type,
@@ -13274,7 +13833,7 @@ async function importNoteFromPhoto(event){
     }
     resEl.innerHTML='<div style="color:var(--green);font-size:.82rem">✓ Content added to note. Save when ready.</div>';
   }catch(e){
-    resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read image: ${e.message}</div>`;
+    resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read image: ${esc(e.message)}</div>`;
   }
 }
 
@@ -13292,7 +13851,7 @@ async function importScheduleFromPhoto(event,resultElId){
   const errBox=document.getElementById('schoolScheduleImportError');
   const overlay=document.getElementById('schoolSchedulePdfOverlay');
   if(errBox){errBox.textContent='';errBox.setAttribute('hidden','');}
-  if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">📷 Reading schedule with Gemini AI...</div>';}
+  if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="color:var(--muted2);font-size:.82rem;font-family:JetBrains Mono,monospace">Reading schedule with Gemini AI...</div>';}
   let base64;
   let mime;
   try{
@@ -13317,7 +13876,7 @@ async function importScheduleFromPhoto(event,resultElId){
     schoolSchedulePdfPages=[];
     renderSchoolSchedulePages();
     if(errBox){errBox.textContent=e.message||'Could not prepare file.';errBox.removeAttribute('hidden');}
-    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read file: ${e.message}</div>`;
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read file: ${esc(e.message)}</div>`;
     if(overlay)overlay.setAttribute('hidden','');
     return;
   }finally{
@@ -13335,13 +13894,18 @@ async function importScheduleFromPhoto(event,resultElId){
     jsonStr=jsonStr.slice(start,end+1);
     const parsed=JSON.parse(jsonStr);
     if(!Array.isArray(parsed)||!parsed.length)throw new Error('No classes detected. Try a clearer photo of your schedule.');
-    classes=parsed.map((c,i)=>({id:Date.now()+i,period:c.period||i+1,name:cleanClassName(c.name||'Class '+(i+1)),teacher:c.teacher||'',room:c.room||''}));
+    classes=parsed.map((c,i)=>{
+      const rawP=String(c.period??'').trim();
+      const parsedP=parseClassPeriodInput(rawP,'');
+      const fullName=cleanClassName(c.name||'Class '+(i+1));
+      return{id:Date.now()+i,period:rawP?parsedP.period:i+1,periodLabel:rawP,days:parsedP.days||'',name:fullName,level:parseClassLevel(fullName).level,teacher:c.teacher||'',room:c.room||''};
+    });
     save('flux_classes',classes);
     renderSchool();populateSubjectSelects();
     if(resEl)resEl.innerHTML=`<div style="color:var(--green);font-size:.82rem">✓ Imported ${classes.length} classes! Check School Info tab.</div>`;
     syncKey('classes',classes);
   }catch(e){
-    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${e.message}</div>`;
+    if(resEl)resEl.innerHTML=`<div style="color:var(--red);font-size:.82rem">Could not read schedule: ${esc(e.message)}</div>`;
   }
 }
 
@@ -13662,7 +14226,7 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
   if(!q){if(!silent)showToast('Quiz not found — refresh Canvas','warning');return;}
   if(canvasQuizTaskExists(courseId,quizId)){if(!silent)showToast('Already in planner','info');return;}
   const due=q.due_at?q.due_at.slice(0,10):'';
-  const name=('📝 '+(q.title||'Quiz')).slice(0,240);
+  const name=(''+(q.title||'Quiz')).slice(0,240);
   const t={
     id:Date.now()+Math.random(),
     name,
@@ -13683,9 +14247,11 @@ function addCanvasQuizToPlanner(courseId,quizId,opts){
 
 function upsertClassFromCanvasCourse(c,primaryTeacher){
   const name=cleanClassName(c.name||c.course_code||'Course');
+  const level=parseClassLevel(name).level;
   const ex=classes.find(x=>x.canvasCourseId===c.id);
   if(ex){
     ex.name=name;
+    ex.level=level;
     if(primaryTeacher)ex.teacher=primaryTeacher;
     return;
   }
@@ -13699,6 +14265,7 @@ function upsertClassFromCanvasCourse(c,primaryTeacher){
     id:Date.now()+Math.random(),
     period:maxP+1,
     name,
+    level,
     teacher:primaryTeacher||'',
     room:'',
     days:'',
@@ -13730,7 +14297,7 @@ function upsertTeacherNoteFromCanvas(t,courseList){
 function addCanvasAnnouncementAsNoteIfNew(an){
   const aid=an.id;
   if(aid==null||notes.some(n=>n.canvasAnnouncementId===aid))return false;
-  const title=('📢 '+(an.title||'Announcement')).slice(0,200);
+  const title=(''+(an.title||'Announcement')).slice(0,200);
   const body=canvasStripHtml(an.message||'').slice(0,12000);
   notes.unshift({
     id:Date.now()+Math.random(),
@@ -13754,7 +14321,7 @@ function addCanvasDiscussionAsNoteIfNew(disc){
   const body=`${disc.course_name||'Course'}\n\n${msg||'(Open in Canvas for thread)'}`;
   notes.unshift({
     id:Date.now()+Math.random(),
-    title:`💬 ${title}`,
+    title:`${title}`,
     body,
     subject:'',
     starred:false,
@@ -13889,7 +14456,7 @@ function addCanvasAnnouncementToPlanner(announcementId){
   const an=(fluxCanvasHubData?.announcements||[]).find(x=>x.id===aid);
   if(!an){showToast('Announcement not found — refresh Canvas','warning');return;}
   if(tasks.some(t=>t.canvasAnnouncementId===aid)){showToast('Already in planner','info');return;}
-  const title=('📢 '+String(an.title||'Announcement')).slice(0,240);
+  const title=(''+String(an.title||'Announcement')).slice(0,240);
   const due=an.posted_at?an.posted_at.slice(0,10):'';
   const body=String(an.message||'').replace(/<[^>]+>/g,'').slice(0,800);
   const t={
@@ -13910,12 +14477,11 @@ function addCanvasAnnouncementToPlanner(announcementId){
 }
 
 function canvasFluxSubjectKeyFromCourseName(courseName){
-  const strip=s=>String(s||'').toLowerCase().replace(/\b(ap|ib|honors|honours)\b/gi,'').replace(/\s+/g,' ').trim();
-  const t=strip(cleanClassName(courseName||''));
+  const t=fluxClassMatchKey(courseName||'');
   if(!t)return'';
   for(const c of classes){
     if(!c.name)continue;
-    const cn=strip(cleanClassName(c.name));
+    const cn=fluxClassMatchKey(c.name);
     if(!cn)continue;
     if(cn===t||t.includes(cn)||cn.includes(t))return'CLS'+c.id;
   }
@@ -14334,7 +14900,7 @@ async function loadGmail(){
   await ensureGmailTokenFromSession();
   if(!gmailToken){
     el.innerHTML=`<div class="card" style="text-align:center;padding:28px 20px">
-      <div style="font-size:2rem;margin-bottom:12px">📧</div>
+      <div style="font-size:2rem;margin-bottom:12px"></div>
       <div style="font-size:.95rem;font-weight:700;margin-bottom:8px">Connect Gmail</div>
       <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px;line-height:1.6">Sign in with Google to view your school emails and add them as tasks.</div>
       <button onclick="(window.FluxGoogle&&FluxGoogle.signIn)?FluxGoogle.signIn():signInWithGoogle()" style="width:100%;padding:12px;display:flex;align-items:center;justify-content:center;gap:10px">
@@ -14402,7 +14968,7 @@ function showKanban(){
   overlay.id='kanbanOverlay';
   overlay.style.cssText='position:fixed;inset:0;z-index:800;background:var(--bg);overflow:auto;animation:fadeIn .2s ease';
   const cols=['todo','inprogress','done'];
-  const colLabels={'todo':'📋 To Do','inprogress':'⚡ In Progress','done':'✅ Done'};
+  const colLabels={'todo':'To Do','inprogress':'In Progress','done':'Done'};
   const colColors={'todo':'var(--accent)','inprogress':'var(--gold)','done':'var(--green)'};
   
   // Assign kanban col to tasks
@@ -14498,10 +15064,10 @@ function renderWorkloadForecast(){
   const days=[];
   for(let i=0;i<7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const dayTasks=tasks.filter(t=>!t.done&&t.date===ds);
     const mins=dayTasks.reduce((s,t)=>s+(t.estTime||20),0);
-    const label=fmtFluxCalDay(d.toISOString().slice(0,10),i);
+    const label=fmtFluxCalDay(ds,i);
     days.push({label,mins,count:dayTasks.length,date:ds,tasks:dayTasks});
   }
   const maxMins=Math.max(...days.map(d=>d.mins),0);
@@ -14530,7 +15096,7 @@ function renderWorkloadForecast(){
       ${days.map(d=>`<div class="${d.label==='Today'?'is-today':''}">${d.label}</div>`).join('')}
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;font-size:.65rem;color:var(--muted)">
-      <span>🟢 &lt;60min</span><span>🟡 60–3h</span><span>🔴 &gt;3h</span>
+      <span>&lt;60min</span><span>60–3h</span><span>&gt;3h</span>
     </div></div>`;
   el.innerHTML=html;
   requestAnimationFrame(()=>{
@@ -14547,7 +15113,7 @@ function renderWorkloadForecast(){
   if(burnoutEl){
     if(heavyDays>=3||overdueTasks>=4){
       burnoutEl.style.display='block';
-      burnoutEl.innerHTML=`<span style="font-size:.85rem">⚠️</span> <div><div style="font-weight:700;font-size:.82rem">Burnout Risk Detected</div><div style="font-size:.72rem;color:var(--muted2);margin-top:2px">${heavyDays>=3?`${heavyDays} heavy days this week`:''}${heavyDays>=3&&overdueTasks>=4?' · ':''}${overdueTasks>=4?`${overdueTasks} overdue tasks`:''} — consider redistributing</div></div>`;
+      burnoutEl.innerHTML=`<span style="font-size:.85rem"></span> <div><div style="font-weight:700;font-size:.82rem">Burnout Risk Detected</div><div style="font-size:.72rem;color:var(--muted2);margin-top:2px">${heavyDays>=3?`${heavyDays} heavy days this week`:''}${heavyDays>=3&&overdueTasks>=4?' · ':''}${overdueTasks>=4?`${overdueTasks} overdue tasks`:''} — consider redistributing</div></div>`;
     } else {
       burnoutEl.style.display='none';
     }
@@ -14568,10 +15134,14 @@ function showDayTasksPopup(dateStr){
       <div style="flex:1;font-size:.83rem">${esc(t.name)}</div>
       ${t.estTime?`<div style="font-size:.7rem;color:var(--muted)">~${t.estTime}m</div>`:''}
     </div>`}).join('')}
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;margin-top:12px;padding:8px">Close</button>
+    <button type="button" class="flux-day-popup-close" style="width:100%;margin-top:12px;padding:8px">Close</button>
   </div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  const closePopup=()=>{try{window.FluxA11y?.releaseFocus?.(m);}catch(e){}m.remove();};
+  m.querySelector('.flux-day-popup-close')?.addEventListener('click',closePopup);
+  m.addEventListener('click',e=>{if(e.target===m)closePopup();});
   document.body.appendChild(m);
+  try{window.FluxA11y?.trapFocus?.(m);}catch(e){}
+  try{m.querySelector('.flux-day-popup-close')?.focus();}catch(e){}
 }
 
 // ══ DEEP WORK MODE ══
@@ -14639,7 +15209,7 @@ function endDeepWork(completed){
   if(completed&&_dwTask){
     const t=tasks.find(x=>x.id===_dwTask.id);
     if(t&&!t.done){t.done=true;t.completedAt=Date.now();spawnConfetti();save('tasks',tasks);renderStats();renderTasks();checkAllPanic();syncKey('tasks',tasks);}
-    showToast('🎯 Session complete! Great work.');
+    showToast('Session complete! Great work.');
   }
   _dwTask=null;_dwSecs=0;_dwPaused=false;
 }
@@ -14691,10 +15261,10 @@ function renderGapFiller(){
   const gaps=[];
   for(let i=1;i<=7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const dayCount=tasks.filter(t=>!t.done&&t.date===ds).length;
     if(dayCount===0){
-      const label=i===1?(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(d.toISOString().slice(0,10))||'tomorrow'):fmtFluxDate(d,'weekday');
+      const label=i===1?(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(ds)||'tomorrow'):fmtFluxDate(d,'weekday');
       gaps.push({label,date:ds,d});
     }
   }
@@ -14708,7 +15278,7 @@ function renderGapFiller(){
   const gap=gaps[0];
   const suggestion=moveable[0];
   el.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:1rem">💡</span>
+    <span style="font-size:1rem"></span>
     <div style="flex:1;font-size:.78rem">
       <span style="color:var(--muted2)">Free time ${gap.label} —</span> 
       <strong>${esc(suggestion.name)}</strong> 
@@ -14760,7 +15330,7 @@ function saveEffort(taskId){
   save('tasks',tasks);
   if(window.FluxEstimateLearn&&t.subject)FluxEstimateLearn.record(t.subject,t.estTime||0,actual);
   document.querySelector('[style*="fixed"][style*="rgba(0,0,0,.5)"]')?.remove();
-  showToast(actual>=(t.estTime||0)?'Took longer than expected 📊':'Done faster than expected ⚡');
+  showToast(actual>=(t.estTime||0)?'Took longer than expected':'Done faster than expected');
 }
 
 // ══ STUDY ROADMAP GENERATOR ══
@@ -14776,7 +15346,7 @@ function generateStudyRoadmap(taskId){
   const created=[];
   for(let i=1;i<=sessions;i++){
     const d=new Date(now);d.setDate(now.getDate()+Math.floor(i*(daysUntil-1)/sessions));
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const sessionNames=['Review notes','Practice problems','Make flashcards','Past paper','Final review'];
     const newTask={
       id:Date.now()+i,
@@ -14814,9 +15384,9 @@ function startPresentMode(){
   const days7=[];
   for(let i=0;i<7;i++){
     const d=new Date(now);d.setDate(now.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=fluxLocalYMD(d);
     const count=tasks.filter(t=>!t.done&&t.date===ds).length;
-    days7.push({label:fmtFluxCalDay(d.toISOString().slice(0,10),i),count});
+    days7.push({label:fmtFluxCalDay(ds,i),count});
   }
   const maxC=Math.max(...days7.map(d=>d.count),1);
   
@@ -14857,7 +15427,7 @@ function startPresentMode(){
               <div style="flex:1;font-size:.82rem;font-weight:600">${esc(t.name)}</div>
               <div style="font-size:.7rem;color:var(--muted)">${due}</div>
             </div>`;
-          }).join(''):'<div style="color:var(--muted);font-size:.82rem">All caught up! 🎉</div>'}
+          }).join(''):'<div style="color:var(--muted);font-size:.82rem">All caught up!</div>'}
         </div>
         
         <!-- Workload chart -->
@@ -14976,7 +15546,7 @@ function parseNLTask(text){
         if(diff<=0)diff+=7;
         d.setDate(d.getDate()+diff);
       }
-      result.date=d.toISOString().slice(0,10);
+      result.date=fluxLocalYMD(d);
     }
     t=t.replace(dateMatch[0],'').replace(/due|by|on/gi,'').trim();
   }
@@ -15091,7 +15661,7 @@ function renderKanban(){
           <div style="padding-left:8px">
             <div style="font-size:.84rem;font-weight:600;margin-bottom:4px">${esc(t.name)}</div>
             ${sub?`<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:${sub.color}22;color:${sub.color};font-family:'JetBrains Mono',monospace">${sub.short}</span>`:''}
-            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">📅 ${fmtFluxDue(t.date)}</span>`:''}
+            ${t.date?`<span style="font-size:.65rem;color:var(--muted2);margin-left:4px;font-family:'JetBrains Mono',monospace">${fmtFluxDue(t.date)}</span>`:''}
             <div style="display:flex;justify-content:flex-end;margin-top:6px">
               <button onclick="toggleTask(${t.id})" style="font-size:.65rem;padding:3px 8px;background:rgba(var(--green-rgb),.1);border:1px solid rgba(var(--green-rgb),.2);color:var(--green);border-radius:6px;cursor:pointer;transform:none;box-shadow:none">Done</button>
             </div>
@@ -15122,7 +15692,7 @@ function renderTimeline(){
   const withDates=tasks.filter(t=>t.date&&!t.done).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const noDates=tasks.filter(t=>!t.date&&!t.done);
   if(!withDates.length&&!noDates.length){
-    el.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No upcoming tasks</div><div class="empty-sub">Add tasks with due dates to see the timeline</div></div>';
+    el.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No upcoming tasks</div><div class="empty-sub">Add tasks with due dates to see the timeline</div></div>';
     return;
   }
   // Group by date
@@ -15135,7 +15705,7 @@ function renderTimeline(){
     const isToday=d.getTime()===now.getTime();
     const isPast=d<now;
     const diff=Math.round((d-now)/86400000);
-    const iso=d.toISOString().slice(0,10);
+    const iso=fluxLocalYMD(d);
     const label=(typeof window.fluxRelativeDayLabel==='function'&&window.fluxRelativeDayLabel(iso))||(isToday?'Today':diff===1?'Tomorrow':fmtFluxDate(d,'short'));
     return`<div style="display:flex;gap:12px;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
@@ -15184,6 +15754,13 @@ function initFullKeyboardNav(){
     if(inInput)return;
 
     if(e.key==='Tab'){
+      // B6: never fight tab order inside overlays/modals — FluxA11y's focus
+      // trap owns containment there. This global roving-focus loop used to
+      // hijack Tab document-wide and yank focus out of the New Task modal
+      // onto the sidebar.
+      if(window.FluxOverlays?.anyOpen?.())return;
+      const openModal=[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
+      if(openModal)return;
       e.preventDefault();
       const els=getFocusable();
       if(!els.length)return;
@@ -15233,7 +15810,7 @@ function startSession(){
   _sessionStart=Date.now();
   _sessionTasksDone=0;
   save('flux_session_start',_sessionStart);
-  showToast('📍 Session started — focus up!','info');
+  showToast('Session started — focus up!','info');
 }
 
 function endSession(){
@@ -15244,14 +15821,14 @@ function endSession(){
   sessions.push(session);if(sessions.length>50)sessions.shift();
   save('flux_sessions',sessions);
   _sessionStart=null;save('flux_session_start',null);
-  showToast(`✅ Session ended — ${dur}min, ${_sessionTasksDone} tasks done`);
+  showToast(`Session ended — ${dur}min, ${_sessionTasksDone} tasks done`);
   renderSessionStats();
 }
 
 function renderSessionStats(){
   const el=document.getElementById('sessionStatsCard');if(!el)return;
   const sessions=load('flux_sessions',[]);
-  if(!sessions.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No sessions yet</div><div class="empty-sub">Start a session to track your work</div></div>';return;}
+  if(!sessions.length){el.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No sessions yet</div><div class="empty-sub">Start a session to track your work</div></div>';return;}
   const totalMin=sessions.reduce((s,x)=>s+(x.durationMin||0),0);
   const avgMin=Math.round(totalMin/sessions.length);
   const totalDone=sessions.reduce((s,x)=>s+(x.tasksDone||0),0);
@@ -15443,7 +16020,7 @@ function addDependency(taskId,blockedById){
   if(t.blockedBy.includes(blockedById))return;
   t.blockedBy.push(blockedById);
   save('tasks',tasks);renderTasks();syncKey('tasks',tasks);
-  showToast('🔗 Dependency added','info');
+  showToast('Dependency added','info');
 }
 function removeDependency(taskId,blockedById){
   const t=tasks.find(x=>x.id===taskId);if(!t||!t.blockedBy)return;
@@ -15464,7 +16041,7 @@ function getDependentTasks(taskId){
 function renderDepBadge(task){
   if(!isBlocked(task))return'';
   const blockers=getBlockerNames(task);
-  return `<span class="dep-badge" title="Blocked by: ${blockers.map(esc).join(', ')}" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;padding:2px 6px;border-radius:6px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.2);color:var(--red);font-weight:600;cursor:help">🔒 ${blockers.length}</span>`;
+  return `<span class="dep-badge" title="Blocked by: ${blockers.map(esc).join(', ')}" style="display:inline-flex;align-items:center;gap:3px;font-size:.6rem;padding:2px 6px;border-radius:6px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.2);color:var(--red);font-weight:600;cursor:help">${blockers.length}</span>`;
 }
 function renderDepSelector(taskId){
   const t=tasks.find(x=>x.id===taskId);if(!t)return'';
@@ -15480,7 +16057,7 @@ FluxBus.on('task_completed',function(task){
     const n=unlocked.length;
     showToast(
       n===1
-        ? `🔓 You just unlocked "${unlocked[0].name}"! 🔥`
+        ? `You just unlocked "${unlocked[0].name}"!`
         : `🔥 Chain reaction — you just unlocked ${n} dependent task${n===1?'':'s'}!`,
       'success',
     );
@@ -15517,15 +16094,15 @@ function explainTaskRanking(task){
     const days=Math.floor((due-now)/86400000);
     if(days<0)reasons.push('⚠ Overdue by '+Math.abs(days)+' day'+(Math.abs(days)>1?'s':''));
     else if(days===0)reasons.push('📅 Due today');
-    else if(days<=2)reasons.push('⏰ Due in '+days+' day'+(days>1?'s':''));
+    else if(days<=2)reasons.push('Due in '+days+' day'+(days>1?'s':''));
   }
   if(task.priority==='high')reasons.push('🔴 High priority');
   const energy=readFluxEnergyLevel();
-  if(energy<=2&&(task.difficulty||3)<=2)reasons.push('💡 Easy task fits low energy');
+  if(energy<=2&&(task.difficulty||3)<=2)reasons.push('Easy task fits low energy');
   if(energy>=4&&['project','essay'].includes(task.type))reasons.push('🚀 Complex task fits high energy');
-  if(task.estTime&&task.estTime<=15)reasons.push('⚡ Quick win (~'+task.estTime+'min)');
-  if(isBlocked(task))reasons.push('🔒 Blocked by '+getBlockerNames(task).length+' task(s)');
-  if((task.rescheduled||0)>=2)reasons.push('🔄 Rescheduled '+task.rescheduled+'× — needs attention');
+  if(task.estTime&&task.estTime<=15)reasons.push('Quick win (~'+task.estTime+'min)');
+  if(isBlocked(task))reasons.push('Blocked by '+getBlockerNames(task).length+' task(s)');
+  if((task.rescheduled||0)>=2)reasons.push('Rescheduled '+task.rescheduled+'× — needs attention');
   return reasons;
 }
 function renderWhyTooltip(task){
@@ -15560,45 +16137,40 @@ function checkMicroCoaching(){
 
   if(_momentum>=3&&_momentum<6){
     _lastCoachTime=now;
-    showCoachPrompt("You're in flow — keep the momentum going! 🔥");
+    showCoachPrompt("You're in flow — keep the momentum going!");
     return;
   }
   const quickWins=tasks.filter(t=>!t.done&&(t.estTime||30)<=10&&t.date===todayStr());
   if(quickWins.length&&_momentum<2){
     _lastCoachTime=now;
-    showCoachPrompt('⚡ Quick win available: "'+quickWins[0].name+'" (~'+( quickWins[0].estTime||10)+'min)');
+    showCoachPrompt('Quick win available: "'+quickWins[0].name+'" (~'+( quickWins[0].estTime||10)+'min)');
     return;
   }
   const overdue=tasks.filter(t=>!t.done&&t.date&&new Date(t.date+'T00:00:00')<new Date(new Date().toDateString()));
   if(overdue.length>=3){
     _lastCoachTime=now;
-    showCoachPrompt('📋 '+overdue.length+' overdue tasks. Use the Overdue filter to focus on what matters.');
+    showCoachPrompt(''+overdue.length+' overdue tasks. Use the Overdue filter to focus on what matters.');
     return;
   }
 }
 function showCoachPrompt(msg){
-  const existing=document.getElementById('coachPrompt');if(existing)existing.remove();
-  const el=document.createElement('div');
-  el.id='coachPrompt';
-  el.style.cssText='position:fixed;top:70px;right:20px;z-index:3000;max-width:300px;padding:12px 16px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:.8rem;color:var(--text2);animation:slideDown .3s var(--ease-spring);backdrop-filter:blur(12px);cursor:pointer';
-  el.innerHTML=`<div style="display:flex;align-items:flex-start;gap:8px"><div style="flex:1">${esc(msg)}</div><button onclick="this.closest('#coachPrompt').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0;flex-shrink:0;transform:none;box-shadow:none">✕</button></div>`;
-  el.onclick=e=>{if(e.target===el||e.target.closest('#coachPrompt'))el.remove();};
-  document.body.appendChild(el);
-  setTimeout(()=>{const c=document.getElementById('coachPrompt');if(c){c.style.opacity='0';c.style.transition='opacity .4s';setTimeout(()=>c.remove(),400);}},8000);
+  // Through the single toast queue (B1) — coach nudges no longer float their
+  // own card over the topbar while other notices are showing.
+  showToast(msg,'info',8000,{kind:'info'});
 }
 
 
 // ══ SILENT ACHIEVEMENTS ══════════════════════════════════════
 const ACHIEVEMENTS={
-  first_task:{title:'First Step',desc:'Created your first task',icon:'🌱'},
-  ten_tasks:{title:'Productive',desc:'Completed 10 tasks',icon:'📋'},
-  fifty_tasks:{title:'Machine',desc:'Completed 50 tasks',icon:'⚙️'},
-  streak_3:{title:'On Fire',desc:'3× momentum streak',icon:'🔥'},
-  streak_7:{title:'Unstoppable',desc:'7× momentum streak',icon:'💥'},
+  first_task:{title:'First Step',desc:'Created your first task',icon:''},
+  ten_tasks:{title:'Productive',desc:'Completed 10 tasks',icon:''},
+  fifty_tasks:{title:'Machine',desc:'Completed 50 tasks',icon:''},
+  streak_3:{title:'On Fire',desc:'3× momentum streak',icon:''},
+  streak_7:{title:'Unstoppable',desc:'7× momentum streak',icon:''},
   first_session:{title:'Focus Starter',desc:'Completed a focus session',icon:'⏱'},
-  ten_sessions:{title:'Deep Worker',desc:'10 focus sessions',icon:'🧠'},
-  chain_unlock:{title:'Chain Reaction',desc:'Unlocked 3+ tasks at once',icon:'⚡'},
-  all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:'✨'},
+  ten_sessions:{title:'Deep Worker',desc:'10 focus sessions',icon:''},
+  chain_unlock:{title:'Chain Reaction',desc:'Unlocked 3+ tasks at once',icon:''},
+  all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:''},
 };
 let _achievements=load('flux_achievements',[]);
 function checkAchievement(id){
@@ -15607,12 +16179,12 @@ function checkAchievement(id){
   _achievements.push(id);
   save('flux_achievements',_achievements);
   syncKey('achievements',_achievements);
-  const el=document.createElement('div');
-  el.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:3500;padding:10px 18px;background:var(--card);border:1px solid rgba(var(--accent-rgb),.25);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:.8rem;display:flex;align-items:center;gap:10px;animation:slideUpToast .3s var(--ease-spring);backdrop-filter:blur(12px)';
-  el.innerHTML=`<span style="font-size:1.2rem">${a.icon}</span><div><div style="font-weight:700;font-size:.78rem;color:var(--accent)">${a.title}</div><div style="font-size:.68rem;color:var(--muted2)">${a.desc}</div></div>`;
-  document.body.appendChild(el);
-  try{if(window.FluxVisual&&typeof FluxVisual.spawnAchievementConfetti==='function')FluxVisual.spawnAchievementConfetti(el);}catch(e){}
-  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .5s';setTimeout(()=>el.remove(),500);},3500);
+  // Through the single toast queue (B1): achievements coalesce and never
+  // stack their own popup over task rows or other notices.
+  showToast(`${a.title} — ${a.desc}`,'success',3500,{
+    kind:'achievement',
+    onClick:()=>{try{nav('profile');}catch(_){}},
+  });
 }
 
 // Wire achievements to events
@@ -15720,6 +16292,7 @@ function openGlobalSearch(){
   const overlay=document.getElementById('searchOverlay');
   if(!overlay)return;
   overlay.classList.add('open');
+  FluxOverlays.push('searchOverlay',closeGlobalSearch);
   const input=document.getElementById('globalSearchInput');
   if(input){input.value='';input.focus();}
   document.getElementById('globalSearchResults').innerHTML='';
@@ -15727,6 +16300,7 @@ function openGlobalSearch(){
 function closeGlobalSearch(){
   const overlay=document.getElementById('searchOverlay');
   if(overlay)overlay.classList.remove('open');
+  FluxOverlays.pop('searchOverlay');
 }
 let _globalSearchDebounce=null;
 function handleGlobalSearch(q){
@@ -15785,6 +16359,7 @@ function openQuickAdd(){
   panel.setAttribute('role','dialog');
   panel.setAttribute('aria-modal','true');
   panel.setAttribute('aria-label','Quick add task');
+  FluxOverlays.push('quickAdd',closeQuickAdd);
   const input=document.getElementById('quickAddInput');
   if(input){input.value='';input.focus();}
   updateQuickAddPreview('');
@@ -15799,6 +16374,7 @@ function closeQuickAdd(){
     panel.removeAttribute('aria-label');
   }
   updateQuickAddPreview('');
+  FluxOverlays.pop('quickAdd');
 }
 function resolveQuickAddParse(raw){
   if(!raw||!String(raw).trim())return null;
@@ -15883,14 +16459,14 @@ function parseNaturalTask(raw){
     const lower=w.toLowerCase().replace(/[.,!?]/g,'');
     if(lower==='tomorrow'&&!date){
       const d=new Date(today);d.setDate(d.getDate()+1);
-      date=d.toISOString().slice(0,10);
+      date=fluxLocalYMD(d);
     }else if(lower==='today'&&!date){
       date=todayStr();
     }else if(days[lower]!==undefined&&!date){
       const target=days[lower];const curr=today.getDay();
       let diff=target-curr;if(diff<=0)diff+=7;
       const d=new Date(today);d.setDate(d.getDate()+diff);
-      date=d.toISOString().slice(0,10);
+      date=fluxLocalYMD(d);
     }else if((lower==='high'||lower==='urgent'||lower==='important')&&priority==='med'){
       priority='high';
     }else if(lower==='low'){
@@ -15914,19 +16490,18 @@ function parseNaturalTask(raw){
   return{name,date,priority,type,subject};
 }
 
-// ── Global Escape (search, quick-add, palette, modals) + quick-add Enter ──
+// ── Global Escape (top of overlay stack only) + quick-add Enter ──
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    const pal=document.getElementById('cmdPalette');
-    const qa=document.getElementById('quickAddPanel');
-    const so=document.getElementById('searchOverlay');
-    const qOpen=qa?.classList.contains('open');
-    const sOpen=so?.classList.contains('open');
-    if(pal||qOpen||sOpen)e.preventDefault();
+    // Escape pops ONLY the top of the overlay stack — closing everything at
+    // once destroyed lower layers the user still wanted (palette over modal).
+    if(FluxOverlays.anyOpen()){
+      e.preventDefault();
+      FluxOverlays.closeTop();
+      return;
+    }
+    // Legacy fallback for surfaces not (yet) registered with the stack.
     closeDashAddTaskModal();
-    closeGlobalSearch();
-    closeQuickAdd();
-    closeCommandPalette();
     document.querySelectorAll('.modal-overlay').forEach(m=>{
       if(m.style.display!=='none'&&m.id&&m.id!=='dashAddTaskModal')closeModal(m.id);
     });
@@ -15934,6 +16509,10 @@ document.addEventListener('keydown',function(e){
     return;
   }
   if(e.key==='Enter'&&document.activeElement?.id==='quickAddInput'){
+    // Enter creates a task only while quick-add is the TOP overlay — stray
+    // keystrokes routed here while another surface is stacked above must
+    // never silently create junk tasks.
+    if(FluxOverlays.anyOpen()&&!FluxOverlays.isTop('quickAdd'))return;
     e.preventDefault();submitQuickAdd();
   }
 });
@@ -16008,16 +16587,23 @@ function openShortcutOverlay(){
   overlay.innerHTML=`<div class="shortcut-dialog" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
     <div class="shortcut-header">
       <span class="shortcut-title">Keyboard Shortcuts</span>
-      <button type="button" onclick="document.getElementById('shortcutOverlay').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
+      <button type="button" onclick="closeShortcutOverlay()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:auto" aria-label="Close">✕</button>
     </div>
     <div class="shortcut-grid">
       ${groups.map(col).join('')}
     </div>
     <div style="font-size:.7rem;color:var(--muted);text-align:center;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">Press <kbd class="shortcut-kbd" style="font-size:.65rem">?</kbd> or <kbd class="shortcut-kbd" style="font-size:.65rem">Esc</kbd> to close</div>
   </div>`;
-  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeShortcutOverlay();});
   document.body.appendChild(overlay);
+  FluxOverlays.push('shortcutOverlay',closeShortcutOverlay);
 }
+function closeShortcutOverlay(){
+  const o=document.getElementById('shortcutOverlay');
+  if(o)o.remove();
+  FluxOverlays.pop('shortcutOverlay');
+}
+window.closeShortcutOverlay=closeShortcutOverlay;
 
 // ── Feature: Inline date picker on task card ──
 function openInlineDatePicker(taskId,el){
@@ -16032,7 +16618,7 @@ function openInlineDatePicker(taskId,el){
   const left=Math.max(8,Math.min(rect.left,window.innerWidth-240));
   picker.style.top=top+'px';picker.style.left=left+'px';
   const today=todayStr();
-  const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);const tmStr=tomorrow.toISOString().slice(0,10);
+  const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);const tmStr=fluxLocalYMD(tomorrow);
   picker.innerHTML=`<div style="font-size:.72rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Change Due Date</div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
       <button type="button" onclick="setTaskDateInline(${taskId},'${today}',this.closest('#inlineDatePicker'))" class="btn-sec" style="font-size:.7rem;padding:4px 8px">Today</button>
@@ -16104,7 +16690,7 @@ function renderSidebarMiniStats(){}
 function checkTomorrowLoad(){
   try{
     const tomorrow=new Date(TODAY);tomorrow.setDate(TODAY.getDate()+1);
-    const tmStr=tomorrow.toISOString().slice(0,10);
+    const tmStr=fluxLocalYMD(tomorrow);
     const tmTasks=tasks.filter(t=>!t.done&&t.date===tmStr);
     if(tmTasks.length<3)return;
     const mins=tmTasks.reduce((s,t)=>s+(t.estTime||30),0);
@@ -16112,7 +16698,7 @@ function checkTomorrowLoad(){
     const lastWarn=fluxLoadStoredString('flux_tomorrow_warn','');
     if(lastWarn===todayStr())return;
     fluxSaveStoredString('flux_tomorrow_warn',todayStr());
-    showToast(`⚡ Tomorrow: ${tmTasks.length} tasks (~${mins}m) — prep tonight!`,'warning');
+    showToast(`Tomorrow: ${tmTasks.length} tasks (~${mins}m) — prep tonight!`,'warning');
   }catch(e){}
 }
 
@@ -16237,12 +16823,12 @@ function showPostLoginRolePicker(opts){
         <p style="text-align:center;color:var(--muted2);font-size:.92rem;margin:0 0 26px">Pick your role so Flux sets up the right dashboard for you.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:520px;margin:0 auto">
           <button type="button" id="plrpStudent" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),rgba(124,92,255,.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
-            <div style="font-size:2rem;margin-bottom:6px">🎒</div>
+            <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Student</div>
             <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Assignments, study plans, AI tutor, and your counselor.</div>
           </button>
           <button type="button" id="plrpStaff" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(124,92,255,.08),rgba(var(--accent-rgb),.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
-            <div style="font-size:2rem;margin-bottom:6px">🏫</div>
+            <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Staff</div>
             <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Teacher, counselor, or admin. Post assignments and manage your class.</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
@@ -16317,7 +16903,7 @@ function showStaffDetailsForm(){
         ${ownerHere?`
         <div id="sdfDevBox" style="margin-bottom:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(124,92,255,.10),rgba(255,92,124,.10));border:1px dashed rgba(124,92,255,.55);border-radius:12px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-size:1rem">🧪</span>
+            <span style="font-size:1rem"></span>
             <span style="font-size:.74rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#cbb6ff">Dev preview (owner only)</span>
           </div>
           <p style="font-size:.74rem;color:var(--muted2);margin:0 0 10px;line-height:1.5">Skip the email check and walk through the planner as the selected teacher while you build it out. Each teacher's preview lives in its own local sandbox — your owner data never leaks in, and nothing syncs to the cloud while preview is active.</p>
@@ -16372,7 +16958,7 @@ function showStaffDetailsForm(){
       // preview mode for this teacher" — the dev box below handles it.
       if(!matches&&ownerHere){
         hintEl.style.color='#cbb6ff';
-        hintEl.innerHTML=`🧪 Owner: pick "Continue as preview" below to walk through as <b>${esc(rec.name)}</b>.`;
+        hintEl.innerHTML=`Owner: pick "Continue as preview" below to walk through as <b>${esc(rec.name)}</b>.`;
         return;
       }
       hintEl.style.color=matches?'#7be09a':'var(--red)';
@@ -16723,15 +17309,15 @@ window.runTeacherOnboarding=runTeacherOnboarding;
 function renderTeacherOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🏫</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome to Flux for Teachers</h2>
       <p class="onboard-step-sub">Your teacher dashboard lets you create classes, post assignments, and see your students' progress — all in one place.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span>📚</span> Create classes with auto-generated join codes</div>
-        <div class="onboard-feature"><span>📝</span> Post assignments that appear in student planners</div>
-        <div class="onboard-feature"><span>💬</span> Message students and parents directly</div>
-        <div class="onboard-feature"><span>📊</span> See real-time student progress + completion rates</div>
-        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+        <div class="onboard-feature"><span></span> Create classes with auto-generated join codes</div>
+        <div class="onboard-feature"><span></span> Post assignments that appear in student planners</div>
+        <div class="onboard-feature"><span></span> Message students and parents directly</div>
+        <div class="onboard-feature"><span></span> See real-time student progress + completion rates</div>
+        <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="toWelcomeNext">Get Started →</button>
     </div>`;
@@ -16743,7 +17329,7 @@ function renderTeacherOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Your Teaching Profile</h2>
       <p class="onboard-step-sub">This is how students and parents will see you in Flux.</p>
       <div class="mrow"><label>Full Name *</label>
@@ -16795,7 +17381,7 @@ window.saveTeacherProfile_andNext=saveTeacherProfile_andNext;
 function renderTeacherOnboard_Classes(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">📚</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Create Your Classes</h2>
       <p class="onboard-step-sub">Create at least one class. Students join by entering the class code you'll share. You can add more later.</p>
       <div id="classBuilderList"></div>
@@ -16896,7 +17482,7 @@ window.saveTeacherClasses_andNext=saveTeacherClasses_andNext;
 function renderTeacherOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🎉</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're all set!</h2>
       <p class="onboard-step-sub">Your teacher account is ready. Share your class codes with students so they can join.</p>
       <div id="teacherClassCodes" style="margin:20px 0"></div>
@@ -16937,14 +17523,14 @@ window.runCounselorOnboarding=runCounselorOnboarding;
 function renderCounselorOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">💬</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome, Counselor</h2>
       <p class="onboard-step-sub">Your Flux counselor dashboard lets you manage student appointments, communicate directly, and track student wellbeing.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span>📅</span> Students book appointments from your availability</div>
-        <div class="onboard-feature"><span>💬</span> Direct messaging with any student</div>
-        <div class="onboard-feature"><span>📋</span> View student notes and goals (with permission)</div>
-        <div class="onboard-feature"><span>🔄</span> Switch to Personal mode for your own planner</div>
+        <div class="onboard-feature"><span></span> Students book appointments from your availability</div>
+        <div class="onboard-feature"><span></span> Direct messaging with any student</div>
+        <div class="onboard-feature"><span></span> View student notes and goals (with permission)</div>
+        <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="cWelcomeNext">Set Up Account →</button>
     </div>`;
@@ -16956,7 +17542,7 @@ function renderCounselorOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Counselor Profile</h2>
       <p class="onboard-step-sub">This is how students will see you when booking appointments.</p>
       <div class="mrow"><label>Full Name *</label>
@@ -16992,7 +17578,7 @@ function renderCounselorOnboard_Availability(container){
   const slots=['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM'];
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">📅</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Set Your Availability</h2>
       <p class="onboard-step-sub">Students can only book during the slots you select. You can update this anytime.</p>
       <div style="overflow-x:auto">
@@ -17047,7 +17633,7 @@ window.saveCounselorAvailability_andNext=saveCounselorAvailability_andNext;
 function renderCounselorOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">✅</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're set up!</h2>
       <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now book appointments during your available slots.</p>
       <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
@@ -17068,7 +17654,7 @@ window.runStaffOnboarding=runStaffOnboarding;
 function renderStaffOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">🏫</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Staff Account</h2>
       <p class="onboard-step-sub">Your staff account gives you school-wide tools in Work mode, plus a full personal planner in Personal mode. Switch between them anytime.</p>
       <button class="onboard-next-btn" id="stWelcomeNext">Continue →</button>
@@ -17081,7 +17667,7 @@ function renderStaffOnboard_Profile(container){
   const presetName=u?.user_metadata?.full_name||FluxRole.profile?.display_name||'';
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">👤</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Your Staff Profile</h2>
       <div class="mrow"><label>Full Name *</label>
         <input id="st_name" placeholder="e.g. Mr. Lee" value="${esc(presetName)}">
@@ -17114,7 +17700,7 @@ function renderStaffOnboard_Profile(container){
 function renderStaffOnboard_Finish(container){
   container.innerHTML=`
     <div class="onboard-step glass">
-      <div class="onboard-step-icon">✨</div>
+      <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome aboard!</h2>
       <p class="onboard-step-sub">Use the Mode toggle in the top bar to switch between Work and Personal whenever you want.</p>
       <button class="onboard-next-btn" id="stFinishBtn">Get Started →</button>
@@ -17272,8 +17858,8 @@ async function renderTeacherDashboard(){
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
-          <button class="teacher-action-btn" data-action="new-class"><span>📚</span> New Class</button>
-          <button class="teacher-action-btn" data-action="new-announcement"><span>📢</span> Announce</button>
+          <button class="teacher-action-btn" data-action="new-class"><span></span> New Class</button>
+          <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
           ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
@@ -17300,7 +17886,7 @@ async function renderTeacherDashboard(){
       ${window.FluxAssignmentRecovery?.bannerHtml?.(pendingRecovery.length)||''}
       ${pendingJoins.length>0?`
       <div class="flux-join-request-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.28);border-radius:14px">
-        <span style="font-size:1.2rem">🔔</span>
+        <span style="font-size:1.2rem"></span>
         <span style="flex:1;font-size:.84rem;font-weight:600">${pendingJoins.length} student${pendingJoins.length===1?'':'s'} waiting to join your class${pendingJoins.length===1?'':'es'}</span>
         <button type="button" class="teacher-action-btn" data-action="review-joins" style="flex-shrink:0">Review</button>
       </div>`:''}
@@ -17315,7 +17901,7 @@ async function renderTeacherDashboard(){
           </div>
           ${classesRows.length===0?`
             <div class="teacher-empty">
-              <div class="te-icon">📚</div>
+              <div class="te-icon"></div>
               <div class="te-title">No classes yet</div>
               <div class="te-sub">Create a class and share the code with your students</div>
               <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create First Class</button>
@@ -17324,7 +17910,7 @@ async function renderTeacherDashboard(){
 
         <div class="teacher-col">
           ${dueSoon.length>0?`
-            <div class="teacher-section-head"><h3>⚡ Due in 3 Days</h3></div>
+            <div class="teacher-section-head"><h3>Due in 3 Days</h3></div>
             <div class="teacher-due-list">
               ${dueSoon.map(a=>`
                 <div class="teacher-due-row">
@@ -17671,7 +18257,7 @@ async function openTeacherClassView(classId,options){
         <div>
           <h2 style="font-size:1.3rem;font-weight:800">${esc(cls.class_name||'')}</h2>
           <div style="font-size:.78rem;color:var(--muted2)">Code: <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:1.5px">${esc(cls.class_code||'')}</span> · ${rosterStudents.length} student${rosterStudents.length===1?'':'s'}</div>
-          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?'🕐 '+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
+          <div style="font-size:.75rem;color:var(--muted2);margin-top:6px">${fluxFormatTeacherClassSchedule(cls)?''+esc(fluxFormatTeacherClassSchedule(cls)):'No bell schedule set yet'}</div>
         </div>
         <button type="button" id="tcvEditSchedule" style="padding:8px 14px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--muted2);cursor:pointer;font-size:.78rem;font-weight:700">Edit schedule</button>
         ${window.FluxTeacherLessonAI?.classButtonHtml?.(classId,cls.class_name,cls.subject)||''}
@@ -17827,7 +18413,7 @@ function renderJoinClassButton(){
   btn.id='joinClassBtn';
   btn.type='button';
   const v2Label=window.FluxTeacherRosterV2?.joinButtonHtml?.();
-  btn.innerHTML=v2Label||'🔗 Join a Teacher Class';
+  btn.innerHTML=v2Label||'Join a Teacher Class';
   btn.className=v2Label?'flux-roster-join-btn-v2':'';
   btn.style.cssText=v2Label?'': 'width:100%;padding:11px;background:rgba(var(--accent-rgb),.08);border:1px dashed rgba(var(--accent-rgb),.3);border-radius:12px;color:var(--accent);font-size:.82rem;font-weight:600;cursor:pointer;margin:10px 0';
   btn.addEventListener('click',openJoinClassModal);
@@ -18498,7 +19084,10 @@ async function renderCounselorDashboard(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // counselor_appointments.date is a DATE (calendar day), so bound it by the
+  // local day — a UTC slice reads as tomorrow after ~7pm in the Americas and
+  // hides the rest of today's appointments.
+  const today=fluxLocalYMD(new Date());
   let appointments=[];let pendingAppts=[];let messages=[];
   let studentNames={};
   try{
@@ -18612,7 +19201,7 @@ async function renderCounselorDashboard(){
           <div class="teacher-greeting">${esc(getTimeGreeting())}, ${esc(greetFirst)}</div>
           <div class="teacher-date">${subjLine?esc(subjLine)+' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
-        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">📅 Edit availability</button>
+        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">Edit availability</button>
         ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
 
@@ -18693,6 +19282,12 @@ async function renderCounselorDashboard(){
     const rqMount=document.getElementById('counselorRiskQueueMount');
     if(window.FluxCounselorRiskQueue?.wire&&rqMount)FluxCounselorRiskQueue.wire(rqMount,sb);
   }catch(_){}
+  try{
+    // C11 help-ticket triage (urgent first). Own try block: a ticket-fetch
+    // failure must not take the rest of the dashboard down with it.
+    if(window.FluxHelpTickets?.injectCounselorTriage)
+      await FluxHelpTickets.injectCounselorTriage(sb,counselorRow.id);
+  }catch(_){}
   host.querySelectorAll('[data-action="counselor-copilot"]').forEach(b=>b.addEventListener('click',()=>{
     if(window.FluxCounselorCopilot?.open)FluxCounselorCopilot.open();
   }));
@@ -18763,7 +19358,7 @@ async function renderMyCounselorSection(){
       <div class="card">
         <h3>School counselor</h3>
         <div class="empty">
-          <div class="empty-icon">💬</div>
+          <div class="empty-icon"></div>
           <div class="empty-title">No counselor selected</div>
           <div class="empty-sub">Pick your counselor to book appointments and send messages.</div>
         </div>
@@ -18773,7 +19368,8 @@ async function renderMyCounselorSection(){
     return;
   }
 
-  const today=new Date().toISOString().slice(0,10);
+  // DATE column — bound by local day (see counselor dashboard above).
+  const today=fluxLocalYMD(new Date());
   let upcoming=[];
   try{
     const {data}=await sb.from('counselor_appointments')
@@ -18799,8 +19395,8 @@ async function renderMyCounselorSection(){
         </div>
       </div>
       <div style="display:flex;gap:8px;margin:14px 0">
-        <button id="bookApptBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">📅 Book appointment</button>
-        <button id="msgCounselorBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">💬 Message</button>
+        <button id="bookApptBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">Book appointment</button>
+        <button id="msgCounselorBtn" type="button" style="flex:1;padding:10px;font-size:.82rem">Message</button>
       </div>
       ${upcoming.length?`
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Upcoming appointments</div>
@@ -18840,6 +19436,11 @@ async function renderMyCounselorSection(){
   try{
     if(window.FluxCaseloadEngine?.enabled?.()&&window.FluxCaseloadEngine?.renderStudentWellnessCheckin)
       await FluxCaseloadEngine.renderStudentWellnessCheckin(host,counselor);
+  }catch(_){}
+  try{
+    // C11: "Ask for help" + the student's own ticket statuses.
+    if(window.FluxHelpTickets?.injectStudentSection)
+      await FluxHelpTickets.injectStudentSection(host,counselor);
   }catch(_){}
 }
 window.renderMyCounselorSection=renderMyCounselorSection;
@@ -18889,7 +19490,7 @@ function openCounselorSelectModal(){
       return;
     }
     const bookable=(data||[]).filter(c=>fluxIsBookableCounselorEmail(c.email));
-    if(!bookable.length){list.innerHTML='<div class="empty"><div class="empty-icon">🤷</div><div class="empty-title">No counselors available</div></div>';return;}
+    if(!bookable.length){list.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No counselors available</div></div>';return;}
     list.innerHTML=bookable.map(c=>`
       <button type="button" class="counselor-select-card" data-counselor-id="${esc(c.id)}">
         <div class="counselor-avatar" style="background:${esc(c.avatar_color||'#7c5cff')}">${esc(c.avatar_initial||(c.name||'?')[0])}</div>
@@ -18945,7 +19546,7 @@ function openBookAppointmentModal(counselorId){
     const dow=d.getDay();
     if(dow===0||dow===6)continue;
     days.push({
-      date:d.toISOString().slice(0,10),
+      date:fluxLocalYMD(d),
       label:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
       dayName:d.toLocaleDateString('en-US',{weekday:'long'}).toLowerCase(),
     });
@@ -19382,7 +19983,8 @@ async function loadTeacherAssignments(){
       .select('id,title,description,type,priority,due_date,due_time,estimated_minutes,points_possible,class_code,created_at,teacher_id')
       .in('class_code',myClassCodes)
       .eq('visible',true)
-      .gte('due_date',new Date().toISOString().slice(0,10));
+      // due_date is a DATE (paired with a separate due_time), so compare local days.
+      .gte('due_date',fluxLocalYMD(new Date()));
     assignments=data||[];
   }catch(_){}
   if(!assignments.length){
@@ -19435,13 +20037,50 @@ function buildEduModal(id,innerHTML){
   const modal=document.createElement('div');
   modal.id=id;
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)';
+  modal.setAttribute('role','dialog');
+  modal.setAttribute('aria-modal','true');
   modal.innerHTML=`
     <div style="background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:26px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-float,0 16px 48px rgba(0,0,0,.5))">
       ${innerHTML}
     </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
-  modal.querySelectorAll('.edu-modal-close').forEach(b=>b.addEventListener('click',()=>modal.remove()));
+  // Name the dialog from its own heading so screen readers announce it.
+  const heading=modal.querySelector('h1,h2,h3,h4');
+  if(heading){
+    if(!heading.id)heading.id=id+'_title';
+    modal.setAttribute('aria-labelledby',heading.id);
+  }
+  // Restore focus to whatever opened the modal once it closes.
+  const opener=document.activeElement;
+  const close=()=>{
+    document.removeEventListener('keydown',onKeydown,true);
+    if(window.FluxOverlays)FluxOverlays.pop(id);
+    modal.remove();
+    try{if(opener&&document.contains(opener))opener.focus();}catch(_){}
+  };
+  const focusables=()=>[...modal.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetWidth||el.offsetHeight||el.getClientRects().length);
+  function onKeydown(e){
+    if(e.key!=='Tab')return;
+    if(!document.contains(modal))return;
+    // Only the topmost overlay owns the keyboard.
+    if(window.FluxOverlays&&!FluxOverlays.isTop(id))return;
+    // Trap Tab inside the dialog.
+    const f=focusables();
+    if(!f.length){e.preventDefault();return;}
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&(document.activeElement===first||!modal.contains(document.activeElement))){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+  document.addEventListener('keydown',onKeydown,true);
+  // Escape is deliberately NOT handled here: the global handler pops only the
+  // top of the overlay stack, so a palette opened over this modal closes first.
+  if(window.FluxOverlays)FluxOverlays.push(id,close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  modal.querySelectorAll('.edu-modal-close').forEach(b=>b.addEventListener('click',close));
+  // Move focus into the dialog (first field, else the dialog itself).
+  const target=focusables()[0];
+  if(target)try{target.focus();}catch(_){}
+  else{modal.setAttribute('tabindex','-1');try{modal.focus();}catch(_){}}
   return modal;
 }
 

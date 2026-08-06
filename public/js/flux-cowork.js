@@ -597,7 +597,7 @@
       btn.className = 'task-action-btn task-action-btn--cowork';
       btn.title = 'Co-work on this assignment';
       btn.setAttribute('data-task-id', tid);
-      btn.innerHTML = '👥';
+      btn.innerHTML = '';
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         openForTask(Number(tid));

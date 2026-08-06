@@ -811,6 +811,11 @@ function tryBoot() {
     boot();
     return;
   }
+  // B5.2: shared narrow #app watcher instead of a subtree-wide class observer.
+  if (window.FluxDomWalker?.onAppVisible) {
+    FluxDomWalker.onAppVisible(boot);
+    return;
+  }
   const obs = new MutationObserver(() => {
     if (document.getElementById('app')?.classList.contains('visible')) {
       obs.disconnect();

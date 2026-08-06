@@ -1,0 +1,24 @@
+/* C1 — FluxNow glanceable strip (flag enable_now_engine).
+   Sits directly under the topbar on every width; calm, single sentence. */
+.flux-now-strip{
+  display:block;
+  width:100%;
+  padding:6px 18px;
+  background:rgba(var(--accent-rgb),.07);
+  border:none;
+  border-bottom:1px solid rgba(var(--accent-rgb),.14);
+  color:var(--text2);
+  font-size:.78rem;
+  font-weight:600;
+  text-align:left;
+  cursor:pointer;
+  font-family:inherit;
+}
+.flux-now-strip:hover{ background:rgba(var(--accent-rgb),.12); }
+.flux-now-strip[data-state="period"]{ color:var(--text); }
+.flux-now-strip[data-state="weekend"],
+.flux-now-strip[data-state="holiday"],
+.flux-now-strip[data-state="after"]{ color:var(--muted2); }
+@media (max-width: 768px){
+  .flux-now-strip{ padding:6px 14px; font-size:.74rem; }
+}

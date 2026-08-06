@@ -172,6 +172,46 @@
     return true;
   }
 
+  /* ── B6: focus trap + focus-return-to-invoker ──
+   * Unflagged: WCAG keyboard support is core behavior, not an experiment
+   * (enable_a11y_suite gates the preference UI above, not this). */
+  const FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+  const _traps = new Map(); // container -> { onKey, invoker }
+
+  function trapFocus(container) {
+    if (!container || _traps.has(container)) return () => {};
+    const invoker = document.activeElement;
+    const onKey = (e) => {
+      if (e.key !== 'Tab') return;
+      const items = Array.from(container.querySelectorAll(FOCUSABLE)).filter(
+        (el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement
+      );
+      if (!items.length) return;
+      // Fully manual cycling: the browser's natural sequence can step outside
+      // a mid-document overlay, so we always intercept and move within items.
+      e.preventDefault();
+      const idx = items.indexOf(document.activeElement);
+      const next = e.shiftKey
+        ? (idx <= 0 ? items[items.length - 1] : items[idx - 1])
+        : (idx === -1 || idx === items.length - 1 ? items[0] : items[idx + 1]);
+      try { next.focus(); } catch (_) {}
+    };
+    container.addEventListener('keydown', onKey);
+    _traps.set(container, { onKey, invoker });
+    return () => releaseFocus(container);
+  }
+
+  function releaseFocus(container) {
+    const t = container && _traps.get(container);
+    if (!t) return;
+    container.removeEventListener('keydown', t.onKey);
+    _traps.delete(container);
+    try {
+      if (t.invoker && document.contains(t.invoker) && typeof t.invoker.focus === 'function') t.invoker.focus();
+    } catch (_) {}
+  }
+
   window.FluxA11y = {
     enabled,
     install,
@@ -182,5 +222,7 @@
     toggleAdhd,
     prefs,
     renderSettingsMount,
+    trapFocus,
+    releaseFocus,
   };
 })();

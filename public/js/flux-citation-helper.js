@@ -136,7 +136,7 @@
     let cit = '';
     if (style === 'MLA') {
       const author = v.lastName
-        ? `${v.lastName}, ${v.firstName || ''}`.trim().replace(/,\s*$/, '')
+        ? esc(`${v.lastName}, ${v.firstName || ''}`.trim().replace(/,\s*$/, ''))
         : '';
       if (type === 'book') {
         cit = `${author ? author + '. ' : ''}<em>${esc(v.title)}</em>. ${esc(v.publisher || '')}${v.publisher ? ', ' : ''}${esc(v.year || '')}.`;
@@ -151,7 +151,7 @@
       const init = v.firstName
         ? v.firstName.split(/\s+/).map((s) => s[0] + '.').join(' ')
         : '';
-      const author = v.lastName ? `${v.lastName}, ${init}`.trim() : '';
+      const author = v.lastName ? esc(`${v.lastName}, ${init}`.trim()) : '';
       if (type === 'book') {
         cit = `${author ? author + ' ' : ''}(${esc(v.year || 'n.d.')}). <em>${esc(v.title)}</em>. ${esc(v.publisher || '')}.`;
       } else if (type === 'journal') {
@@ -163,7 +163,7 @@
       }
     } else if (style === 'Chicago') {
       const author = v.lastName
-        ? `${v.lastName}, ${v.firstName || ''}`.trim().replace(/,\s*$/, '')
+        ? esc(`${v.lastName}, ${v.firstName || ''}`.trim().replace(/,\s*$/, ''))
         : '';
       if (type === 'book') {
         cit = `${author ? author + '. ' : ''}<em>${esc(v.title)}</em>. ${v.city ? esc(v.city) + ': ' : ''}${esc(v.publisher || '')}, ${esc(v.year || '')}.`;

@@ -15,6 +15,86 @@
 
   /** @type {Record<string, { persist: boolean, category: string, description: string, normalize?: (raw: unknown) => Record<string, unknown> }>} */
   const CATALOG = {
+    now_strip_opened: {
+      persist: true,
+      category: 'student',
+      description: 'C1: tapped the FluxNow strip to open the day timeline (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    sub_plan_published: {
+      persist: true,
+      category: 'educator',
+      description: 'C3: teacher published a sub-plan share code (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    grade_gps_plan_proposed: {
+      persist: true,
+      category: 'student',
+      description: 'C4: Protect-my-A study blocks proposed via the A4 card (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    ask_teacher_sent: {
+      persist: true,
+      category: 'student',
+      description: 'C10: student sent an ask-my-teacher context card (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    season_cosmetic_unlocked: {
+      persist: true,
+      category: 'student',
+      description: 'C9: a seasonal cosmetic unlocked via healthy habits (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    study_room_template_started: {
+      persist: true,
+      category: 'student',
+      description: 'C8: started a co-work room from a class template (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    study_room_group_focus: {
+      persist: true,
+      category: 'student',
+      description: 'C8: ≥2 students held 25 min of group focus in a room (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    web_push_opt_in: {
+      persist: true,
+      category: 'student',
+      description: 'C7: user enabled push reminders on a device (no payload)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    family_digest_prefs_changed: {
+      persist: true,
+      category: 'student',
+      description: 'C6: student changed family-digest sharing preferences (no payload — the link row is the record)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
+    accommodation_details_opened: {
+      persist: true,
+      category: 'educator',
+      description: 'C5: teacher opened the accommodation detail modal (no payload — the identifying record is the server-side audit row)',
+      normalize() {
+        return { schema_version: SCHEMA_VERSION };
+      },
+    },
     sign_in: {
       persist: true,
       category: 'platform',

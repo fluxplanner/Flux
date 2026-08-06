@@ -1,0 +1,33 @@
+name: Bundle freshness
+
+# index.html ships 4 built bundles (public/bundles/* — flux-vendor/core/features
+# JS plus flux.css), not the per-file public/js/*.js scripts or public/css/*.css
+# stylesheets. This fails the build if someone edited public/js or public/css
+# without running `npm run build:web`, so stale bundles can never merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bundles-fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify public/bundles is rebuilt from public/js + public/css
+        run: node scripts/check-bundles-fresh.mjs
+
+      - name: Theme contrast gate (WCAG AA, B3)
+        run: node scripts/contrast-audit.mjs

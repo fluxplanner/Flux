@@ -24,7 +24,7 @@
         document.getElementById('tlList').innerHTML = rows || '<p style="color:var(--fsh-mut)">No events yet.</p>';
         document.querySelectorAll('#tlList [data-del]').forEach((b) => b.addEventListener('click', () => { evs.splice(+b.dataset.del, 1); saveTL(evs); draw(); }));
       }
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🕰 Timeline builder</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Add events (negative year = BCE). Auto-sorts &amp; saves.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Timeline builder</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Add events (negative year = BCE). Auto-sorts &amp; saves.</p>
         <div class="fsh-field"><input id="tlYear" class="fsh-input short" placeholder="Year" type="number"><input id="tlText" class="fsh-input" placeholder="Event description" spellcheck="false"><button type="button" class="fsh-btn" id="tlAdd">Add</button></div>
         <div class="fsh-ws-preview" id="tlList" style="margin-top:16px"></div></div>`;
       document.getElementById('tlAdd').addEventListener('click', () => { const y = parseInt(document.getElementById('tlYear').value, 10); const t = document.getElementById('tlText').value.trim(); if (isNaN(y) || !t) return; evs.push({ year: y, text: t }); saveTL(evs); document.getElementById('tlText').value = ''; document.getElementById('tlYear').value = ''; draw(); });
@@ -49,14 +49,14 @@
           setTimeout(ask, 900);
         }));
       }
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🗺 Capitals quiz</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick the right capital. Score: <b id="qzScore">${quizScore} / ${quizTotal}</b></p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Capitals quiz</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick the right capital. Score: <b id="qzScore">${quizScore} / ${quizTotal}</b></p>
         <div class="fsh-out" style="margin:0 0 12px"><span class="big" style="font-size:18px" id="qzQ"></span></div><div id="qzOpts"></div></div>`;
       ask();
     }
 
     // ── Eras reference ───────────────────────────────────────────────────────
     const ERAS = [['Prehistory', 'before ~3000 BCE', 'Before written records'], ['Ancient', '3000–800 BCE', 'Mesopotamia, Egypt, early empires'], ['Classical', '800 BCE–500 CE', 'Greece, Rome, Han China'], ['Medieval', '500–1500', 'Feudalism, Islamic Golden Age'], ['Renaissance', '1300–1600', 'Art, science, humanism'], ['Early Modern', '1500–1800', 'Exploration, Reformation, Enlightenment'], ['Industrial', '1760–1900', 'Industrial Revolution, empires'], ['Modern', '1900–1945', 'World Wars, rapid change'], ['Contemporary', '1945–present', 'Cold War, digital age']];
-    function renderEras(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">📜 Historical eras</h3><div class="fsh-formula-list">${ERAS.map((e) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit">${esc(e[0])}</div><div class="nm" style="margin-top:3px">${esc(e[1])}</div><div class="nm" style="color:var(--fsh-ink-2)">${esc(e[2])}</div></div>`).join('')}</div></div>`; }
+    function renderEras(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Historical eras</h3><div class="fsh-formula-list">${ERAS.map((e) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit">${esc(e[0])}</div><div class="nm" style="margin-top:3px">${esc(e[1])}</div><div class="nm" style="color:var(--fsh-ink-2)">${esc(e[2])}</div></div>`).join('')}</div></div>`; }
 
     H.register('history', [
       { id: 'timeline', name: 'Timeline', icon: '🕰', desc: 'timeline builder events history dates', render: renderTimeline },

@@ -137,7 +137,10 @@
       showToast('Pick a class on the overview, then open the Grades tab.', 'info');
   }
   function openTeacherMessages() {
-    if (typeof showToast === 'function') showToast('Use Messages on the teacher overview.', 'info');
+    if (typeof nav === 'function') nav('staffMessages');
+    try {
+      if (typeof renderStaffMessages === 'function') renderStaffMessages();
+    } catch (_) {}
   }
   function openJoinRequestsManager() {
     if (typeof openTeacherPendingJoinsModal === 'function') openTeacherPendingJoinsModal();
@@ -149,7 +152,10 @@
     } catch (_) {}
   }
   function openCounselorStudentList() {
-    if (typeof showToast === 'function') showToast('Student caseload list — use Messages and appointments for now.', 'info');
+    if (typeof nav === 'function') nav('counselorDashboard');
+    try {
+      renderCounselorDashboard();
+    } catch (_) {}
   }
   function openAnnouncementsManager() {
     openPostAnnouncementModal('admin');
@@ -302,11 +308,11 @@
         <span class="edu-sub">${esc(profile?.school || 'Your School')} · ${esc(fmtD(new Date(), 'weekday'))}</span>
       </div>
       <div class="edu-actions">
-        <button type="button" class="edu-action-btn primary" onclick="openPostAnnouncementModal('admin')">📢 Announce</button>
-        <button type="button" class="edu-action-btn" onclick="openSchoolCalendar()">📅 School Calendar</button>
-        <button type="button" class="edu-action-btn" onclick="openAdminUserManager()">👥 Manage Users</button>
-        <button type="button" class="edu-action-btn" onclick="openAdminAvailabilityEditor()">🕐 My Availability</button>
-        <button type="button" class="edu-action-btn danger" onclick="openEmergencyAlertModal()">🚨 Emergency</button>
+        <button type="button" class="edu-action-btn primary" onclick="openPostAnnouncementModal('admin')">Announce</button>
+        <button type="button" class="edu-action-btn" onclick="openSchoolCalendar()">School Calendar</button>
+        <button type="button" class="edu-action-btn" onclick="openAdminUserManager()">Manage Users</button>
+        <button type="button" class="edu-action-btn" onclick="openAdminAvailabilityEditor()">My Availability</button>
+        <button type="button" class="edu-action-btn danger" onclick="openEmergencyAlertModal()">Emergency</button>
       </div>
     </div>
     <div class="admin-stats-band">
@@ -324,7 +330,7 @@
       meetingRequests.length > 0
         ? `
     <div class="edu-request-banner urgent">
-      <span class="erb-icon">🗓</span>
+      <span class="erb-icon"></span>
       <span class="erb-text">${meetingRequests.length} student meeting request(s)</span>
       <button type="button" onclick="openMeetingRequestsManager()" class="erb-btn">Review</button>
     </div>`
@@ -332,7 +338,7 @@
     }
     <div class="admin-main-grid">
       <div class="edu-col">
-        <div class="edu-col-head"><h3>📢 Announcements</h3><button type="button" onclick="openPostAnnouncementModal('admin')" class="edu-col-add">+ Post</button></div>
+        <div class="edu-col-head"><h3>Announcements</h3><button type="button" onclick="openPostAnnouncementModal('admin')" class="edu-col-add">+ Post</button></div>
         ${
           announcements.length === 0
             ? '<div class="edu-empty-sm">No announcements yet</div>'
@@ -353,7 +359,7 @@
         }
       </div>
       <div class="edu-col">
-        <div class="edu-col-head"><h3>🗓 Meeting Requests</h3></div>
+        <div class="edu-col-head"><h3>Meeting Requests</h3></div>
         ${
           meetingRequests.length === 0
             ? '<div class="edu-empty-sm">No pending requests</div>'
@@ -381,7 +387,7 @@
         }
       </div>
       <div class="edu-col">
-        <div class="edu-col-head"><h3>📚 All Classes</h3></div>
+        <div class="edu-col-head"><h3>All Classes</h3></div>
         <div style="max-height:400px;overflow-y:auto">
           ${classes
             .slice(0, 15)
@@ -397,13 +403,13 @@
         <button type="button" onclick="openAdminUserManager()" class="edu-action-btn" style="width:100%;margin-top:12px">View All Users</button>
       </div>
       <div class="edu-col">
-        <div class="edu-col-head"><h3>⚡ Quick Tools</h3></div>
+        <div class="edu-col-head"><h3>Quick Tools</h3></div>
         <div class="admin-tools-grid">
-          <button type="button" onclick="openSchoolCalendar()" class="admin-tool-btn"><span>📅</span><div>School Calendar</div></button>
-          <button type="button" onclick="openAdminUserManager()" class="admin-tool-btn"><span>👥</span><div>All Users</div></button>
-          <button type="button" onclick="openAdminGradebookView()" class="admin-tool-btn"><span>📊</span><div>Grade Reports</div></button>
-          <button type="button" onclick="openAdminMessenger()" class="admin-tool-btn"><span>💬</span><div>Message All</div></button>
-          <button type="button" onclick="openEmergencyAlertModal()" class="admin-tool-btn urgent"><span>🚨</span><div>Emergency Alert</div></button>
+          <button type="button" onclick="openSchoolCalendar()" class="admin-tool-btn"><span></span><div>School Calendar</div></button>
+          <button type="button" onclick="openAdminUserManager()" class="admin-tool-btn"><span></span><div>All Users</div></button>
+          <button type="button" onclick="openAdminGradebookView()" class="admin-tool-btn"><span></span><div>Grade Reports</div></button>
+          <button type="button" onclick="openAdminMessenger()" class="admin-tool-btn"><span></span><div>Message All</div></button>
+          <button type="button" onclick="openEmergencyAlertModal()" class="admin-tool-btn urgent"><span></span><div>Emergency Alert</div></button>
           <button type="button" onclick="openSchoolSettingsModal()" class="admin-tool-btn"><span>⚙</span><div>School Settings</div></button>
         </div>
       </div>
@@ -679,7 +685,7 @@
     modal.style.cssText =
     modal.innerHTML = `
     <div style="background:rgba(10,12,20,.92);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:26px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
-      <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px">📢 Post ${isAdmin ? 'School-Wide ' : ''}Announcement</h3>
+      <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px">Post ${isAdmin ? 'School-Wide ' : ''}Announcement</h3>
       <div class="mrow"><label>Title *</label><input id="annTitle" placeholder="Title"></div>
       <div class="mrow"><label>Message *</label><textarea id="annBody" placeholder="Message…" style="min-height:100px;resize:none"></textarea></div>
       <div class="mrow"><label>Priority</label>
@@ -784,7 +790,7 @@
       'position:fixed;inset:0;background:rgba(139,0,0,.4);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px';
     modal.innerHTML = `
     <div style="background:rgba(20,5,5,.95);border:2px solid rgba(255,77,109,.6);border-radius:20px;padding:28px;width:100%;max-width:460px">
-      <h3 style="color:var(--red);font-weight:800">🚨 Emergency Alert</h3>
+      <h3 style="color:var(--red);font-weight:800">Emergency Alert</h3>
       <div class="mrow"><label>Message *</label><textarea id="emergencyMsg" style="min-height:100px"></textarea></div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button type="button" onclick="sendEmergencyAlert()" style="flex:1;padding:13px;background:var(--red);border:none;border-radius:12px;color:#fff;font-weight:800;cursor:pointer">SEND</button>
@@ -809,7 +815,7 @@
     if (!client || !currentUser) return;
     await client.from('school_announcements').insert({
       posted_by: currentUser.id,
-      title: '🚨 EMERGENCY ALERT',
+      title: 'EMERGENCY ALERT',
       body: msg,
       priority: 'emergency',
       target_roles: ['student', 'teacher', 'counselor', 'staff', 'admin'],
@@ -827,7 +833,7 @@
     banner.id = 'emergencyBanner';
     banner.style.cssText =
       'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#8b0000,#cc0000);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px';
-    banner.innerHTML = `<span style="font-size:1.4rem">🚨</span><div style="flex:1"><strong>EMERGENCY</strong><div style="font-size:.82rem">${esc(
+    banner.innerHTML = `<span style="font-size:1.4rem"></span><div style="flex:1"><strong>EMERGENCY</strong><div style="font-size:.82rem">${esc(
       msg
     )}</div></div><button type="button" onclick="document.getElementById('emergencyBanner').remove()" style="cursor:pointer;padding:6px 12px;border-radius:8px">Dismiss</button>`;
     document.body.prepend(banner);
@@ -857,7 +863,7 @@
   <div class="efm-inner">
     <div class="efm-header">
       <button type="button" onclick="this.closest('.edu-fullscreen-modal').remove()" class="efm-back">← Back</button>
-      <div class="efm-title-group"><h2>📅 School Calendar</h2></div>
+      <div class="efm-title-group"><h2>School Calendar</h2></div>
       ${canEdit ? `<button type="button" onclick="openAddSchoolEventModal()" class="edu-action-btn primary">+ Add Event</button>` : ''}
     </div>
     <div class="school-calendar-list">
@@ -1099,13 +1105,6 @@
         updated_at: new Date().toISOString(),
       });
     });
-    const { error } = await client
-      .from('counselor_availability_slots')
-      .upsert(slots, { onConflict: 'counselor_id,day_of_week,time_slot' });
-    if (error) {
-      if (typeof showToast === 'function') showToast(error.message, 'error');
-      return;
-    }
     const availMap = {};
     slots
       .filter((s) => s.is_available)
@@ -1113,9 +1112,32 @@
         if (!availMap[s.day_of_week]) availMap[s.day_of_week] = [];
         availMap[s.day_of_week].push(s.time_slot);
       });
-    await client.from('counselors').update({ availability: availMap }).eq('id', counselorId);
-    if (typeof window.fluxUpsertCounselorAvailabilitySlots === 'function') {
-      await window.fluxUpsertCounselorAvailabilitySlots(client, counselorId, availMap);
+    // SECURITY DEFINER RPC owns the write path: it claims email-matched
+    // counselor rows whose user_id is still NULL, which direct upserts can't
+    // pass RLS for. Fall back to direct writes only when the RPC is missing.
+    const { error: rpcErr } = await client.rpc('save_counselor_availability', {
+      p_counselor_id: counselorId,
+      p_availability: availMap,
+    });
+    if (rpcErr && rpcErr.code === 'PGRST202') {
+      const { error } = await client
+        .from('counselor_availability_slots')
+        .upsert(slots, { onConflict: 'counselor_id,day_of_week,time_slot' });
+      if (error) {
+        if (typeof showToast === 'function') showToast(error.message, 'error');
+        return;
+      }
+      await client.from('counselors').update({ availability: availMap }).eq('id', counselorId);
+    } else if (rpcErr) {
+      if (typeof showToast === 'function') {
+        showToast(
+          /not allowed/i.test(rpcErr.message || '')
+            ? 'This counselor profile belongs to another account, so its availability can’t be edited from here.'
+            : rpcErr.message || 'Could not save availability',
+          'error'
+        );
+      }
+      return;
     }
     document.querySelector('.edu-fullscreen-modal')?.remove();
     if (typeof showToast === 'function') showToast('Availability saved.', 'success');

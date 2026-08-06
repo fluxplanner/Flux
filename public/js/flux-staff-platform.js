@@ -151,12 +151,12 @@
       const isFiltered = (document.getElementById('staffSearch')?.value || '').trim().length > 0;
       list.innerHTML = isFiltered
         ? `<div style="text-align:center;padding:20px;font-size:.82rem;color:var(--muted2);line-height:1.6">
-            <div style="font-size:1.5rem;margin-bottom:8px" class="flux-empty-icon">🔍</div>
+            <div style="font-size:1.5rem;margin-bottom:8px" class="flux-empty-icon"></div>
             <div style="font-weight:700;color:var(--text);margin-bottom:4px">No matches</div>
             Try a different name or department.
           </div>`
         : `<div style="text-align:center;padding:22px 16px;font-size:.82rem;color:var(--muted2);line-height:1.6">
-            <div style="font-size:1.8rem;margin-bottom:10px" class="flux-empty-icon">🏫</div>
+            <div style="font-size:1.8rem;margin-bottom:10px" class="flux-empty-icon"></div>
             <div style="font-weight:700;color:var(--text);margin-bottom:5px">Directory not set up yet</div>
             Your admin hasn't added staff to the directory, or your school isn't on Flux yet.<br><br>
             <button type="button" style="padding:8px 18px;border-radius:12px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.25);color:var(--accent);font-size:.8rem;font-weight:700;cursor:pointer" onclick="(function(){const e=window.FluxStaffPlatform&&FluxStaffPlatform.StaffSignup;if(e){e.selectedDirectoryEntry={id:'manual',full_name:e.email?e.email.split('@')[0]:'Educator',role:'staff',school_email:'',department:''}}const b=document.getElementById('step2NextBtn');if(b){b.disabled=false;b.style.opacity='1'}})()">Continue without matching →</button>
@@ -174,7 +174,7 @@
         )}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.86rem;font-weight:700">${esc(e.full_name)}</div>
-          <div style="font-size:.72rem;color:var(--muted2)">${icons[e.role] || '👤'} ${esc(e.role)}${
+          <div style="font-size:.72rem;color:var(--muted2)">${icons[e.role] || ''} ${esc(e.role)}${
           e.department ? ' · ' + esc(e.department) : ''
         }</div>
         </div>
@@ -321,7 +321,7 @@
       if (wrap) {
         wrap.innerHTML = `
           <div class="flux-pending-card" style="margin-top:20px">
-            <span class="flux-pending-icon">⏳</span>
+            <span class="flux-pending-icon"></span>
             <div style="font-size:1.4rem;font-weight:800;margin-bottom:8px">Request submitted!</div>
             <div style="font-size:.88rem;color:var(--muted2);line-height:1.6;margin-bottom:18px">
               Your admin will review and approve your staff access.<br>
@@ -547,7 +547,7 @@
       host.innerHTML = `
         <div class="sph-root">
           <div class="sph-empty">
-            <div class="sph-empty-icon">🧩</div>
+            <div class="sph-empty-icon"></div>
             <div class="sph-empty-title">Personal hub</div>
             <p class="sph-empty-sub">Enable <code>enable_staff_productivity_suite</code> and <code>enable_personal_hub</code> in Owner Suite for brain dump, grocery list, and mood tracking.</p>
           </div>
@@ -572,7 +572,7 @@
         <div class="sph-topbar">
           <div>
             <div class="sph-greet">Personal hub</div>
-            <div class="sph-greet-sub">Brain dump, errands, and mood log — gratitude and important dates live on Mood and Calendar.</div>
+            <div class="sph-greet-sub">Brain dump, errands, commute, deep-work blocks and mood log — your life outside the building, kept out of school scope.</div>
           </div>
           <div class="sph-topbar-actions" id="staffPhToolbar"></div>
         </div>
@@ -648,11 +648,11 @@
         <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
         <div class="spd-sub">${esc(roleLabel)} · Personal mode · ${esc(fmtLongDay(new Date()))}</div>
       </div>
-      <div class="spd-mode-hint"><span class="spd-mode-icon">🔄</span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
+      <div class="spd-mode-hint"><span class="spd-mode-icon"></span><span>Personal workspace — switch to <b>Work</b> and open <b>Work hub</b> under Main (Meetings, PD, Wellbeing).</span></div>
       <div class="spd-grid">
-        <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon">✅</div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
-        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon">📁</div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Personal bookmarks</div></div>
-        <div class="spd-card" data-spd-nav="staffPersonalHub"><div class="spd-card-icon">🧩</div><div class="spd-card-title">Personal hub</div><div class="spd-card-sub">Brain dump, grocery, mood log</div></div>
+        <div class="spd-card" data-spd-nav="staffTasks"><div class="spd-card-icon"></div><div class="spd-card-title">Tasks</div><div class="spd-card-sub">Personal to-dos (syncs to cloud)</div></div>
+        <div class="spd-card" data-spd-nav="staffResources"><div class="spd-card-icon"></div><div class="spd-card-title">Resources</div><div class="spd-card-sub">Personal bookmarks</div></div>
+        <div class="spd-card" data-spd-nav="staffPersonalHub"><div class="spd-card-icon"></div><div class="spd-card-title">Personal hub</div><div class="spd-card-sub">Brain dump, grocery, mood log</div></div>
       </div>
     </div>`;
     el.querySelectorAll('[data-spd-nav]').forEach((card) => {
@@ -777,7 +777,7 @@
       <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meeting notes</p></div>
       <div style="max-width:760px;margin:0 auto;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <h2 style="font-size:1.1rem;font-weight:800">📋 Notes</h2>
+          <h2 style="font-size:1.1rem;font-weight:800">Notes</h2>
           <button type="button" class="edu-action-btn primary" id="mnNew">+ New</button>
         </div>
         ${
@@ -855,7 +855,7 @@
       <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Professional development</p></div>
       <div style="max-width:760px;margin:0 auto;padding:16px">
         <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:1.1rem;font-weight:800">🎓 PD</div>
+          <div style="font-size:1.1rem;font-weight:800">PD</div>
           <button type="button" class="edu-action-btn primary" id="pdAdd">+ Add</button>
         </div>
         <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap">
@@ -883,7 +883,7 @@
               </div>
             </div>
           </div>`;
-        }).join('') || `<div style="text-align:center;padding:24px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px">🎓</div><div style="font-size:.85rem">No PD activities yet — add your first one above.</div></div>`}
+        }).join('') || `<div style="text-align:center;padding:24px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px"></div><div style="font-size:.85rem">No PD activities yet — add your first one above.</div></div>`}
       </div>`;
     el.querySelector('#pdAdd')?.addEventListener('click', openAddPDModal);
   }
@@ -965,18 +965,18 @@
   const WellbeingState = { energy: 0, stress: 0, emotions: [] };
 
   const EMOTION_LIST = [
-    { key: 'energized',  label: 'Energized',  emoji: '⚡' },
-    { key: 'calm',       label: 'Calm',        emoji: '😌' },
-    { key: 'happy',      label: 'Happy',       emoji: '😊' },
-    { key: 'motivated',  label: 'Motivated',   emoji: '🚀' },
-    { key: 'tired',      label: 'Tired',       emoji: '😴' },
-    { key: 'stressed',   label: 'Stressed',    emoji: '😰' },
-    { key: 'anxious',    label: 'Anxious',     emoji: '😬' },
-    { key: 'frustrated', label: 'Frustrated',  emoji: '😤' },
-    { key: 'overwhelmed',label: 'Overwhelmed', emoji: '🤯' },
-    { key: 'grateful',   label: 'Grateful',    emoji: '🙏' },
-    { key: 'proud',      label: 'Proud',       emoji: '💪' },
-    { key: 'uncertain',  label: 'Uncertain',   emoji: '🤔' },
+    { key: 'energized',  label: 'Energized',  emoji: '' },
+    { key: 'calm',       label: 'Calm',        emoji: '' },
+    { key: 'happy',      label: 'Happy',       emoji: '' },
+    { key: 'motivated',  label: 'Motivated',   emoji: '' },
+    { key: 'tired',      label: 'Tired',       emoji: '' },
+    { key: 'stressed',   label: 'Stressed',    emoji: '' },
+    { key: 'anxious',    label: 'Anxious',     emoji: '' },
+    { key: 'frustrated', label: 'Frustrated',  emoji: '' },
+    { key: 'overwhelmed',label: 'Overwhelmed', emoji: '' },
+    { key: 'grateful',   label: 'Grateful',    emoji: '' },
+    { key: 'proud',      label: 'Proud',       emoji: '' },
+    { key: 'uncertain',  label: 'Uncertain',   emoji: '' },
   ];
 
   function wbDotColor(energy, stress) {
@@ -1002,7 +1002,7 @@
     const historyDots = recentLogs.length
       ? `<div class="flux-wb-history">${recentLogs.map((l) =>
           `<div class="flux-wb-dot" style="background:${wbDotColor(l.energy, l.stress)}"
-            title="${esc(l.date)} · ⚡${l.energy} 😰${l.stress}${l.note ? ' · ' + esc(l.note.slice(0,40)) : ''}"></div>`
+            title="${esc(l.date)} · ${l.energy} ${l.stress}${l.note ? ' · ' + esc(l.note.slice(0,40)) : ''}"></div>`
         ).join('')}</div>`
       : '';
 
@@ -1010,7 +1010,7 @@
       <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Wellbeing check-in</p></div>
       <div style="max-width:580px;margin:0 auto;padding:16px">
         ${todayLog ? `<div style="padding:10px 14px;border-radius:12px;background:rgba(var(--green-rgb),.07);border:1px solid rgba(var(--green-rgb),.2);font-size:.8rem;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-          <span>✓</span><span>Checked in today — ⚡${todayLog.energy} · 😰${todayLog.stress}${todayLog.emotions?.length ? ' · ' + todayLog.emotions.slice(0,3).join(', ') : ''}</span>
+          <span>✓</span><span>Checked in today — ${todayLog.energy} · ${todayLog.stress}${todayLog.emotions?.length ? ' · ' + todayLog.emotions.slice(0,3).join(', ') : ''}</span>
         </div>` : ''}
         <div class="card">
           <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace">Energy level (1–5)</div>
@@ -1460,7 +1460,7 @@
       } else if (typeof FluxRole !== 'undefined' && FluxRole.isPersonalMode && FluxRole.isPersonalMode()) {
         badges.push({ t: 'Personal mode', c: 'badge-purple' });
       }
-      badgeEl.innerHTML = badges.map((b) => `<span class="badge ${b.c}">${b.t}</span>`).join('');
+      badgeEl.innerHTML = badges.map((b) => `<span class="badge ${b.c}">${esc(b.t)}</span>`).join('');
     }
   }
 
@@ -1609,18 +1609,39 @@
     renderStaffProfileStatsGrid(stats);
   }
 
+  // Panel-level notice so the feed never renders as a blank page.
+  function schoolFeedNotice(el, message) {
+    el.innerHTML = `
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School feed — announcements, resources, and events</p></div>
+      <div style="max-width:720px;margin:0 auto;padding:16px">
+        <div style="text-align:center;padding:28px;color:var(--muted2)"><div style="font-size:.85rem">${esc(message)}</div></div>
+      </div>`;
+  }
+
   async function renderSchoolFeed() {
     const el = document.getElementById('schoolFeedPanel');
-    if (!el || !currentUser) return;
+    if (!el) return;
+    if (!currentUser) {
+      schoolFeedNotice(el, 'Sign in to see posts from your school.');
+      return;
+    }
     const client = sb();
-    if (!client) return;
-    const { data: posts } = await client
+    if (!client) {
+      schoolFeedNotice(el, "Can't reach your school right now — check your connection and try again.");
+      return;
+    }
+    const { data: posts, error: feedError } = await client
       .from('school_feed')
       .select('*')
       .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(25);
+    // Don't let a failed request masquerade as "no posts yet".
+    if (feedError) {
+      schoolFeedNotice(el, "Couldn't load the school feed — check your connection and try again.");
+      return;
+    }
     const canPost = typeof FluxRole !== 'undefined' && FluxRole.isEducator && FluxRole.isEducator();
     const postTypeIcon = { announcement: '📢', resource: '📁', event: '📅', alert: '🚨' };
     el.innerHTML = `
@@ -1629,8 +1650,8 @@
         ${canPost ? `<button type="button" class="edu-action-btn primary" id="sfNew" style="margin-bottom:14px">+ New post</button>` : ''}
         <div class="flux-feed-list">
         ${(posts || []).map((p) => {
-          const icon = postTypeIcon[p.post_type] || '📌';
-          const pinned = p.is_pinned ? '<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:rgba(var(--gold-rgb),.12);color:var(--gold);font-weight:700;margin-left:6px">📌 Pinned</span>' : '';
+          const icon = postTypeIcon[p.post_type] || '';
+          const pinned = p.is_pinned ? '<span style="font-size:.65rem;padding:2px 7px;border-radius:6px;background:rgba(var(--gold-rgb),.12);color:var(--gold);font-weight:700;margin-left:6px">Pinned</span>' : '';
           return `<div class="card" style="margin-bottom:10px">
             <div style="display:flex;align-items:flex-start;gap:10px">
               <span style="font-size:1.2rem;flex-shrink:0;margin-top:2px">${icon}</span>
@@ -1641,7 +1662,7 @@
               </div>
             </div>
           </div>`;
-        }).join('') || `<div style="text-align:center;padding:28px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px">📢</div><div style="font-size:.85rem">No posts yet${canPost ? ' — be the first to post' : ''}.</div></div>`}
+        }).join('') || `<div style="text-align:center;padding:28px;color:var(--muted2)"><div class="flux-empty-icon" style="font-size:1.8rem;margin-bottom:8px"></div><div style="font-size:.85rem">No posts yet${canPost ? ' — be the first to post' : ''}.</div></div>`}
         </div>
       </div>`;
     el.querySelector('#sfNew')?.addEventListener('click', openNewFeedPostModal);
@@ -1661,9 +1682,9 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="mrow"><label>Type</label>
             <select id="fp_type">
-              <option value="announcement">📢 Announcement</option>
-              <option value="resource">📁 Resource</option>
-              <option value="event">📅 Event</option>
+              <option value="announcement">Announcement</option>
+              <option value="resource">Resource</option>
+              <option value="event">Event</option>
             </select>
           </div>
           <div class="mrow"><label>Audience</label>

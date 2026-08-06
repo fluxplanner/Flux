@@ -131,7 +131,7 @@
       try {
         const { error: annErr } = await sb.from('school_announcements').insert({
           posted_by: window.currentUser.id,
-          title: '🚨 EMERGENCY ALERT',
+          title: 'EMERGENCY ALERT',
           body: String(message).slice(0, 4000),
           priority: 'emergency',
           target_roles: ['student', 'teacher', 'counselor', 'staff', 'admin'],
@@ -159,8 +159,8 @@
         <h3 style="margin:0 0 8px;font-size:1rem;font-weight:800">School broadcast</h3>
         <p style="font-size:.72rem;color:var(--muted2);margin:0 0 14px;line-height:1.4">Emergency alerts and calm mode apply to everyone currently using Flux at your school.</p>
         <div class="flux-seb-modes">
-          <button type="button" class="flux-seb-mode-btn flux-seb-mode-btn--danger" data-seb-pick="emergency">🚨 Emergency</button>
-          <button type="button" class="flux-seb-mode-btn" data-seb-pick="calm">🧘 Calm mode</button>
+          <button type="button" class="flux-seb-mode-btn flux-seb-mode-btn--danger" data-seb-pick="emergency">Emergency</button>
+          <button type="button" class="flux-seb-mode-btn" data-seb-pick="calm">Calm mode</button>
           <button type="button" class="flux-seb-mode-btn" data-seb-pick="normal">✓ End broadcast</button>
         </div>
         <label style="font-size:.7rem;font-weight:700;color:var(--muted2)">Message (optional for calm mode)</label>

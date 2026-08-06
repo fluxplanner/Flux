@@ -1,0 +1,15 @@
+/* ── B6: visible keyboard focus, all themes ──
+ * Loaded LAST in the flux.css cascade (see web-bundle-manifest.json).
+ * :where() keeps selector specificity at zero so component :focus styling
+ * still applies; the !important on outline exists because dozens of legacy
+ * rules set outline:none on :focus — keyboard users always get a ring.
+ * Mouse/touch users never see it (:focus-visible). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent, #5865F2) !important;
+  outline-offset: 2px;
+}
+/* Inputs already show a border treatment — tighten the ring so double
+   borders don't look broken. */
+:where(input, select, textarea):focus-visible {
+  outline-offset: 0;
+}

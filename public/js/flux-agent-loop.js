@@ -198,7 +198,91 @@
         return { ok: false, error: 'nav unavailable' };
       },
     },
+    addSubtasks: {
+      def: { name: 'addSubtasks', description: 'Break an EXISTING task into subtasks (checklist under that task). parent: task id or fuzzy name. ALWAYS use this — never separate top-level addTask calls — when the student asks to break down / split / plan out a task they already have.', params: '{parent, subtasks:[string|{text}]}' },
+      run(a) {
+        const t = findTask(a && (a.parent != null ? a.parent : a.name));
+        if (!t) return { ok: false, error: 'parent task not found — call listTasks first and use a real id' };
+        const items = ((a && a.subtasks) || [])
+          .map((s) => (typeof s === 'string' ? s : (s && (s.text || s.name)) || ''))
+          .map((s) => String(s).trim().slice(0, 200))
+          .filter(Boolean);
+        if (!items.length) return { ok: false, error: 'subtasks required' };
+        const dates = spreadDatesBefore(t.date, items.length);
+        t.subtasks = (t.subtasks || []).concat(items.map((text, i) => {
+          const row = { text, done: false };
+          if (dates[i]) row.date = dates[i]; // advisory pacing only; UI shows checklist
+          return row;
+        }));
+        persistTasks();
+        return { ok: true, task: taskRow(t), subtaskCount: t.subtasks.length, paced: dates.filter(Boolean).length ? dates : undefined };
+      },
+    },
   };
+
+  /**
+   * Spread n work sessions across the open (non-rest) days strictly before
+   * dueDate — never dump everything on today. Rest days come from the app's
+   * REST_DAYS_KEY machinery via isBreak().
+   */
+  function spreadDatesBefore(dueDate, n) {
+    const out = new Array(n).fill('');
+    if (!dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return out;
+    const today = todayISO();
+    const open = [];
+    const d = new Date(today + 'T12:00:00');
+    for (let i = 0; i < 28 && open.length < n; i++) {
+      const s = d.toISOString().slice(0, 10);
+      if (s >= dueDate) break;
+      let rest = false;
+      try { rest = typeof isBreak === 'function' && isBreak(s); } catch (e) {}
+      if (!rest) open.push(s);
+      d.setDate(d.getDate() + 1);
+    }
+    if (!open.length) return out;
+    for (let i = 0; i < n; i++) out[i] = open[Math.min(open.length - 1, Math.floor((i * open.length) / n))];
+    return out;
+  }
+
+  /* ═══════════ P0 A4 — propose-then-confirm plumbing (flagged) ══════════ */
+
+  const MUTATING = new Set(['addTask', 'updateTask', 'completeTask', 'deleteTask', 'addNote', 'addSubtasks']);
+  function confirmFlagOn() {
+    try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_ai_action_confirm', false)); } catch (e) { return false; }
+  }
+  /** Proposal required for >1 write, any modification of existing items, or a multi-item breakdown. */
+  function needsConfirm(writes) {
+    if (writes.length > 1) return true;
+    return writes.some((c) => ['updateTask', 'completeTask', 'deleteTask', 'addSubtasks'].includes(c.name));
+  }
+  let _lastApply = null;
+  let _proposeImpl = null; // set by wireOrchestrator (A4 card renderer)
+  function beginUndoGroup() {
+    _lastApply = { tasksJson: '', noteIds: [] };
+    try { if (haveTasks()) _lastApply.tasksJson = JSON.stringify(tasks); } catch (e) {}
+  }
+  function undoLastAIChanges() {
+    if (!_lastApply) return;
+    try {
+      if (_lastApply.tasksJson && haveTasks()) {
+        const prev = JSON.parse(_lastApply.tasksJson);
+        tasks.length = 0;
+        Array.prototype.push.apply(tasks, prev);
+        persistTasks();
+      }
+    } catch (e) {}
+    try {
+      if (_lastApply.noteIds.length && haveNotes()) {
+        for (const id of _lastApply.noteIds) {
+          const i = notes.findIndex((n) => String(n.id) === String(id));
+          if (i >= 0) notes.splice(i, 1);
+        }
+        persistNotes();
+      }
+    } catch (e) {}
+    _lastApply = null;
+    try { if (typeof showToast === 'function') showToast('↩ AI changes undone', 'info'); } catch (e) {}
+  }
 
   /* Study Hub bridge — every fluxStudyHub AI tool becomes a flux_tool. */
   function bridgeStudyTools() {
@@ -231,6 +315,9 @@
 
     bridgeStudyTools();
     Object.values(TOOLS).forEach((t) => {
+      // addSubtasks is advertised lazily in augmentSystemPrompt, gated on
+      // enable_ai_action_confirm (flags load async; prompt build is per-send).
+      if (t.def.name === 'addSubtasks') return;
       if (!FO.TOOL_DEFS.some((d) => d.name === t.def.name)) FO.TOOL_DEFS.push(t.def);
     });
 
@@ -250,12 +337,40 @@
     // The orchestrator's own processAssistantReply calls its closure-internal
     // executeTool, bypassing the wrap above — replace it with an equivalent
     // that goes through FO.executeTool so new tools run AND results buffer.
+    //
+    // With enable_ai_action_confirm on, mutating calls become a PROPOSAL the
+    // student applies or cancels instead of executing silently (P0 A4: one
+    // reply once created 7 top-level high-priority tasks all due today and
+    // flipped the user into Recovery Mode).
     FO.processAssistantReply = function (rawReply, toolsRun) {
       const calls = FO.parseFluxTools(rawReply);
       if (calls.length) {
         try { FO.thinkingStep && FO.thinkingStep('Running Flux tools…'); } catch (e) {}
-        const results = calls.map((c) => ({ name: c.name, result: FO.executeTool(c.name, c.args) }));
-        renderToolCard(results);
+        const writes = calls.filter((c) => MUTATING.has(c.name));
+        const reads = calls.filter((c) => !MUTATING.has(c.name));
+        // Reads always run — they feed the agent loop.
+        const readResults = reads.map((c) => ({ name: c.name, result: FO.executeTool(c.name, c.args) }));
+        if (readResults.length) renderToolCard(readResults);
+        if (writes.length && confirmFlagOn() && needsConfirm(writes)) {
+          renderProposalCard(writes);
+          // Tell the model its calls are queued so the loop round doesn't
+          // re-issue them.
+          writes.forEach((c) => _turn.push({ name: c.name, result: { ok: true, queued: 'proposal', note: 'Shown to the student as a proposal to Apply/Cancel. Do NOT repeat these calls; ask the student to review the card.' } }));
+        } else if (writes.length) {
+          // Snapshot BEFORE executing so the Undo chip restores prior state.
+          if (confirmFlagOn()) beginUndoGroup();
+          const writeResults = writes.map((c) => {
+            const r = FO.executeTool(c.name, c.args);
+            if (confirmFlagOn() && c.name === 'addNote' && r && r.ok && r.noteId != null && _lastApply) _lastApply.noteIds.push(r.noteId);
+            return { name: c.name, result: r };
+          });
+          renderToolCard(writeResults);
+          // Even auto-applied single creations get an inline Undo chip.
+          if (confirmFlagOn()) {
+            const okCount = writeResults.filter((r) => r.result && r.result.ok).length;
+            if (okCount) renderUndoChip('Flux made ' + okCount + ' change' + (okCount === 1 ? '' : 's'));
+          }
+        }
         toolsRun.push.apply(toolsRun, calls.map((c) => c.name));
       }
       const forDisplay = FO.stripFluxTools(rawReply);
@@ -274,9 +389,92 @@
       if (sc) setTimeout(() => { sc.scrollTop = sc.scrollHeight; }, 30);
     }
 
+    /* ─────────── P0 A4: propose-then-confirm for mutating calls ─────────── */
+
+    function describeCall(c) {
+      const a = c.args || {};
+      switch (c.name) {
+        case 'addTask': return '＋ Add task “' + (a.name || '?') + '”' + (a.date ? ' · due ' + a.date : '') + ' · ' + (a.priority || 'med');
+        case 'addNote': return '＋ Add note “' + (a.title || 'Flux note') + '”';
+        case 'updateTask': return '✎ Update “' + (a.name || a.id || '?') + '” → ' + JSON.stringify(a.set || {}).slice(0, 120);
+        case 'completeTask': return '✓ Complete “' + (a.name || a.id || '?') + '”';
+        case 'deleteTask': return '✕ Delete task #' + (a.id != null ? a.id : '?');
+        case 'addSubtasks': {
+          const n = (a.subtasks || []).length;
+          return '⑂ ' + n + ' subtask' + (n === 1 ? '' : 's') + ' under “' + (a.parent || '?') + '” (spread before its due date)';
+        }
+        default: return c.name;
+      }
+    }
+
+    function renderProposalCard(writes) {
+      const wrap = document.getElementById('aiMsgs');
+      if (!wrap) return;
+      const div = document.createElement('div');
+      div.className = 'ai-msg bot flux-tool-card-wrap flux-ai-proposal';
+      const rows = writes.map((c, i) =>
+        `<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 2px;cursor:pointer;font-size:.82rem">
+          <input type="checkbox" checked data-prop-idx="${i}" style="margin-top:2px;accent-color:var(--accent)">
+          <span>${esc(describeCall(c))}</span>
+        </label>`).join('');
+      div.innerHTML = `<div class="ai-av bot">✦</div><div class="ai-bub bot flux-tool-bub">
+        <div class="flux-tool-card-h">Flux proposes ${writes.length} change${writes.length === 1 ? '' : 's'} — review before anything happens</div>
+        <div class="flux-ai-proposal-rows">${rows}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" class="flux-ai-prop-apply" style="flex:1;padding:8px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;cursor:pointer">Apply</button>
+          <button type="button" class="flux-ai-prop-cancel" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:.8rem;cursor:pointer">Cancel</button>
+        </div>
+      </div>`;
+      wrap.appendChild(div);
+      const sc = document.getElementById('aiMsgsWrap');
+      if (sc) setTimeout(() => { sc.scrollTop = sc.scrollHeight; }, 30);
+      const applyBtn = div.querySelector('.flux-ai-prop-apply');
+      const cancelBtn = div.querySelector('.flux-ai-prop-cancel');
+      const finish = (html) => {
+        div.querySelector('.flux-ai-proposal-rows').style.opacity = '.55';
+        applyBtn.parentElement.outerHTML = `<div style="margin-top:10px;font-size:.78rem;color:var(--muted)">${html}</div>`;
+      };
+      cancelBtn.addEventListener('click', () => finish('Cancelled — nothing changed.'));
+      applyBtn.addEventListener('click', () => {
+        const picked = writes.filter((_, i) => div.querySelector(`[data-prop-idx="${i}"]`)?.checked);
+        if (!picked.length) { finish('Nothing selected — no changes made.'); return; }
+        beginUndoGroup();
+        const results = picked.map((c) => {
+          const r = FO.executeTool(c.name, c.args);
+          if (c.name === 'addNote' && r && r.ok && r.noteId != null) _lastApply.noteIds.push(r.noteId);
+          return { name: c.name, ok: !!(r && r.ok), error: r && r.error };
+        });
+        const okCount = results.filter((r) => r.ok).length;
+        const failCount = results.length - okCount;
+        finish(`Applied ${okCount} change${okCount === 1 ? '' : 's'}${failCount ? ` · ${failCount} failed` : ''} · <button type="button" class="flux-ai-undo-link" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo AI changes</button>`);
+        div.querySelector('.flux-ai-undo-link')?.addEventListener('click', undoLastAIChanges);
+      });
+    }
+
+    function renderUndoChip(label) {
+      const wrap = document.getElementById('aiMsgs');
+      if (!wrap) return;
+      const div = document.createElement('div');
+      div.className = 'flux-agent-round flux-ai-undo-chip';
+      div.innerHTML = `${esc(label)} · <button type="button" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:inherit;padding:0">Undo</button>`;
+      div.querySelector('button').addEventListener('click', () => { undoLastAIChanges(); div.remove(); });
+      wrap.appendChild(div);
+    }
+
+
+    // C4 (Grade GPS) and other surfaces reuse the exact A4 proposal-card +
+    // apply/undo machinery for programmatic bulk changes. Stored on a
+    // module slot — wireOrchestrator can run before the bottom export exists.
+    _proposeImpl = function (calls) {
+      const writes = (calls || []).filter((c) => c && MUTATING.has(c.name));
+      if (!writes.length) return false;
+      renderProposalCard(writes);
+      return true;
+    };
+
     const origAug = FO.augmentSystemPrompt;
     FO.augmentSystemPrompt = function (base, userText) {
-      return origAug.call(FO, base, userText) + `
+      let extra = `
 ## Agent loop (how your tools actually run)
 Your \`\`\`flux_tool\`\`\` blocks execute client-side immediately after your reply. Their outputs are then sent back to you in a follow-up message that starts with "TOOL RESULTS" — read it and continue: either call more tools or give the final answer. Plan for this loop:
 - To act on live data, call a read tool first (listTasks/searchNotes/getPlannerStats), wait for TOOL RESULTS, then call write tools with real ids.
@@ -284,6 +482,15 @@ Your \`\`\`flux_tool\`\`\` blocks execute client-side immediately after your rep
 - Never call deleteTask unless the student explicitly asked to delete that task.
 - At most 4 tool rounds per question; don't repeat identical calls.
 - Tool blocks are invisible to the student. Everything outside them is your visible answer.`;
+      if (confirmFlagOn()) {
+        if (!FO.TOOL_DEFS.some((d) => d.name === 'addSubtasks')) FO.TOOL_DEFS.push(TOOLS.addSubtasks.def);
+        extra += `
+## Changing the planner (confirm-first rules)
+- Breaking down / splitting / planning out an EXISTING task ("my lab report") → call addSubtasks with that task as parent. NEVER create separate top-level tasks for pieces of an existing task.
+- Never mass-assign due dates of today or priority high. Work spreads across open days before the deadline (rest days are respected automatically); priorities inherit from the parent or default to med.
+- Bulk or modifying tool calls are shown to the student as a PROPOSAL card they Apply or Cancel. When TOOL RESULTS says "queued: proposal", the changes are NOT applied yet — summarize the plan, ask them to review the card, and do NOT re-issue the calls.`;
+      }
+      return origAug.call(FO, base, userText) + extra;
     };
     return true;
   }
@@ -379,7 +586,7 @@ Your \`\`\`flux_tool\`\`\` blocks execute client-side immediately after your rep
       const n = bridgeStudyTools();
       if (!n) return;
       const FO = window.FluxOrchestrator;
-      if (FO && FO.TOOL_DEFS) Object.values(TOOLS).forEach((tl) => { if (!FO.TOOL_DEFS.some((d) => d.name === tl.def.name)) FO.TOOL_DEFS.push(tl.def); });
+      if (FO && FO.TOOL_DEFS) Object.values(TOOLS).forEach((tl) => { if (tl.def.name !== 'addSubtasks' && !FO.TOOL_DEFS.some((d) => d.name === tl.def.name)) FO.TOOL_DEFS.push(tl.def); });
     }, 1500);
     initSelectionChip();
     initDelegation();
@@ -393,6 +600,8 @@ Your \`\`\`flux_tool\`\`\` blocks execute client-side immediately after your rep
     beginTurn,
     takeTurnResults,
     askFlux,
+    undoLastAIChanges,
+    proposeChanges(calls) { return _proposeImpl ? _proposeImpl(calls) : false; },
     tools: TOOLS,
     registerTool(name, def, run) {
       if (!name || TOOLS[name] || typeof run !== 'function') return false;

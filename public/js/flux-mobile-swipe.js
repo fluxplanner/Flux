@@ -32,7 +32,7 @@
     bg.className = 'task-swipe-bg';
     bg.innerHTML = `
       <span class="task-swipe-ico task-swipe-ico-check" aria-hidden="true">✓</span>
-      <span class="task-swipe-ico task-swipe-ico-trash" aria-hidden="true">🗑</span>
+      <span class="task-swipe-ico task-swipe-ico-trash" aria-hidden="true"></span>
     `;
     row.insertBefore(bg, row.firstChild);
   }

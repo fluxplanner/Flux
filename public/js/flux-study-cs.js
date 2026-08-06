@@ -23,7 +23,7 @@
     }
     const COMPLEXITY = { bubble: 'O(n²)', selection: 'O(n²)', insertion: 'O(n²)', quick: 'O(n log n) avg' };
     function renderSort(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📊 Sorting visualizer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Watch each algorithm compare &amp; swap, step by step.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Sorting visualizer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Watch each algorithm compare &amp; swap, step by step.</p>
         <div class="fsh-field" style="flex-wrap:wrap;align-items:center"><div class="fsh-seg" id="soAlgo">${[['bubble', 'Bubble'], ['insertion', 'Insertion'], ['selection', 'Selection'], ['quick', 'Quick']].map(([v, l], i) => `<button type="button" data-algo="${v}" class="${i === 0 ? 'active' : ''}">${l}</button>`).join('')}</div>
         <button type="button" class="fsh-btn" id="soPlay">▶ Play</button><button type="button" class="fsh-btn ghost" id="soShuf">⤮ Shuffle</button><span style="font-size:12px;color:var(--fsh-mut)">Speed</span><input id="soSpeed" class="fsh-range" type="range" min="1" max="60" value="28" style="max-width:140px"></div>
         <div id="soCanvas" style="margin-top:12px"></div><div class="fsh-out" id="soInfo"></div></div>`;
@@ -46,7 +46,7 @@
     }
     let cbBase = 10;
     function renderBase(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🔢 Number base converter</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Convert between binary, octal, decimal and hex.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Number base converter</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Convert between binary, octal, decimal and hex.</p>
         <div class="fsh-field"><div class="fsh-seg" id="cbBase">${[['2', 'Bin'], ['8', 'Oct'], ['10', 'Dec'], ['16', 'Hex']].map(([v, l]) => `<button type="button" data-b="${v}" class="${+v === cbBase ? 'active' : ''}">${l}</button>`).join('')}</div><input id="cbIn" class="fsh-input" value="255" spellcheck="false"></div>
         <div class="fsh-out" id="cbOut"></div></div>`;
       const run = () => { const o = document.getElementById('cbOut'); try { const r = convertBase(document.getElementById('cbIn').value, cbBase); o.innerHTML = `<div class="fsh-sim-readout"><div class="fsh-readout-pill">DEC<b>${r.dec}</b></div><div class="fsh-readout-pill">BIN<b>${r.bin}</b></div><div class="fsh-readout-pill">OCT<b>${r.oct}</b></div><div class="fsh-readout-pill">HEX<b>${r.hex}</b></div></div>`; } catch (e) { o.innerHTML = `<span class="fsh-err">${esc(e.message)}</span>`; } };
@@ -57,7 +57,7 @@
     // ── Big-O chart ──────────────────────────────────────────────────────────
     const BIGO = [['O(1)', (n) => 1, '#37c98a'], ['O(log n)', (n) => Math.log2(n + 1), '#34d0ff'], ['O(n)', (n) => n, '#5b8def'], ['O(n log n)', (n) => n * Math.log2(n + 1), '#f4a13f'], ['O(n²)', (n) => n * n, '#ff7a59'], ['O(2ⁿ)', (n) => Math.pow(2, n), '#e23e57']];
     function renderBigO(body) {
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">📈 Big-O complexity</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">How operations grow as input size n increases.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Big-O complexity</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">How operations grow as input size n increases.</p>
         <div id="boCanvas"></div><div class="fsh-chips-row" style="margin-top:12px">${BIGO.map((c) => `<span class="fsh-shellbar" style="border-color:${c[2]}"><b style="color:${c[2]}">${esc(c[0])}</b></span>`).join('')}</div></div>`;
       const cv = mkCanvas(document.getElementById('boCanvas'), 280);
       const { w, h } = cv.size(), ctx = cv.ctx; const N = 24, maxY = 120; const X = (n) => 36 + n / N * (w - 48), Y = (y) => h - 28 - Math.min(y, maxY) / maxY * (h - 44);
@@ -69,7 +69,7 @@
     // ── ASCII table ──────────────────────────────────────────────────────────
     function renderAscii(body) {
       let cells = ''; for (let i = 32; i <= 126; i++) cells += `<div class="fsh-ion"><span class="f">${i === 32 ? '␠' : esc(String.fromCharCode(i))}</span><div class="n">${i} · 0x${i.toString(16).toUpperCase()}</div></div>`;
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🔤 ASCII table</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Printable characters 32–126 with decimal &amp; hex codes.</p><div class="fsh-ion-grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr))">${cells}</div></div>`;
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">ASCII table</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Printable characters 32–126 with decimal &amp; hex codes.</p><div class="fsh-ion-grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr))">${cells}</div></div>`;
     }
 
     // ── Logic gates / truth tables ───────────────────────────────────────────
@@ -79,7 +79,7 @@
       const unary = gate === 'NOT';
       const rows = unary ? [[0], [1]] : [[0, 0], [0, 1], [1, 0], [1, 1]];
       const tbl = `<table class="fsh-sol" style="min-width:auto"><thead><tr>${unary ? '<th>A</th>' : '<th>A</th><th>B</th>'}<th>${esc(gate)}</th></tr></thead><tbody>${rows.map((r) => { const out = unary ? GATES.NOT(r[0]) : GATES[gate](r[0], r[1]); return `<tr>${r.map((x) => `<td>${x}</td>`).join('')}<td data-s="${out ? 'S' : 'I'}">${out}</td></tr>`; }).join('')}</tbody></table>`;
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🔌 Logic gates</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a gate to see its truth table.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Logic gates</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a gate to see its truth table.</p>
         <div class="fsh-seg" id="lgSeg" style="flex-wrap:wrap">${Object.keys(GATES).map((g) => `<button type="button" data-g="${g}" class="${g === gate ? 'active' : ''}">${g}</button>`).join('')}</div>
         <div style="margin-top:14px">${tbl}</div></div>`;
       document.getElementById('lgSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-g]'); if (!b) return; gate = b.dataset.g; renderGates(body); });

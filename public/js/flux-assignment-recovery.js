@@ -239,7 +239,7 @@
   function bannerHtml(count) {
     if (!enabled() || !count) return '';
     return `<div class="flux-recovery-banner">
-      <span style="font-size:1.1rem">📋</span>
+      <span style="font-size:1.1rem"></span>
       <span style="flex:1;font-size:.84rem;font-weight:600">${count} recovery plan${count === 1 ? '' : 's'} awaiting approval</span>
       <button type="button" class="teacher-action-btn" data-action="review-recovery">Review</button>
     </div>`;
@@ -258,7 +258,7 @@
         if (!t || !Array.isArray(p.plan_steps)) return;
         const lines = p.plan_steps.map((s, i) => `${i + 1}. ${s.label}`).join('\n');
         t.recoveryPlanSteps = p.plan_steps;
-        t.notes = `${t.notes || ''}\n\n📋 Approved recovery plan:\n${lines}`.trim();
+        t.notes = `${t.notes || ''}\n\n Approved recovery plan:\n${lines}`.trim();
       });
     } catch (_) {}
   }

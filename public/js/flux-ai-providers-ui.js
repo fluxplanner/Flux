@@ -35,7 +35,7 @@
   function render() {
     const provs = fp();
     if (!provs) return;
-    const pane = document.getElementById('spane-appearance') || document.getElementById('settings');
+    const pane = document.getElementById('spane-ai') || document.getElementById('spane-appearance') || document.getElementById('settings');
     if (!pane) return;
     let card = document.getElementById(CARD_ID);
     const exists = !!card;

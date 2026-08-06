@@ -1,0 +1,67 @@
+/* flux-teacher-resources.css — Teaching Resources tab (work mode). */
+
+.ftr-search {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.ftr-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  border-radius: 10px;
+  background: var(--card2, #161b2e);
+  color: var(--text, #e8ecff);
+  font-family: inherit;
+  font-size: .9rem;
+}
+.ftr-search input:focus { outline: none; border-color: var(--accent, #6ea8ff); }
+.ftr-search-btn {
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent, #6ea8ff);
+  color: #06122b;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ftr-search-btn:hover { filter: brightness(1.06); }
+
+.ftr-results { margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+.ftr-results-head { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted, #8b93b5); margin-bottom: 2px; }
+.ftr-note { color: var(--muted, #8b93b5); font-size: .85rem; padding: 8px 2px; }
+
+.ftr-result, .ftr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .1));
+  border-radius: 12px;
+  background: var(--card, #11162a);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .12s ease, transform .12s ease, background .12s ease;
+}
+.ftr-result:hover, .ftr-card:hover { border-color: var(--accent, #6ea8ff); transform: translateY(-1px); }
+
+.ftr-result-title, .ftr-card-name { font-weight: 700; font-size: .9rem; color: var(--text, #e8ecff); }
+.ftr-result-desc, .ftr-card-desc { font-size: .8rem; color: var(--muted, #8b93b5); line-height: 1.4; }
+.ftr-result-host, .ftr-card-host { font-size: .7rem; color: var(--accent, #6ea8ff); margin-top: 2px; }
+
+.ftr-catalog { display: flex; flex-direction: column; gap: 22px; }
+.ftr-cat {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted, #8b93b5);
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+.ftr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}

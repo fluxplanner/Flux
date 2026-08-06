@@ -307,7 +307,7 @@
 }
 
 /* ── Buttons: pill + press (skip periodic table cells — they use their own small radius) ── */
-button:not(.fab-trigger):not(.nav-item):not(.bnav-item):not(.check):not(.btn-icon):not(.btn-sm):not(.pt-el){
+button:not(.fab-trigger):not(.nav-item):not(.bnav-item):not(.check):not(.btn-icon):not(.btn-sm):not(.pt-el):not(.fih-tile){
   border-radius:999px!important;
 }
 button:not(:disabled):active{transform:scale(.97)!important}

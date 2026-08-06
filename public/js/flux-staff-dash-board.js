@@ -465,31 +465,6 @@
 
   function wireWidget(layout, el, w) {
     const id = w.id;
-    const handle = el.querySelector('[data-fsdb-drag]');
-    handle?.addEventListener('dragstart', (e) => {
-      _dragId = id;
-      el.classList.add('fsdb-widget--dragging');
-      e.dataTransfer?.setData('text/plain', id);
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    handle?.addEventListener('dragend', () => {
-      _dragId = null;
-      el.classList.remove('fsdb-widget--dragging');
-      document.querySelectorAll('.fsdb-widget--drag-over').forEach((n) => n.classList.remove('fsdb-widget--drag-over'));
-    });
-    el.addEventListener('dragover', (e) => {
-      if (!_dragId || _dragId === id) return;
-      e.preventDefault();
-      el.classList.add('fsdb-widget--drag-over');
-    });
-    el.addEventListener('dragleave', () => el.classList.remove('fsdb-widget--drag-over'));
-    el.addEventListener('drop', (e) => {
-      e.preventDefault();
-      el.classList.remove('fsdb-widget--drag-over');
-      const from = e.dataTransfer?.getData('text/plain') || _dragId;
-      swapOrder(layout, from, id);
-      render('dashboard');
-    });
     el.querySelector('[data-fsdb-resize]')?.addEventListener('click', () => {
       cycleWidth(layout, id);
       render('dashboard');
@@ -499,6 +474,108 @@
       render('dashboard');
       if (typeof showToast === 'function') showToast('Widget removed — add again via + Widget', 'info');
     });
+  }
+
+  /**
+   * Smooth pointer drag: the widget lifts and follows the pointer while the
+   * rest of the grid reflows live (FLIP), instead of HTML5 drag-and-drop.
+   * Order is committed from DOM order on release.
+   */
+  function wireGridDrag(layout, grid) {
+    if (!grid || grid.dataset.fsdbDragWired) return;
+    grid.dataset.fsdbDragWired = '1';
+    let drag = null; // { cell, pointerId, grabX, grabY }
+
+    const cells = () => Array.from(grid.querySelectorAll('.fsdb-widget'));
+
+    function baseRect(cell) {
+      const prev = cell.style.transform;
+      cell.style.transform = 'none';
+      const r = cell.getBoundingClientRect();
+      cell.style.transform = prev;
+      return r;
+    }
+
+    function followPointer(e) {
+      const cell = drag.cell;
+      const base = baseRect(cell);
+      const dx = e.clientX - drag.grabX - base.left;
+      const dy = e.clientY - drag.grabY - base.top;
+      cell.style.transform = `translate(${dx}px,${dy}px) scale(1.02)`;
+    }
+
+    function reorderUnder(e) {
+      const cell = drag.cell;
+      cell.style.pointerEvents = 'none';
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      cell.style.pointerEvents = '';
+      const target = under?.closest?.('.fsdb-widget');
+      if (!target || target === cell || target.parentNode !== grid) return;
+      const list = cells();
+      const from = list.indexOf(cell);
+      const to = list.indexOf(target);
+      if (from === to) return;
+      const others = list.filter((c) => c !== cell);
+      const first = new Map(others.map((c) => [c, c.getBoundingClientRect()]));
+      if (from < to) grid.insertBefore(cell, target.nextSibling);
+      else grid.insertBefore(cell, target);
+      followPointer(e); // re-anchor so the lifted widget stays under the finger
+      others.forEach((c) => {
+        const f = first.get(c);
+        const l = c.getBoundingClientRect();
+        const ddx = f.left - l.left;
+        const ddy = f.top - l.top;
+        if (!ddx && !ddy) return;
+        c.style.transition = 'none';
+        c.style.transform = `translate(${ddx}px,${ddy}px)`;
+        requestAnimationFrame(() => {
+          c.style.transition = 'transform .18s ease';
+          c.style.transform = '';
+        });
+      });
+    }
+
+    grid.addEventListener('pointerdown', (e) => {
+      const handle = e.target.closest('[data-fsdb-drag]');
+      if (!handle || drag) return;
+      const cell = handle.closest('.fsdb-widget');
+      if (!cell || cell.parentNode !== grid) return;
+      e.preventDefault();
+      const r = cell.getBoundingClientRect();
+      drag = { cell, pointerId: e.pointerId, grabX: e.clientX - r.left, grabY: e.clientY - r.top };
+      cell.classList.add('fsdb-widget--lifting');
+      cell.style.transition = 'none';
+      cell.style.zIndex = '60';
+      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+      followPointer(e);
+    });
+
+    grid.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      e.preventDefault();
+      followPointer(e);
+      reorderUnder(e);
+    });
+
+    function finish(e) {
+      if (!drag || (e && e.pointerId !== drag.pointerId)) return;
+      const cell = drag.cell;
+      drag = null;
+      cell.style.transition = 'transform .18s ease, box-shadow .18s ease';
+      cell.style.transform = '';
+      setTimeout(() => {
+        cell.classList.remove('fsdb-widget--lifting');
+        cell.style.transition = '';
+        cell.style.zIndex = '';
+      }, 200);
+      cells().forEach((c, i) => {
+        const w = layout.widgets.find((x) => x.id === c.dataset.widgetId);
+        if (w) w.order = i;
+      });
+      saveLayout(layout);
+    }
+    grid.addEventListener('pointerup', finish);
+    grid.addEventListener('pointercancel', finish);
   }
 
   function openAddModal(layout) {
@@ -588,7 +665,7 @@
       const canRemove = !m.locked;
       cell.innerHTML = `
         <div class="fsdb-widget-head">
-          <span class="fsdb-widget-drag" draggable="true" data-fsdb-drag title="Drag to reorder">⠿</span>
+          <span class="fsdb-widget-drag" data-fsdb-drag title="Drag to reorder">⠿</span>
           <span class="fsdb-widget-title">${esc(m.title)}</span>
           <div class="fsdb-widget-actions">
             <button type="button" class="fsdb-widget-btn" data-fsdb-resize title="Change width">↔</button>
@@ -602,6 +679,7 @@
       if (body) renderWidgetBody(w.id, body);
     });
 
+    wireGridDrag(layout, grid);
     root.querySelector('#fsdbAddWidget')?.addEventListener('click', () => openAddModal(layout));
     root.querySelector('#fsdbResetLayout')?.addEventListener('click', () => {
       if (!confirm('Reset your personal dashboard to the default layout?')) return;
