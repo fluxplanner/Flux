@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   }
 
   const auth = await verifyUserJWT(req);
-  if ("error" in auth && auth.error) {
+  if ("error" in auth) {
     return json({ error: auth.error }, auth.status, origin);
   }
 

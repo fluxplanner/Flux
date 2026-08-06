@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
   let userId: string | null = null;
   const auth = await verifyUserJWT(req);
-  if ("error" in auth && auth.error) {
+  if ("error" in auth) {
     // A failed JWT never falls through to a free ride anymore (the old
     // payments-off path let anyone with the public anon key burn provider
     // quota). Only the app's guest mode — Bearer = the project's anon-role

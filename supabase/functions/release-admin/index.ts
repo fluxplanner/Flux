@@ -140,11 +140,12 @@ Deno.serve(async (req) => {
   }
 
   const auth = await verifyUserJWT(req);
-  if ("error" in auth && auth.error) {
+  if ("error" in auth) {
     return json({ error: auth.error }, auth.status, origin);
   }
 
   const email = normEmail(auth.email);
+  const callerUserId = auth.userId; // captured here (narrowed) for use inside nested helpers
   const db = serviceClient();
 
   try {
@@ -301,7 +302,7 @@ Deno.serve(async (req) => {
         if (!trimmed) {
           throw new Error("userId required");
         }
-        if (trimmed === auth.userId) {
+        if (trimmed === callerUserId) {
           throw new Error("Cannot target your own Auth session from this endpoint");
         }
         const res = await adminAuth.getUserById(trimmed);
@@ -322,7 +323,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         const users = data?.users ?? [];
         const ids = users.map((u) =>
-          String((u as Record<string, unknown>).id ?? "")
+          String((u as unknown as Record<string, unknown>).id ?? "")
         ).filter(Boolean);
 
         const roleById: Record<string, JsonRecord> = {};
@@ -342,7 +343,7 @@ Deno.serve(async (req) => {
         }
 
         const summaries = users.map((u) => {
-          const r = u as Record<string, unknown>;
+          const r = u as unknown as Record<string, unknown>;
           const id = String(r.id ?? "");
           const prof = id ? roleById[id] : null;
           const p = prof ? asRecord(prof) : null;

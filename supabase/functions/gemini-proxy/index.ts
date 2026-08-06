@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   let userId: string | null = null;
   const auth = await verifyUserJWT(req);
-  if ("error" in auth && auth.error) {
+  if ("error" in auth) {
     // A failed JWT never falls through to a free ride anymore. Only guest
     // mode (Bearer = the project's anon-role JWT) may proceed, rate-guarded
     // below — the pre-signup onboarding schedule import depends on it.
