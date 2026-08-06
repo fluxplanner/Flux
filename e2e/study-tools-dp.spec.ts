@@ -23,6 +23,7 @@ test.describe('Study tools — DP expansion', () => {
       'math',
       'music',
       'biology',
+      'psychology',
       'cs',
       'econ',
       'english',
@@ -32,36 +33,42 @@ test.describe('Study tools — DP expansion', () => {
     ]);
   });
 
-  test('quick-access strip records recents and deep-links back to a tool', async ({ page }) => {
+  test('psychology is its own subject, not a biology sub-tab', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as any).nav?.('toolbox'));
     await page.waitForTimeout(800);
 
     const res = await page.evaluate(async () => {
       const hub = (window as any).fluxStudyHub;
-      hub.selectSubject('physics');
-      await new Promise((r) => setTimeout(r, 300));
-      hub.selectSubject('chemistry');
-      await new Promise((r) => setTimeout(r, 300));
-      const chips = [...document.querySelectorAll('#fshQuick .fsh-qchip')].map((c) => ({
-        sid: (c as HTMLElement).dataset.sid,
-        tid: (c as HTMLElement).dataset.tid,
-      }));
-      // click the physics chip — should switch subject back to physics
-      const phys = [...document.querySelectorAll('#fshQuick .fsh-qchip')].find(
-        (c) => (c as HTMLElement).dataset.sid === 'physics',
-      ) as HTMLElement;
-      phys?.click();
-      await new Promise((r) => setTimeout(r, 300));
-      return {
-        chips,
-        activeSubject: (document.querySelector('#fshRail .fsh-pill.active') as HTMLElement)?.dataset.sub,
+      const names = (sid: string) => {
+        hub.selectSubject(sid);
+        return [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')].map((t) =>
+          (t.textContent || '').trim(),
+        );
       };
+      const bio = names('biology');
+      await new Promise((r) => setTimeout(r, 300));
+      const psych = names('psychology');
+      await new Promise((r) => setTimeout(r, 300));
+      return { bio, psych };
     });
-    expect(res.chips.length).toBeGreaterThanOrEqual(2);
-    expect(res.chips[0].sid).toBe('chemistry'); // most recent first
-    expect(res.chips.some((c) => c.sid === 'physics')).toBe(true);
-    expect(res.activeSubject).toBe('physics');
+    expect(res.bio.some((n) => /psych/i.test(n))).toBe(false);
+    expect(res.psych.some((n) => /psych/i.test(n))).toBe(true);
+  });
+
+  test('physics has a single formula sheet tab', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const tabs = await page.evaluate(async () => {
+      (window as any).fluxStudyHub.selectSubject('physics');
+      await new Promise((r) => setTimeout(r, 300));
+      return [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')].map((t) =>
+        (t.textContent || '').trim(),
+      );
+    });
+    expect(tabs.filter((n) => /formula/i.test(n))).toHaveLength(1);
   });
 
   test('search finds chemistry built-in tabs and subjects; "/" focuses hub search only on Study tab', async ({ page }) => {

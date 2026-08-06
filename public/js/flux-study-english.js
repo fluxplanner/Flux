@@ -82,15 +82,65 @@
         <div class="fsh-ws-group"><div class="fsh-label"><span>Your claim</span></div><input id="es_claim" class="fsh-input" placeholder="does more harm than good"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Reason 1</span></div><input id="es_r1" class="fsh-input"></div>
         <div class="fsh-ws-group"><div class="fsh-label"><span>Reason 2</span></div><input id="es_r2" class="fsh-input"></div></div>
-        <div style="margin-top:14px"><button type="button" class="fsh-btn" id="esGo">Build thesis</button></div><div class="fsh-out" id="esOut"></div>
+        <div style="margin-top:14px"><button type="button" class="fsh-btn" id="esGo">✦ Build with Flux AI</button></div><div class="fsh-out" id="esOut"></div>
         <h3 style="margin:18px 0 10px;font-size:15px">PEEL paragraph</h3><div class="fsh-mm-rows">${[['Point', 'State the main idea of the paragraph.'], ['Evidence', 'Quote or fact that supports it.'], ['Explain', 'Show how the evidence proves the point.'], ['Link', 'Tie back to the thesis / next idea.']].map((p) => `<div class="fsh-mm-row"><span class="el">${p[0]}</span><span style="text-align:right;max-width:70%">${esc(p[1])}</span></div>`).join('')}</div></div>`;
-      document.getElementById('esGo').addEventListener('click', () => {
-        const g = (id) => (document.getElementById('es_' + id).value || '').trim();
-        const topic = g('topic') || '[topic]', claim = g('claim') || '[claim]', r1 = g('r1'), r2 = g('r2');
-        const reasons = [r1, r2].filter(Boolean);
+      const g = (id) => (document.getElementById('es_' + id).value || '').trim();
+      // Local template thesis — the offline fallback, and what the tool used to
+      // do on its own before Flux AI drafted the whole scaffold.
+      function localThesis() {
+        const topic = g('topic') || '[topic]', claim = g('claim') || '[claim]';
+        const reasons = [g('r1'), g('r2')].filter(Boolean);
         const because = reasons.length ? ` because ${reasons.join(' and ')}` : '';
-        document.getElementById('esOut').innerHTML = `<span class="big" style="font-size:17px;font-weight:600;line-height:1.5">${esc(topic.charAt(0).toUpperCase() + topic.slice(1))} ${esc(claim)}${esc(because)}.</span>`;
-      });
+        return `${topic.charAt(0).toUpperCase() + topic.slice(1)} ${claim}${because}.`;
+      }
+      // Hits the AI proxy directly instead of askFlux(): the student stays in the
+      // scaffold and the answer renders below, rather than being taken to the
+      // Flux AI panel.
+      async function build() {
+        const out = document.getElementById('esOut'), btn = document.getElementById('esGo');
+        const topic = g('topic');
+        if (!topic) {
+          document.getElementById('es_topic').focus();
+          out.innerHTML = `<div class="fsh-es-note fsh-es-err">Add a topic first — the rest is optional.</div>`;
+          return;
+        }
+        if (typeof API === 'undefined' || !API.ai || typeof fluxAuthHeaders !== 'function') {
+          out.innerHTML = `<div class="fsh-es-note fsh-es-err">Flux AI isn’t reachable right now — here’s a working thesis to start from:</div>`
+            + `<span class="big" style="font-size:17px;font-weight:600;line-height:1.5">${esc(localThesis())}</span>`;
+          return;
+        }
+        const claim = g('claim'), r1 = g('r1'), r2 = g('r2');
+        btn.disabled = true; const label = btn.textContent; btn.textContent = 'Building…';
+        out.innerHTML = `<div class="fsh-es-note">Flux AI is building your scaffold…</div>`;
+        try {
+          const res = await fetch(API.ai, {
+            method: 'POST',
+            headers: await fluxAuthHeaders(),
+            body: JSON.stringify({
+              system: 'You are an essay coach for a high-school student. Build a scaffold they can write from — never a finished essay to hand in. '
+                + 'Use markdown with these sections in order: "## Thesis" (one arguable sentence), "## Body 1/2/3" (each with **Point**, **Evidence**, **Explain**, **Link** on their own lines, following PEEL), '
+                + '"## Counter-argument" (and the rebuttal), "## Conclusion", then "## Next steps" with two or three concrete things for the student to research or sharpen. Keep it tight — this is a plan, not prose.',
+              messages: [{ role: 'user', content: [
+                'Topic: ' + topic,
+                claim ? 'My claim: ' + claim : '',
+                r1 ? 'Reason 1: ' + r1 : '',
+                r2 ? 'Reason 2: ' + r2 : '',
+              ].filter(Boolean).join('\n') }],
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) throw new Error((data && data.error) || 'HTTP ' + res.status);
+          const txt = String((data && data.content && data.content[0] && data.content[0].text) || '').trim();
+          if (!txt) throw new Error('Flux AI returned an empty response.');
+          out.innerHTML = `<div class="fsh-es-resp">${typeof fmtAI === 'function' ? fmtAI(txt) : esc(txt)}</div>`;
+        } catch (e) {
+          out.innerHTML = `<div class="fsh-es-note fsh-es-err">${esc(e.message || 'Flux AI request failed.')}</div>`
+            + `<span class="big" style="font-size:17px;font-weight:600;line-height:1.5">${esc(localThesis())}</span>`;
+        } finally {
+          btn.disabled = false; btn.textContent = label;
+        }
+      }
+      document.getElementById('esGo').addEventListener('click', build);
     }
 
     H.register('english', [
