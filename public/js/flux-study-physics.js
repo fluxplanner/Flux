@@ -114,16 +114,14 @@
       requestAnimationFrame(draw);
     }
 
-    // ── Formula sheet ──────────────────────────────────────────────────────
-    const FORMULAS = [['Kinematics', 'v = u + at'], ['', 's = ut + ½at²'], ['', 'v² = u² + 2as'], ['Force', 'F = ma'], ['Momentum', 'p = mv'], ['Work', 'W = Fd cosθ'], ['Kinetic E', 'Eₖ = ½mv²'], ['Potential E', 'Eₚ = mgh'], ["Ohm's law", 'V = IR'], ['Power', 'P = VI = I²R'], ['Wave', 'v = fλ'], ['Frequency', 'f = 1/T'], ['Gravitation', 'F = Gm₁m₂/r²'], ['Pressure', 'P = F/A'], ['Density', 'ρ = m/V'], ['Hooke', 'F = kx']];
-    function renderFormulas(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Formula sheet</h3><div class="fsh-formula-list">${FORMULAS.map((f) => `<div class="fsh-formula"><div class="nm">${esc(f[0] || '·')}</div><div class="fx">${esc(f[1])}</div></div>`).join('')}</div></div>`; }
+    // Physics keeps a single formula sheet — the "Physics formulas" tab, which
+    // comes from the classic toolbox (flux-toolbox-dp.js → 'formulas-sci').
 
     H.register('physics', [
       { id: 'projectile', name: 'Projectile', icon: '🎯', desc: 'projectile motion launch trajectory range height', render: renderProjectile, ai: { name: 'projectile', description: 'Projectile range/height/time. Arg: "angle=45 v=30 g=9.8".', params: { angle: 'deg', v: 'm/s', g: 'm/s2' }, run: (a) => { const o = typeof a === 'string' ? kv(a) : a; const ang = (o.angle || 45) * Math.PI / 180, v = o.v || 30, g = o.g || 9.8; return { range: +(v * v * Math.sin(2 * ang) / g).toFixed(2), peak: +((v * v * Math.sin(ang) * Math.sin(ang)) / (2 * g)).toFixed(2), time: +(2 * v * Math.sin(ang) / g).toFixed(2) }; } } },
       { id: 'suvat', name: 'Kinematics', icon: '📏', desc: 'suvat kinematics velocity acceleration', render: renderSuvat, ai: { name: 'suvat', description: 'Solve SUVAT. Arg: "u=0 a=9.8 t=3".', params: { u: '', v: '', a: '', t: '', s: '' }, run: (a) => suvatSolve(typeof a === 'string' ? kv(a) : a) } },
       { id: 'ohms', name: "Ohm's law", icon: '⚡', desc: 'ohms law voltage current resistance power circuit', render: renderOhms, ai: { name: 'ohmsLaw', description: "Ohm's law. Arg: \"V=12 R=4\".", params: { V: '', I: '', R: '', P: '' }, run: (a) => ohms(typeof a === 'string' ? kv(a) : a) } },
       { id: 'wave', name: 'Waves', icon: '〜', desc: 'wave amplitude frequency wavelength', render: renderWave },
-      { id: 'formulas', name: 'Formulas', icon: '📚', desc: 'physics formula sheet equations', render: renderFormulas },
     ]);
   }
   boot();
