@@ -8472,7 +8472,16 @@ async function sendAI(optionalUserText, depth, sendOpts){
         btn.disabled=false;input.focus();
         return;
       }
-      throw new Error(errData.error||'HTTP '+res.status);
+      // The proxy carries the provider's real message in `details`. Without it
+      // every upstream failure reads as "AI service error", so a rate limit is
+      // indistinguishable from an undeployed function — which sends you looking
+      // in entirely the wrong place.
+      const detail=String(errData.details||'');
+      if(/rate.?limit|\b429\b/i.test(detail)){
+        const w=/try again in ([\d.]+)\s*s/i.exec(detail);
+        throw new Error('Flux AI is rate-limited right now'+(w?' — try again in about '+Math.ceil(parseFloat(w[1]))+'s.':'. Give it a few seconds and try again.'));
+      }
+      throw new Error(detail?errData.error+' — '+detail.slice(0,300):(errData.error||'HTTP '+res.status));
     }
     let reply;
     const ctype=String(res.headers.get('content-type')||'');
@@ -8558,7 +8567,11 @@ async function sendAI(optionalUserText, depth, sendOpts){
   }catch(err){
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
-    appendMsg('bot','Something went wrong: '+err.message+'\n\nCheck that your Supabase Edge Functions are deployed and API keys are set.');
+    // Only suggest checking the deployment when the cause is actually unknown —
+    // appending it to a self-explanatory error (a rate limit, a quota) just
+    // points at the wrong thing.
+    const selfExplains=/rate-limited|sign in|quota|limit reached/i.test(err.message||'');
+    appendMsg('bot','Something went wrong: '+err.message+(selfExplains?'':'\n\nCheck that your Supabase Edge Functions are deployed and API keys are set.'));
   }
   btn.disabled=false;input.focus();
 }
