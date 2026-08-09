@@ -1116,7 +1116,7 @@
                 <span style="font-family:JetBrains Mono,monospace;color:var(--muted);font-size:.68rem">${esc(when)}</span>
                 <span style="font-size:.58rem;padding:2px 8px;border-radius:6px;background:rgba(var(--accent-rgb),.12);color:var(--accent);font-weight:700">${esc(e.category||'general')}</span>
                 <span style="flex:1"></span>
-                <button type="button" onclick="ownerDismissFeedback(${JSON.stringify(String(e.id||''))})" style="padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Dismiss</button>
+                <button type="button" onclick="ownerDismissFeedback('${esc(e.id||'')}')" style="padding:4px 10px;font-size:.65rem;border-radius:8px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:var(--red)">Dismiss</button>
               </div>
               <div style="font-size:.68rem;color:var(--muted2);margin-bottom:6px;word-break:break-all"><b>From</b> ${esc(e.fromEmail||'unknown')} <span style="opacity:.7">· ${esc((e.fromUserId||'').slice(0,8))}…</span></div>
               <div style="color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5">${esc(e.message||'')}</div>
@@ -1886,7 +1886,7 @@
           roleLbl+bannedTag+
         '</div>'+
         '<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.06)">'+
-          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer;font-weight:700;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.28);color:var(--accent)" onclick="ownerAuthOpenEdit('+JSON.stringify(String(u.id))+')">Edit Flux profile…</button>'+
+          '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer;font-weight:700;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.28);color:var(--accent)" onclick="ownerAuthOpenEdit(\''+esc(u.id)+'\')">Edit Flux profile…</button>'+
           '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthBan(\''+esc(u.id)+'\','+(u.banned?'false':'true')+')">'+(u.banned?'Unban':'Ban')+'</button>'+
           '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthRevokeSessions(\''+esc(u.id)+'\')">Revoke sessions</button>'+
           '<button type="button" style="padding:5px 10px;font-size:.65rem;border-radius:8px;cursor:pointer" onclick="ownerAuthForceRotate(\''+esc(u.id)+'\')">Force pwd flag</button>'+
