@@ -342,6 +342,23 @@ function isRetryableGroqError(e: unknown): boolean {
     /over capacity/i.test(s);
 }
 
+/**
+ * A 429 body states the exact wait: "Please try again in 7.51s". Stepping down
+ * the model ladder takes milliseconds, so against a per-minute token cap every
+ * rung is still limited by the time we reach it — the ladder alone can never
+ * clear one. Waiting the stated time and trying once more does.
+ */
+function groqRetryAfterMs(e: unknown): number | null {
+  const m = /try again in ([\d.]+)\s*s/i.exec(String(e));
+  if (!m) return null;
+  const ms = Math.ceil(Number(m[1]) * 1000);
+  return Number.isFinite(ms) && ms > 0 ? ms : null;
+}
+
+/** Cap the hold, so a long cooldown fails fast instead of stalling the request. */
+const GROQ_MAX_RETRY_WAIT_MS = 12_000;
+const napFor = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function openGroqStream(body: {
   messages?: Array<{ role: string; content: unknown }>;
   message?: string;
@@ -352,22 +369,33 @@ async function openGroqStream(body: {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
   if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
   let lastErr = "";
-  for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
-    const payload = buildOpenAIChatPayload(body, model);
-    payload.stream = true;
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok && res.body) return res;
-    const err = await res.text().catch(() => "");
-    lastErr = `Groq error ${res.status}: ${err}`;
-    if (!isRetryableGroqStatus(res.status)) break;
-    console.warn(`ai-proxy: ${model} unavailable (${res.status}), falling back`);
+  // Two passes: if the first exhausts the ladder against a rate limit, wait the
+  // cooldown Groq quoted and run it once more. Errors without a stated wait
+  // (a dead model, a bad key) skip the second pass and surface immediately.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      const waitMs = groqRetryAfterMs(lastErr);
+      if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
+      console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
+      await napFor(waitMs);
+    }
+    for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
+      const payload = buildOpenAIChatPayload(body, model);
+      payload.stream = true;
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok && res.body) return res;
+      const err = await res.text().catch(() => "");
+      lastErr = `Groq error ${res.status}: ${err}`;
+      if (!isRetryableGroqStatus(res.status)) break;
+      console.warn(`ai-proxy: ${model} unavailable (${res.status}), falling back`);
+    }
   }
   throw new Error(lastErr || "Groq error: all models unavailable");
 }
@@ -611,13 +639,23 @@ async function callGroq(body: {
   responseFormat?: "json_object";
 }): Promise<string> {
   let lastErr: unknown = null;
-  for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
-    try {
-      return await postGroqChatCompletion(buildOpenAIChatPayload(body, model));
-    } catch (e) {
-      lastErr = e;
-      if (!isRetryableGroqError(e)) throw e;
-      console.warn(`ai-proxy: ${model} unavailable, falling back`);
+  // Same two-pass shape as the streaming path: one wait-and-retry when the
+  // whole ladder is rate limited, otherwise fail on the first real error.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      const waitMs = groqRetryAfterMs(lastErr);
+      if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
+      console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
+      await napFor(waitMs);
+    }
+    for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
+      try {
+        return await postGroqChatCompletion(buildOpenAIChatPayload(body, model));
+      } catch (e) {
+        lastErr = e;
+        if (!isRetryableGroqError(e)) throw e;
+        console.warn(`ai-proxy: ${model} unavailable, falling back`);
+      }
     }
   }
   throw lastErr ?? new Error("Groq error: all models unavailable");
