@@ -3956,7 +3956,10 @@ function toggleTask(id){
     safeFlush();
   }
 }
-function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
+// Calendar cleanup is fire-and-forget: undo is unbounded (Cmd+Z, not just the
+// 5s snackbar), so there is no window to defer it behind. An undone delete
+// restores the task as un-synced — push it again to put it back on Calendar.
+function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
   if(f==='reading'||f==='snoozed')f='active';
   try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}

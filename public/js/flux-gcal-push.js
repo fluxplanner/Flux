@@ -86,6 +86,48 @@
     }
   }
 
+  async function deleteEvent(eventId){
+    const token = getToken();
+    if(!token) return { ok: false, needsSignIn: true };
+    try{
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      // 404/410 = the event is already gone, which is the state we wanted.
+      if(res.status === 404 || res.status === 410) return { ok: true, alreadyGone: true };
+      if(res.status === 401) return { ok: false, expired: true };
+      if(res.status === 403) return { ok: false, needsScope: true };
+      if(!res.ok){
+        const text = await res.text().catch(()=>'');
+        return { ok: false, error: `Calendar API ${res.status} — ${text.slice(0,160)}` };
+      }
+      return { ok: true }; // a successful DELETE is 204 No Content
+    } catch(e){
+      return { ok: false, error: String(e.message || e) };
+    }
+  }
+
+  /* Called when a task is deleted. The local record is dropped unconditionally —
+     even when the API call fails or the user is signed out — because a map entry
+     whose task no longer exists can never be cleaned up later, and would hand a
+     future task a bogus "already synced" badge. Better a possible orphan on the
+     calendar (which we warn about) than a permanently wrong local state. */
+  async function removeTaskFromGCal(taskId){
+    const pushed = getPushedMap();
+    if(!Object.prototype.hasOwnProperty.call(pushed, taskId)) return { ok: true, notPushed: true };
+    const eventId = pushed[taskId];
+    delete pushed[taskId];
+    savePushedMap(pushed);
+    if(!eventId) return { ok: true };
+    const res = await deleteEvent(eventId);
+    if(!res.ok){
+      console.warn('[flux-gcal] could not remove calendar event', res);
+      toast('Task deleted — its Google Calendar event may still be there', 'warning');
+    }
+    return res;
+  }
+
   async function pushTaskToGCal(taskId){
     if(window.FLUX_FLAGS && window.FLUX_FLAGS.PAYMENTS_ENABLED && window.FLUX_FLAGS.ENFORCE_GCAL_PUSH_GATE &&
         typeof window.requiresPro === 'function' && window.requiresPro('googleCalendarPush')){
@@ -178,6 +220,7 @@
   // Public API
   try{
     window.fluxPushTaskToGCal = pushTaskToGCal;
+    window.fluxGCalRemoveTaskFromGCal = removeTaskFromGCal;
     window.fluxReconnectGoogleCalendarWrite = fluxReconnectGoogleCalendarWrite;
     window.fluxGCalAutoPush = { enabled: isAutoOn, enable: ()=>setAutoOn(true), disable: ()=>setAutoOn(false), toggle: ()=>{ setAutoOn(!isAutoOn()); return isAutoOn(); } };
     window.fluxGCalPushedMap = getPushedMap;
