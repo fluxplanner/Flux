@@ -17,9 +17,10 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LS_KEY = 'flux_study_hub';
 
-  let state = { subject: 'chemistry', chemTab: 'table', tool: {} };
+  let state = { subject: 'chemistry', chemTab: 'table', tool: {}, recent: [] };
   try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
   if (!state.tool) state.tool = {};
+  if (!Array.isArray(state.recent)) state.recent = [];
   const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} };
 
   let selEl = 6, atomN = 6, atomSpeed = 1, searchQ = '';
@@ -169,7 +170,6 @@
     { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def' },
     { id:'music', name:'Music', ico:'🎵', accent:'#ff7a59' },
     { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a' },
-    { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b' },
     { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9' },
     { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f' },
     { id:'english', name:'English', ico:'✒', accent:'#e069b4' },
@@ -418,10 +418,7 @@
     cancelAnimationFrame(atomRAF); atomRAF = 0; frame(performance.now());
     cvs.style.touchAction = 'none';
     cvs.addEventListener('pointerdown', (ev) => { atomDrag = { x: ev.clientX, y: ev.clientY, yaw: atomRot.yaw, pitch: atomRot.pitch }; try { cvs.setPointerCapture(ev.pointerId); } catch (e2) {} });
-    // Drag moves the model with the cursor on both axes. Screen Y grows
-    // downward and proj() rotates the model, not the camera, so both deltas
-    // are negated.
-    cvs.addEventListener('pointermove', (ev) => { if (!atomDrag) return; atomRot.yaw = atomDrag.yaw - (ev.clientX - atomDrag.x) * 0.01; atomRot.pitch = atomDrag.pitch - (ev.clientY - atomDrag.y) * 0.01; });
+    cvs.addEventListener('pointermove', (ev) => { if (!atomDrag) return; atomRot.yaw = atomDrag.yaw + (ev.clientX - atomDrag.x) * 0.01; atomRot.pitch = atomDrag.pitch + (ev.clientY - atomDrag.y) * 0.01; });
     const end = () => { atomDrag = null; }; cvs.addEventListener('pointerup', end); cvs.addEventListener('pointercancel', end);
     cvs.addEventListener('wheel', (ev) => { ev.preventDefault(); atomZoom = Math.max(0.5, Math.min(2.6, atomZoom * (1 - ev.deltaY * 0.0012))); }, { passive: false });
   }
@@ -501,11 +498,12 @@
     window.print();
   }
 
-  const TAB_SLIDER = '<div class="fsh-tabs-slider" id="fshTabSlider" hidden><div class="fsh-tabs-thumb" id="fshTabThumb"></div></div>';
   const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['worksheet','📝','Worksheet']];
   function renderChemBody() {
     const b = $('fshChemBody'); if (!b) return;
-    if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
+    if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { recordRecent('chemistry', 'chem:' + state.chemTab, chip.label || chip.id, chip.icon || '🧰'); renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
+    const ct = CHEM_TABS.find((t) => t[0] === state.chemTab);
+    if (ct) recordRecent('chemistry', 'chem:' + ct[0], CHEM_QUICK_NAME[ct[0]] || ct[2], ct[1]);
     b.innerHTML = state.chemTab === 'table' ? renderTableTab() : state.chemTab === 'atom' ? renderAtomTab() : state.chemTab === 'tools' ? renderToolsTab() : state.chemTab === 'ions' ? renderIonsTab() : renderWorksheetTab();
     if (state.chemTab === 'table') applyPtFilter();
     else if (state.chemTab === 'atom') setTimeout(mountAtom3D, 0);
@@ -513,25 +511,23 @@
   function renderChem() {
     const tabs = CHEM_TABS.concat(legacyChipsFor('chemistry').map((c) => ['lg-' + c.id, c.icon || '🧰', c.label || c.id]));
     if (!tabs.some((t) => t[0] === state.chemTab)) state.chemTab = 'table';
-    $('fshStage').innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tabs.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t[0] ? ' active' : ''}" data-tab="${esc(t[0])}"><span class="fsh-ct-ico">${t[1]}</span>${esc(t[2])}</button>`).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshChemBody"></div></div>` + refStrip('chemistry');
+    $('fshStage').innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tabs.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t[0] ? ' active' : ''}" data-tab="${esc(t[0])}"><span class="fsh-ct-ico">${t[1]}</span>${esc(t[2])}</button>`).join('')}</div><div class="fsh-chem-body" id="fshChemBody"></div></div>` + refStrip('chemistry');
     renderChemBody(); requestAnimationFrame(moveTabGlide);
   }
 
-  // Set only by an actual click on a tool tab. Legacy "link" tools navigate
-  // away when opened, so restoring one as the saved tab would bounce the
-  // student straight out of Study Tools every time they came back.
-  let pickedTool = false;
-
   // ── generic subject (registered tools) ───────────────────────────────────
-  function renderRegistered(sid) {
+  // `picked` is true only when the user just chose this tool (tool tab, quick
+  // chip, search hit) — plain re-renders (opening the Study tab, switching
+  // subject) must not fire a tool's open side effects. See renderLegacyTool.
+  function renderRegistered(sid, picked) {
     const tools = (registry[sid] || []).filter((t) => typeof t.render === 'function');
     const stage = $('fshStage');
     if (!tools.length) { stage.innerHTML = soonHTML(sid) + refStrip(sid); return; }
     let active = state.tool[sid]; if (!tools.some((t) => t.id === active)) active = tools[0].id; state.tool[sid] = active; save();
-    stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tools.map((t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
+    const at = tools.find((t) => t.id === active); if (at) recordRecent(sid, at.id, at.name, at.icon);
+    stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tools.map((t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`).join('')}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
     const body = $('fshSubBody'), tool = tools.find((t) => t.id === active);
-    const userPicked = pickedTool; pickedTool = false;
-    try { tool.render(body, userPicked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
+    try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
     requestAnimationFrame(moveTabGlide);
   }
   function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} tools didn't load</h3><p>The ${esc(s.name)} module isn't available right now — try reloading. Meanwhile, here are the best interactive sites.</p></div>`; }
@@ -541,65 +537,8 @@
 
   function moveTabGlide() {
     const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
-    wireTabSlider();
-    const a = tabs.querySelector('.fsh-chem-tab.active');
-    if (a) {
-      g.style.left = a.offsetLeft + 'px'; g.style.width = a.offsetWidth + 'px';
-      try { a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
-    }
-    syncTabSlider();
-  }
-
-  // ── tab-strip slider ─────────────────────────────────────────────────────
-  // Sizes the thumb to the visible fraction of the strip and hides the whole
-  // control when everything already fits.
-  function syncTabSlider() {
-    const tabs = $('fshChemTabs'), sl = $('fshTabSlider'), th = $('fshTabThumb');
-    if (!tabs || !sl || !th) return;
-    const max = tabs.scrollWidth - tabs.clientWidth;
-    if (max <= 1) { sl.hidden = true; return; }
-    sl.hidden = false;
-    const track = sl.clientWidth;
-    const w = Math.max(30, Math.round(track * tabs.clientWidth / tabs.scrollWidth));
-    th.style.width = w + 'px';
-    th.style.left = Math.round((tabs.scrollLeft / max) * (track - w)) + 'px';
-  }
-  function wireTabSlider() {
-    const tabs = $('fshChemTabs'), sl = $('fshTabSlider'), th = $('fshTabThumb');
-    if (!tabs || !sl || !th || sl.__wired) return;
-    sl.__wired = true;
-    tabs.addEventListener('scroll', syncTabSlider, { passive: true });
-    // The strip is measured before icon fonts settle, so the first sync can see
-    // a non-overflowing strip and hide the slider. Re-measure on any resize.
-    if (window.ResizeObserver) { try { new ResizeObserver(syncTabSlider).observe(tabs); } catch (e) {} }
-    requestAnimationFrame(() => requestAnimationFrame(syncTabSlider));
-    let grab = null;
-    // scroll-behavior:smooth on the strip makes a dragged thumb lag behind the
-    // pointer, so jumps are done with it temporarily disabled.
-    const scrollTo = (clientX) => {
-      const max = tabs.scrollWidth - tabs.clientWidth; if (max <= 0) return;
-      const track = sl.clientWidth, w = th.offsetWidth;
-      const left = Math.max(0, Math.min(track - w, clientX - sl.getBoundingClientRect().left - grab));
-      const prev = tabs.style.scrollBehavior; tabs.style.scrollBehavior = 'auto';
-      tabs.scrollLeft = (left / (track - w)) * max;
-      tabs.style.scrollBehavior = prev;
-      syncTabSlider();
-    };
-    th.addEventListener('pointerdown', (ev) => {
-      grab = ev.clientX - th.getBoundingClientRect().left;
-      th.classList.add('dragging');
-      try { th.setPointerCapture(ev.pointerId); } catch (e) {}
-      ev.preventDefault(); ev.stopPropagation();
-    });
-    th.addEventListener('pointermove', (ev) => { if (grab != null) scrollTo(ev.clientX); });
-    const end = () => { grab = null; th.classList.remove('dragging'); };
-    th.addEventListener('pointerup', end); th.addEventListener('pointercancel', end);
-    // click anywhere on the track jumps there, centring the thumb
-    sl.addEventListener('pointerdown', (ev) => {
-      if (ev.target === th) return;
-      grab = th.offsetWidth / 2; scrollTo(ev.clientX); grab = null;
-    });
-    window.addEventListener('resize', syncTabSlider);
+    const a = tabs.querySelector('.fsh-chem-tab.active'); if (!a) return; g.style.left = a.offsetLeft + 'px'; g.style.width = a.offsetWidth + 'px';
+    try { a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
   }
 
   // ── search ───────────────────────────────────────────────────────────────
@@ -626,26 +565,42 @@
       ${none ? `<p style="color:var(--fsh-mut)">No matches — try a tool name ("balancer"), an element ("Fe"), or a subject ("physics").</p>` : ''}</div>`;
   }
 
+  // ── quick access (recently used tools) ───────────────────────────────────
+  const CHEM_QUICK_NAME = { table: 'Periodic Table', atom: '3D Atom', tools: 'Chem Calculators', ions: 'Ions & Solubility', worksheet: 'Worksheet Maker' };
+  function recordRecent(sid, tid, name, icon) {
+    if (!name) return;
+    state.recent = state.recent.filter((r) => !(r.sid === sid && r.tid === tid));
+    state.recent.unshift({ sid, tid, name, icon: icon || '•' });
+    state.recent = state.recent.slice(0, 8);
+    save(); renderQuick();
+  }
+  function renderQuick() {
+    const q = $('fshQuick'); if (!q) return;
+    const items = state.recent.slice(0, 6);
+    if (!items.length) { q.hidden = true; q.innerHTML = ''; return; }
+    q.hidden = false;
+    q.innerHTML = `<span class="fsh-quick-label">Recent</span>` + items.map((r) => `<button type="button" class="fsh-qchip" data-sid="${esc(r.sid)}" data-tid="${esc(r.tid)}" title="${esc(subjById(r.sid).name)} · ${esc(r.name)}"><span class="qi">${r.icon}</span>${esc(r.name)}</button>`).join('');
+  }
   function openToolRef(sid, tid) {
     searchQ = ''; const si = $('fshSearch'); if (si) si.value = ''; const sc = $('fshSearchClear'); if (sc) sc.hidden = true;
     state.subject = sid;
     if (sid === 'chemistry' && tid && tid.indexOf('chem:') === 0) state.chemTab = tid.slice(5);
     else if (tid) state.tool[sid] = tid;
-    save(); selectSubject(sid);
+    save(); selectSubject(sid, !!tid);
   }
 
   // ── stage dispatch ───────────────────────────────────────────────────────
-  function renderStage() {
+  function renderStage(picked) {
     if (searchQ.trim()) { renderSearch(); return; }
     const s = subjById(state.subject); applyAccent(s.accent);
-    if (state.subject === 'chemistry') renderChem(); else renderRegistered(state.subject);
+    if (state.subject === 'chemistry') renderChem(); else renderRegistered(state.subject, picked);
   }
-  function selectSubject(id) {
+  function selectSubject(id, picked) {
     state.subject = id; searchQ = ''; save();
     const si = $('fshSearch'); if (si) si.value = ''; const c = $('fshSearchClear'); if (c) c.hidden = true;
     document.querySelectorAll('#fshRail .fsh-pill').forEach((p) => p.classList.toggle('active', p.dataset.sub === id));
     const a = document.querySelector('#fshRail .fsh-pill.active'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    renderStage();
+    renderStage(picked);
   }
 
   // ── shell + events ───────────────────────────────────────────────────────
@@ -654,8 +609,9 @@
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
     host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
       <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${SUBJECTS.map((s) => `<button type="button" class="fsh-pill${s.id === state.subject ? ' active' : ''}${s.flagship ? ' flagship' : ''}" data-sub="${s.id}"><span class="fsh-pill-ico">${s.ico}</span>${esc(s.name)}</button>`).join('')}</div></div>
+      <div class="fsh-quick" id="fshQuick" hidden></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;
-    wire(); return true;
+    wire(); renderQuick(); return true;
   }
   function wire() {
     const root = $('fshRoot'); if (!root || root.__wired) return; root.__wired = true;
@@ -665,6 +621,7 @@
     si.addEventListener('keydown', (e) => { if (e.key === 'Escape') { searchQ = ''; si.value = ''; sc.hidden = true; renderStage(); si.blur(); } });
     sc.addEventListener('click', () => { searchQ = ''; si.value = ''; sc.hidden = true; renderStage(); });
 
+    $('fshQuick').addEventListener('click', (e) => { const c = e.target.closest('.fsh-qchip'); if (c) openToolRef(c.dataset.sid, c.dataset.tid); });
     $('fshRail').addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const pills = [...document.querySelectorAll('#fshRail .fsh-pill')];
@@ -698,7 +655,7 @@
       const chemTab = t.closest('.fsh-chem-tab[data-tab]');
       if (chemTab) { state.chemTab = chemTab.dataset.tab; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab)); renderChemBody(); requestAnimationFrame(moveTabGlide); return; }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');
-      if (subTab) { state.tool[state.subject] = subTab.dataset.tool; save(); pickedTool = true; renderRegistered(state.subject); return; }
+      if (subTab) { state.tool[state.subject] = subTab.dataset.tool; save(); renderRegistered(state.subject, true); return; }
       const cell = t.closest('.fsh-el');
       if (cell && cell.dataset.n && !a0) { selEl = +cell.dataset.n; const d = $('fshElDetail'); if (d) { d.innerHTML = elDetail(elByN(selEl)); d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
       const cat = t.closest('.fsh-cat-chip[data-cat]');
@@ -746,18 +703,18 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'history', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'biology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'history', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
     const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
       const sub = OVERRIDE[c.id] || SECTION[sec.id]; if (!sub) return;
-      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc });
+      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn });
     }));
     _legacyIdx = idx; return idx;
   }
   const legacyChipsFor = (sub) => { const idx = buildLegacyIndex(); return (idx && idx[sub]) || []; };
-  function renderLegacyTool(body, chip, userInitiated) {
+  function renderLegacyTool(body, chip, picked) {
     if (chip.mode === 'inline' && window.fluxToolbox && window.fluxToolbox.renderToolIntoBody) {
       body.innerHTML = '<div class="fsh-panel" id="fshLgMount"></div>';
       try { window.fluxToolbox.renderToolIntoBody($('fshLgMount'), chip.sub, chip.tid); } catch (e3) { body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e3.message)}</div></div>`; }
@@ -784,23 +741,23 @@
         return;
       }
     }
-    // Clicking the chip opens the tool directly — no intermediate button. But
-    // only on a real click: these branches navigate away or pop a modal, and
-    // firing them on a restore made the saved tab bounce the student out of
-    // Study Tools on every visit. On restore we render the card instead, so
-    // opening stays a deliberate choice.
+    // Clicking the chip opens the tool directly — no intermediate button. Only
+    // on a real pick, though: these tools leave the panel (link mode navigates
+    // to another tab, fn mode pops a modal) and the selection is persisted, so
+    // firing on every render would bounce the user out of Study tools each
+    // time they opened it.
     let opened = false;
-    if (userInitiated) {
+    if (picked) {
       try {
         if (chip.mode === 'link' && chip.nav && window.nav) { window.nav(chip.nav); opened = true; }
         else if (chip.fn && typeof window[chip.fn] === 'function') { window[chip.fn](); opened = true; }
       } catch (e4) { opened = false; }
     }
-    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${opened ? 'Opened — it’s on screen now.' : esc(chip.desc || 'Could not open this tool automatically.')} <button type="button" class="fsh-btn fsh-btn--ghost" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">${opened ? 'Reopen' : 'Open ' + esc(chip.label || 'tool')}</button></p></div></div>`;
+    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${opened ? 'Opened — it’s on screen now.' : esc(chip.desc || 'Could not open this tool automatically.')} <button type="button" class="fsh-btn fsh-btn--ghost" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">${opened ? 'Reopen' : esc(chip.btn || 'Open ' + (chip.label || 'tool'))}</button></p></div></div>`;
   }
   function mergeLegacyOnce() {
     if (_merged) return; const idx = buildLegacyIndex(); if (!idx) return; _merged = true;
-    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, idx[sub].map((chip) => ({ id: 'lg-' + chip.id, name: chip.label || chip.id, icon: chip.icon || '🧰', desc: 'classic ' + (chip.desc || chip.label || ''), render: (b, ui) => renderLegacyTool(b, chip, ui) }))); });
+    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, idx[sub].map((chip) => ({ id: 'lg-' + chip.id, name: chip.label || chip.id, icon: chip.icon || '🧰', desc: 'classic ' + (chip.desc || chip.label || ''), render: (b, picked) => renderLegacyTool(b, chip, picked) }))); });
   }
   function renderHub() { if (!$('fshRoot')) { if (!buildShell()) return; } mergeLegacyOnce(); renderStage(); }
   window.renderToolbox = renderHub;
