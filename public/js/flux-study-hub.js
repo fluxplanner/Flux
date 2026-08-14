@@ -516,7 +516,10 @@
   }
 
   // ── generic subject (registered tools) ───────────────────────────────────
-  function renderRegistered(sid) {
+  // `picked` is true only when the user just chose this tool (tool tab, quick
+  // chip, search hit) — plain re-renders (opening the Study tab, switching
+  // subject) must not fire a tool's open side effects. See renderLegacyTool.
+  function renderRegistered(sid, picked) {
     const tools = (registry[sid] || []).filter((t) => typeof t.render === 'function');
     const stage = $('fshStage');
     if (!tools.length) { stage.innerHTML = soonHTML(sid) + refStrip(sid); return; }
@@ -524,7 +527,7 @@
     const at = tools.find((t) => t.id === active); if (at) recordRecent(sid, at.id, at.name, at.icon);
     stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tools.map((t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`).join('')}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
     const body = $('fshSubBody'), tool = tools.find((t) => t.id === active);
-    try { tool.render(body); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
+    try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
     requestAnimationFrame(moveTabGlide);
   }
   function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} tools didn't load</h3><p>The ${esc(s.name)} module isn't available right now — try reloading. Meanwhile, here are the best interactive sites.</p></div>`; }
@@ -583,21 +586,21 @@
     state.subject = sid;
     if (sid === 'chemistry' && tid && tid.indexOf('chem:') === 0) state.chemTab = tid.slice(5);
     else if (tid) state.tool[sid] = tid;
-    save(); selectSubject(sid);
+    save(); selectSubject(sid, !!tid);
   }
 
   // ── stage dispatch ───────────────────────────────────────────────────────
-  function renderStage() {
+  function renderStage(picked) {
     if (searchQ.trim()) { renderSearch(); return; }
     const s = subjById(state.subject); applyAccent(s.accent);
-    if (state.subject === 'chemistry') renderChem(); else renderRegistered(state.subject);
+    if (state.subject === 'chemistry') renderChem(); else renderRegistered(state.subject, picked);
   }
-  function selectSubject(id) {
+  function selectSubject(id, picked) {
     state.subject = id; searchQ = ''; save();
     const si = $('fshSearch'); if (si) si.value = ''; const c = $('fshSearchClear'); if (c) c.hidden = true;
     document.querySelectorAll('#fshRail .fsh-pill').forEach((p) => p.classList.toggle('active', p.dataset.sub === id));
     const a = document.querySelector('#fshRail .fsh-pill.active'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    renderStage();
+    renderStage(picked);
   }
 
   // ── shell + events ───────────────────────────────────────────────────────
@@ -652,7 +655,7 @@
       const chemTab = t.closest('.fsh-chem-tab[data-tab]');
       if (chemTab) { state.chemTab = chemTab.dataset.tab; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab)); renderChemBody(); requestAnimationFrame(moveTabGlide); return; }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');
-      if (subTab) { state.tool[state.subject] = subTab.dataset.tool; save(); renderRegistered(state.subject); return; }
+      if (subTab) { state.tool[state.subject] = subTab.dataset.tool; save(); renderRegistered(state.subject, true); return; }
       const cell = t.closest('.fsh-el');
       if (cell && cell.dataset.n && !a0) { selEl = +cell.dataset.n; const d = $('fshElDetail'); if (d) { d.innerHTML = elDetail(elByN(selEl)); d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
       const cat = t.closest('.fsh-cat-chip[data-cat]');
@@ -706,12 +709,12 @@
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
       const sub = OVERRIDE[c.id] || SECTION[sec.id]; if (!sub) return;
-      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc });
+      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn });
     }));
     _legacyIdx = idx; return idx;
   }
   const legacyChipsFor = (sub) => { const idx = buildLegacyIndex(); return (idx && idx[sub]) || []; };
-  function renderLegacyTool(body, chip) {
+  function renderLegacyTool(body, chip, picked) {
     if (chip.mode === 'inline' && window.fluxToolbox && window.fluxToolbox.renderToolIntoBody) {
       body.innerHTML = '<div class="fsh-panel" id="fshLgMount"></div>';
       try { window.fluxToolbox.renderToolIntoBody($('fshLgMount'), chip.sub, chip.tid); } catch (e3) { body.innerHTML = `<div class="fsh-panel"><div class="fsh-err">${esc(e3.message)}</div></div>`; }
@@ -738,17 +741,23 @@
         return;
       }
     }
-    // Clicking the chip opens the tool directly — no intermediate button.
+    // Clicking the chip opens the tool directly — no intermediate button. Only
+    // on a real pick, though: these tools leave the panel (link mode navigates
+    // to another tab, fn mode pops a modal) and the selection is persisted, so
+    // firing on every render would bounce the user out of Study tools each
+    // time they opened it.
     let opened = false;
-    try {
-      if (chip.mode === 'link' && chip.nav && window.nav) { window.nav(chip.nav); opened = true; }
-      else if (chip.fn && typeof window[chip.fn] === 'function') { window[chip.fn](); opened = true; }
-    } catch (e4) { opened = false; }
-    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${opened ? 'Opened — it’s on screen now.' : esc(chip.desc || 'Could not open this tool automatically.')} <button type="button" class="fsh-btn fsh-btn--ghost" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">${opened ? 'Reopen' : 'Open ' + esc(chip.label || 'tool')}</button></p></div></div>`;
+    if (picked) {
+      try {
+        if (chip.mode === 'link' && chip.nav && window.nav) { window.nav(chip.nav); opened = true; }
+        else if (chip.fn && typeof window[chip.fn] === 'function') { window[chip.fn](); opened = true; }
+      } catch (e4) { opened = false; }
+    }
+    body.innerHTML = `<div class="fsh-panel"><div class="fsh-card fsh-soon"><div class="ic">${chip.icon || '▣'}</div><h3>${esc(chip.label || chip.id)}</h3><p>${opened ? 'Opened — it’s on screen now.' : esc(chip.desc || 'Could not open this tool automatically.')} <button type="button" class="fsh-btn fsh-btn--ghost" data-act="lg-open" data-fn="${esc(chip.fn || '')}" data-nav="${esc(chip.nav || '')}" data-mode="${esc(chip.mode || '')}">${opened ? 'Reopen' : esc(chip.btn || 'Open ' + (chip.label || 'tool'))}</button></p></div></div>`;
   }
   function mergeLegacyOnce() {
     if (_merged) return; const idx = buildLegacyIndex(); if (!idx) return; _merged = true;
-    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, idx[sub].map((chip) => ({ id: 'lg-' + chip.id, name: chip.label || chip.id, icon: chip.icon || '🧰', desc: 'classic ' + (chip.desc || chip.label || ''), render: (b) => renderLegacyTool(b, chip) }))); });
+    Object.keys(idx).forEach((sub) => { if (sub === 'chemistry') return; register(sub, idx[sub].map((chip) => ({ id: 'lg-' + chip.id, name: chip.label || chip.id, icon: chip.icon || '🧰', desc: 'classic ' + (chip.desc || chip.label || ''), render: (b, picked) => renderLegacyTool(b, chip, picked) }))); });
   }
   function renderHub() { if (!$('fshRoot')) { if (!buildShell()) return; } mergeLegacyOnce(); renderStage(); }
   window.renderToolbox = renderHub;
