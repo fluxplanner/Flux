@@ -9898,6 +9898,7 @@ function prefillOnboardingFromProfile(){
 function showOnboarding(startStep){
   const step=typeof startStep==='number'&&startStep>=1&&startStep<=OB_TOTAL?Math.floor(startStep):1;
   obCurrentStep=step;
+  try{fluxMakeChipsAccessible(document.getElementById('onboarding'));}catch(_){}
   const ls=document.getElementById('loginScreen');
   if(ls){
     ls.classList.remove('visible');
@@ -9958,12 +9959,34 @@ function renderObProgress(){
     return`<div class="ob-dot ${cls}"></div>`;
   }).join('');
 }
+/** Onboarding chips are <div onclick=...> with no role and no tabindex, so a
+ *  keyboard-only user could not select a role, grade, or focus — they could not
+ *  finish signup at all. Give them button semantics and Enter/Space activation.
+ *  Idempotent: safe to call on every step render. */
+function fluxMakeChipsAccessible(root){
+  const scope=root||document;
+  scope.querySelectorAll('.ob-chip,.ob-role-chip,.ob-staffrole-chip').forEach(el=>{
+    if(el.dataset.a11yChip)return;
+    el.dataset.a11yChip='1';
+    if(!el.getAttribute('role'))el.setAttribute('role','button');
+    if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','0');
+    el.addEventListener('keydown',ev=>{
+      if(ev.key==='Enter'||ev.key===' '||ev.key==='Spacebar'){
+        ev.preventDefault();
+        el.click();
+      }
+    });
+  });
+}
+window.fluxMakeChipsAccessible=fluxMakeChipsAccessible;
+
 function showObStep(n){
   // Direction is computed against the OUTGOING step (obCurrentStep still holds it).
   const dir=n>=obCurrentStep?'fwd':'back';
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
   const s=document.getElementById('ob-step-'+n);if(s)s.classList.add('active');
   obCurrentStep=n;renderObProgress();
+  try{fluxMakeChipsAccessible(document.getElementById('onboarding'));}catch(_){}
   try{if(s&&window.FluxMotion?.stepTransition)FluxMotion.stepTransition(s,dir);}catch(_){}
   const redo=!!window._fluxOnboardingRedo;
   const gc=document.getElementById('obRedoGlobalCancel');

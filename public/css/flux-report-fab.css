@@ -43,3 +43,13 @@
 @media (max-width: 768px) {
   .flux-report-fab { display: none; }
 }
+
+/* Desktop: the sidebar owns the left column, and this fab (z-index 310) landed
+   on top of the user card at its foot — covering the "Click to sign in" line, so
+   clicks aimed at sign-in hit Report instead. Clear the sidebar. Must stay after
+   the base rule: @media adds no specificity, so source order decides. */
+@media (min-width: 901px) {
+  .flux-report-fab {
+    left: calc(var(--sidebar-w, 276px) + 16px);
+  }
+}
