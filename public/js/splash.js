@@ -320,22 +320,36 @@ function runCinematicSplash(callback){
   const start=performance.now();
   prevFrame=start;
 
+  // The splash only advances inside requestAnimationFrame, which browsers pause
+  // entirely while a tab is backgrounded. Switching tabs or apps during the ~3.5s
+  // intro therefore stranded the user on the splash forever — the callback that
+  // reveals the app never ran. Finish once, whoever gets there first; setTimeout
+  // is throttled in background tabs but, unlike rAF, still fires.
+  let finished=false;
+  function finish(){
+    if(finished)return;
+    finished=true;
+    clearTimeout(bailout);
+    window.removeEventListener('resize',onResize);
+    cancelAnimationFrame(raf);
+    splash.style.transition='opacity .48s cubic-bezier(.22,1,.36,1)';
+    splash.style.opacity='0';
+    setTimeout(()=>{
+      splash.style.display='none';
+      splash.innerHTML='';
+      splash.style.opacity='1';
+      callback();
+    },480);
+  }
+  const bailout=setTimeout(finish,T_END+1500);
+
   function frame(now){
     let dt=Math.min(0.05,(now-prevFrame)/1000);
     if(dt>0.08)dt=1/60;
     prevFrame=now;
     const elapsed=now-start;
     if(elapsed>=T_END){
-      window.removeEventListener('resize',onResize);
-      cancelAnimationFrame(raf);
-      splash.style.transition='opacity .48s cubic-bezier(.22,1,.36,1)';
-      splash.style.opacity='0';
-      setTimeout(()=>{
-        splash.style.display='none';
-        splash.innerHTML='';
-        splash.style.opacity='1';
-        callback();
-      },480);
+      finish();
       return;
     }
 

@@ -1230,14 +1230,25 @@
         icon: '📝',
         blurb: 'New doc',
       },
-      {
-        id: 'pin-bhs',
-        title: 'Bloomfield Hills Schools',
-        url: 'https://www.bloomfield.org/',
-        icon: '🏫',
-        blurb: 'District',
-      },
     ];
+    // The Bloomfield district shortcut used to be pinned unconditionally, so
+    // staff at every other school got a link to a district they don't work for.
+    // Show it only when that is actually their school.
+    try {
+      const school = String(
+        (typeof FluxRole !== 'undefined' && FluxRole && FluxRole.profile && FluxRole.profile.school) ||
+        (typeof load === 'function' ? (load('profile', {}) || {}).school : '') || ''
+      );
+      if (/bloomfield/i.test(school)) {
+        pins.push({
+          id: 'pin-bhs',
+          title: 'Bloomfield Hills Schools',
+          url: 'https://www.bloomfield.org/',
+          icon: '🏫',
+          blurb: 'District',
+        });
+      }
+    } catch (_) {}
     if (['teacher', 'counselor', 'staff', 'admin'].includes(role)) {
       pins.push({
         id: 'pin-classroom',
@@ -1610,11 +1621,16 @@
   }
 
   // Panel-level notice so the feed never renders as a blank page.
-  function schoolFeedNotice(el, message) {
+  function schoolFeedNotice(el, message, opts) {
+    // A message telling someone to sign in, with no way to sign in, is a dead
+    // end — and Feed sits in the primary nav for guests.
+    const cta = opts && opts.signIn
+      ? `<div style="margin-top:14px"><button type="button" class="btn-sec" onclick="showLoginScreen()">Sign in</button></div>`
+      : '';
     el.innerHTML = `
       <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">School feed — announcements, resources, and events</p></div>
       <div style="max-width:720px;margin:0 auto;padding:16px">
-        <div style="text-align:center;padding:28px;color:var(--muted2)"><div style="font-size:.85rem">${esc(message)}</div></div>
+        <div style="text-align:center;padding:28px;color:var(--muted2)"><div style="font-size:.85rem">${esc(message)}</div>${cta}</div>
       </div>`;
   }
 
@@ -1622,7 +1638,7 @@
     const el = document.getElementById('schoolFeedPanel');
     if (!el) return;
     if (!currentUser) {
-      schoolFeedNotice(el, 'Sign in to see posts from your school.');
+      schoolFeedNotice(el, 'Sign in to see posts from your school.', { signIn: true });
       return;
     }
     const client = sb();

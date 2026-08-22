@@ -16,6 +16,19 @@
     return typeof getSB === 'function' ? getSB() : null;
   }
 
+  /** sb() for user-triggered actions. The callers below used to `return`
+   *  silently when there was no client, so nav items like Users, Calendar and
+   *  Announce looked completely dead to a signed-out educator — no panel change,
+   *  no modal, no message, no console error. Say why nothing happened instead. */
+  function sbOrExplain(what) {
+    const client = sb();
+    if (client) return client;
+    if (typeof showToast === 'function') {
+      showToast('Sign in to ' + (what || 'use school tools') + '.', 'info');
+    }
+    return null;
+  }
+
   function fluxNormDayKey(day) {
     return String(day || '')
       .trim()
@@ -422,7 +435,7 @@
   window.renderAdminDashboard = renderAdminDashboard;
 
   async function openAdminUserManager(defaultTab) {
-    const client = sb();
+    const client = sbOrExplain('manage users');
     if (!client) return;
     let users = [];
     try {
@@ -841,7 +854,7 @@
   window.showEmergencyBanner = showEmergencyBanner;
 
   async function openSchoolCalendar() {
-    const client = sb();
+    const client = sbOrExplain('view the school calendar');
     if (!client) return;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -962,7 +975,7 @@
   window.submitSchoolEvent = submitSchoolEvent;
 
   async function deleteSchoolEvent(id) {
-    const client = sb();
+    const client = sbOrExplain('delete school events');
     if (!client) return;
     await client.from('school_calendar_events').delete().eq('id', id);
     if (typeof showToast === 'function') showToast('Deleted.', 'info');
@@ -1015,7 +1028,7 @@
   window.selectAllDaySlots = selectAllDaySlots;
 
   async function openCounselorAvailabilityEditor(counselorId) {
-    const client = sb();
+    const client = sbOrExplain('edit counselor availability');
     if (!client) return;
     let existingSlots = [];
     try {
@@ -1093,7 +1106,7 @@
   window.openCounselorAvailabilityEditor = openCounselorAvailabilityEditor;
 
   async function saveCounselorAvailability(counselorId) {
-    const client = sb();
+    const client = sbOrExplain('save counselor availability');
     if (!client) return;
     const slots = [];
     document.querySelectorAll('.avail-slot[data-slot]').forEach((el) => {
@@ -1363,7 +1376,7 @@
   window.respondToAppointmentRequest = respondToAppointmentRequest;
 
   async function updateAppointmentStatus(appointmentId, status) {
-    const client = sb();
+    const client = sbOrExplain('update appointments');
     if (!client) return;
     // Capture error so the user actually sees RLS / network failures instead
     // of a misleading "Status updated." toast (the fallback path used by
