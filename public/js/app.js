@@ -1627,6 +1627,17 @@ window.getTimeOfDay=getTimeOfDay;
 window.timeAgo=timeAgo;
 window.renderEmptyState=renderEmptyState;
 
+/** Signed-out placeholder for the role dashboards. Those panels used to `return`
+ *  silently when there was no session, leaving a blank page where the
+ *  explanation belonged — and no way back to sign-in. */
+function fluxSignedOutHostHTML(msg){
+  return '<div style="padding:28px;text-align:center;color:var(--muted2);font-size:.9rem;line-height:1.6">'
+    +esc(msg)
+    +'<div style="margin-top:14px"><button type="button" class="btn-sec" onclick="showLoginScreen()">Sign in</button></div>'
+    +'</div>';
+}
+window.fluxSignedOutHostHTML=fluxSignedOutHostHTML;
+
 /** Per-user marker: student/staff picker completed once (survives flaky user_roles reads). */
 function fluxRoleSetupKey(userId){
   return 'flux_role_setup_v1_'+String(userId||'').trim();
@@ -1668,6 +1679,27 @@ window.fluxGetRoleSetup=fluxGetRoleSetup;
 window.fluxMarkRoleSetupDone=fluxMarkRoleSetupDone;
 window.fluxNeedsRolePicker=fluxNeedsRolePicker;
 
+const FLUX_ROLES=['student','teacher','counselor','staff','admin'];
+/** Role from device-local onboarding state, for users with no Supabase session.
+ *  The per-user marker (fluxGetRoleSetup) is keyed by user id, so a guest can
+ *  never reach it — without this, a guest who picked Staff → Teacher in
+ *  onboarding was silently downgraded to 'student' on every load.
+ *  Onboarding writes the concrete role to `flux_role_setup_done_v1`, and the raw
+ *  picker answers to `profile` (role: student|staff, staffRole: the sub-role). */
+function fluxLocalRoleFallback(){
+  try{
+    const g=load('flux_role_setup_done_v1',null);
+    if(g&&FLUX_ROLES.includes(g.role))return g.role;
+  }catch(_){}
+  try{
+    const p=load('profile',{});
+    if(p&&p.role==='staff')return FLUX_ROLES.includes(p.staffRole)?p.staffRole:'teacher';
+    if(p&&FLUX_ROLES.includes(p.role))return p.role;
+  }catch(_){}
+  return null;
+}
+window.fluxLocalRoleFallback=fluxLocalRoleFallback;
+
 // ══ FLUX ROLE SYSTEM ══
 // Single source of truth for "who is this user" + "are they in work or personal mode".
 // Methods that touch currentUser/getSB() defer the lookup so this object is safe to define
@@ -1698,7 +1730,25 @@ const FluxRole={
         console.log('[FluxRole:load]',{why,current:this.current,mode:this.mode,hasProfile:!!this.profile});
       }catch(_){}
     };
-    if(!u){this.current=this.current||'student';logRoleLoad('no_user');return this.current;}
+    if(!u){
+      // Guest / signed-out. Honour the role picked during onboarding — it only
+      // lives on this device, but it is still the user's stated role.
+      const localRole=fluxLocalRoleFallback();
+      if(localRole){
+        this.current=localRole;
+        if(!this.profile){
+          let name=null;try{name=(load('profile',{})||{}).name||null;}catch(_){}
+          this.profile={role:localRole,display_name:name,_fromLocalSetup:true};
+        }
+      }else{
+        this.current=this.current||'student';
+      }
+      if(this.isEducator()){try{this.mode=load('flux_guest_staff_mode','work');}catch(_){this.mode='work';}}
+      else this.mode='personal';
+      window._userRole=this.current;
+      logRoleLoad('no_user_local:'+(localRole||'none'));
+      return this.current;
+    }
     const sb=(typeof getSB==='function'?getSB():null);
     if(!sb){this.current=this.current||'student';logRoleLoad('no_sb');return this.current;}
     try{
@@ -1744,6 +1794,7 @@ const FluxRole={
     try{
       const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
       if(u)save('flux_staff_mode_'+u.id,mode);
+      else save('flux_guest_staff_mode',mode); // guests have no id to key on
     }catch(_){}
     if(mode==='personal'){
       try{if(typeof clearSensitiveStaffCache==='function')clearSensitiveStaffCache();}catch(_){}
@@ -10080,10 +10131,21 @@ function obNext(){
             updated_at:new Date().toISOString(),
           }).then(()=>{},()=>{});
         }catch(_){}
-        try{if(window.FluxRole)FluxRole.current=effectiveRole;}catch(_){}
       }
       // Also stash a guest-fallback flag so post-login picker stays away for guests too
       save('flux_role_setup_done_v1',{role:effectiveRole,at:Date.now()});
+      // Apply the role now, for everyone. This used to sit inside `if(uid)`, so a
+      // guest who picked Staff → Teacher kept a student UI — no staff nav, no work
+      // mode — both immediately and after every reload.
+      try{
+        if(window.FluxRole){
+          FluxRole.current=effectiveRole;
+          FluxRole.mode=(typeof FluxRole.isEducator==='function'&&FluxRole.isEducator())?'work':'personal';
+          window._userRole=effectiveRole;
+          if(typeof applyRoleUI==='function')applyRoleUI();
+          if(typeof renderSidebars==='function'){renderSidebars();applyRoleUI();}
+        }
+      }catch(_){}
     }catch(_){}
   }
   if(obCurrentStep===2){
@@ -11606,13 +11668,21 @@ function showLoginOrApp(){
   const hasData=tasks.length>0||notes.length>0||classes.length>0;
   const wasGuest=load('flux_was_guest',false);
   if(wasGuest){
-    if(!onboarded&&!hasData){
-      showOnboarding();
-    }else{
-      showApp();
-      if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
-    }
-    setSyncStatus('offline');
+    const enterGuest=()=>{
+      if(!onboarded&&!hasData){
+        showOnboarding();
+      }else{
+        showApp();
+        if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
+      }
+      setSyncStatus('offline');
+    };
+    // Resolve the device-local role before rendering: showApp() builds the nav
+    // from FluxRole, so a returning guest who onboarded as staff has to come
+    // back as staff. Without this the role never loaded on this path and every
+    // returning guest was rendered as a student.
+    if(typeof FluxRole?.load==='function')void FluxRole.load().then(enterGuest,enterGuest);
+    else enterGuest();
   }else{
     showLoginScreen();
   }
@@ -17754,7 +17824,10 @@ function teacherGoogleStatusChipHtml(){
 
 async function renderTeacherDashboard(){
   const host=document.getElementById('teacherDashboardBody');
-  if(!host||!currentUser)return;
+  if(!host)return;
+  // Was `if(!host||!currentUser)return;` — the silent return left the panel blank
+  // and skipped the "Sign in to load your classes" state a few lines below.
+  if(!currentUser){host.innerHTML=fluxSignedOutHostHTML('Sign in to load your classes.');return;}
   try{
     if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()&&!FluxRole.isTeacher()){
       host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2);font-size:.9rem">Teacher classes and assignments are only available on <strong>teacher</strong> accounts. Use your school dashboard for staff tools.</div>';
@@ -19061,14 +19134,16 @@ window.ensureCounselorRecord=ensureCounselorRecord;
 // ── Counselor dashboard ───────────────────────────────────────────
 async function renderCounselorDashboard(){
   const host=document.getElementById('counselorDashboardBody');
-  if(!host||!currentUser)return;
+  if(!host)return;
+  if(!currentUser){host.innerHTML=fluxSignedOutHostHTML('Sign in to load your students and appointments.');return;}
   try{
     if(typeof FluxRole!=='undefined'&&FluxRole.isWorkMode&&FluxRole.isWorkMode()&&!FluxRole.isCounselor()){
       host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted2);font-size:.9rem">Counselor tools are only available on <strong>counselor</strong> accounts.</div>';
       return;
     }
   }catch(_){}
-  const sb=getSB();if(!sb)return;
+  const sb=getSB();
+  if(!sb){host.innerHTML=fluxSignedOutHostHTML('Sign in to load your students and appointments.');return;}
   host.innerHTML=`<div class="flux-role-skeleton" aria-busy="true" style="padding:20px">
     <div class="flux-skeleton-pulse flux-role-skel-title" style="height:28px;width:min(280px,70%);margin-bottom:14px"></div>
     <div class="flux-role-skel-grid" style="margin-bottom:14px">

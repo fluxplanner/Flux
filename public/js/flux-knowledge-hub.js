@@ -1,13 +1,27 @@
 /**
- * flux-knowledge-hub.js — the former "Notes" panel is now purely Knowledge.
+ * flux-knowledge-hub.js — RETIRED. Stands down; see below.
  *
- * Notes has been fully replaced by the Knowledge base. The sidebar entry +
- * page title read "Knowledge", the old notes editor UI is hidden, and the
- * knowledge-doc manager (FluxKnowledge.renderInline) fills the panel.
- * (Notebook is its own separate sidebar tab — not here.)
+ * This module implemented an earlier design in which the "Notes" panel became
+ * purely Knowledge: it hid the notes editor (`#notes .flux-stack`), injected the
+ * knowledge-doc manager in its place, and relabelled the sidebar Notes →
+ * Knowledge.
  *
- * The underlying notes data/functions are left intact in app.js so deep links
- * and "Send to Knowledge" keep working; only the Notes *surface* is retired.
+ * That design was superseded by `ensureNbkSubtabs()` (app.js), where one
+ * "Notebook" sidebar entry holds two sub-views — the Notes list (panel `notes`,
+ * the default) and Knowledge (panel `notebook`, the NotebookLM workspace).
+ *
+ * Both shipped at once and fought over panel `notes`: the subtab strip
+ * advertised a "Notes" destination that this file had permanently blanked, so
+ * clicking Notes showed the Knowledge base and the notes list/editor was
+ * unreachable from anywhere in the app.
+ *
+ * The newer design wins, so the takeover is disabled. The Knowledge manager is
+ * unaffected and still reachable via `FluxKnowledge.openManager()` from the
+ * Notes toolbar and the Flux AI topbar (index.html:1598 and :2085), and the
+ * NotebookLM workspace remains on panel `notebook`.
+ *
+ * Kept as a no-op rather than deleted so `window.FluxKnowledgeHub` stays defined
+ * and the bundle manifest needs no change.
  *
  * Self-contained IIFE.
  */
@@ -67,18 +81,10 @@
     if (sub) sub.textContent = 'Your knowledge base — class materials, formula sheets, and notes Flux studies from.';
   }
 
-  function boot() {
-    relabelNav();
-    var p = panel();
-    if (p && window.MutationObserver) {
-      var mo = new MutationObserver(function () { if (!built) build(); });
-      mo.observe(p, { childList: true, subtree: true });
-    }
-    build();
-  }
+  // Disabled: booting this would hide `#notes .flux-stack` and make the Notes
+  // list unreachable. `build`, `renderKnowledge` and `relabelNav` are retained
+  // above only as the record of the retired design.
+  void build; void relabelNav;
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-
-  window.FluxKnowledgeHub = { build: build };
+  window.FluxKnowledgeHub = { build: function () {} };
 })();
