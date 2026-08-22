@@ -147,6 +147,28 @@
 .flux-cowork-mini-btn:active { transform: scale(.97); }
 .flux-cowork-mini-btn.is-ok { color: var(--green, #4ade80); }
 
+/* "The host left" notice — amber, not red: nothing is broken, but the room has
+   stopped persisting and the student needs to act to keep their work. */
+.flux-cowork-banner {
+  padding: 10px 18px;
+  background: rgba(251, 191, 36, 0.10);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.22);
+  color: var(--gold, #fbbf24);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+/* Joiner-only footer: their one way to keep the checklist. */
+.flux-cowork-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 18px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Join-a-room entry in the dashboard task toolbar. */
+.flux-cowork-join-btn { display: inline-flex; align-items: center; gap: 5px; }
+
 /* Presence row */
 .flux-cowork-presence {
   display: flex; align-items: center; gap: 10px;

@@ -1755,6 +1755,9 @@ body.flux-panic .task-card.flux-task-urgent{
 }
 .task-action-btn--gcal:hover{ color: #4285F4; transform: scale(1.05); }
 .task-action-btn--gcal:active{ transform: scale(.92); }
+/* Already synced — stays blue so the card shows at a glance what's on Calendar. */
+.task-action-btn--gcal.is-pushed{ color: #4285F4; }
+.task-action-btn--gcal.is-pushed .fxi{ opacity: 1; }
 
 /* ════════════════════════════════════════════════════════════════
    BULK SELECT MODE on task list — bottom action bar (enter via app logic)
