@@ -83,14 +83,10 @@
 }
 .fsh-pill.flagship::after { content:"★"; font-size:10px; opacity:.8; margin-left:-2px; }
 
-/* ── QUICK ACCESS (recently used tools) ────────────────────────────────── */
-.fsh-quick { display:flex; align-items:center; gap:8px; padding:4px 26px 0; flex-wrap:wrap; }
-.fsh-quick[hidden] { display:none !important; }
-.fsh-quick-label { font-size:10.5px; color:var(--fsh-mut); text-transform:uppercase; letter-spacing:.07em; font-weight:640; margin-right:2px; }
+/* ── CHIPS (subject shortcuts in search results) ───────────────────────── */
 .fsh-qchip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--fsh-line); color:var(--fsh-ink-2); font-size:12px; font-weight:560; white-space:nowrap; transition:transform .16s, color .16s, border-color .16s, background .16s; }
 .fsh-qchip:hover { transform:translateY(-1px); color:var(--fsh-ink); border-color:rgba(var(--fsh-accent-rgb),.45); background:rgba(var(--fsh-accent-rgb),.08); }
 .fsh-qchip .qi { font-size:13px; line-height:1; }
-@media (max-width:680px){ .fsh-quick { padding:4px 16px 0; } }
 .fsh-search-key { position:absolute; right:12px; top:50%; transform:translateY(-50%); width:22px; height:22px; display:grid; place-items:center; border-radius:6px; border:1px solid var(--fsh-line); background:rgba(255,255,255,.05); color:var(--fsh-mut); font-size:11.5px; font-weight:600; pointer-events:none; }
 .fsh-search input:focus ~ .fsh-search-key,
 .fsh-search .fsh-search-clear:not([hidden]) ~ .fsh-search-key { display:none; }
@@ -112,8 +108,17 @@
 
 /* ── TAB / SUB-NAV (chemistry tabs + generic subject tool nav) ─────────── */
 .fsh-chem { display:flex; flex-direction:column; gap:18px; }
-.fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); align-self:flex-start; width:fit-content; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; }
+.fsh-tabs-wrap { display:flex; flex-direction:column; gap:7px; align-self:flex-start; width:fit-content; max-width:100%; }
+.fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); width:100%; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; overscroll-behavior-x:contain; }
 .fsh-chem-tabs::-webkit-scrollbar { height:0; display:none; }
+/* Explicit drag handle for the tab strip. Native scrollbars are overlay-style
+   on macOS — invisible at rest and zero-height — so subjects whose tabs
+   overflow gave no hint that more were off-screen and no way to drag to them.
+   Shown only when the strip actually overflows; see syncTabSlider(). */
+.fsh-tabs-slider { position:relative; height:8px; margin:0 10px; border-radius:999px; background:rgba(255,255,255,.07); border:1px solid var(--fsh-line); cursor:pointer; touch-action:none; }
+.fsh-tabs-slider[hidden] { display:none; }
+.fsh-tabs-thumb { position:absolute; top:0; bottom:0; left:0; border-radius:999px; background:rgba(var(--fsh-accent-rgb),.5); transition:background .16s; }
+.fsh-tabs-slider:hover .fsh-tabs-thumb, .fsh-tabs-thumb.dragging { background:rgba(var(--fsh-accent-rgb),.9); }
 .fsh-chem-tab { border:0; background:transparent; color:var(--fsh-ink-2); cursor:pointer; padding:9px 18px; border-radius:999px; font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; position:relative; z-index:1; transition:color .2s; flex:0 0 auto; white-space:nowrap; }
 .fsh-chem-tab .fsh-ct-ico { font-size:15px; }
 .fsh-chem-tab.active { color:#04121b; }
@@ -226,6 +231,22 @@
 .fsh-label { font-size:12px; color:var(--fsh-mut); display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0 4px; }
 .fsh-label b { color:var(--fsh-ink); font-variant-numeric:tabular-nums; }
 .fsh-out { margin-top:14px; font-size:14px; color:var(--fsh-ink-2); }
+/* Essay scaffold: Flux AI's answer renders inline here instead of sending the
+   student over to the AI panel. */
+.fsh-es-note { font-size:12.5px; color:var(--fsh-mut); margin-bottom:8px; }
+.fsh-es-note.fsh-es-err { color:#ff8080; }
+.fsh-es-resp {
+  padding:14px 16px; border-radius:12px;
+  background:rgba(var(--fsh-accent-rgb),.06);
+  border:1px solid rgba(var(--fsh-accent-rgb),.2);
+  font-size:13.5px; line-height:1.6; color:var(--fsh-ink);
+  max-height:460px; overflow-y:auto;
+}
+/* fmtAI() renders "## X" as div.ai-h2, not a real heading — tint those to the
+   subject accent so the scaffold's sections are scannable. */
+.fsh-es-resp .ai-h2 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--fsh-accent); margin:14px 0 4px; }
+.fsh-es-resp .ai-h2:first-child { margin-top:0; }
+.fsh-es-resp strong { color:var(--fsh-ink); }
 .fsh-out .big { font-size:28px; font-weight:740; color:var(--fsh-ink); }
 .fsh-err { color:#fda4af; font-size:13px; margin-top:12px; }
 .fsh-note { font-size:12px; color:var(--fsh-mut); margin-top:8px; }

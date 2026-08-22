@@ -157,10 +157,10 @@
       ? entries
           .map(([key, p]) => {
             const on = key === active ? ' flux-pomo-chip--active' : '';
-            return `<button type="button" class="flux-pomo-chip${on}" onclick="FluxPomodoroPresets.selectSubject(${JSON.stringify(key)})" title="${esc(subjectLabel(key))} · ${p.work}/${p.short}m">
+            return `<button type="button" class="flux-pomo-chip${on}" onclick="FluxPomodoroPresets.selectSubject('${esc(key)}')" title="${esc(subjectLabel(key))} · ${p.work}/${p.short}m">
             <span class="flux-pomo-chip-label">${esc(subjectLabel(key).slice(0, 14))}</span>
             <span class="flux-pomo-chip-mins">${p.work}m</span>
-            <span class="flux-pomo-chip-x" onclick="event.stopPropagation();FluxPomodoroPresets.removePreset(${JSON.stringify(key)})" aria-label="${esc(T('pomo.remove'))}">×</span>
+            <span class="flux-pomo-chip-x" onclick="event.stopPropagation();FluxPomodoroPresets.removePreset('${esc(key)}')" aria-label="${esc(T('pomo.remove'))}">×</span>
           </button>`;
           })
           .join('')

@@ -4007,7 +4007,10 @@ function toggleTask(id){
     safeFlush();
   }
 }
-function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
+// Calendar cleanup is fire-and-forget: undo is unbounded (Cmd+Z, not just the
+// 5s snackbar), so there is no window to defer it behind. An undone delete
+// restores the task as un-synced — push it again to put it back on Calendar.
+function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
   if(f==='reading'||f==='snoozed')f='active';
   try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}
@@ -4576,6 +4579,7 @@ function renderTasks(){
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
     const sch=fluxEventScope(t)==='school';
+    const gcalPushed=!!(typeof window.fluxGCalPushedMap==='function'&&window.fluxGCalPushedMap()[t.id]);
     const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
@@ -4615,10 +4619,10 @@ ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
 <div class="task-actions">
 <button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
-${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options"></button>`:''}
+${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options" aria-label="Repeat options">🔁</button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
-${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link"></button>`:''}
-${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="Push to Google Calendar" aria-label="Push to Google Calendar"></button>`:''}
+${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link" aria-label="Copy link to task">🔗</button>`:''}
+${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal${gcalPushed?' is-pushed':''}" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}" aria-label="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}">📅</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
@@ -4752,9 +4756,9 @@ function changeMonth(d){
 function selectDay(d){
   calSelected=d;renderCalendar();
   const b=document.getElementById('calAddBtn');if(b)b.style.display='inline-flex';
-  // Tapping a day only selects it — renderCalendar() refreshes the day panel
-  // below the grid with that date's tasks and events. Adding stays explicit
-  // via the "+ Task" / "+ Event" buttons.
+  // Click-to-add: any day tap opens the quick-add sheet for that date
+  // (Google Calendar behavior). Cancel keeps the day selected.
+  try{openAddForDate();}catch(_){}
 }
 
 // ── Calendar glass date picker (month title dropdown; task-focused) ──
@@ -8523,7 +8527,16 @@ async function sendAI(optionalUserText, depth, sendOpts){
         btn.disabled=false;input.focus();
         return;
       }
-      throw new Error(errData.error||'HTTP '+res.status);
+      // The proxy carries the provider's real message in `details`. Without it
+      // every upstream failure reads as "AI service error", so a rate limit is
+      // indistinguishable from an undeployed function — which sends you looking
+      // in entirely the wrong place.
+      const detail=String(errData.details||'');
+      if(/rate.?limit|\b429\b/i.test(detail)){
+        const w=/try again in ([\d.]+)\s*s/i.exec(detail);
+        throw new Error('Flux AI is rate-limited right now'+(w?' — try again in about '+Math.ceil(parseFloat(w[1]))+'s.':'. Give it a few seconds and try again.'));
+      }
+      throw new Error(detail?errData.error+' — '+detail.slice(0,300):(errData.error||'HTTP '+res.status));
     }
     let reply;
     const ctype=String(res.headers.get('content-type')||'');
@@ -8609,7 +8622,11 @@ async function sendAI(optionalUserText, depth, sendOpts){
   }catch(err){
     try{thinkAnim?.cancel?.();}catch(e){}
     thinkEl.remove();
-    appendMsg('bot','Something went wrong: '+err.message+'\n\nCheck that your Supabase Edge Functions are deployed and API keys are set.');
+    // Only suggest checking the deployment when the cause is actually unknown —
+    // appending it to a self-explanatory error (a rate limit, a quota) just
+    // points at the wrong thing.
+    const selfExplains=/rate-limited|sign in|quota|limit reached/i.test(err.message||'');
+    appendMsg('bot','Something went wrong: '+err.message+(selfExplains?'':'\n\nCheck that your Supabase Edge Functions are deployed and API keys are set.'));
   }
   btn.disabled=false;input.focus();
 }
