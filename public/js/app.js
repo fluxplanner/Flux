@@ -4754,11 +4754,11 @@ function changeMonth(d){
   }
 }
 function selectDay(d){
+  // Tapping a day only selects it: renderCalendar() refreshes the day panel
+  // below with that date's tasks and events. Adding is explicit, via the
+  // "+ Task" button (which openAddForDate still backs).
   calSelected=d;renderCalendar();
   const b=document.getElementById('calAddBtn');if(b)b.style.display='inline-flex';
-  // Click-to-add: any day tap opens the quick-add sheet for that date
-  // (Google Calendar behavior). Cancel keeps the day selected.
-  try{openAddForDate();}catch(_){}
 }
 
 // ── Calendar glass date picker (month title dropdown; task-focused) ──
