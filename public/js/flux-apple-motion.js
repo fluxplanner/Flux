@@ -393,8 +393,15 @@ function staggerPanelContent(panel) {
   // Sweep up any previously-staggered card left at partial opacity from an
   // interrupted prior tween (user navigated panels mid-reveal). Without this
   // they'd stay hidden forever because the selector below excludes them.
-  panel.querySelectorAll('.flux-apple-staggered').forEach((el) => {
-    if (el.style.opacity !== '' && parseFloat(el.style.opacity) < 1) {
+  // Sweep document-wide, not just this panel: switching tabs faster than the
+  // reveal finishes strands cards in the panel you *left*, and returning to it
+  // is not guaranteed. Also check transform, not only opacity — an interrupted
+  // tween often leaves scale(0.97) with opacity already cleared, which the old
+  // opacity-only test walked straight past and left the card invisible.
+  document.querySelectorAll('.flux-apple-staggered').forEach((el) => {
+    const partialOpacity = el.style.opacity !== '' && parseFloat(el.style.opacity) < 1;
+    const leftoverTransform = !!el.style.transform && el.style.transform !== 'none';
+    if (partialOpacity || leftoverTransform) {
       el.style.removeProperty('opacity');
       el.style.removeProperty('transform');
     }
@@ -410,20 +417,33 @@ function staggerPanelContent(panel) {
     ].join(','),
   );
   if (!els.length) return;
-  els.forEach((el) => el.classList.add('flux-apple-staggered'));
+  // Mark everything so nothing is re-animated later, but only reveal the first
+  // few. Beyond roughly a screenful the stagger is invisible anyway — the cards
+  // are below the fold — while still adding delay to the tail of the animation.
+  const all = Array.prototype.slice.call(els);
+  all.forEach((el) => el.classList.add('flux-apple-staggered'));
+  const els2 = all.slice(0, 8);
+  all.slice(8).forEach((el) => {
+    el.style.removeProperty('opacity');
+    el.style.removeProperty('transform');
+  });
+  if (!els2.length) return;
   motion(() => {
-    animate(els, {
+    animate(els2, {
       opacity: [0, 1],
       translateY: [18, 0],
       scale: [0.97, 1],
-      delay: stagger(28, { from: 'first' }),
-      duration: 460,
+      // 28ms x 42 cards (Settings) meant the last card landed ~1.6s after the
+      // click, which reads as lag rather than polish. Halved, and the element
+      // list is capped above so a long panel cannot stretch the reveal.
+      delay: stagger(14, { from: 'first' }),
+      duration: 300,
       ease: spring('smooth'),
       // Clear inline styles so an interrupted tween can't leave the card
       // stuck. Without this, switching panels mid-animation freezes the card
       // at e.g. opacity 0.44, translateY 18px.
       onComplete: () => {
-        els.forEach((el) => {
+        els2.forEach((el) => {
           el.style.removeProperty('opacity');
           el.style.removeProperty('transform');
         });
@@ -446,7 +466,10 @@ function panelEnter(panel) {
       opacity: [0, 1],
       translateY: [14, 0],
       scale: [0.99, 1],
-      duration: 460,
+      // 460ms was long enough to read as waiting. Study Tools feels instant
+      // because its subject swap is ~320ms on one small element; this brings the
+      // panel closer to that without losing the movement.
+      duration: 300,
       ease: spring('smooth'),
       onComplete: () => {
         panel.style.animation = '';

@@ -38,8 +38,15 @@ html.flux-apple-motion .toast {
   -webkit-tap-highlight-color: transparent;
 }
 
-html.flux-apple-motion .flux-apple-press-target {
-  transform: translateZ(0);
+/* Promote while pressed, not forever. This used to carry translateZ(0) +
+   will-change permanently, which put ~268 buttons on their own GPU layer for the
+   whole life of the page. Every one of those layers costs memory and gives the
+   compositor more to reconcile each frame — including on tab switches, where
+   nothing is being pressed at all. The press is a JS transform animation, and
+   browsers composite transforms while they animate regardless, so the standing
+   hint bought almost nothing. :active supplies it just in time instead. */
+html.flux-apple-motion .flux-apple-press-target:active,
+html.flux-apple-motion .flux-apple-press-target.is-pressing {
   will-change: transform;
 }
 
