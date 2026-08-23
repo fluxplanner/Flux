@@ -94,16 +94,20 @@ html.flux-apple-motion .panel.active.flux-panel-enter {
   animation: fluxApplePanelEnter var(--flux-apple-duration) var(--flux-apple-ease-out) both;
 }
 
+/* Deliberately no filter: blur() here. This animation runs on the *live* panel
+   subtree on every tab switch, and Settings alone is ~1,100 nodes — an animated
+   blur forces the compositor to re-rasterize that whole subtree every frame,
+   which is what made each tab click stutter. opacity + transform are composited,
+   so the same motion costs essentially nothing. The ::view-transition variants
+   further down keep their blur: those animate a flat snapshot, not live DOM. */
 @keyframes fluxApplePanelEnter {
   from {
     opacity: 0;
     transform: translate3d(0, 12px, 0) scale(0.992);
-    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0);
   }
 }
 
@@ -391,7 +395,10 @@ html.flux-apple-motion [contenteditable="true"] {
     box-shadow 0.32s var(--flux-apple-ease-out),
     border-color 0.32s var(--flux-apple-ease-out),
     background 0.32s var(--flux-apple-ease-out);
-  will-change: transform, box-shadow;
+  /* No will-change. This rule matches every input/select/textarea on the page —
+     193 of them — and permanently promoting each to its own compositor layer
+     costs GPU memory for no gain. It also declared `transform`, which this rule
+     never animates, and `box-shadow`, which cannot be composited anyway. */
 }
 
 html.flux-apple-motion .flux-apple-focus {

@@ -438,10 +438,14 @@ function panelEnter(panel) {
     // Cancel any CSS animation collision — JS takes over
     panel.style.animation = 'none';
     animate(panel, {
+      // No `filter` here. Animating blur meant writing style.filter on the
+      // panel every frame for 460ms, and each write re-rasterizes the whole
+      // panel subtree — Settings alone is ~1,100 nodes. That was the stutter on
+      // every tab click. opacity/translateY/scale are composited, so the motion
+      // reads the same but costs the GPU almost nothing.
       opacity: [0, 1],
       translateY: [14, 0],
       scale: [0.99, 1],
-      filter: ['blur(6px)', 'blur(0px)'],
       duration: 460,
       ease: spring('smooth'),
       onComplete: () => {
