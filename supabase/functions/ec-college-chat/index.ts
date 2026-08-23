@@ -184,20 +184,39 @@ ${prof ? `Student profile (summary):\n${prof}\n\n` : ""}${digestBlock ? `${diges
     const groqKey = Deno.env.get("GROQ_API_KEY");
     if (!groqKey) return json({ error: "GROQ_API_KEY not set" }, 500, origin);
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 2048,
-        messages: [{ role: "system", content: system }, ...cleanMsgs],
-      }),
-    });
-
-    if (!res.ok) {
+    // Mirrors ai-proxy's ladder. This used to pin a single model, so when Groq
+    // retired it the whole feature answered "model_not_found" forever. Step down
+    // on any per-model failure (404 gone, 413 too big, 429 busy, 5xx upstream)
+    // and only surface an error once every rung has been tried.
+    const MODELS = [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "llama-3.1-8b-instant",
+    ];
+    let res: Response | null = null;
+    let lastErrMsg = "";
+    for (const model of MODELS) {
+      res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model,
+          max_tokens: 2048,
+          messages: [{ role: "system", content: system }, ...cleanMsgs],
+        }),
+      });
+      if (res.ok) break;
       const err = await res.json().catch(() => ({}));
+      lastErrMsg = String(err?.error?.message || res.status);
+      const retryable = res.status === 404 || res.status === 413 ||
+        res.status === 429 || res.status >= 500;
+      if (!retryable) break;
+      console.warn(`ec-college-chat: ${model} unavailable (${res.status}), falling back`);
+    }
+
+    if (!res || !res.ok) {
       return json(
-        { error: `Groq error: ${err?.error?.message || res.status}` },
+        { error: `Groq error: ${lastErrMsg || "all models unavailable"}` },
         502,
         origin,
       );

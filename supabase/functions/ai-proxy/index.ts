@@ -329,15 +329,21 @@ function groqFallbackChain(model: string): string[] {
 }
 
 function isRetryableGroqStatus(status: number): boolean {
+  // 404: Groq retires models on their own schedule, and a decommissioned name
+  // answers "model_not_found". That is a fact about one rung of the ladder, not
+  // about the request, so it must step down like any other per-model failure.
+  // Without this, a single retirement took the whole assistant offline even
+  // though the remaining models were healthy.
   // 413: free-tier per-request token caps differ per model — a request too
   // big for gpt-oss-120b often fits llama-3.3-70b, so step down the ladder.
-  return status === 413 || status === 429 || status === 498 ||
+  return status === 404 || status === 413 || status === 429 || status === 498 ||
     status === 499 || status >= 500;
 }
 
 function isRetryableGroqError(e: unknown): boolean {
   const s = String(e);
-  return /Groq error (413|429|498|499|5\d\d)/.test(s) ||
+  return /Groq error (404|413|429|498|499|5\d\d)/.test(s) ||
+    /model_not_found/i.test(s) || /does not exist/i.test(s) ||
     /rate.?limit/i.test(s) || /request too large/i.test(s) ||
     /over capacity/i.test(s);
 }
