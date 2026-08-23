@@ -56,6 +56,7 @@
     "public/js/flux-ai-connections.js",
     "public/js/flux-staff-directory.js",
     "public/js/flux-school-presets.js",
+    "public/js/flux-school-calendars.js",
     "public/js/flux-school-registry.js",
     "public/js/flux-feature-flags.js",
     "public/js/flux-i18n.js",
