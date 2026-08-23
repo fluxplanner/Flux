@@ -1,0 +1,174 @@
+/* Flux · Themed date picker — paired with public/js/flux-datepicker.js.
+   Everything here is driven by the app's existing tokens (--card, --border,
+   --accent, --text, --muted), so it follows every theme and custom accent
+   instead of the platform's own calendar colours. */
+
+/* Kill the native picker's trigger. The popup it opens cannot be styled, so
+   the whole control is replaced; hiding the indicator is what stops both
+   calendars appearing at once. Typing the date by keyboard still works. */
+.fdp-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+}
+.fdp-input { cursor: pointer; }
+
+.fdp-pop {
+  position: fixed;
+  /* Above modals, so a date field inside a dialog still opens on top. */
+  z-index: calc(var(--flux-z-modal, 500) + 20);
+  width: 296px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--card, #12161f);
+  border: 1px solid var(--border2, rgba(255, 255, 255, .1));
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, .5),
+    0 0 0 1px rgba(var(--accent-rgb), .1),
+    inset 0 1px 0 rgba(255, 255, 255, .04);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  animation: fdpIn .14s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes fdpIn {
+  from { opacity: 0; transform: translateY(-4px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fdp-pop { animation: none; }
+}
+
+/* ── header ── */
+.fdp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fdp-title {
+  flex: 1;
+  text-align: center;
+  font-size: .86rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--text, #fff);
+}
+.fdp-nav {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, .08));
+  color: var(--muted2, #9aa3b2);
+  font-size: 1rem;
+  line-height: 1;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.fdp-nav:hover {
+  color: var(--text, #fff);
+  border-color: rgba(var(--accent-rgb), .4);
+  background: rgba(var(--accent-rgb), .08);
+}
+
+/* ── weekday header ── */
+.fdp-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.fdp-dow span {
+  text-align: center;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--muted, #6b7280);
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 0;
+}
+
+/* ── day grid ── */
+.fdp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.fdp-day {
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text2, var(--text, #e6e9ef));
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.fdp-day:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), .12);
+  color: var(--text, #fff);
+}
+.fdp-day:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), .7);
+  outline-offset: 1px;
+}
+/* Days spilling in from the neighbouring months stay legible but recede. */
+.fdp-day--outside { color: var(--muted, #6b7280); opacity: .55; }
+/* Today gets a ring, not a fill, so it stays visible when another day is
+   selected — two filled chips would read as two selections. */
+.fdp-day--today:not(.fdp-day--selected) {
+  border-color: rgba(var(--accent-rgb), .45);
+  color: var(--accent);
+}
+.fdp-day--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), .35);
+}
+.fdp-day--selected.fdp-day--outside { opacity: 1; }
+.fdp-day:disabled { opacity: .25; cursor: default; }
+
+/* ── footer ── */
+.fdp-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, .08));
+}
+.fdp-action {
+  padding: 6px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, .08));
+  color: var(--muted2, #9aa3b2);
+  font-family: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.fdp-action:hover {
+  color: var(--text, #fff);
+  border-color: rgba(var(--accent-rgb), .4);
+  background: rgba(var(--accent-rgb), .08);
+}
+.fdp-action--accent { color: var(--accent); border-color: rgba(var(--accent-rgb), .35); }
+
+/* Phones get a slightly wider grid and larger taps. */
+@media (max-width: 420px) {
+  .fdp-pop { width: min(320px, calc(100vw - 16px)); }
+  .fdp-day { font-size: .82rem; }
+}

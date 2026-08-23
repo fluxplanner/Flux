@@ -4581,7 +4581,17 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 }
 
 /* ── Teacher / counselor dashboards ── */
-.flux-edu-panel{padding:0}
+/* padding:0 lets educator surfaces run edge-to-edge, but it also removed the
+   bottom scroll runway. Each .panel is its own scroll container on desktop, so
+   with no bottom padding the last card ends flush against the panel edge and
+   sits under the FAB / report button — every teacher work tab appeared to cut
+   off early. Normal panels carry 110px here for exactly this reason; the sides
+   and top stay flush. */
+.flux-edu-panel{padding:0 0 96px}
+@media(max-width:768px){
+  /* Clear the bottom nav and the home indicator as well. */
+  .flux-edu-panel{padding:0 0 max(104px,calc(92px + env(safe-area-inset-bottom,0px)))}
+}
 .teacher-dashboard,.counselor-dashboard{padding:20px}
 .teacher-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
 .teacher-greeting{font-size:1.3rem;font-weight:800}

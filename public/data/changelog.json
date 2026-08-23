@@ -1,9 +1,15 @@
 {
   "generated": "2026-08-23",
   "firstCommit": "2026-03-12",
-  "total": 479,
+  "total": 480,
   "omitted": 298,
   "entries": [
+    {
+      "date": "2026-08-23",
+      "type": "Fixed",
+      "title": "Canvas really scrolls now, and cut the per-click cost behind the tab lag",
+      "hash": "f69f82a"
+    },
     {
       "date": "2026-08-23",
       "type": "Housekeeping",

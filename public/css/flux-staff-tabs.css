@@ -468,7 +468,9 @@
 /* Slim "Workspace & school" strip mounted under the stats row (placement:'after-stats').
    Single horizontal scroll row so links stay visible without scrolling past the grid,
    and never force horizontal overflow on narrow widths. */
-.sr-workspace-mount--inline{margin:-2px 0 20px}
+/* Top margin pulled up by the 6px of padding added to the scroll row below, so
+   the row still sits where it always did. */
+.sr-workspace-mount--inline{margin:-8px 0 14px}
 .sr-workspace-mount--inline .sr-section-title{
   font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
   color:var(--muted2);margin:0 0 8px;
@@ -476,7 +478,12 @@
 .sr-workspace-mount--inline .sr-pin-grid{
   display:flex;grid-template-columns:none;gap:8px;
   overflow-x:auto;overscroll-behavior-x:contain;
-  padding-bottom:4px;scrollbar-width:thin;
+  /* overflow-x:auto forces overflow-y to compute as auto too — a row cannot
+     scroll on one axis and overflow visibly on the other. So this clips
+     vertically, and .sr-pin:hover lifts translateY(-3px) with a downward
+     drop shadow: the top of the pill was being sliced off mid-hover. Padding
+     gives the lift and the shadow somewhere to live. */
+  padding:6px 2px 10px;scrollbar-width:thin;
 }
 .sr-workspace-mount--inline .sr-pin{flex:0 0 auto;padding:8px 12px;gap:8px}
 .sr-workspace-mount--inline .sr-pin-icon{font-size:1.1rem}

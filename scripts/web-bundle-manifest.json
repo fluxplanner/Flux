@@ -217,7 +217,8 @@
     "public/js/flux-help-tickets.js",
     "public/js/flux-originkit-motion.js",
     "public/js/flux-changelog.js",
-    "public/js/flux-platform-ui.js"
+    "public/js/flux-platform-ui.js",
+    "public/js/flux-datepicker.js"
   ],
   "css": [
     "public/css/styles.css",
@@ -365,6 +366,7 @@
     "public/css/flux-school-presets.css",
     "public/css/flux-native-controls.css",
     "public/css/flux-changelog.css",
-    "public/css/flux-platform-ui.css"
+    "public/css/flux-platform-ui.css",
+    "public/css/flux-datepicker.css"
   ]
 }
