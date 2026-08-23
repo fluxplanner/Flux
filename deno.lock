@@ -22,6 +22,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@axe-core/playwright@^4.12.1",
         "npm:@playwright/test@^1.51.1",
         "npm:@supabase/supabase-js@2.110.1",
         "npm:animejs@4.5.0",
