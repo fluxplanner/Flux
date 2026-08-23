@@ -1,9 +1,15 @@
 {
   "generated": "2026-08-23",
   "firstCommit": "2026-03-12",
-  "total": 476,
+  "total": 477,
   "omitted": 298,
   "entries": [
+    {
+      "date": "2026-08-23",
+      "type": "Added",
+      "title": "Let the owner hide sidebar tabs across every planner",
+      "hash": "d67e6e3"
+    },
     {
       "date": "2026-08-23",
       "type": "Added",

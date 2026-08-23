@@ -103,8 +103,16 @@
 .fsh-fav-btn.on { opacity:1; transform:scale(1); }
 .fsh-fav-btn.on { color:var(--fsh-accent); border-color:rgba(var(--fsh-accent-rgb),.45); }
 .fsh-fav-btn:hover { transform:scale(1.15); color:var(--fsh-accent); }
-/* Touch has no hover state, so the control would be undiscoverable. */
-@media (hover: none) { .fsh-fav-btn { opacity:1; transform:scale(1); } }
+/* Touch has no hover state, so the control would be undiscoverable. It also
+   needs a bigger target than the 20px badge: it sits right beside the subject
+   you are trying to tap, and a mis-tap silently reorders the rail. The ::after
+   grows the hit area to ~36px while the badge stays small, and because the
+   badge overhangs the pill's corner most of that growth lands outside the
+   pill rather than stealing taps from it. */
+@media (hover: none) {
+  .fsh-fav-btn { opacity:1; transform:scale(1); width:24px; height:24px; font-size:12px; top:-6px; right:-6px; }
+  .fsh-fav-btn::after { content:''; position:absolute; inset:-6px; border-radius:inherit; }
+}
 
 /* Divider between the favourites cluster and everything else. */
 .fsh-rail-sep {

@@ -2,7 +2,7 @@
 
 Every substantive change, newest first. Generated from git history on 2026-08-23.
 
-**476 changes** recorded, from 2026-03-12 to 2026-08-23.
+**477 changes** recorded, from 2026-03-12 to 2026-08-23.
 
 Regenerate with `npm run changelog`. 298 commits are omitted:
 they were made through the GitHub web editor, which names them "Update app.js"
@@ -12,6 +12,7 @@ and similar, so they carry no description of what actually changed.
 
 ### Added
 
+- Let the owner hide sidebar tabs across every planner — `2026-08-23` (d67e6e3)
 - A change log going back to the first commit, in the repo and in Settings — `2026-08-23` (36793fe)
 - Load the IAE 2026-27 school year into the planner — `2026-08-23` (3f5d5c3)
 - One-tap International Academy East bell schedule when adding classes — `2026-08-23` (6532fa5)
