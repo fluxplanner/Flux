@@ -143,10 +143,13 @@
       logoSvg: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#F55036"/></svg>',
       site: 'https://console.groq.com/keys',
       keyHint: 'Free tier with rate limits',
+      // Groq retired the Llama 3.x line on 2026-08-16 and Llama 4 Scout on
+      // 2026-07-17; these are the ids it now serves. See GROQ_RETIRED_MODELS
+      // in supabase/functions/ai-proxy for the matching server-side guard.
       models: [
-        { id: 'llama-3.3-70b-versatile',  label: 'Llama 3.3 70B' },
-        { id: 'llama-3.1-8b-instant',     label: 'Llama 3.1 8B (instant)' },
-        { id: 'mixtral-8x7b-32768',       label: 'Mixtral 8x7B' },
+        { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+        { id: 'openai/gpt-oss-20b',  label: 'GPT-OSS 20B (fastest)' },
+        { id: 'qwen/qwen3.6-27b',    label: 'Qwen 3.6 27B' },
       ],
       endpoint: 'https://api.groq.com/openai/v1/chat/completions',
       headers: (key) => ({
@@ -154,7 +157,7 @@
         authorization: 'Bearer ' + key,
       }),
       shapeRequest: ({ model, system, messages, temperature }) => ({
-        model: model || 'llama-3.1-8b-instant',
+        model: model || 'openai/gpt-oss-20b',
         messages: [
           ...(system ? [{ role: 'system', content: String(system) }] : []),
           ...messages.map((m) => ({ role: m.role || 'user', content: String(m.content || '') })),
@@ -263,9 +266,25 @@
        'llama'           (heuristic → groq)
        '' / null         → default route (see getDefaultRoute())
   */
+  /* Model ids a provider has since decommissioned. A saved route outlives the
+     model it names, so without this a browser keeps pinning a dead id long
+     after the app stopped offering it — which is how every Flux AI request
+     started failing with `model_not_found` after Groq's 2026-08-16 shutdown. */
+  const RETIRED_MODELS = new Set([
+    'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama-3.1-70b-versatile',
+    'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768',
+    'gemma-7b-it', 'gemma2-9b-it', 'meta-llama/llama-4-scout-17b-16e-instruct',
+  ]);
+
   function getDefaultRoute() {
     const stored = _ls().load(ROUTE_KEY, null);
-    if (stored && byId[stored.provider]) return stored;
+    if (stored && byId[stored.provider]) {
+      if (!RETIRED_MODELS.has(stored.model)) return stored;
+      // Heal in place so the dead id doesn't come back on the next read.
+      const healed = { provider: stored.provider, model: byId[stored.provider].models[0].id };
+      _ls().save(ROUTE_KEY, healed);
+      return healed;
+    }
     // First configured provider with its first model
     const first = listConfigured()[0];
     if (first) return { provider: first, model: byId[first].models[0].id };

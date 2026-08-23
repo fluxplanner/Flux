@@ -188,7 +188,7 @@ ${prof ? `Student profile (summary):\n${prof}\n\n` : ""}${digestBlock ? `${diges
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKey}` },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: Deno.env.get("GROQ_CHAT_MODEL") ?? "openai/gpt-oss-120b",
         max_tokens: 2048,
         messages: [{ role: "system", content: system }, ...cleanMsgs],
       }),

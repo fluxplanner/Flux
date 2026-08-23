@@ -166,7 +166,7 @@
         <div>
           <p class="flux-roster-code-label">Class join code</p>
           <div class="flux-roster-code-value" data-roster-code>${code}</div>
-          <p style="font-size:.7rem;color:var(--muted2);margin:6px 0 0">Students enter this in School → Join a Teacher Class</p>
+          <p style="font-size:.7rem;color:var(--muted2);margin:6px 0 0">Share this code with your students — self-join is paused for now</p>
         </div>
         <div class="flux-roster-code-actions">
           <button type="button" class="flux-roster-copy-btn" data-roster-copy>Copy code</button>

@@ -201,6 +201,48 @@ Deno.serve(async (req) => {
       }, 200, origin);
     }
 
+    /**
+     * Owner-only write to public.platform_settings — the one place that
+     * changes what *every* planner shows. That table has no write policy on
+     * purpose, so this (service role, behind the OWNER_EMAIL check) is the
+     * only way in.
+     */
+    if (action === "set_platform_ui") {
+      if (email !== OWNER_EMAIL) {
+        return json({ error: "Only the owner can change platform UI settings" }, 403, origin);
+      }
+
+      // Tab ids end up inside attribute selectors, so hold them to a strict
+      // shape rather than trusting whatever the client sent.
+      const rawTabs = Array.isArray(body.hiddenTabs) ? body.hiddenTabs : [];
+      const hiddenTabs = [
+        ...new Set(
+          rawTabs
+            .map((t: unknown) => String(t || "").trim())
+            .filter((t: string) => /^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(t)),
+        ),
+      ];
+
+      // Settings is the way back to this control panel. Hiding it would lock
+      // every user — the owner included — out of undoing the change.
+      const safeTabs = hiddenTabs.filter((t) => t !== "settings");
+
+      const value = { hiddenTabs: safeTabs };
+      const { error } = await db
+        .from("platform_settings")
+        .upsert({
+          key: "ui",
+          value,
+          updated_at: new Date().toISOString(),
+          updated_by: email,
+        }, { onConflict: "key" });
+
+      if (error) {
+        return json({ error: `Could not save platform UI: ${error.message}` }, 500, origin);
+      }
+      return json({ ok: true, value }, 200, origin);
+    }
+
     if (action === "sync_platform_to_devs") {
       if (email !== OWNER_EMAIL) {
         return json({ error: "Only the owner can sync platform config to dev accounts" }, 403, origin);

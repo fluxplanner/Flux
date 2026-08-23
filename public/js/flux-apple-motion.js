@@ -308,10 +308,25 @@ function hidePill(host) {
   entry.pill.dataset.placed = '0';
 }
 
+/**
+ * `item` may be a selector list ('.tmode-btn, .view-btn'). Appending the active
+ * class to the whole string only qualifies the *last* entry, so
+ * '.tmode-btn, .view-btn.active' matches the first .tmode-btn regardless of
+ * which one is active — that is why the filter-chip highlight sat on "Active"
+ * and never moved. Qualify every entry instead.
+ */
+function activeSelectorFor(group) {
+  return group.item
+    .split(',')
+    .map((sel) => `${sel.trim()}.${group.activeCls}`)
+    .join(',');
+}
+
 function syncPillGroup(group) {
+  const activeSelector = activeSelectorFor(group);
   document.querySelectorAll(group.host).forEach((host) => {
     if (!host || !host.isConnected) return;
-    const active = host.querySelector(`${group.item}.${group.activeCls}`);
+    const active = host.querySelector(activeSelector);
     if (active) placePill(host, active, group.shape);
     else hidePill(host);
   });

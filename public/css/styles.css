@@ -1786,6 +1786,17 @@ button:active:not(:disabled){transform:scale(.97)!important}
   }
   .panel{flex:1!important;overflow-y:auto!important;height:0!important;overscroll-behavior:contain!important}
   .panel.active{display:block!important}
+  /* #canvas / #toolbox scroll through an inner column (#canvasHubStack → .cv-wrap
+     → .cv-body{flex:1;min-height:0;overflow-y:auto}). display:block!important above
+     beats their non-important display:flex, which kills that chain — while #canvas
+     keeps overflow:hidden!important, so tall content (Canvas modules) was clipped
+     with no scrollbar anywhere. The max-width:768px block already exempts these
+     two; desktop was missed, so the bug was desktop-only. */
+  #canvas.panel.flux-page.active,
+  #toolbox.panel.st-panel.active{
+    display:flex!important;
+    flex-direction:column!important;
+  }
   #ai.active:not(.ai-root){
     overflow:hidden!important;min-height:0!important;flex:1 1 auto!important;height:auto!important;
     display:flex!important;flex-direction:column!important;

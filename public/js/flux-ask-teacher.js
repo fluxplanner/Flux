@@ -91,7 +91,7 @@
     }
     const teacher = await teacherForClass(cls);
     if (!teacher) {
-      showToast?.('No joined teacher class found for ' + cls.name + ' — join with a class code first (School tab).', 'info', 7000);
+      showToast?.('No teacher class linked to ' + cls.name + ' yet.', 'info', 7000);
       return false;
     }
     const m = document.createElement('div');

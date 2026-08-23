@@ -1,0 +1,128 @@
+/* Flux · "What's changed" card (Settings).
+   Paired with public/js/flux-changelog.js and public/data/changelog.json. */
+
+.flux-changelog-meta {
+  font-size: .74rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0 0 12px;
+}
+
+.flux-changelog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.flux-changelog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  font-family: inherit;
+  font-size: .74rem;
+  font-weight: 600;
+  transition: color .16s, border-color .16s, background .16s;
+}
+.flux-changelog-chip:hover { color: var(--text); border-color: rgba(var(--accent-rgb), .4); }
+.flux-changelog-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.flux-changelog-chip-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .66rem;
+  opacity: .7;
+}
+
+/* Capped so a long history cannot stretch the Settings panel indefinitely;
+   the list pages in 25 at a time above this. */
+.flux-changelog-list {
+  max-height: 460px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.flux-changelog-month {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  margin: 16px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+}
+.flux-changelog-month:first-child { margin-top: 0; }
+
+.flux-changelog-row {
+  display: grid;
+  grid-template-columns: 8px 92px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .04);
+}
+.flux-changelog-row:last-child { border-bottom: 0; }
+
+.flux-changelog-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+}
+.flux-changelog-type {
+  font-size: .66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-family: 'JetBrains Mono', monospace;
+}
+.flux-changelog-title {
+  font-size: .82rem;
+  color: var(--text2, var(--text));
+  line-height: 1.5;
+}
+.flux-changelog-date {
+  font-size: .68rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.flux-changelog-empty {
+  font-size: .8rem;
+  color: var(--muted2);
+  margin: 8px 0;
+}
+
+.flux-changelog-more {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(var(--accent-rgb), .08);
+  border: 1px dashed rgba(var(--accent-rgb), .3);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.flux-changelog-more:hover { background: rgba(var(--accent-rgb), .14); }
+
+/* On a phone the type column costs more than it explains — the dot already
+   carries the colour coding, so drop the word and let the title have the room. */
+@media (max-width: 560px) {
+  .flux-changelog-row { grid-template-columns: 8px 1fr auto; }
+  .flux-changelog-type { display: none; }
+}

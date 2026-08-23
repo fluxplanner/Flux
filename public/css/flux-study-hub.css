@@ -81,7 +81,45 @@
   background:linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 55%, #fff 12%));
   border-color:transparent; box-shadow:0 10px 26px -8px rgba(var(--fsh-accent-rgb),.6);
 }
-.fsh-pill.flagship::after { content:"★"; font-size:10px; opacity:.8; margin-left:-2px; }
+/* ── FAVOURITE SUBJECTS ─────────────────────────────────────────────────
+   The rail holds 12 subjects, so the one you want is usually scrolled out of
+   view. Starring pins a subject to the front. The old `.flagship::after` star
+   was dropped here: two different stars in one rail read as one broken thing. */
+.fsh-pill-wrap { position:relative; flex:0 0 auto; display:inline-flex; }
+.fsh-fav-btn {
+  position:absolute; top:-5px; right:-5px; z-index:2;
+  width:20px; height:20px; padding:0; border-radius:999px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:11px; line-height:1;
+  background:var(--fsh-glass-2); border:1px solid var(--fsh-line);
+  color:var(--fsh-ink-2);
+  opacity:0; transform:scale(.8);
+  transition:opacity .16s, transform .16s, color .16s, border-color .16s;
+}
+/* Revealed on hover/focus, but a set favourite stays visible — otherwise you
+   cannot tell what is starred without hunting pill by pill. */
+.fsh-pill-wrap:hover .fsh-fav-btn,
+.fsh-fav-btn:focus-visible,
+.fsh-fav-btn.on { opacity:1; transform:scale(1); }
+.fsh-fav-btn.on { color:var(--fsh-accent); border-color:rgba(var(--fsh-accent-rgb),.45); }
+.fsh-fav-btn:hover { transform:scale(1.15); color:var(--fsh-accent); }
+/* Touch has no hover state, so the control would be undiscoverable. It also
+   needs a bigger target than the 20px badge: it sits right beside the subject
+   you are trying to tap, and a mis-tap silently reorders the rail. The ::after
+   grows the hit area to ~36px while the badge stays small, and because the
+   badge overhangs the pill's corner most of that growth lands outside the
+   pill rather than stealing taps from it. */
+@media (hover: none) {
+  .fsh-fav-btn { opacity:1; transform:scale(1); width:24px; height:24px; font-size:12px; top:-6px; right:-6px; }
+  .fsh-fav-btn::after { content:''; position:absolute; inset:-6px; border-radius:inherit; }
+}
+
+/* Divider between the favourites cluster and everything else. */
+.fsh-rail-sep {
+  flex:0 0 auto; align-self:center;
+  width:1px; height:22px; margin:0 3px;
+  background:var(--fsh-line);
+}
 
 /* ── CHIPS (subject shortcuts in search results) ───────────────────────── */
 .fsh-qchip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--fsh-line); color:var(--fsh-ink-2); font-size:12px; font-weight:560; white-space:nowrap; transition:transform .16s, color .16s, border-color .16s, background .16s; }

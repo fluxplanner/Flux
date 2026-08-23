@@ -215,7 +215,9 @@
     "public/js/flux-seasons.js",
     "public/js/flux-ask-teacher.js",
     "public/js/flux-help-tickets.js",
-    "public/js/flux-originkit-motion.js"
+    "public/js/flux-originkit-motion.js",
+    "public/js/flux-changelog.js",
+    "public/js/flux-platform-ui.js"
   ],
   "css": [
     "public/css/styles.css",
@@ -361,6 +363,8 @@
     "public/css/flux-originkit-motion.css",
     "public/css/flux-a11y-focus.css",
     "public/css/flux-school-presets.css",
-    "public/css/flux-native-controls.css"
+    "public/css/flux-native-controls.css",
+    "public/css/flux-changelog.css",
+    "public/css/flux-platform-ui.css"
   ]
 }
