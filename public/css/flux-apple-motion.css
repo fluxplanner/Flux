@@ -97,8 +97,12 @@ html.flux-apple-motion .main-content .panel.active:not(.flux-panel-enter) {
   animation: none !important;
 }
 
+/* --flux-apple-duration is 0.46s, which is right for a modal or a sheet but
+   reads as lag on a tab switch — the content is still arriving half a second
+   after the click. The login screen moves in 0.18-0.22s and feels instant, so
+   tabs use the snap duration instead. */
 html.flux-apple-motion .panel.active.flux-panel-enter {
-  animation: fluxApplePanelEnter var(--flux-apple-duration) var(--flux-apple-ease-out) both;
+  animation: fluxApplePanelEnter var(--flux-apple-duration-snap) var(--flux-apple-ease-out) both;
 }
 
 /* Deliberately no filter: blur() here. This animation runs on the *live* panel
@@ -312,9 +316,11 @@ html.flux-apple-motion .card.flux-apple-enter {
     view-transition-name: flux-main;
   }
 
+  /* 0.42s is roughly twice the login screen's 0.18-0.22s, and this cross-fade
+     is what the owner feels on every tab click. Matched to the login band. */
   ::view-transition-old(flux-main),
   ::view-transition-new(flux-main) {
-    animation-duration: 0.42s;
+    animation-duration: 0.2s;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     mix-blend-mode: normal;
   }
@@ -327,16 +333,25 @@ html.flux-apple-motion .card.flux-apple-enter {
     animation-name: fluxAppleVtIn;
   }
 
+  /* The blur is gone from both of these.
+     An earlier comment here reasoned that view-transition blur is safe because
+     it animates a flat snapshot rather than live DOM. That is true for
+     correctness but not for cost: the snapshot is the full #flux-main viewport,
+     and blurring it means re-rasterizing a ~1440x900 layer every frame — twice,
+     since the old and new snapshots animate together — on every tab click.
+     transitionPanels() already skips View Transitions entirely under 768px,
+     with a comment calling them "the main cause of tab-switch lag on mobile".
+     Desktop kept them, blur and all, which is what the owner was feeling.
+     opacity + transform composite, so the cross-fade survives and the cost
+     does not. */
   @keyframes fluxAppleVtOut {
     from {
       opacity: 1;
       transform: scale(1);
-      filter: blur(0);
     }
     to {
       opacity: 0;
       transform: scale(0.992);
-      filter: blur(6px);
     }
   }
 
@@ -344,12 +359,10 @@ html.flux-apple-motion .card.flux-apple-enter {
     from {
       opacity: 0;
       transform: scale(1.008);
-      filter: blur(6px);
     }
     to {
       opacity: 1;
       transform: scale(1);
-      filter: blur(0);
     }
   }
 }

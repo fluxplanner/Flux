@@ -105,19 +105,13 @@
      Same reasoning as fluxApplePanelEnter in flux-apple-motion.css, which was
      already de-blurred for exactly this; the ::view-transition keyframes there
      may keep their blur because those animate a flat snapshot, not live DOM. */
-  .panel.active > * {
-    animation: panel-child-fade-in 0.4s ease forwards;
-  }
-  @keyframes panel-child-fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  /* Removed: `.panel.active > * { animation: panel-child-fade-in 0.4s }`.
+     The panel itself already animates in (fluxPanelEnter / fluxApplePanelEnter),
+     so this was a second entrance layered on top of the first — the panel
+     finished arriving and its contents were still fading for another 0.4s. That
+     stacking is what the owner felt as lag, and it is the same complaint the
+     mobile stylesheet answers by switching panel animations off entirely under
+     768px. One fast entrance, like the login screen, reads as instant. */
 }
 
 @media (prefers-reduced-motion: no-preference) {

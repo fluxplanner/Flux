@@ -2,7 +2,7 @@
 
 Every substantive change, newest first. Generated from git history on 2026-08-23.
 
-**477 changes** recorded, from 2026-03-12 to 2026-08-23.
+**479 changes** recorded, from 2026-03-12 to 2026-08-23.
 
 Regenerate with `npm run changelog`. 298 commits are omitted:
 they were made through the GitHub web editor, which names them "Update app.js"
@@ -20,6 +20,7 @@ and similar, so they carry no description of what actually changed.
 
 ### Fixed
 
+- Make the study-tools favourite star a usable size on touch — `2026-08-23` (52468d8)
 - Canvas content was unreachable on desktop, and scale up the Google hub — `2026-08-23` (75eb950)
 - Restore Flux AI, and clear out the surfaces that were getting in the way — `2026-08-23` (a73a578)
 - Declare color-scheme so native dropdowns and date pickers match the theme — `2026-08-23` (c17f212)
@@ -50,6 +51,7 @@ and similar, so they carry no description of what actually changed.
 
 ### Housekeeping
 
+- Point index.html at the rebuilt CSS bundle — `2026-08-23` (16fdcd3)
 - Add troy-martial-arts dev-server entry to launch.json — `2026-08-05` (5dfceef)
 
 ## July 2026

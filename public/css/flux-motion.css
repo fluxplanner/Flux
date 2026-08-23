@@ -118,7 +118,10 @@
   to{opacity:1;transform:translateY(0) scale(1)}
 }
 .main-content .panel.active:not(.flux-panel-enter){animation:none!important}
-.panel.active.flux-panel-enter{animation:fluxPanelEnter .55s cubic-bezier(.22,1,.36,1) both!important}
+/* 550ms read as lag, not polish: the tab responded instantly but the content
+   took over half a second to finish arriving. The login screen — which the
+   owner describes as silky — moves in 0.18–0.22s. Matched to that. */
+.panel.active.flux-panel-enter{animation:fluxPanelEnter .2s cubic-bezier(.22,1,.36,1) both!important}
 
 /* ── Task list view swap ── */
 #taskList.flux-view-swap{animation:fluxViewSwap .38s cubic-bezier(.22,1,.36,1) both}
