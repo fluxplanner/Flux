@@ -16,6 +16,11 @@
 (function () {
   'use strict';
 
+  /* The "Join room" button is pulled from the Tasks toolbar for now (owner
+     request) to cut clutter. Flip to true to bring it back — nothing else
+     about co-work is disabled. */
+  var SHOW_JOIN_ROOM_BUTTON = false;
+
   /* ---------- helpers ---------- */
 
   function enabled() {
@@ -745,6 +750,9 @@
      one in — joining only worked via a ?cowork= link. This is the missing half. */
   function injectJoinEntry() {
     if (!enabled()) return;
+    // Hidden from the Tasks toolbar for now (owner request). Joining by
+    // ?cowork= link and the room panel itself both still work.
+    if (!SHOW_JOIN_ROOM_BUTTON) return;
     if (document.getElementById('fluxCoworkJoinBtn')) return;
     var bar = document.querySelector('.dash-workspace .dash-toolbar');
     if (!bar) return;

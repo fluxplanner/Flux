@@ -104,8 +104,17 @@ Deno.serve(async (req) => {
     return json({ error: "GROQ_API_KEY not set" }, 500, origin);
   }
 
+  // Groq retired Llama 4 Scout on 2026-07-17; the id must come from config now.
+  const visionModel = (Deno.env.get("GROQ_VISION_MODEL") ?? "").trim();
+  if (!visionModel) {
+    return json({
+      error: "vision_model_unset",
+      message: "Set GROQ_VISION_MODEL to a Groq model that accepts images.",
+    }, 503, origin);
+  }
+
   const visionBody = {
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    model: visionModel,
     messages: [{
       role: "user",
       content: [

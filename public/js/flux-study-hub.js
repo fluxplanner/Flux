@@ -17,9 +17,13 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LS_KEY = 'flux_study_hub';
 
-  let state = { subject: 'chemistry', chemTab: 'table', tool: {} };
+  let state = { subject: 'chemistry', chemTab: 'table', tool: {}, favs: [] };
   try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
   if (!state.tool) state.tool = {};
+  // Records written before favourites existed have no `favs`, and a corrupted
+  // one could hold anything — a bad value here would throw on every rail
+  // render, so normalise instead of trusting it.
+  if (!Array.isArray(state.favs)) state.favs = [];
   const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} };
 
   let selEl = 6, atomN = 6, atomSpeed = 1, searchQ = '';
@@ -178,6 +182,48 @@
     { id:'astronomy', name:'Astronomy', ico:'🔭', accent:'#a06eff' },
   ];
   const subjById = (id) => SUBJECTS.find((s) => s.id === id) || SUBJECTS[0];
+
+  // ── favourites ───────────────────────────────────────────────────────────
+  // Twelve subjects in one horizontal rail means the one you actually use is
+  // often scrolled off-screen. Starred subjects sort to the front so they're
+  // always the first thing under your cursor.
+  const isFav = (id) => state.favs.indexOf(id) >= 0;
+  function toggleFav(id) {
+    const i = state.favs.indexOf(id);
+    if (i >= 0) state.favs.splice(i, 1); else state.favs.push(id);
+    save();
+    renderRail();
+  }
+  /** Favourites first, each group keeping the canonical SUBJECTS order. */
+  function orderedSubjects() {
+    const fav = SUBJECTS.filter((s) => isFav(s.id));
+    const rest = SUBJECTS.filter((s) => !isFav(s.id));
+    return fav.concat(rest);
+  }
+  function pillHtml(s) {
+    const on = isFav(s.id);
+    return `<div class="fsh-pill-wrap${on ? ' faved' : ''}">`
+      + `<button type="button" class="fsh-pill${s.id === state.subject ? ' active' : ''}" data-sub="${s.id}">`
+      + `<span class="fsh-pill-ico">${s.ico}</span>${esc(s.name)}</button>`
+      + `<button type="button" class="fsh-fav-btn${on ? ' on' : ''}" data-fav="${s.id}"`
+      + ` aria-pressed="${on ? 'true' : 'false'}"`
+      + ` title="${on ? 'Remove from favourites' : 'Add to favourites'}"`
+      + ` aria-label="${on ? 'Remove' : 'Add'} ${esc(s.name)} ${on ? 'from' : 'to'} favourites">`
+      + `${on ? '★' : '☆'}</button></div>`;
+  }
+  function railHtml() {
+    const items = orderedSubjects().map(pillHtml);
+    const favCount = state.favs.length;
+    // A divider only reads as meaningful when there is something on both sides.
+    if (favCount > 0 && favCount < SUBJECTS.length) {
+      items.splice(favCount, 0, '<span class="fsh-rail-sep" aria-hidden="true"></span>');
+    }
+    return items.join('');
+  }
+  function renderRail() {
+    const rail = $('fshRail'); if (!rail) return;
+    rail.innerHTML = railHtml();
+  }
 
   function hexRgb(hex) { const v = hex.replace('#', ''); const h = v.length === 3 ? v.split('').map((c) => c + c).join('') : v; const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
   function applyAccent(hex) { const r = $('fshRoot'); if (!r) return; r.style.setProperty('--fsh-accent', hex); r.style.setProperty('--fsh-accent-rgb', hexRgb(hex).join(',')); }
@@ -650,13 +696,19 @@
     const host = $('stSections'); if (!host) return false;
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
     host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
-      <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${SUBJECTS.map((s) => `<button type="button" class="fsh-pill${s.id === state.subject ? ' active' : ''}${s.flagship ? ' flagship' : ''}" data-sub="${s.id}"><span class="fsh-pill-ico">${s.ico}</span>${esc(s.name)}</button>`).join('')}</div></div>
+      <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${railHtml()}</div></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;
     wire(); return true;
   }
   function wire() {
     const root = $('fshRoot'); if (!root || root.__wired) return; root.__wired = true;
-    $('fshRail').addEventListener('click', (e) => { const p = e.target.closest('.fsh-pill'); if (p) selectSubject(p.dataset.sub); });
+    $('fshRail').addEventListener('click', (e) => {
+      // Star first: it sits on top of the pill, and starring must not also
+      // switch the subject out from under you.
+      const f = e.target.closest('.fsh-fav-btn');
+      if (f) { e.stopPropagation(); toggleFav(f.dataset.fav); return; }
+      const p = e.target.closest('.fsh-pill'); if (p) selectSubject(p.dataset.sub);
+    });
     const si = $('fshSearch'), sc = $('fshSearchClear');
     si.addEventListener('input', () => { searchQ = si.value; sc.hidden = !searchQ; renderStage(); });
     si.addEventListener('keydown', (e) => { if (e.key === 'Escape') { searchQ = ''; si.value = ''; sc.hidden = true; renderStage(); si.blur(); } });

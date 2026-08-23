@@ -233,7 +233,11 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({ content: [{ type: "text", text }] }, 200, origin);
+  return json(
+    { content: [{ type: "text", text: stripThinkBlocks(text) }] },
+    200,
+    origin,
+  );
 });
 
 /* ───────── SSE streaming ─────────
@@ -254,6 +258,68 @@ function anthropicDelta(j: unknown): string | undefined {
   return o?.type === "content_block_delta" ? (o.delta?.text || undefined) : undefined;
 }
 
+const THINK_OPEN = "<think>";
+const THINK_CLOSE = "</think>";
+
+/** Longest suffix of `s` that is a proper prefix of `tag` (a split-up tag). */
+function danglingTagPrefix(s: string, tag: string): string {
+  for (let n = Math.min(s.length, tag.length - 1); n > 0; n--) {
+    if (s.endsWith(tag.slice(0, n))) return s.slice(s.length - n);
+  }
+  return "";
+}
+
+/**
+ * gpt-oss and qwen3 reason before answering and Groq inlines that scratchpad
+ * into the reply as a <think>…</think> block; `reasoning_format: "hidden"` does
+ * not reliably suppress it, and nothing downstream strips it — so a student
+ * would read the model's notes to itself as if they were the answer.
+ *
+ * Returns a stateful filter because a streamed tag routinely straddles two
+ * chunks; anything that looks like the start of a tag is held back until the
+ * next chunk proves what it is.
+ */
+function makeThinkStripper(): (chunk: string) => string {
+  let inThink = false;
+  let carry = "";
+  return (chunk) => {
+    let s = carry + chunk;
+    carry = "";
+    let out = "";
+    for (;;) {
+      if (inThink) {
+        const i = s.indexOf(THINK_CLOSE);
+        if (i < 0) {
+          carry = danglingTagPrefix(s, THINK_CLOSE);
+          return out;
+        }
+        s = s.slice(i + THINK_CLOSE.length);
+        inThink = false;
+      } else {
+        const i = s.indexOf(THINK_OPEN);
+        if (i < 0) {
+          const held = danglingTagPrefix(s, THINK_OPEN);
+          out += held ? s.slice(0, s.length - held.length) : s;
+          carry = held;
+          return out;
+        }
+        out += s.slice(0, i);
+        s = s.slice(i + THINK_OPEN.length);
+        inThink = true;
+      }
+    }
+  };
+}
+
+/** Whole-response equivalent of {@link makeThinkStripper}. */
+function stripThinkBlocks(text: string): string {
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    // A truncated reply can open the block and never close it.
+    .replace(/<think>[\s\S]*$/i, "")
+    .trim();
+}
+
 function pipeSSE(
   upstream: Response,
   extract: (j: unknown) => string | undefined,
@@ -262,6 +328,7 @@ function pipeSSE(
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const reader = upstream.body!.getReader();
+  const stripThink = makeThinkStripper();
   let buf = "";
 
   const stream = new ReadableStream({
@@ -282,7 +349,10 @@ function pipeSSE(
             if (!data || data === "[DONE]") continue;
             try {
               const t = extract(JSON.parse(data));
-              if (t) emit({ delta: t });
+              if (t) {
+                const visible = stripThink(t);
+                if (visible) emit({ delta: visible });
+              }
             } catch {
               // Partial/non-JSON keepalive line — skip.
             }
@@ -318,26 +388,46 @@ function pipeSSE(
 const GROQ_MODEL_LADDER = [
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
+  "qwen/qwen3.6-27b",
 ];
 
+/**
+ * Groq retires models on its own schedule and a retired id returns 404
+ * model_not_found. A client can pin one indefinitely — a saved provider
+ * preference outlives the model it names — so drop known-dead ids before
+ * building the chain rather than spending a request rediscovering they're gone.
+ */
+const GROQ_RETIRED_MODELS = new Set([
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama-3.1-70b-versatile",
+  "llama3-70b-8192",
+  "llama3-8b-8192",
+  "mixtral-8x7b-32768",
+  "gemma-7b-it",
+  "gemma2-9b-it",
+]);
+
 function groqFallbackChain(model: string): string[] {
-  const chain = [model];
+  const chain = GROQ_RETIRED_MODELS.has(model) ? [] : [model];
   for (const m of GROQ_MODEL_LADDER) if (!chain.includes(m)) chain.push(m);
   return chain;
 }
 
 function isRetryableGroqStatus(status: number): boolean {
   // 413: free-tier per-request token caps differ per model — a request too
-  // big for gpt-oss-120b often fits llama-3.3-70b, so step down the ladder.
-  return status === 413 || status === 429 || status === 498 ||
-    status === 499 || status >= 500;
+  // big for gpt-oss-120b often fits the next rung, so step down the ladder.
+  // 404: the model was decommissioned. Retiring one id should cost that rung,
+  // not the whole feature — without this a single dead model took Flux AI down
+  // completely, because the chain aborted before it reached a live rung.
+  return status === 404 || status === 413 || status === 429 ||
+    status === 498 || status === 499 || status >= 500;
 }
 
 function isRetryableGroqError(e: unknown): boolean {
   const s = String(e);
-  return /Groq error (413|429|498|499|5\d\d)/.test(s) ||
+  return /Groq error (404|413|429|498|499|5\d\d)/.test(s) ||
+    /model_not_found/i.test(s) ||
     /rate.?limit/i.test(s) || /request too large/i.test(s) ||
     /over capacity/i.test(s);
 }
@@ -594,6 +684,10 @@ function buildOpenAIChatPayload(
   }
   const jsonMode = body.responseFormat === "json_object";
   const isGptOss = /gpt-oss/.test(model);
+  // gpt-oss and qwen3 think before answering. Left alone Groq inlines that
+  // scratchpad into the reply as a <think> block, and nothing downstream
+  // strips it — the student would read the model's notes to itself.
+  const isReasoning = isGptOss || /qwen3/.test(model);
   const payload: Record<string, unknown> = {
     model,
     messages,
@@ -605,6 +699,7 @@ function buildOpenAIChatPayload(
   // Think hard by default: the biggest free accuracy lever on gpt-oss, and
   // Groq is fast enough that the extra thinking stays responsive.
   if (isGptOss && !jsonMode) payload.reasoning_effort = "high";
+  if (isReasoning) payload.reasoning_format = "hidden";
   if (jsonMode) payload.response_format = { type: "json_object" };
   return payload;
 }
@@ -673,8 +768,16 @@ async function callGroqVision(body: {
   const b64 = String(body.imageBase64 || "").replace(/\s/g, "");
   if (!b64) throw new Error("Missing image data for vision request");
 
-  const visionModel = (Deno.env.get("GROQ_VISION_MODEL") ??
-    "meta-llama/llama-4-scout-17b-16e-instruct").trim();
+  // Groq retired Llama 4 Scout on 2026-07-17 and currently lists no vision
+  // model, so this fallback has no default that works. Gemini is the real
+  // image path; say so plainly rather than surfacing a bare 404 from Groq.
+  const visionModel = (Deno.env.get("GROQ_VISION_MODEL") ?? "").trim();
+  if (!visionModel || GROQ_RETIRED_MODELS.has(visionModel)) {
+    throw new Error(
+      "Image analysis needs GEMINI_API_KEY (preferred), or set GROQ_VISION_MODEL " +
+        "to a Groq model that accepts images.",
+    );
+  }
   const dataUrl = `data:${mime};base64,${b64}`;
 
   const system = String(body.system ?? body.systemPrompt ?? "").trim();

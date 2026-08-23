@@ -993,7 +993,8 @@ async function breakItDown(taskId){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+((await getSB()?.auth?.getSession())?.data?.session?.access_token||'')},
       body:JSON.stringify({
-        model:'llama-3.3-70b-versatile',
+        // No model pinned on purpose: ai-proxy picks a live one from its
+        // fallback ladder, so a Groq decommission can't strand this feature.
         messages:[
           {role:'system',content:'You are a productivity assistant. Return ONLY a JSON array of exactly 5 short, actionable sub-tasks. No explanation, no markdown, just the array: ["sub-task 1","sub-task 2","sub-task 3","sub-task 4","sub-task 5"]'},
           {role:'user',content:`Break down this task into 5 immediate actionable sub-tasks: "${task.name}"`}
@@ -2988,6 +2989,12 @@ function migrateCompletedAtBackfill(){
 }
 
 // Tab config — each tab has id, icon, label, visible flag
+/* School-joining is switched off for now (owner request): the "Join your
+   school" card and the "Join a Teacher Class" button are both pulled from the
+   School tab. Flip this to true to bring the whole flow back — the modals,
+   handlers and storage were left in place deliberately. */
+const FLUX_SCHOOL_JOIN_ENABLED=false;
+
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
@@ -3724,11 +3731,11 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 </div>`;
   const schoolClassicBtn=`<button type="button" class="nav-item" data-school-nav-classic onclick="${n('school',true)}" data-tab="school"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">${schoolClassicLabelEscaped}</span></button>`;
   const mainWorkHubBtn=`<button type="button" class="nav-item" data-educator-work-main onclick="${isMob?`navMob('staffHub');try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`:`nav('staffHub',this);try{FluxStaffPlatform.renderStaffWorkHub()}catch(e){}`}" data-tab="staffHub" style="display:none" aria-label="Work hub"><span class="ni"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span><span class="nl">Work hub</span></button>`;
+  // Feed is pulled from the sidebar for now (owner request). The panel and
+  // renderSchoolFeed() stay so nothing dangles; only the way in is gone.
   const schoolStripAndFeed=`<div id="${stripId}" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
 <button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni"></span><span class="nl">Info</span></button>
-<button type="button" role="tab" class="school-work-tab" data-school-work-tab="schoolFeedPanel" onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel',this);try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" title="School feed"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>
-</div>
-<button type="button" class="nav-item" data-school-feed-student-only onclick="${isMob?`navMob('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`:`nav('schoolFeedPanel');try{FluxStaffPlatform.renderSchoolFeed()}catch(e){}`}" data-tab="schoolFeedPanel"><span class="ni">${getNavIconHtml('schoolFeedPanel')}</span><span class="nl">Feed</span></button>`;
+</div>`;
   const googleNavIcon=`<svg class="nt-svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
   const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Google integrations"><span class="ni">${googleNavIcon}</span><span class="nl">Google</span></button>`;
@@ -4479,6 +4486,10 @@ function renderTasks(){
   const el0=document.getElementById('taskList');
   if(el0){el0.style.display='';el0.style.gridTemplateColumns='';el0.style.gap='';el0.style.alignItems='';}
   const now=new Date();now.setHours(0,0,0,0);
+  // 'all' and 'high' lost their chips (the row was too cluttered). A synced or
+  // legacy value can still name them, which would filter the list while the
+  // chip row still reads "Active" — fold them back to the default instead.
+  if(taskFilter==='all'||taskFilter==='high')taskFilter='active';
   let list=tasks.filter(fluxTaskVisibleInMode);
   if(window.FluxSmartLists?.isSmartFilter?.(taskFilter)){
     list=FluxSmartLists.applyFilter(list,taskFilter);
@@ -15810,6 +15821,9 @@ let currentView='list'; // list | kanban | timeline
 function switchView(view){
   if(view==='workload')view='list';
   if(view==='kanban')view='list';
+  // Timeline's toggle was removed from the Tasks toolbar; a saved flux_view of
+  // 'timeline' would otherwise strand the user in a view with no way back.
+  if(view==='timeline')view='list';
   currentView=view;
   save('flux_view',view);
   document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
@@ -16168,7 +16182,7 @@ setInterval(saveResumptionState,60000);
 // Init all new systems on app start
 function initIntelligenceEngine(){
   currentView=load('flux_view','list');
-  if(currentView==='workload'||currentView==='kanban'){currentView='list';save('flux_view','list');}
+  if(currentView==='workload'||currentView==='kanban'||currentView==='timeline'){currentView='list';save('flux_view','list');}
   initFullKeyboardNav();
   // initListControls removed
   checkResumption();
@@ -18602,6 +18616,10 @@ window.switchClassTab=switchClassTab;
 
 // ── Student "Join a Class" flow ──────────────────────────────────
 function renderJoinClassButton(){
+  // Pulled from the School tab for now (owner request), alongside "Join your
+  // school" and Teacher Notes. Kept as a no-op rather than deleted so the
+  // several call sites and openJoinClassModal() stay intact for the restore.
+  if(!FLUX_SCHOOL_JOIN_ENABLED)return;
   // Mount on the school panel (where existing classes live for students).
   const host=document.getElementById('school')||document.getElementById('classes');
   if(!host)return;

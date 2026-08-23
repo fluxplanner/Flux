@@ -547,7 +547,7 @@
       '<label class="flux-conn-mini-label">OpenAI-compat base URL (optional)</label>' +
       '<input type="url" id="fluxAiConnBaseUrl" class="flux-conn-input" placeholder="https://api.openai.com/v1">' +
       '<label class="flux-conn-mini-label">Model id</label>' +
-      '<input type="text" id="fluxAiConnModelId" class="flux-conn-input" placeholder="gpt-4o-mini · claude-sonnet-4-20250514 · llama-3.3-70b-versatile">' +
+      '<input type="text" id="fluxAiConnModelId" class="flux-conn-input" placeholder="gpt-4o-mini · claude-sonnet-4-20250514 · openai/gpt-oss-120b">' +
       '<div class="flux-conn-actions"><button type="button" class="flux-conn-save" id="fluxAiConnSaveModel">Save routing</button>' +
       '<button type="button" class="flux-conn-ghost" id="fluxAiConnClearModel">Clear keys</button></div>';
 
