@@ -5489,6 +5489,47 @@ async function syncEnrolledTeacherClassesToPlanner(){
 }
 window.syncEnrolledTeacherClassesToPlanner=syncEnrolledTeacherClassesToPlanner;
 function saveSchoolInfo(){schoolInfo={locker:document.getElementById('inputLocker').value.trim(),combo:document.getElementById('inputCombo').value.trim(),counselor:document.getElementById('inputCounselor').value.trim(),studentID:document.getElementById('inputStudentID').value.trim()};save('flux_school',schoolInfo);renderSchool();syncKey('school',schoolInfo);const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Info',1500);}}
+/** Fill the timetable from a school preset (see flux-school-presets.js).
+ *  Adds only the A/B blocks the student does not already have, so running it
+ *  twice, or after entering a class by hand, never duplicates or overwrites. */
+function applySchoolPreset(presetId,variantId){
+  const P=window.FluxSchoolPresets;
+  if(!P){if(typeof showToast==='function')showToast('Presets are still loading — try again in a second.','info');return;}
+  const preset=P.get(presetId);
+  const rows=P.rowsFor(presetId,variantId);
+  if(!preset||!rows.length){if(typeof showToast==='function')showToast('That school preset is not available.','error');return;}
+  const COLORS=['#3b82f6','#f43f5e','#10d9a0','#fbbf24','#a78bfa','#fb923c','#e879f9','#22d3ee'];
+  let added=0;
+  rows.forEach(r=>{
+    const dupe=classes.some(c=>Number(c.period)===Number(r.period)&&String(c.days||'')===r.days);
+    if(dupe)return;
+    classes.push({
+      id:Date.now()+Math.floor(Math.random()*1000)+added,
+      period:r.period,
+      periodLabel:r.periodLabel,
+      days:r.days,
+      name:'',
+      teacher:'',
+      room:'',
+      timeStart:r.timeStart,
+      timeEnd:r.timeEnd,
+      color:COLORS[(classes.length+added)%COLORS.length],
+    });
+    added++;
+  });
+  if(!added){
+    if(typeof showToast==='function')showToast('Your timetable already matches '+preset.short+'.','info');
+    return;
+  }
+  save('classes',classes);
+  try{renderSchool();}catch(_){}
+  try{if(typeof renderCalendar==='function')renderCalendar();}catch(_){}
+  if(typeof showToast==='function'){
+    showToast(preset.short+' schedule added — '+added+' periods. Now just name your classes.','success');
+  }
+}
+window.applySchoolPreset=applySchoolPreset;
+
 function addClass(){
   const rawPeriod=document.getElementById('classPeriod').value;
   const fallbackDays=document.getElementById('classDays').value;
