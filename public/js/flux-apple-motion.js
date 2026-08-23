@@ -437,8 +437,8 @@ function staggerPanelContent(panel) {
   // are below the fold — while still adding delay to the tail of the animation.
   const all = Array.prototype.slice.call(els);
   all.forEach((el) => el.classList.add('flux-apple-staggered'));
-  const els2 = all.slice(0, 8);
-  all.slice(8).forEach((el) => {
+  const els2 = all.slice(0, 6);
+  all.slice(6).forEach((el) => {
     el.style.removeProperty('opacity');
     el.style.removeProperty('transform');
   });
@@ -449,10 +449,12 @@ function staggerPanelContent(panel) {
       translateY: [18, 0],
       scale: [0.97, 1],
       // 28ms x 42 cards (Settings) meant the last card landed ~1.6s after the
-      // click, which reads as lag rather than polish. Halved, and the element
-      // list is capped above so a long panel cannot stretch the reveal.
-      delay: stagger(14, { from: 'first' }),
-      duration: 300,
+      // click, which reads as lag rather than polish. Halved once, then tuned
+      // again: 6 cards x 10ms + 200ms lands the last one at ~250ms, in the same
+      // band as the login screen the owner points to as the target feel. The
+      // element list is capped above so a long panel cannot stretch the reveal.
+      delay: stagger(10, { from: 'first' }),
+      duration: 200,
       ease: spring('smooth'),
       // Clear inline styles so an interrupted tween can't leave the card
       // stuck. Without this, switching panels mid-animation freezes the card
@@ -518,29 +520,18 @@ function transitionPanels(applyDom, ctx = {}) {
     requestAnimationFrame(syncAllPills);
   };
   hideDashboardChromeForTransition(panelId);
-  // On phones the View Transitions API snapshots the whole page and crossfades,
-  // which is the main cause of tab-switch lag on mobile. Switch instantly there.
-  var isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-  if (!motionAllowed() || isNarrow || typeof document.startViewTransition !== 'function') {
-    applyDom();
-    runAfter();
-    return;
-  }
-  try {
-    const vt = document.startViewTransition(() => applyDom());
-    // A second nav can skip an in-flight transition; the skipped one's
-    // ready/updateCallbackDone promises reject ("Transition was skipped")
-    // and surface as pageerrors if nothing handles them. finished still
-    // drives runAfter either way.
-    if (vt) {
-      Promise.resolve(vt.ready).catch(() => {});
-      Promise.resolve(vt.updateCallbackDone).catch(() => {});
-    }
-    Promise.resolve(vt?.finished).then(runAfter).catch(runAfter);
-  } catch (_) {
-    applyDom();
-    runAfter();
-  }
+  // The View Transitions API snapshots the whole page and crossfades it. That
+  // snapshot is a full-viewport rasterize on every tab click, and it is the
+  // cost — not the animation layered on top of it. This was already bypassed
+  // under 768px as "the main cause of tab-switch lag on mobile"; desktop kept
+  // paying it, and desktop is where the owner reported the lag, twice.
+  //
+  // Skipping it does not mean losing the motion: the panel still animates in
+  // via fluxApplePanelEnter (opacity + transform, composited, at the 0.18s
+  // snap duration the login screen uses). Same look, none of the per-click
+  // snapshot cost.
+  applyDom();
+  runAfter();
 }
 
 function scheduleStaggerScan() {

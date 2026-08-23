@@ -3916,6 +3916,25 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 #canvas.panel.flux-page #canvasHubStack.flux-stack{
   flex:1;min-height:0;display:flex;flex-direction:column;gap:0;
 }
+/* Canvas scrolling: ONE scroller for the whole Google/Canvas tab.
+   Canvas does not mount directly into #canvasHubStack — hubMountEl() prefers
+   #gHubCanvasSlot, the Google hub's pane, so when Google is linked the real
+   chain is #canvasHubStack > .g-hub > .g-hub-pane > .cv-wrap > .cv-body. Both
+   .g-hub and .g-hub-pane are plain blocks, which breaks the flex chain that
+   .cv-wrap/.cv-body rely on for a bounded height — so .cv-body's overflow-y
+   never had anything to scroll, while #canvas{overflow:hidden} still clipped
+   everything past the fold. Modules were simply unreachable.
+   Rather than thread flex through the whole hub (which would hand
+   Tasks/Gmail/Drive the same problem), let #canvasHubStack scroll and stop
+   .cv-* from owning a second scroller it can never size. */
+#canvas.panel.flux-page #canvasHubStack.flux-stack{
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+}
+#canvas #gHubCanvasSlot .cv-wrap,
+#canvas #canvasHubStack > .cv-wrap{flex:none;min-height:0;overflow:visible}
+#canvas #gHubCanvasSlot .cv-body,
+#canvas #canvasHubStack .cv-body{flex:none;min-height:0;overflow:visible}
+
 .canvas-panel-wrap{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .canvas-topbar{position:sticky;top:0;z-index:var(--flux-z-page-sticky);height:44px;display:flex;align-items:center;padding:0 10px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(var(--accent-rgb),.12),rgba(14,18,32,.85));backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
 .canvas-topbar-row{display:flex;align-items:center;gap:6px;width:100%;min-width:0}

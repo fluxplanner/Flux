@@ -1,9 +1,21 @@
 {
   "generated": "2026-08-23",
   "firstCommit": "2026-03-12",
-  "total": 477,
+  "total": 479,
   "omitted": 298,
   "entries": [
+    {
+      "date": "2026-08-23",
+      "type": "Housekeeping",
+      "title": "Point index.html at the rebuilt CSS bundle",
+      "hash": "16fdcd3"
+    },
+    {
+      "date": "2026-08-23",
+      "type": "Fixed",
+      "title": "Make the study-tools favourite star a usable size on touch",
+      "hash": "52468d8"
+    },
     {
       "date": "2026-08-23",
       "type": "Added",
