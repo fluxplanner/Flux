@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.10cd241f.css">
+<link rel="stylesheet" href="public/bundles/flux.3b296ec1.css">
 </head>
 <body>
 <noscript>
@@ -1469,6 +1469,25 @@
       <div class="card" id="schoolCanvasLmsRow" style="display:none"></div>
       <div class="card">
         <h3>My Classes</h3>
+        <!-- One-tap timetable for schools on a fixed bell schedule. Fills the
+             A/B periods and their times; the student still names each class. -->
+        <div class="flux-preset-row" id="schoolPresetRow">
+          <div class="flux-preset-copy">
+            <strong>On a set bell schedule?</strong>
+            <span>Load your school's periods and times, then just name your classes.</span>
+          </div>
+          <div class="flux-preset-controls">
+            <label class="visually-hidden" for="schoolPresetVariant">Schedule type</label>
+            <select id="schoolPresetVariant" aria-label="Schedule type">
+              <option value="full">Full day · 7:45–2:35</option>
+              <option value="seminar">Seminar day</option>
+              <option value="half">Half day · 7:45–11:00</option>
+            </select>
+            <button type="button" class="btn-sec" onclick="applySchoolPreset('iae',document.getElementById('schoolPresetVariant').value)">
+              Use International Academy East
+            </button>
+          </div>
+        </div>
         <div id="classesList"></div>
         <div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:end;margin-top:10px">
           <div><label style="font-size:.7rem;color:var(--muted)">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
@@ -2773,8 +2792,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.972f69c1.js"></script>
-<script defer src="public/bundles/flux-core.e7417194.js"></script>
-<script defer src="public/bundles/flux-features.c9f47c17.js"></script>
+<script defer src="public/bundles/flux-core.bf653317.js"></script>
+<script defer src="public/bundles/flux-features.27324bd6.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

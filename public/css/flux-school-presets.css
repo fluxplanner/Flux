@@ -1,0 +1,70 @@
+/* flux-school-presets.css — the "load my school's bell schedule" row that sits
+   above the class list in School Info (markup in index.html, behaviour in
+   flux-school-presets.js + applySchoolPreset in app.js). */
+
+.flux-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.flux-preset-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.flux-preset-copy strong {
+  font-size: 0.86rem;
+  color: var(--text);
+}
+.flux-preset-copy span {
+  font-size: 0.76rem;
+  color: var(--muted2);
+  line-height: 1.45;
+}
+
+.flux-preset-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Override the global `select { width: 100% }` so the control sits inline beside
+   its button instead of pushing the button onto its own line. */
+.flux-preset-controls select {
+  width: auto;
+  min-width: 168px;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+.flux-preset-controls button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Narrow screens: stack, and let both controls span the full width so neither
+   gets squeezed to an unreadable size. */
+@media (max-width: 560px) {
+  .flux-preset-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flux-preset-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flux-preset-controls select,
+  .flux-preset-controls button {
+    width: 100%;
+    min-width: 0;
+  }
+}

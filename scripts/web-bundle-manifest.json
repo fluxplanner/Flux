@@ -55,6 +55,7 @@
     "public/js/flux-ai-core.js",
     "public/js/flux-ai-connections.js",
     "public/js/flux-staff-directory.js",
+    "public/js/flux-school-presets.js",
     "public/js/flux-school-registry.js",
     "public/js/flux-feature-flags.js",
     "public/js/flux-i18n.js",
@@ -357,6 +358,7 @@
     "public/css/flux-theme-2026.css",
     "public/css/flux-now-engine.css",
     "public/css/flux-originkit-motion.css",
-    "public/css/flux-a11y-focus.css"
+    "public/css/flux-a11y-focus.css",
+    "public/css/flux-school-presets.css"
   ]
 }
