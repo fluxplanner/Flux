@@ -11,12 +11,12 @@
 }
 .staff-google-hub-title {
   margin: 0 0 6px;
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 700;
 }
 .staff-google-hub-sub {
   margin: 0 0 12px;
-  font-size: 0.82rem;
+  font-size: 0.93rem;
   color: var(--muted2);
   line-height: 1.45;
 }
@@ -31,7 +31,7 @@
   border: 1px solid var(--border);
   background: var(--card);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.97rem;
   font-weight: 600;
 }
 .staff-google-hub-btn:hover { border-color: var(--accent); }
@@ -82,7 +82,7 @@
   width: 100%;
 }
 .g-hub-account-btn {
-  font-size: 0.74rem;
+  font-size: 0.84rem;
   padding: 7px 12px;
 }
 .g-hub-account-btn.login-google-btn--compact {
@@ -93,7 +93,7 @@
   width: auto;
 }
 .g-hub-pill {
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-family: 'JetBrains Mono', monospace;
   padding: 4px 10px;
   border-radius: 999px;
@@ -131,7 +131,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--muted2);
-  font-size: 0.78rem;
+  font-size: 0.89rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -156,21 +156,21 @@
   border: 1px solid var(--border);
   background: linear-gradient(160deg, rgba(var(--accent-rgb), 0.06), transparent);
 }
-.g-hub-gate-icon { font-size: 2.4rem; margin-bottom: 12px; }
-.g-hub-gate-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 10px; }
+.g-hub-gate-icon { font-size: 2.74rem; margin-bottom: 12px; }
+.g-hub-gate-title { font-size: 1.31rem; font-weight: 800; margin: 0 0 10px; }
 .g-hub-gate-sub {
-  font-size: 0.82rem;
+  font-size: 0.93rem;
   color: var(--muted2);
   line-height: 1.65;
   max-width: 420px;
   margin: 0 auto 10px;
 }
-.g-hub-gate-sub--muted { font-size: 0.75rem; color: var(--muted); }
+.g-hub-gate-sub--muted { font-size: 0.85rem; color: var(--muted); }
 .g-hub-gate-switch {
   width: 100%;
   max-width: 320px;
   margin: 4px auto 0;
-  font-size: 0.76rem;
+  font-size: 0.87rem;
 }
 .g-hub-gate-btn {
   width: 100%;
@@ -183,7 +183,7 @@
   gap: 10px;
 }
 .g-hub-gate-guest { max-width: 320px; margin: 0 auto; }
-.g-hub-muted { font-size: 0.78rem; color: var(--muted2); line-height: 1.55; margin: 0; }
+.g-hub-muted { font-size: 0.89rem; color: var(--muted2); line-height: 1.55; margin: 0; }
 .g-hub-import-lede { margin: 0 0 4px; }
 .g-hub-import-card {
   padding: 14px 16px;
@@ -192,8 +192,8 @@
   background: var(--card2);
 }
 .g-hub-gcal-events { max-height: 360px; overflow-y: auto; }
-.g-hub-loading { font-size: 0.8rem; color: var(--muted2); padding: 20px; font-family: 'JetBrains Mono', monospace; }
-.g-hub-err { color: var(--red); font-size: 0.8rem; margin-bottom: 10px; }
+.g-hub-loading { font-size: 0.91rem; color: var(--muted2); padding: 20px; font-family: 'JetBrains Mono', monospace; }
+.g-hub-err { color: var(--red); font-size: 0.91rem; margin-bottom: 10px; }
 .g-tasks-head {
   display: flex;
   flex-wrap: wrap;
@@ -205,7 +205,7 @@
   border-bottom: 1px solid var(--border2);
 }
 .g-tasks-head > div:first-child { flex: 1; min-width: 200px; }
-.g-tasks-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 8px; }
+.g-tasks-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 8px; }
 .g-tasks-head .g-hub-muted { margin: 0; }
 .g-tasks-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .g-tasks-list {
@@ -229,18 +229,18 @@
   background: var(--card2);
 }
 .g-task-main { flex: 1; min-width: 0; }
-.g-task-name { font-size: 0.85rem; font-weight: 600; }
+.g-task-name { font-size: 0.97rem; font-weight: 600; }
 .g-task-due {
-  font-size: 0.65rem;
+  font-size: 0.74rem;
   color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
   margin-top: 2px;
 }
-.g-task-notes { font-size: 0.72rem; color: var(--muted2); margin-top: 4px; line-height: 1.4; }
+.g-task-notes { font-size: 0.82rem; color: var(--muted2); margin-top: 4px; line-height: 1.4; }
 .g-task-add {
   flex-shrink: 0;
   padding: 5px 10px;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   border-radius: 8px;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   background: rgba(var(--accent-rgb), 0.1);
@@ -248,4 +248,4 @@
   cursor: pointer;
 }
 .g-task-add--done { opacity: 0.55; cursor: default; }
-.g-tasks-more { margin-top: 12px; font-size: 0.72rem; }
+.g-tasks-more { margin-top: 12px; font-size: 0.82rem; }
