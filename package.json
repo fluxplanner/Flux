@@ -14,7 +14,8 @@
     "ext:chrome": "node extension/build.mjs --target=chrome",
     "ext:firefox": "node extension/build.mjs --target=firefox",
     "ext:safari": "node extension/build.mjs --target=safari",
-    "ext:all": "node extension/build.mjs --target=chrome && node extension/build.mjs --target=firefox && node extension/build.mjs --target=safari"
+    "ext:all": "node extension/build.mjs --target=chrome && node extension/build.mjs --target=firefox && node extension/build.mjs --target=safari",
+    "changelog": "node scripts/build-changelog.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
