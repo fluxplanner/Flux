@@ -1,0 +1,72 @@
+/* flux-native-controls.css — make browser-drawn controls match the app.
+ *
+ * Some parts of a <select> and <input type="date"> are not drawn by our CSS at
+ * all: the dropdown list that pops open, the date-picker calendar, the spinners
+ * and the scrollbars are painted by the browser/OS. Those follow `color-scheme`,
+ * and Flux never declared one — so on a dark page every one of them opened as a
+ * white panel with black text. That is the "the calendar dropdown is so off"
+ * problem, and no amount of styling the closed box fixes it.
+ *
+ * Declaring the scheme is the actual fix. Everything below it is polish on the
+ * parts we *can* style, so the closed control matches the opened one.
+ */
+
+:root {
+  color-scheme: dark;
+}
+/* The one light theme (app.js THEMES.light sets body[data-theme="light"]).
+   Native panels must flip back, or they'd be dark-on-light there. */
+body[data-theme='light'] {
+  color-scheme: light;
+}
+
+/* ── Date & time inputs ─────────────────────────────────────────────────────
+   The calendar icon is drawn by the browser in a fixed colour, so on dark it
+   reads as near-invisible. Invert it there, and leave it alone on light. */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator,
+input[type='month']::-webkit-calendar-picker-indicator,
+input[type='week']::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.6);
+  opacity: 0.65;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+body[data-theme='light'] input[type='date']::-webkit-calendar-picker-indicator,
+body[data-theme='light'] input[type='time']::-webkit-calendar-picker-indicator,
+body[data-theme='light'] input[type='datetime-local']::-webkit-calendar-picker-indicator,
+body[data-theme='light'] input[type='month']::-webkit-calendar-picker-indicator,
+body[data-theme='light'] input[type='week']::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.75;
+}
+
+/* ── Selects ────────────────────────────────────────────────────────────────
+   Draw our own chevron so the closed control matches the rest of the UI. The
+   arrow is an inline SVG, kept in the muted token colour so it reads the same
+   on every theme. */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 15px 15px;
+  padding-right: 32px;
+}
+/* Multi-selects and size>1 render as a list box, not a closed control — a
+   chevron there would sit on top of the options. */
+select[multiple],
+select[size]:not([size='1']) {
+  background-image: none;
+  padding-right: 10px;
+  -webkit-appearance: listbox;
+  appearance: listbox;
+}
