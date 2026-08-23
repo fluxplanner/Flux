@@ -1,9 +1,15 @@
 {
   "generated": "2026-08-23",
   "firstCommit": "2026-03-12",
-  "total": 475,
+  "total": 476,
   "omitted": 298,
   "entries": [
+    {
+      "date": "2026-08-23",
+      "type": "Added",
+      "title": "A change log going back to the first commit, in the repo and in Settings",
+      "hash": "36793fe"
+    },
     {
       "date": "2026-08-23",
       "type": "Performance",

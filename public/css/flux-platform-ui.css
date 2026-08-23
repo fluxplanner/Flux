@@ -1,0 +1,95 @@
+/* Flux · Owner "Sidebar tabs — everyone" panel (Settings, owner only).
+   Paired with public/js/flux-platform-ui.js. */
+
+.flux-pui-help {
+  font-size: .78rem;
+  color: var(--muted2);
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.flux-pui-list {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.flux-pui-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .14s;
+}
+.flux-pui-row:hover { background: rgba(255, 255, 255, .035); }
+
+.flux-pui-check {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.flux-pui-label {
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.flux-pui-state {
+  font-size: .68rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* An unticked row is the consequential state — make it read that way. */
+.flux-pui-row:has(.flux-pui-check:not(:checked)) .flux-pui-label { color: var(--muted); }
+.flux-pui-row:has(.flux-pui-check:not(:checked)) .flux-pui-state { color: var(--red, #f2545b); }
+
+.flux-pui-status {
+  font-size: .74rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted2);
+  margin: 0 0 12px;
+  min-height: 1.2em;
+}
+
+.flux-pui-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.flux-pui-save,
+.flux-pui-reset {
+  padding: 9px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  transition: filter .14s, background .14s;
+}
+.flux-pui-save {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
+  flex: 1;
+  min-width: 160px;
+}
+.flux-pui-save:hover:not(:disabled) { filter: brightness(1.08); }
+.flux-pui-save:disabled { opacity: .6; cursor: default; }
+
+.flux-pui-reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+}
+.flux-pui-reset:hover { color: var(--text); border-color: rgba(var(--accent-rgb), .4); }
+
+.flux-pui-empty { font-size: .8rem; color: var(--muted2); margin: 8px 0; }
+
+@media (max-width: 560px) {
+  .flux-pui-row { grid-template-columns: auto 1fr; }
+  .flux-pui-state { grid-column: 2; font-size: .64rem; }
+}
