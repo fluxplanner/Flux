@@ -95,18 +95,26 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* This runs on every direct child of the live panel on every tab switch, and
+     those children wrap the whole subtree — Settings alone is ~1,175 nodes. An
+     animated filter: blur() cannot be composited, so it forced a full
+     re-rasterize of that subtree every frame for 400ms, which is what made each
+     sidebar click stutter. opacity + transform are composited and give the same
+     motion for essentially nothing.
+
+     Same reasoning as fluxApplePanelEnter in flux-apple-motion.css, which was
+     already de-blurred for exactly this; the ::view-transition keyframes there
+     may keep their blur because those animate a flat snapshot, not live DOM. */
   .panel.active > * {
-    animation: blur-fade-in 0.4s ease forwards;
+    animation: panel-child-fade-in 0.4s ease forwards;
   }
-  @keyframes blur-fade-in {
+  @keyframes panel-child-fade-in {
     from {
       opacity: 0;
-      filter: blur(6px);
       transform: translateY(6px);
     }
     to {
       opacity: 1;
-      filter: blur(0);
       transform: translateY(0);
     }
   }
