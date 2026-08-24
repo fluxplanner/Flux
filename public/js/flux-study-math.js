@@ -92,13 +92,18 @@
       return window.FLUX_DESMOS_API_KEY || '358d93886703462aa44456773add8b79';
     }
 
-    /** Desmos ships a light and an inverted (dark) palette; pick by luminance
-        so it tracks whichever Flux theme is active rather than assuming dark. */
-    function prefersInverted() {
-      const m = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(
-        getComputedStyle(document.body).backgroundColor || '');
-      if (!m) return true;
-      return (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255 < 0.5;
+    /* Desmos ships a light palette and an inverted one. This used to follow the
+       Flux theme automatically, which meant dark by default — but Desmos's
+       inverted mode is a straight colour inversion, so graph lines and the
+       expression list come out muddy against the app's own dark chrome. Light
+       is the default and reads correctly; the palette is now an explicit choice
+       and it sticks. */
+    const GRAPH_DARK_KEY = 'flux_desmos_dark';
+    function graphDark() {
+      try { return localStorage.getItem(GRAPH_DARK_KEY) === '1'; } catch (_) { return false; }
+    }
+    function setGraphDark(on) {
+      try { localStorage.setItem(GRAPH_DARK_KEY, on ? '1' : '0'); } catch (_) {}
     }
 
     /* Loaded in an iframe rather than injected into this page. Desmos needs
@@ -114,17 +119,36 @@
       const src = new URL('public/desmos-frame.html', document.baseURI);
       src.hash = new URLSearchParams({
         apiKey: desmosKey(),
-        dark: prefersInverted() ? '1' : '0',
+        dark: graphDark() ? '1' : '0',
         v: DESMOS_API_VERSION,
       }).toString();
 
       body.innerHTML = `<div class="fsh-card" style="padding:20px">
-        <h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3>
-        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Powered by Desmos — type equations on the left. Sliders, tables, regressions and inequalities all work.</p>
+        <div class="fsh-desmos-head">
+          <div class="fsh-desmos-head-text">
+            <h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3>
+            <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0">Powered by Desmos — type equations on the left. Sliders, tables, regressions and inequalities all work.</p>
+          </div>
+          <button type="button" class="fsh-btn fsh-desmos-theme" id="dsmTheme" aria-pressed="${graphDark() ? 'true' : 'false'}">${graphDark() ? '☀︎ Light graph' : '☾ Dark graph'}</button>
+        </div>
         <iframe id="dsmFrame" class="fsh-desmos" title="Desmos graphing calculator" src="${esc(src.toString())}"></iframe>
         <div class="fsh-out" id="dsmErr"></div></div>`;
 
       const frame = document.getElementById('dsmFrame');
+
+      document.getElementById('dsmTheme').addEventListener('click', (e) => {
+        const on = !graphDark();
+        setGraphDark(on);
+        const btn = e.currentTarget;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.textContent = on ? '☀︎ Light graph' : '☾ Dark graph';
+        /* Message the frame rather than reloading it, so whatever the student
+           has already typed survives the switch. */
+        try {
+          frame.contentWindow.postMessage(
+            { source: 'flux-desmos-cmd', invertedColors: on }, location.origin);
+        } catch (_) {}
+      });
       let settled = false;
 
       function fallback(msg) {

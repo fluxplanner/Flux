@@ -427,6 +427,27 @@
   #fshPrintRoot sub { font-size:.72em; }
 }
 
+/* ── Desmos header row + palette toggle ───────────────────────────────── */
+.fsh-desmos-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.fsh-desmos-head-text { min-width: 0; }
+.fsh-desmos-theme {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: .74rem;
+  padding: 7px 12px;
+}
+@media (max-width: 560px) {
+  /* Stack rather than squeeze the blurb down to one word per line. */
+  .fsh-desmos-head { flex-direction: column; align-items: stretch; }
+  .fsh-desmos-theme { align-self: flex-start; }
+}
+
 /* ── Desmos graphing calculator host ──────────────────────────────────────
    Desmos measures its container on init and renders nothing into a zero-height
    box, so the height must be explicit rather than derived from content. */
