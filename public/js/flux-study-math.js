@@ -68,9 +68,82 @@
       return root;
     }
 
-    // ── Graphing calculator ─────────────────────────────────────────────────
-    let gExpr = 'sin(x)', gExpr2 = '0.2*x^2 - 3', gZoom = 10;
+    // ── Graphing calculator (Desmos, with an offline fallback) ──────────────
+    /* Desmos replaces the hand-rolled canvas plotter: it does implicit curves,
+       sliders, tables, regressions, inequalities and proper axis labelling,
+       none of which the native one could. The native plotter is kept below as
+       renderGraphNative and used when Desmos can't load — Flux is an
+       installable PWA and Desmos needs the network, so a student working
+       offline still gets a usable graph instead of an error. */
+    const DESMOS_API_VERSION = 'v1.11';
+    /* Desmos embed keys are designed to ship in the page (the script is loaded
+       client-side, so the key is public by construction). Set
+       window.FLUX_DESMOS_API_KEY before the study hub boots to use your own. */
+    function desmosKey() {
+      return window.FLUX_DESMOS_API_KEY || 'dcb31709b452b1cf9dc26972add0fda6';
+    }
+
+    /** Desmos ships a light and an inverted (dark) palette; pick by luminance
+        so it tracks whichever Flux theme is active rather than assuming dark. */
+    function prefersInverted() {
+      const m = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(
+        getComputedStyle(document.body).backgroundColor || '');
+      if (!m) return true;
+      return (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255 < 0.5;
+    }
+
+    /* Loaded in an iframe rather than injected into this page. Desmos needs
+       eval() and new Function(), which the app's CSP forbids — in-page the
+       bundle half-executes and leaves a Desmos global with no
+       GraphingCalculator on it. public/desmos-frame.html carries its own,
+       narrower CSP permitting eval for that document alone, so the planner
+       keeps its stricter policy. See the comment at the top of that file. */
     function renderGraph(body) {
+      /* Params go in the hash rather than the query string — a host that
+         rewrites `/x.html` to `/x` drops the query on the redirect and the
+         frame would boot with no key. See the note in desmos-frame.html. */
+      const src = new URL('public/desmos-frame.html', document.baseURI);
+      src.hash = new URLSearchParams({
+        apiKey: desmosKey(),
+        dark: prefersInverted() ? '1' : '0',
+        v: DESMOS_API_VERSION,
+      }).toString();
+
+      body.innerHTML = `<div class="fsh-card" style="padding:20px">
+        <h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3>
+        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Powered by Desmos — type equations on the left. Sliders, tables, regressions and inequalities all work.</p>
+        <iframe id="dsmFrame" class="fsh-desmos" title="Desmos graphing calculator" src="${esc(src.toString())}"></iframe>
+        <div class="fsh-out" id="dsmErr"></div></div>`;
+
+      const frame = document.getElementById('dsmFrame');
+      let settled = false;
+
+      function fallback(msg) {
+        if (settled || !document.body.contains(frame)) return;
+        settled = true;
+        window.removeEventListener('message', onMsg);
+        renderGraphNative(body);
+        const err = document.getElementById('gErr');
+        if (err) err.innerHTML = `<span class="fsh-err">${esc(msg)}</span>`;
+      }
+
+      /* The frame reports back rather than being polled: a cross-origin script
+         failing inside it is invisible from out here. */
+      function onMsg(e) {
+        if (!e.data || e.data.source !== 'flux-desmos') return;
+        if (e.data.ok) { settled = true; window.removeEventListener('message', onMsg); return; }
+        fallback('Desmos could not load — you are offline or it is blocked on this network. Using the built-in plotter.');
+      }
+      window.addEventListener('message', onMsg);
+
+      /* If the frame itself never loads (offline, 404) no message arrives at
+         all, so time out too. */
+      setTimeout(() => fallback('Desmos is taking too long — using the built-in plotter.'), 12000);
+    }
+
+    // ── Built-in plotter (offline fallback for the above) ───────────────────
+    let gExpr = 'sin(x)', gExpr2 = '0.2*x^2 - 3', gZoom = 10;
+    function renderGraphNative(body) {
       body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Plot y = f(x). Use x, +−*/^, and sin cos tan sqrt ln log abs exp pi.</p>
         <div class="fsh-field"><input id="gIn1" class="fsh-input" value="${esc(gExpr)}" spellcheck="false"></div>
         <div class="fsh-field" style="margin-top:8px"><input id="gIn2" class="fsh-input" value="${esc(gExpr2)}" spellcheck="false" placeholder="optional second function"><button type="button" class="fsh-btn" id="gPlot">Plot</button></div>

@@ -10,7 +10,33 @@
   opacity: 0;
   display: none;
 }
-.fdp-input { cursor: pointer; }
+/* Hiding the native indicator also removed the only visual cue that the field
+   opens a calendar, so draw one back on. It is painted on the input rather than
+   added as a real button because an <input> cannot host child elements or
+   ::after, and wrapping the field would disturb the flex rows these sit in.
+   The whole input is the click target, so this is affordance, not control. */
+/* The app-wide field rule is `:is(#app, #loginScreen) input:not(...)`, which
+   carries an id and so outranks a bare class — the icon silently lost the
+   cascade. Matching that shape (plus the class) takes it back. */
+.fdp-input,
+:is(#app, #loginScreen) input.fdp-input {
+  cursor: pointer;
+  /* !important because the shared field rule sets `padding: 10px 14px
+     !important`, which no amount of specificity can outrank — without this the
+     value text runs underneath the icon. */
+  padding-right: 38px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 17px 17px;
+}
+/* Brighten the icon on hover/open so it reads as interactive. */
+.fdp-input:hover,
+.fdp-input[aria-expanded="true"],
+:is(#app, #loginScreen) input.fdp-input:hover,
+:is(#app, #loginScreen) input.fdp-input[aria-expanded="true"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+}
 
 .fdp-pop {
   position: fixed;
