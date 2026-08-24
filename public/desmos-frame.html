@@ -52,6 +52,27 @@
     tell(false); // parent swaps in the offline plotter
   }
 
+  var calc = null;
+
+  /* document.referrer is the embedding page; fall back to same-origin, which
+     is what this always is in practice (the frame ships with the app). */
+  function parentOrigin() {
+    try { return document.referrer ? new URL(document.referrer).origin : location.origin; }
+    catch (_) { return location.origin; }
+  }
+
+  /* The parent toggles the graph palette at runtime. updateSettings() is used
+     rather than reloading the frame, so a student flipping the theme keeps the
+     equations they have already typed. */
+  window.addEventListener('message', function (e) {
+    if (e.origin !== parentOrigin()) return;
+    var d = e.data;
+    if (!d || d.source !== 'flux-desmos-cmd' || !calc) return;
+    if (typeof d.invertedColors === 'boolean') {
+      try { calc.updateSettings({ invertedColors: d.invertedColors }); } catch (_) {}
+    }
+  });
+
   var s = document.createElement('script');
   s.src = 'https://www.desmos.com/api/v1.11/calculator.js?apiKey=' + encodeURIComponent(key);
   s.async = true;
@@ -59,7 +80,7 @@
   s.onload = function () {
     if (!window.Desmos || typeof Desmos.GraphingCalculator !== 'function') return fail();
     try {
-      var calc = Desmos.GraphingCalculator(document.getElementById('calc'), {
+      calc = Desmos.GraphingCalculator(document.getElementById('calc'), {
         expressions: true,
         settingsMenu: true,
         zoomButtons: true,
