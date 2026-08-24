@@ -17,14 +17,44 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LS_KEY = 'flux_study_hub';
 
+  /* Go through the app's own storage helpers rather than localStorage directly.
+     They route every key through fluxNamespacedKey(), which prefixes it while
+     an owner is viewing another account, and they are what the sign-out
+     preserve/restore pass understands. Reading and writing the raw key — as
+     this module used to — put study state outside all of that, so a starred
+     subject could be written under one namespace and read back from another,
+     which reads as "it didn't save". Falls back to raw access if app.js has
+     not defined the helpers yet. */
+  const hubLoad = (def) => {
+    try {
+      if (typeof window.load === 'function') return window.load(LS_KEY, def);
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : def;
+    } catch (e) { return def; }
+  };
+  const save = () => {
+    try {
+      if (typeof window.save === 'function') { window.save(LS_KEY, state); return; }
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch (e) {}
+  };
+
   let state = { subject: 'chemistry', chemTab: 'table', tool: {}, favs: [] };
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
+  let stored = hubLoad(null);
+  /* Anything saved before this module used the helpers sits under the bare key.
+     Adopt it once so existing favourites survive the move. */
+  if (!stored) {
+    try {
+      const legacy = localStorage.getItem(LS_KEY);
+      if (legacy) stored = JSON.parse(legacy);
+    } catch (e) {}
+  }
+  if (stored && typeof stored === 'object') state = Object.assign(state, stored);
   if (!state.tool) state.tool = {};
   // Records written before favourites existed have no `favs`, and a corrupted
   // one could hold anything — a bad value here would throw on every rail
   // render, so normalise instead of trusting it.
   if (!Array.isArray(state.favs)) state.favs = [];
-  const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} };
 
   let selEl = 6, atomN = 6, atomSpeed = 1, searchQ = '';
 
@@ -548,10 +578,16 @@
   }
 
   const TAB_SLIDER = '<div class="fsh-tabs-slider" id="fshTabSlider" hidden><div class="fsh-tabs-thumb" id="fshTabThumb"></div></div>';
-  const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['worksheet','📝','Worksheet']];
+  // 'formulas' lives here rather than in the shared science sheet: chemistry's
+  // formulas used to be reachable only as a tab inside the *physics* tool.
+  const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['formulas','∑','Formulas'],['worksheet','📝','Worksheet']];
   function renderChemBody() {
     const b = $('fshChemBody'); if (!b) return;
     if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
+    if (state.chemTab === 'formulas') {
+      if (typeof window.renderFormulaSheet === 'function') { window.renderFormulaSheet(b, 'Chemistry'); return; }
+      state.chemTab = 'table';
+    }
     b.innerHTML = state.chemTab === 'table' ? renderTableTab() : state.chemTab === 'atom' ? renderAtomTab() : state.chemTab === 'tools' ? renderToolsTab() : state.chemTab === 'ions' ? renderIonsTab() : renderWorksheetTab();
     if (state.chemTab === 'table') applyPtFilter();
     else if (state.chemTab === 'atom') setTimeout(mountAtom3D, 0);
@@ -855,6 +891,9 @@
   window.renderToolbox = renderHub;
   window.renderStudyTools = renderHub;
   window.fluxStudyHub = { render: renderHub, register, addAITool, tools: aiTools, aiManifest, slash, balance, parseFormula, selectSubject,
+    /* Lets a shared tool tell which subject opened it — the formula sheet uses
+       this to show only the relevant science instead of all three. */
+    currentSubject: () => state.subject,
     helpers: { elements, elByN, massOf, shellFill, esc, subFmt } };
 
   document.addEventListener('DOMContentLoaded', () => { const tb = $('toolbox'); if (tb && tb.classList.contains('active')) renderHub(); });

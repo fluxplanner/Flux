@@ -103,6 +103,10 @@
       { id: 'translate', name: 'DNA→Protein', icon: '🧫', desc: 'dna rna codon translate protein amino acid transcription', render: renderTranslate, ai: { name: 'translateDNA', description: 'Translate DNA/mRNA to amino acids (frame 1). Arg: sequence.', params: { sequence: 'string' }, run: (a) => translate(a).join('-') } },
       { id: 'cell', name: 'Cell explorer', icon: '🔬', desc: 'cell organelles nucleus mitochondria animal plant', render: renderCell },
       { id: 'macro', name: 'Macromolecules', icon: '🧪', desc: 'macromolecules carbohydrates lipids proteins nucleic acids', render: renderMacro },
+      // Biology's formulas were previously reachable only as a tab inside the
+      // *physics* formula tool. renderFormulaSheet lives in flux-toolbox.js.
+      { id: 'formulas', name: 'Formulas', icon: '∑', desc: 'biology formulas equations hardy weinberg population growth magnification',
+        render: (b) => { if (typeof window.renderFormulaSheet === 'function') window.renderFormulaSheet(b, 'Biology'); } },
     ]);
   }
   boot();

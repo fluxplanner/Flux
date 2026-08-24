@@ -174,7 +174,18 @@ Deno.serve(async (req) => {
   }
 
   if (!isBYOK && !hasImage && !body.model) {
-    body.model = "openai/gpt-oss-120b";
+    /* Same split as the paid path above, repeated here because that block
+       only runs when PAYMENTS_ENABLED is on — which it isn't by default, so
+       in practice *every* request was landing on gpt-oss-120b. Groq's rate
+       limits are per-model, so that put all traffic on a single 8,000
+       tokens/minute budget; two messages carrying a full planner snapshot
+       exhaust it, which is the "rate-limited right now" users kept hitting.
+       Plain chat answers well on the smaller model, emits far fewer tokens,
+       and draws on a separate bucket. */
+    const sys = String(body.system ?? body.systemPrompt ?? "");
+    body.model = sys.includes("flux_tool")
+      ? "openai/gpt-oss-120b"
+      : "openai/gpt-oss-20b";
   }
 
   // SSE streaming: text chat only (vision and json_object stay request/response).
@@ -663,6 +674,33 @@ async function callAnthropicMessages(
     .trim();
 }
 
+/**
+ * Groq's free tier allows 8,000 tokens per minute, per model — and that budget
+ * covers the prompt as well as the reply. Flux builds its system prompt by
+ * concatenating ~16 clipped snapshots of the planner (classes 4,000 chars,
+ * Canvas 9,200, two hub blobs 6,200 and 4,500, a dozen more at 800–2,200), so
+ * a well-populated account can send 40,000 characters — roughly 10,000 tokens,
+ * more than the entire minute's allowance, before the model writes a word.
+ * Measured: a 2,880-token prompt cost 3,300–6,500 tokens per request, so a
+ * student got one or two messages a minute before being refused.
+ *
+ * Capping here rather than in the app means no caller — page, extension or
+ * stale cached bundle — can blow the budget. The head is kept because the
+ * instructions come first and the bulk data is appended after them.
+ */
+const SYSTEM_PROMPT_MAX_CHARS = 6000;
+
+function clampSystemPrompt(system: unknown): string | undefined {
+  if (typeof system !== "string" || !system) return system as undefined;
+  if (system.length <= SYSTEM_PROMPT_MAX_CHARS) return system;
+  console.warn(
+    `ai-proxy: system prompt ${system.length} chars, trimming to ${SYSTEM_PROMPT_MAX_CHARS}`,
+  );
+  return system.slice(0, SYSTEM_PROMPT_MAX_CHARS) +
+    "\n\n[Context trimmed to fit the model's per-minute token budget. If you " +
+    "need a detail that isn't here, ask the student for it rather than guessing.]";
+}
+
 function buildOpenAIChatPayload(
   body: {
     messages?: Array<{ role: string; content: unknown }>;
@@ -674,7 +712,7 @@ function buildOpenAIChatPayload(
   },
   model: string,
 ): Record<string, unknown> {
-  const system = body.system ?? body.systemPrompt;
+  const system = clampSystemPrompt(body.system ?? body.systemPrompt);
   let messages = Array.isArray(body.messages) ? [...body.messages] : [];
   if (system && !messages.some((m) => m.role === "system")) {
     messages = [{ role: "system", content: system }, ...messages];
@@ -691,14 +729,33 @@ function buildOpenAIChatPayload(
   const payload: Record<string, unknown> = {
     model,
     messages,
-    // Reasoning models (gpt-oss) spend completion budget thinking before
-    // answering — keep enough headroom that long solutions don't truncate.
-    max_tokens: jsonMode ? 1024 : (isGptOss ? 8192 : 4096),
+    /* Groq reserves the full max_tokens against the per-minute budget up
+       front, whether the reply uses it or not: a refused request reported
+       "Requested 5777" for a ~1,700-token prompt, which is exactly prompt +
+       max_tokens. Asking for 8,192 therefore spent most of an 8,000-token
+       minute on headroom that a two-sentence answer never touched, and the
+       second message of a conversation was refused.
+
+       2,048 is ~1,500 words — far longer than any answer this app produces —
+       and roughly triples how many messages fit in a minute. Reasoning is
+       drawn from this same allowance, which is affordable now that
+       reasoning_effort is low/medium rather than high. */
+    max_tokens: jsonMode ? 1024 : 2048,
     temperature: jsonMode ? 0.2 : 0.7,
   };
-  // Think hard by default: the biggest free accuracy lever on gpt-oss, and
-  // Groq is fast enough that the extra thinking stays responsive.
-  if (isGptOss && !jsonMode) payload.reasoning_effort = "high";
+  /* Reasoning is not free: the scratchpad is generated before the answer and
+     counts against the same per-minute token budget, even though
+     reasoning_format:"hidden" means nobody ever reads it. At "high" a bare
+     "hi" spent hundreds of tokens deliberating, and two real questions were
+     enough to trip Groq's limit.
+
+     So spend it where it changes the answer: tool-calling turns need to emit
+     well-formed flux_tool JSON and reason about the planner, and get medium.
+     Plain chat gets low — it barely moves quality there and is most of the
+     traffic. */
+  if (isGptOss && !jsonMode) {
+    payload.reasoning_effort = /gpt-oss-120b/.test(model) ? "medium" : "low";
+  }
   if (isReasoning) payload.reasoning_format = "hidden";
   if (jsonMode) payload.response_format = { type: "json_object" };
   return payload;
