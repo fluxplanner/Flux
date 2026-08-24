@@ -77,10 +77,19 @@
        offline still gets a usable graph instead of an error. */
     const DESMOS_API_VERSION = 'v1.11';
     /* Desmos embed keys are designed to ship in the page (the script is loaded
-       client-side, so the key is public by construction). Set
-       window.FLUX_DESMOS_API_KEY before the study hub boots to use your own. */
+       client-side, so the key is public by construction — this is not a secret).
+       Override with window.FLUX_DESMOS_API_KEY before the study hub boots.
+
+       LICENSING — READ BEFORE ENABLING PAID PLANS: this key is Desmos's
+       *non-commercial / personal projects* tier. Desmos's own notice: "If you
+       would like to use the Desmos API for commercial purposes (e.g., as part
+       of a business, or in an app or product that you charge users for),
+       contact us at partnerships@desmos.com." Flux already ships Stripe
+       checkout, a billing portal and Flux Pro entitlements — the moment paid
+       plans are switched on, this key is out of terms and has to be replaced
+       with a commercial one. */
     function desmosKey() {
-      return window.FLUX_DESMOS_API_KEY || 'dcb31709b452b1cf9dc26972add0fda6';
+      return window.FLUX_DESMOS_API_KEY || '358d93886703462aa44456773add8b79';
     }
 
     /** Desmos ships a light and an inverted (dark) palette; pick by luminance
