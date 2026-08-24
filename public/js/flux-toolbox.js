@@ -306,15 +306,31 @@ const FORMULA_SHEET = {
   ],
 };
 
-function renderFormulaSheet(body){
-  const kinds = Object.keys(FORMULA_SHEET);
+/**
+ * @param {HTMLElement} body
+ * @param {string} [only] Restrict to one FORMULA_SHEET kind. When omitted this
+ *   infers it from the Study Tools subject it was opened under, so the Physics
+ *   tool stops offering Chemistry and Biology tabs — those belong to, and are
+ *   now registered on, their own subjects. Opened from the classic toolbox
+ *   (no subject context) it still shows all three, as that surface always has.
+ */
+function renderFormulaSheet(body, only){
+  if (!only) {
+    try {
+      const subj = window.fluxStudyHub && typeof window.fluxStudyHub.currentSubject === 'function'
+        ? window.fluxStudyHub.currentSubject() : '';
+      only = { physics: 'Physics', chemistry: 'Chemistry', biology: 'Biology' }[subj] || '';
+    } catch (e) { only = ''; }
+  }
+  const kinds = (only && FORMULA_SHEET[only]) ? [only] : Object.keys(FORMULA_SHEET);
+  const single = kinds.length === 1;
   body.innerHTML = `
     <div class="tb-card">
       <div class="tb-card-h">
-        <h3>Formula sheet</h3>
-        <div class="tb-seg" role="tablist">
+        <h3>${single ? esc(kinds[0]) + ' formulas' : 'Formula sheet'}</h3>
+        ${single ? '' : `<div class="tb-seg" role="tablist">
           ${kinds.map((k,i) => `<button type="button" data-kind="${k}" class="${i === 0 ? 'active' : ''}">${k}</button>`).join('')}
-        </div>
+        </div>`}
       </div>
       <div id="fsBody" class="fs-body"></div>
     </div>
@@ -338,7 +354,8 @@ function renderFormulaSheet(body){
       </div>
     `).join('');
   }
-  seg.addEventListener('click', e => {
+  // Absent when filtered to a single kind — there is nothing to switch between.
+  if (seg) seg.addEventListener('click', e => {
     const b = e.target.closest('button');
     if (!b) return;
     seg.querySelectorAll('button').forEach(x => x.classList.remove('active'));
@@ -351,6 +368,10 @@ function renderFormulaSheet(body){
   });
   draw(kinds[0]);
 }
+/* The bundler wraps this file, so a top-level `function` is not a global.
+   Chemistry and Biology render their own formula tabs through this, and
+   without the explicit export those tabs silently render nothing. */
+window.renderFormulaSheet = renderFormulaSheet;
 
 // ── Unit converter ───────────────────────────────────────────────
 // Each group: base unit's factor = 1; others scaled to base. Temp is affine.

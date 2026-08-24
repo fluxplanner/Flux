@@ -25,6 +25,11 @@
   color:var(--fsh-ink);
   position:relative;
   width:100%;
+  /* The ::before ambient glow is inset -40px left and right, and nothing was
+     clipping it — on a 390px phone that made the panel 430px wide and the
+     whole page scrolled sideways. `clip` rather than `hidden` so this does not
+     become a scroll container and steal the vertical scroll. */
+  overflow-x:clip;
   font-feature-settings:"ss01","cv01";
 }
 
@@ -466,3 +471,37 @@
   /* Leave room for the bottom nav on phones. */
   .fsh-desmos { height: clamp(320px, 50vh, 480px); }
 }
+
+/* ── Desmos fullscreen ────────────────────────────────────────────────────
+   A fixed-inset overlay rather than the Fullscreen API: requesting real
+   fullscreen on an iframe reloads its document in some browsers (losing the
+   student's equations) and iOS Safari refuses it on iframes altogether. */
+.fsh-desmos-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.fsh-card.fsh-desmos-full {
+  position: fixed;
+  inset: 0;
+  /* Without border-box the safe-area padding is added *to* the height. inset:0
+     alone still came out 34px over on a phone, so the height is pinned: dvh
+     tracks the viewport as mobile browser chrome shows and hides, which vh
+     does not. */
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  z-index: calc(var(--flux-z-modal, 500) + 30);
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--card, #12161f);
+  /* Clear the notch and home indicator when a phone is in fullscreen. */
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+}
+.fsh-card.fsh-desmos-full .fsh-desmos-head { flex: 0 0 auto; }
+/* Beat the clamp() height so the graph actually fills the screen. */
+.fsh-card.fsh-desmos-full .fsh-desmos {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+}
+body.fsh-desmos-locked { overflow: hidden; }

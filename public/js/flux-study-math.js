@@ -129,12 +129,39 @@
             <h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3>
             <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0">Powered by Desmos — type equations on the left. Sliders, tables, regressions and inequalities all work.</p>
           </div>
-          <button type="button" class="fsh-btn fsh-desmos-theme" id="dsmTheme" aria-pressed="${graphDark() ? 'true' : 'false'}">${graphDark() ? '☀︎ Light graph' : '☾ Dark graph'}</button>
+          <div class="fsh-desmos-actions">
+            <button type="button" class="fsh-btn fsh-desmos-theme" id="dsmTheme" aria-pressed="${graphDark() ? 'true' : 'false'}">${graphDark() ? '☀︎ Light graph' : '☾ Dark graph'}</button>
+            <button type="button" class="fsh-btn fsh-desmos-theme" id="dsmFull" aria-pressed="false">⛶ Fullscreen</button>
+          </div>
         </div>
         <iframe id="dsmFrame" class="fsh-desmos" title="Desmos graphing calculator" src="${esc(src.toString())}"></iframe>
         <div class="fsh-out" id="dsmErr"></div></div>`;
 
       const frame = document.getElementById('dsmFrame');
+
+      /* Fullscreen uses a CSS class rather than the Fullscreen API: requesting
+         real fullscreen on an iframe reloads its document in some browsers,
+         which would throw away the equations the student has typed. A
+         fixed-inset overlay keeps the same frame alive, so the graph survives
+         going in and out. iOS Safari also refuses requestFullscreen on iframes
+         outright, and this works there. */
+      const card = frame.closest('.fsh-card');
+      const fullBtn = document.getElementById('dsmFull');
+      function setFull(on) {
+        card.classList.toggle('fsh-desmos-full', on);
+        // Stop the page behind the overlay scrolling under it.
+        document.body.classList.toggle('fsh-desmos-locked', on);
+        fullBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        fullBtn.textContent = on ? '⤡ Exit fullscreen' : '⛶ Fullscreen';
+      }
+      fullBtn.addEventListener('click', () => setFull(!card.classList.contains('fsh-desmos-full')));
+      document.addEventListener('keydown', function onEsc(e) {
+        if (e.key !== 'Escape') return;
+        // Self-detach once the tool is gone, rather than leaking a listener
+        // per visit to the grapher.
+        if (!document.body.contains(card)) { document.removeEventListener('keydown', onEsc); return; }
+        if (card.classList.contains('fsh-desmos-full')) { e.preventDefault(); setFull(false); }
+      });
 
       document.getElementById('dsmTheme').addEventListener('click', (e) => {
         const on = !graphDark();

@@ -2378,3 +2378,21 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   .more-sheet-overlay,
   .flux-pomo-pill{ display: none !important; }
 }
+
+/* ── Bottom-nav clearance for the two panels that opt out of .panel padding ──
+   The mobile bottom nav is ~63px tall, and .panel's bottom padding is what
+   normally clears it. #ai and #toolbox both override that padding to 0 for
+   their own layouts, so on a phone:
+     · the AI composer (position:sticky; bottom:0) came to rest 15px *under*
+       the nav — you were typing into a partly covered box;
+     · Study Tools left ~359px of the tool stage unreachable behind it.
+   The composer is lifted rather than padded because a sticky element pins to
+   its container's edge regardless of what sits on top of it. */
+@media (max-width: 768px) {
+  #ai .ai-composer {
+    bottom: max(72px, calc(63px + env(safe-area-inset-bottom, 0px)));
+  }
+  #toolbox.fsh-active .fsh {
+    padding-bottom: max(104px, calc(92px + env(safe-area-inset-bottom, 0px)));
+  }
+}
