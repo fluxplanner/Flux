@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+  Flux · Desmos host frame.
+
+  Desmos's bundle uses new Function() and eval(), which the app's
+  Content-Security-Policy blocks — the script half-executes and leaves a stub
+  global with no GraphingCalculator on it. Adding 'unsafe-eval' to index.html
+  would fix that, but it relaxes script execution for the entire planner, which
+  is not a trade worth making for one tool.
+
+  A separate document gets its own CSP instead of inheriting the parent's (an
+  srcdoc iframe would inherit it, which is why this is a real file). So the eval
+  allowance lives here and nowhere else: this page can run Desmos, and the rest
+  of Flux keeps the stricter policy.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://www.desmos.com; style-src 'unsafe-inline' https://www.desmos.com; font-src https://www.desmos.com data:; img-src https://www.desmos.com data: blob:; connect-src https://www.desmos.com; worker-src blob:; child-src blob:; base-uri 'none'; form-action 'none'">
+<title>Graphing calculator</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: transparent; }
+  #calc { width: 100%; height: 100%; }
+  #err {
+    display: none; padding: 16px; height: 100%; box-sizing: border-box;
+    font: 13px/1.5 system-ui, -apple-system, sans-serif; color: #9aa3b2;
+  }
+</style>
+</head>
+<body>
+<div id="calc"></div>
+<div id="err">Desmos could not load.</div>
+<script>
+(function () {
+  'use strict';
+  /* Params ride in the hash, not the query string: static hosts that rewrite
+     `/x.html` to `/x` (the local dev server does) drop the query on the
+     redirect, and the frame would then boot with an empty key. Browsers carry
+     the fragment across redirects, so this survives both. */
+  var q = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var key = q.get('apiKey') || '';
+  var dark = q.get('dark') === '1';
+
+  function tell(ok) {
+    try { parent.postMessage({ source: 'flux-desmos', ok: !!ok }, '*'); } catch (e) {}
+  }
+
+  function fail() {
+    document.getElementById('calc').style.display = 'none';
+    document.getElementById('err').style.display = 'block';
+    tell(false); // parent swaps in the offline plotter
+  }
+
+  var s = document.createElement('script');
+  s.src = 'https://www.desmos.com/api/v1.11/calculator.js?apiKey=' + encodeURIComponent(key);
+  s.async = true;
+  s.onerror = fail;
+  s.onload = function () {
+    if (!window.Desmos || typeof Desmos.GraphingCalculator !== 'function') return fail();
+    try {
+      var calc = Desmos.GraphingCalculator(document.getElementById('calc'), {
+        expressions: true,
+        settingsMenu: true,
+        zoomButtons: true,
+        border: false,
+        invertedColors: dark
+      });
+      calc.setExpression({ id: 'flux1', latex: 'y=\\sin(x)' });
+      tell(true);
+    } catch (e) {
+      fail();
+    }
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
