@@ -1,0 +1,125 @@
+/* ============================================================================
+   FLUX · Touch target sizing (phones and small tablets)
+
+   Measured at 390x844 across every panel. WCAG 2.2 SC 2.5.8 sets a 24x24 CSS px
+   floor; Apple's HIG asks for 44x44. Flux had controls under both — a 13x13
+   checkbox and a 4px-tall slider track are not reliably hittable with a thumb,
+   and a mis-tap in Settings silently changes a preference.
+
+   Two techniques, chosen per control:
+
+     · Resize, where the control has no designed size worth keeping
+       (checkboxes, radios, plain text buttons).
+     · Expand the hit area with a transparent ::after overlay, where the visual
+       size *is* the design (accent swatches, switches, the favourite star).
+       Nothing looks different; the touch region grows.
+
+   Scoped to narrow viewports so desktop layout is untouched — this is phone
+   ergonomics, not a redesign. Sizing only: focus rings live in
+   flux-a11y-focus.css and calm-mode visuals in flux-a11y.css.
+   ========================================================================== */
+
+@media (max-width: 768px) {
+
+  /* ── Checkboxes and radios — the browser default renders 13x13 ─────────── */
+  input[type="checkbox"],
+  input[type="radio"] {
+    /* 26, not 24: the rendered box came back a pixel under whatever is
+       declared, so sizing exactly to the WCAG floor lands just below it. */
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    /* Keeps label text aligned now the box is taller. */
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  /* A replaced element can't host ::after, so the box carries the size itself
+     and the label supplies the rest of the 44px. */
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+  }
+
+  /* ── Range sliders — a 4px track is hard to grab ───────────────────────── */
+  input[type="range"] {
+    /* The painted track keeps its slim look; this is the region you can hit. */
+    height: 28px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ── Colour inputs ─────────────────────────────────────────────────────── */
+  input[type="color"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* ── Short text buttons — no designed height to preserve, so grow them ─── */
+  .flux-layout-sort-btn,
+  .btn-sec,
+  .tmode-btn,
+  .theme-btn,
+  .stab,
+  .fsh-desmos-theme,
+  .reveal-btn,
+  .fih-season-x {
+    min-height: 44px;
+  }
+  /* Icon-only buttons need the width too, or they stay a thin sliver. */
+  .flux-layout-sort-btn,
+  .reveal-btn,
+  .fih-season-x {
+    min-width: 44px;
+  }
+
+  /* ── Switches — the knob is ::after, so the expander must be ::before ────
+     .toggle and .tab-row-toggle are 36x20 pills whose ::after *is* the white
+     sliding knob. Growing them to 44px tall would stretch the pill out of
+     shape, and putting the hit expander on ::after would paint over the knob
+     and leave a switch with nothing in it. ::before is unused on both. */
+  .toggle,
+  .tab-row-toggle {
+    position: relative;
+  }
+  .toggle::before,
+  .tab-row-toggle::before {
+    content: '';
+    position: absolute;
+    /* 20px tall + 12px each side = 44. */
+    inset: -12px;
+    border-radius: inherit;
+  }
+
+  /* ── Controls whose size is the design — grow the hit area only ────────── */
+  .swatch,
+  .fsh-fav-btn {
+    position: relative;
+  }
+  /* No existing ::after on .swatch, so this is free to use. */
+  .swatch::after {
+    content: '';
+    position: absolute;
+    /* Enough to clear 44px from the smallest of these (a 23px swatch). */
+    inset: -11px;
+    border-radius: inherit;
+  }
+  /* The favourite star sits on the corner of a subject pill, so an oversized
+     region would steal taps from the pill it belongs to. It already gets an
+     expander under (hover: none); this guarantees it on narrow screens too. */
+  .fsh-fav-btn::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: inherit;
+  }
+}
