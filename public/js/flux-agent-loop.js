@@ -250,10 +250,18 @@
   function confirmFlagOn() {
     try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_ai_action_confirm', false)); } catch (e) { return false; }
   }
-  /** Proposal required for >1 write, any modification of existing items, or a multi-item breakdown. */
+  /**
+   * Every write is proposed, never applied straight away.
+   *
+   * This used to let a single creation through unconfirmed and only stopped to
+   * ask for bulk writes or edits of existing items. That still meant Flux could
+   * put something in the planner the student never agreed to, and an item
+   * appearing on its own is exactly what erodes trust in the planner's
+   * contents. The instruction is that Flux may change the planner but has to
+   * ask first — so it asks every time.
+   */
   function needsConfirm(writes) {
-    if (writes.length > 1) return true;
-    return writes.some((c) => ['updateTask', 'completeTask', 'deleteTask', 'addSubtasks'].includes(c.name));
+    return writes.length > 0;
   }
   let _lastApply = null;
   let _proposeImpl = null; // set by wireOrchestrator (A4 card renderer)

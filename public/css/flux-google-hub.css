@@ -249,3 +249,11 @@
 }
 .g-task-add--done { opacity: 0.55; cursor: default; }
 .g-tasks-more { margin-top: 12px; font-size: 0.82rem; }
+
+/* ── Google integrations paused (see enable_google_integrations) ────────────
+   Hidden rather than deleted: flipping the flag restores every surface.
+   The Canvas tab is deliberately not listed here — Canvas stays. */
+body.flux-google-off #fluxGoogleIntegrationCard,
+body.flux-google-off #fluxGoogleDocsSettingsCard {
+  display: none !important;
+}
