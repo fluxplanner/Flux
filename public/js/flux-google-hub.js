@@ -360,6 +360,9 @@
   }
 
   function hubTab() {
+    // A stored Google tab would otherwise leave the panel blank now that only
+    // Canvas renders, so coerce it rather than trusting what was saved.
+    if (!googleOn()) return 'canvas';
     try {
       return load(LS_HUB_TAB, 'tasks');
     } catch (_) {
@@ -429,6 +432,12 @@
   function syncHubPageSubtitle() {
     const sub = document.getElementById('canvasHubPageSub');
     if (!sub) return;
+    if (!googleOn()) {
+      // This is a Canvas tab now — do not advertise Gmail/Tasks/Docs to a
+      // student who may not have a Google account at all.
+      sub.textContent = 'Connect your school\'s Canvas to pull assignments, modules and due dates into Flux.';
+      return;
+    }
     if (isStaffHub()) {
       sub.textContent =
         'Connect once, then import Gmail, Calendar events, Tasks, Docs, and Canvas assignments into Flux — available in Work and Personal mode.';
@@ -438,7 +447,17 @@
     }
   }
 
+  /** Google panes are hidden for now — see enable_google_integrations. */
+  function googleOn() {
+    try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_google_integrations', false)); }
+    catch (_) { return false; }
+  }
+
   function hubTabsList() {
+    // Canvas only: this is a Canvas tab for students while Google is off.
+    if (!googleOn()) {
+      return [{ id: 'canvas', label: 'Canvas', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>' }];
+    }
     const tabs = [
       { id: 'tasks', label: 'Tasks', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' },
       { id: 'calendar', label: 'Calendar', icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' },
@@ -533,7 +552,11 @@
 
     syncHubPageSubtitle();
 
-    if (!isGoogleLinked()) {
+    /* Only gate on Google when Google is actually on. This tab is Canvas for
+       students now, and a Google sign-in wall in front of it meant a student
+       without a Google account could not reach Canvas at all — the account was
+       an implied requirement for something that has nothing to do with it. */
+    if (googleOn() && !isGoogleLinked()) {
       stack.innerHTML = googleSignInGateHtml();
       return;
     }
@@ -541,18 +564,21 @@
     const tab = hubTab();
     const tabs = hubTabsList();
 
+    /* With Google off there is a single Canvas tab, so the tab bar would be a
+       row of one and the lede would promise imports that aren't there. */
+    const chrome = googleOn();
     stack.innerHTML = `
     <div class="g-hub">
-      ${statusStripHtml()}
-      <p class="g-hub-muted g-hub-import-lede">Import into Flux — use <strong>+ Task</strong> or <strong>+ Flux</strong> on each row, or bulk import on Tasks and Canvas.</p>
-      <nav class="g-hub-tabs" role="tablist" aria-label="Google integrations">
+      ${chrome ? statusStripHtml() : ''}
+      ${chrome ? '<p class="g-hub-muted g-hub-import-lede">Import into Flux — use <strong>+ Task</strong> or <strong>+ Flux</strong> on each row, or bulk import on Tasks and Canvas.</p>' : ''}
+      ${chrome ? `<nav class="g-hub-tabs" role="tablist" aria-label="Google integrations">
         ${tabs
           .map(
             (t) =>
               `<button type="button" role="tab" class="g-hub-tab ${tab === t.id ? 'active' : ''}" aria-selected="${tab === t.id}" onclick="FluxGoogle.setTab('${t.id}')"><span aria-hidden="true">${t.icon}</span><span>${esc(t.label)}</span></button>`,
           )
           .join('')}
-      </nav>
+      </nav>` : ''}
       <div id="gHubTasksSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'tasks' ? '' : 'style="display:none"'}></div>
       <div id="gHubCalendarSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'calendar' ? '' : 'style="display:none"'}></div>
       <div id="gHubGmailSlot" class="g-hub-pane g-hub-pane--pad" ${tab === 'gmail' ? '' : 'style="display:none"'}>
@@ -664,4 +690,27 @@
   window.fluxReconnectGoogleDocs = function () {
     return FluxGoogle.signInWithFullScopes({ forceConsent: true });
   };
+})();
+
+/* ── Google integrations: temporarily hidden ─────────────────────────────────
+   Marks the document so CSS can hide the Google-only surfaces (the Settings
+   "Google & Canvas" card and the Google Docs sync card) without deleting them.
+   Everything comes back by flipping enable_google_integrations — nothing here
+   is destructive, because this is a pause, not a removal. Canvas is untouched:
+   its connection UI lives in the Canvas tab, not in those cards. */
+(function () {
+  'use strict';
+  function apply() {
+    var on = false;
+    try { on = !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_google_integrations', false)); } catch (e) {}
+    document.body.classList.toggle('flux-google-off', !on);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', apply, { once: true });
+  } else {
+    apply();
+  }
+  // Flags resolve asynchronously, so re-apply once they have landed.
+  setTimeout(apply, 1200);
+  window.fluxApplyGoogleVisibility = apply;
 })();

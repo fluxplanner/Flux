@@ -129,7 +129,18 @@
       enable_cowork: true, // Live shared checklist + presence for any task (Co-work rooms)
       enable_office_hours: true, // Staff publish weekly drop-in hours; students view on School page
       enable_claude_mcp: false, // Connect Flux to Claude (MCP) — opt-in connector, off by default
-      enable_ai_action_confirm: false, // P0 A4: AI bulk/modifying tool calls become an Apply/Cancel proposal card + undo group
+      /* Google integrations (Gmail, Drive, Docs, Classroom, Calendar sync).
+         Off for now: they added a lot of surface area and a Google account was
+         becoming an implied requirement to get value out of Flux. With this
+         off the tab is Canvas only, and nothing in the product promises Google.
+         Flipping it back on restores every pane — nothing was deleted. */
+      enable_google_integrations: false,
+      // On by default: Flux may add to and edit the planner, but every change
+      // is an Apply/Cancel proposal card first, backed by an undo group. With
+      // this off, writes executed silently — one reply once created 7
+      // top-level high-priority tasks all due today and flipped a student into
+      // Recovery Mode. See needsConfirm() in flux-agent-loop.js.
+      enable_ai_action_confirm: true, // P0 A4: AI modifying tool calls become an Apply/Cancel proposal card + undo group
       enable_now_engine: false, // C1: bell-aware FluxNow strip + AI school-time context
       enable_school_schedules: false, // C2: district bell variants + calendar closures (admin-published)
       enable_sub_plans: false, // C3: printable sub plan + expiring read-only share code
