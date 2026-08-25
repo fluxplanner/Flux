@@ -69,10 +69,23 @@ test.describe('Flux AI agent loop', () => {
     expect(lastMsg.role).toBe('user');
     expect(String(lastMsg.content)).toMatch(/^TOOL RESULTS/);
     expect(String(lastMsg.content)).toContain('"pending"'); // real stats payload
-    expect(res.taskAdded, 'addTask tool should mutate the planner').toBe(true);
-    expect(res.toolCard).toBe(true);
     expect(res.lastBot).toContain('E2E agent loop task');
     expect(res.visibleToolResultsBubbles, 'TOOL RESULTS must stay hidden').toBe(0);
+
+    /* Writes are proposed, never applied straight away — every change Flux
+       makes to the planner is an Apply/Cancel card first (needsConfirm() in
+       flux-agent-loop.js). This used to assert the task appeared immediately,
+       which was the old auto-apply behaviour. Reads still execute on their
+       own, which is what keeps the agent loop fed — hence the stats payload
+       asserted above. */
+    expect(res.taskAdded, 'a write must NOT land before the student applies it').toBe(false);
+    await expect(page.locator('.flux-ai-proposal')).toBeVisible({ timeout: 10_000 });
+
+    await page.locator('.flux-ai-prop-apply').click();
+    await page.waitForTimeout(600);
+    const applied = await page.evaluate(() =>
+      ((window as any).tasks || []).some((t: any) => t.name === 'E2E agent loop task'));
+    expect(applied, 'Apply should commit the write to the planner').toBe(true);
   });
 
   test('A4: bulk subtask breakdown becomes a proposal card — Apply creates subtasks, Undo restores', async ({ page }) => {
