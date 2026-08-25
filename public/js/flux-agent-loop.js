@@ -248,7 +248,13 @@
 
   const MUTATING = new Set(['addTask', 'updateTask', 'completeTask', 'deleteTask', 'addNote', 'addSubtasks']);
   function confirmFlagOn() {
-    try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_ai_action_confirm', false)); } catch (e) { return false; }
+    /* The fallback must be true. isEnabled(key, fallback) returns the caller's
+       fallback *before* it consults the client defaults, so passing false here
+       meant the default of true was never reached and writes kept applying
+       silently — the Apply/Cancel card never appeared. Defaulting to true also
+       fails safe: if flags cannot be resolved at all, Flux asks rather than
+       editing the planner unannounced. */
+    try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_ai_action_confirm', true)); } catch (e) { return true; }
   }
   /**
    * Every write is proposed, never applied straight away.
