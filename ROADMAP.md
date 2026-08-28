@@ -1,0 +1,118 @@
+# Flux — what's done, what's coming
+
+Plain-language list of everything on the fix-and-improve list, so you can see at
+a glance where each item stands. No code knowledge needed to read this.
+
+- **CHANGELOG.md** (and the "What's changed" card in Settings) = everything that
+  has *ever* shipped, generated from the project's history.
+- **This file** = the things you've asked for that are *not done yet*, plus the
+  ones just finished, in the order they're being worked.
+
+Status key: **Done** · **Queued** · **Needs you** (blocked on something only you
+can do, like a dashboard setting or a decision).
+
+Last updated: 2026-08-27.
+
+---
+
+## Done
+
+| What | Notes |
+|------|-------|
+| Remove Apple and Microsoft sign-in | Buttons and the sign-in path behind them are gone. Google and email remain. |
+| Email sign-up sent you to a page that doesn't exist | Two separate faults. The confirmation email pointed at the wrong address, and even once that was fixed the app treated the link as if you had a second Flux tab open and closed itself. Both fixed. Expired or already-used links now explain themselves instead of failing quietly. **See "Needs you" below — one setting must be changed in Supabase before this works live.** |
+| "Check your email" looked like an error | It was in the red error box and shook. Now green. |
+| Login page advertised things Flux doesn't do | Five Google logos, "Calendar + Google sync", "two-way Google Calendar sync" and a Gmail/Drive/Classroom card, while Google has been paused since Canvas shipped. All hidden automatically while Google is off, and they come straight back when you switch it on. Co-work rooms and Office hours were both badged NEW — both removed, along with the two reviews that described them. Canvas added, since it's live. |
+
+---
+
+## Needs you
+
+| What | What to do |
+|------|------------|
+| Turn on the new confirmation link | The code now sends people back to the right page, but Supabase will refuse an address that isn't on its approved list. Steps are at the bottom of this file. **Until this is done, email sign-up still won't work.** |
+| Reviews on the login page | The page says "Built with real students and staff" above six quotes. If those quotes aren't from real people, they should be relabelled or removed before schools see them — that's a claim a district could challenge. Your call on how to handle it. |
+
+---
+
+## Queued
+
+Grouped by area. Roughly in the order they'll be worked, highest impact first.
+
+### Launch-critical (teachers go live soon)
+
+| What | Notes |
+|------|-------|
+| Staff verification works and reaches you | Needs an end-to-end test that a teacher's request actually lands somewhere you'll see. |
+| Terms of Service and Privacy Policy review | Check both against what Flux actually does now — student data, AI providers, what's stored where. Important before a school signs anything. |
+
+### Light mode and mobile
+
+| What | Notes |
+|------|-------|
+| Light mode is broken almost everywhere | Needs a pass over the whole planner, not spot fixes. |
+| Mobile looks too different from desktop | Match the desktop styling more closely; the animation is fine and stays. |
+| Pills are off-centre on mobile | Worst on the dashboard (Tasks / Done / Overdue / High) and in Study Tools (Bio formulas and similar). |
+| Big empty gap at the bottom of every tab | Flux AI is worst — the chat sits inches off the bottom of the phone. Affects every tab when you scroll down. |
+| Nav icons sit too far off the bottom edge | About an inch or two of dead space. Bring them closer, but not flush. |
+| Settings on mobile is a mess | Full rework. |
+| Settings tab's underline doesn't move | The highlight stays under whichever tab you were on before. |
+| Theme switching lags and glitches | Happens when you switch colours quickly. |
+
+### Removals and decluttering
+
+| What | Notes |
+|------|-------|
+| Remove achievements entirely | Including from the dashboard. |
+| Hide the Notebook tab | Temporarily — NotebookLM does it better. Hidden, not deleted, so it can come back. |
+| Remove the locker box at the top of School Info | Keep the information, lose the giant box. You want to see your classes first. |
+| Profile: hide counselor chat and office hours | Temporary, until they work. Move your name and details to the top so they're the first thing you see. |
+| Task menu has ~20 buttons | Clicking a task on the dashboard opens far too many options, some for things already removed (workrooms). Cut to four at most. |
+| Old emojis flash in Owner Controls | Briefly visible before the real icons load, in Nuke Controls and Testers. |
+| Dismissed feedback comes back | Once dismissed it should stay dismissed. |
+
+### Reorganisation
+
+| What | Notes |
+|------|-------|
+| Study Tools is overwhelming | Needs real structure, not just tidying. The single biggest one here. |
+| Extracurriculars is crowded | Group related things together. |
+| Settings has random items everywhere | Needs a proper order. |
+| Teacher mode | Your words: "hot garbage". Things off-centre, things not working. Full review, redo where needed. |
+
+### Features and fixes
+
+| What | Notes |
+|------|-------|
+| Favourites don't stick | Should persist forever and follow you across devices — right now they're per-device and temporary. |
+| Focus timer needs a full-screen mode | Plus a small version that follows you around the planner when you click away, so you can see it from any tab. Suggested spot: top bar, next to New Task. |
+| Timer is badly centred | Same tab. |
+| Mood is barely used | Prompt everyone morning and night so it actually gets logged. |
+| Language tools are weak | Needs far more material, and the conjugator doesn't work well. |
+| Desmos opens with y=sin(x) | Students in lower maths levels haven't met sine yet. Should open empty. |
+| Flux AI scrolls away from its own answer | The tab jumps to the bottom and you can't read what it said. |
+| Flux AI is too wordy | Shorter answers, which also makes your API credits last longer. |
+
+---
+
+## How to turn on the confirmation link
+
+Do this once, and email sign-up starts working. Takes about a minute.
+
+1. Go to **supabase.com** and sign in.
+2. Open the **Flux** project.
+3. In the left sidebar click **Authentication**.
+4. Click **URL Configuration**.
+5. Find **Site URL**. Set it to exactly:
+   `https://fluxplanner.github.io/Flux/`
+6. Below that, find **Redirect URLs** and click **Add URL**. Add exactly:
+   `https://fluxplanner.github.io/Flux/`
+7. Click **Add URL** once more and add this second one, which lets sign-up work
+   while the site is being tested on a computer:
+   `http://localhost:3344/`
+8. Click **Save**.
+
+To check it worked: open Flux in a private browsing window, sign up with an
+email address you can read, and click the link in the email. It should open Flux
+and sign you straight in. If it says the link expired, request a new one — links
+are only valid for a limited time.
