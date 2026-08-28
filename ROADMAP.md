@@ -49,14 +49,13 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Light mode is broken almost everywhere | Needs a pass over the whole planner, not spot fixes. |
+| Light mode is broken almost everywhere | **Root cause fixed.** The animated background behind the whole app is drawn on a canvas, and it only checked the theme about once a second — so switching to light left the dark background painted underneath everything. While that canvas was paused (hidden tab, low-power mode) it never updated at all. It now changes the instant you switch. Also fixed the dashboard's "By importance" label, which was invisible in light mode. *Still to do: a tab-by-tab sweep for other spots written dark-only.* |
 | Mobile looks too different from desktop | Match the desktop styling more closely; the animation is fine and stays. |
 | Pills are off-centre on mobile | Worst on the dashboard (Tasks / Done / Overdue / High) and in Study Tools (Bio formulas and similar). |
 | Big empty gap at the bottom of every tab | Flux AI is worst — the chat sits inches off the bottom of the phone. Affects every tab when you scroll down. |
 | Nav icons sit too far off the bottom edge | About an inch or two of dead space. Bring them closer, but not flush. |
 | Settings on mobile is a mess | Full rework. |
 | Settings tab's underline doesn't move | The highlight stays under whichever tab you were on before. |
-| Theme switching lags and glitches | Happens when you switch colours quickly. |
 
 ### Removals and decluttering
 
