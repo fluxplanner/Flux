@@ -45,11 +45,6 @@ Last updated: 2026-08-27.
 
 Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
-### Launch-critical (teachers go live soon)
-
-| What | Notes |
-|------|-------|
-
 ### Light mode and mobile
 
 | What | Notes |
