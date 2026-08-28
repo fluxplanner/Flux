@@ -440,3 +440,10 @@ html[data-flux-perf="on"] #loginScreen .lx-submit::after{animation:none!importan
    on <body> whenever the flag is off; flipping the flag brings these back. */
 body.flux-google-off #loginScreen .lx-logo.is-google{display:none}
 body.flux-google-off #loginScreen li.is-google{display:none}
+
+/* The quote section ships with empty placeholders — no invented testimonials.
+   Hidden by default and revealed only once a <figure> has had its
+   data-placeholder attribute removed, so it fails closed: a browser without
+   :has() support keeps it hidden rather than showing empty cards. */
+#loginScreen #loginQuotes{display:none}
+#loginScreen #loginQuotes:has(.lx-quote:not([data-placeholder])){display:block}

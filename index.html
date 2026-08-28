@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.2ed4bb58.css">
+<link rel="stylesheet" href="public/bundles/flux.e8103f4b.css">
 </head>
 <body>
 <noscript>
@@ -471,26 +471,36 @@
     </section>
 
     <!-- ── Voices ── -->
-    <section class="login-scroll-section lx-section" aria-label="What people say">
+    <!--
+      Placeholder quotes. Nothing here is a real testimonial, so the whole
+      section stays hidden until you put one in.
+
+      To add a real quote: fill in the blockquote and the name/role, then delete
+      the data-placeholder attribute from that <figure>. The section reveals
+      itself as soon as one figure has it removed. Keep data-aud-show="student"
+      or "staff" so the quote shows to the right audience. The letter in the
+      avatar circle is just the first initial.
+    -->
+    <section class="login-scroll-section lx-section" id="loginQuotes" aria-label="What people say">
       <div class="lx-wrap">
         <p class="lx-section-eyebrow lx-eyebrow-am">Why people stay</p>
         <h2 class="lx-section-title">Built with real students and staff</h2>
         <div class="lx-quote-grid">
-          <figure class="lx-quote" data-aud-show="student">
-            <blockquote>The AI quizzed me on exactly the units I was weakest in. My chem grade went up a full letter this quarter.</blockquote>
-            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#00c2ff,#3b82f6)">A</span><span><b>Aisha</b><small>11th grade · AP Chemistry</small></span></figcaption>
+          <figure class="lx-quote" data-placeholder data-aud-show="student">
+            <blockquote></blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#00c2ff,#3b82f6)"></span><span><b></b><small></small></span></figcaption>
           </figure>
-          <figure class="lx-quote" data-aud-show="student">
-            <blockquote>I snapped a photo of my syllabus and my entire semester appeared in the calendar. That was the moment I switched.</blockquote>
-            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#10d9a0,#00c2ff)">J</span><span><b>Jordan</b><small>College freshman</small></span></figcaption>
+          <figure class="lx-quote" data-placeholder data-aud-show="student">
+            <blockquote></blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#10d9a0,#00c2ff)"></span><span><b></b><small></small></span></figcaption>
           </figure>
-          <figure class="lx-quote" data-aud-show="staff">
-            <blockquote>Work mode / personal mode is the feature I didn't know I needed. Sunday planning takes 20 minutes now — and it stays at school.</blockquote>
-            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#7c5cff,#f472b6)">M</span><span><b>Mr. Delgado</b><small>Biology teacher</small></span></figcaption>
+          <figure class="lx-quote" data-placeholder data-aud-show="staff">
+            <blockquote></blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#7c5cff,#f472b6)"></span><span><b></b><small></small></span></figcaption>
           </figure>
-          <figure class="lx-quote" data-aud-show="staff">
-            <blockquote>Staff messaging finally lives where my planning does. Our whole grade-level team runs a group chat inside Flux now.</blockquote>
-            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#34d399,#3b82f6)">K</span><span><b>Mr. Kim</b><small>Math department lead</small></span></figcaption>
+          <figure class="lx-quote" data-placeholder data-aud-show="staff">
+            <blockquote></blockquote>
+            <figcaption><span class="lx-quote-av" style="background:linear-gradient(135deg,#34d399,#3b82f6)"></span><span><b></b><small></small></span></figcaption>
           </figure>
         </div>
       </div>
