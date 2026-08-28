@@ -26,6 +26,8 @@ Last updated: 2026-08-27.
 | Made-up reviews on the login page | The four quotes from "Aisha", "Jordan", "Mr. Delgado" and "Mr. Kim" are gone. They're empty placeholders now, and the whole section stays hidden until you put a real one in — so nobody sees blank cards in the meantime. Instructions for adding one are in a comment right above them. |
 | A teacher whose verification request failed got stuck | The Submit button went to "Submitting…" and stayed disabled and dead, even when the request errored. The only way out was reloading. It resets now and explains what went wrong, so they can just try again. |
 | Nothing told you a teacher was waiting | Requests only loaded while you had Owner Controls › Staff verify open, so one could sit unseen forever. There's now a red count badge on the Staff verify row that you can see from any tab, updating live, plus a message when you sign in telling you how many are waiting. The approve/reject screen itself was already working correctly. |
+| Nobody could delete their own data | The privacy policy promised a "delete my data" button in Settings. There wasn't one — the only delete was hidden in the developer panel and only you could see it. Every student and teacher who read that policy was reading something untrue. Settings → Data & info now has a **Your data** card: download a copy, or delete everything. |
+| Privacy policy and terms didn't match reality | Fixed: email sign-up wasn't mentioned, Google features were described as live when they're switched off, Anthropic wasn't listed even though your students' text goes there, and mood/wellbeing data, staff verification details and feedback messages weren't mentioned at all. Also confirmed the claim that you can't read people's planners — the database genuinely blocks it. |
 
 ---
 
@@ -47,7 +49,6 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Terms of Service and Privacy Policy review | Check both against what Flux actually does now — student data, AI providers, what's stored where. Important before a school signs anything. |
 
 ### Light mode and mobile
 
