@@ -462,6 +462,7 @@
         <button type="button" data-os-tab="${id}" onclick="window.__osSetTab('${id}')" style="${tabStyle(id===activeTab)}">
           <span style="font-size:.95rem;line-height:1">${def.icon}</span>
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(def.label)}</span>
+          ${id==='staffverify'?'<span id="osStaffVerifyBadge" style="display:none;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--red,#f43f5e);color:#fff;font-size:.62rem;font-weight:800;line-height:1.5;text-align:center"></span>':''}
         </button>`).join('');
       return`<div style="margin-bottom:14px">
         <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-family:JetBrains Mono,monospace;padding:6px 12px 4px;font-weight:700">${esc(g.label)}</div>
@@ -469,6 +470,24 @@
       </div>`;
     }).join('');
   }
+
+  /** Paint the waiting-request count onto the Staff verify row, so a pending
+   *  teacher is visible from anywhere in the suite — not only once that tab is
+   *  open. Silent on failure: a badge is never worth breaking the sidebar for. */
+  function refreshStaffVerifyBadge(){
+    const el=document.getElementById('osStaffVerifyBadge');
+    if(!el)return;
+    const count=window.FluxStaffPlatform&&window.FluxStaffPlatform.pendingStaffRequestCount;
+    if(typeof count!=='function')return;
+    Promise.resolve(count()).then(n=>{
+      const badge=document.getElementById('osStaffVerifyBadge');
+      if(!badge)return;
+      if(n>0){badge.textContent=n>99?'99+':String(n);badge.style.display='';}
+      else badge.style.display='none';
+    }).catch(()=>{});
+  }
+  window.FluxOwnerSuite=window.FluxOwnerSuite||{};
+  window.FluxOwnerSuite.refreshStaffVerifyBadge=refreshStaffVerifyBadge;
 
   window.openOwnerSuite=function(prefTab, opts){
     if(!isOwner())return;
@@ -1194,6 +1213,7 @@
       root.querySelectorAll('[data-os-tab]').forEach(b=>{
         b.style.cssText=tabStyle(b.getAttribute('data-os-tab')===tab);
       });
+      refreshStaffVerifyBadge();
       const pushBtn=root.querySelector('#osReleasePushBtn');
       if(pushBtn&&!pushBtn.disabled){
         pushBtn.addEventListener('click',()=>{
@@ -1274,6 +1294,9 @@
           'postgres_changes',
           {event:'*',schema:'public',table:'staff_verification_requests'},
           ()=>{
+            // The badge tracks the queue from any tab; only the list itself
+            // needs the Staff verify tab to be the one on screen.
+            refreshStaffVerifyBadge();
             if(window.__osActiveTab!=='staffverify')return;
             const mount=document.getElementById('osStaffVerifyMount');
             if(mount&&window.FluxStaffPlatform&&typeof window.FluxStaffPlatform.hydrateOwnerStaffVerification==='function'){
@@ -1300,6 +1323,7 @@
       document.body.appendChild(root);
     }
     paint();
+    refreshStaffVerifyBadge();
     ownerAuditAppend('owner_suite_open',{embed:!!mountEl});
     const ann=getPlatformConfig().announcement;
     if(ann&&!embedUi)showToast(ann,'info');

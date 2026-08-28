@@ -12436,6 +12436,13 @@ async function handleSignedIn(user,session){
       window.FluxStaffPlatform.teardownVerificationRealtime();
     }
   }catch(_){}
+  // Staff waiting on verification used to be invisible unless the owner
+  // happened to open Owner Controls › Staff verify. Surface it at sign-in.
+  try{
+    if(isOwner()&&window.FluxStaffPlatform?.notifyOwnerOfPendingStaffRequests){
+      setTimeout(()=>{void window.FluxStaffPlatform.notifyOwnerOfPendingStaffRequests();},2500);
+    }
+  }catch(_){}
   try{
     if(FluxRole.isCounselor()&&FluxRole.isWorkMode?.()&&window.FluxCounselorCaseload?.enabled?.()){
       if(typeof window.FluxCounselorCaseload.renderCaseloadDashboard==='function'){

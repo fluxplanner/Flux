@@ -307,6 +307,18 @@
         err.textContent = error.message;
         err.style.display = 'block';
       }
+      // Put the button back. Without this a teacher who hits a network blip or
+      // an RLS error was left staring at a disabled "Submitting…" for ever,
+      // with no way to try again short of reloading the page.
+      shimmer.remove();
+      if (submitBtn) {
+        submitBtn.classList.remove('flux-btn-loading');
+        submitBtn.textContent = 'Submit for verification';
+        submitBtn.disabled = false;
+      }
+      if (typeof showToast === 'function') {
+        showToast('Could not submit your request: ' + (error.message || 'try again'), 'error', 6000);
+      }
       return;
     }
     await client
@@ -1887,9 +1899,50 @@
     if (m) hydrateOwnerStaffVerification(m);
   }
 
+  /* ── Telling the owner a request is waiting ───────────────────────────────
+     The review queue only refreshed while the Staff verify tab was already
+     open, so a request could sit unseen indefinitely — nothing anywhere told
+     the owner it had arrived. These two helpers are the signal: a count for
+     the sidebar badge, and a sign-in prompt that opens the queue. */
+
+  /** Number of requests waiting for a decision. Returns 0 for non-owners. */
+  async function pendingStaffRequestCount() {
+    const client = sb();
+    if (!client || typeof isOwner !== 'function' || !isOwner()) return 0;
+    try {
+      const { count, error } = await client
+        .from('staff_verification_requests')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('verification_status', 'pending');
+      if (error) throw error;
+      return count || 0;
+    } catch (e) {
+      console.warn('[FluxStaffPlatform] pending count failed', e);
+      return 0;
+    }
+  }
+
+  /** Once per sign-in, tell the owner if staff are waiting. Click opens the queue. */
+  async function notifyOwnerOfPendingStaffRequests() {
+    const n = await pendingStaffRequestCount();
+    if (!n) return 0;
+    if (typeof showToast === 'function') {
+      showToast(
+        n === 1
+          ? '1 teacher is waiting to be verified — open Owner Controls › Staff verify.'
+          : n + ' teachers are waiting to be verified — open Owner Controls › Staff verify.',
+        'info',
+        9000
+      );
+    }
+    return n;
+  }
+
   window.FluxStaffPlatform = {
     StaffSignup,
     showStaffOnboarding,
+    pendingStaffRequestCount,
+    notifyOwnerOfPendingStaffRequests,
     maybeApplyApprovedStaffVerification,
     renderStaffWorkHub,
     renderStaffPersonalDashboard,
