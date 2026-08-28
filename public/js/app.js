@@ -10741,13 +10741,15 @@ function toggleAuthMode(){
     if(sub)sub.textContent='Sign in to sync across devices';
   }
   const errEl=document.getElementById('loginAuthError');
-  if(errEl){errEl.textContent='';errEl.classList.remove('show');}
+  if(errEl){errEl.textContent='';errEl.classList.remove('show','is-ok');}
 }
 
-function showAuthError(msg){
+function showAuthError(msg,kind){
   const el=document.getElementById('loginAuthError');
   if(!el)return;
-  el.textContent=msg;el.classList.add('show');
+  el.textContent=msg;
+  el.classList.toggle('is-ok',kind==='ok');
+  el.classList.add('show');
 }
 
 async function handleEmailAuth(){
@@ -10764,11 +10766,18 @@ async function handleEmailAuth(){
     if(_authMode==='signup'){
       result=await sb.auth.signUp({
         email,password,
-        options:{data:{full_name:name||email.split('@')[0]}}
+        options:{
+          // Without emailRedirectTo, Supabase falls back to the project's Site
+          // URL, which sent every confirmation link to a page that does not
+          // exist. getRedirectURL() resolves to the deployed subpath
+          // (…github.io/Flux/), and must be on the Redirect URLs allowlist.
+          emailRedirectTo:getRedirectURL(),
+          data:{full_name:name||email.split('@')[0]}
+        }
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
-        showAuthError('Check your email for a confirmation link!');
+        showAuthError('Check your email — we sent a confirmation link to '+email+'. Open it on this device.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
@@ -11589,6 +11598,38 @@ function showFluxOfflineScreen(){
 }
 window.showFluxOfflineScreen=showFluxOfflineScreen;
 
+// ── Email-link callbacks (confirm signup, password reset, magic link) ──
+// These open in a brand-new tab straight from a mail app: no opener, no popup
+// window.name, and no second Flux tab to hand the session to. Treating them as
+// OAuth callbacks showed "continue in your other Flux tab" and then closed the
+// window on people who only ever had one — so they are detected separately.
+const FLUX_EMAIL_LINK_TYPES=/^(signup|magiclink|recovery|invite|email_change|email)$/i;
+
+function readEmailLinkParams(){
+  const hashParams=new URLSearchParams(String(window.location.hash||'').replace(/^#/,''));
+  const query=new URLSearchParams(window.location.search);
+  const pick=k=>hashParams.get(k)||query.get(k);
+  const type=pick('type');
+  return{
+    type:type||'',
+    tokenHash:pick('token_hash')||'',
+    isEmailLink:!!(type&&FLUX_EMAIL_LINK_TYPES.test(type)),
+    errorCode:pick('error_code')||pick('error')||'',
+    errorDescription:pick('error_description')||''
+  };
+}
+
+function emailLinkErrorMessage(info){
+  const blob=String(info.errorCode||'')+' '+String(info.errorDescription||'');
+  if(/otp_expired|expired/i.test(blob))
+    return 'That confirmation link has expired. Enter your email and password again to get a fresh one.';
+  if(/access_denied/i.test(blob))
+    return 'That confirmation link was already used. Try signing in instead.';
+  let raw=info.errorDescription||'We could not confirm your email. Please try again.';
+  try{raw=decodeURIComponent(raw.replace(/\+/g,' '));}catch(_){}
+  return raw;
+}
+
 // Wait for PKCE code exchange / hash parsing — getSession() can briefly return null on redirect
 async function getSessionAfterOAuth(sb){
   let{data:{session}}=await sb.auth.getSession();
@@ -11631,9 +11672,28 @@ async function initAuth(){
     // boot the planner, and leave the user with the app open twice.
     const isOAuthPopup=/^flux\w*OAuth$/i.test(String(window.name||''));
     window.__fluxIsOAuthPopupTab=isOAuthPopup;
-    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup;
 
-    if(!isOAuthCallback){
+    // An email link is never a popup we opened, so it must never take the
+    // popup-handshake path below.
+    const emailLink=readEmailLinkParams();
+    const isEmailLink=!isOAuthPopup&&(emailLink.isEmailLink||!!emailLink.tokenHash);
+    let emailLinkError=isEmailLink&&emailLink.errorCode?emailLinkErrorMessage(emailLink):null;
+    if(isEmailLink&&emailLink.tokenHash&&!emailLinkError){
+      // token_hash links verify server-side, so they still work when the mail
+      // app opens them in a different browser than the one that signed up —
+      // which the PKCE ?code= exchange cannot do.
+      try{
+        const{error}=await sb.auth.verifyOtp({token_hash:emailLink.tokenHash,type:emailLink.type||'signup'});
+        if(error)throw error;
+      }catch(e){
+        console.warn('[Flux] email link verification failed',e);
+        emailLinkError=e?.message||'We could not confirm your email. Please try again.';
+      }
+    }
+
+    const isOAuthCallback=!isEmailLink&&(hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup);
+
+    if(!isOAuthCallback&&!isEmailLink){
       const reach=await pingSupabaseReachable(sb);
       window.__fluxSupabaseReachable=!!(reach&&reach.ok);
       if(!reach.ok&&reach.reason==='offline'){
@@ -11645,7 +11705,7 @@ async function initAuth(){
 
     const session=await getSessionAfterOAuth(sb);
 
-    if(isOAuthCallback){
+    if(isOAuthCallback||isEmailLink){
       const cleanPath=window.location.pathname;
       window.history.replaceState(null,'',cleanPath);
     }
@@ -11704,8 +11764,13 @@ async function initAuth(){
     if(session?.user){
       fluxExtAuthBroadcast(session);
       await handleSignedIn(session.user,session);
+      if(isEmailLink&&!emailLinkError&&typeof showToast==='function'){
+        showToast('Email confirmed — you\'re all set.','success',5000);
+      }
     }else{
       showLoginOrApp();
+      // A dead confirmation link must say why, on the screen the user landed on.
+      if(emailLinkError)showAuthError(emailLinkError);
     }
 
     // STEP 3: Listen for future auth changes
@@ -11813,7 +11878,7 @@ let _loginDemoInterval=null;
 const LOGIN_DEMO_LINES=[
   'Break down assignments into steps with Flux AI study plans.',
   'Snap a syllabus or schedule — Vision Import turns it into tasks.',
-  'Sync Google Calendar and see tasks beside class blocks.',
+  'See your bell schedule and no-school days on one calendar.',
   'Log extracurriculars and get school-fit suggestions.',
   'Capture notes with tags, then ask Flux AI to quiz you.',
   'Use the focus timer and streaks to build study habits.',
@@ -12691,16 +12756,16 @@ function buildFeatPillsHtml(){
     {label:'Cloud sync',c:'#10d9a0'},
     {label:'AI flashcards',c:'#e879f9'},
     {label:'Panic mode',c:'#f43f5e'},
-    {label:'Gmail → tasks',c:'#fb923c'},
+    {label:'Focus timer',c:'#fb923c'},
     {label:'Tagged notes',c:'#6366f1'},
     {label:'Extracurriculars',c:'#fbbf24'},
     {label:'Cognitive load',c:'#22c55e'},
     {label:'Exam conflicts',c:'#f472b6'},
     {label:'Themes & accent',c:'#38bdf8'},
     {label:'Grade what-if',c:'#eab308'},
-    {label:'Canvas & Gmail',c:'#94a3b8'},
+    {label:'Canvas import',c:'#94a3b8'},
     {label:'Mood check-ins',c:'#fb7185'},
-    {label:'iCal / Google',c:'#34d399'},
+    {label:'iCal feeds',c:'#34d399'},
   ];
   const all=[...pills,...pills];
   return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');

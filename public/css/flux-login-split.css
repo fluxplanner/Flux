@@ -96,9 +96,6 @@
   border-radius:12px;
   font-weight:600;
 }
-.flux-login-split .lxs-oauth{margin-top:8px}
-.flux-login-split .lxs-oauth svg{width:18px;height:18px;flex:none}
-.flux-login-split .lxs-apple{color:inherit}
 .flux-login-split .lx-submit{
   border-radius:12px;
   background:linear-gradient(120deg,#6d28d9,#7c5cff);
