@@ -2456,6 +2456,22 @@
         </div>
       </div>
       <div class="spane" id="spane-data">
+        <!-- Your data — the export/delete rights the Privacy Policy promises.
+             Until this card existed the only delete path was owner-gated inside
+             the dev panel, so the published policy pointed at a button no
+             student or teacher could reach. -->
+        <div class="card">
+          <h3>Your data</h3>
+          <p style="font-size:.78rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Download everything Flux holds for you, or delete it.</p>
+          <button type="button" class="btn-sec" style="width:100%;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:10px" onclick="exportData()">Download my data</button>
+          <button type="button" style="width:100%;padding:10px 14px;font-size:.85rem;font-weight:600;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red)" onclick="fluxDeleteMyData()">Delete my data</button>
+          <p style="font-size:.72rem;color:var(--muted);margin:12px 0 0;line-height:1.55">Deleting removes your planner — tasks, notes, grades, mood, schedule and school info — from this device and from your Flux account. It cannot be undone, so download a copy first if you want one. Your sign-in itself stays until you ask for the account to be closed, and anything a teacher or counselor recorded about you belongs to your school's records.</p>
+          <div class="srow" style="border:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div><div class="slabel">Clear this device only</div><div class="ssub">Removes the copy in this browser. Your account keeps its copy and syncs back next time you sign in.</div></div>
+            <button type="button" onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Clear device</button>
+          </div>
+        </div>
+
         <div class="card">
           <h3>Send feedback</h3>
           <p style="font-size:.78rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Bug reports, ideas, or rough edges — goes to the Flux owner inbox when you’re signed in.</p>
@@ -2562,7 +2578,6 @@
             <div style="margin-top:8px">Flux AI → <strong>Explain my week</strong> summarizes deadlines &amp; priorities (command palette too).</div>
           </div>
         </div>
-        <div class="card"><h3>Danger Zone</h3><div class="srow" style="border:none"><div><div class="slabel">Clear local cache</div><div class="ssub">Permanently deletes all tasks, notes, extracurriculars, and other planner data on this device</div></div><button onclick="clearCache()" class="btn-sec" style="padding:6px 12px;font-size:.78rem;color:var(--red)">Clear Data</button></div></div>
 
         <!-- How Flux explains to you (learner profile transparency) -->
         <div id="fluxLearnerCard"></div>
@@ -2781,7 +2796,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.8dabda15.js"></script>
-<script defer src="public/bundles/flux-core.c06ed8ae.js"></script>
+<script defer src="public/bundles/flux-core.23dc794e.js"></script>
 <script defer src="public/bundles/flux-features.a04d38f3.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

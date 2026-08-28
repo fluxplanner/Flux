@@ -7256,6 +7256,61 @@ function toggleFeatureFlag(feature,btn){
   if(isOwner()&&typeof ownerAuditAppend==='function')ownerAuditAppend('feature_flag',feature+':'+(!cur));
 }
 
+/* ── Delete my data (Settings › Data & info) ─────────────────────────────────
+   The Privacy Policy promises every user can delete their own data. Until this
+   existed the only route was clearMyPlannerData(), which is owner-gated and
+   lives in the dev panel — so for students and teachers the published promise
+   was simply untrue.
+
+   Order matters. Cloud rows go first, while the session is still valid; local
+   storage only after the server confirms. Doing it the other way round would,
+   on a failed request, leave an empty device next to intact cloud data that
+   syncs straight back the moment the page reloads. */
+async function fluxDeleteMyData(){
+  const typed=prompt(
+    'This permanently deletes your planner — tasks, notes, grades, mood, schedule '+
+    'and school info — from this device and from your Flux account.\n\n'+
+    'It cannot be undone. Download a copy first if you want one.\n\n'+
+    'Type DELETE to confirm:'
+  );
+  if(typed===null)return;
+  if(String(typed).trim().toUpperCase()!=='DELETE'){
+    if(typeof showToast==='function')showToast('Not deleted — you need to type DELETE exactly.','info',5000);
+    return;
+  }
+  window.__fluxDeleting=true;
+  const sb=getSB();
+  let failure=null;
+  if(sb&&currentUser){
+    const uid=currentUser.id;
+    try{
+      const results=await Promise.all([
+        sb.from('user_data').delete().eq('id',uid),
+        sb.from('student_wellness_snapshots').delete().eq('student_id',uid),
+        sb.from('flux_user_memory').delete().eq('user_id',uid)
+      ]);
+      const bad=results.find(r=>r&&r.error);
+      if(bad)failure=bad.error.message||'unknown error';
+    }catch(e){failure=e?.message||String(e);}
+  }
+  if(failure){
+    window.__fluxDeleting=false;
+    if(typeof showToast==='function'){
+      showToast('Could not delete from your account: '+failure+'. Nothing was removed — please try again.','error',9000);
+    }
+    return;
+  }
+  // Sign out before wiping storage — signOut needs the session token that
+  // lives in localStorage.
+  if(sb){try{await sb.auth.signOut();}catch(_){}}
+  // Clear wholesale rather than matching a flux_ prefix: keys are namespaced
+  // through fluxNamespacedKey() (impersonation prefixes, and plain names like
+  // 'profile' and 'classes'), so prefix matching silently leaves data behind.
+  try{localStorage.clear();sessionStorage.clear();}catch(_){}
+  location.replace(location.pathname);
+}
+window.fluxDeleteMyData=fluxDeleteMyData;
+
 function clearMyPlannerData(){
   if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
   tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
@@ -8970,6 +9025,9 @@ function startFluxCloudSyncLoops(){
 
 async function syncToCloud(){
   if(!currentUser)return;
+  // A delete is in progress — pushing now would write the still-populated
+  // in-memory arrays straight back over the row we just removed.
+  if(window.__fluxDeleting)return;
   // Owner is in a teacher preview — never push that bubble's data into the
   // owner's Supabase row. Preview lives only on this browser, in its own
   // localStorage namespace, until the actual teacher signs in for real.
