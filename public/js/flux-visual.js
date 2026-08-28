@@ -591,8 +591,28 @@
       }
     });
 
-    // Recreate when accent color changes
-    document.addEventListener('flux-accent-change', createNodes);
+    /* Theme and accent changes have to land on the canvas at once.
+       This canvas is the app's backdrop — the panels above it are transparent —
+       so whatever it last painted *is* the page background. Two faults kept the
+       old theme on screen:
+
+         · the --bg poll in draw() runs once every 30 frames, so a theme switch
+           kept the previous background for ~1.25s, and indefinitely while the
+           loop is paused (hidden tab, low-end mode). That is what made light
+           mode look broken rather than merely late.
+         · node colours were rebuilt only on 'flux-accent-change', an event
+           nothing in the app dispatched — so the mesh kept whatever accent it
+           started with for the entire session.
+
+       Repaint at once rather than waiting for the next tick, and force a draw
+       so a paused loop still updates. */
+    function syncTheme() {
+      refreshBgFill();
+      createNodes();
+      draw();
+    }
+    document.addEventListener('flux-accent-change', syncTheme);
+    document.addEventListener('flux-theme-change', syncTheme);
 
     window._fluxMeshStop = () => {
       running = false;

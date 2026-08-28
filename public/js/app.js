@@ -6502,6 +6502,9 @@ function applyTheme(key){
     fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
   }
   updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
+  // The full-screen mesh canvas is the app's backdrop and cannot see CSS
+  // variable changes. Without this it kept painting the previous theme.
+  try{document.dispatchEvent(new CustomEvent('flux-theme-change',{detail:{theme:key}}));}catch(_){}
 }
 function themeDark(){applyTheme('dark');}
 function themeCrimson(){applyTheme('ember');}
@@ -6700,6 +6703,9 @@ function setAccent(hex,rgb,el){
   syncKey('accent',{accent:hex,accentRgb:rgb});
   updateLogoColor(hex);
   try{if(window.FluxVisual&&typeof FluxVisual.updateNavSquiggle==='function')FluxVisual.updateNavSquiggle(hex);}catch(e){}
+  // flux-visual's mesh backdrop already listened for this — nothing had ever
+  // dispatched it, so the blobs kept their startup accent all session.
+  try{document.dispatchEvent(new CustomEvent('flux-accent-change',{detail:{accent:hex,rgb}}));}catch(_){}
 }
 function applyCustomColor(){
   const hex=document.getElementById('customColor').value;
