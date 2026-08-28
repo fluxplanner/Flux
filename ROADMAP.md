@@ -23,6 +23,9 @@ Last updated: 2026-08-27.
 | Email sign-up sent you to a page that doesn't exist | Two separate faults. The confirmation email pointed at the wrong address, and even once that was fixed the app treated the link as if you had a second Flux tab open and closed itself. Both fixed. Expired or already-used links now explain themselves instead of failing quietly. **See "Needs you" below — one setting must be changed in Supabase before this works live.** |
 | "Check your email" looked like an error | It was in the red error box and shook. Now green. |
 | Login page advertised things Flux doesn't do | Five Google logos, "Calendar + Google sync", "two-way Google Calendar sync" and a Gmail/Drive/Classroom card, while Google has been paused since Canvas shipped. All hidden automatically while Google is off, and they come straight back when you switch it on. Co-work rooms and Office hours were both badged NEW — both removed, along with the two reviews that described them. Canvas added, since it's live. |
+| Made-up reviews on the login page | The four quotes from "Aisha", "Jordan", "Mr. Delgado" and "Mr. Kim" are gone. They're empty placeholders now, and the whole section stays hidden until you put a real one in — so nobody sees blank cards in the meantime. Instructions for adding one are in a comment right above them. |
+| A teacher whose verification request failed got stuck | The Submit button went to "Submitting…" and stayed disabled and dead, even when the request errored. The only way out was reloading. It resets now and explains what went wrong, so they can just try again. |
+| Nothing told you a teacher was waiting | Requests only loaded while you had Owner Controls › Staff verify open, so one could sit unseen forever. There's now a red count badge on the Staff verify row that you can see from any tab, updating live, plus a message when you sign in telling you how many are waiting. The approve/reject screen itself was already working correctly. |
 
 ---
 
@@ -31,7 +34,8 @@ Last updated: 2026-08-27.
 | What | What to do |
 |------|------------|
 | Turn on the new confirmation link | The code now sends people back to the right page, but Supabase will refuse an address that isn't on its approved list. Steps are at the bottom of this file. **Until this is done, email sign-up still won't work.** |
-| Reviews on the login page | The page says "Built with real students and staff" above six quotes. If those quotes aren't from real people, they should be relabelled or removed before schools see them — that's a claim a district could challenge. Your call on how to handle it. |
+| Real quotes for the login page | The section is empty and hidden. When you have genuine quotes from students or staff, send them over and they go straight in. |
+| Do you want verification requests emailed to you? | Right now you get a badge and a sign-in message — both need you to open Flux. An actual email is possible: Flux already has email-sending code, but it needs a Resend account key set in Supabase. Tell me if you have one, or want one, and I'll wire it up. |
 
 ---
 
@@ -43,7 +47,6 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Staff verification works and reaches you | Needs an end-to-end test that a teacher's request actually lands somewhere you'll see. |
 | Terms of Service and Privacy Policy review | Check both against what Flux actually does now — student data, AI providers, what's stored where. Important before a school signs anything. |
 
 ### Light mode and mobile
