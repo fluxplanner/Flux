@@ -24,6 +24,78 @@ function sanitizeMessage(s: unknown): string {
   return t.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
 }
 
+type OwnerRow = { id: string; data: Record<string, unknown> | null };
+
+/** Owner's Auth user id (best-effort memo; resets on isolate restart, like _hits). */
+let _ownerUserId: string | null = null;
+
+/** Resolve the owner's Auth user id by email (paginated; cap pages for safety). */
+async function findOwnerUserId(
+  admin: ReturnType<typeof serviceClient>,
+): Promise<string | null> {
+  if (_ownerUserId) return _ownerUserId;
+  const perPage = 200;
+  const maxPages = 50;
+  for (let page = 1; page <= maxPages; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+    const hit = users.find((u) =>
+      String(u.email || "").trim().toLowerCase() === OWNER_EMAIL
+    );
+    // Only a positive result is memoized, so an owner account created later is
+    // still picked up by a later request.
+    if (hit?.id) return (_ownerUserId = hit.id);
+    if (users.length < perPage) return null;
+  }
+  return null;
+}
+
+/**
+ * Fetch just the owner's user_data row.
+ *
+ * Preferred path is the owner's Auth user id: the owner's own client reads its
+ * inbox back from the row keyed by its auth id (app.js syncToCloud), so that is
+ * the only row where an appended entry is guaranteed to be seen.
+ *
+ * Fallback matches the ownerEmail marker the client writes into that same row,
+ * for when the Auth lookup is unavailable. Either way Postgres does the
+ * filtering and returns one row, so no other user's data blob is ever read
+ * into this isolate.
+ */
+async function findOwnerRow(
+  admin: ReturnType<typeof serviceClient>,
+): Promise<OwnerRow | null> {
+  let ownerId: string | null = null;
+  try {
+    ownerId = await findOwnerUserId(admin);
+  } catch (e) {
+    // Degrade to the marker lookup rather than dropping the feedback.
+    console.error("user-feedback: owner auth lookup failed", e);
+  }
+
+  if (ownerId) {
+    const { data, error } = await admin
+      .from("user_data")
+      .select("id,data")
+      .eq("id", ownerId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data as OwnerRow;
+  }
+
+  // limit(1) keeps this from erroring if a stale duplicate marker ever exists,
+  // preserving the old "first match wins" behaviour.
+  const { data, error } = await admin
+    .from("user_data")
+    .select("id,data")
+    .eq("data->>ownerEmail", OWNER_EMAIL)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as OwnerRow) ?? null;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
 
@@ -63,19 +135,13 @@ Deno.serve(async (req) => {
 
   const admin = serviceClient();
 
-  const { data: rows, error: qErr } = await admin
-    .from("user_data")
-    .select("id,data")
-    .limit(800);
-
-  if (qErr) {
+  let hit: OwnerRow | null = null;
+  try {
+    hit = await findOwnerRow(admin);
+  } catch (qErr) {
     console.error("user-feedback query", qErr);
     return json({ error: "Could not load owner row" }, 500, origin);
   }
-
-  const hit = (rows || []).find((r: { data?: { ownerEmail?: string } }) =>
-    String(r?.data?.ownerEmail || "").trim().toLowerCase() === OWNER_EMAIL
-  );
 
   if (!hit?.id) {
     console.error("user-feedback: no owner row for", OWNER_EMAIL);
