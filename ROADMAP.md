@@ -31,6 +31,10 @@ Last updated: 2026-08-29.
 | Nav icons sat too far off the bottom edge | The bar padded itself by the full height of the iPhone home-indicator strip, leaving the icons floating with an empty band underneath. Now a little over half that — closer, without the buttons sitting on the home indicator. |
 | The nav highlight got stuck on the wrong tab | Three faults. For Settings, Profile, Goals, Mood, Notes and School — the tabs that live under "More" rather than in the bar — the underline was never even told to move, so it sat under whichever main tab you last opened. On top of that, both the highlight and the underline animate, and neither animation runs while your phone is locked or you're in another app; the code recorded them as "arrived" the moment it started them, so an interrupted move stranded the highlight until you reloaded. All three fixed, and the highlight is re-checked whenever you come back to Flux. |
 | Pills were off-centre | Dashboard: the Tasks / Done / Overdue / High counts were pinned to the left inside their capsules — about 21 pixels off the middle — which is what looked wrong with four of them in a row. Now dead centre. Study Tools: the pills themselves were fine; the strips they sit in slid sideways by about 13 pixels when you picked a subject, leaving the first pill sliced against the screen edge while everything else on the page lined up. Both strips now stop at the page margin. |
+| Task cards had far too many buttons | Nine of them: school/outside, repeat, timer, copy link, Google Calendar, co-work, edit, ask AI, delete. Now four — timer, edit, ask Flux AI, delete. Nothing was thrown away: school-vs-outside became a "Belongs to" box in the Edit window, repeat was already in there, copy link is still on right-click, the Google Calendar button did nothing anyway while Google is paused, and co-work is one line from coming back. |
+| Achievements | Gone. There were actually two systems running at once — the badges card on the dashboard with its popup and sound, and a quieter one that fired a message on your first task, tenth task, streaks and so on. Both removed, along with the Achievements row in the mobile More menu. Badges anyone already earned are left in their data rather than deleted, so nothing is lost if you ever want it back. |
+| Dismissed feedback came back | The list of what you'd dismissed was only ever stored in one browser. Open Flux on your phone, or clear your browsing data, and that list was empty — and since feedback is stored on the server, everything you'd already dealt with reappeared. The dismissed list now travels with your account, and both devices' dismissals are combined rather than one overwriting the other. |
+| The graphing calculator opened with y=sin(x) | Three places were doing it — the real Desmos window and two built-in fallbacks. All open on an empty grid now. |
 | Privacy policy and terms didn't match reality | Fixed: email sign-up wasn't mentioned, Google features were described as live when they're switched off, Anthropic wasn't listed even though your students' text goes there, and mood/wellbeing data, staff verification details and feedback messages weren't mentioned at all. Also confirmed the claim that you can't read people's planners — the database genuinely blocks it. |
 
 ---
@@ -61,13 +65,10 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Remove achievements entirely | Including from the dashboard. |
 | Hide the Notebook tab | Temporarily — NotebookLM does it better. Hidden, not deleted, so it can come back. |
 | Remove the locker box at the top of School Info | Keep the information, lose the giant box. You want to see your classes first. |
 | Profile: hide counselor chat and office hours | Temporary, until they work. Move your name and details to the top so they're the first thing you see. |
-| Task menu has ~20 buttons | Clicking a task on the dashboard opens far too many options, some for things already removed (workrooms). Cut to four at most. |
 | Old emojis flash in Owner Controls | Briefly visible before the real icons load, in Nuke Controls and Testers. |
-| Dismissed feedback comes back | Once dismissed it should stay dismissed. |
 
 ### Reorganisation
 
@@ -87,7 +88,6 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 | Timer is badly centred | Same tab. |
 | Mood is barely used | Prompt everyone morning and night so it actually gets logged. |
 | Language tools are weak | Needs far more material, and the conjugator doesn't work well. |
-| Desmos opens with y=sin(x) | Students in lower maths levels haven't met sine yet. Should open empty. |
 | Flux AI scrolls away from its own answer | The tab jumps to the bottom and you can't read what it said. |
 | Flux AI is too wordy | Shorter answers, which also makes your API credits last longer. |
 
