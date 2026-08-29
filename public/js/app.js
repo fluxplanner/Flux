@@ -3483,7 +3483,13 @@ function nav(id,btn,navOpt){
   try{document.dispatchEvent(new CustomEvent('flux-nav',{detail:{panel:id}}));}catch(e){}
   try{
     if(window.FluxVisual&&typeof FluxVisual.animateNavIndicator==='function'){
-      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`);
+      // Fall back to the More button for panels that aren't one of the five in
+      // the bar — the same rule the .active class follows above. Without it the
+      // underline was never told to move for Settings, Profile, Goals, Mood,
+      // Notes or School, so it sat under whichever primary tab you opened last
+      // and looked permanently stuck.
+      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`)
+        ||document.getElementById('moreBtn');
       if(tabBtn)FluxVisual.animateNavIndicator(tabBtn);
     }
   }catch(e){}

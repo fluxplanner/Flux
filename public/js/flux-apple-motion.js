@@ -241,7 +241,7 @@ function ensurePillFor(host, shape) {
 
 const _close = (a, b) => Math.abs(a - b) < 0.5;
 
-function placePill(host, target, shape) {
+function placePill(host, target, shape, opts) {
   if (!host || !target) return;
   const entry = ensurePillFor(host, shape);
   const pill = entry.pill;
@@ -268,12 +268,23 @@ function placePill(host, target, shape) {
     return;
   }
   // Sub-pixel tolerance dedup — avoids re-firing animation on floating-point noise.
-  if (_close(entry.lastX, x) && _close(entry.lastY, y) && _close(entry.lastW, w) && _close(entry.lastH, h)) {
+  // opts.force skips it: lastX/Y/W/H record where the pill was *sent*, not where
+  // it arrived, so a tween interrupted mid-flight (see below) looks "already
+  // there" and would never be corrected.
+  if (
+    !opts?.force &&
+    _close(entry.lastX, x) && _close(entry.lastY, y) && _close(entry.lastW, w) && _close(entry.lastH, h)
+  ) {
     pill.dataset.placed = '1';
     return;
   }
   // Animate via animate() — anime.js v4 spring + direct property targets.
-  if (motionAllowed()) {
+  // Not while the document is hidden: anime.js drives tweens off
+  // requestAnimationFrame, which the browser freezes for background tabs. The
+  // tween would be started, never advance, and strand the highlight on the
+  // previous tab — the whole point of the phone-lock/app-switch case. Snap
+  // instead, so the pill is already correct when the user looks again.
+  if (motionAllowed() && !document.hidden) {
     try {
       // Cancel any in-flight animation on this pill so we don't stack tweens.
       if (entry.currentAnim?.pause) entry.currentAnim.pause();
@@ -322,32 +333,44 @@ function activeSelectorFor(group) {
     .join(',');
 }
 
-function syncPillGroup(group) {
+function syncPillGroup(group, opts) {
   const activeSelector = activeSelectorFor(group);
   document.querySelectorAll(group.host).forEach((host) => {
     if (!host || !host.isConnected) return;
     const active = host.querySelector(activeSelector);
-    if (active) placePill(host, active, group.shape);
+    if (active) placePill(host, active, group.shape, opts);
     else hidePill(host);
   });
 }
 
-function syncAllPills() {
-  PILL_GROUPS.forEach(syncPillGroup);
+function syncAllPills(opts) {
+  PILL_GROUPS.forEach((group) => syncPillGroup(group, opts));
 }
 
-let _syncScheduled = false;
+let _syncRaf1 = null;
+let _syncRaf2 = null;
+let _syncTimer = null;
 function scheduleSyncAllPills() {
-  if (_syncScheduled) return;
-  _syncScheduled = true;
+  // Re-arm rather than latch. The old version set a boolean it only cleared
+  // inside the rAF callback, so if rAF never ran — which is exactly what
+  // happens the moment a phone locks or the user switches apps — the flag
+  // stuck at true and every later navigation was silently dropped for the rest
+  // of the page's life. The highlight froze on whichever tab was open then.
+  if (_syncRaf1) cancelAnimationFrame(_syncRaf1);
+  if (_syncRaf2) cancelAnimationFrame(_syncRaf2);
+  clearTimeout(_syncTimer);
   // Two rAFs: first lets nav() finish synchronous DOM updates,
   // second ensures browser has reflowed before we read rects.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      _syncScheduled = false;
+  _syncRaf1 = requestAnimationFrame(() => {
+    _syncRaf2 = requestAnimationFrame(() => {
+      _syncRaf1 = _syncRaf2 = null;
       syncAllPills();
     });
   });
+  // Timers keep running while rAF is frozen, so this is the only path that
+  // fires for a background navigation. placePill dedups, so on the normal
+  // foreground path it costs a few rect reads and nothing else.
+  _syncTimer = setTimeout(() => { syncAllPills(); }, 150);
 }
 
 function initPillMorph() {
@@ -383,6 +406,15 @@ function initPillMorph() {
     { passive: true },
   );
   window.addEventListener('orientationchange', () => setTimeout(syncAllPills, 100), { passive: true });
+
+  // Coming back from a locked screen or another app. Anything that moved while
+  // we were hidden left the pill wherever its last rendered frame put it, and
+  // lastX/Y/W/H already claim the destination was reached — so force past the
+  // dedup and re-place from scratch.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    syncAllPills({ force: true });
+  });
 
   // Sync when a registered host scrolls (sidebar nav-scroll only).
   document.addEventListener(
