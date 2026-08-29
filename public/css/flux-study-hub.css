@@ -69,7 +69,11 @@
 
 /* ── SUBJECT RAIL ──────────────────────────────────────────────────────── */
 .fsh-rail-wrap { position:relative; margin:18px 0 4px; }
-.fsh-rail { display:flex; gap:9px; overflow-x:auto; padding:6px 26px 12px; scrollbar-width:none; scroll-behavior:smooth; }
+/* scroll-padding, not just padding: scrollIntoView() aligns to the scrollport
+   edge and ignores the rail's own padding, so selecting a subject nudged the
+   rail ~13px and left the first pill sliced against the screen edge while
+   every other block on the page kept its 16px gutter. */
+.fsh-rail { display:flex; gap:9px; overflow-x:auto; padding:6px 26px 12px; scroll-padding-inline:26px; scrollbar-width:none; scroll-behavior:smooth; }
 .fsh-rail::-webkit-scrollbar { height:0; }
 .fsh-pill {
   flex:0 0 auto; display:inline-flex; align-items:center; gap:8px;
@@ -152,7 +156,7 @@
 /* ── TAB / SUB-NAV (chemistry tabs + generic subject tool nav) ─────────── */
 .fsh-chem { display:flex; flex-direction:column; gap:18px; }
 .fsh-tabs-wrap { display:flex; flex-direction:column; gap:7px; align-self:flex-start; width:fit-content; max-width:100%; }
-.fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); width:100%; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; overscroll-behavior-x:contain; }
+.fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; scroll-padding-inline:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); width:100%; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; overscroll-behavior-x:contain; }
 .fsh-chem-tabs::-webkit-scrollbar { height:0; display:none; }
 /* Explicit drag handle for the tab strip. Native scrollbars are overlay-style
    on macOS — invisible at rest and zero-height — so subjects whose tabs
@@ -399,7 +403,9 @@
 
 /* ── responsive / motion / low-end ─────────────────────────────────────── */
 @media (max-width:680px){
-  .fsh-hero { padding:18px 16px 2px; } .fsh-rail { padding:6px 16px 12px; } .fsh-stage { padding:6px 16px 36px; }
+  /* Gutter drops to 16px here, so the rail's scroll-padding has to follow it
+     or scrollIntoView goes back to clipping the first pill. */
+  .fsh-hero { padding:18px 16px 2px; } .fsh-rail { padding:6px 16px 12px; scroll-padding-inline:16px; } .fsh-stage { padding:6px 16px 36px; }
   .fsh-search { min-width:100%; } .fsh-tools-grid { grid-template-columns:1fr; }
   .fsh-stage { padding-bottom:100px; }
 }
