@@ -11,7 +11,7 @@ a glance where each item stands. No code knowledge needed to read this.
 Status key: **Done** · **Queued** · **Needs you** (blocked on something only you
 can do, like a dashboard setting or a decision).
 
-Last updated: 2026-08-27.
+Last updated: 2026-08-29.
 
 ---
 
@@ -27,6 +27,10 @@ Last updated: 2026-08-27.
 | A teacher whose verification request failed got stuck | The Submit button went to "Submitting…" and stayed disabled and dead, even when the request errored. The only way out was reloading. It resets now and explains what went wrong, so they can just try again. |
 | Nothing told you a teacher was waiting | Requests only loaded while you had Owner Controls › Staff verify open, so one could sit unseen forever. There's now a red count badge on the Staff verify row that you can see from any tab, updating live, plus a message when you sign in telling you how many are waiting. The approve/reject screen itself was already working correctly. |
 | Nobody could delete their own data | The privacy policy promised a "delete my data" button in Settings. There wasn't one — the only delete was hidden in the developer panel and only you could see it. Every student and teacher who read that policy was reading something untrue. Settings → Data & info now has a **Your data** card: download a copy, or delete everything. |
+| Big empty gap at the bottom of every tab | The bottom nav is about 65 pixels tall, but three separate things were each leaving room for it — so every tab scrolled roughly 120 pixels past its own last card into blank page. Flux AI was worst: that tab is a fixed height and shouldn't scroll at all, so the extra room was pure emptiness under a chat that had already ended. There's now one setting that says how much room the nav needs, used once. Measured on a phone-sized screen: the gap after the last card went from 119 pixels to 23, the same on every tab. |
+| Nav icons sat too far off the bottom edge | The bar padded itself by the full height of the iPhone home-indicator strip, leaving the icons floating with an empty band underneath. Now a little over half that — closer, without the buttons sitting on the home indicator. |
+| The nav highlight got stuck on the wrong tab | Three faults. For Settings, Profile, Goals, Mood, Notes and School — the tabs that live under "More" rather than in the bar — the underline was never even told to move, so it sat under whichever main tab you last opened. On top of that, both the highlight and the underline animate, and neither animation runs while your phone is locked or you're in another app; the code recorded them as "arrived" the moment it started them, so an interrupted move stranded the highlight until you reloaded. All three fixed, and the highlight is re-checked whenever you come back to Flux. |
+| Pills were off-centre | Dashboard: the Tasks / Done / Overdue / High counts were pinned to the left inside their capsules — about 21 pixels off the middle — which is what looked wrong with four of them in a row. Now dead centre. Study Tools: the pills themselves were fine; the strips they sit in slid sideways by about 13 pixels when you picked a subject, leaving the first pill sliced against the screen edge while everything else on the page lined up. Both strips now stop at the page margin. |
 | Privacy policy and terms didn't match reality | Fixed: email sign-up wasn't mentioned, Google features were described as live when they're switched off, Anthropic wasn't listed even though your students' text goes there, and mood/wellbeing data, staff verification details and feedback messages weren't mentioned at all. Also confirmed the claim that you can't read people's planners — the database genuinely blocks it. |
 
 ---
@@ -51,11 +55,7 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 |------|-------|
 | Light mode is broken almost everywhere | **Root cause fixed.** The animated background behind the whole app is drawn on a canvas, and it only checked the theme about once a second — so switching to light left the dark background painted underneath everything. While that canvas was paused (hidden tab, low-power mode) it never updated at all. It now changes the instant you switch. Also fixed the dashboard's "By importance" label, which was invisible in light mode. *Still to do: a tab-by-tab sweep for other spots written dark-only.* |
 | Mobile looks too different from desktop | Match the desktop styling more closely; the animation is fine and stays. |
-| Pills are off-centre on mobile | Worst on the dashboard (Tasks / Done / Overdue / High) and in Study Tools (Bio formulas and similar). |
-| Big empty gap at the bottom of every tab | Flux AI is worst — the chat sits inches off the bottom of the phone. Affects every tab when you scroll down. |
-| Nav icons sit too far off the bottom edge | About an inch or two of dead space. Bring them closer, but not flush. |
 | Settings on mobile is a mess | Full rework. |
-| Settings tab's underline doesn't move | The highlight stays under whichever tab you were on before. |
 
 ### Removals and decluttering
 
