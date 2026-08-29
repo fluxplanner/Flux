@@ -148,12 +148,55 @@
     if(typeof ownerAuditAppend==='function')ownerAuditAppend('product_ideas_copy',{n:arr.length});
   };
 
+  function releaseAdminUrl(){
+    const base=(typeof SB_URL!=='undefined'&&SB_URL)
+      ?SB_URL
+      :`https://${SB_PROJECT_REF}.supabase.co`;
+    return `${base}/functions/v1/release-admin`;
+  }
+
+  /**
+   * Push the broadcast fields out to public.platform_settings.
+   *
+   * Saving platformConfig only ever reaches the owner's own user_data row, and
+   * no other account can read that row, so without this step announcements,
+   * maintenance mode and the sign-in popup never leave this browser. Debounced
+   * because the Nuke Controls inputs save on every keystroke.
+   */
+  let _broadcastTimer=null;
+  function publishBroadcastSoon(){
+    if(!isOwner())return;
+    clearTimeout(_broadcastTimer);
+    _broadcastTimer=setTimeout(function(){
+      publishBroadcastNow().catch(function(e){
+        console.warn('[Flux] platform broadcast publish failed',e);
+        if(typeof showToast==='function'){
+          showToast('Saved here, but not published to other users: '+(e.message||e),'warning',6000);
+        }
+      });
+    },800);
+  }
+  async function publishBroadcastNow(){
+    const headers=typeof fluxAuthHeaders==='function'
+      ?await fluxAuthHeaders()
+      :{'Content-Type':'application/json'};
+    const res=await fetch(releaseAdminUrl(),{
+      method:'POST',
+      headers,
+      body:JSON.stringify({action:'set_platform_broadcast',platformConfig:getPlatformConfig()}),
+    });
+    const data=await res.json().catch(function(){return{};});
+    if(!res.ok)throw new Error(data.error||('release-admin HTTP '+res.status));
+    return data;
+  }
+
   window.getPlatformConfig=function(){
     return{...PLATFORM_DEFAULTS,...load('flux_platform_config',{})};
   };
   window.savePlatformConfig=function(partial){
     save('flux_platform_config',{...getPlatformConfig(),...partial});
     if(typeof syncKey==='function')syncKey('platform',1);
+    publishBroadcastSoon();
   };
 
   window.ownerAuditAppend=function(action,detail){

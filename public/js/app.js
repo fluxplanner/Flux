@@ -9405,27 +9405,19 @@ async function syncFromCloud(){
         save('flux_feedback_inbox',next.slice(-300));
       }
     }
-    // Dev accounts + release gate: fetch from owner's row (single source of truth).
-    // Owner's row also hosts platformConfig.releaseGate which controls staged rollout.
+    // Announcements, maintenance mode and the sign-in popup come from
+    // public.platform_settings — not from the owner's user_data row. The
+    // read_own policy on user_data is `auth.uid() = id`, so a non-owner's
+    // select only ever returns their own row and never reaches the owner's.
+    // release-admin mirrors the public fields into platform_settings, which
+    // anyone may read, whenever the owner saves.
+    //
+    // The release gate is deliberately not read here: flux-release-gate.js
+    // already gets it from the release-admin GET, which reads the owner row
+    // with the service role. Dev accounts stay owner-only — that list is staff
+    // email addresses and has no business in a world-readable table.
     if(!isOwner()){
-      try{
-        if(!window.__fluxOwnerRowId){
-          const rows=await sb.from('user_data').select('id,data').limit(100);
-          const hit=(rows.data||[]).find(r=>r?.data?.ownerEmail===OWNER_EMAIL);
-          if(hit)window.__fluxOwnerRowId=hit.id;
-          if(hit?.data?.devAccounts)save('flux_dev_accounts',hit.data.devAccounts);
-          if(hit?.data?.platformConfig)savePublicPlatformBroadcastFromOwner(hit.data.platformConfig);
-          if(hit?.data?.platformConfig?.releaseGate){
-            save('flux_release_gate',hit.data.platformConfig.releaseGate);
-          }
-        }else{
-          const ownerRes=await sb.from('user_data').select('data').eq('id',window.__fluxOwnerRowId).single();
-          const od=ownerRes?.data?.data;
-          if(od?.devAccounts)save('flux_dev_accounts',od.devAccounts);
-          if(od?.platformConfig)savePublicPlatformBroadcastFromOwner(od.platformConfig);
-          if(od?.platformConfig?.releaseGate)save('flux_release_gate',od.platformConfig.releaseGate);
-        }
-      }catch(e){}
+      await refreshPlatformBroadcast();
     }
     if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
       FluxRelease.applyGate();
@@ -9446,8 +9438,34 @@ async function syncFromCloud(){
   finally{_syncFromCloudInFlight=false;}
 }
 
-/** Non-sensitive platform strings from owner's row — safe for non-owner clients (announcement toast, advisory hints). */
-function savePublicPlatformBroadcastFromOwner(pc){
+/**
+ * Pull the owner's published broadcast from public.platform_settings.
+ *
+ * That table is world-readable by design and carries only non-sensitive
+ * strings, so the anon key is enough. It exists because the owner's own
+ * user_data row — where these values are actually edited — is invisible to
+ * every other account under RLS.
+ */
+async function refreshPlatformBroadcast(){
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/platform_settings?key=eq.broadcast&select=value`,{
+      headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON},
+      cache:'no-store',
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    const value=rows?.[0]?.value;
+    if(value&&typeof value==='object')savePublicPlatformBroadcast(value);
+  }catch(e){
+    // Offline, or the owner has never published. The last cached broadcast
+    // stays in force — but say so, because failing silently here is exactly
+    // what kept the old owner-row scan broken without anyone noticing.
+    console.warn('[Flux] platform broadcast refresh failed',e);
+  }
+}
+
+/** Non-sensitive platform strings — safe for every client (announcement toast, advisory hints). */
+function savePublicPlatformBroadcast(pc){
   if(!pc||typeof pc!=='object')return;
   const merged={
     announcement:String(pc.announcement||'').trim(),
