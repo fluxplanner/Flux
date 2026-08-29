@@ -1420,25 +1420,9 @@
     <!-- ─── SCHOOL INFO ─── -->
     <div id="school" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Locker, classes, and schedule import.</p>
+        <p class="flux-page-sub">Your classes, schedule import, and locker details.</p>
       </header>
       <div class="flux-stack">
-      <div class="card">
-        <h3>School Info</h3>
-        <div class="school-info-grid">
-          <div class="info-tile"><div class="info-tile-label">Locker Number</div><div class="info-tile-val" id="displayLocker">—</div></div>
-          <div class="info-tile"><div class="info-tile-label">Locker Combo</div><div class="info-tile-val" id="displayCombo" style="font-size:.85rem;letter-spacing:2px">—</div><div class="info-tile-sub" style="font-size:.6rem;color:var(--red)">Private</div><button class="reveal-btn" id="revealComboBtn" onclick="toggleReveal('displayCombo','revealComboBtn')" title="Reveal"></button></div>
-          <div class="info-tile"><div class="info-tile-label">Counselor</div><div class="info-tile-val" id="displayCounselor" style="font-size:.82rem">—</div></div>
-          <div class="info-tile"><div class="info-tile-label">Student ID</div><div class="info-tile-val" id="displayStudentID">—</div><div class="info-tile-sub" style="font-size:.6rem;color:var(--red)">Private</div><button class="reveal-btn" id="revealSIDBtn" onclick="toggleReveal('displayStudentID','revealSIDBtn')" title="Reveal"></button></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div><label style="font-size:.72rem;color:var(--muted)">Locker #</label><input type="text" id="inputLocker" placeholder="e.g. 342" style="margin-bottom:0"></div>
-          <div><label style="font-size:.72rem;color:var(--muted)">Combination</label><input type="text" id="inputCombo" placeholder="e.g. 14-32-07" style="margin-bottom:0"></div>
-          <div><label style="font-size:.72rem;color:var(--muted)">Counselor Name</label><input type="text" id="inputCounselor" placeholder="e.g. Ms. Johnson" style="margin-bottom:0"></div>
-          <div><label style="font-size:.72rem;color:var(--muted)">Student ID</label><input type="text" id="inputStudentID" placeholder="e.g. 123456" style="margin-bottom:0"></div>
-        </div>
-        <button onclick="saveSchoolInfo()" style="width:100%">Save Info</button>
-      </div>
       <div class="card" id="schoolCanvasLmsRow" style="display:none"></div>
       <div class="card">
         <h3>My Classes</h3>
@@ -1511,6 +1495,38 @@
           </div>
         </div>
       </div>
+      <!-- Was the first card on this tab, as a tall box of four read-only tiles
+           above the four inputs that set them. The tiles were dead markup —
+           renderSchool() only ever fills the inputs, so they permanently read
+           "—" — and the reveal buttons pointed at those tiles rather than at
+           the password inputs, so there was no way to read your own combo back.
+           Now: tiles gone, reveal buttons repointed at the inputs, and the whole
+           thing collapsed and moved below My Classes, which is what you came to
+           this tab to see. -->
+      <details class="card" id="schoolInfoCard">
+        <summary style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.62rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:500;padding:20px">
+          Locker, counselor &amp; student ID
+          <span class="expand-hint" style="text-transform:none;letter-spacing:0;font-family:inherit;color:var(--muted2)">— tap to edit</span>
+        </summary>
+        <div style="padding:0 20px 20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div><label style="font-size:.72rem;color:var(--muted)">Locker #</label><input type="text" id="inputLocker" placeholder="e.g. 342" style="margin-bottom:0"></div>
+            <!-- Reveal buttons sit in a flex row beside their field, pinned to
+                 position:static inline. .reveal-btn asks for position:absolute, but
+                 the motion layer tags buttons .flux-ripple-host, which carries
+                 `position:relative !important` (flux-claude-magic.css:17) — and it
+                 does not always win the race, so one of these two ended up absolute
+                 against the card and floated to its top-right corner while the
+                 other sat in flow. Inline `static` beats the absolute rule, and if
+                 ripple-host does land, `relative` with the zeroed top/right leaves
+                 the button in flow as well. Either way both end up in the row. -->
+            <div><label style="font-size:.72rem;color:var(--muted)">Combination</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="inputCombo" placeholder="e.g. 14-32-07" style="margin:5px 0 0"><button class="reveal-btn" id="revealComboBtn" onclick="toggleReveal('inputCombo','revealComboBtn')" title="Show" style="position:static;top:0;right:0;flex:0 0 auto;font-size:1rem">👁</button></div></div>
+            <div><label style="font-size:.72rem;color:var(--muted)">Counselor Name</label><input type="text" id="inputCounselor" placeholder="e.g. Ms. Johnson" style="margin-bottom:0"></div>
+            <div><label style="font-size:.72rem;color:var(--muted)">Student ID</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="inputStudentID" placeholder="e.g. 123456" style="margin:5px 0 0"><button class="reveal-btn" id="revealSIDBtn" onclick="toggleReveal('inputStudentID','revealSIDBtn')" title="Show" style="position:static;top:0;right:0;flex:0 0 auto;font-size:1rem">👁</button></div></div>
+          </div>
+          <button onclick="saveSchoolInfo()" style="width:100%">Save Info</button>
+        </div>
+      </details>
       <div class="card flux-pdf-import-card-host">
         <h3>Import schedule (PDF or photo)</h3>
         <div style="font-size:.82rem;color:var(--muted2);margin-bottom:12px">Same flow as onboarding: PDF pages render as thumbnails; AI reads the first page for class extraction.</div>
@@ -2799,7 +2815,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.22d27e75.js"></script>
+<script defer src="public/bundles/flux-core.91de5962.js"></script>
 <script defer src="public/bundles/flux-features.15a86039.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

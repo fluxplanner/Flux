@@ -5752,13 +5752,16 @@ function renderSchool(){
   if(comboEl){
     comboEl.value=schoolInfo.combo||'';
     comboEl.type='password';
-    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='';cb.setAttribute('title','Show');}
+    // '👁' rather than '' — the button used to be reset to an empty label, so
+    // it rendered as a blank square until you clicked it. toggleReveal() swaps
+    // it to '🙈' when the field is showing; flux-iconify turns both into SVG.
+    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='👁';cb.setAttribute('title','Show');}
   }
   if(counselorEl)counselorEl.value=schoolInfo.counselor||'';
   if(sidEl){
     sidEl.value=schoolInfo.studentID||'';
     sidEl.type='password';
-    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='';sb.setAttribute('title','Show');}
+    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='👁';sb.setAttribute('title','Show');}
   }
   const cl=document.getElementById('classesList');
   if(!cl)return;
