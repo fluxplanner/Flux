@@ -202,7 +202,10 @@
     }
 
     // ── Built-in plotter (offline fallback for the above) ───────────────────
-    let gExpr = 'sin(x)', gExpr2 = '0.2*x^2 - 3', gZoom = 10;
+    // Opens empty on purpose. A pre-filled sin(x) tells a student in a lower
+    // maths level that they are looking at something they were meant to
+    // recognise; an empty grid asks them for their own function instead.
+    let gExpr = '', gExpr2 = '', gZoom = 10;
     function renderGraphNative(body) {
       body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Graphing calculator</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Plot y = f(x). Use x, +−*/^, and sin cos tan sqrt ln log abs exp pi.</p>
         <div class="fsh-field"><input id="gIn1" class="fsh-input" value="${esc(gExpr)}" spellcheck="false"></div>

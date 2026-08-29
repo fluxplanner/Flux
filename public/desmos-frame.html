@@ -87,7 +87,9 @@
         border: false,
         invertedColors: dark
       });
-      calc.setExpression({ id: 'flux1', latex: 'y=\\sin(x)' });
+      /* Deliberately no starting expression. This used to seed y=sin(x), which
+         a student who has not met trig yet reads as something they were
+         supposed to recognise. Desmos opens on an empty row on its own. */
       tell(true);
     } catch (e) {
       fail();
