@@ -12,6 +12,21 @@
   --sa-right: env(safe-area-inset-right, 0px);
   --bnav-height: 62px;
   --topbar-mob-height: 54px;
+  /* The nav's own bottom padding. Padding by the full --sa-bottom (34px on a
+     notched iPhone) left the icons floating that far up the bar with an empty
+     strip underneath them. A little over half still keeps the tap targets off
+     the home indicator without the gap reading as dead space. */
+  --bnav-pad-bottom: max(8px, calc(var(--sa-bottom) * .55));
+  /* Total height the fixed nav occupies. Anything that must sit above the nav
+     measures from this — never from --bnav-height alone, which omits the
+     safe-area padding. */
+  --bnav-total: calc(var(--bnav-height) + var(--bnav-pad-bottom));
+  /* The ONE bottom padding that clears the nav. It belongs to the content
+     column (.panel) and nowhere else. body and #app used to carry their own
+     copies, so every tab reserved the nav's height two or three times over and
+     scrolled into ~120px of empty page — worst on Flux AI, whose panel is
+     height-locked, so #app's copy was pure scrollable nothing. */
+  --flux-nav-clearance: calc(var(--bnav-total) + 18px);
   /* B2 floating-dock contract: every fixed bottom-corner widget (toasts,
      pills, fabs) offsets by this so nothing overlaps .bnav, sheets, or the
      composer. Overridden inside the mobile media query below. */
@@ -21,16 +36,19 @@
 /* Mobile-only safe-area + nav-clearance */
 @media (max-width: 768px){
   :root{
-    --flux-dock-clearance: calc(var(--bnav-height) + 12px + var(--sa-bottom));
+    --flux-dock-clearance: calc(var(--bnav-total) + 12px);
   }
   .topbar{
     padding-top: max(8px, var(--sa-top));
   }
   .bottom-nav{
-    padding-bottom: max(env(safe-area-inset-bottom), 6px);
+    padding-bottom: var(--bnav-pad-bottom);
   }
   body{
-    padding-bottom: calc(var(--bnav-height) + 14px + var(--sa-bottom));
+    /* .panel carries --flux-nav-clearance. body must stay at 0 or the nav's
+       height gets reserved a second time and the page scrolls into blank
+       space below the last card. */
+    padding-bottom: 0;
   }
   /* When .irow.modal-labeled-row stacks to column on mobile, the inline
      `flex:0 1 140px` on column children (e.g. taskEstTime) gets interpreted
@@ -347,7 +365,7 @@
     min-height: var(--bnav-height) !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    padding: 6px max(10px, var(--sa-left)) calc(6px + var(--sa-bottom)) max(10px, var(--sa-right)) !important;
+    padding: 6px max(10px, var(--sa-left)) var(--bnav-pad-bottom) max(10px, var(--sa-right)) !important;
     background: color-mix(in srgb, var(--card) 78%, transparent) !important;
     -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
     backdrop-filter: blur(22px) saturate(170%) !important;
@@ -726,7 +744,7 @@
   #calendar [data-flux-cal-section="events"],
   #calendar .cal-gcal-inline{ display: none !important; }
 
-  #calendar{ padding: 14px max(14px, var(--sa-left)) max(120px, calc(92px + var(--sa-bottom))) max(14px, var(--sa-right)) !important; }
+  #calendar{ padding: 14px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important; }
 
   /* Hero card — frameless on mobile for a fullscreen feel */
   #calendar .cal-hero-card{
@@ -1195,7 +1213,7 @@ body.flux-panic .task-card.flux-task-urgent{
 
 @media (max-width: 768px){
   #toolbox.st-panel{
-    padding: 12px max(14px, var(--sa-left)) max(120px, calc(92px + var(--sa-bottom))) max(14px, var(--sa-right)) !important;
+    padding: 12px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important;
   }
 }
 
@@ -1851,7 +1869,7 @@ body.flux-panic .task-card.flux-task-urgent{
     position: fixed;
     left: max(14px, var(--sa-left));
     right: max(14px, var(--sa-right));
-    bottom: calc(var(--bnav-height) + 10px + var(--sa-bottom));
+    bottom: calc(var(--bnav-total) + 10px);
     margin: 0;
     padding: 8px 10px;
     overflow-x: auto;
@@ -2131,7 +2149,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
   #notes .flux-page-header--lead{ display: none !important; }
-  #notes{ padding: 12px max(14px, var(--sa-left)) max(110px, calc(88px + var(--sa-bottom))) max(14px, var(--sa-right)) !important; }
+  #notes{ padding: 12px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important; }
   #notes #notesListView > div:first-child{
     gap: 8px !important;
     margin-bottom: 14px !important;
@@ -2168,7 +2186,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
   #timer .flux-page-header--lead{ display: none !important; }
-  #timer{ padding: 12px max(14px, var(--sa-left)) max(110px, calc(88px + var(--sa-bottom))) max(14px, var(--sa-right)) !important; }
+  #timer{ padding: 12px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important; }
   #timer .card:first-child{
     padding: 24px 16px 20px !important;
     border-radius: 18px !important;
@@ -2219,7 +2237,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
   #settings .flux-page-header--lead{ display: none !important; }
-  #settings{ padding: 12px max(14px, var(--sa-left)) max(110px, calc(88px + var(--sa-bottom))) max(14px, var(--sa-right)) !important; }
+  #settings{ padding: 12px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important; }
   #settings .stabs,
   #settings.flux-page .flux-settings-stabs,
   #settings.flux-page > .stabs{
@@ -2390,9 +2408,9 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
    its container's edge regardless of what sits on top of it. */
 @media (max-width: 768px) {
   #ai .ai-composer {
-    bottom: max(72px, calc(63px + env(safe-area-inset-bottom, 0px)));
+    bottom: var(--bnav-total);
   }
   #toolbox.fsh-active .fsh {
-    padding-bottom: max(104px, calc(92px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: var(--flux-nav-clearance);
   }
 }

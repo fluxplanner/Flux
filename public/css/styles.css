@@ -557,9 +557,10 @@ body.flux-canvas-ai-split .main-content > #ai.panel.flux-ai-split-visible{
   .sidebar{display:none}
   .bottom-nav{display:flex}
   .mob-menu-btn{display:block}
-  body{padding-bottom:max(72px,calc(58px + env(safe-area-inset-bottom)))}
+  /* Nav clearance lives on .panel only — see --flux-nav-clearance. */
+  body{padding-bottom:0}
   .panel{
-    padding:16px clamp(14px,4vw,22px) max(104px,calc(92px + env(safe-area-inset-bottom)));
+    padding:16px clamp(14px,4vw,22px) var(--flux-nav-clearance);
   }
   .mob-drawer{width:min(90vw,300px)}
   .stats-row{grid-template-columns:repeat(2,1fr);gap:10px}
@@ -1866,7 +1867,7 @@ button:active:not(:disabled){transform:scale(.97)!important}
     display:none;
     height:auto!important;overflow-y:visible!important;
     width:100%!important;max-width:100vw!important;
-    padding:14px 14px 90px!important;
+    padding:14px 14px var(--flux-nav-clearance)!important;
     box-sizing:border-box!important;
   }
   .panel.active{display:block!important}
@@ -1884,13 +1885,21 @@ button:active:not(:disabled){transform:scale(.97)!important}
   }
   #ai.active:not(.ai-root){
     display:flex!important;flex-direction:column!important;
-    height:calc(100svh - 50px - 62px)!important;
+    /* The AI panel is height-locked so its composer can pin to the bottom, so
+       this figure has to be right: the hard-coded 50/62 ignored both the notch
+       (which makes .topbar taller) and the nav's safe-area padding, leaving the
+       panel taller than the space it had and pushing the page into a scroll. */
+    height:calc(100svh - var(--topbar-mob-height) - var(--sa-top) - var(--flux-nav-clearance))!important;
     overflow:hidden!important;
     padding:0!important;
   }
   #ai.ai-root.active{
     display:flex!important;flex-direction:row!important;
-    height:calc(100svh - 50px - 62px)!important;
+    /* The AI panel is height-locked so its composer can pin to the bottom, so
+       this figure has to be right: the hard-coded 50/62 ignored both the notch
+       (which makes .topbar taller) and the nav's safe-area padding, leaving the
+       panel taller than the space it had and pushing the page into a scroll. */
+    height:calc(100svh - var(--topbar-mob-height) - var(--sa-top) - var(--flux-nav-clearance))!important;
     overflow:hidden!important;
     padding:0!important;
   }
@@ -3109,7 +3118,7 @@ input[type=text],input[type=search],input[type=url],input[type=tel],input[type=d
 @media(max-width:768px){
   .panel{
     max-width:none;
-    padding:16px clamp(14px,4vw,22px) max(104px,calc(92px + env(safe-area-inset-bottom)))!important;
+    padding:16px clamp(14px,4vw,22px) var(--flux-nav-clearance)!important;
   }
   .card{padding:16px!important}
   .task-actions{opacity:1}
@@ -4590,7 +4599,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .flux-edu-panel{padding:0 0 96px}
 @media(max-width:768px){
   /* Clear the bottom nav and the home indicator as well. */
-  .flux-edu-panel{padding:0 0 max(104px,calc(92px + env(safe-area-inset-bottom,0px)))}
+  .flux-edu-panel{padding:0 0 var(--flux-nav-clearance)}
 }
 .teacher-dashboard,.counselor-dashboard{padding:20px}
 .teacher-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
