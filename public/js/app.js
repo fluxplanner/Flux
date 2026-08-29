@@ -16572,7 +16572,17 @@ const ACHIEVEMENTS={
   all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:''},
 };
 let _achievements=load('flux_achievements',[]);
+/**
+ * Retired, same as checkAchievements() in flux-pro.js. This was the second,
+ * quieter achievement system — it fired a toast on first task, ten tasks,
+ * streaks and so on. Returning here rather than unpicking the nine FluxBus
+ * wirings below keeps the decision in one place and stops anything more being
+ * written to flux_achievements. Badges already earned are left alone rather
+ * than deleted. Delete the return to revive.
+ */
 function checkAchievement(id){
+  return;
+  // eslint-disable-next-line no-unreachable
   if(_achievements.includes(id))return;
   const a=ACHIEVEMENTS[id];if(!a)return;
   _achievements.push(id);

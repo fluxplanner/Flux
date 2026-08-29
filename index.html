@@ -2799,8 +2799,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.98f29c5e.js"></script>
-<script defer src="public/bundles/flux-features.331c189d.js"></script>
+<script defer src="public/bundles/flux-core.35b84a28.js"></script>
+<script defer src="public/bundles/flux-features.15a86039.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
@@ -2898,10 +2898,8 @@
       <span class="more-sheet-icon" style="font-size:1.15rem"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
       <span class="lbl">Toggle theme</span>
     </button>
-    <button type="button" class="more-sheet-row" onclick="closeMobileSheet();window.fluxOpenAchievements&&fluxOpenAchievements()">
-      <span class="more-sheet-icon" style="font-size:1.15rem"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M10 15v2c0 .6-.5 1.2-1 1.5-1.2.6-2 2-2 3.5 M14 15v2c0 .6.5 1.2 1 1.5 1.2.6 2 2 2 3.5 M18 2H6v7a6 6 0 0 0 12 0Z"/></svg></span>
-      <span class="lbl">Achievements</span>
-    </button>
+    <!-- Achievements row removed with the rest of the feature; see
+         checkAchievements() in flux-pro.js. -->
   </div>
 </div>
 
