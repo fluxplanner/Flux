@@ -2995,6 +2995,21 @@ function migrateCompletedAtBackfill(){
    handlers and storage were left in place deliberately. */
 const FLUX_SCHOOL_JOIN_ENABLED=false;
 
+/* Notebook paused. The sidebar tab labelled "Notebook" is panel 'notes', and
+   its 🧠 Knowledge sub-view is flux-notebook.js — a NotebookLM-style workspace
+   with a sources rail, grounded chat and generated quizzes. Google's NotebookLM
+   does that job better, so Flux stops shipping a worse copy of it.
+
+   Hidden, not deleted, exactly like FLUX_SCHOOL_JOIN_ENABLED above: the panels,
+   the module, renderNotesList and everything already saved to flux_notes and
+   flux_notebook_sources stay put and stay synced. Set this to true to bring the
+   tab and its sub-view straight back with the notes intact.
+
+   Declared here, above DEFAULT_TABS, because the tabConfig normalisation below
+   reads it at script-eval time — a `const` further down would be in the
+   temporal dead zone. */
+const FLUX_NOTEBOOK_ENABLED=false;
+
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
@@ -3015,6 +3030,13 @@ tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='referen
 {const _nt=tabConfig.find(t=>t.id==='notes');if(_nt&&(_nt.label==='Knowledge'||_nt.label==='Notes')){_nt.label='Notebook';_nt.icon='📓';}}
 // Ensure new tabs get added if missing
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
+// Notebook paused — see FLUX_NOTEBOOK_ENABLED. Dropped rather than marked
+// invisible, same as the retired tabs above, so it is not listed in the
+// Settings tab customiser where someone could switch a paused feature back on.
+// Must come after the re-add loop, which would otherwise restore it from
+// DEFAULT_TABS, and after the load() so it also covers anyone who already has
+// 'notes' saved in their flux_tabs.
+if(!FLUX_NOTEBOOK_ENABLED)tabConfig=tabConfig.filter(t=>t.id!=='notes');
 // Legacy tab label (older builds / stored flux_tabs)
 tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))t.label='Flux AI';});
 // 'notes' hosts the merged Notebook tab (Knowledge is a sub-view inside it).
@@ -3378,6 +3400,12 @@ function nav(id,btn,navOpt){
   const navRawId=id;
   const navT0=(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('NAV')||FluxDebug.on()))?performance.now():0;
   if(id==='references'){ id='toolbox'; }
+  // Notebook is paused (FLUX_NOTEBOOK_ENABLED). Old deep links, a saved last
+  // tab and the static markup left in index.html can all still aim at either
+  // panel, and neither is in tabConfig any more, so the visibility check below
+  // would not catch them — send them somewhere real rather than to a blank
+  // panel with no way back.
+  if(!FLUX_NOTEBOOK_ENABLED&&(id==='notebook'||id==='notes')){ id='dashboard'; }
   if(id==='flux_control'){
     const r=getMyRole();
     if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
@@ -3753,9 +3781,12 @@ ${googleNavPersonal}`;
   return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
 
-/** One sidebar entry, two views: Notebook (default) + Knowledge live behind a
- *  shared segmented strip injected at the top of both panels. */
+/** One sidebar entry, two views: Notes (default) + Knowledge live behind a
+ *  shared segmented strip injected at the top of both panels. With the notebook
+ *  paused only one view is left, so the strip is skipped rather than rendered
+ *  as a lone button. */
 function ensureNbkSubtabs(){
+  if(!FLUX_NOTEBOOK_ENABLED)return;
   ['notes','notebook'].forEach(pid=>{
     const p=document.getElementById(pid);
     if(!p||p.querySelector('.fx-nbk-subtabs'))return;
@@ -11097,7 +11128,10 @@ function renderCmdResults(){
     {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
     {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
     ...(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()?[]:[{icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}}]),
-    {icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}},
+    // Notebook is paused (FLUX_NOTEBOOK_ENABLED). This list is hardcoded rather
+    // than built from tabConfig, so it has to be gated by hand or the palette
+    // keeps offering a destination that now bounces you to the dashboard.
+    ...(FLUX_NOTEBOOK_ENABLED?[{icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}}]:[]),
     {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
