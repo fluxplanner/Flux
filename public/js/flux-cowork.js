@@ -709,6 +709,13 @@
   }
 
   function injectButtons() {
+    // Off. Task cards are capped at four buttons (see the comment above
+    // .task-actions in app.js) and co-work is being retired, so this is the
+    // first to go. Everything below still works — rooms, presence, openForTask,
+    // and the FluxCowork lifecycle flux-study-rooms-v2.js wraps — it is simply
+    // no longer advertised from the card. Delete this return to bring it back.
+    return;
+    // eslint-disable-next-line no-unreachable
     if (!enabled()) return;
     var cards = document.querySelectorAll('.task-item, .task-card');
     cards.forEach(function (card) {

@@ -2768,6 +2768,9 @@
     <div class="mrow"><label>Waiting on</label><input type="text" id="editWaitingOn" placeholder="Optional" style="margin:0"></div>
     <div class="mrow"><label>Blocked By</label><div id="editDeps" style="max-height:140px;overflow-y:auto"></div></div>
     <div class="mrow" style="margin-bottom:8px"><label class="modal-micro-label" for="editRecurringType">Repeat</label><select id="editRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
+    <!-- Moved here from the 🏫/🌐 pill on the task card. The card is down to four
+         buttons, and this is a property of the task, so it belongs with the rest. -->
+    <div class="mrow" style="margin-bottom:8px"><label class="modal-micro-label" for="editScope">Belongs to</label><select id="editScope" style="margin:0;width:100%"><option value="school">School</option><option value="outside">Outside school</option></select></div>
     <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
@@ -2796,8 +2799,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.a0432100.js"></script>
-<script defer src="public/bundles/flux-features.bec08841.js"></script>
+<script defer src="public/bundles/flux-core.0bc67828.js"></script>
+<script defer src="public/bundles/flux-features.331c189d.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

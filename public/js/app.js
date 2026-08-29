@@ -4598,8 +4598,6 @@ function renderTasks(){
     const blockedStyle=blocked?'opacity:.45;pointer-events:auto':'';
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
-    const sch=fluxEventScope(t)==='school';
-    const gcalPushed=!!(typeof window.fluxGCalPushedMap==='function'&&window.fluxGCalPushedMap()[t.id]);
     const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
@@ -4637,12 +4635,19 @@ ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" styl
 </div>
 ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
+<!-- Four buttons, hard limit. This row had grown to nine — a school/outside
+     pill, repeat options, copy link, Google Calendar, co-work and these four —
+     which made every task card look like a toolbar. What went where:
+       · school vs outside → "Belongs to" in the Edit modal
+       · repeat options    → "Repeat" in the Edit modal, which already had it
+       · copy link         → right-click menu (desktop); niche either way
+       · Google Calendar   → Google has been paused since Canvas shipped, so
+                             this button did nothing for anyone
+       · co-work           → the feature is being retired; see flux-cowork.js
+     Keep this at four. Anything new belongs in the Edit modal or the
+     right-click menu, not here. -->
 <div class="task-actions">
-<button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
-${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options" aria-label="Repeat options">🔁</button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
-${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link" aria-label="Copy link to task">🔗</button>`:''}
-${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal${gcalPushed?' is-pushed':''}" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}" aria-label="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}">📅</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
@@ -4707,7 +4712,7 @@ function setEnergy(v){
   save('flux_energy',n);
   const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[n];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[n];renderSmartSug();
 }
-function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';
+function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';const escopeSel=document.getElementById('editScope');if(escopeSel)escopeSel.value=t.scope==='outside'?'outside':'school';
   const depEl=document.getElementById('editDeps');
   if(depEl){
     const current=(t.blockedBy||[]).map(bid=>tasks.find(x=>x.id===bid)).filter(Boolean);
@@ -4740,7 +4745,7 @@ function completeAllSubtasksInEdit(){
   document.getElementById('editSubtasks').value=lines.join('\n');
   showToast('All subtasks marked complete','success');
 }
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const _scopeSel=document.getElementById('editScope');if(_scopeSel)t.scope=_scopeSel.value==='outside'?'outside':'school';const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
