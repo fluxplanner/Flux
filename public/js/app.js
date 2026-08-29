@@ -9011,6 +9011,13 @@ function getCloudPayload(){
       platformConfig:load('flux_platform_config',{}),
       ownerAuditLog:load('flux_owner_audit',[]),
       feedbackInbox:load('flux_feedback_inbox',[]),
+      // Dismissals have to travel with the inbox. Both sync paths filter
+      // against this list, but it used to live only in localStorage — so on a
+      // second browser, on your phone, or after clearing site data it was
+      // simply empty, and since user-feedback (the Edge Function) rewrites the
+      // whole inbox server-side, every entry you had already dealt with came
+      // straight back.
+      feedbackTombstones:load('flux_feedback_tombstones',[]),
     }:{}),
   };
 }
@@ -9074,7 +9081,13 @@ async function syncToCloud(){
         const {data:row}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
         const remote=row?.data?.feedbackInbox;
         const local=load('flux_feedback_inbox',[]);
+        // Union local and remote dismissals before filtering, so a dismissal
+        // made on another device is honoured here instead of being undone by
+        // this device pushing an inbox that still contains it.
         const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+        const remoteTomb=row?.data?.feedbackTombstones;
+        if(Array.isArray(remoteTomb))remoteTomb.forEach(x=>{if(x)tomb.add(String(x));});
+        save('flux_feedback_tombstones',[...tomb].slice(-500));
         const mergedMap=new Map();
         if(Array.isArray(remote)){
           remote.forEach(x=>{
@@ -9089,6 +9102,9 @@ async function syncToCloud(){
         const merged=[...mergedMap.values()].sort((a,b)=>(a.t||0)-(b.t||0)).slice(-300);
         save('flux_feedback_inbox',merged);
         payload.feedbackInbox=merged;
+        // getCloudPayload() read the tombstones before the union above, so
+        // overwrite rather than push the stale snapshot back over the top.
+        payload.feedbackTombstones=[...tomb].slice(-500);
       }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
     }
     // MCP (Claude) may have written tasks server-side since our last pull. Don't
@@ -9410,8 +9426,15 @@ async function syncFromCloud(){
     if(isOwner()){
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
+      // Union, never replace. This device may have dismissed things the cloud
+      // copy has not seen yet, and vice versa; taking either side alone would
+      // resurrect the other's dismissals.
+      const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+      if(Array.isArray(d.feedbackTombstones)){
+        d.feedbackTombstones.forEach(x=>{if(x)tomb.add(String(x));});
+        save('flux_feedback_tombstones',[...tomb].slice(-500));
+      }
       if(Array.isArray(d.feedbackInbox)){
-        const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
         const next=d.feedbackInbox.filter(x=>x&&x.id&&!tomb.has(String(x.id)));
         save('flux_feedback_inbox',next.slice(-300));
       }
