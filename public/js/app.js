@@ -7600,9 +7600,9 @@ function loadAIChat(id){
     else if(m.role==='assistant'&&m.content&&m.content!=='(ran tools)')appendMsg('bot',m.content);
   });
   renderAIChatTabs();
-  // Scroll to bottom
-  const msgWrap=document.getElementById('aiMsgsWrap');
-  if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,50);
+  // Opening a chat always lands on its newest message — the scroll position
+  // from whatever you were reading before says nothing about this one.
+  setTimeout(()=>aiScrollToBottom(true),50);
 }
 
 function saveCurrentChat(){
@@ -7754,8 +7754,45 @@ function fmtAI(raw){
 
   return t;
 }
+/* How far from the bottom still counts as "reading the newest message". Below
+   this the transcript keeps following along; above it the reader has
+   deliberately gone back and is left alone. A line of chat is ~24px, so this is
+   roughly five lines of slack — enough that ordinary momentum scrolling doesn't
+   detach the view, small enough that scrolling up to re-read does. */
+const AI_STICK_PX=120;
+function aiAtBottom(wrap){
+  return wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<=AI_STICK_PX;
+}
+/** Pin the AI transcript to the newest text.
+ *
+ *  `force` is for the cases where the reader's position is not evidence of
+ *  anything: they just sent a message, or just opened a different chat.
+ *  Everything else passes nothing and gets the conditional behaviour — which is
+ *  the actual fix for "it scrolls away from its own answer". A finished answer
+ *  used to slam the view to the bottom, throwing away wherever you had got to
+ *  in a long one.
+ *
+ *  #aiMsgsWrap is the element that scrolls (.flux-ai-scroll and .ai-chat-area
+ *  both set overflow-y:auto). #aiMsgs is a plain flex column inside it with no
+ *  overflow at all, so assigning scrollTop to it — as the streaming painter
+ *  did — silently did nothing.
+ *
+ *  behavior:'instant' overrides the scroll-behavior:smooth in
+ *  flux-ai-panel.css. While text streams this runs about once every 90ms, and
+ *  each smooth scroll would restart the one before it, so the view never
+ *  settled and the text juddered. */
+function aiScrollToBottom(force){
+  const wrap=document.getElementById('aiMsgsWrap');
+  if(!wrap)return;
+  if(!force&&!aiAtBottom(wrap))return;
+  try{wrap.scrollTo({top:wrap.scrollHeight,behavior:'instant'});}
+  catch(e){wrap.scrollTop=wrap.scrollHeight;}
+}
 function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg ai-msg--gpt '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(fluxLoadStoredString('flux_user_name','U')).charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
-const msgWrap=document.getElementById('aiMsgsWrap');if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,30);return div;}
+// Your own message and the thinking bubble always pull the view down — you
+// just pressed send, so the newest thing is what you're waiting for. A finished
+// answer does not: by then you may have scrolled up to read it.
+setTimeout(()=>aiScrollToBottom(role==='user'||isThink),30);return div;}
 function setFluxAIMode(mode,btn){
   const ok=['default','research','deep','overtime'];
   const m=ok.includes(mode)?mode:'default';
@@ -8427,7 +8464,7 @@ VOICE AND TONE:
 - Warm but not performatively enthusiastic. You are interested in the student's actual problem, not in appearing helpful.
 - Intellectually engaged. When something is genuinely interesting or has a non-obvious answer, explore it properly.
 - Calibrated confidence. Say "I'm not sure" when you are not sure. Say "this is likely" when it is likely. Do not state uncertain things as fact.
-- Appropriately concise. Short questions get short answers. Complex problems get thorough ones. Do not pad responses.
+- Length follows the question, and most questions are small. A factual or planner question ("when is this due", "what should I start with") gets one or two sentences and nothing after them. Anything ordinary gets a short paragraph. Several paragraphs are for when the student asked for depth or the problem genuinely cannot be answered shorter - not for showing work you were not asked for. When in doubt, answer short: they can always ask for more.
 
 WHAT YOU NEVER DO:
 - Never start a response with "Certainly!", "Of course!", "Great question!", "Absolutely!", "Sure!", "Happy to help!", "I'd be happy to", or any variation of these.
@@ -8482,13 +8519,13 @@ PLANNER DATA: The snapshot above includes tasks, notes, mood, timer sessions, cl
 
 CANVAS: If sections "Canvas — pinned in Flux" or "Canvas — synced assignments" appear, they are from the student's Canvas LMS (API + optional reader pin in the Canvas tab). Help them understand assignments, due dates, and instructions from that text. You cannot see their Canvas iframe if the school blocks embedding — rely on these sections.
 
-REASONING: For complex questions \u2014 scheduling trade-offs, physics problems, essay structure, study strategy \u2014 think it through step by step. Show your reasoning when it helps the student understand, not just the conclusion.
+REASONING: For genuinely complex questions \u2014 scheduling trade-offs, physics problems, essay structure, study strategy \u2014 work it through step by step and show the reasoning, not just the conclusion. That is licence for hard questions only. If you already know the answer, give it; thinking out loud on an easy question is padding.
 
 HONESTY: Distinguish between what you can see in the planner data, what you can reason about, and what the student should verify elsewhere. Never fabricate. If unsure, say so.
 
 NUMBERS: Physics: g = 10\u2009m/s\u00b2 unless explicitly stated otherwise.
 ${getStudyDNAPrompt()}${(window.FluxBrain&&typeof FluxBrain.prompt==='function')?FluxBrain.prompt():''}
-DEPTH: Default to high-leverage help: trace logic from first principles when it helps, show alternate approaches, stress-test edge cases, and surface common mistakes. When speed matters, lead with the decisive result then optional depth. For work that will be turned in for a grade, build mastery—full solutions with different numbers, outlines, checklists, and verification steps the student can execute—so they understand and can defend their own write-up.
+DEPTH: Lead with the answer, at the shortest length that is genuinely useful. Do not volunteer first-principles derivations, alternate approaches, edge cases or common-mistake lists unless the student asks for them or the answer is wrong without them. If you think depth would help, offer it in one short closing line ("want me to go through why that works?") rather than writing it unprompted. The exception is work being turned in for a grade: there, build real mastery - full worked solutions using different numbers, outlines, checklists and verification steps the student can execute - so they understand and can defend their own write-up.
 </how_you_work>
 ${(()=>{
   try{
@@ -8552,7 +8589,10 @@ async function fluxReadAIStream(res,thinkEl,thinkAnim){
     const visible=full.split(/`{3,}\s*(?:flux_tool|actions|skill)/i)[0].trim();
     if(visible){
       bub.innerHTML=fmtAI(visible);
-      try{const wrap=document.getElementById('aiMsgs');if(wrap)wrap.scrollTop=wrap.scrollHeight;}catch(e){}
+      // Follow the text as it arrives, but only while the reader is still at
+      // the bottom. Scroll up mid-answer and this stops, instead of dragging
+      // you back down every 90ms.
+      aiScrollToBottom();
     }
   };
   for(;;){
@@ -10993,8 +11033,9 @@ function openFluxAgent(opts){
     else if(opts.clearInput)inp.value='';
     inp.focus();
     try{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,120)+'px';}catch(e){}
-    const wrap=document.getElementById('aiMsgsWrap');
-    if(wrap)wrap.scrollTop=wrap.scrollHeight;
+    // Forced: openFluxAgent is an arrival, not a scroll — you came here from a
+    // task's ✦ button and the composer has just been prefilled for you.
+    aiScrollToBottom(true);
   },delay);
 }
 
