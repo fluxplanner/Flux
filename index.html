@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.06da1c9c.css">
+<link rel="stylesheet" href="public/bundles/flux.f1f553ae.css">
 </head>
 <body>
 <noscript>
@@ -1809,12 +1809,22 @@
 
     <div id="profile" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub" id="profilePageSub">Identity, study style, stats, and badges.</p>
+        <!-- setProfilePanelMode() rewrites this per role; kept in sync with the
+             student string there so there's no flash of stale copy on load. -->
+        <p class="flux-page-sub" id="profilePageSub">Your details, study style, course confidence, and stats.</p>
       </header>
       <div class="flux-stack">
-      <div id="myCounselorSection" class="my-counselor-section" data-student-profile-only></div>
+      <!-- Your name and details lead this tab. #myCounselorSection used to sit
+           above them, so the first thing on your own profile was somebody
+           else's face. It has moved to the bottom of this stack, and is paused
+           on top of that — see FLUX_COUNSELOR_CONTACT_ENABLED in app.js. Kept
+           in the markup so un-pausing is one flag, not a re-layout. -->
       <div class="profile-hero">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <!-- No margin-bottom. This row is the card's only child, so the 14px it
+             used to carry stacked on top of the card's own 24px padding and left
+             a hollow strip under the name — visible now that the badges row
+             below renders nothing for students. -->
+        <div style="display:flex;align-items:center;gap:14px">
           <div class="p-avatar" id="pAvatar" onclick="document.getElementById('picUpload').click()">?
             <input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">
           </div>
@@ -1858,6 +1868,7 @@
       </div>
       <div class="card" data-student-profile-only><h3>Course Confidence</h3><div id="confidenceSliders"></div><button onclick="saveConfidences()" style="width:100%;margin-top:8px">Save</button></div>
       <div class="card" data-student-profile-only><h3>Academic Stats</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="profileStats"></div></div>
+      <div id="myCounselorSection" class="my-counselor-section" data-student-profile-only></div>
       </div>
     </div>
 
@@ -2815,8 +2826,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.91de5962.js"></script>
-<script defer src="public/bundles/flux-features.15a86039.js"></script>
+<script defer src="public/bundles/flux-core.da4aec2f.js"></script>
+<script defer src="public/bundles/flux-features.c0f0dbaf.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

@@ -1344,7 +1344,11 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .badge-purple{background:rgba(var(--purple-rgb),.12);color:var(--purple);border:1px solid rgba(var(--purple-rgb),.2)}
 .badge-red{background:rgba(var(--red-rgb),.12);color:var(--red);border:1px solid rgba(var(--red-rgb),.2)}
 
-.profile-hero{background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(var(--purple-rgb),.05));border:1px solid rgba(var(--accent-rgb),.15);border-radius:var(--r-lg);padding:24px;margin-bottom:14px}
+/* No margin-bottom: the hero's only parent is .flux-stack, which already spaces
+   its children by 18px. The extra 14px made the gap under the name block nearly
+   double every other gap on the tab — easy to miss when a counselor card sat
+   above it, obvious now that it leads. */
+.profile-hero{background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(var(--purple-rgb),.05));border:1px solid rgba(var(--accent-rgb),.15);border-radius:var(--r-lg);padding:24px}
 .p-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(var(--accent-rgb),.3);background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:800;color:#fff;cursor:pointer;overflow:hidden;flex-shrink:0;transition:var(--transition)}
 .p-avatar:hover{transform:scale(1.06);box-shadow:0 0 0 4px rgba(var(--accent-rgb),.2)}
 .p-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
@@ -3151,7 +3155,7 @@ input[type=text],input[type=search],input[type=url],input[type=tel],input[type=d
 .t-lbl{font-size:.68rem!important;letter-spacing:1.5px!important}
 
 /* ── 23. PROFILE & EC ── */
-.profile-hero{padding:24px!important;border-radius:16px!important;margin-bottom:14px!important}
+.profile-hero{padding:24px!important;border-radius:16px!important}
 .p-avatar{width:68px!important;height:68px!important;font-size:1.6rem!important}
 
 /* ── 24. REDUCED VISUAL NOISE (defer full glass to liquid-glass on; Snappy keeps solids) ── */

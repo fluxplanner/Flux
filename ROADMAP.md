@@ -37,6 +37,9 @@ Last updated: 2026-08-29.
 | The graphing calculator opened with y=sin(x) | Three places were doing it — the real Desmos window and two built-in fallbacks. All open on an empty grid now. |
 | The Notebook tab | Paused. The sidebar tab labelled "Notebook" held a notes list plus a NotebookLM-style workspace, and that workspace is the part NotebookLM does better. Hidden rather than deleted — every note you've written is still saved and still syncing, and one setting brings the whole tab back. It's also gone from the Settings tab list, so a paused feature can't be switched on by accident. |
 | The locker box at the top of School Info | Your classes are the first thing on that tab now. The box was mostly dead: four panels showing "—" that nothing ever filled in, sitting above the four fields that actually set them — and the two "reveal" buttons pointed at the dead panels, so there was no working way to read your own combination back. What's left is a small "Locker, counselor & student ID" strip below your classes that opens when you tap it. Nothing was lost. |
+| Counselor messaging and office hours | Both paused. Neither finished the round trip: "Book appointment" saved a request but nothing ever confirmed a slot back to the student, "Message" opened a composer against a counselor account most schools haven't linked, and the Staff office hours card needs a database table almost nobody has set up — so it sat on the School tab reading "no office hours have been published yet" indefinitely. Hidden, not deleted; two settings bring it all back. A counselor's own dashboard is untouched — this removes only the student's way in, including the "Book counselor" row in the mobile menu. |
+| Your name is now the first thing on Profile | The tab used to open with your counselor's face and bio, above your own details. Your name, photo and details lead it now; the counselor card moved to the bottom (and is paused anyway). Also tightened the spacing under your name — that gap was nearly double every other gap on the page. |
+| The last of the achievements | A third badge system was still running under your name on Profile — "On a roll", "Task Master", "Study Streak", "Note Taker", and "Complete tasks to earn badges!" when you had none. Gone with the rest. Staff role labels (✓ Directory, Work mode) share that spot and stay, since those are labels, not rewards. |
 | Privacy policy and terms didn't match reality | Fixed: email sign-up wasn't mentioned, Google features were described as live when they're switched off, Anthropic wasn't listed even though your students' text goes there, and mood/wellbeing data, staff verification details and feedback messages weren't mentioned at all. Also confirmed the claim that you can't read people's planners — the database genuinely blocks it. |
 
 ---
@@ -67,7 +70,6 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Profile: hide counselor chat and office hours | Temporary, until they work. Move your name and details to the top so they're the first thing you see. |
 | Old emojis flash in Owner Controls | Briefly visible before the real icons load, in Nuke Controls and Testers. |
 
 ### Reorganisation

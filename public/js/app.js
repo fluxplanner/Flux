@@ -2542,13 +2542,15 @@ function applyRoleUI(){
   const testerBadge=document.getElementById('testerBadge');
   if(testerBadge)testerBadge.style.display=FLUX_FLAGS.TESTER_MODE?'inline-flex':'none';
 
+  // Paused — see FLUX_COUNSELOR_CONTACT_ENABLED. Hidden here as well as emptied
+  // in renderMyCounselorSection so the empty div can't leave a gap in the stack.
   const counselorSection=document.getElementById('myCounselorSection');
-  if(counselorSection)counselorSection.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+  if(counselorSection)counselorSection.style.display=(FLUX_COUNSELOR_CONTACT_ENABLED&&isStudent&&!pendingStaffPersonal)?'':'none';
 
   try{if(typeof setProfilePanelMode==='function')setProfilePanelMode(isEducator);}catch(_){}
 
   const bookCounselorBtn=document.querySelector('[data-action="book-counselor"]');
-  if(bookCounselorBtn)bookCounselorBtn.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+  if(bookCounselorBtn)bookCounselorBtn.style.display=(FLUX_COUNSELOR_CONTACT_ENABLED&&isStudent&&!pendingStaffPersonal)?'':'none';
 
   try{fluxApplyStudentDashboardChrome(studentChromeOn);}catch(_){}
   try{fluxSyncSubjectUiForRole();}catch(_){}
@@ -3009,6 +3011,26 @@ const FLUX_SCHOOL_JOIN_ENABLED=false;
    reads it at script-eval time — a `const` further down would be in the
    temporal dead zone. */
 const FLUX_NOTEBOOK_ENABLED=false;
+
+/* Student-to-counselor contact paused. This is the "My counselor" card at the
+   top of the Profile tab — Book appointment, Message, upcoming appointments,
+   the consent panel and the help-ticket section — plus the "Book counselor"
+   row in the mobile More sheet.
+
+   None of it finishes the round trip: booking writes to counselor_appointments
+   but nothing confirms a slot back to the student, and Message opens a composer
+   against a counselor account most schools have not linked yet, so the button
+   either does nothing or sends into a mailbox no one is watching. A "Message
+   your counselor" button that goes nowhere is worse than not offering one.
+
+   Hidden, not deleted, like FLUX_SCHOOL_JOIN_ENABLED and FLUX_NOTEBOOK_ENABLED
+   above. Every table, modal and handler stays; flip this to true to restore the
+   whole card. The counselor's OWN dashboard is a separate surface and is
+   untouched — this removes only the student-facing way in.
+
+   Staff office hours are part of the same pause but live in their own module,
+   gated by enable_office_hours in flux-feature-flags.js. */
+const FLUX_COUNSELOR_CONTACT_ENABLED=false;
 
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
@@ -6407,7 +6429,9 @@ function setProfilePanelMode(isEducator){
   if(sub){
     sub.textContent=isEducator
       ?'Your educator identity, classroom details, and workspace activity.'
-      :'Identity, study style, stats, and badges.';
+      // No longer "…, stats, and badges" — the badges were the last achievement
+      // system on the tab and went with the rest of them.
+      :'Your details, study style, course confidence, and stats.';
   }
 }
 
@@ -6449,15 +6473,16 @@ function renderProfile(){
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const done=tasks.filter(t=>t.done).length;
-  const badges=[];
-  if(done>=40)badges.push({t:'On a roll',c:'badge-gold'});
-  if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});
-  if(tStreak>=7)badges.push({t:'Study Streak',c:'badge-red'});
-  if(programs.includes('IB DP'))badges.push({t:'📚 IB DP',c:'badge-blue'});
-  if(programs.includes('IB MYP'))badges.push({t:'📖 IB MYP',c:'badge-purple'});
-  if(notes.length>=10)badges.push({t:'Note Taker',c:'badge-purple'});
+  // The third achievement system, and the last one standing. It awarded "On a
+  // roll", "Task Master", "Study Streak" and "Note Taker" under the student's
+  // name, and when you had none it said "Complete tasks to earn badges!" — the
+  // first thing on the tab now that the name block leads. Achievements are
+  // gone, so this goes with them. The element stays: flux-staff-platform.js
+  // fills the same #profileBadges with role chips (✓ Directory, Work mode) for
+  // staff, which are labels, not rewards. Cleared so a student who had badges
+  // before this shipped doesn't keep them frozen on screen.
   const badgeEl=document.getElementById('profileBadges');
-  if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';
+  if(badgeEl)badgeEl.innerHTML='';
 
   const ps=document.getElementById('profileStats');
   const focusHrs=Math.round((load('t_minutes',0)||0)/60);
@@ -19791,7 +19816,11 @@ window.assignStudentCounselor=assignStudentCounselor;
 
 async function renderMyCounselorSection(){
   const host=document.getElementById('myCounselorSection');
-  if(!host||!currentUser)return;
+  if(!host)return;
+  // Paused — see FLUX_COUNSELOR_CONTACT_ENABLED. Emptied rather than skipped so
+  // a card already on screen when the pause lands disappears too.
+  if(!FLUX_COUNSELOR_CONTACT_ENABLED){host.innerHTML='';return;}
+  if(!currentUser)return;
   const sb=getSB();if(!sb)return;
 
   const pendingStaffMeta=String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff';

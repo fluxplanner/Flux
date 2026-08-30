@@ -23,24 +23,31 @@ test.describe('Office hours', () => {
     expect(surface.enabledType).toBe('function');
     expect(surface.injectType).toBe('function');
     expect(surface.refreshType).toBe('function');
-    expect(surface.enabledNow).toBe(true);
+    // Paused — see enable_office_hours in flux-feature-flags.js. The module
+    // still loads and still exports its whole surface, which is what keeps the
+    // pure-helper tests below meaningful; it just refuses to inject.
+    expect(surface.enabledNow).toBe(false);
     expect(surface.fmtTime).toBe('3:30 PM');
     expect(surface.validSlotGood).toBe(true);
     expect(surface.validSlotBad).toBe(false);
   });
 
-  test('student sees Staff office hours card on School panel', async ({ page }) => {
+  /* Was 'student sees Staff office hours card on School panel'. Office hours are
+     paused: publishing needs a table most schools have not migrated, so the card
+     advertised drop-in hours that were never going to appear. Inverted rather
+     than deleted, so un-pausing has a test to answer to. */
+  test('is paused: no card injects on the School panel, even if forced', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await openSidebarTab(page, 'school');
-    // Trigger inject; the observer would normally do this when #school renders,
-    // but force it deterministically so the test doesn't race the observer's debounce.
+    // Call inject() directly. The observer path runs the same function, so a
+    // guard that holds against a direct call holds against the observer too.
     await page.evaluate(() => (window as any).FluxOfficeHours?.inject?.());
+    await page.waitForTimeout(400);
 
-    const card = page.locator('#fluxOfficeHoursStudentCard');
-    await expect(card).toBeAttached({ timeout: 5_000 });
-    await expect(card.locator('h3')).toContainText(/staff office hours/i);
-    // No real data without Supabase — student should see the empty-state copy.
-    await expect(card).toContainText(/no staff office hours/i);
+    await expect(page.locator('#fluxOfficeHoursStudentCard')).toHaveCount(0);
+    await expect(page.locator('#fluxOfficeHoursStaffCard')).toHaveCount(0);
+    // And nothing left behind on the panel that advertises the feature.
+    await expect(page.locator('#school')).not.toContainText(/office hours/i);
   });
 
   test('groupByStaff sorts alphabetically and slots within group by day order', async ({ page }) => {
