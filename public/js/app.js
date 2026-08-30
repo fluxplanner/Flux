@@ -5752,12 +5752,18 @@ function renderSchoolTeacher(){
         <button id="tsiSaveBtn" type="button" class="btn-primary" style="margin-top:10px;padding:11px 18px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer" onclick="saveTeacherSchoolInfo()">Save details</button>
       </div>
 
-      ${role==='teacher'?`
-      <div class="card">
-        <h3 style="margin-top:0">My classes</h3>
-        <p style="color:var(--muted2);font-size:.82rem;margin:0 0 8px">Class rosters and assignment posting live in the <a href="javascript:nav('teacherDashboard')" style="color:var(--accent);text-decoration:none;font-weight:700">Teacher Dashboard</a>.</p>
-      </div>`:''}
+      ${role==='counselor'?'':(window.FluxTeacherClasses?.cardHtml?.()||'')}
     </div>`;
+
+  /* The "My classes" card above is an empty shell — FluxTeacherClasses paints
+     itself into it once the panel's innerHTML has landed, the same way
+     flux-office-hours re-mounts here. Building it inside the template string
+     instead would mean re-escaping every class name a teacher ever typed.
+
+     It replaces a card that was a single sentence pointing at the Teacher
+     Dashboard; there was no way to record what you teach, when. Counselors
+     are the one role skipped: they hold a caseload, not a timetable. */
+  try{window.FluxTeacherClasses?.render?.();}catch(_){}
 }
 window.renderSchoolTeacher=renderSchoolTeacher;
 
@@ -9130,6 +9136,11 @@ function getCloudPayload(){
     // the device that started it — copying its end timestamp across would show
     // a second device a countdown nobody there set.
     timeTools:(window.FluxTimeTools?.getCloudSlice?FluxTimeTools.getCloudSlice():load('flux_time_tools_v1',{alarms:[],worldClocks:[]})),
+    // The classes a member of staff TEACHES, plus the work set for each. A
+    // separate key from the student `classes` above: same shape, opposite
+    // meaning, and sharing one would feed a teacher's timetable into the GPA
+    // maths of anyone who is both.
+    teacherClasses:(window.FluxTeacherClasses?.getCloudSlice?FluxTeacherClasses.getCloudSlice():load('flux_teacher_classes',[])),
     periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
     flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
     srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
@@ -9477,6 +9488,11 @@ async function syncFromCloud(){
     }
     if(d.timeTools&&typeof d.timeTools==='object'){
       try{if(window.FluxTimeTools?.applyFromCloud)FluxTimeTools.applyFromCloud(d.timeTools);}catch(_){}
+    }
+    // Array, not object — an empty timetable is a legitimate value, so this
+    // tests Array.isArray rather than truthiness the way the object slices do.
+    if(Array.isArray(d.teacherClasses)){
+      try{if(window.FluxTeacherClasses?.applyFromCloud)FluxTeacherClasses.applyFromCloud(d.teacherClasses);else save('flux_teacher_classes',d.teacherClasses);}catch(_){}
     }
     if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
       try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}
