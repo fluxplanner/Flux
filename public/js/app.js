@@ -6322,7 +6322,38 @@ function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlip
 // ══ MOOD ══
 function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');save('flux_mood_today',val);}
 function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;save('flux_stress_today',v);}
-function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
+/** The one place a mood entry is written.
+ *
+ *  Both the full check-in on the Mood tab and the morning/evening quick prompt
+ *  go through here, so the two cannot produce differently shaped records or
+ *  skip each other's follow-up work (momentum, the counselor timeline, the
+ *  mood tint, the history chart).
+ *
+ *  MERGES into today's entry rather than replacing it, which the old inline
+ *  code did. Replacing was fine while the Mood tab was the only writer and
+ *  supplied every field at once. It stops being fine now a one-tap prompt
+ *  writes just a mood: replacing would drop the optional moodAm/moodPm
+ *  readings every time you opened the tab and pressed Save.
+ */
+function fluxPersistMood(patch){
+  const date=todayStr();
+  const idx=moodHistory.findIndex(m=>m.date===date);
+  const prev=idx>=0?moodHistory[idx]:{date,mood:3,stress:3,sleep:7};
+  const entry=Object.assign({},prev,patch||{},{date});
+  if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);
+  save('flux_mood',moodHistory);
+  try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}
+  try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}
+  try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}
+  /* Guarded from here down: the prompt can fire from any tab, so the Mood
+     tab's chart may not be in the DOM. A missing chart must not cost you the
+     entry that was already saved above. */
+  try{renderMoodHistory();}catch(_){}
+  try{if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}catch(_){}
+  try{syncKey('moodHistory',moodHistory);}catch(_){}
+  return entry;
+}
+function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');fluxPersistMood({mood,stress,sleep});const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
 function stopBreathing(){if(!breathingActive)return;clearInterval(breathTimer);breathTimer=null;breathingActive=false;const btn=document.getElementById('breathBtn');if(btn)btn.textContent='Start';const circle=document.getElementById('breathCircle');if(circle){circle.style.transform='scale(1)';circle.textContent='START';}}

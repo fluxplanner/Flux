@@ -1,0 +1,132 @@
+/* ============================================================================
+   FLUX MOOD PROMPT  ·  flux-mood-prompt.css
+   The twice-daily check-in card.
+
+   Sits above the content and never blocks it, and clears the mobile bottom nav
+   by measuring from --bnav-total rather than guessing a pixel value — guessing
+   is what produced the dead-space bug that contract was introduced to fix.
+   Colours are theme variables throughout: this card can appear on any tab, so
+   a dark-only surface would be a light-mode bug on all of them at once.
+   ========================================================================== */
+
+/* In the page flow at the top of the dashboard, NOT fixed over the app.
+   The first version floated bottom-right and covered a button — the e2e suite
+   caught it intercepting a click meant for Grade GPS, which in real use is a
+   student unable to press Apply on their own study plan. A card in the flow
+   cannot overlap anything, so that whole class of bug is gone rather than
+   tuned around with z-index. */
+.fmp {
+  width: 100%;
+  margin: 0 0 14px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .22s ease, transform .22s cubic-bezier(.2,.85,.3,1);
+
+  background: var(--card-solid, var(--card));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 15px 16px 13px;
+  /* Softer than the old floating shadow: it sits among other cards now and
+     should not read as hovering above them. */
+  box-shadow: 0 6px 20px -14px rgba(0,0,0,.4);
+}
+.fmp.is-in { opacity: 1; transform: translateY(0); }
+
+@media (min-width: 769px) {
+  /* Wide screens: keep it from stretching to a full-width banner, which reads
+     as an alert rather than a question. */
+  .fmp { max-width: 520px; }
+}
+
+.fmp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fmp-title {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.fmp-ask {
+  font-size: .96rem;
+  font-weight: 650;
+  color: var(--text);
+  margin-top: 3px;
+}
+.fmp-x {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.fmp-x:hover { color: var(--text); border-color: var(--muted2); }
+
+.fmp-faces {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.fmp-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 2px 7px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  cursor: pointer;
+  transition: transform .13s var(--ease-spring, cubic-bezier(.2,.85,.3,1)),
+              border-color .13s ease, background .13s ease;
+}
+.fmp-face:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), .45);
+  background: rgba(var(--accent-rgb), .07);
+}
+.fmp-face:active { transform: translateY(0) scale(.96); }
+.fmp-face-ico { font-size: 1.4rem; line-height: 1; }
+.fmp-face-lbl {
+  font-size: .6rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .02em;
+}
+
+.fmp-more {
+  width: 100%;
+  padding: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted2);
+  font-size: .74rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.fmp-more:hover { color: var(--accent); background: rgba(var(--accent-rgb), .07); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fmp, .fmp.is-in { transition: opacity .01s linear; transform: none; }
+  .fmp-face { transition: none; }
+  .fmp-face:hover { transform: none; }
+}
+
+/* Never print it, and never let it sit over a full-screen focus session. */
+@media print { .fmp { display: none !important; } }
+body.ftt-fs-on .fmp { display: none !important; }
