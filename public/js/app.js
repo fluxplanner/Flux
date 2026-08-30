@@ -9050,6 +9050,11 @@ function getCloudPayload(){
     sportPracticePack:(window.FluxSportPracticePack?.getCloudSlice?FluxSportPracticePack.getCloudSlice():load('flux_sport_practice_pack_v1',{sportName:'',practiceTime:'16:00',practiceWeekdays:[1,3,5],linkedExtraId:'',lastPackId:''})),
     csSnippetLibrary:(window.FluxCsSnippetLibrary?.getCloudSlice?FluxCsSnippetLibrary.getCloudSlice():load('flux_cs_snippet_library_v1',{snippets:[],seeded:false})),
     unitConverterFavorites:(window.FluxUnitConverterFavorites?.getCloudSlice?FluxUnitConverterFavorites.getCloudSlice():load('flux_unit_converter_favorites_v1',{favorites:[],seeded:false})),
+    // Starred subjects in the Study Tools rail. Saved locally but never sent,
+    // so favourites were per-device: star Biology on your laptop and your phone
+    // still showed the default order. Note the lowercase global — the module
+    // exposes window.fluxStudyHub, not FluxStudyHub.
+    studyHub:(window.fluxStudyHub?.getCloudSlice?fluxStudyHub.getCloudSlice():load('flux_study_hub',{subject:'chemistry',chemTab:'table',tool:{},favs:[]})),
     periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
     flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
     srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
@@ -9391,6 +9396,9 @@ async function syncFromCloud(){
     }
     if(d.unitConverterFavorites&&typeof d.unitConverterFavorites==='object'){
       try{if(window.FluxUnitConverterFavorites?.applyFromCloud)FluxUnitConverterFavorites.applyFromCloud(d.unitConverterFavorites);else save('flux_unit_converter_favorites_v1',d.unitConverterFavorites);}catch(_){}
+    }
+    if(d.studyHub&&typeof d.studyHub==='object'){
+      try{if(window.fluxStudyHub?.applyFromCloud)fluxStudyHub.applyFromCloud(d.studyHub);else save('flux_study_hub',d.studyHub);}catch(_){}
     }
     if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
       try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}
