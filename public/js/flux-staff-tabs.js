@@ -204,7 +204,29 @@
   function renderLessonHub(){
     const host=document.getElementById('lessonHubBody');
     if(!host)return;
-    const classes=(window.classes||[]).slice().sort((a,b)=>(a.period||0)-(b.period||0));
+    /* The classes you TEACH, falling back to the ones you attend.
+       This read window.classes unconditionally — the student list — so for a
+       teacher the hub was permanently "No classes yet", sitting directly under
+       its own empty state telling you to add the periods you teach in School
+       Info. FluxTeacherClasses.mine() owns that decision for every staff
+       surface and returns null when the student list really is the right one. */
+    const source=(()=>{
+      try{const m=window.FluxTeacherClasses?.mine?.();if(m)return m;}catch(_){}
+      return window.classes||[];
+    })();
+    /* Only the classes that actually meet today. Rendering every class every
+       day meant a teacher with A1 and B1 saw both on one Tuesday — and because
+       the store below is keyed by date + period, those two shared a single
+       entry and overwrote each other's attendance. Filtering to the cycle day
+       fixes the collision at source: one class per period per day, so the
+       existing key is unambiguous again and no saved state is orphaned. */
+    const classes=(()=>{
+      try{
+        if(window.FluxNow?.classesForDay)
+          return window.FluxNow.classesForDay(source,window.FluxNow.cycleToday()).slice();
+      }catch(_){}
+      return source.slice();
+    })().sort((a,b)=>(a.period||0)-(b.period||0));
     const today=todayISO();
     const dateLabel=fmtLongDay(new Date());
 

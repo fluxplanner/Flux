@@ -201,3 +201,140 @@ test.describe('Teacher class schedule', () => {
     await expect(page.locator('#fluxTeacherClasses .ftc-empty')).toBeVisible();
   });
 });
+
+/*
+ * The staff surfaces that were reading the wrong list.
+ *
+ * Before a teacher timetable existed, the Lesson Hub and the FluxNow strip
+ * both read window.classes — the classes you ATTEND. For a teacher that is
+ * normally empty, so the Lesson Hub rendered "No classes yet" directly beneath
+ * its own empty state telling you to add the periods you teach in School Info,
+ * and the dashboard counted 0 of everything. These pin the fix: staff read the
+ * timetable they teach, students are unaffected, and Personal mode still means
+ * "me, the person".
+ */
+test.describe('Staff surfaces read the timetable they teach', () => {
+  /** Two classes around a fixed clock time, one in session and one later. */
+  async function seedTeachingDay(page: import('@playwright/test').Page) {
+    return page.evaluate(() => {
+      const p = (n: number) => (n < 10 ? '0' : '') + n;
+      const now = new Date();
+      const hm = (d: Date) => p(d.getHours()) + ':' + p(d.getMinutes());
+      (window as any).FluxTeacherClasses._set([
+        {
+          id: 101, period: 2, periodLabel: 'A2', days: '', name: 'World History', room: '118',
+          timeStart: hm(new Date(now.getTime() - 10 * 60000)),
+          timeEnd: hm(new Date(now.getTime() + 30 * 60000)),
+          color: '#f43f5e', work: [],
+        },
+        {
+          id: 102, period: 3, periodLabel: 'A3', days: '', name: 'American Lit', room: '204',
+          timeStart: hm(new Date(now.getTime() + 40 * 60000)),
+          timeEnd: hm(new Date(now.getTime() + 90 * 60000)),
+          color: '#3b82f6', work: [],
+        },
+      ]);
+    });
+  }
+
+  test('FluxNow names the class a teacher is teaching, not one they attend', async ({ page }) => {
+    await gotoTeacherSchool(page);
+    await seedTeachingDay(page);
+
+    const res = await page.evaluate(() => {
+      const w = window as any;
+      // resolveNow weekend-gates on the real clock, so pin a weekday. The
+      // class times are wall-clock, so the same hour on a Monday still lands
+      // mid-period and the suite passes whichever day it runs.
+      const d = new Date();
+      d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+      return {
+        r: w.FluxNow.resolveLive(d),
+        studentNames: (w.classes || []).map((c: any) => c.name),
+      };
+    });
+
+    expect(res.r.state).toBe('period');
+    expect(res.r.cls.name).toBe('World History');
+    expect(res.r.next.name).toBe('American Lit');
+    expect(res.r.sentence).toContain('World History');
+    // The student list is non-empty in this scenario, so naming a class from
+    // the teaching list is only meaningful if it is not also a student one.
+    expect(res.studentNames.length).toBeGreaterThan(0);
+    expect(res.studentNames).not.toContain('World History');
+  });
+
+  test('the Lesson Hub lists what you teach, with attendance to take', async ({ page }) => {
+    await gotoTeacherSchool(page);
+    await seedTeachingDay(page);
+    await page.evaluate(() => (window as any).nav('lessonHub'));
+
+    const cards = page.locator('#lessonHubBody .lh-class-card');
+    await expect(cards).toHaveCount(2);
+    await expect(cards.first().locator('.lh-class-name')).toHaveText('World History');
+    // The empty state that used to show under a filled-in timetable.
+    await expect(page.locator('#lessonHubBody .lh-empty')).toHaveCount(0);
+    // Attendance is the thing a teacher comes here to do.
+    await expect(cards.first().locator('.lh-att-mini')).toHaveText('No attendance');
+    await cards.first().locator('.lh-att-btn[data-att="present"]').click();
+    await expect(page.locator('#lessonHubBody .lh-class-card').first().locator('.lh-att-mini'))
+      .toHaveText('All present');
+  });
+
+  test('only the classes that meet today are listed', async ({ page }) => {
+    await gotoTeacherSchool(page);
+    // Same period number on opposite cycle days. Rendering both on one day is
+    // what made them share a lesson-state key and overwrite each other.
+    await page.evaluate(() => {
+      (window as any).save('flux_cycle_config', {
+        enabled: true, pattern: ['A', 'B'], anchorDate: '2026-08-31', skipWeekends: true,
+      });
+      (window as any).FluxTeacherClasses._set([
+        { id: 1, period: 1, periodLabel: 'A1', days: 'A Day', name: 'American Lit', color: '#3b82f6', work: [] },
+        { id: 2, period: 1, periodLabel: 'B1', days: 'B Day', name: 'World History', color: '#f43f5e', work: [] },
+      ]);
+    });
+
+    const res = await page.evaluate(() => {
+      const w = window as any;
+      const label = w.FluxNow.cycleToday();
+      const today = w.FluxNow.classesForDay(w.FluxTeacherClasses.mine(), label);
+      return { label, names: today.map((c: any) => c.name) };
+    });
+
+    // Whatever today's letter is, exactly one of the two period-1 classes runs.
+    if (res.label) {
+      expect(res.names).toHaveLength(1);
+      expect(res.names[0]).toBe(res.label === 'A' ? 'American Lit' : 'World History');
+    } else {
+      // Weekend or no cycle: A/B classes are not scheduled at all.
+      expect(res.names).toHaveLength(0);
+    }
+  });
+
+  test('Personal mode gives an educator their own student list back', async ({ page }) => {
+    await gotoTeacherSchool(page);
+    await seedTeachingDay(page);
+    expect(await page.evaluate(() => (window as any).FluxTeacherClasses.mine()?.length)).toBe(2);
+
+    // Off the clock, a teacher is a person using a planner.
+    const mine = await page.evaluate(() => {
+      const w = window as any;
+      w.FluxRole.setMode ? w.FluxRole.setMode('personal') : (w.FluxRole.mode = 'personal');
+      return w.FluxTeacherClasses.mine();
+    });
+    expect(mine).toBeNull();
+  });
+
+  test('a student is untouched by any of this', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    const res = await page.evaluate(() => {
+      const w = window as any;
+      return { mine: w.FluxTeacherClasses.mine(), studentCount: (w.classes || []).length };
+    });
+    // mine() must refuse for anyone who is not staff, so resolveLive falls
+    // through to the student list exactly as it always did.
+    expect(res.mine).toBeNull();
+    expect(res.studentCount).toBeGreaterThan(0);
+  });
+});

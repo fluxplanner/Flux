@@ -316,6 +316,31 @@
     /** Markup for renderSchoolTeacher to drop in place of its old stub card. */
     cardHtml: function () { return '<div class="card" id="fluxTeacherClasses"></div>'; },
     list: function () { return classes.slice(); },
+    /**
+     * The timetable belonging to whoever is signed in, or null meaning
+     * "not yours — use the student list".
+     *
+     * Every staff surface needs this same answer, and before a teacher
+     * timetable existed they all guessed the same wrong way: the Lesson Hub
+     * (attendance, lesson notes, materials) and the FluxNow strip both read
+     * window.classes — the list of classes you ATTEND. For a teacher that is
+     * normally empty, so the Lesson Hub showed "No classes yet" directly under
+     * an empty state telling you to add the periods you teach in School Info,
+     * and the dashboard counted 0 of everything. That wall of zeros was never
+     * a teacher with nothing on; it was the wrong list.
+     *
+     * In Personal mode an educator is using Flux as themselves, so null is
+     * correct there and the student list rightly wins again.
+     */
+    mine: function () {
+      try {
+        if (!window.FluxRole?.isEducator?.()) return null;
+        if (window.FluxRole.isWorkMode && !window.FluxRole.isWorkMode()) return null;
+      } catch (e) { return null; }
+      // An empty timetable still belongs to them: a teacher who has not filled
+      // theirs in should get an honest empty state, not their own student rows.
+      return classes.slice();
+    },
     /* Cloud contract, same shape as every other synced module. */
     getCloudSlice: function () { return classes; },
     applyFromCloud: function (data) {
