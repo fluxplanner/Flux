@@ -442,7 +442,7 @@ Learning style preferences: `+t.join(" "):""}const SUBJECT_COLORS=["#6366f1","#f
 <button type="button" class="nav-item" onclick="${a("counselorMeetings",!0)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni"></span><span class="nl">Meetings</span></button>
 <button type="button" class="nav-item" onclick="${a("adminOps",!0)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
 <button type="button" class="nav-item" onclick="${a("staffWorkboard",!0)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Classes</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Rosters</span></button>
 <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
 <button type="button" class="nav-item" onclick="${e?"navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}":"nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}"}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
 <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
@@ -1673,7 +1673,7 @@ Give me a brief Sunday review: what to close out, what to prioritize next week, 
       </div>
 
       <div class="teacher-stats-strip">
-        <div class="teacher-stat"><div class="tstat-num">${a.length}</div><div class="tstat-label">Classes</div></div>
+        <div class="teacher-stat"><div class="tstat-num">${a.length}</div><div class="tstat-label">Rosters</div></div>
         <div class="teacher-stat-divider"></div>
         <div class="teacher-stat"><div class="tstat-num">${s}</div><div class="tstat-label">Assignments</div></div>
         <div class="teacher-stat-divider"></div>
@@ -1703,15 +1703,20 @@ Give me a brief Sunday review: what to close out, what to prioritize next week, 
       <div class="teacher-main-grid">
         <div class="teacher-col">
           <div class="teacher-section-head">
-            <h3>Your Classes</h3>
+            <!-- "Your Classes" until now, which made three different things
+                 share one name: this card, the sidebar entry, and the IA
+                 timetable on School Info. They are not the same. This one is a
+                 roster \u2014 students joining by code, held in the school
+                 database. What you teach and when is "My classes". -->
+            <h3>Class rosters</h3>
             <button class="tsec-add" data-action="new-class">+ Add</button>
           </div>
           ${a.length===0?`
             <div class="teacher-empty">
               <div class="te-icon"></div>
-              <div class="te-title">No classes yet</div>
-              <div class="te-sub">Create a class and share the code with your students</div>
-              <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create First Class</button>
+              <div class="te-title">No rosters yet</div>
+              <div class="te-sub">A roster is the students in a class. Create one and share the join code.<br>To record what you teach and when, use <a href="javascript:nav('school')" style="color:var(--accent);text-decoration:none;font-weight:700">My classes</a> in School Info.</div>
+              <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create first roster</button>
             </div>`:a.map(d=>renderTeacherClassCard(d)).join("")}
         </div>
 
