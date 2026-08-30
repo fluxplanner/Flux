@@ -284,6 +284,26 @@
   font-size: 0.68rem;
   color: var(--muted2);
 }
+/* Class chooser and the typed name list. Both are form controls inside #app,
+   where flux-form-controls.css claims every input and select at specificity
+   (1,1,1) — so these carry the #app prefix too, or its 42px min-height and
+   stacked margins push a small widget apart. */
+#app .flux-picker-class {
+  width: 100%;
+  margin: 0 0 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+#app .flux-picker-names {
+  width: 100%;
+  margin: 6px 0;
+  min-height: 0;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  resize: vertical;
+}
 .flux-class-timer-display {
   font-size: 2rem;
   font-weight: 800;

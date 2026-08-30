@@ -78,6 +78,13 @@
         /* A class written before work existed has none, and a corrupted one
            could hold anything — a bad value here throws on every render. */
         work: Array.isArray(c.work) ? c.work.filter(function (w) { return w && w.title; }) : [],
+        /* Names typed by the teacher, for the random picker. Deliberately not
+           the join-code roster: most classes will never have every student
+           sign up, and a picker that only works for the ones who did is a
+           picker nobody can use in front of a room. */
+        students: Array.isArray(c.students)
+          ? c.students.map(function (s) { return String(s || '').trim(); }).filter(Boolean)
+          : [],
       };
     }).sort(byPeriod);
   }
@@ -371,6 +378,18 @@
         else localStorage.setItem(LS_KEY, JSON.stringify(classes));
       } catch (e) {}
       render();
+    },
+    /** Replace the typed name list for one class. Accepts an array or raw
+     *  pasted text, one name per line — pasting a column out of a
+     *  spreadsheet is how a teacher will actually do this. */
+    setStudents: function (classId, names) {
+      refresh();
+      var c = find(classId);
+      if (!c) return null;
+      var list = Array.isArray(names) ? names : String(names || '').split(/[\n,]/);
+      c.students = list.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
+      persist();
+      return c.students.slice();
     },
     // Test seams.
     _add: addClass,
