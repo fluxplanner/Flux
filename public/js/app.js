@@ -4411,7 +4411,11 @@ function fluxRenderDashMob(){
       if(meta){
         const chips=[];
         if(sub)chips.push(`<span class="mob-meta-chip" style="background:${sub.color||'rgba(255,255,255,.05)'}20;color:${sub.color||'var(--text)'};border-color:${sub.color||'rgba(255,255,255,.1)'}40">${esc(sub.short||t.subject)}</span>`);
-        if(t.priority==='high')chips.push(`<span class="mob-meta-chip" style="background:rgba(255,79,94,.12);color:#ff4f5e;border-color:rgba(255,79,94,.3)">High</span>`);
+        // Theme red, not a hardcoded #ff4f5e. That literal is the dark theme's
+        // red, and printing it on its own 12% tint measured 2.79:1 in light
+        // mode — under the 4.5:1 needed to read text this small. var(--red) is
+        // #f85149 on dark and #cf222e on light, so both themes stay legible.
+        if(t.priority==='high')chips.push(`<span class="mob-meta-chip" style="background:rgba(var(--red-rgb),.12);color:var(--red);border-color:rgba(var(--red-rgb),.3)">High</span>`);
         if(t.date){
           const due=new Date(t.date+'T00:00:00');
           const diffDays=Math.round((due-today)/86400000);
@@ -5800,7 +5804,7 @@ function renderSchool(){
       const renderClassRow=(c,col)=>{
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       };
       cl.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -5818,7 +5822,7 @@ function renderSchool(){
         const col=colorMap[c.id];
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       }).join('');
     }
   }

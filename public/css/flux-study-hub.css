@@ -511,3 +511,75 @@
   min-height: 0;
 }
 body.fsh-desmos-locked { overflow: hidden; }
+
+/* ============================================================================
+   LIGHT THEME
+   ----------------------------------------------------------------------------
+   This file was written dark-first (see the header) and had no light path at
+   all, which is why Study Tools was the worst tab in light mode: the subject
+   tab strip painted itself rgba(10,14,24,.5) — near-black at half opacity —
+   then drew --fsh-ink-2 dark-grey labels on top of it. Measured 2.26:1, where
+   4.5:1 is the readable minimum. Ten of the twenty-four contrast failures
+   across the whole planner were on this one tab.
+
+   The dark surfaces come in two families, and both have to invert:
+
+     sunken  rgba(10,14,24,.5-.6) / rgba(8,11,20,.55-.6)
+             inputs, tab strips, segmented controls, the canvas well —
+             "carved into the card", darker than what surrounds them.
+     raised  rgba(255,255,255,.03-.12)
+             chips, table headers, rows, tags — "sitting on the card",
+             lighter than what surrounds them.
+
+   On a white card the first must become a light grey and the second must go
+   white with a border, or it has nothing to contrast against. Everything below
+   is gated on [data-theme="light"]; of the eight entries in THEMES only `light`
+   is light, so the dark path — which is what everyone uses today — is
+   bit-for-bit untouched.
+
+   --fsh-ink-2 is deliberately NOT overridden. It already resolves to #424a53,
+   7.8:1 on white; it only looked broken because of what sat behind it.
+   ========================================================================== */
+
+[data-theme="light"] .fsh {
+  /* Glass panels: same 155deg construction, light stops. */
+  --fsh-glass:linear-gradient(155deg, rgba(255,255,255,.94), rgba(246,248,250,.88));
+  --fsh-glass-2:linear-gradient(155deg, rgba(252,253,255,.92), rgba(240,243,247,.86));
+  /* Was rgba(255,255,255,.1) — white on white, i.e. no border at all. */
+  --fsh-line:var(--border2, rgba(27,31,36,.15));
+  --fsh-shadow:0 26px 60px -30px rgba(31,35,40,.28), 0 2px 0 rgba(255,255,255,.9) inset;
+  /* Neumorphism inverted: light source stays top-left, so the highlight goes
+     white and the shadow drops to a soft grey instead of near-black. */
+  --fsh-neu:-7px -7px 16px rgba(255,255,255,.9), 8px 9px 22px rgba(31,35,40,.14);
+  --fsh-neu-in:inset 4px 4px 10px rgba(31,35,40,.10), inset -4px -4px 10px rgba(255,255,255,.9);
+}
+
+/* ── sunken ──────────────────────────────────────────────────────────────── */
+[data-theme="light"] .fsh-search input,
+[data-theme="light"] .fsh-chem-tabs,
+[data-theme="light"] .fsh-seg,
+[data-theme="light"] .fsh-input,
+[data-theme="light"] .fsh-atom-picker input { background:rgba(234,238,244,.9); }
+[data-theme="light"] .fsh-canvas-wrap { background:rgba(238,241,246,.85); }
+/* Keeps the accent glow, swaps only the near-black floor behind it. */
+[data-theme="light"] .fsh-atom-stage {
+  background:radial-gradient(circle at 50% 45%, rgba(var(--fsh-accent-rgb),.14), rgba(236,240,246,.9) 62%);
+}
+
+/* ── raised ──────────────────────────────────────────────────────────────── */
+[data-theme="light"] .fsh-prop,
+[data-theme="light"] .fsh-mm-row,
+[data-theme="light"] .fsh-ws-q,
+[data-theme="light"] .fsh-formula,
+[data-theme="light"] .fsh-ion,
+[data-theme="light"] .fsh-tag,
+[data-theme="light"] .fsh-sol th,
+[data-theme="light"] .fsh-search-key,
+[data-theme="light"] .fsh-qchip { background:rgba(255,255,255,.96); }
+[data-theme="light"] .fsh-search .fsh-search-clear { background:rgba(31,35,40,.07); }
+[data-theme="light"] .fsh-search .fsh-search-clear:hover { background:rgba(31,35,40,.14); }
+[data-theme="light"] .fsh-cat-chip.active { background:rgba(31,35,40,.09); }
+/* The pill that slides under the active tab, and the slider track: both were
+   white-alpha, which on white left the moving part invisible. */
+[data-theme="light"] .fsh-tabs-slider { background:rgba(31,35,40,.10); }
+[data-theme="light"] .fsh-range { background:rgba(31,35,40,.16); }

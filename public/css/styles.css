@@ -1492,7 +1492,16 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .reveal-btn:hover{color:var(--text);background:var(--card2)}
 .class-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
 .class-row:last-child{border-bottom:none}
-.class-period{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+/* The subject colour arrives as --sub (set inline by renderSchool) rather than
+   as a literal color/background pair. It used to be printed as both the text
+   and a 13% tint of itself — fine on a near-black card, but on white a bright
+   subject like #00bfff sat on its own pale wash at 1.70:1. A class's colour is
+   user-chosen, so there is no palette to fix; routing it through a custom
+   property is what lets the light rule below darken an arbitrary hue. */
+.class-period{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0;background:color-mix(in srgb,var(--sub,var(--accent)) 13%,transparent);color:var(--sub,var(--accent))}
+/* Mixing toward black keeps the hue recognisable — Chemistry stays blue — while
+   pulling it dark enough to read on its own tint. 62% lands #00bfff at ~5.2:1. */
+[data-theme="light"] .class-period{color:color-mix(in srgb,var(--sub,var(--accent)) 62%,#000)}
 
 .sync-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .sync-badge.synced{background:rgba(var(--green-rgb),.08);color:rgba(255,255,255,.55);border:1px solid rgba(var(--green-rgb),.14)}
@@ -1592,7 +1601,14 @@ body[data-theme="light"]::before{
 [data-theme="light"] .btn-sec{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);color:#1a1b2e}
 [data-theme="light"] .task-item{background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.06)}
 [data-theme="light"] .ai-bub.bot{background:#fff;border-color:rgba(0,0,0,.1)}
-[data-theme="light"] .tmode-btn{border-color:rgba(0,0,0,.12);color:#5a5f7a}
+/* :not(.active) matters. This rule is (0,2,0), the same weight as the
+   .tmode-btn.active rule ~1000 lines above, but it comes later — so in light
+   mode it was overwriting the active button's white label with #5a5f7a while
+   .active's accent-blue background stayed. Dark grey on blurple measured
+   1.36:1. Affects every segmented control that uses this class: the Timer's
+   Pomodoro/Short Break/Long Break, the dashboard filter chips, the view
+   toggles. Scoping to inactive buttons leaves the active state alone. */
+[data-theme="light"] .tmode-btn:not(.active){border-color:rgba(0,0,0,.12);color:#5a5f7a}
 [data-theme="light"] .card h3::after{background:rgba(0,0,0,.08)}
 [data-theme="light"] .quick-add{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.12)}
 

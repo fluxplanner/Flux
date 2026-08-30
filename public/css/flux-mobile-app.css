@@ -567,6 +567,18 @@
   }
   .dash-mob-stat[data-kind="high"] .dash-mob-stat-num{ color: #ffb040; }
 
+  /* The three colours above are hardcoded neon, picked against a near-black
+     dashboard. On the light theme they sit on their own pale tint of the same
+     hue and stop being readable: Done measured 1.14:1, High 1.53:1, Overdue
+     2.54:1, where 4.5:1 is the minimum for text this size. The theme already
+     ships accessible equivalents — --green #1a7f37, --gold #9a6700, --red
+     #cf222e — so light borrows those. Dark is deliberately left as-is rather
+     than also switched to the variables: nothing is wrong with it, and it is
+     what everyone is actually looking at. */
+  [data-theme="light"] .dash-mob-stat[data-kind="overdue"] .dash-mob-stat-num{ color: var(--red); }
+  [data-theme="light"] .dash-mob-stat[data-kind="done"] .dash-mob-stat-num{ color: var(--green); }
+  [data-theme="light"] .dash-mob-stat[data-kind="high"] .dash-mob-stat-num{ color: var(--gold); }
+
   /* Do This Now card — thick left accent border, big prominent */
   .dash-mob-donow{
     position: relative;
