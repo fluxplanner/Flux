@@ -259,6 +259,84 @@
   white-space: nowrap;
 }
 
+/* ── full-screen focus ────────────────────────────────────────────────────── */
+/* Works whether or not the Fullscreen API was granted. iOS Safari refuses
+   requestFullscreen on ordinary elements and any browser may decline, so the
+   overlay covers the viewport on its own merits — the API only removes the
+   browser chrome as a bonus. */
+.ftt-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  /* Opaque, not translucent. The point is to take the planner out of view, and
+     a see-through backdrop leaves your task list legible behind the clock. */
+  background: var(--bg);
+  padding: max(20px, env(safe-area-inset-top, 0px)) 20px max(20px, env(safe-area-inset-bottom, 0px));
+}
+.ftt-fs[hidden] { display: none; }
+/* Nothing behind the overlay should scroll while it is up. */
+body.ftt-fs-on { overflow: hidden; }
+
+.ftt-fs-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  width: 100%;
+  max-width: 560px;
+}
+.ftt-fs-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  color: var(--muted);
+}
+.ftt-fs-ringwrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* Scales off the smaller viewport edge so it fits a short laptop window as
+     well as a tall phone, without ever outgrowing the screen. */
+  width: min(58vh, 78vw, 420px);
+  aspect-ratio: 1 / 1;
+}
+.ftt-fs-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ftt-fs-ring-bg { fill: none; stroke: var(--border2, var(--border)); stroke-width: 6; }
+.ftt-fs-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .3s linear;
+}
+.ftt-fs-time {
+  position: absolute;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(3rem, 15vh, 6rem);
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.ftt-fs-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  color: var(--muted);
+}
+.ftt-fs-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ftt-fs-actions button { padding: 11px 26px; }
+.ftt-fs-hint { font-size: .68rem; color: var(--muted2); }
+.ftt-fs-launch { margin-top: -4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ftt-fs-ring-fill { transition: none; }
+}
+
 /* ── mobile ───────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .ftt-card { padding: 20px 12px; }

@@ -233,6 +233,105 @@ test.describe('Timer tab — time tools', () => {
     expect(res.junk).toBe(1);
   });
 
+  test('full screen mirrors the one real timer rather than running a second one', async ({ page }) => {
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.setView('focus');
+      (window as any).toggleTimer();               // start the real Pomodoro
+      await new Promise((r) => setTimeout(r, 400));
+      document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="fs-open"]')!.click();
+      await new Promise((r) => setTimeout(r, 400));
+
+      const realBtn = () => document.getElementById('timerBtn')!.textContent!.trim();
+      const fsBtn = () => document.getElementById('fttFsToggle')!.textContent!.trim();
+      const out: any = {
+        opened: !document.getElementById('fttFocusFs')!.hidden,
+        bodyLocked: document.body.classList.contains('ftt-fs-on'),
+        mirrors: document.getElementById('fttFsTime')!.textContent === document.getElementById('tDisplay')!.textContent,
+        labelsAgreeRunning: realBtn() === fsBtn(),
+      };
+
+      // Pausing from inside the overlay must drive the real timer, not a copy.
+      document.querySelector<HTMLElement>('#fttFocusFs [data-ftt="fs-toggle"]')!.click();
+      await new Promise((r) => setTimeout(r, 400));
+      out.labelsAgreePaused = realBtn() === fsBtn();
+      const frozen = document.getElementById('tDisplay')!.textContent;
+      await new Promise((r) => setTimeout(r, 900));
+      out.reallyPaused = document.getElementById('tDisplay')!.textContent === frozen;
+
+      document.querySelector<HTMLElement>('#fttFocusFs [data-ftt="fs-reset"]')!.click();
+      await new Promise((r) => setTimeout(r, 400));
+      out.resetReal = document.getElementById('tDisplay')!.textContent;
+      out.resetOverlay = document.getElementById('fttFsTime')!.textContent;
+      return out;
+    });
+
+    expect(res.opened).toBe(true);
+    expect(res.bodyLocked).toBe(true);
+    expect(res.mirrors).toBe(true);
+    expect(res.labelsAgreeRunning).toBe(true);
+    expect(res.labelsAgreePaused).toBe(true);
+    // The decisive one: a duplicated timer would keep counting here.
+    expect(res.reallyPaused).toBe(true);
+    expect(res.resetReal).toBe('25:00');
+    expect(res.resetOverlay).toBe('25:00');
+  });
+
+  test('full screen covers the viewport and is centred', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 860 });
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.openFocusFullscreen();
+      await new Promise((r) => setTimeout(r, 400));
+      const fs = document.getElementById('fttFocusFs')!.getBoundingClientRect();
+      const inner = document.querySelector('.ftt-fs-inner')!.getBoundingClientRect();
+      return {
+        covers: Math.round(fs.width) === window.innerWidth && Math.round(fs.height) === window.innerHeight,
+        innerCentreX: Math.round(inner.left + inner.width / 2),
+        innerCentreY: Math.round(inner.top + inner.height / 2),
+        viewCentreX: Math.round(window.innerWidth / 2),
+        viewCentreY: Math.round(window.innerHeight / 2),
+      };
+    });
+
+    expect(res.covers).toBe(true);
+    expect(Math.abs(res.innerCentreX - res.viewCentreX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(res.innerCentreY - res.viewCentreY)).toBeLessThanOrEqual(1);
+  });
+
+  test('Escape and Exit both leave full screen', async ({ page }) => {
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      const el = () => document.getElementById('fttFocusFs')!;
+      T.openFocusFullscreen();
+      await new Promise((r) => setTimeout(r, 300));
+      const openedOnce = !el().hidden;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await new Promise((r) => setTimeout(r, 300));
+      const afterEsc = { hidden: el().hidden, unlocked: !document.body.classList.contains('ftt-fs-on') };
+
+      T.openFocusFullscreen();
+      await new Promise((r) => setTimeout(r, 300));
+      const openedTwice = !el().hidden;
+      document.querySelector<HTMLElement>('#fttFocusFs [data-ftt="fs-exit"]')!.click();
+      await new Promise((r) => setTimeout(r, 300));
+      return { openedOnce, afterEsc, openedTwice, afterExit: el().hidden };
+    });
+
+    expect(res.openedOnce).toBe(true);
+    expect(res.afterEsc.hidden).toBe(true);
+    // Body scroll must be handed back, or the app is left unusable underneath.
+    expect(res.afterEsc.unlocked).toBe(true);
+    expect(res.openedTwice).toBe(true);
+    expect(res.afterExit).toBe(true);
+  });
+
   test('alarm labels are escaped, not executed', async ({ page }) => {
     await gotoTimer(page);
 

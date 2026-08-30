@@ -300,6 +300,102 @@
     if (fired) { persist(); render(); }
   }
 
+  // ── full-screen focus ─────────────────────────────────────────────────────
+  /* A *view* of the Pomodoro timer, not a second timer. It mirrors #tDisplay
+     and proxies the existing toggleTimer()/resetTimer() globals, so the app
+     keeps exactly one piece of timer state and the two can never disagree.
+     Deliberately not a re-implementation: a duplicated tSecs would drift the
+     moment either copy was paused.
+
+     Tries the real Fullscreen API first and falls back to a fixed overlay,
+     because iOS Safari does not support requestFullscreen on ordinary elements
+     and any browser may refuse the request. The overlay alone is already the
+     useful part — it hides everything else — so a refusal is not an error. */
+  var fsOpen = false;
+  function fsEl() { return $('fttFocusFs'); }
+
+  function buildFsShell() {
+    if (fsEl()) return fsEl();
+    var el = document.createElement('div');
+    el.id = 'fttFocusFs';
+    el.className = 'ftt-fs';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Full screen focus timer');
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="ftt-fs-inner">'
+      + '<div class="ftt-fs-lbl" id="fttFsLbl">Focus Time</div>'
+      + '<div class="ftt-fs-ringwrap">'
+      + '<svg class="ftt-fs-ring" viewBox="0 0 200 200" aria-hidden="true">'
+      + '<circle class="ftt-fs-ring-bg" cx="100" cy="100" r="88"/>'
+      + '<circle class="ftt-fs-ring-fill" id="fttFsRing" cx="100" cy="100" r="88"'
+      + ' stroke-dasharray="553" stroke-dashoffset="0"/></svg>'
+      + '<div class="ftt-fs-time" id="fttFsTime">25:00</div>'
+      + '</div>'
+      + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
+      + '<div class="ftt-fs-actions">'
+      + '<button type="button" class="btn-sec" data-ftt="fs-reset">Reset</button>'
+      + '<button type="button" data-ftt="fs-toggle" id="fttFsToggle">Start</button>'
+      + '<button type="button" class="btn-sec" data-ftt="fs-exit">Exit</button>'
+      + '</div>'
+      + '<div class="ftt-fs-hint">Press Esc to leave full screen</div>'
+      + '</div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /* Copy whatever the real timer currently shows. Reading the DOM rather than
+     app.js internals keeps this working however tSecs happens to be stored. */
+  function mirrorFs() {
+    if (!fsOpen) return;
+    var t = $('tDisplay'), l = $('tLbl'), s = $('tSessionLbl'), ring = $('timerRing');
+    var ft = $('fttFsTime'), fl = $('fttFsLbl'), fsub = $('fttFsSub'), fr = $('fttFsRing');
+    if (t && ft && ft.textContent !== t.textContent) ft.textContent = t.textContent;
+    if (l && fl && fl.textContent !== l.textContent) fl.textContent = l.textContent;
+    if (s && fsub && fsub.textContent !== s.textContent) fsub.textContent = s.textContent;
+    if (ring && fr) {
+      fr.style.strokeDasharray = ring.style.strokeDasharray || '553';
+      fr.style.strokeDashoffset = ring.style.strokeDashoffset || '0';
+    }
+    // #timerBtn's label is an SVG plus the word Start or Pause; take the words.
+    var btn = $('timerBtn'), fb = $('fttFsToggle');
+    if (btn && fb) {
+      var word = (btn.textContent || '').trim() || 'Start';
+      if (fb.textContent !== word) fb.textContent = word;
+    }
+  }
+
+  function openFocusFullscreen() {
+    var el = buildFsShell();
+    el.hidden = false;
+    fsOpen = true;
+    document.body.classList.add('ftt-fs-on');
+    unlockAudio();
+    mirrorFs();
+    try {
+      if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) {}
+  }
+  function closeFocusFullscreen() {
+    var el = fsEl();
+    if (el) el.hidden = true;
+    fsOpen = false;
+    document.body.classList.remove('ftt-fs-on');
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (e) {}
+  }
+  /* Leaving fullscreen by any route the browser owns — Esc, F11, the system
+     control — must also drop our overlay, or it stays pinned over the app with
+     no visible way out. */
+  function onFsChange() {
+    var native = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!native && fsOpen) closeFocusFullscreen();
+  }
+
   // ── views ─────────────────────────────────────────────────────────────────
   function setView(v) {
     if (VIEWS.indexOf(v) < 0) return;
@@ -457,6 +553,14 @@
     else if (state.view === 'stopwatch') body = stopwatchHtml();
     else if (state.view === 'countdown') body = countdownHtml();
     else if (state.view === 'alarms') body = alarmsHtml();
+    /* The full-screen entry point belongs to the Pomodoro timer, so it only
+       appears on Focus. Rendered here rather than in index.html so the button
+       cannot exist when the module that drives it has not loaded. */
+    else if (state.view === 'focus') {
+      body = '<div class="ftt-row ftt-row--center ftt-fs-launch">'
+        + '<button type="button" class="btn-sec" data-ftt="fs-open">Full screen</button>'
+        + '</div>';
+    }
 
     host.innerHTML = '<div class="ftt-nav">' + nav + '</div>' + body;
     mounted = true;
@@ -507,6 +611,7 @@
     driver = setInterval(function () {
       fireDueAlarms();
       tickDisplays();
+      mirrorFs();
     }, 250);
   }
   function onWake() {
@@ -518,8 +623,21 @@
 
   // ── events ────────────────────────────────────────────────────────────────
   function onClick(e) {
+    if (!e.target || !e.target.closest) return;
+    /* The full-screen overlay lives on <body>, outside #fluxTimeTools, so its
+       buttons have to be handled before the containment check below. */
+    var fsBtn = e.target.closest('[data-ftt="fs-toggle"],[data-ftt="fs-reset"],[data-ftt="fs-exit"]');
+    if (fsBtn) {
+      var fsAct = fsBtn.getAttribute('data-ftt');
+      if (fsAct === 'fs-exit') closeFocusFullscreen();
+      // Proxy straight through to the one real timer, then re-read it.
+      else if (fsAct === 'fs-toggle') { try { window.toggleTimer(); } catch (er) {} }
+      else if (fsAct === 'fs-reset') { try { window.resetTimer(); } catch (er) {} }
+      mirrorFs();
+      return;
+    }
     var host = $('fluxTimeTools');
-    if (!host || !e.target || !e.target.closest || !host.contains(e.target)) return;
+    if (!host || !host.contains(e.target)) return;
     var viewBtn = e.target.closest('[data-ftt-view]');
     if (viewBtn) { unlockAudio(); setView(viewBtn.getAttribute('data-ftt-view')); return; }
     var zoneDel = e.target.closest('[data-ftt-zone-del]');
@@ -542,6 +660,7 @@
     else if (act === 'al-toggle') alarmToggle(id);
     else if (act === 'al-del') alarmDelete(id);
     else if (act === 'al-snooze') alarmSnooze(id, 9);
+    else if (act === 'fs-open') openFocusFullscreen();
   }
   function onChange(e) {
     if (e.target && e.target.id === 'fttZonePick') {
@@ -560,6 +679,16 @@
 
   document.addEventListener('click', onClick);
   document.addEventListener('change', onChange);
+  /* Capture phase, and stopPropagation, because the app has other Escape
+     handlers (FluxOverlays, the command palette) that would otherwise also act
+     on this keypress and close something underneath the overlay. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !fsOpen) return;
+    e.stopPropagation();
+    closeFocusFullscreen();
+  }, true);
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) onWake(); });
   window.addEventListener('focus', onWake);
   document.addEventListener('DOMContentLoaded', install);
@@ -568,6 +697,8 @@
   window.FluxTimeTools = {
     install: install,
     setView: setView,
+    openFocusFullscreen: openFocusFullscreen,
+    closeFocusFullscreen: closeFocusFullscreen,
     /* Cloud-sync contract, same shape as the other synced modules. Only alarms
        and world clocks travel: a running stopwatch or countdown belongs to the
        device it was started on, and copying endsAt to a second device would
