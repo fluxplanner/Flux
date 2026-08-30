@@ -18439,26 +18439,34 @@ async function renderTeacherDashboard(){
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
-          <button class="teacher-action-btn" data-action="new-class"><span></span> New Class</button>
+          <button class="teacher-action-btn" data-action="new-class"><span></span> New roster</button>
           <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
           ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
       </div>
 
-      <div class="teacher-stats-strip">
-        <div class="teacher-stat"><div class="tstat-num">${classesRows.length}</div><div class="tstat-label">Rosters</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat"><div class="tstat-num">${totalAssignments}</div><div class="tstat-label">Assignments</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${pendingJoins.length>0?'tstat-alert':''}"><div class="tstat-num">${pendingJoins.length}</div><div class="tstat-label">Join Queue</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${pendingReview>0?'tstat-alert':''}"><div class="tstat-num">${pendingReview}</div><div class="tstat-label">To Review</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${unreadMessages.length>0?'tstat-alert':''}"><div class="tstat-num">${unreadMessages.length}</div><div class="tstat-label">Messages</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${dueSoon.length>0?'tstat-warn':''}"><div class="tstat-num">${dueSoon.length}</div><div class="tstat-label">Due Soon</div></div>
-      </div>
+      ${(()=>{
+        /* Only the counts that have something to report.
+           This strip used to render all six unconditionally, so a teacher's
+           first sight of Flux was "0 0 0 0 0 0" — six numbers, none of them
+           news. A zero here says nothing the empty states below do not already
+           say in words, and six of them read as a broken page rather than a
+           quiet day. When every count is zero the strip is dropped entirely
+           and the now-bar leads instead. */
+        const stats=[
+          {n:classesRows.length,     label:'Rosters'},
+          {n:totalAssignments,       label:'Assignments'},
+          {n:pendingJoins.length,    label:'Join queue', cls:'tstat-alert'},
+          {n:pendingReview,          label:'To review',  cls:'tstat-alert'},
+          {n:unreadMessages.length,  label:'Messages',   cls:'tstat-alert'},
+          {n:dueSoon.length,         label:'Due soon',   cls:'tstat-warn'},
+        ].filter(s=>s.n>0);
+        if(!stats.length)return'';
+        return `<div class="teacher-stats-strip">${stats.map(s=>
+          `<div class="teacher-stat ${s.cls||''}"><div class="tstat-num">${s.n}</div><div class="tstat-label">${esc(s.label)}</div></div>`
+        ).join('<div class="teacher-stat-divider"></div>')}</div>`;
+      })()}
 
       ${momentumSectionHtml}
 
