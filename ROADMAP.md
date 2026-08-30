@@ -40,6 +40,7 @@ Last updated: 2026-08-29.
 | Counselor messaging and office hours | Both paused. Neither finished the round trip: "Book appointment" saved a request but nothing ever confirmed a slot back to the student, "Message" opened a composer against a counselor account most schools haven't linked, and the Staff office hours card needs a database table almost nobody has set up — so it sat on the School tab reading "no office hours have been published yet" indefinitely. Hidden, not deleted; two settings bring it all back. A counselor's own dashboard is untouched — this removes only the student's way in, including the "Book counselor" row in the mobile menu. |
 | Your name is now the first thing on Profile | The tab used to open with your counselor's face and bio, above your own details. Your name, photo and details lead it now; the counselor card moved to the bottom (and is paused anyway). Also tightened the spacing under your name — that gap was nearly double every other gap on the page. |
 | The last of the achievements | A third badge system was still running under your name on Profile — "On a roll", "Task Master", "Study Streak", "Note Taker", and "Complete tasks to earn badges!" when you had none. Gone with the rest. Staff role labels (✓ Directory, Work mode) share that spot and stay, since those are labels, not rewards. |
+| Old emojis flashed in Owner Controls | Flux replaces every emoji with a clean line icon, but it does that by watching the page and swapping them a split second after they appear — so the ☢️ and 🧪 were on screen briefly before the real icons took over. The owner sidebar now draws the icons itself, so they're correct from the first frame. Same for the warning symbol and the tool/stop icon in Nuke Controls, and the icons on the Overview insights. |
 | Privacy policy and terms didn't match reality | Fixed: email sign-up wasn't mentioned, Google features were described as live when they're switched off, Anthropic wasn't listed even though your students' text goes there, and mood/wellbeing data, staff verification details and feedback messages weren't mentioned at all. Also confirmed the claim that you can't read people's planners — the database genuinely blocks it. |
 
 ---
@@ -65,12 +66,6 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 | Light mode is broken almost everywhere | **Root cause fixed.** The animated background behind the whole app is drawn on a canvas, and it only checked the theme about once a second — so switching to light left the dark background painted underneath everything. While that canvas was paused (hidden tab, low-power mode) it never updated at all. It now changes the instant you switch. Also fixed the dashboard's "By importance" label, which was invisible in light mode. *Still to do: a tab-by-tab sweep for other spots written dark-only.* |
 | Mobile looks too different from desktop | Match the desktop styling more closely; the animation is fine and stays. |
 | Settings on mobile is a mess | Full rework. |
-
-### Removals and decluttering
-
-| What | Notes |
-|------|-------|
-| Old emojis flash in Owner Controls | Briefly visible before the real icons load, in Nuke Controls and Testers. |
 
 ### Reorganisation
 

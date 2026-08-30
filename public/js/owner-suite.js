@@ -466,6 +466,27 @@
     return`display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;font-size:.78rem;font-weight:650;text-align:left;border-radius:10px;border:1px solid ${active?'rgba(var(--accent-rgb),.32)':'transparent'};background:${active?'linear-gradient(135deg,rgba(var(--accent-rgb),.16),rgba(var(--purple-rgb,124,92,255),.08))':'transparent'};color:${active?'var(--accent)':'var(--muted2)'};cursor:pointer;font-family:inherit;transition:background .12s,color .12s,border-color .12s;letter-spacing:.005em`;
   }
 
+  /* Render an emoji as its icon NOW rather than letting flux-iconify swap it
+     later. Iconify catches emoji with a MutationObserver that flushes on a
+     32ms setTimeout, so anything written as a raw emoji gets painted at least
+     once before the swap — that is the ☢️ and 🧪 flash on the Nuke Controls
+     and Testers rows. The emoji stays the source of truth in OS_TAB_DEFS;
+     fluxIconForEmoji strips variation selectors, so '☢️' and '⚙️' resolve the
+     same as the bare glyphs, and the output is identical to what the observer
+     would have produced a frame later. Falls back to the emoji if iconify is
+     missing — today's behaviour, so no worse. */
+  function osIcon(emoji){
+    try{
+      if(typeof window.fluxIconForEmoji==='function'){
+        // Same wrapper the observer builds in processTextNode: .fxi-wrap gives
+        // the icon its inline-flex box and -0.14em baseline nudge, and
+        // data-no-iconify stops the observer walking back into it.
+        return'<span class="fxi-wrap" data-no-iconify>'+window.fluxIconForEmoji(emoji)+'</span>';
+      }
+    }catch(_){}
+    return emoji;
+  }
+
   /** Tab id → { label, icon, group }.  Order here drives the sidebar nav order. */
   const OS_TAB_DEFS={
     overview:    {label:'Overview',         icon:'📊', group:'home'},
@@ -503,7 +524,7 @@
       if(!items.length)return'';
       const rows=items.map(([id,def])=>`
         <button type="button" data-os-tab="${id}" onclick="window.__osSetTab('${id}')" style="${tabStyle(id===activeTab)}">
-          <span style="font-size:.95rem;line-height:1">${def.icon}</span>
+          <span style="font-size:.95rem;line-height:1">${osIcon(def.icon)}</span>
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(def.label)}</span>
           ${id==='staffverify'?'<span id="osStaffVerifyBadge" style="display:none;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--red,#f43f5e);color:#fff;font-size:.62rem;font-weight:800;line-height:1.5;text-align:center"></span>':''}
         </button>`).join('');
@@ -614,7 +635,7 @@
         return`
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px">
           <h3 class="flux-color-title" style="margin:0;font-size:1.05rem;font-weight:900">Nuke Controls</h3>
-          <span style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace">⚠ god-mode levers — affect every signed-in Flux user</span>
+          <span style="font-size:.66rem;color:var(--muted);font-family:JetBrains Mono,monospace">${osIcon('⚠')} god-mode levers — affect every signed-in Flux user</span>
         </div>
 
         <div style="background:linear-gradient(135deg,rgba(251,191,36,.10),rgba(245,158,11,.04));border:1px solid rgba(251,191,36,.32);border-radius:16px;padding:18px;margin-bottom:14px">
@@ -634,7 +655,7 @@
 
         <div style="background:${maint?'linear-gradient(135deg,rgba(255,77,109,.10),rgba(255,77,109,.04))':'var(--card2)'};border:1px solid ${maint?'rgba(255,77,109,.4)':'var(--border)'};border-radius:16px;padding:18px;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-            <span style="font-size:1.4rem">${maint?'🛑':'🛠'}</span>
+            <span style="font-size:1.4rem">${osIcon(maint?'🛑':'🛠')}</span>
             <div style="flex:1;min-width:220px">
               <div style="font-weight:800;font-size:1rem;color:${maint?'var(--red,#ff4d6d)':'var(--text)'}">Flux under update screen</div>
               <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">When enabled, every non-owner client shows a full-screen "Flux is under update" overlay until you disable it.</div>
@@ -730,7 +751,7 @@
         </div>
         <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">AI-style insights (heuristic)</div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${insights.map(i=>`<div style="display:flex;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px"><span>${i.icon}</span><div><div style="font-size:.78rem;font-weight:700">${esc(i.t)}</div><div style="font-size:.72rem;color:var(--muted2)">${esc(i.d)}</div></div></div>`).join('')}
+          ${insights.map(i=>`<div style="display:flex;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px"><span>${osIcon(i.icon)}</span><div><div style="font-size:.78rem;font-weight:700">${esc(i.t)}</div><div style="font-size:.72rem;color:var(--muted2)">${esc(i.d)}</div></div></div>`).join('')}
         </div>`;
 
       // ─────────────────────────────────────────────────────────────
