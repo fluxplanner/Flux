@@ -112,6 +112,46 @@
     return d.toISOString().slice(0, 10);
   }
 
+  /**
+   * The classes a teacher TEACHES.
+   *
+   * Every teacher scenario previously had only seedStudentSemester, so a
+   * "teacher" arrived holding a student's timetable and nothing else. That was
+   * invisible while the staff surfaces read window.classes — the Lesson Hub
+   * rendered the student's Algebra II as though the teacher taught it. Now
+   * those surfaces read the teaching list, an unseeded teacher correctly gets
+   * an empty state, and any spec about a teacher's day needs real rows.
+   *
+   * Two periods with wall-clock times, deliberately unpinned to A or B so they
+   * meet on whichever day the suite happens to run.
+   */
+  function seedTeacherTimetable() {
+    const save = _api?.save || window.FluxStorage?.save;
+    if (!save) return;
+    /* Seed only when nothing has been decided yet. runBootstrap runs again on
+       page.reload(), and localStorage survives that, so an unconditional seed
+       would overwrite whatever the spec had just created — which is precisely
+       what a "survives a reload" test is there to catch. An explicit empty
+       array counts as decided: a spec clearing the timetable means it. */
+    try {
+      const key = typeof fluxNamespacedKey === 'function'
+        ? fluxNamespacedKey('flux_teacher_classes') : 'flux_teacher_classes';
+      if (localStorage.getItem(key) !== null) return;
+    } catch (_) {}
+    save('flux_teacher_classes', [
+      {
+        id: 92001, period: 2, periodLabel: 'A2', days: '',
+        name: 'E2E World History', room: '118',
+        timeStart: '09:15', timeEnd: '10:05', color: '#f43f5e', work: [],
+      },
+      {
+        id: 92002, period: 3, periodLabel: 'A3', days: '',
+        name: 'E2E American Lit', room: '204',
+        timeStart: '10:15', timeEnd: '11:05', color: '#3b82f6', work: [],
+      },
+    ]);
+  }
+
   function seedStudentSemester() {
     const save = _api?.save || window.FluxStorage?.save;
     if (!save) return;
@@ -393,6 +433,7 @@
 
     hidePreAppChrome();
     seedStudentSemester();
+    if (cfg.role === 'teacher') seedTeacherTimetable();
 
     if (cfg.needsUser && _api.setCurrentUser) {
       _api.setCurrentUser({

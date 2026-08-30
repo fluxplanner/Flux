@@ -21,7 +21,16 @@
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  function todayISO(){return new Date().toISOString().slice(0,10);}
+  /* Local date, not UTC. toISOString() reports the UTC day, so lesson notes
+     and attendance were filed against the wrong date: in Michigan anything
+     saved after 8pm landed on tomorrow, and at any school east of UTC the
+     whole school day landed on yesterday. The key is date-scoped, so this
+     also decides which day a teacher's attendance counts toward. */
+  function todayISO(){
+    try{if(typeof fluxLocalYMD==='function')return fluxLocalYMD(new Date());}catch(_){}
+    const d=new Date(),p=n=>(n<10?'0':'')+n;
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  }
   function timeOfDay(){
     const h=new Date().getHours();
     if(h<12)return 'morning';if(h<17)return 'afternoon';return 'evening';

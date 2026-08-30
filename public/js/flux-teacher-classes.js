@@ -83,6 +83,25 @@
   }
   classes = normalise(load());
 
+  /**
+   * Re-read the store before answering a question about it.
+   *
+   * The list used to be read once, when this file evaluated. That is earlier
+   * than it looks: window.load routes through fluxNamespacedKey(), so the
+   * namespace depends on who is signed in and whether an owner is
+   * impersonating — and neither is known at module-evaluation time. A teacher
+   * signing in therefore kept whatever the pre-login namespace held, which is
+   * normally nothing, and the timetable read as empty until a reload.
+   *
+   * Every mutation below persists immediately, so the store is the single
+   * source of truth and this cache is only ever a convenience. Re-reading a
+   * handful of rows costs nothing next to being quietly wrong.
+   */
+  function refresh() {
+    classes = normalise(load());
+    return classes;
+  }
+
   // ── period helpers, borrowed from app.js rather than rewritten ────────────
   function parsePeriod(raw, fallbackDays) {
     if (typeof window.parseClassPeriodInput === 'function') {
@@ -279,6 +298,7 @@
   function render() {
     var host = $('fluxTeacherClasses');
     if (!host) return;
+    refresh();
     host.innerHTML = html();
   }
 
@@ -315,7 +335,7 @@
     render: render,
     /** Markup for renderSchoolTeacher to drop in place of its old stub card. */
     cardHtml: function () { return '<div class="card" id="fluxTeacherClasses"></div>'; },
-    list: function () { return classes.slice(); },
+    list: function () { return refresh().slice(); },
     /**
      * The timetable belonging to whoever is signed in, or null meaning
      * "not yours — use the student list".
@@ -339,7 +359,7 @@
       } catch (e) { return null; }
       // An empty timetable still belongs to them: a teacher who has not filled
       // theirs in should get an honest empty state, not their own student rows.
-      return classes.slice();
+      return refresh().slice();
     },
     /* Cloud contract, same shape as every other synced module. */
     getCloudSlice: function () { return classes; },
