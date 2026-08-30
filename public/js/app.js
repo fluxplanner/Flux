@@ -9095,6 +9095,10 @@ function getCloudPayload(){
     // still showed the default order. Note the lowercase global — the module
     // exposes window.fluxStudyHub, not FluxStudyHub.
     studyHub:(window.fluxStudyHub?.getCloudSlice?fluxStudyHub.getCloudSlice():load('flux_study_hub',{subject:'chemistry',chemTab:'table',tool:{},favs:[]})),
+    // Alarms and world clocks only. A running stopwatch or countdown stays on
+    // the device that started it — copying its end timestamp across would show
+    // a second device a countdown nobody there set.
+    timeTools:(window.FluxTimeTools?.getCloudSlice?FluxTimeTools.getCloudSlice():load('flux_time_tools_v1',{alarms:[],worldClocks:[]})),
     periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
     flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
     srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
@@ -9439,6 +9443,9 @@ async function syncFromCloud(){
     }
     if(d.studyHub&&typeof d.studyHub==='object'){
       try{if(window.fluxStudyHub?.applyFromCloud)fluxStudyHub.applyFromCloud(d.studyHub);else save('flux_study_hub',d.studyHub);}catch(_){}
+    }
+    if(d.timeTools&&typeof d.timeTools==='object'){
+      try{if(window.FluxTimeTools?.applyFromCloud)FluxTimeTools.applyFromCloud(d.timeTools);}catch(_){}
     }
     if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
       try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}

@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.5af00732.css">
+<link rel="stylesheet" href="public/bundles/flux.5b32f5f1.css">
 </head>
 <body>
 <noscript>
@@ -1652,9 +1652,15 @@
     <!-- ─── TIMER ─── -->
     <div id="timer" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Pomodoro, streaks, and where your time goes.</p>
+        <p class="flux-page-sub">Clock, stopwatch, countdown, alarms and Pomodoro.</p>
       </header>
       <div class="flux-stack">
+      <!-- Mount for flux-time-tools.js: renders the Focus/Clock/Stopwatch/
+           Countdown/Alarms switcher plus whichever view is active. "Focus"
+           shows #timerFocusSection below rather than redrawing it, so the
+           Pomodoro timer keeps its own markup, ids and onclick handlers. -->
+      <div id="fluxTimeTools"></div>
+      <div id="timerFocusSection">
       <div class="card" style="text-align:center;padding:24px 16px">
         <div style="display:flex;gap:6px;justify-content:center;margin-bottom:20px;flex-wrap:wrap">
           <button class="tmode-btn active" onclick="setTMode('pomodoro',this)">Pomodoro</button>
@@ -1717,6 +1723,7 @@
         <h3>Session History</h3>
         <div id="sessionStatsCard"><div class="empty"><div class="empty-icon"></div><div class="empty-title">No sessions yet</div><div class="empty-sub">Press S or use the FAB to start tracking</div></div></div>
       </div>
+      </div><!-- /#timerFocusSection -->
       </div>
     </div>
 
@@ -2826,8 +2833,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.816ee1ca.js"></script>
-<script defer src="public/bundles/flux-features.4c148d11.js"></script>
+<script defer src="public/bundles/flux-core.6cb58454.js"></script>
+<script defer src="public/bundles/flux-features.c9dd07f6.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
