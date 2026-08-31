@@ -9141,6 +9141,9 @@ function getCloudPayload(){
     // meaning, and sharing one would feed a teacher's timetable into the GPA
     // maths of anyone who is both.
     teacherClasses:(window.FluxTeacherClasses?.getCloudSlice?FluxTeacherClasses.getCloudSlice():load('flux_teacher_classes',[])),
+    // Vocabulary and conjugation practice. Revising on a phone at the bus stop
+    // and on a laptop at home should add up to one run of revision, not two.
+    langPractice:(window.FluxLangPractice?.getCloudSlice?FluxLangPractice.getCloudSlice():load('flux_lang_practice_v1',{lang:'es',mode:'choice',theme:'school',box:{},stats:{seen:0,right:0,streak:0,best:0}})),
     periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
     flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
     srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
@@ -9493,6 +9496,12 @@ async function syncFromCloud(){
     // tests Array.isArray rather than truthiness the way the object slices do.
     if(Array.isArray(d.teacherClasses)){
       try{if(window.FluxTeacherClasses?.applyFromCloud)FluxTeacherClasses.applyFromCloud(d.teacherClasses);else save('flux_teacher_classes',d.teacherClasses);}catch(_){}
+    }
+    /* Handed to the module rather than saved over the top: it merges the
+       Leitner boxes and keeps the higher one, so two devices used the same day
+       add up instead of the last writer erasing the other's revision. */
+    if(d.langPractice&&typeof d.langPractice==='object'){
+      try{if(window.FluxLangPractice?.applyFromCloud)FluxLangPractice.applyFromCloud(d.langPractice);else save('flux_lang_practice_v1',d.langPractice);}catch(_){}
     }
     if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
       try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}

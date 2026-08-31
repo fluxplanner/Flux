@@ -1,0 +1,191 @@
+/* ============================================================================
+   FLUX LANGUAGE PRACTICE  ·  flux-lang-practice.css
+   Vocabulary and conjugation drilling inside the Study Tools hub.
+
+   Reuses .fsh-card, .fsh-seg and .fsh-btn from flux-study-hub.css rather than
+   restyling them — this is another tool in that hub, not a separate product.
+   Colours come from the --fsh-* variables, so the light-mode block already in
+   flux-study-hub.css covers this file too.
+   ========================================================================== */
+
+.flp-seg { margin-bottom: 8px; }
+
+.flp-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0 4px;
+}
+.flp-theme {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--fsh-line);
+  background: var(--fsh-glass-2);
+  color: var(--fsh-ink-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.flp-theme:hover { color: var(--fsh-ink); border-color: rgba(var(--fsh-accent-rgb), .45); }
+.flp-theme.active {
+  background: rgba(var(--fsh-accent-rgb), .16);
+  border-color: rgba(var(--fsh-accent-rgb), .5);
+  color: var(--fsh-ink);
+  font-weight: 640;
+}
+
+.flp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 12px 0 4px;
+  font-size: 11.5px;
+  color: var(--fsh-mut);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.flp-stats b { color: var(--fsh-ink); font-size: 13px; }
+
+.flp-stage {
+  margin-top: 12px;
+  /* A fixed floor stops the card jumping as answers of different lengths and
+     the feedback line appear and vanish. Nothing is more irritating in a drill
+     than the button moving out from under the cursor between questions. */
+  min-height: 210px;
+}
+
+.flp-q { text-align: center; padding: 18px 8px 14px; }
+.flp-prompt {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--fsh-ink);
+  line-height: 1.25;
+}
+.flp-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--fsh-mut);
+}
+.flp-hint b { color: var(--fsh-ink-2); }
+
+.flp-flip {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--fsh-line);
+  font-size: 20px;
+  font-weight: 640;
+  color: var(--fsh-mut);
+  min-height: 28px;
+}
+.flp-flip.is-shown {
+  border-style: solid;
+  border-color: rgba(var(--fsh-accent-rgb), .4);
+  background: rgba(var(--fsh-accent-rgb), .08);
+  color: var(--fsh-ink);
+}
+
+.flp-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (max-width: 520px) { .flp-options { grid-template-columns: 1fr; } }
+
+.flp-opt {
+  padding: 13px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--fsh-line);
+  background: var(--fsh-glass-2);
+  color: var(--fsh-ink);
+  font-size: 14.5px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform .12s, border-color .15s, background .15s;
+}
+.flp-opt:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(var(--fsh-accent-rgb), .5);
+}
+.flp-opt:disabled { cursor: default; }
+/* Right and wrong carry a border, a background AND a line-through — never
+   colour alone, or the result is invisible to a colour-blind student. */
+.flp-opt.is-right {
+  border-color: #34d399;
+  background: rgba(52, 211, 153, .16);
+  font-weight: 700;
+}
+.flp-opt.is-wrong {
+  border-color: #fb7185;
+  background: rgba(251, 113, 133, .14);
+  text-decoration: line-through;
+}
+
+.flp-answer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* The #app prefix is not decoration. flux-form-controls.css sets every input
+   in the app to width:100% at specificity (1,1,1); a bare .flp-in is (0,1,0)
+   and loses, which pushes the Check button onto its own line. Do not
+   "simplify" this selector. */
+#app .flp-answer .flp-in {
+  flex: 1 1 200px;
+  width: auto;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fsh-line);
+  background: var(--fsh-glass-2);
+  color: var(--fsh-ink);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+#app .flp-answer .flp-in:focus {
+  border-color: rgba(var(--fsh-accent-rgb), .6);
+  box-shadow: 0 0 0 4px rgba(var(--fsh-accent-rgb), .12);
+}
+
+.flp-feedback {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  min-height: 20px;
+  color: var(--fsh-mut);
+}
+.flp-feedback.is-ok { color: #34d399; }
+.flp-feedback.is-no { color: #fb7185; }
+/* Both greens and reds above are tuned for the dark card; on white they drop
+   below 4.5:1, so light mode gets its own darker pair. */
+[data-theme="light"] .flp-feedback.is-ok { color: #0f7a52; }
+[data-theme="light"] .flp-feedback.is-no { color: #c0344d; }
+
+.flp-empty {
+  padding: 30px 12px;
+  text-align: center;
+  color: var(--fsh-mut);
+  font-size: 13px;
+}
+
+.flp-reset {
+  display: block;
+  margin: 14px auto 0;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--fsh-mut);
+  font-size: 11.5px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.flp-reset:hover { color: var(--fsh-ink-2); background: var(--fsh-glass-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flp-opt, .flp-theme { transition: none; }
+  .flp-opt:hover:not(:disabled) { transform: none; }
+}

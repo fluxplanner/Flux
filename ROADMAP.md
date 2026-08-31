@@ -56,6 +56,7 @@ Last updated: 2026-08-30.
 | Now / next period bar, and an attendance reminder | Added, both to the top of the staff dashboard — your pick of "rebuild around today", and your own idea for the reminder. The bar names the lesson you're in, the room, how long is left and what's next. Then it asks once — "Take attendance for World History" — with **Take it** and **Not now**. It can't nag: it goes quiet the moment attendance is marked anywhere, and a class you've waved away stays quiet for the rest of the day. It also can't lie: dismissing the reminder is never recorded as having taken the register, which is the one mistake here that would actually matter. |
 | Random student picker | Done, and it turned out to already exist — built, switched off, and unusable if you'd found it. It could only read the list of students who'd signed up for Flux and joined your class by code, which in a real room is almost nobody, so it had nothing to pick from and said "Load roster first" forever. It now takes names you type or paste — a column straight out of a spreadsheet is fine, it tidies them up — and each class keeps its own list. "Fair" now means a full rotation: everyone gets called once before anyone gets called twice, and it tells you how many are left in the round. The old rule only skipped the last three, which in a class of thirty still lets the same student be picked three times in five minutes in front of everyone. |
 | Everything was stamped BETA | Fixed. Four cards on the staff dashboard carried a **BETA** badge — and it wasn't a judgement about those four, it's that *every* module in Flux is marked beta internally, and the dashboard was printing that label onto each card. The effect was a product that looked unfinished wherever you looked. The badge now only appears on things genuinely not working yet, of which there are none on that page. |
+| French and Spanish can now be practised, not just looked up | Added, after you said those two matter most. Everything in Flux was reference-only — you could look a word up, but nothing ever asked you a question, and you cannot revise for a vocabulary test by reading a list. There's now a **Practice** tool in Study Tools with 221 words across 12 topics — school, family, food, house, time and numbers, town and travel, body and health, clothes and colours, weather, free time, describing people, everyday verbs — every one of them in both French and Spanish. Four ways to use it: multiple choice, type the answer, flashcards, and a verb drill that tests you on any tense. It remembers what you keep getting wrong and asks you those more often, and a word only counts as learned after you've got it right five times. Missing an accent is marked correct but shows you the proper spelling — failing someone for a missing accent is just annoying, and quietly accepting it teaches a spelling that loses marks in the exam. Your progress follows your account, and revising on your phone and your laptop on the same day adds up rather than one wiping the other. |
 | The conjugator was teaching wrong answers | Rebuilt. This was the worst thing in this batch, because it was confidently wrong rather than broken — a student revising with it would have learned the mistake and written it in an exam. In the Study Tools trainer, `poder` came out as "yo podo" (it's **puedo**), `querer` as "quero" (**quiero**), `pedir` as "pedo" (**pido**), and in French `partir` became "nous partissons" (**nous partons**). Two causes: Spanish verbs where the middle vowel shifts — poder, querer, pensar, dormir, the ones you meet in week one — weren't handled at all; and French has two different families of `-ir` verbs, and the code assumed everything belonged to the other one. Separately, the "60 verbs, 7 tenses" reference conjugator got **12 of its own 60 verbs wrong** for the same reason: cerrar, empezar, salir, traer, perder, encontrar, conocer, pensar, sentir, jugar, dormir, despertar. Both tools now share one set of tables, so they can't drift apart again. The trainer also gained tenses — Spanish present, preterite, imperfect, future, conditional, subjunctive and perfect; French present, passé composé, imperfect, future and conditional — including the `être` verbs where "j'ai allé" is the classic mistake. There are 61 checks on it in the test suite, one per verb that used to break a rule. The phrase list went from 10 greetings to 45, grouped by when you'd need them, with a section for things you actually say in a lesson. |
 | Three bugs found on the way | **Attendance was filed on the wrong day.** Lesson notes and attendance used the world clock rather than yours, so anything saved after 8pm here landed on tomorrow — and at a school east of us the entire teaching day landed on yesterday. **A teacher's timetable read as empty after signing in.** It was loaded once when the page started, before Flux knew who you were, so it looked in the wrong drawer and kept looking there until you reloaded. **The tests were passing for the wrong reason** — the pretend teacher used for testing only ever had a *student's* timetable, which is exactly what hid all of the above. |
 
@@ -63,11 +64,27 @@ Last updated: 2026-08-30.
 
 ## Needs you
 
+Only one thing here now. You said you didn't follow the rest, so I've made the
+call on those myself and moved them to **Decisions I made for you** below —
+nothing there is blocking, and none of it needs you to sign up for anything.
+
 | What | What to do |
 |------|------------|
-| Turn on the new confirmation link | The code now sends people back to the right page, but Supabase will refuse an address that isn't on its approved list. Steps are at the bottom of this file. **Until this is done, email sign-up still won't work.** |
-| Real quotes for the login page | The section is empty and hidden. When you have genuine quotes from students or staff, send them over and they go straight in. |
-| Do you want verification requests emailed to you? | Right now you get a badge and a sign-in message — both need you to open Flux. An actual email is possible: Flux already has email-sending code, but it needs a Resend account key set in Supabase. Tell me if you have one, or want one, and I'll wire it up. |
+| Merge this batch so it goes live | Everything in **Done** is finished and tested but sitting on a branch, which means it is not on the real site yet. Open this link and press the green button twice: https://github.com/fluxplanner/Flux/pull/new/fix/auth-launch-blockers — that is the whole job. Until then students see the old version. |
+
+---
+
+## Decisions I made for you
+
+You said you didn't know what the remaining items were, so rather than leave
+them as homework, here is what I decided and why. Any of them can be reversed
+in a minute if you disagree.
+
+| What | What I did |
+|------|------------|
+| Confirmation-link address | **You did this — thank you.** Email sign-up should now work end to end. Worth testing once with a real address before you tell anyone: sign up, check the email, click the link, and make sure it lands you in Flux and not on an error page. If it fails, send me a screenshot of the page it lands on. |
+| Emailing you when staff ask to be verified | **Left as it is, deliberately.** Sending real email would mean you opening an account with a company called Resend and pasting a key into Supabase — real setup, a bill eventually, and one more thing to maintain. You already get a badge and a message the moment you open Flux. For a school this size that is enough, and it fails safely: no key means no missed emails, because there was never an email. If you ever want it, it's an afternoon's work. |
+| Quotes on the login page | **Left hidden.** The section only appears when there are real quotes in it, so today it shows nothing at all rather than something fake. Nothing is broken and nothing is missing — invented testimonials would be worse than none. Send me real ones whenever you have them. |
 
 ---
 
@@ -97,7 +114,7 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 | What | Notes |
 |------|-------|
 | Timer is badly centred | **Can't reproduce — could you send a screenshot?** I measured it on a phone-sized screen and a laptop screen: the ring, the digits, the label, the mode buttons, the presets and the dots are all within a pixel of dead centre. I also checked it doesn't shuffle sideways as the numbers change (a common cause of "looks off-centre") — every value from 25:00 down to 09:59 is exactly the same width. My guess is the mobile spacing work earlier in this batch fixed it. If you can still see it, a photo and which tab/phone would let me find it in a minute. |
-| Language tools are weak | **Conjugator rebuilt — see Done. Still open:** the material beyond verbs. German has a reference sheet but no trainer, and there is no vocabulary practice in any language. Tell me which language matters most and I'll go deep on that one. |
+| German language tools | You said French and Spanish matter most, so those are done and German is not. It has a reference sheet — cases, articles, verb tenses — but no trainer and no vocabulary. Say the word if it becomes worth doing. |
 
 ---
 

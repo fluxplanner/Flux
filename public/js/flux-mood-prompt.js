@@ -232,8 +232,17 @@
   window.FluxMoodPrompt = {
     check: check,
     close: close,
-    // Test seams.
-    _show: show,
+    /* Test seams.
+       _show force-replaces whatever card is up. show() itself refuses to
+       replace one, which is right in production — a card appearing under your
+       finger mid-tap is how you answer the wrong question. But it made this
+       seam silently do nothing whenever a card already existed, and the suite
+       then clicked a card it had not asked for: run the tests after 18:00 and
+       the evening prompt would already be on screen, so _show(AM) no-opped and
+       the "morning" assertions were quietly made against the evening card. A
+       seam that exists to put a specific window on screen has to actually do
+       that, or the test is testing something else. */
+    _show: function (win) { close(); show(win); },
     _windows: { AM: AM, PM: PM },
     _state: load,
     _currentWindow: currentWindow,
