@@ -75,7 +75,10 @@
      the very form it is asking you to fill in, is worse than no prompt. */
   function shouldAsk(win) {
     if (!win) return false;
-    if (load()[win.key] === today()) return false;
+    var s = load();
+    if (s[win.key] === today()) return false;
+    // Just answered the other window — don't pounce with the next question.
+    if (s.at && Date.now() - s.at < QUIET_AFTER_ANSWER_MS) return false;
     /* Dashboard only, because the card renders INTO the dashboard rather than
        floating over the app. The first version was position:fixed at the
        bottom-right corner, and it did exactly what a floating card over a
@@ -97,9 +100,23 @@
     return true;
   }
 
+  /* How long to stay quiet after ANY answer, in ms. The two windows are
+     independent by design, which meant that answering the morning card at
+     18:05 — the moment the evening window opens — was met with "How did today
+     go?" a fraction of a second later. Independent windows, yes; two questions
+     in the same breath, no.
+
+     The e2e suite found this the hard way: three tests answer the morning card
+     explicitly, and started failing only when the suite happened to run after
+     18:00, because the evening card legitimately replaced the one that had
+     just been dismissed. A time-of-day flake, but it was reporting a real
+     defect rather than a bad test. */
+  var QUIET_AFTER_ANSWER_MS = 60 * 1000;
+
   function resolve(win) {
     var s = load();
     s[win.key] = today();
+    s.at = Date.now();
     persist(s);
   }
 

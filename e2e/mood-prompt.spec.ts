@@ -141,7 +141,13 @@ test.describe('Mood check-in prompt', () => {
       document.querySelector<HTMLElement>('#fluxMoodPrompt .fmp-face[data-v="3"]')!.click();
       await new Promise((r) => setTimeout(r, 250));
       const afterAm = M._state();
-      // Evening is still unresolved, so it can ask later the same day.
+      // Evening is still unresolved, so it can ask later the same day — but
+      // not in the same breath. Answering anything buys a minute of quiet,
+      // so the evening card must be refused right now...
+      const pmQuietRightAfter = M._shouldAsk(M._windows.PM);
+      // ...and offered once that minute has passed. Rewinding the stamp is how
+      // real time would arrive, without making the test sleep through it.
+      (window as any).save('flux_mood_prompt_v1', { ...afterAm, at: Date.now() - 120000 });
       const pmStillOpen = M._shouldAsk(M._windows.PM);
       M._show(M._windows.PM);
       const pmTitle = document.querySelector('.fmp-title')!.textContent;
@@ -152,11 +158,12 @@ test.describe('Mood check-in prompt', () => {
       const d = new Date();
       const today = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
       const entry = (window as any).moodHistory.find((m: any) => m.date === today);
-      return { afterAm, pmStillOpen, pmTitle, pmAsk, afterPm: M._state(), entry };
+      return { afterAm, pmQuietRightAfter, pmStillOpen, pmTitle, pmAsk, afterPm: M._state(), entry };
     });
 
     expect(res.afterAm.am).toBeTruthy();
     expect(res.afterAm.pm).toBeFalsy();
+    expect(res.pmQuietRightAfter).toBe(false);
     expect(res.pmStillOpen).toBe(true);
     expect(res.pmTitle).toBe('Evening check-in');
     expect(res.pmAsk).toBe('How did today go?');
