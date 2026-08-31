@@ -1,0 +1,305 @@
+/* ============================================================================
+   FLUX TEACHER CLASSES  ·  flux-teacher-classes.css
+   The classes a teacher teaches — A1 · American Lit — and the work attached.
+
+   Every colour here is a theme variable. The staff section next door still
+   paints .teacher-class-card with a literal rgba(255,255,255,.04), which is
+   invisible on white; that is exactly the bug the light-mode sweep spent a day
+   undoing elsewhere, so this file does not add another instance of it.
+
+   The period badge takes its colour through --sub rather than as a literal,
+   matching .class-period in styles.css. Class colours are user-chosen, so
+   there is no palette to hand-correct — routing the hue through a custom
+   property is what lets one light-mode rule darken an arbitrary colour.
+   ========================================================================== */
+
+.ftc-lede {
+  color: var(--muted2);
+  font-size: .82rem;
+  margin: 0 0 12px;
+}
+
+.ftc-empty {
+  padding: 18px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted2);
+  font-size: .84rem;
+  text-align: center;
+}
+.ftc-empty code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), .1);
+  color: var(--accent);
+}
+
+.ftc-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* The left border is the class colour, set inline. Everything else is theme. */
+.ftc-class {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ftc-class-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ftc-badge {
+  width: 34px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--sub, var(--accent)) 13%, transparent);
+  color: var(--sub, var(--accent));
+}
+/* Mixing toward black keeps the hue recognisable while pulling it dark enough
+   to read on its own pale tint. Same 62% that fixed .class-period. */
+[data-theme="light"] .ftc-badge {
+  color: color-mix(in srgb, var(--sub, var(--accent)) 62%, #000);
+}
+
+.ftc-class-main { flex: 1; min-width: 0; }
+.ftc-class-name {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftc-class-meta {
+  font-size: .72rem;
+  color: var(--muted2);
+  margin-top: 1px;
+}
+
+.ftc-mini {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  font-size: .72rem;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+
+.ftc-x {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted2);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.ftc-x:hover {
+  color: var(--red);
+  border-color: rgba(var(--red-rgb), .4);
+  background: rgba(var(--red-rgb), .08);
+}
+
+/* ── work drawer ─────────────────────────────────────────────────────────── */
+.ftc-drawer {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px;
+  background: rgba(var(--accent-rgb), .03);
+}
+
+.ftc-empty-work {
+  color: var(--muted);
+  font-size: .78rem;
+  padding: 6px 2px 10px;
+}
+
+.ftc-work {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ftc-work:last-of-type { border-bottom: 0; }
+
+.ftc-check {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  border: 1.5px solid var(--muted2);
+  background: transparent;
+  font-size: .68rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.ftc-work.is-done .ftc-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.ftc-work-type {
+  flex-shrink: 0;
+  font-size: .6rem;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(var(--accent-rgb), .12);
+  color: var(--accent);
+}
+/* Events read differently from work — an assembly is not a thing to grade. */
+.ftc-work-type[data-t="event"] {
+  background: rgba(var(--gold-rgb, 245,166,35), .14);
+  color: var(--gold, #f5a623);
+}
+
+.ftc-work-title {
+  flex: 1;
+  min-width: 0;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftc-work.is-done .ftc-work-title {
+  text-decoration: line-through;
+  color: var(--muted2);
+}
+
+.ftc-work-due {
+  flex-shrink: 0;
+  font-size: .72rem;
+  color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+/* Past due and not ticked. Colour alone would fail for a colour-blind teacher,
+   so it is also the only bold date in the list. */
+.ftc-work.is-late .ftc-work-due {
+  color: var(--red);
+  font-weight: 800;
+}
+
+/* ── inputs ──────────────────────────────────────────────────────────────── */
+.ftc-add,
+.ftc-work-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ftc-add { margin-top: 12px; }
+.ftc-work-add { margin-top: 10px; }
+
+/* Every field below carries an #app prefix, which looks like overkill and is
+   not. flux-form-controls.css:3 makes every text input in the app full width:
+
+     :is(#app, #loginScreen) input:not([type='checkbox'], …) { width:100%; … }
+
+   That is specificity (1,1,1) — an ID, a class-equivalent and an element. A
+   plain .ftc-in is (0,1,0) and loses by a mile, which stretched all five
+   fields onto their own full-width rows. #app + :is(row) + .ftc-in is (1,2,0)
+   and wins cleanly, and it is the same scoping the baseline itself uses, so
+   no !important is needed. Do not "simplify" these selectors — the layout
+   silently collapses back to one field per line.
+
+   (.ftt-input in flux-time-tools.css has the same shape and only escapes
+   notice because a max-width caps it. Worth revisiting.) */
+#app :is(.ftc-add, .ftc-work-add) .ftc-in {
+  width: auto;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: .82rem;
+  font-family: inherit;
+  min-width: 0;
+}
+#app :is(.ftc-add, .ftc-work-add) .ftc-in:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), .55);
+}
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--grow { flex: 1 1 160px; }
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--period {
+  width: 62px;
+  flex: 0 0 auto;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--room { width: 78px; flex: 0 0 auto; }
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--time { width: 112px; flex: 0 0 auto; }
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--date { width: 138px; flex: 0 0 auto; }
+#app :is(.ftc-add, .ftc-work-add) .ftc-in--type { flex: 0 0 auto; width: auto; }
+
+.ftc-add > button[data-ftc="class-add"] {
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: .82rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* Narrow screens: five fields cannot sit side by side, so they wrap — but
+   wrapping in source order stranded "A1" alone on a line with 250px of empty
+   space beside it, then paired Room with a time field, which read as though
+   the room were part of the period. `order` regroups them by size without
+   touching the markup, so the desktop reading order (period, name, room,
+   times) is preserved where there is room for it:
+
+     A1 · Room          ← two short identifiers together
+     Class name         ← needs the full width
+     Start · End        ← a natural pair
+     Add class
+
+   A media query adds no specificity, so these keep the #app prefix too —
+   without it the width declarations lose to flux-form-controls.css:3. */
+@media (max-width: 560px) {
+  #app :is(.ftc-add, .ftc-work-add) .ftc-in--grow { flex: 1 1 100%; }
+  #app :is(.ftc-add, .ftc-work-add) .ftc-in--time { flex: 1 1 calc(50% - 3px); width: auto; }
+  #app :is(.ftc-add, .ftc-work-add) .ftc-in--date { flex: 1 1 calc(50% - 3px); width: auto; }
+  #app :is(.ftc-add, .ftc-work-add) .ftc-in--type { flex: 1 1 calc(50% - 3px); }
+
+  .ftc-add .ftc-in--period { order: 1; }
+  .ftc-add .ftc-in--room   { order: 2; }
+  .ftc-add .ftc-in--grow   { order: 3; }
+  .ftc-add .ftc-in--time   { order: 4; }
+  .ftc-add > button[data-ftc="class-add"] { order: 5; flex: 1 1 100%; }
+
+  /* The work row leads with the title — the type and date qualify it. */
+  .ftc-work-add .ftc-in--grow { order: 1; }
+  .ftc-work-add .ftc-in--type { order: 2; }
+  .ftc-work-add .ftc-in--date { order: 3; }
+  .ftc-work-add > button[data-ftc="work-add"] { order: 4; flex: 1 1 100%; }
+}

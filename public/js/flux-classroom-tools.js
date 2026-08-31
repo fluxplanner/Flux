@@ -10,7 +10,6 @@
   const HALL_KEY = 'flux_hall_pass_registry_v1';
   const DISMISS_ALERT_KEY = 'flux_class_alert_dismissed_v1';
   const BUCKETS = ['To grade', 'Graded', 'Need feedback', 'Sent back'];
-  const PICKER_COOLDOWN = 3;
   const EXIT_QUESTIONS = [
     'In one sentence, what was the main idea of today\'s lesson?',
     'What is one question you still have?',
@@ -417,54 +416,111 @@
     });
   }
 
+  /**
+   * Random student picker.
+   *
+   * Names come from the teacher's own timetable — typed or pasted, one per
+   * line. This could previously only read the join-code roster table, so it
+   * worked only for classes where the students had signed up for Flux
+   * themselves. In a real room that is almost none of them, so the widget had
+   * nothing to pick from and said "Load roster first" forever.
+   *
+   * "Fair" means a full rotation, not a short cooldown: everyone is called
+   * once before anyone is called twice. Skipping only the last three still
+   * lets the same student come up three times in a row in a class of thirty,
+   * which is the exact unfairness the feature exists to remove.
+   */
   function renderStudentPicker(mount) {
-    const state = ls(PICKER_KEY, { history: [] });
+    const saved = ls(PICKER_KEY, {});
+    const rounds = saved && typeof saved.rounds === 'object' && saved.rounds ? saved.rounds : {};
 
-    mount.innerHTML = `
-      <p class="flux-widget-hint">Fair pick — skips students called in the last ${PICKER_COOLDOWN} rounds.</p>
-      <button type="button" class="btn" id="fluxPickerSpin" style="width:100%">Pick student</button>
-      <div id="fluxPickerResult" class="flux-picker-result"></div>
-      <button type="button" class="btn-sec" id="fluxPickerLoadRoster" style="width:100%;margin-top:6px;font-size:.72rem">Load names from my classes</button>`;
+    const classesOf = () => {
+      try { return window.FluxTeacherClasses?.mine?.() || []; } catch (e) { return []; }
+    };
+    const selectedId = () => mount.querySelector('#fluxPickerClass')?.value || '';
+    const classOf = (id) => classesOf().find((c) => String(c.id) === String(id)) || null;
 
-    mount.querySelector('#fluxPickerLoadRoster')?.addEventListener('click', async () => {
-      const roster = await fetchRosterStudents();
-      if (!roster.length) {
-        if (typeof showToast === 'function') showToast('No enrolled students found', 'warning');
-        return;
-      }
-      lsSet(
-        'flux_picker_class_roster_v1',
-        roster.map((s) => s.id)
-      );
-      lsSet('flux_picker_labels_v1', roster.reduce((o, s) => ((o[s.id] = s.label), o), {}));
-      if (typeof showToast === 'function') showToast(`Loaded ${roster.length} students`, 'success');
-    });
+    function paint() {
+      const list = classesOf();
+      const cur = classOf(selectedId()) || list[0] || null;
+      const names = cur ? (cur.students || []) : [];
+      const called = ((cur && rounds[cur.id]) || []).filter((n) => names.includes(n));
 
-    mount.querySelector('#fluxPickerSpin')?.addEventListener('click', async () => {
-      let pool = await fetchRosterStudents();
-      if (!pool.length) {
-        const labels = ls('flux_picker_labels_v1', {});
-        pool = (ls('flux_picker_class_roster_v1', []) || []).map((id) => ({
-          id,
-          label: labels[id] || id,
-        }));
-      }
-      if (!pool.length) {
-        if (typeof showToast === 'function') showToast('Load roster first', 'warning');
-        return;
-      }
-      const recent = (state.history || []).slice(-PICKER_COOLDOWN).map((h) => h.id);
-      const eligible = pool.filter((s) => !recent.includes(s.id));
-      const pickFrom = eligible.length ? eligible : pool;
-      const pick = pickFrom[Math.floor(Math.random() * pickFrom.length)];
-      state.history = (state.history || []).concat([{ id: pick.id, at: Date.now() }]).slice(-24);
-      lsSet(PICKER_KEY, state);
-      const res = mount.querySelector('#fluxPickerResult');
-      if (res) {
-        res.innerHTML = `<div class="flux-picker-name">${esc(pick.label)}</div>
-          <div class="flux-picker-meta">${eligible.length < pool.length ? 'Cooldown applied' : 'Full pool'}</div>`;
-      }
-    });
+      mount.innerHTML = `
+        ${list.length
+          ? `<select class="flux-picker-class" id="fluxPickerClass" aria-label="Class">
+              ${list.map((c) => `<option value="${esc(String(c.id))}"${cur && String(c.id) === String(cur.id) ? ' selected' : ''}>${esc(c.periodLabel || 'P' + c.period)} · ${esc(c.name)}</option>`).join('')}
+            </select>`
+          : `<p class="flux-widget-hint">Add the classes you teach in <a href="javascript:nav('school')">School Info</a> first.</p>`}
+        ${list.length && !names.length
+          ? `<p class="flux-widget-hint">No names for this class yet. Paste your class list below — one name per line.</p>`
+          : ''}
+        ${names.length
+          ? `<p class="flux-widget-hint">${names.length} name${names.length === 1 ? '' : 's'} · ${called.length} called this round</p>`
+          : ''}
+        <button type="button" class="btn" id="fluxPickerSpin" style="width:100%"${names.length ? '' : ' disabled'}>Pick student</button>
+        <div id="fluxPickerResult" class="flux-picker-result"></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button type="button" class="btn-sec" id="fluxPickerEdit" style="flex:1;font-size:.72rem"${list.length ? '' : ' disabled'}>${names.length ? 'Edit names' : 'Add names'}</button>
+          <button type="button" class="btn-sec" id="fluxPickerReset" style="flex:1;font-size:.72rem"${called.length ? '' : ' disabled'}>New round</button>
+        </div>
+        <div id="fluxPickerEditor" hidden>
+          <textarea id="fluxPickerNames" class="flux-picker-names" rows="6" placeholder="One name per line">${esc(names.join('\n'))}</textarea>
+          <button type="button" class="btn-sec" id="fluxPickerSave" style="width:100%;font-size:.72rem">Save names</button>
+        </div>`;
+
+      mount.querySelector('#fluxPickerClass')?.addEventListener('change', paint);
+
+      mount.querySelector('#fluxPickerEdit')?.addEventListener('click', () => {
+        const ed = mount.querySelector('#fluxPickerEditor');
+        if (ed) ed.hidden = !ed.hidden;
+      });
+
+      mount.querySelector('#fluxPickerSave')?.addEventListener('click', () => {
+        const c = classOf(selectedId());
+        if (!c) return;
+        const raw = mount.querySelector('#fluxPickerNames')?.value || '';
+        const list2 = window.FluxTeacherClasses?.setStudents?.(c.id, raw) || [];
+        // A changed list invalidates the round: a name that is gone must not
+        // keep counting as "already called".
+        rounds[c.id] = (rounds[c.id] || []).filter((n) => list2.includes(n));
+        lsSet(PICKER_KEY, { rounds });
+        if (typeof showToast === 'function') showToast(`Saved ${list2.length} names`, 'success');
+        paint();
+      });
+
+      mount.querySelector('#fluxPickerReset')?.addEventListener('click', () => {
+        const c = classOf(selectedId());
+        if (!c) return;
+        rounds[c.id] = [];
+        lsSet(PICKER_KEY, { rounds });
+        paint();
+      });
+
+      mount.querySelector('#fluxPickerSpin')?.addEventListener('click', () => {
+        const c = classOf(selectedId());
+        if (!c) return;
+        const pool = c.students || [];
+        if (!pool.length) return;
+        let done = (rounds[c.id] || []).filter((n) => pool.includes(n));
+        let eligible = pool.filter((n) => !done.includes(n));
+        let wrapped = false;
+        if (!eligible.length) { done = []; eligible = pool.slice(); wrapped = true; }
+        const pick = eligible[Math.floor(Math.random() * eligible.length)];
+        rounds[c.id] = done.concat([pick]);
+        lsSet(PICKER_KEY, { rounds });
+        paint();
+        const res = mount.querySelector('#fluxPickerResult');
+        if (res) {
+          res.innerHTML = `<div class="flux-picker-name">${esc(pick)}</div>
+            <div class="flux-picker-meta">${wrapped
+              ? 'Everyone has had a turn — new round'
+              : (pool.length - rounds[c.id].length) + ' left this round'}</div>`;
+        }
+      });
+    }
+
+    paint();
   }
 
   let _classTimerIv = null;

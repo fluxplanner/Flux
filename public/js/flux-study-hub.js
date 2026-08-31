@@ -37,6 +37,13 @@
       if (typeof window.save === 'function') { window.save(LS_KEY, state); return; }
       localStorage.setItem(LS_KEY, JSON.stringify(state));
     } catch (e) {}
+    /* Writing locally is only half of it. Saving to this device kept starred
+       subjects across a reload but not across a phone and a laptop, which is
+       what "per-device and temporary" meant. syncKey queues a debounced push of
+       the whole payload; it no-ops when signed out and while an owner previews
+       another account, so it is safe to call on every write. Deliberately after
+       the persist above — a failed sync must not cost you the local save. */
+    try { if (typeof window.syncKey === 'function') window.syncKey('studyHub', state); } catch (e) {}
   };
 
   let state = { subject: 'chemistry', chemTab: 'table', tool: {}, favs: [] };
@@ -243,7 +250,14 @@
   }
   function railHtml() {
     const items = orderedSubjects().map(pillHtml);
-    const favCount = state.favs.length;
+    /* Count the favourites that actually matched a subject, not state.favs
+       .length. The two diverge as soon as favs holds an id with no subject
+       behind it — a renamed subject, or a record written by a different
+       version — and then the divider lands that many slots too far right,
+       sitting after a subject you never starred. Harmless while favourites
+       never left the device that wrote them; now that they sync between
+       devices, a stale id is a normal thing to receive. */
+    const favCount = SUBJECTS.reduce((n, s) => n + (isFav(s.id) ? 1 : 0), 0);
     // A divider only reads as meaningful when there is something on both sides.
     if (favCount > 0 && favCount < SUBJECTS.length) {
       items.splice(favCount, 0, '<span class="fsh-rail-sep" aria-hidden="true"></span>');
@@ -890,7 +904,38 @@
   function renderHub() { if (!$('fshRoot')) { if (!buildShell()) return; } mergeLegacyOnce(); renderStage(); }
   window.renderToolbox = renderHub;
   window.renderStudyTools = renderHub;
+  /* ── cloud sync ──────────────────────────────────────────────────────────
+     Same two-function contract every other synced module uses (see
+     FluxUnitConverterFavorites): getCloudSlice is read by getCloudPayload on
+     the way up, applyFromCloud is handed the stored slice on the way down.
+     Hung off the existing fluxStudyHub object rather than a new FluxStudyHub
+     global — two names differing only in one capital letter is a trap. */
+  function getCloudSlice() {
+    return { subject: state.subject, chemTab: state.chemTab, tool: state.tool, favs: state.favs };
+  }
+  function applyFromCloud(data) {
+    if (!data || typeof data !== 'object') return;
+    /* Favourites are the point of syncing this, and they are the one field a
+       half-written record can destroy: assigning a missing or corrupted favs
+       would silently unstar everything on this device. Only take what is
+       actually an array, and keep what is here otherwise. */
+    if (Array.isArray(data.favs)) state.favs = data.favs.filter((id) => typeof id === 'string');
+    if (typeof data.subject === 'string') state.subject = data.subject;
+    if (typeof data.chemTab === 'string') state.chemTab = data.chemTab;
+    if (data.tool && typeof data.tool === 'object') state.tool = data.tool;
+    /* Persist through window.save directly, NOT through save(): save() calls
+       syncKey, which would queue a push of what we just pulled down and bounce
+       the same record back to the server on every sign-in. */
+    try {
+      if (typeof window.save === 'function') window.save(LS_KEY, state);
+      else localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch (e) {}
+    // Only repaint if the rail is actually on screen; renderRail no-ops otherwise.
+    try { renderRail(); } catch (e) {}
+  }
+
   window.fluxStudyHub = { render: renderHub, register, addAITool, tools: aiTools, aiManifest, slash, balance, parseFormula, selectSubject,
+    getCloudSlice, applyFromCloud,
     /* Lets a shared tool tell which subject opened it — the formula sheet uses
        this to show only the relevant science instead of all three. */
     currentSubject: () => state.subject,

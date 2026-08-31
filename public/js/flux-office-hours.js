@@ -38,12 +38,17 @@
 
   /* ---------- shared helpers (match flux-cowork.js conventions) ---------- */
 
+  /* Paused. The fallback is the important half: isEnabled() returns the
+     call-site fallback whenever flags have not loaded yet (_flags === null),
+     which at boot is always — so leaving `true` here would inject the card for
+     a beat before the registry could say otherwise. Both halves say false now.
+     See enable_office_hours in flux-feature-flags.js for the why. */
   function enabled() {
     try {
       return window.FluxFeatureFlags
-        ? !!window.FluxFeatureFlags.isEnabled('enable_office_hours', true)
-        : true;
-    } catch (_) { return true; }
+        ? !!window.FluxFeatureFlags.isEnabled('enable_office_hours', false)
+        : false;
+    } catch (_) { return false; }
   }
 
   function esc(s) {

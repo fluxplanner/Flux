@@ -14,7 +14,10 @@ test.describe('Teacher workflow path', () => {
   test('teacher nav and dashboard shell load', async ({ page }) => {
     await expect(page.locator('[data-teacher-nav]').first()).toBeVisible();
     await expect(page.locator('#teacherDashboard.panel.active')).toBeVisible();
-    await expect(page.locator('#teacherDashboardBody')).toContainText(/E2E Teacher|No classes yet/i);
+    // Was /E2E Teacher|No classes yet/. Three separate things were called
+    // "classes" — this card, the sidebar entry, and the timetable on School
+    // Info — so the join-code one is now plainly a roster.
+    await expect(page.locator('#teacherDashboardBody')).toContainText(/E2E Teacher|No rosters yet/i);
   });
 
   test('teacher can open classes action', async ({ page }) => {

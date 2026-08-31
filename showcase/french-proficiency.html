@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>French Proficiency Panel — Flux Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- ==========================================================================
+     SECTION 1 — STYLES
+     Self-contained. Uses CSS custom properties so the whole panel can be
+     re-themed from one place when it lands inside the Flux dashboard.
+     ========================================================================== -->
+<style>
+:root{
+  --bg:#f6f7fb;
+  --surface:#ffffff;
+  --surface-2:#fbfbfe;
+  --line:#e6e8f0;
+  --line-soft:#eef0f7;
+  --text:#171a26;
+  --text-2:#5b6178;
+  --text-3:#878ea6;
+  --accent:#5b5bd6;
+  --accent-soft:#eeeeff;
+  --accent-line:#d6d6fa;
+  --ok:#12916c;
+  --warn:#b26a00;
+  --warn-soft:#fdf2df;
+  --lock-soft:#f1f2f7;
+  --ai:#8a49d8;
+  --ai-soft:#f5edff;
+  --ai-line:#e5d4fb;
+  --shadow:0 1px 2px rgba(20,22,40,.05), 0 8px 24px rgba(20,22,40,.06);
+  --shadow-lg:0 2px 6px rgba(20,22,40,.06), 0 20px 48px rgba(20,22,40,.12);
+  --r-sm:10px; --r-md:14px; --r-lg:20px;
+  --tap:44px; /* WCAG 2.2 minimum target size */
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1017; --surface:#161926; --surface-2:#1b1f2e; --line:#272c3d; --line-soft:#222739;
+    --text:#eceef6; --text-2:#a3a9c0; --text-3:#7d8399;
+    --accent:#8b8bf0; --accent-soft:#232449; --accent-line:#3a3b6b;
+    --ok:#4fd1a5;
+    --warn:#e0a44a; --warn-soft:#2e2517;
+    --lock-soft:#1e2231;
+    --ai:#bd93f8; --ai-soft:#251a38; --ai-line:#3d2c5c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 20px 48px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+button{font-family:inherit}
+
+/* ---------- Shell ---------- */
+.fp-panel{max-width:940px;margin:0 auto;padding:28px 20px 96px}
+@media (max-width:640px){ .fp-panel{padding:18px 14px 80px} }
+
+/* ---------- Header ---------- */
+.fp-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}
+.fp-head-text{flex:1;min-width:0}
+.fp-title{margin:0;font-size:26px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fp-sub{margin:6px 0 0;color:var(--text-2);font-size:14.5px;max-width:58ch}
+.fp-level-chip{
+  font-size:12px;font-weight:600;letter-spacing:.02em;
+  background:var(--accent-soft);color:var(--accent);
+  border:1px solid var(--accent-line);
+  padding:4px 10px;border-radius:999px;white-space:nowrap;
+}
+.fp-icon-btn{
+  min-width:var(--tap);min-height:var(--tap);
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  cursor:pointer;color:var(--text-2);font-size:17px;
+  transition:background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.fp-icon-btn:hover{background:var(--surface-2);border-color:var(--accent-line);color:var(--accent)}
+.fp-icon-btn:active{transform:scale(.96)}
+
+/* ---------- Overall summary strip ---------- */
+.fp-overview{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:14px 16px;margin-bottom:20px;box-shadow:var(--shadow);
+}
+.fp-ov-stat{display:flex;flex-direction:column;gap:2px;padding-right:16px;border-right:1px solid var(--line-soft)}
+.fp-ov-stat:last-of-type{border-right:0}
+.fp-ov-num{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.fp-ov-label{font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.fp-ov-spacer{flex:1}
+.fp-ov-dim{color:var(--text-3);font-weight:600}
+
+/* ---------- Accordion ---------- */
+.fp-domains{display:flex;flex-direction:column;gap:12px}
+.fp-dom{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.fp-dom.is-open{border-color:var(--accent-line)}
+.fp-dom-head{
+  width:100%;min-height:var(--tap);
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;background:none;border:0;cursor:pointer;text-align:left;color:inherit;
+}
+.fp-dom-head:hover{background:var(--surface-2)}
+.fp-dom-emoji{
+  width:38px;height:38px;flex:none;display:grid;place-items:center;font-size:19px;
+  background:var(--accent-soft);border-radius:11px;
+}
+.fp-dom-main{flex:1;min-width:0;display:block}
+.fp-dom-name{font-weight:600;font-size:15.5px;display:block}
+.fp-dom-meta{font-size:12.5px;color:var(--text-3);margin-top:2px;display:block}
+.fp-dom-right{display:flex;align-items:center;gap:12px;flex:none}
+.fp-dom-pct{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
+.fp-chev{color:var(--text-3);transition:transform .2s ease;font-size:12px}
+.fp-dom.is-open .fp-chev{transform:rotate(180deg)}
+
+/* progress bar */
+.fp-bar{display:block;height:6px;background:var(--line-soft);border-radius:999px;overflow:hidden;margin-top:8px}
+.fp-bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#8b8bf0);border-radius:999px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+.fp-bar.is-full > i{background:linear-gradient(90deg,var(--ok),#3ec99b)}
+
+/* body */
+.fp-dom-body{display:none;padding:2px 16px 16px;border-top:1px solid var(--line-soft)}
+.fp-dom.is-open .fp-dom-body{display:block}
+.fp-level{margin-top:16px}
+.fp-level-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.fp-level-tag{
+  font-size:11.5px;font-weight:700;letter-spacing:.05em;
+  padding:3px 8px;border-radius:6px;background:var(--lock-soft);color:var(--text-2);
+}
+.fp-level-tag[data-l="A1"]{background:#e8f4ff;color:#1c6ca8}
+.fp-level-tag[data-l="A2"]{background:#e9f7ef;color:#1a7a52}
+.fp-level-tag[data-l="B1"]{background:#f3ecff;color:#6b45b8}
+@media (prefers-color-scheme: dark){
+  .fp-level-tag[data-l="A1"]{background:#12293c;color:#7cc0f0}
+  .fp-level-tag[data-l="A2"]{background:#123024;color:#63d5a4}
+  .fp-level-tag[data-l="B1"]{background:#281b3d;color:#c5a3f5}
+}
+.fp-level-count{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.fp-level-rule{flex:1;height:1px;background:var(--line-soft)}
+
+/* can-do statement rows */
+.fp-stmt{
+  display:flex;align-items:flex-start;gap:12px;
+  min-height:var(--tap);padding:9px 10px;
+  border-radius:var(--r-sm);cursor:pointer;
+  transition:background .12s ease;
+}
+.fp-stmt:hover{background:var(--surface-2)}
+.fp-stmt input{
+  appearance:none;-webkit-appearance:none;
+  width:20px;height:20px;flex:none;margin:2px 0 0;
+  border:1.5px solid var(--line);border-radius:6px;background:var(--surface);
+  cursor:pointer;position:relative;transition:background .15s ease,border-color .15s ease;
+}
+.fp-stmt input:checked{background:var(--accent);border-color:var(--accent)}
+.fp-stmt input:checked::after{
+  content:'';position:absolute;left:6.5px;top:3px;width:4px;height:9px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.fp-stmt input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fp-stmt span{font-size:14.5px;padding-top:1px}
+.fp-stmt input:checked + span{color:var(--text-2)}
+
+/* ---------- CTA bar ---------- */
+.fp-cta{
+  position:sticky;bottom:14px;margin-top:22px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:12px 14px;box-shadow:var(--shadow-lg);
+}
+.fp-cta-hint{flex:1;min-width:180px;font-size:13.5px;color:var(--text-2)}
+.fp-btn{
+  min-height:var(--tap);padding:0 20px;border-radius:var(--r-md);
+  border:1px solid transparent;background:var(--accent);color:#fff;
+  font-size:14.5px;font-weight:600;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:filter .15s ease, transform .12s ease;
+}
+.fp-btn:hover:not(:disabled){filter:brightness(1.08)}
+.fp-btn:active:not(:disabled){transform:scale(.98)}
+.fp-btn:disabled{opacity:.45;cursor:not-allowed}
+.fp-btn.ghost{background:var(--surface);color:var(--text-2);border-color:var(--line)}
+.fp-btn.ghost:hover{background:var(--surface-2);color:var(--text)}
+
+/* ---------- Recommendations ---------- */
+.fp-view[hidden]{display:none}
+.fp-back{
+  display:inline-flex;align-items:center;gap:7px;min-height:var(--tap);
+  background:none;border:0;color:var(--text-2);font-size:14px;font-weight:500;
+  cursor:pointer;padding:0 4px;margin-bottom:6px;
+}
+.fp-back:hover{color:var(--accent)}
+.fp-rec-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);padding:18px;margin-bottom:14px;
+}
+.fp-rec-top{display:flex;align-items:flex-start;gap:13px;margin-bottom:4px}
+.fp-rank{
+  width:26px;height:26px;flex:none;display:grid;place-items:center;
+  background:var(--accent);color:#fff;border-radius:8px;
+  font-size:12.5px;font-weight:700;margin-top:2px;
+}
+.fp-rec-name{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.fp-rec-why{font-size:13.5px;color:var(--text-2);margin-top:3px}
+.fp-gap-pill{
+  margin-left:auto;flex:none;font-size:12px;font-weight:700;
+  background:var(--warn-soft);color:var(--warn);
+  padding:5px 10px;border-radius:999px;white-space:nowrap;
+}
+.fp-res-group-label{
+  font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin:18px 0 8px;
+}
+.fp-res{
+  display:flex;align-items:center;gap:12px;
+  min-height:var(--tap);padding:11px 12px;
+  border:1px solid var(--line-soft);border-radius:var(--r-md);
+  text-decoration:none;color:inherit;margin-bottom:8px;background:var(--surface-2);
+  transition:border-color .15s ease, transform .12s ease, background .15s ease;
+}
+.fp-res:hover{border-color:var(--accent-line);background:var(--surface);transform:translateY(-1px)}
+.fp-res-icon{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:9px;background:var(--surface);border:1px solid var(--line-soft);font-size:15px}
+.fp-res-main{flex:1;min-width:0}
+.fp-res-title{font-size:14.5px;font-weight:600;display:block}
+.fp-res-sub{font-size:12.5px;color:var(--text-3);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fp-tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--lock-soft);color:var(--text-2)}
+.fp-res-go{color:var(--text-3);font-size:14px;flex:none}
+.fp-res.is-ai{background:var(--ai-soft);border-color:var(--ai-line)}
+.fp-res.is-ai .fp-res-icon{background:var(--surface);border-color:var(--ai-line)}
+.fp-ai-badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--ai);color:#fff}
+
+/* skeleton loader */
+.fp-skel{height:56px;border-radius:var(--r-md);margin-bottom:8px;
+  background:linear-gradient(90deg,var(--line-soft) 25%,var(--surface-2) 50%,var(--line-soft) 75%);
+  background-size:200% 100%;animation:fp-shimmer 1.4s ease-in-out infinite;}
+@keyframes fp-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){
+  .fp-skel{animation:none}
+  *{transition-duration:.01ms !important}
+}
+
+.fp-note{
+  font-size:13px;color:var(--text-2);background:var(--surface-2);
+  border:1px dashed var(--line);border-radius:var(--r-md);padding:11px 13px;
+}
+.fp-note.is-error{border-style:solid;border-color:#f0c9c9;background:#fdf1f1;color:#a13a3a}
+@media (prefers-color-scheme: dark){ .fp-note.is-error{border-color:#5a2b2b;background:#2a1717;color:#f0a3a3} }
+
+/* locked domains */
+.fp-locked-wrap{margin-top:22px}
+.fp-locked{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border:1px dashed var(--line);border-radius:var(--r-md);
+  background:var(--lock-soft);margin-bottom:8px;
+}
+.fp-locked-body{flex:1;min-width:0}
+.fp-locked-name{font-size:14px;font-weight:600;color:var(--text-2);display:block}
+.fp-locked-why{font-size:12.5px;color:var(--text-3);margin-top:2px;display:block}
+
+/* ---------- Modal (API key) ---------- */
+.fp-modal{
+  position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;
+  background:rgba(16,18,30,.5);backdrop-filter:blur(4px);
+}
+.fp-modal[hidden]{display:none}
+.fp-modal-card{
+  width:100%;max-width:440px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--shadow-lg);padding:22px;
+}
+.fp-modal-card h2{margin:0 0 6px;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.fp-modal-card p{margin:0 0 14px;font-size:13.5px;color:var(--text-2)}
+.fp-input{
+  width:100%;min-height:var(--tap);padding:0 13px;
+  border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface-2);color:var(--text);font-size:14.5px;font-family:inherit;
+}
+.fp-input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.fp-modal-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.fp-modal-actions .fp-btn{flex:1;min-width:120px}
+.fp-fineprint{font-size:12px;color:var(--text-3);margin-top:12px;line-height:1.45}
+.fp-fineprint a{color:var(--accent)}
+
+.fp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- ==========================================================================
+     SECTION 2 — MARKUP SHELL
+     Everything inside <div class="fp-panel"> plus the modal is what gets
+     lifted into the Flux dashboard tab. Nothing outside it is load-bearing.
+     ========================================================================== -->
+<div class="fp-panel">
+
+  <header class="fp-head">
+    <div class="fp-head-text">
+      <h1 class="fp-title">
+        French proficiency
+        <span class="fp-level-chip" id="fpLevelChip">Working level · A1</span>
+      </h1>
+      <p class="fp-sub">Tick the things you can already do in French. We'll work out where the gaps are and hand you something to actually do about them.</p>
+    </div>
+    <button class="fp-icon-btn" id="fpSettingsBtn" title="Groq API key settings" aria-label="Groq API key settings">⚙</button>
+  </header>
+
+  <!-- ---------- Assessment phase ---------- -->
+  <section class="fp-view" id="fpAssessView">
+    <div class="fp-overview">
+      <div class="fp-ov-stat">
+        <span class="fp-ov-num" id="fpOvChecked">0</span>
+        <span class="fp-ov-label">Can-dos ticked</span>
+      </div>
+      <div class="fp-ov-stat">
+        <span class="fp-ov-num" id="fpOvDomains">0<span class="fp-ov-dim">/6</span></span>
+        <span class="fp-ov-label">Domains started</span>
+      </div>
+      <div class="fp-ov-stat">
+        <span class="fp-ov-num" id="fpOvOverall">0%</span>
+        <span class="fp-ov-label">Overall</span>
+      </div>
+      <div class="fp-ov-spacer"></div>
+    </div>
+
+    <div class="fp-domains" id="fpDomains"></div>
+
+    <div class="fp-cta">
+      <span class="fp-cta-hint" id="fpCtaHint">Tick statements in at least 2 domains to unlock your recommendations.</span>
+      <button class="fp-btn ghost" id="fpResetBtn" type="button">Retake assessment</button>
+      <button class="fp-btn" id="fpRecommendBtn" type="button" disabled>See my recommendations</button>
+    </div>
+  </section>
+
+  <!-- ---------- Recommendation phase ---------- -->
+  <section class="fp-view" id="fpRecView" hidden>
+    <button class="fp-back" id="fpBackBtn" type="button">← Back to my assessment</button>
+    <div id="fpRecList"></div>
+    <div class="fp-locked-wrap" id="fpLockedWrap"></div>
+    <div class="fp-cta">
+      <span class="fp-cta-hint">Come back and re-tick as things start to click.</span>
+      <button class="fp-btn ghost" id="fpResetBtn2" type="button">Retake assessment</button>
+      <button class="fp-btn" id="fpRefreshAiBtn" type="button">Refresh AI suggestions</button>
+    </div>
+  </section>
+</div>
+
+<!-- ---------- API key modal ---------- -->
+<div class="fp-modal" id="fpKeyModal" hidden role="dialog" aria-modal="true" aria-labelledby="fpKeyTitle">
+  <div class="fp-modal-card">
+    <h2 id="fpKeyTitle">Connect Groq</h2>
+    <p>Paste a Groq API key and we can top up the curated list with live suggestions when the shelf is thin for your level. Everything else works without it.</p>
+    <label class="fp-sr" for="fpKeyInput">Groq API key</label>
+    <input class="fp-input" id="fpKeyInput" type="password" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+    <div class="fp-modal-actions">
+      <button class="fp-btn ghost" id="fpKeySkip" type="button">Skip for now</button>
+      <button class="fp-btn" id="fpKeySave" type="button">Save key</button>
+    </div>
+    <p class="fp-fineprint">Stored in this browser's localStorage only — it never leaves your device except in the request to Groq. Free keys at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ==========================================================================
+   SECTION 3 — DATA: SKILL DOMAINS
+   ========================================================================== */
+const DOMAINS = [
+  { id:'listening',   name:'Listening',           emoji:'🎧',  blurb:'Understanding spoken French' },
+  { id:'reading',     name:'Reading',             emoji:'📖',  blurb:'Understanding written French' },
+  { id:'grammar',     name:'Grammar & Structure', emoji:'🧩',  blurb:'The machinery under everything else' },
+  { id:'interaction', name:'Spoken Interaction',  emoji:'💬',  blurb:'Back-and-forth conversation' },
+  { id:'production',  name:'Spoken Production',   emoji:'🗣️', blurb:'Talking at length on your own' },
+  { id:'writing',     name:'Writing',             emoji:'✍️', blurb:'Producing written French' },
+];
+const LEVELS = ['A1','A2','B1'];
+
+/* ==========================================================================
+   SECTION 4 — DATA: CEFR CAN-DO STATEMENTS
+   domain → level → statements. Ids are derived positionally as
+   `${domainId}.${level}.${index}`, so the data stays terse and editable.
+   ========================================================================== */
+const STATEMENTS = {
+  listening: {
+    A1: [
+      "I can understand someone spelling out a French name or address letter by letter (« C comme Camille »).",
+      "I can catch numbers, prices and times in a shop or café — « douze euros cinquante », « à quatorze heures ».",
+      "I can follow simple classroom instructions like « Ouvrez vos livres » or « Écoutez et répétez ».",
+      "I can recognise days, months and dates when someone talks about their schedule.",
+      "I can understand a slow, clearly-spoken introduction: name, age, nationality, where someone lives."
+    ],
+    A2: [
+      "I can understand the main point of a short weather forecast on French radio.",
+      "I can follow directions around town — « prenez la deuxième à droite, en face de la boulangerie ».",
+      "I can understand a short voicemail confirming or cancelling an appointment.",
+      "I can follow two people chatting about weekend plans at normal speed.",
+      "I can pick out platform, delay and destination in a train station announcement."
+    ],
+    B1: [
+      "I can follow the main storyline of a French series episode with French subtitles.",
+      "I can get the gist of a France Info news report on a familiar topic — school, environment, sport.",
+      "I can follow a five-minute podcast where someone tells an anecdote in the passé composé and imparfait.",
+      "I can tell whether a French speaker agrees or disagrees, even through fillers like « bah », « en fait », « du coup ».",
+      "I can follow an explanation of how something works at natural speed, needing only occasional repetition."
+    ]
+  },
+  reading: {
+    A1: [
+      "I can understand common signs and notices: « entrée », « sortie », « poussez », « défense de fumer ».",
+      "I can read a café menu and work out the dishes, drinks and prices.",
+      "I can understand a short text message or postcard from a friend.",
+      "I can find nom, prénom, date de naissance and code postal on a simple form.",
+      "I can read a short profile and pick out someone's age, job and hometown."
+    ],
+    A2: [
+      "I can understand a short email arranging a time and place to meet.",
+      "I can follow a simple recipe — mélangez, ajoutez, faites cuire.",
+      "I can get the main points of a short article in a graded reader or « Le Petit Quotidien ».",
+      "I can read a cinema or museum listing and work out times, prices and réductions.",
+      "I can understand a short set of rules, like a school trip letter sent to parents."
+    ],
+    B1: [
+      "I can read a French news article on a familiar topic and summarise its main argument.",
+      "I can understand a blog post or forum thread, including informal register and slang.",
+      "I can follow a short story or graded novel without reaching for a dictionary every line.",
+      "I can spot a writer's point of view and separate it from the facts they use to back it up.",
+      "I can skim a real French site — SNCF, Ameli, a université page — to find the one thing I need."
+    ]
+  },
+  grammar: {
+    A1: [
+      "I can choose the right articles: le / la / les and un / une / des.",
+      "I can conjugate être, avoir and aller in the present tense.",
+      "I can conjugate regular -er verbs in the present tense.",
+      "I can make a sentence negative with ne… pas.",
+      "I can agree adjectives in gender and number — petit / petite / petits / petites.",
+      "I can ask questions with est-ce que and with rising intonation."
+    ],
+    A2: [
+      "I can form the passé composé, choosing avoir or être correctly.",
+      "I can agree the past participle with être verbs — elle est allée, ils sont partis.",
+      "I can use the imparfait for descriptions and past habits.",
+      "I can place direct and indirect object pronouns correctly — le, la, les, lui, leur.",
+      "I can use both the futur proche and the futur simple.",
+      "I can use du, de la, des — and know they collapse to de after a negative."
+    ],
+    B1: [
+      "I can choose between passé composé and imparfait across a whole story, not just one sentence.",
+      "I can use the relative pronouns qui, que, où and dont accurately.",
+      "I can form the conditional and use it for politeness and hypotheses.",
+      "I can use the subjunctive after triggers like il faut que, bien que and je veux que.",
+      "I can use y and en, and order two pronouns correctly — « je lui en ai parlé ».",
+      "I can handle si clauses: si + présent → futur, si + imparfait → conditionnel."
+    ]
+  },
+  interaction: {
+    A1: [
+      "I can greet someone and introduce myself, choosing tu or vous appropriately.",
+      "I can order a drink or a sandwich — « je voudrais…, s'il vous plaît ».",
+      "I can ask and answer basic questions: où habites-tu ? quel âge as-tu ?",
+      "I can ask how much something costs and understand the answer.",
+      "I can say I haven't understood and ask someone to repeat or slow down."
+    ],
+    A2: [
+      "I can make plans with a friend — suggest a time, accept or turn down an invitation politely.",
+      "I can ask for directions and check I've understood by repeating them back.",
+      "I can handle a simple transaction: a train ticket, a return, booking a table.",
+      "I can describe a problem to a pharmacien — « j'ai mal à la tête depuis deux jours ».",
+      "I can keep a short conversation going about hobbies, family or my weekend."
+    ],
+    B1: [
+      "I can join a discussion with friends and give reasons for my opinion.",
+      "I can disagree politely — « je ne suis pas tout à fait d'accord parce que… ».",
+      "I can deal with something going wrong while travelling: a missed connection, a hotel problem.",
+      "I can hold an informal interview or job chat, asking follow-up questions as I go.",
+      "I can rescue a conversation by rephrasing when the other person looks lost."
+    ]
+  },
+  production: {
+    A1: [
+      "I can describe myself in a few sentences: name, age, nationality, family.",
+      "I can describe my room or my school using il y a and simple prepositions.",
+      "I can count, give the date and tell the time out loud.",
+      "I can name everyday objects with the right gender and article.",
+      "I can say what I like and dislike — j'aime / je n'aime pas + noun or infinitive."
+    ],
+    A2: [
+      "I can describe my daily routine with reflexive verbs: je me lève, je me couche.",
+      "I can say what I did last weekend in the passé composé.",
+      "I can describe someone's appearance and personality with correct adjective agreement.",
+      "I can give a short set of instructions — a recipe, or how to get to my house.",
+      "I can talk about my plans with the futur proche: je vais + infinitive."
+    ],
+    B1: [
+      "I can tell a story in the past, switching cleanly between passé composé and imparfait.",
+      "I can present a prepared topic for two to three minutes without reading a script.",
+      "I can lay out the advantages and disadvantages of something and say which I prefer.",
+      "I can describe a film or book I liked and explain why I'd recommend it.",
+      "I can speculate using the conditional — je voudrais, il faudrait, si j'avais…"
+    ]
+  },
+  writing: {
+    A1: [
+      "I can fill in a form with my personal details in French.",
+      "I can write a short message to arrange to meet a friend.",
+      "I can write a three- or four-sentence postcard about a holiday.",
+      "I can join simple sentences with et, mais and parce que.",
+      "I can adapt a model sentence to write about my family or my pets."
+    ],
+    A2: [
+      "I can write a short informal email describing my weekend in the past tense.",
+      "I can describe my town — what there is, and what I like about it.",
+      "I can write a note of thanks, apology or invitation with a fitting opening and closing.",
+      "I can write 80–100 words on a familiar topic with mostly correct spelling and accents.",
+      "I can link ideas with d'abord, ensuite, puis and enfin so a text flows."
+    ],
+    B1: [
+      "I can write 150–200 words giving my opinion with reasons and examples.",
+      "I can write a formal email in the right register, closing with « Je vous prie d'agréer… ».",
+      "I can write a narrative that moves between past tenses without losing the reader.",
+      "I can summarise an article or video in my own words instead of lifting phrases.",
+      "I can structure an argument with cependant, en revanche, par conséquent, tandis que."
+    ]
+  }
+};
+
+/* ==========================================================================
+   SECTION 5 — DATA: CURATED RESOURCE SEED
+   Stable landing/section pages rather than deep links that rot.
+   Shape: { domain, cefr_level, title, url, type, duration_min }
+   type ∈ video | article | exercise | podcast
+   ========================================================================== */
+const RESOURCES = [
+  /* --- Listening --- */
+  { domain:'listening', cefr_level:'A1', title:'TV5Monde — Apprendre le français, niveau A1', url:'https://apprendre.tv5monde.com/fr/niveaux/a1-debutant', type:'video', duration_min:10 },
+  { domain:'listening', cefr_level:'A1', title:'Podcast Français Facile — beginner dialogues', url:'https://www.podcastfrancaisfacile.com/', type:'podcast', duration_min:6 },
+  { domain:'listening', cefr_level:'A1', title:'Coffee Break French — Season 1', url:'https://coffeebreaklanguages.com/coffeebreakfrench/', type:'podcast', duration_min:20 },
+  { domain:'listening', cefr_level:'A2', title:'RFI — Journal en français facile', url:'https://francaisfacile.rfi.fr/', type:'podcast', duration_min:10 },
+  { domain:'listening', cefr_level:'A2', title:'Easy French — street interviews, dual subtitles', url:'https://www.youtube.com/@EasyFrench', type:'video', duration_min:12 },
+  { domain:'listening', cefr_level:'A2', title:'News in Slow French — intermediate edition', url:'https://www.newsinslowfrench.com/', type:'podcast', duration_min:25 },
+  { domain:'listening', cefr_level:'B1', title:'InnerFrench — slow, natural French podcast', url:'https://innerfrench.com/podcast/', type:'podcast', duration_min:30 },
+  { domain:'listening', cefr_level:'B1', title:'Duolingo French Podcast — real stories', url:'https://podcast.duolingo.com/french', type:'podcast', duration_min:20 },
+  { domain:'listening', cefr_level:'B1', title:'TV5Monde — niveau B1 intermédiaire', url:'https://apprendre.tv5monde.com/fr/niveaux/b1-intermediaire', type:'video', duration_min:15 },
+
+  /* --- Reading --- */
+  { domain:'reading', cefr_level:'A1', title:'Le Point du FLE — compréhension écrite, débutant', url:'https://www.lepointdufle.net/comprehension_ecrite.htm', type:'exercise', duration_min:15 },
+  { domain:'reading', cefr_level:'A1', title:'Bonjour de France — reading exercises', url:'https://www.bonjourdefrance.com/', type:'exercise', duration_min:12 },
+  { domain:'reading', cefr_level:'A2', title:'1jour1actu — news written for young readers', url:'https://www.1jour1actu.com/', type:'article', duration_min:8 },
+  { domain:'reading', cefr_level:'A2', title:'Lawless French — reading practice by level', url:'https://www.lawlessfrench.com/reading/', type:'article', duration_min:15 },
+  { domain:'reading', cefr_level:'B1', title:'RFI Savoirs — articles with comprehension exercises', url:'https://francaisfacile.rfi.fr/', type:'exercise', duration_min:20 },
+  { domain:'reading', cefr_level:'B1', title:'Le Monde — a real newspaper to graduate to', url:'https://www.lemonde.fr/', type:'article', duration_min:15 },
+
+  /* --- Grammar & Structure --- */
+  { domain:'grammar', cefr_level:'A1', title:'Lawless French — grammar lessons index', url:'https://www.lawlessfrench.com/grammar/', type:'article', duration_min:12 },
+  { domain:'grammar', cefr_level:'A1', title:'Français Facile — 1000+ graded exercises', url:'https://www.francaisfacile.com/', type:'exercise', duration_min:10 },
+  { domain:'grammar', cefr_level:'A1', title:'Le Conjugueur — every French verb, conjugated', url:'https://leconjugueur.lefigaro.fr/', type:'exercise', duration_min:5 },
+  { domain:'grammar', cefr_level:'A2', title:'Kwiziq French — adaptive grammar quizzes', url:'https://french.kwiziq.com/', type:'exercise', duration_min:15 },
+  { domain:'grammar', cefr_level:'A2', title:'Français avec Pierre — passé composé vs imparfait', url:'https://www.francaisavecpierre.com/', type:'video', duration_min:18 },
+  { domain:'grammar', cefr_level:'A2', title:'Conjuguemos — timed conjugation drills', url:'https://conjuguemos.com/', type:'exercise', duration_min:10 },
+  { domain:'grammar', cefr_level:'B1', title:'Lawless French — the subjunctive, in full', url:'https://www.lawlessfrench.com/grammar/subjunctive/', type:'article', duration_min:20 },
+  { domain:'grammar', cefr_level:'B1', title:'Bonjour de France — intermediate grammar exercises', url:'https://www.bonjourdefrance.com/', type:'exercise', duration_min:15 },
+
+  /* --- Spoken Interaction --- */
+  { domain:'interaction', cefr_level:'A1', title:'Le Point du FLE — everyday dialogues to shadow', url:'https://www.lepointdufle.net/', type:'exercise', duration_min:10 },
+  { domain:'interaction', cefr_level:'A1', title:'Coffee Break French — conversational episodes', url:'https://coffeebreaklanguages.com/coffeebreakfrench/', type:'podcast', duration_min:20 },
+  { domain:'interaction', cefr_level:'A2', title:'Tandem — free language exchange partners', url:'https://tandem.net/', type:'exercise', duration_min:30 },
+  { domain:'interaction', cefr_level:'A2', title:'HelloTalk — text and voice with native speakers', url:'https://www.hellotalk.com/', type:'exercise', duration_min:20 },
+  { domain:'interaction', cefr_level:'B1', title:'italki — one-to-one lessons with tutors', url:'https://www.italki.com/', type:'exercise', duration_min:45 },
+
+  /* --- Spoken Production --- */
+  { domain:'production', cefr_level:'A1', title:'Forvo — hear any French word from a native', url:'https://forvo.com/languages/fr/', type:'exercise', duration_min:5 },
+  { domain:'production', cefr_level:'A1', title:'Français Authentique — speak without translating', url:'https://www.francaisauthentique.com/', type:'video', duration_min:12 },
+  { domain:'production', cefr_level:'A2', title:'Piece of French — natural spoken French to imitate', url:'https://www.youtube.com/@pieceoffrench', type:'video', duration_min:15 },
+  { domain:'production', cefr_level:'B1', title:'InnerFrench — long-form monologue to shadow', url:'https://innerfrench.com/podcast/', type:'podcast', duration_min:30 },
+
+  /* --- Writing --- */
+  { domain:'writing', cefr_level:'A1', title:'Le Point du FLE — production écrite, débutant', url:'https://www.lepointdufle.net/', type:'exercise', duration_min:20 },
+  { domain:'writing', cefr_level:'A2', title:'Lawless French — writing guides and models', url:'https://www.lawlessfrench.com/writing/', type:'article', duration_min:15 },
+  { domain:'writing', cefr_level:'A2', title:'Scribens — French spelling and grammar checker', url:'https://www.scribens.fr/', type:'exercise', duration_min:10 },
+  { domain:'writing', cefr_level:'B1', title:'Bonjour de France — written production tasks', url:'https://www.bonjourdefrance.com/', type:'exercise', duration_min:25 },
+];
+
+const TYPE_ICON = { video:'▶', article:'📄', exercise:'✎', podcast:'🎙' };
+
+/* ==========================================================================
+   SECTION 6 — STORAGE LAYER  ← the Supabase swap point
+   Every read/write in the app goes through this object and nothing else.
+   To move to Supabase: keep these signatures, replace the bodies with
+   supabase.from('french_assessments').select() / .upsert(). They are all
+   async already, so no call site has to change.
+   ========================================================================== */
+const KEY_RESPONSES = 'flux.french.v1.responses';
+const KEY_APIKEY    = 'flux.french.v1.groqKey';
+const KEY_ASKED     = 'flux.french.v1.keyPrompted';
+
+const Store = {
+  /** Single in-memory copy of the answers. Every loadResponses() hands back
+   *  this same object, so two saves racing each other can't clobber one
+   *  another by each re-reading a stale snapshot across their await. */
+  _cache: null,
+
+  /** @returns {Promise<Record<string,string[]>>} domainId → checked statement ids */
+  async loadResponses(){
+    if(Store._cache) return Store._cache;
+    let parsed = null;
+    try{ parsed = JSON.parse(localStorage.getItem(KEY_RESPONSES) || '{}'); }catch(_){}
+    Store._cache = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    return Store._cache;
+  },
+  /** Persist one domain's checked ids. Kept per-domain so a Supabase swap can
+   *  upsert a single row rather than rewriting the whole blob. */
+  async saveDomain(domainId, checkedIds){
+    const all = await Store.loadResponses();
+    all[domainId] = checkedIds;
+    try{ localStorage.setItem(KEY_RESPONSES, JSON.stringify(all)); }catch(_){}
+  },
+  async clearResponses(){
+    Store._cache = {};
+    try{ localStorage.removeItem(KEY_RESPONSES); }catch(_){}
+  },
+  async getApiKey(){
+    try{ return localStorage.getItem(KEY_APIKEY) || ''; }catch(_){ return ''; }
+  },
+  async setApiKey(key){
+    try{ key ? localStorage.setItem(KEY_APIKEY, key) : localStorage.removeItem(KEY_APIKEY); }catch(_){}
+  },
+  async wasKeyPrompted(){
+    try{ return localStorage.getItem(KEY_ASKED) === '1'; }catch(_){ return false; }
+  },
+  async markKeyPrompted(){
+    try{ localStorage.setItem(KEY_ASKED, '1'); }catch(_){}
+  }
+};
+
+/* ==========================================================================
+   SECTION 7 — GAP ENGINE
+   score = checked / total per domain (0–1); gap = 1 - score.
+   Domains are ranked by gap descending, then run through the prerequisite
+   chain — a gated domain is never recommended until its prereq clears.
+   ========================================================================== */
+
+/** Each entry: this domain stays locked until `requires` scores >= `min`.
+ *  Domains absent from this map are never gated. */
+const PREREQS = {
+  interaction: { requires:'grammar',     min:0.40 },
+  production:  { requires:'interaction', min:0.40 },
+  writing:     { requires:'grammar',     min:0.50 },
+};
+
+function statementIds(domainId, level){
+  return STATEMENTS[domainId][level].map((_, i) => `${domainId}.${level}.${i}`);
+}
+function totalStatements(domainId){
+  return LEVELS.reduce((n, l) => n + STATEMENTS[domainId][l].length, 0);
+}
+
+function scoreDomains(responses){
+  const out = {};
+  for(const d of DOMAINS){
+    const total   = totalStatements(d.id);
+    const checked = (responses[d.id] || []).length;
+    const score   = total ? checked / total : 0;
+    out[d.id] = { score, checked, total, gap: 1 - score };
+  }
+  return out;
+}
+
+/** The level the student is currently working at: the first level they
+ *  haven't largely cleared. Decides which resources get surfaced. */
+function deriveWorkingLevel(responses){
+  const MASTERY = 0.70;
+  for(const level of LEVELS){
+    let checked = 0, total = 0;
+    for(const d of DOMAINS){
+      const ids  = statementIds(d.id, level);
+      const have = new Set(responses[d.id] || []);
+      total   += ids.length;
+      checked += ids.filter(id => have.has(id)).length;
+    }
+    if(!total || checked / total < MASTERY) return level;
+  }
+  return 'B1';
+}
+
+/** @returns {{ranked:Array, blocked:Array, top:Array, scores:Object, workingLevel:string}} */
+function runGapEngine(responses){
+  const scores  = scoreDomains(responses);
+  const ranked  = [];
+  const blocked = [];
+
+  for(const d of DOMAINS){
+    const gate = PREREQS[d.id];
+    if(gate && scores[gate.requires].score < gate.min){
+      const req = DOMAINS.find(x => x.id === gate.requires);
+      blocked.push({
+        domain: d,
+        reason: `Unlocks once ${req.name} reaches ${Math.round(gate.min*100)}% — you're at ${Math.round(scores[gate.requires].score*100)}%.`
+      });
+      continue;
+    }
+    ranked.push({ domain: d, ...scores[d.id] });
+  }
+
+  ranked.sort((a, b) => b.gap - a.gap);
+  return { ranked, blocked, top: ranked.slice(0,3), scores, workingLevel: deriveWorkingLevel(responses) };
+}
+
+/** Curated resources for a domain at an exact CEFR level. */
+function curatedFor(domainId, level){
+  return RESOURCES.filter(r => r.domain === domainId && r.cefr_level === level);
+}
+/** Fallback pool when the exact-level shelf is thin: this domain, other levels. */
+function nearbyFor(domainId, exclude){
+  const taken = new Set(exclude.map(r => r.url));
+  return RESOURCES.filter(r => r.domain === domainId && !taken.has(r.url));
+}
+
+/* ==========================================================================
+   SECTION 8 — GROQ CLIENT
+   Fires only for top-3 domains with fewer than MIN_CURATED matches at the
+   student's working level. Everything degrades gracefully without a key.
+   ========================================================================== */
+const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL  = 'llama-3.1-8b-instant';
+const MIN_CURATED = 2;
+
+function buildGroqPrompt(domainName, level){
+  return [
+    `A student learning French is at CEFR level ${level} and needs help with: ${domainName}.`,
+    `Recommend 1-2 REAL, free, currently-live online resources.`,
+    ``,
+    `Return ONLY a JSON array. No prose, no markdown fences. Each object:`,
+    `{"title": string, "url": string, "type": "video"|"article"|"exercise"|"podcast", "description": string}`,
+    ``,
+    `Hard rules:`,
+    `- Only well-established French-learning sites you are certain exist: tv5monde.com, rfi.fr, lawlessfrench.com, francaisfacile.com, bonjourdefrance.com, lepointdufle.net, french.kwiziq.com, innerfrench.com, podcastfrancaisfacile.com, coffeebreaklanguages.com, or a YouTube channel URL.`,
+    `- Prefer a stable homepage or section URL over a deep link you are unsure about. Never invent a page path.`,
+    `- description: max 20 words, plain English, say what the student actually does there.`,
+    `- Do not use the same site twice.`
+  ].join('\n');
+}
+
+/** Tolerant parser: handles bare arrays, code fences, {resources:[…]} wrappers
+ *  and leading chatter. Returns [] rather than throwing on junk. */
+function parseGroqJson(text){
+  if(!text) return [];
+  const s = String(text).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const tryParse = (str) => { try{ return JSON.parse(str); }catch(_){ return null; } };
+
+  let data = tryParse(s);
+  if(!data){
+    const a = s.indexOf('['), b = s.lastIndexOf(']');
+    if(a !== -1 && b > a) data = tryParse(s.slice(a, b + 1));
+  }
+  if(!data){
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if(a !== -1 && b > a) data = tryParse(s.slice(a, b + 1));
+  }
+  if(!data) return [];
+
+  const arr = Array.isArray(data) ? data
+            : Array.isArray(data.resources)   ? data.resources
+            : Array.isArray(data.suggestions) ? data.suggestions
+            : [];
+
+  const VALID_TYPES = ['video','article','exercise','podcast'];
+  return arr
+    .filter(r => r && typeof r.title === 'string' && typeof r.url === 'string' && /^https?:\/\//i.test(r.url))
+    .slice(0, 2)
+    .map(r => ({
+      title: r.title.trim(),
+      url: r.url.trim(),
+      type: VALID_TYPES.includes(r.type) ? r.type : 'article',
+      description: (r.description || '').trim()
+    }));
+}
+
+async function fetchAiSuggestions(apiKey, domainName, level){
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      temperature: 0.3,
+      max_tokens: 600,
+      messages: [
+        { role:'system', content:'You are a French-teaching resource librarian. You only recommend resources you are confident exist, and you reply with raw JSON and nothing else.' },
+        { role:'user',   content: buildGroqPrompt(domainName, level) }
+      ]
+    })
+  });
+
+  if(!res.ok){
+    let detail = '';
+    try{ detail = (await res.json())?.error?.message || ''; }catch(_){}
+    if(res.status === 401) throw new Error('Groq rejected that API key — check it in ⚙ settings.');
+    if(res.status === 429) throw new Error('Groq rate limit hit — try again in a moment.');
+    throw new Error(detail || `Groq returned ${res.status}.`);
+  }
+
+  const json = await res.json();
+  return parseGroqJson(json?.choices?.[0]?.message?.content);
+}
+
+/* ==========================================================================
+   SECTION 9 — STATE + RENDERING
+   ========================================================================== */
+const el  = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const state = {
+  responses: {},    // domainId → [statementId]
+  openDomain: null,
+  aiCache: {},      // domainId → { items:[…] } | { error:'…' }
+};
+
+const checkedSet = (domainId) => new Set(state.responses[domainId] || []);
+const touchedDomainCount = () => DOMAINS.filter(d => (state.responses[d.id] || []).length > 0).length;
+
+/* ---------- Assessment phase ---------- */
+function renderAssessment(){
+  const scores = scoreDomains(state.responses);
+
+  el('fpDomains').innerHTML = DOMAINS.map(d => {
+    const s      = scores[d.id];
+    const pct    = Math.round(s.score * 100);
+    const isOpen = state.openDomain === d.id;
+
+    const levelsHtml = LEVELS.map(level => {
+      const have = checkedSet(d.id);
+      const ids  = statementIds(d.id, level);
+      const done = ids.filter(id => have.has(id)).length;
+      const rows = STATEMENTS[d.id][level].map((text, i) => {
+        const id = `${d.id}.${level}.${i}`;
+        return `<label class="fp-stmt">
+            <input type="checkbox" data-stmt="${id}" data-domain="${d.id}" ${have.has(id) ? 'checked' : ''} />
+            <span>${esc(text)}</span>
+          </label>`;
+      }).join('');
+      return `<div class="fp-level">
+          <div class="fp-level-head">
+            <span class="fp-level-tag" data-l="${level}">${level}</span>
+            <span class="fp-level-count">${done}/${ids.length}</span>
+            <span class="fp-level-rule"></span>
+          </div>
+          ${rows}
+        </div>`;
+    }).join('');
+
+    return `<div class="fp-dom ${isOpen ? 'is-open' : ''}" data-dom="${d.id}">
+        <button class="fp-dom-head" type="button" data-toggle="${d.id}" aria-expanded="${isOpen}">
+          <span class="fp-dom-emoji">${d.emoji}</span>
+          <span class="fp-dom-main">
+            <span class="fp-dom-name">${esc(d.name)}</span>
+            <span class="fp-dom-meta">${esc(d.blurb)} · ${s.checked}/${s.total} ticked</span>
+            <span class="fp-bar ${pct === 100 ? 'is-full' : ''}"><i style="width:${pct}%"></i></span>
+          </span>
+          <span class="fp-dom-right">
+            <span class="fp-dom-pct">${pct}%</span>
+            <span class="fp-chev">▼</span>
+          </span>
+        </button>
+        <div class="fp-dom-body">${levelsHtml}</div>
+      </div>`;
+  }).join('');
+
+  const totalChecked = DOMAINS.reduce((n, d) => n + scores[d.id].checked, 0);
+  const totalAll     = DOMAINS.reduce((n, d) => n + scores[d.id].total, 0);
+  const touched      = touchedDomainCount();
+
+  el('fpOvChecked').textContent = totalChecked;
+  el('fpOvDomains').innerHTML   = `${touched}<span class="fp-ov-dim">/6</span>`;
+  el('fpOvOverall').textContent = `${Math.round((totalChecked / totalAll) * 100)}%`;
+  el('fpLevelChip').textContent = `Working level · ${deriveWorkingLevel(state.responses)}`;
+
+  // Gate: recommendations unlock once 2+ domains have been touched.
+  const ready = touched >= 2;
+  el('fpRecommendBtn').disabled = !ready;
+  el('fpCtaHint').textContent = ready
+    ? `${touched} domains started — ready when you are.`
+    : `Tick statements in at least 2 domains to unlock your recommendations (${touched}/2 so far).`;
+}
+
+/* ---------- Recommendation phase ---------- */
+function resourceRow(r, isAi){
+  const bits = [];
+  if(r.cefr_level) bits.push(`<span class="fp-tag">${esc(r.cefr_level)}</span>`);
+  bits.push(`<span class="fp-tag">${esc(r.type)}</span>`);
+  if(r.duration_min) bits.push(`~${r.duration_min} min`);
+  if(isAi) bits.push(`<span class="fp-ai-badge">AI suggestion</span>`);
+  if(r.description) bits.push(esc(r.description));
+
+  return `<a class="fp-res ${isAi ? 'is-ai' : ''}" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">
+      <span class="fp-res-icon">${TYPE_ICON[r.type] || '🔗'}</span>
+      <span class="fp-res-main">
+        <span class="fp-res-title">${esc(r.title)}</span>
+        <span class="fp-res-sub">${bits.join('')}</span>
+      </span>
+      <span class="fp-res-go">↗</span>
+    </a>`;
+}
+
+function renderRecommendations(result){
+  const { top, blocked, workingLevel } = result;
+
+  el('fpRecList').innerHTML = top.map((entry, idx) => {
+    const d      = entry.domain;
+    const exact  = curatedFor(d.id, workingLevel);
+    const thin   = exact.length < MIN_CURATED;
+    const filler = thin ? nearbyFor(d.id, exact).slice(0, MIN_CURATED - exact.length) : [];
+
+    let aiHtml = '';
+    if(thin){
+      const cached = state.aiCache[d.id];
+      if(!cached){
+        aiHtml = `<div class="fp-res-group-label">Finding more for you</div>
+                  <div class="fp-skel"></div><div class="fp-skel"></div>`;
+      }else if(cached.error){
+        aiHtml = `<div class="fp-res-group-label">AI suggestions</div>
+                  <div class="fp-note is-error">${esc(cached.error)}</div>`;
+      }else if(cached.items.length){
+        aiHtml = `<div class="fp-res-group-label">AI suggestions</div>`
+               + cached.items.map(r => resourceRow(r, true)).join('');
+      }else{
+        aiHtml = `<div class="fp-res-group-label">AI suggestions</div>
+                  <div class="fp-note">Groq didn't return anything usable this time — the curated picks above still stand.</div>`;
+      }
+    }
+
+    return `<article class="fp-rec-card">
+        <div class="fp-rec-top">
+          <span class="fp-rank">${idx + 1}</span>
+          <div style="flex:1;min-width:0">
+            <div class="fp-rec-name">${esc(d.name)}</div>
+            <div class="fp-rec-why">You've ticked ${entry.checked} of ${entry.total} can-dos here — the most room to grow.</div>
+          </div>
+          <span class="fp-gap-pill">${Math.round(entry.gap * 100)}% gap</span>
+        </div>
+
+        <div class="fp-res-group-label">Curated · ${esc(workingLevel)}</div>
+        ${exact.length
+            ? exact.map(r => resourceRow(r, false)).join('')
+            : `<div class="fp-note">Nothing curated at ${esc(workingLevel)} for this domain yet — here's the nearest fit.</div>`}
+        ${filler.length
+            ? `<div class="fp-res-group-label">Nearby levels</div>${filler.map(r => resourceRow(r, false)).join('')}`
+            : ''}
+        ${aiHtml}
+      </article>`;
+  }).join('');
+
+  el('fpLockedWrap').innerHTML = blocked.length
+    ? `<div class="fp-res-group-label">Locked for now</div>` + blocked.map(b =>
+        `<div class="fp-locked">
+           <span class="fp-dom-emoji" style="background:var(--surface);opacity:.6">🔒</span>
+           <span class="fp-locked-body">
+             <span class="fp-locked-name">${esc(b.domain.name)}</span>
+             <span class="fp-locked-why">${esc(b.reason)}</span>
+           </span>
+         </div>`).join('')
+    : '';
+}
+
+/** Fire one Groq call per thin top-3 domain, in parallel. */
+async function hydrateAi(result){
+  const level = result.workingLevel;
+  const needy = result.top.filter(e =>
+    curatedFor(e.domain.id, level).length < MIN_CURATED && !state.aiCache[e.domain.id]
+  );
+  if(!needy.length) return;
+
+  const apiKey = await Store.getApiKey();
+  if(!apiKey){
+    needy.forEach(e => {
+      state.aiCache[e.domain.id] = { error:'Add a Groq API key (⚙ top right) to pull in extra suggestions here.' };
+    });
+    return;
+  }
+
+  await Promise.all(needy.map(async (e) => {
+    try{
+      state.aiCache[e.domain.id] = { items: await fetchAiSuggestions(apiKey, e.domain.name, level) };
+    }catch(err){
+      state.aiCache[e.domain.id] = { error: err.message || 'Could not reach Groq.' };
+    }
+  }));
+}
+
+async function showRecommendations(forceAiRefresh){
+  if(forceAiRefresh) state.aiCache = {};
+  const result = runGapEngine(state.responses);
+
+  el('fpAssessView').hidden = true;
+  el('fpRecView').hidden    = false;
+  window.scrollTo({ top:0, behavior:'smooth' });
+
+  renderRecommendations(result);   // paints skeletons where AI is still pending
+  await hydrateAi(result);
+  renderRecommendations(result);   // …then fills them in
+}
+
+/* ==========================================================================
+   SECTION 10 — EVENTS + INIT
+   ========================================================================== */
+function wire(){
+  // Accordion toggles + checkbox changes, delegated off the domain list.
+  el('fpDomains').addEventListener('click', (ev) => {
+    const head = ev.target.closest('[data-toggle]');
+    if(!head) return;
+    const id = head.dataset.toggle;
+    state.openDomain = (state.openDomain === id) ? null : id;
+    renderAssessment();
+  });
+
+  el('fpDomains').addEventListener('change', async (ev) => {
+    const box = ev.target.closest('[data-stmt]');
+    if(!box) return;
+    const { stmt, domain } = box.dataset;
+    const set = checkedSet(domain);
+    box.checked ? set.add(stmt) : set.delete(stmt);
+    state.responses[domain] = [...set];
+    state.aiCache = {};                        // gaps moved, so AI picks are stale
+    await Store.saveDomain(domain, state.responses[domain]);
+    renderAssessment();
+  });
+
+  el('fpRecommendBtn').addEventListener('click', () => showRecommendations(false));
+  el('fpRefreshAiBtn').addEventListener('click', () => showRecommendations(true));
+
+  el('fpBackBtn').addEventListener('click', () => {
+    el('fpRecView').hidden    = true;
+    el('fpAssessView').hidden = false;
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  const reset = async () => {
+    if(!confirm('Clear every tick and start the assessment again?')) return;
+    state.aiCache    = {};
+    state.openDomain = null;
+    await Store.clearResponses();
+    state.responses  = await Store.loadResponses();  // re-alias the fresh cache
+    el('fpRecView').hidden    = true;
+    el('fpAssessView').hidden = false;
+    renderAssessment();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  };
+  el('fpResetBtn').addEventListener('click', reset);
+  el('fpResetBtn2').addEventListener('click', reset);
+
+  // --- API key modal ---
+  const modal = el('fpKeyModal');
+  const openModal = async () => {
+    el('fpKeyInput').value = await Store.getApiKey();
+    modal.hidden = false;
+    el('fpKeyInput').focus();
+  };
+  const closeModal = async () => {
+    modal.hidden = true;
+    await Store.markKeyPrompted();
+  };
+  el('fpSettingsBtn').addEventListener('click', openModal);
+  el('fpKeySkip').addEventListener('click', closeModal);
+  el('fpKeySave').addEventListener('click', async () => {
+    await Store.setApiKey(el('fpKeyInput').value.trim());
+    state.aiCache = {};                        // new key deserves a fresh try
+    await closeModal();
+  });
+  modal.addEventListener('click', (ev) => { if(ev.target === modal) closeModal(); });
+  document.addEventListener('keydown', (ev) => { if(ev.key === 'Escape' && !modal.hidden) closeModal(); });
+}
+
+async function init(){
+  state.responses = await Store.loadResponses();
+  wire();
+  renderAssessment();
+
+  // Ask for a Groq key once, on first ever load.
+  const [key, asked] = await Promise.all([Store.getApiKey(), Store.wasKeyPrompted()]);
+  if(!key && !asked){
+    el('fpKeyModal').hidden = false;
+    el('fpKeyInput').focus();
+  }
+}
+
+init();
+})();
+</script>
+</body>
+</html>

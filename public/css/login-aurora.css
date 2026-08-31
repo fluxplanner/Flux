@@ -287,6 +287,10 @@
   font-size:.82rem;line-height:1.4;color:#ffd9d9;
   background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.34)}
 #loginScreen .lx-auth-error.show{display:block;animation:lxShake .35s ease}
+/* "Check your email" is good news — it was sharing the red error box, and shook. */
+#loginScreen .lx-auth-error.is-ok{color:#c6f6d5;
+  background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.34)}
+#loginScreen .lx-auth-error.is-ok.show{animation:none}
 @keyframes lxShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 
 #loginScreen .lx-field{display:block;margin-bottom:13px;
@@ -430,3 +434,16 @@ html[data-flux-perf="on"] #loginScreen .lx-particles{display:none!important}
 html[data-flux-perf="on"] #loginScreen .lx-blob,
 html[data-flux-perf="on"] #loginScreen .feat-pills,
 html[data-flux-perf="on"] #loginScreen .lx-submit::after{animation:none!important}
+
+/* Google integrations are paused behind enable_google_integrations, so the
+   login page must not advertise them. flux-google-hub.js puts `flux-google-off`
+   on <body> whenever the flag is off; flipping the flag brings these back. */
+body.flux-google-off #loginScreen .lx-logo.is-google{display:none}
+body.flux-google-off #loginScreen li.is-google{display:none}
+
+/* The quote section ships with empty placeholders — no invented testimonials.
+   Hidden by default and revealed only once a <figure> has had its
+   data-placeholder attribute removed, so it fails closed: a browser without
+   :has() support keeps it hidden rather than showing empty cards. */
+#loginScreen #loginQuotes{display:none}
+#loginScreen #loginQuotes:has(.lx-quote:not([data-placeholder])){display:block}

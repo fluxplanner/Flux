@@ -12,7 +12,9 @@
   const CATALOG = [
     { id: 'classroom_quick_grade', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Quick-Grade buckets', status: 'beta', module: 'FluxClassroomTools', method: 'renderQuickGrade', defaultOn: true },
     { id: 'classroom_accommodations', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Accommodation cheat-sheet', status: 'beta', module: 'FluxClassroomTools', method: 'renderAccommodations' },
-    { id: 'classroom_student_picker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Random student picker', status: 'beta', module: 'FluxClassroomTools', method: 'renderStudentPicker' },
+    // defaultOn: Azfer asked for this one by name, and it was already built but
+    // switched off, so nobody had ever seen it.
+    { id: 'classroom_student_picker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Random student picker', status: 'beta', module: 'FluxClassroomTools', method: 'renderStudentPicker', defaultOn: true },
     { id: 'classroom_parent_log', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog', defaultOn: true },
     { id: 'classroom_hall_pass', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Hall pass registry', status: 'beta', module: 'FluxClassroomTools', method: 'renderHallPass' },
     { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket', defaultOn: true },
@@ -302,9 +304,15 @@
       const cell = document.createElement('div');
       cell.className = 'flux-widget-cell';
       cell.dataset.widgetId = item.id;
+      /* Only badge what is genuinely unfinished. Every module in the registry
+         is status:'beta', so stamping the status onto each card put BETA on all
+         of them at once — which tells a teacher nothing except that the whole
+         product looks unfinished. 'planned' still shows, because a card that
+         cannot do anything yet does need to say so. */
+      const showBadge = item.status && item.status !== 'beta';
       cell.innerHTML = `<div class="flux-widget-cell__head">
         <span class="flux-widget-cell__title">${esc(item.title)}</span>
-        <span class="flux-widget-cell__badge flux-widget-cell__badge--${esc(item.status)}">${esc(item.status)}</span>
+        ${showBadge ? `<span class="flux-widget-cell__badge flux-widget-cell__badge--${esc(item.status)}">${esc(item.status)}</span>` : ''}
       </div>
       <div class="flux-widget-cell__body" id="fluxWidget_${esc(item.id)}"></div>`;
       cells.appendChild(cell);

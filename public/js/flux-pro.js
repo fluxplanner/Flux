@@ -207,7 +207,17 @@ function _showNextAchievement(){
   setTimeout(dismiss, 4500);
 }
 
+/**
+ * Retired. Achievements are gone from the app: no badges card on the dashboard,
+ * no entry in the More sheet, no popup and no sound. Returning here rather than
+ * unpicking the four call sites (toggleTask, boot, and two refresh paths) keeps
+ * this one decision in one place, and stops anything further being written to
+ * flux_achievements_earned — badges already earned are left alone rather than
+ * deleted, so nothing is lost if this comes back. Delete the return to revive.
+ */
 function checkAchievements(){
+  return;
+  // eslint-disable-next-line no-unreachable
   const stats = getAchievementStats();
   const earned = new Set(getEarnedAchievements());
   let changed = false;
@@ -905,15 +915,9 @@ function renderDailyProgressRing(){
         <div style="font-size:1.05rem;font-weight:800;letter-spacing:-.01em;margin:1px 0 2px">${done} of ${total} ${pct === 100 ? 'done · 🎉' : 'tasks done'}</div>
         <div style="font-size:.7rem;color:var(--muted2)">${pct === 100 ? "Perfect day so far. Keep it up." : (total - done) + ' to go'}</div>
       </div>
-    </div>
-    <div class="card flux-achievements-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;min-width:180px;flex:0 0 auto;cursor:pointer" onclick="window.fluxOpenAchievements()" title="View achievements">
-      <div style="font-size:1.8rem;line-height:1">★</div>
-      <div style="min-width:0">
-        <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--purple);font-weight:700;font-family:'JetBrains Mono',monospace">BADGES</div>
-        <div style="font-size:1.05rem;font-weight:800;letter-spacing:-.01em;margin:1px 0 2px">${getEarnedAchievements().length} <span style="color:var(--muted);font-weight:500;font-size:.85rem">/ ${ACHIEVEMENTS.length}</span></div>
-        <div style="font-size:.7rem;color:var(--muted2)">Tap to view all</div>
-      </div>
     </div>`;
+  // The "BADGES" card used to sit here beside the progress ring. Achievements
+  // are retired — see the note on checkAchievements().
 }
 
 // ────────────────────────────────────────────────────────────────

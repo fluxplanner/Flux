@@ -82,6 +82,64 @@ async function findOwnerRow(db: ReturnType<typeof serviceClient>, authUserId: st
   return { id: authUserId, data: { ownerEmail: OWNER_EMAIL } } as OwnerRow;
 }
 
+/**
+ * The slice of platformConfig that every user is allowed to see.
+ *
+ * This is an allowlist, not a blocklist, on purpose. platform_settings is
+ * world-readable — anon included — so anything not named here cannot leak into
+ * it later by being added to platformConfig. Deliberately absent: devAccounts,
+ * releaseGate.previewEmails, and the pushedBy/updatedBy audit fields, all of
+ * which are staff email addresses.
+ */
+function publicBroadcast(pc: JsonRecord): JsonRecord {
+  const clampInt = (v: unknown, lo: number, hi: number, fallback: number) => {
+    const n = Number.parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
+  };
+  const revision = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  };
+  return {
+    announcement: safeText(pc.announcement),
+    announcementRevision: revision(pc.announcementRevision),
+    sessionIdleWarnMins: clampInt(pc.sessionIdleWarnMins, 5, 480, 60),
+    complianceContact: safeText(pc.complianceContact, 200),
+    dataRetentionDays: clampInt(pc.dataRetentionDays, 30, 3650, 365),
+    maintenanceMode: !!pc.maintenanceMode,
+    maintenanceMessage: safeText(pc.maintenanceMessage),
+    signInPopup: safeText(pc.signInPopup, 2000),
+    signInPopupTitle: safeText(pc.signInPopupTitle, 200),
+    signInPopupRevision: revision(pc.signInPopupRevision),
+  };
+}
+
+/**
+ * Mirror the public broadcast into public.platform_settings.
+ *
+ * The owner's planner keeps these values in its own user_data row, but the
+ * read_own policy on that table is `auth.uid() = id`, so a select only ever
+ * returns the caller's own row — no other user can see the owner's. This
+ * table, which anyone may read, is the only channel that reaches them.
+ * Writing to it needs the service role, which is why it happens here.
+ *
+ * updated_by is pinned to the owner rather than the caller: a dev holding
+ * release_push also reaches this path, and their address must not land in a
+ * world-readable column.
+ */
+async function publishBroadcast(
+  db: ReturnType<typeof serviceClient>,
+  platformConfig: JsonRecord,
+) {
+  const { error } = await db.from("platform_settings").upsert({
+    key: "broadcast",
+    value: publicBroadcast(platformConfig),
+    updated_at: new Date().toISOString(),
+    updated_by: OWNER_EMAIL,
+  }, { onConflict: "key" });
+  if (error) throw error;
+}
+
 async function saveOwnerData(
   db: ReturnType<typeof serviceClient>,
   ownerRow: OwnerRow,
@@ -94,6 +152,9 @@ async function saveOwnerData(
     updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
   if (error) throw error;
+  // Republish on every owner-row write, so the public mirror cannot drift away
+  // from the config it mirrors.
+  await publishBroadcast(db, asRecord(ownerData.platformConfig));
 }
 
 function randomTempPassword() {
@@ -241,6 +302,28 @@ Deno.serve(async (req) => {
         return json({ error: `Could not save platform UI: ${error.message}` }, 500, origin);
       }
       return json({ ok: true, value }, 200, origin);
+    }
+
+    /**
+     * Owner-only: update the broadcast half of platformConfig and republish it.
+     *
+     * The owner's planner already writes platformConfig to its own user_data
+     * row through normal sync, but nobody else can read that row, so the values
+     * have to come back through here to reach anyone. Only the broadcast fields
+     * are taken from the request — releaseGate and the rest of platformConfig
+     * are left alone, so a stale client cannot roll back a release.
+     */
+    if (action === "set_platform_broadcast") {
+      if (email !== OWNER_EMAIL) {
+        return json({ error: "Only the owner can change the platform broadcast" }, 403, origin);
+      }
+      const next = {
+        ...platformConfig,
+        ...publicBroadcast(asRecord(body.platformConfig)),
+      };
+      ownerData.platformConfig = next;
+      await saveOwnerData(db, ownerRow, ownerData);
+      return json({ ok: true, broadcast: publicBroadcast(next) }, 200, origin);
     }
 
     if (action === "sync_platform_to_devs") {

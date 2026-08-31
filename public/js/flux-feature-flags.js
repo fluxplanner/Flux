@@ -127,7 +127,15 @@
       enable_citation_helper: false,
       enable_calc_history: false,
       enable_cowork: true, // Live shared checklist + presence for any task (Co-work rooms)
-      enable_office_hours: true, // Staff publish weekly drop-in hours; students view on School page
+      /* Staff publish weekly drop-in hours; students see them on School.
+         Paused: publishing needs a Supabase table most schools have not
+         migrated, so the student card renders "no office hours have been
+         published yet" indefinitely, and there is no booking or reminder on
+         the far side of it. Paired with FLUX_COUNSELOR_CONTACT_ENABLED in
+         app.js, which pauses the student-to-counselor card for the same
+         reason. Set back to true once the round trip works — nothing was
+         removed, and this can also be flipped remotely. */
+      enable_office_hours: false,
       enable_claude_mcp: false, // Connect Flux to Claude (MCP) — opt-in connector, off by default
       /* Google integrations (Gmail, Drive, Docs, Classroom, Calendar sync).
          Off for now: they added a lot of surface area and a Google account was

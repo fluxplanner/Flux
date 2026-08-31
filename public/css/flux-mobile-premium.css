@@ -16,8 +16,13 @@
     opacity: 0.028 !important;
   }
 
+  /* No bottom padding here. .panel already reserves --flux-nav-clearance for
+     the fixed nav; a second copy on #app made every tab scroll past its own
+     content into an empty band, and on Flux AI — whose panel is height-locked
+     and never scrolls — it was the entire reason the chat sat inches off the
+     bottom of the phone. */
   #app.visible {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: 0 !important;
   }
 
   .topbar {
@@ -39,7 +44,7 @@
 
   /* Content column: one clear rhythm */
   .panel {
-    padding: 18px max(14px, env(safe-area-inset-left, 0px)) max(110px, calc(96px + env(safe-area-inset-bottom, 0px))) max(14px, env(safe-area-inset-right, 0px)) !important;
+    padding: 18px max(14px, env(safe-area-inset-left, 0px)) var(--flux-nav-clearance) max(14px, env(safe-area-inset-right, 0px)) !important;
   }
 
   .flux-page-header {

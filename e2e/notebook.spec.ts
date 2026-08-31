@@ -47,20 +47,26 @@ test.describe('Flux Notebook', () => {
     await expect(page.locator('#fnbOverlay')).toHaveCount(0);
   });
 
-  test('opens as its own sidebar tab; add-source tabs render', async ({ page }) => {
+  /* Was 'opens as its own sidebar tab; add-source tabs render'. The Notebook
+     tab is paused — FLUX_NOTEBOOK_ENABLED in app.js — because NotebookLM does
+     the job better. The module itself is untouched, which the overlay test
+     above still proves; what changed is that nothing in the UI leads to it.
+     Inverted rather than deleted, so un-pausing has a test to answer to. */
+  test('is paused: no sidebar tab, and its panels are unreachable', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
-    // Notebook is its own top-level tab now (not an AI-topbar button).
-    await expect(page.locator('.ai-topbar-btn[aria-label="Open Flux Notebook"]')).toHaveCount(0);
-    await page.evaluate(() => (window as any).nav?.('notebook'));
-    await page.waitForTimeout(500);
-    await expect(page.locator('#notebook #notebookMount .fnb--inline')).toBeVisible({ timeout: 5000 });
 
-    // Switch to the Sources view, then open the add-source modal.
-    await page.click('#notebookMount .fnb-viewtab[data-view="sources"]');
-    await page.click('#notebookMount #fnbAddSrc');
-    await expect(page.locator('.fnb-tab[data-t="search"]')).toHaveClass(/active/);
-    await expect(page.locator('#fnbQ')).toBeVisible();
-    await expect(page.locator('.fnb-tab[data-t="url"]')).toBeVisible();
-    await expect(page.locator('.fnb-tab[data-t="kb"]')).toBeVisible();
+    // Gone from the sidebar, and from the Settings tab customiser with it, so
+    // nobody can switch a paused feature back on from the UI.
+    await expect(page.locator('#sidebar .nav-item[data-tab="notes"]')).toHaveCount(0);
+    await expect(page.locator('#sidebar .nav-item[data-tab="notebook"]')).toHaveCount(0);
+    await expect(page.locator('.ai-topbar-btn[aria-label="Open Flux Notebook"]')).toHaveCount(0);
+
+    // Old deep links and a saved last-tab must land somewhere real rather than
+    // on a blank panel with no way back.
+    for (const target of ['notebook', 'notes']) {
+      await page.evaluate((t) => (window as any).nav?.(t), target);
+      await page.waitForTimeout(400);
+      await expect(page.locator('#dashboard.panel.active')).toBeVisible();
+    }
   });
 });

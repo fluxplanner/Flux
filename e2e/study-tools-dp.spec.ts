@@ -187,3 +187,104 @@ test.describe('Study tools — DP expansion', () => {
     expect(res.broken).toEqual([]);
   });
 });
+
+/*
+ * Favourites used to be per-device: flux_study_hub was saved locally but was
+ * missing from getCloudPayload(), so starring Biology on a laptop left the
+ * phone showing the default order. These guard the round trip and, just as
+ * importantly, the failure modes — a slice that arrives half-written must
+ * never silently unstar everything.
+ */
+test.describe('Study tools — favourite subjects sync', () => {
+  test('starred subjects reach the cloud payload', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const res = await page.evaluate(() => {
+      const hub = (window as any).fluxStudyHub;
+      const star = (id: string) =>
+        document.querySelector<HTMLElement>(`#fshRail .fsh-fav-btn[data-fav="${id}"]`)?.click();
+      star('biology');
+      star('physics');
+      const payload = (window as any).getCloudPayload?.();
+      return { local: hub.getCloudSlice().favs, sent: payload?.studyHub?.favs };
+    });
+
+    expect(res.local).toEqual(['biology', 'physics']);
+    // The half that was missing: it has to be in what actually gets uploaded.
+    expect(res.sent).toEqual(['biology', 'physics']);
+  });
+
+  test('a slice from another device re-sorts the rail', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const res = await page.evaluate(() => {
+      const hub = (window as any).fluxStudyHub;
+      hub.applyFromCloud({ favs: ['biology', 'physics'] });
+      const kids = [...(document.getElementById('fshRail')?.children || [])];
+      return {
+        favs: hub.getCloudSlice().favs,
+        // Favourites sort to the front, then a divider, then the rest.
+        leading: kids.slice(0, 2).map((k) => k.querySelector<HTMLElement>('.fsh-pill')?.dataset.sub),
+        separatorAt: kids.findIndex((k) => k.classList.contains('fsh-rail-sep')),
+      };
+    });
+
+    expect(res.favs).toEqual(['biology', 'physics']);
+    expect(res.leading.sort()).toEqual(['biology', 'physics']);
+    expect(res.separatorAt).toBe(2);
+  });
+
+  test('a half-written slice never unstars what you already had', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    const res = await page.evaluate(() => {
+      const hub = (window as any).fluxStudyHub;
+      hub.applyFromCloud({ favs: ['biology'] });
+      const after: Record<string, string[]> = {};
+      hub.applyFromCloud({ subject: 'physics' });           // favs absent
+      after.missing = hub.getCloudSlice().favs.slice();
+      hub.applyFromCloud({ favs: null });                    // favs null
+      after.nulled = hub.getCloudSlice().favs.slice();
+      hub.applyFromCloud(null);                              // no record at all
+      after.noRecord = hub.getCloudSlice().favs.slice();
+      hub.applyFromCloud({ favs: ['physics', 42, null] });   // mixed junk
+      after.junk = hub.getCloudSlice().favs.slice();
+      return after;
+    });
+
+    expect(res.missing).toEqual(['biology']);
+    expect(res.nulled).toEqual(['biology']);
+    expect(res.noRecord).toEqual(['biology']);
+    // Non-strings dropped rather than stored and later rendered as pills.
+    expect(res.junk).toEqual(['physics']);
+  });
+
+  test('an id with no subject behind it does not shift the divider', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('toolbox'));
+    await page.waitForTimeout(800);
+
+    // Renamed subjects and older app versions both produce ids that no longer
+    // match anything. The divider is placed from how many favourites actually
+    // resolved to a subject; counting the raw list put it slots too far right,
+    // stranding it after subjects you never starred.
+    const res = await page.evaluate(() => {
+      const hub = (window as any).fluxStudyHub;
+      hub.applyFromCloud({ favs: ['biology', 'ghost-subject', 'maths'] });
+      const kids = [...(document.getElementById('fshRail')?.children || [])];
+      return {
+        separatorAt: kids.findIndex((k) => k.classList.contains('fsh-rail-sep')),
+        faved: kids.filter((k) => k.classList.contains('faved')).length,
+      };
+    });
+
+    expect(res.faved).toBe(1);
+    expect(res.separatorAt).toBe(1);
+  });
+});

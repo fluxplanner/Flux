@@ -1159,8 +1159,11 @@ function renderGraphCalc(body){
   let view = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
   traceX = (view.xMin + view.xMax) / 2;
   const palette = graphCurveColors();
+  // Every row starts empty. Y1 used to be pre-filled with sin(x), which reads
+  // to a student who has not met trig yet as something they were supposed to
+  // recognise. Rows 2-8 have always started empty, so this is the same path.
   const fns = Array.from({ length: 8 }, (_, i) => ({
-    expr: i === 0 ? 'sin(x)' : '',
+    expr: '',
     color: palette[i],
     on: true,
   }));
@@ -1169,7 +1172,7 @@ function renderGraphCalc(body){
     $('gcInputs').innerHTML = fns.map((f, i) => `
       <div class="ti84-eqn-row" style="--ti-trace:${f.color}">
         <span class="ti84-eqn-row__y">Y<sub>${i + 1}</sub>=</span>
-        <input type="text" class="ti84-eqn-row__inp gc-expr" data-i="${i}" placeholder="${i === 0 ? 'sin(x)' : '—'}" value="${attr(f.expr)}" spellcheck="false" autocapitalize="off" autocomplete="off">
+        <input type="text" class="ti84-eqn-row__inp gc-expr" data-i="${i}" placeholder="${i === 0 ? '2x + 1' : '—'}" value="${attr(f.expr)}" spellcheck="false" autocapitalize="off" autocomplete="off">
         <button type="button" class="ti84-eqn-row__on gc-toggle" data-i="${i}" aria-pressed="${f.on}" title="Graph on/off">${f.on ? 'On' : 'Off'}</button>
       </div>
     `).join('');

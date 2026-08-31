@@ -1,0 +1,360 @@
+/* ============================================================================
+   FLUX TIME TOOLS  ·  flux-time-tools.css
+   Clock / stopwatch / countdown / alarms on the Timer tab.
+
+   Every colour here is a theme variable, never a literal. The light-mode sweep
+   found 24 unreadable spots across the app and almost all of them were
+   hardcoded values that looked right on the near-black default and had nothing
+   behind them on white. New surfaces do not get to repeat that.
+   ========================================================================== */
+
+.ftt-nav {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.ftt-card {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+/* ── displays ─────────────────────────────────────────────────────────────── */
+.ftt-clock,
+.ftt-big {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.05;
+  /* Tabular figures stop the whole display shuffling sideways every time a 1
+     replaces a 0 — very visible at four repaints a second. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.ftt-clock { font-size: clamp(2.4rem, 11vw, 3.6rem); letter-spacing: -1px; }
+.ftt-big { font-size: clamp(2.6rem, 12vw, 4rem); letter-spacing: -1.5px; margin-bottom: 14px; }
+.ftt-big--idle { color: var(--muted2); }
+
+.ftt-sub {
+  font-size: .82rem;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* ── rows and controls ────────────────────────────────────────────────────── */
+.ftt-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.ftt-row--center { justify-content: center; }
+.ftt-row:last-child { margin-bottom: 0; }
+
+.ftt-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .7rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.ftt-num {
+  width: 58px;
+  padding: 6px 8px;
+  margin: 0;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ftt-input {
+  padding: 7px 10px;
+  margin: 0;
+  max-width: 240px;
+  width: auto;
+}
+.ftt-input--time { font-family: 'JetBrains Mono', monospace; }
+
+.ftt-mini {
+  padding: 5px 10px !important;
+  font-size: .7rem !important;
+}
+
+.ftt-hint {
+  font-size: .68rem;
+  color: var(--muted);
+  margin: -4px 0 12px;
+}
+
+.ftt-empty {
+  color: var(--muted);
+  font-size: .84rem;
+  padding: 14px 0 4px;
+}
+
+/* Small round dismiss control. Deliberately not .reveal-btn — that one is
+   positioned absolutely, and the motion layer's .flux-ripple-host makes it
+   land in unpredictable places inside a flex row. */
+.ftt-x {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.ftt-x:hover { color: var(--red); border-color: var(--red); }
+
+/* ── world clocks ─────────────────────────────────────────────────────────── */
+.ftt-zones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+.ftt-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.ftt-zone-city {
+  flex: 1 1 auto;
+  font-size: .78rem;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftt-zone-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .84rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  /* "4:51 AM" was wrapping after the colon in a narrow cell, which made the row
+     two lines tall and stole enough width from the city that London rendered as
+     "Lon…". The time is short and must never break. */
+  white-space: nowrap;
+}
+
+/* ── countdown progress ───────────────────────────────────────────────────── */
+.ftt-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin: 0 auto 16px;
+  max-width: 320px;
+}
+.ftt-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  /* Only as long as one tick, or the bar visibly lags the digits. */
+  transition: width .25s linear;
+}
+
+/* ── stopwatch laps ───────────────────────────────────────────────────────── */
+.ftt-laps {
+  margin-top: 16px;
+  max-height: 240px;
+  overflow-y: auto;
+  text-align: left;
+}
+.ftt-lap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+  font-variant-numeric: tabular-nums;
+}
+.ftt-lap:last-child { border-bottom: 0; }
+.ftt-lap-n { flex: 1 1 auto; color: var(--muted); }
+.ftt-lap-split { color: var(--accent); }
+.ftt-lap-total { color: var(--text); min-width: 76px; text-align: right; }
+
+/* ── alarms ───────────────────────────────────────────────────────────────── */
+.ftt-days { gap: 4px !important; }
+.ftt-day {
+  cursor: pointer;
+  user-select: none;
+}
+.ftt-day input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.ftt-day span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 700;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.ftt-day input:checked + span {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+/* Keyboard users need to see focus — the real checkbox is visually hidden. */
+.ftt-day input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ftt-alarms { margin-top: 16px; text-align: left; }
+.ftt-alarm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card2);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.ftt-alarm.is-off { opacity: .55; }
+.ftt-alarm-main { flex: 1 1 140px; min-width: 0; }
+.ftt-alarm-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.28rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ftt-alarm-meta {
+  font-size: .7rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── full-screen focus ────────────────────────────────────────────────────── */
+/* Works whether or not the Fullscreen API was granted. iOS Safari refuses
+   requestFullscreen on ordinary elements and any browser may decline, so the
+   overlay covers the viewport on its own merits — the API only removes the
+   browser chrome as a bonus. */
+.ftt-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  /* Opaque, not translucent. The point is to take the planner out of view, and
+     a see-through backdrop leaves your task list legible behind the clock. */
+  background: var(--bg);
+  padding: max(20px, env(safe-area-inset-top, 0px)) 20px max(20px, env(safe-area-inset-bottom, 0px));
+}
+.ftt-fs[hidden] { display: none; }
+/* Nothing behind the overlay should scroll while it is up. */
+body.ftt-fs-on { overflow: hidden; }
+
+.ftt-fs-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  width: 100%;
+  max-width: 560px;
+}
+.ftt-fs-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  color: var(--muted);
+}
+.ftt-fs-ringwrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* Scales off the smaller viewport edge so it fits a short laptop window as
+     well as a tall phone, without ever outgrowing the screen. */
+  width: min(58vh, 78vw, 420px);
+  aspect-ratio: 1 / 1;
+}
+.ftt-fs-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ftt-fs-ring-bg { fill: none; stroke: var(--border2, var(--border)); stroke-width: 6; }
+.ftt-fs-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .3s linear;
+}
+.ftt-fs-time {
+  position: absolute;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(3rem, 15vh, 6rem);
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.ftt-fs-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  color: var(--muted);
+}
+.ftt-fs-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ftt-fs-actions button { padding: 11px 26px; }
+.ftt-fs-hint { font-size: .68rem; color: var(--muted2); }
+.ftt-fs-launch { margin-top: -4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ftt-fs-ring-fill { transition: none; }
+}
+
+/* ── mobile ───────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ftt-card { padding: 20px 12px; }
+  /* Five tabs will not fit across a phone; let them scroll rather than wrap
+     onto a second row that pushes the clock down the screen. */
+  .ftt-nav {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ftt-nav::-webkit-scrollbar { height: 0; display: none; }
+  .ftt-nav .tmode-btn { flex: 0 0 auto; }
+  /* One per row on a phone. Two columns on a 341px screen left each card about
+     144px to hold a city, a time and a delete button; the city was clipped to
+     "Lon…". Full width costs a little vertical space and stays readable. */
+  .ftt-zones { grid-template-columns: 1fr; }
+  .ftt-alarm-time { font-size: 1.1rem; }
+}

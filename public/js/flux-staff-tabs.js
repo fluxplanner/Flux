@@ -21,7 +21,16 @@
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  function todayISO(){return new Date().toISOString().slice(0,10);}
+  /* Local date, not UTC. toISOString() reports the UTC day, so lesson notes
+     and attendance were filed against the wrong date: in Michigan anything
+     saved after 8pm landed on tomorrow, and at any school east of UTC the
+     whole school day landed on yesterday. The key is date-scoped, so this
+     also decides which day a teacher's attendance counts toward. */
+  function todayISO(){
+    try{if(typeof fluxLocalYMD==='function')return fluxLocalYMD(new Date());}catch(_){}
+    const d=new Date(),p=n=>(n<10?'0':'')+n;
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  }
   function timeOfDay(){
     const h=new Date().getHours();
     if(h<12)return 'morning';if(h<17)return 'afternoon';return 'evening';
@@ -204,7 +213,29 @@
   function renderLessonHub(){
     const host=document.getElementById('lessonHubBody');
     if(!host)return;
-    const classes=(window.classes||[]).slice().sort((a,b)=>(a.period||0)-(b.period||0));
+    /* The classes you TEACH, falling back to the ones you attend.
+       This read window.classes unconditionally — the student list — so for a
+       teacher the hub was permanently "No classes yet", sitting directly under
+       its own empty state telling you to add the periods you teach in School
+       Info. FluxTeacherClasses.mine() owns that decision for every staff
+       surface and returns null when the student list really is the right one. */
+    const source=(()=>{
+      try{const m=window.FluxTeacherClasses?.mine?.();if(m)return m;}catch(_){}
+      return window.classes||[];
+    })();
+    /* Only the classes that actually meet today. Rendering every class every
+       day meant a teacher with A1 and B1 saw both on one Tuesday — and because
+       the store below is keyed by date + period, those two shared a single
+       entry and overwrote each other's attendance. Filtering to the cycle day
+       fixes the collision at source: one class per period per day, so the
+       existing key is unambiguous again and no saved state is orphaned. */
+    const classes=(()=>{
+      try{
+        if(window.FluxNow?.classesForDay)
+          return window.FluxNow.classesForDay(source,window.FluxNow.cycleToday()).slice();
+      }catch(_){}
+      return source.slice();
+    })().sort((a,b)=>(a.period||0)-(b.period||0));
     const today=todayISO();
     const dateLabel=fmtLongDay(new Date());
 

@@ -123,6 +123,23 @@
 
   /* ── app-context resolver ── */
 
+  /**
+   * The timetable that is "yours" depends on which side of the desk you are on.
+   *
+   * resolveLive used to read the student list unconditionally, so for staff it
+   * phrased itself "You teach …" and then had nothing to name: a teacher's
+   * flux_classes holds the classes they ATTEND, which for most staff is empty.
+   * The strip was therefore permanently blank for exactly the people the
+   * educator wording was written for.
+   *
+   * FluxTeacherClasses.mine() is the single owner of that decision — the
+   * Lesson Hub asks it the same question — and returns null when the student
+   * list is the right answer after all.
+   */
+  function teacherTimetable() {
+    try { return window.FluxTeacherClasses?.mine?.() || null; } catch (_) { return null; }
+  }
+
   function resolveLive(now) {
     const d = now || new Date();
     const dateStr = (typeof fluxLocalYMD === 'function')
@@ -141,7 +158,8 @@
     try { isRest = typeof isBreak === 'function' && isBreak(dateStr); } catch (_) {}
     let isEducator = false;
     try { isEducator = !!(window.FluxRole?.isEducator?.()); } catch (_) {}
-    const cls = (typeof classes !== 'undefined' && Array.isArray(classes)) ? classes : [];
+    const cls = teacherTimetable()
+      || ((typeof classes !== 'undefined' && Array.isArray(classes)) ? classes : []);
     return resolveNow({ now: d, classes: cls, cycleLabel, isRest, isEducator });
   }
 
@@ -218,5 +236,21 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FluxNow = { FLAG, enabled, resolveNow, resolveLive, renderStrip, start, stop, aiContext, gapUntilNext };
+  /** Today's cycle label ('' | 'A' | 'B' | …) for the local date. */
+  function cycleToday(now) {
+    const d = now || new Date();
+    const dateStr = (typeof fluxLocalYMD === 'function') ? fluxLocalYMD(d) : d.toISOString().slice(0, 10);
+    try { return (typeof getCycleDayLabel === 'function' && getCycleDayLabel(dateStr)) || ''; } catch (_) { return ''; }
+  }
+
+  /* classesForDay and cycleToday are exported because the Lesson Hub needs the
+     same answer. It used to render every class every day, so a teacher with
+     A1 and B1 saw both on a Tuesday — and since its per-class store is keyed by
+     date and period, those two shared one key and overwrote each other's
+     attendance. Two implementations of "does this class meet today?" is how
+     that drifts back. */
+  window.FluxNow = {
+    FLAG, enabled, resolveNow, resolveLive, renderStrip, start, stop, aiContext, gapUntilNext,
+    classesForDay, cycleToday,
+  };
 })();

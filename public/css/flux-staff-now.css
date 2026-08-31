@@ -1,0 +1,169 @@
+/* ============================================================================
+   FLUX STAFF NOW  ·  flux-staff-now.css
+   The bar at the top of the staff dashboard.
+
+   Theme variables only. The staff section is full of literal
+   rgba(255,255,255,…) surfaces that vanish on white — .teacher-class-card is
+   one — and this bar sits above all of them, so it is the last place that
+   should add another.
+   ========================================================================== */
+
+.fsn {
+  margin: 0 0 16px;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  /* A left edge in the accent, so the eye lands here first without needing a
+     heavier background than the cards below it. */
+  border-left: 3px solid var(--accent);
+}
+
+/* Nothing on: no coloured edge, no panel — it is information, not an alert. */
+.fsn[data-state="weekend"],
+.fsn[data-state="holiday"],
+.fsn[data-state="after"],
+.fsn[data-state="empty"],
+.fsn[data-state="none"] {
+  border-left-color: var(--border);
+  background: transparent;
+}
+
+.fsn-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fsn-badge {
+  flex: 0 0 auto;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--sub, var(--accent)) 15%, transparent);
+  color: var(--sub, var(--accent));
+}
+/* The same 62% mix that keeps an arbitrary class colour legible on white. */
+[data-theme="light"] .fsn-badge {
+  color: color-mix(in srgb, var(--sub, var(--accent)) 62%, #000);
+}
+
+.fsn-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fsn-now-name {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.fsn-room {
+  font-size: .76rem;
+  color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* The number a teacher actually glances for. Pushed to the far end so it lands
+   in the same place whatever the class happens to be called. */
+.fsn-left {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), .1);
+}
+
+.fsn-next {
+  margin-top: 6px;
+  font-size: .74rem;
+  color: var(--muted2);
+}
+
+.fsn-quiet {
+  font-size: .84rem;
+  color: var(--muted2);
+}
+.fsn-quiet a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.fsn-quiet a:hover { text-decoration: underline; }
+
+/* ── the attendance nudge ────────────────────────────────────────────────── */
+.fsn-nudge {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fsn-nudge-text {
+  font-size: .84rem;
+  color: var(--text);
+}
+.fsn-nudge-acts {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Taken: said once, quietly, and never as a second thing to act on. */
+.fsn-nudge.is-done {
+  color: var(--muted2);
+  font-size: .78rem;
+}
+.fsn-nudge-tick {
+  color: var(--green);
+  font-weight: 800;
+}
+
+/* These sit inside #app, where flux-form-controls.css claims every input-ish
+   control at specificity (1,1,1). The #app prefix here is the same scoping the
+   baseline itself uses — see flux-teacher-classes.css for the full story. */
+#app .fsn-btn {
+  padding: 6px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted2);
+  font-size: .76rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  width: auto;
+  margin: 0;
+}
+#app .fsn-btn:hover { color: var(--text); border-color: var(--muted2); }
+#app .fsn-btn--go {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+#app .fsn-btn--go:hover { filter: brightness(1.08); color: #fff; }
+
+@media (max-width: 560px) {
+  /* Once the class name wraps, a right-aligned pill is orphaned on its own
+     row, so let the minutes sit under the name instead. */
+  .fsn-left { margin-left: 0; }
+  .fsn-nudge-acts { margin-left: 0; width: 100%; }
+  #app .fsn-btn { flex: 1 1 0; }
+}

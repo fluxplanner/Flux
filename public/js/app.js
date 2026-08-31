@@ -2542,13 +2542,15 @@ function applyRoleUI(){
   const testerBadge=document.getElementById('testerBadge');
   if(testerBadge)testerBadge.style.display=FLUX_FLAGS.TESTER_MODE?'inline-flex':'none';
 
+  // Paused — see FLUX_COUNSELOR_CONTACT_ENABLED. Hidden here as well as emptied
+  // in renderMyCounselorSection so the empty div can't leave a gap in the stack.
   const counselorSection=document.getElementById('myCounselorSection');
-  if(counselorSection)counselorSection.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+  if(counselorSection)counselorSection.style.display=(FLUX_COUNSELOR_CONTACT_ENABLED&&isStudent&&!pendingStaffPersonal)?'':'none';
 
   try{if(typeof setProfilePanelMode==='function')setProfilePanelMode(isEducator);}catch(_){}
 
   const bookCounselorBtn=document.querySelector('[data-action="book-counselor"]');
-  if(bookCounselorBtn)bookCounselorBtn.style.display=(isStudent&&!pendingStaffPersonal)?'':'none';
+  if(bookCounselorBtn)bookCounselorBtn.style.display=(FLUX_COUNSELOR_CONTACT_ENABLED&&isStudent&&!pendingStaffPersonal)?'':'none';
 
   try{fluxApplyStudentDashboardChrome(studentChromeOn);}catch(_){}
   try{fluxSyncSubjectUiForRole();}catch(_){}
@@ -2995,6 +2997,41 @@ function migrateCompletedAtBackfill(){
    handlers and storage were left in place deliberately. */
 const FLUX_SCHOOL_JOIN_ENABLED=false;
 
+/* Notebook paused. The sidebar tab labelled "Notebook" is panel 'notes', and
+   its 🧠 Knowledge sub-view is flux-notebook.js — a NotebookLM-style workspace
+   with a sources rail, grounded chat and generated quizzes. Google's NotebookLM
+   does that job better, so Flux stops shipping a worse copy of it.
+
+   Hidden, not deleted, exactly like FLUX_SCHOOL_JOIN_ENABLED above: the panels,
+   the module, renderNotesList and everything already saved to flux_notes and
+   flux_notebook_sources stay put and stay synced. Set this to true to bring the
+   tab and its sub-view straight back with the notes intact.
+
+   Declared here, above DEFAULT_TABS, because the tabConfig normalisation below
+   reads it at script-eval time — a `const` further down would be in the
+   temporal dead zone. */
+const FLUX_NOTEBOOK_ENABLED=false;
+
+/* Student-to-counselor contact paused. This is the "My counselor" card at the
+   top of the Profile tab — Book appointment, Message, upcoming appointments,
+   the consent panel and the help-ticket section — plus the "Book counselor"
+   row in the mobile More sheet.
+
+   None of it finishes the round trip: booking writes to counselor_appointments
+   but nothing confirms a slot back to the student, and Message opens a composer
+   against a counselor account most schools have not linked yet, so the button
+   either does nothing or sends into a mailbox no one is watching. A "Message
+   your counselor" button that goes nowhere is worse than not offering one.
+
+   Hidden, not deleted, like FLUX_SCHOOL_JOIN_ENABLED and FLUX_NOTEBOOK_ENABLED
+   above. Every table, modal and handler stays; flip this to true to restore the
+   whole card. The counselor's OWN dashboard is a separate surface and is
+   untouched — this removes only the student-facing way in.
+
+   Staff office hours are part of the same pause but live in their own module,
+   gated by enable_office_hours in flux-feature-flags.js. */
+const FLUX_COUNSELOR_CONTACT_ENABLED=false;
+
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
@@ -3015,6 +3052,13 @@ tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='referen
 {const _nt=tabConfig.find(t=>t.id==='notes');if(_nt&&(_nt.label==='Knowledge'||_nt.label==='Notes')){_nt.label='Notebook';_nt.icon='📓';}}
 // Ensure new tabs get added if missing
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
+// Notebook paused — see FLUX_NOTEBOOK_ENABLED. Dropped rather than marked
+// invisible, same as the retired tabs above, so it is not listed in the
+// Settings tab customiser where someone could switch a paused feature back on.
+// Must come after the re-add loop, which would otherwise restore it from
+// DEFAULT_TABS, and after the load() so it also covers anyone who already has
+// 'notes' saved in their flux_tabs.
+if(!FLUX_NOTEBOOK_ENABLED)tabConfig=tabConfig.filter(t=>t.id!=='notes');
 // Legacy tab label (older builds / stored flux_tabs)
 tabConfig.forEach(t=>{if(t.id==='ai'&&/flux\s*agent/i.test(String(t.label||'')))t.label='Flux AI';});
 // 'notes' hosts the merged Notebook tab (Knowledge is a sub-view inside it).
@@ -3378,6 +3422,12 @@ function nav(id,btn,navOpt){
   const navRawId=id;
   const navT0=(window.FluxDebug&&FluxDebug.on&&(FluxDebug.on('NAV')||FluxDebug.on()))?performance.now():0;
   if(id==='references'){ id='toolbox'; }
+  // Notebook is paused (FLUX_NOTEBOOK_ENABLED). Old deep links, a saved last
+  // tab and the static markup left in index.html can all still aim at either
+  // panel, and neither is in tabConfig any more, so the visibility check below
+  // would not catch them — send them somewhere real rather than to a blank
+  // panel with no way back.
+  if(!FLUX_NOTEBOOK_ENABLED&&(id==='notebook'||id==='notes')){ id='dashboard'; }
   if(id==='flux_control'){
     const r=getMyRole();
     if(r!=='owner'&&r!=='dev'){nav('dashboard');return;}
@@ -3483,7 +3533,13 @@ function nav(id,btn,navOpt){
   try{document.dispatchEvent(new CustomEvent('flux-nav',{detail:{panel:id}}));}catch(e){}
   try{
     if(window.FluxVisual&&typeof FluxVisual.animateNavIndicator==='function'){
-      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`);
+      // Fall back to the More button for panels that aren't one of the five in
+      // the bar — the same rule the .active class follows above. Without it the
+      // underline was never told to move for Settings, Profile, Goals, Mood,
+      // Notes or School, so it sat under whichever primary tab you opened last
+      // and looked permanently stuck.
+      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`)
+        ||document.getElementById('moreBtn');
       if(tabBtn)FluxVisual.animateNavIndicator(tabBtn);
     }
   }catch(e){}
@@ -3720,7 +3776,7 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 <button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni"></span><span class="nl">Meetings</span></button>
 <button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
 <button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Classes</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Rosters</span></button>
 <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
 <button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
@@ -3747,9 +3803,12 @@ ${googleNavPersonal}`;
   return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
 
-/** One sidebar entry, two views: Notebook (default) + Knowledge live behind a
- *  shared segmented strip injected at the top of both panels. */
+/** One sidebar entry, two views: Notes (default) + Knowledge live behind a
+ *  shared segmented strip injected at the top of both panels. With the notebook
+ *  paused only one view is left, so the strip is skipped rather than rendered
+ *  as a lone button. */
 function ensureNbkSubtabs(){
+  if(!FLUX_NOTEBOOK_ENABLED)return;
   ['notes','notebook'].forEach(pid=>{
     const p=document.getElementById(pid);
     if(!p||p.querySelector('.fx-nbk-subtabs'))return;
@@ -4352,7 +4411,11 @@ function fluxRenderDashMob(){
       if(meta){
         const chips=[];
         if(sub)chips.push(`<span class="mob-meta-chip" style="background:${sub.color||'rgba(255,255,255,.05)'}20;color:${sub.color||'var(--text)'};border-color:${sub.color||'rgba(255,255,255,.1)'}40">${esc(sub.short||t.subject)}</span>`);
-        if(t.priority==='high')chips.push(`<span class="mob-meta-chip" style="background:rgba(255,79,94,.12);color:#ff4f5e;border-color:rgba(255,79,94,.3)">High</span>`);
+        // Theme red, not a hardcoded #ff4f5e. That literal is the dark theme's
+        // red, and printing it on its own 12% tint measured 2.79:1 in light
+        // mode — under the 4.5:1 needed to read text this small. var(--red) is
+        // #f85149 on dark and #cf222e on light, so both themes stay legible.
+        if(t.priority==='high')chips.push(`<span class="mob-meta-chip" style="background:rgba(var(--red-rgb),.12);color:var(--red);border-color:rgba(var(--red-rgb),.3)">High</span>`);
         if(t.date){
           const due=new Date(t.date+'T00:00:00');
           const diffDays=Math.round((due-today)/86400000);
@@ -4592,8 +4655,6 @@ function renderTasks(){
     const blockedStyle=blocked?'opacity:.45;pointer-events:auto':'';
     const priChip=t.priority?`<span class="task-chip task-chip-priority ${t.priority}">${t.priority}</span>`:'';
     const extraCls=(isOver?' task-overdue':'')+(isToday?' due-today':'');
-    const sch=fluxEventScope(t)==='school';
-    const gcalPushed=!!(typeof window.fluxGCalPushedMap==='function'&&window.fluxGCalPushedMap()[t.id]);
     const histEst=!t.done&&t.subject?avgEstMinutesForSubject(t.subject):null;
     const estHist=histEst?`<span class="task-chip task-chip-hint" title="Typical time for completed work in this subject">~${histEst}m avg</span>`:'';
     const bulk=_taskBulkMode&&!t.done?`<input type="checkbox" class="task-bulk-cb" aria-label="Select" ${_bulkIds.has(t.id)?'checked':''} onclick="event.stopPropagation();toggleBulkOne(${t.id},this.checked)"/>`:'';
@@ -4631,12 +4692,19 @@ ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" styl
 </div>
 ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
+<!-- Four buttons, hard limit. This row had grown to nine — a school/outside
+     pill, repeat options, copy link, Google Calendar, co-work and these four —
+     which made every task card look like a toolbar. What went where:
+       · school vs outside → "Belongs to" in the Edit modal
+       · repeat options    → "Repeat" in the Edit modal, which already had it
+       · copy link         → right-click menu (desktop); niche either way
+       · Google Calendar   → Google has been paused since Canvas shipped, so
+                             this button did nothing for anyone
+       · co-work           → the feature is being retired; see flux-cowork.js
+     Keep this at four. Anything new belongs in the Edit modal or the
+     right-click menu, not here. -->
 <div class="task-actions">
-<button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleTaskScope(${t.id})" title="School vs outside">${sch?'🏫':'🌐'}</button>
-${!t.done&&!_taskBulkMode&&(t.recurringType||t.recurringWeekly)&&window.FluxRecurring?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();FluxRecurring.openMenu(${t.id},event)" title="Repeat options" aria-label="Repeat options">🔁</button>`:''}
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
-${window.FluxDeepLinks?.enabled?.()?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();fluxCopyTaskLink(${t.id})" title="Copy link" aria-label="Copy link to task">🔗</button>`:''}
-${!t.done&&t.date&&!_taskBulkMode?`<button type="button" class="task-action-btn task-action-btn--gcal${gcalPushed?' is-pushed':''}" onclick="event.stopPropagation();window.fluxPushTaskToGCal&&fluxPushTaskToGCal(${t.id})" title="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}" aria-label="${gcalPushed?'Already on Google Calendar':'Push to Google Calendar'}">📅</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
 <button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
@@ -4701,7 +4769,7 @@ function setEnergy(v){
   save('flux_energy',n);
   const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[n];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[n];renderSmartSug();
 }
-function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';
+function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';const escopeSel=document.getElementById('editScope');if(escopeSel)escopeSel.value=t.scope==='outside'?'outside':'school';
   const depEl=document.getElementById('editDeps');
   if(depEl){
     const current=(t.blockedBy||[]).map(bid=>tasks.find(x=>x.id===bid)).filter(Boolean);
@@ -4734,7 +4802,7 @@ function completeAllSubtasksInEdit(){
   document.getElementById('editSubtasks').value=lines.join('\n');
   showToast('All subtasks marked complete','success');
 }
-function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
+function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const _scopeSel=document.getElementById('editScope');if(_scopeSel)t.scope=_scopeSel.value==='outside'?'outside':'school';const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
 function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
@@ -5684,12 +5752,18 @@ function renderSchoolTeacher(){
         <button id="tsiSaveBtn" type="button" class="btn-primary" style="margin-top:10px;padding:11px 18px;border-radius:12px;background:var(--accent);color:#0a0d18;font-weight:800;border:none;cursor:pointer" onclick="saveTeacherSchoolInfo()">Save details</button>
       </div>
 
-      ${role==='teacher'?`
-      <div class="card">
-        <h3 style="margin-top:0">My classes</h3>
-        <p style="color:var(--muted2);font-size:.82rem;margin:0 0 8px">Class rosters and assignment posting live in the <a href="javascript:nav('teacherDashboard')" style="color:var(--accent);text-decoration:none;font-weight:700">Teacher Dashboard</a>.</p>
-      </div>`:''}
+      ${role==='counselor'?'':(window.FluxTeacherClasses?.cardHtml?.()||'')}
     </div>`;
+
+  /* The "My classes" card above is an empty shell — FluxTeacherClasses paints
+     itself into it once the panel's innerHTML has landed, the same way
+     flux-office-hours re-mounts here. Building it inside the template string
+     instead would mean re-escaping every class name a teacher ever typed.
+
+     It replaces a card that was a single sentence pointing at the Teacher
+     Dashboard; there was no way to record what you teach, when. Counselors
+     are the one role skipped: they hold a caseload, not a timetable. */
+  try{window.FluxTeacherClasses?.render?.();}catch(_){}
 }
 window.renderSchoolTeacher=renderSchoolTeacher;
 
@@ -5710,13 +5784,16 @@ function renderSchool(){
   if(comboEl){
     comboEl.value=schoolInfo.combo||'';
     comboEl.type='password';
-    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='';cb.setAttribute('title','Show');}
+    // '👁' rather than '' — the button used to be reset to an empty label, so
+    // it rendered as a blank square until you clicked it. toggleReveal() swaps
+    // it to '🙈' when the field is showing; flux-iconify turns both into SVG.
+    const cb=document.getElementById('revealComboBtn');if(cb){cb.textContent='👁';cb.setAttribute('title','Show');}
   }
   if(counselorEl)counselorEl.value=schoolInfo.counselor||'';
   if(sidEl){
     sidEl.value=schoolInfo.studentID||'';
     sidEl.type='password';
-    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='';sb.setAttribute('title','Show');}
+    const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='👁';sb.setAttribute('title','Show');}
   }
   const cl=document.getElementById('classesList');
   if(!cl)return;
@@ -5733,7 +5810,7 @@ function renderSchool(){
       const renderClassRow=(c,col)=>{
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       };
       cl.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -5751,7 +5828,7 @@ function renderSchool(){
         const col=colorMap[c.id];
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="background:${col}22;color:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`;
       }).join('');
     }
   }
@@ -6251,7 +6328,38 @@ function prevFC(){fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;fcFlip
 // ══ MOOD ══
 function setMood(val,el){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');save('flux_mood_today',val);}
 function setStress(v){const el=document.getElementById('stressVal');if(el)el.textContent=v;save('flux_stress_today',v);}
-function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');const entry={date:todayStr(),mood,stress,sleep};const idx=moodHistory.findIndex(m=>m.date===entry.date);if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);save('flux_mood',moodHistory);try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';renderMoodHistory();if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}
+/** The one place a mood entry is written.
+ *
+ *  Both the full check-in on the Mood tab and the morning/evening quick prompt
+ *  go through here, so the two cannot produce differently shaped records or
+ *  skip each other's follow-up work (momentum, the counselor timeline, the
+ *  mood tint, the history chart).
+ *
+ *  MERGES into today's entry rather than replacing it, which the old inline
+ *  code did. Replacing was fine while the Mood tab was the only writer and
+ *  supplied every field at once. It stops being fine now a one-tap prompt
+ *  writes just a mood: replacing would drop the optional moodAm/moodPm
+ *  readings every time you opened the tab and pressed Save.
+ */
+function fluxPersistMood(patch){
+  const date=todayStr();
+  const idx=moodHistory.findIndex(m=>m.date===date);
+  const prev=idx>=0?moodHistory[idx]:{date,mood:3,stress:3,sleep:7};
+  const entry=Object.assign({},prev,patch||{},{date});
+  if(idx>=0)moodHistory[idx]=entry;else moodHistory.push(entry);
+  save('flux_mood',moodHistory);
+  try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}
+  try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}
+  try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}
+  /* Guarded from here down: the prompt can fire from any tab, so the Mood
+     tab's chart may not be in the DOM. A missing chart must not cost you the
+     entry that was already saved above. */
+  try{renderMoodHistory();}catch(_){}
+  try{if(window.FluxPersonal&&FluxPersonal.applyMoodTint)FluxPersonal.applyMoodTint();}catch(_){}
+  try{syncKey('moodHistory',moodHistory);}catch(_){}
+  return entry;
+}
+function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');fluxPersistMood({mood,stress,sleep});const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';}
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😞','😕','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
 function stopBreathing(){if(!breathingActive)return;clearInterval(breathTimer);breathTimer=null;breathingActive=false;const btn=document.getElementById('breathBtn');if(btn)btn.textContent='Start';const circle=document.getElementById('breathCircle');if(circle){circle.style.transform='scale(1)';circle.textContent='START';}}
@@ -6362,7 +6470,9 @@ function setProfilePanelMode(isEducator){
   if(sub){
     sub.textContent=isEducator
       ?'Your educator identity, classroom details, and workspace activity.'
-      :'Identity, study style, stats, and badges.';
+      // No longer "…, stats, and badges" — the badges were the last achievement
+      // system on the tab and went with the rest of them.
+      :'Your details, study style, course confidence, and stats.';
   }
 }
 
@@ -6404,15 +6514,16 @@ function renderProfile(){
   if(window.FluxPersonal&&FluxPersonal.styleProfileAvatar)FluxPersonal.styleProfileAvatar();
 
   const done=tasks.filter(t=>t.done).length;
-  const badges=[];
-  if(done>=40)badges.push({t:'On a roll',c:'badge-gold'});
-  if(done>=20)badges.push({t:'✓ Task Master',c:'badge-green'});
-  if(tStreak>=7)badges.push({t:'Study Streak',c:'badge-red'});
-  if(programs.includes('IB DP'))badges.push({t:'📚 IB DP',c:'badge-blue'});
-  if(programs.includes('IB MYP'))badges.push({t:'📖 IB MYP',c:'badge-purple'});
-  if(notes.length>=10)badges.push({t:'Note Taker',c:'badge-purple'});
+  // The third achievement system, and the last one standing. It awarded "On a
+  // roll", "Task Master", "Study Streak" and "Note Taker" under the student's
+  // name, and when you had none it said "Complete tasks to earn badges!" — the
+  // first thing on the tab now that the name block leads. Achievements are
+  // gone, so this goes with them. The element stays: flux-staff-platform.js
+  // fills the same #profileBadges with role chips (✓ Directory, Work mode) for
+  // staff, which are labels, not rewards. Cleared so a student who had badges
+  // before this shipped doesn't keep them frozen on screen.
   const badgeEl=document.getElementById('profileBadges');
-  if(badgeEl)badgeEl.innerHTML=badges.length?badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join(''):'<span style="font-size:.75rem;color:var(--muted)">Complete tasks to earn badges!</span>';
+  if(badgeEl)badgeEl.innerHTML='';
 
   const ps=document.getElementById('profileStats');
   const focusHrs=Math.round((load('t_minutes',0)||0)/60);
@@ -6502,6 +6613,9 @@ function applyTheme(key){
     fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||hexToRgb(theme.vars['--accent']));
   }
   updateLogoColor(theme.vars['--accent']||fluxLoadStoredString('flux_accent','#00bfff'));
+  // The full-screen mesh canvas is the app's backdrop and cannot see CSS
+  // variable changes. Without this it kept painting the previous theme.
+  try{document.dispatchEvent(new CustomEvent('flux-theme-change',{detail:{theme:key}}));}catch(_){}
 }
 function themeDark(){applyTheme('dark');}
 function themeCrimson(){applyTheme('ember');}
@@ -6700,6 +6814,9 @@ function setAccent(hex,rgb,el){
   syncKey('accent',{accent:hex,accentRgb:rgb});
   updateLogoColor(hex);
   try{if(window.FluxVisual&&typeof FluxVisual.updateNavSquiggle==='function')FluxVisual.updateNavSquiggle(hex);}catch(e){}
+  // flux-visual's mesh backdrop already listened for this — nothing had ever
+  // dispatched it, so the blobs kept their startup accent all session.
+  try{document.dispatchEvent(new CustomEvent('flux-accent-change',{detail:{accent:hex,rgb}}));}catch(_){}
 }
 function applyCustomColor(){
   const hex=document.getElementById('customColor').value;
@@ -7256,6 +7373,61 @@ function toggleFeatureFlag(feature,btn){
   if(isOwner()&&typeof ownerAuditAppend==='function')ownerAuditAppend('feature_flag',feature+':'+(!cur));
 }
 
+/* ── Delete my data (Settings › Data & info) ─────────────────────────────────
+   The Privacy Policy promises every user can delete their own data. Until this
+   existed the only route was clearMyPlannerData(), which is owner-gated and
+   lives in the dev panel — so for students and teachers the published promise
+   was simply untrue.
+
+   Order matters. Cloud rows go first, while the session is still valid; local
+   storage only after the server confirms. Doing it the other way round would,
+   on a failed request, leave an empty device next to intact cloud data that
+   syncs straight back the moment the page reloads. */
+async function fluxDeleteMyData(){
+  const typed=prompt(
+    'This permanently deletes your planner — tasks, notes, grades, mood, schedule '+
+    'and school info — from this device and from your Flux account.\n\n'+
+    'It cannot be undone. Download a copy first if you want one.\n\n'+
+    'Type DELETE to confirm:'
+  );
+  if(typed===null)return;
+  if(String(typed).trim().toUpperCase()!=='DELETE'){
+    if(typeof showToast==='function')showToast('Not deleted — you need to type DELETE exactly.','info',5000);
+    return;
+  }
+  window.__fluxDeleting=true;
+  const sb=getSB();
+  let failure=null;
+  if(sb&&currentUser){
+    const uid=currentUser.id;
+    try{
+      const results=await Promise.all([
+        sb.from('user_data').delete().eq('id',uid),
+        sb.from('student_wellness_snapshots').delete().eq('student_id',uid),
+        sb.from('flux_user_memory').delete().eq('user_id',uid)
+      ]);
+      const bad=results.find(r=>r&&r.error);
+      if(bad)failure=bad.error.message||'unknown error';
+    }catch(e){failure=e?.message||String(e);}
+  }
+  if(failure){
+    window.__fluxDeleting=false;
+    if(typeof showToast==='function'){
+      showToast('Could not delete from your account: '+failure+'. Nothing was removed — please try again.','error',9000);
+    }
+    return;
+  }
+  // Sign out before wiping storage — signOut needs the session token that
+  // lives in localStorage.
+  if(sb){try{await sb.auth.signOut();}catch(_){}}
+  // Clear wholesale rather than matching a flux_ prefix: keys are namespaced
+  // through fluxNamespacedKey() (impersonation prefixes, and plain names like
+  // 'profile' and 'classes'), so prefix matching silently leaves data behind.
+  try{localStorage.clear();sessionStorage.clear();}catch(_){}
+  location.replace(location.pathname);
+}
+window.fluxDeleteMyData=fluxDeleteMyData;
+
 function clearMyPlannerData(){
   if(!confirm('Clear ALL your planner data? This cannot be undone.'))return;
   tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
@@ -7465,9 +7637,9 @@ function loadAIChat(id){
     else if(m.role==='assistant'&&m.content&&m.content!=='(ran tools)')appendMsg('bot',m.content);
   });
   renderAIChatTabs();
-  // Scroll to bottom
-  const msgWrap=document.getElementById('aiMsgsWrap');
-  if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,50);
+  // Opening a chat always lands on its newest message — the scroll position
+  // from whatever you were reading before says nothing about this one.
+  setTimeout(()=>aiScrollToBottom(true),50);
 }
 
 function saveCurrentChat(){
@@ -7619,8 +7791,45 @@ function fmtAI(raw){
 
   return t;
 }
+/* How far from the bottom still counts as "reading the newest message". Below
+   this the transcript keeps following along; above it the reader has
+   deliberately gone back and is left alone. A line of chat is ~24px, so this is
+   roughly five lines of slack — enough that ordinary momentum scrolling doesn't
+   detach the view, small enough that scrolling up to re-read does. */
+const AI_STICK_PX=120;
+function aiAtBottom(wrap){
+  return wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<=AI_STICK_PX;
+}
+/** Pin the AI transcript to the newest text.
+ *
+ *  `force` is for the cases where the reader's position is not evidence of
+ *  anything: they just sent a message, or just opened a different chat.
+ *  Everything else passes nothing and gets the conditional behaviour — which is
+ *  the actual fix for "it scrolls away from its own answer". A finished answer
+ *  used to slam the view to the bottom, throwing away wherever you had got to
+ *  in a long one.
+ *
+ *  #aiMsgsWrap is the element that scrolls (.flux-ai-scroll and .ai-chat-area
+ *  both set overflow-y:auto). #aiMsgs is a plain flex column inside it with no
+ *  overflow at all, so assigning scrollTop to it — as the streaming painter
+ *  did — silently did nothing.
+ *
+ *  behavior:'instant' overrides the scroll-behavior:smooth in
+ *  flux-ai-panel.css. While text streams this runs about once every 90ms, and
+ *  each smooth scroll would restart the one before it, so the view never
+ *  settled and the text juddered. */
+function aiScrollToBottom(force){
+  const wrap=document.getElementById('aiMsgsWrap');
+  if(!wrap)return;
+  if(!force&&!aiAtBottom(wrap))return;
+  try{wrap.scrollTo({top:wrap.scrollHeight,behavior:'instant'});}
+  catch(e){wrap.scrollTop=wrap.scrollHeight;}
+}
 function appendMsg(role,content,isThink){const wrap=document.getElementById('aiMsgs');if(!wrap)return document.createElement('div');const div=document.createElement('div');div.className='ai-msg ai-msg--gpt '+role;const isBot=role==='bot';if(isThink){div.id='aiThink';div.innerHTML='<div class="ai-av bot">✦</div><div class="ai-bub bot"><div class="ai-think" id="aiThinkingIndicator"><span></span><span></span><span></span></div></div>';}else{const botText=isBot?filterAIResponse(String(content||'')):String(content||'');const f=isBot?fmtAI(botText):esc(botText);const init=(fluxLoadStoredString('flux_user_name','U')).charAt(0).toUpperCase();div.innerHTML=`<div class="ai-av ${isBot?'bot':'me'}">${isBot?'✦':init}</div><div class="ai-bub ${isBot?'bot':'user'}">${f}</div>`;}wrap.appendChild(div);// Scroll inner wrapper, not the page
-const msgWrap=document.getElementById('aiMsgsWrap');if(msgWrap)setTimeout(()=>msgWrap.scrollTop=msgWrap.scrollHeight,30);return div;}
+// Your own message and the thinking bubble always pull the view down — you
+// just pressed send, so the newest thing is what you're waiting for. A finished
+// answer does not: by then you may have scrolled up to read it.
+setTimeout(()=>aiScrollToBottom(role==='user'||isThink),30);return div;}
 function setFluxAIMode(mode,btn){
   const ok=['default','research','deep','overtime'];
   const m=ok.includes(mode)?mode:'default';
@@ -8292,7 +8501,7 @@ VOICE AND TONE:
 - Warm but not performatively enthusiastic. You are interested in the student's actual problem, not in appearing helpful.
 - Intellectually engaged. When something is genuinely interesting or has a non-obvious answer, explore it properly.
 - Calibrated confidence. Say "I'm not sure" when you are not sure. Say "this is likely" when it is likely. Do not state uncertain things as fact.
-- Appropriately concise. Short questions get short answers. Complex problems get thorough ones. Do not pad responses.
+- Length follows the question, and most questions are small. A factual or planner question ("when is this due", "what should I start with") gets one or two sentences and nothing after them. Anything ordinary gets a short paragraph. Several paragraphs are for when the student asked for depth or the problem genuinely cannot be answered shorter - not for showing work you were not asked for. When in doubt, answer short: they can always ask for more.
 
 WHAT YOU NEVER DO:
 - Never start a response with "Certainly!", "Of course!", "Great question!", "Absolutely!", "Sure!", "Happy to help!", "I'd be happy to", or any variation of these.
@@ -8347,13 +8556,13 @@ PLANNER DATA: The snapshot above includes tasks, notes, mood, timer sessions, cl
 
 CANVAS: If sections "Canvas — pinned in Flux" or "Canvas — synced assignments" appear, they are from the student's Canvas LMS (API + optional reader pin in the Canvas tab). Help them understand assignments, due dates, and instructions from that text. You cannot see their Canvas iframe if the school blocks embedding — rely on these sections.
 
-REASONING: For complex questions \u2014 scheduling trade-offs, physics problems, essay structure, study strategy \u2014 think it through step by step. Show your reasoning when it helps the student understand, not just the conclusion.
+REASONING: For genuinely complex questions \u2014 scheduling trade-offs, physics problems, essay structure, study strategy \u2014 work it through step by step and show the reasoning, not just the conclusion. That is licence for hard questions only. If you already know the answer, give it; thinking out loud on an easy question is padding.
 
 HONESTY: Distinguish between what you can see in the planner data, what you can reason about, and what the student should verify elsewhere. Never fabricate. If unsure, say so.
 
 NUMBERS: Physics: g = 10\u2009m/s\u00b2 unless explicitly stated otherwise.
 ${getStudyDNAPrompt()}${(window.FluxBrain&&typeof FluxBrain.prompt==='function')?FluxBrain.prompt():''}
-DEPTH: Default to high-leverage help: trace logic from first principles when it helps, show alternate approaches, stress-test edge cases, and surface common mistakes. When speed matters, lead with the decisive result then optional depth. For work that will be turned in for a grade, build mastery—full solutions with different numbers, outlines, checklists, and verification steps the student can execute—so they understand and can defend their own write-up.
+DEPTH: Lead with the answer, at the shortest length that is genuinely useful. Do not volunteer first-principles derivations, alternate approaches, edge cases or common-mistake lists unless the student asks for them or the answer is wrong without them. If you think depth would help, offer it in one short closing line ("want me to go through why that works?") rather than writing it unprompted. The exception is work being turned in for a grade: there, build real mastery - full worked solutions using different numbers, outlines, checklists and verification steps the student can execute - so they understand and can defend their own write-up.
 </how_you_work>
 ${(()=>{
   try{
@@ -8417,7 +8626,10 @@ async function fluxReadAIStream(res,thinkEl,thinkAnim){
     const visible=full.split(/`{3,}\s*(?:flux_tool|actions|skill)/i)[0].trim();
     if(visible){
       bub.innerHTML=fmtAI(visible);
-      try{const wrap=document.getElementById('aiMsgs');if(wrap)wrap.scrollTop=wrap.scrollHeight;}catch(e){}
+      // Follow the text as it arrives, but only while the reader is still at
+      // the bottom. Scroll up mid-answer and this stops, instead of dragging
+      // you back down every 90ms.
+      aiScrollToBottom();
     }
   };
   for(;;){
@@ -8915,6 +9127,23 @@ function getCloudPayload(){
     sportPracticePack:(window.FluxSportPracticePack?.getCloudSlice?FluxSportPracticePack.getCloudSlice():load('flux_sport_practice_pack_v1',{sportName:'',practiceTime:'16:00',practiceWeekdays:[1,3,5],linkedExtraId:'',lastPackId:''})),
     csSnippetLibrary:(window.FluxCsSnippetLibrary?.getCloudSlice?FluxCsSnippetLibrary.getCloudSlice():load('flux_cs_snippet_library_v1',{snippets:[],seeded:false})),
     unitConverterFavorites:(window.FluxUnitConverterFavorites?.getCloudSlice?FluxUnitConverterFavorites.getCloudSlice():load('flux_unit_converter_favorites_v1',{favorites:[],seeded:false})),
+    // Starred subjects in the Study Tools rail. Saved locally but never sent,
+    // so favourites were per-device: star Biology on your laptop and your phone
+    // still showed the default order. Note the lowercase global — the module
+    // exposes window.fluxStudyHub, not FluxStudyHub.
+    studyHub:(window.fluxStudyHub?.getCloudSlice?fluxStudyHub.getCloudSlice():load('flux_study_hub',{subject:'chemistry',chemTab:'table',tool:{},favs:[]})),
+    // Alarms and world clocks only. A running stopwatch or countdown stays on
+    // the device that started it — copying its end timestamp across would show
+    // a second device a countdown nobody there set.
+    timeTools:(window.FluxTimeTools?.getCloudSlice?FluxTimeTools.getCloudSlice():load('flux_time_tools_v1',{alarms:[],worldClocks:[]})),
+    // The classes a member of staff TEACHES, plus the work set for each. A
+    // separate key from the student `classes` above: same shape, opposite
+    // meaning, and sharing one would feed a teacher's timetable into the GPA
+    // maths of anyone who is both.
+    teacherClasses:(window.FluxTeacherClasses?.getCloudSlice?FluxTeacherClasses.getCloudSlice():load('flux_teacher_classes',[])),
+    // Vocabulary and conjugation practice. Revising on a phone at the bus stop
+    // and on a laptop at home should add up to one run of revision, not two.
+    langPractice:(window.FluxLangPractice?.getCloudSlice?FluxLangPractice.getCloudSlice():load('flux_lang_practice_v1',{lang:'es',mode:'choice',theme:'school',box:{},stats:{seen:0,right:0,streak:0,best:0}})),
     periodicSrsQuiz:(window.FluxPeriodicSrsQuiz?.getCloudSlice?FluxPeriodicSrsQuiz.getCloudSlice():load('flux_periodic_srs_v1',{mode:'sym_name',catFilter:'all',cards:{},stats:{reviewed:0,correct:0,sessions:0},wrongQueue:[]})),
     flashcardGenerator:(window.FluxFlashcardGenerator?.getCloudSlice?FluxFlashcardGenerator.getCloudSlice():load('flux_flashcard_generator_v1',{maxCards:40,generated:0})),
     srsDeckMode:(window.FluxSrsDeckMode?.getCloudSlice?FluxSrsDeckMode.getCloudSlice():load('flux_srs_deck_v1',{cards:{},stats:{reviewed:0,sessions:0}})),
@@ -8939,6 +9168,13 @@ function getCloudPayload(){
       platformConfig:load('flux_platform_config',{}),
       ownerAuditLog:load('flux_owner_audit',[]),
       feedbackInbox:load('flux_feedback_inbox',[]),
+      // Dismissals have to travel with the inbox. Both sync paths filter
+      // against this list, but it used to live only in localStorage — so on a
+      // second browser, on your phone, or after clearing site data it was
+      // simply empty, and since user-feedback (the Edge Function) rewrites the
+      // whole inbox server-side, every entry you had already dealt with came
+      // straight back.
+      feedbackTombstones:load('flux_feedback_tombstones',[]),
     }:{}),
   };
 }
@@ -8970,6 +9206,9 @@ function startFluxCloudSyncLoops(){
 
 async function syncToCloud(){
   if(!currentUser)return;
+  // A delete is in progress — pushing now would write the still-populated
+  // in-memory arrays straight back over the row we just removed.
+  if(window.__fluxDeleting)return;
   // Owner is in a teacher preview — never push that bubble's data into the
   // owner's Supabase row. Preview lives only on this browser, in its own
   // localStorage namespace, until the actual teacher signs in for real.
@@ -8999,7 +9238,13 @@ async function syncToCloud(){
         const {data:row}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
         const remote=row?.data?.feedbackInbox;
         const local=load('flux_feedback_inbox',[]);
+        // Union local and remote dismissals before filtering, so a dismissal
+        // made on another device is honoured here instead of being undone by
+        // this device pushing an inbox that still contains it.
         const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+        const remoteTomb=row?.data?.feedbackTombstones;
+        if(Array.isArray(remoteTomb))remoteTomb.forEach(x=>{if(x)tomb.add(String(x));});
+        save('flux_feedback_tombstones',[...tomb].slice(-500));
         const mergedMap=new Map();
         if(Array.isArray(remote)){
           remote.forEach(x=>{
@@ -9014,6 +9259,9 @@ async function syncToCloud(){
         const merged=[...mergedMap.values()].sort((a,b)=>(a.t||0)-(b.t||0)).slice(-300);
         save('flux_feedback_inbox',merged);
         payload.feedbackInbox=merged;
+        // getCloudPayload() read the tombstones before the union above, so
+        // overwrite rather than push the stale snapshot back over the top.
+        payload.feedbackTombstones=[...tomb].slice(-500);
       }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
     }
     // MCP (Claude) may have written tasks server-side since our last pull. Don't
@@ -9238,6 +9486,23 @@ async function syncFromCloud(){
     if(d.unitConverterFavorites&&typeof d.unitConverterFavorites==='object'){
       try{if(window.FluxUnitConverterFavorites?.applyFromCloud)FluxUnitConverterFavorites.applyFromCloud(d.unitConverterFavorites);else save('flux_unit_converter_favorites_v1',d.unitConverterFavorites);}catch(_){}
     }
+    if(d.studyHub&&typeof d.studyHub==='object'){
+      try{if(window.fluxStudyHub?.applyFromCloud)fluxStudyHub.applyFromCloud(d.studyHub);else save('flux_study_hub',d.studyHub);}catch(_){}
+    }
+    if(d.timeTools&&typeof d.timeTools==='object'){
+      try{if(window.FluxTimeTools?.applyFromCloud)FluxTimeTools.applyFromCloud(d.timeTools);}catch(_){}
+    }
+    // Array, not object — an empty timetable is a legitimate value, so this
+    // tests Array.isArray rather than truthiness the way the object slices do.
+    if(Array.isArray(d.teacherClasses)){
+      try{if(window.FluxTeacherClasses?.applyFromCloud)FluxTeacherClasses.applyFromCloud(d.teacherClasses);else save('flux_teacher_classes',d.teacherClasses);}catch(_){}
+    }
+    /* Handed to the module rather than saved over the top: it merges the
+       Leitner boxes and keeps the higher one, so two devices used the same day
+       add up instead of the last writer erasing the other's revision. */
+    if(d.langPractice&&typeof d.langPractice==='object'){
+      try{if(window.FluxLangPractice?.applyFromCloud)FluxLangPractice.applyFromCloud(d.langPractice);else save('flux_lang_practice_v1',d.langPractice);}catch(_){}
+    }
     if(d.periodicSrsQuiz&&typeof d.periodicSrsQuiz==='object'){
       try{if(window.FluxPeriodicSrsQuiz?.applyFromCloud)FluxPeriodicSrsQuiz.applyFromCloud(d.periodicSrsQuiz);else save('flux_periodic_srs_v1',d.periodicSrsQuiz);}catch(_){}
     }
@@ -9335,33 +9600,32 @@ async function syncFromCloud(){
     if(isOwner()){
       if(d.platformConfig&&typeof d.platformConfig==='object')save('flux_platform_config',d.platformConfig);
       if(Array.isArray(d.ownerAuditLog))save('flux_owner_audit',d.ownerAuditLog.slice(-300));
+      // Union, never replace. This device may have dismissed things the cloud
+      // copy has not seen yet, and vice versa; taking either side alone would
+      // resurrect the other's dismissals.
+      const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
+      if(Array.isArray(d.feedbackTombstones)){
+        d.feedbackTombstones.forEach(x=>{if(x)tomb.add(String(x));});
+        save('flux_feedback_tombstones',[...tomb].slice(-500));
+      }
       if(Array.isArray(d.feedbackInbox)){
-        const tomb=new Set((load('flux_feedback_tombstones',[])||[]).map(String));
         const next=d.feedbackInbox.filter(x=>x&&x.id&&!tomb.has(String(x.id)));
         save('flux_feedback_inbox',next.slice(-300));
       }
     }
-    // Dev accounts + release gate: fetch from owner's row (single source of truth).
-    // Owner's row also hosts platformConfig.releaseGate which controls staged rollout.
+    // Announcements, maintenance mode and the sign-in popup come from
+    // public.platform_settings — not from the owner's user_data row. The
+    // read_own policy on user_data is `auth.uid() = id`, so a non-owner's
+    // select only ever returns their own row and never reaches the owner's.
+    // release-admin mirrors the public fields into platform_settings, which
+    // anyone may read, whenever the owner saves.
+    //
+    // The release gate is deliberately not read here: flux-release-gate.js
+    // already gets it from the release-admin GET, which reads the owner row
+    // with the service role. Dev accounts stay owner-only — that list is staff
+    // email addresses and has no business in a world-readable table.
     if(!isOwner()){
-      try{
-        if(!window.__fluxOwnerRowId){
-          const rows=await sb.from('user_data').select('id,data').limit(100);
-          const hit=(rows.data||[]).find(r=>r?.data?.ownerEmail===OWNER_EMAIL);
-          if(hit)window.__fluxOwnerRowId=hit.id;
-          if(hit?.data?.devAccounts)save('flux_dev_accounts',hit.data.devAccounts);
-          if(hit?.data?.platformConfig)savePublicPlatformBroadcastFromOwner(hit.data.platformConfig);
-          if(hit?.data?.platformConfig?.releaseGate){
-            save('flux_release_gate',hit.data.platformConfig.releaseGate);
-          }
-        }else{
-          const ownerRes=await sb.from('user_data').select('data').eq('id',window.__fluxOwnerRowId).single();
-          const od=ownerRes?.data?.data;
-          if(od?.devAccounts)save('flux_dev_accounts',od.devAccounts);
-          if(od?.platformConfig)savePublicPlatformBroadcastFromOwner(od.platformConfig);
-          if(od?.platformConfig?.releaseGate)save('flux_release_gate',od.platformConfig.releaseGate);
-        }
-      }catch(e){}
+      await refreshPlatformBroadcast();
     }
     if(typeof FluxRelease!=='undefined'&&FluxRelease&&typeof FluxRelease.applyGate==='function'){
       FluxRelease.applyGate();
@@ -9382,8 +9646,34 @@ async function syncFromCloud(){
   finally{_syncFromCloudInFlight=false;}
 }
 
-/** Non-sensitive platform strings from owner's row — safe for non-owner clients (announcement toast, advisory hints). */
-function savePublicPlatformBroadcastFromOwner(pc){
+/**
+ * Pull the owner's published broadcast from public.platform_settings.
+ *
+ * That table is world-readable by design and carries only non-sensitive
+ * strings, so the anon key is enough. It exists because the owner's own
+ * user_data row — where these values are actually edited — is invisible to
+ * every other account under RLS.
+ */
+async function refreshPlatformBroadcast(){
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/platform_settings?key=eq.broadcast&select=value`,{
+      headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON},
+      cache:'no-store',
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    const value=rows?.[0]?.value;
+    if(value&&typeof value==='object')savePublicPlatformBroadcast(value);
+  }catch(e){
+    // Offline, or the owner has never published. The last cached broadcast
+    // stays in force — but say so, because failing silently here is exactly
+    // what kept the old owner-row scan broken without anyone noticing.
+    console.warn('[Flux] platform broadcast refresh failed',e);
+  }
+}
+
+/** Non-sensitive platform strings — safe for every client (announcement toast, advisory hints). */
+function savePublicPlatformBroadcast(pc){
   if(!pc||typeof pc!=='object')return;
   const merged={
     announcement:String(pc.announcement||'').trim(),
@@ -10741,13 +11031,15 @@ function toggleAuthMode(){
     if(sub)sub.textContent='Sign in to sync across devices';
   }
   const errEl=document.getElementById('loginAuthError');
-  if(errEl){errEl.textContent='';errEl.classList.remove('show');}
+  if(errEl){errEl.textContent='';errEl.classList.remove('show','is-ok');}
 }
 
-function showAuthError(msg){
+function showAuthError(msg,kind){
   const el=document.getElementById('loginAuthError');
   if(!el)return;
-  el.textContent=msg;el.classList.add('show');
+  el.textContent=msg;
+  el.classList.toggle('is-ok',kind==='ok');
+  el.classList.add('show');
 }
 
 async function handleEmailAuth(){
@@ -10764,11 +11056,18 @@ async function handleEmailAuth(){
     if(_authMode==='signup'){
       result=await sb.auth.signUp({
         email,password,
-        options:{data:{full_name:name||email.split('@')[0]}}
+        options:{
+          // Without emailRedirectTo, Supabase falls back to the project's Site
+          // URL, which sent every confirmation link to a page that does not
+          // exist. getRedirectURL() resolves to the deployed subpath
+          // (…github.io/Flux/), and must be on the Redirect URLs allowlist.
+          emailRedirectTo:getRedirectURL(),
+          data:{full_name:name||email.split('@')[0]}
+        }
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
-        showAuthError('Check your email for a confirmation link!');
+        showAuthError('Check your email — we sent a confirmation link to '+email+'. Open it on this device.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
@@ -10797,8 +11096,9 @@ function openFluxAgent(opts){
     else if(opts.clearInput)inp.value='';
     inp.focus();
     try{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,120)+'px';}catch(e){}
-    const wrap=document.getElementById('aiMsgsWrap');
-    if(wrap)wrap.scrollTop=wrap.scrollHeight;
+    // Forced: openFluxAgent is an arrival, not a scroll — you came here from a
+    // task's ✦ button and the composer has just been prefilled for you.
+    aiScrollToBottom(true);
   },delay);
 }
 
@@ -10972,7 +11272,10 @@ function renderCmdResults(){
     {icon:'📅',label:'Calendar',action:()=>{nav('calendar');closeCommandPalette();}},
     {icon:'✦',label:'Flux AI',action:()=>{nav('ai');closeCommandPalette();}},
     ...(typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator()&&FluxRole.isPersonalMode&&FluxRole.isPersonalMode()?[]:[{icon:'🏫',label:'School Info',action:()=>{nav('school');closeCommandPalette();}}]),
-    {icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}},
+    // Notebook is paused (FLUX_NOTEBOOK_ENABLED). This list is hardcoded rather
+    // than built from tabConfig, so it has to be gated by hand or the palette
+    // keeps offering a destination that now bounces you to the dashboard.
+    ...(FLUX_NOTEBOOK_ENABLED?[{icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}}]:[]),
     {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
@@ -11589,6 +11892,38 @@ function showFluxOfflineScreen(){
 }
 window.showFluxOfflineScreen=showFluxOfflineScreen;
 
+// ── Email-link callbacks (confirm signup, password reset, magic link) ──
+// These open in a brand-new tab straight from a mail app: no opener, no popup
+// window.name, and no second Flux tab to hand the session to. Treating them as
+// OAuth callbacks showed "continue in your other Flux tab" and then closed the
+// window on people who only ever had one — so they are detected separately.
+const FLUX_EMAIL_LINK_TYPES=/^(signup|magiclink|recovery|invite|email_change|email)$/i;
+
+function readEmailLinkParams(){
+  const hashParams=new URLSearchParams(String(window.location.hash||'').replace(/^#/,''));
+  const query=new URLSearchParams(window.location.search);
+  const pick=k=>hashParams.get(k)||query.get(k);
+  const type=pick('type');
+  return{
+    type:type||'',
+    tokenHash:pick('token_hash')||'',
+    isEmailLink:!!(type&&FLUX_EMAIL_LINK_TYPES.test(type)),
+    errorCode:pick('error_code')||pick('error')||'',
+    errorDescription:pick('error_description')||''
+  };
+}
+
+function emailLinkErrorMessage(info){
+  const blob=String(info.errorCode||'')+' '+String(info.errorDescription||'');
+  if(/otp_expired|expired/i.test(blob))
+    return 'That confirmation link has expired. Enter your email and password again to get a fresh one.';
+  if(/access_denied/i.test(blob))
+    return 'That confirmation link was already used. Try signing in instead.';
+  let raw=info.errorDescription||'We could not confirm your email. Please try again.';
+  try{raw=decodeURIComponent(raw.replace(/\+/g,' '));}catch(_){}
+  return raw;
+}
+
 // Wait for PKCE code exchange / hash parsing — getSession() can briefly return null on redirect
 async function getSessionAfterOAuth(sb){
   let{data:{session}}=await sb.auth.getSession();
@@ -11631,9 +11966,28 @@ async function initAuth(){
     // boot the planner, and leave the user with the app open twice.
     const isOAuthPopup=/^flux\w*OAuth$/i.test(String(window.name||''));
     window.__fluxIsOAuthPopupTab=isOAuthPopup;
-    const isOAuthCallback=hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup;
 
-    if(!isOAuthCallback){
+    // An email link is never a popup we opened, so it must never take the
+    // popup-handshake path below.
+    const emailLink=readEmailLinkParams();
+    const isEmailLink=!isOAuthPopup&&(emailLink.isEmailLink||!!emailLink.tokenHash);
+    let emailLinkError=isEmailLink&&emailLink.errorCode?emailLinkErrorMessage(emailLink):null;
+    if(isEmailLink&&emailLink.tokenHash&&!emailLinkError){
+      // token_hash links verify server-side, so they still work when the mail
+      // app opens them in a different browser than the one that signed up —
+      // which the PKCE ?code= exchange cannot do.
+      try{
+        const{error}=await sb.auth.verifyOtp({token_hash:emailLink.tokenHash,type:emailLink.type||'signup'});
+        if(error)throw error;
+      }catch(e){
+        console.warn('[Flux] email link verification failed',e);
+        emailLinkError=e?.message||'We could not confirm your email. Please try again.';
+      }
+    }
+
+    const isOAuthCallback=!isEmailLink&&(hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup);
+
+    if(!isOAuthCallback&&!isEmailLink){
       const reach=await pingSupabaseReachable(sb);
       window.__fluxSupabaseReachable=!!(reach&&reach.ok);
       if(!reach.ok&&reach.reason==='offline'){
@@ -11645,7 +11999,7 @@ async function initAuth(){
 
     const session=await getSessionAfterOAuth(sb);
 
-    if(isOAuthCallback){
+    if(isOAuthCallback||isEmailLink){
       const cleanPath=window.location.pathname;
       window.history.replaceState(null,'',cleanPath);
     }
@@ -11704,8 +12058,13 @@ async function initAuth(){
     if(session?.user){
       fluxExtAuthBroadcast(session);
       await handleSignedIn(session.user,session);
+      if(isEmailLink&&!emailLinkError&&typeof showToast==='function'){
+        showToast('Email confirmed — you\'re all set.','success',5000);
+      }
     }else{
       showLoginOrApp();
+      // A dead confirmation link must say why, on the screen the user landed on.
+      if(emailLinkError)showAuthError(emailLinkError);
     }
 
     // STEP 3: Listen for future auth changes
@@ -11813,7 +12172,7 @@ let _loginDemoInterval=null;
 const LOGIN_DEMO_LINES=[
   'Break down assignments into steps with Flux AI study plans.',
   'Snap a syllabus or schedule — Vision Import turns it into tasks.',
-  'Sync Google Calendar and see tasks beside class blocks.',
+  'See your bell schedule and no-school days on one calendar.',
   'Log extracurriculars and get school-fit suggestions.',
   'Capture notes with tags, then ask Flux AI to quiz you.',
   'Use the focus timer and streaks to build study habits.',
@@ -12371,6 +12730,13 @@ async function handleSignedIn(user,session){
       window.FluxStaffPlatform.teardownVerificationRealtime();
     }
   }catch(_){}
+  // Staff waiting on verification used to be invisible unless the owner
+  // happened to open Owner Controls › Staff verify. Surface it at sign-in.
+  try{
+    if(isOwner()&&window.FluxStaffPlatform?.notifyOwnerOfPendingStaffRequests){
+      setTimeout(()=>{void window.FluxStaffPlatform.notifyOwnerOfPendingStaffRequests();},2500);
+    }
+  }catch(_){}
   try{
     if(FluxRole.isCounselor()&&FluxRole.isWorkMode?.()&&window.FluxCounselorCaseload?.enabled?.()){
       if(typeof window.FluxCounselorCaseload.renderCaseloadDashboard==='function'){
@@ -12691,16 +13057,16 @@ function buildFeatPillsHtml(){
     {label:'Cloud sync',c:'#10d9a0'},
     {label:'AI flashcards',c:'#e879f9'},
     {label:'Panic mode',c:'#f43f5e'},
-    {label:'Gmail → tasks',c:'#fb923c'},
+    {label:'Focus timer',c:'#fb923c'},
     {label:'Tagged notes',c:'#6366f1'},
     {label:'Extracurriculars',c:'#fbbf24'},
     {label:'Cognitive load',c:'#22c55e'},
     {label:'Exam conflicts',c:'#f472b6'},
     {label:'Themes & accent',c:'#38bdf8'},
     {label:'Grade what-if',c:'#eab308'},
-    {label:'Canvas & Gmail',c:'#94a3b8'},
+    {label:'Canvas import',c:'#94a3b8'},
     {label:'Mood check-ins',c:'#fb7185'},
-    {label:'iCal / Google',c:'#34d399'},
+    {label:'iCal feeds',c:'#34d399'},
   ];
   const all=[...pills,...pills];
   return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
@@ -16384,7 +16750,17 @@ const ACHIEVEMENTS={
   all_done_today:{title:'Clean Slate',desc:'Finished all tasks for today',icon:''},
 };
 let _achievements=load('flux_achievements',[]);
+/**
+ * Retired, same as checkAchievements() in flux-pro.js. This was the second,
+ * quieter achievement system — it fired a toast on first task, ten tasks,
+ * streaks and so on. Returning here rather than unpicking the nine FluxBus
+ * wirings below keeps the decision in one place and stops anything more being
+ * written to flux_achievements. Badges already earned are left alone rather
+ * than deleted. Delete the return to revive.
+ */
 function checkAchievement(id){
+  return;
+  // eslint-disable-next-line no-unreachable
   if(_achievements.includes(id))return;
   const a=ACHIEVEMENTS[id];if(!a)return;
   _achievements.push(id);
@@ -18072,26 +18448,34 @@ async function renderTeacherDashboard(){
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
           <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
-          <button class="teacher-action-btn" data-action="new-class"><span></span> New Class</button>
+          <button class="teacher-action-btn" data-action="new-class"><span></span> New roster</button>
           <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
           ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
       </div>
 
-      <div class="teacher-stats-strip">
-        <div class="teacher-stat"><div class="tstat-num">${classesRows.length}</div><div class="tstat-label">Classes</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat"><div class="tstat-num">${totalAssignments}</div><div class="tstat-label">Assignments</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${pendingJoins.length>0?'tstat-alert':''}"><div class="tstat-num">${pendingJoins.length}</div><div class="tstat-label">Join Queue</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${pendingReview>0?'tstat-alert':''}"><div class="tstat-num">${pendingReview}</div><div class="tstat-label">To Review</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${unreadMessages.length>0?'tstat-alert':''}"><div class="tstat-num">${unreadMessages.length}</div><div class="tstat-label">Messages</div></div>
-        <div class="teacher-stat-divider"></div>
-        <div class="teacher-stat ${dueSoon.length>0?'tstat-warn':''}"><div class="tstat-num">${dueSoon.length}</div><div class="tstat-label">Due Soon</div></div>
-      </div>
+      ${(()=>{
+        /* Only the counts that have something to report.
+           This strip used to render all six unconditionally, so a teacher's
+           first sight of Flux was "0 0 0 0 0 0" — six numbers, none of them
+           news. A zero here says nothing the empty states below do not already
+           say in words, and six of them read as a broken page rather than a
+           quiet day. When every count is zero the strip is dropped entirely
+           and the now-bar leads instead. */
+        const stats=[
+          {n:classesRows.length,     label:'Rosters'},
+          {n:totalAssignments,       label:'Assignments'},
+          {n:pendingJoins.length,    label:'Join queue', cls:'tstat-alert'},
+          {n:pendingReview,          label:'To review',  cls:'tstat-alert'},
+          {n:unreadMessages.length,  label:'Messages',   cls:'tstat-alert'},
+          {n:dueSoon.length,         label:'Due soon',   cls:'tstat-warn'},
+        ].filter(s=>s.n>0);
+        if(!stats.length)return'';
+        return `<div class="teacher-stats-strip">${stats.map(s=>
+          `<div class="teacher-stat ${s.cls||''}"><div class="tstat-num">${s.n}</div><div class="tstat-label">${esc(s.label)}</div></div>`
+        ).join('<div class="teacher-stat-divider"></div>')}</div>`;
+      })()}
 
       ${momentumSectionHtml}
 
@@ -18110,15 +18494,20 @@ async function renderTeacherDashboard(){
       <div class="teacher-main-grid">
         <div class="teacher-col">
           <div class="teacher-section-head">
-            <h3>Your Classes</h3>
+            <!-- "Your Classes" until now, which made three different things
+                 share one name: this card, the sidebar entry, and the IA
+                 timetable on School Info. They are not the same. This one is a
+                 roster — students joining by code, held in the school
+                 database. What you teach and when is "My classes". -->
+            <h3>Class rosters</h3>
             <button class="tsec-add" data-action="new-class">+ Add</button>
           </div>
           ${classesRows.length===0?`
             <div class="teacher-empty">
               <div class="te-icon"></div>
-              <div class="te-title">No classes yet</div>
-              <div class="te-sub">Create a class and share the code with your students</div>
-              <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create First Class</button>
+              <div class="te-title">No rosters yet</div>
+              <div class="te-sub">A roster is the students in a class. Create one and share the join code.<br>To record what you teach and when, use <a href="javascript:nav('school')" style="color:var(--accent);text-decoration:none;font-weight:700">My classes</a> in School Info.</div>
+              <button class="teacher-action-btn primary" data-action="new-class" style="margin-top:12px">Create first roster</button>
             </div>`:classesRows.map(c=>renderTeacherClassCard(c)).join('')}
         </div>
 
@@ -19556,7 +19945,11 @@ window.assignStudentCounselor=assignStudentCounselor;
 
 async function renderMyCounselorSection(){
   const host=document.getElementById('myCounselorSection');
-  if(!host||!currentUser)return;
+  if(!host)return;
+  // Paused — see FLUX_COUNSELOR_CONTACT_ENABLED. Emptied rather than skipped so
+  // a card already on screen when the pause lands disappears too.
+  if(!FLUX_COUNSELOR_CONTACT_ENABLED){host.innerHTML='';return;}
+  if(!currentUser)return;
   const sb=getSB();if(!sb)return;
 
   const pendingStaffMeta=String(currentUser.user_metadata?.role_pending||'').toLowerCase()==='staff';

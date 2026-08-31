@@ -30,7 +30,7 @@
   <a href="./" class="back">← Back to Flux Planner</a>
   <div class="logo">Flux Planner</div>
   <h1>Privacy Policy</h1>
-  <div class="updated">Last updated: June 2026</div>
+  <div class="updated">Last updated: August 2026</div>
 
   <div class="card">
     <p>Flux Planner is a student and educator productivity tool by <strong>Azfer Mohammed</strong>. This policy explains what data we collect, how we use it, and how we protect it — for students, teachers, counselors, and staff.</p>
@@ -39,14 +39,17 @@
   <h2>1. What We Collect</h2>
   <p>We collect only what's necessary to make the app work:</p>
   <ul>
-    <li><strong>Account info</strong> — name, email, and profile photo when you sign in (Google or guest upgrade)</li>
+    <li><strong>Account info</strong> — name, email, and profile photo. You can sign in with Google or with an email address and password; guests can upgrade to an account later</li>
     <li><strong>Planner data</strong> — tasks, grades, notes, habits, goals, schedule, and study tools you enter</li>
     <li><strong>Educator data</strong> — classes, assignments, submissions, announcements, and messages you create as a teacher or staff member (stored in Supabase with row-level security)</li>
-    <li><strong>Gmail data</strong> — email subjects and senders only (read-only, only if you connect Gmail)</li>
+    <li><strong>Gmail data</strong> — email subjects and senders only (read-only, only if you connect Gmail). <em>Gmail, Calendar, Classroom and Drive connections are currently switched off for everyone; the entries below describe what is collected if and when they are switched back on.</em></li>
     <li><strong>Google Calendar</strong> — upcoming events (read-only, only if you connect Calendar)</li>
     <li><strong>Google Classroom &amp; Drive</strong> — read-only course/file metadata for educator imports when you connect Workspace</li>
     <li><strong>Canvas LMS</strong> — course and assignment data when you authorize your school Canvas login</li>
     <li><strong>School info</strong> — locker, student ID, class schedule, and role profile you optionally enter</li>
+    <li><strong>Mood and wellbeing entries</strong> — the check-ins you record. These are private to you by default. A school counselor can only see them if you are assigned to that counselor <em>and</em> you have separately opted in to share; sharing is off unless you turn it on, and the basic level shares only your name and an engagement band, not what you wrote</li>
+    <li><strong>Staff verification details</strong> — if you apply for teacher, counselor or staff access: your name, role, school, department, school email and the personal email on your account, so your request can be checked</li>
+    <li><strong>Feedback you send</strong> — the message, the page you sent it from, your email and browser version, delivered to the Flux owner's inbox</li>
     <li><strong>Device-local data</strong> — some staff widgets (e.g. Quick-Grade buckets, workspace layout) stay on your browser unless synced elsewhere by you</li>
   </ul>
 
@@ -61,13 +64,14 @@
 
   <h2>3. Where Data Is Stored</h2>
   <ul>
-    <li><strong>Supabase</strong> — planner and educator data in PostgreSQL with row-level security; users can only access their own rows unless school flows you enable allow otherwise</li>
+    <li><strong>Supabase</strong> — planner and educator data in PostgreSQL with row-level security. The database enforces that you can only read your own rows; the developer cannot browse your planner through the app. Exceptions are the ones you create yourself, such as joining a teacher's class or opting in to share wellbeing signals with a counselor</li>
     <li><strong>Your device</strong> — localStorage and sessionStorage cache for offline use and staff widget layout</li>
-    <li><strong>AI providers</strong> — Groq (default chat), Google Gemini (vision), and optional models you connect; each provider's policy applies to content you send</li>
+    <li><strong>AI providers</strong> — Groq (default chat), Anthropic (Claude, used for some AI features), Google Gemini (vision), and any model you connect yourself with your own key. Whatever you send to Flux AI is passed to the provider handling that request, and that provider's own policy applies to it</li>
     <li><strong>Claude MCP</strong> — OAuth tokens are stored hashed server-side; only allowlisted planner keys are readable/writable via the connector</li>
   </ul>
 
   <h2>4. Google API Scopes We Request</h2>
+  <p>Google connections are switched off at present, so none of these are being requested today. This is what would be requested if you connect Google once they are switched back on.</p>
   <ul>
     <li><code>gmail.readonly</code> — show email subjects/senders as tasks</li>
     <li><code>calendar.readonly</code> and <code>calendar.events</code> — read events; write only when you explicitly use calendar features that create events</li>
@@ -78,7 +82,8 @@
   </ul>
 
   <h2>5. Data Retention & Deletion</h2>
-  <p>You can delete all your data at any time from Settings → Data → Clear All Data. This removes your data from both your device and our servers immediately.</p>
+  <p>Go to <strong>Settings → Data &amp; info → Your data</strong>. <strong>Download my data</strong> saves a copy as a file. <strong>Delete my data</strong> removes your planner — tasks, notes, grades, mood entries, schedule and school info — from this device and from your Flux account straight away, and signs you out. It cannot be undone.</p>
+  <p>Two things deletion does not cover, so that you know before you use it. Your sign-in itself remains until you ask for the account to be closed — email the address below and it will be removed. And records a teacher or counselor created about you as part of their work, such as class rosters or counseling notes, belong to your school's records rather than your Flux account; ask your school to remove those.</p>
 
   <h2>6. Children's Privacy</h2>
   <p>Flux Planner is designed for high school students (14+). We do not knowingly collect data from children under 13. If you are under 13, please do not use this app.</p>

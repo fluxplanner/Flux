@@ -557,9 +557,10 @@ body.flux-canvas-ai-split .main-content > #ai.panel.flux-ai-split-visible{
   .sidebar{display:none}
   .bottom-nav{display:flex}
   .mob-menu-btn{display:block}
-  body{padding-bottom:max(72px,calc(58px + env(safe-area-inset-bottom)))}
+  /* Nav clearance lives on .panel only — see --flux-nav-clearance. */
+  body{padding-bottom:0}
   .panel{
-    padding:16px clamp(14px,4vw,22px) max(104px,calc(92px + env(safe-area-inset-bottom)));
+    padding:16px clamp(14px,4vw,22px) var(--flux-nav-clearance);
   }
   .mob-drawer{width:min(90vw,300px)}
   .stats-row{grid-template-columns:repeat(2,1fr);gap:10px}
@@ -1343,7 +1344,11 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .badge-purple{background:rgba(var(--purple-rgb),.12);color:var(--purple);border:1px solid rgba(var(--purple-rgb),.2)}
 .badge-red{background:rgba(var(--red-rgb),.12);color:var(--red);border:1px solid rgba(var(--red-rgb),.2)}
 
-.profile-hero{background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(var(--purple-rgb),.05));border:1px solid rgba(var(--accent-rgb),.15);border-radius:var(--r-lg);padding:24px;margin-bottom:14px}
+/* No margin-bottom: the hero's only parent is .flux-stack, which already spaces
+   its children by 18px. The extra 14px made the gap under the name block nearly
+   double every other gap on the tab — easy to miss when a counselor card sat
+   above it, obvious now that it leads. */
+.profile-hero{background:linear-gradient(135deg,rgba(var(--accent-rgb),.1),rgba(var(--purple-rgb),.05));border:1px solid rgba(var(--accent-rgb),.15);border-radius:var(--r-lg);padding:24px}
 .p-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(var(--accent-rgb),.3);background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:800;color:#fff;cursor:pointer;overflow:hidden;flex-shrink:0;transition:var(--transition)}
 .p-avatar:hover{transform:scale(1.06);box-shadow:0 0 0 4px rgba(var(--accent-rgb),.2)}
 .p-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
@@ -1487,7 +1492,16 @@ html[data-flux-perf="on"] .flux-dash-scroll-paths-mover{animation:none!important
 .reveal-btn:hover{color:var(--text);background:var(--card2)}
 .class-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
 .class-row:last-child{border-bottom:none}
-.class-period{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+/* The subject colour arrives as --sub (set inline by renderSchool) rather than
+   as a literal color/background pair. It used to be printed as both the text
+   and a 13% tint of itself — fine on a near-black card, but on white a bright
+   subject like #00bfff sat on its own pale wash at 1.70:1. A class's colour is
+   user-chosen, so there is no palette to fix; routing it through a custom
+   property is what lets the light rule below darken an arbitrary hue. */
+.class-period{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0;background:color-mix(in srgb,var(--sub,var(--accent)) 13%,transparent);color:var(--sub,var(--accent))}
+/* Mixing toward black keeps the hue recognisable — Chemistry stays blue — while
+   pulling it dark enough to read on its own tint. 62% lands #00bfff at ~5.2:1. */
+[data-theme="light"] .class-period{color:color-mix(in srgb,var(--sub,var(--accent)) 62%,#000)}
 
 .sync-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:4px}
 .sync-badge.synced{background:rgba(var(--green-rgb),.08);color:rgba(255,255,255,.55);border:1px solid rgba(var(--green-rgb),.14)}
@@ -1587,7 +1601,14 @@ body[data-theme="light"]::before{
 [data-theme="light"] .btn-sec{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.12);color:#1a1b2e}
 [data-theme="light"] .task-item{background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.06)}
 [data-theme="light"] .ai-bub.bot{background:#fff;border-color:rgba(0,0,0,.1)}
-[data-theme="light"] .tmode-btn{border-color:rgba(0,0,0,.12);color:#5a5f7a}
+/* :not(.active) matters. This rule is (0,2,0), the same weight as the
+   .tmode-btn.active rule ~1000 lines above, but it comes later — so in light
+   mode it was overwriting the active button's white label with #5a5f7a while
+   .active's accent-blue background stayed. Dark grey on blurple measured
+   1.36:1. Affects every segmented control that uses this class: the Timer's
+   Pomodoro/Short Break/Long Break, the dashboard filter chips, the view
+   toggles. Scoping to inactive buttons leaves the active state alone. */
+[data-theme="light"] .tmode-btn:not(.active){border-color:rgba(0,0,0,.12);color:#5a5f7a}
 [data-theme="light"] .card h3::after{background:rgba(0,0,0,.08)}
 [data-theme="light"] .quick-add{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.12)}
 
@@ -1866,7 +1887,7 @@ button:active:not(:disabled){transform:scale(.97)!important}
     display:none;
     height:auto!important;overflow-y:visible!important;
     width:100%!important;max-width:100vw!important;
-    padding:14px 14px 90px!important;
+    padding:14px 14px var(--flux-nav-clearance)!important;
     box-sizing:border-box!important;
   }
   .panel.active{display:block!important}
@@ -1884,13 +1905,21 @@ button:active:not(:disabled){transform:scale(.97)!important}
   }
   #ai.active:not(.ai-root){
     display:flex!important;flex-direction:column!important;
-    height:calc(100svh - 50px - 62px)!important;
+    /* The AI panel is height-locked so its composer can pin to the bottom, so
+       this figure has to be right: the hard-coded 50/62 ignored both the notch
+       (which makes .topbar taller) and the nav's safe-area padding, leaving the
+       panel taller than the space it had and pushing the page into a scroll. */
+    height:calc(100svh - var(--topbar-mob-height) - var(--sa-top) - var(--flux-nav-clearance))!important;
     overflow:hidden!important;
     padding:0!important;
   }
   #ai.ai-root.active{
     display:flex!important;flex-direction:row!important;
-    height:calc(100svh - 50px - 62px)!important;
+    /* The AI panel is height-locked so its composer can pin to the bottom, so
+       this figure has to be right: the hard-coded 50/62 ignored both the notch
+       (which makes .topbar taller) and the nav's safe-area padding, leaving the
+       panel taller than the space it had and pushing the page into a scroll. */
+    height:calc(100svh - var(--topbar-mob-height) - var(--sa-top) - var(--flux-nav-clearance))!important;
     overflow:hidden!important;
     padding:0!important;
   }
@@ -3109,7 +3138,7 @@ input[type=text],input[type=search],input[type=url],input[type=tel],input[type=d
 @media(max-width:768px){
   .panel{
     max-width:none;
-    padding:16px clamp(14px,4vw,22px) max(104px,calc(92px + env(safe-area-inset-bottom)))!important;
+    padding:16px clamp(14px,4vw,22px) var(--flux-nav-clearance)!important;
   }
   .card{padding:16px!important}
   .task-actions{opacity:1}
@@ -3142,7 +3171,7 @@ input[type=text],input[type=search],input[type=url],input[type=tel],input[type=d
 .t-lbl{font-size:.68rem!important;letter-spacing:1.5px!important}
 
 /* ── 23. PROFILE & EC ── */
-.profile-hero{padding:24px!important;border-radius:16px!important;margin-bottom:14px!important}
+.profile-hero{padding:24px!important;border-radius:16px!important}
 .p-avatar{width:68px!important;height:68px!important;font-size:1.6rem!important}
 
 /* ── 24. REDUCED VISUAL NOISE (defer full glass to liquid-glass on; Snappy keeps solids) ── */
@@ -4590,7 +4619,7 @@ html.flux-reduce-motion *,html.flux-reduce-motion *::before,html.flux-reduce-mot
 .flux-edu-panel{padding:0 0 96px}
 @media(max-width:768px){
   /* Clear the bottom nav and the home indicator as well. */
-  .flux-edu-panel{padding:0 0 max(104px,calc(92px + env(safe-area-inset-bottom,0px)))}
+  .flux-edu-panel{padding:0 0 var(--flux-nav-clearance)}
 }
 .teacher-dashboard,.counselor-dashboard{padding:20px}
 .teacher-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
