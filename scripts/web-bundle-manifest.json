@@ -188,6 +188,7 @@
     "public/js/flux-study-econ.js",
     "public/js/flux-study-english.js",
     "public/js/flux-study-history.js",
+    "public/js/flux-lang-engine.js",
     "public/js/flux-study-lang.js",
     "public/js/flux-study-astro.js",
     "public/js/flux-cs-snippet-library.js",

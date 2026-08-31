@@ -13,12 +13,43 @@
     ir: { pres:['o','es','e','imos','ís','en'], pret:['í','iste','ió','imos','isteis','ieron'], imp:['ía','ías','ía','íamos','íais','ían'], fut:['iré','irás','irá','iremos','iréis','irán'], cond:['iría','irías','iría','iríamos','iríais','irían'], subj:['a','as','a','amos','áis','an'] },
   };
 
+  /* The endings above are correct but they are only half the story, and for
+     twelve of this tool's own sixty verbs they produced a wrong answer:
+
+       cerrar  → "cerro"    should be "cierro"
+       dormir  → "dormo"    should be "duermo"
+       jugar   → "jugo"     should be "juego"
+       conocer → "conoco"   should be "conozco"
+       salir   → "salo"     should be "salgo"
+
+     …and the same for empezar, traer, perder, encontrar, pensar, sentir and
+     despertar. Stem changes and irregular yo forms were only handled for the
+     thirteen verbs that happened to have a full hand-written override, so a
+     fifth of the advertised list was quietly wrong. Past participles had the
+     same hole: "he volvido", "he escribido".
+
+     FluxLangEngine knows all of it, so ask it. The hand-written ES_IRREGULAR
+     overrides still win — the caller applies them on top of this — and the
+     inline endings stay as a fallback. The engine is read inside the function
+     rather than captured at load time because this file is bundled before it. */
   function esConjugate(verb){
     const group = verb.slice(-2);
     const stem = verb.slice(0, -2);
     const e = ES_ENDINGS[group];
     if(!e) return null;
-    // Past participle: -ar → -ado, -er/-ir → -ido
+
+    const E = window.FluxLangEngine;
+    if(E){
+      const at = (tense) => { try { return E.conjugate('es', verb, tense).forms; } catch(err){ return null; } };
+      const pres = at('present'), pret = at('preterite'), imp = at('imperfect');
+      const fut = at('future'), cond = at('conditional');
+      const subj = at('subjunctive'), perf = at('perfect');
+      if(pres && pret && imp && fut && cond && subj && perf){
+        return { pres, pret, imp, fut, cond, subj, perf };
+      }
+    }
+
+    // Engine absent — regular endings only, as before.
     const pp = group === 'ar' ? stem + 'ado' : stem + 'ido';
     return {
       pres: e.pres.map(x => stem + x),
