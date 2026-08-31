@@ -158,6 +158,26 @@
 .fsh-tabs-wrap { display:flex; flex-direction:column; gap:7px; align-self:flex-start; width:fit-content; max-width:100%; }
 .fsh-chem-tabs { display:flex; flex-wrap:nowrap; gap:4px; padding:5px; scroll-padding-inline:5px; border-radius:999px; background:rgba(10,14,24,.5); border:1px solid var(--fsh-line); box-shadow:var(--fsh-neu-in); width:100%; max-width:100%; position:relative; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-behavior:smooth; overscroll-behavior-x:contain; }
 .fsh-chem-tabs::-webkit-scrollbar { height:0; display:none; }
+/* Splits the working tools from the reference chips that only pop a modal.
+   flex-shrink:0 because the strip is a nowrap scroller — without it the label
+   is the first thing to collapse when the row overflows, which is exactly when
+   the split matters most. */
+.fsh-tab-divider {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--fsh-line);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--fsh-mut);
+  white-space: nowrap;
+  user-select: none;
+}
 /* Explicit drag handle for the tab strip. Native scrollbars are overlay-style
    on macOS — invisible at rest and zero-height — so subjects whose tabs
    overflow gave no hint that more were off-screen and no way to drag to them.

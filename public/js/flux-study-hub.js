@@ -622,7 +622,24 @@
     const stage = $('fshStage');
     if (!tools.length) { stage.innerHTML = soonHTML(sid) + refStrip(sid); return; }
     let active = state.tool[sid]; if (!tools.some((t) => t.id === active)) active = tools[0].id; state.tool[sid] = active; save();
-    stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tools.map((t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
+    /* Languages showed eight tabs in one undifferentiated row — a trainer, a
+       drill, two charts, and four legacy chips that only pop a modal — with
+       nothing saying which was which. That row is what "Study Tools is
+       overwhelming" looks like up close.
+
+       The legacy chips (id 'lg-…', added by mergeLegacyOnce) are reference
+       material: they leave the panel rather than doing anything inside it. So
+       they sit behind a labelled divider instead of being interleaved with the
+       tools you actually work in. Ordering only — every tool is still one
+       click away and nothing about registration changes. */
+    const own = tools.filter((t) => String(t.id).indexOf('lg-') !== 0);
+    const legacy = tools.filter((t) => String(t.id).indexOf('lg-') === 0);
+    const tabBtn = (t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`;
+    // The divider only earns its place when there is something on both sides.
+    const divider = own.length && legacy.length
+      ? '<span class="fsh-tab-divider" aria-hidden="true">Reference</span>'
+      : '';
+    stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
     const body = $('fshSubBody'), tool = tools.find((t) => t.id === active);
     try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
     requestAnimationFrame(moveTabGlide);
