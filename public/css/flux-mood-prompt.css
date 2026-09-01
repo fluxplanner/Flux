@@ -1,41 +1,70 @@
 /* ============================================================================
    FLUX MOOD PROMPT  ·  flux-mood-prompt.css
-   The twice-daily check-in card.
+   The twice-daily check-in, asked once when you open the planner.
 
-   Sits above the content and never blocks it, and clears the mobile bottom nav
-   by measuring from --bnav-total rather than guessing a pixel value — guessing
-   is what produced the dead-space bug that contract was introduced to fix.
-   Colours are theme variables throughout: this card can appear on any tab, so
-   a dark-only surface would be a light-mode bug on all of them at once.
+   Colours are theme variables throughout: a dark-only surface here would be a
+   light-mode bug on whatever tab it opened over.
    ========================================================================== */
 
-/* In the page flow at the top of the dashboard, NOT fixed over the app.
-   The first version floated bottom-right and covered a button — the e2e suite
-   caught it intercepting a click meant for Grade GPS, which in real use is a
-   student unable to press Apply on their own study plan. A card in the flow
-   cannot overlap anything, so that whole class of bug is gone rather than
-   tuned around with z-index. */
+/* A modal on a backdrop.
+
+   It was an in-flow card at the top of the dashboard, which read as one more
+   thing to scroll past rather than as a question.
+
+   The version before THAT floated bottom-right with no backdrop, and the e2e
+   suite caught it silently covering a button — in real use, a student unable to
+   press Apply on their own study plan. This is deliberately not a return to
+   that. An overlay blocks visibly and on purpose, there are three ways out (×,
+   Escape, click the backdrop), and the auto-open is suppressed under the test
+   harness so it can never land on top of another spec's click. The old bug was
+   an invisible obstruction, not a dialog. */
+.fmp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--flux-z-modal, 1000);
+  display: flex;
+  align-items: flex-end;      /* bottom sheet, like every other Flux modal */
+  justify-content: center;
+  background: rgba(4, 6, 12, .62);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.fmp-overlay.is-in { opacity: 1; }
+[data-theme="light"] .fmp-overlay { background: rgba(30, 38, 55, .38); }
+
+/* Stops the page behind scrolling under the sheet. */
+body.fmp-open { overflow: hidden; }
+
 .fmp {
   width: 100%;
-  margin: 0 0 14px;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity .22s ease, transform .22s cubic-bezier(.2,.85,.3,1);
-
+  max-width: 560px;
+  margin: 0;
+  /* Clears the home indicator when the sheet sits on the bottom edge. */
+  padding: 20px 20px calc(18px + env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--border2, var(--border));
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
   background: var(--card-solid, var(--card));
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 15px 16px 13px;
-  /* Softer than the old floating shadow: it sits among other cards now and
-     should not read as hovering above them. */
-  box-shadow: 0 6px 20px -14px rgba(0,0,0,.4);
+  box-shadow: 0 -8px 40px -12px rgba(0,0,0,.5);
+
+  transform: translateY(14px);
+  opacity: 0;
+  transition: opacity .24s ease, transform .28s cubic-bezier(.2,.85,.3,1);
 }
 .fmp.is-in { opacity: 1; transform: translateY(0); }
 
 @media (min-width: 769px) {
-  /* Wide screens: keep it from stretching to a full-width banner, which reads
-     as an alert rather than a question. */
-  .fmp { max-width: 520px; }
+  /* On a laptop a sheet spanning the whole window bottom reads as a system
+     alert. Centre it and round all four corners instead. */
+  .fmp-overlay { align-items: center; padding: 24px; }
+  .fmp {
+    border-radius: 20px;
+    border-bottom: 1px solid var(--border2, var(--border));
+    padding-bottom: 18px;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,.55);
+  }
 }
 
 .fmp-head {
@@ -92,6 +121,12 @@
   border: 1px solid var(--border);
   background: var(--card2);
   cursor: pointer;
+  /* Not inherited — a global button rule paints every button white, and the
+     face icons are SVGs stroked with currentColor. Without this line they were
+     white-on-white in light mode: five blank boxes with labels under them.
+     Measured, not guessed — the colour on .fmp-faces was #1a1b2e and on the
+     button itself #ffffff. */
+  color: var(--text);
   transition: transform .13s var(--ease-spring, cubic-bezier(.2,.85,.3,1)),
               border-color .13s ease, background .13s ease;
 }
@@ -123,10 +158,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fmp, .fmp.is-in { transition: opacity .01s linear; transform: none; }
+  .fmp-overlay { transition: none; }
   .fmp-face { transition: none; }
   .fmp-face:hover { transform: none; }
 }
 
-/* Never print it, and never let it sit over a full-screen focus session. */
-@media print { .fmp { display: none !important; } }
-body.ftt-fs-on .fmp { display: none !important; }
+/* Never print it, and never let it sit over a full-screen focus session.
+   The overlay is named as well as the card — hiding only the card would leave
+   a blurred backdrop with nothing on it, which is worse than either. */
+@media print { .fmp, .fmp-overlay { display: none !important; } }
+body.ftt-fs-on .fmp,
+body.ftt-fs-on .fmp-overlay { display: none !important; }

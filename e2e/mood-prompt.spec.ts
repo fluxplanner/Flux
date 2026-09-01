@@ -61,6 +61,84 @@ test.describe('Mood check-in prompt', () => {
     expect(res.hasFullForm).toBe(true);
   });
 
+  test('opens as a modal on a backdrop, not as a card in the page', async ({ page }) => {
+    await gotoApp(page);
+    await showWindow(page, 'AM');
+
+    const res = await page.evaluate(() => {
+      const card = document.getElementById('fluxMoodPrompt')!;
+      const ov = document.getElementById('fluxMoodPromptOverlay');
+      const cs = ov ? getComputedStyle(ov) : null;
+      return {
+        insideOverlay: !!ov && ov.contains(card),
+        // The complaint that prompted this: it sat among the dashboard cards.
+        inDashboard: !!document.querySelector('#dashboard #fluxMoodPrompt'),
+        onBody: ov ? ov.parentElement === document.body : false,
+        position: cs ? cs.position : '',
+        modal: card.getAttribute('aria-modal'),
+        role: card.getAttribute('role'),
+        bodyLocked: document.body.classList.contains('fmp-open'),
+      };
+    });
+
+    expect(res.insideOverlay).toBe(true);
+    expect(res.inDashboard).toBe(false);
+    expect(res.onBody).toBe(true);
+    expect(res.position).toBe('fixed');
+    expect(res.modal).toBe('true');
+    expect(res.role).toBe('dialog');
+    expect(res.bodyLocked).toBe(true);
+  });
+
+  test('clicking the backdrop closes it, and counts as answered for today', async ({ page }) => {
+    await gotoApp(page);
+    await showWindow(page, 'AM');
+
+    const res = await page.evaluate(async () => {
+      const M = (window as any).FluxMoodPrompt;
+      document.getElementById('fluxMoodPromptOverlay')!.click();
+      await new Promise((r) => setTimeout(r, 250));
+      return {
+        closed: !document.getElementById('fluxMoodPrompt'),
+        overlayGone: !document.getElementById('fluxMoodPromptOverlay'),
+        // The scroll lock must come off, or the app is left unusable.
+        unlocked: !document.body.classList.contains('fmp-open'),
+        resolved: !!M._state().am,
+      };
+    });
+
+    expect(res.closed).toBe(true);
+    expect(res.overlayGone).toBe(true);
+    expect(res.unlocked).toBe(true);
+    expect(res.resolved).toBe(true);
+  });
+
+  /* The reason this file exists at all. An earlier version floated over the app
+     and the Grade GPS tests began failing with "subtree intercepts pointer
+     events" — which for a student meant being unable to press Apply on their
+     own study plan. Now that it is a modal again, the guard is that it must
+     never open BY ITSELF while the suite is running. */
+  test('never opens on its own under the test harness', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => {
+      (window as any).save('flux_mood_prompt_v1', {});
+      (window as any).FluxMoodPrompt.close();
+    });
+    await page.evaluate(() => (window as any).nav?.('dashboard'));
+    // Comfortably past the 4s open delay the real app uses.
+    await page.waitForTimeout(6000);
+
+    const res = await page.evaluate(() => ({
+      card: !!document.getElementById('fluxMoodPrompt'),
+      overlay: !!document.getElementById('fluxMoodPromptOverlay'),
+      locked: document.body.classList.contains('fmp-open'),
+    }));
+
+    expect(res.card).toBe(false);
+    expect(res.overlay).toBe(false);
+    expect(res.locked).toBe(false);
+  });
+
   test('a one-tap mood merges into the day rather than replacing it', async ({ page }) => {
     await gotoApp(page);
 

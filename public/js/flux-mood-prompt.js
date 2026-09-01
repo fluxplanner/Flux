@@ -79,14 +79,10 @@
     if (s[win.key] === today()) return false;
     // Just answered the other window — don't pounce with the next question.
     if (s.at && Date.now() - s.at < QUIET_AFTER_ANSWER_MS) return false;
-    /* Dashboard only, because the card renders INTO the dashboard rather than
-       floating over the app. The first version was position:fixed at the
-       bottom-right corner, and it did exactly what a floating card over a
-       dense page does: it covered a button. The e2e suite caught it clicking
-       through to Grade GPS — "subtree intercepts pointer events" — which would
-       have been a student unable to press Apply on their own study plan.
-       In the page flow it cannot overlap anything, and the dashboard is where
-       people land, so it is still seen. */
+    /* Dashboard only. It is now a modal so it *could* open anywhere, but the
+       dashboard is where you land when you open Flux, and "when they open the
+       planner" is the whole brief. Asking on the Calendar or mid-way through
+       Study Tools would mean interrupting work already in progress. */
     var dash = document.getElementById('dashboard');
     if (!dash || !dash.classList.contains('active')) return false;
     // Signed out, or still sitting on the login screen.
@@ -120,9 +116,17 @@
     persist(s);
   }
 
+  var lastFocus = null;
+
   function close() {
     var el = document.getElementById('fluxMoodPrompt');
     if (el) el.remove();
+    var ov = document.getElementById('fluxMoodPromptOverlay');
+    if (ov) ov.remove();
+    document.body.classList.remove('fmp-open');
+    // Hand focus back to whatever had it before the dialog took it.
+    try { if (lastFocus && lastFocus.focus) lastFocus.focus(); } catch (e) {}
+    lastFocus = null;
   }
 
   var showing = null;
@@ -148,15 +152,36 @@
       }).join('')
       + '</div>'
       + '<button type="button" class="fmp-more" data-fmp="full">Add sleep &amp; stress →</button>';
-    /* Into the top of the dashboard, in the flow, next to the existing
-       recovery banner — NOT onto <body> as an overlay. See shouldAsk for why
-       that mattered. Falls back to <body> only if the dashboard is somehow
-       absent, which shouldAsk already prevents in practice. */
-    var dash = document.getElementById('dashboard');
-    if (dash) dash.insertBefore(el, dash.firstChild);
-    else document.body.appendChild(el);
+    /* A real modal on a backdrop, asked once when you open the planner.
+
+       It was an inline card at the top of the dashboard, which Azfer found
+       "kinda out of place" — fair, because a card sitting among other cards
+       reads as content to scroll past, not as a question.
+
+       Worth being careful here: the very first version was a floating card
+       pinned bottom-right, and the e2e suite caught it silently covering a
+       button — a student unable to press Apply on their own study plan. This
+       is not that. A backdrop modal blocks deliberately and visibly, says so
+       with aria-modal, and closes on the ×, on Escape, and on a backdrop
+       click. The failure there was an invisible obstruction, not a dialog. */
+    var ov = document.createElement('div');
+    ov.id = 'fluxMoodPromptOverlay';
+    ov.className = 'fmp-overlay';
+    ov.setAttribute('data-fmp', 'backdrop');
+    el.setAttribute('aria-modal', 'true');
+    ov.appendChild(el);
+    document.body.appendChild(ov);
+    document.body.classList.add('fmp-open');
     // Next frame, so the entrance transition has a start state to animate from.
-    requestAnimationFrame(function () { el.classList.add('is-in'); });
+    requestAnimationFrame(function () { ov.classList.add('is-in'); el.classList.add('is-in'); });
+    /* Focus the middle face rather than the close button: the dialog exists to
+       be answered, and a keyboard user landing on × first is being offered the
+       exit before the question. */
+    try {
+      lastFocus = document.activeElement;
+      var mid = el.querySelector('.fmp-face[data-v="3"]');
+      if (mid) mid.focus();
+    } catch (e) {}
   }
 
   function pick(v) {
@@ -185,6 +210,14 @@
 
   function onClick(e) {
     if (!e.target || !e.target.closest) return;
+    /* A click on the backdrop itself — not on the card sitting inside it —
+       is the third way out, alongside × and Escape. Checked before the card
+       lookup because the overlay is the card's parent. */
+    if (e.target.id === 'fluxMoodPromptOverlay') {
+      if (showing) resolve(showing);
+      close();
+      return;
+    }
     var btn = e.target.closest('#fluxMoodPrompt [data-fmp]');
     if (!btn) return;
     var act = btn.getAttribute('data-fmp');
@@ -197,6 +230,21 @@
       close();
       try { if (typeof window.nav === 'function') window.nav('mood'); } catch (er) {}
     }
+  }
+
+  /* True while the e2e suite is driving the app — same test the harness itself
+     uses. The auto-popup is suppressed there and only there.
+
+     Not squeamishness about tests: a modal that opens on a timer would land on
+     top of whatever any *other* spec was clicking, and fail it. That is exactly
+     how the first version of this card broke the Grade GPS tests. The
+     mood-prompt spec drives _show directly, so every behaviour below is still
+     covered — what is skipped is the timer, not the dialog. */
+  function underTest() {
+    try {
+      if (/[?&]e2e=1\b/.test(location.search)) return true;
+      return localStorage.getItem('flux_e2e') === '1';
+    } catch (e) { return false; }
   }
 
   function check() {
@@ -213,18 +261,25 @@
       close();
     }
   });
-  /* Moving between tabs is a natural moment to ask, and it is also when the
-     "are you already on Mood" guard needs re-evaluating. */
-  document.addEventListener('flux-nav', function () { setTimeout(check, 600); });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  /* Coming back to a backgrounded tab is "opening the planner" too — on a phone
+     that is exactly what reopening the app looks like. */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && !underTest()) setTimeout(check, 800);
+  });
 
   function install() {
-    /* Not immediately on load. Being asked a question before the first paint
-       has settled is jarring, and the signed-in state is not always known yet. */
+    if (underTest()) return;
+    /* Once, on open, and then not again.
+
+       This used to also fire on every tab change and poll every five minutes.
+       That was defensible for an inline card, which just sat there. For a modal
+       it is not: interrupting someone mid-sentence with a dialog is precisely
+       the behaviour that makes people dismiss it forever without reading it.
+
+       The cost is that sitting in Flux from morning through to evening without
+       ever leaving the tab means the evening question waits until you next come
+       back to it. A missed prompt beats a dialog over what you were typing. */
     setTimeout(check, 4000);
-    /* A window can open while you are sitting in the app. Five minutes catches
-       it without being a busy timer. */
-    setInterval(check, 5 * 60 * 1000);
   }
   document.addEventListener('DOMContentLoaded', install);
   if (document.readyState !== 'loading') install();
