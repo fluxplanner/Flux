@@ -11,7 +11,7 @@ a glance where each item stands. No code knowledge needed to read this.
 Status key: **Done** · **Queued** · **Needs you** (blocked on something only you
 can do, like a dashboard setting or a decision).
 
-Last updated: 2026-08-30.
+Last updated: 2026-08-31 — everything below is **live**, not waiting.
 
 ---
 
@@ -58,19 +58,26 @@ Last updated: 2026-08-30.
 | Everything was stamped BETA | Fixed. Four cards on the staff dashboard carried a **BETA** badge — and it wasn't a judgement about those four, it's that *every* module in Flux is marked beta internally, and the dashboard was printing that label onto each card. The effect was a product that looked unfinished wherever you looked. The badge now only appears on things genuinely not working yet, of which there are none on that page. |
 | French and Spanish can now be practised, not just looked up | Added, after you said those two matter most. Everything in Flux was reference-only — you could look a word up, but nothing ever asked you a question, and you cannot revise for a vocabulary test by reading a list. There's now a **Practice** tool in Study Tools with 221 words across 12 topics — school, family, food, house, time and numbers, town and travel, body and health, clothes and colours, weather, free time, describing people, everyday verbs — every one of them in both French and Spanish. Four ways to use it: multiple choice, type the answer, flashcards, and a verb drill that tests you on any tense. It remembers what you keep getting wrong and asks you those more often, and a word only counts as learned after you've got it right five times. Missing an accent is marked correct but shows you the proper spelling — failing someone for a missing accent is just annoying, and quietly accepting it teaches a spelling that loses marks in the exam. Your progress follows your account, and revising on your phone and your laptop on the same day adds up rather than one wiping the other. |
 | The conjugator was teaching wrong answers | Rebuilt. This was the worst thing in this batch, because it was confidently wrong rather than broken — a student revising with it would have learned the mistake and written it in an exam. In the Study Tools trainer, `poder` came out as "yo podo" (it's **puedo**), `querer` as "quero" (**quiero**), `pedir` as "pedo" (**pido**), and in French `partir` became "nous partissons" (**nous partons**). Two causes: Spanish verbs where the middle vowel shifts — poder, querer, pensar, dormir, the ones you meet in week one — weren't handled at all; and French has two different families of `-ir` verbs, and the code assumed everything belonged to the other one. Separately, the "60 verbs, 7 tenses" reference conjugator got **12 of its own 60 verbs wrong** for the same reason: cerrar, empezar, salir, traer, perder, encontrar, conocer, pensar, sentir, jugar, dormir, despertar. Both tools now share one set of tables, so they can't drift apart again. The trainer also gained tenses — Spanish present, preterite, imperfect, future, conditional, subjunctive and perfect; French present, passé composé, imperfect, future and conditional — including the `être` verbs where "j'ai allé" is the classic mistake. There are 61 checks on it in the test suite, one per verb that used to break a rule. The phrase list went from 10 greetings to 45, grouped by when you'd need them, with a section for things you actually say in a lesson. |
+| Study Tools: the tools you use, then the ones that just open a window | A start on the "Study Tools is overwhelming" job. Languages showed eight tabs in a single row — a conjugation trainer, the new practice drill, an IPA chart, a phrase table, and four older chips that don't do anything in the panel at all, they just pop a separate window open. Nothing told you which was which, so finding the one you wanted meant clicking through them. The four window-openers now sit after a small **REFERENCE** label, so the tools you actually work in come first. Nothing was hidden or moved out of reach — every tool is still one click away — and subjects that don't have any of those older chips look exactly as they did. |
 | Three bugs found on the way | **Attendance was filed on the wrong day.** Lesson notes and attendance used the world clock rather than yours, so anything saved after 8pm here landed on tomorrow — and at a school east of us the entire teaching day landed on yesterday. **A teacher's timetable read as empty after signing in.** It was loaded once when the page started, before Flux knew who you were, so it looked in the wrong drawer and kept looking there until you reloaded. **The tests were passing for the wrong reason** — the pretend teacher used for testing only ever had a *student's* timetable, which is exactly what hid all of the above. |
 
 ---
 
 ## Needs you
 
-Only one thing here now. You said you didn't follow the rest, so I've made the
-call on those myself and moved them to **Decisions I made for you** below —
-nothing there is blocking, and none of it needs you to sign up for anything.
+**Nothing.** First time this section has been empty.
 
-| What | What to do |
-|------|------------|
-| Merge this batch so it goes live | Everything in **Done** is finished and tested but sitting on a branch, which means it is not on the real site yet. Open this link and press the green button twice: https://github.com/fluxplanner/Flux/pull/new/fix/auth-launch-blockers — that is the whole job. Until then students see the old version. |
+Everything in **Done** is merged and live at https://fluxplanner.github.io/Flux/
+— all three checks passed and the site rebuilt. You did the Supabase redirect
+setting, which was the last thing only you could do, so email sign-up now works
+end to end. The rest you said you didn't follow, so I made those calls myself;
+they're in **Decisions I made for you** below.
+
+One thing worth doing, though it isn't blocking: **open the site and hard-reload
+it once** — `Cmd-Shift-R` on a Mac. Flux keeps a copy of itself on your device
+so it opens instantly, and an ordinary refresh can keep serving you that old
+copy for a while. Everyone else picks the new version up on their own within a
+day.
 
 ---
 
@@ -103,7 +110,7 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 | What | Notes |
 |------|-------|
-| Study Tools is overwhelming | Needs real structure, not just tidying. The single biggest one here. |
+| Study Tools is overwhelming | **Started — see Done.** The tools you work in are now separated from the ones that only open a window. That is the easy half. The hard half is still here: twelve subjects, each with its own row of tabs, and no sense of what to open first. What would help most is knowing which subjects your students actually take — the rail is currently in an order I chose, not one that matches your school. |
 | Extracurriculars is crowded | Group related things together. |
 | Settings has random items everywhere | Needs a proper order. |
 | Teacher mode — the rest | Mostly done (see Done). Two things left, both small: a "Classroom timer" card that duplicates the Timer tab — say the word and I'll drop it, since you now have a better one — and a greyed-out row of Google links that sits there doing nothing until Google is connected. |
@@ -118,9 +125,10 @@ Grouped by area. Roughly in the order they'll be worked, highest impact first.
 
 ---
 
-## How to turn on the confirmation link
+## How to turn on the confirmation link — ✅ you already did this
 
-Do this once, and email sign-up starts working. Takes about a minute.
+Kept only so you know what was changed, and so you can check it if email
+sign-up ever misbehaves. **No action needed.**
 
 1. Go to **supabase.com** and sign in.
 2. Open the **Flux** project.
