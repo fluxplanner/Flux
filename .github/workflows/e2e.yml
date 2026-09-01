@@ -9,7 +9,16 @@ on:
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The suite reported "231 passed (14.4m)" and was then killed at 15m0s
+    # during teardown, so main went red with every single test green. The cap
+    # was set when the suite was much smaller and had quietly become the thing
+    # being measured rather than a backstop against a hang.
+    #
+    # 30 rather than 20: a cap this close to the real runtime fails on a slow
+    # runner instead of on a real problem, and a red tick nobody trusts is
+    # worse than no tick at all. If this is ever genuinely approached, shard
+    # the suite across workers rather than raising the number again.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
