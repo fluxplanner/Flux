@@ -7,9 +7,11 @@ import { gotoScenario } from './helpers';
  * Two things matter here and both are easy to get wrong.
  *
  * 1. It must not nag. Each window resolves at most once a day and dismissing
- *    counts as resolving, so the ceiling is two cards a day. A regression that
- *    re-asks after a dismissal would be the most annoying bug in the app, and
- *    it would only surface for real users the following morning.
+ *    counts as resolving, so the ceiling is two prompts a day. That ceiling is
+ *    the only thing that makes a blocking modal acceptable here, so these are
+ *    the tests holding it up. A regression that re-asks after a dismissal
+ *    would be the most annoying bug in the app, and it would only surface for
+ *    real users the following morning.
  *
  * 2. A one-tap mood must MERGE into the day's record. The Mood tab writes
  *    mood + stress + sleep together; the prompt writes only a mood. Before the

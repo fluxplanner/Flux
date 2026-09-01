@@ -10,10 +10,21 @@
    THE RULE THAT KEEPS THIS FROM BECOMING A NAG
    --------------------------------------------
    Each window resolves at most once per day, and dismissing counts as
-   resolving. So the ceiling is two cards a day, each closed by one tap, and a
-   card you dismiss does not come back until tomorrow. That ceiling is the
-   whole reason this is a card and not a modal: something that appears twice a
-   day must never block what you were doing.
+   resolving. So the ceiling is two prompts a day, each closed by one tap, and
+   one you dismiss does not come back until tomorrow.
+
+   That ceiling is what earns this the right to be a modal. It has been all
+   three shapes, and the order matters: it began as a fixed card floating
+   bottom-right, which covered a button — the e2e suite caught it swallowing a
+   click meant for Grade GPS, which in real use is a student unable to press
+   Apply on their own study plan. It was then moved into the dashboard flow,
+   where it could not overlap anything but was easy to scroll straight past
+   ("kinda out of place"). It is now a backdrop modal, asked when you open the
+   planner.
+
+   A modal is only defensible because of the once-a-day rule above. Something
+   that blocked you twice an hour would be intolerable; twice a day, closed by
+   one tap, is a question worth being asked properly.
 
    Storage is one date per window (see LS_KEY), compared against today. Dates
    rather than timestamps, because "have I already asked today" is exactly the
