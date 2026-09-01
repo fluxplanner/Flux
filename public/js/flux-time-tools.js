@@ -312,67 +312,150 @@
      and any browser may refuse the request. The overlay alone is already the
      useful part — it hides everything else — so a refusal is not an error. */
   var fsOpen = false;
+  /* Which tool the overlay is showing. It began as Focus-only; Azfer asked for
+     "every timer thingy", so the shell is now rebuilt per mode on open. Alarms
+     is deliberately not included — a list of switches has nothing to show at
+     arm's length, which is the entire point of this view. */
+  var fsMode = 'focus';
+  var FS_TITLES = { focus: 'Focus timer', clock: 'Clock', stopwatch: 'Stopwatch', countdown: 'Countdown' };
   function fsEl() { return $('fttFocusFs'); }
 
+  /* The id stays fttFocusFs even now that it shows four different tools. It is
+     load-bearing: flux-mood-prompt.js checks for it before deciding whether to
+     interrupt, and the CSS and tests key off it. Renaming it to something
+     tidier would be a rename in five files to no one's benefit. */
   function buildFsShell() {
-    if (fsEl()) return fsEl();
-    var el = document.createElement('div');
-    el.id = 'fttFocusFs';
-    el.className = 'ftt-fs';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-modal', 'true');
-    el.setAttribute('aria-label', 'Full screen focus timer');
-    el.hidden = true;
-    el.innerHTML =
-      '<div class="ftt-fs-inner">'
-      + '<div class="ftt-fs-lbl" id="fttFsLbl">Focus Time</div>'
-      + '<div class="ftt-fs-ringwrap">'
+    var el = fsEl();
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fttFocusFs';
+      el.className = 'ftt-fs';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.hidden = true;
+      document.body.appendChild(el);
+    }
+    el.setAttribute('aria-label', 'Full screen ' + (FS_TITLES[fsMode] || 'timer').toLowerCase());
+    el.setAttribute('data-mode', fsMode);
+    el.innerHTML = '<div class="ftt-fs-inner">' + fsBodyHtml() + '</div>';
+    return el;
+  }
+
+  /* A ring only makes sense where there is a known total to count against.
+     The stopwatch has no end and the clock is not a duration, so neither gets
+     one — a ring that never moves is just a circle. */
+  function fsBodyHtml() {
+    var ring = '<div class="ftt-fs-ringwrap">'
       + '<svg class="ftt-fs-ring" viewBox="0 0 200 200" aria-hidden="true">'
       + '<circle class="ftt-fs-ring-bg" cx="100" cy="100" r="88"/>'
       + '<circle class="ftt-fs-ring-fill" id="fttFsRing" cx="100" cy="100" r="88"'
       + ' stroke-dasharray="553" stroke-dashoffset="0"/></svg>'
       + '<div class="ftt-fs-time" id="fttFsTime">25:00</div>'
-      + '</div>'
+      + '</div>';
+    var plain = '<div class="ftt-fs-plainwrap">'
+      + '<div class="ftt-fs-time" id="fttFsTime">0:00</div></div>';
+    var exit = '<button type="button" class="btn-sec" data-ftt="fs-exit">Exit</button>';
+    var hint = '<div class="ftt-fs-hint">Press Esc to leave full screen</div>';
+
+    if (fsMode === 'clock') {
+      return '<div class="ftt-fs-lbl" id="fttFsLbl">Clock</div>'
+        + plain
+        + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
+        + '<div class="ftt-fs-actions">' + exit + '</div>' + hint;
+    }
+    if (fsMode === 'stopwatch') {
+      return '<div class="ftt-fs-lbl" id="fttFsLbl">Stopwatch</div>'
+        + plain
+        + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
+        + '<div class="ftt-fs-actions">'
+        + '<button type="button" class="btn-sec" data-ftt="sw-lap">Lap</button>'
+        + '<button type="button" data-ftt="sw-toggle" id="fttFsToggle">Start</button>'
+        + '<button type="button" class="btn-sec" data-ftt="sw-reset">Reset</button>'
+        + exit + '</div>' + hint;
+    }
+    if (fsMode === 'countdown') {
+      return '<div class="ftt-fs-lbl" id="fttFsLbl">Countdown</div>'
+        + ring
+        + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
+        + '<div class="ftt-fs-actions">'
+        + '<button type="button" class="btn-sec" data-ftt="cd-stop">Stop</button>'
+        + exit + '</div>' + hint;
+    }
+    // focus — unchanged, including every id and action the tests rely on.
+    return '<div class="ftt-fs-lbl" id="fttFsLbl">Focus Time</div>'
+      + ring
       + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
       + '<div class="ftt-fs-actions">'
       + '<button type="button" class="btn-sec" data-ftt="fs-reset">Reset</button>'
       + '<button type="button" data-ftt="fs-toggle" id="fttFsToggle">Start</button>'
-      + '<button type="button" class="btn-sec" data-ftt="fs-exit">Exit</button>'
-      + '</div>'
-      + '<div class="ftt-fs-hint">Press Esc to leave full screen</div>'
-      + '</div>';
-    document.body.appendChild(el);
-    return el;
+      + exit + '</div>' + hint;
   }
 
-  /* Copy whatever the real timer currently shows. Reading the DOM rather than
-     app.js internals keeps this working however tSecs happens to be stored. */
+  function setFsText(id, text) {
+    var el = $(id);
+    if (el && el.textContent !== text) el.textContent = text;
+  }
+
+  /** Push the current numbers into whichever shell is open. */
   function mirrorFs() {
     if (!fsOpen) return;
+
+    if (fsMode === 'clock') {
+      var now = new Date();
+      setFsText('fttFsTime', now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }));
+      setFsText('fttFsSub', now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
+      return;
+    }
+
+    if (fsMode === 'stopwatch') {
+      setFsText('fttFsTime', fmtDur(swElapsed(), true));
+      var laps = state.stopwatch.laps || [];
+      setFsText('fttFsSub', laps.length ? 'Lap ' + laps.length + ' · ' + fmtDur(laps[laps.length - 1], true) : '');
+      setFsText('fttFsToggle', state.stopwatch.startedAt ? 'Pause' : (state.stopwatch.accumMs ? 'Resume' : 'Start'));
+      return;
+    }
+
+    if (fsMode === 'countdown') {
+      var rem = cdRemaining();
+      setFsText('fttFsTime', fmtDur(rem));
+      setFsText('fttFsSub', state.countdown.label || '');
+      var cr = $('fttFsRing');
+      if (cr && state.countdown.totalMs) {
+        // 553 is the circumference of an r=88 circle, matching the markup.
+        cr.style.strokeDasharray = '553';
+        cr.style.strokeDashoffset = (553 * (1 - rem / state.countdown.totalMs)).toFixed(1);
+      }
+      return;
+    }
+
+    /* Focus: copy whatever the real Pomodoro shows. Reading the DOM rather
+       than app.js internals keeps this working however tSecs is stored. */
     var t = $('tDisplay'), l = $('tLbl'), s = $('tSessionLbl'), ring = $('timerRing');
-    var ft = $('fttFsTime'), fl = $('fttFsLbl'), fsub = $('fttFsSub'), fr = $('fttFsRing');
-    if (t && ft && ft.textContent !== t.textContent) ft.textContent = t.textContent;
-    if (l && fl && fl.textContent !== l.textContent) fl.textContent = l.textContent;
-    if (s && fsub && fsub.textContent !== s.textContent) fsub.textContent = s.textContent;
+    if (t) setFsText('fttFsTime', t.textContent);
+    if (l) setFsText('fttFsLbl', l.textContent);
+    if (s) setFsText('fttFsSub', s.textContent);
+    var fr = $('fttFsRing');
     if (ring && fr) {
       fr.style.strokeDasharray = ring.style.strokeDasharray || '553';
       fr.style.strokeDashoffset = ring.style.strokeDashoffset || '0';
     }
     // #timerBtn's label is an SVG plus the word Start or Pause; take the words.
-    var btn = $('timerBtn'), fb = $('fttFsToggle');
-    if (btn && fb) {
-      var word = (btn.textContent || '').trim() || 'Start';
-      if (fb.textContent !== word) fb.textContent = word;
-    }
+    var btn = $('timerBtn');
+    if (btn) setFsText('fttFsToggle', (btn.textContent || '').trim() || 'Start');
   }
 
-  function openFocusFullscreen() {
+  /** @param {string} [mode] Defaults to whichever view is open. */
+  function openFocusFullscreen(mode) {
+    var m = mode || state.view;
+    if (!FS_TITLES[m]) m = 'focus';
+    fsMode = m;
     var el = buildFsShell();
     el.hidden = false;
     fsOpen = true;
     document.body.classList.add('ftt-fs-on');
     unlockAudio();
     mirrorFs();
+    kickPaint();
     try {
       if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -553,11 +636,17 @@
     else if (state.view === 'stopwatch') body = stopwatchHtml();
     else if (state.view === 'countdown') body = countdownHtml();
     else if (state.view === 'alarms') body = alarmsHtml();
-    /* The full-screen entry point belongs to the Pomodoro timer, so it only
-       appears on Focus. Rendered here rather than in index.html so the button
-       cannot exist when the module that drives it has not loaded. */
-    else if (state.view === 'focus') {
-      body = '<div class="ftt-row ftt-row--center ftt-fs-launch">'
+    else if (state.view === 'focus') body = '';
+
+    /* Every view that shows a number gets a full-screen button, not just Focus
+       — "I like the focus timer popout but make that for every timer thingy".
+       Alarms is the exception: a list of switches has nothing to show across a
+       room, which is what this view is for.
+
+       Rendered here rather than in index.html so the button cannot exist when
+       the module that drives it has not loaded. */
+    if (state.view !== 'alarms') {
+      body += '<div class="ftt-row ftt-row--center ftt-fs-launch">'
         + '<button type="button" class="btn-sec" data-ftt="fs-open">Full screen</button>'
         + '</div>';
     }
@@ -599,20 +688,65 @@
   }
 
   // ── driver ────────────────────────────────────────────────────────────────
-  /* 250ms so the stopwatch's centiseconds move convincingly. The browser will
-     throttle this hard in a background tab and that is fine — see the header:
-     every value is derived from Date.now(), so a slow tick is a slow repaint,
-     never a wrong number. Alarms are checked on every tick whichever view is
-     open, and again on focus and visibilitychange, which is what makes an alarm
-     that came due while you were away still ring. */
+  /* Two clocks, deliberately.
+
+     A single 250ms interval used to repaint everything, including the
+     stopwatch's centiseconds — so the hundredths digit advanced about 25 at a
+     time. Azfer: "it's skipping numbers and jumping". It was: four repaints a
+     second cannot show a number that changes a hundred times a second.
+
+     Anything fast-moving now repaints from requestAnimationFrame, in step with
+     the screen, and the interval is left to the slow work — checking alarms —
+     where 250ms is plenty.
+
+     Honest about the limit: a 60Hz screen redraws 60 times a second and
+     centiseconds change 100 times a second, so the last digit still cannot
+     show every single value. No screen can. What it can do is move smoothly
+     rather than lurch, which is what a stopwatch is meant to look like.
+
+     Neither clock is a source of truth. Every value is derived from Date.now()
+     (see the header), so throttling either in a background tab costs
+     smoothness and never accuracy. Alarms are checked on every interval tick
+     whichever view is open, and again on focus and visibilitychange, which is
+     what makes an alarm that came due while you were away still ring. */
   var driver = null;
+  var rafId = null;
+
+  /** Is there something on screen changing faster than the eye forgives? */
+  function needsFastPaint() {
+    // The clock ticks once a second either way — the interval covers it, and a
+    // frame loop redrawing the same string 60 times a second is just heat.
+    if (fsOpen) return fsMode !== 'clock';
+    if (!mounted) return false;
+    if (state.view === 'stopwatch') return !!state.stopwatch.startedAt;
+    if (state.view === 'countdown') return !!state.countdown.running;
+    return false;
+  }
+
+  function paintFrame() {
+    rafId = null;
+    tickDisplays();
+    mirrorFs();
+    if (needsFastPaint()) rafId = requestAnimationFrame(paintFrame);
+  }
+
+  /** Start the frame loop if something needs it and it isn't already running. */
+  function kickPaint() {
+    if (rafId == null && needsFastPaint()) rafId = requestAnimationFrame(paintFrame);
+  }
+
   function startDriver() {
     if (driver) return;
     driver = setInterval(function () {
       fireDueAlarms();
+      /* Still repaints here as well as in the frame loop: a paused stopwatch,
+         the clock, and a backgrounded tab all need updating without one, and
+         rAF does not run in a hidden document at all. */
       tickDisplays();
       mirrorFs();
+      kickPaint();
     }, 250);
+    kickPaint();
   }
   function onWake() {
     fireDueAlarms();
@@ -624,16 +758,28 @@
   // ── events ────────────────────────────────────────────────────────────────
   function onClick(e) {
     if (!e.target || !e.target.closest) return;
-    /* The full-screen overlay lives on <body>, outside #fluxTimeTools, so its
-       buttons have to be handled before the containment check below. */
-    var fsBtn = e.target.closest('[data-ftt="fs-toggle"],[data-ftt="fs-reset"],[data-ftt="fs-exit"]');
-    if (fsBtn) {
+    /* The full-screen overlay lives on <body>, outside #fluxTimeTools, so
+       anything clicked inside it has to be handled before the containment
+       check below — otherwise the stopwatch and countdown buttons the overlay
+       now carries are silently dropped. */
+    var overlay = e.target.closest('#fttFocusFs');
+    if (overlay) {
+      var fsBtn = e.target.closest('[data-ftt]');
+      if (!fsBtn) return;
       var fsAct = fsBtn.getAttribute('data-ftt');
-      if (fsAct === 'fs-exit') closeFocusFullscreen();
-      // Proxy straight through to the one real timer, then re-read it.
+      if (fsAct === 'fs-exit') { closeFocusFullscreen(); return; }
+      // Focus proxies straight through to the one real timer, then re-reads it.
       else if (fsAct === 'fs-toggle') { try { window.toggleTimer(); } catch (er) {} }
       else if (fsAct === 'fs-reset') { try { window.resetTimer(); } catch (er) {} }
+      /* The rest drive this module's own state. They call the same functions
+         the in-page buttons do, so there is one implementation per action and
+         the two surfaces cannot drift. */
+      else if (fsAct === 'sw-toggle') swToggle();
+      else if (fsAct === 'sw-reset') swReset();
+      else if (fsAct === 'sw-lap') swLap();
+      else if (fsAct === 'cd-stop') cdStop();
       mirrorFs();
+      kickPaint();
       return;
     }
     var host = $('fluxTimeTools');

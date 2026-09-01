@@ -355,4 +355,129 @@ test.describe('Timer tab — time tools', () => {
     expect(res.pwned).toBe(false);
     expect(res.renderedText).toContain('<img');
   });
+
+  /* "the stopwatch milliseconds are counting weird - it's skipping numbers and
+     jumping". They were: everything repainted on one 250ms interval, so the
+     hundredths digit advanced about 25 at a time.
+
+     This counts how many DIFFERENT values the display takes over half a second.
+     On the old interval that is 2 or 3. Driven by requestAnimationFrame it is
+     bounded by the refresh rate instead — tens of values. Asserting a floor
+     rather than an exact count, because frame rate is the machine's business. */
+  test('the stopwatch counts smoothly rather than jumping in quarter-seconds', async ({ page }) => {
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.setView('stopwatch');
+      document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="sw-toggle"]')!.click();
+
+      const seen = new Set<string>();
+      const start = performance.now();
+      await new Promise<void>((done) => {
+        function sample() {
+          const el = document.getElementById('fttSwDisplay');
+          if (el) seen.add(el.textContent || '');
+          if (performance.now() - start < 500) requestAnimationFrame(sample);
+          else done();
+        }
+        requestAnimationFrame(sample);
+      });
+
+      const text = document.getElementById('fttSwDisplay')!.textContent || '';
+      document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="sw-reset"]')!.click();
+      return { distinct: seen.size, text };
+    });
+
+    // Four repaints a second cannot exceed ~3 distinct values in 500ms.
+    expect(res.distinct).toBeGreaterThan(10);
+    // And it is still a stopwatch: M:SS.cc
+    expect(res.text).toMatch(/^\d+:\d{2}\.\d{2}$/);
+  });
+
+  /* "I like the focus timer popout but make that for every timer thingy." */
+  test('every timer view can pop out full screen, with its own controls', async ({ page }) => {
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      const out: Record<string, any> = {};
+      for (const view of ['clock', 'stopwatch', 'countdown', 'focus', 'alarms']) {
+        T.setView(view);
+        out[view] = { hasLaunch: !!document.querySelector('#fluxTimeTools [data-ftt="fs-open"]') };
+      }
+      for (const view of ['clock', 'stopwatch', 'countdown', 'focus']) {
+        T.setView(view);
+        document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="fs-open"]')!.click();
+        const el = document.getElementById('fttFocusFs')!;
+        out[view].mode = el.getAttribute('data-mode');
+        out[view].actions = [...el.querySelectorAll('[data-ftt]')].map((b) => b.getAttribute('data-ftt'));
+        out[view].ring = !!el.querySelector('.ftt-fs-ring');
+        T.closeFocusFullscreen();
+      }
+      return out;
+    });
+
+    // Alarms is the one view with nothing worth showing across a room.
+    expect(res.alarms.hasLaunch).toBe(false);
+    expect(res.clock.hasLaunch).toBe(true);
+    expect(res.stopwatch.hasLaunch).toBe(true);
+    expect(res.countdown.hasLaunch).toBe(true);
+    expect(res.focus.hasLaunch).toBe(true);
+
+    // Each opens as itself, not as the Focus timer wearing a different hat.
+    expect(res.clock.mode).toBe('clock');
+    expect(res.stopwatch.mode).toBe('stopwatch');
+    expect(res.countdown.mode).toBe('countdown');
+    expect(res.focus.mode).toBe('focus');
+
+    // Controls match the tool.
+    expect(res.stopwatch.actions).toEqual(expect.arrayContaining(['sw-toggle', 'sw-lap', 'sw-reset', 'fs-exit']));
+    expect(res.focus.actions).toEqual(expect.arrayContaining(['fs-toggle', 'fs-reset', 'fs-exit']));
+    // The clock is a readout, so Exit is the only thing to press.
+    expect(res.clock.actions).toEqual(['fs-exit']);
+
+    // A ring needs a total to count against; two of these have none.
+    expect(res.countdown.ring).toBe(true);
+    expect(res.focus.ring).toBe(true);
+    expect(res.stopwatch.ring).toBe(false);
+    expect(res.clock.ring).toBe(false);
+  });
+
+  test('the stopwatch can be driven without leaving full screen', async ({ page }) => {
+    await gotoTimer(page);
+
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.setView('stopwatch');
+      T.openFocusFullscreen('stopwatch');
+      const q = (a: string) => document.querySelector<HTMLElement>(`#fttFocusFs [data-ftt="${a}"]`)!;
+
+      q('sw-toggle').click();
+      const running = !!T._state().stopwatch.startedAt;
+      const labelWhileRunning = document.getElementById('fttFsToggle')!.textContent;
+      await new Promise((r) => setTimeout(r, 120));
+
+      q('sw-lap').click();
+      const laps = T._state().stopwatch.laps.length;
+      const sub = document.getElementById('fttFsSub')!.textContent || '';
+
+      q('sw-toggle').click();
+      const paused = !T._state().stopwatch.startedAt;
+
+      q('sw-reset').click();
+      const after = T._state().stopwatch;
+      T.closeFocusFullscreen();
+      return { running, labelWhileRunning, laps, sub, paused, afterAccum: after.accumMs, afterLaps: after.laps.length };
+    });
+
+    expect(res.running).toBe(true);
+    expect(res.labelWhileRunning).toBe('Pause');
+    expect(res.laps).toBe(1);
+    expect(res.sub).toContain('Lap 1');
+    expect(res.paused).toBe(true);
+    // Reset clears the total and the laps, from full screen as from the page.
+    expect(res.afterAccum).toBe(0);
+    expect(res.afterLaps).toBe(0);
+  });
 });
