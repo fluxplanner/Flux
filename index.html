@@ -2324,6 +2324,25 @@
           <div class="tab-customizer" id="tabCustomizerList"></div>
           <button onclick="resetTabs()" class="btn-sec" style="width:100%;margin-top:14px;font-size:.78rem">↺ Reset to defaults</button>
         </div>
+
+        <!-- Owner only: hides sidebar tabs for EVERY planner. Backed by
+             public.platform_settings, written via the release-admin function.
+
+             Moved here from Data & info. It is the same decision as the card
+             directly above — which tabs appear in the sidebar — just applied to
+             everyone instead of to you, so having the two in different sections
+             meant hunting for the second one. flux-platform-ui.js finds it by
+             id, so the pane it lives in was never load-bearing. -->
+        <div class="card" id="platformUiCard" style="display:none;border-color:rgba(var(--accent-rgb),.28)">
+          <h3>Sidebar tabs — everyone</h3>
+          <p class="flux-pui-help">Untick a tab to hide it from every Flux planner, not just yours. Dashboard and Settings can't be hidden — they're the way back here.</p>
+          <div class="flux-pui-list" id="platformUiList"></div>
+          <p class="flux-pui-status" id="platformUiStatus"></p>
+          <div class="flux-pui-actions">
+            <button type="button" class="flux-pui-save" id="platformUiSave">Save for everyone</button>
+            <button type="button" class="flux-pui-reset" id="platformUiReset">Show all again</button>
+          </div>
+        </div>
       </div>
       <div class="spane" id="spane-notifications">
         <div class="card">
@@ -2530,21 +2549,29 @@
         <div class="card">
           <h3>Tech Stack</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <!-- Both AI rows named models that no longer exist. ai-proxy lists
+                 llama-3.3-70b-versatile in GROQ_RETIRED_MODELS and strips it
+                 before it can ever build a request, and Groq retired Llama 4
+                 Scout on 2026-07-17 — the vision path's own comment says so and
+                 points at Gemini instead. Naming the model that answers you is
+                 a nice touch only while it is true. -->
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
               <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">AI Engine</div>
-              <div style="font-size:.82rem;font-weight:600">Groq · Llama 3.3 70B</div>
+              <div style="font-size:.82rem;font-weight:600">Groq · GPT-OSS 120B</div>
             </div>
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Vision AI</div>
-              <div style="font-size:.82rem;font-weight:600">Groq · Llama 4 Scout</div>
+              <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Images</div>
+              <div style="font-size:.82rem;font-weight:600">Google Gemini</div>
             </div>
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
               <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Auth & Sync</div>
               <div style="font-size:.82rem;font-weight:600">Supabase</div>
             </div>
+            <!-- Google sync has been paused since Canvas shipped, so listing it
+                 here promises something that is switched off. -->
             <div style="padding:10px 12px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
               <div style="font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Integrations</div>
-              <div style="font-size:.82rem;font-weight:600">Google · Canvas LMS</div>
+              <div style="font-size:.82rem;font-weight:600">Canvas LMS</div>
             </div>
           </div>
           <div style="margin-top:10px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center">Cloud sync · Focus tools · AI where you need it</div>
@@ -2646,19 +2673,6 @@
         <div class="card">
           <h3>Your Flux Stats</h3>
           <div id="aboutStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-        </div>
-
-        <!-- Owner only: hides sidebar tabs for EVERY planner. Backed by
-             public.platform_settings, written via the release-admin function. -->
-        <div class="card" id="platformUiCard" style="display:none;border-color:rgba(var(--accent-rgb),.28)">
-          <h3>Sidebar tabs — everyone</h3>
-          <p class="flux-pui-help">Untick a tab to hide it from every Flux planner, not just yours. Dashboard and Settings can't be hidden — they're the way back here.</p>
-          <div class="flux-pui-list" id="platformUiList"></div>
-          <p class="flux-pui-status" id="platformUiStatus"></p>
-          <div class="flux-pui-actions">
-            <button type="button" class="flux-pui-save" id="platformUiSave">Save for everyone</button>
-            <button type="button" class="flux-pui-reset" id="platformUiReset">Show all again</button>
-          </div>
         </div>
 
         <!-- What's changed — generated from git history by `npm run changelog` -->

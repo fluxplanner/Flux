@@ -360,10 +360,19 @@ test.describe('Timer tab — time tools', () => {
      jumping". They were: everything repainted on one 250ms interval, so the
      hundredths digit advanced about 25 at a time.
 
-     This counts how many DIFFERENT values the display takes over half a second.
-     On the old interval that is 2 or 3. Driven by requestAnimationFrame it is
-     bounded by the refresh rate instead — tens of values. Asserting a floor
-     rather than an exact count, because frame rate is the machine's business. */
+     This counts how many DIFFERENT values the display takes over one second.
+
+     Picking the threshold honestly. The old interval fired 4 times a second,
+     so it could not exceed ~5 distinct values in a second no matter what.
+     Driven by requestAnimationFrame an idle machine gives 50-60. Four
+     Playwright workers competing for the CPU starve rAF badly — a first cut of
+     this test sampled 500ms and asserted >10, and got 9 under full-suite load
+     while passing alone. That was a badly calibrated test, not a regression.
+
+     So: a full second, and a floor of 6. Anything above 5 is impossible on the
+     old interval, and the worst observed contention still clears it three
+     times over. Frame rate is the machine's business; the point being proved
+     is only that the display is no longer chained to a 250ms tick. */
   test('the stopwatch counts smoothly rather than jumping in quarter-seconds', async ({ page }) => {
     await gotoTimer(page);
 
@@ -378,7 +387,7 @@ test.describe('Timer tab — time tools', () => {
         function sample() {
           const el = document.getElementById('fttSwDisplay');
           if (el) seen.add(el.textContent || '');
-          if (performance.now() - start < 500) requestAnimationFrame(sample);
+          if (performance.now() - start < 1000) requestAnimationFrame(sample);
           else done();
         }
         requestAnimationFrame(sample);
@@ -389,8 +398,8 @@ test.describe('Timer tab — time tools', () => {
       return { distinct: seen.size, text };
     });
 
-    // Four repaints a second cannot exceed ~3 distinct values in 500ms.
-    expect(res.distinct).toBeGreaterThan(10);
+    // Four repaints a second cannot exceed ~5 distinct values in one second.
+    expect(res.distinct).toBeGreaterThan(6);
     // And it is still a stopwatch: M:SS.cc
     expect(res.text).toMatch(/^\d+:\d{2}\.\d{2}$/);
   });
