@@ -7,6 +7,21 @@ import { gotoScenario } from './helpers';
  * calendar timeline. Flag off leaves no residue.
  */
 
+/*
+ * Monday 2026-03-09, midday. Pinned for two reasons.
+ *
+ * The classes below were seeded at `now ± minutes` but stored as bare HH:MM,
+ * so between 23:30 and 23:59 the end time wrapped into the small hours, came
+ * out lower than the start, and the class stopped reading as in session. The
+ * same arithmetic in teacher-classes.spec.ts took main red at 23:30.
+ *
+ * It also retires the weekend branch. resolveNow weekend-gates on the real
+ * clock, so on a Saturday or Sunday this file asserted only "the strip says
+ * weekend" and skipped everything it exists to check — two days in seven where
+ * the real assertions never ran at all.
+ */
+const SCHOOL_DAY = new Date('2026-03-09T12:00:00');
+
 test.describe('FluxNow bell-aware strip', () => {
   test('flag off: no strip in the DOM', async ({ page }) => {
     await gotoScenario(page, 'guest');
@@ -19,50 +34,45 @@ test.describe('FluxNow bell-aware strip', () => {
 
   test('flag on: strip shows the current period and opens the timeline', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    await page.evaluate(async () => {
+    await page.clock.setFixedTime(SCHOOL_DAY);
+    await page.evaluate(async (baseIso: string) => {
       const w = window as any;
       w.FLUX_EXPERIMENTS = { ...(w.FLUX_EXPERIMENTS || {}), enable_now_engine: true };
       if (w.FluxFeatureFlags?.load) await w.FluxFeatureFlags.load({ force: true });
-      // A class that is in session RIGHT NOW (resolveNow only weekend-gates
-      // on the real clock; the weekend branch is asserted below instead).
-      const now = new Date();
+      // A class in session at the pinned instant, which resolveNow reads as
+      // "now" — a weekday midday, so the weekend gate never trips.
+      const base = new Date(baseIso);
       const hm = (d: Date) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      const start = new Date(now.getTime() - 10 * 60000);
-      const end = new Date(now.getTime() + 30 * 60000);
+      const start = new Date(base.getTime() - 10 * 60000);
+      const end = new Date(base.getTime() + 30 * 60000);
       w.classes.length = 0;
       w.classes.push({ id: 1, period: 1, name: 'AP Biology', room: '204', days: '', timeStart: hm(start), timeEnd: hm(end) });
       w.save('flux_classes', w.classes);
       w.FluxNow.renderStrip();
-    });
-    const isWeekend = [0, 6].includes(new Date().getDay());
+    }, SCHOOL_DAY.toISOString());
     const strip = page.locator('#fluxNowStrip');
     await expect(strip).toBeVisible();
-    if (isWeekend) {
-      await expect(strip).toContainText(/weekend/i);
-    } else {
-      await expect(strip).toContainText('AP Biology');
-      await expect(strip).toContainText(/left/);
-      const state = await strip.getAttribute('data-state');
-      expect(state).toBe('period');
-    }
+    await expect(strip).toContainText('AP Biology');
+    await expect(strip).toContainText(/left/);
+    expect(await strip.getAttribute('data-state')).toBe('period');
     await strip.click();
     await expect(page.locator('#calendar.panel.active')).toBeVisible();
   });
 
   test('flag on: AI context carries the school-time line', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    const line = await page.evaluate(async () => {
+    await page.clock.setFixedTime(SCHOOL_DAY);
+    const line = await page.evaluate(async (baseIso: string) => {
       const w = window as any;
       w.FLUX_EXPERIMENTS = { ...(w.FLUX_EXPERIMENTS || {}), enable_now_engine: true };
       if (w.FluxFeatureFlags?.load) await w.FluxFeatureFlags.load({ force: true });
-      const now = new Date();
+      const base = new Date(baseIso);
       const hm = (d: Date) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       w.classes.length = 0;
-      w.classes.push({ id: 1, period: 1, name: 'AP Biology', days: '', timeStart: hm(new Date(now.getTime() - 5 * 60000)), timeEnd: hm(new Date(now.getTime() + 20 * 60000)) });
+      w.classes.push({ id: 1, period: 1, name: 'AP Biology', days: '', timeStart: hm(new Date(base.getTime() - 5 * 60000)), timeEnd: hm(new Date(base.getTime() + 20 * 60000)) });
       return w.FluxNow.aiContext();
-    });
-    const isWeekend = [0, 6].includes(new Date().getDay());
+    }, SCHOOL_DAY.toISOString());
     expect(line).toContain('School time right now:');
-    if (!isWeekend) expect(line).toContain('AP Biology');
+    expect(line).toContain('AP Biology');
   });
 });

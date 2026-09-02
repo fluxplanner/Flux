@@ -214,45 +214,60 @@ test.describe('Teacher class schedule', () => {
  * "me, the person".
  */
 test.describe('Staff surfaces read the timetable they teach', () => {
-  /** Two classes around a fixed clock time, one in session and one later. */
+  /*
+   * Monday 2026-03-09, midday — a fixed instant, not "now". The tests below
+   * resolve against this same one.
+   *
+   * These two classes used to be seeded at `now ± minutes` while storing only
+   * HH:MM. That held until the suite ran late: the job that went red on main
+   * ran at 23:30, which made World History 23:20–00:00 and American Lit
+   * 00:10–01:00 — *earlier in the day* than "now" — so there was no next
+   * period and `next` came back null. The helper already pinned the weekday
+   * and reasoned the hour was safe; the hour was the half that broke.
+   *
+   * Midday, because it leaves room on both sides for a class that has already
+   * started and one that has not.
+   */
+  const SCHOOL_DAY = new Date('2026-03-09T12:00:00');
+
+  /** Two classes around SCHOOL_DAY, one in session and one later. */
   async function seedTeachingDay(page: import('@playwright/test').Page) {
-    return page.evaluate(() => {
+    return page.evaluate((baseIso: string) => {
       const p = (n: number) => (n < 10 ? '0' : '') + n;
-      const now = new Date();
+      const base = new Date(baseIso);
       const hm = (d: Date) => p(d.getHours()) + ':' + p(d.getMinutes());
       (window as any).FluxTeacherClasses._set([
         {
           id: 101, period: 2, periodLabel: 'A2', days: '', name: 'World History', room: '118',
-          timeStart: hm(new Date(now.getTime() - 10 * 60000)),
-          timeEnd: hm(new Date(now.getTime() + 30 * 60000)),
+          timeStart: hm(new Date(base.getTime() - 10 * 60000)),
+          timeEnd: hm(new Date(base.getTime() + 30 * 60000)),
           color: '#f43f5e', work: [],
         },
         {
           id: 102, period: 3, periodLabel: 'A3', days: '', name: 'American Lit', room: '204',
-          timeStart: hm(new Date(now.getTime() + 40 * 60000)),
-          timeEnd: hm(new Date(now.getTime() + 90 * 60000)),
+          timeStart: hm(new Date(base.getTime() + 40 * 60000)),
+          timeEnd: hm(new Date(base.getTime() + 90 * 60000)),
           color: '#3b82f6', work: [],
         },
       ]);
-    });
+    }, SCHOOL_DAY.toISOString());
   }
 
   test('FluxNow names the class a teacher is teaching, not one they attend', async ({ page }) => {
     await gotoTeacherSchool(page);
     await seedTeachingDay(page);
 
-    const res = await page.evaluate(() => {
+    const res = await page.evaluate((baseIso: string) => {
       const w = window as any;
-      // resolveNow weekend-gates on the real clock, so pin a weekday. The
-      // class times are wall-clock, so the same hour on a Monday still lands
-      // mid-period and the suite passes whichever day it runs.
-      const d = new Date();
-      d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+      // resolveLive weekend-gates, so this has to be a weekday — SCHOOL_DAY is
+      // a Monday. Resolving against the same instant the classes were seeded
+      // around is what makes "in period 2, next is period 3" true regardless
+      // of when the suite runs.
       return {
-        r: w.FluxNow.resolveLive(d),
+        r: w.FluxNow.resolveLive(new Date(baseIso)),
         studentNames: (w.classes || []).map((c: any) => c.name),
       };
-    });
+    }, SCHOOL_DAY.toISOString());
 
     expect(res.r.state).toBe('period');
     expect(res.r.cls.name).toBe('World History');
