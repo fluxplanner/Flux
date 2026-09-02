@@ -760,11 +760,40 @@
 @media (max-width: 768px){
   /* Hide the descriptive sub header + desktop event/schedule setup cards */
   #calendar .flux-page-header--lead{ display: none !important; }
-  #calendar .cal-schedule-setup,
-  #calendar [data-flux-cal-section="schedule"],
-  #calendar [data-flux-cal-section="next"],
-  #calendar [data-flux-cal-section="events"],
   #calendar .cal-gcal-inline{ display: none !important; }
+
+  /* "Cycle days & weekly schedule" used to be hidden here, along with the
+     section wrapping it. That was the only place in Flux where you set the
+     A/B rotation and your weekly repeating activities — so a student with
+     only a phone could see the A/B letters on their calendar and had no way
+     whatsoever to switch them on or say what the pattern was. Two other
+     features mount into that same section (flux-event-buffer.js:333,
+     flux-travel-time.js:308), so they were invisible on phones too.
+
+     It fits: 351px wide inside a 390px viewport, nothing overflowing. What it
+     did *not* have was thumb-sized controls — 17 of them came in under 44px,
+     the same fault already fixed on the Settings switches — so the sizing
+     below travels with the unhiding rather than after it.
+
+     The two selectors dropped alongside, [data-flux-cal-section="next"] and
+     ="events", matched nothing: the only sections that exist are "hero" and
+     "schedule", and no script creates others. */
+  #calendar .cal-schedule-setup input[type="text"],
+  #calendar .cal-schedule-setup input[type="date"],
+  #calendar .cal-schedule-setup input[type="time"],
+  #calendar .cal-schedule-setup select,
+  #calendar .cal-schedule-setup button{ min-height: 44px; }
+
+  /* A checkbox cannot simply grow — 44px of ink is a blob — so the box keeps
+     its size and the label around it carries the target. */
+  #calendar .cal-schedule-setup label{ min-height: 44px; }
+  #calendar .cal-schedule-setup input[type="checkbox"]{ width: 20px; height: 20px; flex: none; }
+
+  /* Two date/pattern fields side by side leaves each about 160px on a phone.
+     One per line instead. */
+  #calendar .cal-schedule-setup > div > div[style*="grid-template-columns"]{
+    grid-template-columns: 1fr !important;
+  }
 
   #calendar{ padding: 14px max(14px, var(--sa-left)) var(--flux-nav-clearance) max(14px, var(--sa-right)) !important; }
 
