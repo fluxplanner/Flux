@@ -1882,10 +1882,19 @@
     <!-- ─── EXTRACURRICULARS ─── -->
     <div id="goals" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Activities, target schools, goals, AI advisor, and college chat. Use <strong>Calendar</strong> on any activity to show it on your planner calendar.</p>
+        <p class="flux-page-sub">Two halves: <strong>Activities</strong> is what you do and what you're working towards; <strong>Colleges</strong> is where you're applying. Use <strong>Calendar</strong> on any activity to show it on your planner calendar.</p>
       </header>
+      <!-- Five long cards in one column mixed "what I do after school" with
+           "where I am applying", and the two AI helpers sat four cards apart
+           with nothing to say they were for different questions. Two
+           sections, one helper each. -->
+      <div class="stabs flux-ec-stabs" role="tablist" aria-label="Extracurriculars sections">
+        <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchEcSection(&#39;activities&#39;,this)">Activities</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchEcSection(&#39;colleges&#39;,this)">Colleges</button>
+      </div>
       <div class="flux-stack">
 
+      <div class="spane active" id="ecpane-activities">
       <!-- Activity list -->
       <div class="card">
         <h3>My Activities</h3>
@@ -1904,14 +1913,14 @@
         <textarea id="extraDesc" placeholder="Brief description (optional)..." style="min-height:36px;margin-top:8px;font-size:.82rem"></textarea>
       </div>
 
-      <!-- Target Schools -->
+      <!-- EC Goals -->
       <div class="card">
-        <h3>Target Schools</h3>
-        <div id="schoolsList" style="margin-bottom:10px"></div>
-        <div class="irow" style="margin-top:4px">
-          <input type="text" id="schoolName" placeholder="e.g. MIT, Stanford, UCLA...">
-          <select id="schoolTier"><option value="reach">Reach</option><option value="target">Target</option><option value="safety">Safety</option></select>
-          <button onclick="addSchool()">+ Add</button>
+        <h3>Goals & Milestones</h3>
+        <div id="ecGoalsList" style="margin-bottom:10px"></div>
+        <div class="irow">
+          <input type="text" id="ecGoalTitle" placeholder="e.g. Reach 100 volunteer hours">
+          <input type="date" id="ecGoalDeadline">
+          <button onclick="addECGoal()">+ Add</button>
         </div>
       </div>
 
@@ -1925,15 +1934,17 @@
         </div>
         <div id="ecAIResult" style="display:none"></div>
       </div>
+      </div>
 
-      <!-- EC Goals -->
+      <div class="spane" id="ecpane-colleges">
+      <!-- Target Schools -->
       <div class="card">
-        <h3>Goals & Milestones</h3>
-        <div id="ecGoalsList" style="margin-bottom:10px"></div>
-        <div class="irow">
-          <input type="text" id="ecGoalTitle" placeholder="e.g. Reach 100 volunteer hours">
-          <input type="date" id="ecGoalDeadline">
-          <button onclick="addECGoal()">+ Add</button>
+        <h3>Target Schools</h3>
+        <div id="schoolsList" style="margin-bottom:10px"></div>
+        <div class="irow" style="margin-top:4px">
+          <input type="text" id="schoolName" placeholder="e.g. MIT, Stanford, UCLA...">
+          <select id="schoolTier"><option value="reach">Reach</option><option value="target">Target</option><option value="safety">Safety</option></select>
+          <button onclick="addSchool()">+ Add</button>
         </div>
       </div>
 
@@ -1955,6 +1966,7 @@
           <button type="button" onclick="sendEcCollegeChat()" id="ecChatSendBtn" style="padding:10px 16px;flex-shrink:0;font-size:.78rem;font-weight:700">Send</button>
         </div>
         <div style="font-size:.65rem;color:var(--muted);margin-top:8px">Enter to send · Shift+Enter for new line</div>
+      </div>
       </div>
 
       </div>
@@ -2866,8 +2878,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.7b1efacf.js"></script>
-<script defer src="public/bundles/flux-features.f9336e70.js"></script>
+<script defer src="public/bundles/flux-core.a0ea941f.js"></script>
+<script defer src="public/bundles/flux-features.ea97711e.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

@@ -137,7 +137,11 @@
     var panel = document.getElementById('goals');
     if (!panel || getComputedStyle(panel).display === 'none') return;
     if (document.getElementById('foppGoalsCard')) return;
-    var host = panel.querySelector('.flux-stack') || panel;
+    // Extracurriculars is two sub-sections now, and .flux-stack is the wrapper
+    // holding both — appending there leaves this card outside either pane, so
+    // it would sit under Colleges too. Scholarships, programs and competitions
+    // are things to go and do, so it belongs with Activities.
+    var host = document.getElementById('ecpane-activities') || panel.querySelector('.flux-stack') || panel;
     var all = match();
     var top = all.slice(0, 3);
     var card = document.createElement('div');

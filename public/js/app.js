@@ -6840,6 +6840,19 @@ function switchStab(id,el){
   if(id==='account'&&typeof renderSubscriptionCard==='function')renderSubscriptionCard();
   if(id==='account')try{syncStudentEducatorUpgradeCard();}catch(_){}
 }
+// Extracurriculars sub-sections. Deliberately not switchStab: that one hard-codes
+// `#settings` and `spane-` + id, and widening it to any panel would have let a
+// stray `.stab` in Settings blank a pane in Extracurriculars. Everything this
+// panel shows is already rendered by nav()'s `goals` hook, so switching only
+// moves the highlight — there is nothing to re-render here.
+function switchEcSection(id,el){
+  document.querySelectorAll('#goals .stab').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-selected','false');});
+  document.querySelectorAll('#goals .spane').forEach(p=>p.classList.remove('active'));
+  if(el){el.classList.add('active');el.setAttribute('aria-selected','true');}
+  const pane=document.getElementById('ecpane-'+id);
+  if(pane)pane.classList.add('active');
+}
+window.switchEcSection=switchEcSection;
 function toggleSetting(k,el){settings[k]=!settings[k];el.classList.toggle('on',settings[k]);save('flux_settings',settings);}
 function toggleNotifyBrowser(el){
   if(!('Notification' in window)){showToast('Notifications not supported','warning');return;}
