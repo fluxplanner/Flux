@@ -19827,24 +19827,25 @@ async function renderCounselorDashboard(){
         ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
 
-      <div class="teacher-stats">
-        <div class="teacher-stat-card ${pendingAppts.length?'sw-stat-warn':''}">
-          <div class="stat-number">${pendingAppts.length}</div>
-          <div class="stat-label">Pending requests</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${todayAppts.length}</div>
-          <div class="stat-label">Today's appointments</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${upcomingAppts.length}</div>
-          <div class="stat-label">Upcoming</div>
-        </div>
-        <div class="teacher-stat-card">
-          <div class="stat-number">${messages.length}</div>
-          <div class="stat-label">Unread messages</div>
-        </div>
-      </div>
+      ${(()=>{
+        /* Same rule as the teacher strip above (~18471): only the counts that
+           have something to report. This rendered all four unconditionally, so
+           a counselor's first sight of Flux — counselorDashboard is the panel
+           they land on — was "0 0 0 0". A zero here says nothing the empty
+           states below don't already say in words, and four of them read as a
+           broken page rather than a quiet day. The two dashboards disagreed
+           about this only because the teacher one got fixed first. */
+        const stats=[
+          {n:pendingAppts.length,  label:'Pending requests', cls:'sw-stat-warn'},
+          {n:todayAppts.length,    label:"Today's appointments"},
+          {n:upcomingAppts.length, label:'Upcoming'},
+          {n:messages.length,      label:'Unread messages'},
+        ].filter(s=>s.n>0);
+        if(!stats.length)return'';
+        return `<div class="teacher-stats">${stats.map(s=>
+          `<div class="teacher-stat-card ${s.cls||''}"><div class="stat-number">${s.n}</div><div class="stat-label">${esc(s.label)}</div></div>`
+        ).join('')}</div>`;
+      })()}
 
       ${window.FluxCounselorConsent?.enabled?.()&&_counselorCaseload&&window.FluxCounselorConsent.renderCounselorSummary
         ?FluxCounselorConsent.renderCounselorSummary(_counselorCaseload)
