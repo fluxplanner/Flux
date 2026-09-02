@@ -42,7 +42,18 @@
   }
 
   function staffHubFlagEnabled() {
-    return true; // CORE: enable_staff_google_hub (Phase 37.1 PR-B)
+    // CORE: enable_staff_google_hub (Phase 37.1 PR-B) — but it has to respect
+    // the Google pause too. This returned a bare `true`, so with
+    // enable_google_integrations off a counselor still landed on their
+    // dashboard and met a 203px "Connect School Workspace" card offering
+    // Google Classroom and Drive. Measured in the counselor-path scenario:
+    // counselorDashboard is the panel they arrive on, so it was the first
+    // thing they saw — and connecting would have bought them nothing, since
+    // the panes it feeds render Canvas only while the pause is on. The same
+    // card also mounts into adminDashboard and staffWorkboard.
+    // googleOn() is declared further down this IIFE; hoisting makes the call
+    // safe. Nothing is deleted — flipping the flag brings it all back.
+    return googleOn();
   }
 
   /** Educator workspace hub — never runs for students. */
