@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.470368f7.css">
+<link rel="stylesheet" href="public/bundles/flux.c4393b04.css">
 </head>
 <body>
 <noscript>
@@ -1449,13 +1449,13 @@
           </div>
         </div>
         <div id="classesList"></div>
-        <div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:end;margin-top:10px">
+        <div class="sch-add-class-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:end;margin-top:10px">
           <div><label style="font-size:.7rem;color:var(--muted)">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Class Name</label><input type="text" id="className" placeholder="e.g. Chemistry" style="margin:0"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Teacher</label><input type="text" id="classTeacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
           <button onclick="addClass()" style="padding:10px 14px;align-self:end">+</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div class="sch-class-meta-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div><label style="font-size:.7rem;color:var(--muted)">Days</label>
             <select id="classDays" style="margin:0">
               <option value="">Any day</option>
@@ -2878,7 +2878,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.fb1e7776.js"></script>
-<script defer src="public/bundles/flux-core.843752a1.js"></script>
+<script defer src="public/bundles/flux-core.a48f2cdd.js"></script>
 <script defer src="public/bundles/flux-features.3f02dc19.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

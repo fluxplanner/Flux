@@ -760,6 +760,40 @@
 @media (max-width: 768px){
   /* Hide the descriptive sub header + desktop event/schedule setup cards */
   #calendar .flux-page-header--lead{ display: none !important; }
+  /* School Info — the edit and delete buttons on each class row measured
+     18x24 and 20x28 on a phone, against a 44x44 minimum. That is under a
+     quarter and under a third of the target area, and they sit side by side
+     with the destructive one on the outside, so the realistic mistake is not
+     "I missed" — it is deleting a class while reaching for edit.
+
+     The row is 11px of gap and the glyphs stay their current size; only the
+     hit area grows, so nothing about the layout moves. */
+  #school .class-row button{
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Adding a class was close to impossible on a phone. The row is
+     `auto 1fr 1fr auto`: the long "Period (A4, B4…)" label and the + button
+     claim both auto tracks, and at 390px that left Class Name and Teacher
+     46px each — narrower than their own placeholders, so you could not read
+     what you had typed. Days came out at 45px in the row below. Adding
+     classes is the first thing a student ever does here.
+
+     One field per line, and the + button full width under them. */
+  #school .sch-add-class-row,
+  #school .sch-class-meta-row{ grid-template-columns: 1fr !important; }
+  /* Stretched to full width a bare "+" reads as a divider, not a button, and
+     it sits above Days / Time / Room. Those are all optional — addClass()
+     requires only the name — so the position is fine; it just has to say what
+     it does. Desktop keeps the narrow + as its own grid column. */
+  #school .sch-add-class-row > button{ width: 100%; min-height: 44px; }
+  #school .sch-add-class-row > button::after{ content: ' Add class'; }
+  #school .sch-add-class-row #classPeriod{ width: 100% !important; }
+
   #calendar .cal-gcal-inline{ display: none !important; }
 
   /* "Cycle days & weekly schedule" used to be hidden here, along with the

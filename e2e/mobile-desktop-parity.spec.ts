@@ -102,3 +102,77 @@ test.describe('Mobile and desktop show the same dashboard cards', () => {
     await expect(page.locator('#dashMobStats')).toBeVisible();
   });
 });
+
+/*
+ * School Info on a phone. Found by measuring every control on every tab at
+ * 390px against the 44px thumb minimum, which is also how the Settings switch
+ * fault was found.
+ *
+ * All sizes below use offsetHeight/offsetWidth rather than
+ * getBoundingClientRect, because layout pixels are immune to page scaling.
+ */
+test.describe('School Info is usable on a phone', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('school'));
+    await expect(page.locator('#school.panel.active')).toBeVisible();
+  });
+
+  test('edit and delete on a class row are thumb-sized and named', async ({ page }) => {
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('#school .class-row button')]
+        .filter((b) => (b as HTMLElement).offsetHeight > 0)
+        .map((b) => ({
+          w: (b as HTMLElement).offsetWidth,
+          h: (b as HTMLElement).offsetHeight,
+          name: b.getAttribute('aria-label') || b.getAttribute('title') || '',
+        })),
+    );
+
+    expect(rows.length).toBeGreaterThan(0);
+    // Were 18x24 (edit) and 20x28 (delete) — under a quarter and under a third
+    // of the target area, sitting side by side with the destructive one on the
+    // outside. The realistic mistake was deleting a class while aiming for edit.
+    for (const b of rows) {
+      expect(b.w).toBeGreaterThanOrEqual(44);
+      expect(b.h).toBeGreaterThanOrEqual(44);
+      expect(b.name).not.toBe('');
+    }
+  });
+
+  test('you can actually fill in the add-a-class form', async ({ page }) => {
+    const widths = await page.evaluate(() =>
+      ['classPeriod', 'className', 'classTeacher', 'classDays'].map((id) => ({
+        id,
+        w: (document.getElementById(id) as HTMLElement).offsetWidth,
+      })),
+    );
+    // Class Name and Teacher were 46px and Days 45px — narrower than their own
+    // placeholders, so you could not read what you had typed.
+    for (const f of widths) expect(f.w).toBeGreaterThan(200);
+
+    // And the form still works end to end from the stacked layout.
+    await page.fill('#className', 'E2E Chemistry');
+    await page.fill('#classPeriod', 'B4');
+    await page.click('#school .sch-add-class-row > button');
+
+    const added = await page.evaluate(() =>
+      ((window as unknown as { load: (k: string, d: unknown) => Array<Record<string, unknown>> })
+        .load('flux_classes', []) || []).find((c) => c.name === 'E2E Chemistry'),
+    );
+    expect(added).toBeTruthy();
+    // The A/B period parsing survives the relayout.
+    expect(added!.periodLabel).toBe('B4');
+    expect(added!.days).toBe('B Day');
+  });
+
+  test('the desktop layout is left alone', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const cols = await page.evaluate(
+      () => getComputedStyle(document.querySelector('#school .sch-add-class-row')!).gridTemplateColumns,
+    );
+    // Four tracks on a laptop, not the phone's single column.
+    expect(cols.split(' ').length).toBe(4);
+  });
+});
