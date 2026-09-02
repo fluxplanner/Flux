@@ -304,23 +304,9 @@
   font-family: inherit;
   resize: vertical;
 }
-.flux-class-timer-display {
-  font-size: 2rem;
-  font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
-  text-align: center;
-  margin: 10px 0;
-  color: var(--accent);
-}
-.flux-class-timer-display.flux-class-timer-done {
-  color: var(--gold);
-  animation: flux-timer-pulse 0.8s ease infinite;
-}
-@keyframes flux-timer-pulse {
-  50% {
-    opacity: 0.6;
-  }
-}
+/* .flux-class-timer-display and its done/pulse states went with the Classroom
+   timer's own countdown. That card now starts the Timer tab's countdown and
+   opens it full screen, which brings its own styling. */
 .flux-roster-pick-overlay {
   margin-top: 10px;
   padding: 10px;

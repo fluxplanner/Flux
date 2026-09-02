@@ -523,64 +523,45 @@
     paint();
   }
 
-  let _classTimerIv = null;
+  /* This was a second, worse countdown: a local `remaining` counter decremented
+     by setInterval every 1000ms. Two faults, and the second is the one that
+     matters in a classroom. It drifted, because setInterval is not a clock;
+     and browsers throttle or stop background intervals, so projecting it and
+     switching to your slides quietly froze it. A timer that stops without
+     saying so is worse than no timer.
+     The Timer tab's countdown works from an absolute deadline, survives a
+     locked lid, chimes, and already has a full-screen view built to be read
+     from across a room. So this card starts that one rather than copy it. */
   function renderClassroomTimer(mount) {
+    const PRESETS = [
+      [120, '2 min'],
+      [300, '5 min'],
+      [600, '10 min'],
+      [900, '15 min'],
+    ];
     mount.innerHTML = `
-      <p class="flux-widget-hint">Visual countdown for timed activities.</p>
-      <div class="flux-class-timer-display" id="fluxClassTimerDisplay">5:00</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button type="button" class="btn-sec flux-timer-preset" data-secs="300">5 min</button>
-        <button type="button" class="btn-sec flux-timer-preset" data-secs="600">10 min</button>
-        <button type="button" class="btn-sec flux-timer-preset" data-secs="120">2 min</button>
+      <p class="flux-widget-hint">Pick a length — it opens full screen, big enough to read from the back of the room.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${PRESETS.map(([secs, label]) =>
+          `<button type="button" class="btn-sec flux-timer-preset" data-secs="${secs}">${label}</button>`,
+        ).join('')}
       </div>
-      <div style="display:flex;gap:6px">
-        <button type="button" class="btn" id="fluxClassTimerStart">Start</button>
-        <button type="button" class="btn-sec" id="fluxClassTimerStop">Reset</button>
-      </div>`;
-
-    let remaining = 300;
-    const display = mount.querySelector('#fluxClassTimerDisplay');
-
-    function fmt(sec) {
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return m + ':' + String(s).padStart(2, '0');
-    }
-
-    function tick() {
-      if (!display) return;
-      display.textContent = fmt(remaining);
-      display.classList.toggle('flux-class-timer-done', remaining <= 0);
-      if (remaining <= 0) {
-        clearInterval(_classTimerIv);
-        _classTimerIv = null;
-        if (typeof showToast === 'function') showToast('Time is up', 'info');
-        return;
-      }
-      remaining -= 1;
-    }
+      <p class="flux-widget-hint" style="margin-top:10px">Escape closes it. It keeps counting while you're on your slides, and chimes when it's up.</p>`;
 
     mount.querySelectorAll('.flux-timer-preset').forEach((b) => {
       b.addEventListener('click', () => {
-        remaining = parseInt(b.getAttribute('data-secs'), 10) || 300;
-        if (display) display.textContent = fmt(remaining);
+        const secs = parseInt(b.getAttribute('data-secs'), 10) || 300;
+        const T = window.FluxTimeTools;
+        if (!T || typeof T.startCountdown !== 'function') {
+          if (typeof showToast === 'function') showToast('Timer unavailable — open the Timer tab', 'warning');
+          return;
+        }
+        T.startCountdown(secs * 1000, 'Classroom timer');
+        // Has to stay inside the click handler: requestFullscreen is only
+        // granted during a user gesture.
+        try { T.openFocusFullscreen('countdown'); } catch (_) {}
       });
     });
-    mount.querySelector('#fluxClassTimerStart')?.addEventListener('click', () => {
-      if (_classTimerIv) clearInterval(_classTimerIv);
-      _classTimerIv = setInterval(tick, 1000);
-      tick();
-    });
-    mount.querySelector('#fluxClassTimerStop')?.addEventListener('click', () => {
-      if (_classTimerIv) clearInterval(_classTimerIv);
-      _classTimerIv = null;
-      remaining = 300;
-      if (display) {
-        display.textContent = fmt(remaining);
-        display.classList.remove('flux-class-timer-done');
-      }
-    });
-    if (display) display.textContent = fmt(remaining);
   }
 
   async function fetchTeacherClasses() {

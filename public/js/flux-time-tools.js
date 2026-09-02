@@ -845,6 +845,10 @@
     setView: setView,
     openFocusFullscreen: openFocusFullscreen,
     closeFocusFullscreen: closeFocusFullscreen,
+    /* Exported so the staff dashboard's Classroom timer can start the real
+       countdown rather than keep its own. render() no-ops when the Timer panel
+       isn't on screen, so this is safe to call from anywhere. */
+    startCountdown: cdStart,
     /* Cloud-sync contract, same shape as the other synced modules. Only alarms
        and world clocks travel: a running stopwatch or countdown belongs to the
        device it was started on, and copying endsAt to a second device would

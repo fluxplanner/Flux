@@ -446,7 +446,11 @@
         <button type="button" class="spdx-act" data-spdx-act="wellbeing">${I(ICONS.heart, 14)} Check-in</button>
         <button type="button" class="spdx-act" data-spdx-act="availability">${I(ICONS.calcheck, 14)} Availability</button>
         <button type="button" class="spdx-act" data-spdx-act="tasks">${I(ICONS.check, 14)} My tasks</button>
-        <button type="button" class="spdx-act" data-spdx-act="google">${I(ICONS.grid, 14)} Google hub</button>
+        <!-- Said "Google hub" and went to Canvas. Google has been paused since
+             Canvas shipped, so the hub it named doesn't open for anyone — the
+             button was right about where it goes and wrong about what it is
+             called. Named for its destination now. -->
+        <button type="button" class="spdx-act" data-spdx-act="canvas">${I(ICONS.gradcap, 14)} Canvas</button>
       </div>
       <div class="spdx-cols">
         <section class="spdx-card">
@@ -488,7 +492,7 @@
         else if (a === 'wellbeing') go('staffWellbeing', () => renderWellbeingPanel());
         else if (a === 'availability') go('school');
         else if (a === 'tasks') go('staffTasks', () => renderStaffTasksPanel());
-        else if (a === 'google') go('canvas');
+        else if (a === 'canvas') go('canvas');
       });
     });
     fillWorkHubBookings();

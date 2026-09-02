@@ -489,4 +489,59 @@ test.describe('Timer tab — time tools', () => {
     expect(res.afterAccum).toBe(0);
     expect(res.afterLaps).toBe(0);
   });
+
+  test("the staff Classroom timer drives this countdown, it doesn't keep its own", async ({ page }) => {
+    // It used to run `remaining -= 1` on a setInterval, which drifts and — the
+    // part that matters when it is projected on a wall — stops entirely once
+    // the teacher switches to their slides.
+    await gotoTimer(page);
+    const res = await page.evaluate(() => {
+      const T = (window as any).FluxTimeTools;
+      const C = (window as any).FluxClassroomTools;
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      C.renderClassroomTimer(mount);
+
+      const presets = [...mount.querySelectorAll<HTMLButtonElement>('.flux-timer-preset')].map((b) =>
+        b.getAttribute('data-secs'),
+      );
+      // No second display of its own to drift out of step with the real one.
+      const ownDisplay = !!mount.querySelector('.flux-class-timer-display');
+
+      const before = Date.now();
+      mount.querySelector<HTMLButtonElement>('[data-secs="300"]')!.click();
+      const cd = T._state().countdown;
+      const fsOpen = !document.getElementById('fttFocusFs')?.hidden;
+      const fsMode = document.querySelector('.ftt-fs')?.getAttribute('data-mode');
+
+      T.closeFocusFullscreen();
+      mount.remove();
+      return {
+        presets,
+        ownDisplay,
+        running: cd.running,
+        totalMs: cd.totalMs,
+        label: cd.label,
+        // A deadline, not a counter: five minutes ahead of when we clicked.
+        deadlineAhead: cd.endsAt - before,
+        fsOpen,
+        fsMode,
+      };
+    });
+
+    expect(res.presets).toEqual(['120', '300', '600', '900']);
+    expect(res.ownDisplay).toBe(false);
+    expect(res.running).toBe(true);
+    expect(res.totalMs).toBe(300_000);
+    expect(res.label).toBe('Classroom timer');
+    // endsAt is Date.now() + ms computed a few ms *after* `before` is read, so
+    // the gap is 300s plus that handler time — never less. My first version of
+    // this asserted <= 300_000 and failed at 300_004, which was the test being
+    // wrong about the direction, not the timer being wrong.
+    expect(res.deadlineAhead).toBeGreaterThanOrEqual(300_000);
+    expect(res.deadlineAhead).toBeLessThan(301_000);
+    // And it opens full screen, which is the point of a timer on a projector.
+    expect(res.fsOpen).toBe(true);
+    expect(res.fsMode).toBe('countdown');
+  });
 });
