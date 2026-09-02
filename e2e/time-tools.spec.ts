@@ -121,19 +121,34 @@ test.describe('Timer tab — time tools', () => {
   test('an alarm that came due while you were away still rings, once', async ({ page }) => {
     await gotoTimer(page);
 
+    /*
+     * Pinned to midday, and pinned only after the app has booted so the page
+     * loads against the real clock.
+     *
+     * This test used to derive its two alarms from `Date.now() ± 90 minutes`
+     * and keep only the HH:MM. That reads fine until the suite runs shortly
+     * after midnight: at 01:26 UTC — which is exactly when CI ran it and it
+     * failed — "90 minutes ago" is 23:56 *yesterday*, and fireDueAlarms only
+     * compares within the current day, so the alarm correctly did not ring and
+     * the test reported a bug that was not there. The same wrap hits the other
+     * end after 22:30, where "90 minutes from now" lands in tomorrow's small
+     * hours and reads as already due.
+     *
+     * The product behaviour is the right one — being ambushed at 1am by an
+     * alarm you set for last night is worse than missing it — so the clock is
+     * fixed here rather than the rule loosened there.
+     */
+    await page.clock.setFixedTime(new Date('2026-03-10T12:00:00'));
+
     const res = await page.evaluate(() => {
       const T = (window as any).FluxTimeTools;
       const S = T._state();
-      const hhmm = (d: Date) =>
-        String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      const past = new Date(Date.now() - 90 * 60 * 1000);
-      const future = new Date(Date.now() + 90 * 60 * 1000);
 
       S.alarms.length = 0;
-      // Due 90 minutes ago and never fired — the laptop-was-shut case.
-      S.alarms.push({ id: 'past', time: hhmm(past), days: [], enabled: true, label: 'Missed', lastFired: '' });
-      // Not due for another 90 minutes.
-      S.alarms.push({ id: 'future', time: hhmm(future), days: [], enabled: true, label: 'Later', lastFired: '' });
+      // Due at half ten and never fired — the laptop-was-shut case.
+      S.alarms.push({ id: 'past', time: '10:30', days: [], enabled: true, label: 'Missed', lastFired: '' });
+      // Not due until half one.
+      S.alarms.push({ id: 'future', time: '13:30', days: [], enabled: true, label: 'Later', lastFired: '' });
 
       T._fireDue();
       const a = () => S.alarms.find((x: any) => x.id === 'past');
@@ -158,11 +173,13 @@ test.describe('Timer tab — time tools', () => {
   test('a repeating alarm only rings on its own days', async ({ page }) => {
     await gotoTimer(page);
 
+    // Midday, for the same midnight-wrap reason as the test above.
+    await page.clock.setFixedTime(new Date('2026-03-10T12:00:00'));
+
     const res = await page.evaluate(() => {
       const T = (window as any).FluxTimeTools;
       const S = T._state();
-      const past = new Date(Date.now() - 60 * 60 * 1000);
-      const hhmm = String(past.getHours()).padStart(2, '0') + ':' + String(past.getMinutes()).padStart(2, '0');
+      const hhmm = '11:00';
       const today = new Date().getDay();
       const otherDay = (today + 3) % 7;
 
@@ -189,14 +206,17 @@ test.describe('Timer tab — time tools', () => {
   test('adding an alarm for a time already past today does not ring immediately', async ({ page }) => {
     await gotoTimer(page);
 
+    /* Midday again. This one asserts an alarm does *not* ring, so the midnight
+       wrap made it pass for the wrong reason rather than fail — the quieter
+       and more misleading half of the same fault. */
+    await page.clock.setFixedTime(new Date('2026-03-10T12:00:00'));
+
     const res = await page.evaluate(() => {
       const T = (window as any).FluxTimeTools;
       const S = T._state();
       S.alarms.length = 0;
       T.setView('alarms');
-      const past = new Date(Date.now() - 60 * 60 * 1000);
-      (document.getElementById('fttAlTime') as HTMLInputElement).value =
-        String(past.getHours()).padStart(2, '0') + ':' + String(past.getMinutes()).padStart(2, '0');
+      (document.getElementById('fttAlTime') as HTMLInputElement).value = '11:00';
       document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="al-add"]')!.click();
       T._fireDue();
       return { added: S.alarms.length, stillEnabled: S.alarms[0].enabled };
