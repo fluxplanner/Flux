@@ -90,6 +90,19 @@
   .toggle,
   .tab-row-toggle {
     position: relative;
+    /* Without this line the rule below does nothing at all. Both switches are
+       <button>s, and styles.css:596 gives every button `overflow:hidden` so
+       the ripple stays inside its corners — which also clipped this expander
+       back to the painted pill. Measured at 375px: ::before computed to the
+       intended 60x44, yet elementFromPoint 18px above a pill's centre came
+       back as the row behind it. So these had been stuck at 36x20 and 46x28
+       since the day the expander was written, and 20px is under WCAG 2.2
+       SC 2.5.8's 24px floor.
+       Safe to unclip: the knob is ::after at translateX(16px) inside a 36px
+       pill, so nothing depended on the clip, and Customize Tabs rows sit
+       51-52px apart — 44px expanders leave ~7px and can't steal each other's
+       taps. */
+    overflow: visible;
   }
   .toggle::before,
   .tab-row-toggle::before {
