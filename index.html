@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.4c549e8c.css">
+<link rel="stylesheet" href="public/bundles/flux.44cc7c57.css">
 </head>
 <body>
 <noscript>
@@ -2168,7 +2168,7 @@
     <!-- ─── SETTINGS ─── -->
     <div id="settings" class="panel flux-page">
       <header class="flux-page-header flux-page-header--lead">
-        <p class="flux-page-sub">Appearance, alerts, connections, AI, account, and data.</p>
+        <p class="flux-page-sub">Appearance, alerts, connections, AI, account, your data, help and about.</p>
       </header>
       <div class="stabs flux-settings-stabs" role="tablist" aria-label="Settings sections">
         <button type="button" class="stab active" role="tab" aria-selected="true" onclick="switchStab('appearance',this)">Look</button>
@@ -2176,7 +2176,16 @@
         <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('connectors',this)">Connections</button>
         <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('ai',this)">AI</button>
         <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('account',this)">Account</button>
-        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('data',this)">Data &amp; info</button>
+        <!-- "Data & info" was one pane holding thirteen cards doing four
+             unrelated jobs — your data, help, app info and developer bits —
+             while Alerts and AI had two each. Split into three. The `data` id
+             is deliberately kept: flux-email-task-inbox and flux-automation-hooks
+             both call switchStab('data') to reveal their own injected card, so
+             renaming it would have pointed them at a pane that doesn't exist
+             and silently done nothing. -->
+        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('data',this)">Your data</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('help',this)">Help</button>
+        <button type="button" class="stab" role="tab" aria-selected="false" onclick="switchStab('about',this)">About</button>
       </div>
       <div class="flux-stack flux-settings-panes">
       <div class="spane active" id="spane-appearance">
@@ -2526,11 +2535,124 @@
         </div>
 
         <div class="card">
+          <h3>Local storage</h3>
+          <p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px;line-height:1.5">Rough size of data this site keeps in your browser (tasks, notes, cache).</p>
+          <div id="storageMeter" style="font-size:.82rem;color:var(--muted2);line-height:1.5">—</div>
+        </div>
+
+        <div id="fluxStorageRepairMount"></div>
+        <div id="fluxSyncConflictSettingsMount"></div>
+        <div id="fluxClaudeConnectMount"></div>
+
+        <!-- How Flux explains to you (learner profile transparency) -->
+        <div id="fluxLearnerCard"></div>
+
+        <!-- Privacy promise -->
+        <div class="card" style="border-color:rgba(var(--accent-rgb),.28);background:linear-gradient(165deg,rgba(var(--accent-rgb),.08),transparent 60%)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:1.3rem" aria-hidden="true"></span>
+            <h3 style="margin:0">Your privacy</h3>
+          </div>
+          <p style="font-size:.82rem;color:var(--text2);line-height:1.7;margin:0 0 12px">Flux is private by design. Your tasks, notes, grades, mood entries, and everything else you put in stay <strong>yours</strong>.</p>
+          <ul style="margin:0;padding-left:1.15rem;font-size:.8rem;color:var(--muted2);line-height:1.75">
+            <li><strong>Never sold</strong> or used for advertising — ever.</li>
+            <li><strong>Not shared with your school</strong>, teachers, or counselors unless you choose to (e.g. joining a class).</li>
+            <li><strong>Not visible to Flux’s developer.</strong> Cloud data is protected by per-user row-level security, so your account’s data isn’t readable from other accounts — including the founder’s.</li>
+            <li><strong>Yours to delete.</strong> Clear everything anytime from the Danger Zone above; it’s removed from this device and the cloud.</li>
+            <li><strong>AI context is opt-in.</strong> Flux AI only sees what you send it. Details in the Privacy Policy.</li>
+          </ul>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+            <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Read the full Privacy Policy →</a>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="spane" id="spane-help">
+        <div class="card">
+          <h3>Planner tour</h3>
+          <div class="srow" style="border:none">
+            <div><div class="slabel">Guided walkthrough</div><div class="ssub">Replay the first-time panel tour (dashboard, calendar, AI, settings, …)</div></div>
+            <button type="button" onclick="resetPlannerTour()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Replay tour</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Keyboard</h3>
+          <div style="font-size:.78rem;color:var(--muted2);line-height:1.75;font-family:'JetBrains Mono',monospace">
+            <div><span style="color:var(--accent)">⌘⇧K</span> / Ctrl+Shift+K — Search everywhere</div>
+            <div><span style="color:var(--accent)">⌘K</span> / Ctrl+K — Command palette</div>
+            <div><span style="color:var(--accent)">N</span> or <span style="color:var(--accent)">T</span> — Focus quick add (from dashboard)</div>
+            <div><span style="color:var(--accent)">Esc</span> — Close search, quick add, palette, modals</div>
+            <div style="margin-top:8px">Flux AI → <strong>Explain my week</strong> summarizes deadlines &amp; priorities (command palette too).</div>
+          </div>
+        </div>
+
+        <!-- Privacy & Legal -->
+        <div class="card">
+          <h3>FAQ</h3>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs Google sign-in?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Guest keeps data on this device only. Google syncs encrypted planner data to your account so you can use multiple devices.</p></details>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with Google to sync your planner to the cloud across devices.</p></details>
+          <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Flux AI uses your chat and optional planner context you send. See the Privacy Policy for details.</p></details>
+        </div>
+
+        <div class="card">
           <h3>Send feedback</h3>
           <p style="font-size:.78rem;color:var(--muted2);margin:0 0 12px;line-height:1.55">Bug reports, ideas, or rough edges — goes to the Flux owner inbox when you’re signed in.</p>
           <button type="button" class="btn-sec" style="width:100%;padding:10px 14px;font-size:.85rem;font-weight:600" onclick="openFluxFeedbackModal()">Open feedback</button>
         </div>
 
+        <!-- For schools & families (kept at the bottom for admin/counselor reference) -->
+        <div class="card" style="border-color:rgba(var(--accent-rgb),.22);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),transparent 55%)">
+          <h3>For schools &amp; families</h3>
+          <p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:0 0 12px">Quick facts for administrators, counselors, and parents. Flux is a <strong>voluntary</strong> student planner—it does not replace official school systems (Canvas, SIS, email from the district).</p>
+          <ul style="margin:0;padding-left:1.15rem;font-size:.78rem;color:var(--text2);line-height:1.7">
+            <li style="margin-bottom:8px"><strong>Voluntary use.</strong> Students choose whether to use it. Teachers and staff are not required to adopt or support it.</li>
+            <li style="margin-bottom:8px"><strong>Data.</strong> Planner data can stay on the device (guest) or sync to a signed-in account (cloud). Optional connections (e.g. Google, Canvas) only use what the student authorizes. Details are in the Privacy Policy.</li>
+            <li style="margin-bottom:8px"><strong>AI.</strong> AI answers can be wrong—double-check anything you rely on.</li>
+            <li style="margin-bottom:8px"><strong>Audience.</strong> Built for <strong>high school</strong> students; younger users should use it with a parent or guardian and school policy in mind.</li>
+            <li style="margin-bottom:8px"><strong>Accessibility.</strong> Look → High contrast, font scaling, and reduce motion help usability; we welcome feedback on barriers.</li>
+            <li style="margin-bottom:8px"><strong>Reliability.</strong> Works best online. Some features need sync or integrations; plan critical deadlines in official school tools too.</li>
+            <li><strong>Contact.</strong> Questions for school review: <a href="mailto:azfermohammed21@gmail.com" style="color:var(--accent)">azfermohammed21@gmail.com</a></li>
+          </ul>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+            <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Privacy Policy →</a>
+            <a href="terms.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Terms of Service →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="spane" id="spane-about">
+        <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+            <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
+              <defs>
+                <linearGradient id="fluxWGAbout" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="var(--flux-wordmark, #E8F4FC)"/><stop offset="55%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/>
+                </linearGradient>
+                <radialGradient id="fluxCGAbout" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffffff"/><stop offset="50%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="fluxGlowAbout" x="-80%" y="-80%" width="260%" height="260%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <text x="0" y="22" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="26" font-weight="800" letter-spacing="-0.04em" fill="url(#fluxWGAbout)">Flux</text>
+              <g transform="translate(0, 27)">
+                <rect x="8" y="0" width="200" height="5.5" rx="2.75" fill="url(#fluxWGAbout)"/>
+                <circle cx="4" cy="2.75" r="3.75" fill="url(#fluxCGAbout)" filter="url(#fluxGlowAbout)"/>
+              </g>
+              <text x="0" y="46" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="0.16em" fill="var(--flux-wordmark-sub, #c5d4e8)" opacity="0.94">Planner</text>
+            </svg></div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px">Flux Planner</div>
+              <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">v2.0 · Your AI-powered school planner</div>
+            </div>
+          </div>
+          <div style="font-size:.82rem;color:var(--muted2);line-height:1.8">
+            Flux is a student-built, student-focused productivity tool designed to make school less overwhelming and more organized. Built with love for high school students everywhere.
+          </div>
+        </div>
         <!-- Developer & about -->
         <div class="card">
           <h3>Developer</h3>
@@ -2577,98 +2699,6 @@
           <div style="margin-top:10px;font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center">Cloud sync · Focus tools · AI where you need it</div>
         </div>
 
-        <div class="card">
-          <h3>Local storage</h3>
-          <p style="font-size:.72rem;color:var(--muted2);margin:0 0 8px;line-height:1.5">Rough size of data this site keeps in your browser (tasks, notes, cache).</p>
-          <div id="storageMeter" style="font-size:.82rem;color:var(--muted2);line-height:1.5">—</div>
-        </div>
-        <div id="fluxStorageRepairMount"></div>
-        <div id="fluxSyncConflictSettingsMount"></div>
-        <div id="fluxClaudeConnectMount"></div>
-        <div class="card" style="background:linear-gradient(135deg,rgba(var(--accent-rgb),.08),rgba(var(--purple-rgb),.04));border-color:rgba(var(--accent-rgb),.2)">
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
-            <div style="flex-shrink:0;line-height:0;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 680 680" width="30" height="30" aria-hidden="true" style="flex:0 0 auto;display:block;overflow:visible"><defs><linearGradient id="fluxMarkAi" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00C2FF" stop-opacity="0.12"/><stop offset="40%" stop-color="#00C2FF"/><stop offset="60%" stop-color="#7C5CFF"/><stop offset="100%" stop-color="#7C5CFF" stop-opacity="0.12"/></linearGradient></defs><g transform="translate(392,340)"><path d="M0,0 C18,-52 148,-52 148,0 C148,52 18,52 0,0 C-52,-110 -252,-110 -252,0 C-252,110 -52,110 0,0 Z" fill="none" stroke="url(#fluxMarkAi)" stroke-width="30" stroke-linecap="round"/></g><circle cx="392" cy="340" r="17" fill="#00C2FF"/><circle cx="612" cy="300" r="14" fill="#00C2FF"/></svg><svg class="flux-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" width="140" height="36" style="max-width:min(160px,42vw);height:auto;display:block;overflow:visible;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" aria-hidden="true" text-rendering="geometricPrecision">
-              <defs>
-                <linearGradient id="fluxWGAbout" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="var(--flux-wordmark, #E8F4FC)"/><stop offset="55%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/>
-                </linearGradient>
-                <radialGradient id="fluxCGAbout" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#ffffff"/><stop offset="50%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-                </radialGradient>
-                <filter id="fluxGlowAbout" x="-80%" y="-80%" width="260%" height="260%">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
-              <text x="0" y="22" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="26" font-weight="800" letter-spacing="-0.04em" fill="url(#fluxWGAbout)">Flux</text>
-              <g transform="translate(0, 27)">
-                <rect x="8" y="0" width="200" height="5.5" rx="2.75" fill="url(#fluxWGAbout)"/>
-                <circle cx="4" cy="2.75" r="3.75" fill="url(#fluxCGAbout)" filter="url(#fluxGlowAbout)"/>
-              </g>
-              <text x="0" y="46" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="0.16em" fill="var(--flux-wordmark-sub, #c5d4e8)" opacity="0.94">Planner</text>
-            </svg></div>
-            <div>
-              <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.3px">Flux Planner</div>
-              <div style="font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">v2.0 · Your AI-powered school planner</div>
-            </div>
-          </div>
-          <div style="font-size:.82rem;color:var(--muted2);line-height:1.8">
-            Flux is a student-built, student-focused productivity tool designed to make school less overwhelming and more organized. Built with love for high school students everywhere.
-          </div>
-        </div>
-        <div class="card">
-          <h3>Planner tour</h3>
-          <div class="srow" style="border:none">
-            <div><div class="slabel">Guided walkthrough</div><div class="ssub">Replay the first-time panel tour (dashboard, calendar, AI, settings, …)</div></div>
-            <button type="button" onclick="resetPlannerTour()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Replay tour</button>
-          </div>
-        </div>
-        <div class="card" id="settingsMasterBacklogCard" style="display:none">
-          <h3>Master backlog</h3>
-          <div class="srow" style="border:none">
-            <div><div class="slabel">Full improvement catalog</div><div class="ssub">Searchable list of roadmap items (AI, calendar, tasks, polish, …)</div></div>
-            <button type="button" onclick="openFluxMasterBacklog()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Open backlog</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Keyboard</h3>
-          <div style="font-size:.78rem;color:var(--muted2);line-height:1.75;font-family:'JetBrains Mono',monospace">
-            <div><span style="color:var(--accent)">⌘⇧K</span> / Ctrl+Shift+K — Search everywhere</div>
-            <div><span style="color:var(--accent)">⌘K</span> / Ctrl+K — Command palette</div>
-            <div><span style="color:var(--accent)">N</span> or <span style="color:var(--accent)">T</span> — Focus quick add (from dashboard)</div>
-            <div><span style="color:var(--accent)">Esc</span> — Close search, quick add, palette, modals</div>
-            <div style="margin-top:8px">Flux AI → <strong>Explain my week</strong> summarizes deadlines &amp; priorities (command palette too).</div>
-          </div>
-        </div>
-
-        <!-- How Flux explains to you (learner profile transparency) -->
-        <div id="fluxLearnerCard"></div>
-
-        <!-- Privacy promise -->
-        <div class="card" style="border-color:rgba(var(--accent-rgb),.28);background:linear-gradient(165deg,rgba(var(--accent-rgb),.08),transparent 60%)">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span style="font-size:1.3rem" aria-hidden="true"></span>
-            <h3 style="margin:0">Your privacy</h3>
-          </div>
-          <p style="font-size:.82rem;color:var(--text2);line-height:1.7;margin:0 0 12px">Flux is private by design. Your tasks, notes, grades, mood entries, and everything else you put in stay <strong>yours</strong>.</p>
-          <ul style="margin:0;padding-left:1.15rem;font-size:.8rem;color:var(--muted2);line-height:1.75">
-            <li><strong>Never sold</strong> or used for advertising — ever.</li>
-            <li><strong>Not shared with your school</strong>, teachers, or counselors unless you choose to (e.g. joining a class).</li>
-            <li><strong>Not visible to Flux’s developer.</strong> Cloud data is protected by per-user row-level security, so your account’s data isn’t readable from other accounts — including the founder’s.</li>
-            <li><strong>Yours to delete.</strong> Clear everything anytime from the Danger Zone above; it’s removed from this device and the cloud.</li>
-            <li><strong>AI context is opt-in.</strong> Flux AI only sees what you send it. Details in the Privacy Policy.</li>
-          </ul>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
-            <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Read the full Privacy Policy →</a>
-          </div>
-        </div>
-
-        <!-- Privacy & Legal -->
-        <div class="card">
-          <h3>FAQ</h3>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs Google sign-in?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Guest keeps data on this device only. Google syncs encrypted planner data to your account so you can use multiple devices.</p></details>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with Google to sync your planner to the cloud across devices.</p></details>
-          <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Flux AI uses your chat and optional planner context you send. See the Privacy Policy for details.</p></details>
-        </div>
         <!-- Quick Stats -->
         <div class="card">
           <h3>Your Flux Stats</h3>
@@ -2684,22 +2714,11 @@
           <button type="button" class="flux-changelog-more" id="changelogMore" style="display:none">Show more</button>
         </div>
 
-        <!-- For schools & families (kept at the bottom for admin/counselor reference) -->
-        <div class="card" style="border-color:rgba(var(--accent-rgb),.22);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),transparent 55%)">
-          <h3>For schools &amp; families</h3>
-          <p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:0 0 12px">Quick facts for administrators, counselors, and parents. Flux is a <strong>voluntary</strong> student planner—it does not replace official school systems (Canvas, SIS, email from the district).</p>
-          <ul style="margin:0;padding-left:1.15rem;font-size:.78rem;color:var(--text2);line-height:1.7">
-            <li style="margin-bottom:8px"><strong>Voluntary use.</strong> Students choose whether to use it. Teachers and staff are not required to adopt or support it.</li>
-            <li style="margin-bottom:8px"><strong>Data.</strong> Planner data can stay on the device (guest) or sync to a signed-in account (cloud). Optional connections (e.g. Google, Canvas) only use what the student authorizes. Details are in the Privacy Policy.</li>
-            <li style="margin-bottom:8px"><strong>AI.</strong> AI answers can be wrong—double-check anything you rely on.</li>
-            <li style="margin-bottom:8px"><strong>Audience.</strong> Built for <strong>high school</strong> students; younger users should use it with a parent or guardian and school policy in mind.</li>
-            <li style="margin-bottom:8px"><strong>Accessibility.</strong> Look → High contrast, font scaling, and reduce motion help usability; we welcome feedback on barriers.</li>
-            <li style="margin-bottom:8px"><strong>Reliability.</strong> Works best online. Some features need sync or integrations; plan critical deadlines in official school tools too.</li>
-            <li><strong>Contact.</strong> Questions for school review: <a href="mailto:azfermohammed21@gmail.com" style="color:var(--accent)">azfermohammed21@gmail.com</a></li>
-          </ul>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
-            <a href="privacy.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Privacy Policy →</a>
-            <a href="terms.html" target="_blank" rel="noopener" class="btn-sec" style="padding:6px 14px;font-size:.78rem;text-decoration:none;display:inline-block">Terms of Service →</a>
+        <div class="card" id="settingsMasterBacklogCard" style="display:none">
+          <h3>Master backlog</h3>
+          <div class="srow" style="border:none">
+            <div><div class="slabel">Full improvement catalog</div><div class="ssub">Searchable list of roadmap items (AI, calendar, tasks, polish, …)</div></div>
+            <button type="button" onclick="openFluxMasterBacklog()" class="btn-sec" style="padding:6px 12px;font-size:.78rem">Open backlog</button>
           </div>
         </div>
       </div>

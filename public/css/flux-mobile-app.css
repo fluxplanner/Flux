@@ -2250,7 +2250,7 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
 }
 
 /* ════════════════════════════════════════════════════════════════
-   MOBILE SETTINGS (≤768px) — iOS grouped list feel; tabs wrap + center
+   MOBILE SETTINGS (≤768px) — iOS grouped list feel; tabs wrap, left-aligned
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px){
   #settings .flux-page-header--lead{ display: none !important; }
@@ -2258,12 +2258,20 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   #settings .stabs,
   #settings.flux-page .flux-settings-stabs,
   #settings.flux-page > .stabs{
-    /* Was flex-wrap:wrap which pushed "Data & info" to a second row centered
-       awkwardly. Use single-row horizontal scroll instead — standard mobile
-       tab-bar pattern. */
+    /* Back to wrapping, now that there are eight sections rather than six.
+       This became single-row horizontal scroll because an earlier wrap left
+       "Data & info" alone on a second row and centred — but that was a
+       centring problem, and justify-content:flex-start below fixes it.
+       Scrolling does not survive eight tabs: measured at 375px the row is
+       619px of buttons inside a 345px strip, and with no edge cue the last
+       three — Your data, Help, About — were simply invisible. Wrapping puts
+       all eight on screen in two left-aligned rows. */
     justify-content: flex-start !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    /* Two rows are too tall to pin under the 50px top bar, and nobody
+       changes section while reading one. */
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -2271,12 +2279,8 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
     padding: 8px 4px !important;
     margin-bottom: 12px !important;
     scrollbar-width: none;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
   }
-  #settings .stabs .stab{ scroll-snap-align: start; }
-  #settings .stabs::-webkit-scrollbar{ display: none; }
+  /* scroll-snap and the scrollbar rule are gone with the sideways scroll. */
   #settings .stab{
     flex: 0 0 auto !important;
     min-height: 36px !important;

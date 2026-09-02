@@ -1740,8 +1740,14 @@ button:active:not(:disabled){transform:scale(.97)!important}
   #topbarTaskPill { font-size: .6rem !important; padding: 3px 8px !important; }
 }
 
-/* ══ ABOUT SPANE ══ */
-#spane-data .srow { align-items: flex-start; }
+/* ══ DATA / HELP / ABOUT SPANES ══
+   These three were one pane until the split, and the rule has to follow the
+   cards: the rows it top-aligns are "Clear this device only" (data), "Replay
+   tour" (help) and "Master backlog" (about). Each puts a two-line description
+   beside a button, which centre alignment leaves visibly floating. */
+#spane-data .srow,
+#spane-help .srow,
+#spane-about .srow { align-items: flex-start; }
 
 /* ══ SETTINGS TAB — sticky on desktop ══ */
 @media(min-width:769px) {
@@ -1936,6 +1942,9 @@ button:active:not(:disabled){transform:scale(.97)!important}
   .stabs{position:sticky!important;top:50px!important;z-index:var(--flux-z-page-sticky)!important;background:var(--bg)!important}
   #settings.flux-page .flux-settings-stabs,
   #settings.flux-page > .stabs{top:50px!important;z-index:var(--flux-z-sidebar)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  /* The phone layout of this strip is owned by flux-mobile-app.css, which
+     sets flex-wrap and overflow-x with !important and loads after this file
+     — anything set here for those two properties is dead on arrival. */
   .stats-row{grid-template-columns:repeat(2,1fr)!important}
   .irow{flex-direction:column!important}
   .irow>*{width:100%!important}
