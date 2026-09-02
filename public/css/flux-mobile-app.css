@@ -461,8 +461,13 @@
   .dash-mob-date-row{ display: flex !important; align-items: center; gap: 10px; margin: 6px 0 2px; }
   .dash-mob-stack{ display: flex !important; flex-direction: column; gap: 14px; margin-top: 12px; }
 
-  /* Hide desktop-only sections on mobile per spec */
-  #countdownCard,
+  /* Hide desktop-only sections on mobile per spec.
+     #countdownCard used to be in this list and is deliberately not any more.
+     Measured at 390px it lays out 358px wide with nothing overflowing — its
+     four figures sit in a 2x2 grid — so there was never a layout reason for
+     it to go, and "how long until my next exam" is close to the reason a
+     student picks the phone up. Hiding it made the phone differ from the
+     laptop for no gain, which is the complaint this answers. */
   #dashClassScheduleWrap,
   #weeklyReviewBanner{ display: none !important; }
 
