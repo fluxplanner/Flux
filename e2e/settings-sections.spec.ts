@@ -122,4 +122,60 @@ test.describe('Settings sections', () => {
     expect(strip.rows).toBeGreaterThan(1);
     expect(strip.clipped).toBe(0);
   });
+
+  test('every control in every section is big enough to tap', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    /*
+     * Hit-tested, not measured. Painted size is not tap size: most of the
+     * small-looking controls here — the switches, the accent swatches — are
+     * drawn at 20-23px on purpose and carry an invisible ::before or ::after
+     * expander that makes them 44. Reading offsetHeight alone reported ~70
+     * failures that were not real; probing with elementFromPoint found the one
+     * that was (Set custom accent, at 35px).
+     *
+     * Every pane is checked, not just the open one, by activating each in turn.
+     */
+    const bad = await page.evaluate(() => {
+      const reach = (el: Element) => {
+        const b = el.getBoundingClientRect();
+        const cx = b.left + b.width / 2;
+        const cy = b.top + b.height / 2;
+        if (cx < 0 || cx > window.innerWidth || cy < 0 || cy > window.innerHeight) return null;
+        let up = 0;
+        let down = 0;
+        for (let d = 0; d <= 22; d++) {
+          const e = document.elementFromPoint(cx, cy - d);
+          if (e === el || el.contains(e)) up = d; else break;
+        }
+        for (let d = 0; d <= 22; d++) {
+          const e = document.elementFromPoint(cx, cy + d);
+          if (e === el || el.contains(e)) down = d; else break;
+        }
+        return up + down;
+      };
+
+      const out: string[] = [];
+      document.querySelectorAll('#settings .spane').forEach((pane) => {
+        const was = pane.classList.contains('active');
+        if (!was) pane.classList.add('active');
+        pane
+          .querySelectorAll('button,select,input:not([type=hidden]),a[href],summary')
+          .forEach((el) => {
+            const h = (el as HTMLElement).offsetHeight;
+            if (!h || !(el as HTMLElement).offsetWidth || h >= 44) return;
+            const v = reach(el);
+            // 43 is what a genuine 44px box reads back: the probe steps +/-21.5
+            // from the centre and counts whole pixels.
+            if (v !== null && v < 43) {
+              out.push(`${pane.id} ${el.id || el.tagName} paint=${h} reach=${v}`);
+            }
+          });
+        if (!was) pane.classList.remove('active');
+      });
+      return out;
+    });
+
+    expect(bad, `controls too small to tap:\n${bad.join('\n')}`).toEqual([]);
+  });
 });

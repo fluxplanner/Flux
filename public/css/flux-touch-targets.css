@@ -72,7 +72,15 @@
   .stab,
   .fsh-desmos-theme,
   .reveal-btn,
-  .fih-season-x {
+  .fih-season-x,
+  /* Carries no class, so every selector above missed it. Hit-testing all eight
+     Settings panes at 390px turned up exactly one control whose real tap area
+     was short — this one, at 35px. Its own flex partner, the colour input, is
+     already 44 via the rule above, so they were a mismatched pair in the same
+     row. Everything else that *measured* small turned out to have an invisible
+     ::before or ::after expander already doing the work: paint size is not tap
+     size, and only the hit test tells them apart. */
+  #setCustomAccentBtn {
     min-height: 44px;
   }
   /* Icon-only buttons need the width too, or they stay a thin sliver. */
