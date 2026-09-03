@@ -167,6 +167,28 @@ test.describe('School Info is usable on a phone', () => {
     expect(added!.days).toBe('B Day');
   });
 
+  /*
+   * A stylesheet contradicting itself. flux-touch-targets.css:70 lists
+   * .tmode-btn among the buttons that must clear 44px, but flux-mobile-app.css
+   * pinned `#timer .tmode-btn { min-height: 38px !important }` — (1,1,0) plus
+   * !important against (0,1,0) — so the accessibility rule had been dead on
+   * that tab since it was written and all eight mode buttons sat at 38.
+   */
+  test('the timer mode buttons honour the size the stylesheet asks for', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('timer'));
+    await expect(page.locator('#timer.panel.active')).toBeVisible();
+
+    const heights = await page.evaluate(() =>
+      [...document.querySelectorAll('#timer .tmode-btn')]
+        .map((b) => (b as HTMLElement).offsetHeight)
+        .filter((h) => h > 0),
+    );
+    expect(heights.length).toBeGreaterThan(0);
+    expect(heights.filter((h) => h < 44)).toEqual([]);
+  });
+
   test('the desktop layout is left alone', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const cols = await page.evaluate(

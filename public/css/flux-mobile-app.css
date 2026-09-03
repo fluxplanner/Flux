@@ -2288,7 +2288,14 @@ body.flux-bulk-mode .task-item:has(.task-bulk-cb:checked){
   }
   #timer .tmode-btn{
     flex-shrink: 0 !important;
-    min-height: 38px !important;
+    /* 44, not 38. flux-touch-targets.css:70 already lists .tmode-btn among the
+       buttons that must clear 44px, but this rule is (1,1,0) *and* !important
+       against that one's (0,1,0), so it won. The accessibility rule has been
+       dead on this tab since it was written, and all eight mode buttons —
+       Focus, Clock, Stopwatch, Countdown, Alarms, and the three session chips
+       — measured 38. A stylesheet that contradicts itself is the bug here;
+       the row simply gets 6px taller. */
+    min-height: 44px !important;
     padding: 8px 16px !important;
     border-radius: 999px !important;
     font-weight: 700 !important;

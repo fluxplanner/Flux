@@ -73,6 +73,12 @@
   .fsh-desmos-theme,
   .reveal-btn,
   .fih-season-x,
+  /* The dismiss X on the "New school year?" banner was already listed above;
+     the button that actually does the thing was not, so on a phone the way
+     out of that banner was 44px and the way in was 32. Same oversight as the
+     accent button below — a control missed while its own neighbour was
+     covered. */
+  .fih-season-go,
   /* Carries no class, so every selector above missed it. Hit-testing all eight
      Settings panes at 390px turned up exactly one control whose real tap area
      was short — this one, at 35px. Its own flex partner, the colour input, is
