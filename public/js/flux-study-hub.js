@@ -204,25 +204,56 @@
   const CONSTANTS = [['Avogadro','6.022×10²³ mol⁻¹'],['Gas constant R','8.314 J·mol⁻¹·K⁻¹'],['Molar volume (STP)','22.7 L·mol⁻¹'],['Faraday','96 485 C·mol⁻¹'],['Std pressure','100 kPa'],['Kw (25 °C)','1.0×10⁻¹⁴'],['Planck h','6.626×10⁻³⁴ J·s'],['Speed of light','2.998×10⁸ m·s⁻¹']];
 
 
+  /* Grouped into umbrellas rather than one flat row of pills. Thirteen
+     subjects side by side is the "Study Tools is overwhelming" complaint in
+     its most literal form: no hierarchy, so nothing tells you where to look.
+     Five umbrellas is a glanceable number; the subjects underneath are only
+     drawn for the umbrella you're in.
+
+     Two subjects folded away in the same pass, both on the same reasoning —
+     they were courses, not fields. Astronomy's three tools (solar system, moon
+     phases, planet facts) are physics; Gov & Civics is history, and History is
+     renamed History & Politics to say so rather than leaving civics looking
+     like a guest. */
+  const GROUPS = [
+    { id:'science',    name:'Science',    ico:'⚗' },
+    { id:'maths-tech', name:'Maths & Computing', ico:'∑' },
+    { id:'humanities', name:'Humanities', ico:'🏛' },
+    { id:'languages-arts', name:'English & Languages', ico:'✒' },
+    { id:'arts',       name:'Arts',       ico:'🎵' },
+  ];
   const SUBJECTS = [
-    { id:'chemistry', name:'Chemistry', ico:'⚗', accent:'#34d0ff', flagship:true },
-    { id:'physics', name:'Physics', ico:'🪐', accent:'#7c8cff' },
-    { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def' },
-    { id:'music', name:'Music', ico:'🎵', accent:'#ff7a59' },
-    { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a' },
-    { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b' },
-    { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9' },
-    { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f' },
-    { id:'english', name:'English', ico:'✒', accent:'#e069b4' },
-    { id:'history', name:'History & Geo', ico:'🏛', accent:'#d8a657' },
-    /* Its own subject rather than a tab under History & Geo: that module is
-       world dates and capital cities, and US government shares nothing with it
-       but the word "history". ⚖ not 🏛 — History already owns the landmark. */
-    { id:'civics', name:'Gov & Civics', ico:'⚖', accent:'#c9a227' },
-    { id:'languages', name:'Languages', ico:'🌍', accent:'#36c5d6' },
-    { id:'astronomy', name:'Astronomy', ico:'🔭', accent:'#a06eff' },
+    { id:'chemistry', name:'Chemistry', ico:'⚗', accent:'#34d0ff', flagship:true, group:'science' },
+    { id:'physics', name:'Physics', ico:'🪐', accent:'#7c8cff', group:'science' },
+    { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a', group:'science' },
+    { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def', group:'maths-tech' },
+    { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9', group:'maths-tech' },
+    { id:'history', name:'History & Politics', ico:'🏛', accent:'#d8a657', group:'humanities' },
+    { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b', group:'humanities' },
+    { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f', group:'humanities' },
+    { id:'english', name:'English', ico:'✒', accent:'#e069b4', group:'languages-arts' },
+    { id:'languages', name:'Languages', ico:'🌍', accent:'#36c5d6', group:'languages-arts' },
+    { id:'music', name:'Music', ico:'🎵', accent:'#ff7a59', group:'arts' },
   ];
   const subjById = (id) => SUBJECTS.find((s) => s.id === id) || SUBJECTS[0];
+  /* Anyone whose saved subject was 'astronomy' or 'civics' — or whose starred
+     list still holds one — must land somewhere real rather than silently
+     falling back to Chemistry. */
+  const MERGED = { astronomy:'physics', civics:'history' };
+  const canonicalSubject = (id) => MERGED[id] || id;
+  const groupOf = (sid) => (subjById(canonicalSubject(sid)) || {}).group || GROUPS[0].id;
+
+  /* Migrate anything already saved on a device. This runs here, not up with the
+     state loader, because MERGED is a const and would still be in its temporal
+     dead zone there. Without it, someone whose last subject was Astronomy would
+     open Study Tools on Chemistry — subjById falls back to SUBJECTS[0] — and a
+     starred Civics would sit in favs forever matching no pill. */
+  state.subject = canonicalSubject(state.subject);
+  if (!subjById(state.subject) || !SUBJECTS.some((s) => s.id === state.subject)) state.subject = SUBJECTS[0].id;
+  state.favs = state.favs
+    .map(canonicalSubject)
+    .filter((id, i, a) => a.indexOf(id) === i && SUBJECTS.some((s) => s.id === id));
+  if (!GROUPS.some((g) => g.id === state.group)) state.group = groupOf(state.subject);
 
   // ── favourites ───────────────────────────────────────────────────────────
   // Twelve subjects in one horizontal rail means the one you actually use is
@@ -252,18 +283,37 @@
       + ` aria-label="${on ? 'Remove' : 'Add'} ${esc(s.name)} ${on ? 'from' : 'to'} favourites">`
       + `${on ? '★' : '☆'}</button></div>`;
   }
+  /* The umbrella row. Five of these replace one thirteen-pill scroller as the
+     top-level choice; the subject rail below then only ever draws the handful
+     inside the umbrella you're in, so nothing is hidden off the right edge. */
+  function groupRowHtml() {
+    const active = state.group || groupOf(state.subject);
+    return GROUPS.map((g) => {
+      const n = SUBJECTS.reduce((t, s) => t + (s.group === g.id ? 1 : 0), 0);
+      return `<button type="button" class="fsh-group${g.id === active ? ' active' : ''}" data-group="${esc(g.id)}"`
+        + ` aria-pressed="${g.id === active ? 'true' : 'false'}">`
+        + `<span class="fsh-group-ico" aria-hidden="true">${g.ico}</span>${esc(g.name)}`
+        + `<span class="fsh-group-n" aria-hidden="true">${n}</span></button>`;
+    }).join('');
+  }
   function railHtml() {
-    const items = orderedSubjects().map(pillHtml);
+    const active = state.group || groupOf(state.subject);
+    const items = orderedSubjects().filter((s) => s.group === active).map(pillHtml);
     /* Count the favourites that actually matched a subject, not state.favs
        .length. The two diverge as soon as favs holds an id with no subject
        behind it — a renamed subject, or a record written by a different
        version — and then the divider lands that many slots too far right,
        sitting after a subject you never starred. Harmless while favourites
        never left the device that wrote them; now that they sync between
-       devices, a stale id is a normal thing to receive. */
-    const favCount = SUBJECTS.reduce((n, s) => n + (isFav(s.id) ? 1 : 0), 0);
+       devices, a stale id is a normal thing to receive.
+
+       Counted within the active umbrella now that the rail only draws one:
+       counting across all eleven would put the divider past the end of a
+       three-subject group. */
+    const inGroup = SUBJECTS.filter((s) => s.group === active);
+    const favCount = inGroup.reduce((n, s) => n + (isFav(s.id) ? 1 : 0), 0);
     // A divider only reads as meaningful when there is something on both sides.
-    if (favCount > 0 && favCount < SUBJECTS.length) {
+    if (favCount > 0 && favCount < inGroup.length) {
       items.splice(favCount, 0, '<span class="fsh-rail-sep" aria-hidden="true"></span>');
     }
     return items.join('');
@@ -271,6 +321,18 @@
   function renderRail() {
     const rail = $('fshRail'); if (!rail) return;
     rail.innerHTML = railHtml();
+    const gr = $('fshGroups'); if (gr) gr.innerHTML = groupRowHtml();
+  }
+  /* Switching umbrella lands you on a subject inside it rather than leaving the
+     stage showing something from the group you just left. Your starred subject
+     wins if one is in there, otherwise the first. */
+  function selectGroup(gid) {
+    if (!GROUPS.some((g) => g.id === gid)) return;
+    state.group = gid; save();
+    const inGroup = SUBJECTS.filter((s) => s.group === gid);
+    if (!inGroup.length) { renderRail(); return; }
+    const target = inGroup.find((s) => isFav(s.id)) || inGroup[0];
+    selectSubject(target.id);
   }
 
   function hexRgb(hex) { const v = hex.replace('#', ''); const h = v.length === 3 ? v.split('').map((c) => c + c).join('') : v; const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
@@ -709,8 +771,23 @@
     // cause of a late resize — icon swaps, web fonts, zoom, window width —
     // rather than special-casing the one we happened to find.
     const reflow = () => { syncTabSlider(); positionGlide(); };
-    if (window.ResizeObserver) { try { new ResizeObserver(reflow).observe(tabs); } catch (e) {} }
+    if (window.ResizeObserver) {
+      try {
+        const ro = new ResizeObserver(reflow);
+        ro.observe(tabs);
+        /* Every tab, not just the strip. The strip is width:100% so its own box
+           never changes when a tab inside it shrinks — it only gains scroll —
+           so observing the container alone caught the icon swap purely by
+           luck, via the callback ResizeObserver fires on first observe. That
+           race left chemistry's "Tools" tab 3px out. Observing the buttons
+           makes it deterministic: any tab that resizes repositions the
+           highlight. */
+        tabs.querySelectorAll('.fsh-chem-tab').forEach((b) => ro.observe(b));
+      } catch (e) {}
+    }
     requestAnimationFrame(() => requestAnimationFrame(reflow));
+    // Web fonts land after first paint and change every tab's width at once.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(reflow).catch(() => {});
     let grab = null;
     // scroll-behavior:smooth on the strip makes a dragged thumb lag behind the
     // pointer, so jumps are done with it temporarily disabled.
@@ -779,8 +856,14 @@
     if (state.subject === 'chemistry') renderChem(); else renderRegistered(state.subject, picked);
   }
   function selectSubject(id, picked) {
-    state.subject = id; searchQ = ''; save();
+    /* Anything still asking for 'astronomy' or 'civics' — a saved preference, a
+       deep link, a search hit — resolves to the subject that absorbed it
+       instead of falling through subjById's default and silently landing on
+       Chemistry. */
+    id = canonicalSubject(id);
+    state.subject = id; state.group = groupOf(id); searchQ = ''; save();
     const si = $('fshSearch'); if (si) si.value = ''; const c = $('fshSearchClear'); if (c) c.hidden = true;
+    renderRail();
     document.querySelectorAll('#fshRail .fsh-pill').forEach((p) => p.classList.toggle('active', p.dataset.sub === id));
     const a = document.querySelector('#fshRail .fsh-pill.active'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
     renderStage(picked);
@@ -791,6 +874,7 @@
     const host = $('stSections'); if (!host) return false;
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
     host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
+      <div class="fsh-group-row" id="fshGroups" role="tablist" aria-label="Subject areas">${groupRowHtml()}</div>
       <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${railHtml()}</div></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;
     wire(); return true;
@@ -803,6 +887,10 @@
       const f = e.target.closest('.fsh-fav-btn');
       if (f) { e.stopPropagation(); toggleFav(f.dataset.fav); return; }
       const p = e.target.closest('.fsh-pill'); if (p) selectSubject(p.dataset.sub);
+    });
+    const groups = $('fshGroups');
+    if (groups) groups.addEventListener('click', (e) => {
+      const g = e.target.closest('.fsh-group'); if (g) selectGroup(g.dataset.group);
     });
     const si = $('fshSearch'), sc = $('fshSearchClear');
     si.addEventListener('input', () => { searchQ = si.value; sc.hidden = !searchQ; renderStage(); });

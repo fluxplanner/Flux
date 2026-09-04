@@ -23,8 +23,9 @@ import { gotoScenario } from './helpers';
  * positional: tab 1 of a subject can be perfect while tab 9 is 30px out.
  */
 
-const SUBJECTS = ['chemistry', 'physics', 'math', 'music', 'biology', 'psychology',
-  'civics', 'cs', 'econ', 'english', 'history', 'languages', 'astronomy'];
+// Astronomy folded into Physics and Civics into History, so eleven, not thirteen.
+const SUBJECTS = ['chemistry', 'physics', 'biology', 'math', 'cs',
+  'history', 'psychology', 'econ', 'english', 'languages', 'music'];
 
 test('the highlight sits under the tab it highlights, on every sub-tab of every subject', async ({ page }) => {
   test.setTimeout(300_000);

@@ -67,6 +67,36 @@
 .fsh-search .fsh-search-clear:hover { background:rgba(255,255,255,.12); }
 .fsh-search .fsh-search-clear[hidden] { display:none !important; }
 
+/* ── UMBRELLA ROW ──────────────────────────────────────────────────────────
+   The top-level choice, above the subject rail. Deliberately a wrapping *row*
+   rather than another horizontal scroller: five items fit at every width Flux
+   supports, and a second sideways-scrolling strip would have recreated the
+   very problem this replaces — subjects hidden off the right edge. */
+.fsh-group-row { display:flex; flex-wrap:wrap; gap:8px; padding:0 26px; margin:18px 0 2px; }
+.fsh-group {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:9px 15px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--fsh-line); background:rgba(10,14,24,.42);
+  color:var(--fsh-ink-2); font-size:13px; font-weight:650;
+  /* 44px so it clears the same thumb minimum the rest of Flux is held to. */
+  min-height:44px;
+  transition:color .18s, background .18s, border-color .18s;
+}
+.fsh-group:hover { color:var(--fsh-ink); border-color:rgba(var(--fsh-accent-rgb),.45); }
+.fsh-group.active {
+  color:#04121b; border-color:transparent;
+  background:linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%));
+  box-shadow:0 8px 20px -8px rgba(var(--fsh-accent-rgb),.6);
+}
+.fsh-group-ico { font-size:15px; line-height:0; }
+/* The count is orientation, not decoration: it says how much sits behind an
+   umbrella before you commit to opening it. */
+.fsh-group-n { font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; background:rgba(255,255,255,.12); }
+.fsh-group.active .fsh-group-n { background:rgba(0,0,0,.16); }
+[data-theme="light"] .fsh-group { background:rgba(255,255,255,.7); }
+[data-theme="light"] .fsh-group-n { background:rgba(0,0,0,.08); }
+@media (max-width:768px) { .fsh-group-row { padding:0 16px; gap:6px; } .fsh-group { padding:9px 12px; font-size:12.5px; } }
+
 /* ── SUBJECT RAIL ──────────────────────────────────────────────────────── */
 .fsh-rail-wrap { position:relative; margin:18px 0 4px; }
 /* scroll-padding, not just padding: scrollIntoView() aligns to the scrollport

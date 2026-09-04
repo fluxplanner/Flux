@@ -40,17 +40,46 @@ test.describe('Gov & Civics and Psychology are real subjects', () => {
     await expect(page.locator('.fsh-pill').first()).toBeVisible();
   });
 
-  test('Gov & Civics has its own pill, separate from History & Geo', async ({ page }) => {
-    const pills = await page.evaluate(() =>
-      [...document.querySelectorAll('.fsh-pill')].map((p) => (p.textContent || '').trim()),
-    );
-    expect(pills.some((p) => /Gov & Civics/.test(p))).toBe(true);
-    // Still its own subject, not folded into the timeline-and-capitals module.
-    expect(pills.some((p) => /History & Geo/.test(p))).toBe(true);
+  /* Reversed deliberately. Civics used to be its own pill on the argument that
+     world dates and capital cities share nothing with US government — right
+     about the content, wrong about the shelf. A thirteen-pill rail was the
+     bigger problem, so civics now lives under History, renamed History &
+     Politics to say so rather than leaving it looking like a guest. */
+  test('Gov & Civics lives under History & Politics, with no pill of its own', async ({ page }) => {
+    /* Re-query the umbrella each time rather than iterating one NodeList:
+       choosing a group re-renders the group row, which detaches the nodes a
+       held list is still pointing at, so every click after the first would
+       land on nothing and the sweep would only ever see Science. */
+    const pills: string[] = [];
+    for (const g of ['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']) {
+      pills.push(...await page.evaluate((gid) => {
+        (document.querySelector(`#fshGroups .fsh-group[data-group="${gid}"]`) as HTMLElement).click();
+        return [...document.querySelectorAll('#fshRail .fsh-pill')].map(
+          (p) => (p.textContent || '').trim());
+      }, g));
+    }
+    expect(pills.some((p) => /Gov & Civics/.test(p))).toBe(false);
+    expect(pills.some((p) => /History & Politics/.test(p))).toBe(true);
+    // The old name is gone too, so nothing still reads "Geo".
+    expect(pills.some((p) => /History & Geo/.test(p))).toBe(false);
   });
 
   test('Civics renders branches, amendments and case law', async ({ page }) => {
-    const { tabs, text } = await stageOf(page, 'civics');
+    /* History's own tools register first, so the subject opens on Timeline.
+       Click through to Branches rather than asserting against whatever tab
+       happens to be default. */
+    const { tabs, text } = await page.evaluate(async () => {
+      (window as unknown as { fluxStudyHub: Hub }).fluxStudyHub.selectSubject('history');
+      await new Promise((r) => setTimeout(r, 400));
+      const branches = [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
+        .find((t) => /Branches/.test(t.textContent || '')) as HTMLElement | undefined;
+      branches?.click();
+      await new Promise((r) => setTimeout(r, 400));
+      const tabNames = [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
+        .map((t) => (t.textContent || '').trim());
+      const body = document.querySelector('#fshBody') || document.querySelector('.fsh-stage');
+      return { tabs: tabNames, text: (body?.textContent || '').replace(/\s+/g, ' ').trim() };
+    });
     expect(tabs).toEqual(expect.arrayContaining(['Branches', 'Amendments', 'Landmark cases', 'Drill']));
     // Content, not just chrome — the default tab must actually paint.
     expect(text.length).toBeGreaterThan(800);

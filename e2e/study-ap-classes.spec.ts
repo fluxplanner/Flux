@@ -104,14 +104,18 @@ test.describe('AP course tools sit on their parent subject', () => {
   });
 
   test('none of the three added a pill to the rail', async ({ page }) => {
-    const pills = await page.evaluate(() =>
-      [...document.querySelectorAll('#fshRail .fsh-pill')].map(
-        (e) => (e as HTMLElement).dataset.sub || '',
-      ),
-    );
-    // 13 = the twelve originals plus civics. Calculus, rhetoric and orchestra
-    // deliberately ride on math, english and music instead.
-    expect(pills).toHaveLength(13);
+    // The rail is per-umbrella now, so sweep all five to see every pill.
+    const pills: string[] = [];
+    for (const g of ['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']) {
+      pills.push(...await page.evaluate((gid) => {
+        (document.querySelector(`#fshGroups .fsh-group[data-group="${gid}"]`) as HTMLElement).click();
+        return [...document.querySelectorAll('#fshRail .fsh-pill')].map(
+          (e) => (e as HTMLElement).dataset.sub || '');
+      }, g));
+    }
+    // 11 = the twelve originals, less astronomy (into physics) and civics (into
+    // history). Calculus, rhetoric and orchestra ride on math, english, music.
+    expect(pills).toHaveLength(11);
     expect(pills).not.toContain('calculus');
     expect(pills).not.toContain('rhetoric');
     expect(pills).not.toContain('orchestra');

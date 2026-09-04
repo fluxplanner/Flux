@@ -1,9 +1,9 @@
 {
-  "build": "5a64648b",
+  "build": "e057f5b9",
   "assets": [
     "public/bundles/flux-vendor.fb1e7776.js",
     "public/bundles/flux-core.814f10bd.js",
-    "public/bundles/flux-features.d0a98f71.js",
-    "public/bundles/flux.2597e182.css"
+    "public/bundles/flux-features.ea9573ba.js",
+    "public/bundles/flux.b51e66ad.css"
   ]
 }

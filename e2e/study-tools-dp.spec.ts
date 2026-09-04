@@ -10,30 +10,41 @@ test.describe('Study tools — DP expansion', () => {
     // The Study Hub rebuild replaced the legacy #stSubjectHost IB sections with a
     // native subject rail (#fshRoot/#fshRail). Assert by data-sub so the icon glyph
     // inside each pill doesn't pollute the comparison.
-    const { hubRendered, subjects } = await page.evaluate(() => ({
+    /* The rail is second-level now. Thirteen pills in one scroller was the
+       "overwhelming" complaint in its most literal form, so the top level is
+       five umbrellas and the rail draws only the subjects inside the open one. */
+    const { hubRendered, groups, subjects } = await page.evaluate(() => ({
       hubRendered: !!document.getElementById('fshRoot'),
+      groups: [...document.querySelectorAll('#fshGroups .fsh-group')].map(
+        (e) => (e as HTMLElement).dataset.group || '',
+      ),
       subjects: [...document.querySelectorAll('#fshRail .fsh-pill')].map(
         (e) => (e as HTMLElement).dataset.sub || '',
       ),
     }));
     expect(hubRendered, 'native study hub (#fshRoot) did not render').toBe(true);
-    expect(subjects).toEqual([
-      'chemistry',
-      'physics',
-      'math',
-      'music',
-      'biology',
-      'psychology',
-      'cs',
-      'econ',
-      'english',
-      'history',
-      // Gov & Civics sits next to History & Geo but is deliberately not part of
-      // it — that module is world dates and capital cities.
-      'civics',
-      'languages',
-      'astronomy',
+    expect(groups).toEqual(['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']);
+    // Opens on Science, so the rail shows Science and nothing else.
+    expect(subjects).toEqual(['chemistry', 'physics', 'biology']);
+
+    // Every subject is reachable through exactly one umbrella, and the two
+    // folded-away ids are gone rather than left orphaned in the rail.
+    const all: string[] = [];
+    for (const g of ['science', 'maths-tech', 'humanities', 'languages-arts', 'arts']) {
+      const inGroup = await page.evaluate((gid) => {
+        const btn = document.querySelector(`#fshGroups .fsh-group[data-group="${gid}"]`) as HTMLElement;
+        btn.click();
+        return [...document.querySelectorAll('#fshRail .fsh-pill')].map(
+          (p) => (p as HTMLElement).dataset.sub || '');
+      }, g);
+      all.push(...inGroup);
+    }
+    expect(all.slice().sort()).toEqual([
+      'biology', 'chemistry', 'cs', 'econ', 'english',
+      'history', 'languages', 'math', 'music', 'physics', 'psychology',
     ]);
+    expect(all).not.toContain('astronomy');
+    expect(all).not.toContain('civics');
   });
 
   test('psychology is its own subject, not a biology sub-tab', async ({ page }) => {

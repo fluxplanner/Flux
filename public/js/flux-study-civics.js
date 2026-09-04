@@ -193,7 +193,11 @@
       ask();
     }
 
-    H.register('civics', [
+    // Registers under History, which is renamed "History & Politics" to mean
+    // it. The header above argues for civics being separate from world dates
+    // and capitals — right about the content, wrong about the shelf: a
+    // thirteen-pill rail was the bigger problem.
+    H.register('history', [
       { id: 'structure', name: 'Branches', icon: '🏛', desc: 'three branches checks balances bill becomes law congress president courts', render: renderStructure },
       { id: 'amendments', name: 'Amendments', icon: '📜', desc: 'bill of rights amendments constitution speech search vote', render: renderAmendments,
         ai: { name: 'amendment', description: 'What an amendment protects. Arg: number or right, e.g. "4th" or "speech".', params: { query: 'string' },

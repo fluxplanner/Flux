@@ -72,7 +72,10 @@
       body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">Planet facts</h3><div class="fsh-formula-list">${PLANETS.map((p) => `<div class="fsh-formula"><div class="fx" style="font-size:14px;font-family:inherit"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${p.c};margin-right:6px"></span>${esc(p.n)}</div><div class="nm" style="margin-top:4px">${p.p} yr orbit · ${p.moons} moons · ${p.d}× Earth</div><div class="nm" style="color:var(--fsh-ink-2)">${esc(p.fact)}</div></div>`).join('')}</div></div>`;
     }
 
-    H.register('astronomy', [
+    // Registers under Physics rather than as its own subject: three tools never
+    // justified a pill in a rail that was already too long, and orbits are
+    // physics. Tool ids are unchanged, so a saved choice still resolves.
+    H.register('physics', [
       { id: 'orrery', name: 'Solar system', icon: '🪐', desc: 'solar system planets orbit orrery sun', render: renderOrrery, ai: { name: 'planetInfo', description: 'Facts about a planet. Arg: planet name.', params: { planet: 'string' }, run: (a) => { const p = PLANETS.find((x) => x.n.toLowerCase() === String(a).trim().toLowerCase()); if (!p) throw new Error('Unknown planet'); return { name: p.n, orbitYears: p.p, diameterEarths: p.d, moons: p.moons, day: p.day, fact: p.fact }; } } },
       { id: 'moon', name: 'Moon phases', icon: '🌙', desc: 'moon phases lunar cycle new full', render: renderMoon },
       { id: 'facts', name: 'Planet facts', icon: '✨', desc: 'planet facts reference astronomy', render: renderFacts },
