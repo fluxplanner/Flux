@@ -28,6 +28,9 @@ test.describe('Study tools — DP expansion', () => {
       'econ',
       'english',
       'history',
+      // Gov & Civics sits next to History & Geo but is deliberately not part of
+      // it — that module is world dates and capital cities.
+      'civics',
       'languages',
       'astronomy',
     ]);

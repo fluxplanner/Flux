@@ -215,6 +215,10 @@
     { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f' },
     { id:'english', name:'English', ico:'✒', accent:'#e069b4' },
     { id:'history', name:'History & Geo', ico:'🏛', accent:'#d8a657' },
+    /* Its own subject rather than a tab under History & Geo: that module is
+       world dates and capital cities, and US government shares nothing with it
+       but the word "history". ⚖ not 🏛 — History already owns the landmark. */
+    { id:'civics', name:'Gov & Civics', ico:'⚖', accent:'#c9a227' },
     { id:'languages', name:'Languages', ico:'🌍', accent:'#36c5d6' },
     { id:'astronomy', name:'Astronomy', ico:'🔭', accent:'#a06eff' },
   ];
