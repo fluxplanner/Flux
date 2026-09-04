@@ -113,10 +113,12 @@ test.describe('AP course tools sit on their parent subject', () => {
           (e) => (e as HTMLElement).dataset.sub || '');
       }, g));
     }
-    // 13 = the twelve originals, less astronomy (folded into physics), plus
-    // Visual Arts and Global Politics. Calculus, rhetoric and orchestra ride on
-    // math, english and music rather than adding pills of their own.
-    expect(pills).toHaveLength(13);
+    /* 15 = the twelve originals, less astronomy (folded into physics) and less
+       the shared Languages pill, plus Visual Arts, Global Politics, and French,
+       German and Spanish as subjects in their own right. Calculus, rhetoric and
+       orchestra still ride on math, english and music rather than adding pills
+       of their own, which is what this test is actually about. */
+    expect(pills).toHaveLength(15);
     expect(pills).not.toContain('calculus');
     expect(pills).not.toContain('rhetoric');
     expect(pills).not.toContain('orchestra');

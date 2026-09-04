@@ -40,11 +40,15 @@ test.describe('Study tools — DP expansion', () => {
       all.push(...inGroup);
     }
     expect(all.slice().sort()).toEqual([
-      'art', 'biology', 'chemistry', 'cs', 'econ', 'english', 'glopo',
-      'history', 'languages', 'math', 'music', 'physics', 'psychology',
+      'art', 'biology', 'chemistry', 'cs', 'econ', 'english', 'french',
+      'german', 'glopo', 'history', 'math', 'music', 'physics', 'psychology',
+      'spanish',
     ]);
     expect(all).not.toContain('astronomy');
     expect(all).not.toContain('civics');
+    // The shared Languages pill split into three. A leftover here would mean
+    // the MERGED migration is pointing at a subject that still exists.
+    expect(all).not.toContain('languages');
   });
 
   test('psychology is its own subject, not a biology sub-tab', async ({ page }) => {

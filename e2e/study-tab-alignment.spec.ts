@@ -23,9 +23,14 @@ import { gotoScenario } from './helpers';
  * positional: tab 1 of a subject can be perfect while tab 9 is 30px out.
  */
 
-// Astronomy folded into Physics and Civics into History; Visual Arts added.
+/* Astronomy folded into Physics and Civics into Global Politics; Visual Arts
+   added; the shared Languages pill split into French, German and Spanish. The
+   three language pills are worth sweeping specifically: their tabs carry 🔍 🗣
+   📋 💬, all four of which iconify swaps, so they are exactly the shape of tab
+   strip this test exists for. */
 const SUBJECTS = ['chemistry', 'physics', 'biology', 'math', 'cs',
-  'history', 'glopo', 'psychology', 'econ', 'english', 'languages', 'music', 'art'];
+  'history', 'glopo', 'psychology', 'econ', 'english', 'french', 'german',
+  'spanish', 'music', 'art'];
 
 /*
  * The snap, specifically.
@@ -129,17 +134,30 @@ test('the highlight sits under the tab it highlights, on every sub-tab of every 
           w.fluxStudyHub.selectSubject(s);
           await new Promise((res) => setTimeout(res, 650));
         }
-        const g = document.getElementById('fshTabGlide');
-        const a = document.querySelector('#fshChemTabs .fsh-chem-tab.active') as HTMLElement;
-        if (!g || !a) return { tab: '?', dLeft: 999, dWidth: 999 };
-        const gr = g.getBoundingClientRect(), ar = a.getBoundingClientRect();
-        // Guard against measuring a collapsed strip and "passing" on zeros.
-        if (ar.width < 2) return { tab: (a.textContent || '').trim(), dLeft: 999, dWidth: 999 };
-        return {
-          tab: (a.textContent || '').trim().slice(0, 28),
-          dLeft: Math.round(gr.left - ar.left),
-          dWidth: Math.round(gr.width - ar.width),
+        const measure = () => {
+          const g = document.getElementById('fshTabGlide');
+          const a = document.querySelector('#fshChemTabs .fsh-chem-tab.active') as HTMLElement;
+          if (!g || !a) return { tab: '?', dLeft: 999, dWidth: 999 };
+          const gr = g.getBoundingClientRect(), ar = a.getBoundingClientRect();
+          // Guard against measuring a collapsed strip and "passing" on zeros.
+          if (ar.width < 2) return { tab: (a.textContent || '').trim(), dLeft: 999, dWidth: 999 };
+          return {
+            tab: (a.textContent || '').trim().slice(0, 28),
+            dLeft: Math.round(gr.left - ar.left),
+            dWidth: Math.round(gr.width - ar.width),
+          };
         };
+        /* Measured twice, and only a disagreement that survives the second read
+           counts. Under a loaded machine this occasionally catches the strip
+           mid-layout and reports one tab as 16px out — which then passes on
+           every rerun, because the highlight was on its way to the right place
+           rather than parked in the wrong one. The defect being guarded is a
+           permanent misalignment, and a permanent misalignment cannot be
+           settled by waiting, so a second read cannot hide one. */
+        const first = measure();
+        if (Math.abs(first.dLeft) <= 1 && Math.abs(first.dWidth) <= 1) return first;
+        await new Promise((res) => setTimeout(res, 300));
+        return measure();
       }, { idx: i, s: sid });
 
       if (!r) continue;

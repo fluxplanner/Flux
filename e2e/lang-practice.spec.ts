@@ -6,9 +6,11 @@ import { gotoScenario } from './helpers';
  *
  * Three things here are worth guarding, and none of them is "does it render".
  *
- * 1. THE DECK IS THE PRODUCT. 221 rows, each [English, Spanish, French]. A
- *    half-filled row means a question with no answer, and it would only show
- *    up when a student happened to be dealt that word. Checked in bulk.
+ * 1. THE DECK IS THE PRODUCT. 221 rows, each [English, Spanish, French,
+ *    German]. A half-filled row means a question with no answer, and it would
+ *    only show up when a student happened to be dealt that word. Checked in
+ *    bulk — the German column arrived long after the other two, and a gap in
+ *    it would be invisible to anyone revising Spanish.
  *
  * 2. MARKING HAS TO BE FAIR BOTH WAYS. Accept a missing accent, but say so —
  *    rejecting it is hostile, silently accepting it teaches a spelling that
@@ -19,12 +21,15 @@ import { gotoScenario } from './helpers';
  *    is exactly the kind of rule that quietly regresses to last-write-wins.
  */
 
-async function openPractice(page: import('@playwright/test').Page) {
+/* The card is pinned to whichever language subject opened it, so the subject
+   is now a parameter. Spanish by default, which keeps every `lang: 'es'`
+   assumption below meaning what it did when there was one shared pill. */
+async function openPractice(page: import('@playwright/test').Page, subject = 'spanish') {
   await gotoScenario(page, 'student-semester');
   await page.waitForFunction(() => !!(window as any).FluxLangPractice, null, { timeout: 15000 });
   await page.evaluate(() => (window as any).nav?.('toolbox'));
   await page.waitForTimeout(800);
-  await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('languages'));
+  await page.evaluate((sid) => (window as any).fluxStudyHub.selectSubject(sid), subject);
   await page.waitForTimeout(600);
   /* selectSubject's second argument does not switch the tool tab — it only
      hints which one to restore. Clicking the tab is what a student does and
@@ -34,7 +39,7 @@ async function openPractice(page: import('@playwright/test').Page) {
 }
 
 test.describe('Language practice', () => {
-  test('every deck row carries English, Spanish and French', async ({ page }) => {
+  test('every deck row carries English, Spanish, French and German', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.waitForFunction(() => !!(window as any).FluxLangPractice, null, { timeout: 15000 });
 
@@ -48,7 +53,7 @@ test.describe('Language practice', () => {
         const seen = new Set<string>();
         P.words(t.id).forEach((w: string[], i: number) => {
           total++;
-          if (w.length !== 3 || !w[0] || !w[1] || !w[2]) holes.push(`${t.id}[${i}]`);
+          if (w.length !== 4 || !w[0] || !w[1] || !w[2] || !w[3]) holes.push(`${t.id}[${i}]`);
           // A repeated English prompt inside one theme makes multiple choice
           // unanswerable: two options would both be right.
           if (seen.has(w[0])) dupes.push(`${t.id}: ${w[0]}`);
@@ -216,13 +221,14 @@ test.describe('Language practice', () => {
     expect(res.stats.seen).toBe(40);
   });
 
-  test('switching language and mode survives a reload', async ({ page }) => {
-    await openPractice(page);
+  /* The language used to be a toggle inside the card. It is the subject now,
+     so this asserts the thing that replaced it: opening the card under French
+     puts it in French, and there is no second control offering to disagree
+     with the pill you just pressed. Mode is still the card's own setting, so
+     it still has to survive a reload. */
+  test('the card takes its language from the subject, and mode survives a reload', async ({ page }) => {
+    await openPractice(page, 'french');
 
-    await page.evaluate(() => {
-      document.querySelector<HTMLElement>('#fluxLangPractice [data-l="fr"]')!.click();
-    });
-    await page.waitForTimeout(300);
     await page.evaluate(() => {
       document.querySelector<HTMLElement>('#fluxLangPractice [data-m="type"]')!.click();
     });
@@ -230,16 +236,31 @@ test.describe('Language practice', () => {
 
     const before = await page.evaluate(() => {
       const s = (window as any).FluxLangPractice._state();
-      return { lang: s.lang, mode: s.mode, hint: document.querySelector('.flp-hint')?.textContent };
+      return {
+        lang: s.lang,
+        mode: s.mode,
+        hint: document.querySelector('.flp-hint')?.textContent,
+        langToggle: !!document.getElementById('flpLang'),
+      };
     });
     expect(before.lang).toBe('fr');
     expect(before.mode).toBe('type');
     expect(before.hint).toContain('French');
+    expect(before.langToggle).toBe(false);
 
-    await openPractice(page);
+    await openPractice(page, 'french');
     const after = await page.evaluate(() => (window as any).FluxLangPractice._state());
     expect(after.lang).toBe('fr');
     expect(after.mode).toBe('type');
+
+    // Same card, other subject: German, without touching anything inside it.
+    await openPractice(page, 'german');
+    const german = await page.evaluate(() => ({
+      lang: (window as any).FluxLangPractice._state().lang,
+      hint: document.querySelector('.flp-hint')?.textContent,
+    }));
+    expect(german.lang).toBe('de');
+    expect(german.hint).toContain('German');
   });
 
   test('a hostile answer is never executed', async ({ page }) => {

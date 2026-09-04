@@ -10,12 +10,16 @@
    placed to do — catch you in the ten minutes before the lesson and ask —
    was missing entirely.
 
-   ONE TABLE, TWO LANGUAGES
-   ------------------------
-   Each row is [English, Spanish, French]. Keeping both languages on the same
-   row is not a space trick: two separate decks drift, and a student taking
-   both then gets "the timetable" in one and something subtly different in the
-   other. One row, one meaning.
+   ONE TABLE, THREE LANGUAGES
+   --------------------------
+   Each row is [English, Spanish, French, German]. Keeping all three on the
+   same row is not a space trick: separate decks drift, and a student taking
+   two of them then gets "the timetable" in one and something subtly different
+   in the other. One row, one meaning.
+
+   German arrived when French, German and Spanish became subjects in their own
+   right. Its column carries der/die/das for the same reason the other two
+   carry their articles — gender is what people actually lose marks on.
 
    MARKING
    -------
@@ -44,249 +48,251 @@
      on, so it is never stripped out. */
   var THEMES = [
     { id: 'school', name: 'School', words: [
-      ['the teacher (m)', 'el profesor', 'le professeur'],
-      ['the student (m)', 'el estudiante', "l'étudiant"],
-      ['the classroom', 'el aula', 'la salle de classe'],
-      ['the timetable', 'el horario', "l'emploi du temps"],
-      ['the homework', 'los deberes', 'les devoirs'],
-      ['the exam', 'el examen', "l'examen"],
-      ['the mark / grade', 'la nota', 'la note'],
-      ['the book', 'el libro', 'le livre'],
-      ['the pen', 'el bolígrafo', 'le stylo'],
-      ['the pencil', 'el lápiz', 'le crayon'],
-      ['the notebook', 'el cuaderno', 'le cahier'],
-      ['the bag', 'la mochila', 'le sac'],
-      ['the library', 'la biblioteca', 'la bibliothèque'],
-      ['the playground', 'el patio', 'la cour'],
-      ['the lesson', 'la clase', 'le cours'],
-      ['the break', 'el recreo', 'la récréation'],
-      ['to learn', 'aprender', 'apprendre'],
-      ['to study', 'estudiar', 'étudier'],
-      ['to write', 'escribir', 'écrire'],
-      ['to read', 'leer', 'lire'],
-      ['difficult', 'difícil', 'difficile'],
-      ['easy', 'fácil', 'facile'],
+      ['the teacher (m)', 'el profesor', 'le professeur', 'der Lehrer'],
+      ['the student (m)', 'el estudiante', "l'étudiant", 'der Schüler'],
+      ['the classroom', 'el aula', 'la salle de classe', 'das Klassenzimmer'],
+      ['the timetable', 'el horario', "l'emploi du temps", 'der Stundenplan'],
+      ['the homework', 'los deberes', 'les devoirs', 'die Hausaufgaben'],
+      ['the exam', 'el examen', "l'examen", 'die Prüfung'],
+      ['the mark / grade', 'la nota', 'la note', 'die Note'],
+      ['the book', 'el libro', 'le livre', 'das Buch'],
+      ['the pen', 'el bolígrafo', 'le stylo', 'der Kugelschreiber'],
+      ['the pencil', 'el lápiz', 'le crayon', 'der Bleistift'],
+      ['the notebook', 'el cuaderno', 'le cahier', 'das Heft'],
+      ['the bag', 'la mochila', 'le sac', 'die Tasche'],
+      ['the library', 'la biblioteca', 'la bibliothèque', 'die Bibliothek'],
+      ['the playground', 'el patio', 'la cour', 'der Schulhof'],
+      ['the lesson', 'la clase', 'le cours', 'die Stunde'],
+      ['the break', 'el recreo', 'la récréation', 'die Pause'],
+      ['to learn', 'aprender', 'apprendre', 'lernen'],
+      ['to study', 'estudiar', 'étudier', 'studieren'],
+      ['to write', 'escribir', 'écrire', 'schreiben'],
+      ['to read', 'leer', 'lire', 'lesen'],
+      ['difficult', 'difícil', 'difficile', 'schwierig'],
+      ['easy', 'fácil', 'facile', 'einfach'],
     ] },
     { id: 'family', name: 'Family', words: [
-      ['the family', 'la familia', 'la famille'],
-      ['the mother', 'la madre', 'la mère'],
-      ['the father', 'el padre', 'le père'],
-      ['the sister', 'la hermana', 'la sœur'],
-      ['the brother', 'el hermano', 'le frère'],
-      ['the daughter', 'la hija', 'la fille'],
-      ['the son', 'el hijo', 'le fils'],
-      ['the grandmother', 'la abuela', 'la grand-mère'],
-      ['the grandfather', 'el abuelo', 'le grand-père'],
-      ['the aunt', 'la tía', 'la tante'],
-      ['the uncle', 'el tío', "l'oncle"],
-      ['the cousin (f)', 'la prima', 'la cousine'],
-      ['the friend (m)', 'el amigo', "l'ami"],
-      ['the neighbour (m)', 'el vecino', 'le voisin'],
-      ['the child', 'el niño', "l'enfant"],
-      ['married', 'casado', 'marié'],
-      ['older', 'mayor', 'plus âgé'],
-      ['younger', 'menor', 'plus jeune'],
-      ['to love', 'querer', 'aimer'],
-      ['to live', 'vivir', 'habiter'],
+      ['the family', 'la familia', 'la famille', 'die Familie'],
+      ['the mother', 'la madre', 'la mère', 'die Mutter'],
+      ['the father', 'el padre', 'le père', 'der Vater'],
+      ['the sister', 'la hermana', 'la sœur', 'die Schwester'],
+      ['the brother', 'el hermano', 'le frère', 'der Bruder'],
+      ['the daughter', 'la hija', 'la fille', 'die Tochter'],
+      ['the son', 'el hijo', 'le fils', 'der Sohn'],
+      ['the grandmother', 'la abuela', 'la grand-mère', 'die Großmutter'],
+      ['the grandfather', 'el abuelo', 'le grand-père', 'der Großvater'],
+      ['the aunt', 'la tía', 'la tante', 'die Tante'],
+      ['the uncle', 'el tío', "l'oncle", 'der Onkel'],
+      ['the cousin (f)', 'la prima', 'la cousine', 'die Cousine'],
+      ['the friend (m)', 'el amigo', "l'ami", 'der Freund'],
+      ['the neighbour (m)', 'el vecino', 'le voisin', 'der Nachbar'],
+      ['the child', 'el niño', "l'enfant", 'das Kind'],
+      ['married', 'casado', 'marié', 'verheiratet'],
+      ['older', 'mayor', 'plus âgé', 'älter'],
+      ['younger', 'menor', 'plus jeune', 'jünger'],
+      ['to love', 'querer', 'aimer', 'lieben'],
+      ['to live', 'vivir', 'habiter', 'wohnen'],
     ] },
     { id: 'food', name: 'Food and drink', words: [
-      ['the bread', 'el pan', 'le pain'],
-      ['the cheese', 'el queso', 'le fromage'],
-      ['the milk', 'la leche', 'le lait'],
-      ['the water', 'el agua', "l'eau"],
-      ['the meat', 'la carne', 'la viande'],
-      ['the fish', 'el pescado', 'le poisson'],
-      ['the chicken', 'el pollo', 'le poulet'],
-      ['the egg', 'el huevo', "l'œuf"],
-      ['the apple', 'la manzana', 'la pomme'],
-      ['the orange', 'la naranja', "l'orange"],
-      ['the vegetable', 'la verdura', 'le légume'],
-      ['the rice', 'el arroz', 'le riz'],
-      ['the sugar', 'el azúcar', 'le sucre'],
-      ['the breakfast', 'el desayuno', 'le petit-déjeuner'],
-      ['the lunch', 'la comida', 'le déjeuner'],
-      ['the dinner', 'la cena', 'le dîner'],
-      ['to eat', 'comer', 'manger'],
-      ['to drink', 'beber', 'boire'],
-      ['delicious', 'delicioso', 'délicieux'],
-      ['to be hungry', 'tener hambre', 'avoir faim'],
+      ['the bread', 'el pan', 'le pain', 'das Brot'],
+      ['the cheese', 'el queso', 'le fromage', 'der Käse'],
+      ['the milk', 'la leche', 'le lait', 'die Milch'],
+      ['the water', 'el agua', "l'eau", 'das Wasser'],
+      ['the meat', 'la carne', 'la viande', 'das Fleisch'],
+      ['the fish', 'el pescado', 'le poisson', 'der Fisch'],
+      ['the chicken', 'el pollo', 'le poulet', 'das Hähnchen'],
+      ['the egg', 'el huevo', "l'œuf", 'das Ei'],
+      ['the apple', 'la manzana', 'la pomme', 'der Apfel'],
+      ['the orange', 'la naranja', "l'orange", 'die Orange'],
+      ['the vegetable', 'la verdura', 'le légume', 'das Gemüse'],
+      ['the rice', 'el arroz', 'le riz', 'der Reis'],
+      ['the sugar', 'el azúcar', 'le sucre', 'der Zucker'],
+      ['the breakfast', 'el desayuno', 'le petit-déjeuner', 'das Frühstück'],
+      ['the lunch', 'la comida', 'le déjeuner', 'das Mittagessen'],
+      ['the dinner', 'la cena', 'le dîner', 'das Abendessen'],
+      ['to eat', 'comer', 'manger', 'essen'],
+      ['to drink', 'beber', 'boire', 'trinken'],
+      ['delicious', 'delicioso', 'délicieux', 'lecker'],
+      ['to be hungry', 'tener hambre', 'avoir faim', 'Hunger haben'],
     ] },
     { id: 'home', name: 'House and home', words: [
-      ['the house', 'la casa', 'la maison'],
-      ['the flat', 'el piso', "l'appartement"],
-      ['the bedroom', 'el dormitorio', 'la chambre'],
-      ['the kitchen', 'la cocina', 'la cuisine'],
-      ['the bathroom', 'el baño', 'la salle de bains'],
-      ['the living room', 'el salón', 'le salon'],
-      ['the garden', 'el jardín', 'le jardin'],
-      ['the door', 'la puerta', 'la porte'],
-      ['the window', 'la ventana', 'la fenêtre'],
-      ['the table', 'la mesa', 'la table'],
-      ['the chair', 'la silla', 'la chaise'],
-      ['the bed', 'la cama', 'le lit'],
-      ['the storey / floor', 'la planta', "l'étage"],
-      ['the key', 'la llave', 'la clé'],
-      ['the wall', 'la pared', 'le mur'],
-      ['upstairs', 'arriba', 'en haut'],
-      ['downstairs', 'abajo', 'en bas'],
-      ['to tidy', 'ordenar', 'ranger'],
-      ['to sleep', 'dormir', 'dormir'],
-      ['comfortable', 'cómodo', 'confortable'],
+      ['the house', 'la casa', 'la maison', 'das Haus'],
+      ['the flat', 'el piso', "l'appartement", 'die Wohnung'],
+      ['the bedroom', 'el dormitorio', 'la chambre', 'das Schlafzimmer'],
+      ['the kitchen', 'la cocina', 'la cuisine', 'die Küche'],
+      ['the bathroom', 'el baño', 'la salle de bains', 'das Badezimmer'],
+      ['the living room', 'el salón', 'le salon', 'das Wohnzimmer'],
+      ['the garden', 'el jardín', 'le jardin', 'der Garten'],
+      ['the door', 'la puerta', 'la porte', 'die Tür'],
+      ['the window', 'la ventana', 'la fenêtre', 'das Fenster'],
+      ['the table', 'la mesa', 'la table', 'der Tisch'],
+      ['the chair', 'la silla', 'la chaise', 'der Stuhl'],
+      ['the bed', 'la cama', 'le lit', 'das Bett'],
+      ['the storey / floor', 'la planta', "l'étage", 'die Etage'],
+      ['the key', 'la llave', 'la clé', 'der Schlüssel'],
+      ['the wall', 'la pared', 'le mur', 'die Wand'],
+      ['upstairs', 'arriba', 'en haut', 'oben'],
+      ['downstairs', 'abajo', 'en bas', 'unten'],
+      ['to tidy', 'ordenar', 'ranger', 'aufräumen'],
+      ['to sleep', 'dormir', 'dormir', 'schlafen'],
+      ['comfortable', 'cómodo', 'confortable', 'bequem'],
     ] },
     { id: 'time', name: 'Time and numbers', words: [
-      ['today', 'hoy', "aujourd'hui"],
-      ['tomorrow', 'mañana', 'demain'],
-      ['yesterday', 'ayer', 'hier'],
-      ['the week', 'la semana', 'la semaine'],
-      ['the month', 'el mes', 'le mois'],
-      ['the year', 'el año', "l'année"],
-      ['Monday', 'lunes', 'lundi'],
-      ['Saturday', 'sábado', 'samedi'],
-      ['the morning', 'la mañana', 'le matin'],
-      ['the afternoon', 'la tarde', "l'après-midi"],
-      ['the night', 'la noche', 'la nuit'],
-      ['early', 'temprano', 'tôt'],
-      ['late', 'tarde', 'tard'],
-      ['always', 'siempre', 'toujours'],
-      ['never', 'nunca', 'jamais'],
-      ['sometimes', 'a veces', 'parfois'],
-      ['one', 'uno', 'un'],
-      ['ten', 'diez', 'dix'],
-      ['twenty', 'veinte', 'vingt'],
-      ['a hundred', 'cien', 'cent'],
+      ['today', 'hoy', "aujourd'hui", 'heute'],
+      ['tomorrow', 'mañana', 'demain', 'morgen'],
+      ['yesterday', 'ayer', 'hier', 'gestern'],
+      ['the week', 'la semana', 'la semaine', 'die Woche'],
+      ['the month', 'el mes', 'le mois', 'der Monat'],
+      ['the year', 'el año', "l'année", 'das Jahr'],
+      ['Monday', 'lunes', 'lundi', 'Montag'],
+      ['Saturday', 'sábado', 'samedi', 'Samstag'],
+      ['the morning', 'la mañana', 'le matin', 'der Morgen'],
+      ['the afternoon', 'la tarde', "l'après-midi", 'der Nachmittag'],
+      ['the night', 'la noche', 'la nuit', 'die Nacht'],
+      ['early', 'temprano', 'tôt', 'früh'],
+      ['late', 'tarde', 'tard', 'spät'],
+      ['always', 'siempre', 'toujours', 'immer'],
+      ['never', 'nunca', 'jamais', 'nie'],
+      ['sometimes', 'a veces', 'parfois', 'manchmal'],
+      ['one', 'uno', 'un', 'eins'],
+      ['ten', 'diez', 'dix', 'zehn'],
+      ['twenty', 'veinte', 'vingt', 'zwanzig'],
+      ['a hundred', 'cien', 'cent', 'hundert'],
     ] },
     { id: 'places', name: 'Town and travel', words: [
-      ['the town / city', 'la ciudad', 'la ville'],
-      ['the village', 'el pueblo', 'le village'],
-      ['the street', 'la calle', 'la rue'],
-      ['the shop', 'la tienda', 'le magasin'],
-      ['the market', 'el mercado', 'le marché'],
-      ['the station', 'la estación', 'la gare'],
-      ['the airport', 'el aeropuerto', "l'aéroport"],
-      ['the beach', 'la playa', 'la plage'],
-      ['the church', 'la iglesia', "l'église"],
-      ['the hospital', 'el hospital', "l'hôpital"],
-      ['the car', 'el coche', 'la voiture'],
-      ['the train', 'el tren', 'le train'],
-      ['the bus', 'el autobús', 'le bus'],
-      ['the bike', 'la bicicleta', 'le vélo'],
-      ['the journey', 'el viaje', 'le voyage'],
-      ['on the left', 'a la izquierda', 'à gauche'],
-      ['on the right', 'a la derecha', 'à droite'],
-      ['straight on', 'todo recto', 'tout droit'],
-      ['near', 'cerca', 'près'],
-      ['far', 'lejos', 'loin'],
+      ['the town / city', 'la ciudad', 'la ville', 'die Stadt'],
+      ['the village', 'el pueblo', 'le village', 'das Dorf'],
+      ['the street', 'la calle', 'la rue', 'die Straße'],
+      ['the shop', 'la tienda', 'le magasin', 'das Geschäft'],
+      ['the market', 'el mercado', 'le marché', 'der Markt'],
+      ['the station', 'la estación', 'la gare', 'der Bahnhof'],
+      ['the airport', 'el aeropuerto', "l'aéroport", 'der Flughafen'],
+      ['the beach', 'la playa', 'la plage', 'der Strand'],
+      ['the church', 'la iglesia', "l'église", 'die Kirche'],
+      ['the hospital', 'el hospital', "l'hôpital", 'das Krankenhaus'],
+      ['the car', 'el coche', 'la voiture', 'das Auto'],
+      ['the train', 'el tren', 'le train', 'der Zug'],
+      ['the bus', 'el autobús', 'le bus', 'der Bus'],
+      ['the bike', 'la bicicleta', 'le vélo', 'das Fahrrad'],
+      ['the journey', 'el viaje', 'le voyage', 'die Reise'],
+      ['on the left', 'a la izquierda', 'à gauche', 'links'],
+      ['on the right', 'a la derecha', 'à droite', 'rechts'],
+      ['straight on', 'todo recto', 'tout droit', 'geradeaus'],
+      ['near', 'cerca', 'près', 'nah'],
+      ['far', 'lejos', 'loin', 'weit'],
     ] },
     { id: 'body', name: 'Body and health', words: [
-      ['the head', 'la cabeza', 'la tête'],
-      ['the hand', 'la mano', 'la main'],
-      ['the arm', 'el brazo', 'le bras'],
-      ['the leg', 'la pierna', 'la jambe'],
-      ['the foot', 'el pie', 'le pied'],
-      ['the eye', 'el ojo', "l'œil"],
-      ['the mouth', 'la boca', 'la bouche'],
-      ['the hair', 'el pelo', 'les cheveux'],
-      ['the heart', 'el corazón', 'le cœur'],
-      ['the doctor', 'el médico', 'le médecin'],
-      ['the chemist', 'la farmacia', 'la pharmacie'],
-      ['ill', 'enfermo', 'malade'],
-      ['tired', 'cansado', 'fatigué'],
-      ['it hurts', 'me duele', "j'ai mal"],
-      ['healthy', 'sano', 'en bonne santé'],
-      ['to rest', 'descansar', 'se reposer'],
+      ['the head', 'la cabeza', 'la tête', 'der Kopf'],
+      ['the hand', 'la mano', 'la main', 'die Hand'],
+      ['the arm', 'el brazo', 'le bras', 'der Arm'],
+      ['the leg', 'la pierna', 'la jambe', 'das Bein'],
+      ['the foot', 'el pie', 'le pied', 'der Fuß'],
+      ['the eye', 'el ojo', "l'œil", 'das Auge'],
+      ['the mouth', 'la boca', 'la bouche', 'der Mund'],
+      ['the hair', 'el pelo', 'les cheveux', 'die Haare'],
+      ['the heart', 'el corazón', 'le cœur', 'das Herz'],
+      ['the doctor', 'el médico', 'le médecin', 'der Arzt'],
+      ['the chemist', 'la farmacia', 'la pharmacie', 'die Apotheke'],
+      ['ill', 'enfermo', 'malade', 'krank'],
+      ['tired', 'cansado', 'fatigué', 'müde'],
+      ['it hurts', 'me duele', "j'ai mal", 'es tut weh'],
+      ['healthy', 'sano', 'en bonne santé', 'gesund'],
+      ['to rest', 'descansar', 'se reposer', 'sich ausruhen'],
     ] },
     { id: 'clothes', name: 'Clothes and colours', words: [
-      ['the shirt', 'la camisa', 'la chemise'],
-      ['the trousers', 'los pantalones', 'le pantalon'],
-      ['the dress', 'el vestido', 'la robe'],
-      ['the skirt', 'la falda', 'la jupe'],
-      ['the coat', 'el abrigo', 'le manteau'],
-      ['the shoes', 'los zapatos', 'les chaussures'],
-      ['the hat', 'el sombrero', 'le chapeau'],
-      ['red', 'rojo', 'rouge'],
-      ['blue', 'azul', 'bleu'],
-      ['green', 'verde', 'vert'],
-      ['yellow', 'amarillo', 'jaune'],
-      ['black', 'negro', 'noir'],
-      ['white', 'blanco', 'blanc'],
-      ['to wear', 'llevar', 'porter'],
-      ['to buy', 'comprar', 'acheter'],
-      ['expensive', 'caro', 'cher'],
+      ['the shirt', 'la camisa', 'la chemise', 'das Hemd'],
+      ['the trousers', 'los pantalones', 'le pantalon', 'die Hose'],
+      ['the dress', 'el vestido', 'la robe', 'das Kleid'],
+      ['the skirt', 'la falda', 'la jupe', 'der Rock'],
+      ['the coat', 'el abrigo', 'le manteau', 'der Mantel'],
+      ['the shoes', 'los zapatos', 'les chaussures', 'die Schuhe'],
+      ['the hat', 'el sombrero', 'le chapeau', 'der Hut'],
+      ['red', 'rojo', 'rouge', 'rot'],
+      ['blue', 'azul', 'bleu', 'blau'],
+      ['green', 'verde', 'vert', 'grün'],
+      ['yellow', 'amarillo', 'jaune', 'gelb'],
+      ['black', 'negro', 'noir', 'schwarz'],
+      ['white', 'blanco', 'blanc', 'weiß'],
+      ['to wear', 'llevar', 'porter', 'tragen'],
+      ['to buy', 'comprar', 'acheter', 'kaufen'],
+      ['expensive', 'caro', 'cher', 'teuer'],
     ] },
     { id: 'weather', name: 'Weather and seasons', words: [
-      ['the weather', 'el tiempo', 'le temps'],
-      ['it is hot', 'hace calor', 'il fait chaud'],
-      ['it is cold', 'hace frío', 'il fait froid'],
-      ['it is raining', 'llueve', 'il pleut'],
-      ['it is snowing', 'nieva', 'il neige'],
-      ['it is windy', 'hace viento', 'il y a du vent'],
-      ['the sun', 'el sol', 'le soleil'],
-      ['the rain', 'la lluvia', 'la pluie'],
-      ['the snow', 'la nieve', 'la neige'],
-      ['the cloud', 'la nube', 'le nuage'],
-      ['the storm', 'la tormenta', "l'orage"],
-      ['spring', 'la primavera', 'le printemps'],
-      ['summer', 'el verano', "l'été"],
-      ['autumn', 'el otoño', "l'automne"],
-      ['winter', 'el invierno', "l'hiver"],
+      ['the weather', 'el tiempo', 'le temps', 'das Wetter'],
+      ['it is hot', 'hace calor', 'il fait chaud', 'es ist heiß'],
+      ['it is cold', 'hace frío', 'il fait froid', 'es ist kalt'],
+      ['it is raining', 'llueve', 'il pleut', 'es regnet'],
+      ['it is snowing', 'nieva', 'il neige', 'es schneit'],
+      ['it is windy', 'hace viento', 'il y a du vent', 'es ist windig'],
+      ['the sun', 'el sol', 'le soleil', 'die Sonne'],
+      ['the rain', 'la lluvia', 'la pluie', 'der Regen'],
+      ['the snow', 'la nieve', 'la neige', 'der Schnee'],
+      ['the cloud', 'la nube', 'le nuage', 'die Wolke'],
+      ['the storm', 'la tormenta', "l'orage", 'das Gewitter'],
+      ['spring', 'la primavera', 'le printemps', 'der Frühling'],
+      ['summer', 'el verano', "l'été", 'der Sommer'],
+      ['autumn', 'el otoño', "l'automne", 'der Herbst'],
+      ['winter', 'el invierno', "l'hiver", 'der Winter'],
     ] },
     { id: 'hobbies', name: 'Free time', words: [
-      ['the film', 'la película', 'le film'],
-      ['the music', 'la música', 'la musique'],
-      ['the song', 'la canción', 'la chanson'],
-      ['the game', 'el juego', 'le jeu'],
-      ['the match', 'el partido', 'le match'],
-      ['the team', 'el equipo', "l'équipe"],
-      ['swimming', 'la natación', 'la natation'],
-      ['to play (sport)', 'jugar', 'jouer'],
-      ['to sing', 'cantar', 'chanter'],
-      ['to dance', 'bailar', 'danser'],
-      ['to run', 'correr', 'courir'],
-      ['to watch', 'ver', 'regarder'],
-      ['to listen', 'escuchar', 'écouter'],
-      ['to go out', 'salir', 'sortir'],
-      ['to travel', 'viajar', 'voyager'],
-      ['funny', 'divertido', 'amusant'],
+      ['the film', 'la película', 'le film', 'der Film'],
+      ['the music', 'la música', 'la musique', 'die Musik'],
+      ['the song', 'la canción', 'la chanson', 'das Lied'],
+      ['the game', 'el juego', 'le jeu', 'das Spiel'],
+      // German uses das Spiel for a match too; der Wettkampf keeps the two
+      // options distinct so multiple choice still has one right answer.
+      ['the match', 'el partido', 'le match', 'der Wettkampf'],
+      ['the team', 'el equipo', "l'équipe", 'die Mannschaft'],
+      ['swimming', 'la natación', 'la natation', 'das Schwimmen'],
+      ['to play (sport)', 'jugar', 'jouer', 'spielen'],
+      ['to sing', 'cantar', 'chanter', 'singen'],
+      ['to dance', 'bailar', 'danser', 'tanzen'],
+      ['to run', 'correr', 'courir', 'laufen'],
+      ['to watch', 'ver', 'regarder', 'schauen'],
+      ['to listen', 'escuchar', 'écouter', 'hören'],
+      ['to go out', 'salir', 'sortir', 'ausgehen'],
+      ['to travel', 'viajar', 'voyager', 'reisen'],
+      ['funny', 'divertido', 'amusant', 'lustig'],
     ] },
     { id: 'people', name: 'Describing people', words: [
-      ['tall', 'alto', 'grand'],
-      ['short', 'bajo', 'petit'],
-      ['thin', 'delgado', 'mince'],
-      ['strong', 'fuerte', 'fort'],
-      ['kind', 'amable', 'gentil'],
-      ['clever', 'inteligente', 'intelligent'],
-      ['lazy', 'perezoso', 'paresseux'],
-      ['hard-working', 'trabajador', 'travailleur'],
-      ['shy', 'tímido', 'timide'],
-      ['happy', 'feliz', 'heureux'],
-      ['sad', 'triste', 'triste'],
-      ['angry', 'enfadado', 'fâché'],
-      ['nice', 'simpático', 'sympa'],
-      ['annoying', 'pesado', 'pénible'],
-      ['honest', 'honesto', 'honnête'],
-      ['generous', 'generoso', 'généreux'],
+      ['tall', 'alto', 'grand', 'groß'],
+      ['short', 'bajo', 'petit', 'klein'],
+      ['thin', 'delgado', 'mince', 'schlank'],
+      ['strong', 'fuerte', 'fort', 'stark'],
+      ['kind', 'amable', 'gentil', 'freundlich'],
+      ['clever', 'inteligente', 'intelligent', 'klug'],
+      ['lazy', 'perezoso', 'paresseux', 'faul'],
+      ['hard-working', 'trabajador', 'travailleur', 'fleißig'],
+      ['shy', 'tímido', 'timide', 'schüchtern'],
+      ['happy', 'feliz', 'heureux', 'glücklich'],
+      ['sad', 'triste', 'triste', 'traurig'],
+      ['angry', 'enfadado', 'fâché', 'wütend'],
+      ['nice', 'simpático', 'sympa', 'nett'],
+      ['annoying', 'pesado', 'pénible', 'nervig'],
+      ['honest', 'honesto', 'honnête', 'ehrlich'],
+      ['generous', 'generoso', 'généreux', 'großzügig'],
     ] },
     { id: 'core', name: 'Everyday verbs', words: [
-      ['to be', 'ser', 'être'],
-      ['to have', 'tener', 'avoir'],
-      ['to do / make', 'hacer', 'faire'],
-      ['to go', 'ir', 'aller'],
-      ['to say', 'decir', 'dire'],
-      ['to be able to', 'poder', 'pouvoir'],
-      ['to want', 'querer', 'vouloir'],
-      ['to know (a fact)', 'saber', 'savoir'],
-      ['to see', 'ver', 'voir'],
-      ['to come', 'venir', 'venir'],
-      ['to give', 'dar', 'donner'],
-      ['to take', 'tomar', 'prendre'],
-      ['to speak', 'hablar', 'parler'],
-      ['to think', 'pensar', 'penser'],
-      ['to leave', 'salir', 'partir'],
-      ['to arrive', 'llegar', 'arriver'],
-      ['to open', 'abrir', 'ouvrir'],
-      ['to close', 'cerrar', 'fermer'],
-      ['to find', 'encontrar', 'trouver'],
-      ['to lose', 'perder', 'perdre'],
+      ['to be', 'ser', 'être', 'sein'],
+      ['to have', 'tener', 'avoir', 'haben'],
+      ['to do / make', 'hacer', 'faire', 'machen'],
+      ['to go', 'ir', 'aller', 'gehen'],
+      ['to say', 'decir', 'dire', 'sagen'],
+      ['to be able to', 'poder', 'pouvoir', 'können'],
+      ['to want', 'querer', 'vouloir', 'wollen'],
+      ['to know (a fact)', 'saber', 'savoir', 'wissen'],
+      ['to see', 'ver', 'voir', 'sehen'],
+      ['to come', 'venir', 'venir', 'kommen'],
+      ['to give', 'dar', 'donner', 'geben'],
+      ['to take', 'tomar', 'prendre', 'nehmen'],
+      ['to speak', 'hablar', 'parler', 'sprechen'],
+      ['to think', 'pensar', 'penser', 'denken'],
+      ['to leave', 'salir', 'partir', 'weggehen'],
+      ['to arrive', 'llegar', 'arriver', 'ankommen'],
+      ['to open', 'abrir', 'ouvrir', 'öffnen'],
+      ['to close', 'cerrar', 'fermer', 'schließen'],
+      ['to find', 'encontrar', 'trouver', 'finden'],
+      ['to lose', 'perder', 'perdre', 'verlieren'],
     ] },
   ];
 
@@ -299,6 +305,15 @@
     fr: ['parler', 'finir', 'vendre', 'partir', 'dormir', 'sortir', 'ouvrir',
       'être', 'avoir', 'aller', 'faire', 'pouvoir', 'vouloir', 'devoir', 'venir',
       'prendre', 'dire', 'voir', 'savoir', 'mettre', 'choisir', 'attendre'],
+    /* German picks for the same reason: the vowel-changing present (fahren,
+       geben, lesen), the linking -e- (arbeiten, finden), the sein/haben split
+       in the Perfekt, and a separable verb so the prefix moving to the end of
+       the clause is something you get asked about rather than told. */
+    de: ['machen', 'arbeiten', 'wohnen', 'sein', 'haben', 'werden', 'gehen',
+      'kommen', 'fahren', 'geben', 'nehmen', 'sehen', 'lesen', 'essen', 'sprechen',
+      'helfen', 'schlafen', 'laufen', 'finden', 'trinken', 'bleiben', 'schreiben',
+      'können', 'wollen', 'wissen', 'denken', 'bringen', 'aufstehen', 'einkaufen',
+      'fernsehen', 'anfangen'],
   };
 
   // ── storage ───────────────────────────────────────────────────────────────
@@ -313,7 +328,7 @@
       if (!raw || typeof raw !== 'object') return defaults();
       var d = defaults();
       return {
-        lang: raw.lang === 'fr' ? 'fr' : 'es',
+        lang: raw.lang === 'fr' ? 'fr' : raw.lang === 'de' ? 'de' : 'es',
         mode: ['flash', 'choice', 'type', 'drill'].indexOf(raw.mode) >= 0 ? raw.mode : d.mode,
         theme: THEMES.some(function (t) { return t.id === raw.theme; }) ? raw.theme : d.theme,
         box: raw.box && typeof raw.box === 'object' ? raw.box : {},
@@ -344,7 +359,7 @@
     for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
     return THEMES[0];
   }
-  function col(lang) { return lang === 'fr' ? 2 : 1; }
+  function col(lang) { return lang === 'fr' ? 2 : lang === 'de' ? 3 : 1; }
   function key(lang, themeId, i) { return lang + ':' + themeId + ':' + i; }
 
   /** Strip accents and punctuation for comparison. */
@@ -360,7 +375,9 @@
   /* An article is worth knowing but not worth failing someone over when they
      have clearly got the word. Marked right, and told about it. */
   function stripArticle(s) {
-    return bare(s).replace(/^(el|la|los|las|un|una|le|les|une)\s+/, '').replace(/^l'/, '').trim();
+    return bare(s)
+      .replace(/^(el|la|los|las|un|una|le|les|une|der|die|das|den|dem|ein|eine|einen)\s+/, '')
+      .replace(/^l'/, '').trim();
   }
 
   function judge(given, expected) {
@@ -427,7 +444,14 @@
   var current = null;      // the question on screen
   var revealed = false;
 
-  function langName() { return state.lang === 'fr' ? 'French' : 'Spanish'; }
+  function langName() { return state.lang === 'fr' ? 'French' : state.lang === 'de' ? 'German' : 'Spanish'; }
+
+  /* Which language the card is pinned to, or null for the old free-choice
+     card. French, German and Spanish are separate subjects now, so a language
+     switcher inside the Spanish subject would be a second way to answer a
+     question the rail has already answered — and the confusing kind, because
+     the pill would still say Spanish. */
+  var locked = null;
 
   function statsHtml() {
     var s = state.stats;
@@ -446,12 +470,15 @@
 
   function shellHtml(inner) {
     var modes = [['choice', 'Multiple choice'], ['type', 'Type it'], ['flash', 'Flashcards'], ['drill', 'Verb drill']];
+    var langSeg = locked ? '' : '<div class="fsh-seg flp-seg" id="flpLang">'
+      + [['es', 'Spanish'], ['fr', 'French'], ['de', 'German']].map(function (l) {
+        return '<button type="button" data-l="' + l[0] + '" class="' + (state.lang === l[0] ? 'active' : '') + '">' + l[1] + '</button>';
+      }).join('') + '</div>';
     return '<div class="fsh-card flp-card" style="padding:20px">'
       + '<h3 style="margin:0 0 4px;font-size:16px">🎯 Practice</h3>'
       + '<p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">'
       + 'Test yourself instead of reading a list. ' + esc(langName()) + ', offline.</p>'
-      + '<div class="fsh-seg flp-seg" id="flpLang"><button type="button" data-l="es" class="' + (state.lang === 'es' ? 'active' : '') + '">Spanish</button>'
-      + '<button type="button" data-l="fr" class="' + (state.lang === 'fr' ? 'active' : '') + '">French</button></div>'
+      + langSeg
       + '<div class="fsh-seg flp-seg" id="flpMode">' + modes.map(function (m) {
         return '<button type="button" data-m="' + m[0] + '" class="' + (state.mode === m[0] ? 'active' : '') + '">' + m[1] + '</button>';
       }).join('') + '</div>'
@@ -542,9 +569,22 @@
 
   function render(body) {
     refresh();
+    /* refresh() has just overwritten state.lang with whatever was saved, so
+       the pin has to be re-applied after it — not before, or opening German
+       would show German once and Spanish on every repaint.
+
+       Written back straight away rather than waiting for the first answer:
+       everything else in this module re-reads from storage (see the header on
+       why), so leaving memory and storage disagreeing means the very next
+       read pulls the language of whichever subject you were in last. */
+    if (locked && state.lang !== locked) { state.lang = locked; persist(); }
     body.innerHTML = '<div id="fluxLangPractice"></div>';
     nextQuestion();
     paint();
+  }
+  /** A render function pinned to one language, for a per-language subject. */
+  function renderIn(lang) {
+    return function (body) { locked = lang; render(body); };
   }
 
   // ── answering ─────────────────────────────────────────────────────────────
@@ -629,13 +669,19 @@
   function boot() {
     var H = window.fluxStudyHub;
     if (!H || !H.register) return setTimeout(boot, 60);
-    H.register('languages', [{
-      id: 'practice',
-      name: 'Practice',
-      icon: '🎯',
-      desc: 'practice quiz vocabulary drill spanish french test yourself flashcards conjugation',
-      render: render,
-    }]);
+    /* One card, three subjects. Registering the same tool three times with a
+       different pinned language is cheaper and less fragile than three copies
+       of it, and it means a fix to the marking reaches all three at once. */
+    [['french', 'fr', 'french'], ['german', 'de', 'german'], ['spanish', 'es', 'spanish']]
+      .forEach(function (s) {
+        H.register(s[0], [{
+          id: 'practice',
+          name: 'Practice',
+          icon: '🎯',
+          desc: 'practice quiz vocabulary drill ' + s[2] + ' test yourself flashcards conjugation',
+          render: renderIn(s[1]),
+        }]);
+      });
   }
   boot();
 

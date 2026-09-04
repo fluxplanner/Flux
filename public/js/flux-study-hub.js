@@ -219,7 +219,9 @@
     { id:'science',    name:'Science',    ico:'⚗' },
     { id:'maths-tech', name:'Maths & Computing', ico:'∑' },
     { id:'humanities', name:'Humanities', ico:'🏛' },
-    { id:'languages-arts', name:'English & Languages', ico:'✒' },
+    // Just "Languages" now that French, German and Spanish each have a pill —
+    // "English & Languages" read as though English were the exception.
+    { id:'languages-arts', name:'Languages', ico:'🌍' },
     { id:'arts',       name:'Arts',       ico:'🎵' },
   ];
   const SUBJECTS = [
@@ -241,15 +243,29 @@
     { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b', group:'humanities' },
     { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f', group:'humanities' },
     { id:'english', name:'English', ico:'✒', accent:'#e069b4', group:'languages-arts' },
-    { id:'languages', name:'Languages', ico:'🌍', accent:'#36c5d6', group:'languages-arts' },
+    /* One "Languages" pill with a Spanish/French toggle inside every tool was
+       fine for two languages and stopped being fine at three: whichever one
+       you took, the tools opened on the wrong one. Three pills, and each tool
+       already knows which language it is in.
+
+       The icons are letters, not flags. 🇫🇷 🇩🇪 🇪🇸 all map to the same glyph in
+       flux-iconify, so all three pills would have come out identical — and a
+       cedilla, an Eszett and an eñe say which language they belong to faster
+       than a flag does anyway. Being plain text, they are also never swapped
+       for an SVG, so these pills never change width after paint. */
+    { id:'french', name:'French', ico:'ç', accent:'#36c5d6', group:'languages-arts' },
+    { id:'german', name:'German', ico:'ß', accent:'#f0b429', group:'languages-arts' },
+    { id:'spanish', name:'Spanish', ico:'ñ', accent:'#ef6c4d', group:'languages-arts' },
     { id:'music', name:'Music', ico:'🎵', accent:'#ff7a59', group:'arts' },
     { id:'art', name:'Visual Arts', ico:'🖼', accent:'#b98cff', group:'arts' },
   ];
   const subjById = (id) => SUBJECTS.find((s) => s.id === id) || SUBJECTS[0];
-  /* Anyone whose saved subject was 'astronomy' or 'civics' — or whose starred
-     list still holds one — must land somewhere real rather than silently
-     falling back to Chemistry. */
-  const MERGED = { astronomy:'physics', civics:'glopo' };
+  /* Anyone whose saved subject was 'astronomy', 'civics' or 'languages' — or
+     whose starred list still holds one — must land somewhere real rather than
+     silently falling back to Chemistry. 'languages' splitting into three means
+     the migration has to pick one; French wins by being first of the three,
+     and the other two are sitting immediately beside it in the rail. */
+  const MERGED = { astronomy:'physics', civics:'glopo', languages:'french' };
   const canonicalSubject = (id) => MERGED[id] || id;
   const groupOf = (sid) => (subjById(canonicalSubject(sid)) || {}).group || GROUPS[0].id;
 
@@ -1020,13 +1036,23 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
+    /* Chip id → subject. An array sends one chip to several subjects, which
+       Translation needs: it is a general "send this to Flux AI" jump, equally
+       useful in all three languages, and there is no fourth subject left to
+       park it on now that the shared Languages pill is gone. */
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'spanish-conj': 'spanish', 'french-conj': 'french', 'translate-ai': ['french', 'german', 'spanish'], 'music-theory': 'music', 'cs-ref': 'cs' };
     const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
       const sub = OVERRIDE[c.id] || SECTION[sec.id]; if (!sub) return;
-      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn });
+      const chip = { id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn };
+      // A fresh copy per subject: mergeLegacyOnce closes over the chip object,
+      // and one shared instance across three subjects is a shared-state bug
+      // waiting for the first person to add a field to it.
+      (Array.isArray(sub) ? sub : [sub]).forEach((s) => {
+        (idx[s] = idx[s] || []).push(Object.assign({}, chip));
+      });
     }));
     _legacyIdx = idx; return idx;
   }

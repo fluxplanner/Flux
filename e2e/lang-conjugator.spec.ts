@@ -160,8 +160,15 @@ test.describe('Offline conjugator', () => {
     await page.waitForTimeout(900);
 
     const res = await page.evaluate(async () => {
-      (window as any).fluxStudyHub.selectSubject('languages', 'conj');
+      /* Spanish, not the old shared "languages" subject — and the tab has to be
+         clicked. selectSubject's second argument only hints which tool to
+         restore, and Spanish now opens on Dictionary, so reading lgTenseSeg
+         straight afterwards would find nothing and the tenses would come back
+         as an empty array rather than as a failure anyone could read. */
+      (window as any).fluxStudyHub.selectSubject('spanish');
       await new Promise((r) => setTimeout(r, 600));
+      document.querySelector<HTMLElement>('[data-tool="conj"]')?.click();
+      await new Promise((r) => setTimeout(r, 400));
       const seg = document.getElementById('lgTenseSeg');
       const tenses = seg ? [...seg.querySelectorAll('[data-t]')].map((b) => b.getAttribute('data-t')) : [];
       const input = document.getElementById('lgVerb') as HTMLInputElement | null;
