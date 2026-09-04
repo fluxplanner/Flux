@@ -689,24 +689,8 @@
           </div>
         </div>
 
-        <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <div style="flex:1">
-              <div style="font-weight:800;font-size:1rem">Message one person</div>
-              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">The same pop-up as above, addressed to a single account. Only they can read it — it is stored privately rather than in the public settings the broadcast uses. They see it next time they open Flux, once.</div>
-            </div>
-          </div>
-          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Who</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-            <select id="osDmUser" aria-label="Recipient" style="flex:1;min-width:200px;min-height:44px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;box-sizing:border-box"><option value="">Load accounts first…</option></select>
-            <button type="button" onclick="ownerAuthUsersLoad(1).then(()=>ownerDmFillUsers&&ownerDmFillUsers())" style="padding:11px 14px;min-height:44px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Load accounts</button>
-          </div>
-          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Title</label>
-          <input type="text" id="osDmTitle" placeholder="A message from Flux" style="width:100%;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;margin-bottom:10px;box-sizing:border-box">
-          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Message</label>
-          <textarea id="osDmBody" placeholder="Nice work on the recital last night." style="width:100%;min-height:70px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:10px"></textarea>
-          <button type="button" onclick="ownerSendDirectMessage()" style="width:100%;padding:11px;min-height:44px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Send to this person</button>
-          <div id="osDmSent" style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-top:10px"></div>
+        <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin:-4px 0 14px">
+          Messaging <b>one person</b> moved to <button type="button" onclick="window.__osSetTab&&window.__osSetTab('auth')" style="background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);padding:2px 10px;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700">Users &amp; roster</button> — it needs the account list to pick a recipient, and that is where the list already lives.
         </div>
 
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
@@ -995,6 +979,31 @@
           <button type="button" onclick="ownerAuthUsersPrevPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">← Prev page</button>
           <button type="button" onclick="ownerAuthUsersNextPage()" class="btn-sec" style="padding:7px 12px;font-size:.74rem;border-radius:10px">Next page →</button>
           <button type="button" onclick="ownerOpenSupabase('auth')" style="padding:7px 12px;font-size:.72rem;border-radius:10px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2)">Open Supabase Auth</button>
+        </div>
+
+        <!-- Moved here from Nuke controls. It was sitting two tabs away from the
+             only list of accounts in Flux, so its recipient dropdown opened
+             reading "Load accounts first…" and the button to populate it
+             re-fetched a list you could not see. Same tab as the roster now:
+             the dropdown fills from whatever is already loaded below. -->
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:1rem">Message one person</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">A pop-up addressed to a single account. Only they can read it — it is stored privately, not in the public settings the all-users broadcast uses. They see it next time they open Flux, once.</div>
+            </div>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Who</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <select id="osDmUser" aria-label="Recipient" style="flex:1;min-width:200px;min-height:44px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;box-sizing:border-box"><option value="">Load accounts first…</option></select>
+            <button type="button" onclick="ownerAuthUsersLoad(1).then(()=>ownerDmFillUsers&&ownerDmFillUsers())" style="padding:11px 14px;min-height:44px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Load accounts</button>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Title</label>
+          <input type="text" id="osDmTitle" placeholder="A message from Flux" style="width:100%;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;margin-bottom:10px;box-sizing:border-box">
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Message</label>
+          <textarea id="osDmBody" placeholder="Nice work on the recital last night." style="width:100%;min-height:70px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:10px"></textarea>
+          <button type="button" onclick="ownerSendDirectMessage()" style="width:100%;padding:11px;min-height:44px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Send to this person</button>
+          <div id="osDmSent" style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-top:10px"></div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:12px">
           <label style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:8px;margin:0">
@@ -2139,6 +2148,11 @@
       window.__fluxAuthNextPage=data.nextPage;
       const users=data.users||[];
       window.__fluxAuthLastUsers=users.slice();
+      /* Fill the "Message one person" dropdown from the same fetch. Both sit on
+         this tab now, so leaving the picker saying "Load accounts first…" while
+         the roster is listed directly below it — which is what it did — is just
+         asking you to fetch a list you are already looking at. */
+      if(typeof window.ownerDmFillUsers==='function')window.ownerDmFillUsers();
       if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_list_users',{page:p,n:users.length});
       if(!mount)return;
       if(!users.length){

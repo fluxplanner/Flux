@@ -228,7 +228,9 @@
     { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a', group:'science' },
     { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def', group:'maths-tech' },
     { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9', group:'maths-tech' },
-    { id:'history', name:'History', ico:'🏛', accent:'#d8a657', group:'humanities' },
+    // "& Geo" because it still carries the capitals quiz and the world map;
+    // plain "History" undersold what is actually in it.
+    { id:'history', name:'History & Geo', ico:'🏛', accent:'#d8a657', group:'humanities' },
     /* Split back out of History. Merging the two was my call and it was the
        wrong one: Global Politics is a course in its own right, and burying it
        inside a timeline-and-capitals module made it look like an appendix.

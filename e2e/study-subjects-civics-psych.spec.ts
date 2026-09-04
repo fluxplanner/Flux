@@ -61,14 +61,10 @@ test.describe('Gov & Civics and Psychology are real subjects', () => {
     }
     expect(pills.some((p) => /Gov & Civics/.test(p))).toBe(false);
     expect(pills.some((p) => /Global Politics/.test(p))).toBe(true);
-    /* Not anchored: a pill's text carries its icon glyph until flux-iconify
-       swaps it for an SVG, so "History" can read as "🏛History" depending on
-       when it is sampled. Match the word and rule out the two compound names
-       instead. */
-    expect(pills.some((p) => /History/.test(p) && !/History\s*&/.test(p))).toBe(true);
-    // Neither of the two names it briefly carried survives anywhere.
+    // History keeps the capitals quiz and world map, so it keeps "& Geo".
+    expect(pills.some((p) => /History & Geo/.test(p))).toBe(true);
+    // The name it briefly carried while civics lived inside it is gone.
     expect(pills.some((p) => /History & Politics/.test(p))).toBe(false);
-    expect(pills.some((p) => /History & Geo/.test(p))).toBe(false);
   });
 
   test('Civics renders branches, amendments and case law', async ({ page }) => {
