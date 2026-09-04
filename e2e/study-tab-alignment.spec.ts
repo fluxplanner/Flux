@@ -48,10 +48,27 @@ test('an icon turning into an SVG does not change its tab width', async ({ page 
   for (const sid of ['art', 'psychology', 'biology']) {
     const { before, after, swapped } = await page.evaluate(async (s) => {
       const hub = (window as unknown as { fluxStudyHub: { selectSubject: (i: string) => void } }).fluxStudyHub;
-      hub.selectSubject(s);
-      // Synchronous: the tabs exist with raw emoji, pre-swap.
+      const labels = () => [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
+        .map((b2) => (b2.textContent || '').trim()).join('|');
       const widths = () => [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
-        .map((b) => (b as HTMLElement).offsetWidth);
+        .map((b2) => (b2 as HTMLElement).offsetWidth);
+      const wasShowing = labels();
+      hub.selectSubject(s);
+      /* Wait for *this* subject's tabs, pre-swap.
+
+         Two things to get past. The stage is built a frame after
+         selectSubject now (so the pill lights before the panel), and
+         flux-iconify swaps icons ~32ms after that. Waiting only for "no SVG
+         present" was wrong: the page starts on Chemistry, whose tabs are text
+         glyphs and never contain an SVG, so the wait fell straight through and
+         measured Chemistry against Art. Requiring the labels to have changed
+         first pins it to the right subject. */
+      const deadline = Date.now() + 3000;
+      while (Date.now() < deadline) {
+        const now = labels();
+        if (now && now !== wasShowing && !document.querySelector('#fshChemTabs .fsh-ct-ico svg.fxi')) break;
+        await new Promise((r) => setTimeout(r, 4));
+      }
       const b = widths();
       // Well past flux-iconify's setTimeout(…, 32) flush.
       await new Promise((r) => setTimeout(r, 500));

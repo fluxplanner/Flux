@@ -329,10 +329,13 @@
      wins if one is in there, otherwise the first. */
   function selectGroup(gid) {
     if (!GROUPS.some((g) => g.id === gid)) return;
-    state.group = gid; save();
     const inGroup = SUBJECTS.filter((s) => s.group === gid);
-    if (!inGroup.length) { renderRail(); return; }
+    if (!inGroup.length) { state.group = gid; save(); renderRail(); return; }
     const target = inGroup.find((s) => isFav(s.id)) || inGroup[0];
+    /* Deliberately not setting state.group here. selectSubject decides whether
+       the rail needs rebuilding by comparing the old umbrella with the new
+       one, so setting it first would make the change invisible to that check
+       and leave the rail showing the umbrella you just navigated away from. */
     selectSubject(target.id);
   }
 
@@ -877,12 +880,26 @@
        instead of falling through subjById's default and silently landing on
        Chemistry. */
     id = canonicalSubject(id);
+    const groupChanged = state.group !== groupOf(id);
     state.subject = id; state.group = groupOf(id); searchQ = ''; save();
     const si = $('fshSearch'); if (si) si.value = ''; const c = $('fshSearchClear'); if (c) c.hidden = true;
-    renderRail();
+
+    /* Only when the umbrella actually changed. renderRail() replaces the rail
+       and group-row markup wholesale, throwing away and rebuilding every pill;
+       doing that to move a highlight between two pills that are already on
+       screen is work you can see. */
+    if (groupChanged) renderRail();
     document.querySelectorAll('#fshRail .fsh-pill').forEach((p) => p.classList.toggle('active', p.dataset.sub === id));
     const a = document.querySelector('#fshRail .fsh-pill.active'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    renderStage(picked);
+
+    /* Paint the new selection before building the panel underneath it.
+       Everything above is cheap class-toggling; renderStage is not — Chemistry
+       alone lays out 118 elements — and running it in the same task meant the
+       browser had nothing to show until it finished. The pill you clicked
+       stayed unlit for the whole build, which reads as the click not landing.
+       One frame later the highlight is already on screen and the panel fills
+       in under it. */
+    requestAnimationFrame(() => renderStage(picked));
   }
 
   // ── shell + events ───────────────────────────────────────────────────────

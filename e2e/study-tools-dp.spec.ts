@@ -54,16 +54,19 @@ test.describe('Study tools — DP expansion', () => {
 
     const res = await page.evaluate(async () => {
       const hub = (window as any).fluxStudyHub;
-      const names = (sid: string) => {
+      /* Awaited: the stage is built a frame after selectSubject now, so the
+         pill you clicked lights up before the panel underneath it is
+         constructed. Reading straight away returned the *previous* subject's
+         tabs, which made this pass or fail on timing rather than on content. */
+      const names = async (sid: string) => {
         hub.selectSubject(sid);
+        await new Promise((r) => setTimeout(r, 300));
         return [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')].map((t) =>
           (t.textContent || '').trim(),
         );
       };
-      const bio = names('biology');
-      await new Promise((r) => setTimeout(r, 300));
-      const psych = names('psychology');
-      await new Promise((r) => setTimeout(r, 300));
+      const bio = await names('biology');
+      const psych = await names('psychology');
       return { bio, psych };
     });
     expect(res.bio.some((n) => /psych/i.test(n))).toBe(false);
