@@ -1,0 +1,96 @@
+import { test, expect } from '@playwright/test';
+import { gotoScenario } from './helpers';
+
+/*
+ * The sliding highlight behind the active Study Tools sub-tab must actually sit
+ * under the tab it is highlighting.
+ *
+ * It didn't. Measured across every subject and every sub-tab, 71 of 84 were
+ * out — the worst by 32px, which is what "off centre on some of the tabs"
+ * looks like once you find the number behind it.
+ *
+ * Cause: the highlight was positioned one frame after render
+ * (requestAnimationFrame), but flux-iconify replaces each emoji icon with an
+ * <svg class="fxi"> on a setTimeout(…, 32) — a tick later. The SVG is ~4px
+ * narrower than the emoji, so every tab shrank after the highlight had already
+ * recorded its width, and the drift accumulated left to right.
+ *
+ * The tell was which tabs were correct: 〜Waves, ⊞Matrix, ∑Formulas, ƂIPA —
+ * every one whose icon is a plain text glyph iconify never touches. Those sat
+ * at exactly 0, which is why it was "some of the tabs" and not all of them.
+ *
+ * This walks the whole grid rather than spot-checking, because the drift is
+ * positional: tab 1 of a subject can be perfect while tab 9 is 30px out.
+ */
+
+const SUBJECTS = ['chemistry', 'physics', 'math', 'music', 'biology', 'psychology',
+  'civics', 'cs', 'econ', 'english', 'history', 'languages', 'astronomy'];
+
+test('the highlight sits under the tab it highlights, on every sub-tab of every subject', async ({ page }) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+  await expect(page.locator('#toolbox.panel.active')).toBeVisible();
+  await expect(page.locator('#fshChemTabs')).toBeVisible();
+
+  const offenders: string[] = [];
+  let checked = 0;
+
+  for (const sid of SUBJECTS) {
+    const count = await page.evaluate(async (s) => {
+      const hub = (window as unknown as { fluxStudyHub?: { selectSubject: (i: string) => void } }).fluxStudyHub;
+      if (!hub) return 0;
+      hub.selectSubject(s);
+      await new Promise((r) => setTimeout(r, 500));
+      return document.querySelectorAll('#fshChemTabs .fsh-chem-tab').length;
+    }, sid);
+
+    // A subject rendering no tabs would let this pass vacuously.
+    expect(count, `${sid} rendered no sub-tabs`).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const r = await page.evaluate(async (args) => {
+        const { idx, s } = args as { idx: number; s: string };
+        const btns = [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')] as HTMLElement[];
+        if (!btns[idx]) return null;
+        btns[idx].click();
+        // Comfortably past the 0.32s glide transition.
+        await new Promise((res) => setTimeout(res, 650));
+        /* Some sub-tabs are reference chips that navigate away on purpose
+           (mode:'link' in renderLegacyTool) — "Translation" and all three
+           astronomy ones do. Measuring after that reads a hidden strip and
+           reports a fake failure, so come back: the chosen tool is persisted,
+           so re-entering re-renders with the same tab active and the highlight
+           positioned the normal way. */
+        const w = window as unknown as { nav: (t: string) => void; fluxStudyHub: { selectSubject: (i: string) => void } };
+        if (!document.querySelector('#toolbox.panel.active')) {
+          w.nav('toolbox');
+          await new Promise((res) => setTimeout(res, 400));
+          w.fluxStudyHub.selectSubject(s);
+          await new Promise((res) => setTimeout(res, 650));
+        }
+        const g = document.getElementById('fshTabGlide');
+        const a = document.querySelector('#fshChemTabs .fsh-chem-tab.active') as HTMLElement;
+        if (!g || !a) return { tab: '?', dLeft: 999, dWidth: 999 };
+        const gr = g.getBoundingClientRect(), ar = a.getBoundingClientRect();
+        // Guard against measuring a collapsed strip and "passing" on zeros.
+        if (ar.width < 2) return { tab: (a.textContent || '').trim(), dLeft: 999, dWidth: 999 };
+        return {
+          tab: (a.textContent || '').trim().slice(0, 28),
+          dLeft: Math.round(gr.left - ar.left),
+          dWidth: Math.round(gr.width - ar.width),
+        };
+      }, { idx: i, s: sid });
+
+      if (!r) continue;
+      checked++;
+      if (Math.abs(r.dLeft) > 1 || Math.abs(r.dWidth) > 1) {
+        offenders.push(`${sid} › ${r.tab}: left off by ${r.dLeft}px, width off by ${r.dWidth}px`);
+      }
+    }
+  }
+
+  expect(checked, 'no tabs were measured').toBeGreaterThan(50);
+  expect(offenders, `highlight misaligned on ${offenders.length}/${checked} sub-tabs:\n${offenders.join('\n')}`).toEqual([]);
+});

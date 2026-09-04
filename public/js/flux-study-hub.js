@@ -653,12 +653,30 @@
   // in-app tools only, no external website links.
   function refStrip() { return ''; }
 
+  /* Geometry only — no scrolling — so this is safe to fire from a
+     ResizeObserver while the user is part-way along the strip.
+
+     Split out because the highlight was measured one frame after render
+     (requestAnimationFrame), while flux-iconify swaps every emoji icon for an
+     SVG on a setTimeout(…, 32) — a tick later. An <svg class="fxi"> is about
+     4px narrower than the emoji it replaces, so each tab shrank *after* the
+     highlight had recorded its width, and the error piled up left to right:
+     measured across all 13 subjects, 71 of 84 sub-tabs were out, the worst by
+     32px. The giveaway was which ones were fine — 〜Waves, ⊞Matrix, ∑Formulas
+     and the rest whose icon is a plain text glyph iconify never touches. Those
+     sat at exactly 0. */
+  function positionGlide() {
+    const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
+    const a = tabs.querySelector('.fsh-chem-tab.active'); if (!a) return;
+    g.style.left = a.offsetLeft + 'px';
+    g.style.width = a.offsetWidth + 'px';
+  }
   function moveTabGlide() {
     const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
     wireTabSlider();
     const a = tabs.querySelector('.fsh-chem-tab.active');
     if (a) {
-      g.style.left = a.offsetLeft + 'px'; g.style.width = a.offsetWidth + 'px';
+      positionGlide();
       try { a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
     }
     syncTabSlider();
@@ -685,8 +703,14 @@
     tabs.addEventListener('scroll', syncTabSlider, { passive: true });
     // The strip is measured before icon fonts settle, so the first sync can see
     // a non-overflowing strip and hide the slider. Re-measure on any resize.
-    if (window.ResizeObserver) { try { new ResizeObserver(syncTabSlider).observe(tabs); } catch (e) {} }
-    requestAnimationFrame(() => requestAnimationFrame(syncTabSlider));
+    // The highlight needs the identical treatment and wasn't getting it: this
+    // observer existed, knew the strip resizes late, and moved only the
+    // scrollbar thumb. Repositioning the glide here too fixes it for every
+    // cause of a late resize — icon swaps, web fonts, zoom, window width —
+    // rather than special-casing the one we happened to find.
+    const reflow = () => { syncTabSlider(); positionGlide(); };
+    if (window.ResizeObserver) { try { new ResizeObserver(reflow).observe(tabs); } catch (e) {} }
+    requestAnimationFrame(() => requestAnimationFrame(reflow));
     let grab = null;
     // scroll-behavior:smooth on the strip makes a dragged thumb lag behind the
     // pointer, so jumps are done with it temporarily disabled.
