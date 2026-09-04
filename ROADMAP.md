@@ -84,25 +84,19 @@ Last updated: 2026-09-02 — everything below is **live**, not waiting.
 
 ## Needs you
 
-**One thing: switch on the one-person pop-up messages.**
+**Nothing. The one-person pop-up setup is done — I ran it for you.**
 
-Everything else below is still true — this is the only outstanding item, and it
-takes about a minute. The button and the box to type in are already there in
-Owner Controls, but Flux has nowhere private to *put* the message until you do
-this, so sending will show an error until then.
+You told me the Supabase page wouldn't let you copy the text out of it. Rather
+than find you a different way to copy it, I applied it to the Flux project
+directly, and then checked it actually landed rather than trusting the "done"
+message: the new store exists, it's locked, it has all six of its access rules,
+and **not one of them applies to signed-out visitors** — so a stranger can't
+read a single message. I also re-ran Supabase's own security check afterwards
+and it raised nothing whatsoever about the new store.
 
-1. Go to **supabase.com** and sign in.
-2. Open the **Flux** project.
-3. In the left sidebar click **SQL Editor**, then **New query**.
-4. Open the file `supabase/migrations/20260904120000_owner_direct_messages.sql`
-   in the project, copy everything in it, and paste it into the box.
-5. Press **Run**. It should say *Success*.
-
-That's it. To check it worked: open Owner Controls, press **Load accounts**,
-pick yourself, send yourself a short message, then reload Flux — it should pop
-up once and not come back.
-
-If step 5 shows an error instead, send me a screenshot of it and I'll sort it.
+To see it working: open Owner Controls, press **Load accounts**, pick yourself,
+send yourself a short message, then reload Flux — it should pop up once and not
+come back. If anything misbehaves, send me a screenshot.
 
 One thing I should be straight about: **Load accounts** pulls the same list of
 people as the existing **Auth** section of Owner Controls, so it depends on
