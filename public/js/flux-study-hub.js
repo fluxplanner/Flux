@@ -234,6 +234,7 @@
     { id:'english', name:'English', ico:'✒', accent:'#e069b4', group:'languages-arts' },
     { id:'languages', name:'Languages', ico:'🌍', accent:'#36c5d6', group:'languages-arts' },
     { id:'music', name:'Music', ico:'🎵', accent:'#ff7a59', group:'arts' },
+    { id:'art', name:'Visual Arts', ico:'🖼', accent:'#b98cff', group:'arts' },
   ];
   const subjById = (id) => SUBJECTS.find((s) => s.id === id) || SUBJECTS[0];
   /* Anyone whose saved subject was 'astronomy' or 'civics' — or whose starred
@@ -727,18 +728,33 @@
      32px. The giveaway was which ones were fine — 〜Waves, ⊞Matrix, ∑Formulas
      and the rest whose icon is a plain text glyph iconify never touches. Those
      sat at exactly 0. */
-  function positionGlide() {
+  /* `animate` false means this is a *correction*, not a move you asked for.
+     Corrections must not slide, or you see the highlight land in the wrong
+     place and then visibly crawl to the right one a moment later — which is
+     the lag-then-snap this whole mechanism is supposed to prevent. Suppressing
+     the transition for the correction makes the icon swap invisible: the
+     highlight is simply in the right place by the time you look at it. */
+  function positionGlide(animate) {
     const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
     const a = tabs.querySelector('.fsh-chem-tab.active'); if (!a) return;
-    g.style.left = a.offsetLeft + 'px';
-    g.style.width = a.offsetWidth + 'px';
+    const left = a.offsetLeft + 'px', width = a.offsetWidth + 'px';
+    if (g.style.left === left && g.style.width === width) return; // nothing moved
+    if (animate) { g.style.left = left; g.style.width = width; return; }
+    const prev = g.style.transition;
+    g.style.transition = 'none';
+    g.style.left = left; g.style.width = width;
+    // Flush the un-transitioned values before restoring, or the browser
+    // coalesces both writes into one animated change and the snap comes back.
+    void g.offsetWidth;
+    g.style.transition = prev;
   }
   function moveTabGlide() {
     const tabs = $('fshChemTabs'), g = $('fshTabGlide'); if (!tabs || !g) return;
     wireTabSlider();
     const a = tabs.querySelector('.fsh-chem-tab.active');
     if (a) {
-      positionGlide();
+      // A click is a move you asked for, so this one slides.
+      positionGlide(true);
       try { a.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
     }
     syncTabSlider();

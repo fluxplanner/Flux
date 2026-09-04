@@ -194,6 +194,7 @@
     "public/js/flux-study-history.js",
     "public/js/flux-study-civics.js",
     "public/js/flux-study-psych.js",
+    "public/js/flux-study-art.js",
     "public/js/flux-lang-engine.js",
     "public/js/flux-study-lang.js",
     "public/js/flux-lang-practice.js",
