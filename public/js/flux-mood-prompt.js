@@ -42,9 +42,12 @@
   var AM = { from: 5, to: 12, key: 'am', title: 'Morning check-in', ask: 'How are you starting today?' };
   var PM = { from: 18, to: 24, key: 'pm', title: 'Evening check-in', ask: 'How did today go?' };
 
+  // Step 1 is 😰 to match the check-in buttons: 😞 and 😕 resolve to the same
+  // `frown` icon, so 1 and 2 offered the same face. See index.html's mood
+  // buttons. The values stored are unchanged — only the glyph shown.
   var FACES = [
-    { v: 1, ico: '😞', lbl: 'Rough' },
-    { v: 2, ico: '😕', lbl: 'Meh' },
+    { v: 1, ico: '😰', lbl: 'Rough' },
+    { v: 2, ico: '😞', lbl: 'Meh' },
     { v: 3, ico: '😐', lbl: 'OK' },
     { v: 4, ico: '🙂', lbl: 'Good' },
     { v: 5, ico: '😄', lbl: 'Great' },

@@ -81,7 +81,9 @@
       '<p class="ssub" style="margin:0 0 10px;line-height:1.55">Share <strong>anonymous</strong> study patterns (counts only — never your notes, task names, or identity) so Flux\'s predictions get sharper for everyone. Off by default. You can turn this off anytime.</p>' +
       '<div class="srow" style="border:none"><div><div class="slabel">Contribute anonymous stats</div>' +
       '<div class="ssub">Aggregated with 20+ students before anything is computed.</div></div>' +
-      '<button type="button" class="toggle' + (consent() ? ' on' : '') + '" id="fbConsentToggle" aria-pressed="' + consent() + '"></button></div>';
+      // aria-pressed was here from the start; the name was not, so this
+      // announced as "button, not pressed" with nothing saying what it does.
+      '<button type="button" class="toggle' + (consent() ? ' on' : '') + '" id="fbConsentToggle" aria-label="Contribute anonymous stats" aria-pressed="' + consent() + '"></button></div>';
     var first = pane.querySelector('.card');
     if (first) pane.insertBefore(card, first.nextSibling); else pane.appendChild(card);
     var btn = card.querySelector('#fbConsentToggle');

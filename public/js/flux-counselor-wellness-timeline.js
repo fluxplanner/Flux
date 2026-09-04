@@ -5,7 +5,9 @@
 (function () {
   'use strict';
 
-  const MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
+  // Step 1 is 😰 to match the check-in buttons: 😞 and 😕 resolve to the same
+  // `frown` icon, so 1 and 2 were the same face. See index.html's mood buttons.
+  const MOOD_EMOJI = ['', '😰', '😞', '😐', '🙂', '😄'];
   const DAYS_DEFAULT = 21;
 
   function enabled() {

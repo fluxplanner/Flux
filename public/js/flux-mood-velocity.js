@@ -9,7 +9,9 @@
   const STORE_KEY = 'flux_mood_velocity_v1';
   const CARD_ID = 'fluxMoodVelocityCard';
   const DAYS = 14;
-  const MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
+  // Step 1 is 😰 to match the check-in buttons: 😞 and 😕 resolve to the same
+  // `frown` icon, so 1 and 2 were the same face. See index.html's mood buttons.
+  const MOOD_EMOJI = ['', '😰', '😞', '😐', '🙂', '😄'];
   const ENERGY_EMOJI = ['', '😴', '😕', '😐', '😊', '🚀'];
   let _draft = { mood: 0, energy: 0 };
 
