@@ -40,12 +40,13 @@ test.describe('Gov & Civics and Psychology are real subjects', () => {
     await expect(page.locator('.fsh-pill').first()).toBeVisible();
   });
 
-  /* Reversed deliberately. Civics used to be its own pill on the argument that
-     world dates and capital cities share nothing with US government — right
-     about the content, wrong about the shelf. A thirteen-pill rail was the
-     bigger problem, so civics now lives under History, renamed History &
-     Politics to say so rather than leaving it looking like a guest. */
-  test('Gov & Civics lives under History & Politics, with no pill of its own', async ({ page }) => {
+  /* Civics has moved twice. It began as its own pill, on the argument that
+     world dates and capital cities share nothing with US government; it was
+     briefly folded into History when the rail was cut down, which proved that
+     argument correct; it now sits under Global Politics, which is the shelf it
+     wanted all along — branches, amendments and case law are how power is
+     arranged, not chronology. History keeps the timeline and the capitals. */
+  test('Gov & Civics lives under Global Politics, with no pill of its own', async ({ page }) => {
     /* Re-query the umbrella each time rather than iterating one NodeList:
        choosing a group re-renders the group row, which detaches the nodes a
        held list is still pointing at, so every click after the first would
@@ -59,17 +60,23 @@ test.describe('Gov & Civics and Psychology are real subjects', () => {
       }, g));
     }
     expect(pills.some((p) => /Gov & Civics/.test(p))).toBe(false);
-    expect(pills.some((p) => /History & Politics/.test(p))).toBe(true);
-    // The old name is gone too, so nothing still reads "Geo".
+    expect(pills.some((p) => /Global Politics/.test(p))).toBe(true);
+    /* Not anchored: a pill's text carries its icon glyph until flux-iconify
+       swaps it for an SVG, so "History" can read as "🏛History" depending on
+       when it is sampled. Match the word and rule out the two compound names
+       instead. */
+    expect(pills.some((p) => /History/.test(p) && !/History\s*&/.test(p))).toBe(true);
+    // Neither of the two names it briefly carried survives anywhere.
+    expect(pills.some((p) => /History & Politics/.test(p))).toBe(false);
     expect(pills.some((p) => /History & Geo/.test(p))).toBe(false);
   });
 
   test('Civics renders branches, amendments and case law', async ({ page }) => {
-    /* History's own tools register first, so the subject opens on Timeline.
-       Click through to Branches rather than asserting against whatever tab
-       happens to be default. */
+    /* Click through to Branches rather than asserting against whatever tab
+       happens to be default — Global Politics also carries the legacy
+       reference chip, so the default is not guaranteed to be civics. */
     const { tabs, text } = await page.evaluate(async () => {
-      (window as unknown as { fluxStudyHub: Hub }).fluxStudyHub.selectSubject('history');
+      (window as unknown as { fluxStudyHub: Hub }).fluxStudyHub.selectSubject('glopo');
       await new Promise((r) => setTimeout(r, 400));
       const branches = [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
         .find((t) => /Branches/.test(t.textContent || '')) as HTMLElement | undefined;

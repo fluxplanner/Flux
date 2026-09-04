@@ -228,7 +228,14 @@
     { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a', group:'science' },
     { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def', group:'maths-tech' },
     { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9', group:'maths-tech' },
-    { id:'history', name:'History & Politics', ico:'🏛', accent:'#d8a657', group:'humanities' },
+    { id:'history', name:'History', ico:'🏛', accent:'#d8a657', group:'humanities' },
+    /* Split back out of History. Merging the two was my call and it was the
+       wrong one: Global Politics is a course in its own right, and burying it
+       inside a timeline-and-capitals module made it look like an appendix.
+       Gov & Civics lives here rather than under History for the same reason —
+       branches, amendments and case law are politics, not chronology.
+       ⚖ not 🏛, which History keeps. */
+    { id:'glopo', name:'Global Politics', ico:'⚖', accent:'#c9a227', group:'humanities' },
     { id:'psychology', name:'Psychology', ico:'🧠', accent:'#f2545b', group:'humanities' },
     { id:'econ', name:'Economics', ico:'💹', accent:'#f4a13f', group:'humanities' },
     { id:'english', name:'English', ico:'✒', accent:'#e069b4', group:'languages-arts' },
@@ -240,7 +247,7 @@
   /* Anyone whose saved subject was 'astronomy' or 'civics' — or whose starred
      list still holds one — must land somewhere real rather than silently
      falling back to Chemistry. */
-  const MERGED = { astronomy:'physics', civics:'history' };
+  const MERGED = { astronomy:'physics', civics:'glopo' };
   const canonicalSubject = (id) => MERGED[id] || id;
   const groupOf = (sid) => (subjById(canonicalSubject(sid)) || {}).group || GROUPS[0].id;
 
@@ -1011,7 +1018,7 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'history', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'german-ref': 'languages', 'spanish-conj': 'languages', 'french-conj': 'languages', 'translate-ai': 'languages', 'music-theory': 'music', 'cs-ref': 'cs' };
     const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {

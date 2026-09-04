@@ -113,10 +113,10 @@ test.describe('AP course tools sit on their parent subject', () => {
           (e) => (e as HTMLElement).dataset.sub || '');
       }, g));
     }
-    // 12 = the twelve originals, less astronomy (into physics) and civics (into
-    // history), plus Visual Arts. Calculus, rhetoric and orchestra ride on
+    // 13 = the twelve originals, less astronomy (folded into physics), plus
+    // Visual Arts and Global Politics. Calculus, rhetoric and orchestra ride on
     // math, english and music rather than adding pills of their own.
-    expect(pills).toHaveLength(12);
+    expect(pills).toHaveLength(13);
     expect(pills).not.toContain('calculus');
     expect(pills).not.toContain('rhetoric');
     expect(pills).not.toContain('orchestra');

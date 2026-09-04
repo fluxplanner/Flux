@@ -25,7 +25,7 @@ import { gotoScenario } from './helpers';
 
 // Astronomy folded into Physics and Civics into History; Visual Arts added.
 const SUBJECTS = ['chemistry', 'physics', 'biology', 'math', 'cs',
-  'history', 'psychology', 'econ', 'english', 'languages', 'music', 'art'];
+  'history', 'glopo', 'psychology', 'econ', 'english', 'languages', 'music', 'art'];
 
 /*
  * The snap, specifically.

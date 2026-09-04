@@ -40,7 +40,7 @@ test.describe('Study tools — DP expansion', () => {
       all.push(...inGroup);
     }
     expect(all.slice().sort()).toEqual([
-      'art', 'biology', 'chemistry', 'cs', 'econ', 'english',
+      'art', 'biology', 'chemistry', 'cs', 'econ', 'english', 'glopo',
       'history', 'languages', 'math', 'music', 'physics', 'psychology',
     ]);
     expect(all).not.toContain('astronomy');
