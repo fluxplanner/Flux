@@ -19,6 +19,8 @@ Last updated: 2026-09-02 — everything below is **live**, not waiting.
 
 | What | Notes |
 |------|-------|
+| Tools for the six classes you named | You gave me the list — Gov and Civics, Symphonic Orchestra, AP Psych, AP Lang, AP Calc AB, AP Bio — which is exactly what I'd been asking for on "Study Tools is overwhelming". Where each one stands. **Gov and Civics is now its own subject**, sitting next to History & Geo rather than inside it, because that one is world dates and capital cities and shares nothing with US government but the word "history". It has the three branches, the amendments, landmark Supreme Court cases and a practice drill. **AP Psych went from one page to five.** It had a single printed reference sheet and nothing you could practise; it now has key figures, a conditioning drill, brain and chemistry, and defences and biases. Both of those were already written and sitting in the project unfinished — nothing had ever connected them, so neither could be reached at all. **AP Calc AB** had a graphing calculator and a short list of rules but no way to practise; it now has limits, the four named theorems with the conditions each one needs, curve sketching and motion, and a drill. **AP Lang** had eight rhetoric terms written for a different exam board and no logical fallacies anywhere; it now has the rhetorical situation, thirteen fallacies, the sentence devices, and the three essays with how each is marked. **Symphonic Orchestra** had nothing whatsoever — no instrument content existed anywhere in Flux. It now has score order, clefs, tempo and dynamics, the string techniques, and a transposition calculator that works in both directions. **AP Bio I left alone**, and I'd rather say so than quietly pad it: it already had Punnett squares, DNA to protein, a cell explorer and macromolecules, which is a real foundation, and adding to it properly means knowing what your students actually get stuck on. Tell me and I'll do it. The three new AP ones deliberately don't add more pills to the row of subjects — they sit inside Mathematics, English and Music, because you'd said that row was already overwhelming and calculus is a course, not a subject. |
+| Sending a pop-up to one person | You could already send a pop-up to everybody at once. Now you can send one to a single person: open Owner Controls, press **Load accounts**, pick who it's for, write it, send. They see it the next time they open Flux, once, and then it stops. **There is one setup step only you can do** — see "Needs you" below. Two things worth knowing. It's genuinely private: the message is stored somewhere only that person can read, not in the settings file the all-users broadcast uses, which is readable by anyone at all including people who aren't signed in — a personal note in there would have been visible to everybody. And Flux records that you've read it against your account rather than your device, so it won't reappear on your phone after you read it on a laptop, and won't come back if you clear your browser. Under the send button you can also see which of your recent messages have actually been opened. |
 | The mood check-in was five blank circles | Open Mood and it asks "How are you feeling today?" above five empty rings. No faces, no words, nothing in them at all — so there was no way to tell which one meant good and which meant bad. It wasn't always like that. The change that swapped Flux's colour emoji for the neat line-drawn icons deleted these five faces and put nothing back in their place, and the icon system can only convert a face it can actually see, so with nothing there it had nothing to convert. All five are back, and they're five genuinely *different* faces now — which they would not have been if I'd simply put the old ones back. Two of the original faces are drawn identically by the icon system, so the worst and second-worst options looked the same and a five-point scale really only offered four. That turned out to affect four other places that show the same scale — the little 30-day history strip, the mood trend, the counselor's wellbeing view, and the morning/evening check-in prompt — so all five now use one set that reads properly from worst to best. Worth saying I got this wrong once on the way: my first attempt was a slightly shallower frown for the second face, which looked fine blown up on my screen and was completely indistinguishable at the size it actually appears. I only caught it by rendering it at the real size and looking. One last thing fell out of it: the tab never showed which face you'd picked, even immediately after saving, so a saved check-in looked exactly like an untouched one. It remembers today's now, and deliberately forgets it tomorrow rather than presenting last week's mood as if it were today's. |
 | Twelve buttons that didn't say what they were | Found by walking every tab and listing every button whose name came out empty — which is what somebody using a screen reader hears. Twelve, all genuine: the five mood faces above, the "+" that adds a class, the "+" that adds an activity, and five of the on/off switches. The switches are worth explaining. A switch in Flux is an empty button with the pill and the little sliding knob painted on by the styling, so there is honestly no text inside it, and the words sitting beside it aren't attached to it. Four in a row under Notifications all announced as just "button", one after another, with no way to tell them apart or to know whether they were on. Two switches in Appearance already did this properly, so it was the existing house rule being applied unevenly rather than a decision anyone made. All twelve are named now, and the switches say whether they're on or off, which not one of them did before. There's a new automatic check that walks every tab and all eight Settings sections and fails if any button has no name — and I tested the check itself by breaking a label on purpose, to be sure it would notice. |
 | Nothing was silently broken behind the buttons | While I was in there I also checked every button in Flux that runs a named instruction when you press it — 313 of them — to see whether any pointed at something that no longer exists, which is the usual cause of a button that looks fine and does nothing. None did. Worth knowing the answer is clean rather than assuming it. |
@@ -82,13 +84,39 @@ Last updated: 2026-09-02 — everything below is **live**, not waiting.
 
 ## Needs you
 
-**Nothing.** First time this section has been empty.
+**One thing: switch on the one-person pop-up messages.**
+
+Everything else below is still true — this is the only outstanding item, and it
+takes about a minute. The button and the box to type in are already there in
+Owner Controls, but Flux has nowhere private to *put* the message until you do
+this, so sending will show an error until then.
+
+1. Go to **supabase.com** and sign in.
+2. Open the **Flux** project.
+3. In the left sidebar click **SQL Editor**, then **New query**.
+4. Open the file `supabase/migrations/20260904120000_owner_direct_messages.sql`
+   in the project, copy everything in it, and paste it into the box.
+5. Press **Run**. It should say *Success*.
+
+That's it. To check it worked: open Owner Controls, press **Load accounts**,
+pick yourself, send yourself a short message, then reload Flux — it should pop
+up once and not come back.
+
+If step 5 shows an error instead, send me a screenshot of it and I'll sort it.
+
+One thing I should be straight about: **Load accounts** pulls the same list of
+people as the existing **Auth** section of Owner Controls, so it depends on
+that already working for you. If the Auth section shows you a list of accounts
+today, this will too. If it shows an error there instead, it'll show the same
+one here — tell me and I'll give you a way to pick people that doesn't rely on
+it.
+
+---
 
 Everything in **Done** is merged and live at https://fluxplanner.github.io/Flux/
 — all three checks passed and the site rebuilt. You did the Supabase redirect
-setting, which was the last thing only you could do, so email sign-up now works
-end to end. The rest you said you didn't follow, so I made those calls myself;
-they're in **Decisions I made for you** below.
+setting, so email sign-up works end to end. The rest you said you didn't follow,
+so I made those calls myself; they're in **Decisions I made for you** below.
 
 One thing worth doing, though it isn't blocking: **open the site and hard-reload
 it once** — `Cmd-Shift-R` on a Mac. Flux keeps a copy of itself on your device

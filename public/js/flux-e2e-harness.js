@@ -242,8 +242,53 @@
       return (filters || []).every((f) => {
         if (f.op === 'eq') return String(row[f.col]) === String(f.val);
         if (f.op === 'neq') return String(row[f.col]) !== String(f.val);
+        // `.is(col, null)` is a null test, not an equality test — undefined has
+        // to satisfy it too, since a row written without the column reads back
+        // as null from Postgres.
+        if (f.op === 'is' && f.val === null) return row[f.col] === null || row[f.col] === undefined;
         return true;
       });
+    }
+
+    /* Owner → one person pop-ups. Needs a real memory for the same reason help
+       tickets do: the feature writes read_at and then must not show the message
+       again, which is only testable if the mock remembers the write.
+       Seed via window.__fluxE2EOwnerMessages. */
+    function ownerMessageStore() {
+      if (!Array.isArray(window.__fluxE2EOwnerMessages)) window.__fluxE2EOwnerMessages = [];
+      return window.__fluxE2EOwnerMessages;
+    }
+
+    function ownerMessageResult(state) {
+      const store = ownerMessageStore();
+      const copy = (r) => ({ ...r });
+      if (state.op === 'insert') {
+        const p = state.payload || {};
+        const row = {
+          id: `e2e-dm-${store.length + 1}`,
+          recipient_id: p.recipient_id || null,
+          title: p.title || 'A message from Flux',
+          body: p.body || '',
+          created_at: new Date().toISOString(),
+          created_by: p.created_by || null,
+          read_at: null,
+        };
+        store.push(row);
+        return state.single ? single(copy(row)) : { data: [copy(row)], error: null };
+      }
+      if (state.op === 'update') {
+        const hits = store.filter((r) => matchesFilters(r, state.filters));
+        hits.forEach((r) => Object.assign(r, state.payload || {}));
+        return { data: hits.map(copy), error: null };
+      }
+      if (state.op === 'delete') {
+        const keep = store.filter((r) => !matchesFilters(r, state.filters));
+        store.length = 0;
+        keep.forEach((r) => store.push(r));
+        return { data: [], error: null };
+      }
+      const rows = store.filter((r) => matchesFilters(r, state.filters)).map(copy);
+      return state.single ? single(rows[0] || null) : { data: rows, error: null };
     }
 
     function helpTicketResult(state) {
@@ -283,6 +328,7 @@
       const empty = { data: [], error: null };
       const single = (row) => ({ data: row, error: null });
       if (table === 'flux_help_tickets') return helpTicketResult(state);
+      if (table === 'owner_direct_messages') return ownerMessageResult(state);
       if (table === 'counselors' && scenario === 'counselor-path') {
         if (state.op === 'insert' || state.op === 'update') return single(counselorRow);
         if (state.single) return single(counselorRow);
@@ -317,7 +363,10 @@
           state.filters.push({ op: 'neq', col, val });
           return api;
         },
-        is() {
+        // Records like eq/neq so a table with a backing store can honour
+        // `.is('read_at', null)`. Tables without one ignore state.filters.
+        is(col, val) {
+          state.filters.push({ op: 'is', col, val });
           return api;
         },
         ilike() {

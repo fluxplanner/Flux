@@ -9670,6 +9670,10 @@ async function syncFromCloud(){
     maybeFluxOwnerAnnouncementToast();
     try{fluxRenderMaintenanceOverlay();}catch(_){}
     try{maybeFluxBroadcastPopup();}catch(_){}
+    // Messages addressed to this one account. Separate from the broadcast
+    // above and read straight from the database, so it applies to the owner
+    // too — unlike the broadcast, which the owner reads from their own config.
+    try{window.FluxOwnerMessages&&FluxOwnerMessages.checkInbox();}catch(_){}
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -9758,13 +9762,21 @@ function fluxShowSignInPopup(opts){
   const bodySafe=String(opts.body||'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]).replace(/\n/g,'<br>');
   ov.innerHTML=`
     <div style="max-width:480px;width:100%;background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:26px;box-shadow:0 28px 80px rgba(0,0,0,.55);position:relative">
-      <div style="font-size:.66rem;color:var(--accent);text-transform:uppercase;letter-spacing:.18em;font-family:JetBrains Mono,monospace;font-weight:700;margin-bottom:8px">${opts.preview?'PREVIEW · NOT BROADCAST':'BROADCAST'}</div>
+      <div style="font-size:.66rem;color:var(--accent);text-transform:uppercase;letter-spacing:.18em;font-family:JetBrains Mono,monospace;font-weight:700;margin-bottom:8px">${opts.preview?'PREVIEW · NOT BROADCAST':(opts.kind?String(opts.kind).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]):'BROADCAST')}</div>
       <h2 style="margin:0 0 12px;font-size:1.4rem;font-weight:900;letter-spacing:-.02em">${titleSafe}</h2>
       <div style="font-size:.92rem;line-height:1.55;color:var(--muted2);margin-bottom:22px;max-height:50vh;overflow-y:auto">${bodySafe||'<i style="color:var(--muted)">(empty)</i>'}</div>
       <button type="button" id="fluxBroadcastClose" style="width:100%;padding:12px;font-size:.9rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Got it</button>
     </div>`;
   document.body.appendChild(ov);
-  const close=()=>ov.remove();
+  // Guarded so onClose fires exactly once — the backdrop and the button can
+  // both land if a click is released outside the dialog.
+  let closed=false;
+  const close=()=>{
+    if(closed)return;
+    closed=true;
+    ov.remove();
+    if(typeof opts.onClose==='function'){try{opts.onClose();}catch(_){}}
+  };
   document.getElementById('fluxBroadcastClose')?.addEventListener('click',close);
   ov.addEventListener('click',(e)=>{if(e.target===ov)close();});
 }

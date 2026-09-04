@@ -691,6 +691,26 @@
 
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:1rem">Message one person</div>
+              <div style="font-size:.74rem;color:var(--muted2);line-height:1.5">The same pop-up as above, addressed to a single account. Only they can read it — it is stored privately rather than in the public settings the broadcast uses. They see it next time they open Flux, once.</div>
+            </div>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Who</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <select id="osDmUser" aria-label="Recipient" style="flex:1;min-width:200px;min-height:44px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;box-sizing:border-box"><option value="">Load accounts first…</option></select>
+            <button type="button" onclick="ownerAuthUsersLoad(1).then(()=>ownerDmFillUsers&&ownerDmFillUsers())" style="padding:11px 14px;min-height:44px;font-size:.76rem;border-radius:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-weight:700;cursor:pointer">Load accounts</button>
+          </div>
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Title</label>
+          <input type="text" id="osDmTitle" placeholder="A message from Flux" style="width:100%;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.85rem;margin-bottom:10px;box-sizing:border-box">
+          <label style="display:block;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:JetBrains Mono,monospace;margin-bottom:4px">Message</label>
+          <textarea id="osDmBody" placeholder="Nice work on the recital last night." style="width:100%;min-height:70px;padding:10px;border-radius:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.82rem;resize:vertical;box-sizing:border-box;margin-bottom:10px"></textarea>
+          <button type="button" onclick="ownerSendDirectMessage()" style="width:100%;padding:11px;min-height:44px;font-size:.84rem;font-weight:800;border:none;border-radius:12px;background:var(--accent);color:#0a0d18;cursor:pointer">Send to this person</button>
+          <div id="osDmSent" style="font-size:.72rem;color:var(--muted2);line-height:1.6;margin-top:10px"></div>
+        </div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <span style="font-size:1.4rem"></span>
             <div style="flex:1">
               <div style="font-weight:800;font-size:1rem">Toast announcement</div>
@@ -2134,6 +2154,57 @@
       if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with Auth + <code style="font-size:.65rem">owner_patch_user_role</code>, and confirm <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> matches your Google account.</div>';
       if(typeof showToast==='function')showToast(msg,'error');
     }
+  };
+
+  /* ── Message one person ──────────────────────────────────────────────────
+     The recipient list is whatever the Auth tab last loaded
+     (window.__fluxAuthLastUsers), so this needs no second API call — but it is
+     also empty until something has loaded it, hence the explicit button and
+     the honest placeholder rather than a silently empty dropdown. */
+  window.ownerDmFillUsers=function(){
+    const sel=document.getElementById('osDmUser');
+    if(!sel)return;
+    const users=window.__fluxAuthLastUsers||[];
+    if(!users.length){sel.innerHTML='<option value="">Load accounts first…</option>';return;}
+    const prev=sel.value;
+    sel.innerHTML=users.map(u=>`<option value="${esc(u.id||'')}">${esc(u.email||u.id||'(no email)')}</option>`).join('');
+    if(prev)sel.value=prev;
+  };
+
+  window.ownerSendDirectMessage=async function(){
+    if(!isOwner())return;
+    const sel=document.getElementById('osDmUser');
+    const recipient=sel&&sel.value;
+    const title=(document.getElementById('osDmTitle')||{}).value||'';
+    const body=((document.getElementById('osDmBody')||{}).value||'').trim();
+    if(!recipient){if(typeof showToast==='function')showToast('Pick who it is for — press “Load accounts” first','info');return;}
+    if(!body){if(typeof showToast==='function')showToast('Write a message first','info');return;}
+    if(!window.FluxOwnerMessages){if(typeof showToast==='function')showToast('Messaging module not loaded','error');return;}
+
+    const who=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:recipient;
+    const ok=await FluxOwnerMessages.send(recipient,title,body);
+    if(!ok){
+      // Almost always the migration: the table simply is not there yet.
+      if(typeof showToast==='function')showToast('Could not send — has the owner_direct_messages migration been applied?','error');
+      return;
+    }
+    const bodyEl=document.getElementById('osDmBody');if(bodyEl)bodyEl.value='';
+    if(typeof showToast==='function')showToast('Sent to '+who,'success');
+    if(typeof ownerAuditAppend==='function')ownerAuditAppend('owner_direct_message',{to:who});
+    ownerDmRefreshSent();
+  };
+
+  /** Recently sent, with whether each has actually been read. */
+  window.ownerDmRefreshSent=async function(){
+    const host=document.getElementById('osDmSent');
+    if(!host||!window.FluxOwnerMessages)return;
+    const rows=await FluxOwnerMessages.recent(8);
+    if(!rows.length){host.innerHTML='';return;}
+    const users=window.__fluxAuthLastUsers||[];
+    const nameOf=(id)=>{const u=users.find(x=>x.id===id);return u&&u.email?u.email:'account '+String(id).slice(0,8);};
+    host.innerHTML='<div style="font-weight:700;margin-bottom:4px">Recently sent</div>'+rows.map(r=>
+      `<div>· ${esc(nameOf(r.recipient_id))} — ${r.read_at?'read':'<span style="color:var(--muted)">not opened yet</span>'}</div>`
+    ).join('');
   };
 
   window.ownerAuthUsersPrevPage=function(){

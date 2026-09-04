@@ -171,6 +171,7 @@
     "public/js/flux-enhancements-v100.js",
     "public/js/flux-master-backlog.js",
     "public/js/owner-suite.js",
+    "public/js/flux-owner-messages.js",
     "public/js/flux-pro.js",
     "public/js/flux-periodic.js",
     "public/js/flux-toolbox.js",
