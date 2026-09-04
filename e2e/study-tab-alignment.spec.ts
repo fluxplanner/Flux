@@ -27,6 +27,47 @@ import { gotoScenario } from './helpers';
 const SUBJECTS = ['chemistry', 'physics', 'biology', 'math', 'cs',
   'history', 'psychology', 'econ', 'english', 'languages', 'music', 'art'];
 
+/*
+ * The snap, specifically.
+ *
+ * Correcting the highlight after the icon swap was the wrong fix: the
+ * correction interrupted the click's own 0.32s slide, which is what you saw as
+ * a snap. Chemistry never showed it, because its tabs use text glyphs
+ * (⊞ ◎ ± ∑) that iconify leaves alone — which is what identified the cause.
+ *
+ * So this asserts the cause is gone rather than the symptom is hidden: a tab's
+ * width must not change when its emoji becomes an SVG. If width is stable
+ * there is nothing to correct, so there is nothing that can interrupt.
+ */
+test('an icon turning into an SVG does not change its tab width', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+  await expect(page.locator('#fshChemTabs')).toBeVisible();
+
+  for (const sid of ['art', 'psychology', 'biology']) {
+    const { before, after, swapped } = await page.evaluate(async (s) => {
+      const hub = (window as unknown as { fluxStudyHub: { selectSubject: (i: string) => void } }).fluxStudyHub;
+      hub.selectSubject(s);
+      // Synchronous: the tabs exist with raw emoji, pre-swap.
+      const widths = () => [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
+        .map((b) => (b as HTMLElement).offsetWidth);
+      const b = widths();
+      // Well past flux-iconify's setTimeout(…, 32) flush.
+      await new Promise((r) => setTimeout(r, 500));
+      return {
+        before: b,
+        after: widths(),
+        // Prove the swap actually happened, or this passes for the wrong reason.
+        swapped: document.querySelectorAll('#fshChemTabs .fsh-ct-ico svg.fxi').length,
+      };
+    }, sid);
+
+    expect(swapped, `${sid}: no icon was swapped, so this proves nothing`).toBeGreaterThan(0);
+    expect(after, `${sid}: tab widths changed when icons became SVGs`).toEqual(before);
+  }
+});
+
 test('the highlight sits under the tab it highlights, on every sub-tab of every subject', async ({ page }) => {
   test.setTimeout(300_000);
   await page.setViewportSize({ width: 1280, height: 900 });

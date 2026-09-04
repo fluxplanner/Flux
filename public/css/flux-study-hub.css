@@ -217,7 +217,28 @@
 .fsh-tabs-thumb { position:absolute; top:0; bottom:0; left:0; border-radius:999px; background:rgba(var(--fsh-accent-rgb),.5); transition:background .16s; }
 .fsh-tabs-slider:hover .fsh-tabs-thumb, .fsh-tabs-thumb.dragging { background:rgba(var(--fsh-accent-rgb),.9); }
 .fsh-chem-tab { border:0; background:transparent; color:var(--fsh-ink-2); cursor:pointer; padding:9px 18px; border-radius:999px; font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; position:relative; z-index:1; transition:color .2s; flex:0 0 auto; white-space:nowrap; }
-.fsh-chem-tab .fsh-ct-ico { font-size:15px; }
+/* Fixed slot, and this is load-bearing rather than tidiness.
+
+   flux-iconify replaces each emoji icon with an <svg class="fxi"> ~32ms after
+   render. An emoji's advance width is about 1.17em; the SVG is exactly 1em —
+   so every tab silently narrowed by ~4px *after* the sliding highlight had
+   measured it, and the drift accumulated along the strip (71 of 84 sub-tabs
+   were out, worst by 32px).
+
+   Correcting the highlight afterwards was the wrong fix: the correction
+   interrupted the click's own 0.32s slide, which is the "snap" you could see.
+   Chemistry never did it because its tabs use text glyphs (⊞ ◎ ± ∑) that
+   iconify leaves alone — which is exactly what pointed at the cause.
+
+   Reserving the space means the swap is width-neutral, so there is nothing to
+   correct and nothing to interrupt. 1.2em fits the wider emoji advance; the
+   SVG centres inside it. */
+.fsh-chem-tab .fsh-ct-ico {
+  font-size:15px;
+  width:1.2em; height:1.2em;
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:0 0 auto;
+}
 .fsh-chem-tab.active { color:#04121b; }
 .fsh-chem-tab-glide { position:absolute; top:5px; bottom:5px; border-radius:999px; z-index:0; background:linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%)); box-shadow:0 8px 20px -8px rgba(var(--fsh-accent-rgb),.6); transition:left .32s cubic-bezier(.3,.9,.2,1), width .32s cubic-bezier(.3,.9,.2,1); }
 .fsh-chem-body { min-height:300px; }
