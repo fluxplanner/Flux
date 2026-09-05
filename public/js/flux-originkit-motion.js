@@ -118,16 +118,36 @@
     el.addEventListener('pointerleave', reset);
   }
 
+  /* Marks the element and nothing else. The pointer tracking is one delegated
+     listener on the document (initSpotlightTracking, below) rather than one
+     per card as it used to be.
+
+     That change is what makes "everywhere" affordable. A listener per element
+     meant the cost grew with the number of cards, which is why the panel list
+     further down was an allowlist with the busier screens left off — and why
+     the glow appeared on some panels and not others. One listener costs the
+     same whether there are four cards on screen or four hundred. */
   function spotlight(el) {
     if (!el || el.dataset.fluxSpotWired) return;
     el.dataset.fluxSpotWired = '1';
     el.classList.add('flux-spotlight');
-    el.addEventListener('pointermove', (e) => {
+  }
+
+  function initSpotlightTracking() {
+    if (document.documentElement.dataset.fluxSpotTracking) return;
+    document.documentElement.dataset.fluxSpotTracking = '1';
+    document.addEventListener('pointermove', (e) => {
       if (!active()) return;
+      /* Mouse only. On a touchscreen the pointer sits wherever you last
+         tapped, so a glow following it just leaves a smudge behind your
+         finger rather than tracking anything. */
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      const el = e.target && e.target.closest ? e.target.closest('.flux-spotlight') : null;
+      if (!el) return;
       const r = el.getBoundingClientRect();
       el.style.setProperty('--spot-x', (e.clientX - r.left) + 'px');
       el.style.setProperty('--spot-y', (e.clientY - r.top) + 'px');
-    });
+    }, { passive: true, capture: true });
   }
 
   function magnet(el, opts) {
@@ -259,23 +279,37 @@
     adminDashboard: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
     adminOps: { spotlight: ['.ao-stat', '.card'], stagger: ['.ao-stats'] },
     ai: { spotlight: [], stagger: ['.flux-ai-proposal'] },
-    // M5 broad sweep — spotlight is hover-only (no perpetual rAF, zero cost
-    // until hover), so it's safe on data-adjacent student panels. Task list
-    // and calendar grid are intentionally NOT enhanced (busy data views).
-    settings: { spotlight: ['.card'], stagger: [] },
-    mood: { spotlight: ['.card'], stagger: [] },
-    goals: { spotlight: ['.card'], stagger: [] },
-    timer: { spotlight: ['.card'], stagger: [] },
-    toolbox: { spotlight: ['.card', '.st-tool', '.study-tool-card'], stagger: [] },
+    settings: { spotlight: [], stagger: [] },
+    mood: { spotlight: [], stagger: [] },
+    goals: { spotlight: [], stagger: [] },
+    timer: { spotlight: [], stagger: [] },
+    toolbox: { spotlight: ['.st-tool', '.study-tool-card'], stagger: [] },
     notes: { spotlight: ['.note-card'], stagger: ['#notesList'] },
-    profile: { spotlight: ['.card'], stagger: [] },
+    profile: { spotlight: [], stagger: [] },
   };
+
+  /* Every panel gets this, listed or not. The map above is now only for the
+     extra card classes a particular screen uses; ".card" is the app's
+     universal card and no longer needs repeating in thirteen places.
+
+     This is the inconsistency: the map was an allowlist, so a panel nobody had
+     added — the dashboard, School Info, Extracurriculars, Canvas, the owner
+     screens — simply had no glow, and moving between them the effect came and
+     went for no reason a user could see.
+
+     Note what ".card" does not match: individual task rows, calendar days and
+     table cells. Those keep their own hover states rather than gaining a
+     spotlight each, which is the distinction the old comment here was reaching
+     for when it excluded whole panels instead. */
+  const SPOTLIGHT_ALWAYS = ['.card'];
+
   function autoEnhance(panelId) {
     if (!active()) return;
-    const cfg = ENHANCE[panelId];
     const panel = document.getElementById(panelId);
-    if (!cfg || !panel) return;
-    (cfg.spotlight || []).forEach((sel) => panel.querySelectorAll(sel).forEach(spotlight));
+    if (!panel) return;
+    const cfg = ENHANCE[panelId] || {};
+    SPOTLIGHT_ALWAYS.concat(cfg.spotlight || [])
+      .forEach((sel) => panel.querySelectorAll(sel).forEach(spotlight));
     (cfg.stagger || []).forEach((sel) => panel.querySelectorAll(sel).forEach((c) => staggerList(c)));
   }
 
@@ -285,7 +319,9 @@
    * content lands (primitives are idempotent), then disconnect.
    */
   function autoEnhanceWatched(panelId) {
-    if (!active() || !ENHANCE[panelId]) return;
+    // No longer gated on the panel being in ENHANCE — every panel has cards,
+    // and gating here was the other half of why the glow was inconsistent.
+    if (!active()) return;
     const panel = document.getElementById(panelId);
     if (!panel) return;
     autoEnhance(panelId);
@@ -317,6 +353,7 @@
   }
 
   function boot() {
+    initSpotlightTracking();
     wire(document);
     document.addEventListener('flux-nav', (e) => {
       const panelId = e && e.detail && e.detail.panel;

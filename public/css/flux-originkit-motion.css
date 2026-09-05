@@ -71,8 +71,12 @@
 .flux-spotlight::after {
   content: "";
   position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  /* Halved from .10. At full strength the glow was the most eye-catching
+     thing on screen while you were simply moving the mouse across a panel,
+     which is the one moment it should be doing the least. It is there to
+     acknowledge where you are, not to compete with what you are reading. */
   background: radial-gradient(340px circle at var(--spot-x) var(--spot-y),
-    rgba(var(--accent-rgb, 99,102,241), .10), transparent 62%);
+    rgba(var(--accent-rgb, 99,102,241), .05), transparent 62%);
   opacity: 0; transition: opacity .3s ease;
 }
 .flux-spotlight:hover::after { opacity: 1; }
