@@ -564,4 +564,104 @@ test.describe('Timer tab — time tools', () => {
     expect(res.fsOpen).toBe(true);
     expect(res.fsMode).toBe('countdown');
   });
+
+  /* Full screen as something you leave running.
+   *
+   * Two things follow from that: the machine must not fall asleep while you
+   * are looking at it, and after a while there should be nothing on screen
+   * but the time. Both are asserted against the clock, which is the view most
+   * likely to be left up for an hour.
+   */
+  test('full screen asks to keep the screen awake, and releases it on exit', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+
+    /* Record the calls rather than trusting the browser to grant a real lock:
+       headless Chromium may refuse one, and what matters is that Flux asks and
+       then gives it back. Installed before the overlay opens. */
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__wake = { requests: 0, releases: 0 };
+      /* defineProperty, not assignment. navigator.wakeLock is an accessor on
+         Navigator.prototype in Chromium, so `navigator.wakeLock = …` is
+         silently dropped and the test measures a stub nothing ever calls. */
+      Object.defineProperty(navigator, 'wakeLock', {
+        configurable: true,
+        value: {
+          request: () => {
+            w.__wake.requests++;
+            return Promise.resolve({
+              release: () => { w.__wake.releases++; return Promise.resolve(); },
+              addEventListener: () => {},
+            });
+          },
+        },
+      });
+    });
+
+    const res = await page.evaluate(async () => {
+      const w = window as any;
+      w.FluxTimeTools.openFocusFullscreen('clock');
+      await new Promise((r) => setTimeout(r, 300));
+      const afterOpen = w.__wake.requests;
+      document.querySelector<HTMLElement>('[data-ftt="fs-exit"]')?.click();
+      await new Promise((r) => setTimeout(r, 300));
+      return { afterOpen, releases: w.__wake.releases };
+    });
+
+    expect(res.afterOpen, 'full screen never asked for a wake lock').toBeGreaterThan(0);
+    expect(res.releases, 'the wake lock was never released on exit').toBeGreaterThan(0);
+  });
+
+  test('the chrome fades out when the cursor stops, and the time never does', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+
+    const res = await page.evaluate(async () => {
+      const w = window as any;
+      w.FluxTimeTools.openFocusFullscreen('clock');
+      await new Promise((r) => setTimeout(r, 200));
+      const el = document.getElementById('fttFocusFs')!;
+      const op = (sel: string) => {
+        const n = el.querySelector(sel);
+        return n ? getComputedStyle(n).opacity : null;
+      };
+
+      const busy = { idle: el.classList.contains('is-idle'), label: op('.ftt-fs-lbl') };
+
+      /* The idle threshold is three seconds; wait past it without touching
+         anything. Deliberately a real wait — the whole feature is "what
+         happens when you do nothing", so there is nothing to fast-forward. */
+      await new Promise((r) => setTimeout(r, 3600));
+      const idle = {
+        idle: el.classList.contains('is-idle'),
+        label: op('.ftt-fs-lbl'),
+        actions: op('.ftt-fs-actions'),
+        hint: op('.ftt-fs-hint'),
+        time: op('.ftt-fs-time'),
+        cursor: getComputedStyle(el).cursor,
+      };
+
+      // Any movement brings it straight back.
+      document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
+      await new Promise((r) => setTimeout(r, 100));
+      const woken = { idle: el.classList.contains('is-idle') };
+
+      document.querySelector<HTMLElement>('[data-ftt="fs-exit"]')?.click();
+      return { busy, idle, woken };
+    });
+
+    // Visible to start with.
+    expect(res.busy.idle).toBe(false);
+    expect(res.busy.label).toBe('1');
+
+    // Faded after three seconds of nothing — except the time.
+    expect(res.idle.idle, 'the overlay never went idle').toBe(true);
+    expect(res.idle.label).toBe('0');
+    expect(res.idle.actions).toBe('0');
+    expect(res.idle.hint).toBe('0');
+    expect(res.idle.time, 'the time faded out too, which is the one thing that must not').toBe('1');
+    expect(res.idle.cursor, 'the cursor stayed visible').toBe('none');
+
+    // And back on the first movement.
+    expect(res.woken.idle).toBe(false);
+  });
 });

@@ -142,6 +142,28 @@ const PILL_GROUPS = [
      underline away on the way past. */
   { host: '.fnb-viewtabs', item: '.fnb-viewtab', activeCls: 'active', shape: 'tab' },
   { host: '.cm-filter-strip', item: '.cm-filter', activeCls: 'active', shape: 'tab' },
+
+  /* The last of them, found by walking the live DOM for containers holding two
+     or more sibling buttons with exactly one active, rather than by guessing
+     class names — which is how the earlier ones got missed. */
+  { host: '.ftt-nav', item: '.tmode-btn', activeCls: 'active', shape: 'pill' },
+  { host: '.mode-switch-track', item: '.mode-btn', activeCls: 'active', shape: 'pill' },
+  { host: '#changelogFilters', item: '.flux-changelog-chip', activeCls: 'active', shape: 'pill' },
+
+  /* Two strips whose container is a bare <div style="display:flex"> with no
+     class or id to aim at. Rather than editing the markup to add a hook,
+     :has(> …) names them by what they contain — which also means they keep
+     working if the row is moved or restyled. */
+  { host: 'div:has(> .mood-btn)', item: '.mood-btn', activeCls: 'active', shape: 'pill' },
+  { host: '#notes div:has(> .tmode-btn)', item: '.tmode-btn', activeCls: 'active', shape: 'pill' },
+
+  /* The calendar grid. "selected" and not "active": the calendar marks today
+     with .today and the day you clicked with .selected, so keying on active
+     would have pinned the highlight to today and never moved it.
+
+     The pill is absolutely positioned, so being prepended into a CSS grid
+     costs it no cell and shifts no dates. */
+  { host: '#calGrid', item: '.cal-day', activeCls: 'selected', shape: 'tab' },
 ];
 
 /* Derived, not hand-written. The click listener below used to carry its own

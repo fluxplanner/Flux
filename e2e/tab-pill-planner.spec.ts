@@ -149,6 +149,8 @@ const STRIPS: Array<[string, string, string]> = [
   ['cm-filter-strip', 'cm-filter', 'staff class filter'],
   ['fnb-viewtabs', 'fnb-viewtab', 'notebook view switch'],
   ['flp-themes', 'flp-theme', 'language practice topics'],
+  ['ftt-nav', 'tmode-btn', 'focus timer'],
+  ['mode-switch-track', 'mode-btn', 'mode switch'],
 ];
 
 test.describe('the sliding highlight reaches the rest of the planner', () => {
@@ -263,6 +265,161 @@ test.describe('the sliding highlight reaches the rest of the planner', () => {
     // And it landed on the item, not near it.
     expect(res.offBy, `pill is not under the active item (${JSON.stringify(res)})`)
       .toBeLessThan(2);
+  });
+
+  /* The calendar, which is the one strip that is a grid rather than a row.
+     Two things make it different from every other group: the highlight has to
+     travel in both axes, and the day you clicked is marked "selected" while
+     "active" is not used at all — keying on active would have pinned the
+     highlight to today and never moved it. */
+  test('the calendar highlight follows the day you click, in both axes', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('flux-apple-motion'),
+      null, { timeout: 15000 },
+    );
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('calendar'));
+    await expect(page.locator('#calGrid .cal-day').first()).toBeVisible();
+
+    const res = await page.evaluate(async () => {
+      const grid = document.getElementById('calGrid') as HTMLElement;
+      const pill = () => grid.querySelector('.flux-morph-pill') as HTMLElement | null;
+      const sel = () => grid.querySelector('.cal-day.selected') as HTMLElement | null;
+      const pos = (el: HTMLElement | null) => {
+        if (!el) return { x: NaN, y: NaN };
+        const g = grid.getBoundingClientRect(), r = el.getBoundingClientRect();
+        return { x: r.left - g.left, y: r.top - g.top };
+      };
+      const until = async (ok: () => boolean, ms = 5000) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) { if (ok()) return true; await new Promise((r) => setTimeout(r, 50)); }
+        return false;
+      };
+
+      const days = [...grid.querySelectorAll('.cal-day')] as HTMLElement[];
+      days[3].click();
+      await until(() => !!pill() && pill()!.dataset.placed === '1' && !!sel());
+      const first = pos(pill());
+
+      // A day on a later row, so the highlight has to move down as well as across.
+      const target = days[Math.min(days.length - 1, 3 + 15)];
+      target.click();
+      await until(() => {
+        const p = pos(pill()), s = pos(sel());
+        return Math.hypot(p.x - first.x, p.y - first.y) > 8
+          && Math.abs(p.x - s.x) < 1 && Math.abs(p.y - s.y) < 1;
+      });
+      const second = pos(pill());
+
+      return {
+        pillCount: grid.querySelectorAll('.flux-morph-pill').length,
+        movedY: Math.abs(second.y - first.y),
+        offBy: Math.hypot(second.x - pos(sel()).x, second.y - pos(sel()).y),
+        selectedBg: getComputedStyle(sel()!).backgroundColor,
+      };
+    });
+
+    expect(res.pillCount, 'the calendar grid has no pill').toBe(1);
+    expect(res.movedY, 'the highlight never moved to another row').toBeGreaterThan(8);
+    expect(res.offBy, 'the highlight is not on the selected day').toBeLessThan(2);
+    expect(res.selectedBg, 'the selected day kept its own background')
+      .toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  });
+
+  /* Mood only has an active button once you have picked one, which is why an
+     automated sweep for "exactly one active item" never saw this row at all. */
+  test('the mood row gets a highlight once a mood is chosen', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('flux-apple-motion'),
+      null, { timeout: 15000 },
+    );
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('mood'));
+    await expect(page.locator('.mood-btn').first()).toBeVisible();
+
+    const res = await page.evaluate(async () => {
+      const btns = [...document.querySelectorAll('.mood-btn')] as HTMLElement[];
+      const host = btns[0].parentElement as HTMLElement;
+      const pill = () => host.querySelector('.flux-morph-pill') as HTMLElement | null;
+      const until = async (ok: () => boolean, ms = 5000) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) { if (ok()) return true; await new Promise((r) => setTimeout(r, 50)); }
+        return false;
+      };
+      const x = () => {
+        const p = pill(); if (!p) return NaN;
+        return p.getBoundingClientRect().left - host.getBoundingClientRect().left;
+      };
+
+      btns[0].click();
+      await until(() => !!pill() && pill()!.dataset.placed === '1');
+      const first = x();
+      btns[4].click();
+      await until(() => Math.abs(x() - first) > 8);
+      return { pillCount: host.querySelectorAll('.flux-morph-pill').length, moved: Math.abs(x() - first) };
+    });
+
+    expect(res.pillCount, 'the mood row never got a pill').toBe(1);
+    expect(res.moved, 'the mood highlight did not move').toBeGreaterThan(8);
+  });
+
+  /* The ripple regression.
+   *
+   * A rule raising every child of a tab above the pill set `position:
+   * relative` on all of them, including the click ripple — a span with a large
+   * negative inset that is meant to expand past the edge of the button. Pulled
+   * into the flow it became a 495px-tall block, so a 36px nav item measured
+   * 537px for as long as the ripple lived. The pill sampled it mid-spike and
+   * chased it, giving a highlight the height of the whole sidebar that took
+   * about a second to shrink back. Canvas had it for the same reason.
+   *
+   * Sampled over time rather than checked at the end, because both the item
+   * and the pill are correct before the click and correct a second after it.
+   * Only the middle was wrong, which is why the existing tests all passed.
+   */
+  test('clicking a tab never makes it change size', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('flux-apple-motion'),
+      null,
+      { timeout: 15000 },
+    );
+
+    const res = await page.evaluate(async () => {
+      const host = document.querySelector('#sidebar .nav-scroll, #sidebar .sidebar-nav') as HTMLElement;
+      const pill = () => host.querySelector('.flux-morph-pill') as HTMLElement | null;
+      const active = () => host.querySelector('.nav-item.active') as HTMLElement | null;
+
+      const items = [...host.querySelectorAll('.nav-item')] as HTMLElement[];
+      const start = active()?.offsetHeight ?? 0;
+      const target = items.find((i) => !i.classList.contains('active'))!;
+      // A real click, so the ripple is created the way it is in the app.
+      target.click();
+
+      const itemHeights: number[] = [];
+      const pillHeights: number[] = [];
+      for (let i = 0; i < 16; i++) {
+        await new Promise((r) => setTimeout(r, 60));
+        const a = active();
+        if (a) itemHeights.push(a.offsetHeight);
+        const p = pill();
+        if (p) pillHeights.push(Math.round(p.getBoundingClientRect().height));
+      }
+      return {
+        start,
+        rippleExisted: !!document.querySelector('.flux-ripple') || true,
+        maxItem: Math.max(...itemHeights),
+        maxPill: Math.max(...pillHeights),
+      };
+    });
+
+    expect(res.start, 'no nav item was measured').toBeGreaterThan(0);
+    /* Generous but decisive: the bug produced 537 against a 36px row. Anything
+       near the real row height passes, a collapsed row or a spike does not. */
+    expect(res.maxItem, 'the nav item changed size while being clicked')
+      .toBeLessThan(res.start * 2);
+    expect(res.maxPill, 'the pill grew far beyond the tab it highlights')
+      .toBeLessThan(res.start * 2);
   });
 
   /* Study Tools' two rows. These are the ones Azfer looks at most, and they

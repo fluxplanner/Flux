@@ -444,6 +444,77 @@
     if (btn) setFsText('fttFsToggle', (btn.textContent || '').trim() || 'Start');
   }
 
+  /* ── keeping the screen awake ──────────────────────────────────────────────
+     A clock you cannot read because the machine went to sleep is not a clock.
+     The Wake Lock API is the only way for a web page to ask for this, and it
+     is not everywhere — Firefox shipped it late and iOS Safari later still —
+     so every call is guarded and a refusal is silent. Failing to hold the lock
+     costs you a screensaver, not the feature.
+
+     The browser drops the lock whenever the tab is hidden, so it has to be
+     taken again when you come back rather than requested once. */
+  var wakeLock = null;
+  function requestWakeLock() {
+    try {
+      if (!navigator.wakeLock || !navigator.wakeLock.request) return;
+      navigator.wakeLock.request('screen').then(function (lock) {
+        // The overlay may have been closed while the request was in flight.
+        if (!fsOpen) { try { lock.release(); } catch (e) {} return; }
+        wakeLock = lock;
+        lock.addEventListener('release', function () { wakeLock = null; });
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function releaseWakeLock() {
+    var lock = wakeLock;
+    wakeLock = null;
+    if (lock) { try { lock.release(); } catch (e) {} }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && fsOpen && !wakeLock) requestWakeLock();
+  });
+
+  /* ── idle chrome ───────────────────────────────────────────────────────────
+     Stop moving the mouse and everything but the time fades away, the way a
+     video player hides its controls. Any movement, key or tap brings it back.
+
+     Guarded rather than debounced: pointermove fires continuously, and
+     clearing and re-arming a timeout on every one of those is wasted work.
+     While the chrome is already visible, re-arming more than five times a
+     second changes nothing anyone can see. */
+  var IDLE_MS = 3000;
+  var idleTimer = null;
+  var lastActivity = 0;
+  function fsIdleActivity() {
+    if (!fsOpen) return;
+    var el = fsEl();
+    if (!el) return;
+    var now = Date.now();
+    var wasIdle = el.classList.contains('is-idle');
+    if (!wasIdle && now - lastActivity < 200) return;
+    lastActivity = now;
+    el.classList.remove('is-idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      var later = fsEl();
+      if (fsOpen && later) later.classList.add('is-idle');
+    }, IDLE_MS);
+  }
+  var IDLE_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'];
+  function startIdleWatch() {
+    IDLE_EVENTS.forEach(function (n) {
+      document.addEventListener(n, fsIdleActivity, { passive: true });
+    });
+    fsIdleActivity();
+  }
+  function stopIdleWatch() {
+    IDLE_EVENTS.forEach(function (n) { document.removeEventListener(n, fsIdleActivity); });
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    var el = fsEl();
+    if (el) el.classList.remove('is-idle');
+  }
+
   /** @param {string} [mode] Defaults to whichever view is open. */
   function openFocusFullscreen(mode) {
     var m = mode || state.view;
@@ -456,6 +527,8 @@
     unlockAudio();
     mirrorFs();
     kickPaint();
+    requestWakeLock();
+    startIdleWatch();
     try {
       if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -466,6 +539,8 @@
     if (el) el.hidden = true;
     fsOpen = false;
     document.body.classList.remove('ftt-fs-on');
+    releaseWakeLock();
+    stopIdleWatch();
     try {
       if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
       else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();

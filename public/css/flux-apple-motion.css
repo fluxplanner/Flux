@@ -208,15 +208,22 @@ html.flux-apple-motion .flux-pill-host {
   position: relative;
 }
 
+/* The item is positioned with a z-index above the pill, which puts everything
+   inside it above the pill as well — labels and icons included.
+
+   There is deliberately no `> *` rule raising the children individually. There
+   used to be, and it forced `position: relative` onto every child, which broke
+   any child that relied on being absolutely positioned. The click ripple is
+   exactly that: a span with a large negative inset that expands past the edge
+   of the button. Pulled into the flow it became a 495px-tall block, so a nav
+   item went from 36px to 537px for as long as the ripple lived, the pill
+   measured it mid-spike and chased it, and you got a highlight the height of
+   the sidebar that took a second to shrink back. Canvas had it too, for the
+   same reason. Positioning the item is sufficient; positioning its children
+   was never doing any work. */
 html.flux-apple-motion .flux-pill-item {
   position: relative;
   z-index: 1;
-}
-
-/* Icons and labels above the pill, never behind it. */
-html.flux-apple-motion .flux-pill-item > * {
-  position: relative;
-  z-index: 2;
 }
 
 /* The pill is the highlight now, so the item's own one has to go. !important
@@ -261,58 +268,11 @@ html.flux-apple-motion #sidebar .flux-morph-pill--rect::before {
    The :has() guard means all of this only applies once a pill has actually
    been inserted. If the motion script never runs, every strip keeps the
    highlight it has today rather than losing it. */
-html.flux-apple-motion .cv-tabs,
-html.flux-apple-motion .g-hub-tabs,
-html.flux-apple-motion .canvas-tab-bar,
-html.flux-apple-motion .canvas-quick-tabs,
-html.flux-apple-motion .class-tabs,
-html.flux-apple-motion .efm-tabs,
-html.flux-apple-motion .ao-dir-tabs,
-html.flux-apple-motion .school-work-tabs,
-html.flux-apple-motion .ref-tool-tabs {
-  position: relative;
-}
-
-html.flux-apple-motion .cv-tabs .cv-tab,
-html.flux-apple-motion .g-hub-tabs .g-hub-tab,
-html.flux-apple-motion .canvas-tab-bar .canvas-tab,
-html.flux-apple-motion .canvas-quick-tabs .canvas-tab,
-html.flux-apple-motion .class-tabs .class-tab,
-html.flux-apple-motion .efm-tabs .efm-tab,
-html.flux-apple-motion .ao-dir-tabs .ao-dir-tab,
-html.flux-apple-motion .school-work-tabs .school-work-tab,
-html.flux-apple-motion .ref-tool-tabs .ref-tool-tab {
-  position: relative;
-  z-index: 1;
-  isolation: isolate;
-}
-
-html.flux-apple-motion .cv-tabs .cv-tab > *,
-html.flux-apple-motion .g-hub-tabs .g-hub-tab > *,
-html.flux-apple-motion .canvas-tab-bar .canvas-tab > *,
-html.flux-apple-motion .canvas-quick-tabs .canvas-tab > *,
-html.flux-apple-motion .class-tabs .class-tab > *,
-html.flux-apple-motion .efm-tabs .efm-tab > *,
-html.flux-apple-motion .ao-dir-tabs .ao-dir-tab > *,
-html.flux-apple-motion .school-work-tabs .school-work-tab > *,
-html.flux-apple-motion .ref-tool-tabs .ref-tool-tab > * {
-  position: relative;
-  z-index: 2;
-}
-
-html.flux-apple-motion .cv-tabs:has(.flux-morph-pill) .cv-tab.active,
-html.flux-apple-motion .g-hub-tabs:has(.flux-morph-pill) .g-hub-tab.active,
-html.flux-apple-motion .canvas-tab-bar:has(.flux-morph-pill) .canvas-tab.active,
-html.flux-apple-motion .canvas-quick-tabs:has(.flux-morph-pill) .canvas-tab.active,
-html.flux-apple-motion .class-tabs:has(.flux-morph-pill) .class-tab.active,
-html.flux-apple-motion .efm-tabs:has(.flux-morph-pill) .efm-tab.active,
-html.flux-apple-motion .ao-dir-tabs:has(.flux-morph-pill) .ao-dir-tab.active,
-html.flux-apple-motion .school-work-tabs:has(.flux-morph-pill) .school-work-tab.active,
-html.flux-apple-motion .ref-tool-tabs:has(.flux-morph-pill) .ref-tool-tab.active {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
+/* The nine per-strip copies that used to live here are gone. Every one of them
+   said what the four marker rules above now say for every strip at once, and
+   keeping both meant the hand-maintained list could drift back out of step —
+   which is how it got out of step in the first place. Their `> *` rule is also
+   what broke Canvas: see the note above about the ripple. */
 
 /* Sidebar hosts */
 html.flux-apple-motion #sidebar .nav-scroll,

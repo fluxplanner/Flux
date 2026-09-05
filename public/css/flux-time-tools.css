@@ -347,6 +347,45 @@ body.ftt-fs-on { overflow: hidden; }
 .ftt-fs-hint { font-size: .68rem; color: var(--muted2); }
 .ftt-fs-launch { margin-top: -4px; }
 
+/* ── Idle: everything but the time fades out ──────────────────────────────
+   Set three seconds after the last pointer, key or touch event, and cleared
+   by any of them. The time itself is deliberately excluded — it is the one
+   thing you opened full screen to look at.
+
+   Fading rather than hiding, so nothing reflows. display:none on the label
+   and the buttons would let the clock jump to a new vertical position every
+   time the controls came and went, which is far more distracting than the
+   controls ever were. The layout stays put and only the ink changes.
+
+   pointer-events go with the opacity, so a control you cannot see cannot be
+   clicked by accident on the way to moving the mouse. */
+.ftt-fs-lbl,
+.ftt-fs-sub,
+.ftt-fs-actions,
+.ftt-fs-hint,
+.ftt-fs-ring {
+  transition: opacity .55s ease;
+}
+.ftt-fs.is-idle .ftt-fs-lbl,
+.ftt-fs.is-idle .ftt-fs-sub,
+.ftt-fs.is-idle .ftt-fs-actions,
+.ftt-fs.is-idle .ftt-fs-hint,
+.ftt-fs.is-idle .ftt-fs-ring {
+  opacity: 0;
+  pointer-events: none;
+}
+/* The cursor is part of "everything", and it is the one a video player never
+   forgets to hide. */
+.ftt-fs.is-idle { cursor: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ftt-fs-lbl,
+  .ftt-fs-sub,
+  .ftt-fs-actions,
+  .ftt-fs-hint,
+  .ftt-fs-ring { transition: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ftt-fs-ring-fill { transition: none; }
 }

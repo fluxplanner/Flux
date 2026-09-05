@@ -228,17 +228,26 @@ test('the highlight sits under the tab it highlights, on every sub-tab of every 
             dWidth: Math.round(gr.width - ar.width),
           };
         };
-        /* Measured twice, and only a disagreement that survives the second read
-           counts. Under a loaded machine this occasionally catches the strip
-           mid-layout and reports one tab as 16px out — which then passes on
-           every rerun, because the highlight was on its way to the right place
-           rather than parked in the wrong one. The defect being guarded is a
-           permanent misalignment, and a permanent misalignment cannot be
-           settled by waiting, so a second read cannot hide one. */
-        const first = measure();
-        if (Math.abs(first.dLeft) <= 1 && Math.abs(first.dWidth) <= 1) return first;
-        await new Promise((res) => setTimeout(res, 300));
-        return measure();
+        /* Polled until it settles, rather than read twice.
+
+           The highlight animates over about 320ms, so a reading taken while it
+           is still travelling shows it a few pixels short of the tab. Two
+           fixed reads used to be enough; at 107 sub-tabs it stopped being, and
+           the sweep failed roughly one run in three — on a different tab each
+           time, which is the signature of a race rather than a defect.
+
+           This does not weaken the check. What is being guarded is a highlight
+           parked in the wrong place, and a permanent misalignment never comes
+           into tolerance however long you wait, so it still fails after the
+           full budget. All the waiting removes is the false positive from
+           catching one in flight. */
+        let last = measure();
+        for (let attempt = 0; attempt < 15; attempt++) {
+          if (Math.abs(last.dLeft) <= 1 && Math.abs(last.dWidth) <= 1) return last;
+          await new Promise((res) => setTimeout(res, 60));
+          last = measure();
+        }
+        return last;
       }, { idx: i, s: sid });
 
       if (!r) continue;
