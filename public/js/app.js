@@ -9425,6 +9425,40 @@ async function forceSyncNow(){
 }
 let _syncFromCloudInFlight=false;
 
+/* ── Does this cloud list get to replace the local one? ──────────────────────
+   syncFromCloud() used to assign every collection straight across — and `[]`
+   is truthy, so `if(d.colleges){colleges=d.colleges}` happily replaced a
+   populated local list with an empty cloud one.
+
+   That is the "my colleges and activities disappeared" report. Any push that
+   happened before the item was added — or from a second device, or a session
+   that raced the edit — leaves an empty array in the row, and the very next
+   pull (every 8 seconds) writes it over the top of localStorage. The item is
+   then gone from both places.
+
+   There *is* a guard for this already, FluxOfflineSync.shouldSkipCloudOverwrite,
+   but it covers only tasks/notes/events and is gated on `enable_offline_sync`,
+   which is `false` in the flag registry — so it has never protected anything
+   for anyone.
+
+   This is deliberately the conservative half of the fix: refusing an empty
+   cloud list can only ever prevent a deletion, it can never cause one. The
+   cost is that emptying a list completely on one device no longer propagates
+   to another until something non-empty is pushed. For a single-person planner
+   that is the right side to err on — silently losing work is far worse than a
+   list that clears a beat late.
+
+   It does NOT cover the other half: a cloud list that is non-empty but older
+   than your local edits can still clobber them. That needs per-key dirty
+   tracking, which needs syncKey() to actually be called when these
+   collections change — today it is called 38 times for tasks and not once for
+   colleges, goals, extras, ecSchools or ecGoals. */
+function cloudListWins(cloudVal,localVal){
+  if(!Array.isArray(cloudVal))return false;
+  if(cloudVal.length)return true;
+  return !Array.isArray(localVal)||localVal.length===0;
+}
+
 async function syncFromCloud(){
   if(!currentUser)return;
   // Owner is previewing as a teacher — don't pull the owner's cloud data
@@ -9600,10 +9634,10 @@ async function syncFromCloud(){
     if(d.notes&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
       notes=d.notes;save('flux_notes',notes);
     }
-    if(d.habits){habits=d.habits;save('flux_habits',habits);}
-    if(d.goals){goals=d.goals;save('flux_goals',goals);}
-    if(d.colleges){colleges=d.colleges;save('flux_colleges',colleges);}
-    if(d.moodHistory){moodHistory=d.moodHistory;save('flux_mood',moodHistory);}
+    if(cloudListWins(d.habits,habits)){habits=d.habits;save('flux_habits',habits);}
+    if(cloudListWins(d.goals,goals)){goals=d.goals;save('flux_goals',goals);}
+    if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
+    if(cloudListWins(d.moodHistory,moodHistory)){moodHistory=d.moodHistory;save('flux_mood',moodHistory);}
     if(d.schoolInfo){schoolInfo=d.schoolInfo;save('flux_school',schoolInfo);}
     if(d.classes){classes=d.classes;save('flux_classes',classes);}
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
@@ -9612,9 +9646,9 @@ async function syncFromCloud(){
     if(d.studyDNA){studyDNA=d.studyDNA;save('flux_dna',studyDNA);}
     if(d.confidences){confidences=d.confidences;save('flux_conf',confidences);}
     if(d.sessionLog){sessionLog=d.sessionLog;save('flux_session_log',sessionLog);}
-    if(d.extras){extras=d.extras;save('flux_extras',extras);}
-    if(d.ecSchools){ecSchools=d.ecSchools;save('flux_ec_schools',ecSchools);}
-    if(d.ecGoals){ecGoals=d.ecGoals;save('flux_ec_goals',ecGoals);}
+    if(cloudListWins(d.extras,extras)){extras=d.extras;save('flux_extras',extras);}
+    if(cloudListWins(d.ecSchools,ecSchools)){ecSchools=d.ecSchools;save('flux_ec_schools',ecSchools);}
+    if(cloudListWins(d.ecGoals,ecGoals)){ecGoals=d.ecGoals;save('flux_ec_goals',ecGoals);}
     if(d.ibProgramProgress&&typeof d.ibProgramProgress==='object'){
       ['tok','ee','cas','pp','comm'].forEach(k=>{
         if(typeof d.ibProgramProgress[k]==='boolean')save('flux_pt_'+k,d.ibProgramProgress[k]);
