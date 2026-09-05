@@ -1571,7 +1571,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Focus Timer',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',google:'Google',profile:'Profile',goals:'Extracurriculars',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -3045,7 +3045,7 @@ const DEFAULT_TABS=[
   {id:'school',icon:'🏫',label:'School Info',visible:true},
   {id:'canvas',icon:'C',label:'Canvas',visible:true},
   {id:'notes',icon:'📓',label:'Notebook',visible:true},
-  {id:'timer',icon:'⏱',label:'Focus Timer',visible:true},
+  {id:'timer',icon:'⏱',label:'Time',visible:true},
   {id:'profile',icon:'👤',label:'Profile',visible:true},
   {id:'goals',icon:'🎯',label:'Extracurriculars',visible:true},
   {id:'mood',icon:'😊',label:'Mood',visible:true},
@@ -11325,7 +11325,7 @@ function renderCmdResults(){
     // than built from tabConfig, so it has to be gated by hand or the palette
     // keeps offering a destination that now bounces you to the dashboard.
     ...(FLUX_NOTEBOOK_ENABLED?[{icon:'📝',label:'Notebook',_keys:['notes','knowledge'],action:()=>{nav('notes');closeCommandPalette();}}]:[]),
-    {icon:'⏱',label:'Focus Timer',action:()=>{nav('timer');closeCommandPalette();}},
+    {icon:'⏱',label:'Time',action:()=>{nav('timer');closeCommandPalette();}},
     {icon:'🎯',label:'Goals',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'🔥',label:'Habits',action:()=>{nav('goals');closeCommandPalette();}},
     {icon:'😊',label:'Mood',action:()=>{nav('mood');closeCommandPalette();}},
@@ -14229,7 +14229,7 @@ function startOnboardingTour(){
     {nav:'school',sel:'[data-tab="school"]',title:'School & schedule',body:'Classes, bell schedule, and Vision import — snap a timetable and let AI fill your periods.'},
     {nav:'canvas',sel:'[data-tab="canvas"]',title:'Canvas',body:'Pull assignments and announcements from Canvas, pin pages for Flux AI, and add work to your planner.'},
     {nav:'notes',sel:'[data-tab="notes"]',title:'Notes & flashcards',body:'Subject notes with flashcard mode for cram sessions before tests.'},
-    {nav:'timer',sel:'[data-tab="timer"]',title:'Focus timer',body:'Pomodoro-style sessions, subject budgets, and a weekly focus heatmap.'},
+    {nav:'timer',sel:'[data-tab="timer"]',title:'Time',body:'Pomodoro focus sessions with subject budgets and a weekly heatmap, plus a clock, stopwatch, countdown and alarms.'},
     {nav:'ai',sel:'[data-tab="ai"]',title:'Flux AI',body:'Ask anything about your planner — study help, scheduling, and workload. Full context from your snapshot.'},
     {nav:'dashboard',sel:'.view-btn[data-view="list"]',title:'Task views',body:'Switch List, Board, or Timeline on the dashboard to match how you like to work.'},
     {nav:'goals',sel:'[data-tab="goals"]',title:'Extracurriculars',body:'Activities, college list, and milestones — IB/AP progress lives here too when relevant.'},

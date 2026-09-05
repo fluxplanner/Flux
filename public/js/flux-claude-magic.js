@@ -497,7 +497,7 @@
       { icon: '🤖', label: 'AI Tutor', key: 'ai' },
       { icon: '📸', label: 'Vision Import', key: 'vision' },
       { icon: '🔗', label: 'Canvas & Gmail', key: 'canvas' },
-      { icon: '⏱️', label: 'Focus Timer', key: 'timer' },
+      { icon: '⏱️', label: 'Time', key: 'timer' },
       { icon: '🧮', label: 'Calculator', key: 'calc' },
       { icon: '😊', label: 'Mood Check-in', key: 'mood' },
     ];

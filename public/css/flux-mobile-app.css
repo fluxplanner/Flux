@@ -78,7 +78,7 @@
 /* ════════════════════════════════════════════════════════════════
    "MORE" BOTTOM SHEET (mobile only)
    Slides up from the bottom and presents School Info, Canvas, Notes,
-   Focus Timer, Mood, Goals, Profile, Settings, Achievements as a tap grid.
+   Time, Mood, Goals, Profile and Settings as a tap grid.
    ════════════════════════════════════════════════════════════════ */
 .more-sheet-overlay{
   position: fixed;

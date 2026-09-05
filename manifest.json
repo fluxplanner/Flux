@@ -4,8 +4,8 @@
   "description": "Your AI-powered student school planner. Built by Azfer Mohammed.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#090D17",
-  "theme_color": "#090D17",
+  "background_color": "#0B0F1A",
+  "theme_color": "#0B0F1A",
   "orientation": "portrait-primary",
   "icons": [
     {
