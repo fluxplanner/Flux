@@ -186,6 +186,7 @@
     "public/js/flux-study-music.js",
     "public/js/flux-study-orchestra.js",
     "public/js/flux-study-bio.js",
+    "public/js/flux-study-bio-tools.js",
     "public/js/flux-study-cs.js",
     "public/js/flux-study-econ.js",
     "public/js/flux-study-english.js",
