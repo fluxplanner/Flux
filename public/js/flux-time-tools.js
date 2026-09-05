@@ -1027,6 +1027,21 @@
       + '</div>' + list + '</div>';
   }
 
+  /** Is the student part way through something a redraw would destroy? */
+  function isBusy() {
+    var host = $('fluxTimeTools');
+    if (!host) return false;
+    var a = document.activeElement;
+    // Focus inside the panel means a field is being filled or a day picker is
+    // open. document.activeElement is <body> when nothing is focused, so this
+    // is false the moment they click away.
+    if (a && a !== document.body && host.contains(a)) return true;
+    // The customiser being open is a weaker signal than focus, but rebuilding
+    // it snaps the whole section shut mid-adjustment.
+    var det = $('fttCustom');
+    return !!(det && det.open);
+  }
+
   // ── render ────────────────────────────────────────────────────────────────
   var mounted = false;
   /* render() rebuilds the whole Clock view from a string, so a <details> that
@@ -1342,7 +1357,13 @@
       // a URL fragment, and both end up in a style attribute.
       if (data.clock && typeof data.clock === 'object') state.clock = sanitiseClock(data.clock);
       persist();
-      if (mounted) render();
+      /* Never redraw the panel out from under someone using it. A sync from
+         another device arriving while you are half way through setting an
+         alarm used to wipe the time you had entered and shut the day picker;
+         the state above is already updated, so the next render — switching
+         view, or any action of your own — shows it. Nothing is lost except
+         the interruption. */
+      if (mounted && !isBusy()) render();
     },
     openClockWindow: openClockWindow,
     // Test seams.

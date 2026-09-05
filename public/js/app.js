@@ -9445,6 +9445,30 @@ async function syncFromCloud(){
       return;
     }
     const d=data.data;
+    /* ── Do nothing when nothing changed ──────────────────────────────────
+       This runs every 8 seconds, and everything below it — ~40 module
+       applyFromCloud() calls and thirteen full re-renders — used to run on
+       every single pull whether the row had changed or not.
+
+       That is not merely wasted work, it is destructive. Each render rebuilds
+       its panel from an HTML string, so every 8 seconds the app threw away
+       whatever you were in the middle of: half-typed text, an open <select>,
+       an expanded section, your cursor position. populateSubjectSelects()
+       rebuilds the dropdowns outright, which is why one could not be held
+       open long enough to pick from.
+
+       The row changes rarely and the pull is frequent, so almost every pull
+       was a no-op that cost a full repaint. Comparing what arrived against
+       what was last applied turns those into nothing at all. A pull that
+       genuinely brings new data still applies it, exactly as before. */
+    let _cloudFp='';
+    try{_cloudFp=JSON.stringify(d);}catch(_){_cloudFp='';}
+    if(_cloudFp&&_cloudFp===window._fluxLastCloudFingerprint){
+      setSyncStatus('synced');
+      window._fluxSyncFailed=false;
+      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
+      return;   // the finally block still clears the in-flight flag
+    }
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.applyCloudPayload){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
     }
@@ -9683,6 +9707,10 @@ async function syncFromCloud(){
     updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
     if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
     updateMasterBacklogCardVisibility();
+    /* Stamped here, at the end, rather than where it is read: if applying
+       threw part way through, the next pull must try again rather than skip
+       a payload it never finished using. */
+    window._fluxLastCloudFingerprint=_cloudFp;
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
   finally{_syncFromCloudInFlight=false;}
 }
