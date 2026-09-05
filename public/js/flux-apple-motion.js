@@ -121,6 +121,27 @@ const PILL_GROUPS = [
   { host: '.ao-dir-tabs', item: '.ao-dir-tab', activeCls: 'active', shape: 'tab' },
   { host: '.school-work-tabs', item: '.school-work-tab', activeCls: 'active', shape: 'pill' },
   { host: '.ref-tool-tabs', item: '.ref-tool-tab', activeCls: 'active', shape: 'pill' },
+
+  /* Study Tools' own two rows. The sub-tab strip inside a subject is
+     deliberately absent: it has a highlight of its own (#fshTabGlide) that
+     already slides, and a second one on top of it would be two.
+
+     'accent' rather than 'pill' because these two are the one place in the
+     planner where the active item is a *solid* accent fill with near-black
+     text on top of it. Suppressing that fill and sliding the standard neutral
+     pill under it would leave black text on grey — the highlight would move
+     beautifully and you would not be able to read the tab it landed on. */
+  { host: '#fshGroups', item: '.fsh-group', activeCls: 'active', shape: 'accent' },
+  { host: '#fshRail', item: '.fsh-pill', activeCls: 'active', shape: 'accent' },
+  { host: '#fshPtCats', item: '.fsh-cat-chip', activeCls: 'active', shape: 'pill' },
+  { host: '.flp-themes', item: '.flp-theme', activeCls: 'active', shape: 'tab' },
+
+  /* .fnb-tab is deliberately not here. Its active state is a bottom border,
+     not a fill, so a pill behind it would be a highlight the strip never had
+     rather than one that moved — and the shared suppression would take the
+     underline away on the way past. */
+  { host: '.fnb-viewtabs', item: '.fnb-viewtab', activeCls: 'active', shape: 'tab' },
+  { host: '.cm-filter-strip', item: '.cm-filter', activeCls: 'active', shape: 'tab' },
 ];
 
 /* Derived, not hand-written. The click listener below used to carry its own
@@ -242,7 +263,21 @@ function initMagnetics() {
 
 function ensurePillFor(host, shape) {
   const existing = _pillRegistry.get(host);
-  if (existing) return existing;
+  if (existing) {
+    /* The host is still here but its children were swapped out from under it.
+       innerHTML is how most of these strips re-render — Study Tools rebuilds
+       its umbrella row and subject rail that way on every switch — and it
+       takes the pill with it, while the registry goes on holding the now
+       detached element. The strip then has no highlight at all and never gets
+       one back, because the entry looks present.
+
+       Put the same element back rather than building a new one: the entry
+       still records where the pill was, so it glides from there to the newly
+       active item instead of snapping into place as though it had just
+       appeared. */
+    if (!existing.pill.isConnected) host.prepend(existing.pill);
+    return existing;
+  }
   const pill = document.createElement('div');
   pill.className = `flux-morph-pill flux-morph-pill--${shape}`;
   pill.setAttribute('aria-hidden', 'true');
@@ -353,10 +388,27 @@ function activeSelectorFor(group) {
     .join(',');
 }
 
+/* Tagging the host and its items is what lets the stylesheet be written once
+   instead of once per strip.
+
+   Every strip needs the same three CSS rules — the host has to be a
+   positioning context, the items have to sit above the pill, and the active
+   item's own background has to go. Those were three hand-maintained selector
+   lists that had to be edited in lockstep with PILL_GROUPS, and they never
+   were. That is why the sidebar has had a pill sliding behind it this whole
+   time while its own active background painted instantly on top and hid the
+   entire animation. With a marker class on each, adding a strip is one line
+   in the list above and nothing else. */
+function tagPillGroup(host, group) {
+  host.classList.add('flux-pill-host');
+  host.querySelectorAll(group.item).forEach((el) => el.classList.add('flux-pill-item'));
+}
+
 function syncPillGroup(group, opts) {
   const activeSelector = activeSelectorFor(group);
   document.querySelectorAll(group.host).forEach((host) => {
     if (!host || !host.isConnected) return;
+    tagPillGroup(host, group);
     const active = host.querySelector(activeSelector);
     if (active) placePill(host, active, group.shape, opts);
     else hidePill(host);
@@ -393,12 +445,44 @@ function scheduleSyncAllPills() {
   _syncTimer = setTimeout(() => { syncAllPills(); }, 150);
 }
 
+/* A trailing debounce that does NOT cancel an already-armed timer.
+
+   scheduleSyncAllPills re-arms on every call, which is right for navigation —
+   a handful of events — and wrong for mutations, where a heavy render fires
+   hundreds in a row and each one would push the sync further out, so it might
+   never run at all. This fires at most once every 120ms no matter how much
+   churn there is. */
+let _mutSyncArmed = false;
+function requestPillSyncFromMutation() {
+  if (_mutSyncArmed) return;
+  _mutSyncArmed = true;
+  setTimeout(() => {
+    _mutSyncArmed = false;
+    syncAllPills();
+  }, 120);
+}
+
 function initPillMorph() {
   syncAllPills();
 
   // One coalesced sync per frame, regardless of how many triggers fire.
   document.addEventListener('flux-nav', scheduleSyncAllPills);
   document.addEventListener('flux-dash-board-rendered', scheduleSyncAllPills);
+
+  /* Strips that are built after the navigation that revealed them.
+     Study Tools is the clear case: nav('toolbox') fires, the pill sync runs,
+     and only then does the hub build #fshGroups and #fshRail — so the sync
+     found nothing and no pill was ever inserted. The first click then had
+     nowhere to slide from and snapped, which reads as "this one strip doesn't
+     animate". Any strip rendered asynchronously had the same problem; this
+     catches all of them rather than special-casing the hub. */
+  const root = document.getElementById('flux-main') || document.body;
+  if (root && typeof MutationObserver === 'function') {
+    new MutationObserver(requestPillSyncFromMutation).observe(root, {
+      childList: true,
+      subtree: true,
+    });
+  }
 
   // Belt-and-suspenders: also schedule on direct nav-item / bnav-item / tab clicks.
   document.addEventListener(

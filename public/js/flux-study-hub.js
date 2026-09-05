@@ -749,9 +749,22 @@
      back to building the whole panel. */
   function renderToolBody(sid, picked) {
     const tools = (registry[sid] || []).filter((t) => typeof t.render === 'function');
-    const body = $('fshSubBody');
+    const old = $('fshSubBody');
     const tool = tools.find((t) => t.id === state.tool[sid]);
-    if (!body || !tool) return false;
+    if (!old || !tool) return false;
+    /* Swap in a fresh element rather than rewriting this one.
+
+       Some tools finish rendering later than they return. The grapher is the
+       clearest: it mounts a Desmos iframe and, if that frame reports back that
+       it failed, draws the built-in plotter into the body it captured — up to
+       twelve seconds afterwards. Rewriting the same node leaves that captured
+       reference pointing at whatever tool you have since switched to, so a
+       slow or blocked network could paint a graph over the Limits sheet.
+       Replacing the node sends every stale write to a detached element
+       instead, which is the isolation the old full-stage rebuild gave us for
+       free and the only part of it worth keeping. */
+    const body = old.cloneNode(false);
+    old.replaceWith(body);
     try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
     return true;
   }

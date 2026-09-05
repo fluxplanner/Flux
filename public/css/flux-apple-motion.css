@@ -174,6 +174,83 @@ html.flux-apple-motion .flux-morph-pill--tab {
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.30);
 }
 
+/* Pill shape: accent (Study Tools' umbrella row and subject rail)
+   These two are the one place where the active item is a solid accent fill
+   with near-black text sitting on it, so the pill has to carry that fill
+   rather than the neutral one above — otherwise the label it lands on is
+   black on grey. --fsh-accent is set per subject by the hub, and the pill
+   lives inside that scope, so the highlight recolours as you move between
+   Chemistry and Spanish exactly as the tab it replaces did. */
+html.flux-apple-motion .flux-morph-pill--accent {
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    var(--fsh-accent, #34d0ff),
+    color-mix(in srgb, var(--fsh-accent, #34d0ff) 58%, #fff 12%)
+  );
+  box-shadow: 0 10px 26px -8px rgba(var(--fsh-accent-rgb, 52, 208, 255), 0.6);
+}
+
+/* ── Every registered strip, in four rules ────────────────────────────────
+   flux-apple-motion.js puts .flux-pill-host on each host and .flux-pill-item
+   on each item as it syncs, so these four rules cover every group in
+   PILL_GROUPS — including any added later — instead of needing the strip's
+   class name copied into four selector lists by hand. That copying is what
+   went wrong: strips were added to the list, missed here, and ended up with a
+   pill sliding invisibly behind an active background that had already
+   painted. The sidebar was the worst of them, because it is the highlight you
+   look at most.
+
+   :has() guards the suppression on a pill actually being in the DOM. If the
+   script never runs, every strip keeps exactly the highlight it has today
+   rather than losing it and showing nothing at all. */
+html.flux-apple-motion .flux-pill-host {
+  position: relative;
+}
+
+html.flux-apple-motion .flux-pill-item {
+  position: relative;
+  z-index: 1;
+}
+
+/* Icons and labels above the pill, never behind it. */
+html.flux-apple-motion .flux-pill-item > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* The pill is the highlight now, so the item's own one has to go. !important
+   because several of these strips — the sidebar among them — declare their
+   active background with !important themselves. Colour is deliberately left
+   alone: text snapping to the accent immediately is right, it is the box that
+   should travel. */
+html.flux-apple-motion .flux-pill-host:has(.flux-morph-pill) .flux-pill-item.active,
+html.flux-apple-motion .flux-pill-host:has(.flux-morph-pill) .flux-pill-item.is-active,
+html.flux-apple-motion .flux-pill-host:has(.flux-morph-pill) .flux-pill-item.selected {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* The sidebar's 3px accent bar moves onto the pill rather than being dropped,
+   so it travels with the highlight instead of teleporting to the new item a
+   third of a second before the pill gets there. */
+html.flux-apple-motion #sidebar .flux-pill-host:has(.flux-morph-pill) .nav-item.active::before {
+  opacity: 0;
+}
+
+html.flux-apple-motion #sidebar .flux-morph-pill--rect::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent, #5f8eff);
+  box-shadow: 0 0 14px rgba(var(--accent-rgb, 95, 142, 255), 0.6);
+}
+
 /* ── The planner's other tab strips ───────────────────────────────────────
    Three rules per strip, the same three the segmented controls above use:
    the host has to be a positioning context, the items have to sit above the

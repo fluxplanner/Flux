@@ -146,6 +146,9 @@ const STRIPS: Array<[string, string, string]> = [
   ['ao-dir-tabs', 'ao-dir-tab', 'staff directory'],
   ['school-work-tabs', 'school-work-tab', 'School Info'],
   ['ref-tool-tabs', 'ref-tool-tab', 'reference tools'],
+  ['cm-filter-strip', 'cm-filter', 'staff class filter'],
+  ['fnb-viewtabs', 'fnb-viewtab', 'notebook view switch'],
+  ['flp-themes', 'flp-theme', 'language practice topics'],
 ];
 
 test.describe('the sliding highlight reaches the rest of the planner', () => {
@@ -187,4 +190,146 @@ test.describe('the sliding highlight reaches the rest of the planner', () => {
         .toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
     });
   }
+
+  /* The sidebar, against the real thing rather than a probe.
+     It had a pill sliding behind it the whole time and nobody could see it:
+     .nav-item.active declares its own background with !important in two
+     stylesheets, so the highlight appeared instantly under the click and the
+     pill travelled underneath it, invisible. A probe would not have caught
+     that — the bug was in the real element's cascade, not in the wiring. */
+  test('the sidebar highlight is the pill, and it moves', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('flux-apple-motion'),
+      null,
+      { timeout: 15000 },
+    );
+
+    const res = await page.evaluate(async () => {
+      const host = document.querySelector('#sidebar .nav-scroll, #sidebar .sidebar-nav') as HTMLElement;
+      const pill = () => host.querySelector('.flux-morph-pill') as HTMLElement | null;
+      const activeItem = () => host.querySelector('.nav-item.active') as HTMLElement | null;
+      const y = (el: HTMLElement | null) =>
+        el ? el.getBoundingClientRect().top - host.getBoundingClientRect().top : NaN;
+      const until = async (ok: () => boolean, ms = 5000) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) {
+          if (ok()) return true;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
+
+      const nav = (window as unknown as { nav: (t: string) => void }).nav;
+      nav('dashboard');
+      await until(() => pill()?.dataset.placed === '1' && !!activeItem());
+      const startY = y(pill());
+      const bgBefore = getComputedStyle(activeItem()!).backgroundColor;
+      // The 3px accent bar has to travel with the pill rather than teleport.
+      const barOnItem = getComputedStyle(activeItem()!, '::before').opacity;
+
+      nav('settings');
+      /* Wait for it to *arrive*, not merely to leave. The spring runs ~340ms,
+         so a probe that fires the moment the pill has travelled 8px catches it
+         part-way down the sidebar and reports a 50px error in a highlight that
+         lands perfectly. Settling on the target is also the thing worth
+         asserting. */
+      await until(() => Math.abs(y(pill()) - startY) > 8 && Math.abs(y(pill()) - y(activeItem())) < 1);
+      const endY = y(pill());
+
+      return {
+        pillCount: host.querySelectorAll('.flux-morph-pill').length,
+        startY,
+        endY,
+        bgBefore,
+        bgAfter: getComputedStyle(activeItem()!).backgroundColor,
+        barOnItem,
+        // Where the pill stopped vs where the newly active item actually is.
+        offBy: Math.abs(y(pill()) - y(activeItem())),
+        activeLabel: activeItem()?.textContent?.trim().slice(0, 20) ?? null,
+      };
+    });
+
+    expect(res.pillCount, 'the sidebar has no morph pill').toBe(1);
+    /* The heart of it: with the item's own background still painting, the
+       slide is invisible no matter how well the pill animates. */
+    expect(res.bgBefore, 'the active nav item is still painting its own background')
+      .toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    expect(res.bgAfter).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    // The accent bar is on the pill now, so the item's own one is hidden.
+    expect(res.barOnItem).toBe('0');
+    expect(Math.abs(res.endY - res.startY), 'the sidebar pill never moved')
+      .toBeGreaterThan(8);
+    // And it landed on the item, not near it.
+    expect(res.offBy, `pill is not under the active item (${JSON.stringify(res)})`)
+      .toBeLessThan(2);
+  });
+
+  /* Study Tools' two rows. These are the ones Azfer looks at most, and they
+     are also the only strips in the planner whose active state is a solid
+     accent fill with near-black text — so they get an accent-filled pill
+     rather than the neutral one. If that pill ever falls back to grey, the
+     label on it becomes unreadable, which is what the fill check is for. */
+  test('the Study Tools umbrella row and subject rail slide too', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('flux-apple-motion'),
+      null,
+      { timeout: 15000 },
+    );
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+    await expect(page.locator('#fshRail .fsh-pill').first()).toBeVisible();
+
+    const res = await page.evaluate(async () => {
+      const until = async (ok: () => boolean, ms = 5000) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms) {
+          if (ok()) return true;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
+      const probe = async (hostSel: string, itemSel: string, clickIndex: number) => {
+        const host = document.querySelector(hostSel) as HTMLElement;
+        const pill = () => host.querySelector('.flux-morph-pill') as HTMLElement | null;
+        const active = () => host.querySelector(itemSel + '.active') as HTMLElement | null;
+        const x = (el: HTMLElement | null) =>
+          el ? el.getBoundingClientRect().left - host.getBoundingClientRect().left : NaN;
+
+        const ready = await until(() => pill()?.dataset.placed === '1');
+        if (!ready) return { error: `no pill was ever placed in ${hostSel}` };
+        const startX = x(pill());
+        const fill = getComputedStyle(pill()!).backgroundImage;
+
+        const items = [...host.querySelectorAll(itemSel)] as HTMLElement[];
+        items[clickIndex].click();
+        // Arrived, not merely departed — see the sidebar test above.
+        await until(() => Math.abs(x(pill()) - startX) > 8 && Math.abs(x(pill()) - x(active())) < 1);
+
+        return {
+          error: null as string | null,
+          pillCount: host.querySelectorAll('.flux-morph-pill').length,
+          moved: Math.abs(x(pill()) - startX),
+          activeBg: getComputedStyle(active()!).backgroundColor,
+          // A gradient, not "none" — the accent fill survived onto the pill.
+          fillIsGradient: /gradient/.test(fill),
+          offBy: Math.abs(x(pill()) - x(active())),
+        };
+      };
+
+      const groups = await probe('#fshGroups', '.fsh-group', 2);
+      const rail = await probe('#fshRail', '.fsh-pill', 1);
+      return { groups, rail };
+    });
+
+    for (const [name, r] of Object.entries(res)) {
+      expect(r.error, `${name}: ${r.error}`).toBeNull();
+      expect(r.pillCount, `${name}: expected exactly one pill`).toBe(1);
+      expect(r.fillIsGradient, `${name}: the pill lost its accent fill`).toBe(true);
+      expect(r.activeBg, `${name}: the active item kept its own background`)
+        .toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+      expect(r.moved, `${name}: the pill never moved`).toBeGreaterThan(8);
+      expect(r.offBy, `${name}: the pill is not under the active item`).toBeLessThan(2);
+    }
+  });
 });
