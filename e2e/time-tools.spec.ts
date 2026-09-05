@@ -266,10 +266,23 @@ test.describe('Timer tab — time tools', () => {
 
       const realBtn = () => document.getElementById('timerBtn')!.textContent!.trim();
       const fsBtn = () => document.getElementById('fttFsToggle')!.textContent!.trim();
+      /* Poll rather than compare once. The overlay copies #tDisplay on the
+         next paint, so a single sample taken as the real timer ticks over can
+         catch the two one second apart — a mirror that is briefly behind, not
+         a second timer, which is what this test is actually about. Reading
+         once passed until the suite grew enough to slow the paint down. */
+      const mirrored = async () => {
+        for (let i = 0; i < 20; i++) {
+          if (document.getElementById('fttFsTime')!.textContent
+            === document.getElementById('tDisplay')!.textContent) return true;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
       const out: any = {
         opened: !document.getElementById('fttFocusFs')!.hidden,
         bodyLocked: document.body.classList.contains('ftt-fs-on'),
-        mirrors: document.getElementById('fttFsTime')!.textContent === document.getElementById('tDisplay')!.textContent,
+        mirrors: await mirrored(),
         labelsAgreeRunning: realBtn() === fsBtn(),
       };
 
@@ -625,7 +638,11 @@ test.describe('Timer tab — time tools', () => {
         return n ? getComputedStyle(n).opacity : null;
       };
 
-      const busy = { idle: el.classList.contains('is-idle'), label: op('.ftt-fs-lbl') };
+      /* The date, not the label. The clock's label slot now holds the
+         student's own line and is left out entirely when there isn't one —
+         a full-screen clock captioned "CLOCK" was noise. The date is the
+         chrome this test is really about. */
+      const busy = { idle: el.classList.contains('is-idle'), label: op('.ftt-fs-sub') };
 
       /* The idle threshold is three seconds; wait past it without touching
          anything. Deliberately a real wait — the whole feature is "what
@@ -633,7 +650,7 @@ test.describe('Timer tab — time tools', () => {
       await new Promise((r) => setTimeout(r, 3600));
       const idle = {
         idle: el.classList.contains('is-idle'),
-        label: op('.ftt-fs-lbl'),
+        label: op('.ftt-fs-sub'),
         actions: op('.ftt-fs-actions'),
         hint: op('.ftt-fs-hint'),
         time: op('.ftt-fs-time'),
@@ -663,5 +680,459 @@ test.describe('Timer tab — time tools', () => {
 
     // And back on the first movement.
     expect(res.woken.idle).toBe(false);
+  });
+});
+
+/* ── the customisable clock ──────────────────────────────────────────────────
+ *
+ * "allow users to customize the font, color, background, etc. literally
+ * EVERYTHING to make it their own", plus a screensaver that keeps the date and
+ * a window you can drag onto a second monitor.
+ *
+ * The thing worth testing is not that a button flips a boolean — it is that
+ * one saved description reaches three surfaces that share no DOM: the card on
+ * the Timer tab, the full-screen overlay, and clock.html in its own window.
+ * Each of those is checked against the same style below.
+ *
+ * The other half is that `color` and `bg` are written into a style property
+ * and arrive from a URL fragment, so both ends validate what they are given.
+ */
+test.describe('Clock appearance', () => {
+  const STYLE = {
+    font: 'serif', weight: 900, size: 160, track: 4,
+    color: '#f0b429', bg: '#000000', glow: true,
+    seconds: false, hour24: true, showDate: true, showZones: false,
+    label: 'Deep work', keepInfo: true, drift: true,
+  };
+
+  async function openClockView(page: import('@playwright/test').Page) {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav?.('timer'));
+    await page.evaluate(() => (window as any).FluxTimeTools.setView('clock'));
+    await expect(page.locator('#fttClockFace')).toBeVisible();
+  }
+
+  test('every control writes through to the saved style and to the face', async ({ page }) => {
+    await openClockView(page);
+
+    const res = await page.evaluate(async (want) => {
+      const T = (window as any).FluxTimeTools;
+      (document.getElementById('fttCustom') as HTMLDetailsElement).open = true;
+
+      const misses: string[] = [];
+      const hit = (key: string, val?: string) => {
+        const sel = val === undefined
+          ? `[data-ftt-clock="${key}"]`
+          : `[data-ftt-clock="${key}"][data-val="${val}"]`;
+        const el = document.querySelector<HTMLElement>(sel);
+        if (!el) { misses.push('missing ' + sel); return; }
+        el.click();
+      };
+
+      hit('font', want.font);
+      hit('weight', String(want.weight));
+      hit('color', want.color);
+      hit('bg', want.bg);
+      // Toggles flip whatever is there, so each is clicked only to reach `want`.
+      (['glow', 'seconds', 'hour24', 'showZones', 'keepInfo', 'drift'] as const).forEach((k) => {
+        if (T._state().clock[k] !== (want as any)[k]) hit(k);
+      });
+
+      // Sliders and the free-text line go through `input`, not a click.
+      const fire = (id: string, value: string) => {
+        const el = document.getElementById(id) as HTMLInputElement;
+        if (!el) { misses.push('missing #' + id); return; }
+        el.value = value;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      fire('fttClockSize', String(want.size));
+      fire('fttClockTrack', String(want.track));
+      fire('fttClockLabel', want.label);
+
+      await new Promise((r) => setTimeout(r, 200));
+      const face = document.getElementById('fttClockFace')!;
+      return {
+        misses,
+        saved: T._state().clock,
+        vars: {
+          ink: face.style.getPropertyValue('--fttc-ink'),
+          bg: face.style.getPropertyValue('--fttc-bg'),
+          scale: face.style.getPropertyValue('--fttc-scale'),
+          track: face.style.getPropertyValue('--fttc-track'),
+          weight: face.style.getPropertyValue('--fttc-weight'),
+          font: face.style.getPropertyValue('--fttc-font'),
+        },
+        glowAttr: face.getAttribute('data-clock-glow'),
+        driftAttr: face.getAttribute('data-clock-drift'),
+        time: document.getElementById('fttClockTime')!.textContent,
+        labelLine: face.querySelector('.ftt-face-label')?.textContent,
+      };
+    }, STYLE);
+
+    expect(res.misses, 'controls that were not on the page').toEqual([]);
+    expect(res.saved).toMatchObject(STYLE);
+
+    // …and the saved values are actually on the element, not just in memory.
+    expect(res.vars.ink).toBe('#f0b429');
+    expect(res.vars.bg).toBe('#000000');
+    expect(res.vars.scale).toBe('1.6');
+    expect(res.vars.track).toBe('4px');
+    expect(res.vars.weight).toBe('900');
+    expect(res.vars.font).toContain('serif');
+    expect(res.glowAttr).toBe('1');
+    expect(res.driftAttr).toBe('1');
+    expect(res.labelLine).toBe('Deep work');
+
+    // 24-hour with seconds off: "17:05", never "5:05:09 PM".
+    expect(res.time).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  test('a style survives a reload', async ({ page }) => {
+    await openClockView(page);
+    await page.evaluate((want) => {
+      const T = (window as any).FluxTimeTools;
+      Object.keys(want).forEach((k) => T._setClock(k, (want as any)[k]));
+    }, STYLE);
+
+    await page.reload();
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    const saved = await page.evaluate(() => (window as any).FluxTimeTools._state().clock);
+    expect(saved).toMatchObject(STYLE);
+  });
+
+  test('full screen wears the same style', async ({ page }) => {
+    await openClockView(page);
+
+    const res = await page.evaluate(async (want) => {
+      const T = (window as any).FluxTimeTools;
+      Object.keys(want).forEach((k) => T._setClock(k, (want as any)[k]));
+      T.openFocusFullscreen('clock');
+      await new Promise((r) => setTimeout(r, 250));
+
+      const el = document.getElementById('fttFocusFs')!;
+      const time = document.getElementById('fttFsTime')!;
+      const cs = getComputedStyle(time);
+      const out = {
+        mode: el.getAttribute('data-mode'),
+        keep: el.classList.contains('ftt-keepinfo'),
+        drift: el.getAttribute('data-clock-drift'),
+        glow: el.getAttribute('data-clock-glow'),
+        colour: cs.color,
+        family: cs.fontFamily,
+        weight: cs.fontWeight,
+        bg: getComputedStyle(el).backgroundColor,
+        label: document.getElementById('fttFsLbl')?.textContent,
+        text: time.textContent,
+      };
+      T.closeFocusFullscreen();
+      return out;
+    }, STYLE);
+
+    expect(res.mode).toBe('clock');
+    expect(res.keep, 'keepInfo did not reach the overlay').toBe(true);
+    expect(res.drift).toBe('1');
+    expect(res.glow).toBe('1');
+    expect(res.colour).toBe('rgb(240, 180, 41)');      // #f0b429
+    expect(res.bg).toBe('rgb(0, 0, 0)');
+    expect(res.family).toContain('serif');
+    expect(res.weight).toBe('900');
+    // The custom line replaces the "CLOCK" label rather than joining it.
+    expect(res.label).toBe('Deep work');
+    expect(res.text).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  /* The screensaver, and the reason both behaviours exist. Deliberately two
+     runs of the same three-second wait rather than one clever test: the whole
+     feature is "what happens when you do nothing", so there is nothing to
+     fast-forward past. */
+  test('idle: keepInfo holds the date on screen, off it fades', async ({ page }) => {
+    await openClockView(page);
+
+    const measure = async (keepInfo: boolean) => page.evaluate(async (keep) => {
+      const T = (window as any).FluxTimeTools;
+      T._setClock('showDate', true);
+      T._setClock('keepInfo', keep);
+      T.openFocusFullscreen('clock');
+      await new Promise((r) => setTimeout(r, 3600));
+      const el = document.getElementById('fttFocusFs')!;
+      const op = (sel: string) => {
+        const n = el.querySelector(sel);
+        return n ? getComputedStyle(n as HTMLElement).opacity : 'gone';
+      };
+      /* The fade is a 0.55s transition starting three seconds in, so the wait
+         above normally clears it — but under parallel workers the timers slip
+         and a value gets read mid-fade. Wait for it to stop moving instead of
+         assuming enough time has passed.
+
+         Every value that is about to be asserted goes into the signature, not
+         just one: with keepInfo on, the date never moves at all, so watching
+         only the date exited immediately while the buttons were still fading
+         and the read came back at 0.008. */
+      const sig = () => [op('.ftt-fs-sub'), op('.ftt-fs-time'),
+        op('.ftt-fs-actions'), op('.ftt-fs-hint')].join('|');
+      for (let i = 0; i < 25; i++) {
+        const before = sig();
+        await new Promise((r) => setTimeout(r, 80));
+        if (sig() === before) break;
+      }
+      const out = {
+        idle: el.classList.contains('is-idle'),
+        date: op('.ftt-fs-sub'),
+        time: op('.ftt-fs-time'),
+        actions: op('.ftt-fs-actions'),
+        hint: op('.ftt-fs-hint'),
+      };
+      T.closeFocusFullscreen();
+      return out;
+    }, keepInfo);
+
+    const off = await measure(false);
+    expect(off.idle, 'never went idle').toBe(true);
+    expect(off.date, 'the date should fade when keepInfo is off').toBe('0');
+    expect(off.time).toBe('1');
+
+    const on = await measure(true);
+    expect(on.idle, 'never went idle').toBe(true);
+    expect(on.date, 'the date should stay when keepInfo is on').toBe('1');
+    expect(on.time).toBe('1');
+    // The controls are chrome, not information — they go either way, so what
+    // is left on the monitor is a clock and not a row of buttons.
+    expect(on.actions).toBe('0');
+    expect(on.hint).toBe('0');
+  });
+
+  /* Closing and immediately reopening used to close the second one too.
+     Leaving native fullscreen is asynchronous, so the fullscreenchange it
+     produces landed after the reopen, and the handler that exists to catch
+     "the user pressed Esc" read it as exactly that. Nobody could hit the
+     window by hand, but the staff Classroom timer does it whenever a second
+     preset is clicked — the timer opened and vanished. */
+  test('reopening full screen right after closing it stays open', async ({ page }) => {
+    await openClockView(page);
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.openFocusFullscreen('clock');
+      await new Promise((r) => setTimeout(r, 150));
+      T.closeFocusFullscreen();
+      T.openFocusFullscreen('clock');           // same tick, before the echo
+      await new Promise((r) => setTimeout(r, 400));
+      const el = document.getElementById('fttFocusFs')!;
+      const out = { open: !el.hidden, onBody: document.body.classList.contains('ftt-fs-on') };
+      T.closeFocusFullscreen();
+      return out;
+    });
+    expect(res.open, 'the reopened overlay closed itself').toBe(true);
+    expect(res.onBody).toBe(true);
+  });
+
+  /* The other half of the guard above. It ignores fullscreenchange for a
+     moment after opening, so this proves the case it must still catch: the
+     browser dropping out of fullscreen on its own — F11, the system control —
+     has to take the overlay with it, or it sits over the app with no way out.
+     Escape is not this path; it has its own keydown handler. */
+  test('leaving fullscreen by F11 still closes the overlay', async ({ page }) => {
+    await openClockView(page);
+    const res = await page.evaluate(async () => {
+      const T = (window as any).FluxTimeTools;
+      T.openFocusFullscreen('clock');
+      const openedNow = !document.getElementById('fttFocusFs')!.hidden;
+      // Past the settling window, so this reads as a real change and not as
+      // our own plumbing.
+      await new Promise((r) => setTimeout(r, 800));
+
+      /* F11 leaves fullscreen *first* and fires the event afterwards, so
+         document.fullscreenElement is already null by the time the handler
+         runs. Whether the earlier requestFullscreen() was granted varies by
+         browser and by whether there was a user gesture, so both are covered:
+         if we really are in fullscreen, leave it for real and let the browser
+         fire its own event; if the request was refused there is nothing to
+         leave and a synthetic event is the same thing the handler would see. */
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else document.dispatchEvent(new Event('fullscreenchange'));
+      await new Promise((r) => setTimeout(r, 150));
+      const el = document.getElementById('fttFocusFs')!;
+      const out = { openedNow, closed: el.hidden, bodyClear: !document.body.classList.contains('ftt-fs-on') };
+      T.closeFocusFullscreen();
+      return out;
+    });
+    expect(res.openedNow).toBe(true);
+    expect(res.closed, 'the overlay stayed up after the browser left fullscreen').toBe(true);
+    expect(res.bodyClear, 'the page was left unable to scroll').toBe(true);
+  });
+
+  test('"open in its own window" carries the whole style to clock.html', async ({ page, context }) => {
+    await openClockView(page);
+    await page.evaluate((want) => {
+      const T = (window as any).FluxTimeTools;
+      Object.keys(want).forEach((k) => T._setClock(k, (want as any)[k]));
+      T._state().worldClocks.length = 0;
+      T._state().worldClocks.push('Europe/London');
+    }, STYLE);
+
+    const popupPromise = context.waitForEvent('page');
+    await page.locator('#fluxTimeTools [data-ftt="clock-window"]').click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+
+    /* `npx serve` rewrites /clock.html to /clock, so the extension is not
+       reliably in the URL the popup ends up on — what matters is that it is
+       the clock page and that the whole style rode along in the fragment. */
+    expect(new URL(popup.url()).pathname).toMatch(/\/clock(\.html)?$/);
+    const payload = JSON.parse(decodeURIComponent(new URL(popup.url()).hash.slice(1)));
+    expect(payload.style).toMatchObject(STYLE);
+    expect(payload.zones).toEqual(['Europe/London']);
+
+    // And the window renders it, rather than merely receiving it.
+    const shown = await popup.evaluate(() => ({
+      label: document.getElementById('label')!.textContent,
+      colour: getComputedStyle(document.getElementById('time')!).color,
+      family: getComputedStyle(document.getElementById('time')!).fontFamily,
+      weight: getComputedStyle(document.getElementById('time')!).fontWeight,
+      bg: getComputedStyle(document.body).backgroundColor,
+      keep: document.body.getAttribute('data-keep'),
+      glow: document.body.getAttribute('data-glow'),
+      time: document.getElementById('time')!.textContent,
+      dateShown: !(document.getElementById('date') as HTMLElement).hidden,
+    }));
+    expect(shown.label).toBe('Deep work');
+    expect(shown.colour).toBe('rgb(240, 180, 41)');
+    expect(shown.family).toContain('serif');
+    expect(shown.weight).toBe('900');
+    expect(shown.bg).toBe('rgb(0, 0, 0)');
+    expect(shown.keep).toBe('1');
+    expect(shown.glow).toBe('1');
+    expect(shown.dateShown).toBe(true);
+    expect(shown.time).toMatch(/^\d{2}:\d{2}$/);
+    await popup.close();
+  });
+
+  test('the clock window keeps the time right and never lets the screen sleep', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as any;
+      w.__wake = { requests: 0 };
+      // A prototype accessor in Chromium, so assignment is silently dropped.
+      Object.defineProperty(navigator, 'wakeLock', {
+        configurable: true,
+        value: {
+          request: () => {
+            w.__wake.requests++;
+            return Promise.resolve({ release: () => Promise.resolve(), addEventListener: () => {} });
+          },
+        },
+      });
+    });
+    await page.goto('/clock.html#' + encodeURIComponent(JSON.stringify({
+      style: { ...STYLE, seconds: true, hour24: false }, zones: [],
+    })));
+    await expect(page.locator('#time')).toBeVisible();
+
+    const res = await page.evaluate(async () => {
+      const first = document.getElementById('time')!.textContent!;
+      // Derived from Date.now() at paint time, so it must advance on its own.
+      await new Promise((r) => setTimeout(r, 1400));
+      return {
+        first,
+        second: document.getElementById('time')!.textContent!,
+        wake: (window as any).__wake.requests,
+      };
+    });
+
+    expect(res.second, 'the clock stopped ticking').not.toBe(res.first);
+    expect(res.second).toMatch(/\d{1,2}:\d{2}:\d{2}/);
+    expect(res.wake, 'the clock window never asked to keep the screen awake').toBeGreaterThan(0);
+  });
+
+  /* `bg` and `color` end up in a style property, and the fragment is the one
+     input a stranger can hand you — "open this clock link". Anything that is
+     not a colour or one of our own gradients has to be dropped rather than
+     tidied into something plausible. */
+  test('a tampered fragment cannot inject styling', async ({ page }) => {
+    const hostile = {
+      style: {
+        font: '../evil', weight: 1234, size: 99999, track: -9999,
+        color: 'red; position:fixed; inset:0',
+        bg: 'url(javascript:alert(1))',
+        glow: 'yes', seconds: 'no', label: 'x'.repeat(500),
+      },
+      zones: ['Not/AZone', 42, 'Europe/London'],
+    };
+    await page.goto('/clock.html#' + encodeURIComponent(JSON.stringify(hostile)));
+    await expect(page.locator('#time')).toBeVisible();
+
+    const res = await page.evaluate(() => ({
+      ink: document.body.style.getPropertyValue('--fttc-ink'),
+      bg: document.body.style.getPropertyValue('--fttc-bg'),
+      scale: document.body.style.getPropertyValue('--fttc-scale'),
+      weight: document.body.style.getPropertyValue('--fttc-weight'),
+      family: getComputedStyle(document.getElementById('time')!).fontFamily,
+      label: document.getElementById('label')!.textContent!.length,
+      // 'yes' is not a boolean, so glow keeps its default of off.
+      glow: document.body.getAttribute('data-glow'),
+      zoneRows: document.querySelectorAll('#zones div').length,
+      time: document.getElementById('time')!.textContent,
+    }));
+
+    expect(res.ink, 'a non-colour reached the style property').toBe('');
+    expect(res.bg, 'a url() reached the style property').toBe('');
+    expect(res.scale, 'size was not clamped').toBe('2.2');      // 220% ceiling
+    expect(res.weight, 'an invalid weight was accepted').toBe('700');
+    expect(res.family, 'an unknown font key was accepted').toContain('JetBrains Mono');
+    expect(res.label, 'the label was not truncated').toBe(60);
+    expect(res.glow).toBe('0');
+    expect(res.zoneRows, 'a bad time zone was kept').toBe(1);
+    // And through all of that it is still a working clock.
+    expect(res.time).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  test('the style syncs with the account, and a bad one from the cloud is cleaned', async ({ page }) => {
+    await openClockView(page);
+    const res = await page.evaluate((want) => {
+      const T = (window as any).FluxTimeTools;
+      Object.keys(want).forEach((k) => T._setClock(k, (want as any)[k]));
+      const slice = JSON.parse(JSON.stringify(T.getCloudSlice()));
+
+      // A row that has been tampered with on its way through the database.
+      T.applyFromCloud({
+        alarms: [], worldClocks: [],
+        clock: { font: 'mono', color: 'expression(alert(1))', size: -40, keepInfo: 'true' },
+      });
+      return { slice, after: T._state().clock };
+    }, STYLE);
+
+    expect(res.slice.clock, 'the appearance does not travel with the account').toMatchObject(STYLE);
+    // Cleaned the same way a local load is: keep what is valid, drop the rest.
+    expect(res.after.font).toBe('mono');
+    expect(res.after.color).toBe('');
+    expect(res.after.size).toBe(40);          // clamped to the floor
+    expect(res.after.keepInfo).toBe(false);   // a string is not a boolean
+  });
+
+  test('reset puts every option back', async ({ page }) => {
+    await openClockView(page);
+    const res = await page.evaluate(async (want) => {
+      const T = (window as any).FluxTimeTools;
+      Object.keys(want).forEach((k) => T._setClock(k, (want as any)[k]));
+      const changed = { ...T._state().clock };
+      document.querySelector<HTMLElement>('#fluxTimeTools [data-ftt="clock-reset"]')!.click();
+      await new Promise((r) => setTimeout(r, 150));
+      const face = document.getElementById('fttClockFace')!;
+      return {
+        changed,
+        reset: T._state().clock,
+        ink: face.style.getPropertyValue('--fttc-ink'),
+        bg: face.style.getPropertyValue('--fttc-bg'),
+      };
+    }, STYLE);
+
+    expect(res.changed.font).toBe('serif');
+    expect(res.reset).toMatchObject({
+      font: 'mono', weight: 700, size: 100, track: -2, color: '', bg: '',
+      glow: false, seconds: true, hour24: false, showDate: true,
+      showZones: false, label: '', keepInfo: false, drift: false,
+    });
+    // Cleared off the element too, not just out of the object — otherwise the
+    // old colour stays on screen until the next full render.
+    expect(res.ink).toBe('');
+    expect(res.bg).toBe('');
   });
 });

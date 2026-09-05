@@ -243,6 +243,26 @@
 .fsh-chem-tab-glide { position:absolute; top:5px; bottom:5px; border-radius:999px; z-index:0; background:linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%)); box-shadow:0 8px 20px -8px rgba(var(--fsh-accent-rgb),.6); transition:left .32s cubic-bezier(.3,.9,.2,1), width .32s cubic-bezier(.3,.9,.2,1); }
 .fsh-chem-body { min-height:300px; }
 
+/* ── vertical rhythm between stacked cards ────────────────────────────────
+   .fsh-chem-body is a plain block and .fsh-card carries no margin, so a tool
+   that renders one card looked right and a tool that renders two or three
+   glued them edge to edge — the second card's border sat exactly on the
+   first's, with its heading hard against the seam.
+
+   Measured across all 15 subjects and every tool: 14 tools were affected, in
+   exactly two containers — Rhetoric (3), Music (3), Visual Arts (3),
+   Psychology (2), Calculus (2) and Global Politics (1). Chemistry escaped it
+   because its own panels set their own margins, which is why the subject
+   everything else was compared against looked fine.
+
+   Deliberately `> .fsh-card + .fsh-card` and not a descendant rule:
+   .fsh-tools-grid, .fsh-grid and .fsh-atom-wrap already space their cards with
+   `gap`, and a descendant rule would have added 18px on top of that — 36px
+   between every row of the chemistry tools grid. Only top-level card-to-card
+   adjacency is missing spacing, so only that is given any. */
+.fsh-chem-body > .fsh-card + .fsh-card,
+.fsh-chem-body > .fsh-panel > .fsh-card + .fsh-card { margin-top:var(--fsh-gap, 18px); }
+
 /* ── PERIODIC TABLE — boxier rounded tiles, crisp ──────────────────────── */
 .fsh-pt-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
 .fsh-pt-cats { display:flex; gap:6px; flex-wrap:wrap; }

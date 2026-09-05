@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'">
+<script>
+/* Same <base> shim as landing.html: Flux is served from a subdirectory on
+   GitHub Pages, so the font URLs below have to resolve against the directory
+   this file is in rather than the site root. */
+(function(){
+  try{
+    var p=location.pathname||'/';
+    if(/\/[^/]+\.html$/i.test(p))p=p.slice(0,p.lastIndexOf('/')+1);
+    else if(!p.endsWith('/'))p+='/';
+    var b=document.createElement('base');
+    b.href=location.origin+p.replace(/\/{2,}/g,'/');
+    document.querySelector('meta[charset]').insertAdjacentElement('afterend',b);
+  }catch(e){}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Flux Clock</title>
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<style>
+/* ============================================================================
+   FLUX CLOCK · standalone window
+   ----------------------------------------------------------------------------
+   A whole separate page rather than a mode of the planner, because the job is
+   "run on an extended monitor while you work". That rules out being part of
+   index.html: you cannot drag one tab's overlay onto a second screen, and the
+   planner would go on running its sync, its timers and its AI panel behind a
+   clock nobody is looking at.
+
+   So this page loads nothing. No bundle, no framework, no network call after
+   the two fonts — which are the same self-hosted files the planner uses, so
+   they are already in the browser cache. Everything below is a few kilobytes
+   and starts instantly, which matters for something left running all day.
+
+   The style arrives in the URL fragment and over a BroadcastChannel; see the
+   script at the bottom.
+   ========================================================================== */
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;
+  src:url('public/fonts/inter-latin-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'JetBrains Mono';font-style:normal;font-weight:400 500;font-display:swap;
+  src:url('public/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  display:grid;
+  place-items:center;
+  /* Only a fallback: applyStyle() overwrites it when a background has been
+     chosen. Near-black rather than pure black so an OLED panel is not asked to
+     hold a hard cutoff for hours. */
+  background:var(--fttc-bg,#080b12);
+  color:var(--fttc-ink,#e9edf7);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  overflow:hidden;
+  padding:max(24px,env(safe-area-inset-top,0px)) 24px max(24px,env(safe-area-inset-bottom,0px));
+  transition:background .3s ease;
+}
+
+.wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  text-align:center;
+  max-width:100%;
+}
+
+#label{
+  font-size:clamp(.72rem,1.6vh,.95rem);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  opacity:.62;
+  transition:opacity .55s ease;
+}
+#time{
+  font-family:var(--fttc-font,'JetBrains Mono',ui-monospace,monospace);
+  font-weight:var(--fttc-weight,700);
+  /* Height drives it — this window is usually given a short, wide second
+     monitor and the clock should fill it — but never past 12vw. The time does
+     not wrap, and "11:08:52 AM" is eleven characters; at 220% in a narrow
+     window the digits ran clean off both edges before this cap. Eleven
+     characters at 12% of the width each is about 79% of the window, so the cap
+     only takes effect when it has to. */
+  font-size:min(calc(min(17vh,11rem) * var(--fttc-scale,1)),12vw);
+  letter-spacing:var(--fttc-track,-2px);
+  color:var(--fttc-ink,#e9edf7);
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:'tnum' 1;
+  white-space:nowrap;
+}
+#date{
+  font-size:clamp(.85rem,2.4vh,1.5rem);
+  opacity:.68;
+  transition:opacity .55s ease;
+}
+#zones{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px 26px;
+  opacity:.55;
+  font-size:clamp(.72rem,1.5vh,.95rem);
+  transition:opacity .55s ease;
+}
+#zones div{display:inline-flex;gap:8px;align-items:baseline}
+#zones b{font-variant-numeric:tabular-nums}
+#hint{
+  position:fixed;
+  left:0;right:0;bottom:max(14px,env(safe-area-inset-bottom,0px));
+  text-align:center;
+  font-size:.7rem;
+  opacity:.32;
+  transition:opacity .55s ease;
+}
+body[data-glow="1"] #time{text-shadow:0 0 .38em var(--fttc-ink,#e9edf7)}
+
+/* Idle — the same two behaviours as the planner's full-screen view, and for
+   the same reason: a clock you are watching wants its date, a clock you are
+   ignoring wants to be only a clock. */
+body.idle{cursor:none}
+body.idle #hint{opacity:0}
+body.idle:not([data-keep="1"]) #label,
+body.idle:not([data-keep="1"]) #date,
+body.idle:not([data-keep="1"]) #zones{opacity:0}
+
+@keyframes drift{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(2.5%,-2%)}
+  50%{transform:translate(0,-3.5%)}
+  75%{transform:translate(-2.5%,-1%)}
+  100%{transform:translate(0,0)}
+}
+body.idle[data-drift="1"] .wrap{animation:drift 120s ease-in-out infinite}
+
+@media (prefers-reduced-motion:reduce){
+  #label,#date,#zones,#hint{transition:none}
+  body.idle[data-drift="1"] .wrap{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="label"></div>
+  <div id="time">--:--</div>
+  <div id="date"></div>
+  <div id="zones"></div>
+</div>
+<div id="hint">Change how this looks in Flux → Focus Timer → Clock</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Kept deliberately identical to flux-time-tools.js. The two lists have to
+     agree — a font this page did not know would silently fall back and the
+     window would not match the planner it was opened from. */
+  var FONTS = {
+    mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+    sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    rounded: "ui-rounded, 'SF Pro Rounded', 'Segoe UI Variable Display', 'Nunito', 'Trebuchet MS', system-ui, sans-serif",
+    serif: "ui-serif, Georgia, 'Times New Roman', serif",
+    slab: "'Rockwell', 'Roboto Slab', 'Bookman Old Style', Georgia, serif",
+    display: "'Haettenschweiler', 'Arial Narrow', Impact, 'Franklin Gothic Bold', sans-serif",
+    hand: "'Bradley Hand', 'Segoe Script', 'Comic Sans MS', cursive"
+  };
+  var BGS = ['#000000', '#0b1020',
+    'linear-gradient(160deg,#0f2027,#203a43,#2c5364)',
+    'linear-gradient(160deg,#42275a,#734b6d)',
+    'linear-gradient(160deg,#232526,#414345)',
+    'linear-gradient(160deg,#ff512f,#dd2476)',
+    'linear-gradient(160deg,#134e5e,#71b280)'];
+  var DEFAULTS = {
+    font: 'mono', weight: 700, size: 100, track: -2, color: '', bg: '', glow: false,
+    seconds: true, hour24: false, showDate: true, showZones: false, label: '',
+    keepInfo: false, drift: false
+  };
+
+  var style = Object.assign({}, DEFAULTS);
+  var zones = [];
+
+  function isColour(v) { return typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v); }
+
+  /* The style comes from a URL fragment, which anyone can edit, and `bg` and
+     `color` are written into a style property. Every field is checked against
+     what it is allowed to be and anything unrecognised is dropped — the same
+     rule as sanitiseClock() in flux-time-tools.js, for the same reason. */
+  function clean(raw) {
+    var c = Object.assign({}, DEFAULTS);
+    if (!raw || typeof raw !== 'object') return c;
+    var num = function (v, lo, hi, d) { var n = +v; return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+    if (FONTS[raw.font]) c.font = raw.font;
+    if ([300, 500, 700, 900].indexOf(+raw.weight) >= 0) c.weight = +raw.weight;
+    c.size = num(raw.size, 40, 220, DEFAULTS.size);
+    c.track = num(raw.track, -12, 24, DEFAULTS.track);
+    if (isColour(raw.color)) c.color = raw.color;
+    if (isColour(raw.bg) || BGS.indexOf(raw.bg) >= 0) c.bg = raw.bg;
+    ['glow', 'seconds', 'hour24', 'showDate', 'showZones', 'keepInfo', 'drift'].forEach(function (k) {
+      if (typeof raw[k] === 'boolean') c[k] = raw[k];
+    });
+    if (typeof raw.label === 'string') c.label = raw.label.slice(0, 60);
+    return c;
+  }
+  function cleanZones(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(function (z) {
+      if (typeof z !== 'string') return false;
+      // A bad zone throws inside toLocaleTimeString on every tick, so it is
+      // rejected once here rather than caught four times a second forever.
+      try { new Date().toLocaleTimeString(undefined, { timeZone: z }); return true; }
+      catch (e) { return false; }
+    }).slice(0, 6);
+  }
+
+  function readHash() {
+    try {
+      var h = location.hash.replace(/^#/, '');
+      if (!h) return;
+      var data = JSON.parse(decodeURIComponent(h));
+      style = clean(data && data.style);
+      zones = cleanZones(data && data.zones);
+    } catch (e) { /* keep the defaults — a plain clock beats an error page */ }
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function applyStyle() {
+    var b = document.body, s = b.style;
+    s.setProperty('--fttc-font', FONTS[style.font] || FONTS.mono);
+    s.setProperty('--fttc-weight', String(style.weight));
+    s.setProperty('--fttc-scale', String(style.size / 100));
+    s.setProperty('--fttc-track', style.track + 'px');
+    if (style.color) s.setProperty('--fttc-ink', style.color); else s.removeProperty('--fttc-ink');
+    if (style.bg) s.setProperty('--fttc-bg', style.bg); else s.removeProperty('--fttc-bg');
+    b.setAttribute('data-glow', style.glow ? '1' : '0');
+    b.setAttribute('data-keep', style.keepInfo ? '1' : '0');
+    b.setAttribute('data-drift', style.drift ? '1' : '0');
+
+    $('label').textContent = style.label;
+    $('label').hidden = !style.label;
+    $('date').hidden = !style.showDate;
+    $('zones').hidden = !(style.showZones && zones.length);
+    buildZones();
+    paint();
+  }
+
+  function buildZones() {
+    var host = $('zones');
+    if (host.children.length === zones.length) return;
+    host.textContent = '';
+    zones.forEach(function () {
+      var row = document.createElement('div');
+      row.appendChild(document.createElement('span'));
+      row.appendChild(document.createElement('b'));
+      host.appendChild(row);
+    });
+  }
+
+  function timeStr(now) {
+    var o = { hour: 'numeric', minute: '2-digit' };
+    if (style.seconds) o.second = '2-digit';
+    if (style.hour24) { o.hour12 = false; o.hour = '2-digit'; }
+    var out = now.toLocaleTimeString(undefined, o);
+    // Some engines render midnight as 24:00 under hour12:false.
+    if (style.hour24 && out.indexOf('24:') === 0) out = '00:' + out.slice(3);
+    return out;
+  }
+
+  /* Derived from Date.now() every paint, never counted down. This window may
+     be left for days on a machine that sleeps, and a counter would be wrong by
+     however long that was; recomputing is right the instant it wakes. */
+  function paint() {
+    var now = new Date();
+    var t = timeStr(now);
+    if ($('time').textContent !== t) $('time').textContent = t;
+    if (style.showDate) {
+      var d = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+      if ($('date').textContent !== d) $('date').textContent = d;
+    }
+    if (style.showZones) {
+      var host = $('zones');
+      zones.forEach(function (tz, i) {
+        var row = host.children[i];
+        if (!row) return;
+        var city = tz.split('/').pop().replace(/_/g, ' ');
+        var v = '—';
+        try { v = now.toLocaleTimeString(undefined, { timeZone: tz, hour: 'numeric', minute: '2-digit' }); } catch (e) {}
+        if (row.children[0].textContent !== city) row.children[0].textContent = city;
+        if (row.children[1].textContent !== v) row.children[1].textContent = v;
+      });
+    }
+  }
+
+  /* ── keeping the screen awake ──────────────────────────────────────────────
+     The whole point of this window is to be left alone, which is exactly when
+     a machine decides to sleep. The browser drops the lock whenever the tab is
+     hidden, so it has to be taken again on the way back rather than held.
+     Guarded throughout: where the API is missing you get a screensaver, not a
+     broken page. */
+  var lock = null;
+  function wake() {
+    try {
+      if (!navigator.wakeLock || !navigator.wakeLock.request || document.hidden) return;
+      navigator.wakeLock.request('screen').then(function (l) {
+        lock = l;
+        l.addEventListener('release', function () { lock = null; });
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    if (!lock) wake();
+    paint();
+  });
+
+  // ── idle ────────────────────────────────────────────────────────────────
+  var IDLE_MS = 3000;
+  var idleTimer = null;
+  var lastMove = 0;
+  function activity() {
+    var now = Date.now();
+    var wasIdle = document.body.classList.contains('idle');
+    // pointermove fires continuously; re-arming on every one is wasted work
+    // and changes nothing anyone can see while the chrome is already up.
+    if (!wasIdle && now - lastMove < 200) return;
+    lastMove = now;
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { document.body.classList.add('idle'); }, IDLE_MS);
+  }
+  ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (n) {
+    document.addEventListener(n, activity, { passive: true });
+  });
+
+  /* Live updates from the planner. One-way by design: this window shows a
+     clock and has no controls of its own, so there is nothing here to send
+     back and no chance of the two echoing each other. The fragment is
+     rewritten as well as the style applied, so a reload keeps the newest look
+     rather than the one the window was opened with. */
+  try {
+    if (window.BroadcastChannel) {
+      new BroadcastChannel('flux-clock').addEventListener('message', function (e) {
+        if (!e.data || e.data.type !== 'style') return;
+        style = clean(e.data.style);
+        zones = cleanZones(e.data.zones);
+        applyStyle();
+        try {
+          history.replaceState(null, '',
+            '#' + encodeURIComponent(JSON.stringify({ style: style, zones: zones })));
+        } catch (err) {}
+      });
+    }
+  } catch (e) {}
+
+  // Someone editing the fragment by hand, or a back/forward between two looks.
+  window.addEventListener('hashchange', function () { readHash(); applyStyle(); });
+
+  readHash();
+  applyStyle();
+  wake();
+  activity();
+  /* Four ticks a second: enough that the seconds digit never looks late, cheap
+     enough to leave running all day. Nothing here animates between frames, so
+     there is no reason to hold a requestAnimationFrame loop open. */
+  setInterval(paint, 250);
+  // A background tab is throttled to about one tick a minute, so the display
+  // is stale on return until this repaints it.
+  window.addEventListener('focus', paint);
+})();
+</script>
+</body>
+</html>

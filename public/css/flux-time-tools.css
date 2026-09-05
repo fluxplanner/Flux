@@ -43,6 +43,184 @@
   margin-bottom: 14px;
 }
 
+/* ── the customisable face ────────────────────────────────────────────────
+   Everything the student can change is a custom property, written by
+   applyClockStyle() onto whichever element hosts the clock. The same seven
+   properties drive this card, the full-screen overlay and clock.html, so the
+   preview on the Timer tab is the real thing rather than an impression of it.
+
+   Each var carries its own fallback here rather than being given a default in
+   JS, because the right fallback differs by surface: a card with no chosen
+   background must stay transparent so the card shows through, while the
+   overlay must fall back to the page background or it would be see-through. */
+.ftt-face {
+  border-radius: 16px;
+  padding: 10px 8px;
+  background: var(--fttc-bg, transparent);
+  transition: background .25s ease;
+  /* Makes cqw below mean "per cent of this card", which is what the digits
+     actually have to fit inside — the viewport is much wider than the card. */
+  container-type: inline-size;
+}
+.ftt-face .ftt-clock {
+  font-family: var(--fttc-font, 'JetBrains Mono', monospace);
+  font-weight: var(--fttc-weight, 700);
+  /* A multiplier, not a size. The same 100% has to mean "right for this card"
+     and "right for a monitor across the room", so the control scales whatever
+     each surface already chose instead of naming pixels.
+
+     Capped at 13cqw because the time must not wrap — "11:08:52 AM" is eleven
+     characters, and eleven characters at 13% of the card each comes to about
+     86% of it, so the longest string still fits with room to spare. Without
+     the cap, 220% ran the digits straight off the side of the card. The cap
+     is in container units rather than vw so it holds on a phone as well: at
+     100% the base size is the smaller of the two, so nothing shrinks. */
+  font-size: min(calc(clamp(2.4rem, 11vw, 3.6rem) * var(--fttc-scale, 1)), 13cqw);
+  letter-spacing: var(--fttc-track, -1px);
+  color: var(--fttc-ink, var(--text));
+  white-space: nowrap;
+}
+.ftt-face .ftt-face-date { color: var(--fttc-ink, var(--muted)); opacity: .72; margin-bottom: 0; }
+.ftt-face-label {
+  margin-top: 6px;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  color: var(--fttc-ink, var(--muted));
+  opacity: .78;
+}
+[data-clock-glow="1"] .ftt-clock,
+[data-clock-glow="1"] .ftt-fs-time { text-shadow: 0 0 .38em var(--fttc-ink, var(--text)); }
+
+/* ── appearance controls ──────────────────────────────────────────────────── */
+.ftt-custom { margin-top: 18px; text-align: left; }
+.ftt-custom-sum {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 600;
+  /* 44px minimum thumb target, same as everything else in the planner. */
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.ftt-custom-sum::-webkit-details-marker { display: none; }
+.ftt-custom-sum::after { content: '▾'; color: var(--muted); transition: transform .2s ease; }
+.ftt-custom[open] .ftt-custom-sum::after { transform: rotate(180deg); }
+.ftt-custom-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.ftt-field { display: flex; flex-direction: column; gap: 8px; }
+.ftt-field-lbl {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.ftt-field-lbl b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.ftt-field--range { gap: 4px; }
+
+.ftt-swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ftt-sw {
+  padding: 7px 13px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+.ftt-sw:hover { color: var(--text); border-color: var(--accent); }
+.ftt-sw.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* The colour and background swatches show the value itself; a name for
+   "linear-gradient(160deg,#0f2027,#203a43,#2c5364)" tells you nothing. */
+.ftt-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, .35);
+}
+.ftt-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .72rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+/* [type=color] is one of the types flux-form-controls.css exempts from its
+   full-width rule, so it is safe to size here. */
+.ftt-pick input[type='color'] {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.ftt-field--range input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.ftt-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.ftt-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px 7px 11px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+.ftt-toggle-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border2, var(--border));
+  flex: 0 0 auto;
+  transition: background .15s ease;
+}
+.ftt-toggle:hover { color: var(--text); border-color: var(--accent); }
+.ftt-toggle.active { color: var(--text); border-color: var(--accent); }
+.ftt-toggle.active .ftt-toggle-dot { background: var(--accent); }
+
+.ftt-hint--tight { margin: 2px 0 0; line-height: 1.5; }
+/* flux-form-controls.css loads 95 files later and pins every text input to
+   width:100% at (1,1,1), which .ftt-input alone cannot reach. Two classes
+   behind an id outranks it — see the same trick in flux-study-hub.css. */
+#app .ftt-custom .ftt-input--wide {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
 /* ── rows and controls ────────────────────────────────────────────────────── */
 .ftt-row {
   display: flex;
@@ -370,6 +548,7 @@ body.ftt-fs-on { overflow: hidden; }
 .ftt-fs.is-idle .ftt-fs-sub,
 .ftt-fs.is-idle .ftt-fs-actions,
 .ftt-fs.is-idle .ftt-fs-hint,
+.ftt-fs.is-idle .ftt-fs-zones,
 .ftt-fs.is-idle .ftt-fs-ring {
   opacity: 0;
   pointer-events: none;
@@ -378,12 +557,90 @@ body.ftt-fs-on { overflow: hidden; }
    forgets to hide. */
 .ftt-fs.is-idle { cursor: none; }
 
+/* ── screensaver: keep the information, drop only the controls ────────────
+   The opposite choice from the rule above, and the reason both exist: fading
+   everything is right for a focus timer you glance at, and wrong for a clock
+   left on a second monitor, where the date is half the point. Only the two
+   things that are controls rather than information come back out — the
+   buttons and the "press Esc" hint. */
+.ftt-fs.ftt-keepinfo.is-idle .ftt-fs-lbl,
+.ftt-fs.ftt-keepinfo.is-idle .ftt-fs-sub,
+.ftt-fs.ftt-keepinfo.is-idle .ftt-fs-zones {
+  opacity: 1;
+}
+
+/* ── clock: the student's own styling ─────────────────────────────────────── */
+.ftt-fs[data-mode="clock"] { background: var(--fttc-bg, var(--bg)); }
+.ftt-fs[data-mode="clock"] .ftt-fs-time {
+  font-family: var(--fttc-font, 'JetBrains Mono', monospace);
+  font-weight: var(--fttc-weight, 700);
+  /* Height drives the size — a clock should fill the screen it is given — but
+     never past 11vw, or a long string like "11:08:52 AM" at 220% runs off both
+     sides. Eleven characters at 11% of the width each is about 73% of the
+     screen, so the cap only bites when it needs to. */
+  font-size: min(calc(clamp(3rem, 15vh, 6rem) * var(--fttc-scale, 1)), 11vw);
+  letter-spacing: var(--fttc-track, -2px);
+  color: var(--fttc-ink, var(--text));
+  white-space: nowrap;
+}
+/* Dimmed with colour, not opacity, and that distinction is load-bearing: this
+   rule and `.ftt-fs.is-idle .ftt-fs-sub { opacity: 0 }` have identical
+   specificity, so an `opacity: .72` here would win on source order and the
+   date could never fade to nothing. Opacity belongs to the idle fade; how
+   quiet the date looks the rest of the time is a colour decision. */
+.ftt-fs[data-mode="clock"] .ftt-fs-lbl,
+.ftt-fs[data-mode="clock"] .ftt-fs-sub {
+  color: color-mix(in srgb, var(--fttc-ink, var(--muted)) 72%, transparent);
+}
+/* The wrap is sized for a fixed 6rem display; a 220% clock would overflow it
+   and be clipped, so it grows with the same multiplier. */
+.ftt-fs[data-mode="clock"] .ftt-fs-plainwrap {
+  min-height: calc(clamp(4.5rem, 22vh, 9rem) * var(--fttc-scale, 1));
+  width: min(94vw, calc(720px * var(--fttc-scale, 1)));
+}
+.ftt-fs-zones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 22px;
+  transition: opacity .55s ease;
+}
+.ftt-fs-zone {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--fttc-font, 'JetBrains Mono', monospace);
+  font-size: .82rem;
+  color: var(--fttc-ink, var(--muted));
+  opacity: .66;
+}
+.ftt-fs-zone b { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+/* ── gentle drift ─────────────────────────────────────────────────────────
+   A clock left up all night sits on the same pixels for eight hours, which is
+   how OLED panels acquire a permanent ghost of it. Two minutes per lap and a
+   few percent of travel is enough to spread the load and slow enough that it
+   reads as still. Only while idle: it would be distracting while you are
+   actually using the thing, and it is off unless asked for. */
+@keyframes fttDrift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(2.5%, -2%); }
+  50%  { transform: translate(0, -3.5%); }
+  75%  { transform: translate(-2.5%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+.ftt-fs.is-idle[data-clock-drift="1"] .ftt-fs-inner {
+  animation: fttDrift 120s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ftt-fs-lbl,
   .ftt-fs-sub,
   .ftt-fs-actions,
   .ftt-fs-hint,
+  .ftt-fs-zones,
   .ftt-fs-ring { transition: none; }
+  .ftt-fs.is-idle[data-clock-drift="1"] .ftt-fs-inner { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -64,6 +64,55 @@
     try { if (typeof window.showToast === 'function') window.showToast(msg, kind || 'success'); } catch (e) {}
   }
 
+  /* ── clock appearance ──────────────────────────────────────────────────────
+     "allow users to customize the font, color, background, etc. literally
+     EVERYTHING to make it their own."
+
+     Every option is stored as data and turned into CSS custom properties by
+     applyClockStyle(), rather than each control writing its own style. That is
+     what lets one description drive three surfaces that cannot share a DOM:
+     the card on the Timer tab, the full-screen overlay, and clock.html in its
+     own window. Add an option here and all three get it. */
+  var CLOCK_FONTS = [
+    // Self-hosted (see the @font-face pair in styles.css) — always available.
+    ['mono', 'Mono', "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace"],
+    ['sans', 'Sans', "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"],
+    /* The rest are stacks of faces the operating system already has. No web
+       font is fetched for them: a clock that shows nothing until a download
+       finishes is worse than a clock in the wrong typeface, and this page is
+       meant to survive a school network. Each stack ends in a generic family,
+       so the worst case is "close enough" rather than blank. */
+    ['rounded', 'Rounded', "ui-rounded, 'SF Pro Rounded', 'Segoe UI Variable Display', 'Nunito', 'Trebuchet MS', system-ui, sans-serif"],
+    ['serif', 'Serif', "ui-serif, Georgia, 'Times New Roman', serif"],
+    ['slab', 'Slab', "'Rockwell', 'Roboto Slab', 'Bookman Old Style', Georgia, serif"],
+    ['display', 'Display', "'Haettenschweiler', 'Arial Narrow', Impact, 'Franklin Gothic Bold', sans-serif"],
+    ['hand', 'Hand', "'Bradley Hand', 'Segoe Script', 'Comic Sans MS', cursive"],
+  ];
+  var CLOCK_WEIGHTS = [[300, 'Light'], [500, 'Regular'], [700, 'Bold'], [900, 'Black']];
+  // '' means "whatever the theme uses", so a themed clock still follows a
+  // later switch between dark and light instead of freezing one of them in.
+  var CLOCK_INKS = [['', 'Theme'], ['#ffffff', 'White'], ['#34d0ff', 'Cyan'], ['#7c8cff', 'Indigo'],
+    ['#37c98a', 'Green'], ['#f0b429', 'Amber'], ['#ff6b6b', 'Red'], ['#ff9ff3', 'Pink']];
+  var CLOCK_BGS = [['', 'Theme'], ['#000000', 'Black'], ['#0b1020', 'Midnight'],
+    ['linear-gradient(160deg,#0f2027,#203a43,#2c5364)', 'Ocean'],
+    ['linear-gradient(160deg,#42275a,#734b6d)', 'Twilight'],
+    ['linear-gradient(160deg,#232526,#414345)', 'Graphite'],
+    ['linear-gradient(160deg,#ff512f,#dd2476)', 'Sunset'],
+    ['linear-gradient(160deg,#134e5e,#71b280)', 'Forest']];
+
+  var CLOCK_DEFAULTS = {
+    font: 'mono', weight: 700, size: 100, track: -2,
+    color: '', bg: '', glow: false,
+    seconds: true, hour24: false, showDate: true, showZones: false, label: '',
+    /* Off by default, and that is deliberate: the full-screen view already
+       fades everything but the time after three seconds, which is what was
+       asked for and shipped last week. This is the opposite choice offered as
+       an option — "allow the user to keep the date and other info on screen" —
+       so it has to be opt-in or it would silently undo the other. */
+    keepInfo: false,
+    drift: false,
+  };
+
   // ── state ─────────────────────────────────────────────────────────────────
   var state = {
     view: 'focus',
@@ -71,6 +120,7 @@
     countdown: { endsAt: 0, totalMs: 0, label: '', running: false },
     alarms: [],
     worldClocks: [],
+    clock: Object.assign({}, CLOCK_DEFAULTS),
   };
   (function restore() {
     var s = load(null);
@@ -113,7 +163,36 @@
     if (Array.isArray(s.worldClocks)) {
       state.worldClocks = s.worldClocks.filter(function (z) { return typeof z === 'string'; }).slice(0, 6);
     }
+    if (s.clock && typeof s.clock === 'object') state.clock = sanitiseClock(s.clock);
   })();
+
+  /* Field by field, against what each one is allowed to be. This is not
+     defensiveness for its own sake: the object also arrives from the cloud
+     slice and from a URL fragment in clock.html, and `bg` and `color` are
+     written straight into a style attribute. An unchecked value there is a
+     stylesheet injection, so anything that is not a colour or one of our own
+     gradients is dropped rather than sanitised into something plausible. */
+  function sanitiseClock(raw) {
+    var c = Object.assign({}, CLOCK_DEFAULTS);
+    if (!raw || typeof raw !== 'object') return c;
+    var num = function (v, lo, hi, dflt) {
+      var n = +v;
+      return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+    };
+    if (CLOCK_FONTS.some(function (f) { return f[0] === raw.font; })) c.font = raw.font;
+    if (CLOCK_WEIGHTS.some(function (w) { return w[0] === +raw.weight; })) c.weight = +raw.weight;
+    c.size = num(raw.size, 40, 220, CLOCK_DEFAULTS.size);
+    c.track = num(raw.track, -12, 24, CLOCK_DEFAULTS.track);
+    if (isColour(raw.color)) c.color = raw.color;
+    // A preset by exact match, or a plain colour. Nothing else gets through.
+    if (isColour(raw.bg) || CLOCK_BGS.some(function (b) { return b[0] && b[0] === raw.bg; })) c.bg = raw.bg;
+    ['glow', 'seconds', 'hour24', 'showDate', 'showZones', 'keepInfo', 'drift'].forEach(function (k) {
+      if (typeof raw[k] === 'boolean') c[k] = raw[k];
+    });
+    if (typeof raw.label === 'string') c.label = raw.label.slice(0, 60);
+    return c;
+  }
+  function isColour(v) { return typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v); }
 
   // ── formatting ────────────────────────────────────────────────────────────
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -128,6 +207,118 @@
   }
   function localYMD(d) {
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  // ── clock appearance: data → CSS ──────────────────────────────────────────
+  function fontStack(key) {
+    for (var i = 0; i < CLOCK_FONTS.length; i++) if (CLOCK_FONTS[i][0] === key) return CLOCK_FONTS[i][2];
+    return CLOCK_FONTS[0][2];
+  }
+
+  /* One description, applied to any host element. The full-screen overlay and
+     the card on the Timer tab size their digits very differently, so the size
+     control is a *multiplier* on whatever that surface already chose rather
+     than a pixel value — otherwise 100px would fill a phone and be lost on a
+     monitor. */
+  function applyClockStyle(host, c) {
+    if (!host) return;
+    c = c || state.clock;
+    var s = host.style;
+    s.setProperty('--fttc-font', fontStack(c.font));
+    s.setProperty('--fttc-weight', String(c.weight));
+    s.setProperty('--fttc-scale', String(c.size / 100));
+    s.setProperty('--fttc-track', c.track + 'px');
+    /* Left *unset* rather than set to a default when the student picked
+       "Theme". The two surfaces want different fallbacks — the overlay must
+       fall back to the page background and the card must fall back to
+       transparent so the card behind it still shows — and a var() that is
+       simply absent lets each stylesheet name its own. Writing one value here
+       would force the same wrong answer on both. */
+    if (c.color) s.setProperty('--fttc-ink', c.color); else s.removeProperty('--fttc-ink');
+    if (c.bg) s.setProperty('--fttc-bg', c.bg); else s.removeProperty('--fttc-bg');
+    // Glow is a flag, not a shadow: its colour has to resolve against whatever
+    // the ink ends up being, which only the stylesheet knows.
+    host.setAttribute('data-clock-glow', c.glow ? '1' : '0');
+    host.setAttribute('data-clock-drift', c.drift ? '1' : '0');
+    host.classList.toggle('ftt-keepinfo', !!c.keepInfo);
+  }
+
+  function clockTimeStr(c, now) {
+    var o = { hour: 'numeric', minute: '2-digit' };
+    if (c.seconds) o.second = '2-digit';
+    if (c.hour24) { o.hour12 = false; o.hour = '2-digit'; }
+    var out = now.toLocaleTimeString(undefined, o);
+    /* Some engines render midnight as 24:00 under hour12:false rather than
+       00:00. Cheaper and more certain to correct the one known output than to
+       feature-detect hourCycle support across browsers. */
+    if (c.hour24 && out.indexOf('24:') === 0) out = '00:' + out.slice(3);
+    return out;
+  }
+  function clockDateStr(now) {
+    return now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  function zoneRow(tz, now) {
+    var t = '—';
+    try { t = now.toLocaleTimeString(undefined, { timeZone: tz, hour: 'numeric', minute: '2-digit' }); } catch (e) {}
+    return { city: zoneCity(tz), time: t };
+  }
+
+  /* ── the second window ─────────────────────────────────────────────────────
+     "give an option to make it a seperate tab so it can run on an extended
+     background while you work."
+
+     A real page rather than a document written into about:blank: a written
+     document has no URL, so it dies on reload, cannot be bookmarked, and is
+     blocked outright by some browsers. clock.html carries the whole style in
+     its fragment, which means the window survives a reload and can be dragged
+     to a second monitor and left there.
+
+     Changes made in the planner afterwards reach it over a BroadcastChannel —
+     same origin, no storage, and it works in both directions without either
+     side polling. Where BroadcastChannel is missing the window simply keeps
+     the style it opened with. */
+  var clockChannel = null;
+  function clockBus() {
+    if (clockChannel !== null) return clockChannel;
+    try { clockChannel = window.BroadcastChannel ? new BroadcastChannel('flux-clock') : false; }
+    catch (e) { clockChannel = false; }
+    return clockChannel;
+  }
+  // World clocks travel with the style: the second window is not signed in to
+  // anything and has no way to look them up for itself.
+  function clockPayload() { return { style: state.clock, zones: state.worldClocks }; }
+  function clockBroadcast() {
+    var bus = clockBus();
+    if (bus) { try { bus.postMessage(Object.assign({ type: 'style' }, clockPayload())); } catch (e) {} }
+  }
+  function openClockWindow() {
+    var url = 'clock.html#' + encodeURIComponent(JSON.stringify(clockPayload()));
+    var w = null;
+    try { w = window.open(url, 'fluxClock', 'width=1000,height=640'); } catch (e) {}
+    /* A blocked pop-up returns null silently, which would look like a dead
+       button. Say what happened and what to do about it. */
+    if (!w) toast('Your browser blocked the pop-up. Allow pop-ups for Flux, then try again.', 'error');
+    else { try { w.focus(); } catch (e) {} }
+  }
+
+  /** Change one appearance field. `quiet` skips the re-render, for controls
+      that are being dragged — a full render mid-drag drops the input focus and
+      the drag stops dead after one pixel. */
+  function setClock(key, value, quiet) {
+    if (!(key in CLOCK_DEFAULTS)) return;
+    var next = {};
+    next[key] = value;
+    state.clock = sanitiseClock(Object.assign({}, state.clock, next));
+    persist();
+    clockBroadcast();
+    if (quiet) applyClockStyle($('fttClockFace'), state.clock);
+    else render();
+    if (fsOpen && fsMode === 'clock') { applyClockStyle(fsEl(), state.clock); mirrorFs(); }
+  }
+  function resetClock() {
+    state.clock = Object.assign({}, CLOCK_DEFAULTS);
+    persist(); clockBroadcast(); render();
+    toast('Clock style reset', 'success');
   }
 
   // ── sound ─────────────────────────────────────────────────────────────────
@@ -358,9 +549,16 @@
     var hint = '<div class="ftt-fs-hint">Press Esc to leave full screen</div>';
 
     if (fsMode === 'clock') {
-      return '<div class="ftt-fs-lbl" id="fttFsLbl">Clock</div>'
-        + plain
-        + '<div class="ftt-fs-sub" id="fttFsSub"></div>'
+      var c = state.clock;
+      /* The clock is the one mode whose chrome is the point rather than a
+         control panel, so what it shows is whatever the student asked for:
+         their own line in place of the "CLOCK" label, the date, and their
+         world clocks. Each is omitted entirely when switched off — an empty
+         element still occupies a row and would shift the time off centre. */
+      return (c.label ? '<div class="ftt-fs-lbl" id="fttFsLbl">' + esc(c.label) + '</div>' : '')
+        + '<div class="ftt-fs-plainwrap"><div class="ftt-fs-time" id="fttFsTime">0:00</div></div>'
+        + (c.showDate ? '<div class="ftt-fs-sub" id="fttFsSub"></div>' : '')
+        + (c.showZones && state.worldClocks.length ? '<div class="ftt-fs-zones" id="fttFsZones"></div>' : '')
         + '<div class="ftt-fs-actions">' + exit + '</div>' + hint;
     }
     if (fsMode === 'stopwatch') {
@@ -402,8 +600,33 @@
 
     if (fsMode === 'clock') {
       var now = new Date();
-      setFsText('fttFsTime', now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }));
-      setFsText('fttFsSub', now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
+      var c = state.clock;
+      setFsText('fttFsTime', clockTimeStr(c, now));
+      if (c.showDate) setFsText('fttFsSub', clockDateStr(now));
+      var zEl = $('fttFsZones');
+      if (zEl) {
+        /* Rewritten as text, not innerHTML: this runs on every tick, and
+           rebuilding markup four times a second to change two digits is both
+           wasteful and a place for a city name to end up unescaped. The rows
+           are built once, the times are set. */
+        if (zEl.children.length !== state.worldClocks.length) {
+          zEl.textContent = '';
+          state.worldClocks.forEach(function () {
+            var row = document.createElement('div');
+            row.className = 'ftt-fs-zone';
+            row.appendChild(document.createElement('span'));
+            row.appendChild(document.createElement('b'));
+            zEl.appendChild(row);
+          });
+        }
+        state.worldClocks.forEach(function (tz, i) {
+          var row = zEl.children[i];
+          if (!row) return;
+          var z = zoneRow(tz, now);
+          if (row.children[0].textContent !== z.city) row.children[0].textContent = z.city;
+          if (row.children[1].textContent !== z.time) row.children[1].textContent = z.time;
+        });
+      }
       return;
     }
 
@@ -523,7 +746,13 @@
     var el = buildFsShell();
     el.hidden = false;
     fsOpen = true;
+    // Stamped before anything asynchronous starts; see onFsChange.
+    fsOpenedAt = Date.now();
     document.body.classList.add('ftt-fs-on');
+    // Only the clock is customisable; the other three keep the app's styling,
+    // so the properties are cleared rather than left on from a previous open.
+    if (fsMode === 'clock') applyClockStyle(el, state.clock);
+    else { el.removeAttribute('style'); el.removeAttribute('data-clock-drift'); el.classList.remove('ftt-keepinfo'); }
     unlockAudio();
     mirrorFs();
     kickPaint();
@@ -546,10 +775,25 @@
       else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
     } catch (e) {}
   }
-  /* Leaving fullscreen by any route the browser owns — Esc, F11, the system
-     control — must also drop our overlay, or it stays pinned over the app with
-     no visible way out. */
+  /* Leaving fullscreen by any route the browser owns — F11, the system
+     control, the browser's own toolbar — must also drop our overlay, or it
+     stays pinned over the app with no visible way out.
+
+     The guard is a time, not a flag. Entering and leaving fullscreen are both
+     asynchronous and both fire this event, so closing and immediately
+     reopening produces a burst of changes whose order is not fixed — and a
+     "was that exit mine?" boolean gets consumed by the wrong one about one
+     time in fifty under load, after which the leftover event closes an overlay
+     nobody asked it to close. That is what made the staff Classroom timer
+     vanish when a second preset was clicked.
+
+     A change arriving within a moment of a deliberate open is always our own
+     plumbing: nobody reaches for F11 that fast. Ignoring those costs nothing,
+     because Escape does not come through here at all — it has its own keydown
+     handler that calls closeFocusFullscreen directly. */
+  var fsOpenedAt = 0;
   function onFsChange() {
+    if (Date.now() - fsOpenedAt < 600) return;
     var native = document.fullscreenElement || document.webkitFullscreenElement;
     if (!native && fsOpen) closeFocusFullscreen();
   }
@@ -570,24 +814,112 @@
 
   function zoneCity(tz) { return tz.split('/').pop().replace(/_/g, ' '); }
 
+  /* One swatch/segment row builder for every appearance control, so the
+     controls cannot drift apart in look or in behaviour. `kind` is the state
+     key; the click handler reads it back off the button. */
+  function styleRow(kind, options, current, render) {
+    return '<div class="ftt-swatches" role="group">' + options.map(function (o) {
+      var val = o[0], label = o[1];
+      var on = String(val) === String(current);
+      return '<button type="button" class="ftt-sw' + (on ? ' active' : '') + '"'
+        + ' data-ftt-clock="' + kind + '" data-val="' + esc(String(val)) + '"'
+        + ' aria-pressed="' + (on ? 'true' : 'false') + '"'
+        + ' title="' + esc(label) + '">' + (render ? render(o, on) : esc(label)) + '</button>';
+    }).join('') + '</div>';
+  }
+  function toggleRow(items) {
+    return '<div class="ftt-toggles">' + items.map(function (it) {
+      var key = it[0], label = it[1], on = !!state.clock[key];
+      return '<button type="button" class="ftt-toggle' + (on ? ' active' : '') + '"'
+        + ' data-ftt-clock="' + key + '" data-val="toggle" aria-pressed="' + (on ? 'true' : 'false') + '">'
+        + '<span class="ftt-toggle-dot" aria-hidden="true"></span>' + esc(label) + '</button>';
+    }).join('') + '</div>';
+  }
+
   function clockHtml() {
+    var c = state.clock;
     var now = new Date();
-    var time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-    var date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     var zones = '';
     if (state.worldClocks.length) {
       zones = '<div class="ftt-zones">' + state.worldClocks.map(function (tz) {
-        var t = '—';
-        try { t = now.toLocaleTimeString(undefined, { timeZone: tz, hour: 'numeric', minute: '2-digit' }); } catch (e) {}
-        return '<div class="ftt-zone"><div class="ftt-zone-city">' + esc(zoneCity(tz)) + '</div>'
-          + '<div class="ftt-zone-time">' + esc(t) + '</div>'
+        var z = zoneRow(tz, now);
+        return '<div class="ftt-zone"><div class="ftt-zone-city">' + esc(z.city) + '</div>'
+          + '<div class="ftt-zone-time">' + esc(z.time) + '</div>'
           + '<button type="button" class="ftt-x" data-ftt-zone-del="' + esc(tz) + '"'
-          + ' aria-label="Remove ' + esc(zoneCity(tz)) + '">&times;</button></div>';
+          + ' aria-label="Remove ' + esc(z.city) + '">&times;</button></div>';
       }).join('') + '</div>';
     }
+
+    /* The face is its own element with its own custom properties rather than
+       styling .ftt-card, so what you see while you drag a slider is exactly
+       what the full-screen view and the second window will show. A preview
+       that is only approximately the real thing is worse than none. */
+    var face = '<div class="ftt-face" id="fttClockFace">'
+      + '<div class="ftt-clock" id="fttClockTime">' + esc(clockTimeStr(c, now)) + '</div>'
+      + (c.showDate ? '<div class="ftt-sub ftt-face-date" id="fttClockDate">' + esc(clockDateStr(now)) + '</div>' : '')
+      + (c.label ? '<div class="ftt-face-label">' + esc(c.label) + '</div>' : '')
+      + '</div>';
+
+    var custom = '<details class="ftt-custom" id="fttCustom"' + (customOpen ? ' open' : '') + '>'
+      + '<summary class="ftt-custom-sum">Customise the clock</summary>'
+      + '<div class="ftt-custom-body">'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Font</span>'
+      + styleRow('font', CLOCK_FONTS.map(function (f) { return [f[0], f[1]]; }), c.font, function (o) {
+        return '<span style="font-family:' + fontStack(o[0]) + '">' + esc(o[1]) + '</span>';
+      }) + '</div>'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Weight</span>'
+      + styleRow('weight', CLOCK_WEIGHTS, c.weight) + '</div>'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Colour</span>'
+      + styleRow('color', CLOCK_INKS, c.color, function (o) {
+        return o[0] ? '<i class="ftt-chip" style="background:' + o[0] + '"></i>' : esc(o[1]);
+      })
+      + '<label class="ftt-pick"><input type="color" data-ftt-clock-color="color" value="'
+      + esc(isColour(c.color) ? c.color : '#ffffff') + '" aria-label="Pick a text colour"><span>Custom</span></label>'
+      + '</div>'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Background</span>'
+      + styleRow('bg', CLOCK_BGS, c.bg, function (o) {
+        return o[0] ? '<i class="ftt-chip" style="background:' + o[0] + '"></i>' : esc(o[1]);
+      })
+      + '<label class="ftt-pick"><input type="color" data-ftt-clock-color="bg" value="'
+      + esc(isColour(c.bg) ? c.bg : '#000000') + '" aria-label="Pick a background colour"><span>Custom</span></label>'
+      + '</div>'
+
+      + '<div class="ftt-field ftt-field--range">'
+      + '<label class="ftt-field-lbl" for="fttClockSize">Size <b>' + Math.round(c.size) + '%</b></label>'
+      + '<input type="range" id="fttClockSize" min="40" max="220" step="5" value="' + c.size + '" data-ftt-clock-range="size">'
+      + '</div>'
+      + '<div class="ftt-field ftt-field--range">'
+      + '<label class="ftt-field-lbl" for="fttClockTrack">Letter spacing <b>' + c.track + 'px</b></label>'
+      + '<input type="range" id="fttClockTrack" min="-12" max="24" step="1" value="' + c.track + '" data-ftt-clock-range="track">'
+      + '</div>'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Show</span>'
+      + toggleRow([['seconds', 'Seconds'], ['hour24', '24-hour'], ['showDate', 'Date'],
+        ['showZones', 'World clocks'], ['glow', 'Glow']]) + '</div>'
+
+      + '<div class="ftt-field"><span class="ftt-field-lbl">Full screen</span>'
+      + toggleRow([['keepInfo', 'Keep the date on screen'], ['drift', 'Gentle drift']])
+      + '<p class="ftt-hint ftt-hint--tight">With <b>Keep the date on screen</b> off, everything but the time '
+      + 'fades away when you stop moving the mouse. Turn it on for a screensaver that keeps the date, your '
+      + 'message and your world clocks. <b>Gentle drift</b> moves the clock around very slowly, so a screen '
+      + 'left on all night never burns the same pixels.</p></div>'
+
+      + '<div class="ftt-field"><label class="ftt-field-lbl" for="fttClockLabel">Your own line</label>'
+      + '<input type="text" id="fttClockLabel" class="ftt-input ftt-input--wide" maxlength="60"'
+      + ' placeholder="Anything you like — shown under the clock" value="' + esc(c.label) + '"'
+      + ' data-ftt-clock-text="label"></div>'
+
+      + '<div class="ftt-row ftt-row--center">'
+      + '<button type="button" class="btn-sec" data-ftt="clock-reset">Reset to default</button>'
+      + '</div>'
+      + '</div></details>';
+
     return '<div class="card ftt-card">'
-      + '<div class="ftt-clock" id="fttClockTime">' + esc(time) + '</div>'
-      + '<div class="ftt-sub" id="fttClockDate">' + esc(date) + '</div>'
+      + face
       + zones
       + '<div class="ftt-row ftt-row--center">'
       + '<select id="fttZonePick" class="ftt-input" aria-label="Add a world clock">'
@@ -595,7 +927,11 @@
       + ZONES.map(function (tz) {
         return '<option value="' + esc(tz) + '">' + esc(zoneCity(tz)) + '</option>';
       }).join('')
-      + '</select></div></div>';
+      + '</select>'
+      + '<button type="button" class="btn-sec" data-ftt="clock-window">Open in its own window</button>'
+      + '</div>'
+      + custom
+      + '</div>';
   }
 
   function stopwatchHtml() {
@@ -693,6 +1029,10 @@
 
   // ── render ────────────────────────────────────────────────────────────────
   var mounted = false;
+  /* render() rebuilds the whole Clock view from a string, so a <details> that
+     remembered nothing would snap shut every time you picked a colour —
+     one change per open, which is not a customiser. */
+  var customOpen = false;
   function render() {
     var host = $('fluxTimeTools');
     if (!host) return;
@@ -727,6 +1067,7 @@
     }
 
     host.innerHTML = '<div class="ftt-nav">' + nav + '</div>' + body;
+    if (state.view === 'clock') applyClockStyle($('fttClockFace'), state.clock);
     mounted = true;
   }
 
@@ -739,7 +1080,7 @@
     if (state.view === 'clock') {
       var now = new Date();
       var t = $('fttClockTime');
-      if (t) t.textContent = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      if (t) t.textContent = clockTimeStr(state.clock, now);
       var zs = document.querySelectorAll('#fluxTimeTools .ftt-zone');
       for (var i = 0; i < zs.length; i++) {
         var tz = state.worldClocks[i];
@@ -865,7 +1206,18 @@
     if (zoneDel) {
       var tz = zoneDel.getAttribute('data-ftt-zone-del');
       state.worldClocks = state.worldClocks.filter(function (z) { return z !== tz; });
-      persist(); render(); return;
+      persist(); clockBroadcast(); render(); return;
+    }
+    /* Appearance controls. Segments and swatches carry the value; toggles say
+       "toggle" and flip whatever is there, so one handler covers both and a
+       new option needs no new branch. */
+    var styleBtn = e.target.closest('[data-ftt-clock]');
+    if (styleBtn) {
+      var key = styleBtn.getAttribute('data-ftt-clock');
+      var raw = styleBtn.getAttribute('data-val');
+      if (raw === 'toggle') setClock(key, !state.clock[key]);
+      else setClock(key, key === 'weight' ? +raw : raw);
+      return;
     }
     var btn = e.target.closest('[data-ftt]');
     if (!btn) return;
@@ -882,13 +1234,49 @@
     else if (act === 'al-del') alarmDelete(id);
     else if (act === 'al-snooze') alarmSnooze(id, 9);
     else if (act === 'fs-open') openFocusFullscreen();
+    else if (act === 'clock-window') openClockWindow();
+    else if (act === 'clock-reset') resetClock();
   }
   function onChange(e) {
     if (e.target && e.target.id === 'fttZonePick') {
       var tz = e.target.value;
       if (!tz) return;
       if (state.worldClocks.indexOf(tz) < 0 && state.worldClocks.length < 6) state.worldClocks.push(tz);
-      persist(); render();
+      persist(); clockBroadcast(); render();
+      return;
+    }
+    /* The colour pickers commit on `change`, not on `input`. A native colour
+       dialog fires `input` continuously while you drag around the wheel, and
+       re-rendering on each one closes the dialog under your cursor. */
+    var col = e.target && e.target.closest && e.target.closest('[data-ftt-clock-color]');
+    if (col) setClock(col.getAttribute('data-ftt-clock-color'), col.value);
+  }
+
+  /* Sliders and the free-text line, on the other hand, must respond as you
+     move them or the preview is useless — so these update live and are given
+     `quiet`, which restyles the face without rebuilding the panel. Rebuilding
+     would take the slider out from under the pointer mid-drag. */
+  function onInput(e) {
+    var t = e.target;
+    if (!t || !t.getAttribute) return;
+    var rangeKey = t.getAttribute('data-ftt-clock-range');
+    if (rangeKey) {
+      setClock(rangeKey, +t.value, true);
+      var lbl = t.parentNode && t.parentNode.querySelector('.ftt-field-lbl b');
+      if (lbl) lbl.textContent = rangeKey === 'size' ? Math.round(+t.value) + '%' : (+t.value) + 'px';
+      return;
+    }
+    if (t.getAttribute('data-ftt-clock-text') === 'label') {
+      setClock('label', t.value, true);
+      var face = $('fttClockFace');
+      if (!face) return;
+      var line = face.querySelector('.ftt-face-label');
+      if (!line && t.value) {
+        line = document.createElement('div');
+        line.className = 'ftt-face-label';
+        face.appendChild(line);
+      }
+      if (line) line.textContent = t.value;
     }
   }
 
@@ -900,6 +1288,13 @@
 
   document.addEventListener('click', onClick);
   document.addEventListener('change', onChange);
+  document.addEventListener('input', onInput);
+  /* `toggle` does not bubble, so it cannot be delegated from document the way
+     everything else here is — capture is the only way to catch it without
+     re-binding after each render. */
+  document.addEventListener('toggle', function (e) {
+    if (e.target && e.target.id === 'fttCustom') customOpen = !!e.target.open;
+  }, true);
   /* Capture phase, and stopPropagation, because the app has other Escape
      handlers (FluxOverlays, the command palette) that would otherwise also act
      on this keypress and close something underneath the overlay. */
@@ -929,7 +1324,9 @@
        device it was started on, and copying endsAt to a second device would
        show a countdown nobody there started. */
     getCloudSlice: function () {
-      return { alarms: state.alarms, worldClocks: state.worldClocks };
+      // `clock` travels with the alarms: an appearance you spent time choosing
+      // should be waiting for you on the school laptop, same as your alarms.
+      return { alarms: state.alarms, worldClocks: state.worldClocks, clock: state.clock };
     },
     applyFromCloud: function (data) {
       if (!data || typeof data !== 'object') return;
@@ -941,11 +1338,17 @@
       if (Array.isArray(data.worldClocks)) {
         state.worldClocks = data.worldClocks.filter(function (z) { return typeof z === 'string'; }).slice(0, 6);
       }
+      // Same validation as a local load — a cloud row is no more trusted than
+      // a URL fragment, and both end up in a style attribute.
+      if (data.clock && typeof data.clock === 'object') state.clock = sanitiseClock(data.clock);
       persist();
       if (mounted) render();
     },
+    openClockWindow: openClockWindow,
     // Test seams.
     _state: function () { return state; },
     _fireDue: fireDueAlarms,
+    _setClock: setClock,
+    _clockFonts: function () { return CLOCK_FONTS.map(function (f) { return f[0]; }); },
   };
 })();
