@@ -606,10 +606,11 @@
       id: 'language-acq', name: 'Language Acquisition', icon: '🗣', classTags: ['spanish', 'french', 'german', 'language'],
       tools: [
         modal('german-ref', 'German reference', '🇩🇪', 'Cases & articles, verb tenses, prepositions.', 'openGermanReference'),
-        modal('spanish-conj', 'Spanish conjugator', '🇪🇸', '60 high-frequency verbs across major tenses.', 'openSpanishConjugator'),
-        modal('french-conj', 'French conjugator', '🇫🇷', 'French tenses with être / auxiliary flags.', 'openFrenchConjugator'),
+        /* The Spanish and French conjugator modals and the Translation jump
+           were removed: two conjugators for one language is how a wrong form
+           outlives its fix, and Translation left Study Tools for the AI page.
+           Study Tools → Languages carries all of it properly now. */
         inline('ipa', 'IPA chart', 'Ƃ', 'Pulmonic consonants and vowel quadrilateral.', 'languages', 'ipa'),
-        link('translate-ai', 'Translation', '🔁', 'Send text to Flux AI with language-pair context.', 'ai', 'Open Flux AI'),
       ],
     },
     {

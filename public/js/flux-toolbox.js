@@ -3598,10 +3598,12 @@ const UNIFIED_LAYOUT = [
   },
   { id:'languages', name:'Languages', icon:'🌍', classTags:['spanish','french','language'],
     tools:[
-      { id:'spanish-conj', label:'Spanish conjugator', icon:'🇪🇸', desc:'60 high-frequency verbs across major tenses (modal reference).', mode:'modal', fn:'openSpanishConjugator' },
-      { id:'french-conj', label:'French conjugator', icon:'🇫🇷', desc:'French tenses with être / auxiliary flags (modal reference).', mode:'modal', fn:'openFrenchConjugator' },
+      /* The two conjugator modals and the Translation jump were removed. The
+         conjugators duplicated the engine-backed one in Study Tools with their
+         own verb tables; Translation was a tab that navigated out of Study
+         Tools to the AI page. French, German and Spanish are full subjects
+         now, each with a dictionary, conjugator, irregular verbs and phrases. */
       { id:'ipa', label:'IPA chart', icon:'Ƃ', desc:'Pulmonic consonants and vowel quadrilateral.', mode:'inline', sub:'languages', tid:'ipa' },
-      { id:'translate-ai', label:'Translation', icon:'🔁', desc:'Send text to Flux AI with language pair context.', mode:'link', nav:'ai', btn:'Open Flux AI' },
     ],
   },
   { id:'music', name:'Music', icon:'🎵', classTags:['music','band','orchestra','choir','ib music','ib'],

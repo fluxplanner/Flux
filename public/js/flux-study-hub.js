@@ -735,9 +735,25 @@
       ? '<span class="fsh-tab-divider" aria-hidden="true">Reference</span>'
       : '';
     stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
-    const body = $('fshSubBody'), tool = tools.find((t) => t.id === active);
-    try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
+    renderToolBody(sid, picked);
     requestAnimationFrame(moveTabGlide);
+  }
+  /* Re-render only the panel body, leaving the tab strip standing.
+     This is what lets the highlight slide. The highlight is a real element
+     (#fshTabGlide) animating its own left/width, so it can only travel if it
+     survives the click — and rebuilding the whole stage replaced it with a
+     brand-new one that simply appeared at the destination. Chemistry always
+     animated because its click handler only ever re-rendered the body; every
+     other subject went through renderRegistered and threw the strip away.
+     Returns false when there is no body to draw into, so the caller can fall
+     back to building the whole panel. */
+  function renderToolBody(sid, picked) {
+    const tools = (registry[sid] || []).filter((t) => typeof t.render === 'function');
+    const body = $('fshSubBody');
+    const tool = tools.find((t) => t.id === state.tool[sid]);
+    if (!body || !tool) return false;
+    try { tool.render(body, !!picked); } catch (e) { body.innerHTML = `<div class="fsh-err">Tool error: ${esc(e.message)}</div>`; }
+    return true;
   }
   function soonHTML(sid) { const s = subjById(sid); return `<div class="fsh-card fsh-soon fsh-panel"><div class="ic">${s.ico}</div><h3>${esc(s.name)} tools didn't load</h3><p>The ${esc(s.name)} module isn't available right now — try reloading. Meanwhile, here are the best interactive sites.</p></div>`; }
   // Reference-site strips removed per product decision — Study Tools keeps the
@@ -986,9 +1002,33 @@
       if (a0 && a0.dataset.act === 'open-tool') { openToolRef(a0.dataset.sid, a0.dataset.tid); return; }
       if (a0 && a0.dataset.act === 'open-sub') { openToolRef(a0.dataset.sid, ''); return; }
       const chemTab = t.closest('.fsh-chem-tab[data-tab]');
-      if (chemTab) { state.chemTab = chemTab.dataset.tab; save(); document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab)); renderChemBody(); requestAnimationFrame(moveTabGlide); return; }
+      /* Highlight first, panel second. Both happen on the same click, but the
+         order decides whether the slide is visible: drawing the panel first
+         blocks the main thread long enough (≈70ms for a big table) that the
+         transition cannot start until it finishes, so the highlight sat still
+         and then hurried. Moving it before the body render costs one forced
+         layout of a strip that has not changed, and the slide begins on the
+         very next frame. */
+      if (chemTab) {
+        state.chemTab = chemTab.dataset.tab; save();
+        document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab));
+        moveTabGlide();
+        requestAnimationFrame(renderChemBody);
+        return;
+      }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');
-      if (subTab) { state.tool[state.subject] = subTab.dataset.tool; save(); renderRegistered(state.subject, true); return; }
+      if (subTab) {
+        state.tool[state.subject] = subTab.dataset.tool; save();
+        // Same shape as the chemistry branch above, and for the same reasons:
+        // move the class, slide the highlight, then draw the panel a frame
+        // later. Falls back to rebuilding the whole stage if there is no body
+        // to draw into — which also rebuilds the strip, so no glide.
+        const sid = state.subject;
+        document.querySelectorAll('#fshChemTabs .fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === subTab));
+        if ($('fshSubBody')) { moveTabGlide(); requestAnimationFrame(() => renderToolBody(sid, true)); }
+        else renderRegistered(sid, true);
+        return;
+      }
       const cell = t.closest('.fsh-el');
       if (cell && cell.dataset.n && !a0) { selEl = +cell.dataset.n; const d = $('fshElDetail'); if (d) { d.innerHTML = elDetail(elByN(selEl)); d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
       const cat = t.closest('.fsh-cat-chip[data-cat]');
@@ -1036,23 +1076,20 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    /* Chip id → subject. An array sends one chip to several subjects, which
-       Translation needs: it is a general "send this to Flux AI" jump, equally
-       useful in all three languages, and there is no fourth subject left to
-       park it on now that the shared Languages pill is gone. */
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'spanish-conj': 'spanish', 'french-conj': 'french', 'translate-ai': ['french', 'german', 'spanish'], 'music-theory': 'music', 'cs-ref': 'cs' };
-    const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1 };
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'music-theory': 'music', 'cs-ref': 'cs' };
+    /* spanish-conj, french-conj and translate-ai were dropped rather than
+       rehomed. The two conjugators were a second implementation with their own
+       hand-written verb tables sitting one tab away from the engine-backed
+       one — the precise arrangement that let "yo podo" survive while a correct
+       table existed elsewhere in the app. Translation was a link that left
+       Study Tools for the AI tab, so as a language tool it was a tab that took
+       you somewhere else. */
+    const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1, 'spanish-conj': 1, 'french-conj': 1, 'translate-ai': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
       const sub = OVERRIDE[c.id] || SECTION[sec.id]; if (!sub) return;
-      const chip = { id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn };
-      // A fresh copy per subject: mergeLegacyOnce closes over the chip object,
-      // and one shared instance across three subjects is a shared-state bug
-      // waiting for the first person to add a field to it.
-      (Array.isArray(sub) ? sub : [sub]).forEach((s) => {
-        (idx[s] = idx[s] || []).push(Object.assign({}, chip));
-      });
+      (idx[sub] = idx[sub] || []).push({ id: c.id, label: c.label, icon: c.icon, mode: c.mode, sub: c.sub, tid: c.tid, fn: c.fn, nav: c.nav, desc: c.desc, btn: c.btn });
     }));
     _legacyIdx = idx; return idx;
   }

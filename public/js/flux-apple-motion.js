@@ -107,7 +107,27 @@ const PILL_GROUPS = [
   { host: '.tmode-toggle, .tmode-segmented, .dash-toolbar-views, #filterChips, #notes .tmode-row, #timer .tmode-row', item: '.tmode-btn, .view-btn', activeCls: 'active', shape: 'pill' },
   { host: '.sph-tabs', item: '.sph-tab', activeCls: 'active', shape: 'pill' },
   { host: '.view-toggle, .view-switcher', item: '.view-btn', activeCls: 'active', shape: 'pill' },
+
+  /* The rest of the planner's tab strips. Every one of these already looked
+     and behaved like the strips above; the highlight jumped rather than slid
+     purely because this list is hand-maintained and they were never added to
+     it. "tab" is the same idea as "rect" with a smaller radius, which is what
+     these strips use — 8 to 10px rather than the sidebar's 14. */
+  { host: '.cv-tabs', item: '.cv-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.g-hub-tabs', item: '.g-hub-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.canvas-tab-bar, .canvas-quick-tabs', item: '.canvas-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.class-tabs', item: '.class-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.efm-tabs', item: '.efm-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.ao-dir-tabs', item: '.ao-dir-tab', activeCls: 'active', shape: 'tab' },
+  { host: '.school-work-tabs', item: '.school-work-tab', activeCls: 'active', shape: 'pill' },
+  { host: '.ref-tool-tabs', item: '.ref-tool-tab', activeCls: 'active', shape: 'pill' },
 ];
+
+/* Derived, not hand-written. The click listener below used to carry its own
+   copy of these selectors, so adding a group to the list above would leave it
+   out of the one path that catches a tab press the nav events do not — and the
+   pill would work everywhere except when you actually clicked the tab. */
+const PILL_ITEM_SELECTOR = PILL_GROUPS.map((g) => g.item).join(',');
 
 let _pressTarget = null;
 let _pillRegistry = new WeakMap();
@@ -386,9 +406,7 @@ function initPillMorph() {
     (e) => {
       const t = e.target;
       if (!(t instanceof Element)) return;
-      if (
-        t.closest('.nav-item, .bnav-item, .stab, .sph-tab, .tmode-btn, .view-btn')
-      ) {
+      if (t.closest(PILL_ITEM_SELECTOR)) {
         scheduleSyncAllPills();
       }
     },

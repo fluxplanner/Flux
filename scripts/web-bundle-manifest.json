@@ -154,7 +154,6 @@
     "public/js/flux-reftool-chem.js",
     "public/js/flux-reftool-bio.js",
     "public/js/flux-reftool-history.js",
-    "public/js/flux-reftool-lang.js",
     "public/js/flux-reftool-units.js",
     "public/js/flux-unit-converter-favorites.js",
     "public/js/flux-reftool-cs.js",

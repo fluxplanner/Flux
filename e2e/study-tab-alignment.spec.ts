@@ -90,6 +90,87 @@ test('an icon turning into an SVG does not change its tab width', async ({ page 
   }
 });
 
+/*
+ * The highlight has to travel, not teleport.
+ *
+ * Chemistry always slid and nothing else did, which looked like a CSS
+ * difference and wasn't. The highlight is a real element animating its own
+ * left/width, so it can only travel if it survives the click. Chemistry's
+ * click handler re-rendered just the panel body; every other subject went
+ * through renderRegistered, which rebuilt the whole stage — including a
+ * brand-new highlight that simply appeared at the destination with nothing to
+ * animate from.
+ *
+ * So this asserts both halves: the element is the same node afterwards, and it
+ * is genuinely mid-flight partway through. Checking only the endpoints would
+ * pass just as happily on a teleport.
+ */
+test('the highlight slides between sub-tabs rather than jumping', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+  await expect(page.locator('#fshChemTabs')).toBeVisible();
+
+  const res = await page.evaluate(async () => {
+    const hub = (window as unknown as { fluxStudyHub: { selectSubject: (i: string) => void } }).fluxStudyHub;
+    // German rather than Chemistry: Chemistry was the one subject that always
+    // worked, so testing it would have passed throughout the bug.
+    hub.selectSubject('german');
+    await new Promise((r) => setTimeout(r, 700));
+
+    const strip = () => document.getElementById('fshChemTabs') as HTMLElement;
+    const glide = () => document.getElementById('fshTabGlide') as HTMLElement;
+    const tabs = () => [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')] as HTMLElement[];
+    const glideLeft = () => glide().getBoundingClientRect().left - strip().getBoundingClientRect().left;
+
+    if (tabs().length < 4) return { skipped: true } as Record<string, unknown>;
+
+    tabs()[0].click();
+    await new Promise((r) => setTimeout(r, 700));
+    const from = glideLeft();
+
+    // Tag the node so we can tell a survivor from a replacement.
+    (glide() as unknown as { __tag?: number }).__tag = 4242;
+    const events: string[] = [];
+    glide().addEventListener('transitionstart', (e) => events.push((e as TransitionEvent).propertyName));
+
+    const target = tabs()[3];
+    const to = target.offsetLeft;
+
+    /* Sampled per frame rather than on a wall-clock timer. How long the slide
+       takes to *begin* depends on how heavy the incoming panel is, so a fixed
+       setTimeout reads either an unstarted or a finished animation depending
+       on the machine. Frames are the thing that actually matter here. */
+    const seen: number[] = [];
+    target.click();
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      seen.push(glideLeft());
+    }
+    const lo = Math.min(from, to) + 4, hi = Math.max(from, to) - 4;
+    return {
+      skipped: false, from, to, events,
+      end: glideLeft(),
+      sameNode: (glide() as unknown as { __tag?: number }).__tag === 4242,
+      midFrames: seen.filter((v) => v > lo && v < hi).length,
+    };
+  });
+
+  if (res.skipped) test.skip(true, 'German rendered fewer than four sub-tabs');
+
+  // The two tabs must actually be far apart, or "in between" means nothing.
+  expect(Math.abs((res.to as number) - (res.from as number)),
+    'the two tabs sit on top of each other').toBeGreaterThan(60);
+  expect(res.sameNode, 'the highlight was replaced instead of moved').toBe(true);
+  /* A teleport is a left change with the transition suppressed, which fires no
+     transitionstart at all — so this single event is the cleanest statement of
+     the bug that was fixed. */
+  expect(res.events, 'the highlight jumped: no transition on left').toContain('left');
+  // And it was really observed part-way there, not just declared to be moving.
+  expect(res.midFrames as number, 'never caught the highlight between the two tabs').toBeGreaterThan(0);
+  expect(Math.abs((res.end as number) - (res.to as number))).toBeLessThanOrEqual(1);
+});
+
 test('the highlight sits under the tab it highlights, on every sub-tab of every subject', async ({ page }) => {
   test.setTimeout(300_000);
   await page.setViewportSize({ width: 1280, height: 900 });

@@ -163,6 +163,80 @@ html.flux-apple-motion .flux-morph-pill--pill {
     inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+/* Pill shape: tab (the planner's tab strips — 8-10px corners, accent tint) */
+html.flux-apple-motion .flux-morph-pill--tab {
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 95, 142, 255), 0.16),
+    rgba(var(--purple-rgb, 168, 116, 255), 0.08)
+  );
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 95, 142, 255), 0.30);
+}
+
+/* ── The planner's other tab strips ───────────────────────────────────────
+   Three rules per strip, the same three the segmented controls above use:
+   the host has to be a positioning context, the items have to sit above the
+   pill, and the active item's own background has to go — otherwise the
+   highlight appears instantly on the tab you clicked *and* slides towards it,
+   which reads as two highlights rather than one that moved.
+
+   The :has() guard means all of this only applies once a pill has actually
+   been inserted. If the motion script never runs, every strip keeps the
+   highlight it has today rather than losing it. */
+html.flux-apple-motion .cv-tabs,
+html.flux-apple-motion .g-hub-tabs,
+html.flux-apple-motion .canvas-tab-bar,
+html.flux-apple-motion .canvas-quick-tabs,
+html.flux-apple-motion .class-tabs,
+html.flux-apple-motion .efm-tabs,
+html.flux-apple-motion .ao-dir-tabs,
+html.flux-apple-motion .school-work-tabs,
+html.flux-apple-motion .ref-tool-tabs {
+  position: relative;
+}
+
+html.flux-apple-motion .cv-tabs .cv-tab,
+html.flux-apple-motion .g-hub-tabs .g-hub-tab,
+html.flux-apple-motion .canvas-tab-bar .canvas-tab,
+html.flux-apple-motion .canvas-quick-tabs .canvas-tab,
+html.flux-apple-motion .class-tabs .class-tab,
+html.flux-apple-motion .efm-tabs .efm-tab,
+html.flux-apple-motion .ao-dir-tabs .ao-dir-tab,
+html.flux-apple-motion .school-work-tabs .school-work-tab,
+html.flux-apple-motion .ref-tool-tabs .ref-tool-tab {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+
+html.flux-apple-motion .cv-tabs .cv-tab > *,
+html.flux-apple-motion .g-hub-tabs .g-hub-tab > *,
+html.flux-apple-motion .canvas-tab-bar .canvas-tab > *,
+html.flux-apple-motion .canvas-quick-tabs .canvas-tab > *,
+html.flux-apple-motion .class-tabs .class-tab > *,
+html.flux-apple-motion .efm-tabs .efm-tab > *,
+html.flux-apple-motion .ao-dir-tabs .ao-dir-tab > *,
+html.flux-apple-motion .school-work-tabs .school-work-tab > *,
+html.flux-apple-motion .ref-tool-tabs .ref-tool-tab > * {
+  position: relative;
+  z-index: 2;
+}
+
+html.flux-apple-motion .cv-tabs:has(.flux-morph-pill) .cv-tab.active,
+html.flux-apple-motion .g-hub-tabs:has(.flux-morph-pill) .g-hub-tab.active,
+html.flux-apple-motion .canvas-tab-bar:has(.flux-morph-pill) .canvas-tab.active,
+html.flux-apple-motion .canvas-quick-tabs:has(.flux-morph-pill) .canvas-tab.active,
+html.flux-apple-motion .class-tabs:has(.flux-morph-pill) .class-tab.active,
+html.flux-apple-motion .efm-tabs:has(.flux-morph-pill) .efm-tab.active,
+html.flux-apple-motion .ao-dir-tabs:has(.flux-morph-pill) .ao-dir-tab.active,
+html.flux-apple-motion .school-work-tabs:has(.flux-morph-pill) .school-work-tab.active,
+html.flux-apple-motion .ref-tool-tabs:has(.flux-morph-pill) .ref-tool-tab.active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 /* Sidebar hosts */
 html.flux-apple-motion #sidebar .nav-scroll,
 html.flux-apple-motion #sidebar .sidebar-nav {

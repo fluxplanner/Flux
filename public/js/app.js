@@ -11366,8 +11366,11 @@ function renderCmdResults(){
     {icon:'⚗️',label:'Chemistry Reference',action:()=>{closeCommandPalette();window.openChemReference&&window.openChemReference();}},
     {icon:'🧬',label:'Biology Codon Table',action:()=>{closeCommandPalette();window.openCodonTable&&window.openCodonTable();}},
     {icon:'🗺️',label:'History Map',action:()=>{closeCommandPalette();window.openHistoryMap&&window.openHistoryMap();}},
-    {icon:'🇪🇸',label:'Spanish Conjugator',action:()=>{closeCommandPalette();window.openSpanishConjugator&&window.openSpanishConjugator();}},
-    {icon:'🇫🇷',label:'French Conjugator',action:()=>{closeCommandPalette();window.openFrenchConjugator&&window.openFrenchConjugator();}},
+    /* The Spanish and French conjugator modals were removed. They carried
+       their own verb tables, so the palette could hand you a different answer
+       from the conjugator in Study Tools — which is exactly how the app once
+       taught "yo podo" while a correct table sat one file away. Study Tools →
+       Languages → Spanish/French/German is the only conjugator now. */
     {icon:'🔁',label:'Unit Converter',action:()=>{closeCommandPalette();window.openUnitConverter&&window.openUnitConverter();}},
     {icon:'💻',label:'CS Reference',action:()=>{closeCommandPalette();window.openCSReference&&window.openCSReference();}},
     {icon:'🧪',label:'Periodic Table',action:()=>{closeCommandPalette();if(typeof window.openPeriodicTableModal==='function')window.openPeriodicTableModal();else if(typeof window.openPeriodicTable==='function')window.openPeriodicTable();else nav('toolbox');}},

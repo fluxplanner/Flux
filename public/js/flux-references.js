@@ -41,8 +41,11 @@
     { id:'codon-table', emoji:'🧬', name:'Biology Codon Table', desc:'64 codons, amino-acid lookup, color-coded by property.', subjects:['bio'], fn:'openCodonTable' },
     { id:'physics-formulas', emoji:'🪐', name:'Physics Formula Sheet', desc:'Mechanics, kinematics, energy, waves — quick reference.', subjects:['physics'], fn:'openPhysicsSandbox' },
     { id:'history-map', emoji:'🗺️', name:'History Map', desc:'Clickable world map with eras, empires, and key dates.', subjects:['history'], fn:'openHistoryMap' },
-    { id:'spanish-conj', emoji:'🇪🇸', name:'Spanish Conjugator', desc:'60 high-frequency verbs across 7 tenses.', subjects:['spanish'], fn:'openSpanishConjugator' },
-    { id:'french-conj', emoji:'🇫🇷', name:'French Conjugator', desc:'French tenses with passé composé aux & être flags.', subjects:['french'], fn:'openFrenchConjugator' },
+    /* No conjugators here. They lived in their own modal with their own verb
+       tables, a click away from the engine-backed conjugator in Study Tools,
+       and two tables for one language is how a wrong form survives a fix.
+       Languages are a Study Tools subject now: Languages → French / German /
+       Spanish → Conjugator. */
     { id:'cs-ref', emoji:'💻', name:'CS Reference', desc:'Binary/hex, ASCII, Big-O, logic gates.', subjects:['cs','math'], fn:'openCSReference', shortcut:'X' },
   ];
 
@@ -72,7 +75,7 @@
   }catch(e){}
 
   ['openMathFormulas','openChemReference','openCodonTable','openHistoryMap',
-    'openSpanishConjugator','openFrenchConjugator','openUnitConverter','openCSReference'
+    'openUnitConverter','openCSReference'
   ].forEach(name => {
     if (typeof window[name] !== 'function'){
       window[name] = function(){
