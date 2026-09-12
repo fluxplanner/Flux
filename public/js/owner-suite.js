@@ -972,7 +972,7 @@
 
       if(tab==='auth')return`
         <div style="font-size:.72rem;color:var(--muted2);line-height:1.55;margin-bottom:12px">
-          <b>Everyone in Supabase Auth</b> for this project — with each person’s <b>Flux role</b> (student, teacher, counselor, staff, admin) and roster fields from <code style="font-size:.65rem">user_roles</code>. Paging follows Supabase’s Auth list order (usually newest first). Destructive actions still require <code style="font-size:.65rem">release-admin</code> + <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>.
+          <b>Everyone in Supabase Auth</b> for this project — with each person’s <b>Flux role</b> (student, teacher, counselor, staff, admin) and roster fields from <code style="font-size:.65rem">user_roles</code>. Paging follows Supabase’s Auth list order (usually newest first). Destructive actions still require <code style="font-size:.65rem">release-admin</code>, which recognises you by <code style="font-size:.65rem">FLUX_OWNER_UID</code> (your account id) or <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>.
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
           <button type="button" onclick="ownerAuthUsersLoad(1)" style="padding:8px 14px;font-size:.78rem;border-radius:10px;background:rgba(var(--accent-rgb),.14);border:1px solid rgba(var(--accent-rgb),.32);color:var(--accent);font-weight:700">↻ Refresh list</button>
@@ -1973,6 +1973,26 @@
     ev.target.value='';
   };
 
+  /* What to call an account on screen.
+     Accounts sign in with a name now, and the address behind it is synthesised
+     from that name — so a roster listing raw emails reads as a column of
+     "jane.doe@…" noise and, worse, invites you to think there is a real inbox
+     there. Prefer what they are actually called; fall back to the name half of
+     the address, then the address, then the id. */
+  function osUserLabel(u){
+    if(!u)return'(unknown)';
+    const dn=String(u.display_name||'').trim();
+    if(dn)return dn;
+    const em=String(u.email||'').trim();
+    if(em){
+      const name=(typeof window.fluxEmailToUsername==='function')
+        ?window.fluxEmailToUsername(em):em;
+      return name||em;
+    }
+    return'account '+String(u.id||'').slice(0,8);
+  }
+  window.osUserLabel=osUserLabel;
+
   window.ownerAuthRenderRows=function(users){
     const mount=document.getElementById('osAuthMount');
     if(!mount)return;
@@ -1989,13 +2009,16 @@
       const bannedTag=u.banned?'<span style="font-size:.58rem;color:var(--red);font-weight:700">Banned</span>':'<span style="font-size:.58rem;color:var(--muted)">Active</span>';
       const fr=u.fluxRole||null;
       const roleLbl=fr?('<span style="font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:'+roleColor(fr)+'">'+esc(fr)+'</span>'):'<span style="font-size:.62rem;color:var(--muted)">— no row</span>';
-      const dn=(u.display_name||'').trim();
       const subj=(u.subject||'').trim();
-      const meta=[dn&&('“'+esc(dn.slice(0,40))+(dn.length>40?'…':'')+'”'),subj&&('Subject: '+esc(subj.slice(0,28)))].filter(Boolean).join(' · ')||'<span style="opacity:.6">No display name / subject</span>';
+      /* The name they type into the sign-in box — the useful half of the
+         address, and the only part of it that is real. */
+      const signIn=(typeof window.fluxEmailToUsername==='function')
+        ?window.fluxEmailToUsername(String(u.email||'')):String(u.email||'');
+      const meta=[signIn&&('Signs in as '+esc(signIn.slice(0,48))),subj&&('Subject: '+esc(subj.slice(0,28)))].filter(Boolean).join(' · ')||'<span style="opacity:.6">No sign-in name / subject</span>';
       const last=u.last_sign_in_at?('<span style="font-size:.6rem;color:var(--muted)">Last sign-in: '+esc(String(u.last_sign_in_at).slice(0,16))+'</span>'):'';
       return'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border);font-size:.72rem;background:var(--card2)">'+
         '<div style="flex:1;min-width:200px">'+
-          '<div style="font-weight:700;font-size:.8rem;margin-bottom:4px">'+(esc(u.email)||'—')+'</div>'+
+          '<div style="font-weight:700;font-size:.8rem;margin-bottom:4px">'+(esc(osUserLabel(u))||'—')+'</div>'+
           '<div style="font-size:.68rem;color:var(--muted2);line-height:1.45">'+meta+'</div>'+
           last+
         '</div>'+
@@ -2045,11 +2068,11 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
           <div>
             <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-family:JetBrains Mono,monospace">Flux profile</div>
-            <div style="font-size:1rem;font-weight:800;margin-top:4px;word-break:break-all">${esc(u.email||'')}</div>
+            <div style="font-size:1rem;font-weight:800;margin-top:4px;word-break:break-all">${esc(osUserLabel(u))}</div>
           </div>
           <button type="button" onclick="ownerAuthCloseEditOverlay()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;line-height:1;padding:4px">✕</button>
         </div>
-        <p style="font-size:.72rem;color:var(--muted2);line-height:1.5;margin:0 0 14px">Updates <code style="font-size:.65rem">public.user_roles</code> for this account. Does not change their Google / email login address.</p>
+        <p style="font-size:.72rem;color:var(--muted2);line-height:1.5;margin:0 0 14px">Updates <code style="font-size:.65rem">public.user_roles</code> for this account. Does not change the name they sign in with — use <b>Set password…</b> on the roster row for their login.</p>
         <label style="display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px">Role</label>
         <select id="osAuthEditRole" style="width:100%;padding:9px 10px;border-radius:10px;margin-bottom:12px;background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:.82rem">
           <option value="student">Student</option>
@@ -2165,7 +2188,7 @@
       if(typeof showToast==='function')showToast('Loaded '+users.length+' user(s) · page '+p,'success');
     }catch(e){
       const msg=e&&e.message?e.message:String(e);
-      if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with Auth + <code style="font-size:.65rem">owner_patch_user_role</code>, and confirm <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code> matches your Google account.</div>';
+      if(mount)mount.innerHTML='<div style="color:var(--red);font-size:.82rem">'+esc(msg)+'</div><div style="font-size:.7rem;color:var(--muted2);margin-top:8px;line-height:1.5">Deploy <code style="font-size:.65rem">release-admin</code> with Auth + <code style="font-size:.65rem">owner_patch_user_role</code>, and confirm <code style="font-size:.65rem">FLUX_OWNER_UID</code> (or <code style="font-size:.65rem">FLUX_OWNER_EMAIL</code>) matches your account.</div>';
       if(typeof showToast==='function')showToast(msg,'error');
     }
   };
@@ -2181,7 +2204,7 @@
     const users=window.__fluxAuthLastUsers||[];
     if(!users.length){sel.innerHTML='<option value="">Load accounts first…</option>';return;}
     const prev=sel.value;
-    sel.innerHTML=users.map(u=>`<option value="${esc(u.id||'')}">${esc(u.email||u.id||'(no email)')}</option>`).join('');
+    sel.innerHTML=users.map(u=>`<option value="${esc(u.id||'')}">${esc(osUserLabel(u))}</option>`).join('');
     if(prev)sel.value=prev;
   };
 
@@ -2215,7 +2238,7 @@
     const rows=await FluxOwnerMessages.recent(8);
     if(!rows.length){host.innerHTML='';return;}
     const users=window.__fluxAuthLastUsers||[];
-    const nameOf=(id)=>{const u=users.find(x=>x.id===id);return u&&u.email?u.email:'account '+String(id).slice(0,8);};
+    const nameOf=(id)=>{const u=users.find(x=>x.id===id);return u?osUserLabel(u):'account '+String(id).slice(0,8);};
     host.innerHTML='<div style="font-weight:700;margin-bottom:4px">Recently sent</div>'+rows.map(r=>
       `<div>· ${esc(nameOf(r.recipient_id))} — ${r.read_at?'read':'<span style="color:var(--muted)">not opened yet</span>'}</div>`
     ).join('');
@@ -2312,13 +2335,21 @@
 
   window.ownerAuthSetPasswordPrompt=async function(userId){
     if(!isOwner())return;
-    const pw=window.prompt('New password (min 8 chars). Share out-of-band:','');
-    if(!pw||pw.length<8)return;
+    /* This prompt is the whole password-recovery story now. The addresses
+       behind these accounts are synthesised from the person's name and nothing
+       is ever delivered to them, so there is no "forgot password" email to
+       fall back on. Name the person in the prompt: roster rows look alike, and
+       picking the wrong one silently locks out whoever was actually hit. */
+    const u=(window.__fluxAuthLastUsers||[]).find(x=>String(x.id)===String(userId));
+    const who=u?osUserLabel(u):'this account';
+    const pw=window.prompt('New password for '+who+' (at least 8 characters).\n\nThey will not be emailed it — tell them yourself.','');
+    if(pw===null)return;
+    if(pw.length<8){if(typeof showToast==='function')showToast('Password must be at least 8 characters','error');return;}
     try{
       const data=await FluxRelease.invokeOwnerReleaseAdmin({action:'auth_set_password',userId,password:pw});
       if(!data||data.error||data.ok===false)throw new Error(data&&data.error||'Password update failed');
       if(typeof ownerAuditAppend==='function')ownerAuditAppend('auth_set_password',{userId});
-      if(typeof showToast==='function')showToast('Password set','success');
+      if(typeof showToast==='function')showToast('New password set for '+who,'success');
     }catch(e){if(typeof showToast==='function')showToast(e.message||String(e),'error');}
   };
 
