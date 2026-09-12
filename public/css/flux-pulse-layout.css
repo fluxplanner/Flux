@@ -802,7 +802,6 @@ html.flux-layout-pulse #onboarding input:focus{
    * resize but want to fence to a row. */
   html.flux-layout-pulse #dashboard.flux-page > .dash-mob-stack,
   html.flux-layout-pulse #dashboard.flux-page > .dash-v2-greet,
-  html.flux-layout-pulse #dashboard.flux-page > .recovery-banner,
   html.flux-layout-pulse #dashboard.flux-page > #fluxClassAlertBanner,
   html.flux-layout-pulse #dashboard.flux-page > #weeklyReviewBanner,
   html.flux-layout-pulse #dashboard.flux-page > .dash-week-strip,

@@ -322,8 +322,7 @@
         + `<span class="fsh-group-n" aria-hidden="true">${n}</span></button>`;
     }).join('');
   }
-  function railHtml() {
-    const active = state.group || groupOf(state.subject);
+  function railGroupHtml(active) {
     const items = orderedSubjects().filter((s) => s.group === active).map(pillHtml);
     /* Count the favourites that actually matched a subject, not state.favs
        .length. The two diverge as soon as favs holds an id with no subject
@@ -344,10 +343,52 @@
     }
     return items.join('');
   }
+  /* Each umbrella's pills are built once and kept as a detached node. Switching
+     umbrella then attaches an existing node instead of parsing fresh markup:
+     on a 6x-throttled CPU (roughly a school iPad) rebuilding cost ~25ms of
+     blocking work per umbrella click against ~9ms for a plain subject switch,
+     which is exactly why umbrellas felt heavier than subjects and why the panel
+     underneath stuttered along with them.
+
+     The nodes go in as direct children with no wrapper around them, so the rail
+     keeps exactly the shape it had: `#fshRail .fsh-pill` and `#fshRail.children`
+     still mean "the pills you can see", which keyboard arrow-nav, the favourites
+     divider and the specs all read. */
+  let _railGroups = null;   // gid -> array of retained child nodes
+  let _railAttached = null; // gid currently in the DOM
+  function buildRailGroups() {
+    _railGroups = new Map();
+    GROUPS.forEach((g) => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = railGroupHtml(g.id);
+      _railGroups.set(g.id, [...tmp.childNodes]);
+    });
+    _railAttached = null;
+  }
+  function applyGroup() {
+    const active = state.group || groupOf(state.subject);
+    const rail = $('fshRail');
+    if (rail) {
+      if (!_railGroups) buildRailGroups();
+      if (_railAttached !== active) {
+        rail.replaceChildren(...(_railGroups.get(active) || []));
+        _railAttached = active;
+      }
+      rail.dataset.group = active;
+    }
+    document.querySelectorAll('#fshGroups .fsh-group').forEach((b) => {
+      const on = b.dataset.group === active;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  /* Full rebuild. Only a favourites change alters the pills themselves
+     (starring reorders them and moves the divider), so this is no longer on the
+     umbrella-switching path. */
   function renderRail() {
-    const rail = $('fshRail'); if (!rail) return;
-    rail.innerHTML = railHtml();
-    const gr = $('fshGroups'); if (gr) gr.innerHTML = groupRowHtml();
+    if (!$('fshRail')) return;
+    _railGroups = null;
+    applyGroup();
   }
   /* Switching umbrella lands you on a subject inside it rather than leaving the
      stage showing something from the group you just left. Your starred subject
@@ -355,7 +396,7 @@
   function selectGroup(gid) {
     if (!GROUPS.some((g) => g.id === gid)) return;
     const inGroup = SUBJECTS.filter((s) => s.group === gid);
-    if (!inGroup.length) { state.group = gid; save(); renderRail(); return; }
+    if (!inGroup.length) { state.group = gid; save(); applyGroup(); return; }
     const target = inGroup.find((s) => isFav(s.id)) || inGroup[0];
     /* Deliberately not setting state.group here. selectSubject decides whether
        the rail needs rebuilding by comparing the old umbrella with the new
@@ -940,11 +981,10 @@
     state.subject = id; state.group = groupOf(id); searchQ = ''; save();
     const si = $('fshSearch'); if (si) si.value = ''; const c = $('fshSearchClear'); if (c) c.hidden = true;
 
-    /* Only when the umbrella actually changed. renderRail() replaces the rail
-       and group-row markup wholesale, throwing away and rebuilding every pill;
-       doing that to move a highlight between two pills that are already on
-       screen is work you can see. */
-    if (groupChanged) renderRail();
+    /* Only when the umbrella actually changed, and now just an attribute flip
+       — every umbrella's pills are already in the rail, CSS decides which set
+       shows. */
+    if (groupChanged) applyGroup();
     document.querySelectorAll('#fshRail .fsh-pill').forEach((p) => p.classList.toggle('active', p.dataset.sub === id));
     const a = document.querySelector('#fshRail .fsh-pill.active'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 
@@ -964,9 +1004,9 @@
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
     host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
       <div class="fsh-group-row" id="fshGroups" role="tablist" aria-label="Subject areas">${groupRowHtml()}</div>
-      <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail">${railHtml()}</div></div>
+      <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail"></div></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;
-    wire(); return true;
+    applyGroup(); wire(); return true;
   }
   function wire() {
     const root = $('fshRoot'); if (!root || root.__wired) return; root.__wired = true;

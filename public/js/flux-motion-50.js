@@ -32,7 +32,7 @@
  * handled by flux-apple-motion / pro / pulse layers — this file just
  * polishes them or marks them as "already-on". The new work is the rest.
  */
-import { animate, stagger, createSpring, svg, eases } from 'animejs';
+import { animate, stagger, spring, svg, eases } from 'animejs';
 
 /* ───────── Capability detection ───────── */
 
@@ -78,10 +78,10 @@ function isCoarsePointer() {
 }
 
 const SPRING = {
-  snappy: createSpring({ stiffness: 480, damping: 34, mass: 1 }),
-  smooth: createSpring({ stiffness: 320, damping: 30, mass: 1 }),
-  bouncy: createSpring({ stiffness: 420, damping: 20, mass: 0.92 }),
-  release: createSpring({ stiffness: 360, damping: 24, mass: 0.95 }),
+  snappy: spring({ stiffness: 480, damping: 34, mass: 1 }),
+  smooth: spring({ stiffness: 320, damping: 30, mass: 1 }),
+  bouncy: spring({ stiffness: 420, damping: 20, mass: 0.92 }),
+  release: spring({ stiffness: 360, damping: 24, mass: 0.95 }),
 };
 
 /* ───────── Shared one-shot IntersectionObserver ───────── */

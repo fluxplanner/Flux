@@ -579,26 +579,6 @@
     setInterval(tick, 1500);
   }
 
-  /* ── 24 Recovery banner dismiss ── */
-  function installRecoveryDismiss() {
-    const key = 'flux_recovery_banner_dismissed';
-    const banner = document.getElementById('recoveryBanner');
-    if (!banner || !pref('recovery_dismiss', true)) return;
-    if (localStorage.getItem(key) === '1') banner.style.display = 'none';
-    if (!banner.querySelector('.flux-recovery-dismiss')) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'flux-recovery-dismiss btn-sec';
-      btn.style.cssText = 'margin-left:8px;font-size:.7rem';
-      btn.textContent = 'Dismiss';
-      btn.onclick = () => {
-        localStorage.setItem(key, '1');
-        banner.style.display = 'none';
-      };
-      banner.appendChild(btn);
-    }
-  }
-
   /* ── 25 Feedback quick links ── */
   function installFeedbackLinks() {
     const pane = document.getElementById('spane-data');
@@ -1146,7 +1126,6 @@
     { id: 'impersonate_bar', pref: 'impersonate_bar', title: 'Impersonation top bar' },
     { id: 'notes_unsaved_guard', pref: 'notes_unsaved_guard', title: 'Unsaved notes browser guard' },
     { id: 'focus_dim_chrome', pref: 'focus_dim_chrome', title: 'Dim chrome during focus timer' },
-    { id: 'recovery_dismiss', pref: 'recovery_dismiss', title: 'Recovery banner dismiss' },
     { id: 'feedback_quick', pref: 'feedback_quick', title: 'Quick feedback categories' },
     { id: 'g_nav', pref: 'g_nav', title: 'g→d / g→s navigation' },
     { id: 'copy_ids', pref: 'copy_ids', title: 'Copy user & school IDs' },
@@ -1199,7 +1178,6 @@
     installImpersonateBar,
     installNotesGuard,
     installFocusDim,
-    installRecoveryDismiss,
     installFeedbackLinks,
     installGNav,
     installCopyIds,
