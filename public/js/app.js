@@ -11425,6 +11425,7 @@ function fluxAuthErrorText(e,mode,name){
   if(m.includes('invalid')&&m.includes('email'))return 'Please use letters and numbers in your name.';
   return e&&e.message?e.message:'Something went wrong. Please try again.';
 }
+window.fluxAuthErrorText=fluxAuthErrorText;
 
 /** Open Flux AI tab with optional prefill. Full planner context via buildAIPrompt. */
 function openFluxAgent(opts){

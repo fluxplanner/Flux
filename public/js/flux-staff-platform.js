@@ -36,10 +36,10 @@
           <div class="sstep" data-step="3"><span>3</span>Submit</div>
         </div>
         <div id="staffStep1">
-          <div class="mrow"><label>Email *</label><input id="sEmail" type="email" autocomplete="email" placeholder="you@email.com"></div>
+          <div class="mrow"><label>Name *</label><input id="sUsername" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your name"></div>
           <div class="mrow"><label>Password *</label><input id="sPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
           <div style="background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.15);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:.78rem;color:var(--muted2);line-height:1.55">
-            Use any email to register. You will match your school directory next; your school email can be confirmed there.
+            No email needed — just a name and a password you'll remember. You'll match your school directory next, and your school email can be confirmed there.
           </div>
           <div id="s1Error" class="form-error" style="display:none"></div>
           <button type="button" class="onboard-next-btn" style="width:100%;margin-bottom:8px">Continue →</button>
@@ -79,7 +79,7 @@
   }
 
   async function staffStep1Next() {
-    const email = document.getElementById('sEmail')?.value.trim();
+    const rawName = document.getElementById('sUsername')?.value.trim();
     const password = document.getElementById('sPassword')?.value;
     const errEl = document.getElementById('s1Error');
     const setErr = (t) => {
@@ -88,8 +88,17 @@
         errEl.style.display = 'block';
       }
     };
-    if (!email || !password) {
-      setErr('Email and password are required');
+    if (!rawName || !password) {
+      setErr('Name and password are required');
+      return;
+    }
+    /* Same address rule as the student login screen (app.js). Staff are held to
+       8 characters rather than 6 because their accounts reach other people's
+       data once a school admin verifies them. */
+    const toEmail = typeof window.fluxUsernameToEmail === 'function' ? window.fluxUsernameToEmail : null;
+    const email = toEmail ? toEmail(rawName) : '';
+    if (!email) {
+      setErr('That name has no letters or numbers in it — try your first and last name');
       return;
     }
     if (password.length < 8) {
@@ -104,10 +113,15 @@
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: { data: { role_pending: 'staff' } },
+      options: { data: { role_pending: 'staff', full_name: rawName, flux_username: email.split('@')[0] } },
     });
     if (error) {
-      setErr(error.message);
+      // Supabase talks about email addresses; this form never asked for one.
+      setErr(
+        typeof window.fluxAuthErrorText === 'function'
+          ? window.fluxAuthErrorText(error, 'signup', rawName)
+          : error.message,
+      );
       return;
     }
     StaffSignup.userId = data.user?.id;
@@ -119,7 +133,9 @@
       const { error: roleErr } = await client.from('user_roles').upsert({
         user_id: data.user.id,
         role: 'student',
-        display_name: email.split('@')[0],
+        // What they typed, not the address slug — this is shown to admins in
+        // the verification queue.
+        display_name: rawName,
         updated_at: new Date().toISOString(),
       });
       if (roleErr) {
@@ -248,7 +264,7 @@
       sum.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Summary</div>
         <div><b>Name:</b> ${esc(entry.full_name)}</div>
         <div><b>Role:</b> ${esc(entry.role)}</div>
-        <div><b>Account email:</b> ${esc(StaffSignup.email || '')}</div>
+        <div><b>Sign in as:</b> ${esc(fluxEmailToUsername(StaffSignup.email || ''))}</div>
         ${sch ? `<div><b>School email:</b> ${esc(sch)}</div>` : ''}`;
     }
     goToStaffStep(3);
@@ -1842,7 +1858,7 @@
         (r) => `
       <div class="card" style="margin-bottom:10px">
         <div style="font-weight:800">${esc(r.requested_name)}</div>
-        <div style="font-size:.78rem;color:var(--muted2)">${esc(r.requested_role)} · ${esc(r.personal_gmail || '')}</div>
+        <div style="font-size:.78rem;color:var(--muted2)">${esc(r.requested_role)} · signs in as ${esc(fluxEmailToUsername(r.personal_gmail || ''))}</div>
         ${r.applicant_note ? `<div style="font-size:.78rem;margin-top:8px;font-style:italic;color:var(--muted2)">“${esc(r.applicant_note)}”</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button type="button" class="edu-action-btn primary" data-sv-approve="${esc(r.user_id)}" data-role="${esc(r.requested_role)}" data-name="${esc(r.requested_name)}">Approve</button>
