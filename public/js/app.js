@@ -11310,15 +11310,20 @@ function toggleAuthMode(){
   const toggleAction=document.getElementById('loginToggleAction');
   const title=document.getElementById('loginAuthTitle');
   const sub=document.getElementById('loginAuthSub');
+  const pw=document.getElementById('loginPassword');
   if(_authMode==='signup'){
     if(nameRow)nameRow.style.display='block';
+    // new-password stops the browser autofilling an existing saved password
+    // into what is meant to be a fresh choice.
+    if(pw)pw.setAttribute('autocomplete','new-password');
     _setLoginEmailBtnText(btn,'Create account');
     if(toggleText)toggleText.textContent='Already have an account?';
     if(toggleAction)toggleAction.textContent='Sign in';
     if(title)title.textContent='Create your account';
-    if(sub)sub.textContent='Start syncing across devices';
+    if(sub)sub.textContent='Pick a name and a password — no email needed';
   } else {
     if(nameRow)nameRow.style.display='none';
+    if(pw)pw.setAttribute('autocomplete','current-password');
     _setLoginEmailBtnText(btn,'Sign in');
     if(toggleText)toggleText.textContent="Don't have an account?";
     if(toggleAction)toggleAction.textContent='Sign up';
@@ -11337,32 +11342,60 @@ function showAuthError(msg,kind){
   el.classList.add('show');
 }
 
+/* ── Usernames ─────────────────────────────────────────────────────────────
+   Students and staff sign up with a name and a password, no email. Supabase
+   Auth is addressed by email, so a username is folded into an address on a
+   domain that exists only for this purpose and never receives mail. The rule
+   has to be stable forever: the address IS the account key, so any change to
+   normalisation would orphan every account created before it. */
+const FLUX_USER_DOMAIN='users.fluxplanner.app';
+/** Lowercase, accents folded to plain letters, spaces to dots. */
+function fluxNormalizeUsername(raw){
+  return String(raw||'').trim().toLowerCase()
+    /* NFD splits "é" into "e" + a combining accent, which the next line then
+       drops. Without this an IB cohort's names collapse badly — "José Álvarez"
+       became "jos.lvarez", losing the letters rather than the accents. */
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/\s+/g,'.')
+    .replace(/[^a-z0-9._-]/g,'')
+    .replace(/\.{2,}/g,'.')
+    .replace(/^[.\-_]+|[.\-_]+$/g,'');
+}
+function fluxUsernameToEmail(raw){
+  const u=fluxNormalizeUsername(raw);
+  return u?u+'@'+FLUX_USER_DOMAIN:'';
+}
+/** The name to show for an account, preferring what they typed at signup. */
+function fluxEmailToUsername(email){
+  const s=String(email||'');
+  return s.endsWith('@'+FLUX_USER_DOMAIN)?s.slice(0,-(FLUX_USER_DOMAIN.length+1)):s;
+}
+window.fluxNormalizeUsername=fluxNormalizeUsername;
+window.fluxUsernameToEmail=fluxUsernameToEmail;
+window.fluxEmailToUsername=fluxEmailToUsername;
+
 async function handleEmailAuth(){
-  const email=document.getElementById('loginEmail')?.value.trim();
+  const rawName=document.getElementById('loginUsername')?.value.trim();
   const password=document.getElementById('loginPassword')?.value;
-  const name=document.getElementById('loginDisplayName')?.value.trim();
-  if(!email||!password){showAuthError('Please enter your email and password.');return;}
+  const username=fluxNormalizeUsername(rawName);
+  if(!rawName||!password){showAuthError('Please enter your name and password.');return;}
+  if(!username){showAuthError('That name has no letters or numbers in it — try your first and last name.');return;}
+  if(username.length<3){showAuthError('That name is too short — please use at least 3 characters.');return;}
   if(password.length<6){showAuthError('Password must be at least 6 characters.');return;}
+  const email=fluxUsernameToEmail(username);
   const sb=getSB();if(!sb){showAuthError('Auth not available.');return;}
   const btn=document.getElementById('loginEmailBtn');
   if(btn){_setLoginEmailBtnText(btn,'…');btn.disabled=true;}
   try{
     let result;
     if(_authMode==='signup'){
-      result=await sb.auth.signUp({
-        email,password,
-        options:{
-          // Without emailRedirectTo, Supabase falls back to the project's Site
-          // URL, which sent every confirmation link to a page that does not
-          // exist. getRedirectURL() resolves to the deployed subpath
-          // (…github.io/Flux/), and must be on the Redirect URLs allowlist.
-          emailRedirectTo:getRedirectURL(),
-          data:{full_name:name||email.split('@')[0]}
-        }
-      });
+      result=await sb.auth.signUp({email,password,options:{data:{full_name:rawName,flux_username:username}}});
       if(result.error)throw result.error;
+      /* No session means the project still has email confirmation switched on.
+         These addresses never receive mail, so the account would be stranded —
+         say so plainly rather than telling them to check an inbox. */
       if(result.data?.user&&!result.data.session){
-        showAuthError('Check your email — we sent a confirmation link to '+email+'. Open it on this device.','ok');
+        showAuthError('Account made but it could not be opened. Ask whoever set up Flux to turn off email confirmation.');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
@@ -11371,9 +11404,26 @@ async function handleEmailAuth(){
       if(result.error)throw result.error;
     }
   }catch(e){
-    showAuthError(e.message||'Authentication failed. Please try again.');
+    showAuthError(fluxAuthErrorText(e,_authMode,rawName));
     if(btn){_setLoginEmailBtnText(btn,_authMode==='signup'?'Create account':'Sign in');btn.disabled=false;}
   }
+}
+
+/* Supabase's own wording talks about email addresses, which makes no sense on
+   a screen that never asked for one. */
+function fluxAuthErrorText(e,mode,name){
+  const m=String(e&&e.message||'').toLowerCase();
+  if(m.includes('already registered')||m.includes('already been registered')){
+    return '"'+name+'" is taken. Try adding your last initial, or sign in if it\'s yours.';
+  }
+  if(m.includes('invalid login credentials')){
+    return mode==='signin'
+      ? 'That name and password don\'t match. Check the spelling, or ask a teacher to reset it.'
+      : 'Could not sign you in. Please try again.';
+  }
+  if(m.includes('password'))return 'Password must be at least 6 characters.';
+  if(m.includes('invalid')&&m.includes('email'))return 'Please use letters and numbers in your name.';
+  return e&&e.message?e.message:'Something went wrong. Please try again.';
 }
 
 /** Open Flux AI tab with optional prefill. Full planner context via buildAIPrompt. */
@@ -13249,7 +13299,11 @@ function _updateUserUI(user,name){
   // accountEmail) reads as the impersonated person, not the signed-in owner.
   // This keeps Work AND Personal mode "stuck" on the impersonated identity
   // so toggling Mode never bounces you back to your real account.
-  let displayEmail=user.email||'';
+  /* Username accounts carry a synthetic address that exists only to give
+     Supabase Auth a key. Showing "jo.smith@users.fluxplanner.app" in the
+     sidebar would look like an email the student doesn't have and can't use,
+     so strip it back to the name they actually typed. */
+  let displayEmail=fluxEmailToUsername(user.email||'');
   let avatarUrl=user.user_metadata?.avatar_url||user.user_metadata?.picture||'';
   try{
     const imp=window.FluxImpersonate&&FluxImpersonate.active&&FluxImpersonate.active();

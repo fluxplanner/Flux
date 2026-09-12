@@ -338,6 +338,10 @@
   background:rgba(255,255,255,.08)}
 #loginScreen .lx-guest-arrow{transition:transform .2s}
 #loginScreen .lx-guest:hover .lx-guest-arrow{transform:translateX(3px)}
+/* Shown only in sign-up mode: with no email on the form there is no reset
+   link, so the consequence of forgetting the password has to be said up front
+   rather than discovered later. */
+#loginScreen .lx-hint{margin:2px 2px 0;font-size:.72rem;line-height:1.5;color:var(--lx-faint)}
 #loginScreen .lx-fineprint{margin:13px 0 0;text-align:center;font-size:.72rem;line-height:1.5;color:var(--lx-faint)}
 #loginScreen .lx-fineprint svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;opacity:.8}
 
