@@ -7190,10 +7190,21 @@ function clearCache(){
 // ══ MOD / DEV ACCOUNT ══
 // ══ OWNER / DEV ACCOUNT SYSTEM ══
 const OWNER_EMAIL='azfermohammed21@gmail.com';
+/* Accounts are moving to name + password, where the stored address is a
+   synthesised one. Matching on the email alone would lock the owner out of his
+   own Control tab the moment his address changes, so the user id — which never
+   changes — is the primary check and the email is only a fallback. Not a
+   secret: this is an identifier, and the server side is what actually enforces
+   anything (public.flux_is_platform_admin(), which now keys on the same id). */
+const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
 
 // Permission levels: owner > dev > user
 // Dev accounts + their permissions stored in Supabase under owner's row
-function isOwner(){return currentUser&&currentUser.email===OWNER_EMAIL;}
+function isOwner(){
+  if(!currentUser)return false;
+  if(currentUser.id&&currentUser.id===OWNER_UID)return true;
+  return currentUser.email===OWNER_EMAIL;
+}
 function getMyRole(){
   if(isOwner())return'owner';
   const devAccounts=load('flux_dev_accounts',[]);

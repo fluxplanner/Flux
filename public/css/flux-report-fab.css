@@ -54,16 +54,48 @@
   }
 }
 
-/* Clearing the sidebar (above) parked the fab over the content column instead,
-   where it does the same thing to the task list: it is `position: fixed` at
-   z-index 310, so whichever row lands in its band has its checkbox covered and
-   the row reads as dead — you can see the task, clicking it just does nothing.
-   #dashboard is the scroller and only reserved 32px, less than the fab's own
-   ~56px footprint, so the last row could never be scrolled clear of it.
-   Scoped to the widths where the fab is actually shown (it is display:none at
-   <=768px, where the More sheet carries "Report a problem" instead). */
-@media (min-width: 769px) {
-  #dashboard.panel {
-    padding-bottom: calc(var(--flux-dock-clearance, 16px) + 56px);
-  }
+/* Docked variant — the one that actually ships.
+   Clearing the sidebar (above) only moved the problem: parked over the content
+   column, the fab did the same thing to the task list that it had done to the
+   sign-in line. It is `position: fixed` at z-index 310, so whichever row lands
+   in its band has its checkbox covered and reads as dead — you can see the
+   task, clicking it just does nothing, and no amount of scrolling helps
+   because the button does not scroll. Extra bottom padding on #dashboard only
+   rescued the last row; every row still died on the way past.
+   So it stops floating: flux-report-fab.js mounts it inside .sidebar-footer,
+   and an in-flow button cannot overlap anything. The fixed rules above remain
+   as the fallback for a page with no sidebar footer. */
+.flux-report-fab--docked {
+  position: static;
+  width: 100%;
+  justify-content: center;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  opacity: 1;
+  /* Matches .user-card directly below it. 5% white read as an empty gap
+     against the footer's own translucent panel — same weight as the card is
+     the only thing that actually looks like a button here. */
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.04) 100%);
+  border-color: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+.flux-report-fab--docked:hover {
+  transform: none;
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: linear-gradient(145deg,
+    rgba(var(--accent-rgb), 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 100%);
+}
+[data-theme="light"] .flux-report-fab--docked {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+}
+
+/* Collapsed sidebar is 72px wide — icon only, same as every .nav-item there. */
+.sidebar.collapsed .flux-report-fab--docked { padding: 9px 0; gap: 0; }
+.sidebar.collapsed .flux-report-fab__label { display: none; }

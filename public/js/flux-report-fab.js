@@ -1,11 +1,19 @@
 /**
  * flux-report-fab.js — always-accessible "Report" button.
  *
- * Quick feedback was buried in Settings → Data & info. This adds a small
- * floating button (bottom-left) that opens the existing feedback modal
- * (openFluxFeedbackModal), which already routes to the owner cloud inbox via
- * the user-feedback Edge Function. Hidden on the login screen and lifted above
- * the mobile bottom-nav. Self-contained IIFE.
+ * Quick feedback was buried in Settings → Data & info, so this puts it one
+ * click away. It opens the existing feedback modal (openFluxFeedbackModal),
+ * which routes to the owner cloud inbox via the user-feedback Edge Function.
+ * Hidden on the login screen. Self-contained IIFE.
+ *
+ * It used to be `position: fixed` at bottom-left, and that is a trap on this
+ * layout: a fixed button parked over a scrolling list permanently blackholes
+ * the clicks for whichever row lands in its band — the row looks normal and
+ * its checkbox just does nothing. It covered the sign-in line first, then the
+ * task list after being nudged clear of the sidebar. There is no free corner
+ * on desktop, so it now docks into the sidebar footer instead: in normal flow
+ * it cannot overlap anything. Falls back to floating only if the footer is
+ * missing.
  */
 (function () {
   'use strict';
@@ -36,7 +44,14 @@
       if (typeof window.openFluxFeedbackModal === 'function') window.openFluxFeedbackModal();
       else if (typeof window.showToast === 'function') window.showToast('Open Settings → Data & info → Send feedback', 'info');
     });
-    document.body.appendChild(b);
+    // Above the user card, so the card stays the last thing in the footer.
+    var footer = document.querySelector('.sidebar-footer');
+    if (footer) {
+      b.classList.add('flux-report-fab--docked');
+      footer.insertBefore(b, footer.firstChild);
+    } else {
+      document.body.appendChild(b);
+    }
   }
 
   function sync() {
