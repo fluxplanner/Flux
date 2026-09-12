@@ -254,6 +254,14 @@
    Hidden rather than deleted: flipping the flag restores every surface.
    The Canvas tab is deliberately not listed here — Canvas stays. */
 body.flux-google-off #fluxGoogleIntegrationCard,
-body.flux-google-off #fluxGoogleDocsSettingsCard {
+body.flux-google-off #fluxGoogleDocsSettingsCard,
+/* The Calendar tab's own Google card was missed when the rest were paused. It
+   sat there reading "Google Calendar — ○ Sign in with Google to sync" with a
+   Sync button, long after the Google sign-in it asks for stopped existing, so
+   the only thing it could do was fail. Phones never saw it (flux-mobile-app.css
+   hides it at <=768px), which is part of why it survived. Walking every tab is
+   how it turned up: the first sweep only looked at the dashboard, and an
+   inactive panel is display:none, which reads as clean. */
+body.flux-google-off .cal-gcal-inline {
   display: none !important;
 }

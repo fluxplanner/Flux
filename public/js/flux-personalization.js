@@ -21,7 +21,9 @@
     schedule:'Today schedule & focus',
     tasks:'Tasks',
   };
-  const CAL_LABELS={hero:'Month, day detail & Google sync',schedule:'Cycle & weekly schedule'};
+  /* "& Google sync" named a card that is switched off and hidden, so this
+     advertised a feature you could not reach from the screen it labels. */
+  const CAL_LABELS={hero:'Month & day detail',schedule:'Cycle & weekly schedule'};
 
   function esc(s){
     return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
