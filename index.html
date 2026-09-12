@@ -19,14 +19,24 @@
 (function(){
   try{localStorage.removeItem('flux_liquid_glass');}catch(e){}
   document.documentElement.setAttribute('data-flux-glass','off');
-  /* Low-end device class (iPhone 6-era: <=2 cores, <=2GB RAM, or iOS<=12).
-     Set pre-paint so flux-lowend.css strips GPU-heavy effects with no flash.
-     Capable devices are never flagged, so their look is unchanged. */
+  /* Low-end device class. Set pre-paint so flux-lowend.css strips GPU-heavy
+     effects with no flash.
+
+     The original test was <=2 cores, <=2GB RAM or iOS<=12 — iPhone 6-era. A
+     school iPad passes all three: Safari does not expose navigator.deviceMemory
+     at all (so `mem` is 0 and that clause can never fire), it reports 4 cores,
+     and it runs a current iPadOS. The devices this was written for were exactly
+     the ones it never caught, and they got the full desktop animation budget.
+     A touch device with no more than 4 cores is the honest reading of "tablet
+     or phone" on the one browser that tells us nothing else. Laptops are
+     pointer:fine and unaffected; anyone who disagrees sets flux_lowend_mode. */
   try{
     var n=navigator||{},ua=n.userAgent||'',cores=n.hardwareConcurrency||0,mem=n.deviceMemory||0;
     var oldIOS=false,mm=ua.match(/OS (\d+)_/);
     if(/iPhone|iPad|iPod/.test(ua)&&mm)oldIOS=parseInt(mm[1],10)<=12;
-    var weak=(cores&&cores<=2)||(mem&&mem<=2)||oldIOS;
+    var coarse=false;
+    try{coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);}catch(e4){}
+    var weak=(cores&&cores<=2)||(mem&&mem<=2)||oldIOS||(coarse&&(!cores||cores<=4));
     var pref=null;try{pref=localStorage.getItem('flux_lowend_mode');}catch(e2){}
     var on=pref==='1'?true:(pref==='0'?false:weak);
     if(on)document.documentElement.setAttribute('data-flux-lowend','1');
@@ -46,6 +56,11 @@
         on=(raw==='1');
       }
     }
+    /* Left as a manual setting on purpose. Defaulting it from data-flux-lowend
+       looks right and does nothing: flux-personalization.js re-applies
+       flux_perf_snappy after boot and writes 'off' straight back over it, so
+       the fallback is silently undone a moment later. Wiring the two together
+       has to happen there, not here. */
     document.documentElement.setAttribute('data-flux-perf',on?'on':'off');
   }catch(e){
     document.documentElement.setAttribute('data-flux-perf','off');
