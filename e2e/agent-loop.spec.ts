@@ -26,6 +26,34 @@ test.describe('Flux AI agent loop', () => {
     expect(res.chip).toBe(true);
   });
 
+  /**
+   * The eight skills in flux-ai-planner-skills.js reach the registry by
+   * self-installing: that file polls for window.FluxAgentLoop and calls
+   * registerTool, and nothing anywhere names it. Grep it and you get one hit,
+   * in the bundle manifest, which reads exactly like dead code — and deleting
+   * it passes every other test in this suite while quietly costing Flux AI the
+   * ability to time-block a day, find free time, rescue overdue work or run a
+   * weekly review. This test is the thing that says no.
+   */
+  test('the planner skills self-install into the shared tool registry', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    // Registration is a 500ms poller, so give it room on a loaded machine.
+    await page.waitForTimeout(2000);
+    const res = await page.evaluate(() => ({
+      defs: ((window as any).FluxOrchestrator?.TOOL_DEFS || []).map((d: any) => d.name),
+      reported: (window as any).FluxPlannerSkills?.names || null,
+    }));
+    const SKILLS = ['planMyDay', 'findFreeSlots', 'rescheduleOverdue', 'smartSnooze',
+      'quickCapture', 'createFocusBlock', 'dailyShutdown', 'weeklyReview'];
+    for (const s of SKILLS) {
+      expect(res.defs, `planner skill ${s} never registered — is flux-ai-planner-skills.js still built?`)
+        .toContain(s);
+    }
+    // The module only publishes its namespace after a successful registration,
+    // so this separates "registered" from "silently gave up after 60 tries".
+    expect(res.reported, 'FluxPlannerSkills should report its skills once registered').toEqual(SKILLS);
+  });
+
   test('model tool calls execute, results loop back, and the planner mutates', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(1200);

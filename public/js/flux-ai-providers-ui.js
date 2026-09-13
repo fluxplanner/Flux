@@ -1,8 +1,16 @@
 /* ════════════════════════════════════════════════════════════════════════════
  * FluxAIProviders UI — Settings card for managing BYOK AI provider keys.
  *
- * Renders into Settings → Appearance pane (no existing AI-specific pane) so it
- * appears alongside the locale picker. Each provider row shows:
+ * Renders into Settings → AI (#spane-ai). That pane exists now; the
+ * #spane-appearance fallback below is kept only for safety, and this comment
+ * used to describe that fallback as the normal path. Verified in the browser:
+ * #fluxAIProvidersCard mounts inside #spane-ai.
+ *
+ * Nothing references this file by name — it self-mounts on the flux-nav event
+ * — so asking "is anything using this?" comes back empty and it reads as dead
+ * code. It is not: this card is the only way to enter AI provider keys.
+ *
+ * Each provider row shows:
  *   - icon + name + status pill (Connected | Add key | Error)
  *   - "where to get a key" link
  *   - input to paste the key (type=password, no autocomplete)
