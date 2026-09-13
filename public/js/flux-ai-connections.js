@@ -1,7 +1,7 @@
 /**
  * Flux AI — Claude-style Connections: apps, providers, BYOK models, custom hooks.
- * Depends on globals from app.js: load, save, showToast, signInWithGoogle, nav,
- * gmailToken / gmailEmails (when present), FluxOrchestrator (optional palette).
+ * Depends on globals from app.js: load, save, showToast, nav,
+ * FluxOrchestrator (optional palette).
  */
 (function () {
   const STORAGE_ITEMS = 'flux_ai_connections_items_v1';
@@ -25,16 +25,20 @@
     chat: _ci('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'),
   };
   const DEFS = [
-    { id: 'gmail', group: 'Google', logoSvg: CONN_ICON.mail, title: 'Gmail', hint: 'Injects anonymized inbox subject lines into Flux AI context when Google is linked.', needsGoogle: true },
-    { id: 'gcalendar', group: 'Google', logoSvg: CONN_ICON.calendar, title: 'Google Calendar', hint: 'Same Google login as Flux. Calendar already feeds your planner snapshot; Flux AI assumes you use it.', needsGoogle: true },
-    { id: 'google_tasks', group: 'Google', logoSvg: CONN_ICON.check, title: 'Google Tasks', hint: 'Open tasks from your default Google Tasks list (Canvas tab → Google Tasks). Flux AI can reference due items when enabled.', needsGoogle: true },
-    { id: 'google_docs', group: 'Google', logoSvg: CONN_ICON.file, title: 'Google Docs', hint: 'Use Settings → Google Docs to connect the API. Set a primary doc URL; Flux AI pulls plain text before each message when this is on.', needsGoogle: false },
-    { id: 'notebooklm', group: 'Google', logoSvg: CONN_ICON.book, title: 'NotebookLM', hint: 'No public developer API — enable this pin so Flux knows you use NotebookLM. Link Google Docs you keep beside notebooks, paste summaries in the note, and connect Google Docs for live excerpts.', needsGoogle: false },
-    { id: 'youtube', group: 'Google', logoSvg: CONN_ICON.play, title: 'YouTube', hint: 'No OAuth yet. When on, Flux AI can cite study playlists, explain concepts visually, and help you scaffold watch notes.', needsGoogle: false },
-    { id: 'canvas', group: 'Planner', logoSvg: CONN_ICON.cap, title: 'Canvas LMS', hint: 'Uses your Canvas tab connection + pinned reader text.', needsGoogle: false },
-    { id: 'notion_like', group: 'Productivity', logoSvg: CONN_ICON.edit, title: 'Wikis & notes apps', hint: 'Generic toggle for Notion/Obsidian style notes — Flux invites pasting snippets and keeps structure suggestions tool-agnostic.', needsGoogle: false },
-    { id: 'github', group: 'Build', logoSvg: CONN_ICON.code, title: 'Code & repos', hint: 'When on, Flux can help interpret errors, scaffold commits, and review diffs — you paste snippets or CI logs.', needsGoogle: false },
-    { id: 'slack_discord', group: 'Teams', logoSvg: CONN_ICON.chat, title: 'Slack / Discord', hint: 'No API keys stored. Helps draft messages or summarize threads when you paste them.', needsGoogle: false },
+    /* Gmail, Google Calendar, Google Tasks and Google Docs used to head this
+       list. All four needed a Google session — or, for Docs, the
+       Settings → Google Docs card — and none of that survives the move to
+       name + password sign-in. A toggle whose only possible state is "sign in
+       first", sitting above a button that opens nothing, is worse than no row.
+       NotebookLM and YouTube stay. Neither ever used OAuth: they are pins that
+       tell Flux AI which tools you work with, so they still do their whole
+       job. They are simply no longer filed under a heading called "Google". */
+    { id: 'notebooklm', group: 'Study', logoSvg: CONN_ICON.book, title: 'NotebookLM', hint: 'No public developer API — turn this on so Flux knows you use NotebookLM, and paste summaries into the note below.' },
+    { id: 'youtube', group: 'Study', logoSvg: CONN_ICON.play, title: 'YouTube', hint: 'When on, Flux AI can cite study playlists, explain concepts visually, and help you scaffold watch notes.' },
+    { id: 'canvas', group: 'Planner', logoSvg: CONN_ICON.cap, title: 'Canvas LMS', hint: 'Uses your Canvas tab connection + pinned reader text.' },
+    { id: 'notion_like', group: 'Productivity', logoSvg: CONN_ICON.edit, title: 'Wikis & notes apps', hint: 'Generic toggle for Notion/Obsidian style notes — Flux invites pasting snippets and keeps structure suggestions tool-agnostic.' },
+    { id: 'github', group: 'Build', logoSvg: CONN_ICON.code, title: 'Code & repos', hint: 'When on, Flux can help interpret errors, scaffold commits, and review diffs — you paste snippets or CI logs.' },
+    { id: 'slack_discord', group: 'Teams', logoSvg: CONN_ICON.chat, title: 'Slack / Discord', hint: 'No API keys stored. Helps draft messages or summarize threads when you paste them.' },
   ];
 
   /** @typedef {{enabled?:boolean,live?:boolean,note?:string}} ConnItem */
@@ -68,18 +72,6 @@
     out.baseUrl = typeof d.baseUrl === 'string' ? d.baseUrl : '';
     out.modelId = typeof d.modelId === 'string' ? d.modelId : '';
     return out;
-  }
-
-  function googleLive() {
-    try {
-      return !!(
-        (typeof gmailToken !== 'undefined' && gmailToken) ||
-        sessionStorage.getItem('flux_gmail_token') ||
-        (typeof currentUser !== 'undefined' && currentUser?.app_metadata?.provider === 'google')
-      );
-    } catch (e) {
-      return false;
-    }
   }
 
   function canvasLive() {
@@ -144,27 +136,10 @@
   /** @returns {Record<string,string>} */
   function itemNoteDefaults() {
     return {
-      google_docs: 'Primary essay / lab doc linked in Settings → Google Docs.',
       notebooklm: 'CHEM unit 3 notebook — paste key bullet summaries here when you update NotebookLM.',
       youtube: 'Exam review playlists for Calc + Bio.',
       github: `Private course repo.`,
     };
-  }
-
-  function googleDocsSnippetBlock() {
-    var st = getItemsState();
-    if (!st.google_docs || !st.google_docs.enabled) return '';
-    var snip = typeof window.fluxGoogleDocsCachedSnippet === 'string' ? window.fluxGoogleDocsCachedSnippet : '';
-    if (!snip || !snip.trim()) {
-      return (
-        '\n(Google Docs connection is ON: no excerpt yet — set a primary doc URL under Settings → Google Docs and send again, or tap “Pull into AI now”.)\n'
-      );
-    }
-    return (
-      '\n\n---\n## Primary Google Doc (excerpt for study)\nPlain text pulled from the student’s linked Google Doc. Use it for drills and explanations; do not claim you opened a browser tab.\n\n' +
-      snip.trim().slice(0, 12000) +
-      '\n'
-    );
   }
 
   function notebooklmSnippetBlock() {
@@ -174,24 +149,10 @@
     return (
       '\n\n---\n## NotebookLM (workspace)\n' +
       'NotebookLM does not expose a supported third-party API. The student turned this on to signal that their sources and notes live there.\n' +
-      'Use linked Google Docs (Google Docs connection), pasted notes below, or ask them to paste key passages.\n' +
+      'Work from the pasted note below, or ask them to paste key passages.\n' +
       (note ? '\nStudent context note / paste:\n' + note.slice(0, 8000) + '\n' : '') +
       '\n'
     );
-  }
-
-  function gmailSnippetBlock() {
-    if (!getItemsState().gmail || !getItemsState().gmail.enabled) return '';
-    var tokOk = !!(typeof gmailToken !== 'undefined' && gmailToken);
-    if (!tokOk) return '\n(Gmail toggle is ON but Google mail is not linked — ask the student to sign in with Google.)\n';
-    if (typeof gmailEmails === 'undefined' || !gmailEmails || !gmailEmails.length)
-      return '\n(Gmail is linked — inbox summary not fetched yet this session. Offer to summarize once they navigate to Gmail in Canvas/mobile or resend message.)\n';
-    var lines = gmailEmails.slice(0, 12).map(function (e, i) {
-      var sub = (e.subject || '(no subject)').slice(0, 120);
-      var from = (e.from || '').slice(0, 80);
-      return (i + 1) + '. ' + sub + (from ? ' — ' + from : '');
-    });
-    return `\nRecent inbox subjects/titles ONLY (privacy-trimmed; do not infer body content):\n${lines.join('\n')}\n`;
   }
 
   function appendToSystem(base) {
@@ -222,14 +183,7 @@
       if (!row || !row.enabled) return;
       var live = '';
       if (d.id === 'canvas') live = canvasLive() ? '(Live: Canvas connector active.) ' : '(Not linked: Canvas not connected.) ';
-      if (d.needsGoogle && d.id === 'gmail') live = googleLive() ? '(Google session cached.) ' : '(Sign in required.) ';
-      if (d.needsGoogle && d.id === 'gcalendar') live = googleLive() ? '(Google session cached.) ' : '(Sign in for calendar scope.) ';
-      if (d.id === 'google_docs')
-        live =
-          typeof window.fluxGoogleDocsScopeCached === 'function' && window.fluxGoogleDocsScopeCached()
-            ? '(Docs API authorized.) '
-            : '(Allow Docs in Settings / Connections.) ';
-      if (d.id === 'notebooklm') live = '(No public API — use Google Docs + notes.) ';
+      if (d.id === 'notebooklm') live = '(No public API — Flux reads the note below.) ';
       var note = (row.note || itemNoteDefaults()[d.id] || '').trim();
       parts.push('- **' + d.title + '** ' + live + d.hint + (note ? '\n  Student note: ' + note : '') + '\n');
     });
@@ -242,8 +196,6 @@
       );
     });
 
-    parts.push(gmailSnippetBlock());
-    parts.push(googleDocsSnippetBlock());
     parts.push(notebooklmSnippetBlock());
 
     return base + parts.join('');
@@ -291,17 +243,12 @@
     return !!(key && mid);
   }
 
-  async function beforeSend() {
-    var st = getItemsState().gmail;
-    if (st && st.enabled) {
-      try {
-        if (typeof refreshGmailEmailsFromApi === 'function') await refreshGmailEmailsFromApi();
-      } catch (e) {}
-    }
-    try {
-      if (typeof window.fluxRefreshGoogleDocsContextForAI === 'function') await window.fluxRefreshGoogleDocsContextForAI();
-    } catch (e) {}
-  }
+  /* Kept as a no-op rather than deleted: app.js awaits FluxAIConnections
+     .beforeSend(text) on every message, and the two things it used to refresh
+     — the Gmail inbox and the Google Docs excerpt — are both gone. Nothing
+     else needs fetching before a send today, but the hook is the right place
+     for the next connector that does. */
+  async function beforeSend() {}
 
   function setView(which) {
     _view = which === 'connections' ? 'connections' : 'chat';
@@ -346,7 +293,7 @@
     header.innerHTML =
       '<div class="flux-conn-kicker">Workspace</div>' +
       '<h2 class="flux-conn-title">Connections</h2>' +
-      '<p class="flux-conn-desc">Flux AI reads your planner + anything you activate here — like Claude’s connectors.\n      Gmail + Calendar use Google sign-in; <strong>Google Docs</strong> adds a separate consent (Settings → Google Docs).\n      <strong>NotebookLM</strong> has no public API — use Docs + pasted notes as a bridge.\n      Route chats through <strong>OpenAI-compatible</strong> or <strong>Anthropic</strong> with keys stored only in this browser, or add custom pins.</p>';
+      '<p class="flux-conn-desc">Flux AI reads your planner plus anything you switch on here.\n      <strong>Canvas</strong> is the only one that fetches on its own — the rest are pins that tell Flux which tools you use, so it stops suggesting things you do not have. Add detail in each one’s note.\n      Route chats through <strong>OpenAI-compatible</strong> or <strong>Anthropic</strong> with keys stored only in this browser, or add custom pins.</p>';
     root.appendChild(header);
 
     // Key-storage disclosure + one-click wipe. BYOK provider keys are only ever
@@ -384,24 +331,12 @@
       var en = !!row.enabled;
       var badge = '';
       if (d.id === 'canvas') badge = canvasLive() ? '<span class="flux-conn-badge flux-conn-badge--ok">live</span>' : '<span class="flux-conn-badge">setup</span>';
-      if (d.id === 'gmail' || d.id === 'gcalendar')
-        badge = googleLive() ? '<span class="flux-conn-badge flux-conn-badge--ok">google</span>' : '<span class="flux-conn-badge">connect</span>';
-      if (d.id === 'google_docs') {
-        var okDocs = typeof window.fluxGoogleDocsScopeCached === 'function' && window.fluxGoogleDocsScopeCached();
-        badge = okDocs
-          ? '<span class="flux-conn-badge flux-conn-badge--ok">docs</span>'
-          : '<span class="flux-conn-badge">setup</span>';
-      }
       if (d.id === 'notebooklm') badge = '<span class="flux-conn-badge">workflow</span>';
 
       var noteVal = row.note || '';
       var notebookExtra =
         d.id === 'notebooklm'
-          ? '<p class="flux-conn-micro">Open <a href="https://notebooklm.google.com" target="_blank" rel="noopener">NotebookLM</a>. Sync or copy key notes into a Google Doc, link it under <strong>Settings → Google Docs</strong>, and paste short summaries here if you like.</p>'
-          : '';
-      var docsOAuth =
-        d.id === 'google_docs' && (!window.fluxGoogleDocsScopeCached || !window.fluxGoogleDocsScopeCached())
-          ? '<button type="button" class="flux-conn-mini flux-conn-mini--docs">Allow Google Docs (API)</button>'
+          ? '<p class="flux-conn-micro">Open <a href="https://notebooklm.google.com" target="_blank" rel="noopener">NotebookLM</a>, then paste short summaries into the note below so Flux can use them.</p>'
           : '';
 
       var card = document.createElement('div');
@@ -430,10 +365,6 @@
         esc(d.hint) +
         '</p>' +
         notebookExtra +
-        docsOAuth +
-        (d.needsGoogle && !googleLive() && !en
-          ? '<button type="button" class="flux-conn-mini">Sign in with Google</button>'
-          : '') +
         '<label class="flux-conn-mini-label">Context note<span class="visually-hidden"> for ' +
         esc(d.title) +
         '</span></label>' +
@@ -447,18 +378,9 @@
         cb.addEventListener('change', function () {
           toggleItem(d.id, cb.checked);
         });
-      var mini = card.querySelector('.flux-conn-mini:not(.flux-conn-mini--docs)');
-      if (mini && typeof signInWithGoogle === 'function') {
-        mini.onclick = function () {
-          signInWithGoogle();
-        };
-      }
-      var docsMini = card.querySelector('.flux-conn-mini--docs');
-      if (docsMini && typeof window.fluxReconnectGoogleDocs === 'function') {
-        docsMini.onclick = function () {
-          window.fluxReconnectGoogleDocs();
-        };
-      }
+      /* The two buttons these handlers bound to — "Sign in with Google" and
+         "Allow Google Docs (API)" — are gone with their rows. No card renders
+         a .flux-conn-mini any more. */
       grid.appendChild(card);
     });
 
