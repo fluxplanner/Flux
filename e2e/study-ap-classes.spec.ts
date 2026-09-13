@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, revealStudyToolByText } from './helpers';
 
 /*
  * Course-level tools layered onto existing subjects.
@@ -23,6 +23,10 @@ async function openTab(page: import('@playwright/test').Page, subject: string, t
     (window as unknown as { fluxStudyHub: Hub }).fluxStudyHub.selectSubject(sid);
     await new Promise((r) => setTimeout(r, 400));
   }, subject);
+  /* Maths, English and Music all carry a unit row now, and these AP tools are
+     exactly the ones that moved behind it — calculus under Calculus, the Lang
+     tools under Rhetoric, the orchestra tools under Orchestra. */
+  await revealStudyToolByText(page, tabName);
   const tab = page.locator('#fshChemTabs .fsh-chem-tab', { hasText: tabName }).first();
   await expect(tab, `no "${tabName}" tab under ${subject}`).toBeVisible();
   await tab.click();
