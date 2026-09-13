@@ -934,12 +934,48 @@ function renderDynamicFocus(){
 }
 
 // ══ TIME POVERTY DETECTOR ══
+
+/**
+ * Which of today's banners the reader has already waved away.
+ *
+ * checkTimePoverty() runs on every dashboard render and again on a 60-second
+ * timer, and each run re-adds the `on` class. A dismiss button that only
+ * stripped that class was undone by the next run, so clicking ✕ hid the banner
+ * for at most a minute and then it came straight back — it read as broken.
+ * Remember the dismissal instead of just hiding the element.
+ *
+ * Keyed by day on purpose. The banner is a claim about *today's* workload, so
+ * tomorrow's version is new information and should be allowed through rather
+ * than silently suppressed forever.
+ */
+const TP_DISMISS_KEY='flux_banner_dismissed';
+function tpIsDismissed(kind,day){
+  const d=load(TP_DISMISS_KEY,null);
+  return !!(d&&d.date===day&&Array.isArray(d.kinds)&&d.kinds.includes(kind));
+}
+function tpDismissBanner(kind){
+  const day=fluxLocalYMD(new Date());
+  const prev=load(TP_DISMISS_KEY,null);
+  const kinds=(prev&&prev.date===day&&Array.isArray(prev.kinds))?prev.kinds.slice():[];
+  if(!kinds.includes(kind))kinds.push(kind);
+  save(TP_DISMISS_KEY,{date:day,kinds:kinds});
+  const banner=document.getElementById('timePovertyBanner');
+  if(banner){banner.classList.remove('on');banner.classList.remove('time-poverty-banner--rest');}
+}
+// Reached from the button's inline onclick, so it has to be a global.
+window.tpDismissBanner=tpDismissBanner;
+
 function checkTimePoverty(){
   const banner=document.getElementById('timePovertyBanner');if(!banner)return;
   const now=new Date();
   const todayStr=fluxLocalYMD(now);
 
   if(typeof isBreak==='function'&&isBreak(todayStr)){
+    if(tpIsDismissed('rest',todayStr)){
+      banner.classList.remove('on');
+      banner.classList.remove('time-poverty-banner--rest');
+      return;
+    }
     const rk=typeof restDayKind==='function'?restDayKind(todayStr):'lazy';
     banner.classList.add('on');
     banner.classList.add('time-poverty-banner--rest');
@@ -948,7 +984,7 @@ function checkTimePoverty(){
         <div class="time-poverty-banner__title">${rk==='sick'?'Sick day':'Lazy day'} — no school-work plan</div>
         <div class="time-poverty-banner__detail">Flux won’t treat today as a crunch day. Tasks still listed are optional — use <strong>Fix my schedule</strong> in AI Command Center to push them forward.</div>
       </div>
-      <button type="button" class="time-poverty-banner__dismiss" onclick="this.parentElement.classList.remove('on');this.parentElement.classList.remove('time-poverty-banner--rest')" aria-label="Dismiss">✕</button>`;
+      <button type="button" class="time-poverty-banner__dismiss" onclick="tpDismissBanner('rest')" aria-label="Dismiss">✕</button>`;
     return;
   }
   banner.classList.remove('time-poverty-banner--rest');
@@ -968,7 +1004,7 @@ function checkTimePoverty(){
   },0);
   const freeMin=Math.max(0,availableMin-classMin);
 
-  if(totalEstMin>freeMin&&freeMin>0&&todayTasks.length>0){
+  if(totalEstMin>freeMin&&freeMin>0&&todayTasks.length>0&&!tpIsDismissed('crunch',todayStr)){
     banner.classList.add('on');
     const over=Math.round(totalEstMin-freeMin);
     banner.innerHTML=`<span class="time-poverty-banner__icon" aria-hidden="true">⚠</span>
@@ -976,7 +1012,7 @@ function checkTimePoverty(){
         <div class="time-poverty-banner__title">Today may not fit your free time</div>
         <div class="time-poverty-banner__detail">~${Math.round(totalEstMin)} min of work estimated vs ~${Math.round(freeMin)} min free (about <strong>${over} min short</strong>). Consider moving something or trimming estimates.</div>
       </div>
-      <button type="button" class="time-poverty-banner__dismiss" onclick="this.parentElement.classList.remove('on')" aria-label="Dismiss">✕</button>`;
+      <button type="button" class="time-poverty-banner__dismiss" onclick="tpDismissBanner('crunch')" aria-label="Dismiss">✕</button>`;
   } else {
     banner.classList.remove('on');
   }
