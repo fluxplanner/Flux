@@ -46,7 +46,7 @@
     try { if (typeof window.syncKey === 'function') window.syncKey('studyHub', state); } catch (e) {}
   };
 
-  let state = { subject: 'chemistry', chemTab: 'table', tool: {}, favs: [] };
+  let state = { subject: 'chemistry', chemTab: 'table', tool: {}, unit: {}, favs: [] };
   let stored = hubLoad(null);
   /* Anything saved before this module used the helpers sits under the bare key.
      Adopt it once so existing favourites survive the move. */
@@ -58,6 +58,9 @@
   }
   if (stored && typeof stored === 'object') state = Object.assign(state, stored);
   if (!state.tool) state.tool = {};
+  // Saved before units existed — same guard as `tool` above, for the same
+  // reason: a missing or corrupted value here would throw on every render.
+  if (!state.unit || typeof state.unit !== 'object') state.unit = {};
   // Records written before favourites existed have no `favs`, and a corrupted
   // one could hold anything — a bad value here would throw on every rail
   // render, so normalise instead of trusting it.
@@ -268,6 +271,94 @@
   const MERGED = { astronomy:'physics', civics:'glopo', languages:'french' };
   const canonicalSubject = (id) => MERGED[id] || id;
   const groupOf = (sid) => (subjById(canonicalSubject(sid)) || {}).group || GROUPS[0].id;
+
+  /* ── units ────────────────────────────────────────────────────────────────
+     A third level, under subject. Umbrellas and subjects already nest, but the
+     tools under a subject were one flat strip — and three subjects had long
+     since outgrown it, because more than one module registers into the same
+     subject id:
+
+       math     ← calculus (limits, theorems, apps, drill)
+                  + math (grapher, unit circle, matrix, stats, normal)
+       physics  ← astro (7 tools) + physics (projectile, suvat, ohms, waves)
+       biology  ← bio (5) + bio-tools (7)
+
+     Physics is the sharp end. Astronomy was never reorganised — it was folded
+     into Physics by MERGED above — so a student after the moon-phase tool had
+     to read past Projectile and Ohm's law to find it. Units put it back under
+     a heading that says Astronomy without giving it a pill of its own again.
+
+     Declared here rather than passed through register() on purpose: the
+     taxonomy is a curriculum decision, and keeping it in one place means none
+     of the eighteen registration sites has to change, so no subject module can
+     half-adopt it. Tool ids not named here are not lost — unitsFor() sweeps
+     every leftover into a trailing bucket, which is also what catches the
+     legacy 'lg-' chips and anything registered later. */
+  const UNITS = {
+    math: [
+      { id: 'algebra', name: 'Algebra & graphing', tools: ['graph', 'unit', 'matrix'] },
+      { id: 'calculus', name: 'Calculus', tools: ['ab-limits', 'ab-theorems', 'ab-apps', 'ab-drill'] },
+      { id: 'stats', name: 'Statistics', tools: ['stats', 'normal'] },
+    ],
+    physics: [
+      { id: 'mechanics', name: 'Mechanics', tools: ['projectile', 'suvat'] },
+      { id: 'waves-electricity', name: 'Waves & electricity', tools: ['wave', 'ohms'] },
+      { id: 'astronomy', name: 'Astronomy', tools: ['orrery', 'moon', 'stars', 'kepler', 'distance', 'deepsky', 'smallbodies'] },
+    ],
+    biology: [
+      { id: 'cells', name: 'Cells & microscopy', tools: ['micro', 'cell'] },
+      { id: 'molecules', name: 'Molecules', tools: ['macro', 'carbs', 'lipids'] },
+      { id: 'genetics', name: 'Genetics', tools: ['punnett', 'translate', 'pedigree'] },
+      { id: 'data-disease', name: 'Data & disease', tools: ['biounits', 'biostats', 'formulas', 'virus'] },
+    ],
+    // English and Music split on the seam where a second module registers in —
+    // the 'rh-' and 'orc-' prefixes are those modules' own. Grouping along a
+    // line the code already draws beats inventing a taxonomy over the top.
+    english: [
+      { id: 'writing', name: 'Writing & language', tools: ['essay', 'grammar', 'cite', 'devices', 'ipa'] },
+      { id: 'rhetoric', name: 'Rhetoric', tools: ['rh-situation', 'rh-devices', 'rh-fallacies', 'rh-essays'] },
+    ],
+    music: [
+      { id: 'theory', name: 'Theory', tools: ['circle', 'explorer', 'intervals', 'dimensions'] },
+      { id: 'orchestra', name: 'Orchestra', tools: ['orc-transpose', 'orc-score', 'orc-markings'] },
+    ],
+  };
+
+  /**
+   * Units for a subject, in display order, each carrying the tools it actually
+   * has. Returns [] when a subject has no unit layer, which is the signal to
+   * render the old flat strip untouched.
+   *
+   * Two rules keep this honest against a moving registry:
+   *  - a unit whose tools all failed to register is dropped, so a module that
+   *    did not load leaves no empty heading behind;
+   *  - anything registered but unlisted lands in a trailing "More" bucket, so
+   *    a new tool is never invisible just because nobody filed it.
+   */
+  function unitsFor(sid, tools) {
+    const defs = UNITS[sid];
+    if (!defs || !tools || tools.length < 2) return [];
+    const seen = new Set();
+    const out = [];
+    defs.forEach((u) => {
+      const have = u.tools
+        .map((id) => tools.find((t) => t.id === id))
+        .filter(Boolean);
+      have.forEach((t) => seen.add(t.id));
+      if (have.length) out.push({ id: u.id, name: u.name, tools: have });
+    });
+    if (!out.length) return [];
+    const rest = tools.filter((t) => !seen.has(t.id));
+    if (rest.length) out.push({ id: 'more', name: 'More', tools: rest });
+    // One unit holding everything is just the flat strip with a redundant row
+    // of one chip above it.
+    return out.length > 1 ? out : [];
+  }
+
+  /** The unit a given tool sits in, or null. */
+  function unitOfTool(units, toolId) {
+    return units.find((u) => u.tools.some((t) => t.id === toolId)) || null;
+  }
 
   /* Migrate anything already saved on a device. This runs here, not up with the
      state loader, because MERGED is a const and would still be in its temporal
@@ -757,7 +848,21 @@
     const tools = (registry[sid] || []).filter((t) => typeof t.render === 'function');
     const stage = $('fshStage');
     if (!tools.length) { stage.innerHTML = soonHTML(sid) + refStrip(sid); return; }
-    let active = state.tool[sid]; if (!tools.some((t) => t.id === active)) active = tools[0].id; state.tool[sid] = active; save();
+    /* Units, when this subject has them, decide which tools the strip shows.
+       The unit is derived from the saved tool first and only then from the
+       saved unit: restoring where you were is what people expect, and the two
+       can disagree after a tool is re-filed into a different unit. */
+    const units = unitsFor(sid, tools);
+    let visible = tools;
+    let activeUnit = null;
+    if (units.length) {
+      activeUnit = unitOfTool(units, state.tool[sid])
+        || units.find((u) => u.id === state.unit[sid])
+        || units[0];
+      state.unit[sid] = activeUnit.id;
+      visible = activeUnit.tools;
+    }
+    let active = state.tool[sid]; if (!visible.some((t) => t.id === active)) active = visible[0].id; state.tool[sid] = active; save();
     /* Languages showed eight tabs in one undifferentiated row — a trainer, a
        drill, two charts, and four legacy chips that only pop a modal — with
        nothing saying which was which. That row is what "Study Tools is
@@ -768,8 +873,8 @@
        they sit behind a labelled divider instead of being interleaved with the
        tools you actually work in. Ordering only — every tool is still one
        click away and nothing about registration changes. */
-    const own = tools.filter((t) => String(t.id).indexOf('lg-') !== 0);
-    const legacy = tools.filter((t) => String(t.id).indexOf('lg-') === 0);
+    const own = visible.filter((t) => String(t.id).indexOf('lg-') !== 0);
+    const legacy = visible.filter((t) => String(t.id).indexOf('lg-') === 0);
     const tabBtn = (t) => `<button type="button" class="fsh-chem-tab${t.id === active ? ' active' : ''}" data-tool="${t.id}"><span class="fsh-ct-ico">${t.icon || '•'}</span>${esc(t.name)}</button>`;
     // The divider only earns its place when there is something on both sides.
     const divider = own.length && legacy.length
@@ -777,7 +882,18 @@
       : '';
     // data-sid so a click can ask the strip which subject it belongs to
     // instead of trusting a global that something else may have moved.
-    stage.innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs" data-sid="${esc(sid)}"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
+    /* The unit row sits above the tab strip, not inside it: the strip owns the
+       sliding highlight (#fshTabGlide), which measures its own children, so a
+       second kind of button in there would be a travel destination for a
+       highlight that should never land on it. */
+    const unitRow = units.length
+      ? `<div class="fsh-units" id="fshUnits" data-sid="${esc(sid)}" role="tablist" aria-label="${esc(subjById(sid).name)} units">`
+        + units.map((u) => `<button type="button" class="fsh-unit${u.id === activeUnit.id ? ' active' : ''}"`
+          + ` data-unit="${esc(u.id)}" role="tab" aria-selected="${u.id === activeUnit.id ? 'true' : 'false'}">`
+          + `${esc(u.name)}<span class="fsh-unit-n">${u.tools.length}</span></button>`).join('')
+        + '</div>'
+      : '';
+    stage.innerHTML = `<div class="fsh-chem fsh-panel">${unitRow}<div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs" data-sid="${esc(sid)}"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
     renderToolBody(sid, picked);
     requestAnimationFrame(moveTabGlide);
   }
@@ -1069,6 +1185,22 @@
         document.querySelectorAll('.fsh-chem-tab').forEach((b) => b.classList.toggle('active', b === chemTab));
         moveTabGlide();
         requestAnimationFrame(renderChemBody);
+        return;
+      }
+      const unitBtn = t.closest('.fsh-unit[data-unit]');
+      if (unitBtn) {
+        // Same authority rule as the tool strip below: the markup says which
+        // subject it is showing, the global may be stale.
+        const row = unitBtn.closest('.fsh-units');
+        const usid = (row && row.dataset.sid) || state.subject;
+        state.subject = usid;
+        state.unit[usid] = unitBtn.dataset.unit;
+        /* Forget the remembered tool. renderRegistered derives the unit from
+           the saved tool *before* the saved unit, so leaving it set would
+           re-derive the unit you just left and the click would look dead. */
+        delete state.tool[usid];
+        save();
+        renderRegistered(usid, false);
         return;
       }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');

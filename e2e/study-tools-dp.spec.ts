@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, allStudyTools } from './helpers';
 
 test.describe('Study tools — DP expansion', () => {
   test('toolbox renders the native study-hub subject rail', async ({ page }) => {
@@ -82,13 +82,14 @@ test.describe('Study tools — DP expansion', () => {
     await page.evaluate(() => (window as any).nav?.('toolbox'));
     await page.waitForTimeout(800);
 
-    const tabs = await page.evaluate(async () => {
+    await page.evaluate(async () => {
       (window as any).fluxStudyHub.selectSubject('physics');
       await new Promise((r) => setTimeout(r, 300));
-      return [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')].map((t) =>
-        (t.textContent || '').trim(),
-      );
     });
+    /* Across every unit. This asserts the sheet is not duplicated anywhere in
+       physics, and physics now has a unit row — reading only the visible strip
+       would let a second copy hide one chip away and still pass. */
+    const tabs = (await allStudyTools(page)).map((t) => t.label);
     expect(tabs.filter((n) => /formula/i.test(n))).toHaveLength(1);
   });
 

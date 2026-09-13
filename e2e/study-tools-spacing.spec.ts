@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, revealStudyTool } from './helpers';
 
 /*
  * Vertical spacing between the cards inside a Study Tools panel.
@@ -58,6 +58,8 @@ async function topLevelCardGaps(page: import('@playwright/test').Page) {
 
 async function openTool(page: import('@playwright/test').Page, sid: string, tool: string) {
   await page.evaluate((id) => (window as any).fluxStudyHub.selectSubject(id), sid);
+  // The tool may sit behind a unit chip — see revealStudyTool.
+  await revealStudyTool(page, tool);
   const tab = page.locator(`#fshChemTabs [data-tool="${tool}"]`).first();
   await expect(tab, `no "${tool}" tab under ${sid}`).toBeVisible();
   await tab.click();

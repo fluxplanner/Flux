@@ -211,6 +211,67 @@
   white-space: nowrap;
   user-select: none;
 }
+
+/* ── unit row ──────────────────────────────────────────────────────────────
+   The third level: umbrella → subject → unit → tool.
+
+   Above the tab strip rather than inside it. The strip's sliding highlight
+   (#fshTabGlide) measures its own children to work out where to travel, so a
+   second kind of button living in there would be a destination it must never
+   land on.
+
+   Deliberately quieter than .fsh-pill, which is the subject rail: a unit is a
+   filter *within* a subject you have already picked, and styling the two alike
+   would present them as two equal choices. */
+.fsh-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.fsh-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  /* ~33px tall. The rail around it runs 44 (umbrella) → 39 (subject) →
+     36 (tool), so this sits in the same family rather than looking like a
+     different kind of control. The first pass was 26px, which was fine to
+     look at and too small to hit on a school iPad. Quieter is a colour
+     decision, not a target-size one. */
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--fsh-line);
+  background: rgba(10, 14, 24, .45);
+  color: var(--fsh-mut);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, background .18s ease;
+}
+.fsh-unit:hover { color: var(--fsh-ink); border-color: rgba(var(--fsh-accent-rgb), .45); }
+.fsh-unit.active {
+  color: #06121c;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%));
+  box-shadow: 0 8px 20px -8px rgba(var(--fsh-accent-rgb), .6);
+}
+/* The count carries the row: it says where the tools are before you click,
+   which is the whole reason for grouping them. Tabular figures so a chip does
+   not change width between a 2 and a 7. */
+.fsh-unit-n {
+  font-size: 10.5px;
+  font-weight: 700;
+  opacity: .6;
+  font-variant-numeric: tabular-nums;
+}
+.fsh-unit.active .fsh-unit-n { opacity: .75; }
+@media (max-width: 768px) {
+  .fsh-units { gap: 5px; margin-bottom: 8px; }
+  /* Narrower, not shorter — horizontal padding is what has to give when four
+     chips share a phone width, and height is the part that must not. */
+  .fsh-unit { padding: 9px 11px; font-size: 12px; }
+}
 /* Explicit drag handle for the tab strip. Native scrollbars are overlay-style
    on macOS — invisible at rest and zero-height — so subjects whose tabs
    overflow gave no hint that more were off-screen and no way to drag to them.

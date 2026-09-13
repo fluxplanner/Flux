@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, revealStudyTool, allStudyToolIds } from './helpers';
 
 /*
  * The astronomy and biology expansions.
@@ -31,6 +31,9 @@ async function openTool(page: import('@playwright/test').Page, sid: string, tool
     (window as unknown as { fluxStudyHub: Hub }).fluxStudyHub.selectSubject(id);
     await new Promise((r) => setTimeout(r, 400));
   }, sid);
+  // Physics and biology both carry a unit row now, so the tab may live behind
+  // a chip the student has not picked yet.
+  await revealStudyTool(page, tool);
   const tab = page.locator(`#fshChemTabs [data-tool="${tool}"]`).first();
   await expect(tab, `no "${tool}" tab under ${sid}`).toBeVisible();
   await tab.click();
@@ -41,9 +44,10 @@ async function openTool(page: import('@playwright/test').Page, sid: string, tool
   });
 }
 
-const toolIds = (page: import('@playwright/test').Page) =>
-  page.evaluate(() => [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')]
-    .map((t) => (t as HTMLElement).dataset.tool || ''));
+/* Across every unit, not just the one on screen. These specs use tool ids to
+   prove the module registered at all — see note 1 above — and a subject with a
+   unit row only ever has one unit's tabs in the DOM. */
+const toolIds = (page: import('@playwright/test').Page) => allStudyToolIds(page);
 
 test.describe('Astronomy and biology expansions', () => {
   test.beforeEach(async ({ page }) => {
