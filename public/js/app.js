@@ -1798,6 +1798,9 @@ const FluxRole={
     if(mode!=='work'&&mode!=='personal')return;
     if(!this.isEducator())return; // students can't toggle
     this.mode=mode;
+    // Switching Work/Personal IS a request to go to that mode's home, so any
+    // earlier tab choice is spent — otherwise the toggle would appear dead.
+    try{fluxClearUserNavIntent();}catch(_){}
     try{
       const u=(typeof currentUser!=='undefined'&&currentUser)||window.currentUser;
       if(u)save('flux_staff_mode_'+u.id,mode);
@@ -1839,17 +1842,47 @@ const FluxRole={
 };
 window.FluxRole=FluxRole;
 
+// ── User navigation intent ────────────────────────────────────────
+// Post-auth routing runs behind `await FluxRole.load()`, which on a plain
+// refresh resolves a few hundred ms after the shell is already clickable.
+// Anyone who opened a tab in that window was silently thrown back to the
+// dashboard. Record a real (trusted) click on any nav control so the
+// automatic "go home" step can stand down when the user has already
+// chosen a tab. Programmatic nav() calls never set this.
+let _fluxUserNavIntent=false;
+function fluxClearUserNavIntent(){_fluxUserNavIntent=false;}
+window.fluxClearUserNavIntent=fluxClearUserNavIntent;
+try{
+  document.addEventListener('click',e=>{
+    if(!e.isTrusted)return;
+    const el=e.target&&e.target.closest&&e.target.closest(
+      '[data-tab],.nav-item,.bnav-item,[onclick*="nav("],[onclick*="navMob("]');
+    if(el)_fluxUserNavIntent=true;
+  },true);
+}catch(_){}
+/**
+ * nav() for automatic routing only. No-ops once the user has picked a tab
+ * themselves, so boot-time routing can never steal the panel out from under
+ * them. Deliberate context switches (mode toggle) clear the flag first.
+ */
+function fluxNavHome(id){
+  if(_fluxUserNavIntent)return false;
+  if(typeof nav==='function')nav(id);
+  return true;
+}
+window.fluxNavHome=fluxNavHome;
+
 /** Route educator to role-appropriate home after mode switch or sign-in. */
 function fluxRouteEducatorHome(){
   try{
     if(!FluxRole.isEducator||!FluxRole.isEducator())return;
     if(FluxRole.isWorkMode&&FluxRole.isWorkMode()){
-      if(FluxRole.isTeacher()){if(typeof nav==='function')nav('teacherDashboard');try{renderTeacherDashboard();}catch(_){}}
-      else if(FluxRole.isCounselor()){if(typeof nav==='function')nav('counselorDashboard');try{renderCounselorDashboard();}catch(_){}}
-      else if(FluxRole.isPlatformAdmin()){if(typeof nav==='function')nav('adminDashboard');try{renderAdminDashboard();}catch(_){}}
-      else if(FluxRole.isStaff()){if(typeof nav==='function')nav('staffWorkboard');try{renderStaffWorkboard();}catch(_){}}
+      if(FluxRole.isTeacher()){fluxNavHome('teacherDashboard');try{renderTeacherDashboard();}catch(_){}}
+      else if(FluxRole.isCounselor()){fluxNavHome('counselorDashboard');try{renderCounselorDashboard();}catch(_){}}
+      else if(FluxRole.isPlatformAdmin()){fluxNavHome('adminDashboard');try{renderAdminDashboard();}catch(_){}}
+      else if(FluxRole.isStaff()){fluxNavHome('staffWorkboard');try{renderStaffWorkboard();}catch(_){}}
     }else{
-      if(typeof nav==='function')nav('dashboard');
+      fluxNavHome('dashboard');
       try{
         if(window.FluxStaffPlatform&&typeof FluxStaffPlatform.renderStaffPersonalDashboard==='function'){
           FluxStaffPlatform.renderStaffPersonalDashboard();
@@ -1893,12 +1926,12 @@ async function fluxRouteAfterAuth(reason){
       return;
     }
     if(pendingStaff&&FluxRole.isStudent?.()){
-      if(typeof nav==='function')nav('dashboard');
+      fluxNavHome('dashboard');
       try{window.FluxStaffPlatform?.renderStaffPersonalDashboard?.();}catch(_){}
       return;
     }
     if(FluxRole.isStudent?.()){
-      if(typeof nav==='function')nav('dashboard');
+      fluxNavHome('dashboard');
       try{loadTeacherAssignments();}catch(_){}
       try{renderJoinClassButton();}catch(_){}
       try{renderMyCounselorSection();}catch(_){}
@@ -2671,23 +2704,23 @@ function updateModeSwitchUI(){
 
   if(isWork){
     if(FluxRole.isTeacher()){
-      if(typeof nav==='function')nav('teacherDashboard');
+      fluxNavHome('teacherDashboard');
       try{renderTeacherDashboard();}catch(_){}
     }else if(FluxRole.isCounselor()){
-      if(typeof nav==='function')nav('counselorDashboard');
+      fluxNavHome('counselorDashboard');
       try{renderCounselorDashboard();}catch(_){}
     }else if(FluxRole.current==='staff'){
-      if(typeof nav==='function')nav('staffWorkboard');
+      fluxNavHome('staffWorkboard');
       try{renderStaffWorkboard();}catch(_){}
     }else if(FluxRole.isPlatformAdmin()){
-      if(typeof nav==='function')nav('adminDashboard');
+      fluxNavHome('adminDashboard');
       try{renderAdminDashboard();}catch(_){}
     }else if(FluxRole.isStaff()){
-      if(typeof nav==='function')nav('staffWorkboard');
+      fluxNavHome('staffWorkboard');
       try{renderStaffWorkboard();}catch(_){}
     }
-  }else if(typeof nav==='function'){
-    nav('dashboard');
+  }else{
+    fluxNavHome('dashboard');
   }
   try{syncStudentEducatorUpgradeCard();}catch(_){}
   try{if(typeof checkForActiveAnnouncements==='function')void checkForActiveAnnouncements();}catch(_){}
@@ -4653,7 +4686,6 @@ function renderTasks(){
     }else if(t.srsReview&&!t.done){
       srsCls=' srs-review';
     }
-    const recoveryCls=(!t.done&&(t.priority==='high'||t.type==='exam'||t.type==='test'||((t.estTime||0)>0&&(t.estTime||0)<=15)))?'':' recovery-hidden';
     const stPct=t.subtasks?.length?Math.round(t.subtasks.filter(s=>s.done).length/t.subtasks.length*100):-1;
     const stBar=stPct>=0?`<div class="task-prog"><div class="task-prog-fill" style="width:${stPct}%"></div></div>`:'';
     const blocked=typeof isBlocked==='function'&&isBlocked(t);
@@ -4682,7 +4714,7 @@ function renderTasks(){
         ghostHtml=`<details class="ghost-draft ghost-draft--collapsible" data-ghost-task-id="${t.id}"><summary class="ghost-draft-summary"><span class="ghost-draft-title">✦ Ghost draft</span><span class="ghost-draft-chevron" aria-hidden="true"></span></summary>${ghostBody}</details>`;
       }
     }
-    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls}${recoveryCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -6430,7 +6462,6 @@ function fluxPersistMood(patch){
   save('flux_mood',moodHistory);
   try{if(window.FluxMomentumV2?.onMoodSaved)FluxMomentumV2.onMoodSaved();}catch(_){}
   try{if(window.FluxCounselorWellnessTimeline?.maybeCaptureSnapshot){const _sb=getSB();if(_sb&&currentUser)FluxCounselorWellnessTimeline.maybeCaptureSnapshot(_sb,currentUser.id);}}catch(_){}
-  try{if(window.FluxCognitiveV2?.tick)FluxCognitiveV2.tick();}catch(_){}
   /* Guarded from here down: the prompt can fire from any tab, so the Mood
      tab's chart may not be in the DOM. A missing chart must not cost you the
      entry that was already saved above. */
@@ -12449,7 +12480,7 @@ const LOGIN_DEMO_LINES=[
   'Log extracurriculars and get school-fit suggestions.',
   'Capture notes with tags, then ask Flux AI to quiz you.',
   'Use the focus timer and streaks to build study habits.',
-  'See exam conflicts and cognitive load at a glance.'
+  'See exam conflicts and everything due at a glance.'
 ];
 function stopLoginDemoRotator(){
   if(_loginDemoInterval){clearInterval(_loginDemoInterval);_loginDemoInterval=null;}
@@ -12757,7 +12788,6 @@ async function handleSignedIn(user,session){
     try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
     try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
     try{if(window.FluxMomentumV2?.install)FluxMomentumV2.install();}catch(_){}
-    try{if(window.FluxCognitiveV2?.install)FluxCognitiveV2.install();}catch(_){}
     try{if(window.FluxShutdownV2?.install)FluxShutdownV2.install();}catch(_){}
   try{if(window.FluxTeacherLiveClass?.install)FluxTeacherLiveClass.install();}catch(_){}
   try{if(window.FluxTeacherLessonAI?.install)FluxTeacherLessonAI.install();}catch(_){}
@@ -13038,7 +13068,6 @@ async function handleSignedIn(user,session){
   try{if(window.FluxParentPortal?.install)FluxParentPortal.install();}catch(_){}
   try{if(window.FluxA11y?.install)FluxA11y.install();}catch(_){}
   try{if(window.FluxMomentumV2?.install)FluxMomentumV2.install();}catch(_){}
-  try{if(window.FluxCognitiveV2?.install)FluxCognitiveV2.install();}catch(_){}
   try{if(window.FluxShutdownV2?.install)FluxShutdownV2.install();}catch(_){}
   try{if(window.FluxTeacherLiveClass?.install)FluxTeacherLiveClass.install();}catch(_){}
   try{if(window.FluxTeacherLessonAI?.install)FluxTeacherLessonAI.install();}catch(_){}
@@ -13333,7 +13362,6 @@ function buildFeatPillsHtml(){
     {label:'Focus timer',c:'#fb923c'},
     {label:'Tagged notes',c:'#6366f1'},
     {label:'Extracurriculars',c:'#fbbf24'},
-    {label:'Cognitive load',c:'#22c55e'},
     {label:'Exam conflicts',c:'#f472b6'},
     {label:'Themes & accent',c:'#38bdf8'},
     {label:'Grade what-if',c:'#eab308'},
@@ -13504,7 +13532,7 @@ function initDashboardFeatures(){
   initMobileNav();
   smartReorderDashboard();
   checkTimePoverty();
-  setInterval(()=>{checkTimePoverty();updateCognitiveLoadMeter();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
+  setInterval(()=>{checkTimePoverty();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
   initIntelligenceEngine();
   // New systems
   initPomodoroVisibilityPause();
@@ -13512,7 +13540,6 @@ function initDashboardFeatures(){
   applyCollapsedSections();
   applyHighContrast();
   renderSavedViewsDropdown();
-  updateCognitiveLoadMeter();setInterval(updateCognitiveLoadMeter,5*60*1000);
   if(typeof updateMomentumUI==='function'){try{updateMomentumUI();}catch(_){}}
   renderEffortReport();
   renderSubjectEfficiencyHeatmap();
@@ -13522,32 +13549,6 @@ function initDashboardFeatures(){
     setInterval(fluxRenderV4Dashboard,5*60*1000);
   }
 }
-
-// ── Recovery Mode → "Show Quick Wins" CTA ─────────────────────────
-window.fluxOpenQuickWins=function(){
-  const wins=(window.FluxBehavior&&window.FluxBehavior.getQuickWins)
-    ? window.FluxBehavior.getQuickWins(tasks,15)
-    : (Array.isArray(tasks)?tasks.filter(t=>!t.done&&(t.estTime||0)>0&&(t.estTime||0)<=15):[]);
-  if(!wins.length){
-    if(typeof showToast==='function')showToast('No quick wins (≤15 min) right now. Add an estimate to a task to surface one.','info');
-    return;
-  }
-  if(typeof navTo==='function'){try{navTo('tasks');}catch(_){}}
-  taskFilter='active';
-  if(typeof renderTasks==='function')renderTasks();
-  const first=wins[0];
-  if(first){
-    requestAnimationFrame(()=>{
-      const el=document.querySelector('[data-task-id="'+first.id+'"]');
-      if(el){
-        el.scrollIntoView({behavior:'smooth',block:'center'});
-        el.classList.add('quick-win-flash');
-        setTimeout(()=>el.classList.remove('quick-win-flash'),1600);
-      }
-    });
-  }
-  if(typeof showToast==='function')showToast('Highlighted '+wins.length+' quick win'+(wins.length===1?'':'s')+' — start the shortest first.','success');
-};
 
 // ════════════════════════════════════════════════════════════════
 // V4 — PREDICTIVE GAP FILLING
@@ -14159,62 +14160,6 @@ function showUndoSnackbar(msg,undoFn){
   bar.innerHTML=`<span style="color:var(--text)">${esc(msg)}</span><button onclick="undoLastChange();document.getElementById('undoSnackbar')?.remove()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo</button><button onclick="this.closest('#undoSnackbar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
   document.body.appendChild(bar);
   setTimeout(()=>{const el=document.getElementById('undoSnackbar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},5000);
-}
-
-
-// ══ COGNITIVE LOAD METER ══════════════════════════════════════
-// Delegates to the pure behavior engine (public/js/core/behavior-engine.js)
-// when available so the static app, the Next.js shell, and any future
-// surface compute load identically. Falls back to local logic if the
-// module hasn't loaded yet (e.g. during early boot).
-function calcCognitiveLoad(){
-  if(window.FluxBehavior&&typeof window.FluxBehavior.calcCognitiveLoad==='function'){
-    try{
-      const r=window.FluxBehavior.calcCognitiveLoad({tasks,classes,now:new Date()});
-      return r.score;
-    }catch(_){}
-  }
-  const now=new Date();const h=now.getHours();
-  const ts=todayStr();
-  const active=tasks.filter(t=>!t.done);
-  const overdue=active.filter(t=>t.date&&new Date(t.date+'T00:00:00')<new Date(now.toDateString()));
-  const todayTasks=active.filter(t=>t.date===ts);
-  const highPri=active.filter(t=>t.priority==='high');
-  const srsWeight=active.filter(t=>t.srsReview).length*0.5;
-  const tf=h>=10&&h<=14?1.2:h>=20?0.6:1.0;
-  return Math.min(100,Math.round((overdue.length*15+todayTasks.length*8+highPri.length*10-srsWeight)*tf));
-}
-function updateCognitiveLoadMeter(){
-  try{
-    if(window.FluxCognitiveV2?.enabled?.()&&typeof FluxCognitiveV2.tick==='function'){
-      FluxCognitiveV2.tick();
-      try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
-      return;
-    }
-  }catch(_){}
-  let payload=null;
-  if(window.FluxBehavior&&typeof window.FluxBehavior.tick==='function'){
-    try{
-      const lastActiveAt=Number(load('flux_last_active_ms',0))||null;
-      payload=window.FluxBehavior.tick({
-        tasks,classes,
-        momentumLevel:typeof _momentum==='number'?_momentum:0,
-        streak:Number(load('flux_task_streak_n',0))||0,
-        lastActiveAt:lastActiveAt?new Date(lastActiveAt):null,
-        now:new Date(),
-      });
-    }catch(_){payload=null;}
-  }
-  const load=payload?payload.load.score:calcCognitiveLoad();
-  const inRecovery=load>=85;
-  document.body.dataset.recovery=inRecovery?'true':'false';
-  if(inRecovery&&!window._fluxRecoveryToastShown){
-    window._fluxRecoveryToastShown=true;
-    showToast('⚠ High cognitive load ('+load+'%). Recovery Mode hides non-essential tasks.','warning');
-  }else if(!inRecovery&&window._fluxRecoveryToastShown){
-    window._fluxRecoveryToastShown=false;
-  }
-  try{if(window.FluxNeuroDashboard?.enabled?.()&&typeof FluxNeuroDashboard.tick==='function')FluxNeuroDashboard.tick();}catch(_){}
 }
 
 
@@ -17091,7 +17036,6 @@ function updateMomentumZone(){
       }
     }
   }catch(_){}
-  const load=calcCognitiveLoad();
   let zone='idle';
   if(_momentum>=5)zone='fire';
   else if(_momentum>=3)zone='flow';

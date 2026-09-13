@@ -29,7 +29,6 @@
   function defaults() {
     return {
       enable_momentum_v2: false,
-      enable_cognitive_ui: false,
       enable_teacher_ai: false,
       enable_live_class_mode: false,
       enable_school_command: false,

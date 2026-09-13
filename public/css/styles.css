@@ -653,28 +653,6 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
   .task-item.friction-severe{animation:none}
 }
 
-/* Recovery Mode — body data attribute hides non-essential cards */
-body[data-recovery="true"] .task-item.recovery-hidden{
-  opacity:.35;filter:saturate(.6);pointer-events:none;
-}
-body[data-recovery="true"] .recovery-banner{display:flex!important}
-.recovery-banner{
-  display:none;align-items:center;gap:10px;
-  margin:8px 0 12px;padding:10px 14px;border-radius:14px;
-  background:linear-gradient(135deg,rgba(244,63,94,.16),rgba(244,63,94,.04));
-  border:1px solid rgba(244,63,94,.3);
-  font-size:.82rem;color:var(--text);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-}
-.recovery-banner-icon{font-size:1.1rem;flex:0 0 auto}
-.recovery-banner-body{flex:1;min-width:0}
-.recovery-banner-cta{
-  appearance:none;border:1px solid rgba(244,63,94,.45);
-  background:rgba(244,63,94,.16);color:var(--text);
-  padding:5px 12px;border-radius:999px;font-size:.72rem;font-weight:700;cursor:pointer;
-}
-.recovery-banner-cta:hover{background:rgba(244,63,94,.25)}
-
 /* V4 — Predictive Gap-Fill card */
 .flux-gap-card{
   display:flex;flex-direction:column;gap:12px;
@@ -712,18 +690,6 @@ body[data-recovery="true"] .recovery-banner{display:flex!important}
 }
 .flux-gap-row-cta:hover{background:rgba(var(--accent-rgb),.26)}
 
-/* Quick Win flash highlight */
-.task-item.quick-win-flash{
-  animation:fluxQuickWinFlash 1.6s ease;
-  box-shadow:0 0 0 2px rgba(34,255,136,.55),0 0 24px rgba(34,255,136,.3)!important;
-}
-@keyframes fluxQuickWinFlash{
-  0%   {box-shadow:0 0 0 2px rgba(34,255,136,.55),0 0 24px rgba(34,255,136,.3)}
-  100% {box-shadow:0 0 0 1px rgba(34,255,136,0),0 0 0 rgba(34,255,136,0)}
-}
-@media(prefers-reduced-motion:reduce){
-  .task-item.quick-win-flash{animation:none}
-}
 .check{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--t-base) var(--ease-spring);font-size:11px;background:transparent}
 .check:hover{border-color:var(--green);background:rgba(var(--green-rgb),.08);transform:none;box-shadow:none}
 .check.done{background:var(--green);border-color:var(--green);color:#080a0f;animation:checkBounce var(--t-slow) var(--ease-spring)}

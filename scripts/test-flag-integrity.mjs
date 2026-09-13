@@ -27,6 +27,9 @@ const FLAG_KEY_RE = /enable_[a-z0-9_]+/g;
 const RETIRED_KEYS = new Set([
   'enable_counselor_insights',
   'enable_cognitive_predictions',
+  // Recovery Mode / cognitive load UI removed outright — the flag row stays in
+  // the applied migration, but nothing reads it any more.
+  'enable_cognitive_ui',
 ]);
 
 function readClientDefaults() {
@@ -181,7 +184,6 @@ function isHardcodedOrGlobalOnly(key) {
     'enable_locale_foundation',
     'enable_syllabus_conflict_check',
     'enable_e2e_harness',
-    'enable_cognitive_ui',
     'enable_teacher_ai',
     'enable_cognitive_predictions',
     'enable_counselor_insights',

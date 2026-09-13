@@ -10,7 +10,7 @@ import {
   animate,
   stagger,
   createTimeline,
-  createSpring,
+  spring,
   createAnimatable,
   createDraggable,
   onScroll,
@@ -215,7 +215,7 @@ export function springTap(el, o = {}) {
     animate(el, {
       scale: [1, o.to ?? 0.94, 1],
       duration: o.duration ?? 380,
-      ease: createSpring({
+      ease: spring({
         stiffness: o.stiffness ?? 380,
         damping: o.damping ?? 22,
       }),
@@ -231,7 +231,7 @@ export function springModal(el, o = {}) {
       translateY: [16, 0],
       scale: [o.fromScale ?? 0.96, 1],
       duration: o.duration ?? 360,
-      ease: createSpring({ stiffness: 240, damping: o.damping ?? 20 }),
+      ease: spring({ stiffness: 240, damping: o.damping ?? 20 }),
     })
   );
 }
@@ -245,7 +245,7 @@ export function springRow(rows, o = {}) {
       translateX: [-16, 0],
       duration: o.duration ?? 300,
       delay: stagger(o.gap ?? 80, { start: o.start ?? 40 }),
-      ease: createSpring({ stiffness: 200, damping: 18 }),
+      ease: spring({ stiffness: 200, damping: 18 }),
     })
   );
 }
@@ -595,8 +595,8 @@ export function navUnderlineMorph(barEl, hostEl, tabEl, o = {}) {
   motion(true, () => {
     try {
       const a = createAnimatable(barEl, {
-        x: { unit: 'px', duration: 240, ease: createSpring(o.spring || { stiffness: 220, damping: 20 }) },
-        width: { unit: 'px', duration: 240, ease: createSpring(o.spring || { stiffness: 220, damping: 20 }) },
+        x: { unit: 'px', duration: 240, ease: spring(o.spring || { stiffness: 220, damping: 20 }) },
+        width: { unit: 'px', duration: 240, ease: spring(o.spring || { stiffness: 220, damping: 20 }) },
       });
       const r = hostEl.getBoundingClientRect();
       const t = tabEl.getBoundingClientRect();
@@ -619,7 +619,7 @@ export function toastSpringEnhanced(el) {
       scale: [0.93, 1],
       filter: ['blur(4px)', 'blur(0px)'],
       duration: 360,
-      ease: createSpring({ stiffness: 280, damping: 24 }),
+      ease: spring({ stiffness: 280, damping: 24 }),
     })
   );
 }
@@ -651,7 +651,7 @@ function taskSpringHelper(el) {
       translateY: [18, 0],
       skewX: ['-4deg', '0deg'],
       duration: 380,
-      ease: createSpring({ stiffness: 180, damping: 20 }),
+      ease: spring({ stiffness: 180, damping: 20 }),
     })
   );
 }
@@ -670,7 +670,7 @@ export function cardLiftMouse(card, o = {}) {
       rotateX: 0,
       rotateY: 0,
       duration: o.dur ?? 340,
-      ease: createSpring({ stiffness: 220, damping: 24 }),
+      ease: spring({ stiffness: 220, damping: 24 }),
     });
     queueMicrotask(() => {
       card.style.transform = '';
@@ -852,7 +852,7 @@ export function slideFromRightDrawer(panel, o = {}) {
     animate(panel, {
       translateX: [o.from ?? '100%', 0],
       duration: o.duration ?? 320,
-      ease: createSpring({ stiffness: 260, damping: 24 }),
+      ease: spring({ stiffness: 260, damping: 24 }),
     })
   );
 }
@@ -908,7 +908,7 @@ export function draggableElasticReturn(handle, bounds, o = {}) {
     try {
       return createDraggable(handle, {
         container: bounds,
-        releaseEase: createSpring(o.spring || { stiffness: 140, damping: 12 }),
+        releaseEase: spring(o.spring || { stiffness: 140, damping: 12 }),
       });
     } catch (_) {
       return null;

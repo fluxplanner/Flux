@@ -16,7 +16,7 @@
  *
  * All effects are no-op under prefers-reduced-motion or data-flux-perf="on".
  */
-import { animate, stagger, createTimeline, createSpring, utils } from 'animejs';
+import { animate, stagger, createTimeline, spring, utils } from 'animejs';
 
 function prefersReducedMotion() {
   try {
@@ -47,9 +47,9 @@ function isCoarsePointer() {
 }
 
 const SPRING = {
-  snappy: createSpring({ stiffness: 480, damping: 34, mass: 1 }),
-  smooth: createSpring({ stiffness: 320, damping: 30, mass: 1 }),
-  bouncy: createSpring({ stiffness: 420, damping: 20, mass: 0.92 }),
+  snappy: spring({ stiffness: 480, damping: 34, mass: 1 }),
+  smooth: spring({ stiffness: 320, damping: 30, mass: 1 }),
+  bouncy: spring({ stiffness: 420, damping: 20, mass: 0.92 }),
 };
 
 /* ───────── 1. Count-up numbers (dashboard stats) ───────── */

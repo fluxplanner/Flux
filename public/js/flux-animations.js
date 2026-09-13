@@ -9,7 +9,7 @@ import {
   createTimeline,
   createAnimatable,
   createDraggable,
-  createSpring,
+  spring,
   onScroll,
   svg,
   text,
@@ -49,7 +49,7 @@ window.__fluxAnime = {
   createTimeline,
   createAnimatable,
   createDraggable,
-  createSpring,
+  spring,
   onScroll,
   svg,
   text,
@@ -292,7 +292,7 @@ function initFluxAnimeLogin() {
           translateY: ['-0.65rem', '0'],
           opacity: [0.88, 1],
           duration: 720,
-          ease: createSpring({ stiffness: 280, damping: 22 }),
+          ease: spring({ stiffness: 280, damping: 22 }),
         })
       );
     }
@@ -619,7 +619,7 @@ function taskEnterSingle(taskEl) {
       translateY: [18, 0],
       scale: [0.96, 1],
       duration: 360,
-      ease: createSpring({ stiffness: 200, damping: 18 }),
+      ease: spring({ stiffness: 200, damping: 18 }),
     });
   });
 }
@@ -653,7 +653,7 @@ function modalOpen(overlayEl, cardEl) {
       translateY: [16, 0],
       scale: [0.96, 1],
       duration: 320,
-      ease: createSpring({ stiffness: 220, damping: 20 }),
+      ease: spring({ stiffness: 220, damping: 20 }),
     });
   });
 }
@@ -875,7 +875,7 @@ function toastIn(toastEl) {
       translateY: [18, 0],
       scale: [0.94, 1],
       duration: 320,
-      ease: createSpring({ stiffness: 260, damping: 22 }),
+      ease: spring({ stiffness: 260, damping: 22 }),
     });
   });
 }
@@ -1083,7 +1083,7 @@ function workloadBarsIn(barEls) {
         height: [0, targetPx + 'px'],
         delay: i * 48,
         duration: 520,
-        ease: createSpring({ stiffness: 120, damping: 14 }),
+        ease: spring({ stiffness: 120, damping: 14 }),
       });
     });
   });
@@ -1134,7 +1134,7 @@ function pillAppear(pillEl) {
       opacity: [0, 1],
       translateY: [18, 0],
       scale: [0.82, 1],
-      ease: createSpring({ stiffness: 200, damping: 18 }),
+      ease: spring({ stiffness: 200, damping: 18 }),
     });
   });
 }
@@ -1327,8 +1327,8 @@ function initTabIndicator(tabBarEl) {
   if (!indicator) return null;
   try {
     const animatable = createAnimatable(indicator, {
-      x: { unit: 'px', duration: 240, ease: createSpring({ stiffness: 220, damping: 20 }) },
-      width: { unit: 'px', duration: 240, ease: createSpring({ stiffness: 220, damping: 20 }) },
+      x: { unit: 'px', duration: 240, ease: spring({ stiffness: 220, damping: 20 }) },
+      width: { unit: 'px', duration: 240, ease: spring({ stiffness: 220, damping: 20 }) },
     });
     return {
       moveTo: (activeTabEl) => {

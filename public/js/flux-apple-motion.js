@@ -9,7 +9,9 @@
  *   • Modal/sheet use damped spring; no linear easing anywhere user-visible.
  *   • Respects prefers-reduced-motion and data-flux-perf="on".
  */
-import { animate, stagger, createSpring, createAnimatable } from 'animejs';
+// Aliased: this module already has its own spring(name) helper that resolves a
+// named preset, so anime's factory comes in under a distinct name.
+import { animate, stagger, spring as animeSpring, createAnimatable, eases } from 'animejs';
 
 const APPLE_SPRING = {
   snappy: { stiffness: 480, damping: 34, mass: 1 },
@@ -19,11 +21,17 @@ const APPLE_SPRING = {
   release: { stiffness: 360, damping: 24, mass: 0.95 },
 };
 
+// anime.js 4 removed the `ease: 'cubicBezier(...)'` string form — it warns and
+// then ignores the curve, so every one of these was silently animating linear.
+// The function form is the supported replacement; the curves are unchanged.
+const bez = (a, b, c, d) =>
+  (typeof eases?.cubicBezier === 'function' ? eases.cubicBezier(a, b, c, d) : undefined);
+
 const APPLE_EASE = {
-  standard: 'cubicBezier(0.25, 0.1, 0.25, 1)',
-  decel: 'cubicBezier(0.16, 1, 0.3, 1)',
-  accel: 'cubicBezier(0.4, 0, 1, 1)',
-  emphasized: 'cubicBezier(0.34, 1.15, 0.64, 1)',
+  standard: bez(0.25, 0.1, 0.25, 1),
+  decel: bez(0.16, 1, 0.3, 1),
+  accel: bez(0.4, 0, 1, 1),
+  emphasized: bez(0.34, 1.15, 0.64, 1),
 };
 
 function prefersReducedMotion() {
@@ -58,7 +66,7 @@ function isCoarsePointer() {
 }
 
 function spring(name) {
-  return createSpring(APPLE_SPRING[name] || APPLE_SPRING.smooth);
+  return animeSpring(APPLE_SPRING[name] || APPLE_SPRING.smooth);
 }
 
 function motion(fn) {

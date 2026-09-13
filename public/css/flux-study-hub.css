@@ -105,6 +105,9 @@
    every other block on the page kept its 16px gutter. */
 .fsh-rail { display:flex; gap:9px; overflow-x:auto; padding:6px 26px 12px; scroll-padding-inline:26px; scrollbar-width:none; scroll-behavior:smooth; }
 .fsh-rail::-webkit-scrollbar { height:0; }
+/* Each umbrella's pills are kept as retained detached nodes and the active set
+   is attached here directly (no wrapper), so switching umbrella costs no markup
+   parsing — it was ~25ms of blocking work per click on a school iPad. */
 .fsh-pill {
   flex:0 0 auto; display:inline-flex; align-items:center; gap:8px;
   padding:10px 16px; border-radius:999px; cursor:pointer; user-select:none;

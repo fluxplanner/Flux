@@ -53,3 +53,17 @@
     left: calc(var(--sidebar-w, 276px) + 16px);
   }
 }
+
+/* Clearing the sidebar (above) parked the fab over the content column instead,
+   where it does the same thing to the task list: it is `position: fixed` at
+   z-index 310, so whichever row lands in its band has its checkbox covered and
+   the row reads as dead — you can see the task, clicking it just does nothing.
+   #dashboard is the scroller and only reserved 32px, less than the fab's own
+   ~56px footprint, so the last row could never be scrolled clear of it.
+   Scoped to the widths where the fab is actually shown (it is display:none at
+   <=768px, where the More sheet carries "Report a problem" instead). */
+@media (min-width: 769px) {
+  #dashboard.panel {
+    padding-bottom: calc(var(--flux-dock-clearance, 16px) + 56px);
+  }
+}

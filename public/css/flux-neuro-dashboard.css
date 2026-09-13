@@ -49,10 +49,6 @@ body[data-neuro-dash-mode='recovery'] #dashboard .dash-v2-saved-views {
   display: none !important;
 }
 
-body[data-neuro-dash-mode='recovery'] #recoveryBanner {
-  display: flex !important;
-}
-
 body[data-neuro-dash-mode='recovery'] #dashboard .dash-alerts .time-poverty-banner {
   display: none !important;
 }

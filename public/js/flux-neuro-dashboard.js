@@ -142,11 +142,6 @@
       dash.dataset.neuroDashDensity = state.density;
     }
 
-    const banner = document.getElementById('recoveryBanner');
-    if (banner) {
-      if (state.mode === 'recovery') banner.style.display = 'flex';
-    }
-
     renderChip(state);
   }
 
