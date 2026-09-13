@@ -11385,6 +11385,57 @@ window.fluxNormalizeUsername=fluxNormalizeUsername;
 window.fluxUsernameToEmail=fluxUsernameToEmail;
 window.fluxEmailToUsername=fluxEmailToUsername;
 
+/* ── weak passwords ────────────────────────────────────────────────────────
+   Supabase can reject passwords found in public breaches (HaveIBeenPwned),
+   but only on paid plans, and this project is not on one. So the check lives
+   here instead.
+
+   For a school that is arguably the better list anyway. The passwords students
+   actually choose are their own name, the word Flux, or a run of keys — none
+   of which needs a breach corpus to catch, and all of which someone sitting
+   next to them would guess first. A breach list is aimed at credential
+   stuffing by strangers; the realistic threat here is the person at the next
+   desk.
+
+   Applied at sign-up only, deliberately. Running it at sign-in would lock out
+   anyone who already has a weak password — including, after the migration,
+   every account that predates this check. They have to be able to get in
+   first and change it after. It is also client-side, so it is a nudge, not a
+   control: the Supabase minimum length stays the real floor. */
+const FLUX_COMMON_PASSWORDS=new Set(['password','password1','password12','password123','passw0rd','12345678','123456789','1234567890','87654321','qwertyui','qwerty123','qwertyuiop','asdfghjkl','iloveyou','sunshine','princess','football','baseball','basketball','superman','trustno1','welcome1','welcome123','letmein1','abc12345','abcd1234','monkey12','dragon12','shadow12','master12','jordan23','changeme','secret12','admin123','1q2w3e4r','1qaz2wsx','zaq12wsx','soccer12','pokemon1','minecraft','fortnite']);
+/* Whole-string runs only, so a password that merely *contains* "abc" is left
+   alone. */
+const FLUX_KEY_RUNS=['abcdefghijklmnopqrstuvwxyz','01234567890','qwertyuiop','asdfghjkl','zxcvbnm'];
+
+function fluxIsKeyRun(s){
+  const t=String(s||'').replace(/[^a-z0-9]/g,'');
+  if(t.length<6)return false;
+  return FLUX_KEY_RUNS.some(run=>{
+    const rev=run.split('').reverse().join('');
+    return run.includes(t)||rev.includes(t);
+  });
+}
+
+/** '' when the password is acceptable, otherwise a sentence to show the user. */
+function fluxWeakPasswordReason(password,name){
+  const pw=String(password||'');
+  if(pw.length<8)return'Your password needs to be at least 8 characters.';
+  const low=pw.toLowerCase();
+  const letters=low.replace(/[^a-z0-9]/g,'');
+  if(FLUX_COMMON_PASSWORDS.has(low)||FLUX_COMMON_PASSWORDS.has(letters)){
+    return'That is one of the most-guessed passwords there is. Please pick something else.';
+  }
+  if(/^(.)\1+$/.test(pw))return'That is the same character over and over. Please mix it up a bit.';
+  if(fluxIsKeyRun(low))return'That is just keys in the order they sit on the keyboard. Please pick something harder to guess.';
+  const own=fluxNormalizeUsername(name||'').replace(/[._-]/g,'');
+  if(own.length>=3&&letters.includes(own)){
+    return'Your password has your own name in it, which is the first thing anyone would try.';
+  }
+  if(letters.includes('flux'))return'Please pick a password that is not built from the word “Flux”.';
+  return'';
+}
+window.fluxWeakPasswordReason=fluxWeakPasswordReason;
+
 async function handleEmailAuth(){
   const rawName=document.getElementById('loginUsername')?.value.trim();
   const password=document.getElementById('loginPassword')?.value;
@@ -11392,7 +11443,12 @@ async function handleEmailAuth(){
   if(!rawName||!password){showAuthError('Please enter your name and password.');return;}
   if(!username){showAuthError('That name has no letters or numbers in it — try your first and last name.');return;}
   if(username.length<3){showAuthError('That name is too short — please use at least 3 characters.');return;}
-  if(password.length<6){showAuthError('Password must be at least 6 characters.');return;}
+  /* Sign-in is not gated on strength: an existing weak password must still get
+     you in, or the person it belongs to can never change it. */
+  if(_authMode==='signup'){
+    const weak=fluxWeakPasswordReason(password,rawName);
+    if(weak){showAuthError(weak);return;}
+  }
   const email=fluxUsernameToEmail(username);
   const sb=getSB();if(!sb){showAuthError('Auth not available.');return;}
   const btn=document.getElementById('loginEmailBtn');
@@ -11432,8 +11488,22 @@ function fluxAuthErrorText(e,mode,name){
       ? 'That name and password don\'t match. Check the spelling, or ask a teacher to reset it.'
       : 'Could not sign you in. Please try again.';
   }
-  if(m.includes('password'))return 'Password must be at least 6 characters.';
+  /* Supabase rejects a breached password with "weak and easy to guess". That
+     only fires on paid plans, so today it is unreachable and the length branch
+     below catches everything — but flattening every password error into "too
+     short" would be a lie the moment the plan changes. */
+  if(m.includes('weak')||m.includes('easy to guess')||m.includes('pwned')){
+    return 'That password is too easy to guess. Please pick a different one.';
+  }
+  if(m.includes('password'))return 'Your password needs to be at least 8 characters.';
   if(m.includes('invalid')&&m.includes('email'))return 'Please use letters and numbers in your name.';
+  /* Seen for real on a school network: the browser's own wording, "Failed to
+     fetch", was being shown to the student verbatim. It reads like the app is
+     broken when the actual cause is no connection — or a filter between the
+     iPad and Supabase, which on school wifi is the likelier of the two. */
+  if(m.includes('failed to fetch')||m.includes('networkerror')||m.includes('load failed')){
+    return 'Could not reach Flux. Check your internet connection and try again.';
+  }
   return e&&e.message?e.message:'Something went wrong. Please try again.';
 }
 window.fluxAuthErrorText=fluxAuthErrorText;

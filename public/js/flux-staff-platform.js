@@ -92,17 +92,22 @@
       setErr('Name and password are required');
       return;
     }
-    /* Same address rule as the student login screen (app.js). Staff are held to
-       8 characters rather than 6 because their accounts reach other people's
-       data once a school admin verifies them. */
+    /* Same address and password rules as the student login screen (app.js),
+       out of the same function, so the two sign-up forms cannot drift into
+       giving different answers about the same password. It matters more here:
+       a staff account reaches other people's data once a school admin
+       verifies it. */
     const toEmail = typeof window.fluxUsernameToEmail === 'function' ? window.fluxUsernameToEmail : null;
     const email = toEmail ? toEmail(rawName) : '';
     if (!email) {
       setErr('That name has no letters or numbers in it — try your first and last name');
       return;
     }
-    if (password.length < 8) {
-      setErr('Password must be at least 8 characters');
+    const weak = typeof window.fluxWeakPasswordReason === 'function'
+      ? window.fluxWeakPasswordReason(password, rawName)
+      : (password.length < 8 ? 'Password must be at least 8 characters' : '');
+    if (weak) {
+      setErr(weak);
       return;
     }
     const client = sb();
