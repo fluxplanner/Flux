@@ -5149,7 +5149,7 @@ function renderCalDay(){
       const isEc=fluxIsEcCalendarItem(o);
       const bg=isEc?'rgba(251,191,36,.1)':'rgba(0,194,255,.08)';
       const br=isEc?'rgba(251,191,36,.35)':'rgba(var(--accent-rgb),.25)';
-      const lbl=isEc?'Extracurricular · weekly':'Every week';
+      const lbl=isEc?'Activity · weekly':'Every week';
       const ic=isEc?'🎯':'🔁';
       return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${bg};border:1px solid ${br};border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">${ic}</span><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isEc?'var(--gold)':'var(--accent)'}">${lbl}</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><button type="button" class="scope-pill ${sch?'scope-pill-school':'scope-pill-out'}" onclick="event.stopPropagation();toggleWeeklyRuleScope('${o.ruleId}')" title="School vs outside">${sch?'🏫':'🌐'}</button><button type="button" onclick="deleteWeeklyRule('${o.ruleId}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px" title="Remove">✕</button></div>`;
     }
@@ -12609,7 +12609,7 @@ const LOGIN_DEMO_LINES=[
   'Break down assignments into steps with Flux AI study plans.',
   'Snap a syllabus or schedule — Vision Import turns it into tasks.',
   'See your bell schedule and no-school days on one calendar.',
-  'Log extracurriculars and get school-fit suggestions.',
+  'Log your activities and get school-fit suggestions.',
   'Capture notes with tags, then ask Flux AI to quiz you.',
   'Use the focus timer and streaks to build study habits.',
   'See exam conflicts and everything due at a glance.'
@@ -13497,7 +13497,7 @@ function buildFeatPillsHtml(){
     {label:'Panic mode',c:'#f43f5e'},
     {label:'Focus timer',c:'#fb923c'},
     {label:'Tagged notes',c:'#6366f1'},
-    {label:'Extracurriculars',c:'#fbbf24'},
+    {label:'Activities',c:'#fbbf24'},
     {label:'Exam conflicts',c:'#f472b6'},
     {label:'Themes & accent',c:'#38bdf8'},
     {label:'Grade what-if',c:'#eab308'},
