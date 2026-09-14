@@ -98,9 +98,18 @@ test.describe('Keyboard & focus a11y', () => {
      */
     await page.setViewportSize({ width: 375, height: 812 });
     await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('settings'));
-    await page.waitForFunction(() => !!document.querySelector('#spane-appearance .tab-row-toggle'), null, {
-      timeout: 10_000,
-    });
+    /* Open Layout explicitly. This pane used to be the one Settings landed on,
+       so the toggle was simply there; it is the third section now, and an
+       inactive .spane is display:none. The element still resolves and still
+       reports a non-zero rect, so only the hit-test fails — elementFromPoint
+       returns null, and every assertion below then reads as a broken tap
+       target rather than a pane nobody opened. */
+    await page.evaluate(() =>
+      (window as unknown as { switchStab: (id: string) => void }).switchStab('appearance'));
+    await page.waitForFunction(() => {
+      const pane = document.getElementById('spane-appearance');
+      return !!pane?.classList.contains('active') && !!pane.querySelector('.tab-row-toggle');
+    }, null, { timeout: 10_000 });
 
     const hit = await page.evaluate(async () => {
       const el = document.querySelector<HTMLElement>('#spane-appearance .tab-row-toggle')!;

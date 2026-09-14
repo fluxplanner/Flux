@@ -6965,7 +6965,16 @@ function switchStab(id,el){
   if(el){el.classList.add('active');el.setAttribute('aria-selected','true');}
   const pane=document.getElementById('spane-'+id);
   if(pane)pane.classList.add('active');
-  if(id==='appearance'){if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();if(typeof window.wireSettingsToggles==='function')window.wireSettingsToggles();else if(typeof wireSettingsToggles==='function')wireSettingsToggles();}
+  /* The old "Look" pane was split three ways — theme, text, appearance
+     (Layout) — and this wiring has to follow the controls, not the old id.
+     FluxA11y and wireSettingsToggles serve the contrast, font-scale and
+     reduce-motion controls that now live in `text`; renderPanelLayoutSettings
+     serves the panel order in `appearance`. Leaving the check as
+     id==='appearance' would have left Theme and Text with dead toggles, which
+     looks exactly like a broken switch rather than a missing init call.
+     Running all of it for any of the three is safe: every one of these is
+     idempotent and already re-ran on each visit to the old pane. */
+  if(id==='appearance'||id==='theme'||id==='text'){if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();if(typeof window.wireSettingsToggles==='function')window.wireSettingsToggles();else if(typeof wireSettingsToggles==='function')wireSettingsToggles();}
   if(id==='data'){
     if(typeof renderStorageMeter==='function')renderStorageMeter();
     try{if(window.FluxStorageRepair?.renderSettingsCard)FluxStorageRepair.renderSettingsCard();}catch(_){}
