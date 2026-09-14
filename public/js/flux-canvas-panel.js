@@ -44,6 +44,15 @@
     _authPoll: null,
   };
 
+  /* The school this app is built for. Offered to everyone setting Canvas up
+     for the first time, because the guesses below only work when someone's
+     email domain happens to match their Canvas host — and for most students
+     here it does not, so they were shown an empty list and left to go and find
+     the address themselves. It is a suggestion, not a default: it goes through
+     the same Set as everything else, so a stored host still comes first and
+     nothing duplicates if a guess resolves to the same place. */
+  const HOME_CANVAS_HOST = "ia.instructure.com";
+
   /* Common Canvas host patterns we can suggest from an email domain.
      Schools either use {short}.instructure.com (most common), a vanity domain
      like canvas.{domain}, or canvas.{root-domain}. We surface a few options
@@ -55,6 +64,7 @@
       const stored = (schoolInfo && schoolInfo.canvasLmsHost) || load("flux_canvas_host", "");
       if (stored) out.add(String(stored).replace(/^https?:\/\//, "").replace(/\/.*$/, ""));
     } catch (_) {}
+    out.add(HOME_CANVAS_HOST);
     // From the signed-in Google account's email domain:
     try {
       const email =

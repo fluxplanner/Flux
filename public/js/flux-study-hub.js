@@ -885,18 +885,91 @@
     /* The unit row sits above the tab strip, not inside it: the strip owns the
        sliding highlight (#fshTabGlide), which measures its own children, so a
        second kind of button in there would be a travel destination for a
-       highlight that should never land on it. */
+       highlight that should never land on it. The unit row has its own
+       highlight (#fshUnitGlide) for the same reason — two rows, two glides,
+       neither able to travel onto the other's buttons. */
+
     const unitRow = units.length
       ? `<div class="fsh-units" id="fshUnits" data-sid="${esc(sid)}" role="tablist" aria-label="${esc(subjById(sid).name)} units">`
+        + '<div class="fsh-unit-glide" id="fshUnitGlide"></div>'
         + units.map((u) => `<button type="button" class="fsh-unit${u.id === activeUnit.id ? ' active' : ''}"`
           + ` data-unit="${esc(u.id)}" role="tab" aria-selected="${u.id === activeUnit.id ? 'true' : 'false'}">`
           + `${esc(u.name)}<span class="fsh-unit-n">${u.tools.length}</span></button>`).join('')
         + '</div>'
       : '';
-    stage.innerHTML = `<div class="fsh-chem fsh-panel">${unitRow}<div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs" data-sid="${esc(sid)}"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshSubBody"></div></div>` + refStrip(sid);
+    const tabsHtml = `<div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs" data-sid="${esc(sid)}"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${own.map(tabBtn).join('')}${divider}${legacy.map(tabBtn).join('')}</div>${TAB_SLIDER}</div>`;
+    const bodyHtml = '<div class="fsh-chem-body" id="fshSubBody"></div>';
+
+    /* Leave the unit row standing when it is already showing this subject, and
+       swap only the two things below it.
+
+       A unit click re-renders the stage, and rewriting the whole panel replaced
+       the row and its highlight with brand-new nodes — the highlight then
+       appeared at its destination with nothing to travel from, which is the
+       jump being fixed here.
+
+       Detaching the row and putting it back is not good enough, and that is
+       worth stating because it looks like it should be: taking a node out of
+       the document cancels any transition running on it or its children. The
+       highlight is moved on click and this render happens on the very next
+       frame, before the transition has started, so remove()/insert() killed it
+       every time and transitionstart never fired. The row has to stay in place.
+
+       Nothing in it needs rebuilding anyway — the units are the same, only
+       which one is active has changed, and syncUnitActive handles that. */
+    const livePanel = stage.querySelector('.fsh-chem');
+    const liveUnits = $('fshUnits');
+    const reuseRow = !!(units.length && livePanel && liveUnits
+      && liveUnits.dataset.sid === sid
+      && liveUnits.querySelectorAll('.fsh-unit').length === units.length);
+
+    if (reuseRow) {
+      const tpl = document.createElement('div');
+      tpl.innerHTML = tabsHtml + bodyHtml;
+      const newWrap = tpl.firstElementChild, newBody = tpl.lastElementChild;
+      const oldWrap = livePanel.querySelector('.fsh-tabs-wrap');
+      const oldBody = livePanel.querySelector('#fshSubBody');
+      if (oldWrap) oldWrap.replaceWith(newWrap); else livePanel.appendChild(newWrap);
+      if (oldBody) oldBody.replaceWith(newBody); else livePanel.appendChild(newBody);
+      syncUnitActive(liveUnits, activeUnit.id);
+    } else {
+      stage.innerHTML = `<div class="fsh-chem fsh-panel">${unitRow}${tabsHtml}${bodyHtml}</div>` + refStrip(sid);
+    }
     renderToolBody(sid, picked);
-    requestAnimationFrame(moveTabGlide);
+    requestAnimationFrame(() => { moveTabGlide(); moveUnitGlide(); });
   }
+
+  /** Mark one chip active in a unit row, leaving the row's nodes in place. */
+  function syncUnitActive(row, unitId) {
+    if (!row) return;
+    row.querySelectorAll('.fsh-unit[data-unit]').forEach((b) => {
+      const on = b.dataset.unit === unitId;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  /* Same contract as positionGlide on the tool strip: `animate` false means a
+     correction rather than a move you asked for, so it must not slide —
+     otherwise a late re-measure reads as the highlight crawling into place. */
+  function positionUnitGlide(animate) {
+    const row = $('fshUnits'), g = $('fshUnitGlide'); if (!row || !g) return;
+    const a = row.querySelector('.fsh-unit.active'); if (!a) return;
+    const left = a.offsetLeft + 'px', top = a.offsetTop + 'px';
+    const width = a.offsetWidth + 'px', height = a.offsetHeight + 'px';
+    if (g.style.left === left && g.style.top === top
+        && g.style.width === width && g.style.height === height) return;
+    // The first placement has nowhere to travel from — sliding out of 0,0
+    // would read as the highlight flying in from the corner on every open.
+    const first = g.style.opacity !== '1';
+    const prev = g.style.transition;
+    if (!animate || first) g.style.transition = 'none';
+    g.style.left = left; g.style.top = top;
+    g.style.width = width; g.style.height = height;
+    g.style.opacity = '1';
+    if (!animate || first) { void g.offsetWidth; g.style.transition = prev; }
+  }
+  function moveUnitGlide() { positionUnitGlide(true); }
   /* Re-render only the panel body, leaving the tab strip standing.
      This is what lets the highlight slide. The highlight is a real element
      (#fshTabGlide) animating its own left/width, so it can only travel if it
@@ -1200,6 +1273,26 @@
            re-derive the unit you just left and the click would look dead. */
         delete state.tool[usid];
         save();
+        /* Highlight first, panel second — the same ordering the tool strip and
+           the chemistry tabs use. Rendering first blocks the main thread long
+           enough that the transition cannot start until it finishes, so the
+           highlight sits still and then hurries to catch up.
+           renderRegistered leaves this row in the document rather than
+           rebuilding it, so the travel survives the re-render.
+
+           The render stays synchronous, unlike the two branches above. Those
+           defer only a body redraw; this one rebuilds the whole tool strip,
+           and deferring that means the tabs for the unit you just picked do
+           not exist yet when the click returns — which broke every caller that
+           clicks a unit and then looks for a tool.
+
+           So the move is committed by hand instead. Reading offsetWidth forces
+           the style recalc that starts the transition, so it is already
+           running when the render blocks the thread, and it interpolates on
+           wall-clock time from there. */
+        syncUnitActive(row, unitBtn.dataset.unit);
+        moveUnitGlide();
+        void row.offsetWidth;
         renderRegistered(usid, false);
         return;
       }

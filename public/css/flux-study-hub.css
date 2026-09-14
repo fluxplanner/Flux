@@ -228,11 +228,36 @@
   flex-wrap: wrap;
   gap: 6px;
   margin: 0 0 10px;
+  /* Anchor for the sliding highlight below. */
+  position: relative;
+}
+/* The unit row's highlight, matching .fsh-chem-tab-glide on the tool strip.
+   Without it the unit chips were the one navigation layer in Study Tools that
+   jumped: umbrella, subject and tool all slide, and clicking a unit simply
+   repainted two chips.
+   top/height animate as well as left/width because this row wraps — on a
+   narrow panel the destination chip can be on a different line, and a
+   highlight that only moved horizontally would cut diagonally across the
+   chips instead of travelling along the row. */
+.fsh-unit-glide {
+  position: absolute;
+  left: 0; top: 0; width: 0; height: 0;
+  border-radius: 999px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%));
+  box-shadow: 0 8px 20px -8px rgba(var(--fsh-accent-rgb), .6);
+  transition: left .32s cubic-bezier(.3,.9,.2,1), top .32s cubic-bezier(.3,.9,.2,1),
+              width .32s cubic-bezier(.3,.9,.2,1), height .32s cubic-bezier(.3,.9,.2,1);
 }
 .fsh-unit {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  /* Above the glide, so the label stays readable as it passes underneath. */
+  position: relative;
+  z-index: 1;
   /* ~33px tall. The rail around it runs 44 (umbrella) → 39 (subject) →
      36 (tool), so this sits in the same family rather than looking like a
      different kind of control. The first pass was 26px, which was fine to
@@ -250,9 +275,19 @@
   transition: color .18s ease, border-color .18s ease, background .18s ease;
 }
 .fsh-unit:hover { color: var(--fsh-ink); border-color: rgba(var(--fsh-accent-rgb), .45); }
+/* The fill lives on .fsh-unit-glide, not here — that is what lets it travel.
+   The active chip keeps only what cannot slide: its text colour, and a
+   transparent border so it does not gain an outline the others lack.
+   The background stays declared as a fallback for the one frame before the
+   glide is positioned, and for the case where the glide never appears (a
+   single-unit subject, where there is nothing to slide between). */
 .fsh-unit.active {
   color: #06121c;
   border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.fsh-units:not(:has(.fsh-unit-glide)) .fsh-unit.active {
   background: linear-gradient(135deg, var(--fsh-accent), color-mix(in srgb, var(--fsh-accent) 58%, #fff 12%));
   box-shadow: 0 8px 20px -8px rgba(var(--fsh-accent-rgb), .6);
 }
@@ -403,7 +438,18 @@
 .fsh-atom-info .fsh-card { padding:18px; }
 .fsh-atom-picker { display:flex; align-items:center; gap:8px; }
 .fsh-atom-picker input { flex:1; padding:11px 14px; border-radius:12px; background:rgba(10,14,24,.6); border:1px solid var(--fsh-line); color:var(--fsh-ink); font-size:14px; outline:none; box-shadow:var(--fsh-neu-in); }
-.fsh-iconbtn { width:40px; height:40px; flex:0 0 auto; border-radius:12px; cursor:pointer; background:var(--fsh-glass-2); border:1px solid var(--fsh-line); color:var(--fsh-ink); font-size:17px; display:grid; place-items:center; box-shadow:var(--fsh-neu); transition:transform .14s, box-shadow .14s; }
+/* padding:0 is the one that matters — measured, not guessed.
+   A global button rule was applying padding:10px 18px. With box-sizing:
+   border-box that is 36px of horizontal padding plus 2px of border, which
+   already exceeds the 30px width the timeline's ✕ asks for, so the content box
+   collapsed to *zero* width and the button could not shrink below 38px.
+   place-items:center then centred the glyph on a zero-width box sitting 18px
+   in from the left edge: the ✕ landed at x=24.3 inside a 38px button whose
+   centre is 19. That is the visible offset.
+   line-height:1 fixes the smaller vertical half of it: place-items centres the
+   line box, not the ink, and the inherited ~1.2em box leaves descender slack
+   below the baseline that a glyph like ✕, ‹ or › never uses, so it rode high. */
+.fsh-iconbtn { width:40px; height:40px; flex:0 0 auto; padding:0; border-radius:12px; cursor:pointer; background:var(--fsh-glass-2); border:1px solid var(--fsh-line); color:var(--fsh-ink); font-size:17px; line-height:1; display:grid; place-items:center; box-shadow:var(--fsh-neu); transition:transform .14s, box-shadow .14s; }
 .fsh-iconbtn:hover { transform:translateY(-2px); } .fsh-iconbtn:active { box-shadow:var(--fsh-neu-in); transform:translateY(0); }
 .fsh-shellbars { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
 .fsh-shellbar { font-size:12px; padding:5px 10px; border-radius:9px; background:rgba(var(--fsh-accent-rgb),.12); border:1px solid rgba(var(--fsh-accent-rgb),.25); }

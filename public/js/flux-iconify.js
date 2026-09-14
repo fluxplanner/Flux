@@ -282,9 +282,20 @@
     pending.add(node);
     if (!scheduled) {
       scheduled = true;
-      // setTimeout, not rAF: rAF never fires in hidden/headless tabs,
-      // which would leave emoji visible until the next paint.
-      setTimeout(flush, 32);
+      /* queueMicrotask — not setTimeout(32), and not rAF.
+         This is what stopped the emoji flashing. Mutation records arrive as a
+         microtask at the end of the task that changed the DOM, which is still
+         *before* the browser paints. Deferring the swap by 32ms pushed it past
+         that paint, so anything rendered on a click showed its raw emoji for a
+         frame or two and then visibly snapped to an SVG — most obvious on the
+         screens that rebuild a whole card on click. Draining in a microtask
+         puts the swap in the same paint, so the emoji is never shown at all.
+         rAF is still wrong for the original reason: it does not fire in hidden
+         or headless tabs, which would strand emoji on screen indefinitely.
+         Microtasks always run.
+         Batching is unchanged — `pending` still coalesces every record from a
+         single task into one drain. */
+      queueMicrotask(flush);
     }
   }
 

@@ -67,7 +67,8 @@ test.describe('Every control says what it is', () => {
   test('the mood faces are five different faces, each with a name', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('mood'));
-    // flux-iconify swaps on a 32ms setTimeout after the mutation, not rAF.
+    // flux-iconify swaps in a microtask, so the SVG is in place by first paint.
+    // The wait is for the panel itself to finish rendering, not for the swap.
     await page.waitForTimeout(1000);
 
     const faces = await page.evaluate(() =>
