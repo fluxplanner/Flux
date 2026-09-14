@@ -261,3 +261,81 @@ test('the highlight sits under the tab it highlights, on every sub-tab of every 
   expect(checked, 'no tabs were measured').toBeGreaterThan(50);
   expect(offenders, `highlight misaligned on ${offenders.length}/${checked} sub-tabs:\n${offenders.join('\n')}`).toEqual([]);
 });
+
+/*
+ * The unit row slides too.
+ *
+ * The unit chips were the one navigation layer in Study Tools that jumped:
+ * umbrella, subject and tool all slide, and clicking a unit merely repainted
+ * two chips. Reported as "no sliding animation when clicking formula sheet in
+ * more in math" — Formula sheet lives in Maths' trailing "more" bucket, so
+ * reaching it means a unit click, and that was the click with no animation.
+ *
+ * The cause was the one the tool strip above had already fixed: a unit click
+ * re-renders the whole stage, which replaced the row and its highlight with
+ * brand-new nodes, so the highlight appeared at the destination with nothing
+ * to travel from. renderRegistered now keeps the live row.
+ *
+ * Asserted the same way and for the same reason: endpoints alone would pass
+ * just as happily on a teleport, so this checks the node survived AND that it
+ * was genuinely observed part-way there.
+ */
+test('the unit highlight slides between units rather than jumping', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+  await expect(page.locator('#fshChemTabs')).toBeVisible();
+
+  const res = await page.evaluate(async () => {
+    const hub = (window as unknown as { fluxStudyHub: { selectSubject: (i: string) => void } }).fluxStudyHub;
+    // Maths is the subject from the report, and has four units to travel across.
+    hub.selectSubject('math');
+    await new Promise((r) => setTimeout(r, 800));
+
+    const row = () => document.getElementById('fshUnits') as HTMLElement;
+    const glide = () => document.getElementById('fshUnitGlide') as HTMLElement;
+    const chips = () => [...document.querySelectorAll('#fshUnits .fsh-unit[data-unit]')] as HTMLElement[];
+    if (!row() || !glide() || chips().length < 2) return { skipped: true } as Record<string, unknown>;
+    const glideLeft = () => glide().getBoundingClientRect().left - row().getBoundingClientRect().left;
+
+    chips()[0].click();
+    await new Promise((r) => setTimeout(r, 800));
+    const from = glideLeft();
+
+    // Tag the node so a survivor is distinguishable from a replacement.
+    (glide() as unknown as { __tag?: number }).__tag = 8484;
+    const events: string[] = [];
+    glide().addEventListener('transitionstart', (e) => events.push((e as TransitionEvent).propertyName));
+
+    const target = chips()[chips().length - 1];
+    const to = target.offsetLeft;
+
+    const seen: number[] = [];
+    target.click();
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      seen.push(glideLeft());
+    }
+    const lo = Math.min(from, to) + 4, hi = Math.max(from, to) - 4;
+    return {
+      skipped: false, from, to, events,
+      end: glideLeft(),
+      sameNode: (glide() as unknown as { __tag?: number }).__tag === 8484,
+      midFrames: seen.filter((v) => v > lo && v < hi).length,
+      active: (document.querySelector('#fshUnits .fsh-unit.active') as HTMLElement)?.dataset.unit,
+    };
+  });
+
+  if (res.skipped) test.skip(true, 'maths rendered fewer than two units');
+
+  expect(Math.abs((res.to as number) - (res.from as number)),
+    'the two units sit on top of each other').toBeGreaterThan(60);
+  expect(res.sameNode, 'the unit highlight was replaced instead of moved').toBe(true);
+  // A teleport suppresses the transition, so it fires no transitionstart at
+  // all — this single event is the cleanest statement of the bug fixed here.
+  expect(res.events, 'the unit highlight jumped: no transition on left').toContain('left');
+  expect(res.midFrames as number,
+    'the unit highlight was never seen between the two chips').toBeGreaterThan(0);
+  // And it still lands on the unit that was clicked.
+  expect(res.end as number).toBeCloseTo(res.to as number, 0);
+});
