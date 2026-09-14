@@ -5912,35 +5912,11 @@ function renderSchool(){
     else{tn.innerHTML=teacherNotes.map(n=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:.82rem;font-weight:700">${esc(n.teacher)}</div><div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${esc(n.note)}</div></div><button onclick="deleteTeacherNote(${n.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px">✕</button></div>`).join('');}
   }
   try{if(window.FluxSchool?.renderJoinCard)FluxSchool.renderJoinCard();}catch(_){}
-  const canvasSchool=document.getElementById('schoolCanvasLmsRow');
-  if(canvasSchool){
-    const tok=load('flux_canvas_token','');
-    const host=load('flux_canvas_host',null)||(function(){try{const u=new URL((load('flux_canvas_url','')||'').trim().replace(/^([^/]+)$/,'https://$1'));return u.hostname||'';}catch(e){return'';}})();
-    if(tok&&host){
-      canvasSchool.style.display='block';
-      canvasSchool.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div><span style="font-size:.72rem;color:var(--muted)">Canvas LMS</span><div style="font-size:.85rem;font-weight:600;margin-top:4px">Connected to ${esc(host)}</div></div>
-        <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.78rem" onclick="fluxCanvasDisconnectSchool()">Disconnect</button>
-      </div>`;
-    }else{
-      canvasSchool.style.display='none';
-      canvasSchool.innerHTML='';
-    }
-  }
+  /* The Canvas connection row used to render here too. It was a second place
+     to see and disconnect the same connection the Canvas tab already owns, so
+     the two screens could disagree about it. Canvas is connected and
+     disconnected in the Canvas tab now, and nowhere else. */
 }
-window.fluxCanvasDisconnectSchool=function(){
-  save('flux_canvas_token',null);
-  save('flux_canvas_host',null);
-  save('flux_canvas_url',null);
-  try{canvasToken='';canvasUrl='';}catch(e){}
-  if(window.CanvasState){CanvasState.token=null;CanvasState.host=null;CanvasState.connected=false;}
-  schoolInfo=schoolInfo||{};
-  delete schoolInfo.canvasLmsHost;
-  save('flux_school',schoolInfo);
-  renderSchool();
-  if(typeof renderCanvasHubPanel==='function')renderCanvasHubPanel();
-  showToast('Canvas disconnected on this device','info');
-};
 
 // Edit class inline
 function editClass(id){
