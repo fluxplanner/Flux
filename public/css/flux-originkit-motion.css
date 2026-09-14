@@ -66,20 +66,15 @@
 }
 .flux-tilt.flux-tilt-active::before { opacity: 1; }
 
-/* ── Spotlight ── pointer-follow radial highlight on cards. */
-.flux-spotlight { position: relative; --spot-x: 50%; --spot-y: 50%; }
-.flux-spotlight::after {
-  content: "";
-  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  /* Halved from .10. At full strength the glow was the most eye-catching
-     thing on screen while you were simply moving the mouse across a panel,
-     which is the one moment it should be doing the least. It is there to
-     acknowledge where you are, not to compete with what you are reading. */
-  background: radial-gradient(340px circle at var(--spot-x) var(--spot-y),
-    rgba(var(--accent-rgb, 99,102,241), .05), transparent 62%);
-  opacity: 0; transition: opacity .3s ease;
-}
-.flux-spotlight:hover::after { opacity: 1; }
+/* ── Spotlight ── REMOVED.
+   A radial highlight used to follow the pointer across every card. It was
+   dimmed from .10 to .05 and then widened to every panel before being taken
+   out altogether: even at half strength it drew the eye while you were doing
+   nothing but moving the mouse, and repainting a 340px gradient from a
+   document-level pointermove cost real frames on slow machines — school
+   iPads especially. Nothing replaces it; hover states already say where you
+   are. The class and its --spot-x/--spot-y variables are gone, so a stray
+   `flux-spotlight` left anywhere now paints nothing. */
 
 /* ── Magnet ── pointer-follow translate for buttons. */
 .flux-magnet {

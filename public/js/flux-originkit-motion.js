@@ -118,37 +118,17 @@
     el.addEventListener('pointerleave', reset);
   }
 
-  /* Marks the element and nothing else. The pointer tracking is one delegated
-     listener on the document (initSpotlightTracking, below) rather than one
-     per card as it used to be.
+  /* Removed. The glow that followed the pointer across every card is gone: it
+     competed for attention while you were doing nothing but moving the mouse,
+     and repainting a 340px gradient from a document-level pointermove cost
+     real frames on slow hardware.
 
-     That change is what makes "everywhere" affordable. A listener per element
-     meant the cost grew with the number of cards, which is why the panel list
-     further down was an allowlist with the busier screens left off — and why
-     the glow appeared on some panels and not others. One listener costs the
-     same whether there are four cards on screen or four hundred. */
-  function spotlight(el) {
-    if (!el || el.dataset.fluxSpotWired) return;
-    el.dataset.fluxSpotWired = '1';
-    el.classList.add('flux-spotlight');
-  }
-
-  function initSpotlightTracking() {
-    if (document.documentElement.dataset.fluxSpotTracking) return;
-    document.documentElement.dataset.fluxSpotTracking = '1';
-    document.addEventListener('pointermove', (e) => {
-      if (!active()) return;
-      /* Mouse only. On a touchscreen the pointer sits wherever you last
-         tapped, so a glow following it just leaves a smudge behind your
-         finger rather than tracking anything. */
-      if (e.pointerType && e.pointerType !== 'mouse') return;
-      const el = e.target && e.target.closest ? e.target.closest('.flux-spotlight') : null;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      el.style.setProperty('--spot-x', (e.clientX - r.left) + 'px');
-      el.style.setProperty('--spot-y', (e.clientY - r.top) + 'px');
-    }, { passive: true, capture: true });
-  }
+     Kept as a no-op rather than deleted. It sits on two exported surfaces
+     (FluxMotion and FluxAnim) and is still reached through
+     [data-flux-spotlight] and SPOTLIGHT_ALWAYS, so removing the symbol would
+     throw at those call sites instead of quietly doing nothing. The CSS is
+     gone as well, so even a stray `flux-spotlight` class paints nothing. */
+  function spotlight() { /* no-op — see above */ }
 
   function magnet(el, opts) {
     if (!el || el.dataset.fluxMagWired) return;
@@ -288,28 +268,20 @@
     profile: { spotlight: [], stagger: [] },
   };
 
-  /* Every panel gets this, listed or not. The map above is now only for the
-     extra card classes a particular screen uses; ".card" is the app's
-     universal card and no longer needs repeating in thirteen places.
+  /* The `spotlight` arrays in the map above are now inert — the glow they drove
+     was removed. They are left in place because each panel's `stagger` list
+     lives in the same entry, and stripping one key from fourteen objects is
+     churn with no effect: spotlight() is a no-op and the CSS is gone.
 
-     This is the inconsistency: the map was an allowlist, so a panel nobody had
-     added — the dashboard, School Info, Extracurriculars, Canvas, the owner
-     screens — simply had no glow, and moving between them the effect came and
-     went for no reason a user could see.
-
-     Note what ".card" does not match: individual task rows, calendar days and
-     table cells. Those keep their own hover states rather than gaining a
-     spotlight each, which is the distinction the old comment here was reaching
-     for when it excluded whole panels instead. */
-  const SPOTLIGHT_ALWAYS = ['.card'];
+     SPOTLIGHT_ALWAYS is deliberately not re-added. Walking every '.card' in a
+     panel on each nav, plus again on every mutation for 2.5s, was pure work
+     for an effect that no longer exists. */
 
   function autoEnhance(panelId) {
     if (!active()) return;
     const panel = document.getElementById(panelId);
     if (!panel) return;
     const cfg = ENHANCE[panelId] || {};
-    SPOTLIGHT_ALWAYS.concat(cfg.spotlight || [])
-      .forEach((sel) => panel.querySelectorAll(sel).forEach(spotlight));
     (cfg.stagger || []).forEach((sel) => panel.querySelectorAll(sel).forEach((c) => staggerList(c)));
   }
 
@@ -353,7 +325,6 @@
   }
 
   function boot() {
-    initSpotlightTracking();
     wire(document);
     document.addEventListener('flux-nav', (e) => {
       const panelId = e && e.detail && e.detail.panel;

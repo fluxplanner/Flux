@@ -131,128 +131,106 @@ test.describe('OriginKit motion primitives', () => {
   test('educator panels auto-enhance async cards (M4)', async ({ page }) => {
     await gotoScenario(page, 'teacher-workflow');
     await page.evaluate(() => (window as any).nav?.('lessonHub'));
-    // The watcher re-enhances as the async render lands.
+    // The watcher re-enhances as the async render lands. Stagger is the only
+    // thing autoEnhance still applies now that the spotlight is gone.
     await expect
-      .poll(() => page.evaluate(() => document.querySelectorAll('#lessonHub .lh-class-card.flux-spotlight').length), { timeout: 4000 })
+      .poll(() => page.evaluate(() => document.querySelectorAll('#lessonHub .lh-list.flux-stagger').length), { timeout: 4000 })
       .toBeGreaterThan(0);
-    const staggered = await page.evaluate(() => document.querySelectorAll('#lessonHub .lh-list.flux-stagger').length);
-    expect(staggered).toBeGreaterThan(0);
   });
 
-  /* Renamed: "unlisted" used to mean "absent from the ENHANCE map", and those
-     panels are enhanced now — that allowlist was the reason the glow was
-     inconsistent. What still has to be a no-op is a panel id that matches no
-     element at all, and reduced-motion, which must stay inert everywhere. */
   test('autoEnhance is a no-op for a missing panel and under reduced-motion', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    const r = await page.evaluate(() => {
+    const threw = await page.evaluate(() => {
       const w = window as any;
-      // No element with this id → nothing happens, and no throw.
-      w.FluxMotion.autoEnhance('definitely-not-a-panel');
-      // reduced-motion → inert even for a listed panel
-      document.documentElement.classList.add('flux-reduce-motion');
-      w.FluxMotion.autoEnhance('lessonHub');
-      const enhancedUnderReduce = document.querySelectorAll('#lessonHub .flux-spotlight').length;
-      document.documentElement.classList.remove('flux-reduce-motion');
-      return { enhancedUnderReduce };
+      try {
+        // No element with this id → nothing happens, and no throw.
+        w.FluxMotion.autoEnhance('definitely-not-a-panel');
+        document.documentElement.classList.add('flux-reduce-motion');
+        w.FluxMotion.autoEnhance('lessonHub');
+        document.documentElement.classList.remove('flux-reduce-motion');
+        return false;
+      } catch (_) {
+        document.documentElement.classList.remove('flux-reduce-motion');
+        return true;
+      }
     });
-    expect(r.enhancedUnderReduce).toBe(0);
+    expect(threw, 'autoEnhance threw').toBe(false);
   });
 
-  test('student panels get the broad spotlight sweep + magnet CTA (M5)', async ({ page }) => {
+  test('the magnet CTA still wires on the top bar (M5)', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    // top-bar New Task button auto-wires magnet
     await expect
       .poll(() => page.evaluate(() => !!document.querySelector('.topbar-new-task-btn.flux-magnet')))
       .toBe(true);
-    await page.evaluate(() => (window as any).nav?.('settings'));
-    await expect
-      .poll(() => page.evaluate(() => document.querySelectorAll('#settings .card.flux-spotlight').length), { timeout: 4000 })
-      .toBeGreaterThan(0);
   });
 
-  /* The line is drawn around cards, not around panels.
+  /* The pointer-following glow is gone — it drew the eye while you were doing
+     nothing but moving the mouse, and repainting a 340px gradient from a
+     document-level pointermove cost frames on slow hardware.
    *
-   * It used to be around panels: the enhance map was an allowlist, so the
-   * dashboard and calendar got no glow at all, and moving between screens the
-   * effect came and went for no reason a user could see. Every panel is
-   * enhanced now, and what keeps the busy views calm is that ".card" matches
-   * the containers rather than the rows inside them — a task item and a
-   * calendar day keep their own hover states and gain nothing.
+   * This is the mutation guard for that removal. It pins all three ways the
+   * effect could come back: the class being applied, the document listener
+   * still tracking, and the symbol disappearing entirely. `spotlight` must
+   * stay on the namespace as a no-op, because [data-flux-spotlight] still
+   * reaches it and removing it would throw rather than do nothing.
    */
-  test('every panel gets the glow, but rows inside busy views do not', async ({ page }) => {
+  test('the cursor glow is gone and cannot come back', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    const r = await page.evaluate(() => {
+    await page.evaluate(() => (window as any).nav?.('settings'));
+    await page.waitForTimeout(700);
+
+    const r = await page.evaluate(async () => {
       const w = window as any;
       w.FluxMotion.autoEnhance('dashboard');
       w.FluxMotion.autoEnhance('calendar');
-      return {
-        // Individual data rows: still untouched.
-        taskRowSpot: document.querySelectorAll('#taskList .task-item.flux-spotlight').length,
-        calDaySpot: document.querySelectorAll('#calendar .cal-day.flux-spotlight').length,
-        // The panels' own cards: now lit, where before they were skipped.
-        dashCardSpot: document.querySelectorAll('#dashboard .card.flux-spotlight').length,
-        calCardSpot: document.querySelectorAll('#calendar .card.flux-spotlight').length,
-      };
+      w.FluxMotion.autoEnhance('settings');
+
+      const callable = typeof w.FluxMotion.spotlight === 'function';
+      let spotlightThrew = false;
+      try { w.FluxMotion.spotlight(document.body); } catch (_) { spotlightThrew = true; }
+
+      // Nothing anywhere carries the class after a full sweep.
+      const classed = document.querySelectorAll('.flux-spotlight').length;
+
+      // And the document-level tracker is not setting offsets any more.
+      const card = document.querySelector('#settings .card') as HTMLElement | null;
+      let tracked = '';
+      if (card) {
+        const box = card.getBoundingClientRect();
+        card.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true, pointerType: 'mouse',
+          clientX: box.left + 40, clientY: box.top + 20,
+        }));
+        await new Promise((res) => setTimeout(res, 50));
+        tracked = card.style.getPropertyValue('--spot-x');
+      }
+      return { callable, spotlightThrew, classed, tracked, sawCard: !!card };
     });
-    expect(r.taskRowSpot, 'task rows should not each get a spotlight').toBe(0);
-    expect(r.calDaySpot, 'calendar days should not each get a spotlight').toBe(0);
-    expect(r.dashCardSpot, 'the dashboard is still being skipped').toBeGreaterThan(0);
-    expect(r.calCardSpot, 'the calendar panel is still being skipped').toBeGreaterThan(0);
+
+    expect(r.sawCard, 'no settings card to test against').toBe(true);
+    expect(r.callable, 'spotlight must stay callable for [data-flux-spotlight]').toBe(true);
+    expect(r.spotlightThrew, 'spotlight() threw instead of no-opping').toBe(false);
+    expect(r.classed, 'flux-spotlight is being applied again').toBe(0);
+    expect(r.tracked, 'the pointer tracker is setting --spot-x again').toBe('');
   });
 
-  /* One listener for the whole app rather than one per card. That is what
-     makes covering every panel affordable, and it is invisible from outside —
-     so it is asserted directly, by checking the glow still tracks on a card
-     that has nothing bound to it. */
-  test('the pointer tracking is delegated, so any card responds', async ({ page }) => {
+  /* The stylesheet has to go too. Leaving the rule behind would re-light every
+     card the instant anything re-added the class. */
+  test('no stylesheet still paints a pointer-following gradient', async ({ page }) => {
     await gotoScenario(page, 'guest');
-    await page.evaluate(() => (window as any).nav?.('settings'));
-    await expect
-      .poll(() => page.evaluate(() => document.querySelectorAll('#settings .card.flux-spotlight').length), { timeout: 4000 })
-      .toBeGreaterThan(0);
-
-    const moved = await page.evaluate(async () => {
-      const card = document.querySelector('#settings .card.flux-spotlight') as HTMLElement;
-      const r = card.getBoundingClientRect();
-      card.dispatchEvent(new PointerEvent('pointermove', {
-        bubbles: true, pointerType: 'mouse',
-        clientX: r.left + 40, clientY: r.top + 20,
-      }));
-      await new Promise((res) => setTimeout(res, 50));
-      return {
-        x: card.style.getPropertyValue('--spot-x'),
-        y: card.style.getPropertyValue('--spot-y'),
-      };
+    const hits = await page.evaluate(() => {
+      const found: string[] = [];
+      for (const sheet of Array.from(document.styleSheets)) {
+        let rules: CSSRuleList;
+        try { rules = (sheet as CSSStyleSheet).cssRules; } catch (_) { continue; }
+        for (const rule of Array.from(rules)) {
+          const text = rule.cssText || '';
+          if (text.includes('--spot-x') || text.includes('.flux-spotlight')) found.push(text.slice(0, 120));
+        }
+      }
+      return found;
     });
-
-    // The offsets are relative to the card, and only the document-level
-    // listener could have set them — nothing is bound to the card itself.
-    expect(moved.x).toBe('40px');
-    expect(moved.y).toBe('20px');
-  });
-
-  /* Touch is excluded on purpose: with no hover, the pointer sits wherever
-     you last tapped and the glow becomes a smudge parked behind your finger. */
-  test('a touch pointer does not drag the glow around', async ({ page }) => {
-    await gotoScenario(page, 'guest');
-    await page.evaluate(() => (window as any).nav?.('settings'));
-    await expect
-      .poll(() => page.evaluate(() => document.querySelectorAll('#settings .card.flux-spotlight').length), { timeout: 4000 })
-      .toBeGreaterThan(0);
-
-    const x = await page.evaluate(async () => {
-      const card = document.querySelector('#settings .card.flux-spotlight') as HTMLElement;
-      card.style.removeProperty('--spot-x');
-      const r = card.getBoundingClientRect();
-      card.dispatchEvent(new PointerEvent('pointermove', {
-        bubbles: true, pointerType: 'touch',
-        clientX: r.left + 90, clientY: r.top + 30,
-      }));
-      await new Promise((res) => setTimeout(res, 50));
-      return card.style.getPropertyValue('--spot-x');
-    });
-    expect(x).toBe('');
+    expect(hits, `spotlight CSS still present:\n${hits.join('\n')}`).toEqual([]);
   });
 
   test('tiltCard wiring is idempotent (no double-bind)', async ({ page }) => {
