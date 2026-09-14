@@ -11358,12 +11358,102 @@ function showAuthError(msg,kind){
   el.classList.add('show');
 }
 
+/* ── Usernames ─────────────────────────────────────────────────────────────
+   People sign in with a name and a password. No email is collected and none is
+   ever sent. Supabase Auth is addressed by email, so the name is folded into an
+   address on a domain that exists only for this purpose and never receives
+   mail.
+
+   The rule has to stay stable forever: this address IS the account key, so any
+   change to how a name normalises would orphan every account created before
+   it. The 8 accounts converted on 2026-09-13 were built with exactly this
+   function. */
+const FLUX_USER_DOMAIN='users.fluxplanner.app';
+/** Lowercase, accents folded to plain letters, spaces to dots. */
+function fluxNormalizeUsername(raw){
+  return String(raw||'').trim().toLowerCase()
+    /* NFD splits "é" into "e" plus a combining accent, which the next replace
+       then drops. Without it an IB cohort's names collapse badly — "José
+       Álvarez" became "jos.lvarez", losing the letters rather than the
+       accents. */
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/\s+/g,'.')
+    .replace(/[^a-z0-9._-]/g,'')
+    .replace(/\.{2,}/g,'.')
+    .replace(/^[.\-_]+|[.\-_]+$/g,'');
+}
+function fluxUsernameToEmail(raw){
+  const u=fluxNormalizeUsername(raw);
+  return u?u+'@'+FLUX_USER_DOMAIN:'';
+}
+/** The name to show for an account, hiding the synthesised address. */
+function fluxEmailToUsername(email){
+  const s=String(email||'');
+  return s.endsWith('@'+FLUX_USER_DOMAIN)?s.slice(0,-(FLUX_USER_DOMAIN.length+1)):s;
+}
+window.fluxNormalizeUsername=fluxNormalizeUsername;
+window.fluxUsernameToEmail=fluxUsernameToEmail;
+window.fluxEmailToUsername=fluxEmailToUsername;
+
+/* Shown once, immediately after an account is created.
+   There is no email on file, which means there is no reset link — so a
+   forgotten password genuinely cannot be recovered without the owner stepping
+   in. That is worth one clear sentence at the only moment the person is
+   holding the password they just chose. */
+function fluxShowPasswordKeepsafe(username){
+  const box=document.getElementById('loginKeepsafe');
+  if(!box)return;
+  const who=document.getElementById('loginKeepsafeName');
+  if(who)who.textContent=username;
+  box.style.display='block';
+}
+
+/** Send the owner a note that someone is locked out. Works signed out. */
+async function fluxRequestPasswordHelp(){
+  const raw=document.getElementById('loginUsername')?.value.trim()||'';
+  const username=fluxNormalizeUsername(raw);
+  if(!username){showAuthError('Type your name above first, then ask for help.');return;}
+  const sb=getSB();
+  if(!sb){showAuthError('Could not reach Flux. Check your internet connection and try again.');return;}
+  const btn=document.getElementById('loginHelpBtn');
+  const prev=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  try{
+    /* Insert only. This table is readable by the owner alone — the rows are a
+       list of who is currently locked out, which is exactly the list you would
+       want if you were trying to get into someone's account. */
+    const {error}=await sb.from('flux_password_help').insert({
+      username,
+      note:'Asked for help from the sign-in screen.'
+    });
+    if(error)throw error;
+    showAuthError('Sent. Azfer will get you back in — ask him next time you see him.','ok');
+    if(btn){btn.textContent='Request sent';}
+  }catch(e){
+    showAuthError('Could not send that just now. Tell Azfer directly and he can reset it.');
+    if(btn){btn.disabled=false;btn.textContent=prev;}
+  }
+}
+window.fluxRequestPasswordHelp=fluxRequestPasswordHelp;
+
 async function handleEmailAuth(){
-  const email=document.getElementById('loginEmail')?.value.trim();
+  const rawName=document.getElementById('loginUsername')?.value.trim();
   const password=document.getElementById('loginPassword')?.value;
-  const name=document.getElementById('loginDisplayName')?.value.trim();
-  if(!email||!password){showAuthError('Please enter your email and password.');return;}
-  if(password.length<6){showAuthError('Password must be at least 6 characters.');return;}
+  const username=fluxNormalizeUsername(rawName);
+  if(!rawName||!password){showAuthError('Please enter your name and password.');return;}
+  if(!username){showAuthError('That name has no letters or numbers in it. Try your first and last name.');return;}
+  /* The synthesised address, not anything the person typed. It is the account
+     key, so it must come from the same function every time — see the note on
+     fluxNormalizeUsername. */
+  const email=fluxUsernameToEmail(username);
+  if(_authMode==='signup'){
+    const weak=typeof window.fluxWeakPasswordReason==='function'
+      ?window.fluxWeakPasswordReason(password,rawName):'';
+    if(weak){showAuthError(weak);return;}
+  }
+  /* Sign-in is deliberately not gated on strength: an existing weak password
+     must still get you in, or the person it belongs to can never change it. */
+  if(password.length<6){showAuthError('Your password needs to be at least 6 characters.');return;}
   const sb=getSB();if(!sb){showAuthError('Auth not available.');return;}
   const btn=document.getElementById('loginEmailBtn');
   if(btn){_setLoginEmailBtnText(btn,'…');btn.disabled=true;}
@@ -11372,27 +11462,28 @@ async function handleEmailAuth(){
     if(_authMode==='signup'){
       result=await sb.auth.signUp({
         email,password,
-        options:{
-          // Without emailRedirectTo, Supabase falls back to the project's Site
-          // URL, which sent every confirmation link to a page that does not
-          // exist. getRedirectURL() resolves to the deployed subpath
-          // (…github.io/Flux/), and must be on the Redirect URLs allowlist.
-          emailRedirectTo:getRedirectURL(),
-          data:{full_name:name||email.split('@')[0]}
-        }
+        /* No emailRedirectTo any more. It pointed at a confirmation link, and
+           nothing can arrive at users.fluxplanner.app — the domain takes no
+           mail. Email confirmation is off for this project, so signUp returns
+           a session directly. */
+        options:{data:{full_name:rawName||username}}
       });
       if(result.error)throw result.error;
       if(result.data?.user&&!result.data.session){
-        showAuthError('Check your email — we sent a confirmation link to '+email+'. Open it on this device.','ok');
+        /* Reachable only if email confirmation gets switched back on, which
+           would strand every account created this way. Say so plainly rather
+           than telling someone to check an inbox that does not exist. */
+        showAuthError('Your account was made, but Flux is waiting on a confirmation it cannot send. Tell Azfer.','ok');
         if(btn){_setLoginEmailBtnText(btn,'Create account');btn.disabled=false;}
         return;
       }
+      fluxShowPasswordKeepsafe(username);
     } else {
       result=await sb.auth.signInWithPassword({email,password});
       if(result.error)throw result.error;
     }
   }catch(e){
-    showAuthError(e.message||'Authentication failed. Please try again.');
+    showAuthError(typeof fluxAuthErrorText==='function'?fluxAuthErrorText(e):(e.message||'Sign-in failed. Please try again.'));
     if(btn){_setLoginEmailBtnText(btn,_authMode==='signup'?'Create account':'Sign in');btn.disabled=false;}
   }
 }

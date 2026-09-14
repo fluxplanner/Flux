@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.c20db1fb.css">
+<link rel="stylesheet" href="public/bundles/flux.943845d9.css">
 </head>
 <body>
 <noscript>
@@ -317,12 +317,25 @@
           <div id="loginEmailSection">
             <div class="lx-auth-error" id="loginAuthError" role="alert" aria-live="assertive"></div>
             <div class="lx-form" id="loginEmailForm">
-              <label class="lx-field" for="loginEmail">Email
-                <input type="email" id="loginEmail" name="loginEmail" autocomplete="email" inputmode="email" placeholder="you@school.edu">
+              <!-- Name, not email. Nothing is emailed and no address is kept;
+                   app.js folds this into a synthesised account key. type=text
+                   rather than email so a phone does not demand an @ sign. -->
+              <label class="lx-field" for="loginUsername">Name
+                <input type="text" id="loginUsername" name="loginUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your name">
               </label>
               <label class="lx-field" for="loginPassword">Password
                 <input type="password" id="loginPassword" name="loginPassword" autocomplete="current-password" placeholder="••••••••">
               </label>
+              <!-- Shown once, right after an account is created. With no email
+                   on file there is no reset link, so a forgotten password
+                   really is unrecoverable without Azfer. -->
+              <div id="loginKeepsafe" class="lx-keepsafe" style="display:none" role="status">
+                <div class="lx-keepsafe-title">Write your password down somewhere safe</div>
+                <div class="lx-keepsafe-body">
+                  You sign in as <strong id="loginKeepsafeName"></strong>. Flux has no email for you,
+                  so there is no reset link — if you forget this password, only Azfer can get you back in.
+                </div>
+              </div>
               <div id="loginNameRow" style="display:none">
                 <label class="lx-field" for="loginDisplayName">Name <span class="lx-opt">(optional)</span>
                   <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name">
@@ -336,6 +349,15 @@
             <div class="lx-toggle">
               <span id="loginToggleText">Don't have an account?</span>
               <button type="button" class="lx-toggle-btn" onclick="toggleAuthMode()"><span id="loginToggleAction">Sign up</span></button>
+            </div>
+            <!-- The only way back in. There is no email on file and therefore
+                 no reset link, so someone locked out cannot reach anyone from
+                 inside the app — they cannot sign in to ask. This writes to a
+                 table the owner alone can read. -->
+            <div class="lx-help">
+              <button type="button" class="lx-help-btn" id="loginHelpBtn" onclick="fluxRequestPasswordHelp()">
+                Forgot your password? Ask Azfer to reset it
+              </button>
             </div>
           </div>
 
@@ -2935,7 +2957,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.213842cc.js"></script>
+<script defer src="public/bundles/flux-core.6c196853.js"></script>
 <script defer src="public/bundles/flux-features.f7b1bf35.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
