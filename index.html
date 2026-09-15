@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.a6aa17ec.css">
+<link rel="stylesheet" href="public/bundles/flux.f19e350f.css">
 </head>
 <body>
 <noscript>
@@ -2587,6 +2587,23 @@
             <div class="srow" style="border:none"><div><div class="slabel">Sync Status</div><div class="ssub" id="syncStatus">—</div></div><div id="syncBadgeHolder"></div></div>
             <button onclick="forceSyncNow()" style="width:100%;margin-top:10px;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent)">⟳ Force Sync Now</button>
             <button onclick="signOut()" class="btn-sec" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red)">Sign Out</button>
+
+            <!-- Until now the only way to change a password was to ask Azfer,
+                 because the accounts were created with generated ones and there
+                 is no reset email to send. Sits inside #accountSignedIn so it
+                 inherits the same signed-in gating as everything above it.
+                 The current password is asked for deliberately: without it,
+                 anyone passing an unlocked laptop could lock the owner out of
+                 an account that has no recovery route. -->
+            <div class="fx-pw" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+              <div class="slabel" style="margin-bottom:2px">Change your password</div>
+              <div class="ssub" style="margin-bottom:10px">Pick something you'll remember. There's no reset email — write the new one down.</div>
+              <div class="fx-pw-row"><input type="password" id="pwCurrent" autocomplete="current-password" placeholder="Current password"></div>
+              <div class="fx-pw-row"><input type="password" id="pwNew" autocomplete="new-password" placeholder="New password"></div>
+              <div class="fx-pw-row"><input type="password" id="pwNew2" autocomplete="new-password" placeholder="Type the new one again"></div>
+              <div id="pwMsg" class="fx-pw-msg" role="status" aria-live="polite"></div>
+              <button type="button" id="pwSaveBtn" class="btn-sec" style="width:100%;margin-top:8px" onclick="fluxChangePassword()">Change password</button>
+            </div>
           </div>
         </div>
         <div class="card" id="studentEducatorUpgradeCard" style="display:none">
@@ -2982,7 +2999,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.861cefea.js"></script>
+<script defer src="public/bundles/flux-core.17a07b5d.js"></script>
 <script defer src="public/bundles/flux-features.6807c634.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

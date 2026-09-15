@@ -11466,6 +11466,58 @@ function fluxShowPasswordKeepsafe(username){
   box.style.display='block';
 }
 
+/* Settings → Account. Until now the only way to change a password was to ask
+   the owner, because these accounts were made with generated passwords and
+   there is no reset email to send — the domain takes no mail. That made the
+   one thing every account should be able to do the one thing none of them
+   could.
+
+   The current password is required even though updateUser() does not ask for
+   it. Without that check, anyone walking past an unlocked laptop could set a
+   new password on an account whose only recovery route is a person. Verified
+   by signing in with it rather than by trusting the session. */
+async function fluxChangePassword(){
+  const cur=document.getElementById('pwCurrent');
+  const nw=document.getElementById('pwNew');
+  const nw2=document.getElementById('pwNew2');
+  const msg=document.getElementById('pwMsg');
+  const btn=document.getElementById('pwSaveBtn');
+  if(!cur||!nw||!nw2)return;
+  const say=(t,ok)=>{if(msg){msg.textContent=t;msg.className='fx-pw-msg'+(ok?' ok':' bad');}};
+  const current=cur.value, next=nw.value, again=nw2.value;
+
+  if(!current){say('Type your current password first.');return;}
+  if(!next){say('Type the new password you want.');return;}
+  if(next!==again){say('The two new passwords are not the same. Check them and try again.');return;}
+  if(next===current){say('That is the password you already have. Pick a different one.');return;}
+  if(next.length<6){say('Your new password needs to be at least 6 characters.');return;}
+  const weak=typeof window.fluxWeakPasswordReason==='function'
+    ?window.fluxWeakPasswordReason(next,currentUser?.user_metadata?.full_name||''):'';
+  if(weak){say(weak);return;}
+
+  const sb=getSB();
+  if(!sb){say('Could not reach Flux. Check your internet connection and try again.');return;}
+  const email=currentUser?.email;
+  if(!email){say('You need to be signed in to change your password.');return;}
+
+  if(btn){btn.disabled=true;btn.textContent='Changing…';}
+  try{
+    const check=await sb.auth.signInWithPassword({email,password:current});
+    if(check.error){say('That current password is not right.');return;}
+    const {error}=await sb.auth.updateUser({password:next});
+    if(error)throw error;
+    cur.value='';nw.value='';nw2.value='';
+    /* Named in the confirmation on purpose: with no reset link, the moment
+       they are holding the new password is the only moment to say this. */
+    say('Password changed. Write this one down — there is no reset email.',true);
+  }catch(e){
+    say(typeof fluxAuthErrorText==='function'?fluxAuthErrorText(e):(e.message||'Could not change your password. Try again.'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Change password';}
+  }
+}
+window.fluxChangePassword=fluxChangePassword;
+
 /** Send the owner a note that someone is locked out. Works signed out. */
 async function fluxRequestPasswordHelp(){
   const raw=document.getElementById('loginUsername')?.value.trim()||'';

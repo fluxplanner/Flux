@@ -100,3 +100,23 @@
     display: block;
   }
 }
+
+/* ── Change your password (Settings → Account) ──────────────────────────────
+   Three stacked inputs and a status line. Deliberately plain: the surrounding
+   card already carries the visual weight, and a password form is the wrong
+   place to be clever.
+
+   No width rule on the inputs. flux-form-controls.css already makes every
+   input inside #app full-width at (1,1,1) specificity, which is exactly what
+   is wanted here — stacked, full-bleed. Restating it would only be one more
+   thing to keep in sync. */
+.fx-pw-row { margin-top: 8px; }
+
+.fx-pw-msg {
+  min-height: 1.1em;      /* reserve the line so the button does not jump */
+  margin-top: 8px;
+  font-size: .76rem;
+  line-height: 1.5;
+}
+.fx-pw-msg.ok  { color: var(--green, #1f9e74); }
+.fx-pw-msg.bad { color: var(--red, #e23e57); }
