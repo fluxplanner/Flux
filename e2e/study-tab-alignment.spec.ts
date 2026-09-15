@@ -339,3 +339,68 @@ test('the unit highlight slides between units rather than jumping', async ({ pag
   // And it still lands on the unit that was clicked.
   expect(res.end as number).toBeCloseTo(res.to as number, 0);
 });
+
+/**
+ * Moving quickly along the umbrella row must not build a panel per click.
+ *
+ * selectSubject defers the stage build by one frame so the highlight paints
+ * first. Each click used to queue its own, and every one ran — five quick
+ * clicks laid out five panels, four of them for an umbrella already navigated
+ * past, each blocking the frame that should have been drawing the next
+ * highlight. That backlog is what "laggy, especially when done a little quick"
+ * actually was: not one slow render, a queue of stale ones.
+ *
+ * Counting DOM work is the only honest check. The end state was always
+ * correct, so "the right subject is showing" passes either way.
+ *
+ * It has to be the whole subtree, not #fshStage's own children. Repeat renders
+ * of the same subject take renderRegistered's reuse path and swap the children
+ * of .fsh-chem, so #fshStage itself is rewritten once no matter how many
+ * builds run — observing only its children reports 1 with the fix and 1
+ * without, which is a test that proves nothing. Measured across the subtree
+ * the same burst is 6 mutations with coalescing and 22 without.
+ */
+test('rapid umbrella switching builds one panel, not one per click', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+  await expect(page.locator('#fshGroups')).toBeVisible();
+  await page.waitForTimeout(600);
+
+  const res = await page.evaluate(async () => {
+    const groups = [...document.querySelectorAll('#fshGroups .fsh-group[data-group]')] as HTMLElement[];
+    if (groups.length < 3) return { skipped: true } as Record<string, unknown>;
+
+    const stage = document.getElementById('fshStage')!;
+    let builds = 0;
+    const obs = new MutationObserver((records) => {
+      for (const r of records) if (r.type === 'childList' && r.addedNodes.length) builds++;
+    });
+    obs.observe(stage, { childList: true, subtree: true });
+
+    // Every umbrella, back to back, with no waiting between them.
+    for (const g of groups) g.click();
+
+    await new Promise((r) => setTimeout(r, 900));
+    obs.disconnect();
+
+    return {
+      skipped: false,
+      clicks: groups.length,
+      builds,
+      active: (document.querySelector('#fshGroups .fsh-group.active') as HTMLElement)?.dataset.group,
+      wanted: groups[groups.length - 1].dataset.group,
+    };
+  });
+
+  if (res.skipped) test.skip(true, 'fewer than three umbrellas rendered');
+
+  // The panel you stopped on is the one that gets built.
+  expect(res.active, 'the last umbrella clicked should be the active one').toBe(res.wanted);
+  /* Measured: 6 mutations coalesced, 22 not. Two per click is comfortably
+     above the real figure and far below the broken one, so this discriminates
+     without pinning an exact count that ordinary markup changes would break. */
+  expect(res.builds as number,
+    `${res.builds} DOM builds for ${res.clicks} rapid umbrella clicks — stale renders are queueing`)
+    .toBeLessThan(2 * (res.clicks as number));
+});

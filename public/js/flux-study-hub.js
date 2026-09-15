@@ -1283,6 +1283,9 @@
   }
 
   // ── stage dispatch ───────────────────────────────────────────────────────
+  /* Handle for the one deferred stage build selectSubject schedules, so a
+     newer selection can cancel an older one still waiting for its frame. */
+  let _stageRaf = 0;
   function renderStage(picked) {
     if (searchQ.trim()) { renderSearch(); return; }
     const s = subjById(state.subject); applyAccent(s.accent);
@@ -1311,8 +1314,18 @@
        browser had nothing to show until it finished. The pill you clicked
        stayed unlit for the whole build, which reads as the click not landing.
        One frame later the highlight is already on screen and the panel fills
-       in under it. */
-    requestAnimationFrame(() => renderStage(picked));
+       in under it.
+
+       Only the last selection is worth building. Moving along the umbrella row
+       at any speed used to queue one full stage build per click, and every one
+       of them ran: four quick clicks meant four panels laid out, three of them
+       for a subject already navigated past, each blocking the frame that should
+       have been drawing the next highlight. That is the "laggy when done a
+       little quick" — not one slow render but a backlog of stale ones.
+       Cancelling the pending frame keeps the highlight immediate and builds
+       exactly the panel you stopped on. */
+    if (_stageRaf) cancelAnimationFrame(_stageRaf);
+    _stageRaf = requestAnimationFrame(() => { _stageRaf = 0; renderStage(picked); });
   }
 
   // ── shell + events ───────────────────────────────────────────────────────
