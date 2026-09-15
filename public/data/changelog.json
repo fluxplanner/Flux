@@ -1,9 +1,819 @@
 {
-  "generated": "2026-08-23",
+  "generated": "2026-09-15",
   "firstCommit": "2026-03-12",
-  "total": 480,
+  "total": 615,
   "omitted": 298,
   "entries": [
+    {
+      "date": "2026-09-15",
+      "type": "Added",
+      "title": "Settings loses nine cards, three whole sections, and its uneven gaps",
+      "hash": "f76b916"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Added",
+      "title": "Change your own password, in Settings → Account",
+      "hash": "392b6d1"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Fixed",
+      "title": "The sign-up form asked for your name twice and your password once",
+      "hash": "e31f758"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Fixed",
+      "title": "One Reference in Chemistry, and gravity follows your programme",
+      "hash": "8bb4462"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Fixed",
+      "title": "The conjugator was wrong about a whole family of common verbs",
+      "hash": "264920f"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Fixed",
+      "title": "Six buttons could still undo the switch to names and passwords (#43)",
+      "hash": "bb1b110"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Fixed",
+      "title": "The phone's More menu stops disagreeing with the laptop (#42)",
+      "hash": "9f4883a"
+    },
+    {
+      "date": "2026-09-15",
+      "type": "Added",
+      "title": "Chemistry splits into units, and \"Tools\" stops hiding six calculators (#41)",
+      "hash": "faad87a"
+    },
+    {
+      "date": "2026-09-14",
+      "type": "Added",
+      "title": "Name your important dates, and stop the stuck tooltip",
+      "hash": "2af8c3d"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Added",
+      "title": "Sign in with a name, and a way back in when you forget the password",
+      "hash": "9410151"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Added",
+      "title": "The phone shows the desktop dashboard, not a parallel one",
+      "hash": "e4743cd"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Added",
+      "title": "Settings is a list down the side, and \"Look\" stops being a dumping ground",
+      "hash": "304493d"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "The unit row slides like every other row",
+      "hash": "7fc5df7"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "The timeline's delete button centres its ✕",
+      "hash": "4576f99"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "Canvas suggests the school's own host, and School Info stops duplicating it",
+      "hash": "2e15e99"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "No cursor glow, and emoji no longer flash before their icons",
+      "hash": "327e774"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "Remove the Google sign-in buttons",
+      "hash": "4ac8e55"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Added",
+      "title": "Study tools nest subject → unit → tool",
+      "hash": "2d92de7"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Fixed",
+      "title": "Stop the feedback function reading every user's data",
+      "hash": "c29415d"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Housekeeping",
+      "title": "Delete the dead \"Your AI profile\" login CSS",
+      "hash": "1037290"
+    },
+    {
+      "date": "2026-09-13",
+      "type": "Fixed",
+      "title": "Dismissing a dashboard banner now actually dismisses it",
+      "hash": "ea3a948"
+    },
+    {
+      "date": "2026-09-11",
+      "type": "Fixed",
+      "title": "Drop Recovery Mode, keep your tab on refresh, and speed up umbrellas",
+      "hash": "a24147d"
+    },
+    {
+      "date": "2026-09-06",
+      "type": "Fixed",
+      "title": "Your own typing no longer comes back and wipes the page",
+      "hash": "da354be"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Added",
+      "title": "College Prep tab — test scores, deadlines and application status",
+      "hash": "8fd888c"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Added",
+      "title": "GPA, SAT and ACT tracking on your profile",
+      "hash": "99419e5"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Fixed",
+      "title": "Switching study tools works, and the date picker stops running away",
+      "hash": "e19f83d"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Fixed",
+      "title": "An empty cloud list can no longer delete your colleges or activities",
+      "hash": "1623de0"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Fixed",
+      "title": "The app stops redrawing itself every eight seconds",
+      "hash": "8412a8f"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Added",
+      "title": "The Focus Timer tab is now just \"Time\"",
+      "hash": "28aedb3"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Added",
+      "title": "The clock is yours to style, and stacked study cards stop touching",
+      "hash": "72ba5d3"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Fixed",
+      "title": "The tab you clicked no longer briefly becomes the size of the panel",
+      "hash": "7118b4e"
+    },
+    {
+      "date": "2026-09-05",
+      "type": "Added",
+      "title": "The cursor glow is half as bright, and now on every panel",
+      "hash": "3b32de1"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "Astronomy grows from three tabs to seven, biology gains seven",
+      "hash": "d71c475"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "The sliding highlight is now every highlight, the sidebar included",
+      "hash": "8526092"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "One conjugator per language, and the tab highlight slides everywhere",
+      "hash": "4080418"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "French, German and Spanish become subjects with four tools each",
+      "hash": "6c74fe6"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "History & Geo keeps its name; messaging moves to Users & roster",
+      "hash": "40b38d7"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "Split History and Global Politics, civics goes to Global Politics",
+      "hash": "99a560d"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Performance",
+      "title": "Light the pill you clicked before building the panel under it",
+      "hash": "ce2f0f1"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Fixed",
+      "title": "Reserve the icon slot so tabs stop resizing under the highlight",
+      "hash": "cd321c5"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "DP Visual Arts under Arts, and the highlight stops snapping",
+      "hash": "ef78c39"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "Study Tools grouped into five umbrellas, two subjects folded in",
+      "hash": "cc4d176"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Fixed",
+      "title": "The highlight behind a Study Tools tab was drifting off it",
+      "hash": "6a12460"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Housekeeping",
+      "title": "Roadmap — I ran the Supabase step you couldn't copy",
+      "hash": "ee2568b"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "Send a pop-up to one person, not just to everybody",
+      "hash": "9e79af2"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "AP Calc AB, AP Lang and orchestra tools for the classes you named",
+      "hash": "767bc7d"
+    },
+    {
+      "date": "2026-09-04",
+      "type": "Added",
+      "title": "Gov & Civics is a subject now, and Psychology has more than a leaflet",
+      "hash": "942d8ae"
+    },
+    {
+      "date": "2026-09-03",
+      "type": "Housekeeping",
+      "title": "Roadmap — the check-in that was five empty rings",
+      "hash": "b7437b1"
+    },
+    {
+      "date": "2026-09-03",
+      "type": "Fixed",
+      "title": "The mood check-in was five blank circles, and twelve buttons had no name",
+      "hash": "7c1506d"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Roadmap — the Timer buttons the rulebook thought were already fixed",
+      "hash": "6faaf29"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Fixed",
+      "title": "A stylesheet that contradicted itself on the Timer tab",
+      "hash": "6c18044"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Roadmap — I checked my own 'Settings measures clean' claim",
+      "hash": "0568958"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Fixed",
+      "title": "One Settings button was smaller than the thumb it expects",
+      "hash": "557fe11"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Roadmap — School Info on a phone, and the red tick's second act",
+      "hash": "ffb5c6d"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Main went red three times on the same midnight wrap",
+      "hash": "ed76644"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Fixed",
+      "title": "On a phone you couldn't really add a class, or safely delete one",
+      "hash": "111b7d4"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Roadmap — the two things the phone was hiding from you",
+      "hash": "9a047ea"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Fixed",
+      "title": "On a phone you could see A/B days but never set them up",
+      "hash": "7f45272"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Fixed",
+      "title": "The phone was hiding a card the laptop showed",
+      "hash": "6cd6084"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "Roadmap — the overnight red tick, and why it wasn't Flux",
+      "hash": "22118ec"
+    },
+    {
+      "date": "2026-09-02",
+      "type": "Housekeeping",
+      "title": "The alarm test failed because of the hour CI ran it, not the alarm",
+      "hash": "df53721"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Housekeeping",
+      "title": "Roadmap — the two staff-area faults found in the Google check",
+      "hash": "abd5ada"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Fixed",
+      "title": "The counselor dashboard opened on four zeros too",
+      "hash": "f4e9e89"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Fixed",
+      "title": "Staff were asked to connect Google while Google is paused",
+      "hash": "ae70e3e"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Housekeeping",
+      "title": "Roadmap — the switch fix, and what I still need from you on mobile Settings",
+      "hash": "b18aead"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Fixed",
+      "title": "The switch you tap in Settings was 20 pixels tall, not 44",
+      "hash": "d7e3b41"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Housekeeping",
+      "title": "Roadmap — three more off the queued list",
+      "hash": "1f7bdcb"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Fixed",
+      "title": "The Classroom timer was a worse copy of the one that works",
+      "hash": "e70fef2"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Housekeeping",
+      "title": "Extracurriculars is two questions, not one long column",
+      "hash": "0a9212e"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "Housekeeping",
+      "title": "Settings' junk drawer becomes Your data, Help and About",
+      "hash": "f82eef2"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Housekeeping",
+      "title": "Main went red with every test passing",
+      "hash": "e451f26"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Housekeeping",
+      "title": "The mood prompt header still argued for being a card",
+      "hash": "d4e6a4c"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Fixed",
+      "title": "Settings was telling people two things that weren't true",
+      "hash": "376fb84"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Fixed",
+      "title": "A smooth stopwatch, and full screen for every timer not just Focus",
+      "hash": "dcb8162"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Added",
+      "title": "Ask about your day in a popup, not a card you scroll past",
+      "hash": "230ecce"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Housekeeping",
+      "title": "The batch is live, so stop telling him to merge it",
+      "hash": "988c298"
+    },
+    {
+      "date": "2026-08-31",
+      "type": "Fixed",
+      "title": "Separate the tools you work in from the ones that just open a modal",
+      "hash": "8a794e6"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Track two files that were sitting untracked in the working tree",
+      "hash": "c9d2615"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Practise French and Spanish, don't just look them up",
+      "hash": "6b02581"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Fixed",
+      "title": "The conjugator was teaching wrong answers",
+      "hash": "ce67f97"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Fixed",
+      "title": "Don't ask how the evening went the instant you answer the morning",
+      "hash": "4cb98fc"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Record the student picker, the BETA badges, and what is left",
+      "hash": "97b7c33"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Random student picker that works, and stop badging everything BETA",
+      "hash": "52a7d55"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Record the staff timetable, the wrong-list fault, and what is left",
+      "hash": "de6eab3"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Fixed",
+      "title": "Stop opening the staff dashboard on six zeros",
+      "hash": "f07c28a"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "The join-code card is a roster, not a third thing called \"Classes\"",
+      "hash": "fa21dde"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Staff dashboard opens on the lesson you are teaching, and asks for the register",
+      "hash": "ae2e383"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Fixed",
+      "title": "Staff surfaces were reading the class list teachers attend, not teach",
+      "hash": "bf6dbc4"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Staff can record the classes they teach, with work and events",
+      "hash": "86d8e44"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Record the morning and evening mood check-in",
+      "hash": "3a34a8f"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Ask how you're doing, morning and evening",
+      "hash": "9c2a2eb"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Record full-screen focus mode; flag timer centring as not reproducible",
+      "hash": "7aabbb0"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Full-screen focus mode for the Pomodoro timer",
+      "hash": "3f43586"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Housekeeping",
+      "title": "Record the new clock, stopwatch, countdown and alarms",
+      "hash": "f7d7f73"
+    },
+    {
+      "date": "2026-08-30",
+      "type": "Added",
+      "title": "Clock, world clocks, stopwatch, countdown and alarms on the Timer tab",
+      "hash": "8cb90f6"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Housekeeping",
+      "title": "Record the Flux AI scroll and length fixes",
+      "hash": "e51f8d0"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Flux AI stops scrolling away from its own answer",
+      "hash": "3808a4b"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Housekeeping",
+      "title": "Record the favourites sync fix",
+      "hash": "29dde97"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Favourite subjects follow your account instead of one device",
+      "hash": "125291f"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Light mode tab-by-tab sweep — 24 unreadable spots down to 1",
+      "hash": "70cf838"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Owner sidebar icons no longer flash their emoji first",
+      "hash": "19c183d"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Added",
+      "title": "Pause counselor contact and office hours; your name leads Profile",
+      "hash": "55b9727"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Housekeeping",
+      "title": "Record the Notebook pause and the School Info rework",
+      "hash": "f58ff73"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "School Info leads with your classes, not the locker box",
+      "hash": "914a31d"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Added",
+      "title": "Pause the Notebook tab",
+      "hash": "de63ce9"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Housekeeping",
+      "title": "Record the removals batch",
+      "hash": "1450b29"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Added",
+      "title": "Remove achievements",
+      "hash": "f5181ef"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Dismissed feedback stays dismissed",
+      "hash": "9a407e7"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Task cards drop from nine buttons to four",
+      "hash": "5dee47a"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "The graphing calculator opens empty instead of seeded with sin(x)",
+      "hash": "e8141a5"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Housekeeping",
+      "title": "Record the mobile spacing, highlight and centring fixes",
+      "hash": "5fd5caf"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Centre the dashboard stat pills and stop rails clipping their first pill",
+      "hash": "006e96b"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "The mobile nav highlight stops getting stuck on the wrong tab",
+      "hash": "b3314fe"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Fixed",
+      "title": "Mobile tabs stop scrolling into a dead band under the content",
+      "hash": "dbbf480"
+    },
+    {
+      "date": "2026-08-29",
+      "type": "Added",
+      "title": "Owner announcements reach accounts other than the owner's",
+      "hash": "890bc1c"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Housekeeping",
+      "title": "Record the light mode root cause fix",
+      "hash": "d4c78fb"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Fixed",
+      "title": "Light mode stops showing the dark theme's backdrop",
+      "hash": "acf22f9"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Housekeeping",
+      "title": "Drop the launch-critical section, now empty",
+      "hash": "17fb77d"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Housekeeping",
+      "title": "Mark the legal review and data-deletion work done",
+      "hash": "5194bd8"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Housekeeping",
+      "title": "Make the privacy policy and terms match what Flux actually does",
+      "hash": "c599ff1"
+    },
+    {
+      "date": "2026-08-28",
+      "type": "Added",
+      "title": "Let people actually delete their own data",
+      "hash": "1399bd7"
+    },
+    {
+      "date": "2026-08-27",
+      "type": "Housekeeping",
+      "title": "Mark the login page and staff verification work done",
+      "hash": "278a782"
+    },
+    {
+      "date": "2026-08-27",
+      "type": "Fixed",
+      "title": "A stuck submit button, and tell the owner staff are waiting",
+      "hash": "3bbfc95"
+    },
+    {
+      "date": "2026-08-27",
+      "type": "Fixed",
+      "title": "Empty the login page testimonials rather than invent them",
+      "hash": "58a22e8"
+    },
+    {
+      "date": "2026-08-27",
+      "type": "Housekeeping",
+      "title": "Add a plain-language roadmap of the outstanding fix list",
+      "hash": "5223118"
+    },
+    {
+      "date": "2026-08-27",
+      "type": "Fixed",
+      "title": "Email sign-up actually completes, and the login page stops overselling",
+      "hash": "b9a543b"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Fixed",
+      "title": "AI actually asks before editing, and the tab is named Canvas everywhere",
+      "hash": "837b190"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Housekeeping",
+      "title": "Agent loop asserts propose-then-apply instead of auto-apply",
+      "hash": "80a91d7"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Added",
+      "title": "Canvas tab for students, Google paused, and AI edits behind confirmation",
+      "hash": "2c09b12"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Fixed",
+      "title": "Bring every mobile tap target up to the WCAG 2.2 minimum",
+      "hash": "cb8e5c1"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Fixed",
+      "title": "Flux AI rate limiting, Desmos fullscreen, and three mobile breaks",
+      "hash": "5d8b333"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Added",
+      "title": "Default the Desmos grapher to its normal palette, with a dark toggle",
+      "hash": "14d77f0"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Housekeeping",
+      "title": "Use the owner's Desmos API key for the Study Tools grapher",
+      "hash": "5fbe6e5"
+    },
+    {
+      "date": "2026-08-24",
+      "type": "Added",
+      "title": "Desmos grapher in Study Tools, and restore the date field's calendar button",
+      "hash": "4456435"
+    },
+    {
+      "date": "2026-08-23",
+      "type": "Added",
+      "title": "Themed date picker, and fix two clipping bugs in educator surfaces",
+      "hash": "a058581"
+    },
     {
       "date": "2026-08-23",
       "type": "Fixed",

@@ -331,7 +331,17 @@
       { id: 'compounds', name: 'Ions & compounds', tools: ['ions', 'solubility'] },
       { id: 'reactions', name: 'Reactions & amounts', tools: ['balance', 'molar'] },
       { id: 'solutions', name: 'Solutions & gases', tools: ['phdil', 'gas'] },
-      { id: 'reference', name: 'Reference', tools: ['constants', 'formulas'] },
+      /* Chemistry had two things called Reference: this unit, and a legacy
+         "Chemistry Reference" (polyatomic ions, solubility rules, acid/base,
+         constants) that unitsFor() had swept into the trailing More bucket
+         because nothing claimed it. Two references one tab apart is worse than
+         either alone — you cannot tell which holds the table you want.
+
+         Claimed here rather than deleted: its four tables overlap the Ions,
+         Solubility and Constants tabs but are not provably a subset of them,
+         and dropping a reference table a student is mid-revision with is not a
+         tidy-up. More is left holding only the unit converter. */
+      { id: 'reference', name: 'Reference', tools: ['constants', 'formulas', 'lg-chem-ref'] },
       { id: 'practice', name: 'Practice', tools: ['worksheet'] },
     ],
   };

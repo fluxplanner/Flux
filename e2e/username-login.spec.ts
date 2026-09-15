@@ -92,6 +92,70 @@ test.describe('Name + password sign-in', () => {
     expect(res.otherDelegated, 'only google should be short-circuited').toBe(true);
   });
 
+  /*
+   * The profile name and the sign-in name were two different things, and only
+   * one of them was editable. Rename yourself in Profile and the profile said
+   * the new name while the sign-in box still only accepted the old one — with
+   * nothing on screen saying so, and no email to remind you.
+   *
+   * They are the same name now, which means a rename re-keys the account. The
+   * cases below are the ones that lock someone out if they are wrong: an
+   * address that is not ours must never be rewritten, a name that normalises to
+   * nothing must be refused, and the person must be told before it happens.
+   *
+   * Uses teacher-workflow — the describe's guest scenario has nobody signed in,
+   * so none of this would engage and it would all pass by doing nothing.
+   */
+  test('renaming yourself in Profile renames how you sign in, and says so first', async ({ page }) => {
+    await page.goto('/?e2e=1&scenario=teacher-workflow');
+    /* Waiting on the function alone is not enough — it exists from the moment
+       the bundle parses, while currentUser only appears once sign-in resolves,
+       and the rename path reads that. */
+    await page.waitForFunction(
+      () => typeof (window as any).fluxSyncLoginNameToProfile === 'function'
+        && !!(window as any).currentUser?.email,
+      null, { timeout: 20000 });
+
+    const res = await page.evaluate(async () => {
+      const w = window as any;
+      /* A real mailbox is not ours to rewrite. The e2e user's address is not on
+         the synthesised domain, so the guard must leave it completely alone. */
+      const foreign = await w.fluxSyncLoginNameToProfile('New Name', 'Old Name');
+
+      w.currentUser.email = 'jane.doe@users.fluxplanner.app';
+      const sb = w.getSB();
+      let sent: any = null;
+      sb.auth.updateUser = async (a: any) => { sent = a; return { data: {}, error: null }; };
+      const prompts: string[] = [];
+      w.confirm = (m: string) => { prompts.push(m); return true; };
+      const alerts: string[] = [];
+      w.alert = (m: string) => { alerts.push(m); };
+
+      const unusable = await w.fluxSyncLoginNameToProfile('!!! ???', 'Jane Doe');
+      const sameKey = await w.fluxSyncLoginNameToProfile('Jane   Doe', 'Jane Doe');
+      const renamed = await w.fluxSyncLoginNameToProfile('Jane Smith', 'Jane Doe');
+
+      w.confirm = () => false;
+      const cancelled = await w.fluxSyncLoginNameToProfile('Jane Jones', 'Jane Doe');
+
+      return { foreign, unusable, sameKey, renamed, cancelled,
+        sentEmail: sent?.email ?? null, sentName: sent?.data?.full_name ?? null,
+        prompt: prompts[0] ?? '', alerts };
+    });
+
+    expect(res.foreign, 'an address outside the synthesised domain was touched').toBe(true);
+    expect(res.unusable, 'a name that normalises to nothing was accepted').toBe(false);
+    expect(res.sameKey, 'a spacing-only edit should not prompt or re-key').toBe(true);
+    expect(res.renamed).toBe(true);
+    expect(res.sentEmail).toBe('jane.smith@users.fluxplanner.app');
+    expect(res.sentName).toBe('Jane Smith');
+    // Being told is the whole point — both names, and that the password holds.
+    expect(res.prompt, 'the warning did not show the old name').toContain('jane.doe');
+    expect(res.prompt, 'the warning did not show the new name').toContain('jane.smith');
+    expect(res.prompt, 'the warning did not say the password is unaffected').toMatch(/password stays the same/i);
+    expect(res.cancelled, 'cancelling still went ahead with the rename').toBe(false);
+  });
+
   test('a name maps to the account key the converted accounts use', async ({ page }) => {
     const map = await page.evaluate(() => {
       const f = (window as unknown as { fluxUsernameToEmail?: (s: string) => string })

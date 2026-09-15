@@ -29,7 +29,7 @@ test.describe('Settings sections', () => {
     await expect(page.locator('#settings.panel.active')).toBeVisible();
   });
 
-  test('has ten sections, each with a pane behind it', async ({ page }) => {
+  test('has seven sections, each with a pane behind it', async ({ page }) => {
     const wiring = await page.evaluate(() =>
       [...document.querySelectorAll('#settings .stab')].map((btn) => {
         const onclick = btn.getAttribute('onclick') || '';
@@ -44,9 +44,11 @@ test.describe('Settings sections', () => {
       'Theme',
       'Text & reading',
       'Layout',
-      'Alerts',
-      'Connections',
-      'AI',
+      // Alerts, Connections and AI were removed outright — panes, tab buttons
+      // and the modules that injected into them. Listed here rather than just
+      // deleted so the next person can see they went on purpose: the list is
+      // the spec, and a section reappearing is as much a regression as one
+      // going missing.
       'Account',
       'Your data',
       'Help',
@@ -94,7 +96,8 @@ test.describe('Settings sections', () => {
     expect(help.active).toBe(true);
     expect(help.headings).toEqual([
       'Planner tour',
-      'Keyboard',
+      // 'Keyboard' removed — a card listing shortcuts for a laptop, in an app
+      // most of its users open on a phone.
       'FAQ',
       'Send feedback',
       'For schools & families',
@@ -200,5 +203,45 @@ test.describe('Settings sections', () => {
     });
 
     expect(bad, `controls too small to tap:\n${bad.join('\n')}`).toEqual([]);
+  });
+
+  /*
+   * Changing your own password used to be impossible. The accounts were made
+   * with generated passwords, and with no email on file there is no reset link
+   * — so the one thing every account should be able to do was the one thing
+   * none of them could, short of messaging the owner.
+   *
+   * Runs on teacher-workflow, not the describe's student-semester: that
+   * scenario has needsUser:false and therefore no mock Supabase client, so
+   * #accountSignedIn stays hidden and every assertion below would pass by
+   * looking at nothing.
+   */
+  test('you can change your own password, and a mistyped one is refused', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await openSidebarTab(page, 'settings');
+    await page.evaluate(() => (window as unknown as { switchStab: (s: string) => void }).switchStab('account'));
+    await expect(page.locator('#spane-account')).toHaveClass(/\bactive\b/);
+
+    // Signed in, or the form is correctly hidden and this proves nothing.
+    await expect(page.locator('#accountSignedIn')).toBeVisible();
+    for (const id of ['pwCurrent', 'pwNew', 'pwNew2']) {
+      await expect(page.locator(`#${id}`), `${id} is missing from Settings → Account`).toBeVisible();
+    }
+
+    const attempt = (cur: string, a: string, b: string) => page.evaluate(async ([c, x, y]) => {
+      const w = window as unknown as { fluxChangePassword: () => Promise<void> };
+      (document.getElementById('pwCurrent') as HTMLInputElement).value = c;
+      (document.getElementById('pwNew') as HTMLInputElement).value = x;
+      (document.getElementById('pwNew2') as HTMLInputElement).value = y;
+      await w.fluxChangePassword();
+      return document.getElementById('pwMsg')?.textContent || '';
+    }, [cur, a, b]);
+
+    /* The two that matter most. Without an email there is no way back from
+       either mistake, so both have to be caught before anything is sent. */
+    expect(await attempt('oldpass123', 'freshpass9', 'freshpass8'),
+      'two different new passwords were accepted').toMatch(/not the same/i);
+    expect(await attempt('', 'freshpass9', 'freshpass9'),
+      'the current password was not required').toMatch(/current password/i);
   });
 });

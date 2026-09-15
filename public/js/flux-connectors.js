@@ -574,6 +574,12 @@
   }
 
   function mountSettingsCard() {
+    /* Connections was removed from Settings. This matters more than deleting
+       the pane did: the fallback chain below walks on to spane-data and
+       spane-appearance, so without this the card would simply reappear under
+       "Your data" and look like the removal had failed. */
+    return;
+    /* eslint-disable no-unreachable */
     const spane = document.getElementById('spane-connectors')
       || document.getElementById('spane-integrations')
       || document.getElementById('spane-data')

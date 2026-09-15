@@ -1,17 +1,117 @@
 # Flux Planner — change log
 
-Every substantive change, newest first. Generated from git history on 2026-08-23.
+Every substantive change, newest first. Generated from git history on 2026-09-15.
 
-**480 changes** recorded, from 2026-03-12 to 2026-08-23.
+**615 changes** recorded, from 2026-03-12 to 2026-09-15.
 
 Regenerate with `npm run changelog`. 298 commits are omitted:
 they were made through the GitHub web editor, which names them "Update app.js"
 and similar, so they carry no description of what actually changed.
 
+## September 2026
+
+### Added
+
+- Settings loses nine cards, three whole sections, and its uneven gaps — `2026-09-15` (f76b916)
+- Change your own password, in Settings → Account — `2026-09-15` (392b6d1)
+- Chemistry splits into units, and "Tools" stops hiding six calculators (#41) — `2026-09-15` (faad87a)
+- Name your important dates, and stop the stuck tooltip — `2026-09-14` (2af8c3d)
+- Sign in with a name, and a way back in when you forget the password — `2026-09-13` (9410151)
+- The phone shows the desktop dashboard, not a parallel one — `2026-09-13` (e4743cd)
+- Settings is a list down the side, and "Look" stops being a dumping ground — `2026-09-13` (304493d)
+- Study tools nest subject → unit → tool — `2026-09-13` (2d92de7)
+- College Prep tab — test scores, deadlines and application status — `2026-09-05` (8fd888c)
+- GPA, SAT and ACT tracking on your profile — `2026-09-05` (99419e5)
+- The Focus Timer tab is now just "Time" — `2026-09-05` (28aedb3)
+- The clock is yours to style, and stacked study cards stop touching — `2026-09-05` (72ba5d3)
+- The cursor glow is half as bright, and now on every panel — `2026-09-05` (3b32de1)
+- Astronomy grows from three tabs to seven, biology gains seven — `2026-09-04` (d71c475)
+- The sliding highlight is now every highlight, the sidebar included — `2026-09-04` (8526092)
+- One conjugator per language, and the tab highlight slides everywhere — `2026-09-04` (4080418)
+- French, German and Spanish become subjects with four tools each — `2026-09-04` (6c74fe6)
+- History & Geo keeps its name; messaging moves to Users & roster — `2026-09-04` (40b38d7)
+- Split History and Global Politics, civics goes to Global Politics — `2026-09-04` (99a560d)
+- DP Visual Arts under Arts, and the highlight stops snapping — `2026-09-04` (ef78c39)
+- Study Tools grouped into five umbrellas, two subjects folded in — `2026-09-04` (cc4d176)
+- Send a pop-up to one person, not just to everybody — `2026-09-04` (9e79af2)
+- AP Calc AB, AP Lang and orchestra tools for the classes you named — `2026-09-04` (767bc7d)
+- Gov & Civics is a subject now, and Psychology has more than a leaflet — `2026-09-04` (942d8ae)
+
+### Fixed
+
+- The sign-up form asked for your name twice and your password once — `2026-09-15` (e31f758)
+- One Reference in Chemistry, and gravity follows your programme — `2026-09-15` (8bb4462)
+- The conjugator was wrong about a whole family of common verbs — `2026-09-15` (264920f)
+- Six buttons could still undo the switch to names and passwords (#43) — `2026-09-15` (bb1b110)
+- The phone's More menu stops disagreeing with the laptop (#42) — `2026-09-15` (9f4883a)
+- The unit row slides like every other row — `2026-09-13` (7fc5df7)
+- The timeline's delete button centres its ✕ — `2026-09-13` (4576f99)
+- Canvas suggests the school's own host, and School Info stops duplicating it — `2026-09-13` (2e15e99)
+- No cursor glow, and emoji no longer flash before their icons — `2026-09-13` (327e774)
+- Remove the Google sign-in buttons — `2026-09-13` (4ac8e55)
+- Dismissing a dashboard banner now actually dismisses it — `2026-09-13` (ea3a948)
+- Drop Recovery Mode, keep your tab on refresh, and speed up umbrellas — `2026-09-11` (a24147d)
+- Your own typing no longer comes back and wipes the page — `2026-09-06` (da354be)
+- Switching study tools works, and the date picker stops running away — `2026-09-05` (e19f83d)
+- An empty cloud list can no longer delete your colleges or activities — `2026-09-05` (1623de0)
+- The app stops redrawing itself every eight seconds — `2026-09-05` (8412a8f)
+- The tab you clicked no longer briefly becomes the size of the panel — `2026-09-05` (7118b4e)
+- Reserve the icon slot so tabs stop resizing under the highlight — `2026-09-04` (cd321c5)
+- The highlight behind a Study Tools tab was drifting off it — `2026-09-04` (6a12460)
+- The mood check-in was five blank circles, and twelve buttons had no name — `2026-09-03` (7c1506d)
+- A stylesheet that contradicted itself on the Timer tab — `2026-09-02` (6c18044)
+- One Settings button was smaller than the thumb it expects — `2026-09-02` (557fe11)
+- On a phone you couldn't really add a class, or safely delete one — `2026-09-02` (111b7d4)
+- On a phone you could see A/B days but never set them up — `2026-09-02` (7f45272)
+- The phone was hiding a card the laptop showed — `2026-09-02` (6cd6084)
+- The counselor dashboard opened on four zeros too — `2026-09-01` (f4e9e89)
+- Staff were asked to connect Google while Google is paused — `2026-09-01` (ae70e3e)
+- The switch you tap in Settings was 20 pixels tall, not 44 — `2026-09-01` (d7e3b41)
+- The Classroom timer was a worse copy of the one that works — `2026-09-01` (e70fef2)
+
+### Performance
+
+- Light the pill you clicked before building the panel under it — `2026-09-04` (ce2f0f1)
+
+### Housekeeping
+
+- Delete the dead "Your AI profile" login CSS — `2026-09-13` (1037290)
+- Roadmap — I ran the Supabase step you couldn't copy — `2026-09-04` (ee2568b)
+- Roadmap — the check-in that was five empty rings — `2026-09-03` (b7437b1)
+- Roadmap — the Timer buttons the rulebook thought were already fixed — `2026-09-02` (6faaf29)
+- Roadmap — I checked my own 'Settings measures clean' claim — `2026-09-02` (0568958)
+- Roadmap — School Info on a phone, and the red tick's second act — `2026-09-02` (ffb5c6d)
+- Main went red three times on the same midnight wrap — `2026-09-02` (ed76644)
+- Roadmap — the two things the phone was hiding from you — `2026-09-02` (9a047ea)
+- Roadmap — the overnight red tick, and why it wasn't Flux — `2026-09-02` (22118ec)
+- The alarm test failed because of the hour CI ran it, not the alarm — `2026-09-02` (df53721)
+- Roadmap — the two staff-area faults found in the Google check — `2026-09-01` (abd5ada)
+- Roadmap — the switch fix, and what I still need from you on mobile Settings — `2026-09-01` (b18aead)
+- Roadmap — three more off the queued list — `2026-09-01` (1f7bdcb)
+- Extracurriculars is two questions, not one long column — `2026-09-01` (0a9212e)
+- Settings' junk drawer becomes Your data, Help and About — `2026-09-01` (f82eef2)
+
 ## August 2026
 
 ### Added
 
+- Ask about your day in a popup, not a card you scroll past — `2026-08-31` (230ecce)
+- Practise French and Spanish, don't just look them up — `2026-08-30` (6b02581)
+- Random student picker that works, and stop badging everything BETA — `2026-08-30` (52a7d55)
+- Staff dashboard opens on the lesson you are teaching, and asks for the register — `2026-08-30` (ae2e383)
+- Staff can record the classes they teach, with work and events — `2026-08-30` (86d8e44)
+- Ask how you're doing, morning and evening — `2026-08-30` (9c2a2eb)
+- Full-screen focus mode for the Pomodoro timer — `2026-08-30` (3f43586)
+- Clock, world clocks, stopwatch, countdown and alarms on the Timer tab — `2026-08-30` (8cb90f6)
+- Pause counselor contact and office hours; your name leads Profile — `2026-08-29` (55b9727)
+- Pause the Notebook tab — `2026-08-29` (de63ce9)
+- Remove achievements — `2026-08-29` (f5181ef)
+- Owner announcements reach accounts other than the owner's — `2026-08-29` (890bc1c)
+- Let people actually delete their own data — `2026-08-28` (1399bd7)
+- Canvas tab for students, Google paused, and AI edits behind confirmation — `2026-08-24` (2c09b12)
+- Default the Desmos grapher to its normal palette, with a dark toggle — `2026-08-24` (14d77f0)
+- Desmos grapher in Study Tools, and restore the date field's calendar button — `2026-08-24` (4456435)
+- Themed date picker, and fix two clipping bugs in educator surfaces — `2026-08-23` (a058581)
 - Let the owner hide sidebar tabs across every planner — `2026-08-23` (d67e6e3)
 - A change log going back to the first commit, in the repo and in Settings — `2026-08-23` (36793fe)
 - Load the IAE 2026-27 school year into the planner — `2026-08-23` (3f5d5c3)
@@ -20,6 +120,32 @@ and similar, so they carry no description of what actually changed.
 
 ### Fixed
 
+- Stop the feedback function reading every user's data — `2026-08-28` (c29415d)
+- Settings was telling people two things that weren't true — `2026-08-31` (376fb84)
+- A smooth stopwatch, and full screen for every timer not just Focus — `2026-08-31` (dcb8162)
+- Separate the tools you work in from the ones that just open a modal — `2026-08-31` (8a794e6)
+- The conjugator was teaching wrong answers — `2026-08-30` (ce67f97)
+- Don't ask how the evening went the instant you answer the morning — `2026-08-30` (4cb98fc)
+- Stop opening the staff dashboard on six zeros — `2026-08-30` (f07c28a)
+- Staff surfaces were reading the class list teachers attend, not teach — `2026-08-30` (bf6dbc4)
+- Flux AI stops scrolling away from its own answer — `2026-08-29` (3808a4b)
+- Favourite subjects follow your account instead of one device — `2026-08-29` (125291f)
+- Light mode tab-by-tab sweep — 24 unreadable spots down to 1 — `2026-08-29` (70cf838)
+- Owner sidebar icons no longer flash their emoji first — `2026-08-29` (19c183d)
+- School Info leads with your classes, not the locker box — `2026-08-29` (914a31d)
+- Dismissed feedback stays dismissed — `2026-08-29` (9a407e7)
+- Task cards drop from nine buttons to four — `2026-08-29` (5dee47a)
+- The graphing calculator opens empty instead of seeded with sin(x) — `2026-08-29` (e8141a5)
+- Centre the dashboard stat pills and stop rails clipping their first pill — `2026-08-29` (006e96b)
+- The mobile nav highlight stops getting stuck on the wrong tab — `2026-08-29` (b3314fe)
+- Mobile tabs stop scrolling into a dead band under the content — `2026-08-29` (dbbf480)
+- Light mode stops showing the dark theme's backdrop — `2026-08-28` (acf22f9)
+- A stuck submit button, and tell the owner staff are waiting — `2026-08-27` (3bbfc95)
+- Empty the login page testimonials rather than invent them — `2026-08-27` (58a22e8)
+- Email sign-up actually completes, and the login page stops overselling — `2026-08-27` (b9a543b)
+- AI actually asks before editing, and the tab is named Canvas everywhere — `2026-08-24` (837b190)
+- Bring every mobile tap target up to the WCAG 2.2 minimum — `2026-08-24` (cb8e5c1)
+- Flux AI rate limiting, Desmos fullscreen, and three mobile breaks — `2026-08-24` (5d8b333)
 - Canvas really scrolls now, and cut the per-click cost behind the tab lag — `2026-08-23` (f69f82a)
 - Make the study-tools favourite star a usable size on touch — `2026-08-23` (52468d8)
 - Canvas content was unreachable on desktop, and scale up the Google hub — `2026-08-23` (75eb950)
@@ -52,6 +178,29 @@ and similar, so they carry no description of what actually changed.
 
 ### Housekeeping
 
+- Main went red with every test passing — `2026-08-31` (e451f26)
+- The mood prompt header still argued for being a card — `2026-08-31` (d4e6a4c)
+- The batch is live, so stop telling him to merge it — `2026-08-31` (988c298)
+- Track two files that were sitting untracked in the working tree — `2026-08-30` (c9d2615)
+- Record the student picker, the BETA badges, and what is left — `2026-08-30` (97b7c33)
+- Record the staff timetable, the wrong-list fault, and what is left — `2026-08-30` (de6eab3)
+- The join-code card is a roster, not a third thing called "Classes" — `2026-08-30` (fa21dde)
+- Record the morning and evening mood check-in — `2026-08-30` (3a34a8f)
+- Record full-screen focus mode; flag timer centring as not reproducible — `2026-08-30` (7aabbb0)
+- Record the new clock, stopwatch, countdown and alarms — `2026-08-30` (f7d7f73)
+- Record the Flux AI scroll and length fixes — `2026-08-29` (e51f8d0)
+- Record the favourites sync fix — `2026-08-29` (29dde97)
+- Record the Notebook pause and the School Info rework — `2026-08-29` (f58ff73)
+- Record the removals batch — `2026-08-29` (1450b29)
+- Record the mobile spacing, highlight and centring fixes — `2026-08-29` (5fd5caf)
+- Record the light mode root cause fix — `2026-08-28` (d4c78fb)
+- Drop the launch-critical section, now empty — `2026-08-28` (17fb77d)
+- Mark the legal review and data-deletion work done — `2026-08-28` (5194bd8)
+- Make the privacy policy and terms match what Flux actually does — `2026-08-28` (c599ff1)
+- Mark the login page and staff verification work done — `2026-08-27` (278a782)
+- Add a plain-language roadmap of the outstanding fix list — `2026-08-27` (5223118)
+- Agent loop asserts propose-then-apply instead of auto-apply — `2026-08-24` (80a91d7)
+- Use the owner's Desmos API key for the Study Tools grapher — `2026-08-24` (5fbe6e5)
 - Point index.html at the rebuilt CSS bundle — `2026-08-23` (16fdcd3)
 - Add troy-martial-arts dev-server entry to launch.json — `2026-08-05` (5dfceef)
 

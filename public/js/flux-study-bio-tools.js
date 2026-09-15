@@ -531,7 +531,14 @@
       { id: 'lipids', name: 'Fatty acids', icon: '⌁', desc: 'lipid fatty acid saturated unsaturated cis trans triglyceride phospholipid ester bilayer omega', render: renderLipids },
       { id: 'biostats', name: 'Stats', icon: '𝝌', desc: 'chi squared table critical value lincoln index capture recapture significance null hypothesis degrees of freedom', render: renderStats },
       { id: 'pedigree', name: 'Pedigrees', icon: '⚭', desc: 'pedigree chart symbols autosomal recessive dominant x-linked carrier proband inheritance', render: renderPedigree },
-      { id: 'virus', name: 'Viral cycles', icon: '☣', desc: 'lytic lysogenic cycle bacteriophage prophage induction temperate virulent lambda t4 hiv provirus', render: renderVirus },
+      /* Was ☣. flux-iconify swaps a tool's emoji for an SVG, but only for the
+         emoji in its map — and ☣ was not one, so this tab kept a raw biohazard
+         glyph while every tool beside it became a line icon. Phones give ☣ a
+         full-colour emoji face, which is why it showed up there first.
+         🧬 is already mapped (→ dna), reads as biology rather than as a
+         warning, and no other bio tool uses it. ☣ is added to the map too, so
+         the next tool to reach for it does not land back here. */
+      { id: 'virus', name: 'Viral cycles', icon: '🧬', desc: 'lytic lysogenic cycle bacteriophage prophage induction temperate virulent lambda t4 hiv provirus', render: renderVirus },
     ]);
   }
   boot();
