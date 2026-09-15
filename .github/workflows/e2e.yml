@@ -11,14 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     # The suite reported "231 passed (14.4m)" and was then killed at 15m0s
     # during teardown, so main went red with every single test green. The cap
-    # was set when the suite was much smaller and had quietly become the thing
-    # being measured rather than a backstop against a hang.
+    # was raised to 30, with a note saying that if 30 was ever genuinely
+    # approached the answer was to shard rather than raise the number again.
     #
-    # 30 rather than 20: a cap this close to the real runtime fails on a slow
-    # runner instead of on a real problem, and a red tick nobody trusts is
-    # worse than no tick at all. If this is ever genuinely approached, shard
-    # the suite across workers rather than raising the number again.
-    timeout-minutes: 30
+    # That happened: the suite reached test 363 at 30m15s and was killed
+    # mid-run. So this is the sharding. Four runners take a quarter of the
+    # suite each, which puts the wall time back around eight minutes and
+    # leaves the cap as the backstop-against-a-hang it was meant to be.
+    #
+    # Each shard still runs a single worker, so no test's timing or isolation
+    # changes — the work is split across machines, not squeezed onto one.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +37,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Cheap, and a broken unit test should fail every shard loudly rather
+      # than only whichever one happens to be shard 1.
       - name: Run unit tests
         run: npm run test:unit
 
@@ -37,14 +46,16 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
         env:
           CI: '1'
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          # Four shards can fail at once; a shared name would make them
+          # collide and only one report would survive.
+          name: playwright-report-shard-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
