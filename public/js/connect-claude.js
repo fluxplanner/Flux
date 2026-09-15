@@ -175,8 +175,13 @@
       <div style="text-align:center;color:#7e8db0;font-size:.82rem;margin:6px 0 12px">or use email</div>
       <input type="email" id="emailIn" placeholder="you@school.edu" autocomplete="email" />
       <button class="ghost full" id="emailBtn" type="button">Email me a sign-in link</button>`;
+    /* This page builds its own Supabase client from the CDN global, so the
+       block in app.js's getSB() never reaches it. It needs its own, for the
+       same reason: these accounts still carry a google identity holding an old
+       gmail address, and finishing the OAuth flow would re-assert that address
+       onto the account and lock the person out of their own name. */
     $("googleBtn").onclick = () =>
-      sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.href } });
+      showMsg("Google sign-in is switched off. Sign in to Flux with your name and password first, then come back to this page.", "err");
     $("emailBtn").onclick = async () => {
       const email = ($("emailIn").value || "").trim();
       if (!email) {
