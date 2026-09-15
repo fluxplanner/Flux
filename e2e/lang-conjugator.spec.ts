@@ -114,6 +114,71 @@ test.describe('Offline conjugator', () => {
     expect(res.poderNosotros).toBe('podemos');
   });
 
+  /*
+   * A second sweep, prompted by the owner asking whether irregular verbs were
+   * actually right. Most were — and then a whole family of common ones was
+   * not, in the same shape as the original "yo podo": a plausible answer,
+   * confidently wrong.
+   *
+   * Every case below is what the engine produced before this was fixed:
+   *   buscar    → "buscé"      should be busqué
+   *   llegar    → "llegé"      should be llegué
+   *   empezar   → "empezé"     should be empecé
+   *   construir → "construo"   should be construyo
+   *   leer      → "leió"       should be leyó
+   *   elegir    → "elego"      should be elijo
+   *   dar       → "dáis"       should be dais
+   *   oír       → refused outright; the ending test reads "ír", not "ir"
+   *   etre      → "ets, etons", a regular -re verb that is nothing of the kind
+   *
+   * None of these are exotic. They are first-textbook verbs, and the
+   * -car/-gar/-zar yo form is the most-tested spelling rule Spanish has.
+   */
+  test('spelling changes, y-insertion and accented infinitives', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const E = (window as any).FluxLangEngine;
+      const f = (l: string, v: string, t: string) => {
+        try { return E.conjugate(l, v, t).forms.join(' '); } catch (e) { return 'ERROR: ' + (e as Error).message; }
+      };
+      return {
+        // -car / -gar / -zar respell the yo so the consonant keeps its sound.
+        buscar: f('es', 'buscar', 'preterite'),
+        llegar: f('es', 'llegar', 'preterite'),
+        empezar: f('es', 'empezar', 'preterite'),
+        // ...and only the yo. The other five start with a or o and are regular.
+        jugarTu: E.conjugate('es', 'jugar', 'preterite').forms[1],
+        // -uir takes a y everywhere except nosotros/vosotros.
+        construir: f('es', 'construir', 'present'),
+        // -guir is NOT -uir: the u is silent spelling, so seguir stays sigo.
+        seguirYo: E.conjugate('es', 'seguir', 'present').forms[0],
+        // An unstressed i between vowels becomes y; the rest take accents.
+        leer: f('es', 'leer', 'preterite'),
+        // e→i stem change plus g→j in the yo.
+        elegir: f('es', 'elegir', 'present'),
+        // Monosyllables take no accent.
+        darVosotros: E.conjugate('es', 'dar', 'present').forms[4],
+        // Accented infinitive, and the accent drops in the future.
+        oir: f('es', 'oír', 'present'),
+        oirFuture: E.conjugate('es', 'oír', 'future').forms[0],
+        // Typing without the circumflex is the normal case on a real keyboard.
+        etre: f('fr', 'etre', 'present'),
+      };
+    });
+
+    expect(res.buscar).toBe('busqué buscaste buscó buscamos buscasteis buscaron');
+    expect(res.llegar).toBe('llegué llegaste llegó llegamos llegasteis llegaron');
+    expect(res.empezar).toBe('empecé empezaste empezó empezamos empezasteis empezaron');
+    expect(res.jugarTu, 'only the yo form respells').toBe('jugaste');
+    expect(res.construir).toBe('construyo construyes construye construimos construís construyen');
+    expect(res.seguirYo, '-guir must not take the -uir y').toBe('sigo');
+    expect(res.leer).toBe('leí leíste leyó leímos leísteis leyeron');
+    expect(res.elegir).toBe('elijo eliges elige elegimos elegís eligen');
+    expect(res.darVosotros).toBe('dais');
+    expect(res.oir).toBe('oigo oyes oye oímos oís oyen');
+    expect(res.oirFuture, 'the accent goes when the stress moves to the ending').toBe('oiré');
+    expect(res.etre).toBe('suis es est sommes êtes sont');
+  });
+
   test("j'ai elides in the pronoun column, and être verbs keep theirs", async ({ page }) => {
     const res = await page.evaluate(() => {
       const E = (window as any).FluxLangEngine;

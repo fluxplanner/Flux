@@ -107,6 +107,10 @@
     tener: 'tendr', venir: 'vendr', poner: 'pondr', salir: 'saldr', valer: 'valdr',
     poder: 'podr', saber: 'sabr', caber: 'cabr', haber: 'habr', querer: 'querr',
     hacer: 'har', decir: 'dir',
+    /* Not irregular so much as respelled: the future and conditional attach to
+       the whole infinitive, and oír's accent disappears once the stress moves
+       to the ending — oiré, not "oíré". */
+    oír: 'oir', reír: 'reir',
   };
 
   /* The "boot" verbs. The change hits every form except nosotros/vosotros,
@@ -126,7 +130,11 @@
       'almorzar', 'costar', 'mostrar', 'llover', 'mover', 'probar', 'resolver',
       'soñar', 'volar', 'devolver', 'acostar', 'colgar', 'doler'],
     i: ['pedir', 'servir', 'repetir', 'seguir', 'vestir', 'medir',
-      'competir', 'impedir', 'despedir', 'conseguir', 'perseguir', 'decir'],
+      'competir', 'impedir', 'despedir', 'conseguir', 'perseguir', 'decir',
+      /* elegir and corregir are e→i like the rest, and also swap g→j in the yo
+         so the consonant keeps its sound before o. Absent from both tables they
+         conjugated as plain regulars: "elego, eleges". */
+      'elegir', 'corregir'],
     // jugar is the only u→ue verb in the language.
     uue: ['jugar'],
   };
@@ -141,6 +149,7 @@
     traducir: 'traduzco', producir: 'produzco', ver: 'veo', dar: 'doy', saber: 'sé',
     caber: 'quepo', coger: 'cojo', escoger: 'escojo', proteger: 'protejo',
     seguir: 'sigo', conseguir: 'consigo', vencer: 'venzo',
+    elegir: 'elijo', corregir: 'corrijo',
   };
 
   var ES_IRREGULAR = {
@@ -150,7 +159,23 @@
     haber: { present: ['he', 'has', 'ha', 'hemos', 'habéis', 'han'], preterite: ['hube', 'hubiste', 'hubo', 'hubimos', 'hubisteis', 'hubieron'] },
     ver: { preterite: ['vi', 'viste', 'vio', 'vimos', 'visteis', 'vieron'], imperfect: ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'] },
     oler: { present: ['huelo', 'hueles', 'huele', 'olemos', 'oléis', 'huelen'] },
-    dar: { preterite: ['di', 'diste', 'dio', 'dimos', 'disteis', 'dieron'] },
+    /* dar's present was being built from the regular -ar endings, which put an
+       accent where none belongs: "dáis". Monosyllables do not take one, so the
+       whole table is written out rather than patched at index 4. */
+    dar: { present: ['doy', 'das', 'da', 'damos', 'dais', 'dan'], preterite: ['di', 'diste', 'dio', 'dimos', 'disteis', 'dieron'] },
+    /* oír was refused outright: the ending test reads the last two characters,
+       and "oír" ends in "ír", not "ir". ES_YO already carried "oigo", so the
+       intent was there — the verb just never reached it. Both tenses are
+       written out because oír is irregular in a way no rule here covers (the
+       y is not the -uir y, and the accents are its own). */
+    oír: {
+      present: ['oigo', 'oyes', 'oye', 'oímos', 'oís', 'oyen'],
+      preterite: ['oí', 'oíste', 'oyó', 'oímos', 'oísteis', 'oyeron'],
+    },
+    reír: {
+      present: ['río', 'ríes', 'ríe', 'reímos', 'reís', 'ríen'],
+      preterite: ['reí', 'reíste', 'rió', 'reímos', 'reísteis', 'rieron'],
+    },
   };
 
   /* Strong preterites: an irregular stem plus a single unstressed ending set
@@ -220,13 +245,54 @@
     return forms;
   }
 
-  function conjugateEs(verb, tense) {
-    var end = verb.slice(-2);
-    var stem = verb.slice(0, -2);
-    if (!ES_PRESENT[end]) throw new Error('Spanish verbs end in -ar, -er or -ir. Try hablar, comer or vivir.');
+  /* -car, -gar and -zar in the preterite yo. These verbs are regular — the
+     spelling shifts only so the consonant keeps the sound it had in the
+     infinitive before the é: buscar → busqué, not "buscé" (which would be
+     "boo-SAY"). Without this the engine produced buscé, llegé and empecé's
+     wrong twin "empezé" for some of the most common verbs a student writes.
 
+     Only index 0 is touched. Every other preterite ending starts with a or o,
+     which does not soften c or g, so the rest are already right. */
+  var ES_PRET_YO_SPELL = [
+    [/car$/, 'qué'], [/gar$/, 'gué'], [/zar$/, 'cé'],
+  ];
+  function esPreteriteYo(verb, form) {
+    for (var i = 0; i < ES_PRET_YO_SPELL.length; i++) {
+      if (ES_PRET_YO_SPELL[i][0].test(verb)) {
+        return verb.replace(ES_PRET_YO_SPELL[i][0], ES_PRET_YO_SPELL[i][1]);
+      }
+    }
+    return form;
+  }
+
+  /* construir, huir, incluir, destruir… take a y before any ending that does
+     not already start with i. They were being treated as plain -ir verbs, so
+     the tool taught "construo" and "hues".
+
+     -guir and -quir are excluded: there the u is silent spelling for the g/q,
+     not part of a vowel pair, which is why seguir is sigo and not "siguyo". */
+  function esIsUir(verb) { return /uir$/.test(verb) && !/[gq]uir$/.test(verb); }
+
+  /* leer, creer, caer, poseer: an unstressed i between two vowels becomes y,
+     and the remaining i's take an accent. leyó, not "leió"; leíste, not
+     "leiste". Same shape as the -uir rule but a different trigger, so the two
+     are kept apart rather than merged into one clever test. */
+  function esIsVowelStem(verb) { return /[aeo]er$/.test(verb) && !/[qg]uer$/.test(verb); }
+
+  function conjugateEs(verb, tense) {
+    /* The ending test reads the last two characters, so an infinitive carrying
+       an accent — oír, reír — failed it and the verb was refused outright even
+       though ES_IRREGULAR and ES_YO both had entries waiting for it. Fold the
+       accent away for the table lookup only; the stem keeps its own accents,
+       which is what makes oímos come out right. */
+    var end = verb.slice(-2).replace('í', 'i').replace('é', 'e').replace('á', 'a');
+    var stem = verb.slice(0, -2);
+    /* Irregulars are looked up before the ending is judged. A verb spelled in a
+       way this function cannot parse may still be one it knows by name, and
+       refusing it first made that unreachable. */
     var irr = ES_IRREGULAR[verb];
     if (irr && irr[tense]) return { forms: irr[tense].slice(), note: 'irregular' };
+    if (!ES_PRESENT[end]) throw new Error('Spanish verbs end in -ar, -er or -ir. Try hablar, comer or vivir.');
 
     if (tense === 'future' || tense === 'conditional') {
       var fstem = ES_FUT_STEM[verb] || verb;
@@ -303,11 +369,40 @@
           note: '-ir stem change in él and ellos only',
         };
       }
-      return { forms: ES_PRETERITE[end].map(function (e) { return stem + e; }), note: 'regular -' + end };
+      if (esIsUir(verb)) {
+        return {
+          forms: ES_PRETERITE[end].map(function (e, i) {
+            return i === 2 ? stem + 'yó' : i === 5 ? stem + 'yeron' : stem + e;
+          }),
+          note: 'y in él and ellos — construyó, construyeron',
+        };
+      }
+      if (esIsVowelStem(verb)) {
+        var vs = ['í', 'íste', 'yó', 'ímos', 'ísteis', 'yeron'];
+        return { forms: vs.map(function (e) { return stem + e; }), note: 'i between vowels becomes y — leyó, leyeron' };
+      }
+      var reg = ES_PRETERITE[end].map(function (e) { return stem + e; });
+      reg[0] = esPreteriteYo(verb, reg[0]);
+      return {
+        forms: reg,
+        note: reg[0] === stem + ES_PRETERITE[end][0]
+          ? 'regular -' + end
+          : 'regular, but yo respells to keep the sound — ' + reg[0],
+      };
     }
 
     // Present.
     var kind = esStemChange(verb);
+    /* -uir inserts its y everywhere the ending does not already begin with i,
+       which is the same five slots the boot covers — but for a different
+       reason, so it is applied separately rather than folded into the boot. */
+    if (esIsUir(verb)) {
+      var uf = ES_PRESENT[end].map(function (e, i) {
+        return (i === 3 || i === 4 ? stem : stem + 'y') + e;
+      });
+      if (ES_YO[verb]) uf[0] = ES_YO[verb];
+      return { forms: uf, note: 'y before every ending except nosotros/vosotros' };
+    }
     var forms = ES_PRESENT[end].map(function (e, i) {
       // Index 3 and 4 are nosotros and vosotros — outside the boot.
       var s = kind && i !== 3 && i !== 4 ? applyStemChange(stem, kind) : stem;
@@ -436,7 +531,31 @@
     return verb;
   }
 
+  /* Typing "etre" instead of "être" is the normal case, not the exception — an
+     ordinary keyboard has no ê, and a phone only offers one if you hold the e
+     down. Unmatched, it fell through to the regular -re path and produced
+     "ets, ets, et, etons": confident nonsense, which is the exact failure this
+     file was written to end.
+
+     Accents are folded for the *lookup* only and the table's own spelling is
+     what comes back, so a student who types "ecrire" is shown "écrire" with
+     its accents intact and learns the spelling as well as the endings. */
+  var FR_UNACCENTED = null;
+  function frResolve(verb) {
+    if (FR_IRREGULAR[verb]) return verb;
+    if (!FR_UNACCENTED) {
+      FR_UNACCENTED = {};
+      for (var k in FR_IRREGULAR) {
+        if (!Object.prototype.hasOwnProperty.call(FR_IRREGULAR, k)) continue;
+        var bare = k.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        if (bare !== k && !FR_UNACCENTED[bare]) FR_UNACCENTED[bare] = k;
+      }
+    }
+    return FR_UNACCENTED[verb] || verb;
+  }
+
   function conjugateFr(verb, tense) {
+    verb = frResolve(verb);
     var fam = frFamily(verb);
     if (!fam) throw new Error('French verbs end in -er, -ir or -re. Try parler, finir or vendre.');
 
