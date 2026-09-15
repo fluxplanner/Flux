@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoScenario, openSidebarTab } from './helpers';
+import { gotoScenario } from './helpers';
 
 test.describe('AI providers (BYOK multi-provider bridge)', () => {
   test('FluxAIProviders module loads with expected public surface', async ({ page }) => {
@@ -136,17 +136,19 @@ test.describe('AI providers (BYOK multi-provider bridge)', () => {
     expect(res.rebroadcastSource).toBe('ask');
   });
 
-  test('AI composer chips include /ask and prefill the input on click', async ({ page }) => {
-    await gotoScenario(page, 'student-semester');
-    await openSidebarTab(page, 'ai');
-    // /ask chip is present in the composer hint row
-    const askChip = page.locator('[data-ai-chip="/ask "]');
-    await expect(askChip).toBeVisible();
-    await askChip.click();
-    const input = page.locator('#aiInput');
-    await expect(input).toHaveValue('/ask ');
-    // And it's focused so the user can type their question immediately
-    const focused = await page.evaluate(() => document.activeElement?.id);
-    expect(focused).toBe('aiInput');
-  });
+  /* Retired with the tab it tested. The AI tab is gone from the sidebar, the
+     phone's bottom bar and the More sheet, so nobody can reach the composer
+     this drove — openSidebarTab(page, 'ai') has no button left to find.
+
+     Deleted rather than repointed at nav('ai'). The panel markup is still in
+     index.html, because several modules write into it and pulling it now would
+     mean silent null-writes on hot paths. So a test could still reach it by
+     calling nav() directly — but that would be a test asserting a feature no
+     user can get to, which is worse than having no test at all.
+
+     The six tests above stay: they exercise the FluxAIProviders module itself,
+     which the inline AI actions still call.
+
+     If the composer returns as inline actions, this is the behaviour worth
+     re-testing: the /ask chip prefills #aiInput with "/ask " and focuses it. */
 });
