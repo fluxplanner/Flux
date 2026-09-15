@@ -3263,20 +3263,54 @@ try{
 }catch(e){}
 
 let _sb=null,currentUser=null;
+
+/* Google sign-in is off, and the reason is specific rather than philosophical.
+   Every one of the 8 accounts still carries a google identity holding that
+   person's old gmail address, while the account they actually sign in with is
+   <name>@users.fluxplanner.app. Completing a Google OAuth flow re-asserts the
+   identity's email onto the account, which would quietly move it off the
+   synthesised address and lock the owner out of their own name — undoing the
+   conversion one student at a time, with no error to show for it.
+
+   The button is gone from the sign-in screen, but six more OAuth triggers
+   survive inside the Google hub, Classroom sync, Drive import, Calendar push
+   and Docs. Guarding them one at a time would miss whichever one gets added
+   next, so the block sits on the client that all of them share.
+
+   It returns an {error} rather than throwing, because every call site already
+   destructures `const {data,error} = await ...`; the toast fires here so the
+   person gets the real reason whatever the caller decides to do with it. */
+const FLUX_GOOGLE_OAUTH_ENABLED=false;
+function fluxBlockGoogleOAuth(client){
+  if(FLUX_GOOGLE_OAUTH_ENABLED)return client;
+  if(!client||client.__fluxGoogleBlocked||typeof client.auth?.signInWithOAuth!=='function')return client;
+  const real=client.auth.signInWithOAuth.bind(client.auth);
+  client.auth.signInWithOAuth=async function(opts){
+    if(opts?.provider!=='google')return real(opts);
+    try{if(typeof showToast==='function')showToast('Google sign-in is switched off — Flux accounts use your name and password now.','info');}catch(_){}
+    return{data:{provider:'google',url:null},error:{name:'FluxGoogleDisabled',message:'Google sign-in is switched off. Flux accounts use a name and password.'}};
+  };
+  client.__fluxGoogleBlocked=true;
+  return client;
+}
+window.fluxBlockGoogleOAuth=fluxBlockGoogleOAuth;
+
 function getSB(){
   try{
     const mock=window.FluxE2e?.getMockClient?.();
-    if(mock)return mock;
+    /* The block has to hold in tests too, or the guard is only ever exercised
+       in production — the one place it must not be tried for the first time. */
+    if(mock)return fluxBlockGoogleOAuth(mock);
   }catch(_){}
   if(!_sb&&window.supabase?.createClient){
-    _sb=window.supabase.createClient(SB_URL,SB_ANON,{
+    _sb=fluxBlockGoogleOAuth(window.supabase.createClient(SB_URL,SB_ANON,{
       auth:{
         detectSessionInUrl:true, // OAuth: exchange ?code= / parse hash before session exists
         persistSession:true,
         autoRefreshToken:true,
-        // PKCE (default) — required for Google OAuth + ?code= callback; implicit breaks session exchange
+        // PKCE (default) — required for the ?code= callback; implicit breaks session exchange
       }
-    });
+    }));
   }
   return _sb;
 }

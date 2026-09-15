@@ -46,6 +46,52 @@ test.describe('Name + password sign-in', () => {
     expect(form.hasGoogleButton, 'the Google button is back').toBe(false);
   });
 
+  /*
+   * Removing that button was not enough. All eight accounts still carry a
+   * google identity holding the person's old gmail address, while the account
+   * they sign in with is <name>@users.fluxplanner.app. Finishing a Google OAuth
+   * flow re-asserts the identity's email onto the account — so any surviving
+   * OAuth trigger is a way to silently undo the conversion and lock someone out
+   * of their own name.
+   *
+   * Six triggers survived inside the Google hub, Classroom sync, Drive import,
+   * Calendar push and Docs, which is why the block sits on the client they all
+   * share rather than on the buttons. This pins the choke point, and pins that
+   * other providers are still passed straight through.
+   */
+  test('Google sign-in is refused at the client every caller shares', async ({ page }) => {
+    const res = await page.evaluate(async () => {
+      type OAuthResult = { data?: { url?: string | null }; error?: { name?: string } };
+      const w = window as unknown as {
+        getSB?: () => { auth: { signInWithOAuth: (o: unknown) => Promise<OAuthResult> } } | null;
+      };
+      const sb = w.getSB?.();
+      if (!sb) return { noClient: true, url: null, errName: null, otherDelegated: false };
+      const google = await sb.auth.signInWithOAuth({ provider: 'google' });
+      /* A different provider must not be short-circuited. Whatever the mock
+         does with it — resolve, reject, anything — reaching it at all proves we
+         delegated rather than swallowing every provider. */
+      let otherDelegated = false;
+      try {
+        const other = await sb.auth.signInWithOAuth({ provider: 'azure' });
+        otherDelegated = other?.error?.name !== 'FluxGoogleDisabled';
+      } catch {
+        otherDelegated = true;
+      }
+      return {
+        noClient: false,
+        url: google?.data?.url ?? null,
+        errName: google?.error?.name ?? null,
+        otherDelegated,
+      };
+    });
+
+    expect(res.noClient, 'no Supabase client was available, so this asserted nothing').toBe(false);
+    expect(res.errName, 'Google OAuth should come back refused, not started').toBe('FluxGoogleDisabled');
+    expect(res.url, 'a redirect URL means the OAuth flow actually began').toBeNull();
+    expect(res.otherDelegated, 'only google should be short-circuited').toBe(true);
+  });
+
   test('a name maps to the account key the converted accounts use', async ({ page }) => {
     const map = await page.evaluate(() => {
       const f = (window as unknown as { fluxUsernameToEmail?: (s: string) => string })

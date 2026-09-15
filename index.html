@@ -2493,7 +2493,12 @@
         </div>
         <div class="card" id="fluxGoogleIntegrationCard">
           <h3>Google &amp; Canvas</h3>
-          <p class="ssub" id="fluxGoogleIntegrationStatus" style="margin-bottom:12px;line-height:1.55">Sign in with Google once for Gmail, Google Tasks, Calendar, and Docs — every account type. Open the <strong>Google</strong> tab for Gmail, Tasks, Calendar, Docs, and Canvas LMS.</p>
+          <!-- Was "Sign in with Google once for Gmail, Tasks, Calendar and Docs".
+               Google sign-in is switched off — Flux accounts are a name and a
+               password now — so that sentence was telling people to press a
+               button that no longer exists, and that would lock them out of
+               their own name if it did. -->
+          <p class="ssub" id="fluxGoogleIntegrationStatus" style="margin-bottom:12px;line-height:1.55">Google sign-in is switched off — Flux accounts use your name and password. Canvas still connects on its own, in the <strong>Canvas</strong> tab.</p>
           <button type="button" class="btn-sec" style="padding:6px 12px;font-size:.76rem;margin-bottom:14px" onclick="nav('canvas')">Open Google hub</button>
           <div class="srow" style="border:none">
             <div>
@@ -2688,8 +2693,12 @@
         <!-- Privacy & Legal -->
         <div class="card">
           <h3>FAQ</h3>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs Google sign-in?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Guest keeps data on this device only. Google syncs encrypted planner data to your account so you can use multiple devices.</p></details>
-          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with Google to sync your planner to the cloud across devices.</p></details>
+          <!-- Both answers used to say "sign in with Google", which is no longer
+               possible — accounts are a name and a password. Someone reading the
+               FAQ to solve a sync problem was being sent to a button that is not
+               there. -->
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs signing in?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Guest keeps data on this device only. Signing in with your name and password syncs encrypted planner data to your account so you can use multiple devices.</p></details>
+          <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with your name and password to sync your planner to the cloud across devices.</p></details>
           <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Flux AI uses your chat and optional planner context you send. See the Privacy Policy for details.</p></details>
         </div>
 
@@ -2964,7 +2973,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.70f2f000.js"></script>
+<script defer src="public/bundles/flux-core.741b66bb.js"></script>
 <script defer src="public/bundles/flux-features.a216cb7c.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
@@ -2975,7 +2984,10 @@
     <button type="button" class="flux-feedback-modal__close" onclick="closeFluxFeedbackModal()" aria-label="Close">×</button>
     <h2 id="fluxFeedbackTitle" class="flux-feedback-modal__title">Send feedback</h2>
     <p class="flux-feedback-modal__desc">Your message is sent securely to the product owner. Include what you were doing and what you expected.</p>
-    <p id="fluxFeedbackHint" class="flux-feedback-modal__hint" style="display:none">Sign in with Google (or email) to send feedback.</p>
+    <!-- app.js:10297 only toggles this one's visibility, never its text, so the
+         wording here is what people actually read. It said "Sign in with Google
+         (or email)" — neither of which exists any more. -->
+    <p id="fluxFeedbackHint" class="flux-feedback-modal__hint" style="display:none">Sign in with your name and password to send feedback.</p>
     <label class="flux-feedback-modal__label" for="fluxFeedbackCategory">Type</label>
     <select id="fluxFeedbackCategory" class="flux-feedback-modal__select">
       <option value="general">General</option>
