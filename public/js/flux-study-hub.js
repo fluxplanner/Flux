@@ -322,6 +322,18 @@
       { id: 'theory', name: 'Theory', tools: ['circle', 'explorer', 'intervals', 'dimensions'] },
       { id: 'orchestra', name: 'Orchestra', tools: ['orc-transpose', 'orc-score', 'orc-markings'] },
     ],
+    /* Chemistry reaches here through renderChem rather than renderRegistered,
+       because its panels are built in this file instead of registered by a
+       module. The units are the same idea either way, so the ids below are
+       CHEM_TABS ids and unitsFor treats them exactly like tools. */
+    chemistry: [
+      { id: 'atoms', name: 'Atoms & the table', tools: ['table', 'atom'] },
+      { id: 'compounds', name: 'Ions & compounds', tools: ['ions', 'solubility'] },
+      { id: 'reactions', name: 'Reactions & amounts', tools: ['balance', 'molar'] },
+      { id: 'solutions', name: 'Solutions & gases', tools: ['phdil', 'gas'] },
+      { id: 'reference', name: 'Reference', tools: ['constants', 'formulas'] },
+      { id: 'practice', name: 'Practice', tools: ['worksheet'] },
+    ],
   };
 
   /**
@@ -756,25 +768,53 @@
     if (!mass) return ''; rows.sort((a, b) => b.sub - a.sub);
     return `<div class="fsh-mm-total">${mass.toFixed(3)} <small>g/mol</small></div><div class="fsh-mm-rows">${rows.map((r) => `<div><div class="fsh-mm-row"><span class="el">${esc(r.s)} × ${r.n}</span><span>${r.sub.toFixed(2)} · ${(r.sub / mass * 100).toFixed(1)}%</span></div><div class="fsh-mm-bar" style="width:${(r.sub / mass * 100).toFixed(1)}%"></div></div>`).join('')}</div>`;
   }
-  function renderToolsTab() {
+  /* One "Tools" tab used to hold all six of these in a single grid: a balancer,
+     a molar-mass parser, pH and dilution, the gas law, a solubility table and
+     the constants list. Six unrelated jobs behind one word, and the only way to
+     find the gas law was to already know it was in there. They are separate
+     tabs now, which is what lets them be filed into units.
+
+     Each body is moved verbatim — same ids, same data-act hooks — so every
+     delegated handler still binds without being touched. */
+  function renderBalanceTab() {
     return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>⚖ Equation balancer</h3><p class="sub">Type a skeleton equation — separate sides with <b>=</b>, <b>→</b> or <b>-</b>. Solves instantly.</p>
         <div class="fsh-chips-row">${['H2 + O2 = H2O','CH4 + O2 = CO2 + H2O','Fe + O2 = Fe2O3','Al + HCl = AlCl3 + H2'].map((q) => `<button type="button" class="fsh-cat-chip" data-bal="${esc(q)}">${subFmt(q)}</button>`).join('')}</div>
-        <div class="fsh-field"><input id="fshBalIn" class="fsh-input" value="${esc(balInput)}" spellcheck="false"><button type="button" class="fsh-btn ghost mini" data-act="ins-arrow" title="Insert arrow">＋ →</button><button type="button" class="fsh-btn" data-act="balance">Balance</button></div>
+        <div class="fsh-field"><input id="fshBalIn" class="fsh-input" value="${esc(balInput)}" spellcheck="false"><button type="button" class="fsh-btn ghost mini" data-act="ins-arrow" aria-label="Insert reaction arrow">＋ →</button><button type="button" class="fsh-btn" data-act="balance">Balance</button></div>
         <div class="fsh-note">Can't type →? Just use “=” or “-”. The ＋→ button inserts one too.</div>
         <div class="fsh-eq-out" id="fshBalOut">${balOut()}</div></div>
+    </div></div>`;
+  }
+  function renderMolarTab() {
+    return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>⚗ Molar mass</h3><p class="sub">Parse any formula — try Ca(OH)2 or (NH4)2SO4.</p>
         <div class="fsh-field"><input id="fshMolIn" class="fsh-input" value="${esc(molInput)}" spellcheck="false"><button type="button" class="fsh-btn" data-act="molar">Compute</button></div>
         <div class="fsh-eq-out" id="fshMolOut">${molOut()}</div></div>
+    </div></div>`;
+  }
+  function renderPhDilTab() {
+    return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>pH &amp; dilution</h3><p class="sub">pH from [H⁺], and C₁V₁ = C₂V₂.</p>
         <div class="fsh-label"><span>[H⁺] (mol/L)</span></div><div class="fsh-field"><input id="fshPhIn" class="fsh-input" value="1e-3"><button type="button" class="fsh-btn" data-act="ph">pH</button></div><div class="fsh-out" id="fshPhOut"></div>
         <div class="fsh-label" style="margin-top:16px"><span>Dilution — leave one blank</span></div>
         <div class="fsh-field"><input id="fshD_c1" class="fsh-input short" placeholder="C₁"><input id="fshD_v1" class="fsh-input short" placeholder="V₁"><input id="fshD_c2" class="fsh-input short" placeholder="C₂"><input id="fshD_v2" class="fsh-input short" placeholder="V₂"><button type="button" class="fsh-btn" data-act="dil">Solve</button></div><div class="fsh-out" id="fshDilOut"></div></div>
+    </div></div>`;
+  }
+  function renderGasTab() {
+    return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>Ideal gas law</h3><p class="sub">PV = nRT — fill any three, leave one blank.</p>
         <div class="fsh-field"><input id="fshG_P" class="fsh-input short" placeholder="P kPa"><input id="fshG_V" class="fsh-input short" placeholder="V L"><input id="fshG_n" class="fsh-input short" placeholder="n mol"><input id="fshG_T" class="fsh-input short" placeholder="T K"><button type="button" class="fsh-btn" data-act="gas">Solve</button></div><div class="fsh-out" id="fshGasOut"></div></div>
+    </div></div>`;
+  }
+  function renderSolubilityTab() {
+    return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>Solubility table</h3><p class="sub">Common ionic compounds in water (25 °C).</p>
         <div class="fsh-sol-scroll"><table class="fsh-sol"><thead><tr><th></th>${SOL_ANIONS.map((a) => `<th>${a}</th>`).join('')}</tr></thead><tbody>${SOL_CATIONS.map((cat, i) => `<tr><th>${cat}</th>${SOL_GRID[i].map((s) => `<td data-s="${s}">${s === 's' ? 'sl' : s}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
         <div class="fsh-sol-legend"><span><i style="background:rgba(52,211,153,.5)"></i>Soluble</span><span><i style="background:rgba(251,191,36,.5)"></i>Slightly</span><span><i style="background:rgba(248,113,113,.5)"></i>Insoluble</span></div></div>
+    </div></div>`;
+  }
+  function renderConstantsTab() {
+    return `<div class="fsh-panel"><div class="fsh-tools-grid">
       <div class="fsh-tool fsh-card"><h3>Constants</h3><p class="sub">Data-booklet values.</p><div class="fsh-const">${CONSTANTS.map((c) => `<div class="fsh-prop"><div class="k">${esc(c[0])}</div><div class="v" style="font-size:13px">${esc(c[1])}</div></div>`).join('')}</div></div>
     </div></div>`;
   }
@@ -821,7 +861,20 @@
   const TAB_SLIDER = '<div class="fsh-tabs-slider" id="fshTabSlider" hidden><div class="fsh-tabs-thumb" id="fshTabThumb"></div></div>';
   // 'formulas' lives here rather than in the shared science sheet: chemistry's
   // formulas used to be reachable only as a tab inside the *physics* tool.
-  const CHEM_TABS = [['table','⊞','Table'],['atom','◎','Atom'],['tools','⚗','Tools'],['ions','±','Ions'],['formulas','∑','Formulas'],['worksheet','📝','Worksheet']];
+  const CHEM_TABS = [
+    ['table','⊞','Table'],['atom','◎','Atom'],
+    ['ions','±','Ions'],['solubility','🧂','Solubility'],
+    ['balance','⚖','Balancer'],['molar','⚗','Molar mass'],
+    ['phdil','💧','pH & dilution'],['gas','🎈','Gas laws'],
+    ['constants','📐','Constants'],['formulas','∑','Formulas'],
+    ['worksheet','📝','Worksheet'],
+  ];
+  /* 'tools' is gone — it split into balance/molar/phdil/gas/solubility/
+     constants. Anyone whose last chemistry tab was 'tools' has an id that no
+     longer resolves, and renderChem's fallback would drop them on the periodic
+     table with no explanation. Send them to the balancer, which was the first
+     card in that grid and so the one they most likely meant. */
+  const CHEM_TAB_MERGED = { tools: 'balance' };
   function renderChemBody() {
     const b = $('fshChemBody'); if (!b) return;
     if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
@@ -829,15 +882,90 @@
       if (typeof window.renderFormulaSheet === 'function') { window.renderFormulaSheet(b, 'Chemistry'); return; }
       state.chemTab = 'table';
     }
-    b.innerHTML = state.chemTab === 'table' ? renderTableTab() : state.chemTab === 'atom' ? renderAtomTab() : state.chemTab === 'tools' ? renderToolsTab() : state.chemTab === 'ions' ? renderIonsTab() : renderWorksheetTab();
+    const CHEM_BODY = {
+      table: renderTableTab, atom: renderAtomTab, ions: renderIonsTab,
+      balance: renderBalanceTab, molar: renderMolarTab, phdil: renderPhDilTab,
+      gas: renderGasTab, solubility: renderSolubilityTab,
+      constants: renderConstantsTab, worksheet: renderWorksheetTab,
+    };
+    b.innerHTML = (CHEM_BODY[state.chemTab] || renderWorksheetTab)();
     if (state.chemTab === 'table') applyPtFilter();
     else if (state.chemTab === 'atom') setTimeout(mountAtom3D, 0);
   }
   function renderChem() {
     const tabs = CHEM_TABS.concat(legacyChipsFor('chemistry').map((c) => ['lg-' + c.id, c.icon || '🧰', c.label || c.id]));
-    if (!tabs.some((t) => t[0] === state.chemTab)) state.chemTab = 'table';
-    $('fshStage').innerHTML = `<div class="fsh-chem fsh-panel"><div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${tabs.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t[0] ? ' active' : ''}" data-tab="${esc(t[0])}"><span class="fsh-ct-ico">${t[1]}</span>${esc(t[2])}</button>`).join('')}</div>${TAB_SLIDER}</div><div class="fsh-chem-body" id="fshChemBody"></div></div>` + refStrip('chemistry');
-    renderChemBody(); requestAnimationFrame(moveTabGlide);
+    // Retire the old 'tools' id before anything reads it, so a saved tab lands
+    // on a real panel instead of silently falling back to the table.
+    if (CHEM_TAB_MERGED[state.chemTab]) state.chemTab = CHEM_TAB_MERGED[state.chemTab];
+    /* Deliberately no `else state.chemTab = 'table'` here. A unit click clears
+       the tab so the unit can choose one, and defaulting to 'table' first would
+       make the lookup below resolve back to the unit that owns it — the click
+       would land on Atoms & the table every time, whichever unit was pressed.
+       The fallback lives after unit resolution instead. */
+    const known = tabs.some((t) => t[0] === state.chemTab);
+
+    /* Same shape unitsFor expects from a registered tool, so chemistry gets the
+       identical drop-empty and trailing-"More" behaviour every other subject
+       has rather than a second implementation that can drift from it. */
+    const asTools = tabs.map((t) => ({ id: t[0], icon: t[1], name: t[2] }));
+    const units = unitsFor('chemistry', asTools);
+    let visible = asTools;
+    let activeUnit = null;
+    if (units.length) {
+      /* A known tab wins, because restoring exactly where you were beats
+         restoring which heading was lit. A blank or retired tab falls through
+         to the saved unit, which is what a unit click relies on. */
+      activeUnit = (known && unitOfTool(units, state.chemTab))
+        || units.find((u) => u.id === state.unit.chemistry)
+        || units[0];
+      state.unit.chemistry = activeUnit.id;
+      visible = activeUnit.tools;
+      // The unit decides the tab whenever the saved one is not inside it.
+      if (!visible.some((t) => t.id === state.chemTab)) state.chemTab = visible[0].id;
+    } else if (!known) {
+      state.chemTab = 'table';
+    }
+    save();
+
+    const unitRow = units.length
+      ? `<div class="fsh-units" id="fshUnits" data-sid="chemistry" role="tablist" aria-label="Chemistry units">`
+        + '<div class="fsh-unit-glide" id="fshUnitGlide"></div>'
+        + units.map((u) => `<button type="button" class="fsh-unit${u.id === activeUnit.id ? ' active' : ''}"`
+          + ` data-unit="${esc(u.id)}" role="tab" aria-selected="${u.id === activeUnit.id ? 'true' : 'false'}">`
+          + `${esc(u.name)}<span class="fsh-unit-n">${u.tools.length}</span></button>`).join('')
+        + '</div>'
+      : '';
+
+    const tabsHtml = `<div class="fsh-tabs-wrap"><div class="fsh-chem-tabs" id="fshChemTabs" data-sid="chemistry"><div class="fsh-chem-tab-glide" id="fshTabGlide"></div>${visible.map((t) => `<button type="button" class="fsh-chem-tab${state.chemTab === t.id ? ' active' : ''}" data-tab="${esc(t.id)}"><span class="fsh-ct-ico">${t.icon}</span>${esc(t.name)}</button>`).join('')}</div>${TAB_SLIDER}</div>`;
+    const bodyHtml = '<div class="fsh-chem-body" id="fshChemBody"></div>';
+
+    /* Leave the unit row standing and swap only what sits below it — the same
+       contract renderRegistered documents at length. Rebuilding the row hands
+       the highlight brand-new nodes, so it appears at its destination with
+       nothing to travel from; worse, replacing a node mid-click detaches the
+       very button that was clicked, which is what turned a unit click into an
+       "element is not stable" timeout. */
+    const stage = $('fshStage');
+    const livePanel = stage.querySelector('.fsh-chem');
+    const liveUnits = $('fshUnits');
+    const reuseRow = !!(units.length && livePanel && liveUnits
+      && liveUnits.dataset.sid === 'chemistry'
+      && liveUnits.querySelectorAll('.fsh-unit').length === units.length);
+
+    if (reuseRow) {
+      const tpl = document.createElement('div');
+      tpl.innerHTML = tabsHtml + bodyHtml;
+      const newWrap = tpl.firstElementChild, newBody = tpl.lastElementChild;
+      const oldWrap = livePanel.querySelector('.fsh-tabs-wrap');
+      const oldBody = livePanel.querySelector('#fshChemBody');
+      if (oldWrap) oldWrap.replaceWith(newWrap); else livePanel.appendChild(newWrap);
+      if (oldBody) oldBody.replaceWith(newBody); else livePanel.appendChild(newBody);
+      syncUnitActive(liveUnits, activeUnit.id);
+    } else {
+      stage.innerHTML = `<div class="fsh-chem fsh-panel">${unitRow}${tabsHtml}${bodyHtml}</div>` + refStrip('chemistry');
+    }
+    renderChemBody();
+    requestAnimationFrame(() => { moveTabGlide(); moveUnitGlide(); });
   }
 
   // ── generic subject (registered tools) ───────────────────────────────────
@@ -1293,7 +1421,20 @@
         syncUnitActive(row, unitBtn.dataset.unit);
         moveUnitGlide();
         void row.offsetWidth;
-        renderRegistered(usid, false);
+        /* Chemistry draws its own panels in this file rather than from the
+           registry, so renderRegistered would find nothing registered for it
+           and paint the "didn't load" card over a subject that is fine. */
+        if (usid === 'chemistry') {
+          // Same reason the generic branch drops state.tool: renderChem derives
+          // the unit from the saved tab first, so leaving the old tab set would
+          // re-derive the unit just left and the click would look dead.
+          delete state.unit.chemistry;
+          state.unit.chemistry = unitBtn.dataset.unit;
+          state.chemTab = '';
+          renderChem();
+        } else {
+          renderRegistered(usid, false);
+        }
         return;
       }
       const subTab = t.closest('.fsh-chem-tab[data-tool]');
