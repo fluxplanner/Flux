@@ -225,6 +225,44 @@
 .fluxw-imp-star{color:#ffd166;font-size:.95rem;flex-shrink:0}
 .fluxw-imp-row-item span:nth-of-type(2){flex:1;min-width:0}
 
+/* Name box sits on its own line under the date. Full width because what goes
+   here is prose — "Chem test period 4" — not a token. */
+.fluxw-important-bar .fluxw-imp-label-row{margin-top:8px}
+.fluxw-important-bar .fluxw-imp-label-row input[type="text"]{
+  width:100%;margin:0!important;
+}
+/* Name over date. min-width:0 on both so a long name ellipses instead of
+   shoving the × button off the end of the row. */
+.fluxw-imp-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.fluxw-imp-name{
+  font-weight:650;color:#fff3d6;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+}
+/* With a name present the date becomes supporting detail and steps back. With
+   no name it is the only text in the row, so it stays at full strength. */
+.fluxw-imp-name + .fluxw-imp-when{font-size:.74rem;opacity:.72}
+.fluxw-imp-when{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* The name written on the calendar cell itself. Clamped to one line: a month
+   grid cell cannot reflow, and a wrapping label pushes the date number out. */
+.cal-day.fluxw-cal-important .fluxw-cal-label{
+  display:block;
+  margin-top:1px;
+  font-size:.58rem;
+  line-height:1.15;
+  font-weight:600;
+  color:#ffd166;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
+/* Below this the cells only have room for the number and the star; a label
+   truncated to two characters is noise, not information. */
+@media (max-width:640px){
+  .cal-day.fluxw-cal-important .fluxw-cal-label{display:none}
+}
+
 /* Calendar day highlight when pinned */
 .cal-day.fluxw-cal-important{
   background:linear-gradient(165deg,rgba(251,191,36,.18),rgba(251,191,36,.05))!important;

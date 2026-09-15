@@ -24,3 +24,52 @@
   border-color:#7c5cff;
   box-shadow:0 0 0 3px rgba(124,92,255,.22);
 }
+
+/* ── "write it down" notice ──────────────────────────────────────────────
+   Shown once, straight after an account is created. Amber rather than red:
+   nothing has gone wrong, but this is the only moment the person is holding a
+   password that genuinely cannot be recovered — there is no email on file, so
+   there is no reset link. */
+.lx-keepsafe{
+  margin:2px 0 4px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(251,191,36,.09);
+  border:1px solid rgba(251,191,36,.28);
+}
+.lx-keepsafe-title{
+  font-size:.82rem;
+  font-weight:700;
+  color:#fbbf24;
+  margin-bottom:4px;
+}
+.lx-keepsafe-body{
+  font-size:.76rem;
+  line-height:1.6;
+  color:#c8cede;
+}
+.lx-keepsafe-body strong{ color:#eef0f7; }
+
+/* ── "ask for help" link ─────────────────────────────────────────────────
+   Deliberately quiet — it is the escape hatch, not a call to action — but a
+   full-width button rather than a text link, because whoever needs it is
+   probably on a phone and already frustrated. */
+.lx-help{ margin-top:10px; text-align:center; }
+.lx-help-btn{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,.1);
+  color:#b9c1d9;
+  font-size:.76rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:color .18s ease, border-color .18s ease, background .18s ease;
+}
+.lx-help-btn:hover:not(:disabled){
+  color:#eef0f7;
+  border-color:rgba(124,92,255,.45);
+  background:rgba(124,92,255,.08);
+}
+.lx-help-btn:disabled{ opacity:.6; cursor:default; }

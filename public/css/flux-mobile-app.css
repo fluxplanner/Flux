@@ -457,31 +457,42 @@
   /* Tighten dashboard horizontal padding on mobile to 16px per spec */
   #dashboard.dash-v2{ padding-left: max(16px, var(--sa-left)) !important; padding-right: max(16px, var(--sa-right)) !important; }
 
-  /* Show mobile-only scaffolding, hide desktop-only widgets */
+  /* The date strip stays. It adds a date; it is not a second copy of
+     something the desktop already shows. */
   .dash-mob-date-row{ display: flex !important; align-items: center; gap: 10px; margin: 6px 0 2px; }
-  .dash-mob-stack{ display: flex !important; flex-direction: column; gap: 14px; margin-top: 12px; }
 
-  /* Hide desktop-only sections on mobile per spec.
-     #countdownCard used to be in this list and is deliberately not any more.
-     Measured at 390px it lays out 358px wide with nothing overflowing — its
-     four figures sit in a 2x2 grid — so there was never a layout reason for
-     it to go, and "how long until my next exam" is close to the reason a
-     student picks the phone up. Hiding it made the phone differ from the
-     laptop for no gain, which is the complaint this answers. */
-  #dashClassScheduleWrap,
-  #weeklyReviewBanner{ display: none !important; }
+  /* ── The phone shows the same dashboard as the laptop ──────────────────
+     .dash-mob-stack is deliberately NOT shown any more.
 
-  /* Subject health / other dashboard widgets that shouldn't appear on mobile */
-  #subjectHealthCard,
-  .dash-subject-health,
-  .subject-health-gauges{ display: none !important; }
+     It was a parallel dashboard: its own "Do this now" hero, its own four
+     stat circles, its own "Up next" list. None of that existed on desktop,
+     and the widgets that did exist were hidden to make room for it — so the
+     two were never a wide and a narrow version of one screen, they were two
+     different screens sharing a URL. That is what "it looks like a separate
+     app" actually meant, and no amount of restyling fixes it while the phone
+     renders different components.
 
-  /* Full task workspace (toolbar, #taskList) stays visible on mobile.
-     Hide the filter chip row on small screens (filters still follow the
-     last-used taskFilter from wider layouts / defaults). */
-  #dashboard .dash-filters-row{
-    display: none !important;
-  }
+     It duplicated what sat directly beneath it, too: "Up next" listed the
+     same tasks as #taskList, and the stat circles counted the same tasks as
+     the filter chips.
+
+     The markup stays in index.html rather than being deleted. It is wired to
+     live ids — dashMobDoNowTitle, dashMobStatTasks, dashMobTodayList — that
+     app.js writes on every dashboard render (app.js:4452, 4483, 4521), and
+     pulling the nodes out before that code is untangled would mean silent
+     null-writes on a hot path. The base rule above
+     (.dash-mob-stack{display:none}) now applies at every width, so it renders
+     nowhere and those writes land on detached-but-real elements.
+
+     The countdown card set the precedent: it was on the hide-list below and
+     came off after measuring, because hiding it "made the phone differ from
+     the laptop for no gain". The same reasoning retires the rest of the list.
+
+     What the phone gets instead is the desktop dashboard reflowed: greeting,
+     runway chip, exam countdown, class schedule, subject-health gauges, and
+     the full Tasks workspace including its Active / Today / Overdue filters —
+     that last one was hidden, which is why the phone had no way to see
+     overdue work at all. */
 
   /* Date + A/B pill strip below greeting */
   .dash-mob-date{

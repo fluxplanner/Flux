@@ -92,14 +92,51 @@ test.describe('Mobile and desktop show the same dashboard cards', () => {
     expect(touch.overflowing).toBe(0);
   });
 
-  test('the phone still gets its own quick-glance layer', async ({ page }) => {
+  /* This test used to assert the opposite — that the phone kept its own
+     quick-glance layer. That layer is exactly what made the phone feel like a
+     different product: .dash-mob-stack was a parallel dashboard with its own
+     "Do this now" hero, its own stat circles and its own "Up next" list, and
+     the desktop widgets were hidden to make room for it. The two screens
+     shared a URL and almost nothing else.
+
+     It duplicated what sat directly below it, too: "Up next" listed the same
+     tasks as #taskList, and the stat circles counted the same tasks as the
+     filter chips.
+
+     The requirement inverted, so the assertion inverts with it. */
+  test('the phone shows the desktop dashboard, not a parallel one', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoScenario(page, 'student-semester');
+    await page.waitForTimeout(900);
 
-    // Showing the countdown must not have cost the mobile-only stack, which is
-    // what puts a task on screen without scrolling.
-    await expect(page.locator('.dash-mob-stack')).toBeVisible();
-    await expect(page.locator('#dashMobStats')).toBeVisible();
+    // The parallel stack is gone. Its markup is still in the DOM on purpose —
+    // app.js writes to those ids on every render — so this checks what is
+    // painted, not what exists.
+    await expect(page.locator('.dash-mob-stack')).toBeHidden();
+
+    const state = await page.evaluate(() => {
+      const shown = (sel: string) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) return null;
+        return getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
+      };
+      return {
+        countdown: shown('#countdownCard'),
+        filters: shown('#dashboard .dash-filters-row'),
+        taskList: shown('#taskList'),
+        // Nothing gained from the wider layout may push the page sideways.
+        overflows: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
+    });
+
+    // The same cards the laptop shows.
+    expect(state.countdown, 'the exam countdown is missing on the phone').toBe(true);
+    expect(state.taskList, 'the task list is missing on the phone').toBe(true);
+    /* The filter row was hidden on phones, which meant there was no way to see
+       overdue work at all from a phone — the device a student is most likely
+       to check it on. */
+    expect(state.filters, 'the Active/Today/Overdue filters are still hidden').toBe(true);
+    expect(state.overflows, 'the dashboard scrolls sideways at 390px').toBe(false);
   });
 });
 

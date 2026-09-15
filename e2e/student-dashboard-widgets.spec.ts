@@ -28,6 +28,13 @@ test.describe('Dashboard widget picker', () => {
 
   test('appearance panel lists dashboard section toggles', async ({ page }) => {
     await openSidebarTab(page, 'settings');
+    /* Open Layout explicitly. #spane-appearance used to be the section
+       Settings landed on; it is the third one now, and an inactive .spane is
+       display:none — so the locator still resolves and simply reads hidden.
+       The id itself is unchanged on purpose: six modules inject their settings
+       card into this pane and none of them throw when it is missing. */
+    await page.evaluate(() =>
+      (window as unknown as { switchStab: (id: string) => void }).switchStab('appearance'));
     await expect(page.locator('#spane-appearance')).toBeVisible();
     await page.evaluate(() => {
       window.FluxPersonal?.renderPanelLayoutSettings?.();

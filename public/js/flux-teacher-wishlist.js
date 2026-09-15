@@ -321,6 +321,28 @@
   function writePinned(arr){write('flux_important_dates_v1',arr);}
   function isPinned(iso){return readPinned().indexOf(iso)>=0;}
 
+  /* Labels live under their own key, keyed by ISO date, rather than turning the
+     pinned array into objects. The pin is the thing that matters and it already
+     exists on every device that has ever used this feature; reshaping that
+     array would need a migration, and a migration that goes wrong loses dates
+     someone deliberately marked. An absent label is just an absent lookup, so
+     the two stores cannot disagree — a pin with no label still works. */
+  function readLabels(){
+    var v=read('flux_important_date_labels_v1',{});
+    return (v&&typeof v==='object'&&!Array.isArray(v))?v:{};
+  }
+  function writeLabels(map){write('flux_important_date_labels_v1',map);}
+  function labelFor(iso){
+    var l=readLabels()[iso];
+    return (typeof l==='string')?l.trim():'';
+  }
+  function setLabel(iso,text){
+    var map=readLabels();
+    var t=String(text==null?'':text).trim().slice(0,80);
+    if(t)map[iso]=t; else delete map[iso];
+    writeLabels(map);
+  }
+
   function toggleImportantDate(iso){
     if(!iso)return false;
     var cur=readPinned();
@@ -349,6 +371,22 @@
         el.appendChild(star);
       }else if(!on&&existing){
         existing.remove();
+      }
+      /* Show the name on the day itself. Deliberately not a `title` — a native
+         tooltip is drawn by the browser and cannot be styled or dismissed by
+         us, which is the exact bug just fixed on the fullscreen clock. A real
+         element can be hidden by CSS when the cell is too small. */
+      var nm=on?labelFor(iso):'';
+      var tag=el.querySelector('.fluxw-cal-label');
+      if(nm){
+        if(!tag){
+          tag=document.createElement('span');
+          tag.className='fluxw-cal-label';
+          el.appendChild(tag);
+        }
+        if(tag.textContent!==nm)tag.textContent=nm;
+      }else if(tag){
+        tag.remove();
       }
     });
   }
@@ -379,6 +417,15 @@
         '<button type="button" class="fluxw-btn" id="fluxImpPinBtn" onclick="FluxWishlist.pinDateFromInput()">Pin</button>'+
         '<button type="button" class="fluxw-btn-sec" onclick="FluxWishlist.pinDateFromInput(true)">Unpin</button>'+
       '</div>'+
+      /* Its own row, not squeezed alongside the date. A starred day with no
+         name is a question mark three weeks later — "what was that?" — so the
+         label is the point of pinning, not a decoration. Enter pins, because
+         typing a name and then hunting for the button is the slow path. */
+      '<div class="fluxw-imp-label-row">'+
+        '<input type="text" id="fluxImpLabelInp" maxlength="80" placeholder="What is it? e.g. Chem test"'+
+          ' aria-label="Name for this date"'+
+          ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();FluxWishlist.pinDateFromInput();}">'+
+      '</div>'+
       '<div class="fluxw-imp-list" id="fluxImpList"></div>';
     host.appendChild(bar);
     renderImportantList();
@@ -388,14 +435,23 @@
     var inp=document.getElementById('fluxImpDateInp');
     if(!inp||!inp.value)return;
     var iso=inp.value;
+    var labelInp=document.getElementById('fluxImpLabelInp');
     var cur=readPinned();
     var i=cur.indexOf(iso);
     if(unpin){
       if(i>=0)cur.splice(i,1);
+      // Drop the name with the pin, or re-pinning that day would silently
+      // inherit a name from something the person already removed.
+      setLabel(iso,'');
     }else{
       if(i<0)cur.push(iso);
+      /* Only write when the box has something in it. Pinning a second date
+         without retyping must not wipe the first one's name, and an empty box
+         is "no opinion", not "clear it" — Unpin is how you clear it. */
+      if(labelInp&&labelInp.value.trim())setLabel(iso,labelInp.value);
     }
     writePinned(cur);
+    if(labelInp)labelInp.value='';
     paintImportantBadges();
     renderImportantList();
   }
@@ -413,10 +469,16 @@
     }
     list.innerHTML=future.map(function(d){
       var label=new Date(d+'T00:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+      var name=labelFor(d);
       return '<div class="fluxw-imp-row-item">'+
         '<span class="fluxw-imp-star" aria-hidden="true">★</span>'+
-        '<span>'+esc(label)+'</span>'+
-        '<button type="button" class="fluxw-grat-del" aria-label="Unpin" onclick="FluxWishlist.unpinDate(\''+esc(d)+'\')">×</button>'+
+        // The name leads and the date follows in smaller type: you scan this
+        // list for "the chem test", not for "the 20th".
+        '<span class="fluxw-imp-text">'+
+          (name?'<span class="fluxw-imp-name">'+esc(name)+'</span>':'')+
+          '<span class="fluxw-imp-when">'+esc(label)+'</span>'+
+        '</span>'+
+        '<button type="button" class="fluxw-grat-del" aria-label="Unpin '+esc(name||label)+'" onclick="FluxWishlist.unpinDate(\''+esc(d)+'\')">×</button>'+
       '</div>';
     }).join('');
   }
@@ -426,6 +488,9 @@
     var i=cur.indexOf(iso);
     if(i>=0)cur.splice(i,1);
     writePinned(cur);
+    // Same reasoning as the Unpin button: the name goes with the pin, so a
+    // later re-pin of that day starts blank instead of resurrecting old text.
+    setLabel(iso,'');
     paintImportantBadges();
     renderImportantList();
   }

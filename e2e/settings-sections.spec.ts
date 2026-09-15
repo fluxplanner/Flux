@@ -2,16 +2,25 @@ import { test, expect } from '@playwright/test';
 import { gotoScenario, openSidebarTab } from './helpers';
 
 /**
- * Settings used to have six sections, one of which — "Data & info" — held
- * thirteen cards covering four unrelated jobs while Alerts and AI had two
- * each. It is now three sections: Your data, Help, About.
+ * Settings is a list down the side now, not a row of tabs across the top.
  *
- * The `data` id survived the split on purpose. flux-email-task-inbox.js:449
- * and flux-automation-hooks.js:211 both call switchStab('data') to reveal
- * their own injected card, and switchStab resolves ids by string
- * concatenation — `spane-` + id — so a rename would not have thrown, it
- * would have quietly done nothing. That is the regression these tests exist
- * to catch.
+ * The row held eight tabs covering wildly uneven amounts: "Look" carried
+ * eleven cards while "About" carried one, and by eight items the pills were
+ * squeezed narrower than their own labels needed. "Look" is now three sections
+ * — Theme, Text & reading, Layout — which is ten in total, and a vertical list
+ * has room for all ten.
+ *
+ * Two ids survived renames on purpose, and that is what these tests mostly
+ * exist to protect. switchStab resolves panes by string concatenation —
+ * `spane-` + id — so a rename never throws; it quietly matches nothing.
+ *
+ *  - `data`: flux-email-task-inbox.js:449 and flux-automation-hooks.js:211
+ *    both call switchStab('data') to reveal their own injected card.
+ *  - `appearance`, now labelled "Layout": eight modules inject a settings card
+ *    straight into #spane-appearance — flux-i18n, flux-connectors,
+ *    flux-pulse-layout, flux-pulse-perf, flux-site-enhancements and
+ *    flux-ai-providers-ui. Renaming it would have made six features' settings
+ *    disappear with no error anywhere.
  */
 test.describe('Settings sections', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,7 +29,7 @@ test.describe('Settings sections', () => {
     await expect(page.locator('#settings.panel.active')).toBeVisible();
   });
 
-  test('has eight sections, each with a pane behind it', async ({ page }) => {
+  test('has ten sections, each with a pane behind it', async ({ page }) => {
     const wiring = await page.evaluate(() =>
       [...document.querySelectorAll('#settings .stab')].map((btn) => {
         const onclick = btn.getAttribute('onclick') || '';
@@ -30,7 +39,11 @@ test.describe('Settings sections', () => {
     );
 
     expect(wiring.map((w) => w.label)).toEqual([
-      'Look',
+      // "Look" was eleven cards doing three jobs, so it is three sections now:
+      // what the app looks like, what makes it readable, and where things sit.
+      'Theme',
+      'Text & reading',
+      'Layout',
       'Alerts',
       'Connections',
       'AI',
@@ -43,6 +56,16 @@ test.describe('Settings sections', () => {
     // looks selected but leaves the previous section's cards on screen —
     // silent, and the exact failure a rename of `spane-data` would produce.
     expect(wiring.filter((w) => !w.hasPane)).toEqual([]);
+
+    /* `appearance` has to survive the rename to "Layout".
+       Eight modules inject their own settings card into #spane-appearance —
+       flux-i18n, flux-connectors, flux-pulse-layout, flux-pulse-perf,
+       flux-site-enhancements and flux-ai-providers-ui — and not one of them
+       throws when it is missing; they look it up, find nothing, and inject
+       nowhere. A rename would have made six features' settings vanish with no
+       error anywhere, which is why the id is asserted and not just the label. */
+    expect(wiring.find((w) => w.label === 'Layout')?.id,
+      'Layout must still be spane-appearance — six modules inject into it').toBe('appearance');
   });
 
   test('each new section shows its own cards and nothing else', async ({ page }) => {

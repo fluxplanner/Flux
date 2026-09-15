@@ -1,0 +1,102 @@
+/* ═══ Settings shell — section list down the side ═══════════════════════════
+ *
+ * Settings had eight tabs in a row across the top, holding wildly uneven
+ * amounts: "Look" carried eleven cards while "About" carried one. By eight
+ * items the pills were squeezed narrower than their own labels needed, and
+ * adding a section made every existing one worse.
+ *
+ * A vertical list fixes what was actually wrong: it gives each section a full
+ * row, keeps all of them visible at once, and does not degrade as sections are
+ * added. Ten sections fit comfortably where eight did not.
+ *
+ * WHY THIS FILE EXISTS RATHER THAN AN EDIT TO styles.css
+ * `.stabs` / `.stab` are styled in five places — styles.css (twice, once with
+ * `!important` on six properties), flux-apple-motion.css, flux-mobile-premium
+ * .css and flux-mobile-app.css — and all of them load after styles.css in the
+ * bundle manifest (indices 0, 7, 14, 29). Editing the base rules would have
+ * been silently overridden. This file sits last in the manifest, so it is the
+ * one place a settings-only override reliably wins without touching four
+ * stylesheets that also serve other panels.
+ *
+ * Scoped to .flux-settings-shell throughout: `.stabs` is still used by Notes,
+ * Extracurriculars and others that genuinely want a horizontal row.
+ */
+
+/* Two columns from 900px up. Below that a vertical list would eat the screen,
+   so the existing horizontal scroller is left alone — see the end of the file. */
+@media (min-width: 900px) {
+  .flux-settings-shell {
+    display: grid;
+    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* A column, not a row. Every property the old row set for horizontal layout
+     has to be undone explicitly, because the base rule and the .flux-page rule
+     both still apply here. */
+  .flux-settings-shell .flux-settings-stabs {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow-x: visible;
+    margin-bottom: 0;
+    padding: 8px;
+    /* Follows you down a long pane — Layout and Account are tall enough that
+       the list would otherwise scroll away, leaving no visible way back. */
+    position: sticky;
+    top: 12px;
+  }
+
+  /* Full-width rows, labels left-aligned. `!important` here matches
+     `.flux-page .stab`, which sets six of these with `!important` of its own;
+     this selector is more specific and loads later, so it wins cleanly. */
+  .flux-settings-shell .flux-settings-stabs .stab {
+    flex: 0 0 auto !important;
+    width: 100%;
+    min-width: 0 !important;
+    text-align: left !important;
+    justify-content: flex-start;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    font-size: .82rem !important;
+    font-weight: 600 !important;
+    color: var(--muted2) !important;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .flux-settings-shell .flux-settings-stabs .stab:hover {
+    background: rgba(255, 255, 255, .05) !important;
+    color: var(--text) !important;
+  }
+
+  /* The selected row reads as selected without shouting: a tinted fill plus a
+     bar on the leading edge, which is what tells you at a glance where you are
+     in a list this long. */
+  .flux-settings-shell .flux-settings-stabs .stab.active {
+    background: rgba(var(--accent-rgb), .14) !important;
+    border-color: rgba(var(--accent-rgb), .28) !important;
+    color: var(--accent) !important;
+    box-shadow: inset 3px 0 0 0 var(--accent);
+  }
+
+  /* min-width:0 on the track above plus this is what stops a wide card — a
+     long <pre>, a table — from forcing the grid wider and squashing the list. */
+  .flux-settings-shell .flux-settings-panes {
+    min-width: 0;
+  }
+}
+
+/* Below 900px the shell is inert: it collapses to a plain block so the list
+   falls back to the horizontal scroller that flux-mobile-app.css and
+   flux-mobile-premium.css already style for small screens. Nothing here fights
+   those rules. */
+@media (max-width: 899px) {
+  .flux-settings-shell {
+    display: block;
+  }
+}
