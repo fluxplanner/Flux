@@ -238,7 +238,13 @@ const FORMULA_SHEET = {
     ]},
     { title:'Constants', items:[
       { f:'c = 2.998 × 10⁸ m/s',        vars:['speed of light in vacuum'] },
-      { f:'g = 10.0000 m/s²',            vars:['gravity (Flux convention — 4-decimal, g=10 per V4 contract)'] },
+      /* Resolved at render time from the student's programme — DP is marked
+         against 9.8 and MYP against 10, so a sheet that states one number is
+         wrong for half its readers. See fluxGravityRow().
+         The previous entry read "g = 10.0000 m/s²": not only the MYP value
+         shown to everyone, but carrying four decimals of precision that no
+         syllabus claims. */
+      { gravity:true, f:'', vars:[] },
       { f:'N_A = 6.022 × 10²³ /mol',     vars:['Avogadro\'s number'] },
       { f:'h = 6.626 × 10⁻³⁴ J·s',       vars:['Planck constant'] },
       { f:'e = 1.602 × 10⁻¹⁹ C',         vars:['elementary charge'] },
@@ -314,6 +320,29 @@ const FORMULA_SHEET = {
  *   now registered on, their own subjects. Opened from the classic toolbox
  *   (no subject context) it still shows all three, as that surface always has.
  */
+/* DP marks against g = 9.8 m/s²; MYP marks against 10. Both are correct for
+   the person sitting that paper and wrong for the other, so the value follows
+   the programme on the profile rather than being picked once for everybody.
+
+   A student doing both, or one whose profile says nothing, is shown both with
+   the distinction spelled out — which is the honest answer when the sheet
+   cannot know which paper they are revising for. Guessing silently is the one
+   option that could cost marks. */
+function fluxGravityRow(){
+  var progs = [];
+  try {
+    var p = (typeof load === 'function' ? load('profile', {}) : {}) || {};
+    progs = typeof window.normalizeProgramList === 'function'
+      ? window.normalizeProgramList(p.program)
+      : (Array.isArray(p.program) ? p.program : p.program ? [p.program] : []);
+  } catch (e) { progs = []; }
+  var txt = progs.join(' ').toUpperCase();
+  var dp = /\bDP\b/.test(txt), myp = /\bMYP\b/.test(txt);
+  if (dp && !myp) return { f:'g = 9.8 m/s²',  vars:['gravitational field strength — the value DP papers use'] };
+  if (myp && !dp) return { f:'g = 10 m/s²',   vars:['gravitational field strength — the value MYP papers use'] };
+  return { f:'g = 9.8 m/s²  (MYP: 10)', vars:['gravitational field strength — DP uses 9.8, MYP rounds to 10'] };
+}
+
 function renderFormulaSheet(body, only){
   if (!only) {
     try {
@@ -342,14 +371,19 @@ function renderFormulaSheet(body, only){
       <div class="fs-cat">
         <div class="fs-cat-h">${esc(c.title)}</div>
         <div class="fs-items">
-          ${c.items.map(it => `
+          ${c.items.map(it0 => {
+    // Resolved here rather than in the table so it re-reads the profile on
+    // every render — a student who sets their programme sees it change.
+    const it = it0.gravity ? fluxGravityRow() : it0;
+    return `
             <div class="fs-item">
               <div class="fs-f"><code>${esc(it.f)}</code>
                 <button type="button" class="fs-copy" data-txt="${esc(it.f)}" title="Copy">⧉</button>
               </div>
               ${it.vars.length ? `<div class="fs-v">${it.vars.map(v => esc(v)).join(' · ')}</div>` : ''}
             </div>
-          `).join('')}
+          `;
+  }).join('')}
         </div>
       </div>
     `).join('');

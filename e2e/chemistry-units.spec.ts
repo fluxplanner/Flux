@@ -55,6 +55,37 @@ test.describe('Chemistry units', () => {
     expect(tabs).toEqual(['phdil', 'gas']);
   });
 
+  /*
+   * Chemistry had two things called Reference: the unit, and a legacy
+   * "Chemistry Reference" modal that unitsFor() had swept into the trailing
+   * More bucket because no unit claimed it. Two references one tab apart is
+   * worse than either alone — you cannot tell which holds the table you want.
+   *
+   * It is claimed by the Reference unit rather than deleted: its four tables
+   * (polyatomic ions, solubility rules, acid/base, constants) overlap the Ions,
+   * Solubility and Constants tabs but are not provably a subset of them, and
+   * dropping a table someone is mid-revision with is not a tidy-up.
+   */
+  test('there is one Reference, and it holds the legacy tables too', async ({ page }) => {
+    const tabsNow = () => page.evaluate(() =>
+      [...document.querySelectorAll('#fshChemTabs [data-tab]')]
+        .map((t) => (t as HTMLElement).dataset.tab as string));
+
+    await page.locator('#fshUnits [data-unit="reference"]').click();
+    await expect(page.locator('#fshUnits [data-unit="reference"]')).toHaveClass(/\bactive\b/);
+    const refTools = await tabsNow();
+    expect(refTools, 'the legacy reference did not move into the Reference unit')
+      .toContain('lg-chem-ref');
+
+    const more = page.locator('#fshUnits [data-unit="more"]');
+    if (await more.count()) {
+      await more.click();
+      const moreTools = await tabsNow();
+      expect(moreTools, 'a second reference is still sitting in More')
+        .not.toContain('lg-chem-ref');
+    }
+  });
+
   test('every tool from the old Tools grid is still reachable', async ({ page }) => {
     const wanted = ['balance', 'molar', 'phdil', 'gas', 'solubility', 'constants'];
     const found: string[] = [];
