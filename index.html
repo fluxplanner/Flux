@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.943845d9.css">
+<link rel="stylesheet" href="public/bundles/flux.a6aa17ec.css">
 </head>
 <body>
 <noscript>
@@ -1456,7 +1456,7 @@
           <div><label style="font-size:.7rem;color:var(--muted)">Period <span style="color:var(--muted2);font-weight:400">(A4, B4…)</span></label><input type="text" id="classPeriod" inputmode="text" autocomplete="off" placeholder="4 or B4" style="width:76px;min-width:64px;margin:0;padding:8px 6px" title="Type a number, or A3 / B4 for A-day or B-day period"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Class Name</label><input type="text" id="className" placeholder="e.g. Chemistry" style="margin:0"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Teacher</label><input type="text" id="classTeacher" placeholder="e.g. Mr. Smith" style="margin:0"></div>
-          <button onclick="addClass()" style="padding:10px 14px;align-self:end" aria-label="Add class" title="Add class">+</button>
+          <button onclick="addClass()" style="padding:10px 14px;align-self:end" aria-label="Add class">+</button>
         </div>
         <div class="sch-class-meta-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div><label style="font-size:.7rem;color:var(--muted)">Days</label>
@@ -1909,7 +1909,7 @@
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
           <div style="flex:1;min-width:160px"><label style="font-size:.7rem;color:var(--muted)">Activity name</label><input type="text" id="extraName" placeholder="e.g. Varsity Soccer, Debate Club..." style="margin:0"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Hours/wk</label><input type="number" id="extraHours" placeholder="5" min="0" max="40" style="margin:0;width:64px"></div>
-          <button id="extraSubmitBtn" onclick="addExtra()" style="align-self:end;padding:10px 14px" aria-label="Add activity" title="Add activity">+</button>
+          <button id="extraSubmitBtn" onclick="addExtra()" style="align-self:end;padding:10px 14px" aria-label="Add activity">+</button>
           <button id="extraCancelBtn" onclick="cancelEditExtra()" style="align-self:end;padding:10px 14px;display:none;background:transparent;border:1px solid var(--border);color:var(--muted)">Cancel</button>
         </div>
         <div style="margin-top:8px">
@@ -2142,7 +2142,12 @@
             </select>
           </div>
           <div class="ai-topbar__right ai-controls" role="toolbar" aria-label="Flux AI controls">
-            <label class="ai-topbar-attach" title="Attach image">
+            <!-- No `title`. It duplicated the visually-hidden label below, and a
+                 native tooltip is drawn by the browser, not the page: nothing in
+                 our CSS can fade it. In the fullscreen clock the chrome hides on
+                 an idle cursor but a tooltip already on screen just sat there.
+                 The accessible name is unchanged. -->
+            <label class="ai-topbar-attach">
               <input type="file" accept="image/*" id="aiImgUpload" onchange="handleAIImg(event)">
               <span class="ai-topbar-attach__ico" aria-hidden="true"></span>
               <span class="visually-hidden">Attach image</span>
@@ -2182,7 +2187,9 @@
             <div id="aiImgPreview" class="flux-ai-img-preview ai-img-preview--inline" style="display:none"></div>
             <footer class="ai-composer">
               <div class="ai-input-bar">
-                <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image" title="Attach image">
+                <!-- `title` dropped here too — same duplicate of aria-label, same
+                     un-fadeable native tooltip. -->
+                <button type="button" class="ai-attach" id="aiAttachBtn" onclick="document.getElementById('aiImgUpload')?.click()" aria-label="Attach image">
                   <svg class="ai-attach__ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05 12.25 20.24a5.47 5.47 0 0 1-7.73-7.73L15.91 4.12a3.65 3.65 0 0 1 5.16 5.16l-8.72 8.72a2.43 2.43 0 0 1-3.44-3.44l8.09-8.09"/></svg>
                 </button>
                 <textarea id="aiInput" class="ai-input-field" rows="1" placeholder="Ask anything about your planner…"></textarea>
@@ -2957,7 +2964,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.6c196853.js"></script>
+<script defer src="public/bundles/flux-core.40694d7f.js"></script>
 <script defer src="public/bundles/flux-features.f7b1bf35.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
