@@ -11505,6 +11505,13 @@ async function handleEmailAuth(){
      fluxNormalizeUsername. */
   const email=fluxUsernameToEmail(username);
   if(_authMode==='signup'){
+    /* Typed twice, because there is no way back from a typo. No email is on
+       file, so there is no reset link — a password mistyped once at sign-up
+       makes an account nobody can open, and the person would not find out
+       until the next time they tried to sign in. */
+    const confirm=document.getElementById('loginPassword2')?.value;
+    if(!confirm){showAuthError('Type your password a second time to confirm it.');return;}
+    if(confirm!==password){showAuthError('Those two passwords are not the same. Check them and try again.');return;}
     const weak=typeof window.fluxWeakPasswordReason==='function'
       ?window.fluxWeakPasswordReason(password,rawName):'';
     if(weak){showAuthError(weak);return;}

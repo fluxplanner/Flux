@@ -336,9 +336,18 @@
                   so there is no reset link — if you forget this password, only Azfer can get you back in.
                 </div>
               </div>
+              <!-- This row held a second "Name (optional)" box, left over from
+                   when the first field was an Email. Once that became Name the
+                   sign-up form asked for your name twice, one of them pointless:
+                   nothing ever read #loginDisplayName.
+                   It holds the confirm-password box instead. With no email on
+                   file there is no reset link, so a password typed wrong once is
+                   an account nobody can get into — typing it twice is the only
+                   check available. Shown on sign-up only; toggleAuthMode still
+                   drives this wrapper by id. -->
               <div id="loginNameRow" style="display:none">
-                <label class="lx-field" for="loginDisplayName">Name <span class="lx-opt">(optional)</span>
-                  <input type="text" id="loginDisplayName" name="loginDisplayName" autocomplete="name" placeholder="Your name">
+                <label class="lx-field" for="loginPassword2">Confirm password
+                  <input type="password" id="loginPassword2" name="loginPassword2" autocomplete="new-password" placeholder="Type it again">
                 </label>
               </div>
               <button type="button" class="lx-submit" id="loginEmailBtn" onclick="handleEmailAuth()">
@@ -2973,8 +2982,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.741b66bb.js"></script>
-<script defer src="public/bundles/flux-features.3dfc460f.js"></script>
+<script defer src="public/bundles/flux-core.861cefea.js"></script>
+<script defer src="public/bundles/flux-features.6807c634.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

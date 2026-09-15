@@ -173,7 +173,9 @@
     '🔁':'repeat','🔄':'refresh',
     '🧪':'flask','⚗':'flask','🧫':'flask','🧬':'dna','🪐':'orbit','🔭':'orbit','📐':'ruler','📏':'ruler',
     '📂':'folder','📁':'folder','🗂':'folder','📦':'package','🧩':'puzzle','🃏':'layers','🀄':'layers',
-    '❓':'help-circle','❔':'help-circle','ℹ':'info','⚠':'alert-triangle','⛔':'alert-octagon','☢':'alert-triangle',
+    // ☣ sat out of this row while ☢ was in it, so a biohazard was the one
+    // hazard symbol left as a raw colour emoji on a phone.
+    '❓':'help-circle','❔':'help-circle','ℹ':'info','⚠':'alert-triangle','⛔':'alert-octagon','☢':'alert-triangle','☣':'alert-triangle',
     '🚨':'siren','🛑':'alert-octagon','🛡':'shield','🔒':'lock','🔐':'lock','🔓':'lock','🗝':'key','🔑':'key',
     '🔔':'bell','🔕':'bell-off','🔋':'battery','🪫':'battery','🔌':'plug','🚀':'rocket',
     '☕':'coffee','🍵':'coffee','🛋':'armchair','🪑':'armchair','🛟':'life-buoy','💾':'save',
