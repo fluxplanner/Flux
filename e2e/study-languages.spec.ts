@@ -69,14 +69,19 @@ test.describe('French, German and Spanish are their own subjects', () => {
     expect(res.pills.slice().sort()).toEqual(['english', 'french', 'german', 'spanish']);
   });
 
-  test('each language has a dictionary, conjugator, irregular verbs and phrases', async ({ page }) => {
+  test('each language has a conjugator, irregular verbs and phrases — and no dictionary', async ({ page }) => {
     for (const sid of ['french', 'german', 'spanish']) {
       await openSubject(page, sid);
       const tools = await page.evaluate(() =>
         [...document.querySelectorAll('#fshChemTabs .fsh-chem-tab')].map(
           (t) => (t as HTMLElement).dataset.tool || ''));
-      expect(tools, `${sid} is missing one of the four tools`)
-        .toEqual(expect.arrayContaining(['dict', 'conj', 'irreg', 'phrases']));
+      expect(tools, `${sid} is missing one of the three tools`)
+        .toEqual(expect.arrayContaining(['conj', 'irreg', 'phrases']));
+      /* Removed on purpose: it held only the words already on the syllabus, so
+         it was a worse lookup than any real dictionary while presenting itself
+         as a complete one. Asserted rather than merely deleted — a tool that
+         comes back by accident is the failure worth catching. */
+      expect(tools, `${sid} still offers the removed dictionary`).not.toContain('dict');
       // The shared practice card should have followed the split too.
       expect(tools, `${sid} lost the practice card`).toContain('practice');
     }
@@ -84,7 +89,7 @@ test.describe('French, German and Spanish are their own subjects', () => {
 
   test('every tool paints real content in all three languages', async ({ page }) => {
     for (const sid of ['french', 'german', 'spanish']) {
-      for (const tool of ['dict', 'conj', 'irreg', 'phrases']) {
+      for (const tool of ['conj', 'irreg', 'phrases']) {
         const text = await openTool(page, sid, tool);
         /* Length alone is the wrong assertion here: a correct French
            conjugation table is 260 characters because French words are short,
@@ -188,27 +193,6 @@ test.describe('French, German and Spanish are their own subjects', () => {
     expect(res.counts.fr).toBeGreaterThan(30);
   });
 
-  test('the dictionary searches both languages and ignores accents', async ({ page }) => {
-    await openTool(page, 'german', 'dict');
-    const box = page.locator('#lgDictQ');
-    await expect(box).toBeVisible();
-
-    // English in, German out.
-    await box.fill('homework');
-    await page.waitForTimeout(250);
-    await expect(page.locator('#fshSubBody')).toContainText('die Hausaufgaben');
-
-    // German in, English out — and without the umlaut.
-    await page.locator('#lgDictQ').fill('prufung');
-    await page.waitForTimeout(250);
-    await expect(page.locator('#fshSubBody')).toContainText('the exam');
-
-    // A miss says so rather than showing an empty table.
-    await page.locator('#lgDictQ').fill('zzzzz');
-    await page.waitForTimeout(250);
-    await expect(page.locator('#fshSubBody')).toContainText('Nothing matched');
-  });
-
   test('phrases show the subject’s language, not all three', async ({ page }) => {
     const de = await openTool(page, 'german', 'phrases');
     expect(de).toContain('Ich verstehe nicht');
@@ -233,7 +217,7 @@ test.describe('French, German and Spanish are their own subjects', () => {
     const errs: string[] = [];
     page.on('pageerror', (e) => errs.push(String(e)));
     for (const sid of ['french', 'german', 'spanish']) {
-      for (const tool of ['dict', 'conj', 'irreg', 'phrases', 'practice']) {
+      for (const tool of ['conj', 'irreg', 'phrases', 'practice']) {
         await openTool(page, sid, tool);
       }
     }

@@ -141,71 +141,6 @@
   }).join('')}</tbody></table></div></div>`;
     }
 
-    // ── dictionary ───────────────────────────────────────────────────────────
-    /* Reads the practice decks rather than carrying a word list of its own.
-       Two lists of the same 221 words would drift, and the one that drifted
-       would be the one nobody was testing. */
-    const dictQ = {};
-
-    function dictRows(lang) {
-      const P = window.FluxLangPractice;
-      if (!P) return null;
-      const out = [];
-      P.themes().forEach((t) => {
-        P.words(t.id).forEach((w) => { out.push({ topic: t.name, en: w[0], tgt: w[COL[lang]] }); });
-      });
-      return out;
-    }
-    /** Accent-blind, so searching "prufung" finds Prüfung. */
-    function fold(s) {
-      return String(s || '').toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/ß/g, 'ss');
-    }
-
-    function renderDict(lang, body) {
-      const all = dictRows(lang);
-      if (!all) { body.innerHTML = loading('The word list'); return; }
-      const q = dictQ[lang] || '';
-      const hits = q
-        ? all.filter((r) => fold(r.en).indexOf(fold(q)) >= 0 || fold(r.tgt).indexOf(fold(q)) >= 0)
-        : all;
-
-      // Grouped by topic so an empty search box is a browsable dictionary
-      // rather than 221 undifferentiated rows.
-      const byTopic = [];
-      hits.forEach((r) => {
-        const last = byTopic[byTopic.length - 1];
-        if (last && last.topic === r.topic) last.rows.push(r);
-        else byTopic.push({ topic: r.topic, rows: [r] });
-      });
-
-      const table = (rows) => `<div class="fsh-sol-scroll"><table class="fsh-sol" style="min-width:360px"><tbody>${rows.map((r) =>
-        `<tr><th style="text-align:left">${esc(r.en)}</th><td style="background:rgba(255,255,255,.05);color:var(--fsh-ink)">${esc(r.tgt)}</td></tr>`).join('')}</tbody></table></div>`;
-
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">🔍 English ⇄ ${esc(LANGS[lang].name)}</h3>
-        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">${all.length} words with their articles, grouped by topic. Type in either language — accents optional.</p>
-        <div class="fsh-field"><input id="lgDictQ" class="fsh-input" placeholder="Search English or ${esc(LANGS[lang].name)}…" value="${esc(q)}" spellcheck="false" autocapitalize="off" autocorrect="off"></div>
-        ${hits.length
-    ? `<div class="fsh-note" style="margin-top:8px">${hits.length} of ${all.length} words</div>`
-            + byTopic.map((g) => `<div class="fsh-label" style="margin-top:14px"><span>${esc(g.topic)}</span></div>${table(g.rows)}`).join('')
-    : `<div class="fsh-note" style="margin-top:12px">Nothing matched “${esc(q)}”. The dictionary covers the ${all.length} words on the syllabus, not every word in the language — use the Translation tab for anything else.</div>`}
-        </div>`;
-
-      const inp = document.getElementById('lgDictQ');
-      if (inp) {
-        inp.addEventListener('input', () => {
-          dictQ[lang] = inp.value;
-          const at = inp.selectionStart;
-          renderDict(lang, body);
-          /* Re-rendering replaces the input, so the caret has to be put back
-             or every keystroke after the first lands at the start of the box
-             and you end up typing your search term backwards. */
-          const next = document.getElementById('lgDictQ');
-          if (next) { next.focus(); try { next.setSelectionRange(at, at); } catch (e) {} }
-        });
-      }
-    }
 
     // ── common phrases ───────────────────────────────────────────────────────
     /* Grouped rather than one flat list of ten. The old table was a greeting
@@ -300,11 +235,11 @@
       const sid = pair[0], lang = pair[1];
       const low = LANGS[lang].name.toLowerCase();
       H.register(sid, [
-        {
-          id: 'dict', name: 'Dictionary', icon: '🔍',
-          desc: 'dictionary vocabulary words lookup translate ' + low + ' english',
-          render: (b) => renderDict(lang, b),
-        },
+        /* The dictionary is gone from all three languages (owner request). It
+           held only the words already on the syllabus, so it was a worse
+           lookup than any real dictionary while presenting itself as a
+           complete one — its own empty state had to admit as much. renderDict
+           and its helpers go with it rather than linger as an unreachable tab. */
         {
           id: 'conj', name: 'Conjugator', icon: '🗣',
           desc: 'conjugation ' + low + ' verbs tenses present past future',
