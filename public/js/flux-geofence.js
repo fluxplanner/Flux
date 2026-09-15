@@ -323,6 +323,11 @@
   }
 
   function ensureCard() {
+    /* Settings → Alerts is gone, and with it this card's home. Returning here
+       rather than deleting the module keeps the geofence watch itself intact
+       for whatever still calls it; only the settings card is withdrawn. */
+    return;
+    /* eslint-disable no-unreachable */
     if (!enabled()) {
       stopWatch();
       document.getElementById(CARD_ID)?.remove();

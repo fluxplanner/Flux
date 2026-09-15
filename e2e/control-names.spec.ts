@@ -191,20 +191,25 @@ test.describe('Every control says what it is', () => {
   test('the switches report on or off, not just their name', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('settings'));
+    /* Was #panicToggle in Settings → Alerts. That whole section is gone, so
+       this drives Reduce motion in Text & reading instead. The particular
+       switch is incidental: what is being checked is that aria-pressed and the
+       painted state never disagree, which holds for every switch or none. */
     await page.evaluate(() => {
       document.querySelectorAll('.spane').forEach((p) => p.classList.remove('active'));
-      document.getElementById('spane-notifications')?.classList.add('active');
+      document.getElementById('spane-text')?.classList.add('active');
     });
 
-    const panic = page.locator('#panicToggle');
-    const before = await panic.getAttribute('aria-pressed');
-    const onBefore = await panic.evaluate((el) => el.classList.contains('on'));
+    const sw = page.locator('#reduceMotionToggle');
+    await expect(sw).toBeVisible();
+    const before = await sw.getAttribute('aria-pressed');
+    const onBefore = await sw.evaluate((el) => el.classList.contains('on'));
     // The claim and the paint have to agree to begin with.
     expect(before).toBe(String(onBefore));
 
-    await panic.click();
-    const after = await panic.getAttribute('aria-pressed');
-    const onAfter = await panic.evaluate((el) => el.classList.contains('on'));
+    await sw.click();
+    const after = await sw.getAttribute('aria-pressed');
+    const onAfter = await sw.evaluate((el) => el.classList.contains('on'));
     expect(after).toBe(String(onAfter));
     expect(after).not.toBe(before);
   });

@@ -636,6 +636,8 @@
   function installCopyIds() {
     document.addEventListener('flux-nav', (ev) => {
       if (!ev.detail || ev.detail.panel !== 'settings') return;
+      return; // "Copy identifiers" withdrawn from Settings → Account.
+      /* eslint-disable no-unreachable */
       const acc = document.getElementById('spane-account');
       if (!acc || document.getElementById('fluxEnhCopyIds')) return;
       const uid = currentUserId();
@@ -1050,6 +1052,11 @@
 
   /* ── 49 High-contrast quick toggle ── */
   function installContrastQuick() {
+    /* Withdrawn. The accessibility suite in Settings → Text & reading still
+       carries the real contrast control; this was a second switch for the
+       same thing, sitting in a different section. */
+    return;
+    /* eslint-disable no-unreachable */
     const pane = document.getElementById('spane-appearance');
     if (!pane || document.getElementById('fluxEnhContrastQuick')) return;
     const row = document.createElement('div');

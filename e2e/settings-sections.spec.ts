@@ -29,7 +29,7 @@ test.describe('Settings sections', () => {
     await expect(page.locator('#settings.panel.active')).toBeVisible();
   });
 
-  test('has ten sections, each with a pane behind it', async ({ page }) => {
+  test('has seven sections, each with a pane behind it', async ({ page }) => {
     const wiring = await page.evaluate(() =>
       [...document.querySelectorAll('#settings .stab')].map((btn) => {
         const onclick = btn.getAttribute('onclick') || '';
@@ -44,9 +44,11 @@ test.describe('Settings sections', () => {
       'Theme',
       'Text & reading',
       'Layout',
-      'Alerts',
-      'Connections',
-      'AI',
+      // Alerts, Connections and AI were removed outright — panes, tab buttons
+      // and the modules that injected into them. Listed here rather than just
+      // deleted so the next person can see they went on purpose: the list is
+      // the spec, and a section reappearing is as much a regression as one
+      // going missing.
       'Account',
       'Your data',
       'Help',
@@ -94,7 +96,8 @@ test.describe('Settings sections', () => {
     expect(help.active).toBe(true);
     expect(help.headings).toEqual([
       'Planner tour',
-      'Keyboard',
+      // 'Keyboard' removed — a card listing shortcuts for a laptop, in an app
+      // most of its users open on a phone.
       'FAQ',
       'Send feedback',
       'For schools & families',

@@ -33,6 +33,11 @@
   }
 
   function render() {
+    /* The AI pane is gone. Same trap as the connectors card: the lookup below
+       falls back to spane-appearance and then to #settings itself, so this
+       would have resurfaced inside Layout rather than disappearing. */
+    return;
+    /* eslint-disable no-unreachable */
     const provs = fp();
     if (!provs) return;
     const pane = document.getElementById('spane-ai') || document.getElementById('spane-appearance') || document.getElementById('settings');

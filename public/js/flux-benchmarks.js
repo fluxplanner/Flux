@@ -31,9 +31,14 @@
   function load_(k, f) { try { return typeof load === 'function' ? load(k, f) : f; } catch (e) { return f; } }
   function save_(k, v) { try { if (typeof save === 'function') save(k, v); } catch (e) {} }
 
+  /* Always on, by owner decision. It was opt-in with the toggle off by
+     default, which meant the aggregate never reached the 20-student floor it
+     needs before it computes anything — the feature could not work. Nothing
+     here identifies anyone: it is counts only, never notes, task names or
+     identity. Storage is no longer consulted, so an old stored false does not
+     keep someone out of it. */
   function consent() {
-    var s = load_('settings', {}) || {};
-    return !!s.share_anon_stats;
+    return true;
   }
   function setConsent(on) {
     var s = load_('settings', {}) || {};
@@ -72,6 +77,10 @@
 
   /* opt-in toggle card injected into Settings → Data & info */
   function injectToggle() {
+    /* The card is withdrawn along with its toggle — there is nothing left to
+       choose now that contributing is always on. */
+    return;
+    /* eslint-disable no-unreachable */
     var pane = document.getElementById('spane-data');
     if (!pane || document.getElementById('fbConsentCard')) return;
     var card = document.createElement('div');

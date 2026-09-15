@@ -3110,7 +3110,6 @@ const FLUX_COUNSELOR_CONTACT_ENABLED=false;
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
   {id:'calendar',icon:'📅',label:'Calendar',visible:true},
-  {id:'ai',icon:'✦',label:'Flux AI',visible:true},
   {id:'school',icon:'🏫',label:'School Info',visible:true},
   {id:'canvas',icon:'C',label:'Canvas',visible:true},
   {id:'notes',icon:'📓',label:'Notebook',visible:true},
@@ -3123,7 +3122,13 @@ const DEFAULT_TABS=[
 ];
 let tabConfig=load('flux_tabs',DEFAULT_TABS);
 // 'notebook' merged into 'notes' (one Notebook tab with Knowledge as a sub-view)
-tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references'&&t.id!=='grades'&&t.id!=='workspace'&&t.id!=='notebook');
+/* 'ai' joins the retired list. Dropping it from DEFAULT_TABS alone would not
+   have removed it: tabConfig is restored from localStorage, so everyone who
+   has already used Flux carries a saved 'ai' entry that would keep the tab
+   alive for exactly the people who have it today. Filtering on load is what
+   actually retires it — and it is dropped rather than marked invisible so it
+   cannot be switched back on from the Settings tab customiser. */
+tabConfig=tabConfig.filter(t=>t.id!=='gmail'&&t.id!=='periodic'&&t.id!=='references'&&t.id!=='grades'&&t.id!=='workspace'&&t.id!=='notebook'&&t.id!=='ai');
 {const _nt=tabConfig.find(t=>t.id==='notes');if(_nt&&(_nt.label==='Knowledge'||_nt.label==='Notes')){_nt.label='Notebook';_nt.icon='📓';}}
 // Ensure new tabs get added if missing
 DEFAULT_TABS.forEach(dt=>{if(!tabConfig.find(t=>t.id===dt.id))tabConfig.push({...dt});});
@@ -3967,7 +3972,7 @@ function renderSidebars(){
   // Notebook (merged w/ Knowledge sub-view) + Study tools + Google) ·
   // Me & Life 4.
   const groups=[
-    {label:'Plan',ids:['dashboard','calendar','ai','timer']},
+    {label:'Plan',ids:['dashboard','calendar','timer']},
     {label:'Learn',ids:['notes','toolbox','canvas']},
     {label:'Me & Life',ids:['profile','goals','mood','settings']},
   ];
@@ -4050,7 +4055,6 @@ function renderSidebars(){
     const tabs=[
       {id:'dashboard',label:'Home',icon:BNAV_ICONS.dashboard,extra:'<span class="bnav-dot" aria-hidden="true"></span>'},
       {id:'calendar',label:'Calendar',icon:BNAV_ICONS.calendar},
-      {id:'ai',label:'Flux AI',icon:BNAV_ICONS.ai},
       {id:'toolbox',label:'Study',icon:BNAV_ICONS.study},
     ];
     bnav.innerHTML=tabs.map(t=>{
@@ -6599,6 +6603,61 @@ function formatProgramsDisplay(programs){
   return normalizeProgramList(programs).join(' · ');
 }
 
+/* The name on the profile and the name you sign in with were two different
+   things, and only one of them was editable. Change "Jane Doe" to "Jane Smith"
+   here and the profile said Smith while the sign-in box still only accepted
+   Doe — with nothing on screen to say so, and no email to remind you.
+
+   They are the same name now. That is a bigger operation than it looks: the
+   sign-in name IS the account key, folded to <name>@users.fluxplanner.app, so
+   renaming means re-keying the account. Hence the warning — this is the one
+   change in Flux that alters how you get back in, and it has to be said before
+   it happens, not discovered at the next sign-in.
+
+   Returns true when the caller should keep the new name, false when it was
+   refused or cancelled and the field should go back. */
+async function fluxSyncLoginNameToProfile(newName, oldName){
+  const sb=getSB();
+  const email=currentUser?.email||'';
+  // Guests have no account to re-key; a non-synthesised address is not ours to
+  // rewrite, and rewriting it would be how someone loses a real mailbox.
+  if(!sb||!email.endsWith('@'+FLUX_USER_DOMAIN))return true;
+  if(!newName||newName===oldName)return true;
+
+  const nextKey=fluxUsernameToEmail(newName);
+  if(!nextKey){
+    alert('That name has no letters or numbers in it, so it cannot be a sign-in name. Your old name has been kept.');
+    return false;
+  }
+  if(nextKey===email)return true;  // spelling or spacing only — same key
+
+  const was=fluxEmailToUsername(email);
+  const now=fluxEmailToUsername(nextKey);
+  const ok=confirm(
+    'This also changes how you sign in.\n\n'+
+    'You sign in as:  '+was+'\n'+
+    'You will sign in as:  '+now+'\n\n'+
+    'Your password stays the same. Write the new name down — there is no reset '+
+    'email, so if you forget it only Azfer can get you back in.\n\n'+
+    'Change it?');
+  if(!ok)return false;
+
+  try{
+    const {error}=await sb.auth.updateUser({email:nextKey,data:{full_name:newName}});
+    if(error)throw error;
+    if(typeof showToast==='function')showToast('You now sign in as "'+now+'". Same password.','ok');
+    return true;
+  }catch(e){
+    /* Almost always a collision: the key is derived from the name, so two
+       people called Jane Doe want the same one. Say which problem it is. */
+    const dup=/already|exists|duplicate|registered/i.test(String(e?.message||''));
+    alert(dup
+      ? 'Someone already signs in as "'+now+'". Try adding a middle initial. Your old name has been kept.'
+      : 'Your sign-in name could not be changed just now, so your old name has been kept. Tell Azfer if it keeps happening.');
+    return false;
+  }
+}
+
 function saveProfile(){
   /* Spread the stored record first. This used to build a fresh object from the
      four fields on screen, which silently deleted every other key the profile
@@ -6606,6 +6665,7 @@ function saveProfile(){
      this form. That is why flux-opportunities.js has always matched
      scholarships against a blank GPA: the number was being written by the
      scores card and wiped by the next Save Profile. */
+  const _prevName=(load('profile',{})||{}).name||'';
   const p={
     ...(load('profile',{})||{}),
     name:document.getElementById('name').value.trim(),
@@ -6627,6 +6687,21 @@ function saveProfile(){
     }
   }catch(_){}
   const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Profile',1500);}
+
+  /* Last, and deliberately after the local save: the profile is already on
+     disk, so a refused or cancelled rename only has to put the name back
+     rather than unpick a half-written record. */
+  if(p.name!==_prevName){
+    fluxSyncLoginNameToProfile(p.name,_prevName).then(kept=>{
+      if(kept)return;
+      const back={...(load('profile',{})||{}),name:_prevName};
+      save('profile',back);
+      fluxSaveStoredString('flux_user_name',_prevName);
+      const el=document.getElementById('name');if(el)el.value=_prevName;
+      renderProfile();
+      syncKey('profile',back);
+    });
+  }
 }
 
 // Auto-upgrade MYP → DP when grade reaches 11

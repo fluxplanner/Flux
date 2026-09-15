@@ -120,3 +120,50 @@
 }
 .fx-pw-msg.ok  { color: var(--green, #1f9e74); }
 .fx-pw-msg.bad { color: var(--red, #e23e57); }
+
+/* ── Spacing between Settings cards ─────────────────────────────────────────
+   styles.css:1375 sets `.spane.active{display:block}`, and every .card carries
+   `margin-bottom: 0`. So nothing was actually spacing these cards apart: the
+   gaps you saw were whatever stray margin happened to leak out of each card's
+   last child. Measured across all seven panes, consecutive cards sat 2, 3, 1,
+   10, 3, 4, 8 and 9 pixels apart — and where a card was hidden the arithmetic
+   went negative, because a collapsed block still sits in the flow.
+
+   A flex column with one gap fixes both. Every pair of cards is now separated
+   by the same 16px whatever the cards contain, and a display:none card
+   contributes no gap at all rather than a phantom one — which is what made
+   Account and About look randomly spaced.
+
+   Kept on `.active` rather than `.spane` so the inactive `display:none` in
+   styles.css still wins; this only describes a pane that is actually showing.
+   The animation is restated because this declaration replaces that one. */
+.spane.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: panelIn var(--t-base) var(--ease);
+}
+
+/* Cards must not be squeezed by flex when a pane overflows: a long card should
+   make the pane scroll, not shrink every card above it. */
+.spane.active > .card { flex: 0 0 auto; }
+
+/* The gap alone did not make these even. Each card's last child was still
+   contributing its own bottom margin on top of it, so the real separation came
+   out 18, 19, 20, 23, 26, 35 and 68px — the gap plus whatever that card
+   happened to end with. Collapsing the trailing margin is what makes 16 mean
+   16, and it is scoped to the last child so spacing *inside* a card is
+   untouched. */
+.spane.active > .card > :last-child { margin-bottom: 0; }
+
+/* The last of it, and the actual culprit behind the 24-69px gaps: the panes
+   contain empty mount points — <div id="fluxClaudeConnectMount"></div> and
+   friends — that modules fill in later. Under `display:block` an empty div was
+   invisible and free. As a flex item it is still invisible but no longer free:
+   it collects a 16px gap on each side, so two unused mounts silently pushed
+   two cards 48px apart while both their margins read 0.
+
+   Collapsing them while they are empty costs nothing and reverses itself the
+   moment a module puts something inside — at which point it is a real card and
+   deserves its gap. */
+.spane.active > :empty { display: none; }
