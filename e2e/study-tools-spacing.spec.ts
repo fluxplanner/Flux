@@ -110,20 +110,42 @@ test.describe('Study Tools panel spacing', () => {
   }
 
   test('the grid that already had spacing was not doubled', async ({ page }) => {
-    // Chemistry's Tools tab lays six cards out in .fsh-tools-grid with
-    // gap:18px. A descendant rule would have added another 18 on top.
+    /* .fsh-tools-grid declares gap:18px once, at flux-study-hub.css:465. The
+       regression this guards is a descendant margin rule stacking another 18
+       on top of it.
+
+       This used to click Chemistry's "Tools" tab and measure the distance
+       between two stacked cards. That tab is gone — it held six unrelated
+       calculators in one grid and is now one tab each — so no chemistry panel
+       has the three cards a positional measurement needs. Asserting the
+       resolved gap states the same rule more directly, and does not depend on
+       how many cards a panel happens to render. */
     await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
-    await page.locator('#fshChemTabs [data-tab="tools"]').first().click();
+    /* Chemistry opens on its first unit, "Atoms & the table", so the balancer
+       is not on screen until its unit is. Selecting the unit first is the
+       navigation a student performs, not test scaffolding. */
+    await page.locator('#fshUnits [data-unit="reactions"]').first().click();
+    await expect(page.locator('#fshChemTabs [data-tab="balance"]').first()).toBeVisible();
+    await page.locator('#fshChemTabs [data-tab="balance"]').first().click();
     await expect(page.locator('.fsh-tools-grid').first()).toBeVisible();
 
-    const rowGap = await page.evaluate(() => {
+    const spacing = await page.evaluate(() => {
       const grid = document.querySelector('.fsh-tools-grid') as HTMLElement;
-      const cards = [...grid.children] as HTMLElement[];
-      // Two columns, so card[2] is directly below card[0].
-      if (cards.length < 3) return null;
-      return +(cards[2].getBoundingClientRect().top - cards[0].getBoundingClientRect().bottom).toFixed(0);
+      const cs = getComputedStyle(grid);
+      const card = grid.children[0] as HTMLElement | undefined;
+      const cardCs = card ? getComputedStyle(card) : null;
+      return {
+        rowGap: cs.rowGap,
+        // A card carrying its own bottom margin is exactly how the doubling got
+        // in last time, so name it rather than inferring it from geometry.
+        cardMarginBottom: cardCs ? cardCs.marginBottom : null,
+      };
     });
 
-    expect(rowGap, 'grid rows should keep the grid gap, not gain a margin too').toBe(18);
+    expect(spacing.rowGap, 'the grid should still space its own rows').toBe('18px');
+    expect(
+      spacing.cardMarginBottom,
+      'cards must not add a margin on top of the grid gap',
+    ).toBe('0px');
   });
 });
