@@ -134,4 +134,52 @@ test.describe('Mobile More sheet lifecycle', () => {
     await expect(page.locator('#school.panel.active')).toBeVisible();
     await expectSheetClosed(page);
   });
+
+  /*
+   * The sheet is typed out by hand in index.html while the sidebar and drawer
+   * are generated from tabConfig, so the two drifted apart. At 390px the sheet
+   * was still offering "Notebook" — a paused tab, so the button closed the
+   * sheet and left you on the Dashboard — and still said "Timer", "School" and
+   * "Goals" long after the sidebar became "Time", "School Info" and "College
+   * Prep". That is the phone quietly turning into a different app, which is
+   * the thing this redesign exists to stop, so it is worth a test rather than
+   * a one-off correction.
+   */
+  test('the More sheet says the same thing as the drawer, and offers no dead tabs', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const shown = (el: Element) => {
+        const s = getComputedStyle(el);
+        return s.display !== 'none' && s.visibility !== 'hidden';
+      };
+      const drawer: [string, string][] = [];
+      for (const b of Array.from(document.querySelectorAll('.mob-drawer .nav-item'))) {
+        if (!shown(b)) continue;
+        const id = (b as HTMLElement).dataset.tab;
+        if (id) drawer.push([id, b.querySelector('.nl')?.textContent?.trim() || '']);
+      }
+      const sheet = Array.from(document.querySelectorAll('.more-sheet-item[data-nav-tab]'))
+        .filter(shown)
+        .map((b) => ({
+          id: (b as HTMLElement).dataset.navTab as string,
+          label: b.querySelector('.more-sheet-label')?.textContent?.trim() || '',
+        }));
+      return { drawer, sheet };
+    });
+
+    const drawer = new Map(res.drawer);
+    // Both halves must actually be populated, or every assertion below passes
+    // by looking at nothing.
+    expect(drawer.size, 'the drawer rendered no visible nav items').toBeGreaterThan(4);
+    expect(res.sheet.length, 'the More sheet rendered no visible nav items').toBeGreaterThan(4);
+
+    for (const item of res.sheet) {
+      expect(drawer.has(item.id),
+        `More sheet offers "${item.label}" (${item.id}), which the drawer does not — ` +
+        'a tab reachable only from the phone is a tab nobody maintains')
+        .toBe(true);
+      expect(item.label,
+        `More sheet calls ${item.id} "${item.label}" but the drawer calls it "${drawer.get(item.id)}"`)
+        .toBe(drawer.get(item.id));
+    }
+  });
 });

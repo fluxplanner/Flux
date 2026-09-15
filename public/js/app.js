@@ -3829,12 +3829,36 @@ function getNavIconHtml(tabId,variant){
   const tc=tabConfig.find(t=>t.id===tabId)||DEFAULT_TABS.find(t=>t.id===tabId);
   return`<span class="ni-emoji" aria-hidden="true">${esc(tc?.icon||'•')}</span>`;
 }
-function syncMoreSheetNavIcons(){
+/* The More sheet's items are typed out by hand in index.html, and they had
+   drifted from the nav everywhere else. Measured at 390px: it still offered
+   "Notebook", a tab that is paused, so tapping it closed the sheet and left
+   you on the Dashboard — a dead button that exists only on a phone. It also
+   still read "Timer", "School" and "Goals" after the sidebar had been renamed
+   to "Time", "School Info" and "College Prep", and it ignored the Settings
+   switch that hides a tab.
+
+   So rather than re-typing this markup every time a tab changes, take the
+   icon, the label and whether it appears at all from tabConfig — the same
+   source renderSidebars() builds the sidebar and the drawer from. The phone
+   then cannot disagree with the laptop, which is the point of the redesign,
+   and a tab someone renames in Settings gets renamed here too.
+
+   The admin slot is exempt: flux_control is injected by role a few lines
+   above and deliberately is not a tabConfig entry, so matching on tabConfig
+   would hide it from the owner. */
+function syncMoreSheetNav(){
+  const visible=new Set(tabConfig.filter(t=>t.visible).map(t=>t.id));
   document.querySelectorAll('.more-sheet-item[data-nav-tab]').forEach(btn=>{
+    if(btn.closest('#moreSheetAdminSlot'))return;
     const id=btn.getAttribute('data-nav-tab');
+    btn.style.display=visible.has(id)?'':'none';
+    const tc=tabConfig.find(t=>t.id===id);
+    if(!tc)return;
     const el=btn.querySelector('.more-sheet-icon');
-    if(!el)return;
-    el.innerHTML=getNavIconHtml(id,'moreSheet');
+    if(el)el.innerHTML=getNavIconHtml(id,'moreSheet');
+    const lab=btn.querySelector('.more-sheet-label');
+    if(lab)lab.textContent=tc.label||id;
+    btn.setAttribute('aria-label',tc.label||id);
   });
 }
 
@@ -4001,7 +4025,7 @@ function renderSidebars(){
     }).join('')
       +`<button type="button" class="bnav-item" onclick="openMobileSheet()" id="moreBtn" aria-label="More"><span class="bni" aria-hidden="true">${BNAV_ICONS.more}</span><span class="bnl">More</span></button>`;
   }
-  syncMoreSheetNavIcons();
+  syncMoreSheetNav();
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   // Nav was just rebuilt, so the owner's global tab hiding has to be re-applied
   // on top of it — role hiding runs first and this must not undo it.
