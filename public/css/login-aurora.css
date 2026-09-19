@@ -283,8 +283,16 @@
 #loginScreen .lx-divider::before,#loginScreen .lx-divider::after{content:'';flex:1;height:1px;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
 
+/* overflow-wrap because an auth error is not always a sentence. Supabase
+   answered a weak password with the lower-case alphabet, the upper-case
+   alphabet and the digits pasted into one 62-character word, which has no
+   space to break at — so it ran straight out past the rounded corner and off
+   the card. The message itself is translated now, but any provider string
+   that reaches here unrecognised is just as likely to be one long token, and
+   it should wrap rather than escape the box. */
 #loginScreen .lx-auth-error{display:none;margin:0 0 12px;padding:10px 13px;border-radius:11px;
   font-size:.82rem;line-height:1.4;color:#ffd9d9;
+  overflow-wrap:anywhere;
   background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.34)}
 #loginScreen .lx-auth-error.show{display:block;animation:lxShake .35s ease}
 /* "Check your email" is good news — it was sharing the red error box, and shook. */
