@@ -211,6 +211,12 @@
       { name:'Confidence interval (mean)', eq:'x̄ ± z·(σ/√n)', vars:'z=1.96 for 95%', ex:'-' },
     ],
   };
+  /* Same reason as FLUX_FORMULA_DATA in flux-toolbox.js: the unit-grouped
+     sheet regroups these rather than holding a second copy. Maths was the
+     worst case — these were reachable only through a modal opened from a
+     reference tool, so the subject with the most formulas was the one where
+     they were hardest to find. */
+  window.FLUX_MATH_FORMULA_DATA = MATH_FORMULAS;
 
   function openMathFormulas(){
     openToolModal({

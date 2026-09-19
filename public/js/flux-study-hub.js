@@ -299,17 +299,28 @@
       { id: 'algebra', name: 'Algebra & graphing', tools: ['graph', 'unit', 'matrix'] },
       { id: 'calculus', name: 'Calculus', tools: ['ab-limits', 'ab-theorems', 'ab-apps', 'ab-drill'] },
       { id: 'stats', name: 'Statistics', tools: ['stats', 'normal'] },
+      /* Last on purpose — "at the end of the units, put the formula sheet for
+         EVERYTHING". Without a unit claiming it, unitsFor() sweeps it into the
+         trailing More bucket, which is where things land when nothing wants
+         them. */
+      { id: 'formula-sheet', name: 'Formula sheet', tools: ['formula-sheet'] },
     ],
     physics: [
       { id: 'mechanics', name: 'Mechanics', tools: ['projectile', 'suvat'] },
       { id: 'waves-electricity', name: 'Waves & electricity', tools: ['wave', 'ohms'] },
       { id: 'astronomy', name: 'Astronomy', tools: ['orrery', 'moon', 'stars', 'kepler', 'distance', 'deepsky', 'smallbodies'] },
+      { id: 'formula-sheet', name: 'Formula sheet', tools: ['formula-sheet'] },
     ],
     biology: [
       { id: 'cells', name: 'Cells & microscopy', tools: ['micro', 'cell'] },
       { id: 'molecules', name: 'Molecules', tools: ['macro', 'carbs', 'lipids'] },
       { id: 'genetics', name: 'Genetics', tools: ['punnett', 'translate', 'pedigree'] },
-      { id: 'data-disease', name: 'Data & disease', tools: ['biounits', 'biostats', 'formulas', 'virus'] },
+      { id: 'data-disease', name: 'Data & disease', tools: ['biounits', 'biostats', 'virus'] },
+      /* 'formulas' moves out of Data & disease and ends the list. It was never
+         a data-and-disease tool — it holds Hardy–Weinberg, water potential and
+         BMI — it was filed there because that is where the module that
+         registers it happened to sit. */
+      { id: 'formula-sheet', name: 'Formula sheet', tools: ['formulas'] },
     ],
     // English and Music split on the seam where a second module registers in —
     // the 'rh-' and 'orc-' prefixes are those modules' own. Grouping along a
@@ -341,8 +352,14 @@
          Solubility and Constants tabs but are not provably a subset of them,
          and dropping a reference table a student is mid-revision with is not a
          tidy-up. More is left holding only the unit converter. */
-      { id: 'reference', name: 'Reference', tools: ['constants', 'formulas', 'lg-chem-ref'] },
+      { id: 'reference', name: 'Reference', tools: ['constants', 'lg-chem-ref'] },
       { id: 'practice', name: 'Practice', tools: ['worksheet'] },
+      /* 'formulas' leaves Reference for the same reason it leaves Data &
+         disease in Biology: every subject's sheet should be findable in the
+         same place, and that place is the end. Reference keeps the constants
+         table and the legacy chemistry reference, which are lookups rather
+         than formulas. */
+      { id: 'formula-sheet', name: 'Formula sheet', tools: ['formulas'] },
     ],
   };
 
@@ -889,6 +906,12 @@
     const b = $('fshChemBody'); if (!b) return;
     if (state.chemTab && state.chemTab.indexOf('lg-') === 0) { const chip = legacyChipsFor('chemistry').find((c) => 'lg-' + c.id === state.chemTab); if (chip) { renderLegacyTool(b, chip); return; } state.chemTab = 'table'; }
     if (state.chemTab === 'formulas') {
+      /* The unit-grouped sheet first: same sections as the unit row above, so
+         Chemistry's formulas are laid out the way every other subject's are.
+         renderFormulaSheet is the old ungrouped renderer and stays as the
+         fallback — it is what the classic toolbox still uses, so it cannot be
+         removed, and a sheet in the wrong grouping beats no sheet. */
+      if (window.FluxFormulaSheet) { window.FluxFormulaSheet.render('chemistry', b); return; }
       if (typeof window.renderFormulaSheet === 'function') { window.renderFormulaSheet(b, 'Chemistry'); return; }
       state.chemTab = 'table';
     }

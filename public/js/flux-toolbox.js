@@ -311,6 +311,11 @@ const FORMULA_SHEET = {
     ]},
   ],
 };
+/* Exported so flux-formula-sheet.js can re-section these by unit without the
+   formulas being typed out a second time. Two copies of ~200 formulas is two
+   copies to keep right, and the one that drifts is always the copy nobody is
+   looking at. This stays the single source; the sheet only regroups it. */
+window.FLUX_FORMULA_DATA = FORMULA_SHEET;
 
 /**
  * @param {HTMLElement} body

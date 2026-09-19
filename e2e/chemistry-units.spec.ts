@@ -15,7 +15,11 @@ import { gotoScenario, openSidebarTab } from './helpers';
  * things most likely to break quietly: the retired "tools" id, and a unit click
  * resolving back to the wrong unit.
  */
-const UNIT_IDS = ['atoms', 'compounds', 'reactions', 'solutions', 'reference', 'practice'];
+/* 'formula-sheet' ends the list on purpose, and in every subject rather than
+   just this one: the sheet moved out of Reference so it is findable in the
+   same place everywhere. Reference keeps the constants table and the legacy
+   chemistry reference, which are lookups rather than formulas. */
+const UNIT_IDS = ['atoms', 'compounds', 'reactions', 'solutions', 'reference', 'practice', 'formula-sheet'];
 
 test.describe('Chemistry units', () => {
   test.beforeEach(async ({ page }) => {

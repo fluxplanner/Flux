@@ -1,0 +1,114 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * FLUX · FORMULA SHEET  ·  .ffs-*
+ * The per-subject sheet rendered by flux-formula-sheet.js.
+ *
+ * Loaded after flux-study-hub.css so it can sit inside a study panel without
+ * fighting it. The namespace is its own — nothing else in the app uses .ffs-
+ * — so none of this leaks into another tool.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.ffs { display: flex; flex-direction: column; gap: 18px; }
+
+/* ── head ── */
+.ffs-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.ffs-title { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+.ffs-sub { margin: 4px 0 0; font-size: .78rem; color: var(--muted2); }
+
+/* A plain width would be overridden anyway: flux-form-controls.css makes
+   every input inside #app full-width at (1,1,1). Matching that specificity is
+   what keeps the search box beside the title instead of on its own line. */
+#app .ffs .ffs-search {
+  width: auto; min-width: 200px; max-width: 280px; flex: 0 1 240px;
+  padding: 8px 12px; border-radius: 10px;
+  background: var(--card2); border: 1px solid var(--border2);
+  color: var(--text); font-size: .82rem;
+}
+
+/* ── jump bar ── */
+.ffs-jump {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border);
+}
+.ffs-jump-btn {
+  padding: 6px 13px; border-radius: 999px; cursor: pointer;
+  background: var(--card2); border: 1px solid var(--border2);
+  color: var(--muted2); font-size: .76rem; font-weight: 600;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.ffs-jump-btn:hover {
+  color: var(--text); border-color: var(--accent);
+  background: rgba(var(--accent-rgb), .1);
+}
+
+/* ── units ── */
+.ffs-unit { scroll-margin-top: 16px; }
+.ffs-unit[hidden] { display: none; }
+.ffs-unit-h {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 12px; font-size: .92rem; font-weight: 800;
+  letter-spacing: -.01em; color: var(--text);
+}
+.ffs-unit-n {
+  display: grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 7px;
+  background: rgba(var(--accent-rgb), .14); color: var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .7rem; font-weight: 700;
+}
+/* Pushed right rather than sitting against the title: the count is a detail,
+   and next to the words it reads like part of the unit's name. */
+.ffs-unit-c {
+  margin-left: auto; font-size: .7rem; font-weight: 600; color: var(--muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── formulas ── */
+/* auto-fill, not auto-fit: with auto-fit a single surviving card after a
+   search stretches the full width and reads as a different component. */
+.ffs-items {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  margin-bottom: 22px;
+}
+.ffs-item {
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--card2); border: 1px solid var(--border);
+  transition: border-color .15s;
+}
+.ffs-item[hidden] { display: none; }
+.ffs-item:hover { border-color: var(--border2); }
+.ffs-name { font-size: .76rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.ffs-f { display: flex; align-items: flex-start; gap: 8px; }
+.ffs-f code {
+  flex: 1; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .82rem; line-height: 1.5; color: var(--text);
+  background: none; padding: 0;
+  /* Formulas carry no spaces to break at — "P_total = Σ P_i" is one token to
+     the layout engine — so without this they run past the card edge. */
+  overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.ffs-copy {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+  color: var(--muted); font-size: .8rem; line-height: 1;
+  opacity: 0; transition: opacity .15s, color .15s, border-color .15s;
+}
+.ffs-item:hover .ffs-copy, .ffs-copy:focus-visible { opacity: 1; }
+.ffs-copy:hover { color: var(--accent); border-color: var(--border2); }
+.ffs-note { margin-top: 7px; font-size: .72rem; line-height: 1.5; color: var(--muted2); }
+.ffs-ex {
+  margin-top: 5px; font-size: .71rem; line-height: 1.5;
+  color: var(--muted); font-style: italic;
+}
+.ffs-empty { text-align: center; padding: 30px 0; color: var(--muted2); font-size: .84rem; }
+
+/* On a phone there is no hover to reveal the copy button, and a control you
+   cannot reach is worse than one that is always visible. */
+@media (max-width: 768px) {
+  .ffs-copy { opacity: .55; }
+  .ffs-items { grid-template-columns: 1fr; }
+  #app .ffs .ffs-search { max-width: none; flex: 1 1 100%; }
+}
