@@ -11528,6 +11528,112 @@ window.fluxNormalizeUsername=fluxNormalizeUsername;
 window.fluxUsernameToEmail=fluxUsernameToEmail;
 window.fluxEmailToUsername=fluxEmailToUsername;
 
+/* ── weak passwords ────────────────────────────────────────────────────────
+   Both functions below were called from four places and defined in none of
+   them. Every call site reads `typeof fn==='function'?fn(…):''`, so nothing
+   ever threw: the strength check silently returned "fine" for any password,
+   and the error text fell through to e.message. That is why sign-up answered
+   a weak password with Supabase's own words —
+
+     "Password should contain at least one character of each:
+      abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789."
+
+   — an alphabet recited at a fourteen-year-old, after the button was pressed
+   rather than before it.
+
+   Supabase can also reject passwords found in public breaches, but only on
+   paid plans, and this project is not on one. For a school the list below is
+   arguably the better one anyway: the passwords students actually choose are
+   their own name, the word Flux, or a run of keys. A breach corpus is aimed
+   at strangers credential-stuffing; the realistic threat here is the person
+   at the next desk.
+
+   Sign-up only, deliberately. Running it at sign-in would lock out everyone
+   whose password predates the check — including all 8 converted accounts.
+   They have to get in before they can change it. */
+const FLUX_COMMON_PASSWORDS=new Set(['password','password1','password12','password123','passw0rd','12345678','123456789','1234567890','87654321','qwertyui','qwerty123','qwertyuiop','asdfghjkl','iloveyou','sunshine','princess','football','baseball','basketball','superman','trustno1','welcome1','welcome123','letmein1','abc12345','abcd1234','monkey12','dragon12','shadow12','master12','jordan23','changeme','secret12','admin123','1q2w3e4r','1qaz2wsx','zaq12wsx','soccer12','pokemon1','minecraft','fortnite']);
+/* Whole-string runs only, so a password that merely *contains* "abc" is left
+   alone. */
+const FLUX_KEY_RUNS=['abcdefghijklmnopqrstuvwxyz','01234567890','qwertyuiop','asdfghjkl','zxcvbnm'];
+
+function fluxIsKeyRun(s){
+  const t=String(s||'').replace(/[^a-z0-9]/g,'');
+  if(t.length<6)return false;
+  return FLUX_KEY_RUNS.some(run=>{
+    const rev=run.split('').reverse().join('');
+    return run.includes(t)||rev.includes(t);
+  });
+}
+
+/** '' when the password is acceptable, otherwise a sentence to show the user. */
+function fluxWeakPasswordReason(password,name){
+  const pw=String(password||'');
+  if(pw.length<8)return'Your password needs to be at least 8 characters.';
+  /* The project requires a small letter, a capital and a number. Supabase
+     enforces that rule and states it as three alphabets pasted together;
+     saying it in words here means it is read before the button is pressed,
+     and never in that form. Naming only what is missing keeps it short and
+     tells the person what to do next. */
+  const missing=[];
+  if(!/[a-z]/.test(pw))missing.push('a small letter');
+  if(!/[A-Z]/.test(pw))missing.push('a capital letter');
+  if(!/[0-9]/.test(pw))missing.push('a number');
+  if(missing.length){
+    const list=missing.length===1?missing[0]
+      :missing.slice(0,-1).join(', ')+' and '+missing[missing.length-1];
+    return'Your password still needs '+list+'.';
+  }
+  const low=pw.toLowerCase();
+  const letters=low.replace(/[^a-z0-9]/g,'');
+  if(FLUX_COMMON_PASSWORDS.has(low)||FLUX_COMMON_PASSWORDS.has(letters)){
+    return'That is one of the most-guessed passwords there is. Please pick something else.';
+  }
+  if(/^(.)\1+$/.test(pw))return'That is the same character over and over. Please mix it up a bit.';
+  if(fluxIsKeyRun(low))return'That is just keys in the order they sit on the keyboard. Please pick something harder to guess.';
+  const own=fluxNormalizeUsername(name||'').replace(/[._-]/g,'');
+  if(own.length>=3&&letters.includes(own)){
+    return'Your password has your own name in it, which is the first thing anyone would try.';
+  }
+  if(letters.includes('flux'))return'Please pick a password that is not built from the word “Flux”.';
+  return'';
+}
+window.fluxWeakPasswordReason=fluxWeakPasswordReason;
+
+/** Turn an auth error into something a student can act on. */
+function fluxAuthErrorText(e,mode,name){
+  const m=String(e&&e.message||'').toLowerCase();
+  if(m.includes('already registered')||m.includes('already been registered')){
+    return'"'+(name||'That name')+'" is taken. Try adding your last initial, or sign in if it\'s yours.';
+  }
+  if(m.includes('invalid login credentials')){
+    return mode==='signin'
+      ?'That name and password don\'t match. Check the spelling, or ask Azfer to reset it.'
+      :'Could not sign you in. Please try again.';
+  }
+  /* Must come before the generic password branch. This is the alphabet
+     message, and answering it with "at least 8 characters" would be a lie
+     that sends someone off lengthening a password whose real problem is a
+     missing capital. Same words as the client-side check, so the advice does
+     not change depending on which one caught it. */
+  if(m.includes('one character of each')||m.includes('should contain at least')){
+    return'Your password needs a small letter, a capital letter and a number.';
+  }
+  if(m.includes('weak')||m.includes('easy to guess')||m.includes('pwned')){
+    return'That password is too easy to guess. Please pick a different one.';
+  }
+  if(m.includes('password'))return'Your password needs to be at least 8 characters.';
+  if(m.includes('invalid')&&m.includes('email'))return'Please use letters and numbers in your name.';
+  /* Seen for real on a school network: the browser's own wording, "Failed to
+     fetch", was shown to the student verbatim. It reads like the app is
+     broken when the actual cause is no connection — or a filter between the
+     iPad and Supabase, which on school wifi is the likelier of the two. */
+  if(m.includes('failed to fetch')||m.includes('networkerror')||m.includes('load failed')){
+    return'Could not reach Flux. Check your internet connection and try again.';
+  }
+  return e&&e.message?e.message:'Something went wrong. Please try again.';
+}
+window.fluxAuthErrorText=fluxAuthErrorText;
+
 /* Shown once, immediately after an account is created.
    There is no email on file, which means there is no reset link — so a
    forgotten password genuinely cannot be recovered without the owner stepping
@@ -11675,7 +11781,10 @@ async function handleEmailAuth(){
       if(result.error)throw result.error;
     }
   }catch(e){
-    showAuthError(typeof fluxAuthErrorText==='function'?fluxAuthErrorText(e):(e.message||'Sign-in failed. Please try again.'));
+    /* Pass the mode and the name: "Dominic is taken" and "that name and
+       password don't match" both need them, and without them the translator
+       falls back to wording that names neither. */
+    showAuthError(fluxAuthErrorText(e,_authMode,rawName));
     if(btn){_setLoginEmailBtnText(btn,_authMode==='signup'?'Create account':'Sign in');btn.disabled=false;}
   }
 }

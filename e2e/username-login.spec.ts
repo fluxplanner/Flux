@@ -234,4 +234,59 @@ test.describe('Name + password sign-in', () => {
        who to help — worse than refusing, because it looks like it worked. */
     expect(err).toMatch(/type your name/i);
   });
+
+  /*
+   * Sign-up answered a weak password by reciting Supabase's own string:
+   * "Password should contain at least one character of each:
+   *  abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789."
+   *
+   * Two faults, one cause. fluxWeakPasswordReason and fluxAuthErrorText were
+   * called from four places and defined in none — and every call site is
+   * written `typeof fn === 'function' ? fn(…) : ''`, so nothing ever threw.
+   * The check silently passed every password and the raw provider text went
+   * straight to the screen.
+   *
+   * Asserting on the missing-character wording specifically: that branch has
+   * to sit above the generic `includes('password')` one, which would answer a
+   * missing capital with "at least 8 characters" and send someone off
+   * lengthening a password that was already long enough.
+   */
+  test('a weak password is explained in words, before the button and after it', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(
+      () => typeof (window as any).fluxWeakPasswordReason === 'function'
+         && typeof (window as any).fluxAuthErrorText === 'function',
+      null, { timeout: 15000 });
+
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      const weak = w.fluxWeakPasswordReason;
+      return {
+        noCapital: weak('dominic1', 'Dominic'),
+        noNumber: weak('Sunshine', 'Sam'),
+        noLower: weak('ABCDEFGH1', 'Sam'),
+        tooShort: weak('dom1', 'Dominic'),
+        ownName: weak('Dominic1', 'Dominic'),
+        good: weak('Tr0mbone!Quay', 'Sam'),
+        // The exact string from the report, as the server sends it.
+        server: w.fluxAuthErrorText({ message:
+          'Password should contain at least one character of each: '
+          + 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.' },
+          'signup', 'Dominic'),
+      };
+    });
+
+    expect(r.noCapital).toMatch(/capital letter/i);
+    expect(r.noNumber).toMatch(/number/i);
+    expect(r.noLower).toMatch(/small letter/i);
+    expect(r.tooShort).toMatch(/8 characters/i);
+    expect(r.ownName).toMatch(/your own name/i);
+    expect(r.good, 'a strong password was refused').toBe('');
+
+    // Never the alphabet, and never the wrong advice.
+    expect(r.server).not.toMatch(/abcdefghij/);
+    expect(r.server, 'a missing capital was blamed on length')
+      .not.toMatch(/8 characters/i);
+    expect(r.server).toMatch(/small letter.*capital letter.*number/i);
+  });
 });
