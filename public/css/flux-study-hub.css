@@ -784,3 +784,46 @@ body.fsh-desmos-locked { overflow: hidden; }
    white-alpha, which on white left the moving part invisible. */
 [data-theme="light"] .fsh-tabs-slider { background:rgba(31,35,40,.10); }
 [data-theme="light"] .fsh-range { background:rgba(31,35,40,.16); }
+
+/* ── Periodic trends ──────────────────────────────────────────────────────
+   A second chip row under the category one, and a key under the table.
+   Reuses .fsh-cat-chip so the two rows look like siblings rather than two
+   different control styles stacked. */
+.fsh-pt-trends{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:10px 0 2px;
+}
+.fsh-pt-trends-lbl{
+  font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted2);margin-right:2px;
+}
+/* No value for this property — flat and grey, so "not measured" can never be
+   mistaken for "low on the scale". */
+.fsh-pt .fsh-el.trend-none{opacity:.55}
+
+.fsh-pt-key:empty{display:none}
+.fsh-ptk{
+  margin-top:12px;padding:14px 16px;border-radius:14px;
+  background:var(--card2);border:1px solid var(--border);
+}
+.fsh-ptk-scale{display:flex;align-items:center;gap:10px}
+.fsh-ptk-bar{
+  flex:1;height:10px;border-radius:999px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.fsh-ptk-end{
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:.76rem;color:var(--muted2);min-width:2.6em;text-align:center;
+}
+.fsh-ptk-dirs{
+  display:grid;gap:4px;margin-top:12px;
+  font-size:.82rem;line-height:1.5;color:var(--text);
+}
+.fsh-ptk-dirs strong{color:var(--accent);margin-right:6px}
+.fsh-ptk-note{
+  margin-top:10px;font-size:.75rem;line-height:1.55;color:var(--muted2);
+}
+@media (max-width:768px){
+  .fsh-ptk-dirs{font-size:.78rem}
+  .fsh-pt-trends{gap:6px}
+}
