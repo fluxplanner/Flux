@@ -576,7 +576,7 @@
         inline('graphing', 'Graph + calc', '📈', 'Plot functions and use a built-in calculator.', 'math', 'graphing'),
         inline('matrix', 'Matrix calculator', '⊞', 'Multiply, invert, determinant, and more.', 'math', 'matrix'),
         inline('stats', 'Statistics toolkit', '𝝈', 'Summary stats and z-scores from raw data.', 'math', 'stats'),
-        inline('geo-ref', 'Geometry formulas', '△', '2D and 3D area, surface, and volume.', 'math', 'geo-ref'),
+        inline('geo-ref', 'Geometry shapes', '△', '2D and 3D shapes drawn, with their area, surface and volume.', 'math', 'geo-ref'),
       ],
     },
     {

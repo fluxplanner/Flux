@@ -311,6 +311,11 @@ const FORMULA_SHEET = {
     ]},
   ],
 };
+/* Exported so flux-formula-sheet.js can re-section these by unit without the
+   formulas being typed out a second time. Two copies of ~200 formulas is two
+   copies to keep right, and the one that drifts is always the copy nobody is
+   looking at. This stays the single source; the sheet only regroups it. */
+window.FLUX_FORMULA_DATA = FORMULA_SHEET;
 
 /**
  * @param {HTMLElement} body
@@ -1893,7 +1898,7 @@ function renderStatsTool(body){
   recompute(); recomputeZ();
 }
 
-// ── Geometric formulas reference ────────────────────────────────
+// ── Geometry shapes reference (diagrams; the formulas also feed the sheet) ──
 const GEO = [
   {
     kind:'2D', name:'Square', svg:`<rect x="20" y="20" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2"/><text x="70" y="75" text-anchor="middle" font-size="13">a</text>`,
@@ -1948,12 +1953,19 @@ const GEO = [
     formulas:[['Volume','V = (1/3)·b²·h'], ['Surface area','SA = b² + 2b·ℓ']],
   },
 ];
+/* Exported so the unified Formula sheet can carry the geometry formulas too.
+   The owner asked for "ALL formulas from the respective subject" in one tab,
+   and area/volume were the one maths family living outside MATH_FORMULAS.
+   The shapes tool keeps its diagrams — a labelled drawing does a different
+   job from a formula list, which is why this exports the data rather than
+   retiring the tool. */
+window.FLUX_GEO_FORMULA_DATA = GEO;
 
 function renderGeoRef(body){
   const kinds = ['2D','3D'];
   body.innerHTML = `
     <div class="tb-card">
-      <div class="tb-card-h"><h3>Geometric formulas</h3>
+      <div class="tb-card-h"><h3>Geometry shapes</h3>
         <div class="tb-seg">${kinds.map((k,i) => `<button type="button" data-k="${k}" class="${i === 0 ? 'active':''}">${k}</button>`).join('')}</div>
       </div>
       <div id="geoGrid" class="geo-grid"></div>
@@ -1986,7 +1998,7 @@ SUBJECTS.push({
     { id:'graphing', label:'Graph + calc',  icon:'📈', render: renderGraphCalc },
     { id:'matrix',   label:'Matrix calc',    icon:'⊞',  render: renderMatrixCalc },
     { id:'stats',    label:'Statistics',     icon:'𝝈',  render: renderStatsTool },
-    { id:'geo-ref',  label:'Geometric formulas', icon:'△', render: renderGeoRef },
+    { id:'geo-ref',  label:'Geometry shapes', icon:'△', render: renderGeoRef },
   ],
 });
 
@@ -3612,7 +3624,7 @@ const UNIFIED_LAYOUT = [
       { id:'graphing', label:'Graph + calc', icon:'📈', desc:'Plot functions and use a built-in basic calculator (same math parser).', mode:'inline', sub:'math', tid:'graphing' },
       { id:'matrix', label:'Matrix calculator', icon:'⊞', desc:'Multiply, invert, determinant, and more.', mode:'inline', sub:'math', tid:'matrix' },
       { id:'stats', label:'Statistics toolkit', icon:'𝝈', desc:'Summary stats and z-scores from raw data.', mode:'inline', sub:'math', tid:'stats' },
-      { id:'geo-ref', label:'Geometric formulas', icon:'△', desc:'2D and 3D area, surface, and volume.', mode:'inline', sub:'math', tid:'geo-ref' },
+      { id:'geo-ref', label:'Geometry shapes', icon:'△', desc:'2D and 3D shapes drawn, with their area, surface and volume.', mode:'inline', sub:'math', tid:'geo-ref' },
     ],
   },
   { id:'history', name:'History', icon:'🏛', classTags:['history'],

@@ -105,8 +105,15 @@
       { id: 'macro', name: 'Macromolecules', icon: '🧪', desc: 'macromolecules carbohydrates lipids proteins nucleic acids', render: renderMacro },
       // Biology's formulas were previously reachable only as a tab inside the
       // *physics* formula tool. renderFormulaSheet lives in flux-toolbox.js.
-      { id: 'formulas', name: 'Formulas', icon: '∑', desc: 'biology formulas equations hardy weinberg population growth magnification',
-        render: (b) => { if (typeof window.renderFormulaSheet === 'function') window.renderFormulaSheet(b, 'Biology'); } },
+      { id: 'formulas', name: 'Formula sheet', icon: '∑', desc: 'biology formulas equations hardy weinberg population growth magnification',
+        /* Grouped by unit now, the same as every other subject's sheet. The
+           old ungrouped renderer stays as the fallback: it is still what the
+           classic toolbox uses, and a sheet in the wrong grouping beats a
+           blank panel. */
+        render: (b) => {
+          if (window.FluxFormulaSheet) { window.FluxFormulaSheet.render('biology', b); return; }
+          if (typeof window.renderFormulaSheet === 'function') window.renderFormulaSheet(b, 'Biology');
+        } },
     ]);
   }
   boot();
