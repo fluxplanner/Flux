@@ -602,8 +602,51 @@
   //  CHEMISTRY FLAGSHIP
   // ════════════════════════════════════════════════════════════════════════
   const CATS = [['all','All','#8b90ad'],['alkali','Alkali','#e23e57'],['alkaline','Alkaline earth','#f47b2f'],['transition','Transition','#3a5bd9'],['post-transition','Post-transition','#2d8aa6'],['metalloid','Metalloid','#5b3fd6'],['nonmetal','Nonmetal','#1f9e74'],['halogen','Halogen','#1f9bb8'],['noble','Noble gas','#8a3fd6'],['lanthanide','Lanthanide','#c23d96'],['actinide','Actinide','#c23d5a']];
-  let ptCat = 'all', ptQuery = '';
-  function elCell(e) { const m = e.mass === Math.round(e.mass) ? e.mass : e.mass.toFixed(2); return `<button type="button" class="fsh-el" data-cat="${e.cat}" data-n="${e.n}" style="grid-row:${e.row};grid-column:${e.col}" aria-label="${esc(e.name)}"><span class="e-n">${e.n}</span><span class="e-s">${esc(e.s)}</span><span class="e-m">${m}</span></button>`; }
+  let ptCat = 'all', ptQuery = '', ptTrend = '';
+  const trendList = () => (window.fluxPeriodic && window.fluxPeriodic.TRENDS) || [];
+  function elCell(e) { const m = e.mass === Math.round(e.mass) ? e.mass : e.mass.toFixed(2); return `<button type="button" class="fsh-el" data-cat="${e.cat}" data-n="${e.n}" data-mass="${m}" style="grid-row:${e.row};grid-column:${e.col}" aria-label="${esc(e.name)}"><span class="e-n">${e.n}</span><span class="e-s">${esc(e.s)}</span><span class="e-m">${m}</span></button>`; }
+
+  /* Colour the whole table by one property. A trend you can see beats a
+     sentence you memorise — the boot shape of the stem-changers, the way
+     electronegativity climbs to fluorine and collapses at the next alkali
+     metal, are visible at a glance and invisible in a list.
+
+     The cells' own category colours are replaced rather than blended: two
+     colour systems at once reads as neither. Elements with no value for the
+     property keep a flat neutral, so "not measured" never looks like "low". */
+  function paintTrend() {
+    const P = window.fluxPeriodic;
+    const cells = document.querySelectorAll('#fshPtGrid .fsh-el');
+    if (!cells.length) return;
+    const t = trendList().find((x) => x.id === ptTrend);
+    if (!P || !t) {
+      cells.forEach((c) => { c.style.background = ''; c.style.color = ''; c.classList.remove('trend-none');
+        const m = c.querySelector('.e-m'); if (m) m.textContent = c.dataset.mass || ''; });
+      return;
+    }
+    const vals = [];
+    cells.forEach((c) => { const v = P.trendValue(ptTrend, elByN(+c.dataset.n)); if (v != null) vals.push(v); });
+    if (!vals.length) return;
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+    cells.forEach((c) => {
+      const v = P.trendValue(ptTrend, elByN(+c.dataset.n));
+      const m = c.querySelector('.e-m');
+      if (v == null) {
+        c.style.background = 'rgba(255,255,255,.05)';
+        c.style.color = 'var(--muted2)';
+        c.classList.add('trend-none');
+        if (m) m.textContent = '—';
+        return;
+      }
+      c.classList.remove('trend-none');
+      const f = (v - lo) / span;
+      c.style.background = P.trendColor(f);
+      /* Viridis runs dark at the bottom and bright at the top, so the label
+         has to flip or half the table is unreadable. */
+      c.style.color = f > 0.55 ? '#10210f' : '#eaf1ff';
+      if (m) m.textContent = Math.round(v * 100) / 100;
+    });
+  }
   function renderTableTab() {
     const els = elements(); if (!els.length) return `<div class="fsh-card" style="padding:24px">Periodic data loading… reopen in a moment.</div>`;
     const grid = els.map(elCell).join('') + `<div class="fsh-pt-spacer" style="grid-row:8;grid-column:1/-1"></div><div class="fsh-pt-fnote" style="grid-row:11">La–Lu (57–71) · Ac–Lr (89–103) shown in the lower two rows.</div>`;
@@ -612,8 +655,39 @@
         <div class="fsh-search" style="min-width:220px;flex:1;max-width:320px"><span class="fsh-search-ico">⌕</span><input id="fshPtSearch" type="search" placeholder="Find element, symbol or #…" value="${esc(ptQuery)}"></div>
         <div class="fsh-pt-cats" id="fshPtCats">${CATS.map((c) => `<button type="button" class="fsh-cat-chip${ptCat === c[0] ? ' active' : ''}" data-cat="${c[0]}">${c[0] === 'all' ? '' : `<span class="dot" style="background:${c[2]}"></span>`}${esc(c[1])}</button>`).join('')}</div>
       </div>
+      <div class="fsh-pt-trends" id="fshPtTrends">
+        <span class="fsh-pt-trends-lbl">Colour by</span>
+        <button type="button" class="fsh-cat-chip${ptTrend ? '' : ' active'}" data-trend="">Category</button>
+        ${trendList().map((t) => `<button type="button" class="fsh-cat-chip${ptTrend === t.id ? ' active' : ''}" data-trend="${esc(t.id)}">${esc(t.label)}</button>`).join('')}
+      </div>
       <div class="fsh-pt-scroll"><div class="fsh-pt" id="fshPtGrid">${grid}</div></div>
+      <div class="fsh-pt-key" id="fshPtKey">${trendKey()}</div>
       <div class="fsh-el-detail" id="fshElDetail">${elDetail(elByN(selEl))}</div></div>`;
+  }
+
+  /* The scale and the two direction lines. The arrows are the point: a
+     student needs "across a period it goes up, down a group it goes down"
+     far more than they need any individual number. */
+  function trendKey() {
+    const P = window.fluxPeriodic;
+    const t = trendList().find((x) => x.id === ptTrend);
+    if (!P || !t) return '';
+    const vals = elements().map((e) => P.trendValue(ptTrend, e)).filter((v) => v != null);
+    if (!vals.length) return '';
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const stops = [0, 0.25, 0.5, 0.75, 1].map((f) => P.trendColor(f)).join(',');
+    return `<div class="fsh-ptk">
+      <div class="fsh-ptk-scale">
+        <span class="fsh-ptk-end">${Math.round(lo * 100) / 100}</span>
+        <span class="fsh-ptk-bar" style="background:linear-gradient(90deg,${stops})"></span>
+        <span class="fsh-ptk-end">${Math.round(hi * 100) / 100}</span>
+      </div>
+      <div class="fsh-ptk-dirs">
+        <div><strong>Across a period</strong> ${esc(t.across)}</div>
+        <div><strong>Down a group</strong> ${esc(t.down)}</div>
+      </div>
+      <div class="fsh-ptk-note">${esc(t.note)}</div>
+    </div>`;
   }
   const phaseAt = (e) => { if (e.mp != null && 25 < e.mp) return 'Solid'; if (e.bp != null && 25 > e.bp) return 'Gas'; if (e.mp != null && e.bp != null) return 'Liquid'; return e.phase === 'g' ? 'Gas' : e.phase === 'l' ? 'Liquid' : 'Solid'; };
   function elDetail(e) {
@@ -624,7 +698,7 @@
       <div class="fsh-eld-props">${p('Atomic mass', e.mass)}${p('Config', esc(e.ec))}${p('Phase 25°C', phaseAt(e))}${p('Melting', e.mp != null ? e.mp + ' °C' : null)}${p('Boiling', e.bp != null ? e.bp + ' °C' : null)}${p('Density', e.d != null ? e.d + ' g/cm³' : null)}${p('Electroneg.', e.en)}${p('Found', e.year ? (e.year < 0 ? Math.abs(e.year) + ' BCE' : e.year) : null)}</div>
       ${e.fact ? `<p class="fsh-eld-fact">${esc(e.fact)}</p>` : ''}<div style="margin-top:14px"><button type="button" class="fsh-btn ghost" data-act="view-atom" data-n="${e.n}">View 3D atom →</button></div></div></div>`;
   }
-  function applyPtFilter() { const q = ptQuery.trim().toLowerCase(); document.querySelectorAll('#fshPtGrid .fsh-el').forEach((c) => { const e = elByN(+c.dataset.n); const ok = (ptCat === 'all' || e.cat === ptCat) && (!q || e.name.toLowerCase().includes(q) || e.s.toLowerCase() === q || String(e.n) === q); c.classList.toggle('dim', !ok); }); }
+  function applyPtFilter() { const q = ptQuery.trim().toLowerCase(); document.querySelectorAll('#fshPtGrid .fsh-el').forEach((c) => { const e = elByN(+c.dataset.n); const ok = (ptCat === 'all' || e.cat === ptCat) && (!q || e.name.toLowerCase().includes(q) || e.s.toLowerCase() === q || String(e.n) === q); c.classList.toggle('dim', !ok); }); paintTrend(); }
 
   // atom
   function shellFill(z) { const cap = [2, 8, 18, 32, 32, 18, 8], out = []; let rem = z; for (const c of cap) { if (rem <= 0) break; out.push(Math.min(c, rem)); rem -= c; } return out; }
@@ -1513,6 +1587,17 @@
       if (cell && cell.dataset.n && !a0) { selEl = +cell.dataset.n; const d = $('fshElDetail'); if (d) { d.innerHTML = elDetail(elByN(selEl)); d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
       const cat = t.closest('.fsh-cat-chip[data-cat]');
       if (cat) { ptCat = cat.dataset.cat; document.querySelectorAll('#fshPtCats .fsh-cat-chip').forEach((c) => c.classList.toggle('active', c === cat)); applyPtFilter(); return; }
+      /* data-trend, not data-cat — the two chip rows share a class but mean
+         different things, and matching on the class alone would make a trend
+         chip silently filter by a category id that does not exist. */
+      const tr = t.closest('.fsh-cat-chip[data-trend]');
+      if (tr) {
+        ptTrend = tr.dataset.trend || '';
+        document.querySelectorAll('#fshPtTrends .fsh-cat-chip').forEach((c) => c.classList.toggle('active', c === tr));
+        const k = $('fshPtKey'); if (k) k.innerHTML = trendKey();
+        paintTrend();
+        return;
+      }
       const bc = t.closest('[data-bal]');
       if (bc) { balInput = bc.dataset.bal; const i = $('fshBalIn'); if (i) i.value = balInput; $('fshBalOut').innerHTML = balOut(); return; }
       const ws = t.closest('[data-ws]');

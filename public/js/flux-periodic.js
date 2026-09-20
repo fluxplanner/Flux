@@ -482,6 +482,167 @@ function renderPeriodic(){
   applyFiltersAndPhase();
 }
 
+/* ════════════════════════════════════════════════════════════════
+   PERIODIC TRENDS
+   Properties the table can be coloured by, so a trend is something
+   you see rather than a sentence you memorise.
+
+   Every number is either measured data already in ELEMENTS (Pauling
+   electronegativity) or *derived* from the electron configuration.
+   None is recalled from memory. That distinction matters more than
+   usual here: a plausible-looking wrong constant in a revision tool
+   is worse than no tool, because a blank page sends you to the
+   textbook and a wrong number does not.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Noble-gas cores expanded to subshells, so "[Ar] 3d³ 4s²" can be counted.
+   Written out rather than generated from filling order — the anomalies (Cr,
+   Cu, Pd…) live in each element's own `ec` string, and this has to agree with
+   those rather than with an idealised Aufbau sequence. */
+const SUBSHELL_CORES = (() => {
+  const He = { '1s': 2 };
+  const Ne = { ...He, '2s': 2, '2p': 6 };
+  const Ar = { ...Ne, '3s': 2, '3p': 6 };
+  const Kr = { ...Ar, '3d': 10, '4s': 2, '4p': 6 };
+  const Xe = { ...Kr, '4d': 10, '5s': 2, '5p': 6 };
+  const Rn = { ...Xe, '4f': 14, '5d': 10, '6s': 2, '6p': 6 };
+  return { He, Ne, Ar, Kr, Xe, Rn };
+})();
+
+const SUPER = { '⁰': 0, '¹': 1, '²': 2, '³': 3, '⁴': 4, '⁵': 5, '⁶': 6, '⁷': 7, '⁸': 8, '⁹': 9 };
+
+/** "[Ar] 3d³ 4s²" → { '1s':2, … '3d':3, '4s':2 }, or null if it will not parse. */
+function parseConfig(ec) {
+  if (!ec) return null;
+  const occ = {};
+  for (const tok of String(ec).trim().split(/\s+/)) {
+    const core = tok.match(/^\[([A-Z][a-z]?)\]$/);
+    if (core) {
+      const c = SUBSHELL_CORES[core[1]];
+      if (!c) return null;
+      for (const k in c) occ[k] = (occ[k] || 0) + c[k];
+      continue;
+    }
+    const m = tok.match(/^(\d)([spdf])([⁰¹²³⁴⁵⁶⁷⁸⁹]+)$/);
+    if (!m) return null;
+    let count = 0;
+    for (const ch of m[3]) count = count * 10 + SUPER[ch];
+    occ[m[1] + m[2]] = (occ[m[1] + m[2]] || 0) + count;
+  }
+  return occ;
+}
+
+/**
+ * Effective nuclear charge on a valence electron, by Slater's rules.
+ *
+ * Returns null rather than a guess when the configuration does not parse, or
+ * does not account for every electron — a silent disagreement between `ec`
+ * and `n` would otherwise surface as a confidently wrong Z_eff.
+ *
+ * Agrees with the values textbooks quote: H 1.00, He 1.70, Li 1.30, Be 1.95,
+ * F 5.20, Ne 5.85, Na 2.20, K 2.20, Sc 3.00, Zn 4.35.
+ */
+function zeff(el) {
+  const occ = parseConfig(el && el.ec);
+  if (!occ) return null;
+  let total = 0;
+  for (const k in occ) total += occ[k];
+  if (total !== el.n) return null;
+
+  /* The outermost s/p shell is the valence one. Pd ([Kr] 4d¹⁰) has no such
+     shell, so fall back to the highest n present at all. */
+  let vn = 0;
+  for (const k in occ) {
+    const n = +k[0], t = k[1];
+    if ((t === 's' || t === 'p') && occ[k] > 0 && n > vn) vn = n;
+  }
+  if (!vn) for (const k in occ) if (occ[k] > 0) vn = Math.max(vn, +k[0]);
+  if (!vn) return null;
+
+  const inGroup = (occ[vn + 's'] || 0) + (occ[vn + 'p'] || 0);
+  let s = 0;
+  // Same group: 0.35 for each of the *others*, except 1s where it is 0.30.
+  s += Math.max(0, inGroup - 1) * (vn === 1 ? 0.30 : 0.35);
+  for (const k in occ) {
+    const n = +k[0], t = k[1];
+    if ((t === 's' || t === 'p') && n === vn) continue;  // counted above
+    if (n === vn) { s += occ[k] * 0.35; continue; }      // same shell, d or f
+    if (n === vn - 1) s += occ[k] * 0.85;                // 3d shields 4s at 0.85
+    else if (n < vn - 1) s += occ[k] * 1.00;
+    // n > vn contributes nothing: outer electrons do not shield inner ones.
+  }
+  return Math.round((el.n - s) * 100) / 100;
+}
+
+/** Electrons in the outermost occupied shell. Unambiguous for every element,
+    unlike "valence electrons" for the transition metals. */
+function outerElectrons(el) {
+  const occ = parseConfig(el && el.ec);
+  if (!occ) return null;
+  let vn = 0;
+  for (const k in occ) if (occ[k] > 0) vn = Math.max(vn, +k[0]);
+  let n = 0;
+  for (const k in occ) if (+k[0] === vn) n += occ[k];
+  return n || null;
+}
+
+/* Viridis. The standard ramp for scientific heatmaps: it reads as data rather
+   than decoration, and stays legible for the ~8% of boys with red-green colour
+   blindness, which a rainbow ramp would not. */
+const TREND_RAMP = [
+  [68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37],
+];
+
+/** t in 0..1 → "#rrggbb" along the ramp. */
+function trendColor(t) {
+  const x = Math.max(0, Math.min(1, t)) * (TREND_RAMP.length - 1);
+  const i = Math.min(TREND_RAMP.length - 2, Math.floor(x));
+  const f = x - i, a = TREND_RAMP[i], b = TREND_RAMP[i + 1];
+  return '#' + a.map((v, k) => Math.round(v + (b[k] - v) * f).toString(16).padStart(2, '0')).join('');
+}
+
+/* The direction lines are written out, not derived. They are the thing a
+   student is meant to leave with, and a sentence generated from the numbers
+   would describe this data set while being wrong about the exceptions. */
+const TRENDS = [
+  {
+    id: 'en', label: 'Electronegativity',
+    get: (el) => (el.en == null ? null : el.en),
+    across: 'increases →  (more protons pulling on the same shell)',
+    down: 'decreases ↓  (the outer shell sits further out)',
+    note: 'Pauling scale. Most noble gases have no value — they form too few bonds to measure one.',
+  },
+  {
+    id: 'zeff', label: 'Effective nuclear charge',
+    get: zeff,
+    across: 'increases →  (protons added, shielding barely changes)',
+    down: 'increases slowly ↓  (each full inner shell cancels most of the new charge)',
+    note: 'Z_eff on a valence electron, by Slater\'s rules — the school approximation, not a measured value.',
+  },
+  {
+    id: 'shells', label: 'Shells (energy levels)',
+    get: (el) => el.p || null,
+    across: 'stays the same →',
+    down: 'increases ↓  — this is why atoms get bigger down a group',
+    note: 'The period number. Read it next to Z_eff: more shells pushes outwards, more charge pulls inwards.',
+  },
+  {
+    id: 'outer', label: 'Outer-shell electrons',
+    get: outerElectrons,
+    across: 'increases →  (then resets at the start of the next period)',
+    down: 'stays the same ↓ for the main groups',
+    note: 'Electrons in the outermost occupied shell, counted from the configuration — so the transition metals are unambiguous.',
+  },
+];
+
+/** A trend's value for one element, or null when it has none. */
+function trendValue(trendId, el) {
+  const t = TRENDS.find((x) => x.id === trendId);
+  if (!t || !el) return null;
+  const v = t.get(el);
+  return typeof v === 'number' && isFinite(v) ? v : null;
+}
+
 // Expose
 window.renderPeriodic = renderPeriodic;
 window.fluxPeriodic = {
@@ -495,6 +656,10 @@ window.fluxPeriodic = {
   setCategory: c => { state.activeCat = c || 'all'; applyFiltersAndPhase(); },
   search: q => { state.query = q || ''; applyFiltersAndPhase(); },
   ELEMENTS,
+  TRENDS,
+  trendValue,
+  trendColor,
+  zeff,
 };
 
 })();
