@@ -21,15 +21,43 @@ import { gotoScenario } from './helpers';
 
 const PHONE = { width: 390, height: 844 };
 
-/** One flick upward. Returns how far the page actually travelled. */
+/**
+ * One flick upward. Returns how far the page actually travelled.
+ *
+ * Two input methods, because `Input.synthesizeScrollGesture` relies on the
+ * gesture synthesiser and returned 0 on the CI runner while working locally —
+ * a green-to-red flake that says nothing about the app. An explicit
+ * touchStart/touchMove/touchEnd sequence goes through the same input pipeline
+ * with fewer moving parts, so it leads.
+ *
+ * The fallback does not soften the test. Both methods were measured against a
+ * deliberately broken build and **both reported 0**, so whichever one runs,
+ * a frozen page still fails. The fallback only covers one of them being
+ * unsupported in an environment, never a real freeze.
+ */
 async function touchScroll(page: import('@playwright/test').Page, px = 400) {
   const client = await page.context().newCDPSession(page);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  const reset = () => page.evaluate(() => window.scrollTo(0, 0));
+  const read = () => page.evaluate(() => window.scrollY);
+
+  await reset();
+  const send = (type: string, y: number) => client.send('Input.dispatchTouchEvent', {
+    type, touchPoints: type === 'touchEnd' ? [] : [{ x: 195, y }],
+  });
+  const from = 300 + px, step = 40;
+  await send('touchStart', from);
+  for (let y = from; y >= 300; y -= step) { await send('touchMove', y); await page.waitForTimeout(16); }
+  await send('touchEnd', 300);
+  await page.waitForTimeout(600);
+  const viaTouch = await read();
+  if (viaTouch > 0) return viaTouch;
+
+  await reset();
   await client.send('Input.synthesizeScrollGesture', {
     x: 195, y: 500, xDistance: 0, yDistance: -px, gestureSourceType: 'touch', speed: 800,
   });
   await page.waitForTimeout(600);
-  return page.evaluate(() => window.scrollY);
+  return read();
 }
 
 test.describe('Scrolling at phone width', () => {
