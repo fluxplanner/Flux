@@ -118,6 +118,21 @@
       for (const it of src[key]) orphans.push({ f: it.eq, name: it.name, note: it.vars });
     }
     if (orphans.length) out.push({ unit: 'Also in this subject', items: orphans });
+
+    /* Geometry lives outside MATH_FORMULAS — it is the shapes tool's own data,
+       kept there because each entry carries an SVG. The formulas still belong
+       in a sheet that claims to hold everything, so they are flattened in
+       here: "Circle · Area" rather than a diagram. The shapes tool keeps the
+       drawings; this keeps the equations findable by search. */
+    const geo = window.FLUX_GEO_FORMULA_DATA || [];
+    const geoItems = [];
+    for (const g of geo) {
+      for (const pair of (g.formulas || [])) {
+        geoItems.push({ f: pair[1], name: g.name + ' · ' + pair[0], note: g.kind === '3D' ? '3D solid' : '2D shape' });
+      }
+    }
+    if (geoItems.length) out.push({ unit: 'Geometry', items: geoItems });
+
     return out.filter((s) => s.items.length);
   }
 

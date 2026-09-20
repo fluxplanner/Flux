@@ -1563,8 +1563,22 @@
        one — the precise arrangement that let "yo podo" survive while a correct
        table existed elsewhere in the app. Translation was a link that left
        Study Tools for the AI tab, so as a language tool it was a tab that took
-       you somewhere else. */
-    const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1, 'spanish-conj': 1, 'french-conj': 1, 'translate-ai': 1 };
+       you somewhere else.
+
+       'physics-sandbox' ("Physics formulas") joins them for the same reason.
+       It rendered FORMULA_SHEET.Physics through the old ungrouped renderer,
+       and the new Formula sheet unit re-sections that exact same array — so
+       keeping it left physics with two formula tabs side by side, which is
+       the arrangement the unit sheet exists to end. Nothing is lost: same
+       data, same file, now grouped by unit.
+
+       'math-formulas' goes for the identical reason on the maths side — it
+       read MATH_FORMULAS, which is exactly what the sheet re-sections, so
+       maths was showing two Formula sheet tabs and a third called Geometry
+       formulas. The geometry one is not dropped: its equations were folded
+       into the sheet and the tool stays as "Geometry shapes", because a
+       labelled drawing does a different job from a formula list. */
+    const SKIP = { 'periodic-tbl': 1, 'molar-mass': 1, 'graphing': 1, 'matrix': 1, 'stats': 1, 'timeline': 1, 'map-quiz': 1, 'grammar': 1, 'essay': 1, 'literary': 1, 'cite-notes': 1, 'ipa': 1, 'econ-formulas': 1, 'fin-calc': 1, 'dp-dimensions': 1, 'dp-chart': 1, 'lit-devices': 1, 'hist-map': 1, 'spanish-conj': 1, 'french-conj': 1, 'translate-ai': 1, 'physics-sandbox': 1, 'math-formulas': 1 };
     const idx = {};
     UL.forEach((sec) => (sec.tools || []).forEach((c) => {
       if (SKIP[c.id]) return;
