@@ -4973,10 +4973,10 @@ function changeMonth(d){
 }
 function selectDay(d){
   // Tapping a day only selects it: renderCalendar() refreshes the day panel
-  // below with that date's tasks and events. Adding is explicit, via the
-  // "+ Task" button (which openAddForDate still backs).
+  // below with that date's tasks and events. Adding stays explicit, via the
+  // "+ Add" button.
   calSelected=d;renderCalendar();
-  const b=document.getElementById('calAddBtn');if(b)b.style.display='inline-flex';
+  const b=document.getElementById('calAddEventBtn');if(b)b.style.display='inline-flex';
 }
 
 // ── Calendar glass date picker (month title dropdown; task-focused) ──
@@ -5103,8 +5103,9 @@ function renderCalGlassDropdown(){
         <div class="flux-cal-glass-taskline" role="status">${summary}</div>
         <div class="flux-cal-glass-actions">
           <button type="button" class="flux-cal-glass-notehit" onclick="calGlassNoteQuick()">✎ Add a note…</button>
-          <button type="button" class="flux-cal-glass-btn-task" onclick="closeCalGlassDropdown();openAddForDate();">＋ Task</button>
-          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();setAddEventType('event');openAddEventModal();">＋ Event</button>
+          <!-- Was ＋ Task and ＋ Event. Same dialog either way now, and it
+               opens on Task, so the split bought nothing but a second button. -->
+          <button type="button" class="flux-cal-glass-btn-ev" onclick="closeCalGlassDropdown();openAddEventModal();">＋ Add</button>
         </div>
       </div>
     </div>`;
@@ -5114,48 +5115,16 @@ document.addEventListener('keydown',e=>{
   if(dd&&!dd.hidden&&e.key==='Escape'){e.preventDefault();closeCalGlassDropdown();}
 });
 
-function openAddForDate(){
-  const dateStr=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
-  // Show inline add-task modal in calendar instead of navigating away
-  showCalAddModal(dateStr);
-}
-function showCalAddModal(dateStr){
-  const existing=document.getElementById('calAddModal');if(existing)existing.remove();
-  const staffPersonal=fluxIsStaffPersonalMode();
-  const subjectField=staffPersonal?'':`<select id="calModalSubject" style="margin:0"><option value="">No subject</option>${Object.entries(getSubjects()).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join('')}</select>`;
-  const optsGrid=staffPersonal
-    ?'<select id="calModalPriority" style="margin:0;width:100%"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>'
-    :`${subjectField}<select id="calModalPriority" style="margin:0"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select>`;
-  const m=document.createElement('div');
-  m.id='calAddModal';
-  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)';
-  m.innerHTML=`<div style="background:var(--card);border:1px solid var(--border2);border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:24px;animation:slideUp .2s ease">
-    <div style="font-size:1rem;font-weight:700;margin-bottom:14px">+ Task for ${new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
-    <input type="text" id="calModalName" placeholder="Task name..." style="width:100%;margin-bottom:10px" autofocus>
-    <div style="display:grid;grid-template-columns:${staffPersonal?'1fr':'1fr 1fr'};gap:8px;margin-bottom:10px">
-      ${optsGrid}
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="document.getElementById('calAddModal').remove()" class="btn-sec" style="flex:1">Cancel</button>
-      <button onclick="submitCalTask('${dateStr}')" style="flex:1">+ Add Task</button>
-    </div>
-  </div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
-  document.body.appendChild(m);
-  setTimeout(()=>document.getElementById('calModalName')?.focus(),100);
-}
-function submitCalTask(dateStr){
-  const name=document.getElementById('calModalName')?.value.trim();
-  if(!name)return;
-  const staffPersonal=fluxIsStaffPersonalMode();
-  const task={id:Date.now(),name,date:dateStr,subject:staffPersonal?'':(document.getElementById('calModalSubject')?.value||''),priority:document.getElementById('calModalPriority')?.value||'med',type:'hw',estTime:0,difficulty:3,notes:'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),scope:staffPersonal?'outside':'school'};
-  task.urgencyScore=calcUrgency(task);
-  tasks.unshift(task);save('tasks',tasks);
-  document.getElementById('calAddModal')?.remove();
-  renderCalendar();renderStats();renderCountdown();
-  syncKey('tasks',tasks);
-  showToast('✓ Task added');
-}
+/* openAddForDate / showCalAddModal / submitCalTask lived here and are gone.
+   They were the "+ Task" dialog: a name, a subject and a priority, built from
+   inline styles, with no date field, no time, no notes and no subtasks. The
+   "+ Event" dialog (#addEventModal) has carried a Task/Event/EC switcher the
+   whole time and writes the same task shape with all of those, so the shorter
+   one was never the right way to add a task — it was just the one whose button
+   said "Task".
+
+   Deleted rather than left unreferenced: a second add-task path that still
+   compiles is one a future change will wire back up by accident. */
 let _fluxCalRenderBusy=false;
 function renderCalendar(){
   if(_fluxCalRenderBusy)return;
@@ -5213,7 +5182,6 @@ function renderCalDay(){
     const base=dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
     titleEl.textContent=cyc?`${base} · ${cyc} day`:base;
   }
-  const addBtn=document.getElementById('calAddBtn');if(addBtn)addBtn.style.display='inline-flex';
   const addEvBtn=document.getElementById('calAddEventBtn');if(addEvBtn)addEvBtn.style.display='inline-flex';
   const addEcBtn=document.getElementById('calAddEcBtn');if(addEcBtn)addEcBtn.style.display='inline-flex';
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
