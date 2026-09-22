@@ -1287,8 +1287,14 @@
             <div class="cal-selected-header">
               <div class="cal-day-title" id="calDayTitle">Select a day</div>
               <div class="cal-selected-actions">
-                <button type="button" id="calAddBtn" onclick="openAddForDate()" class="cal-add-btn" style="display:none">+ Task</button>
-                <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Event</button>
+                <!-- One way in. "+ Task" used to sit here and open a much
+                     poorer dialog — a name, a subject and a priority, with no
+                     date, time or notes — while "+ Event" opened the full one,
+                     which has had a Task/Event/EC switcher all along. Two
+                     buttons, and the one named after what you wanted did less.
+                     The full dialog covers all three, so it gets a name that
+                     does too. -->
+                <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
                 <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none">+ EC</button>
               </div>
             </div>
@@ -1385,7 +1391,9 @@
           <select id="addEventPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
         </div>
         <div class="mrow" id="addEventScopeRow"><label>Where</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <!-- 8px, not 6px: every other label in this dialog sits 8px above its
+               control, and Where was the only row half a step tighter. -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
             <button type="button" id="addEventScopeSchoolBtn" class="event-scope-btn event-scope-btn-on" onclick="setAddEventScope('school')">School</button>
             <button type="button" id="addEventScopeOutsideBtn" class="event-scope-btn" onclick="setAddEventScope('outside')">Outside school</button>
           </div>
@@ -2801,7 +2809,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.177976b9.js"></script>
+<script defer src="public/bundles/flux-core.0ef8d213.js"></script>
 <script defer src="public/bundles/flux-features.c768b181.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
