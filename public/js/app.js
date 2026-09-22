@@ -12299,6 +12299,33 @@ function applyPanicGlow(){
 function syncPanelScrollLayout(){
   const mainContent=document.querySelector('.main-content');
   if(!mainContent)return;
+  /* Phones scroll the document, not the panel. #app.visible is height:auto /
+     overflow:visible below 769px, so the page itself is the scroller, and the
+     stylesheet already says .panel{overflow-y:visible} there.
+
+     Writing the desktop sizing on anyway is why the phone would not scroll at
+     all. It made the active panel a scrollport with nothing inside it to
+     scroll — its height is its own content — and `overscroll-behavior:contain`
+     then stopped the gesture chaining up to the document. A touch landing
+     anywhere on the panel, which is the whole screen, went nowhere. Measured
+     at 390px: a real touch scroll moved 0px, and clearing overflow on the
+     panel moved 490px.
+
+     It hid from every test that scrolled programmatically. window.scrollBy
+     drives the viewport directly and never consults the scroll chain, so it
+     moved the page 400px while a finger moved nothing.
+
+     Clearing rather than merely skipping matters: dragging a desktop window
+     narrow would otherwise leave the inline styles behind and freeze it. */
+  if(window.matchMedia('(max-width: 768px)').matches){
+    mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
+      panel.style.flex='';
+      panel.style.removeProperty('overflow-y');
+      panel.style.overscrollBehavior='';
+      panel.style.webkitOverflowScrolling='';
+    });
+    return;
+  }
   if(document.body.classList.contains('flux-canvas-ai-split')){
     mainContent.querySelectorAll(':scope > .panel').forEach(panel=>{
       panel.style.flex='';
