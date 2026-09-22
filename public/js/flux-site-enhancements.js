@@ -179,6 +179,16 @@
       );
       const top = overlays[overlays.length - 1];
       if (!top) return;
+      /* Some dialogs have to be completed. The account setup prompt exists
+         precisely so nobody keeps the password they were handed, and a prompt
+         you can Escape past is one most people will Escape past.
+
+         Note the fallback below is remove(), not hide — so without this check
+         Escape deleted such a dialog from the DOM outright, and it could not
+         be shown again without a reload. Opt in by attribute, so any future
+         must-answer dialog is covered by declaring itself rather than by being
+         added to a list in here. */
+      if (top.hasAttribute('data-flux-no-dismiss')) return;
       const closeBtn = top.querySelector('[data-flux-close], .modal-close, button.btn-sec');
       if (closeBtn) closeBtn.click();
       else top.remove();
