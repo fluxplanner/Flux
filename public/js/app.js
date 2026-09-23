@@ -6107,11 +6107,16 @@ function addExtra(){
   const hours = parseInt(document.getElementById('extraHours')?.value) || 0;
   const desc = document.getElementById('extraDesc')?.value.trim() || '';
   if(!name) return;
+  /* Chosen per activity, not per type. The badges are coloured by type, so
+     three clubs all read the same shade and nothing tells them apart on the
+     calendar. Falls back to the gold the EC calendar items already use, so
+     activities saved before this still look the way they always did. */
+  const color = document.getElementById('extraColor')?.value || '#fbbf24';
   if(editId){
     const idx = extras.findIndex(e => e.id === editId);
-    if(idx !== -1) Object.assign(extras[idx], {name, types, hours, desc});
+    if(idx !== -1) Object.assign(extras[idx], {name, types, hours, desc, color});
   } else {
-    extras.push({id: Date.now(), name, types, hours, desc, createdAt: Date.now()});
+    extras.push({id: Date.now(), name, types, hours, desc, color, createdAt: Date.now()});
   }
   save('flux_extras', extras);
   _clearExtraForm();
@@ -6123,6 +6128,10 @@ function editExtra(id){
   document.getElementById('extraName').value = e.name || '';
   document.getElementById('extraHours').value = e.hours || '';
   document.getElementById('extraDesc').value = e.desc || '';
+  /* Load the saved colour, or the default for an activity that predates the
+     picker — leaving the input on whatever the last edit happened to show
+     would silently repaint this activity on save. */
+  const ecol = document.getElementById('extraColor'); if(ecol) ecol.value = e.color || '#fbbf24';
   const typeArr = Array.isArray(e.types) ? e.types : (e.type ? [e.type] : ['activity']);
   _selectedECTypes = new Set(typeArr);
   renderECTypeChips();
@@ -6136,6 +6145,9 @@ function cancelEditExtra(){
 }
 function _clearExtraForm(){
   ['extraName','extraHours','extraDesc','extraEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  /* Reset rather than blank: '' is not a valid <input type=color> value, so
+     clearing it would leave the browser's own default black instead of ours. */
+  const ecol=document.getElementById('extraColor'); if(ecol) ecol.value='#fbbf24';
   _selectedECTypes.clear();
   const btn = document.getElementById('extraSubmitBtn'); if(btn) btn.textContent = '+';
   const cancel = document.getElementById('extraCancelBtn'); if(cancel) cancel.style.display = 'none';
@@ -6155,7 +6167,11 @@ function renderExtrasList(){
       const c = EC_COLORS[t] || 'var(--accent)';
       return `<span style="font-size:.6rem;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;background:${c}18;padding:2px 7px;border-radius:10px;border:1px solid ${c}33">${t}</span>`;
     }).join('');
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+    /* The chosen colour, shown as a stripe down the row. The type badges keep
+       their own colours — those say what KIND of thing it is, which is a
+       different question from which activity it is. */
+    const ecol = /^#[0-9a-f]{3,8}$/i.test(String(e.color || '')) ? e.color : '#fbbf24';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0 10px 10px;border-bottom:1px solid var(--border);border-left:3px solid ${ecol};border-radius:2px">
       <div style="flex:1;min-width:0">
         <div style="font-size:.88rem;font-weight:600">${esc(e.name)}</div>
         <div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap">

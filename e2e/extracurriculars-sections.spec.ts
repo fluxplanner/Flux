@@ -90,4 +90,60 @@ test.describe('College Prep sections', () => {
     expect(state.ec).toBe('ecpane-colleges');
     expect(state.settings).toBe('spane-help');
   });
+
+  /*
+   * An activity keeps the colour you pick for it.
+   *
+   * Activities were coloured by TYPE, so every club read the same shade and
+   * nothing told one from another at a glance. Classes had a picker in both
+   * their add and edit forms; activities had none at all.
+   *
+   * Three things must hold, and the last two are the ones that quietly rot:
+   * the colour is saved, re-opening the activity loads it back into the input
+   * (otherwise an edit repaints it with whatever the field happened to show),
+   * and clearing the form resets to the default rather than blanking it —
+   * '' is not a valid <input type=color> value, so a blank leaves the
+   * browser's own black behind.
+   */
+  test('an activity keeps the colour you pick, on save and on re-open', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 950 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('goals'));
+    await page.waitForTimeout(900);
+
+    const r = await page.evaluate(async () => {
+      const w = window as any;
+      const picker = document.getElementById('extraColor') as HTMLInputElement | null;
+      if (!picker) return { noPicker: true } as Record<string, unknown>;
+      (document.getElementById('extraName') as HTMLInputElement).value = 'Colour Probe Club';
+      picker.value = '#ff00ff';
+      w.addExtra();
+      await new Promise((r2) => setTimeout(r2, 300));
+
+      /* Read it back from storage, not a window global — `extras` is a closure
+         variable and window.extras is undefined, so a naive lookup finds
+         nothing and everything below would fail for the wrong reason. */
+      const saved = (w.load('flux_extras', []) as Array<Record<string, unknown>>)
+        .find((x) => x.name === 'Colour Probe Club');
+      const row = [...document.querySelectorAll('#extrasList > div')]
+        .find((d) => (d.textContent || '').includes('Colour Probe Club')) as HTMLElement | undefined;
+      const stripe = row ? getComputedStyle(row).borderLeftColor : 'NO ROW';
+
+      let reopened = 'n/a';
+      if (saved) {
+        w.editExtra(saved.id);
+        await new Promise((r2) => setTimeout(r2, 200));
+        reopened = (document.getElementById('extraColor') as HTMLInputElement).value;
+      }
+      w.cancelEditExtra();
+      const cleared = (document.getElementById('extraColor') as HTMLInputElement).value;
+      return { noPicker: false, savedColor: saved?.color ?? 'NOT SAVED', stripe, reopened, cleared };
+    });
+
+    expect(r.noPicker, 'the activity form has no colour picker').toBe(false);
+    expect(r.savedColor, 'the chosen colour was not stored on the activity').toBe('#ff00ff');
+    expect(r.stripe, 'the activity row does not show its colour').toBe('rgb(255, 0, 255)');
+    expect(r.reopened, 'editing an activity did not load its saved colour').toBe('#ff00ff');
+    expect(r.cleared, 'clearing the form left the browser default instead of ours').toBe('#fbbf24');
+  });
 });
