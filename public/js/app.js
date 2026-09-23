@@ -5747,7 +5747,45 @@ function addClass(){
   if(typeof updateNextClassPill==='function')updateNextClassPill();
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
 }
-function deleteClass(id){classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();}
+/* Deleting a class you JOINED has to cancel the enrolment too, or it comes
+   straight back.
+
+   syncEnrolledTeacherClassesToPlanner() runs on every boot and re-adds a class
+   for every teacher_students row still marked active. Removing the local entry
+   left that row untouched, so the class reappeared on the next refresh — with
+   the same id each time, because fluxPlannerEntryFromTeacherClass derives it
+   from a hash of the class code rather than the clock, which is why it looked
+   like the same stubborn row rather than a new one.
+
+   Reported by the owner against a test class of his own, but it affects anyone
+   who joins a class by code and later leaves it: deletion could never stick.
+
+   The local removal happens first and unconditionally, so if the network call
+   fails the class still disappears now and the worst case is the old behaviour
+   — never a delete that silently does nothing. */
+function deleteClass(id){
+  const gone=Array.isArray(classes)?classes.find(c=>c.id===id):null;
+  classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  const code=gone&&gone.teacherClassCode;
+  if(!code||!currentUser)return;
+  try{
+    const sb=getSB();
+    if(!sb)return;
+    sb.from('teacher_students')
+      .update({active:false})
+      .eq('student_id',currentUser.id)
+      .eq('class_code',code)
+      .then(({error})=>{
+        /* Said out loud rather than swallowed: a silent failure here looks
+           exactly like the bug this fixes — the class returns and nothing on
+           screen explains why. */
+        if(error){
+          console.warn('[Flux] class removed locally but the enrolment could not be cancelled',error);
+          if(typeof showToast==='function')showToast('Removed here, but this class may come back — tell Azfer.','info');
+        }
+      },()=>{});
+  }catch(_){}
+}
 function addTeacherNote(){const teacher=document.getElementById('tNoteTeacher').value.trim(),note=document.getElementById('tNoteText').value.trim();if(!teacher||!note)return;teacherNotes.push({id:Date.now(),teacher,note});save('flux_teacher_notes',teacherNotes);document.getElementById('tNoteTeacher').value='';document.getElementById('tNoteText').value='';renderSchool();}
 function deleteTeacherNote(id){teacherNotes=teacherNotes.filter(n=>n.id!==id);save('flux_teacher_notes',teacherNotes);renderSchool();}
 
