@@ -1971,6 +1971,11 @@
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
           <div style="flex:1;min-width:160px"><label style="font-size:.7rem;color:var(--muted)">Activity name</label><input type="text" id="extraName" placeholder="e.g. Varsity Soccer, Debate Club..." style="margin:0"></div>
           <div><label style="font-size:.7rem;color:var(--muted)">Hours/wk</label><input type="number" id="extraHours" placeholder="5" min="0" max="40" style="margin:0;width:64px"></div>
+          <!-- Per-activity colour. The badges beside each activity are coloured
+               by TYPE, so three clubs all read the same shade and nothing tells
+               them apart at a glance. Mirrors the class colour picker in the
+               School form. -->
+          <div><label style="font-size:.7rem;color:var(--muted)" for="extraColor">Colour</label><input type="color" id="extraColor" value="#fbbf24" style="margin:0;width:44px;height:36px;padding:2px;border-radius:8px;cursor:pointer;border:1px solid var(--border2)" aria-label="Activity colour"></div>
           <button id="extraSubmitBtn" onclick="addExtra()" style="align-self:end;padding:10px 14px" aria-label="Add activity">+</button>
           <button id="extraCancelBtn" onclick="cancelEditExtra()" style="align-self:end;padding:10px 14px;display:none;background:transparent;border:1px solid var(--border);color:var(--muted)">Cancel</button>
         </div>
@@ -2854,7 +2859,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.aed846ef.js"></script>
+<script defer src="public/bundles/flux-core.8bf54fc6.js"></script>
 <script defer src="public/bundles/flux-features.c768b181.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
