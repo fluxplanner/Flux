@@ -142,4 +142,52 @@ test.describe('Calendar add dialog', () => {
     // One rhythm, not "close enough" — uneven gaps are what makes a form look untidy.
     expect(new Set(r.gaps).size, `label-to-control gaps vary: ${r.gaps.join(', ')}`).toBe(1);
   });
+
+  /*
+   * A task in the day panel can be edited, not just ticked or deleted.
+   *
+   * Events in that panel had a pencil from the start; tasks had only a scope
+   * toggle and a delete, so fixing a typo meant deleting the task and typing
+   * it again — losing the notes, subtasks and difficulty with it.
+   *
+   * It opens #editModal, the same editor the dashboard row uses, rather than
+   * the add dialog above. That one has no field for subtasks, difficulty,
+   * estimated time or dependencies, so editing through it would quietly drop
+   * them. Reusing the richer editor also means there is no third task form to
+   * keep in step with the other two.
+   */
+  test('a task in the day panel opens the full editor, with its details loaded', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 950 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('calendar'));
+    await page.waitForTimeout(900);
+
+    /* The date comes from the selected cell rather than being computed here:
+       calYear/calMonth live in the bundle's closure, so reading them off
+       window yields undefined, which built a NaN date and rendered an empty
+       panel — a test that would then have passed by checking nothing. */
+    const ymd = await page.evaluate(() => {
+      const w = window as any;
+      const cell = (document.querySelector('.cal-day.selected[data-cal-date]')
+        || document.querySelector('.cal-day[data-cal-date]')) as HTMLElement;
+      const date = cell.dataset.calDate as string;
+      w.tasks.unshift({ id: 777001, name: 'Edit me from the calendar', date,
+        time: '', subject: '', priority: 'med', type: 'hw', notes: 'original note',
+        done: false, createdAt: Date.now() });
+      w.save('tasks', w.tasks);
+      cell.click();
+      return date;
+    });
+    await page.waitForTimeout(700);
+
+    const pencil = page.locator('#calDayTasks [title="Edit task"]').first();
+    await expect(pencil, `no edit button on the calendar task row for ${ymd}`).toBeVisible();
+    await pencil.click();
+    await page.waitForTimeout(500);
+
+    await expect(page.locator('#editModal')).toBeVisible();
+    // Loaded, not blank — an editor that opens empty would wipe the task on save.
+    await expect(page.locator('#editText')).toHaveValue('Edit me from the calendar');
+    await expect(page.locator('#editNotes')).toHaveValue('original note');
+  });
 });
