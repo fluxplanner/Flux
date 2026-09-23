@@ -7312,10 +7312,30 @@ function clearCache(){
 // ══ MOD / DEV ACCOUNT ══
 // ══ OWNER / DEV ACCOUNT SYSTEM ══
 const OWNER_EMAIL='azfermohammed21@gmail.com';
+/* The account id, which is what actually identifies the owner.
+   This used to match on email alone, and the owner's email changed when the
+   accounts moved off Google — azfermohammed21@gmail.com became
+   azfer.mohammed@users.fluxplanner.app — so isOwner() started returning false
+   and every owner control quietly disappeared: the Admin nav group, the
+   More-sheet slot, the master backlog card, the Owner control panel.
+
+   Nothing errored, because each of those is written as "show this if owner".
+   An owner who is not recognised looks exactly like a student.
+
+   The id never changes, including through the rename in the account setup
+   prompt, which is the point. The server has matched on it since the
+   conversion (release-admin's isOwnerCaller, and account-setup); this is the
+   client catching up. The email stays as a fallback so a fresh database or a
+   restored backup still recognises the owner before any conversion. */
+const OWNER_UID='eabe2b1f-e428-4181-8530-8e5366eb3975';
 
 // Permission levels: owner > dev > user
 // Dev accounts + their permissions stored in Supabase under owner's row
-function isOwner(){return currentUser&&currentUser.email===OWNER_EMAIL;}
+function isOwner(){
+  if(!currentUser)return false;
+  if(OWNER_UID&&currentUser.id===OWNER_UID)return true;
+  return currentUser.email===OWNER_EMAIL;
+}
 function getMyRole(){
   if(isOwner())return'owner';
   const devAccounts=load('flux_dev_accounts',[]);
@@ -13348,7 +13368,12 @@ async function handleSignedIn(user,session){
   // load() calls would route into a stale "imp:..." namespace until the
   // owner manually exits preview mode.
   try{
-    if(user&&user.email!==OWNER_EMAIL){
+    /* By id, not email. Matching on the gmail address meant the owner failed
+       their own check after the conversion renamed them, so signing in wiped
+       the owner's impersonation record every time — the one case this is
+       meant to leave alone. */
+    const isOwnerUser=!!user&&(user.id===OWNER_UID||user.email===OWNER_EMAIL);
+    if(user&&!isOwnerUser){
       localStorage.removeItem(fluxNamespacedKey('flux_owner_impersonate'));
     }
   }catch(_){}
@@ -20031,6 +20056,15 @@ function fluxIsBookableCounselorEmail(email){
   const e=String(email||'').trim().toLowerCase();
   if(!e)return false;
   try{if(typeof OWNER_EMAIL!=='undefined'&&e===String(OWNER_EMAIL).trim().toLowerCase())return false;}catch(_){}
+  /* The address above is no longer the owner's — it changed with the
+     conversion off Google, and changes again on any rename. When the address
+     being tested belongs to the signed-in person, isOwner() settles it by id,
+     which nothing can drift. Without this the owner became bookable as a
+     school counselor, which is exactly what this function exists to prevent. */
+  try{
+    if(currentUser&&e===String(currentUser.email||'').trim().toLowerCase()
+      &&typeof isOwner==='function'&&isOwner())return false;
+  }catch(_){}
   return true;
 }
 
