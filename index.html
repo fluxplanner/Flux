@@ -1368,6 +1368,51 @@
     </div>
 
     <!-- ADD EVENT MODAL -->
+    <!-- ── CHOOSE YOUR OWN NAME AND PASSWORD ──────────────────────────────
+         Shown once to the eight accounts that were converted off Google.
+         Those were created with a password nobody chose, under a name
+         derived from a Gmail address, so until this is filled in the person
+         is using credentials they were handed.
+
+         Deliberately has no close button, no overlay-click handler and no
+         Escape route: it is the one screen that must be completed, because
+         leaving it means carrying on with a password that was mailed round.
+         Everything it needs goes through the account-setup function — a
+         browser cannot rename an account here. -->
+    <div id="accountSetupModal" style="display:none" class="modal-overlay" data-flux-no-dismiss role="dialog" aria-modal="true" aria-labelledby="accountSetupTitle">
+      <div class="modal-card">
+        <div class="modal-title" id="accountSetupTitle">Choose how you sign in</div>
+        <p class="ssub" style="margin:-6px 0 16px;line-height:1.5">
+          Flux set your name and password for you when your account moved off Google.
+          Pick your own now — this only has to be done once.
+        </p>
+        <div class="lx-auth-error" id="accountSetupError" role="alert" style="display:none"></div>
+        <div class="mrow"><label>Your name</label>
+          <input type="text" id="accountSetupName" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="First and last name" oninput="fluxAccountSetupPreview()">
+          <!-- What you type is not what you type in next time: "Jane Doe"
+               signs in as "jane.doe". Showing it here is cheaper than
+               explaining it afterwards. -->
+          <div class="ssub" id="accountSetupPreview" style="margin-top:6px"></div>
+        </div>
+        <div class="mrow"><label>New password</label>
+          <input type="password" id="accountSetupPw" autocomplete="new-password" placeholder="At least 8 characters">
+        </div>
+        <div class="mrow"><label>Type it again</label>
+          <input type="password" id="accountSetupPw2" autocomplete="new-password" placeholder="The same password">
+        </div>
+        <div class="lx-keepsafe" style="margin-bottom:14px">
+          <div class="lx-keepsafe-title">Write it down somewhere safe</div>
+          <div class="lx-keepsafe-body">
+            Flux has no email for you, so there is no reset link. If you forget this,
+            only Azfer can get you back in.
+          </div>
+        </div>
+        <div class="mactions">
+          <button type="button" id="accountSetupBtn" onclick="fluxSubmitAccountSetup()">Save and continue</button>
+        </div>
+      </div>
+    </div>
+
     <div id="addEventModal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeAddEventModal()">
       <div class="modal-card">
         <div class="modal-title" id="addEventModalTitle">Add to Calendar</div>
@@ -2809,7 +2854,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.17a35b9f.js"></script>
+<script defer src="public/bundles/flux-core.beb886df.js"></script>
 <script defer src="public/bundles/flux-features.c768b181.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

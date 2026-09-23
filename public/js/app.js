@@ -5747,7 +5747,45 @@ function addClass(){
   if(typeof updateNextClassPill==='function')updateNextClassPill();
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
 }
-function deleteClass(id){classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();}
+/* Deleting a class you JOINED has to cancel the enrolment too, or it comes
+   straight back.
+
+   syncEnrolledTeacherClassesToPlanner() runs on every boot and re-adds a class
+   for every teacher_students row still marked active. Removing the local entry
+   left that row untouched, so the class reappeared on the next refresh — with
+   the same id each time, because fluxPlannerEntryFromTeacherClass derives it
+   from a hash of the class code rather than the clock, which is why it looked
+   like the same stubborn row rather than a new one.
+
+   Reported by the owner against a test class of his own, but it affects anyone
+   who joins a class by code and later leaves it: deletion could never stick.
+
+   The local removal happens first and unconditionally, so if the network call
+   fails the class still disappears now and the worst case is the old behaviour
+   — never a delete that silently does nothing. */
+function deleteClass(id){
+  const gone=Array.isArray(classes)?classes.find(c=>c.id===id):null;
+  classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  const code=gone&&gone.teacherClassCode;
+  if(!code||!currentUser)return;
+  try{
+    const sb=getSB();
+    if(!sb)return;
+    sb.from('teacher_students')
+      .update({active:false})
+      .eq('student_id',currentUser.id)
+      .eq('class_code',code)
+      .then(({error})=>{
+        /* Said out loud rather than swallowed: a silent failure here looks
+           exactly like the bug this fixes — the class returns and nothing on
+           screen explains why. */
+        if(error){
+          console.warn('[Flux] class removed locally but the enrolment could not be cancelled',error);
+          if(typeof showToast==='function')showToast('Removed here, but this class may come back — tell Azfer.','info');
+        }
+      },()=>{});
+  }catch(_){}
+}
 function addTeacherNote(){const teacher=document.getElementById('tNoteTeacher').value.trim(),note=document.getElementById('tNoteText').value.trim();if(!teacher||!note)return;teacherNotes.push({id:Date.now(),teacher,note});save('flux_teacher_notes',teacherNotes);document.getElementById('tNoteTeacher').value='';document.getElementById('tNoteText').value='';renderSchool();}
 function deleteTeacherNote(id){teacherNotes=teacherNotes.filter(n=>n.id!==id);save('flux_teacher_notes',teacherNotes);renderSchool();}
 
@@ -6610,21 +6648,133 @@ async function fluxSyncLoginNameToProfile(newName, oldName){
     'Change it?');
   if(!ok)return false;
 
-  try{
-    const {error}=await sb.auth.updateUser({email:nextKey,data:{full_name:newName}});
-    if(error)throw error;
-    if(typeof showToast==='function')showToast('You now sign in as "'+now+'". Same password.','ok');
+  /* Through the server, not sb.auth.updateUser. This used to call updateUser
+     directly and it could never have worked in production: Supabase
+     re-validates the address on an email change and refuses the domain —
+     400, Email address "...@users.fluxplanner.app" is invalid. It passed
+     review because the e2e mock accepts what the real server rejects. The
+     service role can do the rename, so it lives in the account-setup
+     function now. */
+  const res=await fluxAccountSetup({username:newName});
+  if(res.ok){
+    if(typeof showToast==='function')showToast('You now sign in as "'+res.username+'". Same password.','ok');
     return true;
+  }
+  alert((res.error||'Your sign-in name could not be changed just now.')+
+    ' Your old name has been kept.');
+  return false;
+}
+
+/**
+ * Call the account-setup function, which is the only thing that can rename an
+ * account. Returns {ok, username} or {ok:false, error} — never throws, because
+ * every caller has to put a name back on screen either way.
+ */
+async function fluxAccountSetup(payload){
+  try{
+    const sb=getSB();
+    const session=await sb?.auth?.getSession?.();
+    const token=session?.data?.session?.access_token;
+    if(!token)return{ok:false,error:'You need to be signed in.'};
+    const res=await fetch(`${SB_URL}/functions/v1/account-setup`,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+token,
+        'apikey':SB_ANON,
+        'Content-Type':'application/json',
+      },
+      body:JSON.stringify(payload||{}),
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)return{ok:false,error:data.error||'Could not save that.',code:data.code};
+    return{ok:true,username:data.username,renamed:!!data.renamed};
   }catch(e){
-    /* Almost always a collision: the key is derived from the name, so two
-       people called Jane Doe want the same one. Say which problem it is. */
-    const dup=/already|exists|duplicate|registered/i.test(String(e?.message||''));
-    alert(dup
-      ? 'Someone already signs in as "'+now+'". Try adding a middle initial. Your old name has been kept.'
-      : 'Your sign-in name could not be changed just now, so your old name has been kept. Tell Azfer if it keeps happening.');
-    return false;
+    return{ok:false,error:'Could not reach Flux. Check your internet connection.'};
   }
 }
+window.fluxAccountSetup=fluxAccountSetup;
+
+/* ── Choose your own name and password ────────────────────────────────────
+   Eight accounts were converted off Google. They carry a password nobody
+   chose and a name derived from a Gmail address, so until this is filled in
+   the person is signing in with credentials they were handed rather than
+   ones they picked.
+
+   Who sees it is read off the account itself rather than a hardcoded list:
+   the converted eight are exactly the accounts that still hold a google
+   identity, and the three who signed up since hold none. So the rule needs
+   no maintenance and cannot drift — and anyone the owner converts later is
+   caught by it automatically. flux_setup_done, set by the function, is what
+   stops it appearing twice. */
+function fluxNeedsAccountSetup(user){
+  const u=user||currentUser;
+  if(!u)return false;
+  if(u.user_metadata&&u.user_metadata.flux_setup_done)return false;
+  const ids=Array.isArray(u.identities)?u.identities:[];
+  return ids.some(i=>i&&i.provider==='google');
+}
+
+function fluxMaybeShowAccountSetup(){
+  if(!fluxNeedsAccountSetup())return false;
+  const m=document.getElementById('accountSetupModal');
+  if(!m)return false;
+  const nameEl=document.getElementById('accountSetupName');
+  if(nameEl&&!nameEl.value){
+    // Start from the name they already have, so the common case is one tap.
+    nameEl.value=(currentUser?.user_metadata?.full_name||'').trim()
+      ||fluxEmailToUsername(currentUser?.email||'').replace(/\./g,' ');
+  }
+  m.style.display='flex';
+  fluxAccountSetupPreview();
+  setTimeout(()=>nameEl?.focus(),120);
+  return true;
+}
+window.fluxMaybeShowAccountSetup=fluxMaybeShowAccountSetup;
+
+/** Show the name they will actually type, since it is not what they typed. */
+function fluxAccountSetupPreview(){
+  const el=document.getElementById('accountSetupPreview');
+  const raw=document.getElementById('accountSetupName')?.value||'';
+  if(!el)return;
+  const u=fluxNormalizeUsername(raw);
+  el.textContent=u?`You will sign in as: ${u}`:'';
+}
+window.fluxAccountSetupPreview=fluxAccountSetupPreview;
+
+async function fluxSubmitAccountSetup(){
+  const name=document.getElementById('accountSetupName')?.value.trim()||'';
+  const pw=document.getElementById('accountSetupPw')?.value||'';
+  const pw2=document.getElementById('accountSetupPw2')?.value||'';
+  const err=document.getElementById('accountSetupError');
+  const btn=document.getElementById('accountSetupBtn');
+  const say=(t)=>{if(err){err.textContent=t;err.style.display=t?'block':'none';}};
+
+  if(!name){say('Type the name you want to sign in with.');return;}
+  if(!fluxNormalizeUsername(name)){say('That name has no letters or numbers in it. Try your first and last name.');return;}
+  if(!pw){say('Choose a password.');return;}
+  if(pw!==pw2){say('The two passwords are not the same. Check them and try again.');return;}
+  const weak=typeof fluxWeakPasswordReason==='function'?fluxWeakPasswordReason(pw,name):'';
+  if(weak){say(weak);return;}
+
+  say('');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const res=await fluxAccountSetup({username:name,password:pw});
+  if(btn){btn.disabled=false;btn.textContent='Save and continue';}
+  if(!res.ok){say(res.error||'Could not save that.');return;}
+
+  /* The rename moves the account key, which the current session was issued
+     against. Refresh it so the very next request is not made with a token
+     naming an address that no longer exists. */
+  try{await getSB()?.auth?.refreshSession?.();}catch(_){}
+  try{const s=await getSB()?.auth?.getUser?.();if(s?.data?.user)currentUser=s.data.user;}catch(_){}
+
+  const m=document.getElementById('accountSetupModal');
+  if(m)m.style.display='none';
+  if(typeof showToast==='function'){
+    showToast(`You sign in as "${res.username}" from now on. Write it down.`,'ok');
+  }
+}
+window.fluxSubmitAccountSetup=fluxSubmitAccountSetup;
 
 function saveProfile(){
   /* Spread the stored record first. This used to build a fresh object from the
@@ -13673,6 +13823,11 @@ async function handleSignedIn(user,session){
   try{if(window.FluxSiteEnhancements?.install)FluxSiteEnhancements.install();}catch(_){}
     },0);
   }
+  /* Last, and only for the converted accounts. After showApp() rather than
+     before it, so the planner is already behind the dialog — asking someone
+     to choose a password in front of a blank screen reads like a second
+     sign-in wall rather than a one-off. */
+  try{setTimeout(fluxMaybeShowAccountSetup,600);}catch(_){}
 }
 
 function _updateUserUI(user,name){
@@ -17740,6 +17895,13 @@ document.addEventListener('keydown',function(e){
     // Legacy fallback for surfaces not (yet) registered with the stack.
     closeDashAddTaskModal();
     document.querySelectorAll('.modal-overlay').forEach(m=>{
+      /* data-flux-no-dismiss marks a dialog that has to be answered — the
+         account setup prompt exists so nobody keeps the password they were
+         handed, and one Escape would undo that. The same attribute guards the
+         other global Escape handler in flux-site-enhancements.js; an attribute
+         rather than another id in the condition beside it, so the next
+         must-answer dialog is covered by declaring itself. */
+      if(m.hasAttribute('data-flux-no-dismiss'))return;
       if(m.style.display!=='none'&&m.id&&m.id!=='dashAddTaskModal')closeModal(m.id);
     });
     if(typeof closeKanban==='function')closeKanban();

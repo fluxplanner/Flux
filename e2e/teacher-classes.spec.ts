@@ -352,4 +352,75 @@ test.describe('Staff surfaces read the timetable they teach', () => {
     expect(res.mine).toBeNull();
     expect(res.studentCount).toBeGreaterThan(0);
   });
+
+  /*
+   * Deleting a class you JOINED must cancel the enrolment as well.
+   *
+   * syncEnrolledTeacherClassesToPlanner() re-adds a class on every boot for
+   * every teacher_students row still active. Deleting only the local entry
+   * left that row alone, so the class came back on the next refresh — with the
+   * same id each time, because the planner entry hashes the class code instead
+   * of reading the clock. That made it look like one stubborn row rather than
+   * a fresh one, which is exactly how it was reported.
+   *
+   * A hand-made class has no code and must not produce any network call, or
+   * every ordinary delete would start writing to a table it has no business
+   * touching.
+   */
+  test('deleting a joined class cancels the enrolment, so it cannot come back', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await page.waitForFunction(() => typeof (window as any).deleteClass === 'function'
+      && !!(window as any).currentUser, null, { timeout: 15_000 });
+
+    const res = await page.evaluate(async () => {
+      const w = window as any;
+      const calls: Array<Record<string, unknown>> = [];
+      const realGetSB = w.getSB;
+      /* A chainable stub, so what gets asserted is the real call shape —
+         .from().update().eq().eq() — rather than a convenient simplification. */
+      w.getSB = () => ({
+        from(table: string) {
+          const call: Record<string, unknown> = { table, filters: {} as Record<string, unknown> };
+          const chain: Record<string, unknown> = {
+            update(patch: unknown) { call.patch = patch; calls.push(call); return chain; },
+            eq(col: string, val: unknown) { (call.filters as Record<string, unknown>)[col] = val; return chain; },
+            then(res: (r: { error: null }) => void) { res({ error: null }); return chain; },
+          };
+          return chain;
+        },
+      });
+
+      w.classes = [
+        { id: 999001, name: 'Joined Class', periodLabel: 'A1', teacherClassCode: 'ZZ999Z' },
+        { id: 999002, name: 'Hand-made Class', periodLabel: 'A2' },
+      ];
+
+      w.deleteClass(999001);
+      await new Promise((r) => setTimeout(r, 150));
+      const afterJoined = { calls: calls.slice(), ids: w.classes.map((c: any) => c.id) };
+
+      calls.length = 0;
+      w.deleteClass(999002);
+      await new Promise((r) => setTimeout(r, 150));
+      const afterPlain = { calls: calls.slice(), ids: w.classes.map((c: any) => c.id) };
+
+      w.getSB = realGetSB;
+      return { afterJoined, afterPlain, userId: w.currentUser?.id };
+    });
+
+    // The joined class: gone locally AND unenrolled.
+    expect(res.afterJoined.ids, 'the joined class was not removed').not.toContain(999001);
+    expect(res.afterJoined.calls, 'no enrolment update was sent').toHaveLength(1);
+    const call = res.afterJoined.calls[0] as unknown as
+      { table: string; patch: unknown; filters: Record<string, unknown> };
+    expect(call.table).toBe('teacher_students');
+    expect(call.patch).toEqual({ active: false });
+    expect(call.filters.class_code, 'the wrong class was unenrolled').toBe('ZZ999Z');
+    expect(call.filters.student_id, 'the update was not scoped to this student').toBe(res.userId);
+
+    // The hand-made class: removed, and nothing written anywhere.
+    expect(res.afterPlain.ids, 'the hand-made class was not removed').not.toContain(999002);
+    expect(res.afterPlain.calls,
+      'deleting a class with no code should not touch the database').toHaveLength(0);
+  });
 });

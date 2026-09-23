@@ -151,7 +151,11 @@
     '🌫':'cloud-fog','⛈':'cloud-lightning','❄':'snowflake','🌡':'thermometer','🌬':'wind','💨':'wind',
     '🌿':'leaf','🍃':'leaf','🌱':'leaf','🌸':'sparkles','🌊':'activity','🌌':'sparkles','🍬':'dot',
     '📅':'calendar','📆':'calendar','🗓':'calendar','⏰':'alarm','⏱':'timer','🕒':'clock','🕰':'clock','⌛':'hourglass','⏳':'hourglass',
-    '📝':'pen-line','✍':'pen-line','🖊':'pen','🖋':'pen','✏':'pen','📄':'file-text','📃':'file-text','🗒':'file-text',
+    /* U+2712 BLACK NIB is the English subject's icon (SUBJECTS in
+       flux-study-hub.js). Every other subject glyph was already mapped, so
+       English was the one tab still showing a raw colour emoji in a row of
+       line icons. Same nib as 🖋, so the same 'pen'. */
+    '📝':'pen-line','✍':'pen-line','🖊':'pen','🖋':'pen','✒':'pen','✏':'pen','📄':'file-text','📃':'file-text','🗒':'file-text',
     '📖':'book-open','📚':'book-stack','📘':'book','📙':'book','📗':'book','📕':'book','📜':'scroll','📋':'clipboard',
     '📊':'chart','📈':'trending-up','📉':'trending-down','💹':'trending-up',
     '🔗':'link','📎':'paperclip','💬':'message','🗨':'message','💭':'message','📣':'megaphone','📢':'megaphone',

@@ -123,9 +123,24 @@ test.describe('Name + password sign-in', () => {
       const foreign = await w.fluxSyncLoginNameToProfile('New Name', 'Old Name');
 
       w.currentUser.email = 'jane.doe@users.fluxplanner.app';
-      const sb = w.getSB();
+      /* Intercept the endpoint, not sb.auth.updateUser. The rename moved to the
+         account-setup function because a browser cannot do it: Supabase refuses
+         an email change to this domain with a 400. Stubbing the old SDK call is
+         how the first version of this test passed while the feature was broken
+         in production — the mock accepted what the real server rejects. */
       let sent: any = null;
-      sb.auth.updateUser = async (a: any) => { sent = a; return { data: {}, error: null }; };
+      const realFetch = w.fetch.bind(w);
+      w.fetch = async (url: any, opts: any) => {
+        if (String(url).includes('/functions/v1/account-setup')) {
+          sent = JSON.parse(opts?.body || '{}');
+          const username = String(sent.username || '').trim().toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '');
+          return new Response(JSON.stringify({ ok: true, username, renamed: true }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        return realFetch(url, opts);
+      };
       const prompts: string[] = [];
       w.confirm = (m: string) => { prompts.push(m); return true; };
       const alerts: string[] = [];
@@ -139,7 +154,7 @@ test.describe('Name + password sign-in', () => {
       const cancelled = await w.fluxSyncLoginNameToProfile('Jane Jones', 'Jane Doe');
 
       return { foreign, unusable, sameKey, renamed, cancelled,
-        sentEmail: sent?.email ?? null, sentName: sent?.data?.full_name ?? null,
+        sentUsername: sent?.username ?? null,
         prompt: prompts[0] ?? '', alerts };
     });
 
@@ -147,8 +162,9 @@ test.describe('Name + password sign-in', () => {
     expect(res.unusable, 'a name that normalises to nothing was accepted').toBe(false);
     expect(res.sameKey, 'a spacing-only edit should not prompt or re-key').toBe(true);
     expect(res.renamed).toBe(true);
-    expect(res.sentEmail).toBe('jane.smith@users.fluxplanner.app');
-    expect(res.sentName).toBe('Jane Smith');
+    /* The raw name goes over the wire; the server folds it to the key with the
+       same rule, so the client never invents an address of its own. */
+    expect(res.sentUsername, 'the new name never reached the endpoint').toBe('Jane Smith');
     // Being told is the whole point — both names, and that the password holds.
     expect(res.prompt, 'the warning did not show the old name').toContain('jane.doe');
     expect(res.prompt, 'the warning did not show the new name').toContain('jane.smith');
