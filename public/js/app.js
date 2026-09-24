@@ -1317,15 +1317,42 @@ function bulkDeleteSelected(){
   save('tasks',tasks);syncKey('tasks',tasks);showToast('Deleted','info');toggleTaskBulkMode(false);
   renderStats();renderTasks();renderCalendar();renderCountdown();
 }
+/* Dismissal is keyed to WHAT the warning says, not to the day you read it.
+   A heavy day is usually days or weeks ahead, so the day-scoped rule the
+   time-poverty banner uses (right for that one, since it is about today)
+   would bring this straight back every morning until the tests happen.
+   Equally it must not be silenced forever: once you know about three tests on
+   the 25th that is acknowledged, but a fourth appearing — or a new clashing
+   day — is news again. Storing the signature of the clashes gives both. */
+const EXAM_CONFLICT_DISMISS_KEY='flux_exam_conflict_dismissed';
+function examConflictSignature(bad){
+  return bad.map(([d,a])=>d+':'+a.length).sort().join('|');
+}
+function fluxDismissExamConflict(){
+  const el=document.getElementById('examConflictBanner');
+  save(EXAM_CONFLICT_DISMISS_KEY,el?.dataset.sig||'');
+  if(el){el.style.display='none';el.innerHTML='';}
+}
+// Reached from the button's inline onclick, so it has to be a global.
+window.fluxDismissExamConflict=fluxDismissExamConflict;
+
 function renderExamConflictBanner(){
   const el=document.getElementById('examConflictBanner');if(!el)return;
   const now=new Date();now.setHours(0,0,0,0);
   const tests=tasks.filter(t=>!t.done&&t.date&&(t.type==='test'||t.type==='quiz'));
   const by={};tests.forEach(t=>{if(!by[t.date])by[t.date]=[];by[t.date].push(t);});
   const bad=Object.entries(by).filter(([,a])=>a.length>=2);
-  if(!bad.length){el.style.display='none';el.innerHTML='';return;}
-  el.style.display='block';
-  el.innerHTML='<strong>Heavy day:</strong> '+bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ');
+  if(!bad.length){el.style.display='none';el.innerHTML='';el.dataset.sig='';return;}
+  const sig=examConflictSignature(bad);
+  el.dataset.sig=sig;
+  if(load(EXAM_CONFLICT_DISMISS_KEY,'')===sig){el.style.display='none';el.innerHTML='';return;}
+  // flex so the ✕ pins right however long the list of days runs.
+  el.style.display='flex';
+  el.style.alignItems='center';
+  el.style.gap='10px';
+  el.innerHTML='<span style="flex:1;min-width:0"><strong>Heavy day:</strong> '
+    +bad.map(([d,a])=>`${fmtFluxDate(d+'T12:00','short')} (${a.length} tests/quizzes)`).join(' · ')
+    +'</span><button type="button" onclick="fluxDismissExamConflict()" aria-label="Dismiss this warning" title="Dismiss — it returns if the clash changes" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:.9rem;flex-shrink:0;transform:none;box-shadow:none">✕</button>';
 }
 function renderScheduleConflictNotices(){
   let syllabusOn=false;
