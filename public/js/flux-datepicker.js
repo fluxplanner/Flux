@@ -153,6 +153,49 @@
     input.setAttribute('aria-expanded', 'true');
     paint();
     place();
+    /* Keep re-placing while the field underneath is still moving.
+       place() positions against `r.top - h - 6` when it flips above, so it is
+       only as good as the anchor's rect at the instant it runs — and the field
+       is usually mid-entrance when the calendar opens. Measured: the anchor
+       animates from 831 to 821 over ~160ms, so the open-time call computes 446
+       while the settled answer is 436. Nothing re-ran place() until you paged
+       a month, so the calendar sat 10px low and then lurched into position on
+       your first click.
+
+       That is what made datepicker-stability fail 5 runs in 6 on its own: the
+       test was right, and the "flakiness" was this bug appearing whenever the
+       click landed before the anchor stopped moving.
+
+       A single requestAnimationFrame is not enough — one frame in, the anchor
+       has another ~140ms of travel left. This watches the rect instead and
+       re-places only when it actually changes, giving up after 500ms so a
+       permanently-animating anchor cannot spin forever. */
+    (function settleAnchor() {
+      if (!open || open.pop !== pop) return;          // closed, or reopened elsewhere
+      var last = open.input.getBoundingClientRect().top, deadline = Date.now() + 500;
+      (function step() {
+        if (!open || open.pop !== pop) return;
+        if (!open.input.isConnected) return;          // closePicker handles this
+        var top = open.input.getBoundingClientRect().top;
+        /* Only when the anchor has genuinely moved. Re-placing on every
+           sub-pixel wobble chased the entrance animation and nudged the
+           calendar 1px sideways as it appeared, which is the drift the
+           sideways test exists to catch. The staleness being fixed here is
+           ~10px, so 2px cleanly separates a real move from noise. */
+        if (Math.abs(top - last) > 2) {
+          last = top;
+          /* Vertical only. The staleness being corrected is ~10px down the
+             page; horizontally the open-time answer is already right to
+             within a pixel. Letting place() rewrite `left` too made the
+             calendar slide 1px as it appeared — the exact drift the sideways
+             test guards, and a real if tiny wobble for anyone watching. */
+          var keepLeft = pop.style.left;
+          place();
+          pop.style.left = keepLeft;
+        }
+        if (Date.now() < deadline) requestAnimationFrame(step);
+      })();
+    })();
     document.addEventListener('mousedown', onDocDown, true);
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
