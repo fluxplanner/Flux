@@ -157,7 +157,13 @@
     ir: { present: ['voy', 'vas', 'va', 'vamos', 'vais', 'van'], preterite: ['fui', 'fuiste', 'fue', 'fuimos', 'fuisteis', 'fueron'], imperfect: ['iba', 'ibas', 'iba', 'íbamos', 'ibais', 'iban'] },
     estar: { present: ['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'], preterite: ['estuve', 'estuviste', 'estuvo', 'estuvimos', 'estuvisteis', 'estuvieron'] },
     haber: { present: ['he', 'has', 'ha', 'hemos', 'habéis', 'han'], preterite: ['hube', 'hubiste', 'hubo', 'hubimos', 'hubisteis', 'hubieron'] },
-    ver: { preterite: ['vi', 'viste', 'vio', 'vimos', 'visteis', 'vieron'], imperfect: ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'] },
+    /* ver's present had the same fault dar's did, for the same reason: built
+       from the regular -er endings, so vosotros came out "véis". The stem is a
+       single letter, which makes that form a monosyllable, and monosyllables
+       take no accent — it is "veis". Writing the row out is what fixed dar;
+       patching index 4 would leave the next reader wondering why one cell
+       disagrees with the rule above it. */
+    ver: { present: ['veo', 'ves', 've', 'vemos', 'veis', 'ven'], preterite: ['vi', 'viste', 'vio', 'vimos', 'visteis', 'vieron'], imperfect: ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'] },
     oler: { present: ['huelo', 'hueles', 'huele', 'olemos', 'oléis', 'huelen'] },
     /* dar's present was being built from the regular -ar endings, which put an
        accent where none belongs: "dáis". Monosyllables do not take one, so the
