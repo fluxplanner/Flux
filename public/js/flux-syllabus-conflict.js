@@ -211,10 +211,30 @@
         ? `<li>${esc(T('syllabus.more', { n: issues.length - 5 }))}</li>`
         : '';
 
-    el.style.display = 'block';
     el.classList.add('syllabus-conflict-banner--v2');
-    el.innerHTML = `<strong>${esc(T('syllabus.title'))}</strong>
-      <ul class="syllabus-conflict-list">${items}${more}</ul>`;
+
+    /* Dismissal is keyed to WHAT the warning says, not to the day you read it.
+       These clashes are usually days or weeks ahead, so a day-scoped rule
+       would bring the banner back every morning until the tests happen. A
+       permanent mute is worse still — the whole point is the pile-up you have
+       not noticed yet. Keying on the messages gives both: acknowledged stays
+       acknowledged, and a new clash speaks up again.
+
+       The key is shared with renderExamConflictBanner in app.js, which draws
+       this same element when the syllabus flag is off, so a dismissal does not
+       come undone by the flag flipping. */
+    const sig = issues.map((i) => i.message).sort().join('|');
+    el.dataset.sig = sig;
+    let dismissed = '';
+    try { dismissed = (window.load ? window.load('flux_exam_conflict_dismissed', '') : '') || ''; } catch (e) {}
+    if (dismissed === sig) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+    el.style.display = 'block';
+    el.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0"><strong>${esc(T('syllabus.title'))}</strong>
+      <ul class="syllabus-conflict-list">${items}${more}</ul></div>
+      <button type="button" onclick="fluxDismissExamConflict()" aria-label="Dismiss this warning" title="Dismiss — it returns if the clash changes" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:.9rem;flex-shrink:0;transform:none;box-shadow:none">✕</button>
+    </div>`;
   }
 
   window.FluxSyllabusConflict = {

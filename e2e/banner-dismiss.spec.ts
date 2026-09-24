@@ -95,3 +95,56 @@ test('the dismissal is scoped to today, so a new day warns again', async ({ page
 
   expect(afterStaleDate, 'a stale dismissal should not suppress today\'s banner').toBe(true);
 });
+
+/*
+ * The heavy-day / schedule-conflict warning can be dismissed.
+ *
+ * It had no ✕ at all, so a student with three tests on one day got the same
+ * red bar on every dashboard visit until those tests happened.
+ *
+ * Dismissal keys on WHAT the warning says, not the day it was read. These
+ * clashes sit days or weeks ahead, so the day-scoped rule the time-poverty
+ * banner uses would bring it back every morning regardless; and a permanent
+ * mute would hide the next pile-up, which is the thing worth seeing. Keying on
+ * the messages gives both — the fourth assertion is the one that matters.
+ *
+ * Drives the real banner through renderScheduleConflictNotices(), because two
+ * different modules draw this element: FluxSyllabusConflict when its flag is
+ * on, renderExamConflictBanner when it is off. The first version of this fix
+ * only touched the second one and appeared to do nothing.
+ */
+test('the schedule-conflict warning dismisses, stays dismissed, and returns when it changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 950 });
+  await gotoScenario(page, 'student-semester');
+  await page.waitForTimeout(800);
+
+  const seedTests = (count: number) => page.evaluate((n) => {
+    const w = window as any;
+    w.tasks = w.tasks.filter((t: any) => !String(t.name || '').startsWith('ConfProbe'));
+    for (let i = 0; i < n; i++) {
+      w.tasks.push({ id: 900100 + i, name: 'ConfProbe ' + i, date: '2026-11-12',
+        type: 'test', priority: 'high', done: false, createdAt: Date.now() });
+    }
+    w.save('tasks', w.tasks);
+    w.renderScheduleConflictNotices();
+    const el = document.getElementById('examConflictBanner')!;
+    return getComputedStyle(el).display !== 'none';
+  }, count);
+
+  const visible = () => page.evaluate(() => {
+    const el = document.getElementById('examConflictBanner')!;
+    return getComputedStyle(el).display !== 'none';
+  });
+
+  expect(await seedTests(2), 'two tests on one day should raise the warning').toBe(true);
+
+  await page.locator('#examConflictBanner button').click();
+  await page.waitForTimeout(200);
+  expect(await visible(), 'clicking ✕ did not hide the warning').toBe(false);
+
+  await page.evaluate(() => (window as any).renderScheduleConflictNotices());
+  expect(await visible(), 'the dismissal did not survive a re-render').toBe(false);
+
+  // The point of the whole design: new information is not silenced.
+  expect(await seedTests(3), 'a third test is a different clash and should speak up again').toBe(true);
+});
