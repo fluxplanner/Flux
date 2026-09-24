@@ -42,4 +42,67 @@ test.describe('Dashboard widget picker', () => {
     await expect(page.locator('#fluxPanelLayoutSettings')).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('#fluxPanelLayoutSettings label').filter({ hasText: /countdown/i }).first()).toBeVisible();
   });
+
+  /*
+   * The countdown can point at anything, not just the next test.
+   *
+   * It tracked the next unfinished test and hid the whole card when there
+   * wasn't one — which also removed the only place a countdown could be set
+   * from, so the empty state is part of the fix rather than decoration.
+   *
+   * The interesting case is the time. Without one it counts days and weeks as
+   * before; with one it switches to days/hours/minutes, because "3 days" is
+   * the wrong unit for something happening at nine tomorrow morning.
+   */
+  test('the countdown can target any date, counts hours once given a time, and falls back', async ({ page }) => {
+    const read = () => page.evaluate(() => ({
+      kicker: document.getElementById('countdownKicker')?.textContent || '',
+      heading: document.getElementById('countdownHeading')?.textContent || '',
+      cells: [...document.querySelectorAll('#countdownGrid > div')]
+        .map((d) => (d.textContent || '').trim()),
+    }));
+
+    const before = await read();
+    expect(before.kicker, 'baseline should be the auto-picked exam').toBe('Assessment');
+
+    await page.evaluate(() => {
+      const w = window as any;
+      w.fluxToggleCountdownForm();
+      (document.getElementById('countdownName') as HTMLInputElement).value = 'Trip to Spain';
+      (document.getElementById('countdownDate') as HTMLInputElement).value = '2026-12-25';
+      w.fluxSaveCountdown();
+    });
+    await page.waitForTimeout(400);
+    const dated = await read();
+    expect(dated.kicker, 'a saved target should take over the card').toBe('Counting down');
+    expect(dated.heading).toBe('Trip to Spain');
+    expect(dated.cells.some((c) => /Weeks$/.test(c)), 'date-only should still count weeks').toBe(true);
+
+    await page.evaluate(() => {
+      const w = window as any;
+      w.fluxToggleCountdownForm();
+      (document.getElementById('countdownTime') as HTMLInputElement).value = '09:00';
+      w.fluxSaveCountdown();
+    });
+    await page.waitForTimeout(400);
+    const timed = await read();
+    expect(timed.cells.some((c) => /Hours$/.test(c)), 'a time should switch it to hours').toBe(true);
+    expect(timed.cells.some((c) => /Mins$/.test(c)), 'a time should switch it to minutes').toBe(true);
+
+    // A target with no date is refused rather than saved half-formed.
+    const msg = await page.evaluate(() => {
+      const w = window as any;
+      w.fluxToggleCountdownForm();
+      (document.getElementById('countdownDate') as HTMLInputElement).value = '';
+      w.fluxSaveCountdown();
+      return document.getElementById('countdownFormMsg')?.textContent || '';
+    });
+    expect(msg).toMatch(/pick a date/i);
+
+    await page.evaluate(() => (window as any).fluxClearCountdown());
+    await page.waitForTimeout(400);
+    const cleared = await read();
+    expect(cleared.kicker, 'clearing should hand the card back to the next test').toBe('Assessment');
+    expect(cleared.heading).toBe('Next exam countdown');
+  });
 });

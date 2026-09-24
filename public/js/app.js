@@ -4899,7 +4899,114 @@ function closeDashAddTaskModal(){
   const w=document.getElementById('taskWaitingOn');if(w)w.value='';
   const rw=document.getElementById('taskRecurringWeekly');if(rw)rw.checked=false;
 }
-function renderCountdown(){const now=new Date();now.setHours(0,0,0,0);const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];const card=document.getElementById('countdownCard');if(!next){card.style.display='none';return;}card.style.display='block';const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));const sub=getSubjects()[next.subject];const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';document.getElementById('countdownLabel').textContent=next.name+(sub?' · '+sub.short:'');document.getElementById('countdownGrid').innerHTML=[[diff,'Days','var(--accent)'],[Math.floor(diff/7),'Weeks','var(--accent)'],[fmtFluxDue(next.date),'Date','var(--accent)'],[diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC]].map(([n,l,c])=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`).join('');}
+/* ── Countdown ───────────────────────────────────────────────────────────────
+   It tracked the next unfinished test and nothing else, and hid the whole card
+   when there wasn't one — so there was no way to count down to a trip, a
+   deadline or results day, and nowhere to ask for one either.
+
+   A saved target now wins; clearing it falls back to the next test exactly as
+   before. With a time set it counts hours and minutes, because "3 days" is the
+   wrong unit for something happening at nine tomorrow morning. */
+const FLUX_COUNTDOWN_KEY='flux_countdown';
+/** The saved target, or null. Shape: {label, date:'YYYY-MM-DD', time:'HH:MM'|''} */
+function fluxGetCountdown(){
+  const c=load(FLUX_COUNTDOWN_KEY,null);
+  return c&&typeof c==='object'&&c.date?c:null;
+}
+function fluxToggleCountdownForm(){
+  const f=document.getElementById('countdownForm');
+  if(!f)return;
+  const opening=f.hidden;
+  f.hidden=!opening;
+  if(opening){
+    /* Prefill from the saved target — opening the form to adjust a time should
+       not silently blank the date already chosen. */
+    const c=fluxGetCountdown();
+    const g=(id)=>document.getElementById(id);
+    if(g('countdownName'))g('countdownName').value=c?.label||'';
+    if(g('countdownDate'))g('countdownDate').value=c?.date||'';
+    if(g('countdownTime'))g('countdownTime').value=c?.time||'';
+    if(g('countdownFormMsg'))g('countdownFormMsg').textContent='';
+    g('countdownName')?.focus();
+  }
+}
+function fluxSaveCountdown(){
+  const msg=document.getElementById('countdownFormMsg');
+  const say=(t)=>{if(msg)msg.textContent=t;};
+  const label=(document.getElementById('countdownName')?.value||'').trim();
+  const date=document.getElementById('countdownDate')?.value||'';
+  const time=document.getElementById('countdownTime')?.value||'';
+  if(!date){say('Pick a date first.');return;}
+  if(!label){say('Give it a name, so the card says what it is counting down to.');return;}
+  save(FLUX_COUNTDOWN_KEY,{label,date,time});
+  syncKey('countdown',1);
+  const f=document.getElementById('countdownForm');if(f)f.hidden=true;
+  renderCountdown();
+  if(typeof showToast==='function')showToast('✓ Counting down to '+label);
+}
+function fluxClearCountdown(){
+  save(FLUX_COUNTDOWN_KEY,null);
+  syncKey('countdown',1);
+  const f=document.getElementById('countdownForm');if(f)f.hidden=true;
+  renderCountdown();
+  if(typeof showToast==='function')showToast('Back to your next test','info');
+}
+window.fluxToggleCountdownForm=fluxToggleCountdownForm;
+window.fluxSaveCountdown=fluxSaveCountdown;
+window.fluxClearCountdown=fluxClearCountdown;
+
+function renderCountdown(){
+  const card=document.getElementById('countdownCard');
+  if(!card)return;
+  const cell=(n,l,c)=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`;
+  const setText=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+  const grid=document.getElementById('countdownGrid');
+  const custom=fluxGetCountdown();
+
+  if(custom){
+    card.style.display='block';
+    setText('countdownKicker','Counting down');
+    setText('countdownHeading',custom.label);
+    setText('countdownLabel',custom.time?fmtFluxDue(custom.date)+' · '+formatCalTimeShort(custom.time):fmtFluxDue(custom.date));
+    const target=new Date(custom.date+'T'+(custom.time||'00:00')+':00');
+    const ms=target-new Date();
+    if(ms<=0){
+      if(grid)grid.innerHTML=cell('NOW','Status','var(--accent)')+cell(fmtFluxDue(custom.date),'Date','var(--accent)');
+    }else if(custom.time){
+      /* Hours and minutes once a time is known — "3 days" says nothing useful
+         about something happening at 09:00 tomorrow. */
+      const mins=Math.floor(ms/60000);
+      const d=Math.floor(mins/1440),h=Math.floor((mins%1440)/60),m=mins%60;
+      const c=d<=0?'var(--red)':d<=2?'var(--gold)':'var(--green)';
+      if(grid)grid.innerHTML=cell(d,'Days',c)+cell(h,'Hours','var(--accent)')+cell(m,'Mins','var(--accent)')+cell(formatCalTimeShort(custom.time),'At','var(--accent)');
+    }else{
+      const days=Math.max(0,Math.ceil(ms/86400000));
+      const c=days<=2?'var(--red)':days<=5?'var(--gold)':'var(--green)';
+      if(grid)grid.innerHTML=cell(days,'Days',c)+cell(Math.floor(days/7),'Weeks','var(--accent)')+cell(fmtFluxDue(custom.date),'Date','var(--accent)')+cell(days<=2?'SOON ⚠':days<=5?'NEAR':'OK ✓','Status',c);
+    }
+    return;
+  }
+
+  const now=new Date();now.setHours(0,0,0,0);
+  const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
+  setText('countdownKicker','Assessment');
+  setText('countdownHeading','Next exam countdown');
+  if(!next){
+    /* Shown rather than hidden. The card used to vanish when no test was
+       coming, which also removed the only way to set a countdown of your own. */
+    card.style.display='block';
+    setText('countdownLabel','No test coming up. Pick something else to count down to.');
+    if(grid)grid.innerHTML='';
+    return;
+  }
+  card.style.display='block';
+  const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));
+  const sub=getSubjects()[next.subject];
+  const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';
+  setText('countdownLabel',next.name+(sub?' · '+sub.short:''));
+  if(grid)grid.innerHTML=cell(diff,'Days','var(--accent)')+cell(Math.floor(diff/7),'Weeks','var(--accent)')+cell(fmtFluxDue(next.date),'Date','var(--accent)')+cell(diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC);
+}
 function setEnergy(v){
   const n=Math.max(1,Math.min(5,parseInt(String(v),10)||3));
   save('flux_energy',n);
