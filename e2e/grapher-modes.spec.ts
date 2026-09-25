@@ -268,6 +268,121 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('#ghSave')).toHaveClass(/is-dirty/);
   });
 
+  test('the maths keyboard types into the equation, functions and all', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-kbbtn').click();
+    await expect(page.locator('.flg-kb')).toBeVisible();
+    const box = page.locator('.flg-expr').nth(1);
+    for (const k of ['3', 'x', '+', '1']) await page.locator(`.flg-key[data-key="${k}"]`).click();
+    await expect(box).toHaveValue('3x+1');
+    await page.locator('.flg-key[data-key="+"]').click();
+    // The functions page: sin leaves the cursor inside its brackets.
+    await page.locator('.flg-key[data-key="@fn"]').click();
+    await page.locator('.flg-key[aria-label="sin"]').click();
+    await page.locator('.flg-key[data-key="x"]').first().click();
+    await expect(box).toHaveValue('3x+1+sin(x)');
+    // Backspace into "sin(" takes the whole name, not one letter at a time.
+    await page.locator('.flg-key[data-key="@back"]').click();     // the x
+    await page.locator('.flg-key[data-key="@back"]').click();     // sin( and its )
+    await expect(box).toHaveValue('3x+1+');
+    await page.waitForTimeout(250);
+    expect(await page.locator('.flg-plot polyline').count()).toBeGreaterThan(0);
+  });
+
+  test('definitions work like Desmos: a = 4, f(x) = …, f′(x), and sums that just answer', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.evaluate(() => {
+      const i = (window as any).fluxGrapherPage.instance;
+      const d = JSON.parse(JSON.stringify(i.doc));
+      d.items = [
+        { type: 'expr', src: 'a=4' }, { type: 'expr', src: '3x+a' },
+        { type: 'expr', src: 'f(x)=x^2-2' }, { type: 'expr', src: "f'(x)" }, { type: 'expr', src: 'f(3)+1' },
+      ];
+      i.loadDoc(d);
+    });
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      const i = (window as any).fluxGrapherPage.instance;
+      const it = i.doc.items;
+      return {
+        line0: i.parsed(it[1]).fn(0), deriv3: i.parsed(it[3]).fn(3),
+        sliders: Object.keys(i.doc.params), rows: it.map((x: any) => i.parsed(x).kind),
+      };
+    });
+    expect(r.rows).toEqual(['def', 'fn', 'fn', 'fn', 'value']);
+    expect(r.line0, '3x + a at x = 0 should use a = 4').toBe(4);
+    expect(r.deriv3, "f'(3) for f = x² − 2").toBeCloseTo(6, 5);
+    expect(r.sliders, 'a is defined, so it must not also get a loose slider').toEqual([]);
+    await expect(page.locator('.flg-item').nth(4).locator('.flg-eqv')).toHaveText('= 8');
+    // The row that defines a carries its own slider; moving it rewrites the row.
+    const slider = page.locator('[data-defslider]');
+    await expect(slider).toHaveCount(1);
+    await slider.evaluate((el: HTMLInputElement) => { el.value = '7'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await expect(page.locator('.flg-expr').first()).toHaveValue('a=7');
+    const moved = await page.evaluate(() => { const i = (window as any).fluxGrapherPage.instance; i._drawNow(); return i.parsed(i.doc.items[1]).fn(0); });
+    expect(moved).toBe(7);
+  });
+
+  test('a regression row fits a table, like y1 ~ m x1 + b in Desmos', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.locator('[data-add="table"]').click();
+    const t = page.locator('.flg-item--table').first();
+    await expect(t.locator('.flg-cname').first()).toHaveValue('x1');
+    const rows = [['0', '1'], ['1', '3'], ['2', '5'], ['3', '7']];
+    for (let r = 0; r < rows.length; r++) {
+      await t.locator(`[data-cell="${r}:0"]`).fill(rows[r][0]);
+      await t.locator(`[data-cell="${r}:1"]`).fill(rows[r][1]);
+    }
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-expr').last().fill('y1 ~ m x1 + b');
+    await page.waitForTimeout(400);
+    const info = page.locator('.flg-item--expr').last().locator('.flg-rinfo');
+    await expect(info).toContainText('m = 2');
+    await expect(info).toContainText('b = 1');
+    await expect(info).toContainText('R² = 1');
+    // The fitted letters are numbers now, usable anywhere, not sliders.
+    const params = await page.evaluate(() => Object.keys((window as any).fluxGrapherPage.instance.doc.params));
+    expect(params).toEqual([]);
+  });
+
+  test('several fits at once, the automatic best fit, and each one removable', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['0', '3'], ['1', '2.6'], ['2', '3.1'], ['3', '4.4'], ['4', '7.1'], ['5', '10.4'], ['6', '15.2']]);
+    await page.locator('[data-fits]').click();
+    await page.locator('.flg-fitpop [data-fk="quadratic"]').check();
+    await page.locator('.flg-fitpop [data-fk="auto"]').check();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    await expect(page.locator('.flg-fchip')).toHaveCount(3);
+    await expect(page.locator('.flg-rc-fit')).toHaveCount(3);
+    await expect(page.locator('.flg-results'), 'the automatic fit should pick the quadratic for curved data').toContainText('Best fit: Quadratic');
+    const dashed = await page.locator('.flg-plot polyline[stroke-dasharray]').count();
+    expect(dashed, 'the second and third fits should be dashed so they can be told apart').toBeGreaterThanOrEqual(2);
+    await page.locator('.flg-fchip').first().locator('button').click();
+    await expect(page.locator('.flg-fchip')).toHaveCount(2);
+  });
+
+  test('a manual line is dragged into place by its handles', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4'], ['3', '6'], ['4', '8']]);
+    await page.locator('[data-manual]').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
+    const before = await page.evaluate(() => ({ ...(window as any).fluxGrapherPage.instance.doc.items[0].manual }));
+    const h = (await page.locator('.flg-plot .flg-mhandle').nth(1).boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + 80, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({ ...(window as any).fluxGrapherPage.instance.doc.items[0].manual }));
+    expect(after.y2, 'dragging the handle down should lower its end of the line').toBeLessThan(before.y2);
+    expect(after.x1).toBe(before.x1);
+    await expect(page.locator('.flg-results')).toContainText('Manual line');
+    await expect(page.locator('.flg-results')).toContainText('RMSE');
+  });
+
   test('the chosen half survives a reload', async ({ page }) => {
     await open(page);
     await page.locator('#modeFunctions').click();

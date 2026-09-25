@@ -2,7 +2,7 @@
 
 Every substantive change, newest first. Generated from git history on 2026-09-25.
 
-**629 changes** recorded, from 2026-03-12 to 2026-09-25.
+**630 changes** recorded, from 2026-03-12 to 2026-09-25.
 
 Regenerate with `npm run changelog`. 298 commits are omitted:
 they were made through the GitHub web editor, which names them "Update app.js"
@@ -12,7 +12,7 @@ and similar, so they carry no description of what actually changed.
 
 ### Added
 
-- The grapher finds zeros and turning points, tables get ± columns, and graphs save to your account — `2026-09-25` (c4a75d3)
+- Desmos-level Functions — keypad, definitions, regressions — and every fit, switchable — `2026-09-25` (9fe07a4)
 - A grapher that understands uncertainties, and a free one anyone can use (#61) — `2026-09-25` (4d1f10a)
 - You can dismiss the heavy-day warning, and it returns if it changes (#59) — `2026-09-24` (9160ec7)
 - Count down to anything, not just the next test (#56) — `2026-09-23` (1de0396)
@@ -86,6 +86,10 @@ and similar, so they carry no description of what actually changed.
 ### Performance
 
 - Light the pill you clicked before building the panel under it — `2026-09-04` (ce2f0f1)
+
+### Changed
+
+- Zeros & turning points, ± columns, window control, saving to your account (#62) — `2026-09-25` (4484768)
 
 ### Housekeeping
 

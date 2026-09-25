@@ -116,7 +116,8 @@ test('a graph saved by the first grapher still opens, uncertainties and all', ()
   const t = d.items[0];
   assert.equal(t.type, 'table');
   assert.equal(t.cols.filter((c) => c.role === 'unc').length, 2, 'both uncertainty rules become columns');
-  assert.equal(t.fit, 'proportional');
+  // One fit then; a list of them now — the old choice carries over as the only one on.
+  assert.deepEqual(t.fits, ['proportional']);
   assert.equal(t.minmax, true);
   const pts = T.tablePoints(t);
   near(pts[0].dx, 0.01, 'x uncertainty carried over');

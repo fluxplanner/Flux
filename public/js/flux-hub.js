@@ -36,7 +36,7 @@
     {
       id: 'grapher',
       name: 'Flux Grapher',
-      tagline: 'Graphs with uncertainties',
+      tagline: 'Equations and lab data',
       href: 'grapher.html',
       free: true,
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>',
@@ -54,7 +54,7 @@
      subfolder only has to change here. */
   function hrefFor(p) { return p.href; }
 
-  function panelHTML(currentId) {
+  function panelHTML(currentId, panelId) {
     var items = PRODUCTS.map(function (p) {
       var here = p.id === currentId;
       return '<a class="fxhub-item' + (here ? ' is-here' : '') + '"'
@@ -70,21 +70,29 @@
         + '</a>';
     }).join('');
 
-    return '<div class="fxhub-panel" id="fxhubPanel" role="menu" hidden>'
+    return '<div class="fxhub-panel" id="' + panelId + '" role="menu" hidden>'
       + '<div class="fxhub-panel-h">Flux</div>'
       + items
       + '<div class="fxhub-foot">More coming. What is free stays free.</div>'
       + '</div>';
   }
 
+  /* The planner mounts the hub twice — once in the desktop top bar, once in
+     the phone header, only one of which is ever shown — so each mount gets
+     its own ids. The first keeps the plain ones. */
+  var mounted = 0;
+
   function mount(host) {
     if (!host || host.getAttribute('data-flux-hub-ready') === '1') return;
     var current = host.getAttribute('data-flux-hub') || '';
     host.setAttribute('data-flux-hub-ready', '1');
     host.classList.add('fxhub');
+    var n = mounted++;
+    var btnId = n ? 'fxhubBtn' + n : 'fxhubBtn';
+    var panelId = n ? 'fxhubPanel' + n : 'fxhubPanel';
 
     host.innerHTML =
-      '<button type="button" class="fxhub-btn" id="fxhubBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Switch Flux app">'
+      '<button type="button" class="fxhub-btn" id="' + btnId + '" aria-haspopup="menu" aria-expanded="false" aria-controls="' + panelId + '" aria-label="Switch Flux app">'
       + '<span class="fxhub-btn-mark" aria-hidden="true">'
       + '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">'
       + '<circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/>'
@@ -93,10 +101,10 @@
       + '</svg></span>'
       + '<span class="fxhub-btn-label">Flux</span>'
       + '</button>'
-      + panelHTML(current);
+      + panelHTML(current, panelId);
 
-    var btn = host.querySelector('#fxhubBtn');
-    var panel = host.querySelector('#fxhubPanel');
+    var btn = host.querySelector('.fxhub-btn');
+    var panel = host.querySelector('.fxhub-panel');
 
     function close() {
       panel.hidden = true;

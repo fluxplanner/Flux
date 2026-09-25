@@ -30,7 +30,7 @@ try {
 // staged/committed). The build also rewrites index.html bundle refs and
 // stamps BUILD into service-worker.js (B5.4), so those are part of the
 // freshness contract. Non-empty diff ⇒ committed outputs do not match source.
-const WATCH = ['public/bundles', 'index.html', 'service-worker.js'];
+const WATCH = ['public/bundles', 'index.html', 'service-worker.js', 'grapher.html'];
 let stale = false;
 let changed = '';
 try {
@@ -44,7 +44,7 @@ if (stale) {
   console.error('\n✖ Bundles are STALE — public/js or public/css changes are not reflected in the built outputs.');
   console.error('  Fix:');
   console.error('    1. npm run build:web');
-  console.error('    2. git add public/bundles/ index.html service-worker.js');
+  console.error('    2. git add public/bundles/ index.html service-worker.js grapher.html');
   console.error('  (STATIC/BUILD versioning is automatic now — never bump by hand.)');
   if (changed) console.error('  Out-of-date files:\n' + changed.split('\n').map((l) => '    ' + l).join('\n'));
   process.exit(1);

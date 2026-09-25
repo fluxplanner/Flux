@@ -188,3 +188,14 @@
     min-width: min(280px, calc(100vw - 32px));
   }
 }
+
+/* ── The planner's phone header ────────────────────────────────────────────
+   A second mount, beside the avatar. Hidden on desktop, where the first one
+   sits in the top bar's left cluster; on a phone that cluster is gone, and
+   without this the grapher was unreachable from the planner. */
+.fxhub.topbar-mob-hub { display: none; }
+@media (max-width: 768px) {
+  .fxhub.topbar-mob-hub { display: inline-flex; }
+  .topbar-mob-hub .fxhub-btn-label { display: none; }
+  .topbar-mob-hub .fxhub-btn { padding: 8px 9px; }
+}

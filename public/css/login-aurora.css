@@ -455,3 +455,30 @@ body.flux-google-off #loginScreen li.is-google{display:none}
    :has() support keeps it hidden rather than showing empty cards. */
 #loginScreen #loginQuotes{display:none}
 #loginScreen #loginQuotes:has(.lx-quote:not([data-placeholder])){display:block}
+
+/* ── Flux Grapher on the sign-in page ──────────────────────────────────
+   Its own section, for every audience: the grapher is free and needs no
+   account, so it is the one thing on this page anyone can use right now. */
+#loginScreen .lx-chip--link{text-decoration:none;cursor:pointer;border-color:rgba(110,231,183,.35)}
+#loginScreen .lx-chip--link:hover{border-color:rgba(110,231,183,.7);background:rgba(110,231,183,.08)}
+#loginScreen .lx-grapher{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:center;
+  padding:clamp(22px,3vw,40px);border-radius:26px;border:1px solid var(--lx-stroke,rgba(255,255,255,.1));
+  background:linear-gradient(135deg,rgba(0,194,255,.07),rgba(124,92,255,.06) 55%,rgba(255,255,255,.02))}
+#loginScreen .lx-grapher-copy .lx-section-eyebrow,
+#loginScreen .lx-grapher-copy .lx-section-title,
+#loginScreen .lx-grapher-copy .lx-section-lede{text-align:left;margin-left:0}
+#loginScreen .lx-grapher-list{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+#loginScreen .lx-grapher-list li{position:relative;padding-left:24px;font-size:.92rem;line-height:1.55;color:#aeb9d4}
+#loginScreen .lx-grapher-list li::before{content:'';position:absolute;left:4px;top:.58em;width:8px;height:8px;border-radius:50%;
+  background:linear-gradient(135deg,#37cdff,#7c5cff);box-shadow:0 0 0 3px rgba(0,194,255,.12)}
+#loginScreen .lx-grapher-list b{color:#eaf1ff;font-weight:700}
+#loginScreen .lx-grapher-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-top:24px}
+#loginScreen .lx-grapher-go{width:auto;margin:0;padding:13px 22px;text-decoration:none}
+#loginScreen .lx-grapher-note{font-size:.8rem;color:#8a95b0;max-width:32ch;line-height:1.45}
+#loginScreen .lx-grapher-art{display:block;border-radius:18px;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+#loginScreen .lx-grapher-art:hover{transform:translateY(-4px) rotate(-.4deg)}
+#loginScreen .lx-grapher-art svg{display:block;width:100%;height:auto;filter:drop-shadow(0 24px 50px rgba(0,0,0,.45))}
+@media (max-width:860px){
+  #loginScreen .lx-grapher{grid-template-columns:1fr}
+  #loginScreen .lx-grapher-art{order:-1}
+}
