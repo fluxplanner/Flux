@@ -214,3 +214,31 @@ test('limits in braces draw a curve only where they allow', () => {
   assert.ok(Number.isFinite(r.fn(1)) && Number.isNaN(r.fn(3)), 'a bound from a slider, written the other way round');
   assert.ok(T.parseExpr('x {y > 0}', {}).error, 'a limit without x is explained');
 });
+
+test('manual lines: an old single line opens as the first of several, and junk is dropped', () => {
+  const table = (extra) => T.normaliseDoc({
+    items: [{ type: 'table', cols: [{ id: 'a', role: 'value' }, { id: 'b', role: 'value' }], rows: [['1', '2']], ...extra }],
+  }, 'data').items[0];
+  assert.deepEqual(table({ manual: { x1: 0, y1: 0, x2: 1, y2: 2 } }).manuals, [{ x1: 0, y1: 0, x2: 1, y2: 2 }],
+    'a graph saved with one manual line keeps it');
+  const junk = table({ manuals: [
+    { x1: 0, y1: 0, x2: 1, y2: 1 },
+    { x1: 2, y1: 0, x2: 2, y2: 5 },          // vertical: no gradient
+    { x1: 'NaN', y1: 0, x2: 1, y2: 1 },
+    'nope',
+  ] }).manuals;
+  assert.equal(junk.length, 1, 'only well-formed, non-vertical lines survive');
+  const many = Array.from({ length: 20 }, (_, i) => ({ x1: 0, y1: i, x2: 1, y2: i + 1 }));
+  assert.equal(table({ manuals: many }).manuals.length, 6, 'capped, so a saved graph cannot grow without limit');
+  assert.deepEqual(T.normaliseDoc({}, 'data').items.find((i) => i.type === 'table')?.manuals ?? [], []);
+});
+
+test('two manual lines give the gradient as the middle of the pair, ± half the gap', () => {
+  // Steepest y = 3x + 1 and shallowest y = x + 3: textbook m = 2 ± 1, c = 2 ± 1.
+  const s = T.manualSpread({ manuals: [{ x1: 0, y1: 1, x2: 1, y2: 4 }, { x1: 0, y1: 3, x2: 2, y2: 5 }] });
+  near(s.m, 2, 'mean gradient');
+  near(s.um, 1, 'half the spread of the gradients');
+  near(s.c, 2, 'mean intercept');
+  near(s.uc, 1, 'half the spread of the intercepts');
+  assert.equal(T.manualSpread({ manuals: [{ x1: 0, y1: 1, x2: 1, y2: 4 }] }), null, 'one line has no spread');
+});

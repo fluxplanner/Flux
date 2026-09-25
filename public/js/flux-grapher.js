@@ -213,6 +213,14 @@
     if (![x1, y1, x2, y2].every(Number.isFinite) || x1 === x2) return null;
     return { x1: x1, y1: y1, x2: x2, y2: y2 };
   }
+  const MAX_MANUAL = 6;
+  /* Several hand-drawn lines per table — the steepest and shallowest lines
+     through the error bars are the usual pair. Older graphs saved one line
+     as `manual`; it becomes the first of `manuals`. */
+  function normManuals(it) {
+    const list = Array.isArray(it.manuals) ? it.manuals : (it.manual ? [it.manual] : []);
+    return list.map(normManual).filter(Boolean).slice(0, MAX_MANUAL);
+  }
 
   /* ── The document ────────────────────────────────────────────────────
      Everything a graph is, and nothing about the screen showing it. This is
@@ -233,7 +241,7 @@
     return {
       id: newId(), type: 'table', name: 'Data ' + (n + 1), colour: PALETTE[n % PALETTE.length],
       hidden: false, cols: [cx, cy], rows: rows, xCol: cx.id, yCol: cy.id,
-      fits: fnMode ? [] : ['linear'], custom: null, manual: null, minmax: false,
+      fits: fnMode ? [] : ['linear'], custom: null, manuals: [], minmax: false,
     };
   }
   function blankDoc(kind) {
@@ -326,7 +334,7 @@
       fits: normFits(it),
       custom: it.custom && typeof it.custom === 'object' && str(it.custom.expr, 200).trim()
         ? { expr: str(it.custom.expr, 200) } : null,
-      manual: normManual(it.manual),
+      manuals: normManuals(it),
       minmax: !!it.minmax,
     };
   }
@@ -1337,8 +1345,14 @@
       +   '<button type="button" class="flg-chip flg-chip--add" data-fits="' + esc(t.id) + '" aria-label="Lines of best fit" title="Choose lines of best fit">'
       +   ICON.plus + '<span>fit</span></button>'
       + '</div>'
-      + '<button type="button" class="flg-chip' + (t.manual ? ' is-on' : '') + '" data-manual="' + esc(t.id) + '" aria-pressed="' + !!t.manual + '"'
-      +   ' title="A line you drag into place yourself">manual line</button>'
+      + '<div class="flg-fitrow">' + (t.manuals || []).map((mn, i) => '<span class="flg-fchip flg-fchip--manual">'
+      +     '<i class="flg-mdot" style="border-color:' + t.colour + '"></i><span>' + esc(manualName(t, i)) + '</span>'
+      +     '<button type="button" data-unmanual="' + i + '" aria-label="Remove ' + esc(manualName(t, i).toLowerCase()) + '" title="Remove">' + ICON.x + '</button></span>').join('')
+      +   ((t.manuals || []).length < MAX_MANUAL
+            ? '<button type="button" class="flg-chip flg-chip--add" data-manual="' + esc(t.id) + '" title="A line you drag into place yourself — add several to bracket your readings">'
+              + ICON.plus + '<span>manual line</span></button>'
+            : '')
+      + '</div>'
       + '<button type="button" class="flg-chip' + (t.minmax ? ' is-on' : '') + '" data-minmax="' + esc(t.id) + '" aria-pressed="' + t.minmax + '"'
       +   ' title="Steepest and shallowest lines through the error bars">max/min</button>';
   };
@@ -1918,10 +1932,16 @@
         self.renderTfoot(tb);
         self.draw();
       } else if (d.manual) {
-        if (tb.manual) tb.manual = null;
-        else self.initManual(tb);
+        self.addManual(tb);
         self.touch();
         self.renderTfoot(tb);
+        self._resHTML = null;
+        self.draw();
+      } else if (d.unmanual != null && d.unmanual !== '') {
+        tb.manuals.splice(+d.unmanual, 1);
+        self.touch();
+        self.renderTfoot(tb);
+        self._resHTML = null;
         self.draw();
       } else if (d.minmax) {
         tb.minmax = !tb.minmax;
@@ -2425,17 +2445,31 @@
      by eye, held by two handles. Its gradient and intercept are reported
      beside the computed fit, with the root-mean-square distance from the
      readings so the two can be compared honestly. */
-  Grapher.prototype.initManual = function (t) {
+  Grapher.prototype.addManual = function (t) {
+    if (!Array.isArray(t.manuals)) t.manuals = [];
+    if (t.manuals.length >= MAX_MANUAL) return;
+    const k = t.manuals.length;
     const pts = tablePoints(t).slice().sort((a, b) => a.x - b.x);
     if (pts.length >= 2 && pts[pts.length - 1].x > pts[0].x) {
-      // Starts through the first and last readings — a sensible first guess to adjust.
+      // The first starts through the first and last readings — a sensible
+      // guess to adjust. Later ones pivot about the middle of the data,
+      // alternately steeper and shallower, ready to be dragged onto the
+      // corners of the error bars.
       const a = pts[0], b = pts[pts.length - 1];
-      t.manual = { x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+      const m0 = (b.y - a.y) / (b.x - a.x);
+      let mx = 0, my = 0;
+      pts.forEach((p) => { mx += p.x; my += p.y; });
+      mx /= pts.length; my /= pts.length;
+      const step = Math.ceil(k / 2) * 0.2;
+      const m = k === 0 ? m0 : m0 * (k % 2 ? 1 + step : 1 - step);
+      const c = k === 0 ? a.y - m0 * a.x : my - m * mx;
+      t.manuals.push({ x1: a.x, y1: m * a.x + c, x2: b.x, y2: m * b.x + c });
       return;
     }
     const v = this._last ? this._last.v : { xLo: 0, xHi: 10, yLo: 0, yHi: 10 };
     const w = v.xHi - v.xLo, h = v.yHi - v.yLo;
-    t.manual = { x1: v.xLo + w * 0.25, y1: v.yLo + h * 0.3, x2: v.xLo + w * 0.75, y2: v.yLo + h * 0.7 };
+    const off = k * 0.08;
+    t.manuals.push({ x1: v.xLo + w * 0.25, y1: v.yLo + h * (0.3 + off), x2: v.xLo + w * 0.75, y2: v.yLo + h * (0.7 - off) });
   };
 
   function manualLine(mn) {
@@ -2443,18 +2477,35 @@
     const c = mn.y1 - m * mn.x1;
     return { m: m, c: c, predict: (x) => m * x + c };
   }
+  function manualName(t, i) {
+    return (t.manuals || []).length > 1 ? 'Manual line ' + (i + 1) : 'Manual line';
+  }
+  function manualEq(ml) {
+    return 'y = ' + fmt(ml.m) + 'x ' + (ml.c < 0 ? '− ' : '+ ') + fmt(Math.abs(ml.c));
+  }
 
-  Grapher.prototype.drawManual = function (t, m, v, fr, print) {
-    const L = manualLine(t.manual);
+  Grapher.prototype.drawManual = function (t, mn, i, m, v, fr, print) {
+    const L = manualLine(mn);
     const ya = L.predict(v.xLo), yb = L.predict(v.xHi);
     let s = '<line x1="' + m.sx(v.xLo) + '" y1="' + m.sy(ya) + '" x2="' + m.sx(v.xHi) + '" y2="' + m.sy(yb)
       + '" stroke="' + t.colour + '" stroke-width="2.4" stroke-opacity=".85" stroke-dasharray="1 0"'
       + (print ? '' : ' class="flg-manual"') + '/>';
+    const many = t.manuals.length > 1;
     if (!print) {
-      [[t.manual.x1, t.manual.y1], [t.manual.x2, t.manual.y2]].forEach((pt) => {
+      [[mn.x1, mn.y1], [mn.x2, mn.y2]].forEach((pt) => {
         s += '<circle class="flg-mhandle" cx="' + m.sx(pt[0]).toFixed(1) + '" cy="' + m.sy(pt[1]).toFixed(1)
           + '" r="7" fill="#ffffff" stroke="' + t.colour + '" stroke-width="3"/>';
       });
+    }
+    if (many) {
+      // Numbered beside its right-hand handle, so "line 2" in the results can be found on the graph.
+      const right = mn.x2 >= mn.x1 ? [mn.x2, mn.y2] : [mn.x1, mn.y1];
+      // Kept inside the plot, so a handle near the edge does not cut its number off.
+      const X = clamp(m.sx(right[0]) + 10, fr.L + 3, fr.R - 18);
+      const Y = clamp(m.sy(right[1]) - 10, fr.T + 13, fr.B - 6);
+      s += '<g class="flg-mlabel" pointer-events="none"><rect x="' + (X - 1).toFixed(1) + '" y="' + (Y - 10).toFixed(1)
+        + '" width="16" height="15" rx="4" fill="' + t.colour + '"/><text x="' + (X + 7).toFixed(1) + '" y="' + (Y + 1).toFixed(1)
+        + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0b0d12">' + (i + 1) + '</text></g>';
     }
     return s;
   };
@@ -2465,18 +2516,18 @@
     if (!L) return null;
     let best = null;
     this.doc.items.forEach((t) => {
-      if (t.type !== 'table' || t.hidden || !t.manual) return;
-      const ax = L.m.sx(t.manual.x1), ay = L.m.sy(t.manual.y1);
-      const bx = L.m.sx(t.manual.x2), by = L.m.sy(t.manual.y2);
-      const da = Math.hypot(p.x - ax, p.y - ay), db = Math.hypot(p.x - bx, p.y - by);
-      if (da <= 12 && (!best || da < best.d)) best = { t: t, which: 'a', d: da };
-      if (db <= 12 && (!best || db < best.d)) best = { t: t, which: 'b', d: db };
-      if (!best) {
-        // Distance from the point to the (infinite) line, on screen.
+      if (t.type !== 'table' || t.hidden || !t.manuals || !t.manuals.length) return;
+      t.manuals.forEach((mn) => {
+        const ax = L.m.sx(mn.x1), ay = L.m.sy(mn.y1);
+        const bx = L.m.sx(mn.x2), by = L.m.sy(mn.y2);
+        const da = Math.hypot(p.x - ax, p.y - ay), db = Math.hypot(p.x - bx, p.y - by);
+        // Handles always beat a line body, so a handle on top of another line can still be grabbed.
+        if (da <= 12 && (!best || da < best.d)) best = { t: t, mn: mn, which: 'a', d: da };
+        if (db <= 12 && (!best || db < best.d)) best = { t: t, mn: mn, which: 'b', d: db };
         const len = Math.hypot(bx - ax, by - ay) || 1;
         const d = Math.abs((by - ay) * p.x - (bx - ax) * p.y + bx * ay - by * ax) / len;
-        if (d <= 7) best = { t: t, which: 'line', d: d + 20 };
-      }
+        if (d <= 7 && (!best || d + 20 < best.d)) best = { t: t, mn: mn, which: 'line', d: d + 20 };
+      });
     });
     return best;
   };
@@ -2701,7 +2752,7 @@
       s += '<circle class="flg-pt" cx="' + X.toFixed(1) + '" cy="' + Y.toFixed(1) + '" r="4.2" fill="' + t.colour + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/>';
     });
     // On top of the points, so its handles can always be grabbed.
-    if (t.manual) s += this.drawManual(t, m, v, fr, print);
+    (t.manuals || []).forEach((mn, i) => { s += this.drawManual(t, mn, i, m, v, fr, print); });
     return s;
   };
 
@@ -2732,10 +2783,9 @@
           if (f.res.fit.um != null && f.res.fit.m != null) text += '   (m = ' + fmtWithU(f.res.fit.m, f.res.fit.um) + ')';
           lines.push({ colour: it.colour, text: text, dash: f.dash, fit: true });
         });
-        if (it.manual) {
-          const ml = manualLine(it.manual);
-          lines.push({ colour: it.colour, text: 'Manual line:  y = ' + fmt(ml.m) + 'x ' + (ml.c < 0 ? '− ' : '+ ') + fmt(Math.abs(ml.c)), fit: true });
-        }
+        (it.manuals || []).forEach((mn, i) => {
+          lines.push({ colour: it.colour, text: manualName(it, i) + ':  ' + manualEq(manualLine(mn)), fit: true });
+        });
       }
     });
     // A slider's value is part of the equation — without it "a sin(x)" is not reproducible.
@@ -2780,6 +2830,16 @@
     return '<table>' + rows.map((r) => '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>').join('') + '</table>';
   }
 
+  /** Gradient and intercept with uncertainty from two or more manual lines. */
+  function manualSpread(t) {
+    const ls = (t.manuals || []).map(manualLine).filter((l) => Number.isFinite(l.m) && Number.isFinite(l.c));
+    if (ls.length < 2) return null;
+    const ms = ls.map((l) => l.m), cs = ls.map((l) => l.c);
+    const hi = Math.max.apply(null, ms), lo = Math.min.apply(null, ms);
+    const chi = Math.max.apply(null, cs), clo = Math.min.apply(null, cs);
+    return { m: (hi + lo) / 2, um: (hi - lo) / 2, c: (chi + clo) / 2, uc: (chi - clo) / 2 };
+  }
+
   Grapher.prototype.resultsHTML = function () {
     const cards = [];
     this.doc.items.forEach((t) => {
@@ -2787,20 +2847,28 @@
       const pts = tablePoints(t);
       if (pts.length < 2) return;
       const fits = this.fitsFor(t, pts);
-      if (!fits.length && !t.manual && !t.minmax) return;
+      const manuals = t.manuals || [];
+      if (!fits.length && !manuals.length && !t.minmax) return;
       let body = '';
       fits.forEach((f) => {
         body += '<div class="flg-rc-fit">' + dashSample(t.colour, f.dash) + '<span>' + esc(f.name) + '</span></div>';
         if (!f.res || f.res.error) { body += '<div class="flg-rc-err">' + esc(f.res ? f.res.error : 'No fit.') + '</div>'; return; }
         body += '<div class="flg-rc-eq">' + esc(f.res.fit.equation(fmt)) + '</div>' + rowsHTML(paramRows(f.res.fit));
       });
-      if (t.manual) {
-        const ml = manualLine(t.manual);
+      manuals.forEach((mn, i) => {
+        const ml = manualLine(mn);
         let ss = 0;
         pts.forEach((p) => { ss += Math.pow(p.y - ml.predict(p.x), 2); });
-        body += '<div class="flg-rc-fit">' + dashSample(t.colour, '') + '<span>Manual line</span></div>'
-          + '<div class="flg-rc-eq">y = ' + esc(fmt(ml.m)) + 'x ' + (ml.c < 0 ? '−' : '+') + ' ' + esc(fmt(Math.abs(ml.c))) + '</div>'
+        body += '<div class="flg-rc-fit">' + dashSample(t.colour, '') + '<span>' + esc(manualName(t, i)) + '</span></div>'
+          + '<div class="flg-rc-eq">' + esc(manualEq(ml)) + '</div>'
           + rowsHTML([['m', fmt(ml.m)], ['c', fmt(ml.c)], ['RMSE', fmt(Math.sqrt(ss / pts.length))]]);
+      });
+      const spread = manualSpread(t);
+      if (spread) {
+        // The by-hand version of max/min: the gradient is the middle of your
+        // steepest and shallowest lines, give or take half the gap between them.
+        body += '<div class="flg-rc-fit"><span>From your manual lines</span></div>'
+          + rowsHTML([['m', fmtWithU(spread.m, spread.um)], ['c', fmtWithU(spread.c, spread.uc)]]);
       }
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
@@ -2843,7 +2911,7 @@
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
 
-    let dragLine = null;   // a manual line being moved: { t, which }
+    let dragLine = null;   // a manual line being moved: { t, mn, which }
 
     plot.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -2866,7 +2934,7 @@
       }
       const prev = pts.get(e.pointerId);
       if (dragLine && pts.size === 1 && self._last) {
-        const M = self._last.m, mn = dragLine.t.manual;
+        const M = self._last.m, mn = dragLine.mn;
         moved += Math.abs(p.x - prev.x) + Math.abs(p.y - prev.y);
         pts.set(e.pointerId, p);
         if (dragLine.which === 'line') {
@@ -2986,7 +3054,7 @@
           if (d <= 10) consider({ d: d - 3, kind: 'reading', x: q.x, y: q.y, dx: q.dx, dy: q.dy, item: it.id, colour: it.colour });
         });
         const curves = this.fitsFor(it, tp).filter((f) => f.res && f.res.fit && f.res.fit.predict).map((f) => f.res.fit.predict);
-        if (it.manual) curves.push(manualLine(it.manual).predict);
+        (it.manuals || []).forEach((mn) => curves.push(manualLine(mn).predict));
         curves.forEach((fn) => {
           const y = fn(x);
           if (!Number.isFinite(y)) return;
@@ -3131,11 +3199,12 @@
         lines.push('', t.name + ' — ' + fx.name + ': ' + f.equation(fmt));
         paramRows(f).forEach((r) => lines.push(r[0] + ' = ' + r[1]));
       });
-      if (t.manual) {
+      (t.manuals || []).forEach((mn, i) => {
         fits++;
-        const ml = manualLine(t.manual);
-        lines.push('', t.name + ' — manual line: y = ' + fmt(ml.m) + 'x ' + (ml.c < 0 ? '− ' : '+ ') + fmt(Math.abs(ml.c)));
-      }
+        lines.push('', t.name + ' — ' + manualName(t, i).toLowerCase() + ': ' + manualEq(manualLine(mn)));
+      });
+      const spread = manualSpread(t);
+      if (spread) lines.push('Gradient from the manual lines: ' + fmtWithU(spread.m, spread.um));
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
         if (mm) { fits++; lines.push('Gradient from the error bars: ' + fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)); }
@@ -3320,7 +3389,7 @@
     _test: {
       keyPoints: keyPoints, intersections: intersections, parseExpr: parseExpr,
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
-      computeTable: computeTable, parseDomain: parseDomain,
+      computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread,
     },
   };
 })();

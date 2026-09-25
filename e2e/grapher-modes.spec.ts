@@ -369,18 +369,58 @@ test.describe('Flux Grapher', () => {
     await page.locator('[data-manual]').click();
     await page.waitForTimeout(300);
     await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
-    const before = await page.evaluate(() => ({ ...(window as any).fluxGrapherPage.instance.doc.items[0].manual }));
+    const line = (i: number) => page.evaluate((k) => ({ ...(window as any).fluxGrapherPage.instance.doc.items[0].manuals[k] }), i);
+    const before = await line(0);
     const h = (await page.locator('.flg-plot .flg-mhandle').nth(1).boundingBox())!;
     await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
     await page.mouse.down();
     await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + 80, { steps: 5 });
     await page.mouse.up();
     await page.waitForTimeout(300);
-    const after = await page.evaluate(() => ({ ...(window as any).fluxGrapherPage.instance.doc.items[0].manual }));
+    const after = await line(0);
     expect(after.y2, 'dragging the handle down should lower its end of the line').toBeLessThan(before.y2);
     expect(after.x1).toBe(before.x1);
     await expect(page.locator('.flg-results')).toContainText('Manual line');
     await expect(page.locator('.flg-results')).toContainText('RMSE');
+  });
+
+  test('several manual lines: each drags on its own, and together they give m ± Δm', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4'], ['3', '6'], ['4', '8']]);
+    await page.locator('[data-manual]').click();
+    await page.waitForTimeout(200);
+    await page.locator('[data-manual]').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(4);
+    await expect(page.locator('.flg-plot .flg-mlabel'), 'with two lines, each is numbered on the graph').toHaveCount(2);
+    await expect(page.locator('.flg-fchip--manual')).toHaveCount(2);
+    const lines = () => page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.items[0].manuals.map((m: any) => ({ ...m })));
+    const start = await lines();
+    const slope = (m: any) => (m.y2 - m.y1) / (m.x2 - m.x1);
+    expect(slope(start[1]), 'the second line starts at a different gradient, not on top of the first').not.toBeCloseTo(slope(start[0]), 3);
+
+    // Drag the second line's right handle: only that line moves.
+    const h = (await page.locator('.flg-plot .flg-mhandle').nth(3).boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 - 60, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const moved = await lines();
+    expect(moved[0], 'the first line must not move').toEqual(start[0]);
+    expect(moved[1].y2).toBeGreaterThan(start[1].y2);
+
+    const res = page.locator('.flg-results');
+    await expect(res).toContainText('Manual line 1');
+    await expect(res).toContainText('Manual line 2');
+    await expect(res).toContainText('From your manual lines');
+    await expect(res).toContainText('±');
+
+    await page.locator('.flg-fchip--manual').first().locator('button').click();
+    await page.waitForTimeout(200);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
+    await expect(res).not.toContainText('From your manual lines');
+    expect((await lines())[0], 'removing line 1 leaves line 2').toEqual(moved[1]);
   });
 
   test('the chosen half survives a reload', async ({ page }) => {
