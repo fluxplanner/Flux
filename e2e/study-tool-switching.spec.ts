@@ -126,7 +126,13 @@ test.describe('Study Tools: switching tools survives the cloud pull', () => {
     expect(state.tool, 'sign-in no longer restores your tool').toBe('unit');
   });
 
-  test('the graphing tab is called Desmos', async ({ page }) => {
-    await expect(page.locator('#fshChemTabs [data-tool="graph"]')).toContainText('Desmos');
+  /* Was "Desmos" — the tab embedded a third-party graphing calculator behind
+     an API key. It is Flux's own grapher now, so the name is Flux's too. The
+     tool id stays `graph`: it is what a saved tab choice is stored under, and
+     renaming it would drop everyone back on the periodic table. */
+  test('the graphing tab is the built-in grapher, not a third-party embed', async ({ page }) => {
+    const tab = page.locator('#fshChemTabs [data-tool="graph"]');
+    await expect(tab).toContainText('Grapher');
+    await expect(tab, 'the Desmos embed should be gone').not.toContainText('Desmos');
   });
 });

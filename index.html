@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.164b0a89.css">
+<link rel="stylesheet" href="public/bundles/flux.d6c57778.css">
 </head>
 <body>
 <noscript>
@@ -1038,6 +1038,11 @@
     <div class="topbar">
       <!-- Desktop/tablet content (hidden on mobile) -->
       <div class="topbar-left-cluster topbar-desktop-only">
+        <!-- Switch between Flux apps. Static markup, and deliberately outside
+             .sidebar-nav: renderSidebars() rebuilds that container wholesale,
+             so a mount point placed in there would be wiped on the first role
+             change. -->
+        <div data-flux-hub="planner"></div>
         <div class="topbar-title-wrap">
           <button type="button" class="mob-menu-btn" onclick="openDrawer()" aria-label="Open menu">☰</button>
           <span class="topbar-title" id="topbarTitle">Dashboard</span>
@@ -2857,7 +2862,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
 <script defer src="public/bundles/flux-core.01c03a3e.js"></script>
-<script defer src="public/bundles/flux-features.84da1294.js"></script>
+<script defer src="public/bundles/flux-features.143db37c.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

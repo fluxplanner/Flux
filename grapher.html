@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Grapher — free graphing with uncertainties</title>
+<meta name="description" content="A free graphing tool for science practicals: plot your readings, add uncertainties, get a line of best fit with its gradient and error. No account, no payment.">
+<meta name="theme-color" content="#070b14">
+<link rel="icon" href="public/favicon.ico">
+
+<!--
+  The standalone grapher.
+
+  Deliberately NOT part of the planner app: no sign-in, no bundles, no
+  Supabase. Someone should be able to open this on a school computer, plot a
+  practical, take the image and leave — without an account and without paying
+  anyone. That is the whole reason it exists separately.
+
+  Because it loads none of the app's CSS, the palette is defined here. The
+  chart classes come from flux-grapher.css, shared with the simple version
+  inside the planner so both look the same.
+-->
+<link rel="stylesheet" href="public/css/flux-grapher.css">
+<!-- Real files, not bundles, so this page keeps working on its own. -->
+<link rel="stylesheet" href="public/css/flux-hub.css">
+<style>
+  :root {
+    --bg: #070b14;
+    --text: #eaf1ff;
+    --muted2: #9fb0cc;
+    --accent: #00c2ff;
+    --border: rgba(255,255,255,.07);
+    --border2: rgba(255,255,255,.14);
+    --card: rgba(20,27,45,.72);
+    --card2: rgba(28,36,58,.8);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(0,194,255,.13), transparent 55%),
+      radial-gradient(90% 70% at 100% 5%, rgba(124,92,255,.11), transparent 55%),
+      linear-gradient(170deg, #0a0f1c 0%, #070b14 55%, #05070f 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  /* The graph gets the screen. The page used to open on a headline and three
+     sentences of explanation, which is fine for a landing page and wrong for a
+     tool — you arrive already knowing what you came to do. Everything that was
+     prose is gone; the only chrome left is a thin bar with the mark and the
+     mode switch, and the tool fills whatever is below it.
+
+     Hence the fixed viewport height and the internal scrolling: the page
+     itself never scrolls, so the plot cannot be pushed off the bottom by the
+     table growing. */
+  html, body { height: 100%; overflow: hidden; }
+  .wrap {
+    height: 100dvh;                 /* dvh, so a phone's address bar cannot crop it */
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px clamp(12px, 2.5vw, 20px);
+    border-bottom: 1px solid var(--border);
+    background: rgba(8, 12, 22, .72);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: inherit; }
+  /* Just the mark. The wordmark, the tagline, the "free forever" pill and the
+     footer all went with the hero — on a tool you are already inside, they are
+     decoration competing with the plot for the same pixels. */
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(0,194,255,.22), rgba(124,92,255,.22));
+    border: 1px solid rgba(255,255,255,.12);
+    font-size: .95rem;
+  }
+  .brand-name {
+    font-size: .94rem; font-weight: 800; letter-spacing: -.02em;
+    background: linear-gradient(90deg, #9ee3ff, #00c2ff 40%, #7c5cff);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* ── Mode switch: functions or measurements ───────────────────────────
+     Two genuinely different jobs. Typing y = x² to see its shape has nothing
+     in common with plotting eleven readings and their error bars, and a single
+     screen trying to serve both ends up worse at each. */
+  .modes {
+    display: inline-flex; gap: 3px; padding: 3px;
+    background: rgba(10,14,24,.6); border: 1px solid var(--border);
+    border-radius: 11px;
+  }
+  .mode-btn {
+    appearance: none; border: 0; cursor: pointer;
+    font: inherit; font-size: .81rem; font-weight: 700; letter-spacing: -.01em;
+    padding: 7px 15px; border-radius: 9px;
+    color: var(--muted2); background: transparent;
+    transition: color .16s ease, background .16s ease;
+  }
+  .mode-btn:hover { color: var(--text); }
+  .mode-btn[aria-selected="true"] {
+    color: #062030;
+    background: linear-gradient(135deg, #7fe3ff, #00c2ff);
+  }
+  .mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* The tool itself takes everything the header does not. min-height:0 is the
+     load-bearing part: without it a flex child refuses to shrink below its
+     content and the panel grows the page instead of scrolling inside. */
+  main#grapherHost {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: clamp(10px, 2vw, 18px);
+  }
+
+  @media (max-width: 560px) {
+    .brand-name { display: none; }        /* the mark alone is enough */
+    .mode-btn { padding: 7px 11px; font-size: .78rem; }
+  }
+
+  /* The standalone page has no toast system, so the grapher brings its own. */
+  .flg-toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    background: var(--card2); color: var(--text);
+    border: 1px solid var(--border2); border-radius: 12px;
+    padding: 11px 18px; font-size: .85rem; font-weight: 600;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    z-index: 9999; max-width: min(92vw, 460px);
+    animation: flgToastIn .22s cubic-bezier(.22,1,.36,1);
+  }
+  .flg-toast--success { border-color: rgba(110,231,183,.45); }
+  .flg-toast--error { border-color: rgba(255,107,129,.45); }
+  .flg-toast--warning { border-color: rgba(251,191,36,.45); }
+  .flg-toast--out { opacity: 0; transition: opacity .5s; }
+  @keyframes flgToastIn { from { opacity: 0; transform: translate(-50%, 10px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <!-- The mark does not navigate. It used to point at the planner, which
+           made the Flux logo mean "leave" — and on a page whose promise is "no
+           account needed", the most obvious thing to click sent you to the one
+           that asks for one. Switching apps is the hub's job. -->
+      <span class="brand">
+        <span class="brand-mark" aria-hidden="true">📉</span>
+        <span class="brand-name">Flux</span>
+      </span>
+
+      <div class="modes" role="tablist" aria-label="What are you graphing?">
+        <button type="button" class="mode-btn" id="modeFunctions" role="tab"
+          aria-selected="false" aria-controls="grapherHost">Functions</button>
+        <button type="button" class="mode-btn" id="modeData" role="tab"
+          aria-selected="true" aria-controls="grapherHost">Measurements</button>
+      </div>
+
+      <div data-flux-hub="grapher"></div>
+    </header>
+
+    <main id="grapherHost" aria-label="Graphing tool"></main>
+
+  </div>
+
+  <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
+  <script src="public/js/flux-hub.js"></script>
+  <script src="public/js/flux-expr.js"></script>
+  <script src="public/js/flux-lab-fit.js"></script>
+  <script src="public/js/flux-grapher.js"></script>
+  <script>
+    (function () {
+      var host = document.getElementById('grapherHost');
+      if (!host) return;
+      if (!window.FluxGrapher) {
+        host.innerHTML = '<div class="flg-warn">The graphing tool could not load. Try refreshing.</div>';
+        return;
+      }
+
+      var MODE_KEY = 'flux_grapher_mode';
+      var btnFn = document.getElementById('modeFunctions');
+      var btnData = document.getElementById('modeData');
+
+      function show(mode) {
+        /* Rebuild rather than hide: the two halves keep separate state and
+           separate listeners, and leaving the other mounted behind a
+           display:none means two sets of handlers on one host. */
+        host.innerHTML = '';
+        if (mode === 'functions') window.FluxGrapher.mountFunctions(host);
+        else window.FluxGrapher.mount(host, { mode: 'full' });
+
+        btnFn.setAttribute('aria-selected', String(mode === 'functions'));
+        btnData.setAttribute('aria-selected', String(mode !== 'functions'));
+        try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+      }
+
+      btnFn.addEventListener('click', function () { show('functions'); });
+      btnData.addEventListener('click', function () { show('data'); });
+
+      // Reopen where you left off; measurements is the default on a first visit.
+      var saved = 'data';
+      try { saved = localStorage.getItem(MODE_KEY) || 'data'; } catch (e) {}
+      show(saved === 'functions' ? 'functions' : 'data');
+    })();
+  </script>
+</body>
+</html>
