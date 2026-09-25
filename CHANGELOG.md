@@ -1,8 +1,8 @@
 # Flux Planner — change log
 
-Every substantive change, newest first. Generated from git history on 2026-09-15.
+Every substantive change, newest first. Generated from git history on 2026-09-25.
 
-**615 changes** recorded, from 2026-03-12 to 2026-09-15.
+**629 changes** recorded, from 2026-03-12 to 2026-09-25.
 
 Regenerate with `npm run changelog`. 298 commits are omitted:
 they were made through the GitHub web editor, which names them "Update app.js"
@@ -12,8 +12,17 @@ and similar, so they carry no description of what actually changed.
 
 ### Added
 
-- Settings loses nine cards, three whole sections, and its uneven gaps — `2026-09-15` (f76b916)
-- Change your own password, in Settings → Account — `2026-09-15` (392b6d1)
+- The grapher finds zeros and turning points, tables get ± columns, and graphs save to your account — `2026-09-25` (c4a75d3)
+- A grapher that understands uncertainties, and a free one anyone can use (#61) — `2026-09-25` (4d1f10a)
+- You can dismiss the heavy-day warning, and it returns if it changes (#59) — `2026-09-24` (9160ec7)
+- Count down to anything, not just the next test (#56) — `2026-09-23` (1de0396)
+- Your locker and ID live in Profile, and the PDF importer is gone (#55) — `2026-09-23` (b85baad)
+- Pick a colour for each activity, the way classes already work (#54) — `2026-09-23` (4c8d35f)
+- Edit a task from the calendar, not just tick or delete it (#53) — `2026-09-23` (10bea25)
+- Everyone converted off Google picks their own name and password (#51) — `2026-09-23` (56c3a26)
+- One Add button on the calendar, not a Task one that did less (#50) — `2026-09-22` (0c91724)
+- Colour the periodic table by a trend, with the arrows spelled out (#48) — `2026-09-19` (1b69866)
+- One formula sheet per subject, split by unit (#47) — `2026-09-19` (fac8c27)
 - Chemistry splits into units, and "Tools" stops hiding six calculators (#41) — `2026-09-15` (faad87a)
 - Name your important dates, and stop the stuck tooltip — `2026-09-14` (2af8c3d)
 - Sign in with a name, and a way back in when you forget the password — `2026-09-13` (9410151)
@@ -39,9 +48,14 @@ and similar, so they carry no description of what actually changed.
 
 ### Fixed
 
-- The sign-up form asked for your name twice and your password once — `2026-09-15` (e31f758)
-- One Reference in Chemistry, and gravity follows your programme — `2026-09-15` (8bb4462)
-- The conjugator was wrong about a whole family of common verbs — `2026-09-15` (264920f)
+- "veis", not "véis" — and a sweep so the next one cannot hide (#60) — `2026-09-24` (f4150e2)
+- The date picker opens where it belongs, instead of lurching on first click (#58) — `2026-09-24` (792a47f)
+- The calendar stops telling you to sign in with a Google that is off (#57) — `2026-09-24` (50cdeda)
+- The owner is recognised by account id, not by email address (#52) — `2026-09-23` (0fc75f7)
+- The phone would not scroll at all (#49) — `2026-09-22` (aeaa67e)
+- Say what is wrong with a password instead of reciting the alphabet (#46) — `2026-09-19` (847ca0c)
+- One Reference in Chemistry, and gravity follows your programme (#45) — `2026-09-15` (f14b759)
+- The conjugator was wrong about a whole family of common verbs (#44) — `2026-09-15` (04bf5b9)
 - Six buttons could still undo the switch to names and passwords (#43) — `2026-09-15` (bb1b110)
 - The phone's More menu stops disagreeing with the laptop (#42) — `2026-09-15` (9f4883a)
 - The unit row slides like every other row — `2026-09-13` (7fc5df7)
