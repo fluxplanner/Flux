@@ -389,6 +389,46 @@
 .flg-chip:hover { color: var(--flg-ink); border-color: var(--flg-line); }
 .flg-chip.is-on { color: #1a1204; background: #fbbf24; border-color: #fbbf24; }
 
+/* Calculated columns: a formula under the name, and cells that are read,
+   not typed — tinted so nobody tries to overwrite them. */
+.flg-col.is-calc { min-width: 88px; }
+.flg-calcrow { display: flex; align-items: center; gap: 3px; padding: 2px 2px 0; }
+.flg-calcrow > span { font-family: var(--flg-mono); font-weight: 800; color: #a78bfa; font-size: .8rem; }
+:is(#app, #grapherHost) .flg .flg-cexpr {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 3px 5px !important;
+  border: 1px solid rgba(167, 139, 250, .35);
+  border-radius: 6px !important;
+  background: rgba(167, 139, 250, .08);
+  box-shadow: none;
+  backdrop-filter: none;
+  color: var(--flg-ink);
+  font-family: var(--flg-mono);
+  font-size: .74rem !important;
+}
+:is(#app, #grapherHost) .flg .flg-cexpr:focus { outline: none; border-color: #a78bfa; background: rgba(167, 139, 250, .14); }
+:is(#app, #grapherHost) .flg .flg-cexpr.is-bad { border-color: rgba(251, 191, 36, .8); background: rgba(251, 191, 36, .08); }
+:is(#app, #grapherHost) .flg .flg-cell.is-calc { background: rgba(167, 139, 250, .07); color: #d4c8ff; cursor: default; }
+[data-theme='light'] :is(#app, #grapherHost) .flg .flg-cell.is-calc { color: #5b3fd6; }
+.flg-pm--calc { color: #a78bfa; }
+
+/* Undo and redo sit at the end of the add bar: small, and out of the way. */
+.flg-hist { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.flg-hist button {
+  display: grid; place-items: center;
+  width: 32px; height: 38px;
+  padding: 0; margin: 0;
+  border: 0; border-radius: 10px;
+  background: none;
+  color: var(--flg-mut);
+  cursor: pointer;
+}
+.flg-hist button:hover:not(:disabled) { color: var(--flg-ink); background: var(--flg-field); }
+.flg-hist button:disabled { opacity: .3; cursor: default; }
+
 /* ── Sliders ──────────────────────────────────────────────────────────── */
 .flg-params { display: flex; flex-direction: column; gap: 6px; }
 .flg-params[hidden] { display: none; }

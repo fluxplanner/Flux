@@ -49,6 +49,8 @@
    *   Every letter of an unknown name counts separately: "ax" is a·x.
    * opts.scope: where those numbers are read from, at call time, so dragging
    *   a slider does not need a recompile.
+   * opts.names: an object whose keys are whole words to read from the scope
+   *   (a table's column names). A name not in the scope reads as NaN.
    *
    * The returned function carries .params — the letters it used, in order.
    */
@@ -117,13 +119,25 @@
         var val = parseFloat(numMatch[0]);
         return function () { return val; };
       }
-      var nameMatch = /^[a-zA-Zπ][a-zA-Z0-9]*/.exec(S.slice(i));
+      var nameMatch = /^[a-zA-Zπα-ωΑ-Ω][a-zA-Z0-9α-ωΑ-Ω_]*/.exec(S.slice(i));
       if (nameMatch) {
         var name = nameMatch[0];
         var start = i;
         i += name.length;
         var lower = name.toLowerCase();
         var afterName = i;
+        /* opts.names: whole words that read from the scope — a table's column
+           names in a calculated column ("L / T^2"). Checked before anything
+           else so a column called "e" or "a" means the column, exactly as
+           the person who named it expects. */
+        if (o.names && Object.prototype.hasOwnProperty.call(o.names, name)) {
+          if (found.indexOf(name) < 0) found.push(name);
+          return function () {
+            var sc = o.scope;
+            var n = sc && sc[name];
+            return typeof n === 'number' ? n : NaN;
+          };
+        }
         ws();
         if (S[i] === '(' && Object.prototype.hasOwnProperty.call(FNS, lower)) {
           i++;

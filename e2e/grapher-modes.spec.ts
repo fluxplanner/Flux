@@ -119,6 +119,53 @@ test.describe('Flux Grapher', () => {
     expect((await view(page)).yHi, 'the y axis should now reach the third column').toBeGreaterThan(150);
   });
 
+  test('a calculated column works out T² from T, and carries T\'s uncertainty into its error bars', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    const names = page.locator('.flg-cname');
+    await names.nth(0).fill('L');
+    await names.nth(1).fill('T');
+    await fillReadings(page, [['0.4', '1.27'], ['1.0', '2.00']]);
+
+    await page.locator('[data-addcol]').first().click();
+    await page.getByRole('menuitem', { name: /Uncertainty/ }).click();
+    await cell(page, 0, 2).fill('0.05');
+    await cell(page, 1, 2).fill('0.05');
+
+    await page.locator('[data-addcol]').first().click();
+    await page.getByRole('menuitem', { name: /Calculated/ }).click();
+    await page.locator('.flg-cexpr').fill('T^2');
+    await page.waitForTimeout(250);
+
+    // 2.00² = 4, and u(T²) = 2·T·u(T) = 0.2.
+    const calc = page.locator('.flg-cell.is-calc');
+    await expect(calc.nth(1)).toHaveValue('4');
+    await expect(calc.nth(1)).toHaveAttribute('title', '± 0.2');
+    await expect(calc.nth(0), 'a calculated cell cannot be typed into').toHaveAttribute('readonly', '');
+
+    await page.locator('[data-ycol]').first().selectOption({ label: 'f1' });
+    await page.waitForTimeout(250);
+    expect(await page.locator('.flg-ebar').count(), 'the propagated uncertainty should draw a bar on each point').toBe(2);
+
+    // A formula naming a column that does not exist is flagged, not silently blank.
+    await page.locator('.flg-cexpr').fill('Q^2');
+    await page.waitForTimeout(200);
+    await expect(page.locator('.flg-cexpr')).toHaveClass(/is-bad/);
+  });
+
+  test('undo brings back a deleted row, and redo takes it away again', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4'], ['3', '6']]);
+    await page.waitForTimeout(500);
+    await page.locator('.flg-table tbody tr').nth(1).hover();
+    await page.locator('[data-rdel="1"]').click();
+    await page.waitForTimeout(500);
+    await expect(cell(page, 1, 0)).toHaveValue('3');
+    await page.locator('[data-hist="undo"]').click();
+    await expect(cell(page, 1, 0), 'undo did not restore the deleted row').toHaveValue('2');
+    await page.locator('[data-hist="redo"]').click();
+    await expect(cell(page, 1, 0)).toHaveValue('3');
+  });
+
   test('the window, title and axis names can be set exactly', async ({ page }) => {
     await open(page, { mode: 'data' });
     await page.locator('.flg-tool-window').click();

@@ -73,6 +73,8 @@
     cloud: svgIcon('<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.3 12 3.5 3.5 0 0 0 6.5 19z"/><path d="M12 12v6M9.5 14.5 12 12l2.5 2.5"/>'),
     folder: svgIcon('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
     expand: svgIcon('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'),
+    undo: svgIcon('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>', 15),
+    redo: svgIcon('<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>', 15),
   };
 
   function readJSON(key, fallback) {
@@ -247,13 +249,15 @@
       let id = str(c.id, 24) || newId();
       if (seen[id]) id = newId();
       seen[id] = 1;
-      const role = c.role === 'unc' ? 'unc' : 'value';
+      const role = c.role === 'unc' || c.role === 'calc' ? c.role : 'value';
       const col = { id: id, name: str(c.name, 40), unit: str(c.unit, 20), role: role };
       if (role === 'unc') col.of = str(c.of, 24);
+      if (role === 'calc') col.expr = str(c.expr, 200);
       cols.push(col);
     });
-    const values = cols.filter((c) => c.role === 'value');
-    if (!values.length) return null;
+    if (!cols.some((c) => c.role === 'value')) return null;
+    // Anything that can be plotted: typed-in columns and calculated ones.
+    const values = cols.filter((c) => c.role !== 'unc');
     cols.forEach((c) => {
       if (c.role === 'unc' && !values.some((v) => v.id === c.of)) c.of = values[values.length - 1].id;
     });
@@ -342,36 +346,156 @@
     return Number.isFinite(n) ? Math.abs(n) : 0;
   }
 
+  /* A column name a formula can refer to: a word, no spaces. */
+  const NAME_OK = /^[A-Za-zα-ωΑ-Ω][A-Za-z0-9α-ωΑ-Ω_]*$/;
+
+  /**
+   * Every row's numbers, with calculated columns filled in.
+   *
+   * A calculated column is a formula over the other columns by name — T^2
+   * from a column called T, or L / T^2 — the way a pendulum or a spring gets
+   * straightened into a line. Its uncertainty is carried through from the
+   * columns it is made of, by the standard propagation rule
+   *     u(f)² = Σ (∂f/∂xᵢ · u(xᵢ))²
+   * with each partial derivative taken numerically. So T = 2.0 ± 0.1 gives
+   * T² = 4.0 ± 0.4, and nobody has to remember to double the percentage.
+   * A ± column pointed at a calculated column overrides the propagated value.
+   *
+   * Columns are worked out left to right, so a formula can use any typed
+   * column and any calculated column to its left.
+   */
+  function computeTable(t) {
+    const E = window.FluxExpr;
+    const names = {};
+    t.cols.forEach((c) => {
+      if (c.role !== 'unc' && c.name && NAME_OK.test(c.name) && !names[c.name]) names[c.name] = c.id;
+    });
+    const scope = {};
+    const calc = {};
+    t.cols.forEach((c) => {
+      if (c.role !== 'calc') return;
+      if (!String(c.expr || '').trim()) { calc[c.id] = { empty: true }; return; }
+      if (!E) { calc[c.id] = { error: 'The maths engine has not loaded.' }; return; }
+      // '\u0001' as "the variable": in a formula, x means a column called x, never a free variable.
+      calc[c.id] = E.tryCompile(c.expr, '\u0001', { names: names, scope: scope });
+    });
+    const uncIdx = {};
+    t.cols.forEach((c, i) => { if (c.role === 'unc' && uncIdx[c.of] == null) uncIdx[c.of] = i; });
+
+    const rows = t.rows.map((r) => {
+      const v = {}, u = {};
+      t.cols.forEach((c, i) => {
+        if (c.role !== 'value') return;
+        v[c.id] = num(r[i]);
+        u[c.id] = uncIdx[c.id] != null ? uncOf(r[uncIdx[c.id]], v[c.id]) : 0;
+      });
+      t.cols.forEach((c) => {
+        if (c.role !== 'calc') return;
+        const k = calc[c.id];
+        v[c.id] = NaN;
+        u[c.id] = 0;
+        if (!k || !k.fn) return;
+        Object.keys(names).forEach((nm) => { scope[nm] = v[names[nm]]; });
+        const val = k.fn(0);
+        if (!Number.isFinite(val)) return;
+        v[c.id] = val;
+        let s2 = 0;
+        (k.params || []).forEach((nm) => {
+          const id = names[nm];
+          const ui = u[id];
+          if (!(ui > 0)) return;
+          const xi = v[id];
+          const h = Math.max(Math.abs(xi) * 1e-6, 1e-9);
+          scope[nm] = xi + h;
+          const up = k.fn(0);
+          scope[nm] = xi - h;
+          const dn = k.fn(0);
+          scope[nm] = xi;
+          const dfdx = (up - dn) / (2 * h);
+          if (Number.isFinite(dfdx)) s2 += (dfdx * ui) * (dfdx * ui);
+        });
+        u[c.id] = Math.sqrt(s2);
+        if (uncIdx[c.id] != null) u[c.id] = uncOf(r[uncIdx[c.id]], val);
+      });
+      return { v: v, u: u };
+    });
+    return { rows: rows, calc: calc, names: names };
+  }
+
+  /* tablePoints is called on every draw and every mouse move, so the last
+     answer per table is kept until its columns or rows actually change. */
+  const POINTS_CACHE = new WeakMap();
+
   /** Rows with numbers in both plotted columns, carrying their error bars. */
   function tablePoints(t) {
-    const idx = (id) => t.cols.findIndex((c) => c.id === id);
-    const xi = idx(t.xCol), yi = idx(t.yCol);
-    if (xi < 0 || yi < 0) return [];
-    const uxi = t.cols.findIndex((c) => c.role === 'unc' && c.of === t.xCol);
-    const uyi = t.cols.findIndex((c) => c.role === 'unc' && c.of === t.yCol);
+    const plottable = (id) => t.cols.some((c) => c.id === id && c.role !== 'unc');
+    if (!plottable(t.xCol) || !plottable(t.yCol)) return [];
+    const sig = JSON.stringify([t.cols, t.rows, t.xCol, t.yCol]);
+    const hit = POINTS_CACHE.get(t);
+    if (hit && hit.sig === sig) return hit.pts;
+    const ct = computeTable(t);
     const out = [];
-    t.rows.forEach((r, ri) => {
-      const x = num(r[xi]), y = num(r[yi]);
+    ct.rows.forEach((row, ri) => {
+      const x = row.v[t.xCol], y = row.v[t.yCol];
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      out.push({
-        x: x, y: y,
-        dx: uxi >= 0 ? uncOf(r[uxi], x) : 0,
-        dy: uyi >= 0 ? uncOf(r[uyi], y) : 0,
-        row: ri,
-      });
+      out.push({ x: x, y: y, dx: row.u[t.xCol] || 0, dy: row.u[t.yCol] || 0, row: ri });
     });
+    POINTS_CACHE.set(t, { sig: sig, pts: out });
     return out;
   }
+
+  function calcText(v) { return Number.isFinite(v) ? String(Number(v.toPrecision(6))) : ''; }
 
   /* ── Reading an equation ─────────────────────────────────────────────
      y = f(x) is the common case; x = 3 draws a vertical line; (2, 5) or a
      list of them draws points. Unknown letters are sliders. */
+  /**
+   * Desmos-style limits: "x^2 {0 < x < 3}" draws only between 0 and 3.
+   * Accepts <, >, ≤, ≥ (and <=, >=), chained or separated by commas; the
+   * bounds may use sliders. Returns { test, params } or { error }.
+   */
+  function parseDomain(text, opts) {
+    const E = window.FluxExpr;
+    const lows = [], highs = [], params = [];
+    const conds = String(text).split(',').map((c) => c.trim()).filter(Boolean);
+    if (!conds.length) return { error: 'Put a limit inside the braces, like {0 < x < 3}.' };
+    for (let k = 0; k < conds.length; k++) {
+      const parts = conds[k].split(/\s*(<=|>=|≤|≥|<|>)\s*/);
+      if (parts.length < 3) return { error: 'A limit compares x with a number, like {x > 0}.' };
+      let sawX = false;
+      for (let j = 0; j + 2 < parts.length; j += 2) {
+        const a = parts[j].trim(), op = parts[j + 1], b = parts[j + 2].trim();
+        const aX = /^x$/i.test(a), bX = /^x$/i.test(b);
+        if (aX === bX) return { error: 'Each limit needs x on exactly one side, like {0 < x < 3}.' };
+        const other = E.tryCompile(aX ? b : a, '\u0001', opts);
+        if (other.error) return { error: other.error };
+        other.params.forEach((p) => { if (params.indexOf(p) < 0) params.push(p); });
+        const less = op === '<' || op === '<=' || op === '≤';
+        // "x < b" and "b > x" both put b above x.
+        ((aX ? less : !less) ? highs : lows).push(other.fn);
+        sawX = true;
+      }
+      if (!sawX) return { error: 'A limit needs x in it.' };
+    }
+    const test = (x) => lows.every((f) => x >= f(0)) && highs.every((f) => x <= f(0));
+    return { test: test, params: params };
+  }
+
   function parseExpr(src, scope) {
     const E = window.FluxExpr;
     let s = String(src || '').trim();
     if (!s) return { kind: 'empty', params: [] };
     if (!E) return { error: 'The maths engine has not loaded.' };
     const opts = { params: true, scope: scope };
+
+    let domain = null;
+    const dm = /\{([^{}]*)\}\s*$/.exec(s);
+    if (dm) {
+      domain = parseDomain(dm[1], opts);
+      if (domain.error) return { error: domain.error };
+      s = s.slice(0, dm.index).trim();
+      if (!s) return { kind: 'empty', params: [] };
+    }
 
     if (s[0] === '(' && /^\(\s*[^()]+,[^()]+\)(\s*,?\s*\([^()]+,[^()]+\))*$/.test(s)) {
       const pts = [], params = [];
@@ -388,6 +512,7 @@
     }
 
     const vx = /^x\s*=\s*(.+)$/i.exec(s);
+    if (vx && domain) return { error: 'Limits in { } work on y = … curves.' };
     if (vx) {
       const r = E.tryCompile(vx[1], 'x', opts);
       if (r.error) return { error: r.error };
@@ -404,7 +529,11 @@
     if (s.indexOf('=') >= 0) return { error: 'Write it as y = … with y on its own on the left.' };
     const r = E.tryCompile(s, 'x', opts);
     if (r.error) return { error: r.error };
-    return { kind: 'fn', fn: r.fn, params: r.params };
+    if (!domain) return { kind: 'fn', fn: r.fn, params: r.params };
+    const base = r.fn, inside = domain.test;
+    const params = r.params.slice();
+    domain.params.forEach((p) => { if (params.indexOf(p) < 0) params.push(p); });
+    return { kind: 'fn', fn: (x) => (inside(x) ? base(x) : NaN), params: params };
   }
 
   /* ── Points of interest ──────────────────────────────────────────────
@@ -641,6 +770,8 @@
     this.listeners = {};
     this.railHidden = false;
     this.resPos = null;
+    this.undoStack = [];
+    this.redoStack = [];
     this.doc = blankDoc(this.kind);
     if (this.surface === 'planner') {
       this.doc = normaliseDoc(readJSON(WORK_KEYS[this.kind], null), this.kind);
@@ -663,6 +794,8 @@
   /** Something about the graph itself changed (not merely where you are looking). */
   Grapher.prototype.touch = function () {
     this.dirty = true;
+    clearTimeout(this._histT);
+    this._histT = setTimeout(() => this.commitHistory(), 400);
     this.emit('change');
     if (this.surface !== 'planner') return;
     clearTimeout(this._saveT);
@@ -672,6 +805,55 @@
     if (this.surface !== 'planner') return;
     writeJSON(WORK_KEYS[this.kind], this.doc);
     writeJSON(WORK_KEYS[this.kind] + '_cloud', this.cloud);
+  };
+
+  /* ── Undo and redo ──────────────────────────────────────────────────
+     Edits settle for 400ms before they become one step, so typing "9.81"
+     is one undo, not four. Where you are looking (pan and zoom) is not an
+     edit and is not recorded. Inside a text box the browser's own undo
+     still handles the letters; this is for everything else — a deleted
+     row, a removed column, a colour. */
+  Grapher.prototype.commitHistory = function () {
+    const now = JSON.stringify(this.doc);
+    if (this._snap != null && now !== this._snap) {
+      this.undoStack.push(this._snap);
+      if (this.undoStack.length > 100) this.undoStack.shift();
+      this.redoStack = [];
+    }
+    this._snap = now;
+    this.paintHistory();
+  };
+  Grapher.prototype.stepHistory = function (back) {
+    clearTimeout(this._histT);
+    this.commitHistory();
+    const from = back ? this.undoStack : this.redoStack;
+    const to = back ? this.redoStack : this.undoStack;
+    if (!from.length) return false;
+    to.push(this._snap);
+    const json = from.pop();
+    this.stopPlay();
+    closePop();
+    this.doc = normaliseDoc(JSON.parse(json), this.kind);
+    this._snap = json;
+    this.cache.clear();
+    this.pins = [];
+    this.syncScope();
+    this.syncParams();
+    this.renderItems();
+    this.renderParams();
+    this._resHTML = null;
+    this.dirty = true;
+    this.persistLocal();
+    this.draw();
+    this.paintHistory();
+    this.emit('change');
+    return true;
+  };
+  Grapher.prototype.paintHistory = function () {
+    const u = this.root && this.root.querySelector('[data-hist="undo"]');
+    const r = this.root && this.root.querySelector('[data-hist="redo"]');
+    if (u) u.disabled = !this.undoStack.length;
+    if (r) r.disabled = !this.redoStack.length;
   };
 
   /* ── Parsing, cached per item ───────────────────────────────────────── */
@@ -725,6 +907,10 @@
       +       ICON.plus + ICON.fn + '</button>'
       +     (data ? '<button type="button" class="flg-add" data-add="table" title="Add a table" aria-label="Add a table">'
       +       ICON.plus + ICON.table + '</button>' : '')
+      +     '<span class="flg-hist">'
+      +       '<button type="button" data-hist="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>' + ICON.undo + '</button>'
+      +       '<button type="button" data-hist="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>' + ICON.redo + '</button>'
+      +     '</span>'
       +   '</div>'
       + '</aside>'
       + '<section class="flg-stage" id="' + u + 'Stage" aria-label="Graph">'
@@ -746,6 +932,22 @@
     this.renderParams();
     this.wire();
     this.attachStage();
+    this._snap = JSON.stringify(this.doc);
+    const self = this;
+    this._onKey = function (e) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const k = (e.key || '').toLowerCase();
+      if (k !== 'z' && k !== 'y') return;
+      const a = document.activeElement;
+      // A text box keeps its own undo for the letters being typed.
+      if (a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && /^(text|search|)$/.test(a.type || '')))) return;
+      // In the planner, only while you are working in the grapher.
+      if (self.surface === 'planner' && !(a && self.root.contains(a))) return;
+      if (document.querySelector('.fgc-back, .fgt-layer')) return;
+      const back = k === 'z' && !e.shiftKey;
+      if (self.stepHistory(back)) e.preventDefault();
+    };
+    document.addEventListener('keydown', this._onKey);
     if (this.kind === 'functions') {
       const first = this.doc.items.find((i) => i.type === 'expr' && !i.hidden);
       this.active = first ? first.id : null;
@@ -772,25 +974,38 @@
   };
 
   Grapher.prototype.valueCols = function (t) { return t.cols.filter((c) => c.role === 'value'); };
+  /** Columns that can go on an axis or carry a ± column: typed and calculated. */
+  Grapher.prototype.plotCols = function (t) { return t.cols.filter((c) => c.role !== 'unc'); };
 
   Grapher.prototype.colLabel = function (t, c) {
-    if (c.role === 'value') return c.name || 'column';
+    if (c.role !== 'unc') return c.name || 'column';
     const of = t.cols.find((v) => v.id === c.of);
     return '± ' + (of ? (of.name || 'column') : '');
   };
 
-  Grapher.prototype.rowHTML = function (t, r) {
+  Grapher.prototype.rowHTML = function (t, r, ct) {
     const row = t.rows[r];
+    const calc = ct && ct.rows[r];
     return '<tr data-r="' + r + '"><td class="flg-rn">' + (r + 1) + '</td>'
-      + t.cols.map((c, ci) => '<td' + (c.role === 'unc' ? ' class="is-unc"' : '') + '>'
-        + '<input type="text" inputmode="decimal" class="flg-cell" data-cell="' + r + ':' + ci + '" value="' + esc(row[ci]) + '"'
-        + (c.role === 'unc' ? ' placeholder="±"' : '')
-        + ' aria-label="' + esc(this.colLabel(t, c)) + ', row ' + (r + 1) + '"></td>').join('')
+      + t.cols.map((c, ci) => {
+        if (c.role === 'calc') {
+          // Worked out, not typed: read-only, and skipped by Tab.
+          const v = calc ? calc.v[c.id] : NaN, u = calc ? calc.u[c.id] : 0;
+          return '<td class="is-calc"><input type="text" class="flg-cell is-calc" data-cell="' + r + ':' + ci + '" readonly tabindex="-1"'
+            + ' value="' + esc(calcText(v)) + '" title="' + (u > 0 ? '± ' + esc(fmtCoord(u, 1)) : '') + '"'
+            + ' aria-label="' + esc(this.colLabel(t, c)) + ', row ' + (r + 1) + ', calculated"></td>';
+        }
+        return '<td' + (c.role === 'unc' ? ' class="is-unc"' : '') + '>'
+          + '<input type="text" inputmode="decimal" class="flg-cell" data-cell="' + r + ':' + ci + '" value="' + esc(row[ci]) + '"'
+          + (c.role === 'unc' ? ' placeholder="±"' : '')
+          + ' aria-label="' + esc(this.colLabel(t, c)) + ', row ' + (r + 1) + '"></td>';
+      }).join('')
       + '<td class="flg-rdel"><button type="button" data-rdel="' + r + '" aria-label="Delete row ' + (r + 1) + '">' + ICON.x + '</button></td></tr>';
   };
 
   Grapher.prototype.tableHTML = function (t) {
-    const values = this.valueCols(t);
+    const values = this.plotCols(t);
+    const ct = computeTable(t);
     const head = t.cols.map((c) => {
       const role = c.id === t.xCol ? 'x' : c.id === t.yCol ? 'y' : '';
       if (c.role === 'unc') {
@@ -802,11 +1017,18 @@
           + '<button type="button" class="flg-cmenu" data-cmenu="' + esc(c.id) + '" aria-label="Column options">' + ICON.chev + '</button>'
           + '</div><div class="flg-colsub">value or %</div></th>';
       }
-      return '<th class="flg-col' + (role ? ' is-' + role : '') + '" data-col="' + esc(c.id) + '"><div class="flg-colh">'
+      const k = c.role === 'calc' ? ct.calc[c.id] : null;
+      return '<th class="flg-col' + (role ? ' is-' + role : '') + (c.role === 'calc' ? ' is-calc' : '') + '" data-col="' + esc(c.id) + '"><div class="flg-colh">'
         + (role ? '<span class="flg-axtag" aria-hidden="true">' + role + '</span>' : '')
         + '<input type="text" class="flg-cname" data-cname="' + esc(c.id) + '" value="' + esc(c.name) + '" placeholder="name" spellcheck="false" aria-label="Column name">'
         + '<button type="button" class="flg-cmenu" data-cmenu="' + esc(c.id) + '" aria-label="Column options">' + ICON.chev + '</button>'
-        + '</div><input type="text" class="flg-cunit" data-cunit="' + esc(c.id) + '" value="' + esc(c.unit) + '" placeholder="unit" spellcheck="false" aria-label="Unit"></th>';
+        + '</div><input type="text" class="flg-cunit" data-cunit="' + esc(c.id) + '" value="' + esc(c.unit) + '" placeholder="unit" spellcheck="false" aria-label="Unit">'
+        + (c.role === 'calc'
+          ? '<div class="flg-calcrow"><span aria-hidden="true">=</span><input type="text" class="flg-cexpr' + (k && k.error ? ' is-bad' : '') + '" data-cexpr="' + esc(c.id) + '"'
+            + ' value="' + esc(c.expr) + '" placeholder="' + esc(this.formulaHint(t)) + '" spellcheck="false" autocomplete="off"'
+            + ' title="' + esc(k && k.error ? k.error : 'A formula using other columns by name') + '" aria-label="Formula for ' + esc(c.name || 'this column') + '"></div>'
+          : '')
+        + '</th>';
     }).join('');
 
     const opt = (sel) => values.map((v) => '<option value="' + esc(v.id) + '"' + (v.id === sel ? ' selected' : '') + '>'
@@ -821,7 +1043,7 @@
       + '</div>'
       + '<div class="flg-twrap"><table class="flg-table"><thead><tr><th class="flg-rn"></th>' + head
       +   '<th class="flg-addcol"><button type="button" data-addcol="' + esc(t.id) + '" title="Add a column" aria-label="Add a column">' + ICON.plus + '</button></th>'
-      + '</tr></thead><tbody>' + t.rows.map((_, r) => this.rowHTML(t, r)).join('') + '</tbody></table></div>'
+      + '</tr></thead><tbody>' + t.rows.map((_, r) => this.rowHTML(t, r, ct)).join('') + '</tbody></table></div>'
       + '<div class="flg-tfoot">'
       +   '<label class="flg-axsel"><span>x</span><select data-xcol="' + esc(t.id) + '" aria-label="Column on the x axis">' + opt(t.xCol) + '</select></label>'
       +   '<label class="flg-axsel"><span>y</span><select data-ycol="' + esc(t.id) + '" aria-label="Column on the y axis">' + opt(t.yCol) + '</select></label>'
@@ -934,9 +1156,23 @@
     this.draw();
   };
 
+  /** A name no other column has, and that a formula can refer to (no spaces). */
+  Grapher.prototype.freshName = function (t, stem) {
+    let n = 1;
+    while (t.cols.some((c) => c.name === stem + n)) n++;
+    return stem + n;
+  };
+
+  /** Placeholder for a formula box, built from this table's own column names. */
+  Grapher.prototype.formulaHint = function (t) {
+    const named = this.valueCols(t).map((c) => c.name).filter((n) => NAME_OK.test(n));
+    if (named.length >= 2) return named[1] + ' / ' + named[0];
+    return named.length ? named[0] + '^2' : 'x^2';
+  };
+
   Grapher.prototype.addColumn = function (t, role, ofId) {
     if (t.cols.length >= 12) { toast('A table can have up to 12 columns.', 'warning'); return; }
-    const values = this.valueCols(t);
+    const values = this.plotCols(t);
     const col = { id: newId(), name: '', unit: '', role: role };
     if (role === 'unc') {
       const bare = [t.yCol, t.xCol].concat(values.map((v) => v.id))
@@ -947,7 +1183,9 @@
       t.cols.splice(at + 1, 0, col);
       t.rows.forEach((r) => r.splice(at + 1, 0, ''));
     } else {
-      col.name = 'col ' + (values.length + 1);
+      // Named so a formula can use it straight away: c3, not "col 3".
+      col.name = this.freshName(t, role === 'calc' ? 'f' : 'c');
+      if (role === 'calc') col.expr = '';
       t.cols.push(col);
       t.rows.forEach((r) => r.push(''));
     }
@@ -957,7 +1195,9 @@
     const idx = t.cols.indexOf(col);
     const target = role === 'unc'
       ? this.root.querySelector('.flg-item[data-id="' + CSS.escape(t.id) + '"] [data-cell="0:' + idx + '"]')
-      : this.root.querySelector('[data-cname="' + CSS.escape(col.id) + '"]');
+      : role === 'calc'
+        ? this.root.querySelector('[data-cexpr="' + CSS.escape(col.id) + '"]')
+        : this.root.querySelector('[data-cname="' + CSS.escape(col.id) + '"]');
     if (target) { target.focus(); if (target.select) target.select(); }
   };
 
@@ -967,14 +1207,14 @@
     const col = t.cols[idx];
     if (col.role === 'value' && this.valueCols(t).length <= 1) { toast('A table needs at least one value column.', 'warning'); return; }
     const doomed = [idx];
-    if (col.role === 'value') {
+    if (col.role !== 'unc') {
       t.cols.forEach((c, i) => { if (c.role === 'unc' && c.of === colId) doomed.push(i); });
     }
     doomed.sort((a, b) => b - a).forEach((i) => {
       t.cols.splice(i, 1);
       t.rows.forEach((r) => r.splice(i, 1));
     });
-    const values = this.valueCols(t);
+    const values = this.plotCols(t);
     if (!values.some((v) => v.id === t.xCol)) t.xCol = values[0].id;
     if (!values.some((v) => v.id === t.yCol)) t.yCol = (values[1] || values[0]).id;
     this.touch();
@@ -1017,14 +1257,18 @@
     });
     if (!grid.length) return false;
     const width = Math.max.apply(null, grid.map((g) => g.length));
-    while (t.cols.length < Math.min(12, c0 + width)) {
-      t.cols.push({ id: newId(), name: 'col ' + (this.valueCols(t).length + 1), unit: '', role: 'value' });
+    /* Pasted values go into typed columns only — a calculated column is
+       stepped over, not overwritten — adding columns at the end as needed. */
+    const slots = () => t.cols.map((c, i) => (i >= c0 && c.role !== 'calc' ? i : -1)).filter((i) => i >= 0);
+    while (slots().length < width && t.cols.length < 12) {
+      t.cols.push({ id: newId(), name: this.freshName(t, 'c'), unit: '', role: 'value' });
       t.rows.forEach((r) => r.push(''));
     }
+    const target = slots();
     grid.forEach((cells, i) => {
       const r = r0 + i;
       while (t.rows.length <= r) t.rows.push(t.cols.map(() => ''));
-      cells.forEach((v, j) => { if (c0 + j < t.cols.length) t.rows[r][c0 + j] = v.slice(0, 40); });
+      cells.forEach((v, j) => { if (j < target.length) t.rows[r][target[j]] = v.slice(0, 40); });
     });
     const last = t.rows[t.rows.length - 1];
     if (last.some((c) => String(c).trim() !== '')) t.rows.push(t.cols.map(() => ''));
@@ -1032,6 +1276,29 @@
     this.rerenderItem(t.id);
     this.draw();
     return true;
+  };
+
+  /** Refill a table's calculated cells in place, without disturbing focus. */
+  Grapher.prototype.refreshCalc = function (t) {
+    if (!t.cols.some((c) => c.role === 'calc')) return;
+    const box = this.root.querySelector('.flg-item[data-id="' + CSS.escape(t.id) + '"]');
+    if (!box) return;
+    const ct = computeTable(t);
+    t.cols.forEach((c, ci) => {
+      if (c.role !== 'calc') return;
+      const k = ct.calc[c.id];
+      const ex = box.querySelector('[data-cexpr="' + CSS.escape(c.id) + '"]');
+      if (ex) {
+        ex.classList.toggle('is-bad', !!(k && k.error));
+        ex.title = k && k.error ? k.error : 'A formula using other columns by name';
+      }
+      ct.rows.forEach((row, r) => {
+        const inp = box.querySelector('[data-cell="' + r + ':' + ci + '"]');
+        if (!inp) return;
+        inp.value = calcText(row.v[c.id]);
+        inp.title = row.u[c.id] > 0 ? '± ' + fmtCoord(row.u[c.id], 1) : '';
+      });
+    });
   };
 
   Grapher.prototype.swatchPop = function (it, anchor) {
@@ -1088,6 +1355,7 @@
         const parts = d.cell.split(':');
         const r = +parts[0], c = +parts[1];
         if (!tb.rows[r]) return;
+        if (tb.cols[c] && tb.cols[c].role === 'calc') return;
         tb.rows[r][c] = t.value;
         // Always a spare row at the bottom, so the next reading has somewhere to go.
         if (r === tb.rows.length - 1 && t.value.trim() !== '' && tb.rows.length < 2000) {
@@ -1095,6 +1363,15 @@
           const body = t.closest('tbody');
           if (body) body.insertAdjacentHTML('beforeend', self.rowHTML(tb, tb.rows.length - 1));
         }
+        self.refreshCalc(tb);
+        self.touch();
+        self.draw();
+      } else if (d.cexpr) {
+        const tb = self.itemOf(t);
+        const col = tb && tb.cols.find((c) => c.id === d.cexpr);
+        if (!col) return;
+        col.expr = t.value.slice(0, 200);
+        self.refreshCalc(tb);
         self.touch();
         self.draw();
       } else if (d.tname) {
@@ -1112,6 +1389,8 @@
         } else {
           col.unit = t.value.slice(0, 20);
         }
+        // Renaming a column changes what the formulas that use it can see.
+        if (d.cname) self.refreshCalc(tb);
         self.touch();
         self.draw();
       } else if (d.prange || d.pval) {
@@ -1206,6 +1485,7 @@
       if (d.swatch) { const it = self.item(d.swatch); if (it) self.swatchPop(it, b); return; }
       if (d.tool) { self.tool(d.tool, b); return; }
       if (d.pplay) { self.togglePlay(d.pplay); return; }
+      if (d.hist) { self.stepHistory(d.hist === 'undo'); return; }
       const tb = self.itemOf(b);
       if (!tb) return;
       if (d.rdel != null && d.rdel !== '') {
@@ -1224,12 +1504,13 @@
         openMenu(b, [
           { label: 'Value column', icon: ICON.plus, run: () => self.addColumn(tb, 'value') },
           { label: 'Uncertainty (±) column', icon: '<span class="flg-pm">±</span>', run: () => self.addColumn(tb, 'unc') },
+          { label: 'Calculated column (formula)', icon: '<span class="flg-pm flg-pm--calc">=</span>', run: () => self.addColumn(tb, 'calc') },
         ]);
       } else if (d.cmenu) {
         const col = tb.cols.find((c) => c.id === d.cmenu);
         if (!col) return;
         const entries = [];
-        if (col.role === 'value') {
+        if (col.role !== 'unc') {
           entries.push({ label: 'Plot on the x axis', run: () => { tb.xCol = col.id; self.touch(); self.rerenderItem(tb.id); self.draw(); } });
           entries.push({ label: 'Plot on the y axis', run: () => { tb.yCol = col.id; self.touch(); self.rerenderItem(tb.id); self.draw(); } });
           entries.push({ label: 'Add a ± column for it', icon: '<span class="flg-pm">±</span>', run: () => self.addColumn(tb, 'unc', col.id) });
@@ -2021,7 +2302,7 @@
           const y = res.fit.predict(x);
           if (Number.isFinite(y)) {
             const d = Math.abs(m.sy(y) - p.y);
-            if (d <= 12) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour });
+            if (d <= 12) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour, fn: res.fit.predict });
           }
         }
         return;
@@ -2032,7 +2313,7 @@
         const y = q.fn(x);
         if (!Number.isFinite(y)) return;
         const d = Math.abs(m.sy(y) - p.y);
-        if (d <= 14) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour });
+        if (d <= 14) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour, fn: q.fn });
       } else if (q.kind === 'points') {
         q.pts.forEach((pp) => {
           const px = pp.fx(0), py = pp.fy(0);
@@ -2059,7 +2340,14 @@
       text = '(' + (hit.dx ? fmtWithU(hit.x, hit.dx) : fmtCoord(hit.x, hit.span)) + ', '
         + (hit.dy ? fmtWithU(hit.y, hit.dy) : fmtCoord(hit.y, hit.span)) + ')';
     } else text = kpLabel(hit, hit.span);
-    const kind = hit.kind === 'kp' ? kpKind(hit) : '';
+    let kind = hit.kind === 'kp' ? kpKind(hit) : '';
+    /* The gradient under the cursor — the tangent Graphical Analysis draws,
+       as a number. A rate of change is often the thing a practical is after. */
+    if (hit.kind === 'curve' && hit.fn) {
+      const h = (L.v.xHi - L.v.xLo) * 1e-6;
+      const g = (hit.fn(hit.x + h) - hit.fn(hit.x - h)) / (2 * h);
+      if (Number.isFinite(g)) kind = 'slope ' + fmtCoord(g, 1e-3);
+    }
     const X = L.m.sx(hit.x), Y = L.m.sy(hit.y);
     trace.hidden = false;
     trace.style.left = X + 'px';
@@ -2196,6 +2484,11 @@
     this._resHTML = null;
     this._kpKey = null;
     this.dirty = false;
+    clearTimeout(this._histT);
+    this.undoStack = [];
+    this.redoStack = [];
+    this._snap = JSON.stringify(this.doc);
+    this.paintHistory();
     this.persistLocal();
     this.draw();
   };
@@ -2222,6 +2515,8 @@
     this.stopPlay();
     closePop();
     clearTimeout(this._saveT);
+    clearTimeout(this._histT);
+    if (this._onKey) document.removeEventListener('keydown', this._onKey);
     if (this.surface === 'planner') this.persistLocal();
     if (this._ro) this._ro.disconnect();
     if (this._onResize) window.removeEventListener('resize', this._onResize);
@@ -2324,6 +2619,7 @@
     _test: {
       keyPoints: keyPoints, intersections: intersections, parseExpr: parseExpr,
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
+      computeTable: computeTable, parseDomain: parseDomain,
     },
   };
 })();

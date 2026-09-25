@@ -152,3 +152,64 @@ test('equations: vertical lines, points, and helpful refusals', () => {
   assert.ok(T.parseExpr('y > x', scope).error, 'inequalities are refused, not mis-drawn');
   assert.equal(T.parseExpr('', scope).kind, 'empty');
 });
+
+test('a calculated column carries the uncertainty through its formula', () => {
+  /* T = 2.0 ± 0.1 s, so T² = 4.0 and u(T²) = 2T·u(T) = 0.4 — the rule every
+     IB student learns as "double the percentage": 5% on T, 10% on T². */
+  const t = {
+    cols: [
+      { id: 'L', name: 'L', role: 'value' }, { id: 'T', name: 'T', role: 'value' },
+      { id: 'uT', role: 'unc', of: 'T' }, { id: 'T2', name: 'T2', role: 'calc', expr: 'T^2' },
+      { id: 'g', name: 'g', role: 'calc', expr: '4 pi^2 L / T2' },
+    ],
+    rows: [['1.00', '2.0', '0.1', '', '']],
+    xCol: 'L', yCol: 'T2',
+  };
+  const ct = T.computeTable(t);
+  near(ct.rows[0].v.T2, 4, 'T²');
+  near(ct.rows[0].u.T2, 0.4, 'u(T²) = 2T·u(T)', 1e-6);
+  // A formula can use a calculated column to its left, and the uncertainty keeps flowing.
+  const g = 4 * Math.PI ** 2 * 1 / 4;
+  near(ct.rows[0].v.g, g, 'g = 4π²L/T²');
+  near(ct.rows[0].u.g, g * 0.1, 'u(g)/g = u(T²)/T² = 10%', 1e-6);
+  // And the plotted point takes the propagated bar.
+  const pts = T.tablePoints(t);
+  near(pts[0].dy, 0.4, 'the error bar on T² is the propagated one', 1e-6);
+});
+
+test('two uncertain inputs combine in quadrature, not by adding', () => {
+  // f = a + b with u(a) = 0.3, u(b) = 0.4 → u(f) = 0.5, not 0.7.
+  const t = {
+    cols: [
+      { id: 'a', name: 'a', role: 'value' }, { id: 'ua', role: 'unc', of: 'a' },
+      { id: 'b', name: 'b', role: 'value' }, { id: 'ub', role: 'unc', of: 'b' },
+      { id: 's', name: 's', role: 'calc', expr: 'a + b' },
+    ],
+    rows: [['1', '0.3', '2', '0.4', '']],
+    xCol: 'a', yCol: 's',
+  };
+  near(T.computeTable(t).rows[0].u.s, 0.5, 'u(a + b)');
+});
+
+test('a formula that names a column that is not there says so', () => {
+  const t = {
+    cols: [{ id: 'x', name: 'x', role: 'value' }, { id: 'f', name: 'f', role: 'calc', expr: 'q * 2' }],
+    rows: [['3', '']], xCol: 'x', yCol: 'f',
+  };
+  const ct = T.computeTable(t);
+  assert.ok(ct.calc.f.error, 'an unknown column name must be an error, not a silent blank');
+  assert.ok(Number.isNaN(ct.rows[0].v.f));
+});
+
+test('limits in braces draw a curve only where they allow', () => {
+  const p = T.parseExpr('x^2 {0 < x < 3}', {});
+  assert.equal(p.kind, 'fn');
+  near(p.fn(2), 4, 'inside the limit');
+  assert.ok(Number.isNaN(p.fn(-1)), 'left of the limit is not drawn');
+  assert.ok(Number.isNaN(p.fn(3.5)), 'right of the limit is not drawn');
+  const q = T.parseExpr('sin(x) {x ≥ 0}', {});
+  assert.ok(Number.isNaN(q.fn(-0.1)) && Number.isFinite(q.fn(0.1)), 'a one-sided limit');
+  const r = T.parseExpr('x {a > x}', { a: 2 });
+  assert.ok(Number.isFinite(r.fn(1)) && Number.isNaN(r.fn(3)), 'a bound from a slider, written the other way round');
+  assert.ok(T.parseExpr('x {y > 0}', {}).error, 'a limit without x is explained');
+});
