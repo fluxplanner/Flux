@@ -177,3 +177,70 @@ test('column uncertainty rules resolve to absolute values', () => {
   // A percentage of a negative reading is still a positive bar length.
   close(F.resolveUncertainty(-50, { mode: 'percent', value: 2 }), 1, 1e-12, 'negative reading');
 });
+
+test('cubic, inverse and inverse-square recover the curves they were sampled from', () => {
+  const at = (f, xs) => xs.map((x) => ({ x, y: f(x) }));
+  const c = F.fit('cubic', at((x) => x ** 3 - 2 * x + 1, [-2, -1, 0, 1, 2, 3])).fit;
+  close(c.a, 1, 1e-9, 'cubic a'); close(c.b, 0, 1e-9, 'cubic b');
+  close(c.c, -2, 1e-9, 'cubic c'); close(c.d, 1, 1e-9, 'cubic d');
+
+  // Boyle's law shape: y = 6/x + 2.
+  const inv = F.fit('inverse', at((x) => 6 / x + 2, [1, 2, 3, 4, 6])).fit;
+  close(inv.a, 6, 1e-9, 'inverse a'); close(inv.b, 2, 1e-9, 'inverse b');
+  const sq = F.fit('inverseSquare', at((x) => 8 / (x * x) - 1, [1, 2, 4, 5])).fit;
+  close(sq.a, 8, 1e-9, 'inverse-square a'); close(sq.b, -1, 1e-9, 'inverse-square b');
+  assert.match(F.fit('inverse', [{ x: 0, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 3 }]).error, /row 1/, 'x = 0 is refused, by row');
+});
+
+test('the general fit gives the same standard errors as the textbook straight line', () => {
+  /* Same scattered points as the hand-worked test above. A straight line is
+     also a basis fit on {x, 1}; if the covariance route disagreed with the
+     textbook u(m) and u(c) formulas, every curved fit's uncertainty would be
+     wrong in the same way. */
+  const pts = [{ x: 1, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 5 }, { x: 4, y: 4 }, { x: 5, y: 6 }];
+  const lin = F.fit('linear', pts).fit;
+  const quad = F.fit('quadratic', pts).fit;
+  assert.equal(quad.params.length, 3);
+  assert.ok(quad.params.every((p) => p.u > 0), 'a quadratic through scattered data has uncertainties');
+  const g = F.nonlinear('line', ['m', 'c'], (q, x) => q[0] * x + q[1], [1, 0], pts.map((p) => p.x), pts.map((p) => p.y));
+  close(g.params[0].value, lin.m, 1e-7, 'm by iteration');
+  close(g.params[0].u, lin.um, 1e-6, 'u(m) by covariance');
+  close(g.params[1].u, lin.uc, 1e-6, 'u(c) by covariance');
+});
+
+test('a sine wave is found, frequency and all, from readings alone', () => {
+  // y = 2 sin(3x + 0.5) + 1, sampled unevenly.
+  const xs = [0, 0.13, 0.31, 0.42, 0.6, 0.77, 0.9, 1.1, 1.26, 1.4, 1.63, 1.8, 2.02, 2.2];
+  const pts = xs.map((x) => ({ x, y: 2 * Math.sin(3 * x + 0.5) + 1 }));
+  const s = F.fit('sine', pts).fit;
+  const [A, B, C, D] = s.values;
+  close(A, 2, 1e-6, 'amplitude'); close(B, 3, 1e-6, 'frequency');
+  close(C, 0.5, 1e-6, 'phase'); close(D, 1, 1e-6, 'offset');
+  close(s.r2, 1, 1e-9, 'R²');
+});
+
+test('a hand-typed model is fitted by iteration: a cooling curve with an offset', () => {
+  // T = 60 e^(−0.3t) + 20 — Newton's law of cooling, room at 20°.
+  const ts = [0, 1, 2, 3, 5, 7, 10, 14];
+  const ys = ts.map((t) => 60 * Math.exp(-0.3 * t) + 20);
+  const r = F.nonlinear('custom', ['A', 'k', 'R'], (q, t) => q[0] * Math.exp(-q[1] * t) + q[2], [1, 1, 1], ts, ys);
+  close(r.values[0], 60, 1e-5, 'A'); close(r.values[1], 0.3, 1e-7, 'k'); close(r.values[2], 20, 1e-5, 'room temperature');
+  assert.match(F.nonlinear('x', ['a', 'b', 'c'], (q, x) => q[0], [1, 1, 1], [1, 2], [1, 2]).error, /at least 3/);
+});
+
+test('the automatic best fit prefers the simpler model when both fit', () => {
+  /* Straight-line data with a little scatter. A cubic has lower SSE — it
+     always does — but AICc charges it for its extra numbers, so the line
+     should win. On clearly curved data the quadratic should. */
+  const line = [0, 1, 2, 3, 4, 5, 6, 7].map((x, i) => ({ x, y: 2 * x + 1 + [0.1, -0.12, 0.05, 0.08, -0.1, 0.02, -0.06, 0.09][i] }));
+  const a = F.best(line);
+  assert.ok(['linear', 'proportional'].includes(a.kind), 'straight-line data chose ' + a.kind);
+  assert.equal(a.kind, 'linear', 'the intercept of 1 is real, so a line through the origin should lose');
+
+  const curve = [0, 1, 2, 3, 4, 5, 6].map((x, i) => ({ x, y: 0.5 * x * x - x + 3 + [0.05, -0.04, 0.03, -0.05, 0.02, 0.04, -0.03][i] }));
+  assert.equal(F.best(curve).kind, 'quadratic');
+
+  const decay = [0, 1, 2, 3, 4, 5, 6].map((x) => ({ x, y: 50 * Math.exp(-0.4 * x) }));
+  assert.equal(F.best(decay).kind, 'exponential', 'exact exponential data');
+  assert.ok(F.best([{ x: 1, y: 1 }, { x: 2, y: 2 }]).error, 'two points cannot be compared');
+});

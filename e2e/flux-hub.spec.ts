@@ -16,7 +16,7 @@ import { gotoScenario } from './helpers';
  */
 
 const panelBox = (page: import('@playwright/test').Page) => page.evaluate(() => {
-  const p = document.getElementById('fxhubPanel')!;
+  const p = document.querySelector('.fxhub-panel:not([hidden])') as HTMLElement;
   const q = p.getBoundingClientRect();
   return { left: Math.round(q.left), right: Math.round(q.right), vw: document.documentElement.clientWidth };
 });
@@ -27,7 +27,7 @@ test.describe('Flux Hub', () => {
     await page.goto('/grapher.html');
     await page.waitForTimeout(900);
 
-    const btn = page.locator('.fxhub-btn');
+    const btn = page.locator('.fxhub-btn:visible');
     await expect(btn, 'no hub button in the grapher').toBeVisible();
     await btn.click();
     await page.waitForTimeout(250);
@@ -51,12 +51,12 @@ test.describe('Flux Hub', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/grapher.html');
     await page.waitForTimeout(900);
-    await page.locator('.fxhub-btn').click();
+    await page.locator('.fxhub-btn:visible').click();
     await page.waitForTimeout(200);
-    await expect(page.locator('#fxhubPanel')).toBeVisible();
+    await expect(page.locator('.fxhub-panel').first()).toBeVisible();
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
-    await expect(page.locator('#fxhubPanel')).toBeHidden();
+    await expect(page.locator('.fxhub-panel').first()).toBeHidden();
   });
 
   test('the planner offers it too, marks itself, and keeps the panel on screen', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Flux Hub', () => {
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(2200);
 
-    const btn = page.locator('.fxhub-btn');
+    const btn = page.locator('.fxhub-btn:visible');
     await expect(btn, 'no hub button in the planner').toBeVisible();
     await btn.click();
     await page.waitForTimeout(250);
@@ -82,10 +82,27 @@ test.describe('Flux Hub', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/grapher.html');
     await page.waitForTimeout(900);
-    await page.locator('.fxhub-btn').click();
+    await page.locator('.fxhub-btn:visible').click();
     await page.waitForTimeout(250);
     const b = await panelBox(page);
     expect(b.right, 'the panel spills off a phone screen').toBeLessThanOrEqual(b.vw);
+    expect(b.left).toBeGreaterThanOrEqual(0);
+  });
+  test('the planner on a phone has the switcher too, and it reaches the grapher', async ({ page }) => {
+    /* The desktop switcher sits in a top-bar cluster that is hidden below
+       768px, so on a phone the grapher had no way in from the planner. */
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoScenario(page, 'student-semester');
+    await page.waitForTimeout(2200);
+    const btn = page.locator('.fxhub-btn:visible');
+    await expect(btn, 'no switcher in the phone header').toHaveCount(1);
+    await btn.click();
+    await page.waitForTimeout(250);
+    const grapher = page.locator('.fxhub-panel:not([hidden]) a', { hasText: 'Flux Grapher' });
+    await expect(grapher).toBeVisible();
+    await expect(grapher).toHaveAttribute('href', /grapher/);
+    const b = await panelBox(page);
+    expect(b.right, 'the panel spills off the phone screen').toBeLessThanOrEqual(b.vw);
     expect(b.left).toBeGreaterThanOrEqual(0);
   });
 });

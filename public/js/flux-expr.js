@@ -51,6 +51,11 @@
    *   a slider does not need a recompile.
    * opts.names: an object whose keys are whole words to read from the scope
    *   (a table's column names). A name not in the scope reads as NaN.
+   * opts.fns: functions defined by the person, by name — f, g, speed — so
+   *   "f(x) = x^2" in one row makes f(x − 1) and f'(x) work in another.
+   *
+   * The returned function also carries .usesVar: whether the variable
+   * appears at all. "2 + 3" is a sum to show, not a line to draw.
    *
    * The returned function carries .params — the letters it used, in order.
    */
@@ -63,6 +68,7 @@
     var i = 0;
     var o = opts || {};
     var found = [];
+    var usedVar = false;
 
     function fail(msg) { throw new Error(msg); }
     function ws() { while (S[i] === ' ') i++; }
@@ -139,6 +145,22 @@
           };
         }
         ws();
+        /* A function the person defined: f(x), and its derivatives f'(x),
+           f''(x), taken numerically so any definition has one. Checked
+           before the built-ins are, but a built-in name cannot be defined in
+           the first place — the grapher refuses "sin(x) = …". */
+        if (o.fns && Object.prototype.hasOwnProperty.call(o.fns, name)) {
+          var primes = 0;
+          while (S[i] === "'" || S[i] === '′') { primes++; i++; }
+          ws();
+          if (S[i] !== '(') fail('Use ' + name + ' with brackets, like ' + name + '(x).');
+          i++;
+          var uarg = parseExpr();
+          if (!eat(')')) fail('Missing a closing bracket after ' + name + '(.');
+          var uf = o.fns[name];
+          if (!primes) return function (x) { return uf(uarg(x)); };
+          return function (x) { return derivative(uf, uarg(x), primes); };
+        }
         if (S[i] === '(' && Object.prototype.hasOwnProperty.call(FNS, lower)) {
           i++;
           var args = [parseExpr()];
@@ -171,7 +193,7 @@
     /** A bare name as a value: the variable, a constant, or slider letters. */
     function nameValue(name, start) {
       var lower = name.toLowerCase();
-      if (lower === v) return X;
+      if (lower === v) { usedVar = true; return X; }
       if (Object.prototype.hasOwnProperty.call(CONSTS, lower)) return constFn(CONSTS[lower]);
       if (Object.prototype.hasOwnProperty.call(CONSTS, name)) return constFn(CONSTS[name]);
       if (Object.prototype.hasOwnProperty.call(FNS, lower)) {
@@ -185,7 +207,7 @@
           fail('Write ' + fname + '(…) with brackets, like ' + fname + '(x).');
         }
       }
-      if (!o.params || !/^[a-zA-Z]+$/.test(name)) return null;
+      if (!o.params || !/^[a-zA-Zα-ωΑ-Ω]+$/.test(name)) return null;
       /* Take one letter and hand the rest back to the parser. Returning the
          whole run as one product would make "ax^2" mean (a·x)², when everyone
          reads it as a·x² — the power belongs to the last letter only. The
@@ -197,7 +219,7 @@
       }
       i = start + 1;
       var ch = name[0];
-      if (ch.toLowerCase() === v) return X;
+      if (ch.toLowerCase() === v) { usedVar = true; return X; }
       if (ch === 'e') return constFn(Math.E);
       if (ch === 'y') fail('y is what is being drawn, so it cannot appear on the right.');
       return param(ch);
@@ -224,14 +246,30 @@
     if (i < S.length) fail('I got stuck at "' + S.slice(i, i + 8) + '".');
     var wrapped = function (x) { return f(x); };
     wrapped.params = found.slice();
+    wrapped.usesVar = usedVar;
     return wrapped;
+  }
+
+  /** f'(v), f''(v)…: central differences, step scaled to the size of v. */
+  function derivative(f, v, order) {
+    if (!Number.isFinite(v)) return NaN;
+    if (order === 1) {
+      var h = 1e-5 * Math.max(1, Math.abs(v));
+      return (f(v + h) - f(v - h)) / (2 * h);
+    }
+    if (order === 2) {
+      var k = 1e-4 * Math.max(1, Math.abs(v));
+      return (f(v + k) - 2 * f(v) + f(v - k)) / (k * k);
+    }
+    // Higher orders: differentiate the derivative.
+    return derivative(function (u) { return derivative(f, u, order - 1); }, v, 1);
   }
 
   /** Compile without throwing: { fn, params } or { error }. */
   function tryCompile(src, varName, opts) {
     try {
       var fn = compile(src, varName, opts);
-      return { fn: fn, params: fn.params };
+      return { fn: fn, params: fn.params, usesVar: fn.usesVar };
     } catch (e) { return { error: e && e.message ? e.message : 'That expression did not parse.' }; }
   }
 

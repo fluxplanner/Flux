@@ -55,6 +55,7 @@
 .flg {
   display: grid;
   grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
   color: var(--flg-ink);
@@ -428,6 +429,123 @@
 }
 .flg-hist button:hover:not(:disabled) { color: var(--flg-ink); background: var(--flg-field); }
 .flg-hist button:disabled { opacity: .3; cursor: default; }
+
+/* What a row works out to, under it: "= 5", a slider for "a = 4", or a
+   regression's fitted numbers — the way Desmos answers in place. */
+.flg-info { grid-column: 2 / -1; min-width: 0; margin: -2px 0 2px; }
+.flg-eqv {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 7px;
+  background: var(--flg-field);
+  font-family: var(--flg-mono);
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--flg-ink);
+}
+.flg-inslider { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 2px 4px 4px 0; }
+.flg-inslider > span { font-family: var(--flg-mono); font-size: .66rem; color: var(--flg-mut); }
+.flg-rinfo { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--flg-mono); font-size: .74rem; color: var(--flg-ink); }
+.flg-rinfo i { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: var(--flg-accent); }
+.flg-rinfo.is-bad { color: #fbbf24; font-family: inherit; }
+
+/* ── Fits: chips for what is on, a picker for everything ───────────────── */
+.flg-fitrow { display: flex; flex-wrap: wrap; gap: 5px; width: 100%; }
+.flg-fchip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 3px 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--flg-soft);
+  background: var(--flg-field);
+  font-size: .72rem; font-weight: 700;
+  color: var(--flg-ink);
+}
+.flg-fchip button {
+  display: grid; place-items: center;
+  width: 18px; height: 18px;
+  padding: 0; margin: 0;
+  border: 0; border-radius: 50%;
+  background: none; color: var(--flg-mut); cursor: pointer;
+}
+.flg-fchip button:hover { color: #ff6b81; background: rgba(255, 107, 129, .12); }
+.flg-dash { flex: 0 0 auto; }
+.flg-chip--add { display: inline-flex; align-items: center; gap: 3px; border-style: dashed; }
+.flg-chip--add svg { width: 12px; height: 12px; }
+
+.flg-fitpop { width: 290px; max-height: min(70vh, 520px); overflow-y: auto; padding: 4px; }
+.flg-fitpop-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #9fb0cc; padding: 6px 8px 4px; }
+.flg-fitopt { display: flex; align-items: flex-start; gap: 9px; padding: 7px 8px; border-radius: 9px; cursor: pointer; }
+.flg-fitopt:hover { background: rgba(255, 255, 255, .05); }
+.flg-fitopt input { margin: 2px 0 0; width: 15px; height: 15px; accent-color: #00c2ff; flex: 0 0 auto; }
+.flg-fitopt b { display: block; font-size: .82rem; }
+.flg-fitopt small { display: block; font-size: .7rem; color: #9fb0cc; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.flg-pop .flg-fitpop .flg-fitcustom { margin: 2px 8px 6px !important; width: calc(100% - 16px); }
+
+.flg-rc-fit { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: .72rem; font-weight: 700; color: var(--flg-mut); }
+.flg-rc-h + .flg-rc-fit { margin-top: 4px; }
+
+.flg-mhandle { cursor: grab; }
+.flg-manual { filter: drop-shadow(0 0 3px rgba(255, 255, 255, .25)); }
+
+/* ── The maths keypad ─────────────────────────────────────────────────── */
+.flg-kbbtn {
+  display: grid; place-items: center;
+  width: 38px; height: 38px; flex: 0 0 auto;
+  padding: 0; margin: 0;
+  border: 1px solid var(--flg-soft); border-radius: 12px;
+  background: none; color: var(--flg-mut); cursor: pointer;
+}
+.flg-kbbtn:hover, .flg-kbbtn[aria-pressed='true'] { color: var(--flg-accent); border-color: color-mix(in srgb, var(--flg-accent) 60%, transparent); }
+.flg-kb {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--flg-soft);
+  background: rgba(10, 14, 26, .94);
+  padding: 8px clamp(6px, 1.5vw, 14px) 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.flg-kb[hidden] { display: none; }
+[data-theme='light'] .flg-kb { background: rgba(241, 245, 250, .97); }
+.flg-kb-in { position: relative; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.flg-kb-row { display: flex; gap: 6px; }
+.flg-kb-gap { flex: 0 0 10px; }
+.flg-key {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 42px;
+  padding: 0 4px; margin: 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--flg-ink);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: .92rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+  transition: background .1s ease;
+}
+[data-theme='light'] .flg-key { background: #fff; box-shadow: 0 1px 0 rgba(15, 23, 42, .15); }
+.flg-key:hover { background: rgba(255, 255, 255, .12); }
+.flg-key.is-down { background: color-mix(in srgb, var(--flg-accent) 35%, transparent); }
+.flg-key.is-var { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 1.05rem; }
+.flg-key.is-wide { flex-grow: 2.1; }
+.flg-key.is-go { background: linear-gradient(135deg, #7fe3ff, #00c2ff); color: #04121c; font-weight: 800; }
+.flg-kb--abc .flg-key { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.flg-kb { position: relative; padding-right: 46px; }
+/* Inside the keypad's own corner: a tab hanging above it would sit on the
+   zoom buttons in the plot's bottom-right. */
+.flg-kb-close {
+  position: absolute; top: 0; right: -40px;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  padding: 0; margin: 0;
+  border: 0; border-radius: 9px;
+  background: none; color: var(--flg-mut);
+  cursor: pointer;
+}
+.flg-kb-close:hover { color: var(--flg-ink); }
 
 /* ── Sliders ──────────────────────────────────────────────────────────── */
 .flg-params { display: flex; flex-direction: column; gap: 6px; }
@@ -818,6 +936,10 @@
   }
   .flg-stage { order: 1; border-bottom: 1px solid var(--flg-soft); }
   .flg-rail { order: 2; border-right: 0; }
+  .flg-kb { order: 3; }
+  .flg.has-kb { grid-template-rows: minmax(170px, 1fr) minmax(70px, 24%) auto; }
+  .flg.has-kb.is-railless { grid-template-rows: minmax(0, 1fr) 0 auto; }
+  .flg-key { height: 38px; font-size: .86rem; }
   .flg.is-railless { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0; }
   .flg-shell--planner { height: 82vh; min-height: 520px; }
   .flg-results { max-width: calc(100% - 64px); font-size: .72rem; }

@@ -36,6 +36,35 @@
   const WORK_KEYS = { data: 'flux_lab_graph', functions: 'flux_grapher_fns' };
   const MODE_KEY = 'flux_grapher_mode';
   const HANDOFF_KEY = 'flux_grapher_handoff';
+  const KB_KEY = 'flux_grapher_keypad';
+
+  /* ── The on-screen maths keypad ──────────────────────────────────────
+     Desmos's keypad, more or less: numbers and operators on one page,
+     functions on another, letters on a third. A key inserts text at the
+     cursor of the equation being edited; "|" in an insert marks where the
+     cursor lands, so "sin(|)" leaves it between the brackets. */
+  const KNOWN_FNS = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'ln', 'log', 'log2', 'sqrt', 'cbrt',
+    'abs', 'exp', 'sign', 'floor', 'ceil', 'round', 'min', 'max', 'atan2', 'pow'];
+  const KEYPADS = {
+    main: [
+      [['x', 'x', 'var'], ['y', 'y', 'var'], ['a²', '^2'], ['aᵇ', '^'], 0, ['7'], ['8'], ['9'], ['÷', '/'], 0, ['←', '@left'], ['→', '@right']],
+      [['(', '('], [')', ')'], ['<', '<'], ['>', '>'], 0, ['4'], ['5'], ['6'], ['×', '*'], 0, ['⌫', '@back', 'wide']],
+      [['|a|', 'abs(|)'], [',', ','], ['≤', '<='], ['≥', '>='], 0, ['1'], ['2'], ['3'], ['−', '-'], 0, ['ƒ(x)', '@fn', 'wide']],
+      [['√', 'sqrt(|)'], ['π', 'pi'], ['e', 'e'], ['abc', '@abc'], 0, ['0'], ['.', '.'], ['=', '='], ['+', '+'], 0, ['↵', '@enter', 'wide go']],
+    ],
+    fn: [
+      [['sin', 'sin(|)'], ['cos', 'cos(|)'], ['tan', 'tan(|)'], ['ln', 'ln(|)'], 0, ['sin⁻¹', 'asin(|)'], ['cos⁻¹', 'acos(|)'], ['tan⁻¹', 'atan(|)'], ['log', 'log(|)'], 0, ['←', '@left'], ['→', '@right']],
+      [['eˣ', 'e^(|)'], ['10ˣ', '10^(|)'], ['∛', 'cbrt(|)'], ['xⁿ', 'x^'], 0, ['sinh', 'sinh(|)'], ['cosh', 'cosh(|)'], ['tanh', 'tanh(|)'], ['exp', 'exp(|)'], 0, ['⌫', '@back', 'wide']],
+      [['floor', 'floor(|)'], ['ceil', 'ceil(|)'], ['round', 'round(|)'], ['sign', 'sign(|)'], 0, ['min', 'min(|)'], ['max', 'max(|)'], ['mod', '%'], ['{ }', ' {|}'], 0, ['123', '@main', 'wide']],
+      [['x', 'x', 'var'], ['(', '('], [')', ')'], ['^', '^'], 0, ['<', '<'], ['>', '>'], [',', ','], ['=', '='], 0, ['↵', '@enter', 'wide go']],
+    ],
+    abc: [
+      'qwertyuiop'.split('').map((c) => [c, c, 'var']),
+      'asdfghjkl'.split('').map((c) => [c, c, 'var']).concat([0, ['⌫', '@back']]),
+      'zxcvbnm'.split('').map((c) => [c, c, 'var']).concat([['_', '_'], 0, ['123', '@main']]),
+      [['π', 'pi'], ['θ', 'θ'], ['α', 'α'], ['β', 'β'], 0, ['space', ' ', 'wide'], 0, ['←', '@left'], ['→', '@right'], ['↵', '@enter', 'go']],
+    ],
+  };
   const HEX = /^#[0-9a-f]{6}$/i;
   const STEEP = '#f59e0b';
   const SHALLOW = '#a78bfa';
@@ -74,6 +103,7 @@
     folder: svgIcon('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
     expand: svgIcon('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'),
     undo: svgIcon('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>', 15),
+    keyboard: svgIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 15.5h6"/>', 17),
     redo: svgIcon('<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>', 15),
   };
 
@@ -165,7 +195,23 @@
 
   function fitKinds() {
     const F = window.FluxLabFit;
-    return [{ id: 'none', name: 'No fit' }].concat(F && F.KINDS ? F.KINDS : []);
+    return F && F.KINDS ? F.KINDS : [];
+  }
+
+  /* Several fits can be on at once, so each after the first gets its own
+     dash pattern — same colour as its table, never mistaken for another. */
+  const DASHES = ['', '9 5', '3 4', '12 4 3 4', '2 3', '14 5', '6 3 1 3', '1 3', '16 4', '5 2', '8 2 2 2'];
+
+  function normFits(it) {
+    const ok = fitKinds().map((k) => k.id).concat(['custom', 'auto']);
+    const list = Array.isArray(it.fits) ? it.fits : (it.fit && it.fit !== 'none' ? [it.fit] : []);
+    return list.filter((f, i) => ok.indexOf(f) >= 0 && list.indexOf(f) === i).slice(0, 12);
+  }
+  function normManual(m) {
+    if (!m || typeof m !== 'object') return null;
+    const x1 = Number(m.x1), y1 = Number(m.y1), x2 = Number(m.x2), y2 = Number(m.y2);
+    if (![x1, y1, x2, y2].every(Number.isFinite) || x1 === x2) return null;
+    return { x1: x1, y1: y1, x2: x2, y2: y2 };
   }
 
   /* ── The document ────────────────────────────────────────────────────
@@ -176,14 +222,18 @@
   function blankExpr(n, src) {
     return { id: newId(), type: 'expr', src: src || '', colour: PALETTE[n % PALETTE.length], hidden: false, dash: false };
   }
-  function blankTable(n) {
-    const cx = { id: newId(), name: 'x', unit: '', role: 'value' };
-    const cy = { id: newId(), name: 'y', unit: '', role: 'value' };
+  function blankTable(n, kind) {
+    /* In Functions the columns are x1, y1 — Desmos's names, and what a
+       regression like y1 ~ m x1 + b refers to. */
+    const fnMode = kind === 'functions';
+    const cx = { id: newId(), name: fnMode ? 'x' + (n + 1) : 'x', unit: '', role: 'value' };
+    const cy = { id: newId(), name: fnMode ? 'y' + (n + 1) : 'y', unit: '', role: 'value' };
     const rows = [];
     for (let i = 0; i < 6; i++) rows.push(['', '']);
     return {
       id: newId(), type: 'table', name: 'Data ' + (n + 1), colour: PALETTE[n % PALETTE.length],
-      hidden: false, cols: [cx, cy], rows: rows, xCol: cx.id, yCol: cy.id, fit: 'linear', minmax: false,
+      hidden: false, cols: [cx, cy], rows: rows, xCol: cx.id, yCol: cy.id,
+      fits: fnMode ? [] : ['linear'], custom: null, manual: null, minmax: false,
     };
   }
   function blankDoc(kind) {
@@ -268,13 +318,15 @@
     });
     if (!rows.length) rows.push(cols.map(() => ''));
     const has = (id) => values.some((v) => v.id === id);
-    const fits = fitKinds().map((k) => k.id);
     return {
       id: str(it.id, 24) || newId(), type: 'table', name: str(it.name, 60) || 'Data ' + (n + 1),
       colour: colour, hidden: !!it.hidden, cols: cols, rows: rows,
       xCol: has(it.xCol) ? it.xCol : values[0].id,
       yCol: has(it.yCol) ? it.yCol : (values[1] || values[0]).id,
-      fit: fits.indexOf(it.fit) >= 0 ? it.fit : 'none',
+      fits: normFits(it),
+      custom: it.custom && typeof it.custom === 'object' && str(it.custom.expr, 200).trim()
+        ? { expr: str(it.custom.expr, 200) } : null,
+      manual: normManual(it.manual),
       minmax: !!it.minmax,
     };
   }
@@ -302,7 +354,7 @@
 
     if (src.params && typeof src.params === 'object') {
       Object.keys(src.params).slice(0, 26).forEach((p) => {
-        if (!/^[a-zA-Z]$/.test(p)) return;
+        if (!/^[a-zA-Zα-ωΑ-Ω]$/.test(p)) return;
         const q = src.params[p] || {};
         let lo = finite(q.min, -10), hi = finite(q.max, 10);
         if (!(hi > lo)) { lo = -10; hi = 10; }
@@ -319,7 +371,7 @@
       let out = null;
       if (it.type === 'expr') {
         out = { id: str(it.id, 24) || newId(), type: 'expr', src: str(it.src, 500), colour: colour, hidden: !!it.hidden, dash: !!it.dash };
-      } else if (it.type === 'table' && k === 'data') {
+      } else if (it.type === 'table') {
         out = normTable(it, colour, n);
       }
       if (!out) return;
@@ -481,12 +533,34 @@
     return { test: test, params: params };
   }
 
-  function parseExpr(src, scope) {
+  const DEF_RE = /^\s*([a-zA-Zα-ωΑ-Ω])\s*=\s*(.+)$/;
+  const FNDEF_RE = /^\s*([a-zA-Z][a-zA-Z0-9]*)\s*\(\s*([a-zA-Z])\s*\)\s*=\s*(.+)$/;
+  const LITERAL_RE = /^[-−]?\s*(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+
+  function isBuiltin(name) {
     const E = window.FluxExpr;
+    return !!(E && E.FNS && Object.prototype.hasOwnProperty.call(E.FNS, String(name).toLowerCase()));
+  }
+
+  /**
+   * Read one row the way Desmos does. The kinds:
+   *   fn          y = x², or f(x) = x² (which also defines f for other rows)
+   *   vline       x = 3
+   *   points      (2, 5) or a list of them
+   *   def         a = 4 — a number every other row can use, with a slider
+   *   value       2 + 3, or f(2): worked out and shown, not drawn
+   *   regression  y1 ~ m x1 + b — fitted to a table's columns
+   * ctx: { fns: user functions by name, columns: table columns by name }.
+   */
+  function parseExpr(src, scope, ctx) {
+    const E = window.FluxExpr;
+    const c = ctx || {};
     let s = String(src || '').trim();
     if (!s) return { kind: 'empty', params: [] };
     if (!E) return { error: 'The maths engine has not loaded.' };
-    const opts = { params: true, scope: scope };
+    const opts = { params: true, scope: scope, fns: c.fns };
+
+    if (s.indexOf('~') >= 0) return parseRegression(s, c);
 
     let domain = null;
     const dm = /\{([^{}]*)\}\s*$/.exec(s);
@@ -496,6 +570,12 @@
       s = s.slice(0, dm.index).trim();
       if (!s) return { kind: 'empty', params: [] };
     }
+    const limit = (r, extra) => {
+      const params = r.params.slice();
+      if (domain) domain.params.forEach((p) => { if (params.indexOf(p) < 0) params.push(p); });
+      const base = r.fn, inside = domain ? domain.test : null;
+      return Object.assign({ kind: 'fn', fn: inside ? (x) => (inside(x) ? base(x) : NaN) : base, params: params }, extra || {});
+    };
 
     if (s[0] === '(' && /^\(\s*[^()]+,[^()]+\)(\s*,?\s*\([^()]+,[^()]+\))*$/.test(s)) {
       const pts = [], params = [];
@@ -516,25 +596,84 @@
     if (vx) {
       const r = E.tryCompile(vx[1], 'x', opts);
       if (r.error) return { error: r.error };
-      const a = r.fn(0.37), b = r.fn(1.91);
-      if (Number.isFinite(a) && Math.abs(a - b) > 1e-12) {
-        return { error: 'x = … draws a vertical line, so the right side needs to be a number.' };
-      }
+      if (r.usesVar) return { error: 'x = … draws a vertical line, so the right side needs to be a number.' };
       return { kind: 'vline', fx: r.fn, params: r.params };
     }
 
-    s = s.replace(/^y\s*=\s*/i, '').replace(/^[a-z]\s*\(\s*x\s*\)\s*=\s*/i, '');
+    // f(x) = … : drawn, and callable by name from every other row.
+    const fd = FNDEF_RE.exec(s);
+    if (fd && !/^y$/i.test(fd[1])) {
+      const name = fd[1], arg = fd[2];
+      if (isBuiltin(name)) return { error: name + ' is built in already — call yours f, g or h.' };
+      if (/^[xy]$/i.test(name)) return { error: 'Call the function something other than x or y, like f.' };
+      const r = E.tryCompile(fd[3], arg, opts);
+      if (r.error) return { error: r.error };
+      return limit(r, { defFn: name });
+    }
+
+    // a = 4 : a number the other rows can use.
+    const dd = DEF_RE.exec(s);
+    if (dd && !/^[xy]$/i.test(dd[1]) && !domain) {
+      const name = dd[1], rhs = dd[2].trim();
+      const r = E.tryCompile(rhs, 'x', opts);
+      if (r.error) return { error: r.error };
+      if (r.usesVar) return { error: name + ' = … defines a number, so the right side cannot use x.' };
+      if (r.params.indexOf(name) >= 0) return { error: name + ' cannot be defined using itself.' };
+      return {
+        kind: 'def', name: name, value: r.fn, params: r.params,
+        literal: LITERAL_RE.test(rhs) ? Number(rhs.replace('−', '-').replace(/\s+/g, '')) : null,
+      };
+    }
+
+    const drawn = /^y\s*=/i.test(s);
+    s = s.replace(/^y\s*=\s*/i, '');
     if (!s) return { kind: 'empty', params: [] };
     if (/[<>≤≥]/.test(s)) return { error: 'Inequalities are not supported yet — write y = … instead.' };
-    if (s.indexOf('=') >= 0) return { error: 'Write it as y = … with y on its own on the left.' };
+    if (s.indexOf('=') >= 0) {
+      return { error: 'Write y = … to draw a curve, or a single letter = … (like a = 4) to define a number.' };
+    }
     const r = E.tryCompile(s, 'x', opts);
     if (r.error) return { error: r.error };
-    if (!domain) return { kind: 'fn', fn: r.fn, params: r.params };
-    const base = r.fn, inside = domain.test;
-    const params = r.params.slice();
-    domain.params.forEach((p) => { if (params.indexOf(p) < 0) params.push(p); });
-    return { kind: 'fn', fn: (x) => (inside(x) ? base(x) : NaN), params: params };
+    // No x and no "y =": a sum to work out, as Desmos does with "2 + 3".
+    if (!r.usesVar && !drawn && !domain) return { kind: 'value', value: r.fn, params: r.params };
+    return limit(r);
   }
+
+  /**
+   * y1 ~ m x1 + b — Desmos's regression: fit the letters on the right so the
+   * formula matches a table's columns. Exactly one column may appear on the
+   * right; it plays the part of x when the fitted curve is drawn.
+   */
+  function parseRegression(s, c) {
+    const E = window.FluxExpr;
+    const parts = s.split('~');
+    if (parts.length !== 2) return { error: 'A regression has one ~, like y1 ~ m x1 + b.' };
+    const lhs = parts[0].trim(), rhs = parts[1].trim();
+    const cols = c.columns || {};
+    if (!lhs) return { error: 'Put a table column before the ~, like y1 ~ m x1 + b.' };
+    const Y = cols[lhs];
+    if (!Y) {
+      return { error: Object.keys(cols).length
+        ? '"' + lhs + '" is not a column. The columns are ' + Object.keys(cols).slice(0, 6).join(', ') + '.'
+        : 'A regression fits a table — add one with the table button, then write y1 ~ m x1 + b.' };
+    }
+    if (!rhs) return { error: 'Put a formula after the ~, like m x1 + b.' };
+    const words = rhs.match(/[A-Za-zα-ωΑ-Ω][A-Za-z0-9α-ωΑ-Ω_]*/g) || [];
+    const used = words.filter((w, i) => words.indexOf(w) === i && cols[w] && cols[w].tableId === Y.tableId && w !== lhs);
+    if (used.length !== 1) {
+      return { error: used.length ? 'Use one column on the right of the ~ (' + used.join(', ') + ' are all columns).'
+        : 'Use a column from the same table on the right, like ' + lhs + ' ~ m ' + (Object.keys(cols).find((k) => k !== lhs && cols[k].tableId === Y.tableId) || 'x1') + ' + b.' };
+    }
+    const rscope = {};
+    const r = E.tryCompile(rhs, used[0], { params: true, scope: rscope, fns: c.fns });
+    if (r.error) return { error: r.error };
+    if (!r.params.length) return { error: 'Give the formula at least one letter to fit, like m or b.' };
+    return {
+      kind: 'regression', fnRaw: r.fn, names: r.params, rscope: rscope, params: [],
+      tableId: Y.tableId, xCol: cols[used[0]].colId, yCol: Y.colId, xName: used[0], yName: lhs,
+    };
+  }
+
 
   /* ── Points of interest ──────────────────────────────────────────────
      What Desmos shows when you click a curve. Sampled across the visible x
@@ -859,11 +998,128 @@
   /* ── Parsing, cached per item ───────────────────────────────────────── */
 
   Grapher.prototype.parsed = function (it) {
+    const ctx = this.ctx();
     const c = this.cache.get(it.id);
-    if (c && c.src === it.src) return c.res;
-    const res = parseExpr(it.src, this.scope);
-    this.cache.set(it.id, { src: it.src, res: res });
+    if (c && c.src === it.src && c.sig === this._ctxSig) return c.res;
+    const res = parseExpr(it.src, this.scope, ctx);
+    this.cache.set(it.id, { src: it.src, sig: this._ctxSig, res: res });
     return res;
+  };
+
+  /* ── What the rows define for each other ─────────────────────────────
+     A row can define a function (f(x) = …), a number (a = 4), or fit numbers
+     by regression (y1 ~ m x1 + b); every other row can then use them. The
+     names are gathered by pattern before anything is compiled, so a row can
+     use f even if f is defined further down. */
+  Grapher.prototype.ctx = function () {
+    const fnNames = [];
+    this.doc.items.forEach((it) => {
+      if (it.type !== 'expr') return;
+      const m = FNDEF_RE.exec(it.src || '');
+      if (m && !isBuiltin(m[1]) && !/^[xy]$/i.test(m[1]) && fnNames.indexOf(m[1]) < 0) fnNames.push(m[1]);
+    });
+    const columns = {};
+    this.doc.items.forEach((t) => {
+      if (t.type !== 'table') return;
+      t.cols.forEach((c) => {
+        if (c.role !== 'unc' && c.name && NAME_OK.test(c.name) && !columns[c.name]) columns[c.name] = { tableId: t.id, colId: c.id };
+      });
+    });
+    const sig = fnNames.join(',') + '|' + Object.keys(columns).map((k) => k + ':' + columns[k].tableId + '.' + columns[k].colId).join(',');
+    if (sig !== this._ctxSig || !this._ctxObj) {
+      this._ctxSig = sig;
+      const self = this;
+      const fns = {};
+      fnNames.forEach((name) => {
+        fns[name] = function (v) {
+          const impl = self._fnImpl && self._fnImpl[name];
+          // f(x) = f(x) + 1 would recurse forever; a depth limit turns it into a gap.
+          if (!impl || (self._depth || 0) > 60) return NaN;
+          self._depth = (self._depth || 0) + 1;
+          try { return impl(v); } finally { self._depth--; }
+        };
+      });
+      this._ctxObj = { fns: fns, columns: columns };
+    }
+    return this._ctxObj;
+  };
+
+  /** Names that rows define: they are numbers, not sliders. */
+  Grapher.prototype.definedNames = function () {
+    const out = {};
+    this.doc.items.forEach((it) => {
+      if (it.type !== 'expr') return;
+      const p = this.parsed(it);
+      if (!p || p.error) return;
+      if (p.kind === 'def') out[p.name] = true;
+      if (p.kind === 'regression') p.names.forEach((n) => { out[n] = true; });
+    });
+    return out;
+  };
+
+  /**
+   * Work out every definition before drawing: user functions, then numbers
+   * (twice, so "b = 2a" works whichever row comes first), then regressions,
+   * whose fitted letters become numbers the other rows can use.
+   */
+  Grapher.prototype.resolve = function () {
+    const rows = this.doc.items.filter((i) => i.type === 'expr').map((it) => ({ it: it, p: this.parsed(it) }));
+    this._fnImpl = {};
+    rows.forEach((r) => { if (r.p && r.p.defFn && r.p.fn) this._fnImpl[r.p.defFn] = r.p.fn; });
+    this.defined = {};
+    for (let pass = 0; pass < 2; pass++) {
+      rows.forEach((r) => {
+        if (!r.p || r.p.kind !== 'def') return;
+        const v = r.p.value(0);
+        this.scope[r.p.name] = v;
+        this.defined[r.p.name] = v;
+      });
+    }
+    rows.forEach((r) => {
+      if (!r.p || r.p.kind !== 'regression') return;
+      const fit = this.fitRegression(r.it, r.p);
+      if (fit && fit.values) fit.names.forEach((nm, i) => { this.scope[nm] = fit.values[i]; this.defined[nm] = fit.values[i]; });
+    });
+  };
+
+  /** Fit a y1 ~ … row to its table. Cached until the row or the readings change. */
+  Grapher.prototype.fitRegression = function (it, p) {
+    const F = window.FluxLabFit;
+    const t = this.item(p.tableId);
+    if (!F || !F.nonlinear || !t) return null;
+    const pts = tablePoints({ cols: t.cols, rows: t.rows, xCol: p.xCol, yCol: p.yCol });
+    const fixed = p.names.filter((n) => this.defined && this.defined[n] !== undefined && !(this._regOwn && this._regOwn[n] === it.id));
+    const free = p.names.filter((n) => fixed.indexOf(n) < 0);
+    const sig = JSON.stringify([it.src, pts, fixed.map((n) => this.scope[n])]);
+    this._regCache = this._regCache || {};
+    const hit = this._regCache[it.id];
+    if (hit && hit.sig === sig) return hit.fit;
+    let fit;
+    if (pts.length < free.length) {
+      fit = { error: 'This fits ' + free.length + ' number' + (free.length === 1 ? '' : 's') + ', so the table needs at least ' + free.length + ' rows with both columns filled.' };
+    } else {
+      const self = this;
+      const model = (q, x) => {
+        for (let i = 0; i < free.length; i++) p.rscope[free[i]] = q[i];
+        for (let j = 0; j < fixed.length; j++) p.rscope[fixed[j]] = self.scope[fixed[j]];
+        return p.fnRaw(x);
+      };
+      const res = F.nonlinear('regression', free, model, free.map(() => 1), pts.map((q) => q.x), pts.map((q) => q.y));
+      if (res.error) fit = { error: res.error };
+      else {
+        const vals = res.values.slice();
+        fit = { names: free, values: vals, params: res.params, r2: res.r2, fn: (x) => model(vals, x) };
+        this._regOwn = this._regOwn || {};
+        free.forEach((n) => { this._regOwn[n] = it.id; });
+      }
+    }
+    this._regCache[it.id] = { sig: sig, fit: fit };
+    return fit;
+  };
+
+  Grapher.prototype.regressionOf = function (it) {
+    const hit = this._regCache && this._regCache[it.id];
+    return hit ? hit.fit : null;
   };
 
   Grapher.prototype.syncScope = function () {
@@ -875,10 +1131,11 @@
       Returns true when the set of sliders changed. */
   Grapher.prototype.syncParams = function () {
     const used = [];
+    const defined = this.definedNames();
     this.doc.items.forEach((it) => {
       if (it.type !== 'expr') return;
       const p = this.parsed(it);
-      if (p && p.params) p.params.forEach((q) => { if (used.indexOf(q) < 0) used.push(q); });
+      if (p && p.params) p.params.forEach((q) => { if (used.indexOf(q) < 0 && !defined[q]) used.push(q); });
     });
     let changed = false;
     used.forEach((q) => {
@@ -905,8 +1162,9 @@
       +   '<div class="flg-addbar">'
       +     '<button type="button" class="flg-add" data-add="expr" title="Add an equation" aria-label="Add an equation">'
       +       ICON.plus + ICON.fn + '</button>'
-      +     (data ? '<button type="button" class="flg-add" data-add="table" title="Add a table" aria-label="Add a table">'
-      +       ICON.plus + ICON.table + '</button>' : '')
+      +     '<button type="button" class="flg-add" data-add="table" title="Add a table" aria-label="Add a table">'
+      +       ICON.plus + ICON.table + '</button>'
+      +     '<button type="button" class="flg-kbbtn" data-kb title="Maths keyboard" aria-label="Maths keyboard" aria-pressed="false">' + ICON.keyboard + '</button>'
       +     '<span class="flg-hist">'
       +       '<button type="button" data-hist="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>' + ICON.undo + '</button>'
       +       '<button type="button" data-hist="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>' + ICON.redo + '</button>'
@@ -916,7 +1174,7 @@
       + '<section class="flg-stage" id="' + u + 'Stage" aria-label="Graph">'
       +   '<div class="flg-plot" id="' + u + 'Plot"></div>'
       +   '<div class="flg-trace" id="' + u + 'Trace" hidden><i></i><span></span></div>'
-      +   (data ? '<div class="flg-results" id="' + u + 'Res" hidden></div>' : '')
+      +   '<div class="flg-results" id="' + u + 'Res" hidden></div>'
       +   '<button type="button" class="flg-railbtn" data-tool="rail" title="Show or hide the list" aria-label="Show or hide the list">' + ICON.rail + '</button>'
       +   '<div class="flg-tools" role="toolbar" aria-label="View">'
       +     '<button type="button" data-tool="in" title="Zoom in" aria-label="Zoom in">' + ICON.plus + '</button>'
@@ -925,6 +1183,7 @@
       +     '<button type="button" data-tool="win" class="flg-tool-window" title="Window, title and axes" aria-label="Window, title and axes">' + ICON.window + '</button>'
       +   '</div>'
       + '</section>'
+      + '<div class="flg-kb" id="' + u + 'Kb" role="group" aria-label="Maths keyboard" hidden></div>'
       + '</div>';
 
     this.root = this.$('Root');
@@ -952,6 +1211,9 @@
       const first = this.doc.items.find((i) => i.type === 'expr' && !i.hidden);
       this.active = first ? first.id : null;
       this.root.querySelectorAll('.flg-item--expr').forEach((el) => el.classList.toggle('is-active', el.dataset.id === this.active));
+      let kbWanted = false;
+      try { kbWanted = localStorage.getItem(KB_KEY) === '1'; } catch (e) {}
+      if (kbWanted) this.toggleKeypad(true);
     }
     this.draw();
   };
@@ -967,7 +1229,8 @@
       + '<button type="button" class="flg-swatch" data-swatch="' + esc(it.id) + '" style="--c:' + it.colour + '"'
       + ' aria-label="Colour and visibility" title="Colour and visibility"></button>'
       + '<input type="text" class="flg-expr" data-expr="' + esc(it.id) + '" value="' + esc(it.src) + '"'
-      + ' placeholder="y = …" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Equation ' + (n + 1) + '">'
+      + ' placeholder="y = …" spellcheck="false" autocomplete="off" autocapitalize="off"' + (this.kbOpen ? ' inputmode="none"' : '')
+      + ' aria-label="Equation ' + (n + 1) + '">'
       + '<button type="button" class="flg-x" data-del="' + esc(it.id) + '" aria-label="Remove equation ' + (n + 1) + '">' + ICON.x + '</button>'
       + err
       + '</div>';
@@ -1044,16 +1307,89 @@
       + '<div class="flg-twrap"><table class="flg-table"><thead><tr><th class="flg-rn"></th>' + head
       +   '<th class="flg-addcol"><button type="button" data-addcol="' + esc(t.id) + '" title="Add a column" aria-label="Add a column">' + ICON.plus + '</button></th>'
       + '</tr></thead><tbody>' + t.rows.map((_, r) => this.rowHTML(t, r, ct)).join('') + '</tbody></table></div>'
-      + '<div class="flg-tfoot">'
-      +   '<label class="flg-axsel"><span>x</span><select data-xcol="' + esc(t.id) + '" aria-label="Column on the x axis">' + opt(t.xCol) + '</select></label>'
-      +   '<label class="flg-axsel"><span>y</span><select data-ycol="' + esc(t.id) + '" aria-label="Column on the y axis">' + opt(t.yCol) + '</select></label>'
-      +   '<select class="flg-fitsel" data-fit="' + esc(t.id) + '" aria-label="Line of best fit">'
-      +     fitKinds().map((k) => '<option value="' + k.id + '"' + (t.fit === k.id ? ' selected' : '') + '>' + esc(k.name) + '</option>').join('')
-      +   '</select>'
-      +   '<button type="button" class="flg-chip' + (t.minmax ? ' is-on' : '') + '" data-minmax="' + esc(t.id) + '" aria-pressed="' + t.minmax + '"'
-      +     ' title="Steepest and shallowest lines through the error bars">max/min</button>'
-      + '</div>'
+      + '<div class="flg-tfoot">' + this.tfootInner(t, opt) + '</div>'
       + '</div>';
+  };
+
+  /** A small line sample in a fit's dash pattern — the key for which curve is which. */
+  function dashSample(colour, dash) {
+    return '<svg class="flg-dash" viewBox="0 0 22 6" width="22" height="6" aria-hidden="true"><line x1="1" y1="3" x2="21" y2="3" stroke="'
+      + colour + '" stroke-width="2.4" stroke-linecap="round"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/></svg>';
+  }
+
+  Grapher.prototype.fitName = function (kind) {
+    if (kind === 'custom') return 'Custom';
+    if (kind === 'auto') return 'Best fit';
+    const k = fitKinds().find((f) => f.id === kind);
+    return k ? k.name : kind;
+  };
+
+  Grapher.prototype.tfootInner = function (t, opt) {
+    const values = this.plotCols(t);
+    const o = opt || ((sel) => values.map((v) => '<option value="' + esc(v.id) + '"' + (v.id === sel ? ' selected' : '') + '>'
+      + esc(v.name || 'column') + '</option>').join(''));
+    const chips = (t.fits || []).map((k, i) => '<span class="flg-fchip">' + dashSample(t.colour, DASHES[i % DASHES.length])
+      + '<span>' + esc(this.fitName(k)) + '</span>'
+      + '<button type="button" data-unfit="' + esc(k) + '" aria-label="Remove the ' + esc(this.fitName(k)) + ' fit" title="Remove">' + ICON.x + '</button></span>').join('');
+    return '<label class="flg-axsel"><span>x</span><select data-xcol="' + esc(t.id) + '" aria-label="Column on the x axis">' + o(t.xCol) + '</select></label>'
+      + '<label class="flg-axsel"><span>y</span><select data-ycol="' + esc(t.id) + '" aria-label="Column on the y axis">' + o(t.yCol) + '</select></label>'
+      + '<div class="flg-fitrow">' + chips
+      +   '<button type="button" class="flg-chip flg-chip--add" data-fits="' + esc(t.id) + '" aria-label="Lines of best fit" title="Choose lines of best fit">'
+      +   ICON.plus + '<span>fit</span></button>'
+      + '</div>'
+      + '<button type="button" class="flg-chip' + (t.manual ? ' is-on' : '') + '" data-manual="' + esc(t.id) + '" aria-pressed="' + !!t.manual + '"'
+      +   ' title="A line you drag into place yourself">manual line</button>'
+      + '<button type="button" class="flg-chip' + (t.minmax ? ' is-on' : '') + '" data-minmax="' + esc(t.id) + '" aria-pressed="' + t.minmax + '"'
+      +   ' title="Steepest and shallowest lines through the error bars">max/min</button>';
+  };
+
+  Grapher.prototype.renderTfoot = function (t) {
+    const el = this.root.querySelector('.flg-item[data-id="' + CSS.escape(t.id) + '"] .flg-tfoot');
+    if (el) el.innerHTML = this.tfootInner(t);
+  };
+
+  /** The fit picker: every kind, each switched on or off on its own. */
+  Grapher.prototype.fitsPop = function (t, anchor) {
+    const self = this;
+    const on = (k) => (t.fits || []).indexOf(k) >= 0;
+    const html = '<div class="flg-fitpop"><div class="flg-fitpop-h">Lines of best fit</div>'
+      + '<label class="flg-fitopt flg-fitopt--auto"><input type="checkbox" data-fk="auto"' + (on('auto') ? ' checked' : '') + '>'
+      + '<span><b>Best fit (automatic)</b><small>tries every type, picks the best</small></span></label>'
+      + fitKinds().map((k) => '<label class="flg-fitopt"><input type="checkbox" data-fk="' + k.id + '"' + (on(k.id) ? ' checked' : '') + '>'
+        + '<span><b>' + esc(k.name) + '</b><small>' + esc(k.hint) + '</small></span></label>').join('')
+      + '<label class="flg-fitopt"><input type="checkbox" data-fk="custom"' + (on('custom') ? ' checked' : '') + '>'
+      + '<span><b>Your own formula</b><small>letters are fitted — x is x</small></span></label>'
+      + '<input type="text" class="flg-fitcustom" data-fcustom value="' + esc(t.custom ? t.custom.expr : '') + '" placeholder="A*sin(B*x) + C" spellcheck="false" aria-label="Formula to fit">'
+      + '</div>';
+    const changed = () => {
+      self.touch();
+      self.renderTfoot(t);
+      self._resHTML = null;
+      self.draw();
+    };
+    openPop(anchor, html, (el) => {
+      el.addEventListener('change', (e) => {
+        const k = e.target.dataset && e.target.dataset.fk;
+        if (!k) return;
+        const list = (t.fits || []).filter((f) => f !== k);
+        if (e.target.checked) list.push(k);
+        t.fits = list;
+        if (k === 'custom' && e.target.checked) el.querySelector('[data-fcustom]').focus();
+        changed();
+      });
+      el.addEventListener('input', (e) => {
+        if (!e.target.dataset || e.target.dataset.fcustom == null) return;
+        const v = e.target.value.slice(0, 200);
+        t.custom = v.trim() ? { expr: v } : null;
+        // Typing a formula is asking for it to be fitted.
+        if (v.trim() && (t.fits || []).indexOf('custom') < 0) {
+          t.fits = (t.fits || []).concat(['custom']);
+          const box = el.querySelector('[data-fk="custom"]');
+          if (box) box.checked = true;
+        }
+        changed();
+      });
+    });
   };
 
   Grapher.prototype.itemHTML = function (it, n) {
@@ -1108,6 +1444,56 @@
     }
   };
 
+  /** A slider under "a = 4", spanning a sensible range around the value. */
+  function defSliderHTML(it, name, v) {
+    const mag = Math.max(10, Math.pow(10, Math.ceil(Math.log10(Math.abs(v) + 1e-9))));
+    return '<div class="flg-inslider"><span>' + esc(fmtCoord(-mag, 1)) + '</span>'
+      + '<input type="range" class="flg-prange" data-defslider="' + esc(it.id) + '" min="' + (-mag) + '" max="' + mag
+      + '" step="' + (mag / 100) + '" value="' + v + '" aria-label="Slider for ' + esc(name) + '">'
+      + '<span>' + esc(fmtCoord(mag, 1)) + '</span></div>';
+  }
+
+  /** Under each row, what it works out to: "= 5", a slider, or a regression's fitted numbers. */
+  Grapher.prototype.paintRowInfo = function () {
+    this.doc.items.forEach((it) => {
+      if (it.type !== 'expr') return;
+      const el = this.root.querySelector('.flg-item[data-id="' + CSS.escape(it.id) + '"]');
+      if (!el) return;
+      const p = this.parsed(it);
+      let html = '';
+      if (p && !p.error) {
+        if (p.kind === 'value') {
+          const v = p.value(0);
+          html = '<span class="flg-eqv">= ' + esc(Number.isFinite(v) ? fmtCoord(v, 1) : 'undefined') + '</span>';
+        } else if (p.kind === 'def') {
+          html = p.literal != null && Number.isFinite(p.literal)
+            ? defSliderHTML(it, p.name, p.literal)
+            : '<span class="flg-eqv">= ' + esc(fmtCoord(this.scope[p.name], 1)) + '</span>';
+        } else if (p.kind === 'regression') {
+          const fit = this.regressionOf(it);
+          if (fit && fit.error) html = '<span class="flg-rinfo is-bad">' + esc(fit.error) + '</span>';
+          else if (fit) {
+            html = '<div class="flg-rinfo">' + fit.params.map((pp) => '<span><i>' + esc(pp.name) + '</i> = '
+              + esc(pp.u ? fmtWithU(pp.value, pp.u) : fmt(pp.value)) + '</span>').join('')
+              + '<span><i>R²</i> = ' + esc(fmt(fit.r2)) + '</span></div>';
+          }
+        }
+      }
+      let box = el.querySelector('.flg-info');
+      if (!html) { if (box) box.remove(); return; }
+      if (!box) {
+        box = document.createElement('div');
+        box.className = 'flg-info';
+        el.appendChild(box);
+      }
+      if (box.dataset.html === html) return;
+      // Never rebuild a slider under the pointer that is dragging it.
+      if (document.activeElement && box.contains(document.activeElement) && document.activeElement.type === 'range') return;
+      box.dataset.html = html;
+      box.innerHTML = html;
+    });
+  };
+
   Grapher.prototype.setActive = function (id) {
     if (this.active === id) return;
     this.active = id;
@@ -1128,7 +1514,7 @@
   Grapher.prototype.addItem = function (type) {
     const n = this.doc.items.filter((i) => i.type === type).length;
     const colourIdx = this.doc.items.length;
-    const it = type === 'table' ? blankTable(n) : blankExpr(colourIdx, '');
+    const it = type === 'table' ? blankTable(n, this.kind) : blankExpr(colourIdx, '');
     if (type === 'table') it.colour = PALETTE[colourIdx % PALETTE.length];
     this.doc.items.push(it);
     this.touch();
@@ -1149,7 +1535,7 @@
     this.cache.delete(id);
     if (this.active === id) this.active = null;
     this.pins = this.pins.filter((p) => p.item !== id);
-    if (!this.doc.items.length) this.doc.items.push(this.kind === 'data' ? blankTable(0) : blankExpr(0, ''));
+    if (!this.doc.items.length) this.doc.items.push(this.kind === 'data' ? blankTable(0, 'data') : blankExpr(0, ''));
     if (this.syncParams()) this.renderParams();
     this.touch();
     this.renderItems();
@@ -1338,6 +1724,24 @@
   Grapher.prototype.wire = function () {
     const self = this, root = this.root;
 
+    const kb = this.$('Kb');
+    if (kb) {
+      kb.addEventListener('pointerdown', (e) => {
+        const k = e.target.closest('[data-key]');
+        if (!k) return;
+        e.preventDefault();          // keep the cursor where it is in the equation
+        self.kbPress(k.dataset.key);
+        k.classList.add('is-down');
+        setTimeout(() => k.classList.remove('is-down'), 130);
+      });
+      // Enter or Space on a focused key arrives as a click with no pointer behind it.
+      kb.addEventListener('click', (e) => {
+        if (e.detail !== 0) return;
+        const k = e.target.closest('[data-key]');
+        if (k) self.kbPress(k.dataset.key);
+      });
+    }
+
     root.addEventListener('input', (e) => {
       const t = e.target, d = t.dataset || {};
       if (d.expr) {
@@ -1393,6 +1797,18 @@
         if (d.cname) self.refreshCalc(tb);
         self.touch();
         self.draw();
+      } else if (d.defslider) {
+        const it = self.item(d.defslider);
+        const m = it && DEF_RE.exec(it.src || '');
+        if (!m) return;
+        const step = parseFloat(t.step) || 0.1;
+        const dp = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+        const v = Number(parseFloat(t.value).toFixed(Math.min(dp, 8)));
+        it.src = m[1] + '=' + v;
+        const box = root.querySelector('[data-expr="' + CSS.escape(it.id) + '"]');
+        if (box && box !== document.activeElement) box.value = it.src;
+        self.touch();
+        self.draw();
       } else if (d.prange || d.pval) {
         const k = d.prange || d.pval;
         const p = self.doc.params[k];
@@ -1420,7 +1836,6 @@
       if (!tb) return;
       if (d.xcol) tb.xCol = t.value;
       else if (d.ycol) tb.yCol = t.value;
-      else if (d.fit) tb.fit = t.value;
       else if (d.cof) {
         const col = tb.cols.find((c) => c.id === d.cof);
         if (col) col.of = t.value;
@@ -1432,7 +1847,7 @@
 
     root.addEventListener('focusin', (e) => {
       const d = e.target.dataset || {};
-      if (d.expr) self.setActive(d.expr);
+      if (d.expr) { self.setActive(d.expr); self._kbInput = e.target; }
     });
 
     root.addEventListener('keydown', (e) => {
@@ -1486,6 +1901,7 @@
       if (d.tool) { self.tool(d.tool, b); return; }
       if (d.pplay) { self.togglePlay(d.pplay); return; }
       if (d.hist) { self.stepHistory(d.hist === 'undo'); return; }
+      if (d.kb != null && b.classList.contains('flg-kbbtn')) { self.toggleKeypad(); return; }
       const tb = self.itemOf(b);
       if (!tb) return;
       if (d.rdel != null && d.rdel !== '') {
@@ -1493,6 +1909,19 @@
         if (!tb.rows.length) tb.rows.push(tb.cols.map(() => ''));
         self.touch();
         self.rerenderItem(tb.id);
+        self.draw();
+      } else if (d.fits) {
+        self.fitsPop(tb, b);
+      } else if (d.unfit) {
+        tb.fits = (tb.fits || []).filter((f) => f !== d.unfit);
+        self.touch();
+        self.renderTfoot(tb);
+        self.draw();
+      } else if (d.manual) {
+        if (tb.manual) tb.manual = null;
+        else self.initManual(tb);
+        self.touch();
+        self.renderTfoot(tb);
         self.draw();
       } else if (d.minmax) {
         tb.minmax = !tb.minmax;
@@ -1553,6 +1982,101 @@
         if (!self.pasteBlock(t, ta.value, r0, 0)) toast('No numbers found in that.', 'warning');
       });
     });
+  };
+
+  /* ── Keypad ─────────────────────────────────────────────────────────── */
+
+  Grapher.prototype.toggleKeypad = function (force) {
+    const open = typeof force === 'boolean' ? force : !this.kbOpen;
+    this.kbOpen = open;
+    try { localStorage.setItem(KB_KEY, open ? '1' : '0'); } catch (e) {}
+    const kb = this.$('Kb');
+    const btn = this.root.querySelector('.flg-kbbtn');
+    if (btn) btn.setAttribute('aria-pressed', String(open));
+    this.root.classList.toggle('has-kb', open);
+    // With the keypad up, a phone should not also raise its own keyboard.
+    this.root.querySelectorAll('.flg-expr').forEach((el) => {
+      if (open) el.setAttribute('inputmode', 'none'); else el.removeAttribute('inputmode');
+    });
+    if (!kb) return;
+    kb.hidden = !open;
+    if (open) {
+      this.renderKeypad(this._kbPage || 'main');
+      const t = this.kbTarget();
+      if (t) {
+        t.focus({ preventScroll: true });
+        // Carry on from the end of the equation, the way you would by hand.
+        t.setSelectionRange(t.value.length, t.value.length);
+      }
+    }
+    this.draw();
+  };
+
+  Grapher.prototype.renderKeypad = function (page) {
+    const kb = this.$('Kb');
+    if (!kb) return;
+    this._kbPage = KEYPADS[page] ? page : 'main';
+    const rows = KEYPADS[this._kbPage];
+    kb.innerHTML = '<div class="flg-kb-in flg-kb--' + this._kbPage + '">'
+      + rows.map((row) => '<div class="flg-kb-row">' + row.map((k) => {
+        if (!k) return '<span class="flg-kb-gap"></span>';
+        const label = k[0], ins = k[1] == null ? k[0] : k[1], cls = k[2] || '';
+        return '<button type="button" class="flg-key ' + cls.split(' ').map((c) => c && 'is-' + c).join(' ') + '" data-key="' + esc(ins) + '"'
+          + ' aria-label="' + esc(label === '⌫' ? 'Delete' : label === '↵' ? 'Enter' : label) + '">' + esc(label) + '</button>';
+      }).join('') + '</div>').join('')
+      + '<button type="button" class="flg-kb-close" data-key="@close" aria-label="Hide the keyboard" title="Hide the keyboard">' + ICON.chev + '</button>'
+      + '</div>';
+  };
+
+  /** The equation the keypad types into: the one last edited, else the active one. */
+  Grapher.prototype.kbTarget = function () {
+    if (this._kbInput && this.root.contains(this._kbInput)) return this._kbInput;
+    let el = this.root.querySelector('.flg-item--expr.is-active .flg-expr') || this.root.querySelector('.flg-expr');
+    if (!el) {
+      this.addItem('expr');
+      el = this.root.querySelector('.flg-item--expr:last-of-type .flg-expr') || this.root.querySelector('.flg-expr');
+    }
+    this._kbInput = el;
+    return el;
+  };
+
+  Grapher.prototype.kbPress = function (key) {
+    if (key === '@close') { this.toggleKeypad(false); return; }
+    if (key === '@main' || key === '@fn' || key === '@abc') { this.renderKeypad(key.slice(1)); return; }
+    const el = this.kbTarget();
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    const v = el.value;
+    let a = el.selectionStart == null ? v.length : el.selectionStart;
+    let b = el.selectionEnd == null ? a : el.selectionEnd;
+    if (key === '@left') { const c = Math.max(0, a === b ? a - 1 : a); el.setSelectionRange(c, c); return; }
+    if (key === '@right') { const c = Math.min(v.length, a === b ? b + 1 : b); el.setSelectionRange(c, c); return; }
+    if (key === '@enter') {
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      return;
+    }
+    let next, caret;
+    if (key === '@back') {
+      if (a === b) {
+        if (a === 0) return;
+        // Deleting into a function name takes the whole name: "sin(|" → "|".
+        const before = v.slice(0, a);
+        const fn = /([a-zA-Z]{2,})\($/.exec(before);
+        a = fn && KNOWN_FNS.indexOf(fn[1].toLowerCase()) >= 0 ? a - fn[0].length : a - 1;
+        // …and its empty closing bracket with it.
+        if (fn && v[b] === ')') b += 1;
+      }
+      next = v.slice(0, a) + v.slice(b);
+      caret = a;
+    } else {
+      const mark = key.indexOf('|');
+      const text = key.replace('|', '');
+      next = v.slice(0, a) + text + v.slice(b);
+      caret = a + (mark >= 0 ? mark : text.length);
+    }
+    el.value = next;
+    el.setSelectionRange(caret, caret);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
   };
 
   /* ── Sliders that play ──────────────────────────────────────────────── */
@@ -1823,8 +2347,10 @@
     if (!plot) return;
     const W = Math.round(plot.clientWidth), H = Math.round(plot.clientHeight);
     if (W < 20 || H < 20) return;
+    this.resolve();
     plot.innerHTML = this.svg(W, H, false);
     this.renderResults();
+    this.paintRowInfo();
   };
 
   /** Sample f across the view as polylines, broken at gaps and poles. */
@@ -1851,10 +2377,108 @@
     return out;
   }
 
-  Grapher.prototype.fitFor = function (t, pts) {
+  /** Fit a formula typed by hand: every letter except x is a number to find. */
+  function customFit(expr, pts) {
+    const E = window.FluxExpr, F = window.FluxLabFit;
+    const src = String(expr || '').trim().replace(/^y\s*=\s*/i, '');
+    if (!src) return { error: 'Type a formula to fit, like A*sin(B*x) + C.' };
+    if (!E || !F || !F.nonlinear) return { error: 'The fitting engine has not loaded.' };
+    const scope = {};
+    const r = E.tryCompile(src, 'x', { params: true, scope: scope });
+    if (r.error) return { error: r.error };
+    const names = r.params;
+    if (!names.length) return { error: 'Give the formula at least one letter to fit, like A or k.' };
+    const model = (q, x) => { for (let i = 0; i < names.length; i++) scope[names[i]] = q[i]; return r.fn(x); };
+    const out = F.nonlinear('custom', names, model, names.map(() => 1), pts.map((p) => p.x), pts.map((p) => p.y));
+    if (out.error) return { error: out.error };
+    out.equation = () => 'y = ' + src;
+    return { fit: out };
+  }
+
+  /* Fits are worked out once per change, not on every frame and every mouse
+     move — a sine or a custom formula is an iterative search. */
+  const FIT_CACHE = new WeakMap();
+
+  /** Every fit switched on for a table: [{ kind, name, res, dash }]. */
+  Grapher.prototype.fitsFor = function (t, pts) {
     const F = window.FluxLabFit;
-    if (!F || t.fit === 'none' || pts.length < 2) return null;
-    return F.fit(t.fit, pts);
+    if (!F || pts.length < 2 || !t.fits || !t.fits.length) return [];
+    const sig = JSON.stringify([pts, t.fits, t.custom ? t.custom.expr : '']);
+    const hit = FIT_CACHE.get(t);
+    if (hit && hit.sig === sig) return hit.list;
+    const list = t.fits.map((kind, i) => {
+      let res, name = this.fitName(kind);
+      if (kind === 'custom') res = customFit(t.custom && t.custom.expr, pts);
+      else if (kind === 'auto') {
+        const b = F.best ? F.best(pts) : { error: 'Automatic fitting has not loaded.' };
+        res = b.error ? { error: b.error } : { fit: b.fit };
+        if (!b.error) name = 'Best fit: ' + b.name;
+      } else res = F.fit(kind, pts);
+      return { kind: kind, name: name, res: res, dash: DASHES[i % DASHES.length] };
+    });
+    FIT_CACHE.set(t, { sig: sig, list: list });
+    return list;
+  };
+
+  /* ── The manual line ─────────────────────────────────────────────────
+     Graphical Analysis's "manual fit": a straight line you drag into place
+     by eye, held by two handles. Its gradient and intercept are reported
+     beside the computed fit, with the root-mean-square distance from the
+     readings so the two can be compared honestly. */
+  Grapher.prototype.initManual = function (t) {
+    const pts = tablePoints(t).slice().sort((a, b) => a.x - b.x);
+    if (pts.length >= 2 && pts[pts.length - 1].x > pts[0].x) {
+      // Starts through the first and last readings — a sensible first guess to adjust.
+      const a = pts[0], b = pts[pts.length - 1];
+      t.manual = { x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+      return;
+    }
+    const v = this._last ? this._last.v : { xLo: 0, xHi: 10, yLo: 0, yHi: 10 };
+    const w = v.xHi - v.xLo, h = v.yHi - v.yLo;
+    t.manual = { x1: v.xLo + w * 0.25, y1: v.yLo + h * 0.3, x2: v.xLo + w * 0.75, y2: v.yLo + h * 0.7 };
+  };
+
+  function manualLine(mn) {
+    const m = (mn.y2 - mn.y1) / (mn.x2 - mn.x1);
+    const c = mn.y1 - m * mn.x1;
+    return { m: m, c: c, predict: (x) => m * x + c };
+  }
+
+  Grapher.prototype.drawManual = function (t, m, v, fr, print) {
+    const L = manualLine(t.manual);
+    const ya = L.predict(v.xLo), yb = L.predict(v.xHi);
+    let s = '<line x1="' + m.sx(v.xLo) + '" y1="' + m.sy(ya) + '" x2="' + m.sx(v.xHi) + '" y2="' + m.sy(yb)
+      + '" stroke="' + t.colour + '" stroke-width="2.4" stroke-opacity=".85" stroke-dasharray="1 0"'
+      + (print ? '' : ' class="flg-manual"') + '/>';
+    if (!print) {
+      [[t.manual.x1, t.manual.y1], [t.manual.x2, t.manual.y2]].forEach((pt) => {
+        s += '<circle class="flg-mhandle" cx="' + m.sx(pt[0]).toFixed(1) + '" cy="' + m.sy(pt[1]).toFixed(1)
+          + '" r="7" fill="#ffffff" stroke="' + t.colour + '" stroke-width="3"/>';
+      });
+    }
+    return s;
+  };
+
+  /** Which manual line or handle is under a point, if any. */
+  Grapher.prototype.manualHit = function (p) {
+    const L = this._last;
+    if (!L) return null;
+    let best = null;
+    this.doc.items.forEach((t) => {
+      if (t.type !== 'table' || t.hidden || !t.manual) return;
+      const ax = L.m.sx(t.manual.x1), ay = L.m.sy(t.manual.y1);
+      const bx = L.m.sx(t.manual.x2), by = L.m.sy(t.manual.y2);
+      const da = Math.hypot(p.x - ax, p.y - ay), db = Math.hypot(p.x - bx, p.y - by);
+      if (da <= 12 && (!best || da < best.d)) best = { t: t, which: 'a', d: da };
+      if (db <= 12 && (!best || db < best.d)) best = { t: t, which: 'b', d: db };
+      if (!best) {
+        // Distance from the point to the (infinite) line, on screen.
+        const len = Math.hypot(bx - ax, by - ay) || 1;
+        const d = Math.abs((by - ay) * p.x - (bx - ax) * p.y + bx * ay - by * ax) / len;
+        if (d <= 7) best = { t: t, which: 'line', d: d + 20 };
+      }
+    });
+    return best;
   };
 
   Grapher.prototype.keyPointsFor = function (v) {
@@ -1979,7 +2603,7 @@
     P.push('<g clip-path="url(#' + clip + ')">');
     d.items.forEach((it) => {
       if (it.hidden) return;
-      P.push(it.type === 'table' ? this.drawTable(it, m, v, fr) : this.drawExpr(it, m, v, fr));
+      P.push(it.type === 'table' ? this.drawTable(it, m, v, fr, print) : this.drawExpr(it, m, v, fr));
     });
     if (!print) {
       this.keyPointsFor(v).forEach((p) => {
@@ -2016,7 +2640,12 @@
 
   Grapher.prototype.drawExpr = function (it, m, v, fr) {
     const p = this.parsed(it);
-    if (!p || p.error || p.kind === 'empty') return '';
+    if (!p || p.error || p.kind === 'empty' || p.kind === 'def' || p.kind === 'value') return '';
+    if (p.kind === 'regression') {
+      const fit = this.regressionOf(it);
+      if (!fit || !fit.fn) return '';
+      return curvePaths(fit.fn, m, v, fr, 'stroke="' + it.colour + '" stroke-width="2.5" stroke-linecap="round"' + (it.dash ? ' stroke-dasharray="8 6"' : ''));
+    }
     const on = this.active === it.id;
     const attrs = 'stroke="' + it.colour + '" stroke-width="' + (on ? 3.1 : 2.5) + '" stroke-linejoin="round" stroke-linecap="round"'
       + (it.dash ? ' stroke-dasharray="8 6"' : '');
@@ -2036,13 +2665,14 @@
     return curvePaths(p.fn, m, v, fr, attrs);
   };
 
-  Grapher.prototype.drawTable = function (t, m, v, fr) {
+  Grapher.prototype.drawTable = function (t, m, v, fr, print) {
     const pts = tablePoints(t);
     let s = '';
-    const res = this.fitFor(t, pts);
-    if (res && res.fit && typeof res.fit.predict === 'function') {
-      s += curvePaths(res.fit.predict, m, v, fr, 'stroke="' + t.colour + '" stroke-width="2.2" stroke-opacity=".92" stroke-linecap="round"');
-    }
+    this.fitsFor(t, pts).forEach((f) => {
+      if (!f.res || !f.res.fit || typeof f.res.fit.predict !== 'function') return;
+      s += curvePaths(f.res.fit.predict, m, v, fr, 'stroke="' + t.colour + '" stroke-width="2.2" stroke-opacity=".92" stroke-linecap="round"'
+        + (f.dash ? ' stroke-dasharray="' + f.dash + '"' : ''));
+    });
     if (this.kind === 'data' && t.minmax && window.FluxLabFit) {
       const mm = window.FluxLabFit.minMaxGradient(pts);
       if (mm) {
@@ -2070,6 +2700,8 @@
       }
       s += '<circle class="flg-pt" cx="' + X.toFixed(1) + '" cy="' + Y.toFixed(1) + '" r="4.2" fill="' + t.colour + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/>';
     });
+    // On top of the points, so its handles can always be grabbed.
+    if (t.manual) s += this.drawManual(t, m, v, fr, print);
     return s;
   };
 
@@ -2080,19 +2712,30 @@
       if (it.hidden) return;
       if (it.type === 'expr') {
         const p = this.parsed(it);
-        if (!p || p.error || p.kind === 'empty') return;
+        if (!p || p.error || p.kind === 'empty' || p.kind === 'value') return;
         const t = it.src.trim();
-        lines.push({ colour: it.colour, text: /^[xy]\s*=|^\(/i.test(t) ? t : 'y = ' + t, dash: it.dash });
+        if (p.kind === 'def') { lines.push({ text: t, bare: true }); return; }
+        if (p.kind === 'regression') {
+          const fit = this.regressionOf(it);
+          if (!fit || !fit.values) return;
+          lines.push({ colour: it.colour, text: t + '   (' + fit.names.map((n, i) => n + ' = ' + fmt(fit.values[i])).join(', ') + ', R² = ' + fmt(fit.r2) + ')', dash: it.dash });
+          return;
+        }
+        lines.push({ colour: it.colour, text: /^[xy]\s*=|^\(|^[a-z]\w*\([a-z]\)\s*=/i.test(t) ? t : 'y = ' + t, dash: it.dash });
       } else {
         const pts = tablePoints(it);
         if (!pts.length) return;
-        const res = this.fitFor(it, pts);
-        let text = it.name;
-        if (res && res.fit) {
-          text += ':  ' + res.fit.equation(fmt);
-          if (res.fit.um != null && res.fit.m != null) text += '   (m = ' + fmtWithU(res.fit.m, res.fit.um) + ')';
+        lines.push({ colour: it.colour, text: it.name, dot: true });
+        this.fitsFor(it, pts).forEach((f) => {
+          if (!f.res || !f.res.fit) return;
+          let text = f.name + ':  ' + f.res.fit.equation(fmt);
+          if (f.res.fit.um != null && f.res.fit.m != null) text += '   (m = ' + fmtWithU(f.res.fit.m, f.res.fit.um) + ')';
+          lines.push({ colour: it.colour, text: text, dash: f.dash, fit: true });
+        });
+        if (it.manual) {
+          const ml = manualLine(it.manual);
+          lines.push({ colour: it.colour, text: 'Manual line:  y = ' + fmt(ml.m) + 'x ' + (ml.c < 0 ? '− ' : '+ ') + fmt(Math.abs(ml.c)), fit: true });
         }
-        lines.push({ colour: it.colour, text: text, dot: true });
       }
     });
     // A slider's value is part of the equation — without it "a sin(x)" is not reproducible.
@@ -2107,7 +2750,10 @@
       const cy = y + 18 + i * 22;
       if (l.bare) s += '';
       else if (l.dot) s += '<circle cx="' + (x + 18) + '" cy="' + (cy - 4) + '" r="4.5" fill="' + l.colour + '"/>';
-      else s += '<line x1="' + (x + 8) + '" y1="' + (cy - 4) + '" x2="' + (x + 28) + '" y2="' + (cy - 4) + '" stroke="' + l.colour + '" stroke-width="2.5"' + (l.dash ? ' stroke-dasharray="5 3"' : '') + '/>';
+      else {
+        const dash = l.fit ? l.dash : (l.dash ? '5 3' : '');
+        s += '<line x1="' + (x + (l.fit ? 14 : 8)) + '" y1="' + (cy - 4) + '" x2="' + (x + 30) + '" y2="' + (cy - 4) + '" stroke="' + l.colour + '" stroke-width="2.5"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+      }
       s += '<text x="' + (x + 36) + '" y="' + cy + '" ' + cls('flg-legt', true) + '>' + esc(l.text) + '</text>';
     });
     return s;
@@ -2124,38 +2770,46 @@
 
   /* ── Results card (the numbers that go in the write-up) ─────────────── */
 
+  /** One fit's numbers: every parameter with its uncertainty, then R². */
+  function paramRows(f) {
+    const rows = (f.params || []).map((p) => [p.name, p.u != null && p.u > 0 ? fmtWithU(p.value, p.u) : fmt(p.value)]);
+    rows.push(['R²', fmt(f.r2)]);
+    return rows;
+  }
+  function rowsHTML(rows) {
+    return '<table>' + rows.map((r) => '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>').join('') + '</table>';
+  }
+
   Grapher.prototype.resultsHTML = function () {
     const cards = [];
     this.doc.items.forEach((t) => {
-      if (t.type !== 'table' || t.hidden || t.fit === 'none') return;
+      if (t.type !== 'table' || t.hidden) return;
       const pts = tablePoints(t);
       if (pts.length < 2) return;
-      const res = this.fitFor(t, pts);
-      if (!res) return;
-      const head = '<div class="flg-rc-h"><i style="background:' + t.colour + '"></i><span>' + esc(t.name) + '</span></div>';
-      if (res.error) { cards.push('<div class="flg-rc">' + head + '<div class="flg-rc-err">' + esc(res.error) + '</div></div>'); return; }
-      const f = res.fit;
-      const rows = [];
-      if (f.kind === 'linear' || f.kind === 'proportional') {
-        rows.push(['m', f.um != null ? fmtWithU(f.m, f.um) : fmt(f.m)]);
-        if (f.kind === 'linear') rows.push(['c', f.uc != null ? fmtWithU(f.c, f.uc) : fmt(f.c)]);
-      } else if (f.kind === 'quadratic') {
-        rows.push(['a', fmt(f.a)], ['b', fmt(f.b)], ['c', fmt(f.c)]);
-      } else {
-        rows.push(['a', fmt(f.a)], ['b', fmt(f.b)]);
+      const fits = this.fitsFor(t, pts);
+      if (!fits.length && !t.manual && !t.minmax) return;
+      let body = '';
+      fits.forEach((f) => {
+        body += '<div class="flg-rc-fit">' + dashSample(t.colour, f.dash) + '<span>' + esc(f.name) + '</span></div>';
+        if (!f.res || f.res.error) { body += '<div class="flg-rc-err">' + esc(f.res ? f.res.error : 'No fit.') + '</div>'; return; }
+        body += '<div class="flg-rc-eq">' + esc(f.res.fit.equation(fmt)) + '</div>' + rowsHTML(paramRows(f.res.fit));
+      });
+      if (t.manual) {
+        const ml = manualLine(t.manual);
+        let ss = 0;
+        pts.forEach((p) => { ss += Math.pow(p.y - ml.predict(p.x), 2); });
+        body += '<div class="flg-rc-fit">' + dashSample(t.colour, '') + '<span>Manual line</span></div>'
+          + '<div class="flg-rc-eq">y = ' + esc(fmt(ml.m)) + 'x ' + (ml.c < 0 ? '−' : '+') + ' ' + esc(fmt(Math.abs(ml.c))) + '</div>'
+          + rowsHTML([['m', fmt(ml.m)], ['c', fmt(ml.c)], ['RMSE', fmt(Math.sqrt(ss / pts.length))]]);
       }
-      rows.push(['R²', fmt(f.r2)]);
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
-        if (mm) {
-          rows.push(['m max', fmt(mm.mMax)], ['m min', fmt(mm.mMin)]);
-          rows.push(['m (bars)', fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)]);
-        } else rows.push(['max/min', 'needs x bars that do not overlap']);
+        body += '<div class="flg-rc-fit"><span>Max / min gradient</span></div>';
+        body += mm
+          ? rowsHTML([['m max', fmt(mm.mMax)], ['m min', fmt(mm.mMin)], ['m (bars)', fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)]])
+          : '<div class="flg-rc-err">Needs error bars on the first and last points, with x bars that do not overlap.</div>';
       }
-      cards.push('<div class="flg-rc">' + head
-        + '<div class="flg-rc-eq">' + esc(f.equation(fmt)) + '</div>'
-        + '<table>' + rows.map((r) => '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>').join('') + '</table>'
-        + '</div>');
+      cards.push('<div class="flg-rc"><div class="flg-rc-h"><i style="background:' + t.colour + '"></i><span>' + esc(t.name) + '</span></div>' + body + '</div>');
     });
     if (!cards.length) return '';
     return '<div class="flg-rc-bar"><button type="button" class="flg-rc-btn" data-rescopy title="Copy the numbers" aria-label="Copy the numbers">' + ICON.copy + '</button>'
@@ -2189,20 +2843,47 @@
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
 
+    let dragLine = null;   // a manual line being moved: { t, which }
+
     plot.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       try { plot.setPointerCapture(e.pointerId); } catch (err) {}
       pts.set(e.pointerId, pos(e));
       moved = 0;
       downAt = pos(e);
+      dragLine = pts.size === 1 ? self.manualHit(downAt) : null;
       stage.classList.add('is-grabbing');
       self.hideTrace();
     });
 
     plot.addEventListener('pointermove', (e) => {
       const p = pos(e);
-      if (!pts.has(e.pointerId)) { self.hover(p); return; }
+      if (!pts.has(e.pointerId)) {
+        const over = self.manualHit(p);
+        plot.style.cursor = over ? (over.which === 'line' ? 'move' : 'grab') : '';
+        if (!over) self.hover(p); else self.hideTrace();
+        return;
+      }
       const prev = pts.get(e.pointerId);
+      if (dragLine && pts.size === 1 && self._last) {
+        const M = self._last.m, mn = dragLine.t.manual;
+        moved += Math.abs(p.x - prev.x) + Math.abs(p.y - prev.y);
+        pts.set(e.pointerId, p);
+        if (dragLine.which === 'line') {
+          const ddx = M.ix(p.x) - M.ix(prev.x), ddy = M.iy(p.y) - M.iy(prev.y);
+          mn.x1 += ddx; mn.x2 += ddx; mn.y1 += ddy; mn.y2 += ddy;
+        } else {
+          const X = M.ix(p.x), Y = M.iy(p.y);
+          const other = dragLine.which === 'a' ? mn.x2 : mn.x1;
+          // A handle cannot land on its partner's x — the line would turn vertical.
+          if (Math.abs(M.sx(X) - M.sx(other)) > 4) {
+            if (dragLine.which === 'a') { mn.x1 = X; mn.y1 = Y; } else { mn.x2 = X; mn.y2 = Y; }
+          }
+        }
+        self._resHTML = null;
+        self.draw();
+        return;
+      }
       if (pts.size === 1) {
         const dx = p.x - prev.x, dy = p.y - prev.y;
         moved += Math.abs(dx) + Math.abs(dy);
@@ -2223,6 +2904,13 @@
     const end = (e) => {
       if (!pts.has(e.pointerId)) return;
       pts.delete(e.pointerId);
+      if (dragLine && !pts.size) {
+        if (moved > 0) { self.touch(); self.renderTfoot(dragLine.t); }
+        dragLine = null;
+        stage.classList.remove('is-grabbing');
+        downAt = null;
+        return;
+      }
       if (!pts.size) {
         stage.classList.remove('is-grabbing');
         if (moved <= 3 && downAt && e.type === 'pointerup') self.clickAt(downAt);
@@ -2297,18 +2985,27 @@
           const d = Math.hypot(m.sx(q.x) - p.x, m.sy(q.y) - p.y);
           if (d <= 10) consider({ d: d - 3, kind: 'reading', x: q.x, y: q.y, dx: q.dx, dy: q.dy, item: it.id, colour: it.colour });
         });
-        const res = this.fitFor(it, tp);
-        if (res && res.fit && res.fit.predict) {
-          const y = res.fit.predict(x);
-          if (Number.isFinite(y)) {
-            const d = Math.abs(m.sy(y) - p.y);
-            if (d <= 12) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour, fn: res.fit.predict });
-          }
-        }
+        const curves = this.fitsFor(it, tp).filter((f) => f.res && f.res.fit && f.res.fit.predict).map((f) => f.res.fit.predict);
+        if (it.manual) curves.push(manualLine(it.manual).predict);
+        curves.forEach((fn) => {
+          const y = fn(x);
+          if (!Number.isFinite(y)) return;
+          const d = Math.abs(m.sy(y) - p.y);
+          if (d <= 12) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour, fn: fn });
+        });
         return;
       }
       const q = this.parsed(it);
       if (!q || q.error) return;
+      if (q.kind === 'regression') {
+        const fit = this.regressionOf(it);
+        if (!fit || !fit.fn) return;
+        const y = fit.fn(x);
+        if (!Number.isFinite(y)) return;
+        const d = Math.abs(m.sy(y) - p.y);
+        if (d <= 14) consider({ d: d, kind: 'curve', x: x, y: y, item: it.id, colour: it.colour, fn: fit.fn });
+        return;
+      }
       if (q.kind === 'fn') {
         const y = q.fn(x);
         if (!Number.isFinite(y)) return;
@@ -2427,17 +3124,21 @@
     this.doc.items.forEach((t) => {
       if (t.type !== 'table' || t.hidden) return;
       const pts = tablePoints(t);
-      const res = this.fitFor(t, pts);
-      if (!res || !res.fit) return;
-      fits++;
-      const f = res.fit;
-      lines.push('', t.name + ' — ' + f.equation(fmt));
-      if (f.m != null) lines.push('Gradient: ' + (f.um != null ? fmtWithU(f.m, f.um) : fmt(f.m)));
-      if (f.kind === 'linear') lines.push('Intercept: ' + (f.uc != null ? fmtWithU(f.c, f.uc) : fmt(f.c)));
-      lines.push('R²: ' + fmt(f.r2));
+      this.fitsFor(t, pts).forEach((fx) => {
+        if (!fx.res || !fx.res.fit) return;
+        fits++;
+        const f = fx.res.fit;
+        lines.push('', t.name + ' — ' + fx.name + ': ' + f.equation(fmt));
+        paramRows(f).forEach((r) => lines.push(r[0] + ' = ' + r[1]));
+      });
+      if (t.manual) {
+        fits++;
+        const ml = manualLine(t.manual);
+        lines.push('', t.name + ' — manual line: y = ' + fmt(ml.m) + 'x ' + (ml.c < 0 ? '− ' : '+ ') + fmt(Math.abs(ml.c)));
+      }
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
-        if (mm) lines.push('Gradient from the error bars: ' + fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty));
+        if (mm) { fits++; lines.push('Gradient from the error bars: ' + fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)); }
       }
     });
     if (!fits) { toast('Add readings and a fit first.', 'warning'); return; }

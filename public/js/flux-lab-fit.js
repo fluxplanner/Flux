@@ -83,6 +83,7 @@
     }
     return {
       kind: 'linear', m, c, um, uc,
+      params: [{ name: 'm', value: m, u: um }, { name: 'c', value: c, u: uc }],
       r2: rSquared(ys, predicted),
       predict: (x) => m * x + c,
       equation: (fmt) => `y = ${fmt(m)}x ${c < 0 ? '−' : '+'} ${fmt(Math.abs(c))}`,
@@ -108,6 +109,7 @@
     const um = n > 1 ? Math.sqrt(ssRes / ((n - 1) * sxx)) : null;
     return {
       kind: 'proportional', m, c: 0, um, uc: null,
+      params: [{ name: 'm', value: m, u: um }],
       r2: rSquared(ys, predicted),
       predict: (x) => m * x,
       equation: (fmt) => `y = ${fmt(m)}x`,
@@ -133,26 +135,229 @@
     return M.map((row, i) => row[n] / row[i]);
   }
 
-  /** y = ax² + bx + c, by the normal equations. Needs 3 distinct x values. */
-  function quadratic(xs, ys) {
-    const n = xs.length;
-    if (n < 3) return null;
-    let s0 = n, s1 = 0, s2 = 0, s3 = 0, s4 = 0, t0 = 0, t1 = 0, t2 = 0;
-    for (let i = 0; i < n; i++) {
-      const x = xs[i], y = ys[i], x2 = x * x;
-      s1 += x; s2 += x2; s3 += x2 * x; s4 += x2 * x2;
-      t0 += y; t1 += x * y; t2 += x2 * y;
+  /** Inverse of a small matrix, column by column. null if singular. */
+  function invert(A) {
+    const n = A.length, cols = [];
+    for (let j = 0; j < n; j++) {
+      const x = solve(A, A.map((_, i) => (i === j ? 1 : 0)));
+      if (!x) return null;
+      cols.push(x);
     }
-    const sol = solve([[s4, s3, s2], [s3, s2, s1], [s2, s1, s0]], [t2, t1, t0]);
-    if (!sol) return null;
-    const a = sol[0], b = sol[1], c = sol[2];
-    const predicted = xs.map((x) => a * x * x + b * x + c);
+    return A.map((_, i) => cols.map((c) => c[i]));
+  }
+
+  /** "+ 3.2x" / "− 3.2x": signs that read the way they are written by hand. */
+  function term(v, fmt, suffix, first) {
+    if (first) return fmt(v) + suffix;
+    return (v < 0 ? ' − ' : ' + ') + fmt(Math.abs(v)) + suffix;
+  }
+
+  /* ── Fits linear in their parameters: y = Σ pₖ·φₖ(x) ─────────────────
+     Quadratic, cubic, inverse and inverse-square are all ordinary least
+     squares on a different set of basis functions, so one routine does all
+     of them — and gives every parameter its standard error from the
+     covariance matrix, s²·(XᵀX)⁻¹, the same way the straight line does. */
+  function basisFit(kind, names, basis, xs, ys) {
+    const n = xs.length, k = basis.length;
+    if (n < k) return null;
+    const A = [], b = [];
+    for (let i = 0; i < k; i++) { A.push(new Array(k).fill(0)); b.push(0); }
+    for (let r = 0; r < n; r++) {
+      const row = basis.map((f) => f(xs[r]));
+      for (let i = 0; i < k; i++) {
+        b[i] += row[i] * ys[r];
+        for (let j = 0; j < k; j++) A[i][j] += row[i] * row[j];
+      }
+    }
+    const p = solve(A, b);
+    if (!p || p.some((v) => !Number.isFinite(v))) return null;
+    const predict = (x) => { let t = 0; for (let i = 0; i < k; i++) t += p[i] * basis[i](x); return t; };
+    const predicted = xs.map(predict);
+    let ssRes = 0;
+    for (let r = 0; r < n; r++) ssRes += Math.pow(ys[r] - predicted[r], 2);
+    let us = names.map(() => null);
+    if (n > k) {
+      const inv = invert(A);
+      if (inv) {
+        const s2 = ssRes / (n - k);
+        us = inv.map((row, i) => Math.sqrt(Math.max(0, row[i] * s2)));
+      }
+    }
     return {
-      kind: 'quadratic', a, b, c, um: null, uc: null,
+      kind: kind,
+      params: names.map((nm, i) => ({ name: nm, value: p[i], u: us[i] })),
       r2: rSquared(ys, predicted),
-      predict: (x) => a * x * x + b * x + c,
-      equation: (fmt) => `y = ${fmt(a)}x² ${b < 0 ? '−' : '+'} ${fmt(Math.abs(b))}x ${c < 0 ? '−' : '+'} ${fmt(Math.abs(c))}`,
+      predict: predict,
+      values: p,
     };
+  }
+
+  /** y = ax² + bx + c. Needs 3 distinct x values. */
+  function quadratic(xs, ys) {
+    const r = basisFit('quadratic', ['a', 'b', 'c'], [(x) => x * x, (x) => x, () => 1], xs, ys);
+    if (!r) return null;
+    const [a, b, c] = r.values;
+    return Object.assign(r, {
+      a, b, c, um: null, uc: null,
+      equation: (fmt) => 'y = ' + term(a, fmt, 'x²', true) + term(b, fmt, 'x') + term(c, fmt, ''),
+    });
+  }
+
+  /** y = ax³ + bx² + cx + d. Needs 4 distinct x values. */
+  function cubic(xs, ys) {
+    const r = basisFit('cubic', ['a', 'b', 'c', 'd'], [(x) => x * x * x, (x) => x * x, (x) => x, () => 1], xs, ys);
+    if (!r) return null;
+    const [a, b, c, d] = r.values;
+    return Object.assign(r, {
+      a, b, c, d,
+      equation: (fmt) => 'y = ' + term(a, fmt, 'x³', true) + term(b, fmt, 'x²') + term(c, fmt, 'x') + term(d, fmt, ''),
+    });
+  }
+
+  /** y = a/x + b and y = a/x² + b — Boyle's law, and anything inverse-square. */
+  function inverse(kind, xs, ys) {
+    for (let i = 0; i < xs.length; i++) {
+      if (xs[i] === 0) return { error: 'An inverse fit divides by x, so no x can be zero — row ' + (i + 1) + ' is 0.' };
+    }
+    const sq = kind === 'inverseSquare';
+    const r = basisFit(kind, ['a', 'b'], [sq ? (x) => 1 / (x * x) : (x) => 1 / x, () => 1], xs, ys);
+    if (!r) return null;
+    const [a, b] = r.values;
+    return Object.assign(r, {
+      a, b,
+      equation: (fmt) => 'y = ' + fmt(a) + (sq ? '/x²' : '/x') + term(b, fmt, ''),
+    });
+  }
+
+  /* ── Fits that are not linear in anything: Levenberg–Marquardt ─────────
+     A sine wave, a cooling curve with an offset, or any formula typed in by
+     hand. Minimises Σ residual² by damped Gauss–Newton steps: large damping
+     behaves like careful gradient descent far from the answer, small damping
+     like Newton close to it. Derivatives are numerical, so any model works.
+     Parameter uncertainties come from the covariance s²·(JᵀJ)⁻¹ at the
+     answer, the same quantity the linear fits report. */
+  function nonlinear(kind, names, model, p0, xs, ys) {
+    const n = xs.length, k = p0.length;
+    if (n < k) return { error: 'This fit has ' + k + ' numbers to find, so it needs at least ' + k + ' points.' };
+    let p = p0.slice();
+    const sse = (q) => {
+      let t = 0;
+      for (let i = 0; i < n; i++) {
+        const r = ys[i] - model(q, xs[i]);
+        if (!Number.isFinite(r)) return Infinity;
+        t += r * r;
+      }
+      return t;
+    };
+    const jac = (q) => {
+      const J = [];
+      const base = xs.map((x) => model(q, x));
+      for (let i = 0; i < n; i++) J.push(new Array(k));
+      for (let j = 0; j < k; j++) {
+        const h = Math.max(Math.abs(q[j]) * 1e-7, 1e-9);
+        const qq = q.slice();
+        qq[j] += h;
+        for (let i = 0; i < n; i++) J[i][j] = (model(qq, xs[i]) - base[i]) / h;
+      }
+      return { J: J, base: base };
+    };
+    let cur = sse(p);
+    if (!Number.isFinite(cur)) return { error: 'The starting values give no answer for some readings — try different ones.' };
+    let lambda = 1e-3;
+    for (let iter = 0; iter < 300; iter++) {
+      const { J, base } = jac(p);
+      const A = [], g = [];
+      for (let a = 0; a < k; a++) { A.push(new Array(k).fill(0)); g.push(0); }
+      for (let i = 0; i < n; i++) {
+        const r = ys[i] - base[i];
+        for (let a = 0; a < k; a++) {
+          g[a] += J[i][a] * r;
+          for (let b = 0; b < k; b++) A[a][b] += J[i][a] * J[i][b];
+        }
+      }
+      let improved = false;
+      while (lambda < 1e14) {
+        const D = A.map((row, a) => row.map((v, b) => (a === b ? v * (1 + lambda) + 1e-12 : v)));
+        const step = solve(D, g);
+        if (step) {
+          const next = p.map((v, j) => v + step[j]);
+          const s2 = sse(next);
+          if (s2 < cur) {
+            const gain = cur - s2;
+            p = next;
+            cur = s2;
+            lambda = Math.max(lambda / 10, 1e-12);
+            improved = true;
+            if (gain < 1e-14 * (cur + 1e-30)) iter = 1e9;   // converged
+            break;
+          }
+        }
+        lambda *= 10;
+      }
+      if (!improved) break;
+    }
+    const { J } = jac(p);
+    const A = [];
+    for (let a = 0; a < k; a++) A.push(new Array(k).fill(0));
+    for (let i = 0; i < n; i++) for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) A[a][b] += J[i][a] * J[i][b];
+    let us = names.map(() => null);
+    if (n > k) {
+      const inv = invert(A);
+      if (inv) us = inv.map((row, i) => Math.sqrt(Math.max(0, row[i] * cur / (n - k))));
+    }
+    const final = p.slice();
+    const predict = (x) => model(final, x);
+    return {
+      kind: kind,
+      params: names.map((nm, i) => ({ name: nm, value: final[i], u: us[i] })),
+      values: final,
+      r2: rSquared(ys, xs.map(predict)),
+      predict: predict,
+    };
+  }
+
+  /* ── y = A sin(Bx + C) + D ────────────────────────────────────────────
+     Iterative fitting lives or dies on its starting guess, and a sine has a
+     bad habit of settling on the wrong frequency. So the frequency is found
+     first by brute force — for each of a few hundred candidates the rest is
+     an ordinary linear fit (A sin + B cos + D), and the best one wins — and
+     only then is everything refined together. */
+  function sine(xs, ys) {
+    const n = xs.length;
+    if (n < 4) return { error: 'A sine fit needs at least four points.' };
+    const sorted = xs.slice().sort((a, b) => a - b);
+    const range = sorted[n - 1] - sorted[0];
+    if (!(range > 0)) return { error: 'A sine fit needs readings at different x values.' };
+    const gaps = [];
+    for (let i = 1; i < n; i++) if (sorted[i] > sorted[i - 1]) gaps.push(sorted[i] - sorted[i - 1]);
+    gaps.sort((a, b) => a - b);
+    const step = gaps[Math.floor(gaps.length / 2)] || range / n;
+    const wLo = Math.PI / range / 2, wHi = Math.PI / step;
+    let best = null;
+    const N = 500;
+    for (let i = 0; i <= N; i++) {
+      const w = wLo * Math.pow(wHi / wLo, i / N);
+      const r = basisFit('sine', ['s', 'c', 'd'], [(x) => Math.sin(w * x), (x) => Math.cos(w * x), () => 1], xs, ys);
+      if (!r) continue;
+      let e = 0;
+      for (let j = 0; j < n; j++) e += Math.pow(ys[j] - r.predict(xs[j]), 2);
+      if (!best || e < best.e) best = { e: e, w: w, s: r.values[0], c: r.values[1], d: r.values[2] };
+    }
+    if (!best) return { error: 'No sine wave fits these readings.' };
+    const model = (q, x) => q[0] * Math.sin(q[1] * x + q[2]) + q[3];
+    const r = nonlinear('sine', ['A', 'B', 'C', 'D'], model,
+      [Math.hypot(best.s, best.c), best.w, Math.atan2(best.c, best.s), best.d], xs, ys);
+    if (r.error) return r;
+    let [A, B, C, D] = r.values;
+    // One canonical form: positive amplitude and frequency, phase in (−π, π].
+    if (B < 0) { B = -B; C = -C + Math.PI; A = -A; }
+    if (A < 0) { A = -A; C += Math.PI; }
+    C = Math.atan2(Math.sin(C), Math.cos(C));
+    r.values = [A, B, C, D];
+    r.params.forEach((pp, i) => { pp.value = r.values[i]; });
+    r.predict = (x) => A * Math.sin(B * x + C) + D;
+    r.equation = (fmt) => 'y = ' + fmt(A) + ' sin(' + fmt(B) + 'x' + term(C, fmt, '') + ')' + term(D, fmt, '');
+    return r;
   }
 
   /* ── Fits done by straightening first ───────────────────────────────────
@@ -177,26 +382,32 @@
     const lin = linear(tx, ty);
     if (!lin) return null;
 
-    let predict, equation, params;
+    let predict, equation, params, list;
+    /* Uncertainties come from the straight-line fit on the transformed data.
+       For a = e^c the standard error scales with a itself: u(a) = a·u(c). */
     if (kind === 'power') {              // ln y = ln a + b ln x
       const a = Math.exp(lin.c), b = lin.m;
       params = { a, b };
+      list = [{ name: 'a', value: a, u: lin.uc == null ? null : a * lin.uc }, { name: 'b', value: b, u: lin.um }];
       predict = (x) => a * Math.pow(x, b);
       equation = (fmt) => `y = ${fmt(a)}x^${fmt(b)}`;
     } else if (kind === 'exponential') { // ln y = ln a + bx
       const a = Math.exp(lin.c), b = lin.m;
       params = { a, b };
+      list = [{ name: 'a', value: a, u: lin.uc == null ? null : a * lin.uc }, { name: 'b', value: b, u: lin.um }];
       predict = (x) => a * Math.exp(b * x);
       equation = (fmt) => `y = ${fmt(a)}e^(${fmt(b)}x)`;
     } else {                             // y = a + b ln x
       const a = lin.c, b = lin.m;
       params = { a, b };
+      list = [{ name: 'a', value: a, u: lin.uc }, { name: 'b', value: b, u: lin.um }];
       predict = (x) => a + b * Math.log(x);
       equation = (fmt) => `y = ${fmt(a)} ${b < 0 ? '−' : '+'} ${fmt(Math.abs(b))}ln x`;
     }
     const predicted = xs.map(predict);
     return Object.assign({ kind }, params, {
       um: null, uc: null,
+      params: list,
       /* R² against the ORIGINAL y values, not the logged ones. The transformed
          figure is almost always higher and would overstate how well the curve
          describes the actual measurements. */
@@ -247,7 +458,7 @@
     return Math.abs(v);
   }
 
-  const FITS = { linear: linear, proportional: proportional, quadratic: quadratic };
+  const FITS = { linear: linear, proportional: proportional, quadratic: quadratic, cubic: cubic };
 
   /**
    * One entry point for the UI. Returns { fit } or { error } and never throws:
@@ -266,11 +477,21 @@
     if (FITS[kind]) {
       const r = FITS[kind](xs, ys);
       if (!r) {
-        return { error: kind === 'quadratic'
-          ? 'A curve needs at least three points with different x values.'
-          : 'These points do not define a line — every x is the same.' };
+        if (kind === 'quadratic') return { error: 'A quadratic needs at least three points with different x values.' };
+        if (kind === 'cubic') return { error: 'A cubic needs at least four points with different x values.' };
+        return { error: 'These points do not define a line — every x is the same.' };
       }
       return { fit: r };
+    }
+    if (kind === 'inverse' || kind === 'inverseSquare') {
+      const r = inverse(kind, xs, ys);
+      if (!r) return { error: 'That fit could not be calculated from these points.' };
+      if (r.error) return { error: r.error };
+      return { fit: r };
+    }
+    if (kind === 'sine') {
+      const r = sine(xs, ys);
+      return r.error ? { error: r.error } : { fit: r };
     }
     if (kind === 'power' || kind === 'exponential' || kind === 'logarithmic') {
       const r = transformed(kind, xs, ys);
@@ -281,23 +502,64 @@
     return { error: 'Unknown fit "' + kind + '".' };
   }
 
+  /* ── Choosing the fit automatically ──────────────────────────────────
+     Every fit is tried and scored by AICc — the residual sum of squares,
+     penalised for each extra number the model gets to tune, with the
+     small-sample correction. R² alone would always crown the most flexible
+     curve: a cubic "beats" a straight line on straight-line data by fitting
+     the noise. When two models fit exactly, the penalty picks the simpler. */
+  function best(points) {
+    const usable = (points || []).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    const n = usable.length;
+    if (n < 3) return { error: 'Choosing the best fit needs at least three readings.' };
+    const my = usable.reduce((a, p) => a + p.y, 0) / n;
+    const syy = usable.reduce((a, p) => a + (p.y - my) * (p.y - my), 0);
+    const floor = Math.max(syy, 1e-300) * 1e-12;   // an exact fit is not infinitely good
+    let win = null;
+    const tried = [];
+    KINDS.forEach((k) => {
+      const r = fit(k.id, usable);
+      if (!r.fit) return;
+      const kp = (r.fit.params || []).length || 2;
+      if (n - kp - 1 <= 0) return;
+      let sse = 0;
+      usable.forEach((p) => { sse += Math.pow(p.y - r.fit.predict(p.x), 2); });
+      if (!Number.isFinite(sse)) return;
+      const aicc = n * Math.log(Math.max(sse, floor) / n) + 2 * kp + (2 * kp * (kp + 1)) / (n - kp - 1);
+      tried.push({ kind: k.id, name: k.name, aicc: aicc });
+      if (!win || aicc < win.aicc - 1e-9) win = { kind: k.id, name: k.name, aicc: aicc, fit: r.fit };
+    });
+    if (!win) return { error: 'No fit could be compared on these readings — add a few more.' };
+    return { fit: win.fit, kind: win.kind, name: win.name, ranking: tried.sort((a, b) => a.aicc - b.aicc) };
+  }
+
+  const KINDS = [
+    { id: 'linear', name: 'Straight line', hint: 'y = mx + c' },
+    { id: 'proportional', name: 'Through the origin', hint: 'y = mx' },
+    { id: 'quadratic', name: 'Quadratic', hint: 'y = ax² + bx + c' },
+    { id: 'power', name: 'Power', hint: 'y = axᵇ' },
+    { id: 'exponential', name: 'Exponential', hint: 'y = aeᵇˣ' },
+    { id: 'logarithmic', name: 'Logarithmic', hint: 'y = a + b ln x' },
+    { id: 'cubic', name: 'Cubic', hint: 'y = ax³ + bx² + cx + d' },
+    { id: 'inverse', name: 'Inverse', hint: 'y = a/x + b' },
+    { id: 'inverseSquare', name: 'Inverse square', hint: 'y = a/x² + b' },
+    { id: 'sine', name: 'Sine', hint: 'y = A sin(Bx + C) + D' },
+  ];
+
   window.FluxLabFit = {
     fit: fit,
+    best: best,
     linear: linear,
     proportional: proportional,
     quadratic: quadratic,
+    cubic: cubic,
+    sine: sine,
+    nonlinear: nonlinear,
     transformed: transformed,
     minMaxGradient: minMaxGradient,
     resolveUncertainty: resolveUncertainty,
     rSquared: rSquared,
     moments: moments,
-    KINDS: [
-      { id: 'linear', name: 'Straight line', hint: 'y = mx + c' },
-      { id: 'proportional', name: 'Through the origin', hint: 'y = mx' },
-      { id: 'quadratic', name: 'Quadratic', hint: 'y = ax² + bx + c' },
-      { id: 'power', name: 'Power', hint: 'y = axᵇ' },
-      { id: 'exponential', name: 'Exponential', hint: 'y = aeᵇˣ' },
-      { id: 'logarithmic', name: 'Logarithmic', hint: 'y = a + b ln x' },
-    ],
+    KINDS: KINDS,
   };
 })();

@@ -130,6 +130,22 @@ for (const r of results) {
 }
 fs.writeFileSync(INDEX, indexHtml);
 
+// 2b. grapher.html loads plain source files — it has to work on its own —
+//     and the service worker serves unhashed files stale-while-revalidate.
+//     So after a deploy a returning visitor got the NEW grapher.html with
+//     the OLD scripts, and the page broke ("G.create is not a function").
+//     A content hash in each query string makes every version its own URL.
+const GRAPHER = path.join(ROOT, 'grapher.html');
+if (fs.existsSync(GRAPHER)) {
+  const before = fs.readFileSync(GRAPHER, 'utf8');
+  const after = before.replace(/(src|href)="(public\/(?:js|css)\/[\w.-]+\.(?:js|css))(\?v=[0-9a-f]+)?"/g, (m, attr, file) => {
+    const abs = path.join(ROOT, file);
+    if (!fs.existsSync(abs)) return m;
+    return `${attr}="${file}?v=${hash8(fs.readFileSync(abs, 'utf8'))}"`;
+  });
+  if (after !== before) fs.writeFileSync(GRAPHER, after);
+}
+
 // 3. Precache manifest + BUILD stamp in the service worker (auto-versioned —
 //    never bump STATIC by hand again).
 const build = hash8(results.map((r) => r.out).join('|'));

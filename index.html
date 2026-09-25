@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.0af88797.css">
+<link rel="stylesheet" href="public/bundles/flux.9422e82c.css">
 </head>
 <body>
 <noscript>
@@ -228,6 +228,7 @@
       </a>
       <nav class="lx-topbar-actions" aria-label="Login">
         <a class="lx-navlink" href="#features">Features</a>
+        <a class="lx-navlink" href="#grapher">Grapher</a>
         <button type="button" class="lx-ghost-btn" onclick="skipLogin()">
           Continue as guest <span aria-hidden="true">→</span>
         </button>
@@ -261,6 +262,7 @@
           <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#8ab4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Smart calendar</span>
           <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ffd66b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/></svg>4-decimal GPA</span>
           <span class="lx-chip"><svg viewBox="0 0 24 24" fill="none" stroke="#b7a4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.5L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg>Study tools</span>
+          <a class="lx-chip lx-chip--link" href="graph/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>Free grapher <span aria-hidden="true">↗</span></a>
         </div>
 
         <div class="lx-integrations">
@@ -447,6 +449,59 @@
               <div class="login-feature-desc">Canvas assignments, Notion / Obsidian export and iCal calendar feeds.</div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Flux Grapher — shown to every audience, and usable without an account ── -->
+    <section class="login-scroll-section lx-section lx-grapher-sec" id="grapher" aria-labelledby="lxGrapherTitle">
+      <div class="lx-wrap">
+        <div class="lx-grapher">
+          <div class="lx-grapher-copy">
+            <p class="lx-section-eyebrow">New · free for everyone · no account</p>
+            <h2 class="lx-section-title" id="lxGrapherTitle">Flux Grapher</h2>
+            <p class="lx-section-lede">A graphing calculator for maths and a lab grapher for science, in one — made to be better than paying for either.</p>
+            <ul class="lx-grapher-list">
+              <li><b>Functions, like Desmos.</b> Type equations, drag sliders, and click a curve for its zeros, maximums and where it crosses — with a maths keyboard on phones.</li>
+              <li><b>Lab data, like Graphical Analysis.</b> Tables with uncertainty columns, error bars and calculated columns that carry the uncertainty through.</li>
+              <li><b>Every best-fit line.</b> Straight, quadratic, power, exponential, sine or your own formula — or let it pick the best one — plus a line you drag into place by eye.</li>
+              <li><b>Ready for the report.</b> Gradient ± uncertainty, max/min lines, and a clean image to paste in.</li>
+            </ul>
+            <div class="lx-grapher-actions">
+              <a class="lx-submit lx-grapher-go" href="graph/" target="_blank" rel="noopener">Open the grapher <span class="lx-submit-arrow" aria-hidden="true">↗</span></a>
+              <span class="lx-grapher-note">Sign in only if you want to save — graphs then open in Flux Planner too.</span>
+            </div>
+          </div>
+          <a class="lx-grapher-art" href="graph/" target="_blank" rel="noopener" aria-label="Open the Flux Grapher">
+            <svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="lxGrFit" x1="0" x2="1"><stop offset="0" stop-color="#37cdff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient>
+              </defs>
+              <rect x="0.5" y="0.5" width="419" height="299" rx="18" fill="rgba(10,15,28,.85)" stroke="rgba(255,255,255,.1)"/>
+              <g stroke="rgba(255,255,255,.07)">
+                <path d="M60 40V250M120 40V250M180 40V250M240 40V250M300 40V250M360 40V250"/>
+                <path d="M50 70H390M50 115H390M50 160H390M50 205H390"/>
+              </g>
+              <path d="M50 250H390M50 40V250" stroke="rgba(226,236,255,.45)" stroke-width="1.5"/>
+              <line x1="60" y1="236" x2="380" y2="58" stroke="url(#lxGrFit)" stroke-width="3" stroke-linecap="round"/>
+              <line x1="60" y1="226" x2="380" y2="72" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="7 5" opacity=".8"/>
+              <line x1="60" y1="244" x2="380" y2="46" stroke="#a78bfa" stroke-width="1.6" stroke-dasharray="7 5" opacity=".8"/>
+              <g stroke="#7fe3ff" stroke-width="1.6" opacity=".85">
+                <path d="M92 204V234M88 204h8M88 234h8"/><path d="M148 180V206M144 180h8M144 206h8"/>
+                <path d="M204 142V174M200 142h8M200 174h8"/><path d="M260 118V142M256 118h8M256 142h8"/>
+                <path d="M316 80V110M312 80h8M312 110h8"/><path d="M364 58V86M360 58h8M360 86h8"/>
+              </g>
+              <g fill="#00c2ff" stroke="rgba(0,0,0,.35)">
+                <circle cx="92" cy="219" r="5"/><circle cx="148" cy="193" r="5"/><circle cx="204" cy="158" r="5"/>
+                <circle cx="260" cy="130" r="5"/><circle cx="316" cy="95" r="5"/><circle cx="364" cy="72" r="5"/>
+              </g>
+              <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="12">
+                <rect x="66" y="52" width="170" height="54" rx="10" fill="rgba(8,12,22,.9)" stroke="rgba(255,255,255,.12)"/>
+                <text x="80" y="74" fill="#eaf1ff" font-weight="700">y = 1.99x + 0.05</text>
+                <text x="80" y="94" fill="#9fb0cc">m = 1.99 ± 0.06</text>
+              </g>
+            </svg>
+          </a>
         </div>
       </div>
     </section>
@@ -1077,6 +1132,9 @@
         </button>
         <div class="date-pill topbar-desktop-only" id="datePill"></div>
         <div id="syncIndicator" class="sync-badge offline topbar-sync-pill topbar-desktop-only" style="display:none">Local</div>
+        <!-- The Flux app switcher, for phones: the desktop one lives in the
+             left cluster, which is hidden below 768px. -->
+        <div data-flux-hub="planner" class="topbar-mob-hub"></div>
         <button type="button" class="topbar-mob-av" id="topbarMobAv" onclick="navMob('profile')" aria-label="Your profile">
           <span id="topbarMobAvInitial">F</span>
         </button>
@@ -2862,7 +2920,7 @@
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
 <script defer src="public/bundles/flux-core.01c03a3e.js"></script>
-<script defer src="public/bundles/flux-features.65ea6a01.js"></script>
+<script defer src="public/bundles/flux-features.4fa9c73a.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
