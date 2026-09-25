@@ -184,6 +184,7 @@
     "public/js/flux-expr.js",
     "public/js/flux-hub.js",
     "public/js/flux-grapher.js",
+    "public/js/flux-grapher-cloud.js",
     "public/js/flux-study-math.js",
     "public/js/flux-study-calculus.js",
     "public/js/flux-study-music.js",
