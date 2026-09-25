@@ -21,6 +21,8 @@
   inside the planner so both look the same.
 -->
 <link rel="stylesheet" href="public/css/flux-grapher.css">
+<!-- Real files, not bundles, so this page keeps working on its own. -->
+<link rel="stylesheet" href="public/css/flux-hub.css">
 <style>
   :root {
     --bg: #070b14;
@@ -123,14 +125,18 @@
 <body>
   <div class="wrap">
     <header class="top">
-      <a class="brand" href="index.html">
+      <!-- The brand no longer navigates. It pointed at the planner, which made
+           the Flux mark mean "leave" — and on a page whose whole promise is
+           "no account needed", the one obvious thing to click sent you to the
+           thing that asks for one. Switching apps is the hub's job now. -->
+      <span class="brand">
         <span class="brand-mark" aria-hidden="true">📉</span>
         <span>
           <span class="brand-name">Flux Grapher</span>
           <span class="brand-tag">Free · no account</span>
         </span>
-      </a>
-      <a class="top-link" href="index.html">Open the planner →</a>
+      </span>
+      <div data-flux-hub="grapher"></div>
     </header>
 
     <section class="hero">
@@ -154,6 +160,7 @@
   </div>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
+  <script src="public/js/flux-hub.js"></script>
   <script src="public/js/flux-lab-fit.js"></script>
   <script src="public/js/flux-grapher.js"></script>
   <script>

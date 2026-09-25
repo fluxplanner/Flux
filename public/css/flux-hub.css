@@ -1,0 +1,190 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * FLUX HUB · flux-hub.css
+ * The product switcher, shared by the planner and the standalone grapher.
+ *
+ * Every selector is namespaced .fxhub* because this file loads into two very
+ * different documents: the planner, with 150-odd stylesheets already in play,
+ * and grapher.html, which has almost nothing. Nothing may leak either way.
+ *
+ * Colours come from the app's custom properties with literal fallbacks behind
+ * them — the grapher defines its own small palette and does not carry the
+ * planner's full token set, so a bare var() would render invisible there.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fxhub {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/* ── The button ─────────────────────────────────────────────────────────── */
+.fxhub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 11px;
+  cursor: pointer;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--text, #eaf1ff);
+  background: var(--card2, rgba(28, 36, 58, .8));
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+  /* The planner lifts every button on hover with a shadow; this one sits in a
+     header and should stay put, so both are pinned off. */
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+.fxhub-btn:hover {
+  color: #fff;
+  border-color: rgba(0, 194, 255, .5);
+  background: rgba(0, 194, 255, .1);
+}
+.fxhub-btn:focus-visible {
+  outline: 2px solid var(--accent, #00c2ff);
+  outline-offset: 2px;
+}
+.fxhub-btn-mark {
+  display: inline-flex;
+  color: var(--accent, #00c2ff);
+}
+.fxhub-btn-label { line-height: 1; }
+
+/* ── The panel ──────────────────────────────────────────────────────────── */
+.fxhub-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 9999;          /* above the planner's sticky top bar and its overlays */
+  min-width: 268px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--card, rgba(20, 27, 45, .98));
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+  box-shadow: 0 18px 48px -12px rgba(0, 0, 0, .7);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  animation: fxhubIn .16s cubic-bezier(.2, .9, .3, 1);
+}
+.fxhub-panel[hidden] { display: none; }
+
+@keyframes fxhubIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+/* Anyone who asked not to see motion still gets the panel, just not the move. */
+@media (prefers-reduced-motion: reduce) {
+  .fxhub-panel { animation: none; }
+}
+
+.fxhub-panel-h {
+  padding: 6px 10px 8px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted2, #9fb0cc);
+}
+
+/* ── One product ────────────────────────────────────────────────────────── */
+.fxhub-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text, #eaf1ff);
+  border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease;
+}
+.fxhub-item:hover {
+  background: rgba(255, 255, 255, .05);
+  border-color: var(--border, rgba(255, 255, 255, .07));
+}
+.fxhub-item.is-here {
+  background: rgba(0, 194, 255, .08);
+  border-color: rgba(0, 194, 255, .28);
+}
+
+.fxhub-item-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 10px;
+  color: var(--accent, #00c2ff);
+  background: rgba(0, 194, 255, .1);
+  border: 1px solid rgba(0, 194, 255, .2);
+}
+
+.fxhub-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;           /* lets a long tagline ellipsis instead of stretching */
+  flex: 1;
+}
+.fxhub-item-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .86rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.fxhub-item-tag {
+  font-size: .7rem;
+  color: var(--muted2, #9fb0cc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Worth saying quietly: the grapher costs nothing and needs no account. */
+.fxhub-free {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #0a2e1f;
+  background: linear-gradient(135deg, #10d9a0, #4ade80);
+}
+
+.fxhub-here {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--accent, #00c2ff);
+}
+
+.fxhub-foot {
+  padding: 9px 10px 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, .07));
+  font-size: .67rem;
+  line-height: 1.5;
+  color: var(--muted2, #9fb0cc);
+}
+
+/* ── Phones ─────────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  /* The word is redundant beside the mark once space is tight. */
+  .fxhub-btn-label { display: none; }
+  .fxhub-btn { padding: 8px 10px; }
+  /* Anchored left, the panel would run off the right edge of a narrow screen. */
+  .fxhub-panel {
+    left: 0;
+    right: auto;
+    min-width: min(280px, calc(100vw - 32px));
+  }
+}
