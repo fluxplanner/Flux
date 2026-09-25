@@ -1,38 +1,128 @@
 {
-  "generated": "2026-09-15",
+  "generated": "2026-09-25",
   "firstCommit": "2026-03-12",
-  "total": 615,
+  "total": 630,
   "omitted": 298,
   "entries": [
     {
-      "date": "2026-09-15",
+      "date": "2026-09-25",
       "type": "Added",
-      "title": "Settings loses nine cards, three whole sections, and its uneven gaps",
-      "hash": "f76b916"
+      "title": "Desmos-level Functions — keypad, definitions, regressions — and every fit, switchable",
+      "hash": "9fe07a4"
     },
     {
-      "date": "2026-09-15",
+      "date": "2026-09-25",
+      "type": "Changed",
+      "title": "Zeros & turning points, ± columns, window control, saving to your account (#62)",
+      "hash": "4484768"
+    },
+    {
+      "date": "2026-09-25",
       "type": "Added",
-      "title": "Change your own password, in Settings → Account",
-      "hash": "392b6d1"
+      "title": "A grapher that understands uncertainties, and a free one anyone can use (#61)",
+      "hash": "4d1f10a"
+    },
+    {
+      "date": "2026-09-24",
+      "type": "Fixed",
+      "title": "\"veis\", not \"véis\" — and a sweep so the next one cannot hide (#60)",
+      "hash": "f4150e2"
+    },
+    {
+      "date": "2026-09-24",
+      "type": "Added",
+      "title": "You can dismiss the heavy-day warning, and it returns if it changes (#59)",
+      "hash": "9160ec7"
+    },
+    {
+      "date": "2026-09-24",
+      "type": "Fixed",
+      "title": "The date picker opens where it belongs, instead of lurching on first click (#58)",
+      "hash": "792a47f"
+    },
+    {
+      "date": "2026-09-24",
+      "type": "Fixed",
+      "title": "The calendar stops telling you to sign in with a Google that is off (#57)",
+      "hash": "50cdeda"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Added",
+      "title": "Count down to anything, not just the next test (#56)",
+      "hash": "1de0396"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Added",
+      "title": "Your locker and ID live in Profile, and the PDF importer is gone (#55)",
+      "hash": "b85baad"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Added",
+      "title": "Pick a colour for each activity, the way classes already work (#54)",
+      "hash": "4c8d35f"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Added",
+      "title": "Edit a task from the calendar, not just tick or delete it (#53)",
+      "hash": "10bea25"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Added",
+      "title": "Everyone converted off Google picks their own name and password (#51)",
+      "hash": "56c3a26"
+    },
+    {
+      "date": "2026-09-23",
+      "type": "Fixed",
+      "title": "The owner is recognised by account id, not by email address (#52)",
+      "hash": "0fc75f7"
+    },
+    {
+      "date": "2026-09-22",
+      "type": "Added",
+      "title": "One Add button on the calendar, not a Task one that did less (#50)",
+      "hash": "0c91724"
+    },
+    {
+      "date": "2026-09-22",
+      "type": "Fixed",
+      "title": "The phone would not scroll at all (#49)",
+      "hash": "aeaa67e"
+    },
+    {
+      "date": "2026-09-19",
+      "type": "Added",
+      "title": "Colour the periodic table by a trend, with the arrows spelled out (#48)",
+      "hash": "1b69866"
+    },
+    {
+      "date": "2026-09-19",
+      "type": "Added",
+      "title": "One formula sheet per subject, split by unit (#47)",
+      "hash": "fac8c27"
+    },
+    {
+      "date": "2026-09-19",
+      "type": "Fixed",
+      "title": "Say what is wrong with a password instead of reciting the alphabet (#46)",
+      "hash": "847ca0c"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
-      "title": "The sign-up form asked for your name twice and your password once",
-      "hash": "e31f758"
+      "title": "One Reference in Chemistry, and gravity follows your programme (#45)",
+      "hash": "f14b759"
     },
     {
       "date": "2026-09-15",
       "type": "Fixed",
-      "title": "One Reference in Chemistry, and gravity follows your programme",
-      "hash": "8bb4462"
-    },
-    {
-      "date": "2026-09-15",
-      "type": "Fixed",
-      "title": "The conjugator was wrong about a whole family of common verbs",
-      "hash": "264920f"
+      "title": "The conjugator was wrong about a whole family of common verbs (#44)",
+      "hash": "04bf5b9"
     },
     {
       "date": "2026-09-15",
