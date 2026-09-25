@@ -228,3 +228,122 @@
   padding: 10px 12px;
 }
 .flg-export { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Function mode ─────────────────────────────────────────────────────────
+   The other half of the grapher: expressions, not readings. Shares the chart
+   classes above (.flg-svg, .flg-grid, .flg-tick, .flg-plotbg) so both halves
+   look like the same tool rather than two that happen to sit together.
+
+   The plot takes the room. The expression list is a narrow rail, because a
+   function graph is the thing you are reading — unlike the data half, where
+   the table is being actively typed into. */
+.flg--fn {
+  display: grid;
+  grid-template-columns: minmax(230px, 280px) 1fr;
+  gap: 14px;
+  align-items: start;
+  height: 100%;
+}
+
+.flg-fnside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.flg-fnrows { display: flex; flex-direction: column; gap: 8px; }
+
+.flg-fnrow {
+  display: grid;
+  grid-template-columns: 28px auto 1fr 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 11px;
+  background: var(--card2, rgba(28, 36, 58, .55));
+  border: 1px solid var(--border, rgba(255, 255, 255, .07));
+}
+
+.flg-fncol {
+  width: 26px; height: 26px;
+  padding: 2px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid var(--border2, rgba(255, 255, 255, .14));
+  background: none;
+}
+
+.flg-fnpre {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .78rem;
+  color: var(--muted2, #9fb0cc);
+}
+
+.flg-fnsrc {
+  width: 100%;
+  min-width: 0;              /* lets a long expression scroll rather than widen the rail */
+  margin: 0;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .82rem;
+  color: var(--text, #eaf1ff);
+  background: rgba(10, 14, 24, .6);
+  border: 1px solid var(--border, rgba(255, 255, 255, .07));
+}
+.flg-fnsrc:focus {
+  outline: none;
+  border-color: rgba(0, 194, 255, .5);
+}
+
+.flg-fndel {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 0; border-radius: 7px;
+  cursor: pointer;
+  font-size: .8rem;
+  color: var(--muted2, #9fb0cc);
+  background: transparent;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.flg-fndel:hover { color: #ff6b81; background: rgba(255, 107, 129, .1); }
+
+/* Spans the whole row so a long message wraps under the input rather than
+   squeezing it. */
+.flg-fnerr {
+  grid-column: 1 / -1;
+  font-size: .71rem;
+  line-height: 1.45;
+  color: #fbbf24;
+}
+
+.flg-fnrange {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: .74rem;
+  color: var(--muted2, #9fb0cc);
+}
+.flg-fnrange label { display: inline-flex; align-items: center; gap: 5px; }
+.flg-fnrange input {
+  width: 62px;
+  margin: 0;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: .78rem;
+  color: var(--text, #eaf1ff);
+  background: rgba(10, 14, 24, .6);
+  border: 1px solid var(--border, rgba(255, 255, 255, .07));
+}
+
+.flg-fnchart { min-width: 0; }
+.flg-fnchart .flg-svg { width: 100%; height: auto; }
+
+@media (max-width: 760px) {
+  /* Rail above the plot, not beside it — 230px of sidebar on a phone leaves
+     the graph too narrow to read. */
+  .flg--fn { grid-template-columns: 1fr; }
+}

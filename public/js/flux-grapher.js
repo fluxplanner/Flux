@@ -590,5 +590,203 @@
     return g;
   }
 
-  window.FluxGrapher = { mount: mount, INBOX_KEY: INBOX_KEY, WORKING_KEY: WORKING_KEY };
+  /* ══════════════════════════════════════════════════════════════════════
+     FUNCTION MODE — the other half of the grapher.
+
+     Typing y = x² to see its shape and plotting eleven readings with error
+     bars are different jobs, and one screen serving both is worse at each.
+     This half has no table, no uncertainties and no fits: an expression, a
+     colour, a curve.
+
+     Deliberately outside the Grapher class. That class is about a dataset, and
+     bolting a second meaning onto its state would make both harder to follow.
+     ══════════════════════════════════════════════════════════════════════ */
+  const FN_KEY = 'flux_grapher_fns';
+  const FN_COLOURS = ['#00c2ff', '#7c5cff', '#10d9a0', '#fbbf24', '#f43f5e', '#e879f9'];
+
+  function mountFunctions(host) {
+    if (!host) return null;
+    let st = readJSON(FN_KEY, null);
+    if (!st || !Array.isArray(st.exprs) || !st.exprs.length) {
+      st = { exprs: [{ src: 'x^2', colour: FN_COLOURS[0] }], view: { xLo: -10, xHi: 10 } };
+    }
+    if (!st.view) st.view = { xLo: -10, xHi: 10 };
+    function save() { writeJSON(FN_KEY, st); }
+
+    function draw() {
+      const W = 900, H = 560, padL = 46, padR = 18, padT = 18, padB = 34;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const xLo = st.view.xLo, xHi = st.view.xHi;
+
+      const compiled = st.exprs.map(function (ex) {
+        if (!ex.src || !ex.src.trim()) return null;
+        const r = window.FluxExpr ? window.FluxExpr.tryCompile(ex.src) : { error: 'Parser missing' };
+        return r.error ? { error: r.error } : { fn: r.fn };
+      });
+
+      /* The y range follows what the curves actually do across the visible x,
+         so a parabola frames itself instead of the reader hunting for it.
+         Trimmed at the 2nd and 98th percentile rather than min/max: one pole
+         would otherwise squash everything else into a flat line. */
+      const samples = [];
+      compiled.forEach(function (c) {
+        if (!c || c.error) return;
+        for (let k = 0; k <= 240; k++) {
+          const y = c.fn(xLo + ((xHi - xLo) * k) / 240);
+          if (Number.isFinite(y)) samples.push(y);
+        }
+      });
+      let yLo = -10, yHi = 10;
+      if (samples.length > 4) {
+        samples.sort(function (a, b) { return a - b; });
+        const lo = samples[Math.floor(samples.length * 0.02)];
+        const hi = samples[Math.floor(samples.length * 0.98)];
+        if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) {
+          const pad = (hi - lo) * 0.12;
+          yLo = lo - pad; yHi = hi + pad;
+        }
+      }
+
+      const sx = function (x) { return padL + ((x - xLo) / (xHi - xLo)) * plotW; };
+      const sy = function (y) { return padT + plotH - ((y - yLo) / (yHi - yLo)) * plotH; };
+
+      let g = '';
+      niceTicks(xLo, xHi, 8).forEach(function (t) {
+        const X = sx(t);
+        g += '<line x1="' + X + '" y1="' + padT + '" x2="' + X + '" y2="' + (padT + plotH) + '" class="flg-grid"/>'
+          + '<text x="' + X + '" y="' + (padT + plotH + 16) + '" class="flg-tick" text-anchor="middle">' + fmt(t) + '</text>';
+      });
+      niceTicks(yLo, yHi, 7).forEach(function (t) {
+        const Y = sy(t);
+        g += '<line x1="' + padL + '" y1="' + Y + '" x2="' + (padL + plotW) + '" y2="' + Y + '" class="flg-grid"/>'
+          + '<text x="' + (padL - 7) + '" y="' + (Y + 4) + '" class="flg-tick" text-anchor="end">' + fmt(t) + '</text>';
+      });
+      // The axes proper, drawn at zero whenever zero is on screen.
+      if (yLo < 0 && yHi > 0) g += '<line x1="' + padL + '" y1="' + sy(0) + '" x2="' + (padL + plotW) + '" y2="' + sy(0) + '" class="flg-axis"/>';
+      if (xLo < 0 && xHi > 0) g += '<line x1="' + sx(0) + '" y1="' + padT + '" x2="' + sx(0) + '" y2="' + (padT + plotH) + '" class="flg-axis"/>';
+
+      let curves = '';
+      compiled.forEach(function (c, idx) {
+        if (!c || c.error) return;
+        const colour = st.exprs[idx].colour || FN_COLOURS[idx % FN_COLOURS.length];
+        let run = [];
+        const flush = function () {
+          if (run.length > 1) {
+            curves += '<polyline points="' + run.join(' ') + '" fill="none" stroke="' + colour
+              + '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
+          }
+          run = [];
+        };
+        let prevY = null;
+        for (let k = 0; k <= 900; k++) {
+          const x = xLo + ((xHi - xLo) * k) / 900;
+          const y = c.fn(x);
+          if (!Number.isFinite(y)) { flush(); prevY = null; continue; }
+          /* Break the line at a pole rather than drawing a vertical streak
+             across the plot — tan(x) and 1/x look absurd otherwise. */
+          if (prevY !== null && Math.abs(y - prevY) > (yHi - yLo) * 1.6) flush();
+          prevY = y;
+          if (y < yLo - (yHi - yLo) * 2 || y > yHi + (yHi - yLo) * 2) { flush(); continue; }
+          run.push(sx(x).toFixed(1) + ',' + sy(y).toFixed(1));
+        }
+        flush();
+      });
+
+      return '<svg class="flg-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Function graph">'
+        + '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" class="flg-plotbg"/>'
+        + g + curves + '</svg>';
+    }
+
+    function rowsHTML() {
+      return st.exprs.map(function (ex, i) {
+        const r = ex.src && ex.src.trim() && window.FluxExpr
+          ? window.FluxExpr.tryCompile(ex.src) : {};
+        return '<div class="flg-fnrow">'
+          + '<input type="color" class="flg-fncol" data-i="' + i + '" value="'
+          + esc(ex.colour || FN_COLOURS[i % FN_COLOURS.length]) + '" aria-label="Colour for function ' + (i + 1) + '">'
+          + '<span class="flg-fnpre" aria-hidden="true">y =</span>'
+          + '<input type="text" class="flg-fnsrc" data-i="' + i + '" value="' + esc(ex.src)
+          + '" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Function ' + (i + 1) + '">'
+          + '<button type="button" class="flg-fndel" data-del="' + i + '" aria-label="Remove function ' + (i + 1) + '">✕</button>'
+          + (r.error ? '<div class="flg-fnerr">' + esc(r.error) + '</div>' : '')
+          + '</div>';
+      }).join('');
+    }
+
+    function paint() {
+      const c = host.querySelector('.flg-fnchart');
+      if (c) c.innerHTML = draw();
+    }
+
+    function render() {
+      host.innerHTML = '<div class="flg flg--fn">'
+        + '<div class="flg-fnside">'
+        + '<div class="flg-fnrows">' + rowsHTML() + '</div>'
+        + '<button type="button" class="flg-btn ghost" id="flgFnAdd">+ Another</button>'
+        + '<div class="flg-fnrange">'
+        + '<label>x from <input type="text" inputmode="decimal" id="flgFnLo" value="' + esc(st.view.xLo) + '" aria-label="x axis minimum"></label>'
+        + '<label>to <input type="text" inputmode="decimal" id="flgFnHi" value="' + esc(st.view.xHi) + '" aria-label="x axis maximum"></label>'
+        + '</div>'
+        + '</div>'
+        + '<div class="flg-fnchart"></div>'
+        + '</div>';
+      paint();
+    }
+
+    /* Bound to the host once rather than inside render(), so replacing the
+       rows cannot leave a second set of listeners behind firing twice. */
+    host.addEventListener('input', function (e) {
+      const t = e.target;
+      if (t.classList && t.classList.contains('flg-fnsrc')) {
+        st.exprs[+t.dataset.i].src = t.value;
+        save();
+        // Repaint only — re-rendering the rows would steal focus mid-keystroke.
+        paint();
+        const row = t.closest('.flg-fnrow');
+        const old = row.querySelector('.flg-fnerr');
+        if (old) old.remove();
+        const r = window.FluxExpr.tryCompile(t.value);
+        if (r.error && t.value.trim()) {
+          const d = document.createElement('div');
+          d.className = 'flg-fnerr';
+          d.textContent = r.error;
+          row.appendChild(d);
+        }
+      } else if (t.classList && t.classList.contains('flg-fncol')) {
+        st.exprs[+t.dataset.i].colour = t.value; save(); paint();
+      } else if (t.id === 'flgFnLo' || t.id === 'flgFnHi') {
+        const lo = parseFloat(host.querySelector('#flgFnLo').value);
+        const hi = parseFloat(host.querySelector('#flgFnHi').value);
+        // Ignore a half-typed range instead of collapsing the axis to nothing.
+        if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) {
+          st.view.xLo = lo; st.view.xHi = hi; save(); paint();
+        }
+      }
+    });
+
+    host.addEventListener('click', function (e) {
+      const del = e.target.closest ? e.target.closest('[data-del]') : null;
+      if (del) {
+        st.exprs.splice(+del.dataset.del, 1);
+        if (!st.exprs.length) st.exprs.push({ src: '', colour: FN_COLOURS[0] });
+        save(); render(); return;
+      }
+      if (e.target.id === 'flgFnAdd') {
+        st.exprs.push({ src: '', colour: FN_COLOURS[st.exprs.length % FN_COLOURS.length] });
+        save(); render();
+        const boxes = host.querySelectorAll('.flg-fnsrc');
+        if (boxes.length) boxes[boxes.length - 1].focus();
+      }
+    });
+
+    render();
+    return { render: render };
+  }
+
+  window.FluxGrapher = {
+    mount: mount,
+    mountFunctions: mountFunctions,
+    INBOX_KEY: INBOX_KEY,
+    WORKING_KEY: WORKING_KEY,
+  };
 })();

@@ -181,6 +181,7 @@
     "public/js/flux-staff-now.js",
     "public/js/flux-study-physics.js",
     "public/js/flux-lab-fit.js",
+    "public/js/flux-expr.js",
     "public/js/flux-hub.js",
     "public/js/flux-grapher.js",
     "public/js/flux-study-math.js",
