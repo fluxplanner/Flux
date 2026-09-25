@@ -1,0 +1,230 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * FLUX GRAPHER · flux-grapher.css
+ *
+ * Shared by two surfaces:
+ *   grapher.html            the standalone, no-login, free tool
+ *   Study tools → Grapher   the simple version that replaced the Desmos embed
+ *
+ * Both use the same class names so a chart looks identical either side. The
+ * standalone page defines the palette itself (it loads no app CSS) and inside
+ * the app these variables already exist — the fallbacks below are what let one
+ * stylesheet serve both.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.flg {
+  --flg-line: var(--border2, rgba(255, 255, 255, .14));
+  --flg-grid: var(--border, rgba(255, 255, 255, .07));
+  --flg-ink: var(--text, #eaf1ff);
+  --flg-mut: var(--muted2, #9fb0cc);
+  --flg-accent: var(--accent, #00c2ff);
+  --flg-card: var(--card, rgba(20, 27, 45, .72));
+  --flg-card2: var(--card2, rgba(28, 36, 58, .8));
+  --flg-plot: rgba(255, 255, 255, .02);
+  --flg-steep: #f59e0b;
+  --flg-shallow: #a78bfa;
+
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* One column below the width where the table and a readable chart stop
+   fitting side by side. */
+@media (max-width: 900px) {
+  .flg { grid-template-columns: 1fr; }
+}
+
+/* ── Left column ──────────────────────────────────────────────────────── */
+.flg-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.flg-block {
+  background: var(--flg-card);
+  border: 1px solid var(--flg-line);
+  border-radius: 14px;
+  padding: 14px;
+}
+.flg-block-h {
+  font-size: .62rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--flg-mut);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* The table scrolls on its own so a forty-row dataset cannot push the chart
+   off the screen. */
+.flg-tablewrap { max-height: 320px; overflow-y: auto; margin: 0 -4px; }
+.flg-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.flg-table thead th {
+  position: sticky; top: 0;
+  background: var(--flg-card);
+  color: var(--flg-mut);
+  font-size: .68rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--flg-line);
+  z-index: 1;               /* above the inputs scrolling underneath */
+}
+.flg-table td { padding: 2px; }
+.flg-rown {
+  color: var(--flg-mut);
+  font-size: .68rem;
+  width: 22px;
+  text-align: right;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Deliberately not the app's global input styling: these are spreadsheet
+   cells, and full-width bordered boxes would make a five-row table read as a
+   form to fill in. */
+.flg-cell {
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: .84rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--flg-ink);
+  background: var(--flg-card2);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  transition: border-color .15s, background .15s;
+}
+.flg-cell:focus {
+  outline: none;
+  border-color: var(--flg-accent);
+  background: rgba(0, 194, 255, .06);
+}
+.flg-rowdel {
+  background: none; border: none; cursor: pointer;
+  color: var(--flg-mut); font-size: .8rem; padding: 4px 6px; border-radius: 6px;
+  opacity: 0; transition: opacity .15s, color .15s;
+}
+/* Hidden until wanted, but never hidden from the keyboard. */
+.flg-table tr:hover .flg-rowdel,
+.flg-rowdel:focus-visible { opacity: 1; }
+.flg-rowdel:hover { color: #ff6b81; }
+
+.flg-tbtns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+.flg-btn {
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--flg-accent);
+  color: #05101c;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .14s, filter .14s;
+  min-height: 36px;         /* stays tappable on a phone */
+}
+.flg-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.flg-btn.ghost {
+  background: transparent;
+  color: var(--flg-ink);
+  border-color: var(--flg-line);
+}
+.flg-btn.ghost:hover { border-color: var(--flg-accent); background: rgba(0, 194, 255, .07); }
+
+/* ── Uncertainty rows ─────────────────────────────────────────────────── */
+.flg-urow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.flg-urow:last-child { margin-bottom: 0; }
+.flg-ulabel {
+  flex: 1; min-width: 0;
+  font-size: .78rem; color: var(--flg-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.flg-usel, .flg-uval, .flg-fitsel, .flg-lab {
+  margin: 0;
+  padding: 7px 9px;
+  font-size: .78rem;
+  color: var(--flg-ink);
+  background: var(--flg-card2);
+  border: 1px solid var(--flg-line);
+  border-radius: 8px;
+  min-height: 34px;
+}
+.flg-usel { flex: 0 0 auto; }
+.flg-uval { flex: 0 0 74px; width: 74px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.flg-uval:disabled { opacity: .4; }
+.flg-fitsel, .flg-lab { width: 100%; }
+.flg-lab2 { display: grid; grid-template-columns: 1fr 88px; gap: 6px; margin-top: 6px; }
+.flg-lab { margin-top: 6px; }
+.flg-lab2 .flg-lab { margin-top: 0; }
+
+.flg-check {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 10px; cursor: pointer; font-size: .78rem; line-height: 1.45;
+}
+.flg-check input { margin: 2px 0 0; flex: 0 0 auto; }
+.flg-check small { display: block; color: var(--flg-mut); font-size: .68rem; }
+
+/* ── Right column ─────────────────────────────────────────────────────── */
+.flg-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.flg-chart {
+  background: var(--flg-card);
+  border: 1px solid var(--flg-line);
+  border-radius: 14px;
+  padding: 10px;
+}
+.flg-svg { width: 100%; height: auto; display: block; }
+
+.flg-plotbg { fill: var(--flg-plot); }
+.flg-grid { stroke: var(--flg-grid); stroke-width: 1; }
+.flg-axis { stroke: var(--flg-line); stroke-width: 1.5; }
+.flg-tick { fill: var(--flg-mut); font-size: 11px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.flg-axlabel { fill: var(--flg-ink); font-size: 12.5px; font-weight: 600; }
+.flg-title { fill: var(--flg-ink); font-size: 13px; font-weight: 700; }
+.flg-empty { fill: var(--flg-mut); font-size: 13px; }
+
+.flg-fit { fill: none; stroke: var(--flg-accent); stroke-width: 2.2; stroke-linecap: round; }
+.flg-bar { stroke: var(--flg-mut); stroke-width: 1.4; opacity: .85; }
+.flg-pt { fill: var(--flg-accent); stroke: rgba(0, 0, 0, .35); stroke-width: 1; }
+
+/* Dashed, so they read as bounds rather than as a second fit. */
+.flg-mm { stroke-width: 1.5; stroke-dasharray: 6 4; fill: none; opacity: .9; }
+.flg-mm--steep { stroke: var(--flg-steep); }
+.flg-mm--shallow { stroke: var(--flg-shallow); }
+
+/* ── Results ──────────────────────────────────────────────────────────── */
+.flg-results {
+  background: var(--flg-card);
+  border: 1px solid var(--flg-line);
+  border-radius: 14px;
+  padding: 14px;
+}
+.flg-eq {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--flg-accent);
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+.flg-res { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.flg-res th {
+  text-align: left; font-weight: 500; color: var(--flg-mut);
+  padding: 4px 0; width: 46%;
+}
+.flg-res td {
+  text-align: right;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--flg-ink);
+  padding: 4px 0;
+}
+.flg-note, .flg-hint {
+  margin-top: 10px; font-size: .72rem; color: var(--flg-mut); line-height: 1.55;
+}
+.flg-warn {
+  font-size: .78rem; line-height: 1.55;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, .08);
+  border: 1px solid rgba(251, 191, 36, .28);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.flg-export { display: flex; gap: 8px; flex-wrap: wrap; }
