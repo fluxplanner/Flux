@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.aaddc2ef.css">
+<link rel="stylesheet" href="public/bundles/flux.a919500b.css">
 </head>
 <body>
 <noscript>
@@ -1383,9 +1383,19 @@
                      buttons, and the one named after what you wanted did less.
                      The full dialog covers all three, so it gets a name that
                      does too. -->
+                <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
                 <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none">+ EC</button>
               </div>
+            </div>
+            <div class="cal-cd-form" id="calCountdownForm" hidden>
+              <label class="cal-cd-label" for="calCountdownName">Count down to this day on your dashboard</label>
+              <div class="cal-cd-row">
+                <input type="text" id="calCountdownName" maxlength="80" placeholder="What is it? e.g. SAT"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();fluxCalCountdownSave();}if(event.key==='Escape'){this.closest('.cal-cd-form').hidden=true;}">
+                <button type="button" onclick="fluxCalCountdownSave()">Start countdown</button>
+              </div>
+              <div class="cal-cd-msg" id="calCountdownMsg" role="status"></div>
             </div>
             <div id="calDayTasks"></div>
           </div>
@@ -2920,7 +2930,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.63cf681d.js"></script>
+<script defer src="public/bundles/flux-core.50ec596d.js"></script>
 <script defer src="public/bundles/flux-features.0fc84ba0.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

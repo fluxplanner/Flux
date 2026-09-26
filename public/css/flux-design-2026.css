@@ -303,6 +303,47 @@ body[data-theme="light"] #app :is(input[type=text], input[type=search], input[ty
 /* Task rows pick up the accent under the pointer. */
 #app .task-item:hover { border-color: rgba(var(--accent-rgb), .28); }
 
+/* ── Countdown in the calendar ──────────────────────────────────────────
+   The day being counted down to wears a ring and a label on the month grid;
+   the selected day's panel and each pinned date can start or stop it. */
+#app .cal-day--countdown {
+  box-shadow: inset 0 0 0 2px rgba(var(--accent-rgb), .75), 0 0 18px -6px rgba(var(--accent-rgb), .8);
+  border-radius: 12px;
+}
+#app .cal-cd-badge {
+  position: absolute; left: 4px; right: 4px; bottom: 4px;
+  font-size: .6rem; font-weight: 800; letter-spacing: .01em;
+  color: #fff; text-align: center;
+  padding: 2px 4px; border-radius: 6px;
+  background: var(--fx-accent-grad);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
+#app .cal-countdown-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; font-size: .8rem; font-weight: 700;
+  background: rgba(var(--accent-rgb), .1);
+  border: 1px solid rgba(var(--accent-rgb), .28);
+  color: var(--text);
+}
+#app .cal-countdown-btn.is-on { background: var(--fx-accent-grad); color: #fff; border-color: transparent; }
+#app .cal-cd-form { margin: 4px 0 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--fx-hair-2); background: rgba(var(--accent-rgb), .06); }
+#app .cal-cd-label { display: block; font-size: .78rem; font-weight: 700; color: var(--muted2); margin-bottom: 8px; }
+#app .cal-cd-row { display: flex; gap: 8px; align-items: center; }
+#app .cal-cd-row input { flex: 1; margin: 0 !important; }
+#app .cal-cd-row button { flex: 0 0 auto; white-space: nowrap; }
+#app .cal-cd-msg { font-size: .74rem; color: var(--gold); margin-top: 6px; min-height: 0; }
+#app .cal-cd-msg:empty { display: none; }
+#app .fluxw-imp-cd {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; padding: 0; margin: 0 2px 0 auto;
+  border-radius: 8px; border: 1px solid transparent;
+  background: transparent; color: var(--muted2); cursor: pointer;
+  font-size: .85rem; transition: background-color .15s ease, color .15s ease;
+}
+#app .fluxw-imp-cd:hover { background: rgba(var(--accent-rgb), .12); color: var(--text); }
+#app .fluxw-imp-cd.is-on { background: var(--fx-accent-grad); color: #fff; }
+
 /* ── Focus ring: visible for keyboards, invisible for mice ──────────────── */
 #app :is(button, a, [role=tab], [role=button], summary):focus-visible,
 .modal-overlay :is(button, a):focus-visible {

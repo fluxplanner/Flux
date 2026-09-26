@@ -4984,19 +4984,94 @@ function fluxSaveCountdown(){
   save(FLUX_COUNTDOWN_KEY,{label,date,time});
   syncKey('countdown',1);
   const f=document.getElementById('countdownForm');if(f)f.hidden=true;
-  renderCountdown();
+  fluxCountdownChanged();
   if(typeof showToast==='function')showToast('✓ Counting down to '+label);
 }
 function fluxClearCountdown(){
   save(FLUX_COUNTDOWN_KEY,null);
   syncKey('countdown',1);
   const f=document.getElementById('countdownForm');if(f)f.hidden=true;
-  renderCountdown();
+  fluxCountdownChanged();
   if(typeof showToast==='function')showToast('Back to your next test','info');
 }
 window.fluxToggleCountdownForm=fluxToggleCountdownForm;
 window.fluxSaveCountdown=fluxSaveCountdown;
 window.fluxClearCountdown=fluxClearCountdown;
+
+/* ── Counting down from the calendar ─────────────────────────────────────────
+   The countdown lived only on the dashboard, but the day you want to count
+   down to — the SAT, a trip — is one you find on the calendar. Any day there
+   (the selected day, or a pinned important date) can become the countdown;
+   it shows on the dashboard card and is marked on the calendar itself. One
+   countdown, one place it is stored: the same flux_countdown the dashboard
+   form writes. */
+function fluxSetCountdown(label,date,time){
+  label=String(label||'').trim().slice(0,80);
+  if(!date||!label)return false;
+  save(FLUX_COUNTDOWN_KEY,{label,date,time:time||''});
+  syncKey('countdown',1);
+  fluxCountdownChanged();
+  if(typeof showToast==='function')showToast('✓ Counting down to '+label+' — it’s on your dashboard');
+  return true;
+}
+/** Everything that shows the countdown, redrawn after it changes. */
+function fluxCountdownChanged(){
+  try{renderCountdown();}catch(_){}
+  try{if(document.getElementById('calGrid'))renderCalendar();}catch(_){}
+  try{window.FluxWishlist?.refreshImportant?.();}catch(_){}
+}
+/** Marks the countdown day on the month grid. Called after each grid render. */
+function fluxDecorateCountdownDay(){
+  const c=fluxGetCountdown();
+  if(!c)return;
+  const cell=document.querySelector('#calGrid .cal-day[data-cal-date="'+c.date+'"]');
+  if(!cell)return;
+  cell.classList.add('cal-day--countdown');
+  cell.setAttribute('title','Counting down: '+c.label);
+  const b=document.createElement('div');
+  b.className='cal-cd-badge';
+  b.textContent='⏳ '+c.label;
+  cell.appendChild(b);
+}
+function fluxCalSelectedYMD(){
+  return fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+}
+/** The button in the selected day's panel: start a countdown to that day, or stop it. */
+function fluxCalCountdownToggle(){
+  const ds=fluxCalSelectedYMD();
+  const cur=fluxGetCountdown();
+  if(cur&&cur.date===ds){fluxClearCountdown();return;}
+  const f=document.getElementById('calCountdownForm');
+  if(!f)return;
+  f.hidden=!f.hidden;
+  if(f.hidden)return;
+  /* Suggest a name from what is already on that day: its pinned label first,
+     then a test, then any task or event. Counting down to "Sat, Oct 3" is
+     less motivating than counting down to "SAT". */
+  let guess='';
+  try{guess=window.FluxWishlist?.labelFor?.(ds)||'';}catch(_){}
+  if(!guess){
+    const onDay=tasks.filter(t=>t.date===ds&&!t.done);
+    const test=onDay.find(t=>t.type==='test'||t.type==='quiz');
+    const ev=(load('flux_events',[])||[]).find(e=>e.date===ds);
+    guess=(test&&test.name)||(onDay[0]&&onDay[0].name)||(ev&&ev.title)||'';
+  }
+  const inp=document.getElementById('calCountdownName');
+  if(inp){inp.value=guess;inp.focus();inp.select();}
+  const msg=document.getElementById('calCountdownMsg');if(msg)msg.textContent='';
+}
+function fluxCalCountdownSave(){
+  const inp=document.getElementById('calCountdownName');
+  const name=(inp&&inp.value||'').trim();
+  const msg=document.getElementById('calCountdownMsg');
+  if(!name){if(msg)msg.textContent='Give it a name — the dashboard shows what you are counting down to.';inp&&inp.focus();return;}
+  const f=document.getElementById('calCountdownForm');if(f)f.hidden=true;
+  fluxSetCountdown(name,fluxCalSelectedYMD(),'');
+}
+window.fluxSetCountdown=fluxSetCountdown;
+window.fluxGetCountdown=fluxGetCountdown;
+window.fluxCalCountdownToggle=fluxCalCountdownToggle;
+window.fluxCalCountdownSave=fluxCalCountdownSave;
 
 function renderCountdown(){
   const card=document.getElementById('countdownCard');
@@ -5312,6 +5387,7 @@ const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abC
 const _mobMax=4;const _taskDots=tlist.slice(0,_mobMax).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';return`<span class="cal-dot-compact" style="background:${c};opacity:${t.done?0.35:1}"></span>`;});const _evSlots=Math.max(0,_mobMax-_taskDots.length);const _evDots=elist.slice(0,_evSlots).map(e=>{const wk=e._weekly;const out=fluxEventScope(e)==='outside';const isEc=fluxIsEcCalendarItem(e);const c=isEc?'var(--gold)':wk?(out?'var(--muted2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<span class="cal-dot-compact" style="background:${c};opacity:${wk?0.85:1}"></span>`;});const _dotsHTML=(_taskDots.concat(_evDots)).join('')+(allCount>_mobMax?`<span class="cal-dot-compact cal-dot-more">+${allCount-_mobMax}</span>`:'');const compactDotsEl=_dotsHTML?`<div class="cal-dots-mobile" aria-hidden="true">${_dotsHTML}</div>`:'';
 const conflictCls=calConflictDates.has(ds)?' cal-day--conflict':'';const busyCls=gcalBusyDates.has(ds)?' cal-day--gcal-busy':'';let dayTitle='';if(conflictCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('syllabus.cal_marker'))}"`;else if(busyCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('gcal.cal_marker'))}"`;const gcalBarsHtml=window.FluxGCalBusy?.enabled?.()&&window.FluxGCalBusy.renderBusyBarsHtml?FluxGCalBusy.renderBusyBarsHtml(ds,2):'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}${conflictCls}${busyCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}"${dayTitle} ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${gcalBarsHtml?`<div class="cal-gcal-busy-stack">${gcalBarsHtml}</div>`:''}${countBadge}</div>`;}
   document.getElementById('calGrid').innerHTML=html;
+  try{fluxDecorateCountdownDay();}catch(_){}
   try{if(window.FluxSyllabusConflict?.decorateCalendar)FluxSyllabusConflict.decorateCalendar();}catch(_){}
   try{if(window.FluxEventBuffer?.decorateCalendarDays)FluxEventBuffer.decorateCalendarDays();}catch(_){}
   try{if(window.FluxTravelTime?.decorateCalendarDays)FluxTravelTime.decorateCalendarDays();}catch(_){}
@@ -5334,6 +5410,18 @@ function renderCalDay(){
   }
   const addEvBtn=document.getElementById('calAddEventBtn');if(addEvBtn)addEvBtn.style.display='inline-flex';
   const addEcBtn=document.getElementById('calAddEcBtn');if(addEcBtn)addEcBtn.style.display='inline-flex';
+  const cdBtn=document.getElementById('calCountdownBtn');
+  if(cdBtn){
+    const cd=fluxGetCountdown();
+    const on=!!(cd&&cd.date===ds);
+    cdBtn.style.display='inline-flex';
+    cdBtn.classList.toggle('is-on',on);
+    cdBtn.setAttribute('aria-pressed',String(on));
+    cdBtn.textContent=on?'⏳ Counting down':'⏳ Count down';
+    cdBtn.title=on?'Stop counting down to this day':'Count down to this day on your dashboard';
+    const cf=document.getElementById('calCountdownForm');
+    if(cf&&cf.dataset.day!==ds){cf.hidden=true;cf.dataset.day=ds;}
+  }
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const events=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T12:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const weekly=weeklyVirtualEventsForDate(ds);
