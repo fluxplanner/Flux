@@ -545,6 +545,10 @@
       if (v) bgFill = v;
     }
     function draw() {
+      /* A window with no height (a collapsed pane, some embedded views) made
+         "% (H * 1.5)" a division by zero, and createLinearGradient threw on
+         every frame. Nothing to paint anyway. */
+      if (!(W > 0 && H > 0)) return;
       if (bgTick++ % 30 === 0) refreshBgFill();
       ctx.fillStyle = bgFill;
       ctx.fillRect(0, 0, W, H);
