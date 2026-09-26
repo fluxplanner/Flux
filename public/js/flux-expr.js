@@ -58,6 +58,11 @@
    * appears at all. "2 + 3" is a sum to show, not a line to draw.
    *
    * The returned function carries .params — the letters it used, in order.
+   *
+   * opts.var2 / opts.var2Ref: a second variable, read from var2Ref.v at call
+   *   time — y in x² + y² = 25, which the grapher draws as the points where
+   *   the two sides agree. Reported as .usesVar2. Without it, y stays an
+   *   error ("y is what is being drawn").
    */
   function compile(src, varName, opts) {
     var v = (varName || 'x').toLowerCase();
@@ -69,6 +74,9 @@
     var o = opts || {};
     var found = [];
     var usedVar = false;
+    var v2 = o.var2 ? String(o.var2).toLowerCase() : '';
+    var usedVar2 = false;
+    function Y() { return o.var2Ref ? o.var2Ref.v : NaN; }
 
     function fail(msg) { throw new Error(msg); }
     function ws() { while (S[i] === ' ') i++; }
@@ -194,6 +202,7 @@
     function nameValue(name, start) {
       var lower = name.toLowerCase();
       if (lower === v) { usedVar = true; return X; }
+      if (v2 && lower === v2) { usedVar2 = true; return Y; }
       if (Object.prototype.hasOwnProperty.call(CONSTS, lower)) return constFn(CONSTS[lower]);
       if (Object.prototype.hasOwnProperty.call(CONSTS, name)) return constFn(CONSTS[name]);
       if (Object.prototype.hasOwnProperty.call(FNS, lower)) {
@@ -220,6 +229,7 @@
       i = start + 1;
       var ch = name[0];
       if (ch.toLowerCase() === v) { usedVar = true; return X; }
+      if (v2 && ch.toLowerCase() === v2) { usedVar2 = true; return Y; }
       if (ch === 'e') return constFn(Math.E);
       if (ch === 'y') fail('y is what is being drawn, so it cannot appear on the right.');
       return param(ch);
@@ -247,6 +257,7 @@
     var wrapped = function (x) { return f(x); };
     wrapped.params = found.slice();
     wrapped.usesVar = usedVar;
+    wrapped.usesVar2 = usedVar2;
     return wrapped;
   }
 
@@ -269,7 +280,7 @@
   function tryCompile(src, varName, opts) {
     try {
       var fn = compile(src, varName, opts);
-      return { fn: fn, params: fn.params, usesVar: fn.usesVar };
+      return { fn: fn, params: fn.params, usesVar: fn.usesVar, usesVar2: fn.usesVar2 };
     } catch (e) { return { error: e && e.message ? e.message : 'That expression did not parse.' }; }
   }
 

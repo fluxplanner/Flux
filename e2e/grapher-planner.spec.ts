@@ -51,8 +51,11 @@ test.describe('Grapher in the planner', () => {
   test('the grapher\'s own buttons are not painted like planner buttons', async ({ page }) => {
     await openStudy(page, 'labgraph');
     const bg = (sel: string) => page.locator(sel).first().evaluate((e) => getComputedStyle(e).backgroundImage);
-    expect(await bg('.flg--planner [data-hist="undo"]'), 'undo is a plain icon button').toBe('none');
-    expect(await bg('.flg--planner [data-tool="in"]'), 'zoom is a plain icon button').not.toContain('gradient');
+    /* Polled: the tool can be redrawn just after it appears, and a button
+       read in that instant is detached, whose computed style is "" — which
+       failed this under load without anything being painted wrong. */
+    await expect.poll(() => bg('.flg--planner [data-hist="undo"]'), { message: 'undo is a plain icon button' }).toBe('none');
+    await expect.poll(() => bg('.flg--planner [data-tool="in"]'), { message: 'zoom is a plain icon button' }).not.toMatch(/gradient|^$/);
   });
 
   test('the planner keeps its working graph, like every other study tool', async ({ page }) => {

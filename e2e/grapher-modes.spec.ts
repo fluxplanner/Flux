@@ -888,6 +888,25 @@ test.describe('Desmos-style typing', () => {
     await expect(row.locator('.flg-expr'), 'showing it must not rewrite what was typed').toHaveValue('y=(x+1)/(x-2)+x^2');
   });
 
+  test('circles, sideways parabolas and shaded inequalities draw, like Desmos', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const first = page.locator('.flg-expr').first();
+    await first.fill('x^2 + y^2 = 25');
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-expr').nth(1).fill('y > x^2');
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-expr').nth(2).fill('x = y^2');
+    await expect(page.locator('.flg-err')).toHaveCount(0);
+    await expect.poll(() => page.locator('.flg-plot path[fill="none"]').count()).toBeGreaterThanOrEqual(3);
+    // Only the inequality is shaded, and its edge is dashed because < and > leave it out.
+    await expect(page.locator('.flg-plot .flg-region')).toHaveCount(1);
+    const edges = await page.locator('.flg-plot path[fill="none"]').evaluateAll((els) => els.map((e) => e.getAttribute('stroke-dasharray')));
+    expect(edges.filter(Boolean)).toHaveLength(1);
+    // Half-typed, it says what is missing rather than drawing nothing silently.
+    await first.fill('x^2 + y^2');
+    await expect(page.locator('.flg-err').first()).toContainText('= and a number');
+  });
+
   test('Enter goes on to a new equation, ready to type in', async ({ page }) => {
     await open(page, { mode: 'functions' });
     const row = await freshField(page);

@@ -20,7 +20,11 @@ import { test, expect } from '@playwright/test';
 test.describe('Name + password sign-in', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?e2e=1&scenario=guest');
-    await page.waitForTimeout(2000);
+    /* Until the sign-in form exists, not a fixed 2 s: under a full parallel
+       run the page took longer than that, and every test here failed with
+       "the name field is missing" — on main as much as on any branch. */
+    await page.locator('#loginUsername').waitFor({ state: 'attached', timeout: 20000 });
+    await page.waitForTimeout(300);
   });
 
   test('the form asks for a name, not an email, and offers no Google', async ({ page }) => {
