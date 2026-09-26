@@ -48,7 +48,7 @@
   const KEYPADS = {
     main: [
       [['x', 'x', 'var'], ['y', 'y', 'var'], ['a²', '^2'], ['aᵇ', '^'], 0, ['7'], ['8'], ['9'], ['÷', '/'], 0, ['←', '@left'], ['→', '@right']],
-      [['(', '('], [')', ')'], ['<', '<'], ['>', '>'], 0, ['4'], ['5'], ['6'], ['×', '*'], 0, ['⌫', '@back', 'wide']],
+      [['(', '('], [')', ')'], ['[ ]', '[|]'], ['~', ' ~ '], 0, ['4'], ['5'], ['6'], ['×', '*'], 0, ['⌫', '@back', 'wide']],
       [['|a|', 'abs(|)'], [',', ','], ['≤', '<='], ['≥', '>='], 0, ['1'], ['2'], ['3'], ['−', '-'], 0, ['ƒ(x)', '@fn', 'wide']],
       [['√', 'sqrt(|)'], ['π', 'pi'], ['e', 'e'], ['abc', '@abc'], 0, ['0'], ['.', '.'], ['=', '='], ['+', '+'], 0, ['↵', '@enter', 'wide go']],
     ],
@@ -398,7 +398,9 @@
       const colour = HEX.test(it.colour) ? it.colour : PALETTE[n % PALETTE.length];
       let out = null;
       if (it.type === 'expr') {
-        out = { id: str(it.id, 24) || newId(), type: 'expr', src: str(it.src, 500), colour: colour, hidden: !!it.hidden, dash: !!it.dash };
+        out = { id: str(it.id, 24) || newId(), type: 'expr', src: str(it.src, 6000), colour: colour, hidden: !!it.hidden, dash: !!it.dash };
+        if (it.logMode) out.logMode = true;
+        if (it.showResiduals) out.showResiduals = true;
       } else if (it.type === 'table') {
         out = normTable(it, colour, n);
       }
@@ -564,6 +566,22 @@
   const DEF_RE = /^\s*([a-zA-Zα-ωΑ-Ω])\s*=\s*(.+)$/;
   const FNDEF_RE = /^\s*([a-zA-Z][a-zA-Z0-9]*)\s*\(\s*([a-zA-Z])\s*\)\s*=\s*(.+)$/;
   const LITERAL_RE = /^[-−]?\s*(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+  /* x1 = [1, 2, 3] — a list, as in Desmos. Usable in regressions and in
+     (x1, y1) points exactly like a table column. */
+  const LISTDEF_RE = /^\s*([a-zA-Z][a-zA-Z0-9]*)\s*=\s*\[([^\[\]]*)\]\s*$/;
+  const MAX_LIST = 1000;
+  function parseListBody(body) {
+    const parts = String(body).split(',').map((x) => x.trim());
+    if (parts.length === 1 && !parts[0]) return { error: 'A list needs numbers, like [1, 2, 3].' };
+    if (parts.length > MAX_LIST) return { error: 'A list can hold up to ' + MAX_LIST + ' numbers.' };
+    const values = [];
+    for (let i = 0; i < parts.length; i++) {
+      const t = parts[i].replace(/−/g, '-').replace(/\s+/g, '');
+      if (!LITERAL_RE.test(t)) return { error: '"' + parts[i] + '" is not a number — a list holds numbers, like [1, 2.5, −3].' };
+      values.push(Number(t));
+    }
+    return { values: values };
+  }
 
   function isBuiltin(name) {
     const E = window.FluxExpr;
@@ -589,6 +607,21 @@
     const opts = { params: true, scope: scope, fns: c.fns };
 
     if (s.indexOf('~') >= 0) return parseRegression(s, c);
+
+    const ld = LISTDEF_RE.exec(s);
+    if (ld) {
+      if (/^[xy]$/i.test(ld[1])) return { error: 'Call the list something other than x or y, like x1 or L.' };
+      if (isBuiltin(ld[1])) return { error: ld[1] + ' is built in — call the list something else, like L1.' };
+      const lv = parseListBody(ld[2]);
+      if (lv.error) return { error: lv.error };
+      return { kind: 'list', name: ld[1], values: lv.values, params: [] };
+    }
+
+    /* (x1, y1): the points of two lists or columns, as Desmos plots them. */
+    const sp = /^\(\s*([a-zA-Z][a-zA-Z0-9]*)\s*,\s*([a-zA-Z][a-zA-Z0-9]*)\s*\)$/.exec(s);
+    if (sp && seriesKnown(c, sp[1]) && seriesKnown(c, sp[2])) {
+      return { kind: 'series', xName: sp[1], yName: sp[2], params: [] };
+    }
 
     let domain = null;
     const dm = /\{([^{}]*)\}\s*$/.exec(s);
@@ -672,33 +705,81 @@
    * formula matches a table's columns. Exactly one column may appear on the
    * right; it plays the part of x when the fitted curve is drawn.
    */
+  /** "y1 = 1.99 x1 + 0.05": the formula with the fitted numbers written in.
+      Only letters standing on their own are replaced, so sin, ln and x1 stay. */
+  function fittedEquation(p, fit) {
+    if (!p.rhs || !fit || !fit.values) return '';
+    const val = {};
+    fit.names.forEach((n, i) => { val[n] = fit.values[i]; });
+    let bad = false;
+    const out = p.rhs.replace(/[A-Za-zα-ωΑ-Ω][A-Za-z0-9α-ωΑ-Ω_]*/g, (w) => {
+      if (w in val) return '(' + fmt(val[w]) + ')';
+      if (/^Lq\d+$/.test(w)) return w === p.xName ? 'x' : w;
+      if (w.length === 1 || w === p.xName || /^(sin|cos|tan|asin|acos|atan|ln|log|exp|sqrt|abs|pi|e)$/.test(w)) return w;
+      bad = true;
+      return w;
+    });
+    if (bad) return '';
+    const NUM = '([0-9][0-9.]*(?:e[+-]?[0-9]+)?)';
+    const tidy = out
+      .replace(new RegExp('\\+\\s*\\(-' + NUM + '\\)', 'g'), '− $1')
+      .replace(new RegExp('-\\s*\\(-' + NUM + '\\)', 'g'), '+ $1')
+      .replace(new RegExp('\\(' + NUM + '\\)', 'g'), '$1')
+      .replace(new RegExp('^\\s*\\(-' + NUM + '\\)'), '−$1')
+      .replace(/\s+/g, ' ').trim();
+    return (/^Lq\d+$/.test(p.yName) ? 'y' : p.yName) + ' = ' + tidy;
+  }
+  function seriesKnown(c, name) {
+    return !!((c.columns && c.columns[name]) || (c.lists && c.lists[name]));
+  }
   function parseRegression(s, c) {
     const E = window.FluxExpr;
+    /* [2, 4, 6] ~ m[1, 2, 3] + b: a list written straight into the
+       regression is given a private name and treated like any other list. */
+    const inline = {};
+    let bad = null, k = 0;
+    s = s.replace(/\[([^\[\]]*)\]/g, (m, body) => {
+      if (body.indexOf(',') < 0) return m;
+      const lv = parseListBody(body);
+      if (lv.error) { bad = bad || lv.error; return m; }
+      const name = 'Lq' + (k++);
+      inline[name] = lv.values;
+      return ' ' + name + ' ';
+    });
+    if (bad) return { error: bad };
     const parts = s.split('~');
     if (parts.length !== 2) return { error: 'A regression has one ~, like y1 ~ m x1 + b.' };
     const lhs = parts[0].trim(), rhs = parts[1].trim();
     const cols = c.columns || {};
-    if (!lhs) return { error: 'Put a table column before the ~, like y1 ~ m x1 + b.' };
-    const Y = cols[lhs];
-    if (!Y) {
-      return { error: Object.keys(cols).length
-        ? '"' + lhs + '" is not a column. The columns are ' + Object.keys(cols).slice(0, 6).join(', ') + '.'
-        : 'A regression fits a table — add one with the table button, then write y1 ~ m x1 + b.' };
+    const lists = c.lists || {};
+    const known = (w) => !!(inline[w] || lists[w] || cols[w]);
+    if (!lhs) return { error: 'Put a table column or a list before the ~, like y1 ~ m x1 + b.' };
+    if (!known(lhs)) {
+      const names = Object.keys(cols).concat(Object.keys(lists));
+      return { error: names.length
+        ? '"' + lhs + '" is not a column or a list. You have ' + names.slice(0, 6).join(', ') + '.'
+        : 'A regression fits data — add a table with the table button, or lists like x1 = [1, 2, 3], then write y1 ~ m x1 + b.' };
     }
     if (!rhs) return { error: 'Put a formula after the ~, like m x1 + b.' };
     const words = rhs.match(/[A-Za-zα-ωΑ-Ω][A-Za-z0-9α-ωΑ-Ω_]*/g) || [];
-    const used = words.filter((w, i) => words.indexOf(w) === i && cols[w] && cols[w].tableId === Y.tableId && w !== lhs);
+    const used = words.filter((w, i) => words.indexOf(w) === i && known(w) && w !== lhs);
     if (used.length !== 1) {
-      return { error: used.length ? 'Use one column on the right of the ~ (' + used.join(', ') + ' are all columns).'
-        : 'Use a column from the same table on the right, like ' + lhs + ' ~ m ' + (Object.keys(cols).find((k) => k !== lhs && cols[k].tableId === Y.tableId) || 'x1') + ' + b.' };
+      const hint = Object.keys(cols).concat(Object.keys(lists)).find((w) => w !== lhs) || 'x1';
+      return { error: used.length ? 'Use one column or list on the right of the ~ (' + used.join(', ') + ' are all data).'
+        : 'Use a column or list on the right, like ' + lhs + ' ~ m ' + hint + ' + b.' };
     }
+    const xName = used[0];
     const rscope = {};
-    const r = E.tryCompile(rhs, used[0], { params: true, scope: rscope, fns: c.fns });
+    const r = E.tryCompile(rhs, xName, { params: true, scope: rscope, fns: c.fns });
     if (r.error) return { error: r.error };
     if (!r.params.length) return { error: 'Give the formula at least one letter to fit, like m or b.' };
+    const X = cols[xName], Y = cols[lhs];
+    const same = X && Y && !inline[xName] && !inline[lhs] && !lists[xName] && !lists[lhs] && X.tableId === Y.tableId;
     return {
       kind: 'regression', fnRaw: r.fn, names: r.params, rscope: rscope, params: [],
-      tableId: Y.tableId, xCol: cols[used[0]].colId, yCol: Y.colId, xName: used[0], yName: lhs,
+      xName: xName, yName: lhs, inline: inline, rhs: rhs,
+      periodic: /\b(sin|cos|tan)\b/.test(rhs),
+      tableId: same ? Y.tableId : null, xCol: same ? X.colId : null, yCol: same ? Y.colId : null,
     };
   }
 
@@ -1097,7 +1178,16 @@
         if (c.role !== 'unc' && c.name && NAME_OK.test(c.name) && !columns[c.name]) columns[c.name] = { tableId: t.id, colId: c.id };
       });
     });
-    const sig = fnNames.join(',') + '|' + Object.keys(columns).map((k) => k + ':' + columns[k].tableId + '.' + columns[k].colId).join(',');
+    const lists = {};
+    this.doc.items.forEach((it) => {
+      if (it.type !== 'expr') return;
+      const m = LISTDEF_RE.exec(it.src || '');
+      if (!m || /^[xy]$/i.test(m[1]) || lists[m[1]]) return;
+      const lv = parseListBody(m[2]);
+      if (!lv.error) lists[m[1]] = lv.values;
+    });
+    const sig = fnNames.join(',') + '|' + Object.keys(columns).map((k) => k + ':' + columns[k].tableId + '.' + columns[k].colId).join(',')
+      + '|' + Object.keys(lists).map((k) => k + '=' + lists[k].join(',')).join(';');
     if (sig !== this._ctxSig || !this._ctxObj) {
       this._ctxSig = sig;
       const self = this;
@@ -1111,7 +1201,7 @@
           try { return impl(v); } finally { self._depth--; }
         };
       });
-      this._ctxObj = { fns: fns, columns: columns };
+      this._ctxObj = { fns: fns, columns: columns, lists: lists };
     }
     return this._ctxObj;
   };
@@ -1154,21 +1244,115 @@
     });
   };
 
-  /** Fit a y1 ~ … row to its table. Cached until the row or the readings change. */
+  /** The numbers of a column or list, by name (NaN where a cell is blank). */
+  Grapher.prototype.seriesOf = function (name, inline) {
+    if (inline && inline[name]) return inline[name];
+    const c = this.ctx();
+    if (c.lists && c.lists[name]) return c.lists[name];
+    const col = c.columns && c.columns[name];
+    if (!col) return [];
+    const t = this.item(col.tableId);
+    if (!t) return [];
+    const ct = computeTable(t);
+    return (ct.rows || []).map((r) => r.v[col.colId]);
+  };
+  /** Paired, finite (x, y) readings for a regression or a points row. */
+  Grapher.prototype.seriesPairs = function (xName, yName, inline) {
+    const xs = this.seriesOf(xName, inline), ys = this.seriesOf(yName, inline);
+    const out = [];
+    for (let i = 0; i < Math.min(xs.length, ys.length); i++) {
+      if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) out.push({ x: xs[i], y: ys[i] });
+    }
+    return out;
+  };
+
+  /* Where the fitter starts. From all-ones a sine or a logistic curve lands
+     in the wrong valley and reports R² ≈ 0, so it starts from many places —
+     ones, the data's own scale, a spread of magnitudes and, for anything with
+     sin/cos in it, a grid of frequencies across the x range — and keeps the
+     best. The spread is seeded, so the same data always gives the same fit. */
+  function regressionStarts(k, xs, ys, periodic) {
+    const starts = [];
+    const lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys);
+    const xlo = Math.min.apply(null, xs), xhi = Math.max.apply(null, xs);
+    const amp = (hi - lo) / 2 || 1, mid = (hi + lo) / 2, span = (xhi - xlo) || 1;
+    const fill = (f) => { const a = []; for (let i = 0; i < k; i++) a.push(f(i)); return a; };
+    starts.push(fill(() => 1));
+    starts.push(fill(() => 0.1));
+    starts.push(fill(() => -1));
+    starts.push(fill((i) => (i === 0 ? amp : i === k - 1 ? mid : 1)));
+    starts.push(fill((i) => (i === 0 ? hi : 0.1)));
+    let seed = 20260925;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let n = 0; n < 24; n++) starts.push(fill(() => (rnd() < 0.5 ? -1 : 1) * Math.pow(10, rnd() * 4 - 2)));
+    if (periodic) {
+      for (let j = 0; j < k; j++) {
+        for (let f = 1; f <= 12; f++) {
+          const w = (2 * Math.PI * f) / (2 * span);
+          starts.push(fill((i) => (i === j ? w : i === 0 ? amp : i === k - 1 ? mid : 0.5)));
+          starts.push(fill((i) => (i === j ? w : i === 0 ? amp : i === k - 1 ? mid : -0.5)));
+        }
+      }
+    }
+    return starts;
+  }
+  function sumSq(model, q, xs, ys) {
+    let s = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const d = ys[i] - model(q, xs[i]);
+      if (!Number.isFinite(d)) return Infinity;
+      s += d * d;
+    }
+    return s;
+  }
+  /** Best of many Levenberg–Marquardt runs. */
+  function fitManyStarts(F, names, model, xs, ys, periodic) {
+    const k = names.length;
+    const ranked = regressionStarts(k, xs, ys, periodic)
+      .map((q) => ({ q: q, s: sumSq(model, q, xs, ys) }))
+      .filter((o) => Number.isFinite(o.s))
+      .sort((a, b) => a.s - b.s);
+    // The all-ones start always runs; beyond it, the most promising starts
+    // (and every frequency start, whose first error says little).
+    const runs = ranked.slice(0, periodic ? 30 : 14);
+    let best = null, bestS = Infinity;
+    for (let i = 0; i < runs.length; i++) {
+      let res;
+      try { res = F.nonlinear('regression', names, model, runs[i].q.slice(), xs, ys); } catch (e) { continue; }
+      if (!res || res.error || !res.values) continue;
+      const s2 = sumSq(model, res.values, xs, ys);
+      // (Infinity − Infinity is NaN, so the first result is taken explicitly.)
+      if (Number.isFinite(s2) && (!best || s2 < bestS * (1 - 1e-12))) { best = res; bestS = s2; }
+      if (bestS < 1e-18) break;
+    }
+    return best || { error: 'No values of ' + names.join(', ') + ' fit these points — try a different formula, or check the readings.' };
+  }
+
+  /** Fit a y1 ~ … row to its data. Cached until the row or the readings change. */
   Grapher.prototype.fitRegression = function (it, p) {
     const F = window.FluxLabFit;
-    const t = this.item(p.tableId);
-    if (!F || !F.nonlinear || !t) return null;
-    const pts = tablePoints({ cols: t.cols, rows: t.rows, xCol: p.xCol, yCol: p.yCol });
+    if (!F || !F.nonlinear) return null;
+    let pts;
+    if (p.tableId) {
+      const t = this.item(p.tableId);
+      if (!t) return null;
+      pts = tablePoints({ cols: t.cols, rows: t.rows, xCol: p.xCol, yCol: p.yCol });
+    } else pts = this.seriesPairs(p.xName, p.yName, p.inline);
+    const log = !!it.logMode;
     const fixed = p.names.filter((n) => this.defined && this.defined[n] !== undefined && !(this._regOwn && this._regOwn[n] === it.id));
     const free = p.names.filter((n) => fixed.indexOf(n) < 0);
-    const sig = JSON.stringify([it.src, pts, fixed.map((n) => this.scope[n])]);
+    const sig = JSON.stringify([it.src, pts.map((q) => [q.x, q.y]), fixed.map((n) => this.scope[n]), log]);
     this._regCache = this._regCache || {};
     const hit = this._regCache[it.id];
     if (hit && hit.sig === sig) return hit.fit;
     let fit;
-    if (pts.length < free.length) {
-      fit = { error: 'This fits ' + free.length + ' number' + (free.length === 1 ? '' : 's') + ', so the table needs at least ' + free.length + ' rows with both columns filled.' };
+    const usable = log ? pts.filter((q) => q.y > 0) : pts;
+    if (log && usable.length < pts.length) {
+      fit = { error: 'Log mode fits ln(y), so every y needs to be above zero — ' + (pts.length - usable.length) + ' reading' + (pts.length - usable.length === 1 ? ' is' : 's are') + ' not.' };
+    } else if (usable.length < free.length) {
+      fit = { error: 'This fits ' + free.length + ' number' + (free.length === 1 ? '' : 's') + ', so it needs at least ' + free.length + ' points with both values filled in.' };
+    } else if (!free.length) {
+      fit = { error: 'Every letter here is already defined, so there is nothing left to fit.' };
     } else {
       const self = this;
       const model = (q, x) => {
@@ -1176,17 +1360,114 @@
         for (let j = 0; j < fixed.length; j++) p.rscope[fixed[j]] = self.scope[fixed[j]];
         return p.fnRaw(x);
       };
-      const res = F.nonlinear('regression', free, model, free.map(() => 1), pts.map((q) => q.x), pts.map((q) => q.y));
+      const xs = usable.map((q) => q.x), ys = usable.map((q) => q.y);
+      /* Log mode, as in Desmos: fit ln y against ln of the model. It weights
+         every reading by its relative error, which is what an exponential or
+         power law usually wants. */
+      const fitModel = log ? (q, x) => Math.log(model(q, x)) : model;
+      const fitYs = log ? ys.map(Math.log) : ys;
+      const res = fitManyStarts(F, free, fitModel, xs, fitYs, p.periodic);
       if (res.error) fit = { error: res.error };
       else {
         const vals = res.values.slice();
-        fit = { names: free, values: vals, params: res.params, r2: res.r2, fn: (x) => model(vals, x) };
+        const fn = (x) => model(vals, x);
+        const residuals = usable.map((q) => ({ x: q.x, e: q.y - fn(q.x) }));
+        let sse = 0;
+        residuals.forEach((r) => { sse += r.e * r.e; });
+        // Pearson r, shown when the fitted curve is a straight line — as Desmos does.
+        const a0 = fn(0), a1 = fn(1), a2 = fn(2);
+        const straight = [a0, a1, a2].every(Number.isFinite) && Math.abs((a2 - a1) - (a1 - a0)) <= 1e-9 * Math.max(1, Math.abs(a1 - a0));
+        let r = null;
+        if (straight && xs.length > 2) {
+          const mx = xs.reduce((s2, v) => s2 + v, 0) / xs.length, my = ys.reduce((s2, v) => s2 + v, 0) / ys.length;
+          let sxy = 0, sxx = 0, syy = 0;
+          for (let i = 0; i < xs.length; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+          if (sxx > 0 && syy > 0) r = sxy / Math.sqrt(sxx * syy);
+        }
+        fit = { names: free, values: vals, params: res.params, r2: res.r2, fn: fn, n: usable.length,
+          rmse: Math.sqrt(sse / usable.length), r: r, residuals: residuals, log: log };
         this._regOwn = this._regOwn || {};
         free.forEach((n) => { this._regOwn[n] = it.id; });
       }
     }
     this._regCache[it.id] = { sig: sig, fit: fit };
     return fit;
+  };
+
+  /* ── One-click regressions ──────────────────────────────────────────
+     Desmos makes you type y₁ ~ m x₁ + b. Here a table offers the usual
+     models; picking one writes the row for you, with letters that are not
+     already taken, so two regressions never fight over "m". */
+  const REG_MODELS = [
+    { id: 'linear', name: 'Linear', tpl: 'Y ~ m X + b', letters: 'mb' },
+    { id: 'proportional', name: 'Proportional', tpl: 'Y ~ k X', letters: 'k' },
+    { id: 'quadratic', name: 'Quadratic', tpl: 'Y ~ a X^2 + b X + c', letters: 'abc' },
+    { id: 'cubic', name: 'Cubic', tpl: 'Y ~ a X^3 + b X^2 + c X + d', letters: 'abcd' },
+    { id: 'exponential', name: 'Exponential', tpl: 'Y ~ a e^(k X)', letters: 'ak' },
+    { id: 'power', name: 'Power', tpl: 'Y ~ a X^b', letters: 'ab' },
+    { id: 'logarithmic', name: 'Logarithmic', tpl: 'Y ~ a + b ln(X)', letters: 'ab' },
+    { id: 'logistic', name: 'Logistic', tpl: 'Y ~ c / (1 + a e^(-k X))', letters: 'cak' },
+    { id: 'sine', name: 'Sinusoidal', tpl: 'Y ~ a sin(b X + c) + d', letters: 'abcd' },
+  ];
+  Grapher.prototype.takenLetters = function () {
+    const out = {};
+    Object.keys(this.doc.params || {}).forEach((k) => { out[k] = true; });
+    Object.keys(this.definedNames()).forEach((k) => { out[k] = true; });
+    this.doc.items.forEach((it) => {
+      if (it.type !== 'expr') return;
+      const p = this.parsed(it);
+      if (p && p.params) p.params.forEach((k) => { out[k] = true; });
+    });
+    ['x', 'y', 'e'].forEach((k) => { out[k] = true; });
+    return out;
+  };
+  Grapher.prototype.regressionTemplate = function (model, xName, yName) {
+    const taken = this.takenLetters();
+    const pool = 'mbkacdpqrstuvwfghjn'.split('');
+    const map = {};
+    model.letters.split('').forEach((l) => {
+      let pick = taken[l] ? null : l;
+      if (!pick) pick = pool.find((q) => !taken[q] && !Object.values(map).includes(q)) || l;
+      map[l] = pick;
+      taken[pick] = true;
+    });
+    return model.tpl.replace(/\b([a-z])\b/g, (m, l) => (map[l] && model.letters.indexOf(l) >= 0 ? map[l] : m))
+      .replace(/\bX\b/g, xName).replace(/\bY\b/g, yName);
+  };
+  Grapher.prototype.regressionPop = function (t, anchor) {
+    const self = this;
+    const values = this.plotCols(t);
+    const xc = t.cols.find((c) => c.id === t.xCol) || values[0];
+    const yc = t.cols.find((c) => c.id === t.yCol) || values[1] || values[0];
+    if (!xc || !yc || !xc.name || !yc.name || !NAME_OK.test(xc.name) || !NAME_OK.test(yc.name)) {
+      toast('Give the table\'s x and y columns names like x1 and y1 first.', 'warning');
+      return;
+    }
+    const html = '<div class="flg-fitpop flg-regpop"><div class="flg-fitpop-h">Fit ' + esc(yc.name) + ' against ' + esc(xc.name) + '</div>'
+      + REG_MODELS.map((m) => '<button type="button" class="flg-fitopt flg-regopt" data-reg="' + m.id + '"><span><b>' + esc(m.name) + '</b>'
+        + '<small>' + esc(self.regressionTemplate(m, xc.name, yc.name)) + '</small></span></button>').join('')
+      + '</div>';
+    openPop(anchor, html, (el) => {
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-reg]');
+        if (!b) return;
+        const m = REG_MODELS.find((q) => q.id === b.dataset.reg);
+        closePop();
+        if (m) self.addRegression(t, self.regressionTemplate(m, xc.name, yc.name));
+      });
+    });
+  };
+  Grapher.prototype.addRegression = function (t, src) {
+    const at = this.doc.items.indexOf(t);
+    const it = blankExpr(this.doc.items.length, src);
+    it.colour = t.colour;
+    this.doc.items.splice(at + 1, 0, it);
+    this.cache.clear();
+    this.syncParams();
+    this.touch();
+    this.renderItems();
+    this.renderParams();
+    this.draw();
   };
 
   Grapher.prototype.regressionOf = function (it) {
@@ -1413,6 +1694,10 @@
       + '<div class="flg-fitrow">' + chips
       +   '<button type="button" class="flg-chip flg-chip--add" data-fits="' + esc(t.id) + '" aria-label="Lines of best fit" title="Choose lines of best fit">'
       +   ICON.plus + '<span>fit</span></button>'
+      +   (this.kind === 'functions'
+            ? '<button type="button" class="flg-chip flg-chip--add" data-regadd="' + esc(t.id) + '" title="Add a regression row — y1 ~ m x1 + b and the rest, written for you">'
+              + ICON.plus + '<span>regression</span></button>'
+            : '')
       + '</div>'
       + '<div class="flg-fitrow">' + (t.manuals || []).map((mn, i) => '<span class="flg-fchip flg-fchip--manual">'
       +     '<button type="button" class="flg-lcol" data-lcol="man:' + i + '" title="Colour of this line" aria-label="Colour of ' + esc(manualName(t, i).toLowerCase()) + '">'
@@ -1561,12 +1846,29 @@
             : '<span class="flg-eqv">= ' + esc(fmtCoord(this.scope[p.name], 1)) + '</span>';
         } else if (p.kind === 'regression') {
           const fit = this.regressionOf(it);
-          if (fit && fit.error) html = '<span class="flg-rinfo is-bad">' + esc(fit.error) + '</span>';
+          const toggles = '<div class="flg-rtog">'
+            + '<button type="button" class="flg-chip' + (it.showResiduals ? ' is-on' : '') + '" data-rres aria-pressed="' + !!it.showResiduals + '"'
+            + ' title="Plot each point\'s residual (how far it sits from the curve)">residuals</button>'
+            + '<button type="button" class="flg-chip' + (it.logMode ? ' is-on' : '') + '" data-rlog aria-pressed="' + !!it.logMode + '"'
+            + ' title="Fit ln(y) instead of y, as Desmos\'s log mode does — better for exponentials and power laws">log mode</button></div>';
+          if (fit && fit.error) html = '<span class="flg-rinfo is-bad">' + esc(fit.error) + '</span>' + toggles;
           else if (fit) {
-            html = '<div class="flg-rinfo">' + fit.params.map((pp) => '<span><i>' + esc(pp.name) + '</i> = '
-              + esc(pp.u ? fmtWithU(pp.value, pp.u) : fmt(pp.value)) + '</span>').join('')
-              + '<span><i>R²</i> = ' + esc(fmt(fit.r2)) + '</span></div>';
+            const eq = fittedEquation(p, fit);
+            const stats = [['R²', fmt(fit.r2)]];
+            if (fit.r != null) stats.push(['r', fmt(fit.r)]);
+            stats.push(['RMSE', fmt(fit.rmse)], ['n', String(fit.n)]);
+            html = (eq ? '<div class="flg-reqn">' + esc(eq) + '</div>' : '')
+              + '<div class="flg-rinfo">' + fit.params.map((pp) => '<span><i>' + esc(pp.name) + '</i> = '
+              + esc(pp.u ? fmtWithU(pp.value, pp.u) : fmt(pp.value)) + '</span>').join('') + '</div>'
+              + '<div class="flg-rinfo flg-rstats">' + stats.map((q) => '<span><i>' + esc(q[0]) + '</i> = ' + esc(q[1]) + '</span>').join('')
+              + (fit.log ? '<span class="flg-rnote">in log space</span>' : '') + '</div>'
+              + toggles;
           }
+        } else if (p.kind === 'list') {
+          html = '<span class="flg-eqv">' + p.values.length + ' number' + (p.values.length === 1 ? '' : 's') + '</span>';
+        } else if (p.kind === 'series') {
+          const n = this.seriesPairs(p.xName, p.yName).length;
+          html = '<span class="flg-eqv">' + n + ' point' + (n === 1 ? '' : 's') + '</span>';
         }
       }
       let box = el.querySelector('.flg-info');
@@ -2029,10 +2331,20 @@
       if (d.pplay) { self.togglePlay(d.pplay); return; }
       if (d.hist) { self.stepHistory(d.hist === 'undo'); return; }
       if (b.hasAttribute('data-clearall')) { self.clearAll(); return; }
+      if (b.hasAttribute('data-rres') || b.hasAttribute('data-rlog')) {
+        const ex = self.itemOf(b);
+        if (!ex || ex.type !== 'expr') return;
+        if (b.hasAttribute('data-rres')) { if (ex.showResiduals) delete ex.showResiduals; else ex.showResiduals = true; }
+        else { if (ex.logMode) delete ex.logMode; else ex.logMode = true; }
+        self.touch();
+        self.draw();
+        return;
+      }
       if (d.kb != null && b.classList.contains('flg-kbbtn')) { self.toggleKeypad(); return; }
       const tb = self.itemOf(b);
       if (!tb) return;
       if (d.lcol) { self.lineColourPop(tb, d.lcol, b); return; }
+      if (b.hasAttribute('data-regadd')) { self.regressionPop(tb, b); return; }
       if (d.rdel != null && d.rdel !== '') {
         tb.rows.splice(+d.rdel, 1);
         if (!tb.rows.length) tb.rows.push(tb.cols.map(() => ''));
@@ -2808,11 +3120,35 @@
 
   Grapher.prototype.drawExpr = function (it, m, v, fr) {
     const p = this.parsed(it);
-    if (!p || p.error || p.kind === 'empty' || p.kind === 'def' || p.kind === 'value') return '';
+    if (!p || p.error || p.kind === 'empty' || p.kind === 'def' || p.kind === 'value' || p.kind === 'list') return '';
+    if (p.kind === 'series') {
+      return this.seriesPairs(p.xName, p.yName).map((q) => '<circle cx="' + m.sx(q.x).toFixed(1) + '" cy="' + m.sy(q.y).toFixed(1)
+        + '" r="4.6" fill="' + it.colour + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/>').join('');
+    }
     if (p.kind === 'regression') {
       const fit = this.regressionOf(it);
       if (!fit || !fit.fn) return '';
-      return curvePaths(fit.fn, m, v, fr, 'stroke="' + it.colour + '" stroke-width="2.5" stroke-linecap="round"' + (it.dash ? ' stroke-dasharray="8 6"' : ''));
+      let out = '';
+      /* The data a regression fits is drawn with it when it is a list —
+         a table draws its own points, a list has nowhere else to show. */
+      if (!p.tableId) {
+        this.seriesPairs(p.xName, p.yName, p.inline).forEach((q) => {
+          out += '<circle cx="' + m.sx(q.x).toFixed(1) + '" cy="' + m.sy(q.y).toFixed(1) + '" r="4.2" fill="' + it.colour + '" fill-opacity=".55" stroke="' + it.colour + '" stroke-width="1"/>';
+        });
+      }
+      out += curvePaths(fit.fn, m, v, fr, 'stroke="' + it.colour + '" stroke-width="2.5" stroke-linecap="round"' + (it.dash ? ' stroke-dasharray="8 6"' : ''));
+      // Residuals, as Desmos's e₁: each reading's distance from the curve, around y = 0.
+      if (it.showResiduals && fit.residuals) {
+        const y0 = m.sy(0);
+        if (y0 >= fr.T && y0 <= fr.B) {
+          out += '<line x1="' + fr.L + '" y1="' + y0.toFixed(1) + '" x2="' + fr.R + '" y2="' + y0.toFixed(1) + '" stroke="' + it.colour + '" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3 4"/>';
+        }
+        fit.residuals.forEach((q) => {
+          if (!Number.isFinite(q.e)) return;
+          out += '<circle class="flg-resid" cx="' + m.sx(q.x).toFixed(1) + '" cy="' + m.sy(q.e).toFixed(1) + '" r="4" fill="none" stroke="' + it.colour + '" stroke-width="1.8"/>';
+        });
+      }
+      return out;
     }
     const on = this.active === it.id;
     const attrs = 'stroke="' + it.colour + '" stroke-width="' + (on ? 3.1 : 2.5) + '" stroke-linejoin="round" stroke-linecap="round"'
@@ -3521,6 +3857,7 @@
       keyPoints: keyPoints, intersections: intersections, parseExpr: parseExpr,
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
       computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread, docIsBlank: docIsBlank,
+      fitManyStarts: fitManyStarts, parseListBody: parseListBody, fittedEquation: fittedEquation,
     },
   };
 })();

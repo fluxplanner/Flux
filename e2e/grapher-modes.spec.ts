@@ -337,7 +337,7 @@ test.describe('Flux Grapher', () => {
     await page.locator('[data-add="expr"]').click();
     await page.locator('.flg-expr').last().fill('y1 ~ m x1 + b');
     await page.waitForTimeout(400);
-    const info = page.locator('.flg-item--expr').last().locator('.flg-rinfo');
+    const info = page.locator('.flg-item--expr').last().locator('.flg-info');
     await expect(info).toContainText('m = 2');
     await expect(info).toContainText('b = 1');
     await expect(info).toContainText('R² = 1');
@@ -489,6 +489,61 @@ test.describe('Flux Grapher', () => {
     expect(await image(), 'the saved image names the max/min lines in its key').toContain('Steepest line');
     await page.locator('[data-restoggle]').click();
     expect(await image(), 'collapsed results leave the key out of the image').not.toContain('Steepest line');
+  });
+
+  test('one click writes a regression, with letters that do not clash, and it reports r, RMSE and n', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.locator('[data-add="table"]').click();
+    const t = page.locator('.flg-item--table').first();
+    const rows = [['0', '1'], ['1', '3'], ['2', '5'], ['3', '7'], ['4', '9.2']];
+    for (let r = 0; r < rows.length; r++) {
+      await t.locator(`[data-cell="${r}:0"]`).fill(rows[r][0]);
+      await t.locator(`[data-cell="${r}:1"]`).fill(rows[r][1]);
+    }
+    await t.locator('[data-regadd]').click();
+    await page.locator('.flg-regpop [data-reg="linear"]').click();
+    await expect(page.locator('.flg-expr').last()).toHaveValue('y1 ~ m x1 + b');
+    const info = page.locator('.flg-item--expr').last().locator('.flg-info');
+    await expect(info).toContainText('y1 = ');
+    await expect(info).toContainText('R² =');
+    await expect(info).toContainText('r =');
+    await expect(info).toContainText('RMSE');
+    await expect(info).toContainText('n = 5');
+
+    // A second regression may not reuse m or b.
+    await t.locator('[data-regadd]').click();
+    await page.locator('.flg-regpop [data-reg="quadratic"]').click();
+    const quad = await page.locator('.flg-expr').nth(1).inputValue();
+    expect(quad).toMatch(/^y1 ~ a x1\^2 \+ \w x1 \+ c$/);
+    expect(quad, 'b is taken by the linear fit').not.toContain(' b x1');
+  });
+
+  test('lists and list literals regress like columns, and residuals and log mode switch on', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const rows = ['x1 = [1, 2, 3, 4, 5]', 'y1 = [2.7, 7.4, 20.1, 54.6, 148.4]', 'y1 ~ a e^(k x1)', '[2.1, 3.9, 6.2, 7.8, 10.1] ~ p[1, 2, 3, 4, 5] + q'];
+    await page.locator('.flg-expr').first().fill(rows[0]);
+    for (const src of rows.slice(1)) {
+      await page.locator('[data-add="expr"]').click();
+      await page.locator('.flg-expr').last().fill(src);
+    }
+    await page.waitForTimeout(500);
+    const exp = page.locator('.flg-item--expr').nth(2).locator('.flg-info');
+    // Made from y = e^x, rounded: a and k both come out within a thousandth of 1.
+    await expect(exp).toContainText(/a = (1\.00|0\.99)/);
+    await expect(exp).toContainText(/k = (1\.00|0\.99)/);
+    await expect(page.locator('.flg-item--expr').nth(3).locator('.flg-info')).toContainText('p = 1.99');
+
+    await exp.locator('[data-rres]').click();
+    await expect(page.locator('.flg-plot .flg-resid')).toHaveCount(5);
+    await exp.locator('[data-rlog]').click();
+    await expect(exp).toContainText('in log space');
+  });
+
+  test('the keypad has ~ and [ ] for regressions and lists', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.locator('[data-kb]').click();
+    await expect(page.locator('.flg-kb [data-key]').filter({ hasText: '~' })).toHaveCount(1);
+    await expect(page.locator('.flg-kb [data-key]').filter({ hasText: '[ ]' })).toHaveCount(1);
   });
 
   test('the chosen half survives a reload', async ({ page }) => {

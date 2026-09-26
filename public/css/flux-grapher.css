@@ -460,6 +460,12 @@
 .flg-rinfo { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--flg-mono); font-size: .74rem; color: var(--flg-ink); }
 .flg-rinfo i { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: var(--flg-accent); }
 .flg-rinfo.is-bad { color: #fbbf24; font-family: inherit; }
+.flg-reqn { font-family: var(--flg-mono); font-size: .78rem; color: var(--flg-ink); margin: 2px 0 4px; overflow-wrap: anywhere; }
+.flg-rstats { color: var(--flg-mut); margin-top: 3px; }
+.flg-rstats i { color: var(--flg-mut); }
+.flg-rnote { font-family: inherit; font-size: .68rem; font-style: italic; }
+.flg-rtog { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+.flg-regopt { width: 100%; margin: 0; border: 0; background: none; color: var(--flg-ink); text-align: left; font: inherit; }
 
 /* ── Fits: chips for what is on, a picker for everything ───────────────── */
 .flg-fitrow { display: flex; flex-wrap: wrap; gap: 5px; width: 100%; }
