@@ -123,9 +123,26 @@
       body: text,
       created_by: (u && u.email) || null,
     }).then(function (res) {
-      if (res && res.error) { warnOnce(res.error); return false; }
+      if (res && res.error) { _lastError = res.error; warnOnce(res.error); return false; }
+      _lastError = null;
       return true;
-    }, function (e) { warnOnce(e); return false; });
+    }, function (e) { _lastError = e || { message: 'network' }; warnOnce(e); return false; });
+  }
+
+  /* Why the last send failed, in words. The card used to guess "has the
+     migration been applied?" for every failure — including the one that was
+     actually happening, the database refusing the owner after the move to
+     username sign-in — and so pointed at the wrong thing. */
+  var _lastError = null;
+  function lastError() {
+    var e = _lastError;
+    if (!e) return '';
+    var code = String(e.code || ''), msg = String(e.message || '');
+    if (code === '42P01' || /does not exist/i.test(msg)) return 'the messages table is missing from the database';
+    if (code === '42501' || /row-level security|permission denied/i.test(msg)) return 'the database did not accept this account as the owner';
+    if (code === '23503') return 'that account no longer exists';
+    if (/network|fetch/i.test(msg)) return 'Flux could not be reached — check the connection';
+    return msg || 'unknown error';
   }
 
   /** Owner side: what has been sent, and whether it has been read yet. */
@@ -145,6 +162,7 @@
   window.FluxOwnerMessages = {
     checkInbox: checkInbox,
     send: send,
+    lastError: lastError,
     recent: recent,
     _table: TABLE,
   };

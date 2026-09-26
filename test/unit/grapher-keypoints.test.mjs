@@ -149,8 +149,10 @@ test('equations: vertical lines, points, and helpful refusals', () => {
   assert.equal(T.parseExpr('(1, 2), (3, 4)', scope).pts.length, 2);
   assert.equal(T.parseExpr('y = 2x + 1', scope).kind, 'fn');
   assert.equal(T.parseExpr('f(x) = x^2', scope).kind, 'fn');
-  assert.ok(T.parseExpr('x = x + 1', scope).error, 'x = x + 1 is not a vertical line');
-  assert.ok(T.parseExpr('y > x', scope).error, 'inequalities are refused, not mis-drawn');
+  // x = x + 1 is not a vertical line: it is a relation, one no point satisfies.
+  assert.equal(T.parseExpr('x = x + 1', scope).kind, 'implicit', 'x = x + 1 is not a vertical line');
+  // Inequalities are drawn as the region where they hold (grapher-implicit.test.mjs).
+  assert.equal(T.parseExpr('y > x', scope).kind, 'implicit');
   assert.equal(T.parseExpr('', scope).kind, 'empty');
 });
 

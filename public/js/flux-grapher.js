@@ -399,6 +399,8 @@
       let out = null;
       if (it.type === 'expr') {
         out = { id: str(it.id, 24) || newId(), type: 'expr', src: str(it.src, 6000), colour: colour, hidden: !!it.hidden, dash: !!it.dash };
+        // How the maths field last showed it (flux-mathfield.js). Only used while it still matches src.
+        if (typeof it.tex === 'string' && it.tex && it.tex.length <= 8000) out.tex = it.tex;
         if (it.logMode) out.logMode = true;
         if (it.showResiduals) out.showResiduals = true;
       } else if (it.type === 'table') {
@@ -588,6 +590,54 @@
     return !!(E && E.FNS && Object.prototype.hasOwnProperty.call(E.FNS, String(name).toLowerCase()));
   }
 
+  /* ── Relations: x² + y² = 25, xy = 1, y > x² ──────────────────────────
+     Desmos's implicit curves. Anything comparing two sides that use x and y
+     is drawn as every point where it holds: the curve where the sides are
+     equal, and for < or > the region, shaded. */
+  const REL_OPS = ['<=', '>=', '≤', '≥', '<', '>', '='];
+  /** The one comparison outside any brackets: { lhs, op, rhs }, { error }, or null. */
+  function splitRelation(s) {
+    const found = [];
+    let depth = 0;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '(' || c === '[' || c === '{') depth++;
+      else if (c === ')' || c === ']' || c === '}') depth--;
+      else if (depth === 0) {
+        if ((c === '!' && s[i + 1] === '=') || c === '≠') return { error: '≠ cannot be drawn — use =, < or >.' };
+        const op = REL_OPS.find((o) => s.startsWith(o, i));
+        if (op) { found.push({ i: i, op: op }); i += op.length - 1; }
+      }
+    }
+    if (!found.length) return null;
+    if (found.length > 1) return { error: 'Use one =, < or > at a time, like x^2 + y^2 = 25.' };
+    const f = found[0];
+    return { lhs: s.slice(0, f.i).trim(), op: ({ '≤': '<=', '≥': '>=' })[f.op] || f.op, rhs: s.slice(f.i + f.op.length).trim() };
+  }
+  /** Compile a relation to F(x, y) = left − right; it holds where F is 0, below 0 or above 0. */
+  function parseImplicit(rel, opts, domain) {
+    const E = window.FluxExpr;
+    if (!rel.lhs || !rel.rhs) {
+      return { error: rel.op === '=' ? 'Put something on both sides of =, like x^2 + y^2 = 25.' : 'Put something on both sides, like y > x^2.' };
+    }
+    const ref = { v: 0 };
+    const o = Object.assign({}, opts, { var2: 'y', var2Ref: ref });
+    const a = E.tryCompile(rel.lhs, 'x', o);
+    if (a.error) return { error: a.error };
+    const b = E.tryCompile(rel.rhs, 'x', o);
+    if (b.error) return { error: b.error };
+    if (!a.usesVar && !b.usesVar && !a.usesVar2 && !b.usesVar2) return { error: 'There is no x or y in this to draw.' };
+    const params = a.params.slice();
+    b.params.concat(domain ? domain.params : []).forEach((p) => { if (params.indexOf(p) < 0) params.push(p); });
+    const fa = a.fn, fb = b.fn, inside = domain ? domain.test : null;
+    const F = (x, y) => {
+      if (inside && !inside(x)) return NaN;
+      ref.v = y;
+      return fa(x) - fb(x);
+    };
+    return { kind: 'implicit', op: rel.op, F: F, params: params };
+  }
+
   /**
    * Read one row the way Desmos does. The kinds:
    *   fn          y = x², or f(x) = x² (which also defines f for other rows)
@@ -652,12 +702,13 @@
       return { kind: 'points', pts: pts, params: params };
     }
 
-    const vx = /^x\s*=\s*(.+)$/i.exec(s);
-    if (vx && domain) return { error: 'Limits in { } work on y = … curves.' };
+    const vx = /^x\s*=\s*([^=<>≤≥]+)$/i.exec(s);
     if (vx) {
-      const r = E.tryCompile(vx[1], 'x', opts);
+      // x = y² is a curve on its side; x = 3 is a vertical line.
+      const r = E.tryCompile(vx[1], 'x', Object.assign({}, opts, { var2: 'y', var2Ref: { v: 0 } }));
       if (r.error) return { error: r.error };
-      if (r.usesVar) return { error: 'x = … draws a vertical line, so the right side needs to be a number.' };
+      if (r.usesVar || r.usesVar2) return parseImplicit({ lhs: 'x', op: '=', rhs: vx[1] }, opts, domain);
+      if (domain) return { error: 'Limits in { } work on y = … curves.' };
       return { kind: 'vline', fx: r.fn, params: r.params };
     }
 
@@ -686,14 +737,26 @@
       };
     }
 
+    /* Every other comparison is a relation between x and y: x² + y² = 25,
+       y > x², xy = 1. "y = …" stays a function of x unless its right side
+       uses y as well. */
+    const rel = splitRelation(s);
+    if (rel && rel.error) return { error: rel.error };
+    if (rel) {
+      const plainY = rel.op === '=' && /^y$/i.test(rel.lhs) && (!rel.rhs
+        || !E.tryCompile(rel.rhs, 'x', Object.assign({}, opts, { var2: 'y', var2Ref: { v: 0 } })).usesVar2);
+      if (!plainY) return parseImplicit(rel, opts, domain);
+    }
+
     const drawn = /^y\s*=/i.test(s);
     s = s.replace(/^y\s*=\s*/i, '');
     if (!s) return { kind: 'empty', params: [] };
-    if (/[<>≤≥]/.test(s)) return { error: 'Inequalities are not supported yet — write y = … instead.' };
-    if (s.indexOf('=') >= 0) {
+    if (/[<>≤≥]/.test(s) || s.indexOf('=') >= 0) {
       return { error: 'Write y = … to draw a curve, or a single letter = … (like a = 4) to define a number.' };
     }
     const r = E.tryCompile(s, 'x', opts);
+    // x² + y² on its own is a relation still being typed.
+    if (r.error && !drawn && /y is what is being drawn/.test(r.error)) return { error: 'Finish it with = and a number, like x^2 + y^2 = 25.' };
     if (r.error) return { error: r.error };
     // No x and no "y =": a sum to work out, as Desmos does with "2 + 3".
     if (!r.usesVar && !drawn && !domain) return { kind: 'value', value: r.fn, params: r.params };
@@ -1570,13 +1633,19 @@
       const k = (e.key || '').toLowerCase();
       if (k !== 'z' && k !== 'y') return;
       const a = document.activeElement;
-      // A text box keeps its own undo for the letters being typed.
-      if (a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && /^(text|search|)$/.test(a.type || '')))) return;
+      // A text box keeps its own undo for the letters being typed. A maths
+      // field has none of its own, so there the graph's undo steps back.
+      const inMath = !!(a && a.closest && a.closest('.flg-mq'));
+      if (a && !inMath && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && /^(text|search|)$/.test(a.type || '')))) return;
       // In the planner, only while you are working in the grapher.
       if (self.surface === 'planner' && !(a && self.root.contains(a))) return;
       if (document.querySelector('.fgc-back, .fgt-layer')) return;
       const back = k === 'z' && !e.shiftKey;
-      if (self.stepHistory(back)) e.preventDefault();
+      if (self.stepHistory(back)) {
+        e.preventDefault();
+        // The rows were redrawn; stay in the equation you were typing in.
+        if (inMath && self.active) self.focusExpr(self.active);
+      }
     };
     document.addEventListener('keydown', this._onKey);
     if (this.kind === 'functions') {
@@ -1824,6 +1893,7 @@
     if (!box) return;
     let e = 0;
     box.innerHTML = this.doc.items.map((it) => this.itemHTML(it, it.type === 'expr' ? e++ : 0)).join('');
+    this.mountMath();
   };
 
   Grapher.prototype.rerenderItem = function (id) {
@@ -1832,6 +1902,109 @@
     if (!el || !it) { this.renderItems(); return; }
     const n = this.doc.items.filter((i) => i.type === 'expr').indexOf(it);
     el.outerHTML = this.itemHTML(it, Math.max(0, n));
+    this.mountMath();
+  };
+
+  /* ── Typing like Desmos ──────────────────────────────────────────────
+     Each equation row gets a maths field (flux-mathfield.js, MathQuill) in
+     place of its text box, so an exponent rises the moment ^ is typed. The
+     text box stays in the row, hidden, as the source of truth: every edit is
+     translated into it and sent through its input event, so reading, saving,
+     undo and the error messages see exactly what they always did. If the
+     maths field cannot load, the text box and its typeset copy stay as they
+     were. */
+  Grapher.prototype.mountMath = function () {
+    const MF = window.FluxMathField;
+    if (!MF || !this.root) return;
+    if (!MF.ready()) {
+      if (!this._mathWait) {
+        this._mathWait = MF.load().then((ok) => {
+          this._mathWait = null;
+          if (ok && this.root && this.root.isConnected) this.mountMath();
+        });
+      }
+      return;
+    }
+    this.root.querySelectorAll('.flg-item--expr:not(.has-mq)').forEach((row) => this.mountRowMath(row));
+  };
+
+  Grapher.prototype.mountRowMath = function (row) {
+    const MF = window.FluxMathField;
+    const id = row.dataset.id;
+    const input = row.querySelector('.flg-expr');
+    const it = this.item(id);
+    if (!input || !it) return;
+    const host = document.createElement('span');
+    host.className = 'flg-mq';
+    input.after(host);
+    const self = this;
+    const mf = MF.create(host, {
+      edit: (latex) => self.mathEdited(id, latex),
+      enter: () => self.exprEnter(id),
+      up: () => self.focusExprStep(id, -1),
+      down: () => self.focusExprStep(id, 1),
+      deleteOut: () => self.deleteEmptyExpr(id),
+    });
+    if (!mf) { host.remove(); return; }
+    MF.set(mf, it.tex && MF.toPlain(it.tex) === it.src ? it.tex : MF.toLatex(it.src));
+    input._mf = mf;
+    input.tabIndex = -1;
+    input.setAttribute('aria-hidden', 'true');
+    const ta = host.querySelector('textarea');
+    if (ta) {
+      ta.setAttribute('aria-label', input.getAttribute('aria-label') || 'Equation');
+      if (this.kbOpen) ta.setAttribute('inputmode', 'none');
+    }
+    row.classList.add('has-mq');
+    // Typing in the text box when the field arrived: carry on in the field.
+    if (document.activeElement === input) { mf.focus(); mf.moveToRightEnd(); }
+  };
+
+  /** The maths field changed: put its plain reading in the text box. */
+  Grapher.prototype.mathEdited = function (id, latex) {
+    const it = this.item(id);
+    const input = this.root && this.root.querySelector('[data-expr="' + CSS.escape(id) + '"]');
+    if (!it || !input) return;
+    const plain = window.FluxMathField.toPlain(latex);
+    if (input.value === plain) return;
+    it.tex = latex;
+    input.value = plain;
+    input._fromMath = true;
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } finally { input._fromMath = false; }
+  };
+
+  /** Put the cursor in an equation: its maths field, or its text box without one. */
+  Grapher.prototype.focusExpr = function (id) {
+    const inp = this.root && this.root.querySelector('[data-expr="' + CSS.escape(id) + '"]');
+    if (!inp) return false;
+    if (inp._mf) { inp._mf.focus(); inp._mf.moveToRightEnd(); } else inp.focus();
+    return true;
+  };
+
+  /** Enter: on to the next equation, or a new one after the last. */
+  Grapher.prototype.exprEnter = function (id) {
+    const i = this.doc.items.findIndex((x) => x.id === id);
+    const nxt = this.doc.items.slice(i + 1).find((x) => x.type === 'expr');
+    if (nxt) this.focusExpr(nxt.id);
+    else this.addItem('expr');
+  };
+
+  /** ↑ from the top line or ↓ from the bottom one moves between equations, as in Desmos. */
+  Grapher.prototype.focusExprStep = function (id, dir) {
+    const exprs = this.doc.items.filter((x) => x.type === 'expr');
+    const to = exprs[exprs.findIndex((x) => x.id === id) + dir];
+    if (to) this.focusExpr(to.id);
+  };
+
+  /** Backspace in an empty equation removes it and goes back to the one above. */
+  Grapher.prototype.deleteEmptyExpr = function (id) {
+    const it = this.item(id);
+    const exprs = this.doc.items.filter((x) => x.type === 'expr');
+    if (!it || String(it.src || '').trim() || exprs.length < 2) return;
+    const k = exprs.indexOf(it);
+    const back = exprs[k - 1] || exprs[k + 1];
+    this.removeItem(id);
+    if (back) this.focusExpr(back.id);
   };
 
   Grapher.prototype.renderParams = function () {
@@ -1962,7 +2135,10 @@
     this.draw();
     const sel = type === 'table' ? '.flg-item[data-id="' + CSS.escape(it.id) + '"] .flg-cell' : '[data-expr="' + CSS.escape(it.id) + '"]';
     const f = this.root.querySelector(sel);
-    if (f) { f.focus(); f.scrollIntoView({ block: 'nearest' }); }
+    if (f) {
+      if (f._mf) this.focusExpr(it.id); else f.focus();
+      (f.closest('.flg-item') || f).scrollIntoView({ block: 'nearest' });
+    }
   };
 
   Grapher.prototype.removeItem = function (id) {
@@ -2225,8 +2401,14 @@
         const it = self.item(d.expr);
         if (!it) return;
         it.src = t.value;
+        // Text from anywhere but the maths field (a paste, a test, the old
+        // keypad path) is shown in the field too.
+        if (!t._fromMath) {
+          delete it.tex;
+          if (t._mf) window.FluxMathField.set(t._mf, window.FluxMathField.toLatex(it.src));
+        }
         const row = t.closest('.flg-item');
-        if (row) {
+        if (row && !row.classList.contains('has-mq')) {
           const h = typesetExpr(t.value);
           const m = row.querySelector('.flg-math');
           const live = row.querySelector('.flg-math-live');
@@ -2292,6 +2474,10 @@
         it.src = m[1] + '=' + v;
         const box = root.querySelector('[data-expr="' + CSS.escape(it.id) + '"]');
         if (box && box !== document.activeElement) box.value = it.src;
+        if (box && box._mf && !box._mf.el().contains(document.activeElement)) {
+          delete it.tex;
+          window.FluxMathField.set(box._mf, window.FluxMathField.toLatex(it.src));
+        }
         self.touch();
         self.draw();
       } else if (d.prange || d.pval) {
@@ -2332,7 +2518,11 @@
 
     root.addEventListener('focusin', (e) => {
       const d = e.target.dataset || {};
-      if (d.expr) { self.setActive(d.expr); self._kbInput = e.target; }
+      if (d.expr) { self.setActive(d.expr); self._kbInput = e.target; return; }
+      // The maths field's own hidden textarea: the row it sits in.
+      const field = e.target.closest && e.target.closest('.flg-mq');
+      const row = field && field.closest('.flg-item--expr');
+      if (row) { self.setActive(row.dataset.id); self._kbInput = row.querySelector('.flg-expr'); }
     });
 
     root.addEventListener('keydown', (e) => {
@@ -2355,12 +2545,7 @@
         if (next) { next.focus(); next.select(); }
       } else if (d.expr && e.key === 'Enter') {
         e.preventDefault();
-        const i = self.doc.items.findIndex((x) => x.id === d.expr);
-        const nxt = self.doc.items.slice(i + 1).find((x) => x.type === 'expr');
-        if (nxt) {
-          const inp = root.querySelector('[data-expr="' + CSS.escape(nxt.id) + '"]');
-          if (inp) inp.focus();
-        } else self.addItem('expr');
+        self.exprEnter(d.expr);
       }
     });
 
@@ -2498,7 +2683,7 @@
     if (btn) btn.setAttribute('aria-pressed', String(open));
     this.root.classList.toggle('has-kb', open);
     // With the keypad up, a phone should not also raise its own keyboard.
-    this.root.querySelectorAll('.flg-expr').forEach((el) => {
+    this.root.querySelectorAll('.flg-expr, .flg-mq textarea').forEach((el) => {
       if (open) el.setAttribute('inputmode', 'none'); else el.removeAttribute('inputmode');
     });
     if (!kb) return;
@@ -2506,9 +2691,9 @@
     if (open) {
       this.renderKeypad(this._kbPage || 'main');
       const t = this.kbTarget();
-      if (t) {
+      // Carry on from the end of the equation, the way you would by hand.
+      if (t && t._mf) { t._mf.focus(); t._mf.moveToRightEnd(); } else if (t) {
         t.focus({ preventScroll: true });
-        // Carry on from the end of the equation, the way you would by hand.
         t.setSelectionRange(t.value.length, t.value.length);
       }
     }
@@ -2548,6 +2733,14 @@
     if (key === '@main' || key === '@fn' || key === '@abc') { this.renderKeypad(key.slice(1)); return; }
     const el = this.kbTarget();
     if (!el) return;
+    if (el._mf) {
+      el._mf.focus();
+      if (key === '@enter') {
+        const row = el.closest('.flg-item');
+        if (row) this.exprEnter(row.dataset.id);
+      } else window.FluxMathField.press(el._mf, key);
+      return;
+    }
     el.focus({ preventScroll: true });
     const v = el.value;
     let a = el.selectionStart == null ? v.length : el.selectionStart;
@@ -2877,6 +3070,132 @@
       run.push(m.sx(x).toFixed(1) + ',' + m.sy(clamp(y, v.yLo - lim, v.yHi + lim)).toFixed(1));
     }
     flush();
+    return out;
+  }
+
+  /**
+   * Draw a relation F(x, y) ~ 0 by marching squares. F is sampled on a grid
+   * of cells a few pixels across; wherever it changes sign along a cell edge
+   * the curve crosses that edge, and the crossings are joined cell to cell
+   * into whole lines (so a dashed edge dashes evenly instead of restarting in
+   * every cell). A sign change across a pole — 1/x leaping from +∞ to −∞ —
+   * is not a crossing, so each one is checked: at a real crossing F is near
+   * zero, at a pole it is huge. For < and > the cells where the relation
+   * holds are filled too, whole cells merged into runs.
+   */
+  function implicitSVG(F, op, m, v, fr, colour, lineAttrs) {
+    const cell = Math.max(4, Math.sqrt((fr.pw * fr.ph) / 60000));
+    const nx = Math.max(16, Math.ceil(fr.pw / cell)), ny = Math.max(16, Math.ceil(fr.ph / cell));
+    const W = nx + 1;
+    const xs = new Float64Array(nx + 1), ys = new Float64Array(ny + 1);
+    const px = new Float64Array(nx + 1), py = new Float64Array(ny + 1);
+    for (let i = 0; i <= nx; i++) { xs[i] = v.xLo + (v.xHi - v.xLo) * i / nx; px[i] = m.sx(xs[i]); }
+    for (let j = 0; j <= ny; j++) { ys[j] = v.yLo + (v.yHi - v.yLo) * j / ny; py[j] = m.sy(ys[j]); }
+    const val = new Float64Array(W * (ny + 1));
+    for (let j = 0; j <= ny; j++) {
+      for (let i = 0; i <= nx; i++) {
+        const f = F(xs[i], ys[j]);
+        val[j * W + i] = Number.isFinite(f) ? f : NaN;
+      }
+    }
+
+    // Where the curve crosses an edge, found once per edge and shared by the two cells beside it.
+    const hit = new Map();
+    function crossing(key, x0, y0, f0, x1, y1, f1) {
+      if (hit.has(key)) return hit.get(key);
+      let t = f0 / (f0 - f1);
+      if (!(t >= 0 && t <= 1)) t = 0.5;
+      let x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      const fc = F(x, y);
+      let r = null;
+      if (Number.isFinite(fc) && Math.abs(fc) <= Math.max(Math.abs(f0), Math.abs(f1)) * 0.75 + 1e-12) {
+        // One more step of false position: smoother curves from the same grid.
+        const t2 = (fc > 0) === (f0 > 0) ? t + (1 - t) * (fc / (fc - f1)) : t * (f0 / (f0 - fc));
+        if (fc !== 0 && t2 >= 0 && t2 <= 1) { x = x0 + (x1 - x0) * t2; y = y0 + (y1 - y0) * t2; }
+        r = [m.sx(x), m.sy(y)];
+      }
+      hit.set(key, r);
+      return r;
+    }
+    const H = (i, j) => (j * W + i) * 2;        // the edge from (i, j) to (i + 1, j)
+    const V = (i, j) => (j * W + i) * 2 + 1;    // the edge from (i, j) to (i, j + 1)
+
+    const want = op === '<' || op === '<=' ? -1 : op === '>' || op === '>=' ? 1 : 0;
+    const holds = (f) => (want < 0 ? f < 0 : f > 0);
+    const segs = [];
+    let fill = '';
+    const P = (q) => q[0].toFixed(1) + ' ' + q[1].toFixed(1);
+
+    for (let j = 0; j < ny; j++) {
+      let run = -1;
+      const endRun = (i) => {
+        if (run >= 0) fill += 'M' + px[run].toFixed(1) + ' ' + py[j].toFixed(1) + 'H' + px[i].toFixed(1) + 'V' + py[j + 1].toFixed(1) + 'H' + px[run].toFixed(1) + 'Z';
+        run = -1;
+      };
+      for (let i = 0; i < nx; i++) {
+        const a = val[j * W + i], b = val[j * W + i + 1], c = val[(j + 1) * W + i + 1], d = val[(j + 1) * W + i];
+        if (a !== a || b !== b || c !== c || d !== d) { endRun(i); continue; }
+        const sa = a > 0, sb = b > 0, sc = c > 0, sd = d > 0;
+        const eB = sa !== sb ? crossing(H(i, j), xs[i], ys[j], a, xs[i + 1], ys[j], b) : undefined;
+        const eR = sb !== sc ? crossing(V(i + 1, j), xs[i + 1], ys[j], b, xs[i + 1], ys[j + 1], c) : undefined;
+        const eT = sd !== sc ? crossing(H(i, j + 1), xs[i], ys[j + 1], d, xs[i + 1], ys[j + 1], c) : undefined;
+        const eL = sa !== sd ? crossing(V(i, j), xs[i], ys[j], a, xs[i], ys[j + 1], d) : undefined;
+        const keys = [];
+        if (eB !== undefined) keys.push([H(i, j), eB]);
+        if (eR !== undefined) keys.push([V(i + 1, j), eR]);
+        if (eT !== undefined) keys.push([H(i, j + 1), eT]);
+        if (eL !== undefined) keys.push([V(i, j), eL]);
+        const seg = (p, q) => { if (p[1] && q[1]) segs.push([p[0], q[0]]); };
+        if (keys.length === 2) seg(keys[0], keys[1]);
+        else if (keys.length === 4) {
+          // A saddle: the middle of the cell decides which corners are joined.
+          const mid = F((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2);
+          if ((mid > 0) === sa) { seg(keys[0], keys[1]); seg(keys[2], keys[3]); } else { seg(keys[0], keys[3]); seg(keys[1], keys[2]); }
+        }
+        if (!want) continue;
+        if (holds(a) && holds(b) && holds(c) && holds(d)) { if (run < 0) run = i; continue; }
+        endRun(i);
+        // Part of the cell: its corners that hold and the crossings between, in order round the cell.
+        const corners = [[a, px[i], py[j]], [b, px[i + 1], py[j]], [c, px[i + 1], py[j + 1]], [d, px[i], py[j + 1]]];
+        const between = [eB, eR, eT, eL];
+        const poly = [];
+        let broken = false;
+        for (let k = 0; k < 4; k++) {
+          if (holds(corners[k][0])) poly.push(corners[k][1].toFixed(1) + ' ' + corners[k][2].toFixed(1));
+          if (between[k] === null) broken = true;
+          else if (between[k]) poly.push(P(between[k]));
+        }
+        if (!broken && poly.length >= 3) fill += 'M' + poly.join('L') + 'Z';
+      }
+      endRun(nx);
+    }
+
+    // Join the pieces into lines.
+    const byKey = new Map();
+    segs.forEach((s, n) => s.forEach((k) => { const l = byKey.get(k); if (l) l.push(n); else byKey.set(k, [n]); }));
+    const used = new Uint8Array(segs.length);
+    const grow = (chain) => {
+      for (;;) {
+        const last = chain[chain.length - 1];
+        const next = (byKey.get(last) || []).find((n) => !used[n]);
+        if (next == null) return;
+        used[next] = 1;
+        chain.push(segs[next][0] === last ? segs[next][1] : segs[next][0]);
+      }
+    };
+    let line = '';
+    for (let n = 0; n < segs.length; n++) {
+      if (used[n]) continue;
+      used[n] = 1;
+      const chain = [segs[n][0], segs[n][1]];
+      grow(chain);
+      chain.reverse();
+      grow(chain);
+      line += 'M' + chain.map((k) => P(hit.get(k))).join('L');
+    }
+    let out = '';
+    if (fill) out += '<path class="flg-region" d="' + fill + '" fill="' + colour + '" fill-opacity=".2" stroke="none"/>';
+    if (line) out += '<path d="' + line + '" fill="none" ' + lineAttrs + '/>';
     return out;
   }
 
@@ -3222,6 +3541,18 @@
         return '<circle cx="' + m.sx(x).toFixed(1) + '" cy="' + m.sy(y).toFixed(1) + '" r="5" fill="' + it.colour + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/>';
       }).join('');
     }
+    if (p.kind === 'implicit') {
+      /* Hovering redraws the graph without moving it, so the last drawing
+         is kept until the view, a slider or the style changes. */
+      const key = [v.xLo, v.xHi, v.yLo, v.yHi, fr.pw, fr.ph, fr.L, fr.T, attrs, it.colour]
+        .concat(p.params.map((k) => this.scope[k])).join('|');
+      if (p._svg && p._svg.key === key) return p._svg.out;
+      // A strict < or > leaves its edge out, so it is dashed, as on paper.
+      const strict = (p.op === '<' || p.op === '>') && !it.dash;
+      const out = implicitSVG(p.F, p.op, m, v, fr, it.colour, attrs + (strict ? ' stroke-dasharray="7 6"' : ''));
+      p._svg = { key: key, out: out };
+      return out;
+    }
     return curvePaths(p.fn, m, v, fr, attrs);
   };
 
@@ -3281,7 +3612,7 @@
           lines.push({ colour: it.colour, text: t + '   (' + fit.names.map((n, i) => n + ' = ' + fmt(fit.values[i])).join(', ') + ', R² = ' + fmt(fit.r2) + ')', dash: it.dash });
           return;
         }
-        lines.push({ colour: it.colour, text: /^[xy]\s*=|^\(|^[a-z]\w*\([a-z]\)\s*=/i.test(t) ? t : 'y = ' + t, dash: it.dash });
+        lines.push({ colour: it.colour, text: /[=<>≤≥]|^\(/.test(t) ? t : 'y = ' + t, dash: it.dash });
       } else {
         const pts = tablePoints(it);
         if (!pts.length) return;
@@ -4128,6 +4459,7 @@
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
       computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread, docIsBlank: docIsBlank,
       fitManyStarts: fitManyStarts, parseListBody: parseListBody, fittedEquation: fittedEquation,
+      implicitSVG: implicitSVG,
     },
   };
 })();

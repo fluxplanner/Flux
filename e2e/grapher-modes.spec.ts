@@ -815,29 +815,115 @@ test.describe('Desmos-style typing', () => {
     await expect(reg).toContainText(/a = 0\.7\d/);
   });
 
-  test('equations are typeset when not being typed in', async ({ page }) => {
-    await open(page, { mode: 'functions' });
+  /** Click into the first equation's maths field and empty it. */
+  async function freshField(page: Page) {
     const row = page.locator('.flg-item--expr').first();
-    await row.locator('.flg-expr').fill('y=(x+1)/(x-2)+x^2');
-    await page.locator('.flg-stage').click({ position: { x: 20, y: 20 } });
-    const math = row.locator('.flg-math');
-    await expect(math.locator('.tx-frac')).toHaveCount(1);
-    await expect(math.locator('sup')).toHaveText('2');
-    // The raw text is hidden under the typeset copy, not shown beside it.
-    expect(await row.locator('.flg-expr').evaluate((e) => getComputedStyle(e).color)).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
-    // Clicking it edits the raw text again.
-    await row.locator('.flg-expr').click();
-    await expect(math).toHaveCSS('visibility', 'hidden');
-    await expect(row.locator('.flg-expr')).toHaveValue('y=(x+1)/(x-2)+x^2');
+    await expect(row).toHaveClass(/has-mq/);
+    await row.locator('.flg-mq').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+    return row;
+  }
+
+  test('the power rises while it is being typed, not after', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const row = await freshField(page);
+    await page.keyboard.type('y=x^');
+    // The cursor is already up in an (empty) exponent before anything goes in it.
+    await expect(row.locator('.mq-sup')).toHaveCount(1);
+    await page.keyboard.type('2');
+    await expect(row.locator('.mq-sup')).toHaveText('2');
+    // "+" steps back down, so the 3 is not part of the power.
+    await page.keyboard.type('+3');
+    await expect(row.locator('.mq-sup')).toHaveText('2');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=x^2+3');
+    await expect(row.locator('.flg-err')).toHaveCount(0);
+    // Drawn on the next frame, so poll rather than count once.
+    await expect.poll(() => page.locator('.flg-plot polyline').count(), { message: 'y = x² + 3 was not drawn' }).toBeGreaterThan(0);
+    // The old after-the-fact copy is gone; the plain text is kept out of sight.
+    await expect(row.locator('.flg-math')).toBeHidden();
+    expect(await row.locator('.flg-expr').evaluate((e) => getComputedStyle(e).opacity)).toBe('0');
+  });
+
+  test('fractions stack and brackets close the power they belong to', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const row = await freshField(page);
+    // "/" starts a fraction and what follows goes underneath, as in Desmos.
+    await page.keyboard.type('y=1/2x');
+    await expect(row.locator('.mq-fraction')).toHaveCount(1);
+    await expect(row.locator('.mq-denominator')).toHaveText('2x');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=(1/(2x))');
+    // ")" inside x² closes the bracket around it instead of opening a new one in the power.
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('y=e^(-x^2)+1');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=e^((-x^2))+1');
+    await expect(row.locator('.flg-err')).toHaveCount(0);
+    const top = await page.evaluate(() => {
+      const i = (window as any).fluxGrapherPage.instance;
+      const p = i.parsed(i.doc.items.find((it: any) => it.type === 'expr'));
+      return p.fn(0);
+    });
+    expect(top, 'e^(−x²) + 1 is 2 at x = 0').toBeCloseTo(2, 9);
+    // "sqrt(" makes the root, and its ")" steps back out of it.
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('y=sqrt(x+4)+1');
+    await expect(row.locator('.mq-sqrt-stem')).toHaveText('x+4');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=sqrt(x+4)+1');
   });
 
   test('a letter\'s digits are its subscript: x1 is x₁', async ({ page }) => {
     await open(page, { mode: 'functions' });
-    const row = page.locator('.flg-item--expr').first();
-    await row.locator('.flg-expr').fill('y=ax1+1e5');
-    await page.locator('.flg-stage').click({ position: { x: 20, y: 20 } });
-    await expect(row.locator('.flg-math sub')).toHaveText('1');
-    // "1e5" is a number, not e with a subscript.
-    await expect(row.locator('.flg-math sub')).toHaveCount(1);
+    const row = await freshField(page);
+    await page.keyboard.type('y=ax1+1e5');
+    // "1e5" is a number, not e with a subscript: only the x has one.
+    await expect(row.locator('.mq-sub')).toHaveCount(1);
+    await expect(row.locator('.mq-sub')).toHaveText('1');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=ax1+1e5');
+    // Text from elsewhere — a saved graph, a paste — is shown the same way.
+    await row.locator('.flg-expr').fill('y=(x+1)/(x-2)+x^2');
+    await expect(row.locator('.mq-fraction')).toHaveCount(1);
+    await expect(row.locator('.mq-sup')).toHaveText('2');
+    await expect(row.locator('.flg-expr'), 'showing it must not rewrite what was typed').toHaveValue('y=(x+1)/(x-2)+x^2');
+  });
+
+  test('circles, sideways parabolas and shaded inequalities draw, like Desmos', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const first = page.locator('.flg-expr').first();
+    await first.fill('x^2 + y^2 = 25');
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-expr').nth(1).fill('y > x^2');
+    await page.locator('[data-add="expr"]').click();
+    await page.locator('.flg-expr').nth(2).fill('x = y^2');
+    await expect(page.locator('.flg-err')).toHaveCount(0);
+    await expect.poll(() => page.locator('.flg-plot path[fill="none"]').count()).toBeGreaterThanOrEqual(3);
+    // Only the inequality is shaded, and its edge is dashed because < and > leave it out.
+    await expect(page.locator('.flg-plot .flg-region')).toHaveCount(1);
+    const edges = await page.locator('.flg-plot path[fill="none"]').evaluateAll((els) => els.map((e) => e.getAttribute('stroke-dasharray')));
+    expect(edges.filter(Boolean)).toHaveLength(1);
+    // Half-typed, it says what is missing rather than drawing nothing silently.
+    await first.fill('x^2 + y^2');
+    await expect(page.locator('.flg-err').first()).toContainText('= and a number');
+  });
+
+  test('Enter goes on to a new equation, ready to type in', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const row = await freshField(page);
+    await page.keyboard.type('y=x');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.flg-item--expr')).toHaveCount(2);
+    await page.keyboard.type('y=2^x');
+    const second = page.locator('.flg-item--expr').nth(1);
+    await expect(second.locator('.flg-expr')).toHaveValue('y=2^x');
+    await expect(second.locator('.mq-sup')).toHaveText('x');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=x');
+    // Backspace in an empty equation takes it away and goes back up.
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await expect(page.locator('.flg-item--expr')).toHaveCount(1);
+    await page.keyboard.type('+1');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=x+1');
   });
 });

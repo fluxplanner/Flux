@@ -23,7 +23,7 @@
     { sel: '#ghModes', title: 'Two graphers',
       body: 'Functions is for maths — type an equation and explore it, like Desmos. Measurements is for lab data: tables, uncertainties, error bars and a best-fit line.' },
     { sel: '.flg--functions .flg-items', title: 'Type an equation',
-      body: 'Try y = x², sin(x), x = 3 or a point like (2, 5). Letters such as a or k become sliders you can drag — or press ▶ to animate. Add a table and its + regression button writes y1 ~ m x1 + b for you, with R² and residuals.' },
+      body: 'Try y = x², sin(x), x = 3 or a point like (2, 5) — ^ raises the power as you type, and / starts a fraction. Circles and shading work too: x² + y² = 25, or y > x². Letters such as a or k become sliders you can drag — or press ▶ to animate. Add a table and its + regression button writes y1 ~ m x1 + b for you, with R² and residuals.' },
     { sel: '.flg--data .flg-table', title: 'Your data table',
       body: 'Type or paste readings. Enter moves down a row. Paste straight from a spreadsheet and the columns fill themselves.' },
     { sel: '.flg--data .flg-addcol button', title: 'Add columns',

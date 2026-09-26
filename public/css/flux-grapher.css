@@ -1366,6 +1366,79 @@
    raw text only rather than show both on top of each other. */
 @supports not selector(:has(*)) { .flg-math { display: none; } }
 .flg-item--expr:focus-within { z-index: 5; }
+
+/* ── Maths fields ────────────────────────────────────────────────────────
+   flux-mathfield.js puts a MathQuill field in each equation row, so powers
+   rise and fractions stack as they are typed. The plain text box stays in
+   the row for the grapher to read, out of sight; so does the typeset copy
+   above, which the field replaces. MathQuill's own sheet loads later than
+   this one, so these rules carry an extra class to win. */
+.flg-item--expr > .flg-mq { grid-column: 3; grid-row: 1; }
+:is(#app, #grapherHost) .flg .flg-item--expr.has-mq > .flg-expr {
+  position: absolute;
+  left: 44px;
+  top: 8px;
+  width: 2px !important;
+  height: 2px;
+  min-width: 0;
+  padding: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.flg-item--expr.has-mq > .flg-math,
+.flg-item--expr.has-mq > .flg-math-live { display: none !important; }
+.flg .flg-mq.mq-editable-field {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--flg-ink);
+  font-family: 'Times New Roman', 'STIX Two Text', Georgia, serif;
+  font-size: 1.12rem;
+  line-height: 1.25;
+  cursor: text;
+}
+.flg .flg-mq.mq-editable-field.mq-focused { background: var(--flg-field); border: 0; box-shadow: none; border-radius: 7px; }
+.flg .flg-mq.mq-math-mode var,
+.flg .flg-mq.mq-math-mode .mq-nonSymbola { font-family: 'Times New Roman', 'STIX Two Text', Georgia, serif; }
+.flg .flg-mq .mq-root-block { padding: 2px 0; overflow-x: auto; scrollbar-width: none; }
+.flg .flg-mq .mq-root-block::-webkit-scrollbar { display: none; }
+.flg .flg-mq.mq-editable-field .mq-cursor { border-left: 1.5px solid var(--flg-accent); }
+/* An empty power or fraction box: a faint outline to type into, as in Desmos. */
+.flg .flg-mq.mq-math-mode .mq-empty:not(.mq-root-block) {
+  background: color-mix(in srgb, var(--flg-ink) 10%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--flg-ink) 28%, transparent);
+  outline-offset: -1px;
+}
+.flg .flg-mq.mq-math-mode .mq-paren.mq-ghost { color: color-mix(in srgb, var(--flg-ink) 35%, transparent); }
+.flg .flg-mq.mq-editable-field .mq-selection,
+.flg .flg-mq.mq-editable-field .mq-selection .mq-non-leaf,
+.flg .flg-mq.mq-editable-field .mq-selection .mq-scaled {
+  background: color-mix(in srgb, var(--flg-accent) 32%, transparent) !important;
+  color: inherit;
+  border-color: currentColor;
+}
+.flg .flg-mq.mq-editable-field .mq-selection.mq-blur,
+.flg .flg-mq.mq-editable-field .mq-selection.mq-blur .mq-non-leaf,
+.flg .flg-mq.mq-editable-field .mq-selection.mq-blur .mq-scaled {
+  background: color-mix(in srgb, var(--flg-ink) 14%, transparent) !important;
+  color: inherit;
+}
+/* The prompt in an empty row. */
+.flg .flg-mq .mq-root-block.mq-empty::before {
+  content: 'y = …';
+  color: var(--flg-mut);
+  opacity: .55;
+  font-style: italic;
+  pointer-events: none;
+}
+.flg .flg-mq.mq-focused .mq-root-block.mq-empty::before { content: none; }
+.is-hidden .flg-mq { opacity: .45; }
+
 .flg-reqn .tx-formula { display: inline-block; font-size: 1.02em; }
 .flg-reqn .tx-line { text-align: left; }
 
