@@ -70,7 +70,7 @@
    search stretches the full width and reads as a different component. */
 .ffs-items {
   display: grid; gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   margin-bottom: 22px;
 }
 .ffs-item {
@@ -82,6 +82,19 @@
 .ffs-item:hover { border-color: var(--border2); }
 .ffs-name { font-size: .76rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
 .ffs-f { display: flex; align-items: flex-start; gap: 8px; }
+/* Typeset formulas sit centred in the card, like a textbook; the copy button
+   floats in the corner so it does not push the maths off centre. */
+.ffs-item { position: relative; }
+.ffs-f:has(.ffs-math) { display: block; }
+.ffs-math { padding: 10px 22px 6px; color: var(--text); overflow-x: auto; }
+.ffs-f:has(.ffs-math) .ffs-copy { position: absolute; top: 8px; right: 8px; }
+.ref-formula-eq--tx {
+  font-family: inherit;
+  white-space: normal;
+  text-align: center;
+  padding: 14px 12px !important;
+  overflow-x: auto;
+}
 .ffs-f code {
   flex: 1; font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: .82rem; line-height: 1.5; color: var(--text);
