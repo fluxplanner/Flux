@@ -359,7 +359,7 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('.flg-results'), 'the automatic fit should pick the quadratic for curved data').toContainText('Best fit: Quadratic');
     const dashed = await page.locator('.flg-plot polyline[stroke-dasharray]').count();
     expect(dashed, 'the second and third fits should be dashed so they can be told apart').toBeGreaterThanOrEqual(2);
-    await page.locator('.flg-fchip').first().locator('button').click();
+    await page.locator('.flg-fchip').first().locator('[data-unfit]').click();
     await expect(page.locator('.flg-fchip')).toHaveCount(2);
   });
 
@@ -416,7 +416,7 @@ test.describe('Flux Grapher', () => {
     await expect(res).toContainText('From your manual lines');
     await expect(res).toContainText('±');
 
-    await page.locator('.flg-fchip--manual').first().locator('button').click();
+    await page.locator('.flg-fchip--manual').first().locator('[data-unmanual]').click();
     await page.waitForTimeout(200);
     await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
     await expect(res).not.toContainText('From your manual lines');
@@ -453,6 +453,42 @@ test.describe('Flux Grapher', () => {
     await page.locator('#modeFunctions').click();
     await page.waitForTimeout(300);
     await expect(page.locator('[data-clearall]')).toHaveCount(0);
+  });
+
+  test('every line can take its own colour, max/min runs edge to edge, and a saved image carries the key only when the results are open', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await page.evaluate(() => {
+      (window as any).fluxGrapherPage.instance.loadDoc({ v: 3, items: [{ type: 'table', name: 'Density',
+        cols: [{ id: 'v', name: 'V', role: 'value' }, { id: 'dv', name: 'dV', role: 'unc', of: 'v' }, { id: 'm', name: 'm', role: 'value' }],
+        rows: [['69', '9', '65.7'], ['75', '15', '80.4'], ['83', '11', '82.5'], ['104', '12', '98.5']],
+        xCol: 'v', yCol: 'm', fits: ['linear'], minmax: true, manuals: [{ x1: 60, y1: 60, x2: 110, y2: 100 }] }] });
+    });
+    await page.waitForTimeout(400);
+
+    await page.locator('[data-lcol="mm:steep"]').click();
+    await page.locator('.flg-swpop [data-c="#34d399"]').click();
+    await page.locator('[data-lcol="man:0"]').click();
+    await page.locator('.flg-swpop [data-c="#f472b6"]').click();
+    await page.waitForTimeout(300);
+    const doc = await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.items[0]);
+    expect(doc.lineColours['mm:steep']).toBe('#34d399');
+    expect(doc.manuals[0].colour).toBe('#f472b6');
+    await expect(page.locator('.flg-plot line[stroke="#34d399"]'), 'the steepest line is drawn in its new colour').toHaveCount(1);
+    await expect(page.locator('.flg-plot line.flg-manual[stroke="#f472b6"]')).toHaveCount(1);
+
+    // Max/min lines reach both sides of the plot, not just the outermost error bars.
+    const span = await page.evaluate(() => {
+      const l = document.querySelector('.flg-plot line[stroke="#34d399"]') as SVGLineElement;
+      const g = (window as any).fluxGrapherPage.instance._last;
+      return { x1: +l.getAttribute('x1')!, x2: +l.getAttribute('x2')!, L: g.m.sx(g.v.xLo), R: g.m.sx(g.v.xHi) };
+    });
+    expect(Math.abs(span.x1 - span.L)).toBeLessThan(1);
+    expect(Math.abs(span.x2 - span.R)).toBeLessThan(1);
+
+    const image = () => page.evaluate(() => (window as any).fluxGrapherPage.instance.svg(1200, 800, true));
+    expect(await image(), 'the saved image names the max/min lines in its key').toContain('Steepest line');
+    await page.locator('[data-restoggle]').click();
+    expect(await image(), 'collapsed results leave the key out of the image').not.toContain('Steepest line');
   });
 
   test('the chosen half survives a reload', async ({ page }) => {

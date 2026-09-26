@@ -119,7 +119,7 @@ body[data-theme="light"] :where(#app) .card { background: var(--fx-sheen), var(-
   [class="flux-apple-press-target flux-ripple-host"],
   [class="flux-ripple-host flux-apple-press-target"],
   .btn-primary
-):not([style*="background"]) {
+):not([style*="background"]):not(:is(.flg, .flg-shell, .fgc-sheet, .fgt-card) *) {
   background: var(--fx-accent-grad);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, .1);
@@ -135,7 +135,7 @@ body[data-theme="light"] :where(#app) .card { background: var(--fx-sheen), var(-
   [class="flux-apple-press-target flux-ripple-host"],
   [class="flux-ripple-host flux-apple-press-target"],
   .btn-primary
-):not([style*="background"]):hover:not(:disabled) {
+):not([style*="background"]):not(:is(.flg, .flg-shell, .fgc-sheet, .fgt-card) *):hover:not(:disabled) {
   filter: brightness(1.08) saturate(1.05);
   box-shadow: 0 1px 0 rgba(255, 255, 255, .26) inset, var(--fx-glow);
 }
@@ -164,6 +164,17 @@ body[data-theme="light"] .btn-sec {
 /* Every button answers a press the same way. */
 #app button:active:not(:disabled),
 .modal-overlay button:active:not(:disabled) { transform: scale(.97); }
+
+/* The grapher styles its own buttons (it is the same component as the
+   standalone Flux Grapher), so the rule above leaves it alone. Its two tabs
+   take the planner's accent here so the chosen one reads like every other
+   selected pill in the planner. */
+#app .flg-shell--planner .flg-seg button[aria-selected='true'] {
+  background: var(--fx-accent-grad);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 16px -8px rgba(var(--accent-rgb), .7);
+}
+#app .flg-shell--planner .flg-seg button:not([aria-selected='true']):hover { color: var(--text); background: var(--fx-lift); }
 
 /* ── Segmented pills: Time modes, task filters, College Prep, Settings ──── */
 #app .tmode-btn,

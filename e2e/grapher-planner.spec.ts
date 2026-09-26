@@ -35,6 +35,16 @@ test.describe('Grapher in the planner', () => {
     await expect.poll(() => page.locator('.flg--planner .flg-plot polyline').count()).toBeGreaterThan(0);
   });
 
+  test('the chosen tab stands out, and the grapher\'s own buttons are not painted like planner buttons', async ({ page }) => {
+    await openGrapher(page);
+    await page.locator('[data-pmode="data"]').click();
+    const bg = (sel: string) => page.locator(sel).first().evaluate((e) => getComputedStyle(e).backgroundImage);
+    expect(await bg('[data-pmode="data"]'), 'the selected tab is filled').toContain('gradient');
+    expect(await bg('[data-pmode="functions"]'), 'the other tab is not').toBe('none');
+    expect(await bg('.flg--planner [data-hist="undo"]'), 'undo is a plain icon button').toBe('none');
+    expect(await bg('.flg--planner [data-tool="in"]'), 'zoom is a plain icon button').not.toContain('gradient');
+  });
+
   test('the planner keeps its working graph, like every other study tool', async ({ page }) => {
     await openGrapher(page);
     await page.locator('[data-pmode="data"]').click();
