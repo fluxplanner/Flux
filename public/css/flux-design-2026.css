@@ -1,0 +1,322 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Flux · Design 2026 — the finishing coat
+   ───────────────────────────────────────────────────────────────────────────
+   Loaded last. One visual language across every tab, matching Flux Grapher:
+   calm near-black surfaces, hairline borders, the accent as a gradient on
+   the few things you act on, and motion that answers a click instead of
+   decorating the page.
+
+   Rules of the file:
+   • Colours come from the theme tokens (--accent, --accent-rgb, --text,
+     --card, --border…), so every theme and custom accent carries through.
+   • Specificity is kept deliberately low with :where(#app) so a component's
+     own class rule still wins; only the base, class-less elements are
+     restyled wholesale.
+   • Anything that moves is switched off under prefers-reduced-motion and
+     the low-end mode.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --fx-r: 18px;
+  --fx-r-sm: 12px;
+  --fx-ease: cubic-bezier(.22, 1, .36, 1);
+  --fx-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --fx-accent-2: color-mix(in oklab, var(--accent) 58%, #c084fc);
+  --fx-accent-grad: linear-gradient(135deg, var(--accent) 0%, var(--fx-accent-2) 100%);
+  --fx-hair: rgba(255, 255, 255, .075);
+  --fx-hair-2: rgba(255, 255, 255, .12);
+  --fx-lift: rgba(255, 255, 255, .045);
+  --fx-sheen: linear-gradient(180deg, rgba(255, 255, 255, .042), rgba(255, 255, 255, .012) 42%, rgba(255, 255, 255, 0));
+  --fx-card-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 18px 42px -24px rgba(0, 0, 0, .75);
+  --fx-glow: 0 10px 28px -10px rgba(var(--accent-rgb), .6);
+}
+body[data-theme="light"] {
+  --fx-hair: rgba(15, 23, 42, .09);
+  --fx-hair-2: rgba(15, 23, 42, .15);
+  --fx-lift: rgba(15, 23, 42, .04);
+  --fx-sheen: linear-gradient(180deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .6));
+  --fx-card-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 14px 34px -22px rgba(15, 23, 42, .35);
+  --fx-glow: 0 10px 24px -10px rgba(var(--accent-rgb), .45);
+}
+
+/* ── Atmosphere ───────────────────────────────────────────────────────────
+   Two soft washes of the accent behind everything, and the animated mesh
+   turned down so its lines stop cutting through cards. */
+body:not([data-theme="light"]) #app {
+  background:
+    radial-gradient(1100px 620px at 88% -12%, rgba(var(--accent-rgb), .09), transparent 62%),
+    radial-gradient(900px 560px at 8% 112%, color-mix(in oklab, var(--fx-accent-2) 22%, transparent), transparent 64%);
+}
+#fluxMeshCanvas { opacity: .32 !important; }
+body[data-theme="light"] #fluxMeshCanvas { opacity: .5 !important; }
+/* The drifting lines at the foot of each tab showed through the cards
+   above them; they stay, but as a faint texture. */
+#app .panel .flux-dash-scroll-paths,
+#app .flux-page .flux-dash-scroll-paths { opacity: .2; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+#sidebar .nav-item {
+  transition: background-color .22s var(--fx-ease), color .22s var(--fx-ease), box-shadow .22s var(--fx-ease);
+}
+#sidebar .nav-item:not(.active):hover {
+  background: var(--fx-lift);
+  color: var(--text);
+}
+#sidebar .nav-item.active {
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), .2), rgba(var(--accent-rgb), .05) 70%, transparent);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--accent), inset 0 0 0 1px rgba(var(--accent-rgb), .16);
+}
+#sidebar .nav-item.active svg,
+#sidebar .nav-item.active .nav-ico { color: var(--accent); }
+/* Settings was dimmed to 65% to look "secondary"; it read as disabled. */
+.nav-item[data-tab="settings"] { opacity: .88; }
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+:where(#app) .card {
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-hair);
+  background: var(--fx-sheen), color-mix(in oklab, var(--card, #161b22) 82%, transparent);
+  box-shadow: var(--fx-card-shadow);
+  transition: border-color .3s var(--fx-ease), box-shadow .3s var(--fx-ease);
+}
+:where(#app) .card:hover { border-color: color-mix(in oklab, rgba(var(--accent-rgb), .5) 40%, var(--fx-hair)); }
+body[data-theme="light"] :where(#app) .card { background: var(--fx-sheen), var(--card, #fff); }
+
+/* Card titles: sentence case and solid, instead of all-caps with a light
+   sweep running through them forever. The words are already written in
+   the case they should be read in. */
+#app .card h3,
+#app .card .fluxw-hd h3 {
+  text-transform: none;
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -.012em;
+  color: var(--text);
+}
+#app .card h3.flux-shimmer-text,
+#app .panel h3.flux-shimmer-text,
+#app .panel .shimmer-text:not(.dash-v2-greet-title) {
+  animation: none !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--text) !important;
+}
+
+/* The small cards that sat alone in the middle of Calendar and Mood now
+   span the column like every other card. */
+.flux-wishlist-host,
+.flux-wishlist-host--cal { max-width: none; margin-left: 0; margin-right: 0; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────
+   Primary = a button with no styling class of its own (the app's default
+   action button). Only those get the gradient, so an icon button whose
+   class sets just a background-color never inherits a stray gradient. */
+:where(#app, .modal-overlay, .modal, [role="dialog"]) button:is(
+  :not([class]),
+  [class="flux-apple-press-target"],
+  [class="flux-ripple-host"],
+  [class="flux-apple-press-target flux-ripple-host"],
+  [class="flux-ripple-host flux-apple-press-target"],
+  .btn-primary
+):not([style*="background"]) {
+  background: var(--fx-accent-grad);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .22) inset, 0 6px 16px -8px rgba(var(--accent-rgb), .65);
+  font-weight: 650;
+  letter-spacing: -.005em;
+  transition: transform .18s var(--fx-ease), box-shadow .25s var(--fx-ease), filter .25s var(--fx-ease);
+}
+:where(#app, .modal-overlay, .modal, [role="dialog"]) button:is(
+  :not([class]),
+  [class="flux-apple-press-target"],
+  [class="flux-ripple-host"],
+  [class="flux-apple-press-target flux-ripple-host"],
+  [class="flux-ripple-host flux-apple-press-target"],
+  .btn-primary
+):not([style*="background"]):hover:not(:disabled) {
+  filter: brightness(1.08) saturate(1.05);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .26) inset, var(--fx-glow);
+}
+
+:where(#app, .modal-overlay, .modal, [role="dialog"]) .btn-sec {
+  transition: background-color .2s var(--fx-ease), border-color .2s var(--fx-ease), transform .18s var(--fx-ease);
+}
+/* html.flux-modern paints secondary buttons in 5% white — invisible on the
+   light theme, where "Count down to…" and the school presets read as plain
+   text. */
+body[data-theme="light"] .btn-sec {
+  background: rgba(15, 23, 42, .045);
+  border: 1px solid rgba(15, 23, 42, .14);
+  color: var(--text);
+}
+#app .btn-sec:hover:not(:disabled),
+.modal-overlay .btn-sec:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), .1);
+  border-color: rgba(var(--accent-rgb), .35);
+  box-shadow: none;
+}
+
+/* Canvas's call-to-action set near-black text on the accent gradient. */
+#app .cv-onb-cta { color: #fff; }
+
+/* Every button answers a press the same way. */
+#app button:active:not(:disabled),
+.modal-overlay button:active:not(:disabled) { transform: scale(.97); }
+
+/* ── Segmented pills: Time modes, task filters, College Prep, Settings ──── */
+#app .tmode-btn,
+#app .stab {
+  transition: background-color .22s var(--fx-ease), color .22s var(--fx-ease), box-shadow .22s var(--fx-ease);
+}
+#app .tmode-btn.active,
+#app .stab.active,
+#app .flux-pill-item.tmode-btn.active {
+  background: var(--fx-accent-grad);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 18px -8px rgba(var(--accent-rgb), .7);
+}
+/* Most pill rows light their choice with a sliding "morph pill" behind
+   the buttons; the Time modes and College Prep rows had a grey one. */
+html.flux-apple-motion #app :is(.ftt-nav, .flux-ec-stabs) .flux-morph-pill {
+  background: var(--fx-accent-grad) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 18px -8px rgba(var(--accent-rgb), .7) !important;
+}
+html.flux-apple-motion #app :is(.ftt-nav, .flux-ec-stabs) .flux-pill-item.active { color: #fff !important; }
+html.flux-apple-motion #app .flux-settings-stabs .flux-morph-pill {
+  background: rgba(var(--accent-rgb), .16) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .3) !important;
+}
+html.flux-apple-motion #app .flux-settings-stabs .flux-pill-item.active { color: var(--text) !important; }
+html:not(.flux-apple-motion) #app .flux-ec-stabs .stab.active {
+  background: var(--fx-accent-grad) !important;
+  color: #fff !important;
+}
+#app .tmode-btn:not(.active):hover,
+#app .stab:not(.active):hover { color: var(--text); background: var(--fx-lift); }
+
+/* ── Fields ──────────────────────────────────────────────────────────────── */
+#app :is(input[type=text], input[type=search], input[type=url], input[type=email], input[type=number],
+         input[type=date], input[type=time], input[type=datetime-local], input[type=password], select, textarea),
+.modal-overlay :is(input[type=text], input[type=search], input[type=number], input[type=date], input[type=time], select, textarea) {
+  /* background-color, not the shorthand: selects and date fields draw their
+     chevron and calendar icon as a background image. */
+  background-color: rgba(255, 255, 255, .035);
+  border: 1px solid var(--fx-hair-2);
+  border-radius: var(--fx-r-sm);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .03) inset;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: border-color .2s var(--fx-ease), box-shadow .2s var(--fx-ease), background-color .2s var(--fx-ease);
+}
+body[data-theme="light"] #app :is(input[type=text], input[type=search], input[type=number], input[type=date], input[type=time], select, textarea) {
+  background-color: rgba(255, 255, 255, .85);
+}
+#app :is(input, select, textarea):hover:not(:focus):not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]) {
+  border-color: color-mix(in oklab, rgba(var(--accent-rgb), .6) 35%, var(--fx-hair-2));
+}
+#app :is(input, select, textarea):focus:not([type=range]):not([type=checkbox]):not([type=radio]),
+.modal-overlay :is(input, select, textarea):focus:not([type=range]):not([type=checkbox]):not([type=radio]) {
+  border-color: rgba(var(--accent-rgb), .7);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .18);
+  background-color: rgba(var(--accent-rgb), .05);
+}
+
+/* "4 or B4" was cut to "4 or B": the box is 76px and the global input
+   rule forces 14px of padding each side with !important. */
+#app #classPeriod { width: 88px !important; padding-left: 10px !important; padding-right: 8px !important; }
+
+/* Native checkboxes, radios and sliders take the accent. */
+#app, .modal-overlay { accent-color: var(--accent); }
+
+/* Colour pickers: a round swatch instead of a grey box with a colour in it. */
+#app input[type=color],
+.modal-overlay input[type=color] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px !important;
+  min-width: 36px;
+  height: 36px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--fx-hair-2) !important;
+  background: none !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .15), 0 4px 12px -4px rgba(0, 0, 0, .5);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .2s var(--fx-ease-spring), border-color .2s var(--fx-ease);
+}
+#app input[type=color]:hover { transform: scale(1.08); border-color: rgba(var(--accent-rgb), .6) !important; }
+#app input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+#app input[type=color]::-webkit-color-swatch { border: none; border-radius: 50%; }
+#app input[type=color]::-moz-color-swatch { border: none; border-radius: 50%; }
+
+/* The Pomodoro minutes: a 44px box with 14px padding each side left 14px
+   for "25", so the numbers were clipped to nothing. */
+#timer :is(#customWork, #customShort, #customLong) {
+  width: 62px !important;
+  padding: 8px 6px !important;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+}
+.modal-overlay .modal-card,
+.modal-overlay > .modal {
+  border-radius: 22px;
+  border: 1px solid var(--fx-hair-2);
+  background: var(--fx-sheen), var(--card, #161b22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 40px 90px -30px rgba(0, 0, 0, .8);
+}
+
+/* Study tools search boxes: the global input rule's 14px padding (with
+   !important) put the first letter under the magnifier. */
+#app .fsh-search input { padding-left: 36px !important; }
+
+/* ── Dashboard countdown tiles ─────────────────────────────────────────── */
+#app .dash-v2-countdown-grid > div {
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), .09), rgba(255, 255, 255, .015) 60%);
+  border: 1px solid var(--fx-hair);
+  border-radius: 14px;
+  transition: border-color .25s var(--fx-ease), transform .25s var(--fx-ease);
+}
+#app .dash-v2-countdown-grid > div:hover { border-color: rgba(var(--accent-rgb), .3); transform: translateY(-1px); }
+
+/* Task rows pick up the accent under the pointer. */
+#app .task-item:hover { border-color: rgba(var(--accent-rgb), .28); }
+
+/* ── Focus ring: visible for keyboards, invisible for mice ──────────────── */
+#app :is(button, a, [role=tab], [role=button], summary):focus-visible,
+.modal-overlay :is(button, a):focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), .8);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+#app * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .14) transparent; }
+body[data-theme="light"] #app * { scrollbar-color: rgba(15, 23, 42, .2) transparent; }
+
+/* ── The Report button ───────────────────────────────────────────────────
+   On a laptop it floated over the bottom of every tab and covered whatever
+   was there. It now sits in the empty foot of the sidebar. */
+@media (min-width: 769px) {
+  body:not(.sidebar-collapsed) #fluxReportFab {
+    left: 24px !important;
+    right: auto !important;
+    bottom: 112px !important;
+  }
+}
+
+/* ── Motion off ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  #app *, .modal-overlay * { transition-duration: .01ms !important; }
+  #app button:active:not(:disabled) { transform: none; }
+}
+html.flux-lowend #app * { transition: none !important; }

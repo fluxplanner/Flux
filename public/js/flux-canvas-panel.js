@@ -558,7 +558,7 @@
           </svg>
         </div>
         <h2 class="cv-onb-title flux-color-title">Sign in to Canvas</h2>
-        <p class="cv-onb-sub">You're already signed into Google in Flux. Open Canvas below and use your school's <strong>Google</strong> button if shown — same account, no extra Flux login. Paste the access token once; Flux remembers it on your account.</p>
+        <p class="cv-onb-sub">Tell Flux your school's Canvas address, sign in to Canvas the way you normally do, then paste an access token once — Flux remembers it on your account.</p>
         ${stepDots}
       </div>`;
 

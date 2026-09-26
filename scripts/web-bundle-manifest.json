@@ -396,6 +396,7 @@
     "public/css/flux-platform-ui.css",
     "public/css/flux-academic-scores.css",
     "public/css/flux-datepicker.css",
-    "public/css/flux-settings-shell.css"
+    "public/css/flux-settings-shell.css",
+    "public/css/flux-design-2026.css"
   ]
 }

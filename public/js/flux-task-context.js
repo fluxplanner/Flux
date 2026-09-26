@@ -152,7 +152,8 @@
     if(isMobile()) return; // skip on touch devices
     const row = e.target.closest('.task-item[data-task-id]');
     if(!row) return;
-    const tid = parseInt(row.dataset.taskId, 10);
+    // Not parseInt: quick-add and repeating tasks have fractional ids.
+    const tid = Number(row.dataset.taskId);
     if(!Number.isFinite(tid)) return;
     e.preventDefault();
     openMenu(e.clientX, e.clientY, tid);

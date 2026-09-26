@@ -474,6 +474,29 @@
     host.innerHTML='<div class="cm-loading">Loading your Google Calendar…</div>';
 
     const token=getGoogleToken();
+    /* Google integrations are paused (body.flux-google-off). The connect
+       button could only ever answer "Google sign-in is switched off", so say
+       that up front and keep the appointment requests, which need no Google. */
+    if(!token&&document.body.classList.contains('flux-google-off')){
+      host.innerHTML=`
+        <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
+        <div class="cm-connect">
+          <div class="cm-connect-icon"></div>
+          <h3>Google Calendar is paused</h3>
+          <p>Flux isn't connecting to Google right now, so meetings from your Google Calendar won't show here. Appointment requests from students still appear above.</p>
+        </div>`;
+      try{
+        if(window.FluxCounselorAppointments?.renderPendingSection&&typeof ensureCounselorRecord==='function'){
+          const sb=typeof getSB==='function'?getSB():null;
+          if(sb){
+            ensureCounselorRecord(sb,'counselor').then(row=>{
+              if(row)FluxCounselorAppointments.renderPendingSection(document.getElementById('counselorApptRequestsMount'),row.id);
+            });
+          }
+        }
+      }catch(_){}
+      return;
+    }
     if(!token){
       host.innerHTML=`
         <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
