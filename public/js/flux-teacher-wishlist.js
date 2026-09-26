@@ -416,6 +416,7 @@
         '<input type="date" id="fluxImpDateInp" aria-label="Pick a date to pin" value="'+esc(todayIso())+'">'+
         '<button type="button" class="fluxw-btn" id="fluxImpPinBtn" onclick="FluxWishlist.pinDateFromInput()">Pin</button>'+
         '<button type="button" class="fluxw-btn-sec" onclick="FluxWishlist.pinDateFromInput(true)">Unpin</button>'+
+        '<button type="button" class="fluxw-btn-sec fluxw-cd-btn" onclick="FluxWishlist.countdownFromInput()" title="Pin it and count down to it on your dashboard">⏳ Count down</button>'+
       '</div>'+
       /* Its own row, not squeezed alongside the date. A starred day with no
          name is a question mark three weeks later — "what was that?" — so the
@@ -467,9 +468,12 @@
       list.innerHTML='<div class="fluxw-empty">Pin a date to mark it as important — it will glow on the calendar.</div>';
       return;
     }
+    var cd=null;
+    try{cd=typeof window.fluxGetCountdown==='function'?window.fluxGetCountdown():null;}catch(_){}
     list.innerHTML=future.map(function(d){
       var label=new Date(d+'T00:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
       var name=labelFor(d);
+      var cdOn=!!(cd&&cd.date===d);
       return '<div class="fluxw-imp-row-item">'+
         '<span class="fluxw-imp-star" aria-hidden="true">★</span>'+
         // The name leads and the date follows in smaller type: you scan this
@@ -478,9 +482,37 @@
           (name?'<span class="fluxw-imp-name">'+esc(name)+'</span>':'')+
           '<span class="fluxw-imp-when">'+esc(label)+'</span>'+
         '</span>'+
+        '<button type="button" class="fluxw-imp-cd'+(cdOn?' is-on':'')+'" aria-pressed="'+cdOn+'"'+
+          ' title="'+(cdOn?'Stop counting down':'Count down to this on your dashboard')+'"'+
+          ' aria-label="'+(cdOn?'Stop counting down to ':'Count down to ')+esc(name||label)+'" onclick="FluxWishlist.countdownTo(\''+esc(d)+'\')">⏳</button>'+
         '<button type="button" class="fluxw-grat-del" aria-label="Unpin '+esc(name||label)+'" onclick="FluxWishlist.unpinDate(\''+esc(d)+'\')">×</button>'+
       '</div>';
     }).join('');
+  }
+
+  /* ⏳ on a pinned date: count down to it on the dashboard, or stop. */
+  function countdownTo(iso){
+    var cd=null;
+    try{cd=window.fluxGetCountdown&&window.fluxGetCountdown();}catch(_){}
+    if(cd&&cd.date===iso){if(window.fluxClearCountdown)window.fluxClearCountdown();return;}
+    var name=labelFor(iso)||new Date(iso+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    if(window.fluxSetCountdown)window.fluxSetCountdown(name,iso,'');
+  }
+  /* "Count down" beside Pin: pins the date (with its name) and counts down to it. */
+  function countdownFromInput(){
+    var inp=document.getElementById('fluxImpDateInp');
+    var labelInp=document.getElementById('fluxImpLabelInp');
+    if(!inp||!inp.value)return;
+    var name=(labelInp&&labelInp.value.trim())||labelFor(inp.value);
+    if(!name){
+      if(labelInp){labelInp.focus();labelInp.placeholder='Name it first — e.g. SAT';}
+      return;
+    }
+    var iso=inp.value;
+    pinDateFromInput();
+    setLabel(iso,name);
+    renderImportantList();
+    if(window.fluxSetCountdown)window.fluxSetCountdown(name,iso,'');
   }
 
   function unpinDate(iso){
@@ -556,6 +588,10 @@
     isImportantDate:isPinned,
     pinDateFromInput:pinDateFromInput,
     unpinDate:unpinDate,
+    countdownTo:countdownTo,
+    countdownFromInput:countdownFromInput,
+    labelFor:labelFor,
+    refreshImportant:renderImportantList,
     paintImportantBadges:paintImportantBadges,
     applyPrioritySortToDom:applyPrioritySortToDom,
     refresh:mountAll,
