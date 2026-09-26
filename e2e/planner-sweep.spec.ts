@@ -45,6 +45,23 @@ test.describe('planner sweep', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
+  test('a class joined by code stays deleted: its code is remembered, and re-joining forgets it', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => {
+      const w = window as any;
+      w.classes.push({ id: 1899658546, period: 1, periodLabel: 'A1', name: 'MYP American Lit', teacher: 'Azfer', teacherClassCode: 'QQ259D', days: '', color: '#3b82f6' });
+      w.nav('school');
+    });
+    await page.waitForTimeout(800);
+    const row = page.locator('#school .class-row', { hasText: 'MYP American Lit' });
+    await row.locator('button[aria-label="Delete class"]').click();
+    await expect(page.locator('#school .class-row', { hasText: 'MYP American Lit' })).toHaveCount(0);
+    const left = await page.evaluate(() => JSON.parse(localStorage.getItem('flux_left_class_codes') || '[]'));
+    expect(left, 'the code is remembered so a stale cloud copy or a failed server call cannot bring it back').toContain('QQ259D');
+    await page.evaluate(() => (window as any).fluxForgetLeftClass('qq259d'));
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('flux_left_class_codes') || '[]'))).not.toContain('QQ259D');
+  });
+
   test('right-click → Complete works on a task with a fractional id', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => {
