@@ -6340,7 +6340,7 @@ function renderExtrasList(){
         </div>
         ${e.desc ? `<div style="font-size:.75rem;color:var(--muted2);margin-top:3px;line-height:1.4">${esc(e.desc)}</div>` : ''}
       </div>
-      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;flex-shrink:0;font-weight:600"></button>
+      <button type="button" onclick="openEcCalendarScheduleModal(${e.id})" title="Add to calendar" aria-label="Add to calendar" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);cursor:pointer;font-size:1rem;line-height:1;padding:4px 9px;border-radius:8px;flex-shrink:0;font-weight:600">📅</button>
       <button onclick="editExtra(${e.id})" title="Edit" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✎</button>
       <button onclick="removeExtra(${e.id})" title="Delete" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;opacity:.6;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>
     </div>`;

@@ -242,3 +242,14 @@ test('two manual lines give the gradient as the middle of the pair, ± half the 
   near(s.uc, 1, 'half the spread of the intercepts');
   assert.equal(T.manualSpread({ manuals: [{ x1: 0, y1: 1, x2: 1, y2: 4 }] }), null, 'one line has no spread');
 });
+
+test('"already empty" means no readings, no words and no extras — not merely one table', () => {
+  const blank = T.normaliseDoc({}, 'data');
+  assert.equal(T.docIsBlank(blank), true, 'a fresh measurements graph is blank');
+  const withReading = T.normaliseDoc({}, 'data'); withReading.items[0].rows[2][1] = '4.1';
+  assert.equal(T.docIsBlank(withReading), false, 'one reading is something to clear');
+  const withTitle = T.normaliseDoc({}, 'data'); withTitle.title = 'Pendulum';
+  assert.equal(T.docIsBlank(withTitle), false, 'a title is something to clear');
+  const withLine = T.normaliseDoc({}, 'data'); withLine.items[0].manuals = [{ x1: 0, y1: 0, x2: 1, y2: 1 }];
+  assert.equal(T.docIsBlank(withLine), false, 'a manual line is something to clear');
+});

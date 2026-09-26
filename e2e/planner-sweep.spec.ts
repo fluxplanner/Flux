@@ -90,6 +90,19 @@ test.describe('planner sweep', () => {
     expect(bg, 'the text colour picker should show the theme text colour, not black').not.toBe('#000000');
   });
 
+  test("an activity's Add to calendar button shows an icon, not an empty yellow oval", async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav('goals'));
+    await page.waitForTimeout(800);
+    await page.fill('#extraName', 'Chess club');
+    await page.evaluate(() => (window as any).addExtra());
+    const btn = page.locator('#goals button[title="Add to calendar"]').first();
+    await expect(btn).toBeVisible();
+    await expect.poll(() => btn.evaluate((e) => e.innerHTML.trim().length)).toBeGreaterThan(0);
+    await btn.click();
+    await expect(page.locator('#ecScheduleModal')).toBeVisible();
+  });
+
   test('the Gratitude card has its icon, and Canvas no longer talks about Google', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as any).nav('mood'));

@@ -423,6 +423,38 @@ test.describe('Flux Grapher', () => {
     expect((await lines())[0], 'removing line 1 leaves line 2').toEqual(moved[1]);
   });
 
+  test('Clear all empties the measurements graph, and Undo brings everything back', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4'], ['3', '6']]);
+    await page.locator('[data-manual]').click();
+    await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.title = 'Spring'; g.touch(); });
+    await page.waitForTimeout(500);
+    const cells = () => page.locator('.flg-cell').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value).join(''));
+    expect(await cells()).toContain('122436');
+
+    await page.locator('[data-clearall]').click();
+    await page.waitForTimeout(300);
+    expect(await cells(), 'every reading should be gone').toBe('');
+    const doc = await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc);
+    expect(doc.title).toBe('');
+    expect(doc.items).toHaveLength(1);
+    expect(doc.items[0].manuals).toEqual([]);
+    await expect(page.locator('.flg-results')).toBeHidden();
+
+    await page.locator('[data-hist="undo"]').click();
+    await page.waitForTimeout(300);
+    expect(await cells(), 'Undo should restore the readings').toContain('122436');
+    expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.title)).toBe('Spring');
+    expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.items[0].manuals.length)).toBe(1);
+  });
+
+  test('Clear all is only on the measurements side', async ({ page }) => {
+    await open(page);
+    await page.locator('#modeFunctions').click();
+    await page.waitForTimeout(300);
+    await expect(page.locator('[data-clearall]')).toHaveCount(0);
+  });
+
   test('the chosen half survives a reload', async ({ page }) => {
     await open(page);
     await page.locator('#modeFunctions').click();
