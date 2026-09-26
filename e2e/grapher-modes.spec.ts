@@ -652,3 +652,141 @@ test.describe('Flux Grapher', () => {
     expect(over, 'these controls are pushed off the right edge').toEqual([]);
   });
 });
+
+/**
+ * Switching halves used to swap in one frame. Now the highlight slides to the
+ * chosen tab and the new grapher comes in from that tab's side — Functions
+ * from the left, Measurements from the right.
+ */
+test('switching tabs slides the highlight and brings the grapher in from that side', async ({ page }) => {
+  await open(page, { mode: 'data' });
+  const glide = page.locator('#ghModes .flg-glide');
+  await expect(glide).toHaveCount(1);
+  const x = () => glide.evaluate((g) => (g as HTMLElement).style.transform);
+  const onData = await x();
+  await page.locator('#modeFunctions').click();
+  await expect(page.locator('#grapherHost > .flg')).toHaveClass(/flg-in-l/);
+  expect(await x(), 'the highlight did not move to Functions').not.toBe(onData);
+  // The entrance is a moment, not a state.
+  await expect(page.locator('#grapherHost > .flg')).not.toHaveClass(/flg-in-l/, { timeout: 2000 });
+  await page.locator('#modeData').click();
+  await expect(page.locator('#grapherHost > .flg')).toHaveClass(/flg-in-r/);
+  expect(await x()).toBe(onData);
+});
+
+test('with reduced motion the switch is instant', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, { mode: 'data' });
+  await page.locator('#modeFunctions').click();
+  await expect(page.locator('#grapherHost > .flg')).not.toHaveClass(/flg-in-/);
+  await expect(page.locator('#modeFunctions')).toHaveAttribute('aria-selected', 'true');
+});
+
+/**
+ * An image goes into a report, so it is only made once the graph has a title
+ * and both axes are named, after a preview and three checks — every time.
+ */
+test('saving an image asks for a title and axis names, and a double-check, every time', async ({ page }) => {
+  await open(page, { mode: 'data' });
+  await fillReadings(page, [['1', '2.1'], ['2', '3.9'], ['3', '6.2']]);
+  await page.locator('#ghPng').click();
+  const sheet = page.locator('.fgx-sheet');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator('.fgx-preview img')).toHaveAttribute('src', /^blob:/);
+  const go = sheet.locator('.fgx-go');
+  await expect(go).toBeDisabled();
+  await expect(sheet.locator('.fgx-missing')).toContainText('a title');
+
+  await sheet.locator('[name=title]').fill('Extension of a spring');
+  await sheet.locator('[name=xLabel]').fill('Load');
+  await sheet.locator('[name=xUnit]').fill('N');
+  await sheet.locator('[name=yLabel]').fill('Extension');
+  await expect(go, 'the checks were skipped').toBeDisabled();
+  for (const k of ['c1', 'c2', 'c3']) await sheet.locator(`[name=${k}]`).check();
+  await expect(go).toBeEnabled();
+  const [dl] = await Promise.all([page.waitForEvent('download'), go.click()]);
+  expect(dl.suggestedFilename()).toBe('extension-of-a-spring.png');
+  // What was typed is now the graph's own title and axis names.
+  const d = await page.evaluate(() => { const x = (window as any).fluxGrapherPage.instance.doc; return [x.title, x.xLabel, x.xUnit, x.yLabel]; });
+  expect(d).toEqual(['Extension of a spring', 'Load', 'N', 'Extension']);
+
+  // Next time: the names are there, but the checks start unticked again.
+  await page.locator('#ghPng').click();
+  await expect(sheet.locator('[name=title]')).toHaveValue('Extension of a spring');
+  await expect(sheet.locator('[name=c1]')).not.toBeChecked();
+  await expect(sheet.locator('.fgx-go')).toBeDisabled();
+  // Closing without saving changes nothing.
+  await sheet.locator('[name=title]').fill('Something else');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.fgx-back')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.title)).toBe('Extension of a spring');
+});
+
+/**
+ * A graph deleted in the planner came back the next time the grapher tab
+ * that still had it open was saved: an update that found nothing quietly
+ * made a new copy. Now it asks, and a deletion tells every open grapher.
+ */
+test.describe('a deleted saved graph stays deleted', () => {
+  const G1 = '22222222-2222-4222-8222-222222222222';
+  async function signedIn(page: Page) {
+    await page.addInitScript(() => {
+      localStorage.setItem('flux_grapher_session', JSON.stringify({
+        access_token: 'test-token', refresh_token: 'r', expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: { id: '00000000-0000-4000-8000-000000000001', email: 'ada@users.fluxplanner.app', user_metadata: { full_name: 'Ada' } },
+      }));
+    });
+  }
+
+  test('saving a graph that was deleted elsewhere asks before making it again', async ({ page }) => {
+    const calls: string[] = [];
+    await signedIn(page);
+    await page.route('**/rest/v1/flux_graphs**', async (route) => {
+      const m = route.request().method();
+      calls.push(m);
+      const body = m === 'PATCH' ? '[]' : JSON.stringify([{ id: '33333333-3333-4333-8333-333333333333', title: 'Spring' }]);
+      await route.fulfill({ status: m === 'POST' ? 201 : 200, contentType: 'application/json', body });
+    });
+    await open(page, { mode: 'data' });
+    await page.evaluate((id) => {
+      const inst = (window as any).fluxGrapherPage.instance;
+      inst.loadDoc(inst.doc, { id, title: 'Spring' });
+    }, G1);
+    await fillReadings(page, [['1', '2']]);
+    const asked: string[] = [];
+    page.once('dialog', (d) => { asked.push(d.message()); d.dismiss(); });
+    await page.locator('#ghSave').click();
+    await expect.poll(() => asked.length).toBe(1);
+    expect(asked[0]).toContain('was deleted');
+    await page.waitForTimeout(300);
+    expect(calls, 'it was made again without asking').toEqual(['PATCH']);
+    expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.cloud)).toBeNull();
+  });
+
+  test('deleting it from the list lets go of the copy on screen', async ({ page }) => {
+    let rows = [{ id: G1, kind: 'data', title: 'Spring', updated_at: new Date().toISOString() }];
+    await signedIn(page);
+    await page.route('**/rest/v1/flux_graphs**', async (route) => {
+      const m = route.request().method();
+      if (m === 'DELETE') {
+        const gone = rows;
+        rows = [];
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gone.map((r) => ({ id: r.id }))) });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
+    });
+    await open(page, { mode: 'data' });
+    await page.evaluate((id) => {
+      const inst = (window as any).fluxGrapherPage.instance;
+      inst.loadDoc(inst.doc, { id, title: 'Spring' });
+    }, G1);
+    await page.locator('#ghOpen').click();
+    const sheet = page.locator('.fgc-sheet');
+    await expect(sheet.locator('.fgc-row')).toHaveCount(1);
+    page.once('dialog', (d) => d.accept());
+    await sheet.locator('[data-delrow]').click();
+    await expect(sheet.locator('.fgc-row')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.cloud)).toBeNull();
+  });
+});

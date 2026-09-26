@@ -2437,11 +2437,12 @@ function syncSchoolNavChrome(){
       const work={teacher:'Teacher tools',counselor:'Counselor tools',admin:'Admin tools',staff:'Staff tools'};
       desc.textContent=isWork?(work[fr.current]||'Work mode'):'Your planner';
     }
-    // In Work mode the only row left in "Learn" is School info, so call the
-    // group what it is.
+    // Name the group for what is in it. In Work mode the only row left in
+    // "Learn" is School info; in Personal mode it holds an educator's own
+    // Tasks, Resources and Personal hub, which are not learning either.
     document.querySelectorAll('#sidebarSchoolWorkTabs,#mobDrawerSchoolWorkTabs').forEach(strip=>{
       const lab=strip.closest('.nav-group')?.querySelector('.nav-group-label');
-      if(lab)lab.textContent=eduWorkNav?'School':'Learn';
+      if(lab)lab.textContent=eduWorkNav?'School':(isEducator?'Personal':'Learn');
     });
   }catch(_){}
 }
@@ -15473,7 +15474,7 @@ function fluxTourSteps(){
   const role=R.current;
   const dash={
     teacher:'Your classes today and the classroom tools you reach for most: a student picker, a group maker, exit tickets and a timer. Customize picks which tools show.',
-    counselor:'Booking requests from students, today’s appointments and your messages, on one screen.',
+    counselor:'Today’s appointments, any booking requests and your messages, on one screen.',
     admin:'A school-wide overview, announcements and meeting requests.',
     staff:'Your department tools, the request queue and shared links.',
   };
@@ -15490,7 +15491,7 @@ function fluxTourSteps(){
     {sel:'#sidebar .nav-item[onclick*="openTeacherClassesPanel"]',go:true,title:'Rosters',body:'Create a class, share its join code, and see who has joined.'}
   );
   if(role==='counselor')steps.push(
-    tab('counselorMeetings','Meetings','Appointment requests from students and the meetings on your day.'),
+    tab('counselorMeetings','Meetings','What is coming up, any booking requests, and the notes you keep on meetings.'),
     tab('counselorWorkspace','Caseload tools','Your caseload, wellness check-ins, referrals and crisis protocols, in tabs.')
   );
   if(role==='admin')steps.push(tab('adminOps','Operations','Staff roster, sub coverage, duties and faculty announcements.'));
@@ -19467,7 +19468,7 @@ function renderCounselorOnboard_Welcome(container){
       <h2 class="onboard-step-title">Welcome, counselor</h2>
       <p class="onboard-step-sub">Appointments, messages and your caseload tools in one place, with a separate planner for the rest of your life.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span></span> Students request appointments in the slots you open</div>
+        <div class="onboard-feature"><span></span> Mark the times you are free for student appointments</div>
         <div class="onboard-feature"><span></span> Message students and colleagues</div>
         <div class="onboard-feature"><span></span> Caseload tools: wellness check-ins, referrals and crisis protocols</div>
         <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
@@ -19520,7 +19521,7 @@ function renderCounselorOnboard_Availability(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Set your availability</h2>
-      <p class="onboard-step-sub">Students can only book during the slots you select. You can update this anytime.</p>
+      <p class="onboard-step-sub">Tick the times you are free for student appointments. You can change them any time.</p>
       <div style="overflow-x:auto">
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;min-width:400px;margin-bottom:18px">
           ${days.map(day=>`
@@ -19575,7 +19576,7 @@ function renderCounselorOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're set up!</h2>
-      <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now request appointments in the slots you opened.</p>
+      <p class="onboard-step-sub">Your counselor dashboard is ready. Meetings, notes and your caseload tools are in the sidebar.</p>
       <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
     </div>`;
   document.getElementById('coFinishBtn')?.addEventListener('click',finishOnboarding);

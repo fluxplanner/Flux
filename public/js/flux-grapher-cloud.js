@@ -196,20 +196,44 @@
     if (!rows || !rows[0]) throw new Error('That graph is not in your account any more.');
     return rows[0];
   }
+  /* Updates the graph in place. Returns null when it is not in the account
+     any more (deleted in another tab or on another device) — save() then asks
+     before making it again. This used to re-create it silently, so a graph
+     deleted in the planner came straight back the next time the grapher tab
+     that still had it open was saved, and had to be deleted twice. */
   async function put(s, doc, id) {
     const body = { kind: doc.kind, title: String(doc.title || 'Untitled graph').slice(0, 120) || 'Untitled graph', payload: doc.payload };
     if (id && UUID.test(id)) {
       const rows = await rest(s, 'flux_graphs?id=eq.' + id + '&select=id,title', { method: 'PATCH', body: body, prefer: 'return=representation' });
-      if (rows && rows[0]) return rows[0];
-      // Deleted from another device since — save it as a new graph rather than failing.
+      return rows && rows[0] ? rows[0] : null;
     }
     const rows = await rest(s, 'flux_graphs?select=id,title', { method: 'POST', body: body, prefer: 'return=representation' });
     return rows[0];
   }
-  function remove(s, id) {
-    if (!UUID.test(id)) return Promise.resolve();
-    return rest(s, 'flux_graphs?id=eq.' + id, { method: 'DELETE' });
+  async function remove(s, id) {
+    if (!UUID.test(id)) return;
+    return rest(s, 'flux_graphs?id=eq.' + id + '&select=id', { method: 'DELETE', prefer: 'return=representation' });
   }
+
+  /* ── Telling the other surface ─────────────────────────────────────────
+     The planner and grapher.html are separate pages, often open side by side.
+     When a graph is deleted in one, the other may have it on screen, still
+     marked as that saved graph. Tell every open copy — this page and other
+     tabs — so it lets go of the saved id instead of saving it back. */
+  const deletedListeners = [];
+  let channel = null;
+  try {
+    if (window.BroadcastChannel) {
+      channel = new BroadcastChannel('flux-graphs');
+      channel.onmessage = (e) => { if (e && e.data && e.data.type === 'deleted') fireDeleted(e.data.id, e.data.title); };
+    }
+  } catch (e) { channel = null; }
+  function fireDeleted(id, title) { deletedListeners.forEach((fn) => { try { fn(id, title); } catch (e) {} }); }
+  function announceDeleted(id, title) {
+    fireDeleted(id, title);
+    try { if (channel) channel.postMessage({ type: 'deleted', id: id, title: title || '' }); } catch (e) {}
+  }
+  function onDeleted(fn) { if (typeof fn === 'function') deletedListeners.push(fn); }
 
   /* ── Sheets ─────────────────────────────────────────────────────────── */
 
@@ -336,7 +360,16 @@
     }
     saving = true;
     try {
-      const row = await put(s, doc, id);
+      let row = await put(s, doc, id);
+      if (!row) {
+        // It was deleted since it was opened here. Only make it again on purpose.
+        if (!window.confirm('"' + (inst.cloud && inst.cloud.title || doc.title) + '" was deleted — in another tab or on another device. Save it again as a new graph?')) {
+          inst.cloud = null;
+          toast('Not saved. The graph is still here if you change your mind.', 'info');
+          return false;
+        }
+        row = await put(s, doc, null);
+      }
       inst.markSaved({ id: row.id, title: row.title || doc.title });
       toast('Saved to your Flux account.', 'success');
       return true;
@@ -396,8 +429,12 @@
           if (!r || !window.confirm('Delete "' + r.title + '"? This cannot be undone.')) return;
           try {
             await remove(s, r.id);
-            rows = rows.filter((x) => x.id !== r.id);
+            announceDeleted(r.id, r.title);
+            // Read the list back rather than trusting the local copy, so what
+            // it shows is what the account holds.
+            try { rows = (await list(s)) || []; } catch (e2) { rows = rows.filter((x) => x.id !== r.id); }
             paint(rows);
+            toast('Deleted "' + r.title + '".', 'success');
           } catch (err) { toast(err.message, 'error'); }
           return;
         }
@@ -453,6 +490,7 @@
     get: async function (id) { const s = await need('open'); if (!s) return null; return get(s, id); },
     accountMenu: accountMenu,
     onAccount: onAccount,
+    onDeleted: onDeleted,
     displayName: displayName,
     normalizeUsername: normalizeUsername,
     _keys: { OWN_KEY: OWN_KEY, PLANNER_KEY: PLANNER_KEY, OPTED_OUT_KEY: OPTED_OUT_KEY },

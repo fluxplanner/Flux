@@ -30,6 +30,26 @@
 #app #staffHub .spd-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 #app #staffHub .spdx-cols{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 
+/* Personal mode and the Work hub's own pages (Meetings, PD, Wellbeing,
+   Tasks, Resources, Personal hub) were narrow columns centred in the page,
+   under a lead line that starts at the left gutter — so the text and the
+   cards below it never lined up. They keep their reading width but start
+   where the page does. The wrappers carry inline margin:0 auto, hence
+   !important. */
+#app [data-staff-personal-panel] > .flux-page-header + div,
+#app [data-staff-personal-panel] > .flux-page-header + .sr-root{margin-left:0!important;margin-right:0!important;padding-left:0!important;padding-right:0!important;max-width:880px!important}
+#app #staffPersonalHub .sph-root{max-width:none;margin:0;padding:0}
+/* The personal dashboard board had its own 20px inset and a centred 1100px
+   column, so it sat to the right of every other page's content. */
+#app #dashboard > .fsdb-root{max-width:none;margin:0;padding:0 0 28px}
+#app [data-staff-personal-panel] > .flux-page-header{margin-bottom:18px}
+
+/* The one-time tip on the personal dashboard (was a page-blocking modal). */
+#app .fsdb-hint-inline{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.22);animation:fxStaffIn .4s cubic-bezier(.2,.8,.2,1) both}
+#app .fsdb-hint-inline .fsdb-hint-copy{flex:1;margin:0;font-size:.8rem;line-height:1.55;color:var(--text2,var(--text))}
+#app .fsdb-hint-inline .fsdb-hint-dismiss{flex:none;font-size:.74rem;padding:6px 12px}
+@media (max-width:560px){#app .fsdb-hint-inline{flex-direction:column;align-items:stretch}}
+
 /* Quick links sat with a negative top margin, straight onto the card above. */
 #app .sr-workspace-mount--inline{margin:18px 0 14px}
 #app .sr-workspace-mount--inline .sr-section-title{margin-bottom:10px}
@@ -118,6 +138,28 @@ body[data-theme="light"] #modeSwitchBar{background:rgba(255,255,255,.82);border-
 #app .ftr-chip.on{background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.4);color:var(--text)}
 #app #teacherResources :is(.ftr-card,.ftr-group,.ftr-note)[hidden]{display:none!important}
 
+/* Work hub: recent meeting notes rows are buttons into the notes page. */
+#app .spdx-row--btn{width:100%;display:flex;align-items:center;gap:8px;min-height:0;margin:0;padding:7px 8px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;transition:background-color .18s ease}
+#app .spdx-row--btn:hover{background:rgba(var(--accent-rgb),.08)}
+
+/* ── Counselor Meetings ──────────────────────────────────────────────── */
+#app .cm-native{display:flex;flex-direction:column;gap:16px}
+#app .cm-native .ca-meetings-mount:empty{display:none}
+/* The section cards carry their own edges; the mount's divider only doubled them. */
+#app .cm-native .ca-meetings-mount{margin:0;padding:0;border:0}
+#app .cm-sec{padding:16px 18px;border-radius:16px;background:var(--card);border:1px solid var(--border2)}
+#app .cm-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#app .cm-sec-head h3{margin:0;font-size:.95rem;font-weight:700;letter-spacing:-.01em}
+#app .cm-sec-actions{display:flex;gap:8px}
+#app .cm-sec .cm-action-btn{padding:6px 12px;font-size:.76rem;border-radius:10px}
+#app .cm-empty-line{font-size:.82rem;color:var(--muted2);padding:6px 0}
+#app .cm-note-row{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:9px 10px;border-radius:10px;transition:background-color .18s ease}
+#app .cm-note-row:hover{background:rgba(255,255,255,.035)}
+#app .cm-note-date{grid-row:span 2;font:600 .72rem 'JetBrains Mono',monospace;color:var(--accent);padding-top:2px;min-width:84px}
+#app .cm-note-title{font-size:.86rem;font-weight:600;color:var(--text)}
+#app .cm-note-body{font-size:.76rem;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .ca-meetings-mount .ca-empty{padding:12px 16px;border-radius:14px;border:1px dashed var(--border2);font-size:.82rem;color:var(--muted2)}
+
 /* ── Messages: conversation search ───────────────────────────────────── */
 /* (1,2,0) plus !important: flux-form-controls and styles.css §14 both size
    every input on the page, and this one has to fit the list column. */
@@ -147,5 +189,5 @@ body[data-theme="light"] #modeSwitchBar{background:rgba(255,255,255,.82);border-
 }
 @keyframes fxStaffIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){
-  #app .flux-qg-card,#app .flux-gm-group,#app .fx-staff-flash{animation:none}
+  #app .flux-qg-card,#app .flux-gm-group,#app .fx-staff-flash,#app .fsdb-hint-inline{animation:none}
 }

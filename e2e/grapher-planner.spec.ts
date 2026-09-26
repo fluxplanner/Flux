@@ -39,8 +39,17 @@ test.describe('Grapher in the planner', () => {
     await openGrapher(page);
     await page.locator('[data-pmode="data"]').click();
     const bg = (sel: string) => page.locator(sel).first().evaluate((e) => getComputedStyle(e).backgroundImage);
-    expect(await bg('[data-pmode="data"]'), 'the selected tab is filled').toContain('gradient');
-    expect(await bg('[data-pmode="functions"]'), 'the other tab is not').toBe('none');
+    /* The fill is the sliding highlight behind the tabs (it travels from one
+       to the other when you switch), so check it is a gradient and that it
+       sits under the chosen tab — and that neither button paints its own. */
+    const glide = page.locator('.flg-shell--planner .flg-seg .flg-glide');
+    expect(await glide.evaluate((e) => getComputedStyle(e).backgroundImage), 'the highlight is filled').toContain('gradient');
+    await expect.poll(async () => {
+      const g = await glide.boundingBox();
+      const b = await page.locator('[data-pmode="data"]').first().boundingBox();
+      return g && b ? Math.abs((g.x + g.width / 2) - (b.x + b.width / 2)) : 999;
+    }, { message: 'the highlight is not under the selected tab' }).toBeLessThan(3);
+    expect(await bg('[data-pmode="functions"]'), 'the other tab is not filled').toBe('none');
     expect(await bg('.flg--planner [data-hist="undo"]'), 'undo is a plain icon button').toBe('none');
     expect(await bg('.flg--planner [data-tool="in"]'), 'zoom is a plain icon button').not.toContain('gradient');
   });

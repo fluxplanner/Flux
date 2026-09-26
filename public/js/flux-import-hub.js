@@ -145,20 +145,28 @@
   }
 
   function injectBanner() {
+    /* #dashboard is only ever an educator's page in Personal mode — Work mode
+       routes them to their role dashboard — and Personal mode is the planner
+       for life outside school. A "new school year, import your classes"
+       banner does not belong there. It could also land before the role had
+       loaded, which put the student wording on a teacher's page. */
+    if (isEducator()) {
+      var stale = document.getElementById(BANNER_ID);
+      if (stale) stale.remove();
+      return;
+    }
     if (!bannerSeasonActive()) return;
     try { if (localStorage.getItem(bannerDismissKey()) === '1') return; } catch (e) {}
     if (document.getElementById(BANNER_ID)) return;
     var dash = document.getElementById('dashboard');
     if (!dash || !dash.classList.contains('active')) return;
-    var edu = isEducator();
     var banner = document.createElement('div');
     banner.id = BANNER_ID;
     banner.className = 'fih-season-banner';
     banner.innerHTML =
       '<span class="fih-season-ico" aria-hidden="true"></span>' +
       '<span class="fih-season-text"><strong>New school year?</strong> ' +
-      (edu ? 'Import your classes, rosters, and calendar in one place.'
-           : 'Import your classes, schedule, and grades in one place — takes a minute.') +
+      'Import your classes, schedule, and grades in one place — takes a minute.' +
       '</span>' +
       '<button type="button" class="fih-season-go" data-fih-go>Import now</button>' +
       '<button type="button" class="fih-season-x" data-fih-dismiss aria-label="Dismiss">✕</button>';
@@ -177,7 +185,7 @@
     if (!dash || !window.MutationObserver) return;
     var t = null;
     new MutationObserver(function () {
-      if (document.getElementById(BANNER_ID)) return;
+      if (document.getElementById(BANNER_ID) && !isEducator()) return;
       clearTimeout(t);
       t = setTimeout(injectBanner, 250);
     }).observe(dash, { childList: true, attributes: true, attributeFilter: ['class'] });

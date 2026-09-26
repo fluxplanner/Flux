@@ -2708,7 +2708,7 @@
       + '<input type="text" class="flg-wunit" data-wd="' + ax + 'Unit" value="' + esc(d[ax + 'Unit']) + '" placeholder="unit" aria-label="' + ax + ' axis unit">'
       + '</div>';
     const html = '<div class="flg-win">'
-      + '<input type="text" class="flg-wtitle" data-wd="title" value="' + esc(d.title) + '" placeholder="' + (data ? 'Graph title' : 'Title (optional)') + '" aria-label="Graph title">'
+      + '<input type="text" class="flg-wtitle" data-wd="title" value="' + esc(d.title) + '" placeholder="Graph title" aria-label="Graph title">'
       + row('x') + row('y')
       + '<div class="flg-wflags">'
       + (data ? '<label><input type="checkbox" data-wf="auto"' + (d.win.auto ? ' checked' : '') + '> Fit to data</label>' : '')
@@ -3616,7 +3616,132 @@
 
   /* ── Output ─────────────────────────────────────────────────────────── */
 
-  Grapher.prototype.exportPNG = function () {
+  /* ── Saving an image ──────────────────────────────────────────────────
+     The image goes straight into a lab report, and a report graph with no
+     title or unnamed axes loses marks — putting that right meant coming back,
+     fixing the graph and exporting all over again. So the image is only made
+     once the graph has a title and both axes have names, and after a look at
+     a preview of exactly what will be saved plus three quick checks. Every
+     time, on purpose: the one time it is skipped is the time it is wrong. */
+  const GENERIC_AXIS = /^[xy]\d*$/i;
+  Grapher.prototype.exportPNG = function () { return this.exportCheck(); };
+
+  Grapher.prototype.exportCheck = function () {
+    if (document.querySelector('.fgx-back')) return null;
+    const self = this, d = this.doc, data = this.kind === 'data';
+    const was = { title: d.title, xLabel: d.xLabel, xUnit: d.xUnit, yLabel: d.yLabel, yUnit: d.yUnit };
+    // Start from what the graph already says. A named table column counts as
+    // an axis name; the default "x" / "y1" does not, so it has to be typed.
+    let xn = d.xLabel, xu = d.xUnit, yn = d.yLabel, yu = d.yUnit;
+    if (data) {
+      const t = d.items.find((i) => i.type === 'table' && !i.hidden);
+      if (t) {
+        const cx = t.cols.find((c) => c.id === t.xCol), cy = t.cols.find((c) => c.id === t.yCol);
+        if (!xn && cx && !GENERIC_AXIS.test(cx.name || '')) { xn = cx.name; if (!xu) xu = cx.unit || ''; }
+        if (!yn && cy && !GENERIC_AXIS.test(cy.name || '')) { yn = cy.name; if (!yu) yu = cy.unit || ''; }
+      }
+    }
+    const field = (k, label, val, ph, max, req) => '<label class="fgc-f fgx-f"><span>' + label + (req ? ' <b class="fgx-req">required</b>' : '') + '</span>'
+      + '<input name="' + k + '" maxlength="' + max + '" value="' + esc(val || '') + '" placeholder="' + esc(ph) + '"' + (req ? ' required' : '') + '></label>';
+    const check = (k, text) => '<label class="fgx-check"><input type="checkbox" name="' + k + '"><span>' + text + '</span></label>';
+    const back = document.createElement('div');
+    back.className = 'fgc-back fgx-back';
+    back.innerHTML = '<div class="fgc-sheet fgx-sheet" role="dialog" aria-modal="true" aria-labelledby="fgxHead">'
+      + '<button type="button" class="fgc-x" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
+      + '<h2 class="fgc-h" id="fgxHead">Before you save the image</h2>'
+      + '<p class="fgx-sub">Check it now so you don’t have to redo it later. Every image needs a title and both axis names.</p>'
+      + '<div class="fgx-preview"><img alt="Preview of the image that will be saved"></div>'
+      + '<form class="fgx-form" novalidate>'
+      +   field('title', 'Title', d.title, data ? 'e.g. Extension of a spring against load' : 'e.g. y = x² and its tangent at x = 1', 120, true)
+      +   '<div class="fgx-row">' + field('xLabel', 'x-axis name', xn, data ? 'e.g. Load' : 'e.g. x', 40, true) + field('xUnit', 'Unit', xu, data ? 'e.g. N' : 'optional', 20, false) + '</div>'
+      +   '<div class="fgx-row">' + field('yLabel', 'y-axis name', yn, data ? 'e.g. Extension' : 'e.g. y', 40, true) + field('yUnit', 'Unit', yu, data ? 'e.g. cm' : 'optional', 20, false) + '</div>'
+      +   '<fieldset class="fgx-checks"><legend>Double-check</legend>'
+      +     check('c1', 'The title, axis names and units are right')
+      +     check('c2', data ? 'Every reading is in, with its uncertainty' : 'Every equation I need is on the graph')
+      +     check('c3', 'The lines are the ones I want, and the key is showing or hidden the way I want')
+      +   '</fieldset>'
+      +   '<p class="fgx-missing" aria-live="polite"></p>'
+      +   '<button type="submit" class="fgc-btn fgx-go" disabled>Save image</button>'
+      + '</form></div>';
+    document.body.appendChild(back);
+    const box = back.firstChild, form = box.querySelector('form');
+    const img = box.querySelector('.fgx-preview img');
+    const go = box.querySelector('.fgx-go'), missing = box.querySelector('.fgx-missing');
+    const prevFocus = document.activeElement;
+    let url = null, previewT = 0, saved = false, closed = false;
+
+    const values = () => {
+      const v = {};
+      ['title', 'xLabel', 'xUnit', 'yLabel', 'yUnit'].forEach((k) => { v[k] = form.elements[k].value.trim(); });
+      return v;
+    };
+    const apply = (v) => { Object.keys(v).forEach((k) => { d[k] = v[k].slice(0, 120); }); };
+    const preview = () => {
+      clearTimeout(previewT);
+      previewT = setTimeout(() => {
+        const cur = values();
+        const keep = { title: d.title, xLabel: d.xLabel, xUnit: d.xUnit, yLabel: d.yLabel, yUnit: d.yUnit };
+        apply(cur);
+        let svg = '';
+        try { svg = self.svg(1600, 1000, true); } catch (e) {}
+        apply(keep);
+        if (url) URL.revokeObjectURL(url);
+        url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        img.src = url;
+      }, 120);
+    };
+    const validate = () => {
+      const v = values();
+      const need = [];
+      if (!v.title) need.push('a title');
+      if (!v.xLabel) need.push('the x-axis name');
+      if (!v.yLabel) need.push('the y-axis name');
+      const unticked = ['c1', 'c2', 'c3'].filter((k) => !form.elements[k].checked).length;
+      if (unticked) need.push(unticked === 3 ? 'the three checks' : unticked === 1 ? 'one more check' : unticked + ' more checks');
+      go.disabled = need.length > 0;
+      missing.textContent = need.length ? 'Still needed: ' + need.join(', ') + '.' : '';
+      ['title', 'xLabel', 'yLabel'].forEach((k) => form.elements[k].classList.toggle('is-empty', !v[k]));
+    };
+    function close() {
+      if (closed) return;
+      closed = true;
+      clearTimeout(previewT);
+      document.removeEventListener('keydown', onKey, true);
+      back.classList.add('is-out');
+      setTimeout(() => { if (back.parentNode) back.parentNode.removeChild(back); if (url) URL.revokeObjectURL(url); }, 160);
+      if (!saved) apply(was);
+      if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
+    box.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
+    form.addEventListener('input', () => { validate(); preview(); });
+    form.addEventListener('change', validate);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      validate();
+      if (go.disabled) return;
+      // What was typed here is part of the graph now, so the window panel,
+      // the saved copy and the next image all agree with the one just made.
+      apply(values());
+      saved = true;
+      self.touch();
+      self.draw();
+      if (self._winEl) closePop();
+      self._downloadPNG();
+      close();
+    });
+    validate();
+    preview();
+    const first = ['title', 'xLabel', 'yLabel'].map((k) => form.elements[k]).find((i) => !i.value.trim());
+    (first || form.elements.c1).focus();
+    return back;
+  };
+
+  Grapher.prototype._downloadPNG = function () {
     const W = 1600, H = 1000;
     const svg = this.svg(W, H, true);
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
@@ -3640,6 +3765,7 @@
         a.click();
         a.remove();
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+        toast('Image saved.', 'success');
       }, 'image/png');
     };
     img.onerror = function () {
@@ -3737,6 +3863,18 @@
     this.emit('saved');
   };
 
+  /** The saved graph this one came from has been deleted: stop treating it as
+   *  that graph, so the next Save asks for a name and makes a new one instead
+   *  of quietly bringing the deleted one back. The drawing stays on screen. */
+  Grapher.prototype.forgetCloud = function (id, title) {
+    if (!this.cloud || this.cloud.id !== id) return false;
+    const name = title || this.cloud.title;
+    this.cloud = null;
+    this.persistLocal();
+    toast('"' + name + '" was deleted, so what is on screen is no longer saved. Save makes a new copy.', 'info');
+    return true;
+  };
+
   Grapher.prototype.isDirty = function () { return this.dirty; };
 
   Grapher.prototype.snapshot = function () {
@@ -3775,6 +3913,66 @@
     try { return localStorage.getItem(MODE_KEY) === 'functions' ? 'functions' : 'data'; } catch (e) { return 'data'; }
   }
 
+  /* ── Switching between Functions and Measurements ──────────────────────
+     The two tabs used to swap in a single frame: the highlight jumped and the
+     new grapher simply replaced the old one. Now the highlight slides to the
+     tab you picked and the grapher that opens comes in from that tab's side —
+     Functions from the left, Measurements from the right — so the switch reads
+     as moving across, not as the page being swapped out. Used by the planner's
+     tabs here and by grapher.html's header. Off under reduced motion. */
+  const MODE_SIDE = { functions: 'l', data: 'r' };
+  function reducedMotion() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
+  /** Slide the segmented control's highlight under `btn`. */
+  function glideSeg(seg, btn, instant) {
+    if (!seg || !btn) return;
+    let g = seg.querySelector(':scope > .flg-glide');
+    if (!g) {
+      g = document.createElement('span');
+      g.className = 'flg-glide';
+      g.setAttribute('aria-hidden', 'true');
+      seg.prepend(g);
+      seg.classList.add('has-glide');
+      instant = true;
+      // Labels change width (fonts landing, the short phone labels), so keep
+      // the highlight sized to whichever tab is selected.
+      if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+          const on = seg.querySelector('[aria-selected="true"]');
+          if (on) glideSeg(seg, on, true);
+        }).observe(seg);
+      }
+    }
+    if (!btn.offsetWidth) return;
+    if (instant || reducedMotion()) {
+      g.style.transition = 'none';
+      void g.offsetWidth;
+    }
+    g.style.width = btn.offsetWidth + 'px';
+    g.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+    if (instant || reducedMotion()) {
+      void g.offsetWidth;
+      g.style.transition = '';
+    }
+  }
+  /** Bring the newly opened grapher in from its tab's side. */
+  function enterFrom(root, mode, prevMode) {
+    if (!root || !prevMode || prevMode === mode || reducedMotion()) return;
+    const cls = 'flg-in-' + (MODE_SIDE[mode] || 'r');
+    root.classList.remove('flg-in-l', 'flg-in-r');
+    void root.offsetWidth;
+    root.classList.add(cls);
+    const done = () => {
+      root.classList.remove(cls);
+      root.removeEventListener('animationend', onEnd);
+    };
+    // Only the root's own animation — toasts and pops inside it animate too.
+    const onEnd = (e) => { if (e.target === root) done(); };
+    root.addEventListener('animationend', onEnd);
+    setTimeout(done, 700);
+  }
+
   function mountPlanner(host) {
     host.innerHTML = '<div class="flg-shell flg-shell--planner">'
       + '<div class="flg-pbar">'
@@ -3795,9 +3993,12 @@
     let inst = null;
 
     function show(mode) {
+      const prev = inst ? inst.kind : null;
       if (inst) inst.destroy();
       inst = create(body, { mode: mode, surface: 'planner' });
       bar.querySelectorAll('[data-pmode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.pmode === mode)));
+      glideSeg(bar.querySelector('.flg-seg'), bar.querySelector('[data-pmode="' + mode + '"]'), !prev);
+      enterFrom(body.firstElementChild, mode, prev);
       try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
     }
 
@@ -3824,6 +4025,11 @@
     });
 
     show(readMode());
+    try {
+      if (window.FluxGraphCloud && FluxGraphCloud.onDeleted) {
+        FluxGraphCloud.onDeleted((id, title) => { if (inst && host.isConnected) inst.forgetCloud(id, title); });
+      }
+    } catch (e) {}
     return { get instance() { return inst; } };
   }
 
@@ -3843,6 +4049,8 @@
     create: create,
     mount: mount,
     mountFunctions: mountFunctions,
+    glideSeg: glideSeg,
+    enterFrom: enterFrom,
     toast: toast,
     ICON: ICON,
     esc: esc,
