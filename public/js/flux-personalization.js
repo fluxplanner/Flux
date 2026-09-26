@@ -17,7 +17,7 @@
   const DASH_LABELS={
     pulse:'Next 7 days (workload)',
     gapfill:'Smart gap-fill suggestions',
-    countdown:'Exam countdown',
+    countdown:'Countdown (top bar)',
     schedule:'Today schedule & focus',
     tasks:'Tasks',
   };
@@ -264,6 +264,8 @@
         el.removeAttribute('data-flux-user-hidden');
       }
     });
+
+    try{if(typeof window.renderCountdown==='function')window.renderCountdown();}catch(_){}
   }
 
   function normalizeOrder(saved,allowed){
@@ -357,6 +359,9 @@
     const dLabels=dashLabels();
     const cLabels=calLabels();
     const row=(panel,order,labels)=>{
+      /* The countdown lives in the top bar now: it can be shown or hidden
+         below, but there is no place in the dashboard's order to move it to. */
+      order=order.filter((id)=>id!=='countdown');
       return order.map((id,i)=>`
         <li class="flux-layout-sort-row">
           <span class="flux-layout-sort-label">${esc(labels[id]||id)}</span>
