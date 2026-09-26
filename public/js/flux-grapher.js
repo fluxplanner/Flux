@@ -105,6 +105,7 @@
     undo: svgIcon('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>', 15),
     keyboard: svgIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 15.5h6"/>', 17),
     redo: svgIcon('<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>', 15),
+    trash: svgIcon('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>', 15),
   };
 
   function readJSON(key, fallback) {
@@ -996,6 +997,47 @@
     this.emit('change');
     return true;
   };
+  /* ── Clear all ──────────────────────────────────────────────────────
+     Back to a fresh graph: one empty table, no title, labels, fits beyond
+     the default, manual lines or window. It is one undo step, so a slip is
+     one click to reverse — no "are you sure?" in the way of the common case.
+     The link to a saved copy is dropped too, so the next Save makes a new
+     graph instead of overwriting the saved one with a blank. */
+  function docIsBlank(doc) {
+    if (doc.title || doc.xLabel || doc.yLabel || doc.xUnit || doc.yUnit) return false;
+    if (doc.win && doc.win.auto === false) return false;
+    if (doc.items.length > 1 || Object.keys(doc.params || {}).length) return false;
+    return doc.items.every((it) => it.type === 'expr'
+      ? !String(it.src || '').trim()
+      : it.cols.length <= 2 && !(it.manuals || []).length && !it.minmax
+        && it.rows.every((r) => r.every((c) => !String(c == null ? '' : c).trim())));
+  }
+  Grapher.prototype.clearAll = function () {
+    if (docIsBlank(this.doc)) { toast('Nothing to clear — the graph is already empty.'); return; }
+    clearTimeout(this._histT);
+    this.commitHistory();
+    this.stopPlay();
+    closePop();
+    this.doc = blankDoc(this.kind);
+    this.cloud = null;
+    this.cache.clear();
+    this.pins = [];
+    this.active = null;
+    this.resPos = null;
+    this._resHTML = null;
+    this._kpKey = null;
+    this.syncScope();
+    this.syncParams();
+    this.renderItems();
+    this.renderParams();
+    this.commitHistory();
+    this.dirty = false;
+    this.persistLocal();
+    this.draw();
+    this.emit('change');
+    toast('Cleared. Undo brings it all back.');
+  };
+
   Grapher.prototype.paintHistory = function () {
     const u = this.root && this.root.querySelector('[data-hist="undo"]');
     const r = this.root && this.root.querySelector('[data-hist="redo"]');
@@ -1177,6 +1219,8 @@
       +       '<button type="button" data-hist="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>' + ICON.undo + '</button>'
       +       '<button type="button" data-hist="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>' + ICON.redo + '</button>'
       +     '</span>'
+      +     (data ? '<button type="button" class="flg-clear" data-clearall title="Clear everything and start again (Undo brings it back)" aria-label="Clear all">'
+      +       ICON.trash + '</button>' : '')
       +   '</div>'
       + '</aside>'
       + '<section class="flg-stage" id="' + u + 'Stage" aria-label="Graph">'
@@ -1915,6 +1959,7 @@
       if (d.tool) { self.tool(d.tool, b); return; }
       if (d.pplay) { self.togglePlay(d.pplay); return; }
       if (d.hist) { self.stepHistory(d.hist === 'undo'); return; }
+      if (b.hasAttribute('data-clearall')) { self.clearAll(); return; }
       if (d.kb != null && b.classList.contains('flg-kbbtn')) { self.toggleKeypad(); return; }
       const tb = self.itemOf(b);
       if (!tb) return;
@@ -3389,7 +3434,7 @@
     _test: {
       keyPoints: keyPoints, intersections: intersections, parseExpr: parseExpr,
       normaliseDoc: normaliseDoc, tablePoints: tablePoints, uncOf: uncOf, fmtTick: fmtTick,
-      computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread,
+      computeTable: computeTable, parseDomain: parseDomain, manualSpread: manualSpread, docIsBlank: docIsBlank,
     },
   };
 })();

@@ -429,6 +429,18 @@
 }
 .flg-hist button:hover:not(:disabled) { color: var(--flg-ink); background: var(--flg-field); }
 .flg-hist button:disabled { opacity: .3; cursor: default; }
+.flg-clear {
+  display: grid; place-items: center;
+  flex: 0 0 auto;
+  width: 34px; height: 38px;
+  padding: 0; margin: 0;
+  border: 0; border-radius: 10px;
+  background: none;
+  color: var(--flg-mut);
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease;
+}
+.flg-clear:hover { color: #ff6b81; background: rgba(255, 107, 129, .12); }
 
 /* What a row works out to, under it: "= 5", a slider for "a = 4", or a
    regression's fitted numbers — the way Desmos answers in place. */
