@@ -253,3 +253,12 @@ test('"already empty" means no readings, no words and no extras — not merely o
   const withLine = T.normaliseDoc({}, 'data'); withLine.items[0].manuals = [{ x1: 0, y1: 0, x2: 1, y2: 1 }];
   assert.equal(T.docIsBlank(withLine), false, 'a manual line is something to clear');
 });
+
+test('line colours: valid ones are kept, junk keys and non-colours are dropped', () => {
+  const t = T.normaliseDoc({ items: [{ type: 'table', cols: [{ id: 'a', role: 'value' }, { id: 'b', role: 'value' }], rows: [['1', '2']],
+    lineColours: { 'fit:linear': '#ff0000', 'mm:steep': '#00ff00', 'mm:sideways': '#0000ff', 'fit:x': 'red; background:url(x)' },
+    manuals: [{ x1: 0, y1: 0, x2: 1, y2: 1, colour: '#123456' }, { x1: 0, y1: 1, x2: 1, y2: 2, colour: 'javascript:1' }] }] }, 'data').items[0];
+  assert.deepEqual(t.lineColours, { 'fit:linear': '#ff0000', 'mm:steep': '#00ff00' });
+  assert.equal(t.manuals[0].colour, '#123456');
+  assert.equal(t.manuals[1].colour, undefined, 'a colour that is not a hex value is dropped');
+});

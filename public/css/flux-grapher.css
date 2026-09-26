@@ -481,6 +481,20 @@
 }
 .flg-fchip button:hover { color: #ff6b81; background: rgba(255, 107, 129, .12); }
 .flg-dash { flex: 0 0 auto; }
+/* The line sample at the front of a chip is its colour picker. */
+.flg-lcol {
+  display: inline-grid; place-items: center;
+  flex: 0 0 auto;
+  min-width: 22px; height: 18px;
+  padding: 0 2px; margin: 0;
+  border: 0; border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.flg-lcol:hover { background: rgba(255, 255, 255, .08); }
+.flg-lcol:focus-visible { outline: 2px solid var(--flg-accent); outline-offset: 1px; }
+.flg-fchip--mm { padding-right: 9px; }
 .flg-mdot {
   flex: 0 0 auto;
   width: 9px; height: 9px;

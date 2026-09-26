@@ -212,8 +212,26 @@
     if (!m || typeof m !== 'object') return null;
     const x1 = Number(m.x1), y1 = Number(m.y1), x2 = Number(m.x2), y2 = Number(m.y2);
     if (![x1, y1, x2, y2].every(Number.isFinite) || x1 === x2) return null;
-    return { x1: x1, y1: y1, x2: x2, y2: y2 };
+    const out = { x1: x1, y1: y1, x2: x2, y2: y2 };
+    if (HEX.test(m.colour || '')) out.colour = m.colour;
+    return out;
   }
+  /* Every line on a measurements graph can have its own colour: each fit
+     ("fit:linear"), the steepest and shallowest lines ("mm:steep",
+     "mm:shallow"), and each manual line (stored on the line itself, since
+     its position in the list changes). Unset means the default. */
+  const LINE_KEY = /^(fit:[a-zA-Z]{1,20}|mm:(steep|shallow))$/;
+  function normLineColours(it) {
+    const src = it.lineColours && typeof it.lineColours === 'object' ? it.lineColours : {};
+    const out = {};
+    Object.keys(src).slice(0, 40).forEach((k) => { if (LINE_KEY.test(k) && HEX.test(src[k] || '')) out[k] = src[k]; });
+    return out;
+  }
+  function lineColour(t, key, fallback) {
+    const c = t.lineColours && t.lineColours[key];
+    return HEX.test(c || '') ? c : fallback;
+  }
+  function manualColour(t, mn) { return HEX.test((mn && mn.colour) || '') ? mn.colour : t.colour; }
   const MAX_MANUAL = 6;
   /* Several hand-drawn lines per table — the steepest and shallowest lines
      through the error bars are the usual pair. Older graphs saved one line
@@ -242,7 +260,7 @@
     return {
       id: newId(), type: 'table', name: 'Data ' + (n + 1), colour: PALETTE[n % PALETTE.length],
       hidden: false, cols: [cx, cy], rows: rows, xCol: cx.id, yCol: cy.id,
-      fits: fnMode ? [] : ['linear'], custom: null, manuals: [], minmax: false,
+      fits: fnMode ? [] : ['linear'], lineColours: {}, custom: null, manuals: [], minmax: false,
     };
   }
   function blankDoc(kind) {
@@ -333,6 +351,7 @@
       xCol: has(it.xCol) ? it.xCol : values[0].id,
       yCol: has(it.yCol) ? it.yCol : (values[1] || values[0]).id,
       fits: normFits(it),
+      lineColours: normLineColours(it),
       custom: it.custom && typeof it.custom === 'object' && str(it.custom.expr, 200).trim()
         ? { expr: str(it.custom.expr, 200) } : null,
       manuals: normManuals(it),
@@ -982,7 +1001,10 @@
     this.stopPlay();
     closePop();
     this.doc = normaliseDoc(JSON.parse(json), this.kind);
-    this._snap = json;
+    /* The snapshot is the normalised doc, not the stored text: if the two
+       differed at all (even in key order) the next commit saw a "change",
+       pushed it, and wiped the redo stack before redo could use it. */
+    this._snap = JSON.stringify(this.doc);
     this.cache.clear();
     this.pins = [];
     this.syncScope();
@@ -1380,7 +1402,10 @@
     const values = this.plotCols(t);
     const o = opt || ((sel) => values.map((v) => '<option value="' + esc(v.id) + '"' + (v.id === sel ? ' selected' : '') + '>'
       + esc(v.name || 'column') + '</option>').join(''));
-    const chips = (t.fits || []).map((k, i) => '<span class="flg-fchip">' + dashSample(t.colour, DASHES[i % DASHES.length])
+    const colourBtn = (key, colour, dash, label) => '<button type="button" class="flg-lcol" data-lcol="' + esc(key) + '"'
+      + ' title="Colour of this line" aria-label="Colour of the ' + esc(label) + '">' + dashSample(colour, dash) + '</button>';
+    const chips = (t.fits || []).map((k, i) => '<span class="flg-fchip">'
+      + colourBtn('fit:' + k, lineColour(t, 'fit:' + k, t.colour), DASHES[i % DASHES.length], this.fitName(k) + ' fit')
       + '<span>' + esc(this.fitName(k)) + '</span>'
       + '<button type="button" data-unfit="' + esc(k) + '" aria-label="Remove the ' + esc(this.fitName(k)) + ' fit" title="Remove">' + ICON.x + '</button></span>').join('');
     return '<label class="flg-axsel"><span>x</span><select data-xcol="' + esc(t.id) + '" aria-label="Column on the x axis">' + o(t.xCol) + '</select></label>'
@@ -1390,15 +1415,22 @@
       +   ICON.plus + '<span>fit</span></button>'
       + '</div>'
       + '<div class="flg-fitrow">' + (t.manuals || []).map((mn, i) => '<span class="flg-fchip flg-fchip--manual">'
-      +     '<i class="flg-mdot" style="border-color:' + t.colour + '"></i><span>' + esc(manualName(t, i)) + '</span>'
+      +     '<button type="button" class="flg-lcol" data-lcol="man:' + i + '" title="Colour of this line" aria-label="Colour of ' + esc(manualName(t, i).toLowerCase()) + '">'
+      +       '<i class="flg-mdot" style="border-color:' + manualColour(t, mn) + '"></i></button><span>' + esc(manualName(t, i)) + '</span>'
       +     '<button type="button" data-unmanual="' + i + '" aria-label="Remove ' + esc(manualName(t, i).toLowerCase()) + '" title="Remove">' + ICON.x + '</button></span>').join('')
       +   ((t.manuals || []).length < MAX_MANUAL
             ? '<button type="button" class="flg-chip flg-chip--add" data-manual="' + esc(t.id) + '" title="A line you drag into place yourself — add several to bracket your readings">'
               + ICON.plus + '<span>manual line</span></button>'
             : '')
       + '</div>'
+      + '<div class="flg-fitrow">'
       + '<button type="button" class="flg-chip' + (t.minmax ? ' is-on' : '') + '" data-minmax="' + esc(t.id) + '" aria-pressed="' + t.minmax + '"'
-      +   ' title="Steepest and shallowest lines through the error bars">max/min</button>';
+      +   ' title="Steepest and shallowest lines through the error bars">max/min</button>'
+      + (t.minmax
+          ? '<span class="flg-fchip flg-fchip--mm">' + colourBtn('mm:steep', lineColour(t, 'mm:steep', STEEP), '7 5', 'steepest line') + '<span>Steepest</span></span>'
+            + '<span class="flg-fchip flg-fchip--mm">' + colourBtn('mm:shallow', lineColour(t, 'mm:shallow', SHALLOW), '7 5', 'shallowest line') + '<span>Shallowest</span></span>'
+          : '')
+      + '</div>';
   };
 
   Grapher.prototype.renderTfoot = function (t) {
@@ -1779,6 +1811,43 @@
     });
   };
 
+  /** Colour for one line of a table: a fit, a manual line, or max/min. */
+  Grapher.prototype.lineColourPop = function (t, key, anchor) {
+    const self = this;
+    const man = /^man:(\d+)$/.exec(key);
+    const mn = man ? (t.manuals || [])[+man[1]] : null;
+    if (man && !mn) return;
+    const fallback = key === 'mm:steep' ? STEEP : key === 'mm:shallow' ? SHALLOW : t.colour;
+    const now = man ? manualColour(t, mn) : lineColour(t, key, fallback);
+    const set = (c) => {
+      if (man) { if (c) mn.colour = c; else delete mn.colour; }
+      else {
+        if (!t.lineColours || typeof t.lineColours !== 'object') t.lineColours = {};
+        if (c) t.lineColours[key] = c; else delete t.lineColours[key];
+      }
+      self.touch();
+      self.renderTfoot(t);
+      self._resHTML = null;
+      self.draw();
+    };
+    const html = '<div class="flg-swpop">'
+      + '<div class="flg-swrow">' + PALETTE.concat([STEEP]).filter((c, i, a) => a.indexOf(c) === i).map((c) => '<button type="button" class="flg-swdot' + (c === now ? ' is-on' : '')
+        + '" data-c="' + c + '" style="--c:' + c + '" aria-label="Colour ' + c + '"></button>').join('')
+      + '<label class="flg-swcustom" title="Any colour"><input type="color" value="' + now + '" aria-label="Any colour"></label></div>'
+      + '<div class="flg-swopts"><button type="button" class="flg-swopt" data-reset><span class="flg-dashprev" style="--c:' + fallback + '"></span>'
+      + '<span>' + (key.indexOf('mm:') === 0 ? 'Default colour' : 'Same as the table') + '</span></button></div></div>';
+    openPop(anchor, html, (el) => {
+      el.addEventListener('click', (e) => {
+        const dot = e.target.closest('[data-c]');
+        if (dot) { closePop(); set(dot.dataset.c); return; }
+        if (e.target.closest('[data-reset]')) { closePop(); set(null); }
+      });
+      el.querySelector('input[type=color]').addEventListener('change', (e) => {
+        if (HEX.test(e.target.value)) { closePop(); set(e.target.value); }
+      });
+    });
+  };
+
   Grapher.prototype.wire = function () {
     const self = this, root = this.root;
 
@@ -1963,6 +2032,7 @@
       if (d.kb != null && b.classList.contains('flg-kbbtn')) { self.toggleKeypad(); return; }
       const tb = self.itemOf(b);
       if (!tb) return;
+      if (d.lcol) { self.lineColourPop(tb, d.lcol, b); return; }
       if (d.rdel != null && d.rdel !== '') {
         tb.rows.splice(+d.rdel, 1);
         if (!tb.rows.length) tb.rows.push(tb.cols.map(() => ''));
@@ -1990,9 +2060,9 @@
         self.draw();
       } else if (d.minmax) {
         tb.minmax = !tb.minmax;
-        b.classList.toggle('is-on', tb.minmax);
-        b.setAttribute('aria-pressed', String(tb.minmax));
         self.touch();
+        self.renderTfoot(tb);
+        self._resHTML = null;
         self.draw();
       } else if (d.addcol) {
         openMenu(b, [
@@ -2531,15 +2601,16 @@
 
   Grapher.prototype.drawManual = function (t, mn, i, m, v, fr, print) {
     const L = manualLine(mn);
+    const col = manualColour(t, mn);
     const ya = L.predict(v.xLo), yb = L.predict(v.xHi);
     let s = '<line x1="' + m.sx(v.xLo) + '" y1="' + m.sy(ya) + '" x2="' + m.sx(v.xHi) + '" y2="' + m.sy(yb)
-      + '" stroke="' + t.colour + '" stroke-width="2.4" stroke-opacity=".85" stroke-dasharray="1 0"'
+      + '" stroke="' + col + '" stroke-width="2.4" stroke-opacity=".85" stroke-dasharray="1 0"'
       + (print ? '' : ' class="flg-manual"') + '/>';
     const many = t.manuals.length > 1;
     if (!print) {
       [[mn.x1, mn.y1], [mn.x2, mn.y2]].forEach((pt) => {
         s += '<circle class="flg-mhandle" cx="' + m.sx(pt[0]).toFixed(1) + '" cy="' + m.sy(pt[1]).toFixed(1)
-          + '" r="7" fill="#ffffff" stroke="' + t.colour + '" stroke-width="3"/>';
+          + '" r="7" fill="#ffffff" stroke="' + col + '" stroke-width="3"/>';
       });
     }
     if (many) {
@@ -2549,7 +2620,7 @@
       const X = clamp(m.sx(right[0]) + 10, fr.L + 3, fr.R - 18);
       const Y = clamp(m.sy(right[1]) - 10, fr.T + 13, fr.B - 6);
       s += '<g class="flg-mlabel" pointer-events="none"><rect x="' + (X - 1).toFixed(1) + '" y="' + (Y - 10).toFixed(1)
-        + '" width="16" height="15" rx="4" fill="' + t.colour + '"/><text x="' + (X + 7).toFixed(1) + '" y="' + (Y + 1).toFixed(1)
+        + '" width="16" height="15" rx="4" fill="' + col + '"/><text x="' + (X + 7).toFixed(1) + '" y="' + (Y + 1).toFixed(1)
         + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0b0d12">' + (i + 1) + '</text></g>';
     }
     return s;
@@ -2729,7 +2800,8 @@
       P.push('<text x="' + (fr.box ? fr.L + fr.pw / 2 : W / 2) + '" y="' + (fr.box ? 28 : 30) + '" text-anchor="middle" '
         + c(fr.box ? 'flg-title' : 'flg-title') + (fr.box ? '' : ' paint-order="stroke"') + '>' + esc(d.title) + '</text>');
     }
-    if (print) P.push(this.legendSVG(fr));
+    // The key in a saved image follows the results card: shown when it is open, gone when it is collapsed.
+    if (print && !this.resCollapsed) P.push(this.legendSVG(fr));
     P.push('</svg>');
     return P.join('');
   };
@@ -2766,15 +2838,15 @@
     let s = '';
     this.fitsFor(t, pts).forEach((f) => {
       if (!f.res || !f.res.fit || typeof f.res.fit.predict !== 'function') return;
-      s += curvePaths(f.res.fit.predict, m, v, fr, 'stroke="' + t.colour + '" stroke-width="2.2" stroke-opacity=".92" stroke-linecap="round"'
+      s += curvePaths(f.res.fit.predict, m, v, fr, 'stroke="' + lineColour(t, 'fit:' + f.kind, t.colour) + '" stroke-width="2.2" stroke-opacity=".92" stroke-linecap="round"'
         + (f.dash ? ' stroke-dasharray="' + f.dash + '"' : ''));
     });
     if (this.kind === 'data' && t.minmax && window.FluxLabFit) {
       const mm = window.FluxLabFit.minMaxGradient(pts);
       if (mm) {
-        const xLo = Math.min.apply(null, pts.map((p) => p.x - p.dx));
-        const xHi = Math.max.apply(null, pts.map((p) => p.x + p.dx));
-        [[mm.steep, STEEP], [mm.shallow, SHALLOW]].forEach((pair) => {
+        // Edge to edge like every other line, not stopping at the last error bar.
+        const xLo = v.xLo, xHi = v.xHi;
+        [[mm.steep, lineColour(t, 'mm:steep', STEEP)], [mm.shallow, lineColour(t, 'mm:shallow', SHALLOW)]].forEach((pair) => {
           const Ln = pair[0];
           const g = (Ln.y2 - Ln.y1) / (Ln.x2 - Ln.x1);
           const ya = Ln.y1 + g * (xLo - Ln.x1), yb = Ln.y1 + g * (xHi - Ln.x1);
@@ -2825,12 +2897,26 @@
         this.fitsFor(it, pts).forEach((f) => {
           if (!f.res || !f.res.fit) return;
           let text = f.name + ':  ' + f.res.fit.equation(fmt);
-          if (f.res.fit.um != null && f.res.fit.m != null) text += '   (m = ' + fmtWithU(f.res.fit.m, f.res.fit.um) + ')';
-          lines.push({ colour: it.colour, text: text, dash: f.dash, fit: true });
+          const extra = [];
+          if (f.res.fit.um != null && f.res.fit.m != null) extra.push('m = ' + fmtWithU(f.res.fit.m, f.res.fit.um));
+          if (Number.isFinite(f.res.fit.r2)) extra.push('R² = ' + fmt(f.res.fit.r2));
+          if (extra.length) text += '   (' + extra.join(', ') + ')';
+          lines.push({ colour: lineColour(it, 'fit:' + f.kind, it.colour), text: text, dash: f.dash, fit: true });
         });
         (it.manuals || []).forEach((mn, i) => {
-          lines.push({ colour: it.colour, text: manualName(it, i) + ':  ' + manualEq(manualLine(mn)), fit: true });
+          lines.push({ colour: manualColour(it, mn), text: manualName(it, i) + ':  ' + manualEq(manualLine(mn)), fit: true });
         });
+        const spread = manualSpread(it);
+        if (spread) lines.push({ text: 'From the manual lines:  m = ' + fmtWithU(spread.m, spread.um) + ',  c = ' + fmtWithU(spread.c, spread.uc), bare: true });
+        if (it.minmax && window.FluxLabFit) {
+          const mm = window.FluxLabFit.minMaxGradient(pts);
+          if (mm) {
+            const eqOf = (Ln) => { const g = (Ln.y2 - Ln.y1) / (Ln.x2 - Ln.x1); return manualEq({ m: g, c: Ln.y1 - g * Ln.x1 }); };
+            lines.push({ colour: lineColour(it, 'mm:steep', STEEP), text: 'Steepest line:  ' + eqOf(mm.steep), dash: '7 5', fit: true });
+            lines.push({ colour: lineColour(it, 'mm:shallow', SHALLOW), text: 'Shallowest line:  ' + eqOf(mm.shallow), dash: '7 5', fit: true });
+            lines.push({ text: 'Gradient from the error bars:  m = ' + fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty), bare: true });
+          }
+        }
       }
     });
     // A slider's value is part of the equation — without it "a sin(x)" is not reproducible.
@@ -2896,7 +2982,7 @@
       if (!fits.length && !manuals.length && !t.minmax) return;
       let body = '';
       fits.forEach((f) => {
-        body += '<div class="flg-rc-fit">' + dashSample(t.colour, f.dash) + '<span>' + esc(f.name) + '</span></div>';
+        body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'fit:' + f.kind, t.colour), f.dash) + '<span>' + esc(f.name) + '</span></div>';
         if (!f.res || f.res.error) { body += '<div class="flg-rc-err">' + esc(f.res ? f.res.error : 'No fit.') + '</div>'; return; }
         body += '<div class="flg-rc-eq">' + esc(f.res.fit.equation(fmt)) + '</div>' + rowsHTML(paramRows(f.res.fit));
       });
@@ -2904,7 +2990,7 @@
         const ml = manualLine(mn);
         let ss = 0;
         pts.forEach((p) => { ss += Math.pow(p.y - ml.predict(p.x), 2); });
-        body += '<div class="flg-rc-fit">' + dashSample(t.colour, '') + '<span>' + esc(manualName(t, i)) + '</span></div>'
+        body += '<div class="flg-rc-fit">' + dashSample(manualColour(t, mn), '') + '<span>' + esc(manualName(t, i)) + '</span></div>'
           + '<div class="flg-rc-eq">' + esc(manualEq(ml)) + '</div>'
           + rowsHTML([['m', fmt(ml.m)], ['c', fmt(ml.c)], ['RMSE', fmt(Math.sqrt(ss / pts.length))]]);
       });
@@ -2917,7 +3003,7 @@
       }
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
-        body += '<div class="flg-rc-fit"><span>Max / min gradient</span></div>';
+        body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'mm:steep', STEEP), '7 5') + dashSample(lineColour(t, 'mm:shallow', SHALLOW), '7 5') + '<span>Max / min gradient</span></div>';
         body += mm
           ? rowsHTML([['m max', fmt(mm.mMax)], ['m min', fmt(mm.mMin)], ['m (bars)', fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)]])
           : '<div class="flg-rc-err">Needs error bars on the first and last points, with x bars that do not overlap.</div>';
@@ -2926,7 +3012,7 @@
     });
     if (!cards.length) return '';
     return '<div class="flg-rc-bar"><button type="button" class="flg-rc-btn" data-rescopy title="Copy the numbers" aria-label="Copy the numbers">' + ICON.copy + '</button>'
-      + '<button type="button" class="flg-rc-btn" data-restoggle title="' + (this.resCollapsed ? 'Show' : 'Hide') + ' the results" aria-label="Show or hide the results">'
+      + '<button type="button" class="flg-rc-btn" data-restoggle title="' + (this.resCollapsed ? 'Show the results — saved images include them' : 'Hide the results — saved images leave them out too') + '" aria-label="Show or hide the results">'
       + (this.resCollapsed ? ICON.plus : ICON.minus) + '</button></div>'
       + (this.resCollapsed ? '' : cards.join(''));
   };
