@@ -481,23 +481,70 @@
        button could only ever answer "Google sign-in is switched off", so say
        that up front and keep the appointment requests, which need no Google. */
     if(!token&&document.body.classList.contains('flux-google-off')){
+      /* This page used to be a single "Google Calendar is paused" card, so a
+         counselor's Meetings tab had nothing on it but an apology. It now
+         carries what Flux itself knows: booking requests, what is coming up,
+         and the notes you keep on meetings. Nothing here needs Google. */
       host.innerHTML=`
-        <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
-        <div class="cm-connect">
-          <div class="cm-connect-icon"></div>
-          <h3>Google Calendar is paused</h3>
-          <p>Flux isn't connecting to Google right now, so meetings from your Google Calendar won't show here. Appointment requests from students still appear above.</p>
+        <div class="cm-native">
+          <div id="counselorApptRequestsMount" class="ca-meetings-mount"></div>
+          <section class="cm-sec">
+            <div class="cm-sec-head"><h3>Coming up</h3></div>
+            <div class="cm-sec-body" id="cmUpcoming"><div class="cm-loading">Loading…</div></div>
+          </section>
+          <section class="cm-sec">
+            <div class="cm-sec-head"><h3>Meeting notes</h3>
+              <div class="cm-sec-actions">
+                <button type="button" class="cm-action-btn" id="cmAllNotes">All notes</button>
+                <button type="button" class="cm-action-btn primary" id="cmNewNote">+ New note</button>
+              </div>
+            </div>
+            <div class="cm-sec-body" id="cmNotes"><div class="cm-loading">Loading…</div></div>
+          </section>
         </div>`;
-      try{
-        if(window.FluxCounselorAppointments?.renderPendingSection&&typeof ensureCounselorRecord==='function'){
-          const sb=typeof getSB==='function'?getSB():null;
-          if(sb){
-            ensureCounselorRecord(sb,'counselor').then(row=>{
-              if(row)FluxCounselorAppointments.renderPendingSection(document.getElementById('counselorApptRequestsMount'),row.id);
-            });
-          }
-        }
-      }catch(_){}
+      const openNotes=(andNew)=>{
+        if(typeof nav==='function')nav('staffMeetingNotes');
+        try{window.FluxStaffPlatform?.renderMeetingNotesPanel?.();}catch(_){}
+        if(andNew)setTimeout(()=>{try{window.FluxStaffPlatform?.openNewMeetingNoteModal?.();}catch(_){}},250);
+      };
+      document.getElementById('cmNewNote')?.addEventListener('click',()=>openNotes(true));
+      document.getElementById('cmAllNotes')?.addEventListener('click',()=>openNotes(false));
+      const sb=typeof getSB==='function'?getSB():null;
+      const CA=window.FluxCounselorAppointments;
+      const upcomingEl=document.getElementById('cmUpcoming');
+      const notesEl=document.getElementById('cmNotes');
+      if(sb&&typeof ensureCounselorRecord==='function'&&CA){
+        ensureCounselorRecord(sb,'counselor').then(async(row)=>{
+          if(!row){if(upcomingEl)upcomingEl.innerHTML='<div class="cm-empty-line">Your counselor record is not set up yet.</div>';return;}
+          try{CA.renderPendingSection(document.getElementById('counselorApptRequestsMount'),row.id);}catch(_){}
+          const {upcoming,error}=await CA.fetchAppointments(row.id);
+          if(!upcomingEl)return;
+          if(error){upcomingEl.innerHTML=`<div class="cm-empty-line">Could not load appointments: ${esc(error.message||String(error))}</div>`;return;}
+          const booked=(upcoming||[]).filter(a=>a.status!=='pending');
+          if(!booked.length){upcomingEl.innerHTML='<div class="cm-empty-line">Nothing booked for today or later.</div>';return;}
+          const names=await CA.loadStudentNames(sb,booked.map(a=>a.student_id));
+          upcomingEl.innerHTML=booked.slice(0,12).map(a=>CA.appointmentRowHtml(a,names,{showActions:false})).join('');
+        }).catch(()=>{if(upcomingEl)upcomingEl.innerHTML='<div class="cm-empty-line">Could not load appointments.</div>';});
+      }else if(upcomingEl){
+        upcomingEl.innerHTML='<div class="cm-empty-line">Sign in to see your appointments.</div>';
+      }
+      const uid=(window.currentUser&&window.currentUser.id)||null;
+      if(sb&&uid&&notesEl){
+        sb.from('meeting_notes').select('id,title,meeting_date,body').eq('user_id',uid)
+          .order('meeting_date',{ascending:false}).limit(5)
+          .then(({data,error})=>{
+            if(error){notesEl.innerHTML='<div class="cm-empty-line">Could not load your notes.</div>';return;}
+            if(!data||!data.length){notesEl.innerHTML='<div class="cm-empty-line">No notes yet. Keep one for each 1:1, parent call or IEP meeting.</div>';return;}
+            notesEl.innerHTML=data.map(n=>`
+              <div class="cm-note-row">
+                <span class="cm-note-date">${esc(n.meeting_date?fmtDate(n.meeting_date):'')}</span>
+                <span class="cm-note-title">${esc(n.title||'Meeting')}</span>
+                <span class="cm-note-body">${esc(String(n.body||'').slice(0,90))}</span>
+              </div>`).join('');
+          },()=>{notesEl.innerHTML='<div class="cm-empty-line">Could not load your notes.</div>';});
+      }else if(notesEl){
+        notesEl.innerHTML='<div class="cm-empty-line">Sign in to keep meeting notes.</div>';
+      }
       return;
     }
     if(!token){

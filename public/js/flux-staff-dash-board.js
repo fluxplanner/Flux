@@ -298,33 +298,27 @@
     });
   }
 
-  function maybeShowDashBoardHint() {
+  /* A one-time tip about the board. It was a modal on <body>, so it outlived
+     the dashboard: open Tasks or Resources before pressing "Got it" and it sat
+     over that page instead, blocking the buttons it was not about. It is a
+     card at the top of the board now — it cannot cover anything else, and it
+     goes when the board goes. */
+  function maybeShowDashBoardHint(root) {
     try {
       const key = `${HINT_SEEN_KEY}_${uid()}`;
       if (localStorage.getItem(key) === '1') return;
-      if (document.getElementById('fsdbHintModal')) return;
-      const ov = document.createElement('div');
-      ov.id = 'fsdbHintModal';
-      ov.className = 'modal-overlay fsdb-hint-modal';
-      ov.style.display = 'flex';
-      ov.setAttribute('role', 'dialog');
-      ov.setAttribute('aria-labelledby', 'fsdbHintTitle');
-      ov.innerHTML = `<div class="modal-card fsdb-hint-card" onclick="event.stopPropagation()">
-        <div class="modal-title" id="fsdbHintTitle">Your personal dashboard</div>
-        <p class="fsdb-hint-copy">Drag widgets by the <strong>⠿</strong> handle, resize with <strong>↔</strong>, and add modules with <strong>+ Widget</strong>. Switch to <strong>Work</strong> for school tools.</p>
-        <button type="button" class="btn" id="fsdbHintDismiss" style="width:100%">Got it</button>
-      </div>`;
-      const dismiss = () => {
-        try {
-          localStorage.setItem(key, '1');
-        } catch (_) {}
-        ov.remove();
-      };
-      ov.addEventListener('click', (e) => {
-        if (e.target === ov) dismiss();
+      if (!root || root.querySelector('.fsdb-hint-inline')) return;
+      const card = document.createElement('div');
+      card.className = 'fsdb-hint-inline';
+      card.setAttribute('role', 'note');
+      card.innerHTML = `<div class="fsdb-hint-copy"><strong>Your personal dashboard.</strong> Drag a widget by its <b>⠿</b> handle, change its width with <b>↔</b>, and add more with <b>+ Widget</b>. Switch to <b>Work</b> for your school tools.</div>
+        <button type="button" class="btn-sec fsdb-hint-dismiss">Got it</button>`;
+      card.querySelector('.fsdb-hint-dismiss')?.addEventListener('click', () => {
+        try { localStorage.setItem(key, '1'); } catch (_) {}
+        card.remove();
       });
-      ov.querySelector('#fsdbHintDismiss')?.addEventListener('click', dismiss);
-      document.body.appendChild(ov);
+      const toolbar = root.querySelector('.fsdb-toolbar');
+      if (toolbar) toolbar.after(card); else root.prepend(card);
     } catch (_) {}
   }
 
@@ -688,7 +682,7 @@
       if (typeof showToast === 'function') showToast('Layout reset', 'success');
     });
 
-    setTimeout(maybeShowDashBoardHint, 400);
+    maybeShowDashBoardHint(root);
     try {
       document.dispatchEvent(new CustomEvent('flux-dash-board-rendered', { detail: { hostId } }));
     } catch (_) {}

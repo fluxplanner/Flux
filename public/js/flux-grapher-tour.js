@@ -43,7 +43,7 @@
     { sel: '#ghSave', title: 'Saving is optional',
       body: 'Nothing is kept unless you save. Signing in keeps graphs in your Flux account, where Flux Planner can open them too.' },
     { sel: '#ghPng', title: 'For your report',
-      body: 'Download a clean image on a white background, with the results card as its key — fold the card away first to leave it out.' },
+      body: 'Download a clean image on a white background, with the results card as its key — fold the card away first to leave it out. Before it saves, you name the graph and both axes and check a preview, so it is right first time.' },
     { sel: '#ghHelp', title: 'That is it',
       body: 'Press ? any time to see this again.' },
   ];

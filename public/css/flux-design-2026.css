@@ -175,6 +175,13 @@ body[data-theme="light"] .btn-sec {
   box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 16px -8px rgba(var(--accent-rgb), .7);
 }
 #app .flg-shell--planner .flg-seg button:not([aria-selected='true']):hover { color: var(--text); background: var(--fx-lift); }
+/* With the sliding highlight on (flux-grapher.js glideSeg), the accent paints
+   the highlight, not the button, so it can travel from tab to tab. */
+#app .flg-shell--planner .flg-seg.has-glide button[aria-selected='true'] { background: transparent; box-shadow: none; }
+#app .flg-shell--planner .flg-seg .flg-glide {
+  background: var(--fx-accent-grad);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 16px -8px rgba(var(--accent-rgb), .7);
+}
 
 /* ── Segmented pills: Time modes, task filters, College Prep, Settings ──── */
 #app .tmode-btn,

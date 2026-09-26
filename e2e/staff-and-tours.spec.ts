@@ -25,8 +25,14 @@ async function walkTour(page: Page): Promise<string[]> {
     const card = page.locator('.ftour-card');
     if (!(await card.count())) break;
     titles.push((await page.locator('.ftour-title').textContent())?.trim() || '');
+    const before = await page.locator('.ftour-count').textContent();
     await page.locator('.ftour-next').click();
-    await page.waitForTimeout(250);
+    // Wait for the step to change (or the tour to end), not a fixed delay —
+    // under load a step can take longer than any fixed pause.
+    await page.waitForFunction((b) => {
+      const c = document.querySelector('.ftour-count');
+      return !c || c.textContent !== b;
+    }, before, { timeout: 8000 });
   }
   return titles;
 }
@@ -249,5 +255,77 @@ test.describe('staff workspace', () => {
     await page.locator('#sidebar .nav-item[onclick*="openTeacherClassesPanel"]').click();
     await expect(page.locator('#teacherDashboard.panel.active')).toBeVisible();
     await expect(page.locator('#teacherDashboard .teacher-main-grid > .teacher-col').first()).toHaveClass(/fx-staff-flash/, { timeout: 4000 });
+  });
+});
+
+test.describe('staff workspace, round two', () => {
+  test('Work hub buttons open their pages in Work mode instead of bouncing home', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    const cases: Array<[string, string]> = [['pd', 'staffPD'], ['wellbeing', 'staffWellbeing'], ['tasks', 'staffTasks']];
+    for (const [act, panel] of cases) {
+      await page.evaluate(() => (window as any).nav('staffHub'));
+      await page.locator(`[data-spdx-act="${act}"]`).click();
+      await expect(page.locator(`#${panel}.panel.active`), `${act} did not open ${panel}`).toBeVisible();
+      // Log PD also opens its form, a moment after the page.
+      if (act === 'pd') {
+        await expect(page.locator('#pdModalRoot')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#pdModalRoot')).toHaveCount(0);
+      }
+    }
+    await page.evaluate(() => (window as any).nav('staffHub'));
+    await page.locator('.spd-card[data-spd-nav="staffMeetingNotes"]').click();
+    await expect(page.locator('#staffMeetingNotes.panel.active')).toBeVisible();
+    // Canvas cannot open for a teacher in Work mode, so the hub no longer offers it.
+    await page.evaluate(() => (window as any).nav('staffHub'));
+    await expect(page.locator('[data-spdx-act="canvas"]')).toHaveCount(0);
+  });
+
+  test('Escape closes the staff pop-ups', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await page.evaluate(() => (window as any).nav('staffHub'));
+    await page.locator('[data-spdx-act="meeting"]').click();
+    await expect(page.locator('#mnModalRoot')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#mnModalRoot')).toHaveCount(0);
+    await page.evaluate(() => (window as any).nav('teacherDashboard'));
+    await page.locator('.flux-widget-grid__configure').first().click();
+    await expect(page.locator('#fluxWidgetConfigureModal')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fluxWidgetConfigureModal')).toHaveCount(0);
+  });
+
+  test('Personal mode: the dashboard tip stays on the dashboard, and no school banner', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await page.evaluate(() => (window as any).FluxRole.setMode('personal'));
+    await page.evaluate(() => (window as any).nav('dashboard'));
+    await expect(page.locator('#dashboard .fsdb-hint-inline')).toBeVisible();
+    await expect(page.locator('#fsdbHintModal')).toHaveCount(0);
+    await expect(page.locator('#fluxImportSeasonBanner')).toHaveCount(0);
+    await page.evaluate(() => (window as any).nav('staffTasks'));
+    await expect(page.locator('#stAddBtn')).toBeVisible();
+    // Nothing from the dashboard is left sitting over the Tasks page.
+    const hit = await page.evaluate(() => {
+      const b = document.getElementById('stAddBtn');
+      if (!b) return 'no button';
+      const r = b.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return top === b || b.contains(top) ? 'ok' : (top && (top.id || top.className)) || 'nothing';
+    });
+    expect(hit).toBe('ok');
+    const label = page.locator('#sidebar .nav-group', { has: page.locator('[data-tab="staffTasks"]') }).locator('.nav-group-label');
+    await expect(label).toHaveText('Personal');
+  });
+
+  test('the counselor Meetings page shows what is coming up and meeting notes', async ({ page }) => {
+    await gotoScenario(page, 'counselor-path');
+    await page.evaluate(() => (window as any).nav('counselorMeetings'));
+    const body = page.locator('#counselorMeetingsBody');
+    await expect(body.locator('.cm-sec h3', { hasText: 'Coming up' })).toBeVisible();
+    await expect(body.locator('.cm-sec h3', { hasText: 'Meeting notes' })).toBeVisible();
+    await expect(body).not.toContainText('Google Calendar is paused');
+    await body.locator('#cmNewNote').click();
+    await expect(page.locator('#staffMeetingNotes.panel.active')).toBeVisible();
+    await expect(page.locator('#mnModalRoot')).toBeVisible();
   });
 });

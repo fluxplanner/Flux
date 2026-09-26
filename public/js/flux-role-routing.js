@@ -28,6 +28,14 @@
     'staffPersonalHub',
   ]);
 
+  /** Opened from the Work hub as well as from Personal mode — see check(). */
+  const EDUCATOR_ANY_MODE_PANELS = new Set([
+    'staffTasks',
+    'staffMeetingNotes',
+    'staffPD',
+    'staffWellbeing',
+  ]);
+
   function role() {
     return typeof window.FluxRole !== 'undefined' ? window.FluxRole : null;
   }
@@ -240,6 +248,16 @@
           return { ok: false, reason: 'staff_hub_admin_use_ops', fallbackId: 'adminOps' };
         }
         return { ok: false, reason: 'staff_hub', fallbackId: home };
+      }
+      /* Meeting notes, the PD log, the wellbeing check-in and your own task
+         list are opened from the Work hub — its "Meeting note", "Log PD",
+         "Check-in" and "My tasks" buttons and its three cards. They were
+         Personal-only here, so in Work mode every one of those buttons bounced
+         straight back to the dashboard and looked dead. They belong to the
+         educator, not to a mode, so either mode may open them. */
+      if (EDUCATOR_ANY_MODE_PANELS.has(pid)) {
+        if (edu || isPendingStaffPersonal()) return { ok: true };
+        return { ok: false, reason: 'staff_personal_panel', fallbackId: 'dashboard' };
       }
       if (STAFF_PERSONAL_PANELS.has(pid)) {
         if ((edu && personal) || isPendingStaffPersonal()) return { ok: true };

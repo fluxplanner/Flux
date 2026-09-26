@@ -45,7 +45,10 @@
   async function fetchAppointments(counselorId) {
     const client = sb();
     if (!client || !counselorId) return { pending: [], upcoming: [], error: null };
-    const today = new Date().toISOString().slice(0, 10);
+    // The local calendar day: counselor_appointments.date is a DATE, and the
+    // UTC slice read as tomorrow after ~7pm in the Americas, hiding the rest
+    // of today's appointments (the dashboard had already been fixed for this).
+    const today = typeof fluxLocalYMD === 'function' ? fluxLocalYMD(new Date()) : new Date().toISOString().slice(0, 10);
     try {
       const [pendingRes, upcomingRes] = await Promise.all([
         client
@@ -140,7 +143,7 @@
     const names = await loadStudentNames(sb(), pending.map((a) => a.student_id));
     if (!pending.length) {
       host.innerHTML =
-        '<div class="ca-empty">No pending requests — students book from Profile → My counselor.</div>';
+        '<div class="ca-empty">No booking requests waiting for you.</div>';
       return;
     }
     host.innerHTML = `

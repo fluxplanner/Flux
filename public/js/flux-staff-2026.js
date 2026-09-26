@@ -107,6 +107,23 @@
     const iv = setInterval(() => { if (install() || ++n > 40) clearInterval(iv); }, 250);
   }
 
+  /* Escape for the staff pop-ups. These are built by hand (a div on <body>)
+     rather than as .modal-overlay, so the planner's global Escape — which
+     pops the overlay stack, then closes .modal-overlay — never saw them: New
+     meeting note, Log PD, Edit availability, Customize modules and the school
+     event forms could only be closed with their own buttons. The global
+     handler runs first and marks the event handled when it closed something,
+     so this only acts when nothing else did, and closes the newest one. */
+  const STAFF_OVERLAYS = '#mnModalRoot,#pdModalRoot,#sfModal,#fluxWidgetConfigureModal,#fluxSchoolEvtFormRoot,.edu-fullscreen-modal';
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    const open = [...document.querySelectorAll(STAFF_OVERLAYS)].filter((el) => el.isConnected && el.getClientRects().length);
+    const top = open[open.length - 1];
+    if (!top) return;
+    e.preventDefault();
+    top.remove();
+  });
+
   window.FluxStaffMotion = { enter, countUp };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

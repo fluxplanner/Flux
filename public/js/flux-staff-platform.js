@@ -12,6 +12,16 @@
     return typeof getSB === 'function' ? getSB() : null;
   }
 
+  /* The local calendar day. toISOString() is the UTC day, so a meeting note,
+     PD entry or wellbeing check-in saved after about 8pm in Michigan was filed
+     under tomorrow — and "Checked in today" then said you had not. */
+  function localDay(d) {
+    const x = d || new Date();
+    if (typeof window.fluxLocalYMD === 'function') return window.fluxLocalYMD(x);
+    const p = (n) => (n < 10 ? '0' : '') + n;
+    return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate());
+  }
+
   function fmtLongDay(d) {
     if (typeof window.fluxFmtStaffDate === 'function') return window.fluxFmtStaffDate(d, 'weekday');
     if (typeof window.fmtFluxDate === 'function') return window.fmtFluxDate(d, 'weekday');
@@ -423,10 +433,18 @@
       check: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
       grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
     };
-    const today = (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10));
+    const today = (typeof todayStr === 'function' ? todayStr() : localDay());
     const events = ((typeof load === 'function' && load('flux_events', [])) || []).filter((e2) => e2.date === today);
     const openTasks = ((typeof window.tasks !== 'undefined' && window.tasks) || []).filter((t) => !t.done);
     const dueSoon = openTasks.filter((t) => t.date && t.date <= today);
+    /* Bookings come from office hours, which are paused (enable_office_hours):
+       with them off, "Booked with you" could only ever say "add slots on the
+       School page", where there are no slots to add, and Availability led to
+       the same place. Show your latest meeting notes there instead until
+       office hours come back. */
+    const officeHours = (() => {
+      try { return !!(window.FluxFeatureFlags && FluxFeatureFlags.isEnabled('enable_office_hours', false)); } catch (_) { return false; }
+    })();
     el.innerHTML = `
     <div class="staff-personal-dash spdx-root">
       <header class="spdx-hero">
@@ -437,20 +455,30 @@
         <div class="spdx-stats">
           <div class="spdx-stat"><b>${events.length}</b><span>events today</span></div>
           <div class="spdx-stat"><b>${dueSoon.length}</b><span>tasks due</span></div>
-          <div class="spdx-stat"><b id="spdxStatBookings">–</b><span>booked this week</span></div>
+          ${officeHours
+            ? '<div class="spdx-stat"><b id="spdxStatBookings">–</b><span>booked this week</span></div>'
+            : '<div class="spdx-stat"><b id="spdxStatNotes">–</b><span>notes this week</span></div>'}
         </div>
       </header>
       <div class="spdx-actions">
         <button type="button" class="spdx-act" data-spdx-act="meeting">${I(ICONS.plus, 14)} Meeting note</button>
         <button type="button" class="spdx-act" data-spdx-act="pd">${I(ICONS.plus, 14)} Log PD</button>
         <button type="button" class="spdx-act" data-spdx-act="wellbeing">${I(ICONS.heart, 14)} Check-in</button>
-        <button type="button" class="spdx-act" data-spdx-act="availability">${I(ICONS.calcheck, 14)} Availability</button>
+        ${officeHours ? `<button type="button" class="spdx-act" data-spdx-act="availability">${I(ICONS.calcheck, 14)} Availability</button>` : ''}
         <button type="button" class="spdx-act" data-spdx-act="tasks">${I(ICONS.check, 14)} My tasks</button>
         <!-- Said "Google hub" and went to Canvas. Google has been paused since
              Canvas shipped, so the hub it named doesn't open for anyone — the
              button was right about where it goes and wrong about what it is
              called. Named for its destination now. -->
-        <button type="button" class="spdx-act" data-spdx-act="canvas">${I(ICONS.gradcap, 14)} Canvas</button>
+        ${(() => {
+          /* Teachers and counselors cannot open Canvas in Work mode (role
+             routing sends them home), so for them this button bounced. Only
+             show it where it goes somewhere. */
+          try {
+            if (window.FluxRoleRouting && !FluxRoleRouting.check('canvas').ok) return '';
+          } catch (_) {}
+          return `<button type="button" class="spdx-act" data-spdx-act="canvas">${I(ICONS.gradcap, 14)} Canvas</button>`;
+        })()}
       </div>
       <div class="spdx-cols">
         <section class="spdx-card">
@@ -462,10 +490,15 @@
               : '<div class="spdx-empty">Clear day — nothing due and no events.</div>'
           }</div>
         </section>
-        <section class="spdx-card">
+        ${officeHours
+          ? `<section class="spdx-card">
           <h3>Booked with you</h3>
           <div class="spdx-list" id="spdxBookings"><div class="spdx-empty">Checking…</div></div>
-        </section>
+        </section>`
+          : `<section class="spdx-card">
+          <h3>Recent meeting notes</h3>
+          <div class="spdx-list" id="spdxNotes"><div class="spdx-empty">Checking…</div></div>
+        </section>`}
       </div>
       <div class="spd-grid">
         <div class="spd-card" data-spd-nav="staffMeetingNotes" data-spd-render="meetingNotes"><div class="spd-card-icon spdx-ico">${I(ICONS.clipboard, 20)}</div><div class="spd-card-title">Meetings</div><div class="spd-card-sub">Notes, decisions, action items</div></div>
@@ -495,7 +528,44 @@
         else if (a === 'canvas') go('canvas');
       });
     });
-    fillWorkHubBookings();
+    if (officeHours) fillWorkHubBookings();
+    else fillWorkHubNotes();
+  }
+
+  async function fillWorkHubNotes() {
+    const list = document.getElementById('spdxNotes');
+    const stat = document.getElementById('spdxStatNotes');
+    if (!list) return;
+    const openNotes = () => {
+      if (typeof nav === 'function') nav('staffMeetingNotes');
+      renderMeetingNotesPanel();
+    };
+    const empty = (msg) => {
+      list.innerHTML = `<div class="spdx-empty">${msg}</div>`;
+      if (stat) stat.textContent = '0';
+    };
+    try {
+      const client = sb();
+      const u = (typeof currentUser !== 'undefined' && currentUser) || null;
+      if (!client || !u) return empty('Sign in to keep meeting notes.');
+      const { data, error } = await client
+        .from('meeting_notes')
+        .select('id,title,meeting_date')
+        .eq('user_id', u.id)
+        .order('meeting_date', { ascending: false })
+        .limit(20);
+      if (error) return empty('Could not load your notes.');
+      const notes = data || [];
+      const weekAgo = localDay(new Date(Date.now() - 6 * 86400000));
+      if (stat) stat.textContent = String(notes.filter((n) => String(n.meeting_date || '') >= weekAgo).length);
+      if (!notes.length) return empty('No notes yet — <b>Meeting note</b> above starts one.');
+      list.innerHTML = notes.slice(0, 4).map((n) =>
+        `<button type="button" class="spdx-row spdx-row--btn" data-spdx-note><span class="spdx-row-tag spdx-tag-ev">${esc(String(n.meeting_date || '').slice(5) || 'note')}</span><span class="spdx-row-name">${esc(n.title || 'Meeting')}</span></button>`
+      ).join('');
+      list.querySelectorAll('[data-spdx-note]').forEach((b) => b.addEventListener('click', openNotes));
+    } catch (_) {
+      empty('Could not load your notes.');
+    }
   }
 
   // "Booked with you": upcoming office-hour bookings on my slots (read-only,
@@ -517,8 +587,8 @@
       if (typeof q.in !== 'function') return empty('No bookings yet.');
       const bkRes = await q.in('slot_id', ids);
       const slotById = {}; slots.forEach((s) => { slotById[s.id] = s; });
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+      const todayIso = localDay();
+      const weekAgo = localDay(new Date(Date.now() - 6 * 86400000));
       const bks = ((bkRes && !bkRes.error && bkRes.data) || [])
         .filter((b) => b.week_start >= weekAgo)
         .sort((a, b) => (a.week_start < b.week_start ? -1 : 1))
@@ -587,8 +657,10 @@
       <div class="sph-root">
         <div class="sph-topbar">
           <div>
-            <div class="sph-greet">Personal hub</div>
-            <div class="sph-greet-sub">Brain dump, errands, commute, deep-work blocks and mood log — your life outside the building, kept out of school scope.</div>
+            <!-- The top bar already says "Personal hub" and the lead line above
+                 already lists what is here; say hello instead of both again. -->
+            <div class="sph-greet">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(String((window.FluxRole?.profile?.display_name || window.currentUser?.user_metadata?.full_name || 'there')).split(/\s+/).filter((w) => !['Mr.', 'Mrs.', 'Ms.', 'Dr.'].includes(w))[0] || 'there')}</div>
+            <div class="sph-greet-sub">${esc(fmtLongDay(new Date()))}</div>
           </div>
           <div class="sph-topbar-actions" id="staffPhToolbar"></div>
         </div>
@@ -733,7 +805,7 @@
         }`
       : '<div style="color:var(--muted2);font-size:.85rem;padding:8px 0">No tasks yet — add one above.</div>';
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Personal tasks — check off to complete (syncs to cloud)</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Your own to-do list, kept apart from your students’ work. Tick things off as you go; it syncs to your account.</p></div>
       <div class="flux-stack" style="max-width:720px;margin:0 auto;padding:16px">
         <div class="card">
           <h3>Add task</h3>
@@ -790,7 +862,7 @@
       .order('meeting_date', { ascending: false })
       .limit(40);
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Meeting notes</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Notes, decisions and action items from your meetings — PLCs, IEPs, parent calls.</p></div>
       <div style="max-width:760px;margin:0 auto;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <h2 style="font-size:1.1rem;font-weight:800">Notes</h2>
@@ -825,7 +897,7 @@
       <div style="background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:22px;width:100%;max-width:520px;margin-top:24px">
         <h3 style="font-size:1rem;font-weight:800;margin-bottom:14px">New meeting note</h3>
         <div class="mrow"><label>Title *</label><input id="mn_title" placeholder="PLC, IEP, …"></div>
-        <div class="mrow"><label>Date</label><input id="mn_date" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+        <div class="mrow"><label>Date</label><input id="mn_date" type="date" value="${localDay()}"></div>
         <div class="mrow"><label>Notes</label><textarea id="mn_body" style="min-height:100px;resize:none"></textarea></div>
         <button type="button" id="mn_save" class="edu-action-btn primary" style="width:100%;margin-top:10px">Save</button>
         <button type="button" id="mn_cancel" class="onboard-skip-btn" style="width:100%;margin-top:8px">Cancel</button>
@@ -842,7 +914,7 @@
       const { error } = await client.from('meeting_notes').insert({
         user_id: currentUser.id,
         title,
-        meeting_date: root.querySelector('#mn_date')?.value || new Date().toISOString().slice(0, 10),
+        meeting_date: root.querySelector('#mn_date')?.value || localDay(),
         body: root.querySelector('#mn_body')?.value?.trim() || null,
       });
       if (error) {
@@ -868,7 +940,7 @@
       .order('created_at', { ascending: false });
     const hrs = (items || []).filter((i) => i.status === 'completed').reduce((s, i) => s + Number(i.hours || 0), 0);
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Professional development</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Courses, workshops and conferences, with the hours you have completed.</p></div>
       <div style="max-width:760px;margin:0 auto;padding:16px">
         <div style="display:flex;justify-content:space-between;margin-bottom:12px">
           <div style="font-size:1.1rem;font-weight:800">PD</div>
@@ -935,7 +1007,7 @@
           </select>
         </div>
         <div class="mrow"><label>Date <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
-          <input id="pd_date" type="date" value="${new Date().toISOString().slice(0, 10)}">
+          <input id="pd_date" type="date" value="${localDay()}">
         </div>
         <button type="button" id="pd_go" class="edu-action-btn primary" style="width:100%;margin-top:14px">Save activity</button>
         <button type="button" id="pd_x" class="onboard-skip-btn" style="width:100%;margin-top:8px">Cancel</button>
@@ -1010,7 +1082,7 @@
     await ensureStaffPersonalRow(client);
     const { data } = await client.from('staff_personal_data').select('wellbeing_log').eq('user_id', currentUser.id).maybeSingle();
     const logs = Array.isArray(data?.wellbeing_log) ? data.wellbeing_log : [];
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDay();
     const todayLog = logs.find((l) => l.date === today);
 
     // Build history sparkline dots
@@ -1023,7 +1095,7 @@
       : '';
 
     el.innerHTML = `
-      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">Wellbeing check-in</p></div>
+      <div class="flux-page-header flux-page-header--lead"><p class="flux-page-sub">A quick daily check on your energy and stress. Only you can see it.</p></div>
       <div style="max-width:580px;margin:0 auto;padding:16px">
         ${todayLog ? `<div style="padding:10px 14px;border-radius:12px;background:rgba(var(--green-rgb),.07);border:1px solid rgba(var(--green-rgb),.2);font-size:.8rem;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px">
           <span>✓</span><span>Checked in today — ${todayLog.energy} · ${todayLog.stress}${todayLog.emotions?.length ? ' · ' + todayLog.emotions.slice(0,3).join(', ') : ''}</span>
@@ -1127,7 +1199,7 @@
     if (saveBtn) { saveBtn.classList.add('flux-btn-loading'); saveBtn.textContent = 'Saving…'; }
     const client = sb();
     if (!client) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDay();
     const note = document.getElementById('wellbeingNote')?.value?.trim() || '';
     const { data: ex } = await client.from('staff_personal_data').select('wellbeing_log').eq('user_id', currentUser.id).maybeSingle();
     const logs = (Array.isArray(ex?.wellbeing_log) ? ex.wellbeing_log : []).filter((l) => l.date !== today);
@@ -1357,7 +1429,7 @@
               )
               .join('')}
           </div>
-          <p class="sr-hint">Press <strong>Ctrl+K</strong> (Mac: <strong>Cmd+K</strong>) to toggle Work ↔ Personal mode for school tools.</p>
+          <p class="sr-hint">Use the <strong>Work / Personal</strong> switch at the top of the page for your school tools.</p>
         </section>
 
         <section class="sr-section">
@@ -1953,6 +2025,7 @@
     renderStaffPersonalHub,
     renderStaffTasksPanel,
     renderMeetingNotesPanel,
+    openNewMeetingNoteModal,
     renderPDPanel,
     renderWellbeingPanel,
     renderResourcesPanel,
