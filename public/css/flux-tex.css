@@ -71,3 +71,39 @@
 }
 
 .tx-up { font-style: normal; }
+
+/* ── Formula sheets (flux-formula-typeset.js) ──────────────────────────
+   Textbook maths: a maths serif, italic variables, stacked fractions and
+   limits on the operator, one formula per line, centred. */
+.tx-formula {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .45em;
+  font-family: 'STIX Two Math', 'STIX Two Text', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', Georgia, serif;
+  font-size: 1.14em;
+  line-height: 1.35;
+  font-variant-numeric: lining-nums;
+}
+.tx-line { display: block; text-align: center; white-space: nowrap; }
+.tx-formula sup, .tx-formula sub { font-size: .68em; }
+.tx-formula sup { vertical-align: .55em; padding-left: .06em; }
+.tx-formula sub { vertical-align: -.3em; }
+.tx-rel { margin: 0 .3em; }
+.tx-bin { margin: 0 .2em; }
+.tx-gap { display: inline-block; width: 1.5em; }
+.tx-formula .tx-frac { margin: 0 .12em; font-size: .92em; vertical-align: middle; }
+.tx-formula .tx-num { padding: 0 .3em .08em; }
+.tx-formula .tx-den { padding: .08em .3em 0; }
+.tx-frac--small { font-size: .72em !important; }
+.tx-radic { font-size: 1.05em; }
+.tx-formula .tx-sqrtbody { padding: 0 .12em 0 .08em; margin-left: .02em; }
+.tx-ss { display: inline-flex; flex-direction: column; vertical-align: middle; line-height: 1; }
+.tx-ss sup, .tx-ss sub { vertical-align: baseline; }
+.tx-big { display: inline-flex; align-items: center; vertical-align: middle; margin-right: .08em; }
+.tx-bigop { font-size: 1.55em; line-height: 1; }
+.tx-limits { display: inline-flex; flex-direction: column; justify-content: space-between; font-size: .64em; line-height: 1.05; min-height: 2.3em; margin-left: .05em; }
+.tx-limop { display: inline-flex; flex-direction: column; align-items: center; vertical-align: top; margin-right: .15em; }
+.tx-under { font-size: .64em; line-height: 1; }
+.tx-delim { font-size: 1.45em; line-height: 1; vertical-align: -.1em; font-weight: 300; }
+.tx-unit { margin-left: .28em; font-style: normal; }

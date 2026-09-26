@@ -67,6 +67,12 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  /* Shown as typeset maths (stacked fractions, real exponents); the text
+     itself is unchanged, and it is what search and the copy button use. */
+  const typeset = (f) => (window.FluxFormulaTypeset
+    ? '<div class="ffs-math">' + window.FluxFormulaTypeset.toHtml(f) + '</div>'
+    : '<code>' + esc(f) + '</code>');
+
   /** Groups from FLUX_FORMULA_DATA, normalised to {f, note}. */
   function fromToolbox(subject, plan) {
     const src = (window.FLUX_FORMULA_DATA || {})[subject] || [];
@@ -170,7 +176,7 @@
             ${u.items.map((it) => `
               <div class="ffs-item" data-hay="${esc(((it.name || '') + ' ' + it.f + ' ' + (it.note || '')).toLowerCase())}">
                 ${it.name ? `<div class="ffs-name">${esc(it.name)}</div>` : ''}
-                <div class="ffs-f"><code>${esc(it.f)}</code>
+                <div class="ffs-f">${typeset(it.f)}
                   <button type="button" class="ffs-copy" data-copy="${esc(it.f)}" aria-label="Copy formula" title="Copy">⧉</button>
                 </div>
                 ${it.note ? `<div class="ffs-note">${esc(it.note)}</div>` : ''}
@@ -182,6 +188,14 @@
     </div>`;
 
     const root = body.querySelector('.ffs');
+    const fit = () => { if (window.FluxFormulaTypeset && window.FluxFormulaTypeset.fit) window.FluxFormulaTypeset.fit(root); };
+    requestAnimationFrame(fit);
+    // Cards change width with the window and the sidebar; refit when they do.
+    if (window.ResizeObserver) {
+      let t = 0;
+      const ro = new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { if (!root.isConnected) { ro.disconnect(); return; } fit(); }, 80); });
+      ro.observe(root);
+    }
     root.addEventListener('click', (e) => {
       const jump = e.target.closest('.ffs-jump-btn');
       if (jump) {

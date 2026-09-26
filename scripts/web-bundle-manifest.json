@@ -28,6 +28,7 @@
     "public/js/flux-ui-modals.js",
     "public/js/flux-site-enhancements.js",
     "public/js/flux-tex.js",
+    "public/js/flux-formula-typeset.js",
     "public/js/flux-knowledge.js",
     "public/js/flux-notebook.js",
     "public/js/flux-slash-picker.js",

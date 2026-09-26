@@ -148,6 +148,14 @@
   // ─────────────────────────────────────────────────────────────────
   // TOOL 1 — Math Formula Sheet
   // ─────────────────────────────────────────────────────────────────
+  /* Typeset like the formula sheet; the plain text stays the data. */
+  function formulaEq(eq){
+    return window.FluxFormulaTypeset
+      ? '<div class="ref-formula-eq ref-formula-eq--tx">' + window.FluxFormulaTypeset.toHtml(eq) + '</div>'
+      : '<pre class="ref-formula-eq">' + esc(eq) + '</pre>';
+  }
+  try{ window.fluxFormulaEq = formulaEq; }catch(e){}
+
   const MATH_FORMULAS = {
     algebra: [
       { name:'Quadratic formula', eq:'x = (−b ± √(b² − 4ac)) / 2a', vars:'a, b, c are real; a ≠ 0', ex:'For x² + 3x − 4 = 0 → x = (−3 ± √(9+16))/2 = 1 or −4' },
@@ -241,13 +249,14 @@
             ${filtered.length ? filtered.map(f => `
               <div class="ref-formula-card">
                 <div class="ref-formula-name">${esc(f.name)}</div>
-                <pre class="ref-formula-eq">${esc(f.eq)}</pre>
+                ${formulaEq(f.eq)}
                 <div class="ref-formula-vars"><strong>Where:</strong> ${esc(f.vars)}</div>
                 ${f.ex && f.ex !== '-' ? `<div class="ref-formula-ex"><strong>Example:</strong> ${esc(f.ex)}</div>` : ''}
               </div>`).join('')
               : `<div class="ref-empty">No formulas match "${esc(q)}"</div>`}
           </div>
         `;
+        if(window.FluxFormulaTypeset) requestAnimationFrame(()=>window.FluxFormulaTypeset.fit(body));
         const input = body.querySelector('#refMathSearch');
         if(input){
           input.addEventListener('input', () => {
@@ -270,11 +279,12 @@
     grid.innerHTML = filtered.length ? filtered.map(f => `
       <div class="ref-formula-card">
         <div class="ref-formula-name">${esc(f.name)}</div>
-        <pre class="ref-formula-eq">${esc(f.eq)}</pre>
+        ${formulaEq(f.eq)}
         <div class="ref-formula-vars"><strong>Where:</strong> ${esc(f.vars)}</div>
         ${f.ex && f.ex !== '-' ? `<div class="ref-formula-ex"><strong>Example:</strong> ${esc(f.ex)}</div>` : ''}
       </div>`).join('')
       : `<div class="ref-empty">No formulas match "${esc(q)}"</div>`;
+    if(window.FluxFormulaTypeset) requestAnimationFrame(()=>window.FluxFormulaTypeset.fit(body));
   }
 
   // Expose — overwriting the stubs registered by flux-references.js

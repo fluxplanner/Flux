@@ -29,7 +29,9 @@
   /* ── shared renderers (match flux-reference-tools.js visual language) ── */
 
   // Formula-style cards: [{ name, eq, vars, ex }]
-  function renderFormulaCards(body, list, q) {
+  /* typeset: draw eq as maths. Only for maths lists — the same cards hold
+     German conjugations and music theory, which must stay as written. */
+  function renderFormulaCards(body, list, q, typeset) {
     var query = (q || '').toLowerCase();
     var filtered = query
       ? list.filter(function (f) { return (f.name + ' ' + f.eq + ' ' + (f.vars || '')).toLowerCase().indexOf(query) !== -1; })
@@ -38,7 +40,7 @@
       ? filtered.map(function (f) {
         return '<div class="ref-formula-card">'
           + '<div class="ref-formula-name">' + esc(f.name) + '</div>'
-          + (f.eq ? '<pre class="ref-formula-eq">' + esc(f.eq) + '</pre>' : '')
+          + (f.eq ? (typeset && window.fluxFormulaEq ? window.fluxFormulaEq(f.eq) : '<pre class="ref-formula-eq">' + esc(f.eq) + '</pre>') : '')
           + (f.vars && f.vars !== '-' ? '<div class="ref-formula-vars"><strong>Where:</strong> ' + esc(f.vars) + '</div>' : '')
           + (f.ex && f.ex !== '-' ? '<div class="ref-formula-ex"><strong>Example:</strong> ' + esc(f.ex) + '</div>' : '')
           + '</div>';
@@ -500,7 +502,8 @@
       ],
       renderBody: function (body, tabId) {
         if (tabId === 'circle') { body.innerHTML = '<div class="tb-card">' + unitCircleHtml() + '</div>'; return; }
-        body.innerHTML = '<div class="tb-card">' + renderFormulaCards(body, MATH_RULES[tabId] || []) + '</div>';
+        body.innerHTML = '<div class="tb-card">' + renderFormulaCards(body, MATH_RULES[tabId] || [], '', true) + '</div>';
+        if (window.FluxFormulaTypeset) requestAnimationFrame(function () { window.FluxFormulaTypeset.fit(body); });
       },
     });
   };
