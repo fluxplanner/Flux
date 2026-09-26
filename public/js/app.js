@@ -5914,8 +5914,8 @@ function addClass(){
    fails the class still disappears now and the worst case is the old behaviour
    — never a delete that silently does nothing. */
 function deleteClass(id){
-  const gone=Array.isArray(classes)?classes.find(c=>c.id===id):null;
-  classes=classes.filter(c=>c.id!==id);save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  const gone=Array.isArray(classes)?classes.find(c=>String(c.id)===String(id)):null;
+  classes=classes.filter(c=>String(c.id)!==String(id));save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
   const code=gone&&gone.teacherClassCode;
   if(!code||!currentUser)return;
   try{
@@ -6102,7 +6102,7 @@ function renderSchool(){
       const renderClassRow=(c,col)=>{
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px" title="Delete class" aria-label="Delete class">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${fluxIdArg(c.id)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${fluxIdArg(c.id)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px" title="Delete class" aria-label="Delete class">✕</button></div>`;
       };
       cl.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -6120,7 +6120,7 @@ function renderSchool(){
         const col=colorMap[c.id];
         const timeStr=c.timeStart?`${fmtTime(c.timeStart)}${c.timeEnd?' – '+fmtTime(c.timeEnd):''}` :'';
         const meta=[c.teacher,c.days,timeStr,c.room].filter(Boolean).join(' · ');
-        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px" title="Delete class" aria-label="Delete class">✕</button></div>`;
+        return`<div class="class-row" style="border-left:3px solid ${col}"><div class="class-period" style="--sub:${col}">${esc(fluxClassPeriodBadge(c))}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${esc(c.name)}</div>${meta?`<div style="font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace">${meta}</div>`:''}</div><button onclick="editClass(${fluxIdArg(c.id)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px" title="Edit">✎</button><button onclick="deleteClass(${fluxIdArg(c.id)})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px" title="Delete class" aria-label="Delete class">✕</button></div>`;
       }).join('');
     }
   }
@@ -6137,8 +6137,17 @@ function renderSchool(){
 }
 
 // Edit class inline
+/* Task ids from quick-add, repeats and AI are Date.now()+Math.random() —
+   parseInt threw away the fraction, so drag, swipe, the context menu and the
+   keyboard shortcuts could not find those tasks. */
+function fluxParseId(v){const n=Number(v);return v!==''&&v!=null&&Number.isFinite(n)?n:v;}
+window.fluxParseId=fluxParseId;
+/* Class ids are numbers for classes made here, floats for ones imported from
+   Canvas (Date.now()+Math.random()) and strings for seeded ones — so an id goes
+   into an onclick as a JSON literal, and is always compared as a string. */
+function fluxIdArg(id){return JSON.stringify(id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function editClass(id){
-  const c=classes.find(x=>x.id===id);
+  const c=classes.find(x=>String(x.id)===String(id));
   if(!c)return;
   const modal=document.getElementById('editClassModal');
   if(!modal){
@@ -6186,8 +6195,9 @@ function editClass(id){
   document.getElementById('editClassModal').style.display='flex';
 }
 function saveEditClass(){
-  const id=parseInt(document.getElementById('editClassModal').dataset.classId);
-  const c=classes.find(x=>x.id===id);
+  // parseInt here cut a Canvas class's float id short, so saving did nothing.
+  const id=document.getElementById('editClassModal').dataset.classId;
+  const c=classes.find(x=>String(x.id)===String(id));
   if(!c)return;
   const rawP=document.getElementById('ecPeriod').value;
   const fbDays=document.getElementById('ecDays').value;
@@ -7283,7 +7293,8 @@ function updateLogoColor(hex){
     #fluxWG stop:nth-child(2),#fluxWG2 stop:nth-child(2),#fluxWG3 stop:nth-child(2),#fluxWGAbout stop:nth-child(2),#fluxCG stop:nth-child(2),#fluxCG2 stop:nth-child(2),#fluxCG3 stop:nth-child(2),#fluxCGAbout stop:nth-child(2){stop-color:${hex}!important}
     #fluxWG stop:nth-child(3),#fluxWG2 stop:nth-child(3),#fluxWG3 stop:nth-child(3),#fluxWGAbout stop:nth-child(3){stop-color:${hex}aa!important}
     .bottom-nav .bnav-item.active{color:${hex}!important}
-    .nav-item.active{color:${hex}!important;background:rgba(${rgb},.12)!important}
+    .nav-item.active{color:var(--text)!important;background:linear-gradient(90deg,rgba(${rgb},.2),rgba(${rgb},.05) 70%,transparent)!important}
+    .nav-item.active svg{color:${hex}!important}
     .nav-item.active::before{background:${hex}!important}
     button.active,a.active,[class*="active"]{--accent:${hex}!important}
   `;
@@ -7442,7 +7453,29 @@ function saveClassScheduleDisplay(v){
   if(typeof updateNextClassPill==='function')updateNextClassPill();
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
 }
+/* The swatch row had #00bfff marked active in the HTML whatever the accent
+   was, and the default accent (#5865F2) was not in the row at all. Light the
+   swatch that matches, or none when the accent is a custom colour. */
+function fluxSyncAccentSwatches(){
+  const cur=String(getComputedStyle(document.documentElement).getPropertyValue('--accent')||'').trim().toLowerCase();
+  document.querySelectorAll('#swatches .swatch').forEach(s=>{
+    const m=/setAccent\('([^']+)'/.exec(s.getAttribute('onclick')||'');
+    s.classList.toggle('active',!!m&&m[1].toLowerCase()===cur);
+  });
+  const custom=document.getElementById('customColor');
+  if(custom&&/^#[0-9a-f]{6}$/.test(cur))custom.value=cur;
+  /* The advanced colour pickers had no value, so every one showed black
+     whatever the theme. Show the colour each one currently controls. */
+  const cs=getComputedStyle(document.documentElement);
+  const toHex=v=>{v=String(v||'').trim();if(/^#[0-9a-f]{6}$/i.test(v))return v.toLowerCase();if(/^#[0-9a-f]{3}$/i.test(v))return '#'+v.slice(1).split('').map(c=>c+c).join('').toLowerCase();const m=/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(v);return m?'#'+[m[1],m[2],m[3]].map(n=>(+n).toString(16).padStart(2,'0')).join(''):'';};
+  document.querySelectorAll('input[type=color][id^="cc-"]').forEach(inp=>{
+    const m=/applyCustomVar\('([^']+)'/.exec(inp.getAttribute('onchange')||'');if(!m)return;
+    const hex=toHex(cs.getPropertyValue(m[1]))||(m[1]==='--card-solid'?toHex(cs.getPropertyValue('--card')):'');
+    if(hex)inp.value=hex;
+  });
+}
 function loadSettingsUI(){
+  try{fluxSyncAccentSwatches();}catch(_){}
   fluxSetToggle(document.getElementById('panicToggle'),settings.panic!==false);
   fluxSetToggle(document.getElementById('quietToggle'),settings.quiet!==false);
   const ds=document.getElementById('dndStart');if(ds)ds.value=settings.dndStart||'07:50';
@@ -12585,7 +12618,7 @@ function applyPanicGlow(){
   });
   if(!anySoon)return;
   document.querySelectorAll('[data-task-id]').forEach(el=>{
-    const id=parseInt(el.dataset.taskId);
+    const id=fluxParseId(el.dataset.taskId);
     const t=tasks.find(x=>x.id===id);
     if(!t||t.done)return;
     if(t.date){
@@ -14188,7 +14221,7 @@ function initTaskDrag(){
   const list=document.getElementById('taskList');if(!list)return;
   list.addEventListener('dragstart',e=>{
     const item=e.target.closest('[data-task-id]');if(!item)return;
-    _dragTaskId=parseInt(item.dataset.taskId);
+    _dragTaskId=fluxParseId(item.dataset.taskId);
     e.dataTransfer.effectAllowed='move';
     setTimeout(()=>item.classList.add('task-dragging'),0);
   });
@@ -14200,7 +14233,7 @@ function initTaskDrag(){
   list.addEventListener('dragover',e=>{
     e.preventDefault();
     const item=e.target.closest('[data-task-id]');if(!item||!_dragTaskId)return;
-    const overId=parseInt(item.dataset.taskId);if(overId===_dragTaskId)return;
+    const overId=fluxParseId(item.dataset.taskId);if(overId===_dragTaskId)return;
     if(_dragOverId!==overId){
       list.querySelectorAll('.drag-over-task').forEach(el=>el.classList.remove('drag-over-task'));
       item.classList.add('drag-over-task');_dragOverId=overId;
@@ -15314,12 +15347,12 @@ function initTaskSwipeGestures(){
     _touchEl.style.transition='transform .3s var(--ease-spring),opacity .3s';
     if(dx>60){
       // Swipe right → complete
-      const id=parseInt(_touchEl.dataset.taskId);
+      const id=fluxParseId(_touchEl.dataset.taskId);
       _touchEl.style.transform='translateX(100vw)';_touchEl.style.opacity='0';
       setTimeout(()=>toggleTask(id),300);
     }else if(dx<-60){
       // Swipe left → show reschedule
-      const id=parseInt(_touchEl.dataset.taskId);
+      const id=fluxParseId(_touchEl.dataset.taskId);
       _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
       openEdit(id);
     }else{
@@ -17328,12 +17361,12 @@ function initFullKeyboardNav(){
     }
 
     if(e.key==='Enter'&&document.activeElement?.classList.contains('task-item')){
-      const id=parseInt(document.activeElement.dataset.taskId);
+      const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id)toggleTask(id);
     }
 
     if(e.key==='Delete'&&document.activeElement?.classList.contains('task-item')){
-      const id=parseInt(document.activeElement.dataset.taskId);
+      const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id&&confirm('Delete this task?'))deleteTask(id);
     }
 
@@ -17437,7 +17470,7 @@ function dismissResume(){
 
 function resumeTask(){
   const el=document.getElementById('resumeCard');if(!el)return;
-  const id=parseInt(el.dataset.taskId);
+  const id=fluxParseId(el.dataset.taskId);
   const task=tasks.find(t=>t.id===id);
   if(task){
     nav('dashboard');
@@ -17482,7 +17515,7 @@ window.renderTasks=function(){
   requestAnimationFrame(()=>{
     document.querySelectorAll('[data-task-id]').forEach(el=>{
       el.setAttribute('tabindex','0');
-      const id=parseInt(el.dataset.taskId);
+      const id=fluxParseId(el.dataset.taskId);
       const task=tasks.find(t=>t.id===id);
       if(!task||task.done)return;
       const risk=calcDeadlineRisk(task);
