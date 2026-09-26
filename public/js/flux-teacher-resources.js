@@ -115,7 +115,7 @@
 
   function catalogHtml() {
     return CATALOG.map(function (g) {
-      return '<section class="ftr-group"><h2 class="ftr-cat">' + esc(g.cat) + '</h2><div class="ftr-grid">' +
+      return '<section class="ftr-group" data-cat="' + esc(g.cat) + '"><h2 class="ftr-cat">' + esc(g.cat) + '</h2><div class="ftr-grid">' +
         g.items.map(function (it) {
           return '<a class="ftr-card" href="' + esc(it.u) + '" target="_blank" rel="noopener noreferrer">' +
             '<span class="ftr-card-name">' + esc(it.n) + '</span>' +
@@ -128,16 +128,55 @@
   function render() {
     var panel = document.getElementById('teacherResources');
     if (!panel) return;
+    /* Header as on every other page: the lead line under the title the top bar
+       already shows. It had its own 40px "Teaching Resources" heading too,
+       the only staff page with one, sitting flush against the sidebar. */
     panel.innerHTML =
       '<header class="flux-page-header flux-page-header--lead">' +
-        '<h1 class="flux-page-title">Teaching Resources</h1>' +
-        '<p class="flux-page-sub">Free, classroom-ready resources from across the web — curated, plus search.</p>' +
+        '<p class="flux-page-sub">Free, classroom-ready resources from across the web. Type to narrow the list below, or press Search to look further.</p>' +
       '</header>' +
-      '<div class="ftr-search"><input id="ftrQ" type="search" placeholder="Search the web for lessons, worksheets, primary sources…" aria-label="Search teaching resources"><button type="button" class="ftr-search-btn" id="ftrGo">Search</button></div>' +
+      '<div class="ftr-search"><input id="ftrQ" type="search" placeholder="Search for lessons, worksheets, primary sources…" aria-label="Search teaching resources"><button type="button" class="ftr-search-btn" id="ftrGo">Search</button></div>' +
+      '<div class="ftr-chips" role="toolbar" aria-label="Subjects">' +
+        ['All'].concat(CATALOG.map(function (g) { return g.cat; })).map(function (c, i) {
+          return '<button type="button" class="ftr-chip' + (i === 0 ? ' on' : '') + '" data-ftr-cat="' + esc(c) + '" aria-pressed="' + (i === 0) + '">' + esc(c) + '</button>';
+        }).join('') +
+      '</div>' +
       '<div id="ftrResults" class="ftr-results" hidden></div>' +
-      '<div class="ftr-catalog">' + catalogHtml() + '</div>';
+      '<div class="ftr-catalog">' + catalogHtml() + '</div>' +
+      '<div class="ftr-note" id="ftrNone" hidden>Nothing in the list matches — press Search to look on the web.</div>';
 
     var q = panel.querySelector('#ftrQ'), go = panel.querySelector('#ftrGo'), res = panel.querySelector('#ftrResults');
+    var cat = 'All';
+    // Narrow the curated list as you type and by subject, without a network
+    // round trip; the web search stays on the button and on Enter.
+    function filter() {
+      var term = (q.value || '').trim().toLowerCase();
+      var shown = 0;
+      panel.querySelectorAll('.ftr-group').forEach(function (sec) {
+        var inCat = cat === 'All' || sec.getAttribute('data-cat') === cat;
+        var n = 0;
+        sec.querySelectorAll('.ftr-card').forEach(function (card) {
+          var hit = inCat && (!term || card.textContent.toLowerCase().indexOf(term) >= 0);
+          card.hidden = !hit;
+          if (hit) n++;
+        });
+        sec.hidden = n === 0;
+        shown += n;
+      });
+      panel.querySelector('#ftrNone').hidden = shown > 0;
+    }
+    panel.querySelectorAll('.ftr-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        cat = chip.getAttribute('data-ftr-cat');
+        panel.querySelectorAll('.ftr-chip').forEach(function (c) {
+          var on = c === chip;
+          c.classList.toggle('on', on);
+          c.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        filter();
+      });
+    });
+    q.addEventListener('input', function () { if (!q.value.trim()) { res.hidden = true; res.innerHTML = ''; } filter(); });
     function run() {
       var term = (q.value || '').trim();
       if (!term) { res.hidden = true; res.innerHTML = ''; return; }

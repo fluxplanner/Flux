@@ -8,6 +8,7 @@
   const BUCKET_KEY = 'flux_quick_grade_buckets_v1';
   const PICKER_KEY = 'flux_student_picker_state_v1';
   const HALL_KEY = 'flux_hall_pass_registry_v1';
+  const GROUP_KEY = 'flux_group_maker_v1';
   const DISMISS_ALERT_KEY = 'flux_class_alert_dismissed_v1';
   const BUCKETS = ['To grade', 'Graded', 'Need feedback', 'Sent back'];
   const EXIT_QUESTIONS = [
@@ -22,7 +23,9 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   async function fluxAsk(label, defaultVal, opts) {
@@ -167,15 +170,15 @@
     board.innerHTML = BUCKETS.map(
       (col) => `
       <div class="flux-qg-col" data-col="${esc(col)}">
-        <div class="flux-qg-col-title">${esc(col)}</div>
+        <div class="flux-qg-col-title">${esc(col)}<span class="flux-qg-count">${(data.columns[col] || []).length}</span></div>
         <div class="flux-qg-drop" data-drop="${esc(col)}"></div>
       </div>`
     ).join('');
 
     BUCKETS.forEach((col) => {
       const drop = board.querySelector(`[data-drop="${col}"]`);
-      (data.columns[col] || []).forEach((card, idx) => {
-        drop.appendChild(cardEl(card, col, idx));
+      (data.columns[col] || []).forEach((card) => {
+        drop.appendChild(cardEl(card, col, data, mount));
       });
       wireQuickGradeDrop(drop, col, data, mount);
     });
@@ -189,14 +192,35 @@
     });
   }
 
-  function cardEl(card, col, idx) {
+  /* Cards could only be dragged, and a phone or tablet has no drag and drop —
+     so on the device a teacher actually carries round the room a card could
+     never leave "To grade", and nothing could ever be removed. The arrow moves
+     a card on to the next bucket (Sent back wraps round to To grade, since a
+     resubmission needs grading again) and × takes it off the board. */
+  function cardEl(card, col, data, mount) {
     const el = document.createElement('div');
     el.className = 'flux-qg-card';
     el.draggable = true;
-    el.textContent = card.title;
+    const next = BUCKETS[(BUCKETS.indexOf(col) + 1) % BUCKETS.length];
+    el.innerHTML = `<span class="flux-qg-card-title">${esc(card.title)}</span>
+      <button type="button" class="flux-qg-card-btn" data-qg-next title="Move to ${esc(next)}" aria-label="Move ${esc(card.title)} to ${esc(next)}">→</button>
+      <button type="button" class="flux-qg-card-btn flux-qg-card-x" data-qg-del title="Remove" aria-label="Remove ${esc(card.title)}">×</button>`;
     el.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', `${col}::${card.id}`);
       e.dataTransfer.effectAllowed = 'move';
+    });
+    el.querySelector('[data-qg-next]').addEventListener('click', () => {
+      if (!moveBucketCard(data, col, card.id, next)) return;
+      saveBuckets(data);
+      renderQuickGrade(mount);
+    });
+    el.querySelector('[data-qg-del]').addEventListener('click', () => {
+      const list = data.columns[col] || [];
+      const i = list.findIndex((c) => String(c.id) === String(card.id));
+      if (i < 0) return;
+      list.splice(i, 1);
+      saveBuckets(data);
+      renderQuickGrade(mount);
     });
     return el;
   }
@@ -523,6 +547,143 @@
     paint();
   }
 
+  /**
+   * Split a list into groups whose sizes differ by at most one.
+   *
+   * mode 'size': groups of at most n (26 in groups of 4 is five 4s and two 3s,
+   * never six 4s and a lonely 2). mode 'count': exactly n groups, or one per
+   * name when there are fewer names than that. Pure, so the unit test can pin
+   * the arithmetic without a DOM.
+   */
+  function makeGroups(names, mode, n, rand) {
+    const list = (names || []).filter(Boolean).slice();
+    const r = typeof rand === 'function' ? rand : Math.random;
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      const t = list[i]; list[i] = list[j]; list[j] = t;
+    }
+    const k = Math.max(1, Math.floor(Number(n) || 0));
+    if (!list.length) return [];
+    const count = mode === 'count' ? Math.min(k, list.length) : Math.ceil(list.length / k);
+    const groups = Array.from({ length: count }, () => []);
+    list.forEach((name, i) => groups[i % count].push(name));
+    return groups;
+  }
+
+  /**
+   * Group maker. Reads the same class lists as the student picker, so there is
+   * one list per class to keep up to date, and keeps the last split per class
+   * so a reload mid-lesson does not reshuffle the room.
+   */
+  function renderGroupMaker(mount) {
+    const state = ls(GROUP_KEY, {});
+    if (!state.last || typeof state.last !== 'object') state.last = {};
+    const mode = () => (state.mode === 'count' ? 'count' : 'size');
+    const classesOf = () => {
+      try { return window.FluxTeacherClasses?.mine?.() || []; } catch (e) { return []; }
+    };
+    let curId = state.classId || '';
+
+    function groupsText(groups) {
+      return groups.map((g, i) => `Group ${i + 1}: ${g.join(', ')}`).join('\n');
+    }
+
+    function paint() {
+      const list = classesOf();
+      const cur = list.find((c) => String(c.id) === String(curId)) || list[0] || null;
+      curId = cur ? String(cur.id) : '';
+      const names = cur ? (cur.students || []) : [];
+      const n = Math.max(2, Math.min(12, Math.floor(Number(state.n) || (mode() === 'count' ? 4 : 3))));
+      const last = cur && state.last[cur.id] && Array.isArray(state.last[cur.id].groups)
+        // A name removed from the list since must not come back in a group.
+        ? state.last[cur.id].groups.map((g) => g.filter((x) => names.includes(x))).filter((g) => g.length)
+        : [];
+
+      mount.innerHTML = `
+        ${list.length
+          ? `<select class="flux-picker-class" id="fluxGroupClass" aria-label="Class">
+              ${list.map((c) => `<option value="${esc(String(c.id))}"${cur && String(c.id) === String(cur.id) ? ' selected' : ''}>${esc(c.periodLabel || 'P' + c.period)} · ${esc(c.name)}</option>`).join('')}
+            </select>`
+          : `<p class="flux-widget-hint">Add the classes you teach in <a href="javascript:nav('school')">School Info</a> first.</p>`}
+        ${list.length && !names.length
+          ? `<p class="flux-widget-hint">No names for this class yet. Paste your class list — one name per line.</p>`
+          : ''}
+        <div class="flux-gm-row">
+          <div class="flux-gm-seg" role="radiogroup" aria-label="Split by">
+            <button type="button" role="radio" data-gm-mode="size" aria-checked="${mode() === 'size'}" class="flux-gm-segbtn${mode() === 'size' ? ' on' : ''}">Groups of</button>
+            <button type="button" role="radio" data-gm-mode="count" aria-checked="${mode() === 'count'}" class="flux-gm-segbtn${mode() === 'count' ? ' on' : ''}">Number of groups</button>
+          </div>
+          <div class="flux-gm-step" aria-label="${mode() === 'count' ? 'Number of groups' : 'People per group'}">
+            <button type="button" class="flux-gm-stepbtn" data-gm-step="-1" aria-label="Fewer"${n <= 2 ? ' disabled' : ''}>−</button>
+            <output id="fluxGroupN">${n}</output>
+            <button type="button" class="flux-gm-stepbtn" data-gm-step="1" aria-label="More"${n >= 12 ? ' disabled' : ''}>+</button>
+          </div>
+        </div>
+        <button type="button" class="btn" id="fluxGroupMake" style="width:100%"${names.length >= 2 ? '' : ' disabled'}>${last.length ? 'Shuffle again' : 'Make groups'}</button>
+        <div class="flux-gm-out" id="fluxGroupOut">${last.map((g, i) => `
+          <div class="flux-gm-group" style="--i:${i}">
+            <div class="flux-gm-group-h">Group ${i + 1}<span>${g.length}</span></div>
+            <div class="flux-gm-names">${g.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
+          </div>`).join('')}</div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          ${last.length ? `<button type="button" class="btn-sec" id="fluxGroupCopy" style="flex:1;font-size:.72rem">Copy groups</button>` : ''}
+          ${list.length ? `<button type="button" class="btn-sec" id="fluxGroupEdit" style="flex:1;font-size:.72rem">${names.length ? 'Edit names' : 'Add names'}</button>` : ''}
+        </div>
+        <div id="fluxGroupEditor" hidden>
+          <textarea id="fluxGroupNames" class="flux-picker-names" rows="6" placeholder="One name per line">${esc(names.join('\n'))}</textarea>
+          <button type="button" class="btn-sec" id="fluxGroupSave" style="width:100%;font-size:.72rem">Save names</button>
+        </div>`;
+
+      mount.querySelector('#fluxGroupClass')?.addEventListener('change', (e) => {
+        curId = e.target.value;
+        state.classId = curId;
+        lsSet(GROUP_KEY, state);
+        paint();
+      });
+      mount.querySelectorAll('[data-gm-mode]').forEach((b) => b.addEventListener('click', () => {
+        if (state.mode === b.dataset.gmMode) return;
+        state.mode = b.dataset.gmMode;
+        lsSet(GROUP_KEY, state);
+        paint();
+      }));
+      mount.querySelectorAll('[data-gm-step]').forEach((b) => b.addEventListener('click', () => {
+        state.n = Math.max(2, Math.min(12, n + Number(b.dataset.gmStep)));
+        lsSet(GROUP_KEY, state);
+        paint();
+      }));
+      mount.querySelector('#fluxGroupMake')?.addEventListener('click', () => {
+        if (!cur || names.length < 2) return;
+        state.last[cur.id] = { groups: makeGroups(names, mode(), n), at: Date.now() };
+        state.classId = String(cur.id);
+        lsSet(GROUP_KEY, state);
+        paint();
+      });
+      // The same list the student picker reads, so editing it here updates both.
+      mount.querySelector('#fluxGroupEdit')?.addEventListener('click', () => {
+        const ed = mount.querySelector('#fluxGroupEditor');
+        if (ed) ed.hidden = !ed.hidden;
+      });
+      mount.querySelector('#fluxGroupSave')?.addEventListener('click', () => {
+        if (!cur) return;
+        const raw = mount.querySelector('#fluxGroupNames')?.value || '';
+        const saved = window.FluxTeacherClasses?.setStudents?.(cur.id, raw) || [];
+        if (typeof showToast === 'function') showToast(`Saved ${saved.length} names`, 'success');
+        paint();
+      });
+      mount.querySelector('#fluxGroupCopy')?.addEventListener('click', async () => {
+        const text = groupsText(last);
+        try {
+          await navigator.clipboard.writeText(text);
+          if (typeof showToast === 'function') showToast('Groups copied — paste them into your slides', 'success');
+        } catch (e) {
+          if (typeof showToast === 'function') showToast('Could not copy — select the groups and copy them instead', 'warning');
+        }
+      });
+    }
+
+    paint();
+  }
+
   /* This was a second, worse countdown: a local `remaining` counter decremented
      by setInterval every 1000ms. Two faults, and the second is the one that
      matters in a classroom. It drifted, because setInterval is not a clock;
@@ -771,6 +932,8 @@
     renderAccommodations,
     renderParentLog,
     renderStudentPicker,
+    renderGroupMaker,
+    makeGroups,
     renderClassroomTimer,
     renderHallPass,
     renderExitTicket,

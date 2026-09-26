@@ -1634,7 +1634,7 @@ function flushTasksOffRestDays(){
   }
   return n;
 }
-const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
+const PANEL_TITLES={dashboard:'Dashboard',calendar:'Calendar',school:'School Info',notes:'Notebook',notebook:'Notebook',timer:'Time',canvas:'Canvas',google:'Google',profile:'Profile',goals:'College Prep',mood:'Mood',ai:'Flux AI',toolbox:'Study Tools',references:'Study Tools',settings:'Settings',flux_control:'Control',teacherDashboard:'Teacher Dashboard',counselorDashboard:'Counselor Dashboard',counselorWorkspace:'Caseload tools',adminDashboard:'School',lessonHub:'Lesson Hub',teacherResources:'Resources',counselorMeetings:'Meetings',adminOps:'Operations',staffWorkboard:'Workboard',staffHub:'Work hub',staffMessages:'Messages',staffTasks:'Tasks',staffMeetingNotes:'Meeting notes',staffPD:'Development',staffWellbeing:'Wellbeing',staffResources:'Resources',staffPersonalHub:'Personal hub',schoolFeedPanel:'School feed',parentPortal:'Family'};
 
 // ══ Time / format helpers (used by educator dashboards + onboarding) ══
 function getTimeGreeting(){
@@ -2429,6 +2429,19 @@ function syncSchoolNavChrome(){
     });
     document.querySelectorAll('[data-school-feed-student-only]').forEach(el=>{
       el.style.display=!isEducator?'':'none';
+    });
+    // The top-right label under the mode switch was only set when the switch
+    // was flipped, so until then every counselor and admin read "Teacher tools".
+    const desc=document.getElementById('modeDesc');
+    if(desc&&isEducator){
+      const work={teacher:'Teacher tools',counselor:'Counselor tools',admin:'Admin tools',staff:'Staff tools'};
+      desc.textContent=isWork?(work[fr.current]||'Work mode'):'Your planner';
+    }
+    // In Work mode the only row left in "Learn" is School info, so call the
+    // group what it is.
+    document.querySelectorAll('#sidebarSchoolWorkTabs,#mobDrawerSchoolWorkTabs').forEach(strip=>{
+      const lab=strip.closest('.nav-group')?.querySelector('.nav-group-label');
+      if(lab)lab.textContent=eduWorkNav?'School':'Learn';
     });
   }catch(_){}
 }
@@ -3865,6 +3878,22 @@ function populateSubjectSelects(){
 // Stroke-matched tab icons: shared by bottom nav, sidebar, drawer, and More sheet.
 // Emojis in tabConfig remain for the tab customizer and legacy data; nav uses these SVGs.
 const NAV_TAB_SVGS={
+  /* Staff Workspace rows. These rendered with an empty icon slot, so the
+     Workspace group sat indented against Dashboard and Calendar above it. */
+  staffMessages:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4.5"/></svg>`,
+  lessonHub:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 11h6M9 15h4"/></svg>`,
+  teacherResources:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H3.5A1.5 1.5 0 0 1 2 16Z"/><path d="M22 5.5A1.5 1.5 0 0 0 20.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5h6A1.5 1.5 0 0 0 22 16Z"/></svg>`,
+  counselorMeetings:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5v2.5l1.6 1"/></svg>`,
+  adminOps:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M19 21V10M9 21v-7M15 21v-7"/><path d="m2 10 10-6 10 6"/></svg>`,
+  staffWorkboard:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>`,
+  rosters:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  gradebook:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  counselorWorkspace:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M12 11.5c-1.2-1.3-3.3-.6-3.3 1.1 0 1.6 3.3 3.4 3.3 3.4s3.3-1.8 3.3-3.4c0-1.7-2.1-2.4-3.3-1.1Z"/></svg>`,
+  students:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>`,
+  users:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 11.2-5.6"/><circle cx="18" cy="17" r="2.5"/><path d="M18 13v1.5M18 19.5V21M21.5 17H20M16 17h-1.5"/></svg>`,
+  staffTasks:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>`,
+  staffResources:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1Z"/></svg>`,
+  staffPersonalHub:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.2-9.3C1.6 8.3 3.7 5 7.1 5c2 0 3.6 1.1 4.9 3 1.3-1.9 2.9-3 4.9-3 3.4 0 5.5 3.3 4.3 6.7C19.5 16.4 12 21 12 21Z"/></svg>`,
   dashboard:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg>`,
   calendar:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
   ai:`<svg class="nt-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>`,
@@ -3951,19 +3980,18 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   const n=(id,useThis)=>isMob?`navMob('${id}')`:(useThis?`nav('${id}',this)`:`nav('${id}')`);
   const workspace=`<div class="nav-group flux-nav-group-hidden" data-role-group="staff">
 <div class="nav-group-label"${Lp}>Workspace</div>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni"></span><span class="nl">Messages</span></button>
-<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Lesson Hub</span></button>
-<button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
-<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni"></span><span class="nl">Meetings</span></button>
-<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni"></span><span class="nl">Operations</span></button>
-<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni"></span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni"></span><span class="nl">Rosters</span></button>
-<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni"></span><span class="nl">Gradebook</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Caseload tools</span></button>
-<button type="button" class="nav-item" onclick="openCounselorCalendar()" data-tab="counselorMeetings" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
-<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni"></span><span class="nl">Students</span></button>
-<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Users</span></button>
-<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni"></span><span class="nl">Calendar</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffMessages');try{renderStaffMessages()}catch(e){}`:`nav('staffMessages',this);try{renderStaffMessages()}catch(e){}`}" data-tab="staffMessages" data-educator-only><span class="ni">${getNavIconHtml('staffMessages')}</span><span class="nl">Messages</span></button>
+<button type="button" class="nav-item" onclick="${n('lessonHub',true)}" data-tab="lessonHub" data-role-tab="teacher" style="display:none"><span class="ni">${getNavIconHtml('lessonHub')}</span><span class="nl">Lesson Hub</span></button>
+<button type="button" class="nav-item" onclick="${n('teacherResources',true)}" data-tab="teacherResources" data-role-tab="teacher" style="display:none"><span class="ni">${getNavIconHtml('teacherResources')}</span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">${getNavIconHtml('counselorMeetings')}</span><span class="nl">Meetings</span></button>
+<button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">${getNavIconHtml('adminOps')}</span><span class="nl">Operations</span></button>
+<button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">${getNavIconHtml('staffWorkboard')}</span><span class="nl">Workboard</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">${getNavIconHtml('rosters')}</span><span class="nl">Rosters</span></button>
+<button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni">${getNavIconHtml('gradebook')}</span><span class="nl">Gradebook</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">${getNavIconHtml('counselorWorkspace')}</span><span class="nl">Caseload tools</span></button>
+<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">${getNavIconHtml('students')}</span><span class="nl">Students</span></button>
+<button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('users')}</span><span class="nl">Users</span></button>
+<button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('calendar')}</span><span class="nl">Calendar</span></button>
 <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('announce')}</span><span class="nl">Announce</span></button>
 </div>`;
   const schoolClassicBtn=`<button type="button" class="nav-item" data-school-nav-classic onclick="${n('school',true)}" data-tab="school"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">${schoolClassicLabelEscaped}</span></button>`;
@@ -3971,15 +3999,15 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
   // Feed is pulled from the sidebar for now (owner request). The panel and
   // renderSchoolFeed() stay so nothing dangles; only the way in is gone.
   const schoolStripAndFeed=`<div id="${stripId}" class="school-work-tabs" role="tablist" aria-label="School workspace" style="display:none">
-<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni"></span><span class="nl">Info</span></button>
+<button type="button" role="tab" class="school-work-tab" data-school-work-tab="school" onclick="${n('school')}" title="School info"><span class="ni">${getNavIconHtml('school')}</span><span class="nl">School info</span></button>
 </div>`;
   const googleNavIcon=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   const googleNavOnclick=isMob?`navMob('canvas');try{FluxGoogle.renderHub()}catch(e){}`:`nav('canvas',this);try{FluxGoogle.renderHub()}catch(e){}`;
   const googleNavWork=`<button type="button" class="nav-item" data-educator-google data-educator-google-work onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
   const googleNavPersonal=`<button type="button" class="nav-item" data-educator-google data-educator-google-personal onclick="${googleNavOnclick}" data-tab="canvas" style="display:none" aria-label="Canvas"><span class="ni">${googleNavIcon}</span><span class="nl">Canvas</span></button>`;
-  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Tasks</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Resources</span></button>
-<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni"></span><span class="nl">Personal hub</span></button>
+  const staffPersonal=`<button type="button" class="nav-item" onclick="${isMob?`navMob('staffTasks');try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`:`nav('staffTasks',this);try{FluxStaffPlatform.renderStaffTasksPanel()}catch(e){}`}" data-tab="staffTasks" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffTasks')}</span><span class="nl">Tasks</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffResources');try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`:`nav('staffResources',this);try{FluxStaffPlatform.renderResourcesPanel()}catch(e){}`}" data-tab="staffResources" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffResources')}</span><span class="nl">Resources</span></button>
+<button type="button" class="nav-item" onclick="${isMob?`navMob('staffPersonalHub');try{renderStaffPersonalHub()}catch(e){}`:`nav('staffPersonalHub',this);try{renderStaffPersonalHub()}catch(e){}`}" data-tab="staffPersonalHub" data-staff-personal style="display:none"><span class="ni">${getNavIconHtml('staffPersonalHub')}</span><span class="nl">Personal hub</span></button>
 ${googleNavPersonal}`;
   return{workspace:workspace+googleNavWork,schoolClassicBtn,schoolStripAndFeed,staffPersonal,mainWorkHubBtn};
 }
@@ -11411,30 +11439,6 @@ function showObStep(n){
     bindScheduleImportDropzones();
     ensurePdfJsLoaded().catch(()=>{});
   }
-  if(n===6){
-    const mount=document.getElementById('obIntegrationsPicker');
-    try{
-      if(mount&&!mount.dataset.mounted&&window.FluxIntegrationsHub){
-        FluxIntegrationsHub.renderPickerInto(mount);
-        mount.dataset.mounted='1';
-        mount.addEventListener('click',updateObAiProfileCard);
-      }
-    }catch(_){}
-    updateObAiProfileCard();
-  }
-}
-/* "Your AI profile" mini-card on the tools step — fills toward 95% as tools are picked. */
-function updateObAiProfileCard(){
-  try{
-    const n=(window.FluxIntegrationsHub&&FluxIntegrationsHub.getSelected)?FluxIntegrationsHub.getSelected().length:0;
-    const pct=Math.min(95,60+n*5);
-    const bar=document.getElementById('obAiProfileBar');
-    const lbl=document.getElementById('obAiProfilePct');
-    const cnt=document.getElementById('obAiProfileTools');
-    if(bar)bar.style.width=pct+'%';
-    if(lbl)lbl.textContent=pct+'%';
-    if(cnt)cnt.textContent=n+' picked';
-  }catch(_){}
 }
 /* Multi-select sibling of selectObChip, for "main focus this term". Keeps at
    least one chip active so the questionnaire can never be answered with
@@ -11485,25 +11489,25 @@ function applyObRoleView(){
   if(staff){
     setText('obNameLabel','Your name');
     setText('obStep2Title','Tailor Flux to your work');
-    setText('obStep2Sub','Two quick questions — we use this for tips, AI context, and what to highlight on your workboard.');
+    setText('obStep2Sub','Two quick questions — we use them for tips and for what to put first on your workboard.');
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
     setText('obStep4Title','Your Schedule');
-    setText('obStep4Sub','Upload a PDF or photo of your teaching schedule — AI reads it. Or skip and add periods later.');
+    setText('obStep4Sub','Upload a PDF or photo of your teaching schedule and AI reads it. Or skip and add periods later.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you work?');
     setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
   }else{
     setText('obNameLabel','Your first name');
     setText('obStep2Title','Tailor Flux to you');
-    setText('obStep2Sub','Two quick questions — we use this for tips, AI context, and what to highlight on your dashboard.');
+    setText('obStep2Sub','Two quick questions — we use them for tips and for what to put first on your dashboard.');
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
     setText('obStep4Title','Your Schedule');
     setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you study?');
-    setText('obStep5Sub','Flux will personalize AI suggestions based on how you learn best.');
+    setText('obStep5Sub','Flux uses this to pace your study goal and suggestions to how you learn best.');
   }
 }
 function updateObPreview(){
@@ -11614,12 +11618,8 @@ function obNext(){
     if(obExtractedClasses.length){classes=obExtractedClasses;save('flux_classes',classes);}
   }
   if(obCurrentStep===6){
-    // Akiflow-style tools picker — persist choices, then finish (step-5 chips
-    // are read directly off the DOM inside obFinish, so passing through step 6
-    // doesn't lose them).
-    const p=load('profile',{});
-    p.integrations=(window.FluxIntegrationsHub&&typeof FluxIntegrationsHub.getSelected==='function')?FluxIntegrationsHub.getSelected():[];
-    save('profile',p);
+    // The ready screen. Step-5 chips are read straight off the DOM inside
+    // obFinish, so passing through here doesn't lose them.
     obFinish();return;
   }
   showObStep(obCurrentStep+1);
@@ -11660,6 +11660,11 @@ function obFinish(){
   showApp();
   if(!wasRedo)spawnConfetti();
   if(currentUser)syncToCloud();
+  // "Show me around" on the last step. Unticking it counts as having seen the
+  // tour, so it doesn't start on the next sign-in either; Settings → Help
+  // still replays it.
+  const wantTour=document.getElementById('obWantTour');
+  if(!wasRedo&&wantTour&&!wantTour.checked)markTourCompleted();
   if(!wasRedo&&!isTourCompleted()){
     setTimeout(()=>startOnboardingTour(),1600);
   }
@@ -13473,14 +13478,27 @@ function showLoginOrApp(){
 }
 
 let _loginDemoInterval=null;
+/* What the hero's "Try it in Flux" box cycles through. Every line is something
+   the planner does today. The old list promised Flux AI study plans, AI note
+   quizzes and a "Vision Import" that turned syllabuses into tasks: the AI tab
+   and Notes have left the sidebar, and the import fills in your classes from a
+   timetable, not tasks from a syllabus. The staff list is shown when the
+   "For teachers & staff" tab is on (login-refresh.js). */
 const LOGIN_DEMO_LINES=[
-  'Break down assignments into steps with Flux AI study plans.',
-  'Snap a syllabus or schedule — Vision Import turns it into tasks.',
+  'Count down to the SAT from any day on your calendar.',
+  'Snap your timetable — Flux reads it and fills in your classes.',
   'See your bell schedule and no-school days on one calendar.',
-  'Log extracurriculars and get school-fit suggestions.',
-  'Capture notes with tags, then ask Flux AI to quiz you.',
-  'Use the focus timer and streaks to build study habits.',
-  'See exam conflicts and everything due at a glance.'
+  'Fit a regression to your lab data, with R² and residuals.',
+  'Balance a chemical equation, then check it on the periodic table.',
+  'Log activities, colleges and test scores — superscores worked out.',
+  'Run a Pomodoro with a time budget for every subject.'
+];
+const LOGIN_DEMO_LINES_STAFF=[
+  "See today's classes bell by bell, with lesson notes for each period.",
+  'Pick a random student, split a class into groups, or hand out an exit ticket.',
+  'Create a class, share its join code, and watch the roster fill.',
+  'Message colleagues one-to-one or in a group chat.',
+  'Flip to Personal mode and your evenings stay yours.'
 ];
 function stopLoginDemoRotator(){
   if(_loginDemoInterval){clearInterval(_loginDemoInterval);_loginDemoInterval=null;}
@@ -13561,7 +13579,9 @@ function initLoginDemoRotator(){
   if(!left&&!card)return;
   let idx=0;
   function apply(){
-    const line=LOGIN_DEMO_LINES[idx%LOGIN_DEMO_LINES.length];
+    const staff=document.querySelector('#loginScreen .lx-aud-tab.is-on')?.getAttribute('data-aud')==='teacher';
+    const list=staff?LOGIN_DEMO_LINES_STAFF:LOGIN_DEMO_LINES;
+    const line=list[idx%list.length];
     if(left)left.textContent=line;
     if(card)card.textContent=line;
     idx++;
@@ -14184,7 +14204,9 @@ async function handleSignedIn(user,session){
     const ob=document.getElementById('onboarding');
     if(ob)ob.classList.remove('visible');
     showApp();
-    if(!isStaffRole&&!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
+    // Staff used to be left out because the tour only knew the student tabs;
+    // it now has steps for every role and for Work and Personal mode.
+    if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
     // Call _updateUserUI AFTER showApp() so DOM elements are visible
     _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
 
@@ -14360,24 +14382,25 @@ function handleSignedOut(){
 
 // ══ FEATURE PILLS — scrolling bar(s) on login screen (left column + sign-in card) ══
 function buildFeatPillsHtml(){
+  // Only what a new account can use today: no AI tutor, notes or flashcards
+  // (paused), no iCal feeds or what-if grades (switched off by default).
   const pills=[
-    {label:'✦ Flux AI Tutor',c:'#6366f1'},
-    {label:'Vision Import',c:'#10d9a0'},
-    {label:'4-decimal GPA',c:'#fbbf24'},
-    {label:'⏱ Focus timer',c:'#a78bfa'},
+    {label:'Study tools',c:'#6366f1'},
+    {label:'Flux Grapher',c:'#34d399'},
     {label:'Smart calendar',c:'#3b82f6'},
-    {label:'Cloud sync',c:'#10d9a0'},
-    {label:'AI flashcards',c:'#e879f9'},
-    {label:'Panic mode',c:'#f43f5e'},
-    {label:'Focus timer',c:'#fb923c'},
-    {label:'Tagged notes',c:'#6366f1'},
+    {label:'Countdowns',c:'#fbbf24'},
+    {label:'⏱ Focus timer',c:'#a78bfa'},
+    {label:'Timetable import',c:'#10d9a0'},
+    {label:'GPA & test scores',c:'#eab308'},
+    {label:'SAT/ACT superscores',c:'#fb923c'},
+    {label:'College list',c:'#38bdf8'},
     {label:'Extracurriculars',c:'#fbbf24'},
     {label:'Exam conflicts',c:'#f472b6'},
-    {label:'Themes & accent',c:'#38bdf8'},
-    {label:'Grade what-if',c:'#eab308'},
-    {label:'Canvas import',c:'#94a3b8'},
+    {label:'Panic mode',c:'#f43f5e'},
     {label:'Mood check-ins',c:'#fb7185'},
-    {label:'iCal feeds',c:'#34d399'},
+    {label:'Canvas import',c:'#94a3b8'},
+    {label:'Cloud sync',c:'#10d9a0'},
+    {label:'Themes & accent',c:'#38bdf8'},
   ];
   const all=[...pills,...pills];
   return all.map(p=>`<div class="feat-pill" style="color:${p.c};border-color:${p.c}33;background:${p.c}11">${p.label}</div>`).join('');
@@ -15396,130 +15419,207 @@ function applyCollapsedSections(){
 }
 
 
-// ══ PROGRESSIVE ONBOARDING TOUR ══════════════════════════════
-function startOnboardingTour(){
-  if(isTourCompleted())return;
-  const steps=[
-    {nav:'dashboard',sel:'[data-tab="dashboard"]',title:'Dashboard',body:'Your home base: tasks, energy, and quick stats. Use ＋ New task in the top bar, the FAB, or quick-add to capture work fast.'},
-    {nav:'calendar',sel:'[data-tab="calendar"]',title:'Calendar',body:'Month view, A/B cycle days, and weekly activities. Link Google Calendar under Settings if you use it.'},
-    {nav:'school',sel:'[data-tab="school"]',title:'School & schedule',body:'Classes, bell schedule, and Vision import — snap a timetable and let AI fill your periods.'},
-    {nav:'canvas',sel:'[data-tab="canvas"]',title:'Canvas',body:'Pull assignments and announcements from Canvas, pin pages for Flux AI, and add work to your planner.'},
-    {nav:'notes',sel:'[data-tab="notes"]',title:'Notes & flashcards',body:'Subject notes with flashcard mode for cram sessions before tests.'},
-    {nav:'timer',sel:'[data-tab="timer"]',title:'Time',body:'Pomodoro focus sessions with subject budgets and a weekly heatmap, plus a clock, stopwatch, countdown and alarms.'},
-    {nav:'ai',sel:'[data-tab="ai"]',title:'Flux AI',body:'Ask anything about your planner — study help, scheduling, and workload. Full context from your snapshot.'},
-    {nav:'dashboard',sel:'.view-btn[data-view="list"]',title:'Task views',body:'Switch List, Board, or Timeline on the dashboard to match how you like to work.'},
-    {nav:'goals',sel:'[data-tab="goals"]',title:'College Prep',body:'Activities, your college list with deadlines, and every test score — GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'},
-    {nav:'profile',sel:'[data-tab="profile"]',title:'Profile',body:'Academic snapshot, study DNA, and habits — keep it updated for better AI hints.'},
-    {nav:'settings',sel:'[data-tab="settings"]',title:'Settings',body:'Look & theme, accent, sync, account, and replay this tour anytime under Data & info.'},
-  ];
-  let step=0;
-  function cleanupTour(){
-    document.removeEventListener('keydown',tourEscHandler);
-  }
-  function tourEscHandler(e){
-    if(e.key!=='Escape')return;
-    document.querySelectorAll('.tour-tooltip').forEach(el=>el.remove());
-    cleanupTour();
-    markTourCompleted();
-  }
-  document.addEventListener('keydown',tourEscHandler);
-  function placeTip(tip,target){
-    const rect=target.getBoundingClientRect();
-    const pad=12;
-    const vw=window.innerWidth, vh=window.innerHeight;
-    const tipRect=tip.getBoundingClientRect();
-    const w=tipRect.width||320, h=tipRect.height||180;
-    const margin=12;
-    const spaceBelow=vh-rect.bottom-margin;
-    const spaceAbove=rect.top-margin;
-    let top;
-    if(spaceBelow>=h+pad){
-      top=rect.bottom+pad;
-    }else if(spaceAbove>=h+pad){
-      top=rect.top-h-pad;
-    }else{
-      top=Math.max(margin,vh-h-margin);
-    }
-    top=Math.max(margin,Math.min(top,vh-h-margin));
-    let left=rect.left+rect.width/2-w/2;
-    left=Math.max(margin,Math.min(left,vw-w-margin));
-    tip.style.top=Math.round(top)+'px';
-    tip.style.left=Math.round(left)+'px';
-  }
-  // B1: the tour must never start or advance while a modal/overlay is open —
-  // it once opened its tooltip on top of the New Task modal. Poll until the
-  // surface is clear (FluxOverlays covers palette/quick-add/search/sheet;
-  // the .modal-overlay scan covers legacy modals).
-  function tourSurfaceBusy(){
-    try{if(window.FluxOverlays&&FluxOverlays.anyOpen())return true;}catch(_){}
-    return[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
-  }
-  function showStep(){
-    document.querySelectorAll('.tour-tooltip').forEach(e=>e.remove());
-    if(step>=steps.length){cleanupTour();markTourCompleted();return;}
-    if(tourSurfaceBusy()){setTimeout(showStep,800);return;}
-    const s=steps[step];
-    const run=()=>{
-      const candidates=document.querySelectorAll(s.sel);
-      let target=null;
-      for(const el of candidates){
-        const r=el.getBoundingClientRect();
-        if(r.width>0&&r.height>0&&getComputedStyle(el).visibility!=='hidden'&&getComputedStyle(el).display!=='none'){target=el;break;}
-      }
-      if(!target)target=candidates[0];
-      if(!target){step++;showStep();return;}
-      const tip=document.createElement('div');
-      tip.className='tour-tooltip';
-      tip.innerHTML=`
-        <div class="tour-tooltip__title"><span class="tour-tooltip__step">${step+1}/${steps.length}</span>${esc(s.title)}</div>
-        <div class="tour-tooltip__body">${esc(s.body)}</div>
-        <div class="tour-tooltip__actions">
-          <button type="button" class="tour-tooltip__skip">Skip tour</button>
-          <button type="button" class="tour-tooltip__next">${step<steps.length-1?'Next →':'Done ✓'}</button>
-        </div>`;
-      document.body.appendChild(tip);
-      target.style.outline='2px solid rgba(var(--accent-rgb),.6)';
-      target.style.outlineOffset='3px';
-      try{target.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){target.scrollIntoView();}
-      const showAt=()=>{
-        if(!document.body.contains(tip))return;
-        placeTip(tip,target);
-        requestAnimationFrame(()=>tip.classList.add('is-visible'));
-      };
-      setTimeout(showAt,520);
-      let tipScrollRaf=0;
-      const onScroll=()=>{
-        if(!document.body.contains(tip))return;
-        if(tipScrollRaf)return;
-        tipScrollRaf=requestAnimationFrame(()=>{
-          tipScrollRaf=0;
-          if(document.body.contains(tip))placeTip(tip,target);
-        });
-      };
-      const onResize=()=>{
-        if(!document.body.contains(tip))return;
-        if(tipScrollRaf)return;
-        tipScrollRaf=requestAnimationFrame(()=>{
-          tipScrollRaf=0;
-          if(document.body.contains(tip))placeTip(tip,target);
-        });
-      };
-      window.addEventListener('resize',onResize,{passive:true});
-      window.addEventListener('scroll',onScroll,{capture:true,passive:true});
-      const cleanupTip=()=>{
-        if(tipScrollRaf){cancelAnimationFrame(tipScrollRaf);tipScrollRaf=0;}
-        window.removeEventListener('resize',onResize);
-        window.removeEventListener('scroll',onScroll,true);
-        target.style.outline='';
-      };
-      tip.querySelector('.tour-tooltip__skip').onclick=()=>{cleanupTip();tip.remove();cleanupTour();markTourCompleted();};
-      tip.querySelector('.tour-tooltip__next').onclick=()=>{cleanupTip();tip.remove();step++;showStep();};
-    };
-    if(s.nav){nav(s.nav);setTimeout(run,500);}else run();
-  }
-  window._tourStep=()=>{step++;showStep();};
-  setTimeout(showStep,1500);
+// ══ PLANNER TOUR ══════════════════════════════════════════════
+/* The first-run walkthrough, and the one Settings → Help replays.
+
+   It used to be one fixed list written for an older planner. It walked
+   students to Flux AI and Notes, which have both left the sidebar, told them
+   to link Google Calendar, which is paused, and never mentioned Study tools or
+   Mood. When a step's button was hidden it pointed at the hidden button anyway,
+   so the card sat in the top-left corner describing nothing. Teachers and
+   counselors were given the student list too.
+
+   Now each kind of account has its own steps, a step is only shown when the
+   thing it describes is on screen, and the card can go back as well as on. */
+function fluxTourNavSel(tab){
+  return `#sidebar .nav-item[data-tab="${tab}"],.bottom-nav .bnav-item[data-tab="${tab}"]`;
 }
+function fluxTourSteps(){
+  const R=typeof FluxRole!=='undefined'?FluxRole:null;
+  const edu=!!(R&&typeof R.isEducator==='function'&&R.isEducator());
+  const work=edu&&!!(typeof R.isWorkMode==='function'&&R.isWorkMode());
+  const tab=(id,title,body)=>({sel:fluxTourNavSel(id),go:true,title,body});
+  const more={sel:'#moreBtn',title:'More',body:'On a phone, every other tab lives here: the same list as the sidebar on a laptop.'};
+  const settingsStep=tab('settings','Settings','Theme, accent colour, which tabs show in the sidebar, sync and your account. Settings → Help replays this tour.');
+  const mode={sel:'#modeSwitchBar .mode-switch-track',title:'Work and Personal',body:'Work mode holds your school tools. Personal mode is a separate planner for the rest of your life, and nothing crosses between them. Switch whenever you like.'};
+  if(!edu){
+    return[
+      tab('dashboard','Dashboard','Your tasks for today and the days ahead. Tick one off when it’s done; anything overdue stays at the top until you do.'),
+      {sel:'.topbar-new-task-btn',title:'New task',body:'Add a task from any tab. Give it a class, a due date and how long it should take.'},
+      tab('calendar','Calendar','Tasks, classes and no-school days on one month. Pick a day to add something, or count down to it: the countdown then sits in the top bar.'),
+      tab('timer','Time','Pomodoro focus sessions with a budget for each subject, plus a clock, stopwatch, countdown and alarms.'),
+      tab('school','School Info','Your classes, bell schedule and locker. Upload a photo or PDF of your timetable and Flux fills in your periods.'),
+      tab('toolbox','Study tools','Tools for 16 subjects, sorted into units: a periodic table, an equation balancer, formula sheets, language practice and a full graphing calculator.'),
+      tab('canvas','Canvas','Connect Canvas to bring your assignments in, then add the ones you want to your planner.'),
+      tab('profile','Profile','Your details, study style, how confident you feel in each course, and your stats.'),
+      tab('goals','College Prep','Activities, your college list with deadlines, and every test score: GPA, SAT, ACT and AP/IB results, with superscores worked out for you.'),
+      tab('mood','Mood','A quick daily check-in and a one-line journal with a history to look back on, plus affirmations and a breathing exercise.'),
+      more,
+      settingsStep,
+    ];
+  }
+  if(!work){
+    return[
+      mode,
+      tab('dashboard','Dashboard','Your own planner: tasks, a mini calendar and the week ahead, with none of your school work on it.'),
+      tab('calendar','Calendar','Appointments and plans for life outside school.'),
+      tab('staffTasks','Tasks','Errands and to-dos, kept apart from your school work.'),
+      tab('staffResources','Resources','Your own bookmarks and shortcuts.'),
+      tab('staffPersonalHub','Personal hub','A brain dump, a grocery list, a commute tracker and a mood log.'),
+      more,
+      settingsStep,
+    ];
+  }
+  const role=R.current;
+  const dash={
+    teacher:'Your classes today and the classroom tools you reach for most: a student picker, a group maker, exit tickets and a timer. Customize picks which tools show.',
+    counselor:'Booking requests from students, today’s appointments and your messages, on one screen.',
+    admin:'A school-wide overview, announcements and meeting requests.',
+    staff:'Your department tools, the request queue and shared links.',
+  };
+  const steps=[
+    mode,
+    tab('dashboard','Dashboard',dash[role]||dash.staff),
+    tab('calendar','Calendar','Your month, with the school’s no-school days built in. Pick a day to add something or count down to it.'),
+    tab('staffHub','Work hub','Meeting notes, your PD log, your availability and a quick wellbeing check-in, in one place.'),
+    tab('staffMessages','Messages','Direct messages and group chats with colleagues.'),
+  ];
+  if(role==='teacher')steps.push(
+    tab('lessonHub','Lesson Hub','Today’s classes bell by bell, with lesson notes, attendance and material reminders for each period.'),
+    tab('teacherResources','Resources','Free, classroom-ready lessons, simulations and texts sorted by subject, with a web search on top.'),
+    {sel:'#sidebar .nav-item[onclick*="openTeacherClassesPanel"]',go:true,title:'Rosters',body:'Create a class, share its join code, and see who has joined.'}
+  );
+  if(role==='counselor')steps.push(
+    tab('counselorMeetings','Meetings','Appointment requests from students and the meetings on your day.'),
+    tab('counselorWorkspace','Caseload tools','Your caseload, wellness check-ins, referrals and crisis protocols, in tabs.')
+  );
+  if(role==='admin')steps.push(tab('adminOps','Operations','Staff roster, sub coverage, duties and faculty announcements.'));
+  if(role==='staff')steps.push(tab('staffWorkboard','Workboard','Department tools, the request queue and shared tools.'));
+  steps.push(more,settingsStep);
+  return steps;
+}
+function fluxTourVisible(el){
+  if(!el||!el.isConnected)return false;
+  const r=el.getBoundingClientRect();
+  if(r.width<4||r.height<4)return false;
+  const cs=getComputedStyle(el);
+  return cs.visibility!=='hidden'&&cs.display!=='none';
+}
+function fluxTourTarget(sel){
+  for(const el of document.querySelectorAll(sel))if(fluxTourVisible(el))return el;
+  return null;
+}
+// B1: the tour must never start or advance while a modal/overlay is open —
+// it once opened its tooltip on top of the New Task modal.
+function fluxTourSurfaceBusy(){
+  try{if(window.FluxOverlays&&FluxOverlays.anyOpen())return true;}catch(_){}
+  return[...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display&&m.style.display!=='none');
+}
+let _fluxTour=null;
+function endOnboardingTour(how){
+  const t=_fluxTour;
+  if(!t)return;
+  _fluxTour=null;
+  document.removeEventListener('keydown',t.onKey,true);
+  window.removeEventListener('resize',t.onMove);
+  window.removeEventListener('scroll',t.onMove,true);
+  clearTimeout(t.timer);
+  t.layer.classList.add('is-out');
+  setTimeout(()=>t.layer.remove(),240);
+  markTourCompleted();
+  // Finishing (not skipping) leaves you where you started, not on Settings.
+  if(how==='done'){try{fluxTourTarget(fluxTourNavSel('dashboard'))?.click();}catch(_){}}
+}
+window.endOnboardingTour=endOnboardingTour;
+function startOnboardingTour(){
+  if(isTourCompleted()||_fluxTour)return;
+  if(fluxTourSurfaceBusy()){setTimeout(startOnboardingTour,800);return;}
+  const steps=fluxTourSteps().filter(s=>fluxTourTarget(s.sel));
+  if(!steps.length)return;
+  const layer=document.createElement('div');
+  layer.className='ftour';
+  layer.innerHTML=`<div class="ftour-spot" aria-hidden="true"></div>
+    <div class="ftour-card" role="dialog" aria-modal="true" aria-labelledby="ftourTitle">
+      <div class="ftour-top"><span class="ftour-count"></span><span class="ftour-dots" aria-hidden="true">${steps.map(()=>'<i></i>').join('')}</span></div>
+      <h3 class="ftour-title" id="ftourTitle"></h3>
+      <p class="ftour-body"></p>
+      <div class="ftour-btns"><button type="button" class="ftour-skip">Skip tour</button><span class="ftour-grow"></span><button type="button" class="ftour-back">Back</button><button type="button" class="ftour-next">Next</button></div>
+    </div>`;
+  document.body.appendChild(layer);
+  const spot=layer.querySelector('.ftour-spot'),card=layer.querySelector('.ftour-card');
+  const nextBtn=layer.querySelector('.ftour-next'),backBtn=layer.querySelector('.ftour-back');
+  const t={layer,i:0,target:null,timer:0,onKey:null,onMove:null};
+  _fluxTour=t;
+  const place=()=>{
+    if(_fluxTour!==t)return;
+    if(!fluxTourVisible(t.target))t.target=fluxTourTarget(steps[t.i].sel);
+    const el=t.target;
+    if(!el)return;
+    const r=el.getBoundingClientRect(),pad=6;
+    const vw=document.documentElement.clientWidth,vh=window.innerHeight;
+    const top=Math.max(4,r.top-pad),left=Math.max(4,r.left-pad);
+    const w=Math.min(vw-left-4,r.width+pad*2),h=Math.min(vh-top-4,r.height+pad*2);
+    spot.style.cssText=`top:${top}px;left:${left}px;width:${w}px;height:${h}px`;
+    const cw=Math.min(340,vw-24);
+    card.style.width=cw+'px';
+    const ch=card.offsetHeight;
+    let cx,cy;
+    // A sidebar item is short and sits on the left: put the card beside it.
+    // Anything else gets the card below it, then above, then over it.
+    if(r.left<vw/2&&left+w+16+cw<=vw-12&&h<120){
+      cx=left+w+16;
+      cy=Math.max(12,Math.min(vh-ch-12,top+h/2-ch/2));
+    }else{
+      cy=top+h+12;
+      if(cy+ch>vh-12)cy=top-ch-12;
+      if(cy<12)cy=Math.max(12,Math.min(vh-ch-12,top+16));
+      cx=Math.max(12,Math.min(vw-cw-12,left+w/2-cw/2));
+    }
+    card.style.top=Math.round(cy)+'px';
+    card.style.left=Math.round(cx)+'px';
+  };
+  const show=(n,dir)=>{
+    if(_fluxTour!==t)return;
+    if(n>=steps.length){endOnboardingTour('done');return;}
+    if(n<0)n=0;
+    const s=steps[n];
+    const el=fluxTourTarget(s.sel);
+    // Gone since the tour started (a role or mode change): step past it.
+    if(!el){if(dir<0&&n>0)show(n-1,-1);else show(n+1,1);return;}
+    t.i=n;t.target=el;
+    layer.querySelector('.ftour-count').textContent=`${n+1} of ${steps.length}`;
+    layer.querySelectorAll('.ftour-dots i').forEach((d,k)=>d.classList.toggle('on',k===n));
+    layer.querySelector('.ftour-title').textContent=s.title;
+    layer.querySelector('.ftour-body').textContent=s.body;
+    backBtn.hidden=n===0;
+    nextBtn.textContent=n===steps.length-1?'Done':'Next';
+    card.classList.remove('is-in');
+    void card.offsetWidth;
+    card.classList.add('is-in');
+    // Open the tab being described, so the page behind the card matches it.
+    if(s.go){try{el.click();}catch(_){}}
+    place();
+    clearTimeout(t.timer);
+    t.timer=setTimeout(place,450);
+    try{nextBtn.focus({preventScroll:true});}catch(_){}
+  };
+  nextBtn.addEventListener('click',()=>show(t.i+1,1));
+  backBtn.addEventListener('click',()=>show(t.i-1,-1));
+  layer.querySelector('.ftour-skip').addEventListener('click',()=>endOnboardingTour('skip'));
+  t.onKey=(e)=>{
+    if(e.key==='Escape'){e.stopPropagation();e.preventDefault();endOnboardingTour('skip');}
+    else if(e.key==='ArrowRight'){e.preventDefault();show(t.i+1,1);}
+    else if(e.key==='ArrowLeft'){e.preventDefault();show(t.i-1,-1);}
+  };
+  let raf=0;
+  t.onMove=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;place();});};
+  document.addEventListener('keydown',t.onKey,true);
+  window.addEventListener('resize',t.onMove,{passive:true});
+  window.addEventListener('scroll',t.onMove,{capture:true,passive:true});
+  requestAnimationFrame(()=>layer.classList.add('is-on'));
+  show(0,1);
+}
+window.startOnboardingTour=startOnboardingTour;
 
 
 // ══ HIGH CONTRAST MODE ════════════════════════════════════════
@@ -19120,8 +19220,20 @@ async function finishOnboarding(){
       try{renderJoinClassButton();}catch(_){}
     }
   }catch(e){console.warn('[Flux] post-onboarding routing failed',e);}
+  // The tour now has steps for every role, so educators get it too.
+  try{if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1400);}catch(_){}
 }
 window.finishOnboarding=finishOnboarding;
+
+/* August to July, so a class made in September 2026 belongs to 2026-27.
+   Both writes below had '2025-26' typed in, so every class and enrolment made
+   after last summer was filed under the year before. */
+function fluxSchoolYearLabel(d){
+  const n=d instanceof Date?d:new Date();
+  const y=n.getMonth()>=7?n.getFullYear():n.getFullYear()-1;
+  return y+'-'+String((y+1)%100).padStart(2,'0');
+}
+window.fluxSchoolYearLabel=fluxSchoolYearLabel;
 
 // ── Teacher onboarding ──────────────────────────────────────────────
 function runTeacherOnboarding(){
@@ -19138,14 +19250,14 @@ function renderTeacherOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Welcome to Flux for Teachers</h2>
-      <p class="onboard-step-sub">Your teacher dashboard lets you create classes, post assignments, and see your students' progress — all in one place.</p>
+      <h2 class="onboard-step-title">Welcome to Flux for teachers</h2>
+      <p class="onboard-step-sub">Your classes, your lessons and your classroom tools in one place, with a separate planner for the rest of your life.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span></span> Create classes with auto-generated join codes</div>
-        <div class="onboard-feature"><span></span> Post assignments that appear in student planners</div>
-        <div class="onboard-feature"><span></span> Message students and parents directly</div>
-        <div class="onboard-feature"><span></span> See real-time student progress + completion rates</div>
-        <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
+        <div class="onboard-feature"><span></span> Create classes with a join code to share with students</div>
+        <div class="onboard-feature"><span></span> Post assignments that land in your students’ planners</div>
+        <div class="onboard-feature"><span></span> Lesson Hub: today’s classes bell by bell, with notes and attendance</div>
+        <div class="onboard-feature"><span></span> Classroom tools: a student picker, group maker, exit tickets and a timer</div>
+        <div class="onboard-feature"><span></span> Message colleagues, and switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="toWelcomeNext">Get Started →</button>
     </div>`;
@@ -19158,7 +19270,7 @@ function renderTeacherOnboard_Profile(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Your Teaching Profile</h2>
+      <h2 class="onboard-step-title">Your teaching profile</h2>
       <p class="onboard-step-sub">This is how students and parents will see you in Flux.</p>
       <div class="mrow"><label>Full Name *</label>
         <input id="to_name" placeholder="e.g. Mr. Rodriguez" value="${esc(presetName)}">
@@ -19210,7 +19322,7 @@ function renderTeacherOnboard_Classes(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Create Your Classes</h2>
+      <h2 class="onboard-step-title">Create your classes</h2>
       <p class="onboard-step-sub">Create at least one class. Students join by entering the class code you'll share. You can add more later.</p>
       <div id="classBuilderList"></div>
       <button class="onboard-add-btn" id="toAddClassRow">+ Add another class</button>
@@ -19297,7 +19409,7 @@ async function saveTeacherClasses_andNext(){
         days:c.days||null,
         time_start:c.time_start||null,
         time_end:c.time_end||null,
-        school_year:'2025-26',
+        school_year:fluxSchoolYearLabel(),
         active:true,
       });
       if(insErr){setErr(`Failed to save "${c.name}": ${insErr.message||insErr}`);return;}
@@ -19312,7 +19424,7 @@ function renderTeacherOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're all set!</h2>
-      <p class="onboard-step-sub">Your teacher account is ready. Share your class codes with students so they can join.</p>
+      <p class="onboard-step-sub">Your teacher account is ready. Share each class code with its students so they can join.</p>
       <div id="teacherClassCodes" style="margin:20px 0"></div>
       <button class="onboard-next-btn" id="toFinishBtn">Go to Dashboard →</button>
     </div>`;
@@ -19325,7 +19437,7 @@ function renderTeacherOnboard_Finish(container){
     .then(({data})=>{
       const el=document.getElementById('teacherClassCodes');
       if(!el)return;
-      if(!data?.length){el.innerHTML='<div style="font-size:.78rem;color:var(--muted2)">You can add classes later from the Teacher Dashboard.</div>';return;}
+      if(!data?.length){el.innerHTML='<div style="font-size:.78rem;color:var(--muted2)">You can add classes later from Rosters in the sidebar.</div>';return;}
       el.innerHTML=data.map(c=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-bottom:8px">
           <div>
@@ -19352,12 +19464,12 @@ function renderCounselorOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Welcome, Counselor</h2>
-      <p class="onboard-step-sub">Your Flux counselor dashboard lets you manage student appointments, communicate directly, and track student wellbeing.</p>
+      <h2 class="onboard-step-title">Welcome, counselor</h2>
+      <p class="onboard-step-sub">Appointments, messages and your caseload tools in one place, with a separate planner for the rest of your life.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span></span> Students book appointments from your availability</div>
-        <div class="onboard-feature"><span></span> Direct messaging with any student</div>
-        <div class="onboard-feature"><span></span> View student notes and goals (with permission)</div>
+        <div class="onboard-feature"><span></span> Students request appointments in the slots you open</div>
+        <div class="onboard-feature"><span></span> Message students and colleagues</div>
+        <div class="onboard-feature"><span></span> Caseload tools: wellness check-ins, referrals and crisis protocols</div>
         <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="cWelcomeNext">Set Up Account →</button>
@@ -19371,7 +19483,7 @@ function renderCounselorOnboard_Profile(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Counselor Profile</h2>
+      <h2 class="onboard-step-title">Your counselor profile</h2>
       <p class="onboard-step-sub">This is how students will see you when booking appointments.</p>
       <div class="mrow"><label>Full Name *</label>
         <input id="co_name" placeholder="e.g. Ms. Patel" value="${esc(presetName)}">
@@ -19407,7 +19519,7 @@ function renderCounselorOnboard_Availability(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Set Your Availability</h2>
+      <h2 class="onboard-step-title">Set your availability</h2>
       <p class="onboard-step-sub">Students can only book during the slots you select. You can update this anytime.</p>
       <div style="overflow-x:auto">
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;min-width:400px;margin-bottom:18px">
@@ -19463,7 +19575,7 @@ function renderCounselorOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're set up!</h2>
-      <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now book appointments during your available slots.</p>
+      <p class="onboard-step-sub">Your counselor dashboard is ready. Students can now request appointments in the slots you opened.</p>
       <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
     </div>`;
   document.getElementById('coFinishBtn')?.addEventListener('click',finishOnboarding);
@@ -19483,8 +19595,8 @@ function renderStaffOnboard_Welcome(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Staff Account</h2>
-      <p class="onboard-step-sub">Your staff account gives you school-wide tools in Work mode, plus a full personal planner in Personal mode. Switch between them anytime.</p>
+      <h2 class="onboard-step-title">Your staff account</h2>
+      <p class="onboard-step-sub">School tools in Work mode, and a full personal planner in Personal mode. Switch between them any time.</p>
       <button class="onboard-next-btn" id="stWelcomeNext">Continue →</button>
     </div>`;
   document.getElementById('stWelcomeNext')?.addEventListener('click',()=>window.__eduOnboardNext?.());
@@ -19496,7 +19608,7 @@ function renderStaffOnboard_Profile(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Your Staff Profile</h2>
+      <h2 class="onboard-step-title">Your staff profile</h2>
       <div class="mrow"><label>Full Name *</label>
         <input id="st_name" placeholder="e.g. Mr. Lee" value="${esc(presetName)}">
       </div>
@@ -19530,7 +19642,7 @@ function renderStaffOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome aboard!</h2>
-      <p class="onboard-step-sub">Use the Mode toggle in the top bar to switch between Work and Personal whenever you want.</p>
+      <p class="onboard-step-sub">The Work / Personal switch at the top of every page flips between your school tools and your own planner.</p>
       <button class="onboard-next-btn" id="stFinishBtn">Get Started →</button>
     </div>`;
   document.getElementById('stFinishBtn')?.addEventListener('click',finishOnboarding);
@@ -19688,7 +19800,7 @@ async function renderTeacherDashboard(){
         </div>
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
-          <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New Assignment</button>
+          <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New assignment</button>
           <button class="teacher-action-btn" data-action="new-class"><span></span> New roster</button>
           <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
@@ -19754,7 +19866,7 @@ async function renderTeacherDashboard(){
 
         <div class="teacher-col">
           ${dueSoon.length>0?`
-            <div class="teacher-section-head"><h3>Due in 3 Days</h3></div>
+            <div class="teacher-section-head"><h3>Due in the next 3 days</h3></div>
             <div class="teacher-due-list">
               ${dueSoon.map(a=>`
                 <div class="teacher-due-row">
@@ -19766,7 +19878,7 @@ async function renderTeacherDashboard(){
             <div style="height:16px"></div>`:''}
 
           <div class="teacher-section-head">
-            <h3>Recent Submissions ${pendingReview>0?`<span class="review-badge">${pendingReview} to review</span>`:''}</h3>
+            <h3>Recent submissions ${pendingReview>0?`<span class="review-badge">${pendingReview} to review</span>`:''}</h3>
           </div>
           ${recentCompletions.length===0?'<div style="font-size:.8rem;color:var(--muted2);padding:12px 0">No submissions yet</div>':
             recentCompletions.slice(0,10).map(c=>{
@@ -19939,7 +20051,7 @@ async function resolveJoinRequest(requestId,newStatus,classId){
   const className=(tc&&tc.class_name)||'your class';
   const classCode=(tc&&tc.class_code)||'';
   const period=req.period||tc?.period||null;
-  const schoolYear=tc?.school_year||'2025-26';
+  const schoolYear=tc?.school_year||fluxSchoolYearLabel();
   if(newStatus==='approved'){
     const {error:e2}=await sb.from('teacher_students').upsert({
       teacher_id:req.teacher_id,
@@ -20986,6 +21098,20 @@ async function renderCounselorDashboard(){
       .order('created_at',{ascending:false})
       .limit(15);
     messages=msgs||[];
+    // Unread messages were labelled "Student 1a2b3c" — the first six
+    // characters of an account id. Look senders up the same way as the
+    // students with appointments, so a counselor sees who wrote.
+    const senderIds=[...new Set(messages.map(m=>m.sender_id).filter(id=>id&&!studentNames[id]))];
+    if(senderIds.length){
+      try{
+        if(window.FluxCounselorAppointments?.loadStudentNames){
+          Object.assign(studentNames,await FluxCounselorAppointments.loadStudentNames(sb,senderIds)||{});
+        }else{
+          const {data:who}=await sb.from('user_roles').select('user_id,display_name').in('user_id',senderIds);
+          (who||[]).forEach(r=>{studentNames[r.user_id]=r.display_name||'Student';});
+        }
+      }catch(_){}
+    }
   }catch(e){console.warn('[Flux counselor] load failed',e);}
 
   const scheduleAppts=appointments.filter(a=>a.status!=='pending');
@@ -21120,9 +21246,9 @@ async function renderCounselorDashboard(){
           <div class="section-header"><h3>Messages${messages.length?` (${messages.length})`:''}</h3></div>
           ${messages.length?messages.slice(0,8).map(m=>`
             <div class="message-preview-row" data-message-sender="${esc(m.sender_id)}">
-              <div class="msg-avatar">S</div>
+              <div class="msg-avatar">${esc(((studentNames[m.sender_id]||'S').trim()[0]||'S').toUpperCase())}</div>
               <div class="msg-info">
-                <div class="msg-sender">Student ${esc(String(m.sender_id).slice(0,6))}</div>
+                <div class="msg-sender">${studentNames[m.sender_id]?esc(studentNames[m.sender_id]):'Student '+esc(String(m.sender_id).slice(0,6))}</div>
                 <div class="msg-preview">${esc((m.content||'').slice(0,55))}</div>
               </div>
               <div class="msg-unread-dot" aria-hidden="true"></div>

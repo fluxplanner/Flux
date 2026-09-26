@@ -164,8 +164,11 @@
       <div class="cw-root">
         <div class="cw-topbar">
           <div>
-            <div class="cw-greet">Caseload tools</div>
-            <div class="cw-greet-sub">Accommodations, contacts, wellness queue, and crisis protocols — separate from your daily overview.</div>
+            <!-- A greeting and the date, as on Lesson Hub and the dashboards.
+                 This said "Caseload tools" again under the top bar's own
+                 "Caseload tools", then repeated the page's lead line. -->
+            <div class="cw-greet">Good ${timeOfDay()}, ${esc(firstName())}</div>
+            <div class="cw-greet-sub">${esc(fmtLongDay(new Date()))}</div>
           </div>
           <div class="cw-topbar-actions" id="counselorWsToolbar"></div>
         </div>

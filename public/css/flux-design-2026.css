@@ -458,3 +458,60 @@ body[data-theme="light"] #app * { scrollbar-color: rgba(15, 23, 42, .2) transpar
   #app button:active:not(:disabled) { transform: none; }
 }
 html.flux-lowend #app * { transition: none !important; }
+
+/* ── Planner tour ────────────────────────────────────────────────────────
+   Spotlight + card, the same shape as the Flux Grapher's tour: the page dims
+   except for the thing being described, and the card sits beside it. It
+   replaces a floating tooltip that had no Back and no dimming. */
+.ftour{position:fixed;inset:0;z-index:var(--flux-z-palette,9000);opacity:0;transition:opacity .22s ease}
+.ftour.is-on{opacity:1}
+.ftour.is-out{opacity:0;pointer-events:none}
+.ftour-spot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(4,7,16,.62),0 0 0 2px rgba(var(--accent-rgb),.75),0 0 26px rgba(var(--accent-rgb),.45);transition:top .38s cubic-bezier(.2,.8,.2,1),left .38s cubic-bezier(.2,.8,.2,1),width .38s cubic-bezier(.2,.8,.2,1),height .38s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.ftour-card{position:fixed;padding:16px 18px 14px;border-radius:16px;background:var(--flux-elev-bg,var(--card-solid,#121826));border:1px solid rgba(var(--accent-rgb),.35);box-shadow:0 18px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);color:var(--text);transition:top .38s cubic-bezier(.2,.8,.2,1),left .38s cubic-bezier(.2,.8,.2,1)}
+.ftour-card.is-in{animation:ftourIn .32s cubic-bezier(.2,.8,.2,1) both}
+.ftour-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ftour-count{font:600 .68rem 'JetBrains Mono',monospace;color:var(--accent);letter-spacing:.04em}
+.ftour-dots{display:inline-flex;gap:4px}
+.ftour-dots i{width:5px;height:5px;border-radius:50%;background:var(--muted2,#7b809a);opacity:.35;transition:background-color .2s ease,width .2s ease,opacity .2s ease}
+.ftour-dots i.on{width:14px;border-radius:3px;opacity:1;background:var(--fx-accent-grad,var(--accent))}
+.ftour-title{margin:0 0 6px;font-size:.98rem;font-weight:800;letter-spacing:-.01em}
+.ftour-body{margin:0 0 14px;font-size:.8rem;line-height:1.6;color:var(--text2,#c8cad8)}
+.ftour-btns{display:flex;align-items:center;gap:8px}
+.ftour-grow{flex:1}
+.ftour-btns button{min-height:0;padding:7px 13px;border-radius:10px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit}
+.ftour-skip{background:transparent;border:0;color:var(--muted2);padding-left:0!important}
+.ftour-skip:hover{color:var(--text)}
+.ftour-back{background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text)}
+.ftour-next{background:var(--fx-accent-grad,var(--accent));border:0;color:#fff;box-shadow:0 6px 18px -8px rgba(var(--accent-rgb),.8)}
+.ftour-next:hover{filter:brightness(1.08)}
+@keyframes ftourIn{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .ftour,.ftour-spot,.ftour-card{transition:none}
+  .ftour-card.is-in{animation:none}
+}
+
+/* ── Onboarding: the ready step ─────────────────────────────────────── */
+#onboarding .ob-ready{display:flex;flex-direction:column;gap:8px;margin:14px 0 16px;text-align:left}
+#onboarding .ob-ready-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);animation:ftourIn .4s cubic-bezier(.2,.8,.2,1) both}
+#onboarding .ob-ready-row:nth-child(2){animation-delay:.05s}
+#onboarding .ob-ready-row:nth-child(3){animation-delay:.1s}
+#onboarding .ob-ready-row:nth-child(4){animation-delay:.15s}
+#onboarding .ob-ready-row:nth-child(5){animation-delay:.2s}
+#onboarding .ob-ready-ico{flex:none;width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:rgba(var(--accent-rgb),.12);font-size:1rem}
+#onboarding .ob-ready-row b{display:block;font-size:.86rem}
+#onboarding .ob-ready-row small{display:block;font-size:.74rem;color:var(--muted2);margin-top:1px}
+#onboarding .ob-ready-tour{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 14px;font-size:.8rem;color:var(--muted2);cursor:pointer}
+#onboarding .ob-ready-tour input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+@media (prefers-reduced-motion:reduce){#onboarding .ob-ready-row{animation:none}}
+
+/* ── Phone top bar ───────────────────────────────────────────────────────
+   Since the countdown moved into the top bar, a 390px phone ran out of room
+   and the brand was the thing that shrank: "Flux" was cut to "Flu". The brand
+   no longer shrinks, and on the narrowest phones the "3 tasks" pill steps
+   aside while a countdown is showing (the dashboard lists the tasks anyway). */
+@media (max-width: 768px) {
+  .topbar .topbar-mob-brand { flex-shrink: 0; }
+}
+@media (max-width: 430px) {
+  .topbar:has(#topbarCountdown:not([hidden])) #topbarTaskPill { display: none !important; }
+}

@@ -95,6 +95,7 @@
     "public/js/flux-ops-health.js",
     "public/js/flux-admin-widgets.js",
     "public/js/flux-staff-tabs.js",
+    "public/js/flux-staff-2026.js",
     "public/js/flux-canvas-panel.js",
     "public/js/flux-classroom-sync.js",
     "public/js/flux-drive-import.js",
@@ -398,6 +399,7 @@
     "public/css/flux-academic-scores.css",
     "public/css/flux-datepicker.css",
     "public/css/flux-settings-shell.css",
-    "public/css/flux-design-2026.css"
+    "public/css/flux-design-2026.css",
+    "public/css/flux-staff-2026.css"
   ]
 }

@@ -236,7 +236,14 @@
   function render() {
     var el = host();
     if (!el) return;
-    var listHtml = state.convos.map(function (c) {
+    // A search box once the list is long enough to need one. It is redrawn
+    // with the rest of the page, so keep its focus and caret across redraws.
+    var searching = document.activeElement && document.activeElement.id === 'fsmSearch';
+    var q = String(state.q || '').trim().toLowerCase();
+    var shown = !q ? state.convos : state.convos.filter(function (c) {
+      return (convoTitle(c) + ' ' + (c.last_message_preview || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    var listHtml = shown.map(function (c) {
       var t = convoTitle(c);
       var unread = convoUnread(c) && c.id !== state.activeId;
       return '<button type="button" class="fsm-convo' + (c.id === state.activeId ? ' active' : '') + (unread ? ' unread' : '') + '" data-fsm-open="' + esc(c.id) + '">'
@@ -288,9 +295,12 @@
     el.innerHTML = ''
       + '<div class="fsm-wrap' + (active ? ' has-active' : '') + '">'
       + '<div class="fsm-list-col">'
-      +   '<div class="fsm-list-head"><h3>Messages</h3>'
+      +   '<div class="fsm-list-head"><h3>Conversations</h3>'
       +   '<button type="button" class="fsm-new-btn" data-fsm-new>+ New</button></div>'
-      +   '<div class="fsm-list">' + (listHtml || '<div class="fsm-list-empty">No conversations yet. Start one with <strong>+ New</strong>.</div>') + '</div>'
+      +   (state.convos.length >= 4 ? '<input type="search" class="fsm-search" id="fsmSearch" placeholder="Search conversations" aria-label="Search conversations" value="' + esc(state.q || '') + '">' : '')
+      +   '<div class="fsm-list">' + (listHtml || (q
+            ? '<div class="fsm-list-empty">No conversations match “' + esc(state.q.trim()) + '”.</div>'
+            : '<div class="fsm-list-empty">No conversations yet. Start one with <strong>+ New</strong>.</div>')) + '</div>'
       + '</div>'
       + '<div class="fsm-thread-col">' + threadHtml + '</div>'
       + '</div>';
@@ -298,9 +308,16 @@
     wire(el);
     var box = document.getElementById('fsmMsgs');
     if (box) box.scrollTop = box.scrollHeight;
+    var search = document.getElementById('fsmSearch');
+    if (search && searching) {
+      search.focus();
+      try { search.setSelectionRange(search.value.length, search.value.length); } catch (_) {}
+    }
   }
 
   function wire(el) {
+    var search = el.querySelector('#fsmSearch');
+    if (search) search.addEventListener('input', function () { state.q = search.value; render(); });
     el.querySelectorAll('[data-fsm-open]').forEach(function (btn) {
       btn.addEventListener('click', function () { openConvo(btn.getAttribute('data-fsm-open')); });
     });

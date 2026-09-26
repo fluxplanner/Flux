@@ -1,0 +1,151 @@
+/* ════════════════════════════════════════════════════════════════════════
+   FLUX · Staff finishing layer (2026)
+   ------------------------------------------------------------------------
+   Loads last, after flux-design-2026.css. The staff pages were built by a
+   dozen modules over a year and each brought its own gutters, so side by side
+   they did not line up: Lesson Hub, Meetings, Caseload tools and Resources had
+   their lead line flush against the sidebar with no gap at all, the Work hub
+   was a 700px column in the middle of the page while "Today's sections"
+   under it ran full width, and the counselor dashboard's quick links sat on
+   top of the card above them. This file gives every staff page the gutters
+   the student pages have, the same card treatment, and a little motion.
+
+   Motion is opt-in per visit: flux-staff-2026.js puts .fx-staff-enter on a
+   staff page for a moment when you open it, so cards rise in once — not every
+   time a cloud sync redraws the page. Nothing here moves under reduced motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Gutters ─────────────────────────────────────────────────────────── */
+#app .flux-edu-panel{padding:24px 28px 96px}
+#app .flux-edu-panel :is(.lh-root,.cm-root,.ao-root,.sw-root,.cw-root,.teacher-dash-root,.edu-dash-root,.counselor-dashboard,.teacher-dashboard){padding:0}
+#app .flux-edu-panel > .flux-page-header{margin-bottom:18px}
+@media (max-width:768px){
+  #app .flux-edu-panel{padding:18px 14px var(--flux-nav-clearance,96px)}
+}
+
+/* The Work hub: one width for everything on the page. */
+#app #staffHub .staff-personal-dash,
+#app #staffHub .spdx-root{max-width:none;margin:0 0 18px;padding:0}
+#app #staffHub .spdx-hero{align-items:center}
+#app #staffHub .spd-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+#app #staffHub .spdx-cols{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+
+/* Quick links sat with a negative top margin, straight onto the card above. */
+#app .sr-workspace-mount--inline{margin:18px 0 14px}
+#app .sr-workspace-mount--inline .sr-section-title{margin-bottom:10px}
+
+/* ── Work / Personal bar in the light theme ─────────────────────────── */
+/* It is painted near-black (rgba(7,8,15,.92)) for every theme, so on Cloud
+   it was a dark band across the top of every staff page. */
+body[data-theme="light"] #modeSwitchBar{background:rgba(255,255,255,.82);border-bottom-color:rgba(15,23,42,.08)}
+
+/* ── Sidebar: "School info" is a row like its neighbours ─────────────── */
+/* In Work mode the School group held one small monospace pill labelled
+   "Info" — the only row in the sidebar that was not a row. The strip keeps
+   its markup (and its pill look for students, where it never shows) but for
+   staff it now matches Dashboard, Calendar and the rest. */
+#sidebar .school-work-tabs{padding:0;margin:0;gap:2px;flex-direction:column}
+#sidebar .school-work-tab{width:100%;justify-content:flex-start;gap:9px;padding:8px 11px;min-height:36px;border:0;border-radius:14px;background:transparent;font:500 .86rem var(--font-ui,'Plus Jakarta Sans',sans-serif);letter-spacing:0;text-transform:none;color:var(--muted2)}
+#sidebar .school-work-tab:hover{background:rgba(255,255,255,.045);color:var(--text)}
+#sidebar .school-work-tab.active{background:rgba(var(--accent-rgb),.12);color:var(--text)}
+#sidebar .school-work-tab .ni{width:22px;font-size:.95rem}
+.sidebar.collapsed .school-work-tab{justify-content:center;padding:8px}
+/* The phone drawer, same idea at the drawer's own row size. */
+.mob-drawer .school-work-tabs{padding:0 0 6px;margin:0;gap:2px;flex-direction:column}
+.mob-drawer .school-work-tab{width:100%;justify-content:flex-start;gap:9px;padding:10px 16px;min-height:44px;border:0;border-radius:14px;background:transparent;font:500 .9rem var(--font-ui,'Plus Jakarta Sans',sans-serif);letter-spacing:0;text-transform:none;color:var(--muted2)}
+.mob-drawer .school-work-tab .ni{width:22px;font-size:1rem}
+.mob-drawer .school-work-tab.active{background:rgba(var(--accent-rgb),.12);color:var(--text)}
+
+/* ── Resources search: button as tall as the box ────────────────────── */
+#app #teacherResources .ftr-search{align-items:stretch}
+#app #teacherResources .ftr-search-btn{min-height:0;height:auto;border-radius:12px;padding:0 20px}
+
+/* ── Headings: sentence case, one size ───────────────────────────────── */
+#app .flux-edu-panel .teacher-section-head h3,
+#app .flux-edu-panel .teacher-section .section-header h3{font-size:.95rem;font-weight:700;letter-spacing:-.01em}
+#app .flux-widget-grid__title{letter-spacing:.14em}
+#app .flux-widget-cell__title{font-weight:700;letter-spacing:-.01em}
+
+/* ── Cards: one hover language ───────────────────────────────────────── */
+#app :is(.flux-edu-panel,#staffHub,#staffMessages) :is(.flux-widget-cell,.teacher-section,.lh-class-card,.spdx-card,.spd-card,.sr-pin,.ftr-card,.teacher-class-card){
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .22s ease,box-shadow .22s ease,background-color .22s ease;
+}
+@media (hover:hover){
+  #app :is(.flux-edu-panel,#staffHub) :is(.flux-widget-cell,.teacher-section,.spdx-card,.sr-pin,.ftr-card):hover{
+    transform:translateY(-2px);
+    border-color:rgba(var(--accent-rgb),.32);
+    box-shadow:0 10px 28px -14px rgba(var(--accent-rgb),.45),0 2px 8px rgba(0,0,0,.18);
+  }
+  #app .flux-edu-panel .lh-class-card:hover{border-color:rgba(var(--accent-rgb),.28)}
+}
+
+/* ── Quick-grade buckets ─────────────────────────────────────────────── */
+/* The bucket names were centred, letter-spaced body text at 1.1rem — they
+   read as a different app. Now they are card labels with a count. */
+#app .flux-qg-col{background:rgba(255,255,255,.025);border-color:var(--fx-hair,var(--border2));border-radius:12px}
+#app .flux-qg-col-title{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;letter-spacing:0;font-size:.8rem;font-weight:700;color:var(--text);margin:0 2px 8px}
+#app .flux-qg-count{min-width:22px;padding:1px 7px;border-radius:999px;background:rgba(var(--accent-rgb),.12);color:var(--accent);font:600 .68rem/1.5 'JetBrains Mono',monospace;text-align:center}
+#app .flux-qg-drop{border-radius:10px;transition:border-color .18s ease,background-color .18s ease}
+#app .flux-qg-card{display:flex;align-items:center;gap:4px;padding:7px 6px 7px 10px;border-radius:9px;background:var(--card2,rgba(255,255,255,.05));border:1px solid var(--border2);font-size:.78rem;cursor:grab;animation:fxQgIn .28s ease both}
+#app .flux-qg-card-title{flex:1;min-width:0;overflow-wrap:anywhere}
+#app .flux-qg-card-btn{flex:none;width:24px;height:24px;min-height:0;padding:0;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted2);font-size:.85rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+#app .flux-qg-card-btn:hover{background:rgba(var(--accent-rgb),.14);color:var(--accent)}
+#app .flux-qg-card-x:hover{background:rgba(255,77,109,.14);color:var(--red,#ff4d6d)}
+@keyframes fxQgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── Group maker ─────────────────────────────────────────────────────── */
+#app .flux-gm-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 10px;flex-wrap:wrap}
+#app .flux-gm-seg{display:inline-flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border2)}
+#app .flux-gm-seg button{min-height:0;padding:5px 11px;border-radius:999px;border:0;background:transparent;color:var(--muted2);font-size:.72rem;font-weight:600;cursor:pointer;transition:background-color .18s ease,color .18s ease}
+#app .flux-gm-seg button.on{background:rgba(var(--accent-rgb),.18);color:var(--text)}
+#app .flux-gm-step{display:inline-flex;align-items:center;gap:6px}
+#app .flux-gm-step button{width:28px;height:28px;min-height:0;padding:0;border-radius:50%;border:1px solid var(--border2);background:var(--card2,rgba(255,255,255,.05));color:var(--text);font-size:.95rem;line-height:1;cursor:pointer}
+#app .flux-gm-step button:disabled{opacity:.4;cursor:default}
+#app .flux-gm-step output{min-width:22px;text-align:center;font:700 .95rem 'JetBrains Mono',monospace;color:var(--accent)}
+#app .flux-gm-out{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px}
+#app .flux-gm-out:empty{display:none}
+#app .flux-gm-group{padding:9px 10px;border-radius:11px;background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.18);animation:fxGmIn .34s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 45ms)}
+#app .flux-gm-group-h{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;font-weight:700;color:var(--accent);margin-bottom:5px}
+#app .flux-gm-group-h span{font:600 .64rem 'JetBrains Mono',monospace;color:var(--muted2)}
+#app .flux-gm-names{display:flex;flex-direction:column;gap:1px;font-size:.76rem;line-height:1.35;color:var(--text)}
+@keyframes fxGmIn{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+
+/* ── Teacher resources: chips + filter ───────────────────────────────── */
+#app #teacherResources .ftr-search{margin-bottom:12px}
+#app .ftr-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+#app .ftr-chip{min-height:0;padding:6px 12px;border-radius:999px;border:1px solid var(--border2);background:rgba(255,255,255,.03);color:var(--muted2);font-size:.74rem;font-weight:600;cursor:pointer;transition:background-color .18s ease,border-color .18s ease,color .18s ease}
+#app .ftr-chip:hover{color:var(--text);border-color:rgba(var(--accent-rgb),.3)}
+#app .ftr-chip.on{background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.4);color:var(--text)}
+#app #teacherResources :is(.ftr-card,.ftr-group,.ftr-note)[hidden]{display:none!important}
+
+/* ── Messages: conversation search ───────────────────────────────────── */
+/* (1,2,0) plus !important: flux-form-controls and styles.css §14 both size
+   every input on the page, and this one has to fit the list column. */
+#app .fsm-list-col .fsm-search{display:block;width:calc(100% - 24px)!important;margin:0 12px 10px!important;padding:8px 12px!important;border-radius:10px;font-size:.8rem!important;min-height:0}
+
+/* ── Flash when a sidebar row jumps to its section ───────────────────── */
+#app .fx-staff-flash{animation:fxStaffFlash 1.3s ease both;border-radius:14px}
+@keyframes fxStaffFlash{
+  0%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),0)}
+  25%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55)}
+  100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),0)}
+}
+
+/* ── Entrance: cards rise in once when the page opens ────────────────── */
+@media (prefers-reduced-motion:no-preference){
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.lh-list,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.fsm-wrap,.cw-tab-panel,.ftr-chips) > *{
+    animation:fxStaffIn .5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.ftr-chips) > :nth-child(2){animation-delay:.05s}
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.ftr-chips) > :nth-child(3){animation-delay:.1s}
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.ftr-chips) > :nth-child(4){animation-delay:.15s}
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.ftr-chips) > :nth-child(5){animation-delay:.2s}
+  #app .fx-staff-enter :is(.flux-widget-grid__cells,.teacher-main-grid,.teacher-grid,.spdx-cols,.ftr-grid,.sr-pin-grid,.teacher-stats-strip,.teacher-stats,.lh-stats,.ftr-chips) > :nth-child(n+6){animation-delay:.25s}
+  #app .fx-staff-enter :is(.teacher-topbar,.lh-topbar,.cm-topbar,.cw-topbar,.spdx-hero,.spdx-actions,.flux-page-header,.ftr-search){
+    animation:fxStaffIn .45s cubic-bezier(.2,.8,.2,1) both;
+  }
+}
+@keyframes fxStaffIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  #app .flux-qg-card,#app .flux-gm-group,#app .fx-staff-flash{animation:none}
+}
