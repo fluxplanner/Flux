@@ -399,6 +399,8 @@
       let out = null;
       if (it.type === 'expr') {
         out = { id: str(it.id, 24) || newId(), type: 'expr', src: str(it.src, 6000), colour: colour, hidden: !!it.hidden, dash: !!it.dash };
+        // How the maths field last showed it (flux-mathfield.js). Only used while it still matches src.
+        if (typeof it.tex === 'string' && it.tex && it.tex.length <= 8000) out.tex = it.tex;
         if (it.logMode) out.logMode = true;
         if (it.showResiduals) out.showResiduals = true;
       } else if (it.type === 'table') {
@@ -1570,13 +1572,19 @@
       const k = (e.key || '').toLowerCase();
       if (k !== 'z' && k !== 'y') return;
       const a = document.activeElement;
-      // A text box keeps its own undo for the letters being typed.
-      if (a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && /^(text|search|)$/.test(a.type || '')))) return;
+      // A text box keeps its own undo for the letters being typed. A maths
+      // field has none of its own, so there the graph's undo steps back.
+      const inMath = !!(a && a.closest && a.closest('.flg-mq'));
+      if (a && !inMath && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && /^(text|search|)$/.test(a.type || '')))) return;
       // In the planner, only while you are working in the grapher.
       if (self.surface === 'planner' && !(a && self.root.contains(a))) return;
       if (document.querySelector('.fgc-back, .fgt-layer')) return;
       const back = k === 'z' && !e.shiftKey;
-      if (self.stepHistory(back)) e.preventDefault();
+      if (self.stepHistory(back)) {
+        e.preventDefault();
+        // The rows were redrawn; stay in the equation you were typing in.
+        if (inMath && self.active) self.focusExpr(self.active);
+      }
     };
     document.addEventListener('keydown', this._onKey);
     if (this.kind === 'functions') {
@@ -1824,6 +1832,7 @@
     if (!box) return;
     let e = 0;
     box.innerHTML = this.doc.items.map((it) => this.itemHTML(it, it.type === 'expr' ? e++ : 0)).join('');
+    this.mountMath();
   };
 
   Grapher.prototype.rerenderItem = function (id) {
@@ -1832,6 +1841,109 @@
     if (!el || !it) { this.renderItems(); return; }
     const n = this.doc.items.filter((i) => i.type === 'expr').indexOf(it);
     el.outerHTML = this.itemHTML(it, Math.max(0, n));
+    this.mountMath();
+  };
+
+  /* ── Typing like Desmos ──────────────────────────────────────────────
+     Each equation row gets a maths field (flux-mathfield.js, MathQuill) in
+     place of its text box, so an exponent rises the moment ^ is typed. The
+     text box stays in the row, hidden, as the source of truth: every edit is
+     translated into it and sent through its input event, so reading, saving,
+     undo and the error messages see exactly what they always did. If the
+     maths field cannot load, the text box and its typeset copy stay as they
+     were. */
+  Grapher.prototype.mountMath = function () {
+    const MF = window.FluxMathField;
+    if (!MF || !this.root) return;
+    if (!MF.ready()) {
+      if (!this._mathWait) {
+        this._mathWait = MF.load().then((ok) => {
+          this._mathWait = null;
+          if (ok && this.root && this.root.isConnected) this.mountMath();
+        });
+      }
+      return;
+    }
+    this.root.querySelectorAll('.flg-item--expr:not(.has-mq)').forEach((row) => this.mountRowMath(row));
+  };
+
+  Grapher.prototype.mountRowMath = function (row) {
+    const MF = window.FluxMathField;
+    const id = row.dataset.id;
+    const input = row.querySelector('.flg-expr');
+    const it = this.item(id);
+    if (!input || !it) return;
+    const host = document.createElement('span');
+    host.className = 'flg-mq';
+    input.after(host);
+    const self = this;
+    const mf = MF.create(host, {
+      edit: (latex) => self.mathEdited(id, latex),
+      enter: () => self.exprEnter(id),
+      up: () => self.focusExprStep(id, -1),
+      down: () => self.focusExprStep(id, 1),
+      deleteOut: () => self.deleteEmptyExpr(id),
+    });
+    if (!mf) { host.remove(); return; }
+    MF.set(mf, it.tex && MF.toPlain(it.tex) === it.src ? it.tex : MF.toLatex(it.src));
+    input._mf = mf;
+    input.tabIndex = -1;
+    input.setAttribute('aria-hidden', 'true');
+    const ta = host.querySelector('textarea');
+    if (ta) {
+      ta.setAttribute('aria-label', input.getAttribute('aria-label') || 'Equation');
+      if (this.kbOpen) ta.setAttribute('inputmode', 'none');
+    }
+    row.classList.add('has-mq');
+    // Typing in the text box when the field arrived: carry on in the field.
+    if (document.activeElement === input) { mf.focus(); mf.moveToRightEnd(); }
+  };
+
+  /** The maths field changed: put its plain reading in the text box. */
+  Grapher.prototype.mathEdited = function (id, latex) {
+    const it = this.item(id);
+    const input = this.root && this.root.querySelector('[data-expr="' + CSS.escape(id) + '"]');
+    if (!it || !input) return;
+    const plain = window.FluxMathField.toPlain(latex);
+    if (input.value === plain) return;
+    it.tex = latex;
+    input.value = plain;
+    input._fromMath = true;
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } finally { input._fromMath = false; }
+  };
+
+  /** Put the cursor in an equation: its maths field, or its text box without one. */
+  Grapher.prototype.focusExpr = function (id) {
+    const inp = this.root && this.root.querySelector('[data-expr="' + CSS.escape(id) + '"]');
+    if (!inp) return false;
+    if (inp._mf) { inp._mf.focus(); inp._mf.moveToRightEnd(); } else inp.focus();
+    return true;
+  };
+
+  /** Enter: on to the next equation, or a new one after the last. */
+  Grapher.prototype.exprEnter = function (id) {
+    const i = this.doc.items.findIndex((x) => x.id === id);
+    const nxt = this.doc.items.slice(i + 1).find((x) => x.type === 'expr');
+    if (nxt) this.focusExpr(nxt.id);
+    else this.addItem('expr');
+  };
+
+  /** ↑ from the top line or ↓ from the bottom one moves between equations, as in Desmos. */
+  Grapher.prototype.focusExprStep = function (id, dir) {
+    const exprs = this.doc.items.filter((x) => x.type === 'expr');
+    const to = exprs[exprs.findIndex((x) => x.id === id) + dir];
+    if (to) this.focusExpr(to.id);
+  };
+
+  /** Backspace in an empty equation removes it and goes back to the one above. */
+  Grapher.prototype.deleteEmptyExpr = function (id) {
+    const it = this.item(id);
+    const exprs = this.doc.items.filter((x) => x.type === 'expr');
+    if (!it || String(it.src || '').trim() || exprs.length < 2) return;
+    const k = exprs.indexOf(it);
+    const back = exprs[k - 1] || exprs[k + 1];
+    this.removeItem(id);
+    if (back) this.focusExpr(back.id);
   };
 
   Grapher.prototype.renderParams = function () {
@@ -1962,7 +2074,10 @@
     this.draw();
     const sel = type === 'table' ? '.flg-item[data-id="' + CSS.escape(it.id) + '"] .flg-cell' : '[data-expr="' + CSS.escape(it.id) + '"]';
     const f = this.root.querySelector(sel);
-    if (f) { f.focus(); f.scrollIntoView({ block: 'nearest' }); }
+    if (f) {
+      if (f._mf) this.focusExpr(it.id); else f.focus();
+      (f.closest('.flg-item') || f).scrollIntoView({ block: 'nearest' });
+    }
   };
 
   Grapher.prototype.removeItem = function (id) {
@@ -2225,8 +2340,14 @@
         const it = self.item(d.expr);
         if (!it) return;
         it.src = t.value;
+        // Text from anywhere but the maths field (a paste, a test, the old
+        // keypad path) is shown in the field too.
+        if (!t._fromMath) {
+          delete it.tex;
+          if (t._mf) window.FluxMathField.set(t._mf, window.FluxMathField.toLatex(it.src));
+        }
         const row = t.closest('.flg-item');
-        if (row) {
+        if (row && !row.classList.contains('has-mq')) {
           const h = typesetExpr(t.value);
           const m = row.querySelector('.flg-math');
           const live = row.querySelector('.flg-math-live');
@@ -2292,6 +2413,10 @@
         it.src = m[1] + '=' + v;
         const box = root.querySelector('[data-expr="' + CSS.escape(it.id) + '"]');
         if (box && box !== document.activeElement) box.value = it.src;
+        if (box && box._mf && !box._mf.el().contains(document.activeElement)) {
+          delete it.tex;
+          window.FluxMathField.set(box._mf, window.FluxMathField.toLatex(it.src));
+        }
         self.touch();
         self.draw();
       } else if (d.prange || d.pval) {
@@ -2332,7 +2457,11 @@
 
     root.addEventListener('focusin', (e) => {
       const d = e.target.dataset || {};
-      if (d.expr) { self.setActive(d.expr); self._kbInput = e.target; }
+      if (d.expr) { self.setActive(d.expr); self._kbInput = e.target; return; }
+      // The maths field's own hidden textarea: the row it sits in.
+      const field = e.target.closest && e.target.closest('.flg-mq');
+      const row = field && field.closest('.flg-item--expr');
+      if (row) { self.setActive(row.dataset.id); self._kbInput = row.querySelector('.flg-expr'); }
     });
 
     root.addEventListener('keydown', (e) => {
@@ -2355,12 +2484,7 @@
         if (next) { next.focus(); next.select(); }
       } else if (d.expr && e.key === 'Enter') {
         e.preventDefault();
-        const i = self.doc.items.findIndex((x) => x.id === d.expr);
-        const nxt = self.doc.items.slice(i + 1).find((x) => x.type === 'expr');
-        if (nxt) {
-          const inp = root.querySelector('[data-expr="' + CSS.escape(nxt.id) + '"]');
-          if (inp) inp.focus();
-        } else self.addItem('expr');
+        self.exprEnter(d.expr);
       }
     });
 
@@ -2498,7 +2622,7 @@
     if (btn) btn.setAttribute('aria-pressed', String(open));
     this.root.classList.toggle('has-kb', open);
     // With the keypad up, a phone should not also raise its own keyboard.
-    this.root.querySelectorAll('.flg-expr').forEach((el) => {
+    this.root.querySelectorAll('.flg-expr, .flg-mq textarea').forEach((el) => {
       if (open) el.setAttribute('inputmode', 'none'); else el.removeAttribute('inputmode');
     });
     if (!kb) return;
@@ -2506,9 +2630,9 @@
     if (open) {
       this.renderKeypad(this._kbPage || 'main');
       const t = this.kbTarget();
-      if (t) {
+      // Carry on from the end of the equation, the way you would by hand.
+      if (t && t._mf) { t._mf.focus(); t._mf.moveToRightEnd(); } else if (t) {
         t.focus({ preventScroll: true });
-        // Carry on from the end of the equation, the way you would by hand.
         t.setSelectionRange(t.value.length, t.value.length);
       }
     }
@@ -2548,6 +2672,14 @@
     if (key === '@main' || key === '@fn' || key === '@abc') { this.renderKeypad(key.slice(1)); return; }
     const el = this.kbTarget();
     if (!el) return;
+    if (el._mf) {
+      el._mf.focus();
+      if (key === '@enter') {
+        const row = el.closest('.flg-item');
+        if (row) this.exprEnter(row.dataset.id);
+      } else window.FluxMathField.press(el._mf, key);
+      return;
+    }
     el.focus({ preventScroll: true });
     const v = el.value;
     let a = el.selectionStart == null ? v.length : el.selectionStart;
