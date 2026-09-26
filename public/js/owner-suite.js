@@ -2198,8 +2198,8 @@
     const who=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:recipient;
     const ok=await FluxOwnerMessages.send(recipient,title,body);
     if(!ok){
-      // Almost always the migration: the table simply is not there yet.
-      if(typeof showToast==='function')showToast('Could not send — has the owner_direct_messages migration been applied?','error');
+      const why=typeof FluxOwnerMessages.lastError==='function'?FluxOwnerMessages.lastError():'';
+      if(typeof showToast==='function')showToast('Could not send'+(why?' — '+why:'')+'.','error');
       return;
     }
     const bodyEl=document.getElementById('osDmBody');if(bodyEl)bodyEl.value='';
