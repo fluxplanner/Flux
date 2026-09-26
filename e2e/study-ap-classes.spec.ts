@@ -121,8 +121,9 @@ test.describe('AP course tools sit on their parent subject', () => {
        the shared Languages pill, plus Visual Arts, Global Politics, and French,
        German and Spanish as subjects in their own right. Calculus, rhetoric and
        orchestra still ride on math, english and music rather than adding pills
-       of their own, which is what this test is actually about. */
-    expect(pills).toHaveLength(15);
+       of their own, which is what this test is actually about. The sixteenth
+       is Lab graphs, the Measurements grapher's own science subject. */
+    expect(pills).toHaveLength(16);
     expect(pills).not.toContain('calculus');
     expect(pills).not.toContain('rhetoric');
     expect(pills).not.toContain('orchestra');

@@ -324,11 +324,19 @@
          simple Flux grapher: table, fit, chart. Uncertainties, error bars and
          the steepest/shallowest gradient method live in the standalone tool at
          /grapher.html, which needs no account at all. */
-      { id: 'graph', name: 'Grapher', icon: '📈', desc: 'graph plot data points line of best fit gradient table chart', render: (b) => { if (window.FluxGrapher) { window.FluxGrapher.mount(b, { mode: 'simple' }); } else { b.innerHTML = '<div class="fsh-card" style="padding:24px">Grapher still loading — reopen in a moment.</div>'; } }, ai: { name: 'graphEval', description: 'Evaluate f(x). Arg: "x^2+1 @ 3" (expr @ x).', params: { expr: 'string', x: 'number' }, run: (a) => { const m = String(a).split('@'); const fn = compile(m[0]); return +fn(parseFloat(m[1] || 0)).toFixed(6); } } },
+      /* Functions only: equations, sliders, regressions. The Measurements
+         half moved to Science → Lab graphs (registered below). */
+      { id: 'graph', name: 'Grapher', icon: '📈', desc: 'graph plot function equation curve slider regression desmos', render: (b) => { if (window.FluxGrapher) { window.FluxGrapher.mount(b, { mode: 'simple', only: 'functions' }); } else { b.innerHTML = '<div class="fsh-card" style="padding:24px">Grapher still loading — reopen in a moment.</div>'; } }, ai: { name: 'graphEval', description: 'Evaluate f(x). Arg: "x^2+1 @ 3" (expr @ x).', params: { expr: 'string', x: 'number' }, run: (a) => { const m = String(a).split('@'); const fn = compile(m[0]); return +fn(parseFloat(m[1] || 0)).toFixed(6); } } },
       { id: 'unit', name: 'Unit circle', icon: '🧭', desc: 'unit circle sin cos tan trigonometry angle', render: renderUnitCircle },
       { id: 'matrix', name: 'Matrix', icon: '⊞', desc: 'matrix determinant inverse transpose', render: renderMatrix },
       { id: 'stats', name: 'Statistics', icon: '𝝈', desc: 'statistics mean median standard deviation quartiles', render: renderStats, ai: { name: 'statsSummary', description: 'Summary statistics. Arg: "12 15 14 10".', params: { numbers: 'list' }, run: (a) => stats(String(a).split(/[\s,]+/).map(Number).filter((x) => !isNaN(x))) } },
       { id: 'normal', name: 'Normal', icon: '🔔', desc: 'normal distribution probability z-score bell curve', render: renderNormal },
+    ]);
+    /* The lab half of the same grapher, as its own science subject. Kept here
+       beside the Functions registration so both halves of the grapher are
+       wired up in one place. */
+    H.register('labgraph', [
+      { id: 'lab', name: 'Measurements grapher', icon: '📈', desc: 'lab data measurements uncertainty error bars line of best fit gradient table max min lines', render: (b) => { if (window.FluxGrapher) { window.FluxGrapher.mount(b, { mode: 'simple', only: 'data' }); } else { b.innerHTML = '<div class="fsh-card" style="padding:24px">Grapher still loading — reopen in a moment.</div>'; } } },
     ]);
   }
   boot();

@@ -393,11 +393,15 @@
     return new Date(t).toLocaleDateString();
   }
 
-  /** The list of saved graphs. onPick receives the full row. */
-  async function open(onPick) {
+  /** The list of saved graphs. onPick receives the full row. `opts.kind`
+   *  lists only that half — the planner's Maths grapher shows function
+   *  graphs, Lab graphs shows measurement graphs. */
+  async function open(onPick, opts) {
     const s = await need('open');
     if (!s) return;
-    sheet(CLOSE + '<h2 class="fgc-h">Your graphs</h2>'
+    const kind = opts && (opts.kind === 'functions' || opts.kind === 'data') ? opts.kind : null;
+    const heading = kind === 'functions' ? 'Your function graphs' : kind === 'data' ? 'Your measurement graphs' : 'Your graphs';
+    sheet(CLOSE + '<h2 class="fgc-h">' + heading + '</h2>'
       + '<div class="fgc-list" aria-live="polite"><div class="fgc-empty">Loading…</div></div>', async (box, close) => {
       const listEl = box.querySelector('.fgc-list');
       const paint = (rows) => {
@@ -416,7 +420,7 @@
       };
       let rows = [];
       try {
-        rows = (await list(s)) || [];
+        rows = ((await list(s)) || []).filter((r) => !kind || r.kind === kind);
         paint(rows);
       } catch (e) {
         listEl.innerHTML = '<div class="fgc-empty fgc-empty--err">' + esc(e.message) + '</div>';
@@ -432,7 +436,7 @@
             announceDeleted(r.id, r.title);
             // Read the list back rather than trusting the local copy, so what
             // it shows is what the account holds.
-            try { rows = (await list(s)) || []; } catch (e2) { rows = rows.filter((x) => x.id !== r.id); }
+            try { rows = ((await list(s)) || []).filter((x) => !kind || x.kind === kind); } catch (e2) { rows = rows.filter((x) => x.id !== r.id); }
             paint(rows);
             toast('Deleted "' + r.title + '".', 'success');
           } catch (err) { toast(err.message, 'error'); }

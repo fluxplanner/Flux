@@ -231,6 +231,11 @@
     { id:'chemistry', name:'Chemistry', ico:'⚗', accent:'#34d0ff', flagship:true, group:'science' },
     { id:'physics', name:'Physics', ico:'🪐', accent:'#7c8cff', group:'science' },
     { id:'biology', name:'Biology', ico:'🧬', accent:'#37c98a', group:'science' },
+    /* The Measurements grapher as a science subject of its own: lab tables
+       with uncertainties, error bars, best-fit and max/min lines. It sat as a
+       tab inside Maths → Grapher, where a physics or chemistry student had to
+       go looking for it; Maths keeps the Functions grapher. */
+    { id:'labgraph', name:'Lab graphs', ico:'📈', accent:'#2dd4bf', group:'science' },
     { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def', group:'maths-tech' },
     { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9', group:'maths-tech' },
     // "& Geo" because it still carries the capitals quiz and the world map;

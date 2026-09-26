@@ -504,7 +504,8 @@ test.describe('Flux Grapher', () => {
     await page.locator('.flg-regpop [data-reg="linear"]').click();
     await expect(page.locator('.flg-expr').last()).toHaveValue('y1 ~ m x1 + b');
     const info = page.locator('.flg-item--expr').last().locator('.flg-info');
-    await expect(info).toContainText('y1 = ');
+    // The fitted equation is typeset now (y₁ = …), so match it loosely.
+    await expect(info.locator('.flg-reqn')).toContainText(/y1\s*=/);
     await expect(info).toContainText('R² =');
     await expect(info).toContainText('r =');
     await expect(info).toContainText('RMSE');
@@ -788,5 +789,55 @@ test.describe('a deleted saved graph stays deleted', () => {
     await sheet.locator('[data-delrow]').click();
     await expect(sheet.locator('.fgc-row')).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).fluxGrapherPage.instance.cloud)).toBeNull();
+  });
+});
+
+/**
+ * Desmos reads "ax1" as a × x1 when x1 is a column; this said "Use a column
+ * or list on the right". And equations are typeset — italic letters, raised
+ * powers, x₁ — whenever they are not being typed in.
+ */
+test.describe('Desmos-style typing', () => {
+  test('y1 ~ ax1^2 + bx1 + c fits, with no spaces needed', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    await page.locator('[data-add="table"]').click();
+    const t = page.locator('.flg-item--table').first();
+    const rows: Array<[string, string]> = [['1', '2.2'], ['2', '3.1'], ['3', '5.9'], ['4', '10.2'], ['5', '15.8']];
+    for (let i = 0; i < rows.length; i++) {
+      await t.locator(`[data-cell="${i}:0"]`).fill(rows[i][0]);
+      await t.locator(`[data-cell="${i}:1"]`).fill(rows[i][1]);
+    }
+    await page.locator('[data-add="expr"]').click();
+    const reg = page.locator('.flg-item--expr').last();
+    await reg.locator('.flg-expr').fill('y1~ax1^2+bx1+c');
+    await expect(reg.locator('.flg-err')).toHaveCount(0);
+    await expect(reg).toContainText('R²');
+    await expect(reg).toContainText(/a = 0\.7\d/);
+  });
+
+  test('equations are typeset when not being typed in', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const row = page.locator('.flg-item--expr').first();
+    await row.locator('.flg-expr').fill('y=(x+1)/(x-2)+x^2');
+    await page.locator('.flg-stage').click({ position: { x: 20, y: 20 } });
+    const math = row.locator('.flg-math');
+    await expect(math.locator('.tx-frac')).toHaveCount(1);
+    await expect(math.locator('sup')).toHaveText('2');
+    // The raw text is hidden under the typeset copy, not shown beside it.
+    expect(await row.locator('.flg-expr').evaluate((e) => getComputedStyle(e).color)).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    // Clicking it edits the raw text again.
+    await row.locator('.flg-expr').click();
+    await expect(math).toHaveCSS('visibility', 'hidden');
+    await expect(row.locator('.flg-expr')).toHaveValue('y=(x+1)/(x-2)+x^2');
+  });
+
+  test('a letter\'s digits are its subscript: x1 is x₁', async ({ page }) => {
+    await open(page, { mode: 'functions' });
+    const row = page.locator('.flg-item--expr').first();
+    await row.locator('.flg-expr').fill('y=ax1+1e5');
+    await page.locator('.flg-stage').click({ position: { x: 20, y: 20 } });
+    await expect(row.locator('.flg-math sub')).toHaveText('1');
+    // "1e5" is a number, not e with a subscript.
+    await expect(row.locator('.flg-math sub')).toHaveCount(1);
   });
 });

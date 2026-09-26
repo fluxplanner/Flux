@@ -67,3 +67,37 @@ test('a pinned important date can become the countdown with its ⏳ button', asy
   await page.locator('#fluxImpList .fluxw-imp-cd.is-on').click();
   await expect.poll(() => page.evaluate(() => (window as any).fluxGetCountdown())).toBeNull();
 });
+
+/*
+ * The countdown moved into the top bar, and on a laptop screen it slid over
+ * "New task": the right-hand group could not shrink and the left one could
+ * shrink narrower than its own buttons. Nothing in the top bar may overlap,
+ * at any laptop width, with a long countdown name.
+ */
+test('the top bar never overlaps at laptop widths', async ({ page }) => {
+  await gotoScenario(page, 'student-semester');
+  await page.evaluate(() => {
+    const w = window as any;
+    const d = new Date();
+    d.setDate(d.getDate() + 257);
+    w.fluxSetCountdown('Last Day of School', w.fluxLocalYMD(d));
+    w.nav('calendar');
+  });
+  for (const width of [1440, 1200, 1100, 1000, 900, 800]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.waitForTimeout(250);
+    const r = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('.topbar .topbar-left-cluster > *, .topbar .topbar-right > *, #topbarTaskPill')]
+        .filter((e) => (e as HTMLElement).offsetParent && e.getBoundingClientRect().width > 0)
+        .map((e) => ({ id: e.id || (e as HTMLElement).className.split(' ')[0], b: e.getBoundingClientRect() }))
+        .sort((a, b) => a.b.left - b.b.left);
+      const bad: string[] = [];
+      for (let i = 1; i < els.length; i++) if (els[i].b.left < els[i - 1].b.right - 1) bad.push(els[i - 1].id + ' × ' + els[i].id);
+      const off = els.filter((e) => e.b.right > innerWidth + 1).map((e) => e.id);
+      return { bad, off };
+    });
+    expect(r.bad, `overlap at ${width}px`).toEqual([]);
+    expect(r.off, `pushed off-screen at ${width}px`).toEqual([]);
+  }
+  await expect(page.locator('#topbarCountdown')).toHaveAttribute('title', /Last Day of School/);
+});
