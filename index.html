@@ -106,7 +106,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.c06b9b1c.css">
+<link rel="stylesheet" href="public/bundles/flux.0ab639e0.css">
 </head>
 <body>
 <noscript>
@@ -1130,6 +1130,7 @@
           <span class="topbar-new-task-icon" aria-hidden="true">＋</span>
           <span class="topbar-new-task-label">New task</span>
         </button>
+        <button type="button" class="topbar-cd" id="topbarCountdown" hidden aria-haspopup="dialog" aria-expanded="false" onclick="fluxToggleCountdownPop(event)"></button>
         <div class="date-pill topbar-desktop-only" id="datePill"></div>
         <div id="syncIndicator" class="sync-badge offline topbar-sync-pill topbar-desktop-only" style="display:none">Local</div>
         <!-- The Flux app switcher, for phones: the desktop one lives in the
@@ -1149,6 +1150,24 @@
       <div id="topbarEnergy" style="display:none"></div>
       <div id="abPill" style="display:none"></div>
       <div id="topbarClock" style="display:none"></div>
+    </div>
+
+    <!-- The countdown's panel: the live numbers, and the form to change it. -->
+    <div class="tcd-pop" id="countdownPop" role="dialog" aria-label="Countdown" hidden>
+      <div id="countdownPopBody"></div>
+      <div id="countdownForm" hidden>
+        <label class="tcd-flabel" for="countdownName">What are you counting down to?</label>
+        <input type="text" id="countdownName" maxlength="80" placeholder="e.g. SAT, Maths Paper 1, a trip">
+        <div class="tcd-frow">
+          <div><label class="tcd-flabel" for="countdownDate">Date</label><input type="date" id="countdownDate"></div>
+          <div><label class="tcd-flabel" for="countdownTime">Time <span>(optional)</span></label><input type="time" id="countdownTime"></div>
+        </div>
+        <div class="tcd-factions">
+          <button type="button" onclick="fluxSaveCountdown()">Save</button>
+          <button type="button" class="btn-sec" onclick="fluxToggleCountdownForm()">Cancel</button>
+        </div>
+        <div id="countdownFormMsg" class="tcd-fmsg" role="status"></div>
+      </div>
     </div>
 
     <!-- Mode switch bar (educators only — toggles Work / Personal mode) -->
@@ -1243,47 +1262,17 @@
       </div>
 
       <div id="fluxDashSections" class="flux-dash-sections">
-      <section class="dash-v2-pulse dash-workload-compact card" aria-label="Next 7 days workload" data-flux-section="pulse" style="margin-bottom:0">
-        <div id="dashWeekStrip" class="dash-week-strip" aria-label="Next 7 days — workload by due date"></div>
-      </section>
+      <!-- The "Next 7 days" workload bars were removed: they pushed the task
+           list below the fold, and the tasks themselves are the plan. -->
 
       <!-- V4: predictive gap fill (auto-hide when empty) -->
       <div id="fluxGapFillCard" data-flux-section="gapfill" style="display:none"></div>
 
-      <!-- The countdown only ever tracked the next unfinished test, and hid
-           itself entirely when there wasn't one. It can now point at any date
-           and time — a trip, a deadline, results day — and falls back to the
-           next test when cleared. The empty state matters: with nothing to
-           count down to the card was invisible, so there was nowhere to set
-           one from.
-
-           The form stays last and starts hidden. flux-exam-prep-plan.js
-           appends its block to .dash-v2-countdown-card, so anything placed
-           after the grid sits above that block — invisible by default, which
-           leaves the normal reading order untouched. -->
-      <div id="countdownCard" class="dash-v2-countdown" style="display:none" data-flux-section="countdown">
-        <div class="card dash-v2-countdown-card">
-          <div class="dash-v2-countdown-kicker" id="countdownKicker">Assessment</div>
-          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <h3 class="dash-v2-countdown-heading" id="countdownHeading">Next exam countdown</h3>
-            <button type="button" id="countdownSetBtn" class="btn-sec" style="padding:4px 10px;font-size:.72rem;white-space:nowrap" onclick="fluxToggleCountdownForm()">Count down to…</button>
-          </div>
-          <div id="countdownLabel" class="dash-v2-countdown-label"></div>
-          <div class="dash-v2-countdown-grid" id="countdownGrid"></div>
-          <div id="countdownForm" hidden style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-            <div class="cd-form-row" style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
-              <div><label style="font-size:.7rem;color:var(--muted)" for="countdownName">What are you counting down to?</label><input type="text" id="countdownName" placeholder="e.g. Maths Paper 1" style="margin:0"></div>
-              <div><label style="font-size:.7rem;color:var(--muted)" for="countdownDate">Date</label><input type="date" id="countdownDate" style="margin:0"></div>
-              <div><label style="font-size:.7rem;color:var(--muted)" for="countdownTime">Time <span style="color:var(--muted2)">(optional)</span></label><input type="time" id="countdownTime" style="margin:0"></div>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:10px">
-              <button type="button" onclick="fluxSaveCountdown()" style="flex:1">Save</button>
-              <button type="button" class="btn-sec" id="countdownClearBtn" onclick="fluxClearCountdown()">Back to next test</button>
-            </div>
-            <div id="countdownFormMsg" role="status" style="min-height:1.1em;margin-top:8px;font-size:.74rem;color:var(--red)"></div>
-          </div>
-        </div>
-      </div>
+      <!-- The countdown moved to the top bar (#topbarCountdown), so the task
+           list is no longer pushed down the page. This empty element stays so
+           the dashboard's "show / hide sections" setting can still switch the
+           countdown off: hiding the "countdown" section hides the pill. -->
+      <div id="countdownCard" class="dash-v2-countdown" data-flux-section="countdown" hidden></div>
 
       <div id="dashClassScheduleWrap" class="dash-class-schedule-wrap" data-flux-section="schedule" style="display:none" aria-live="polite">
         <div id="dynamicFocusCard" class="dash-dynamic-focus-inner"></div>
@@ -1389,7 +1378,7 @@
               </div>
             </div>
             <div class="cal-cd-form" id="calCountdownForm" hidden>
-              <label class="cal-cd-label" for="calCountdownName">Count down to this day on your dashboard</label>
+              <label class="cal-cd-label" for="calCountdownName">Count down to this day — it shows in the top bar</label>
               <div class="cal-cd-row">
                 <input type="text" id="calCountdownName" maxlength="80" placeholder="What is it? e.g. SAT"
                   onkeydown="if(event.key==='Enter'){event.preventDefault();fluxCalCountdownSave();}if(event.key==='Escape'){this.closest('.cal-cd-form').hidden=true;}">
@@ -2930,8 +2919,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.50ec596d.js"></script>
-<script defer src="public/bundles/flux-features.04e97eec.js"></script>
+<script defer src="public/bundles/flux-core.d2498f31.js"></script>
+<script defer src="public/bundles/flux-features.65268790.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

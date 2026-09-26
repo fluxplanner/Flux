@@ -22,7 +22,7 @@ async function selectDayAhead(page: import('@playwright/test').Page, days: numbe
   }, days);
 }
 
-test('count down to a day from the calendar, see it on the dashboard, and stop it', async ({ page }) => {
+test('count down to a day from the calendar, see it in the top bar, and stop it', async ({ page }) => {
   await gotoScenario(page, 'student-semester');
   const iso = await selectDayAhead(page, 20);
 
@@ -33,18 +33,15 @@ test('count down to a day from the calendar, see it on the dashboard, and stop i
   await expect(page.locator(`#calGrid .cal-day[data-cal-date="${iso}"]`)).toHaveClass(/cal-day--countdown/);
   await expect(page.locator('#calCountdownBtn')).toHaveAttribute('aria-pressed', 'true');
 
-  await page.evaluate(() => (window as any).nav('dashboard'));
-  await page.waitForTimeout(600);
-  await expect(page.locator('#countdownHeading')).toHaveText('SAT');
-  await expect(page.locator('#countdownGrid')).toContainText('20');
+  // It shows in the top bar, on every tab.
+  await expect(page.locator('#topbarCountdown')).toContainText('SAT');
+  await expect(page.locator('#topbarCountdown')).toContainText('20');
 
   // The same button stops it, and the dashboard goes back to the next test.
   await selectDayAhead(page, 20);
   await page.locator('#calCountdownBtn').click();
   await expect(page.locator('#calGrid .cal-day--countdown')).toHaveCount(0);
-  await page.evaluate(() => (window as any).nav('dashboard'));
-  await page.waitForTimeout(600);
-  await expect(page.locator('#countdownHeading')).not.toHaveText('SAT');
+  await expect(page.locator('#topbarCountdown')).not.toContainText('SAT');
 });
 
 test('a countdown needs a name, and the form suggests one from the day', async ({ page }) => {

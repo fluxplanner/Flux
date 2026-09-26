@@ -4956,10 +4956,11 @@ function fluxGetCountdown(){
   const c=load(FLUX_COUNTDOWN_KEY,null);
   return c&&typeof c==='object'&&c.date?c:null;
 }
-function fluxToggleCountdownForm(){
+function fluxToggleCountdownForm(force){
   const f=document.getElementById('countdownForm');
   if(!f)return;
-  const opening=f.hidden;
+  const opening=typeof force==='boolean'?force:f.hidden;
+  if(opening&&document.getElementById('countdownPop')?.hidden)fluxOpenCountdownPop();
   f.hidden=!opening;
   if(opening){
     /* Prefill from the saved target — opening the form to adjust a time should
@@ -4980,8 +4981,11 @@ function fluxSaveCountdown(){
   const date=document.getElementById('countdownDate')?.value||'';
   const time=document.getElementById('countdownTime')?.value||'';
   if(!date){say('Pick a date first.');return;}
-  if(!label){say('Give it a name, so the card says what it is counting down to.');return;}
-  save(FLUX_COUNTDOWN_KEY,{label,date,time});
+  if(!label){say('Give it a name, so the countdown says what it is counting down to.');return;}
+  const prev=fluxGetCountdown();
+  // When it was set, so the panel can show how much of the wait has gone.
+  const setAt=prev&&prev.date===date&&prev.setAt?prev.setAt:Date.now();
+  save(FLUX_COUNTDOWN_KEY,{label,date,time,setAt});
   syncKey('countdown',1);
   const f=document.getElementById('countdownForm');if(f)f.hidden=true;
   fluxCountdownChanged();
@@ -5008,10 +5012,11 @@ window.fluxClearCountdown=fluxClearCountdown;
 function fluxSetCountdown(label,date,time){
   label=String(label||'').trim().slice(0,80);
   if(!date||!label)return false;
-  save(FLUX_COUNTDOWN_KEY,{label,date,time:time||''});
+  const prev=fluxGetCountdown();
+  save(FLUX_COUNTDOWN_KEY,{label,date,time:time||'',setAt:prev&&prev.date===date&&prev.setAt?prev.setAt:Date.now()});
   syncKey('countdown',1);
   fluxCountdownChanged();
-  if(typeof showToast==='function')showToast('✓ Counting down to '+label+' — it’s on your dashboard');
+  if(typeof showToast==='function')showToast('✓ Counting down to '+label+' — it’s in the top bar');
   return true;
 }
 /** Everything that shows the countdown, redrawn after it changes. */
@@ -5073,58 +5078,163 @@ window.fluxGetCountdown=fluxGetCountdown;
 window.fluxCalCountdownToggle=fluxCalCountdownToggle;
 window.fluxCalCountdownSave=fluxCalCountdownSave;
 
-function renderCountdown(){
-  const card=document.getElementById('countdownCard');
-  if(!card)return;
-  const cell=(n,l,c)=>`<div style="background:var(--card2);border-radius:10px;padding:10px 6px;text-align:center"><div style="font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${c}">${n}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">${l}</div></div>`;
-  const setText=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
-  const grid=document.getElementById('countdownGrid');
-  const custom=fluxGetCountdown();
-
-  if(custom){
-    card.style.display='block';
-    setText('countdownKicker','Counting down');
-    setText('countdownHeading',custom.label);
-    setText('countdownLabel',custom.time?fmtFluxDue(custom.date)+' · '+formatCalTimeShort(custom.time):fmtFluxDue(custom.date));
-    const target=new Date(custom.date+'T'+(custom.time||'00:00')+':00');
-    const ms=target-new Date();
-    if(ms<=0){
-      if(grid)grid.innerHTML=cell('NOW','Status','var(--accent)')+cell(fmtFluxDue(custom.date),'Date','var(--accent)');
-    }else if(custom.time){
-      /* Hours and minutes once a time is known — "3 days" says nothing useful
-         about something happening at 09:00 tomorrow. */
-      const mins=Math.floor(ms/60000);
-      const d=Math.floor(mins/1440),h=Math.floor((mins%1440)/60),m=mins%60;
-      const c=d<=0?'var(--red)':d<=2?'var(--gold)':'var(--green)';
-      if(grid)grid.innerHTML=cell(d,'Days',c)+cell(h,'Hours','var(--accent)')+cell(m,'Mins','var(--accent)')+cell(formatCalTimeShort(custom.time),'At','var(--accent)');
-    }else{
-      const days=Math.max(0,Math.ceil(ms/86400000));
-      const c=days<=2?'var(--red)':days<=5?'var(--gold)':'var(--green)';
-      if(grid)grid.innerHTML=cell(days,'Days',c)+cell(Math.floor(days/7),'Weeks','var(--accent)')+cell(fmtFluxDue(custom.date),'Date','var(--accent)')+cell(days<=2?'SOON ⚠':days<=5?'NEAR':'OK ✓','Status',c);
-    }
-    return;
-  }
-
+/* ── The countdown pill ──────────────────────────────────────────────────────
+   It used to be a four-tile card on the dashboard, which pushed the task list
+   down the page. It now lives in the top bar on every tab — "⏳ SAT · 8 days" —
+   and opens a panel with the live days, hours and minutes, how much of the
+   wait has passed, and the form to change it. With no countdown set it
+   follows the next test, as the card did. */
+function fluxCountdownTarget(){
+  const c=fluxGetCountdown();
+  if(c)return{label:c.label,date:c.date,time:c.time||'',setAt:c.setAt||0,custom:true};
   const now=new Date();now.setHours(0,0,0,0);
   const next=tasks.filter(t=>!t.done&&(t.type==='test'||t.type==='quiz')&&t.date&&new Date(t.date+'T00:00:00')>=now)
     .sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
-  setText('countdownKicker','Assessment');
-  setText('countdownHeading','Next exam countdown');
-  if(!next){
-    /* Shown rather than hidden. The card used to vanish when no test was
-       coming, which also removed the only way to set a countdown of your own. */
-    card.style.display='block';
-    setText('countdownLabel','No test coming up. Pick something else to count down to.');
-    if(grid)grid.innerHTML='';
+  if(!next)return null;
+  const sub=getSubjects()[next.subject];
+  return{label:next.name+(sub&&sub.short?' · '+sub.short:''),date:next.date,time:next.time||'',setAt:0,custom:false};
+}
+/** Whole days to go (a date with no time counts to the start of that day), and the finer parts. */
+function fluxCountdownParts(t){
+  const target=new Date(t.date+'T'+(t.time||'00:00')+':00');
+  const ms=target-new Date();
+  const today=new Date();today.setHours(0,0,0,0);
+  const dayDiff=Math.round((new Date(t.date+'T00:00:00')-today)/86400000);
+  const mins=Math.max(0,Math.floor(ms/60000));
+  return{ms,dayDiff,d:Math.floor(mins/1440),h:Math.floor((mins%1440)/60),m:mins%60,target};
+}
+function fluxCountdownHidden(){
+  const el=document.querySelector('[data-flux-section="countdown"]');
+  return !!(el&&el.classList.contains('flux-dash-user-hidden'));
+}
+function renderCountdown(){
+  const pill=document.getElementById('topbarCountdown');
+  if(!pill)return;
+  if(fluxCountdownHidden()){pill.hidden=true;fluxCloseCountdownPop();return;}
+  const t=fluxCountdownTarget();
+  pill.hidden=false;
+  pill.classList.remove('is-soon','is-near','is-far','is-today','is-past','is-empty');
+  if(!t){
+    pill.classList.add('is-empty');
+    pill.innerHTML='<span class="tcd-ico" aria-hidden="true">⏳</span><span class="tcd-name">Count down</span>';
+    pill.title='Count down to something — the SAT, a trip, results day';
+    pill.setAttribute('aria-label','Set a countdown');
+  }else{
+    const p=fluxCountdownParts(t);
+    let num,unit,short,spoken;
+    if(p.ms<=0&&p.dayDiff<0){num='';unit=Math.abs(p.dayDiff)===1?'yesterday':Math.abs(p.dayDiff)+' days ago';short='done';pill.classList.add('is-past');spoken=t.label+' was '+unit;}
+    else if(p.dayDiff===0||(p.ms<=0&&p.dayDiff===0)){num='';unit=t.time&&p.ms>0?'in '+(p.h?p.h+'h ':'')+p.m+'m':'today';short=t.time&&p.ms>0?(p.h?p.h+'h':p.m+'m'):'today';pill.classList.add('is-today');spoken=t.label+' '+unit;}
+    else if(t.time&&p.d<2){num=String(p.d*24+p.h);unit='hrs';short=num+'h';pill.classList.add('is-soon');spoken=t.label+' in '+num+' hours';}
+    else{const days=p.dayDiff;num=String(days);unit=days===1?'day':'days';short=days+'d';pill.classList.add(days<=2?'is-soon':days<=7?'is-near':'is-far');spoken=t.label+' in '+days+' '+unit;}
+    pill.innerHTML='<span class="tcd-ico" aria-hidden="true">⏳</span>'
+      +'<span class="tcd-name">'+esc(t.label)+'</span>'
+      +'<span class="tcd-count">'+(num?'<b>'+esc(num)+'</b> ':'')+'<span class="tcd-unit">'+esc(unit)+'</span></span>'
+      +'<span class="tcd-short" aria-hidden="true">'+esc(short)+'</span>';
+    pill.title=(t.custom?'Counting down: ':'Next test: ')+spoken;
+    pill.setAttribute('aria-label',(t.custom?'Countdown: ':'Next test: ')+spoken+'. Open the countdown');
+  }
+  if(!document.getElementById('countdownPop')?.hidden)renderCountdownPop();
+}
+function renderCountdownPop(){
+  const body=document.getElementById('countdownPopBody');
+  if(!body)return;
+  const t=fluxCountdownTarget();
+  if(!t){
+    body.innerHTML='<div class="tcd-empty"><div class="tcd-kicker">Countdown</div>'
+      +'<p>Nothing to count down to yet. Pick a day — the SAT, a trip, results day — and it sits here in the top bar on every page.</p>'
+      +'<div class="tcd-actions"><button type="button" onclick="fluxToggleCountdownForm(true)">Start a countdown</button></div></div>';
     return;
   }
-  card.style.display='block';
-  const diff=Math.max(0,Math.floor((new Date(next.date+'T00:00:00')-now)/86400000));
-  const sub=getSubjects()[next.subject];
-  const statusC=diff<=2?'var(--red)':diff<=5?'var(--gold)':'var(--green)';
-  setText('countdownLabel',next.name+(sub?' · '+sub.short:''));
-  if(grid)grid.innerHTML=cell(diff,'Days','var(--accent)')+cell(Math.floor(diff/7),'Weeks','var(--accent)')+cell(fmtFluxDue(next.date),'Date','var(--accent)')+cell(diff<=2?'SOON ⚠':diff<=5?'NEAR':'OK ✓','Status',statusC);
+  const p=fluxCountdownParts(t);
+  const past=p.ms<=0;
+  const when=p.target.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+(t.time?' · '+formatCalTimeShort(t.time):'');
+  const tile=(n,l)=>'<div class="tcd-tile"><b>'+n+'</b><span>'+l+'</span></div>';
+  let big;
+  if(past&&p.dayDiff<0)big='<div class="tcd-done">'+esc(t.label)+' was '+(Math.abs(p.dayDiff)===1?'yesterday':Math.abs(p.dayDiff)+' days ago')+'</div>';
+  else if(past)big='<div class="tcd-done">It’s today — good luck!</div>';
+  else if(t.time)big='<div class="tcd-tiles">'+tile(p.d,p.d===1?'day':'days')+tile(p.h,p.h===1?'hour':'hours')+tile(p.m,p.m===1?'min':'mins')+'</div>';
+  else{
+    /* A day with no time is counted in whole days, the way the pill says it
+       ("8 days"). Hours to midnight would read 7 days 0 hours and disagree.
+       Weekdays left is what a revision plan runs on. */
+    const days=p.dayDiff;
+    const wk=Math.floor(days/7),rem=days%7;
+    let weekdays=0;
+    const cur=new Date();cur.setHours(0,0,0,0);
+    for(let i=1;i<days;i++){const d=new Date(cur);d.setDate(cur.getDate()+i);const w=d.getDay();if(w!==0&&w!==6)weekdays++;}
+    big='<div class="tcd-tiles">'+tile(days,days===1?'day':'days')
+      +tile(wk?wk+'w'+(rem?' '+rem+'d':''):rem+'d','weeks')
+      +tile(weekdays,weekdays===1?'school day':'school days')+'</div>';
+  }
+  // How much of the wait has gone, once we know when the countdown started.
+  let progress='';
+  if(t.setAt&&!past){
+    const total=p.target-t.setAt,gone=Date.now()-t.setAt;
+    if(total>0){
+      const pct=Math.max(0,Math.min(100,Math.round(gone/total*100)));
+      progress='<div class="tcd-prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'" aria-label="How much of the wait has passed"><i style="width:'+pct+'%"></i></div>'
+        +'<div class="tcd-progl">'+pct+'% of the way there</div>';
+    }
+  }
+  body.innerHTML='<div class="tcd-kicker">'+(t.custom?'Counting down to':'Your next test')+'</div>'
+    +'<div class="tcd-title">'+esc(t.label)+'</div>'
+    +'<div class="tcd-when">'+esc(when)+'</div>'
+    +big+progress
+    +'<div class="tcd-actions">'
+    +'<button type="button" class="btn-sec" onclick="fluxToggleCountdownForm()">'+(t.custom?'Change':'Count down to something else')+'</button>'
+    +'<button type="button" class="btn-sec" onclick="fluxCountdownShowInCalendar()">Show in calendar</button>'
+    +(t.custom?'<button type="button" class="btn-sec tcd-stop" onclick="fluxClearCountdown()">Stop</button>':'')
+    +'</div>';
 }
+function fluxOpenCountdownPop(){
+  const pop=document.getElementById('countdownPop'),pill=document.getElementById('topbarCountdown');
+  if(!pop||!pill)return;
+  // Out of the app shell: an ancestor with a transform would pin "fixed" to itself.
+  if(pop.parentElement!==document.body)document.body.appendChild(pop);
+  renderCountdownPop();
+  const f=document.getElementById('countdownForm');if(f)f.hidden=true;
+  pop.hidden=false;
+  pill.setAttribute('aria-expanded','true');
+  const r=pill.getBoundingClientRect();
+  const w=Math.min(340,window.innerWidth-16);
+  pop.style.width=w+'px';
+  pop.style.top=Math.round(r.bottom+8)+'px';
+  pop.style.left=Math.round(Math.max(8,Math.min(window.innerWidth-w-8,r.right-w)))+'px';
+  setTimeout(()=>{document.addEventListener('pointerdown',fluxCountdownOutside,true);document.addEventListener('keydown',fluxCountdownKey,true);},0);
+}
+function fluxCloseCountdownPop(){
+  const pop=document.getElementById('countdownPop');
+  if(pop&&!pop.hidden)pop.hidden=true;
+  document.getElementById('topbarCountdown')?.setAttribute('aria-expanded','false');
+  document.removeEventListener('pointerdown',fluxCountdownOutside,true);
+  document.removeEventListener('keydown',fluxCountdownKey,true);
+}
+function fluxCountdownOutside(e){
+  const pop=document.getElementById('countdownPop'),pill=document.getElementById('topbarCountdown');
+  if(pop&&pop.contains(e.target))return;
+  if(pill&&pill.contains(e.target))return;
+  fluxCloseCountdownPop();
+}
+function fluxCountdownKey(e){if(e.key==='Escape'){fluxCloseCountdownPop();document.getElementById('topbarCountdown')?.focus();}}
+function fluxToggleCountdownPop(e){
+  if(e)e.stopPropagation();
+  const pop=document.getElementById('countdownPop');
+  if(pop&&!pop.hidden)fluxCloseCountdownPop();else fluxOpenCountdownPop();
+}
+function fluxCountdownShowInCalendar(){
+  const t=fluxCountdownTarget();
+  fluxCloseCountdownPop();
+  if(!t)return;
+  const d=new Date(t.date+'T00:00:00');
+  nav('calendar');
+  setTimeout(()=>{try{calGlassSelectDayFromDate(d.getFullYear(),d.getMonth(),d.getDate());}catch(_){}},120);
+}
+window.fluxToggleCountdownPop=fluxToggleCountdownPop;
+window.fluxCountdownShowInCalendar=fluxCountdownShowInCalendar;
+window.renderCountdown=renderCountdown;
+// The pill counts down live: once a minute, and again when you come back to the tab.
+setInterval(()=>{if(!document.hidden)try{renderCountdown();}catch(_){}},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)try{renderCountdown();}catch(_){}});
 function setEnergy(v){
   const n=Math.max(1,Math.min(5,parseInt(String(v),10)||3));
   save('flux_energy',n);
@@ -5418,7 +5528,7 @@ function renderCalDay(){
     cdBtn.classList.toggle('is-on',on);
     cdBtn.setAttribute('aria-pressed',String(on));
     cdBtn.textContent=on?'⏳ Counting down':'⏳ Count down';
-    cdBtn.title=on?'Stop counting down to this day':'Count down to this day on your dashboard';
+    cdBtn.title=on?'Stop counting down to this day':'Count down to this day in the top bar';
     const cf=document.getElementById('calCountdownForm');
     if(cf&&cf.dataset.day!==ds){cf.hidden=true;cf.dataset.day=ds;}
   }

@@ -344,6 +344,92 @@ body[data-theme="light"] #app :is(input[type=text], input[type=search], input[ty
 #app .fluxw-imp-cd:hover { background: rgba(var(--accent-rgb), .12); color: var(--text); }
 #app .fluxw-imp-cd.is-on { background: var(--fx-accent-grad); color: #fff; }
 
+/* ── Countdown pill in the top bar ──────────────────────────────────────
+   Replaces the four-tile dashboard card, so the task list starts higher.
+   Colour carries the urgency: accent far off, gold within a week, red
+   within two days, a full accent fill on the day itself. */
+#countdownCard { display: none !important; }
+.topbar-cd {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 32px; padding: 0 13px 0 10px; margin: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), .38);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), .2), rgba(var(--accent-rgb), .06));
+  color: var(--text);
+  font-size: .8rem; font-weight: 650; letter-spacing: -.005em;
+  cursor: pointer; white-space: nowrap; max-width: 320px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset;
+  transition: border-color .2s var(--fx-ease), background-color .2s var(--fx-ease), transform .18s var(--fx-ease), box-shadow .25s var(--fx-ease);
+}
+.topbar-cd[hidden] { display: none; }
+.topbar-cd:hover { border-color: rgba(var(--accent-rgb), .7); box-shadow: 0 6px 18px -10px rgba(var(--accent-rgb), .8); transform: none; }
+.topbar-cd .tcd-ico { font-size: .9rem; line-height: 1; display: inline-grid; place-items: center; }
+.topbar-cd .tcd-ico svg { width: 15px; height: 15px; }
+.topbar-cd .tcd-name { overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.topbar-cd .tcd-count { color: var(--muted2); font-weight: 600; }
+.topbar-cd .tcd-count b { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; font-size: .92rem; }
+.topbar-cd .tcd-short { display: none; font-weight: 800; font-variant-numeric: tabular-nums; }
+.topbar-cd.is-near { border-color: rgba(251, 191, 36, .5); background: linear-gradient(135deg, rgba(251, 191, 36, .16), rgba(251, 191, 36, .04)); }
+.topbar-cd.is-near .tcd-count b { color: var(--gold, #fbbf24); }
+.topbar-cd.is-soon { border-color: rgba(248, 81, 73, .55); background: linear-gradient(135deg, rgba(248, 81, 73, .18), rgba(248, 81, 73, .05)); }
+.topbar-cd.is-soon .tcd-count b { color: var(--red, #f85149); }
+.topbar-cd.is-today { border-color: transparent; background: var(--fx-accent-grad); color: #fff; }
+.topbar-cd.is-today .tcd-count { color: rgba(255, 255, 255, .9); }
+.topbar-cd.is-past { opacity: .75; }
+.topbar-cd.is-empty { color: var(--muted2); border-style: dashed; background: transparent; }
+@media (max-width: 768px) {
+  .topbar-cd { height: 36px; padding: 0 11px 0 9px; gap: 5px; }
+  .topbar-cd .tcd-name, .topbar-cd .tcd-count { display: none; }
+  .topbar-cd .tcd-short { display: inline; }
+  .topbar-cd.is-empty .tcd-short { display: none; }
+}
+
+.tcd-pop {
+  position: fixed; z-index: 9500;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--fx-hair-2);
+  background: var(--fx-sheen), var(--card, #161b22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 30px 70px -24px rgba(0, 0, 0, .8);
+  color: var(--text);
+  animation: tcdIn .22s var(--fx-ease) both;
+}
+.tcd-pop[hidden] { display: none; }
+@keyframes tcdIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+.tcd-kicker { font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted2); }
+.tcd-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; margin-top: 3px; overflow-wrap: anywhere; }
+.tcd-when { font-size: .8rem; color: var(--muted2); margin-top: 2px; }
+.tcd-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.tcd-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 4px 8px; border-radius: 13px;
+  border: 1px solid var(--fx-hair);
+  background: linear-gradient(160deg, rgba(var(--accent-rgb), .12), rgba(255, 255, 255, .015) 70%);
+}
+.tcd-tile b {
+  font-size: 1.7rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums;
+  background: var(--fx-accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.tcd-tile span { font-size: .64rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+.tcd-done { margin-top: 14px; font-size: 1rem; font-weight: 700; }
+.tcd-prog { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .07); margin-top: 14px; overflow: hidden; }
+.tcd-prog i { display: block; height: 100%; border-radius: inherit; background: var(--fx-accent-grad); }
+.tcd-progl { font-size: .72rem; color: var(--muted2); margin-top: 5px; }
+.tcd-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tcd-actions button { padding: 7px 12px; font-size: .78rem; }
+.tcd-actions .tcd-stop:hover { border-color: rgba(248, 81, 73, .5); background: rgba(248, 81, 73, .1); }
+.tcd-empty p { font-size: .84rem; line-height: 1.5; color: var(--muted2); margin: 8px 0 0; }
+#countdownForm { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--fx-hair); }
+.tcd-flabel { display: block; font-size: .72rem; font-weight: 700; color: var(--muted2); margin: 0 0 4px; }
+.tcd-flabel span { font-weight: 500; color: var(--muted); }
+#countdownForm input { width: 100%; margin: 0 0 10px !important; }
+.tcd-frow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tcd-factions { display: flex; gap: 8px; }
+.tcd-factions button { flex: 1; padding: 8px 12px; }
+.tcd-fmsg { font-size: .74rem; color: var(--red, #f85149); margin-top: 6px; }
+.tcd-fmsg:empty { display: none; }
+body[data-theme="light"] .tcd-prog { background: rgba(15, 23, 42, .08); }
+
 /* ── Focus ring: visible for keyboards, invisible for mice ──────────────── */
 #app :is(button, a, [role=tab], [role=button], summary):focus-visible,
 .modal-overlay :is(button, a):focus-visible {

@@ -18,36 +18,32 @@ import { gotoScenario } from './helpers';
  */
 
 test.describe('Mobile and desktop show the same dashboard cards', () => {
-  test('the next-exam countdown is on the phone too, and fits', async ({ page }) => {
+  /* The countdown moved from a dashboard card to a pill in the top bar
+     (so the task list starts higher). The parity still holds: the same
+     pill on both, fitting on a phone. */
+  test('the countdown pill is on the phone too, and fits in the top bar', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoScenario(page, 'student-semester');
 
-    const card = page.locator('#countdownCard');
-    await expect(card).toBeVisible();
-
-    const fits = await page.evaluate(() => {
-      const c = document.getElementById('countdownCard')!;
-      const overflowing = [...c.querySelectorAll('*')].filter(
-        (e) => e.getBoundingClientRect().right > window.innerWidth,
-      ).length;
-      return {
-        width: Math.round(c.getBoundingClientRect().width),
-        viewport: window.innerWidth,
-        overflowing,
-      };
+    const pill = page.locator('#topbarCountdown');
+    await expect(pill).toBeVisible();
+    const fits = await pill.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { right: r.right, viewport: window.innerWidth, overflows: document.documentElement.scrollWidth > window.innerWidth + 1 };
     });
-    expect(fits.overflowing).toBe(0);
-    expect(fits.width).toBeLessThanOrEqual(fits.viewport);
+    expect(fits.right).toBeLessThanOrEqual(fits.viewport);
+    expect(fits.overflows).toBe(false);
 
-    // The labels, not the numbers — those move with today's date.
-    await expect(card).toContainText(/Days/i);
-    await expect(card).toContainText(/Weeks/i);
+    // Its panel opens on the phone with the countdown in it.
+    await pill.click();
+    await expect(page.locator('#countdownPop')).toBeVisible();
+    await expect(page.locator('#countdownPop')).toContainText(/days/i);
   });
 
-  test('the same card is on the laptop, so the two agree', async ({ page }) => {
+  test('the same pill is on the laptop, so the two agree', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await gotoScenario(page, 'student-semester');
-    await expect(page.locator('#countdownCard')).toBeVisible();
+    await expect(page.locator('#topbarCountdown')).toBeVisible();
   });
 
   test('the phone can set up A/B days and weekly repeats, not just read them', async ({ page }) => {
@@ -121,7 +117,7 @@ test.describe('Mobile and desktop show the same dashboard cards', () => {
         return getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
       };
       return {
-        countdown: shown('#countdownCard'),
+        countdown: shown('#topbarCountdown'),
         filters: shown('#dashboard .dash-filters-row'),
         taskList: shown('#taskList'),
         // Nothing gained from the wider layout may push the page sideways.
@@ -130,7 +126,7 @@ test.describe('Mobile and desktop show the same dashboard cards', () => {
     });
 
     // The same cards the laptop shows.
-    expect(state.countdown, 'the exam countdown is missing on the phone').toBe(true);
+    expect(state.countdown, 'the countdown pill is missing on the phone').toBe(true);
     expect(state.taskList, 'the task list is missing on the phone').toBe(true);
     /* The filter row was hidden on phones, which meant there was no way to see
        overdue work at all from a phone — the device a student is most likely

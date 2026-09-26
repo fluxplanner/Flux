@@ -416,7 +416,7 @@
         '<input type="date" id="fluxImpDateInp" aria-label="Pick a date to pin" value="'+esc(todayIso())+'">'+
         '<button type="button" class="fluxw-btn" id="fluxImpPinBtn" onclick="FluxWishlist.pinDateFromInput()">Pin</button>'+
         '<button type="button" class="fluxw-btn-sec" onclick="FluxWishlist.pinDateFromInput(true)">Unpin</button>'+
-        '<button type="button" class="fluxw-btn-sec fluxw-cd-btn" onclick="FluxWishlist.countdownFromInput()" title="Pin it and count down to it on your dashboard">⏳ Count down</button>'+
+        '<button type="button" class="fluxw-btn-sec fluxw-cd-btn" onclick="FluxWishlist.countdownFromInput()" title="Pin it and count down to it in the top bar">⏳ Count down</button>'+
       '</div>'+
       /* Its own row, not squeezed alongside the date. A starred day with no
          name is a question mark three weeks later — "what was that?" — so the
@@ -483,7 +483,7 @@
           '<span class="fluxw-imp-when">'+esc(label)+'</span>'+
         '</span>'+
         '<button type="button" class="fluxw-imp-cd'+(cdOn?' is-on':'')+'" aria-pressed="'+cdOn+'"'+
-          ' title="'+(cdOn?'Stop counting down':'Count down to this on your dashboard')+'"'+
+          ' title="'+(cdOn?'Stop counting down':'Count down to this in the top bar')+'"'+
           ' aria-label="'+(cdOn?'Stop counting down to ':'Count down to ')+esc(name||label)+'" onclick="FluxWishlist.countdownTo(\''+esc(d)+'\')">⏳</button>'+
         '<button type="button" class="fluxw-grat-del" aria-label="Unpin '+esc(name||label)+'" onclick="FluxWishlist.unpinDate(\''+esc(d)+'\')">×</button>'+
       '</div>';

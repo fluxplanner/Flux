@@ -125,6 +125,15 @@ test.describe('Scrolling at desktop width', () => {
   test('the panel still scrolls internally, as it always has', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.waitForTimeout(2200);
+    /* With the week bars and countdown card gone, three seeded tasks fit on
+       one screen and there is nothing to scroll. Give it a real week's worth
+       so the panel has to be the scroller. */
+    await page.evaluate(() => {
+      const w = window as any;
+      for (let i = 0; i < 14; i++) w.tasks.push({ id: 900000 + i, name: 'Reading ' + (i + 1), date: '', subject: '', priority: 'med', done: false });
+      w.renderTasks();
+    });
+    await page.waitForTimeout(400);
     const r = await page.evaluate(() => {
       const p = document.querySelector('.main-content > .panel.active') as HTMLElement;
       const was = p.scrollTop;
