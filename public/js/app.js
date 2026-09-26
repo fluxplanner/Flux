@@ -5978,7 +5978,9 @@ async function syncEnrolledTeacherClassesToPlanner(){
     console.warn('[Flux] syncEnrolledTeacherClassesToPlanner enrollments',e);
     return;
   }
-  const codes=[...new Set(enrollments.map(e=>e.class_code).filter(Boolean))];
+  const leftCodes=fluxLeftClassCodes();
+  const codes=[...new Set(enrollments.map(e=>e.class_code).filter(Boolean))]
+    .filter(c=>!leftCodes.includes(String(c).toUpperCase()));
   if(!codes.length)return;
   let tClasses=[];
   try{
@@ -6111,27 +6113,45 @@ function addClass(){
    The local removal happens first and unconditionally, so if the network call
    fails the class still disappears now and the worst case is the old behaviour
    — never a delete that silently does nothing. */
+/* A deleted class came back on refresh for two more reasons, both fixed here:
+   the delete never reached the cloud copy of the planner (no syncKey), so the
+   next pull restored the old list; and the direct update above could never
+   work for a real student — RLS lets students read teacher_students but not
+   write it, so it matched 0 rows with no error. flux_leave_teacher_class does
+   the one write a student may make (switch their own enrolment off), and the
+   code is also remembered locally so a failed call cannot resurrect it. */
+const FLUX_LEFT_CLASS_KEY='flux_left_class_codes';
+function fluxLeftClassCodes(){const v=load(FLUX_LEFT_CLASS_KEY,[]);return Array.isArray(v)?v.map(x=>String(x).toUpperCase()):[];}
+function fluxForgetLeftClass(code){
+  const c=String(code||'').toUpperCase();
+  if(!c)return;
+  const left=fluxLeftClassCodes();
+  if(left.includes(c))save(FLUX_LEFT_CLASS_KEY,left.filter(x=>x!==c));
+}
+window.fluxForgetLeftClass=fluxForgetLeftClass;
 function deleteClass(id){
   const gone=Array.isArray(classes)?classes.find(c=>String(c.id)===String(id)):null;
-  classes=classes.filter(c=>String(c.id)!==String(id));save('flux_classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
+  classes=classes.filter(c=>String(c.id)!==String(id));save('flux_classes',classes);syncKey('classes',classes);renderSchool();populateSubjectSelects();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();
   const code=gone&&gone.teacherClassCode;
-  if(!code||!currentUser)return;
+  if(!code)return;
+  const left=fluxLeftClassCodes();
+  if(!left.includes(String(code).toUpperCase()))save(FLUX_LEFT_CLASS_KEY,left.concat(String(code).toUpperCase()).slice(-200));
+  if(!currentUser)return;
   try{
     const sb=getSB();
     if(!sb)return;
-    sb.from('teacher_students')
-      .update({active:false})
-      .eq('student_id',currentUser.id)
-      .eq('class_code',code)
-      .then(({error})=>{
-        /* Said out loud rather than swallowed: a silent failure here looks
-           exactly like the bug this fixes — the class returns and nothing on
-           screen explains why. */
-        if(error){
-          console.warn('[Flux] class removed locally but the enrolment could not be cancelled',error);
-          if(typeof showToast==='function')showToast('Removed here, but this class may come back — tell Azfer.','info');
-        }
-      },()=>{});
+    const warn=(error)=>{
+      /* Said out loud rather than swallowed: a silent failure here looks
+         exactly like the bug this fixes. It stays gone on this device either
+         way (the code is remembered above). */
+      console.warn('[Flux] class removed here but the enrolment could not be cancelled',error);
+    };
+    sb.rpc('flux_leave_teacher_class',{p_code:code}).then(({error})=>{
+      if(!error)return;
+      // Older database without the function: the teacher's own test class still clears this way.
+      sb.from('teacher_students').update({active:false}).eq('student_id',currentUser.id).eq('class_code',code)
+        .then(({error:e2})=>{if(e2)warn(e2);},warn);
+    },warn);
   }catch(_){}
 }
 function addTeacherNote(){const teacher=document.getElementById('tNoteTeacher').value.trim(),note=document.getElementById('tNoteText').value.trim();if(!teacher||!note)return;teacherNotes.push({id:Date.now(),teacher,note});save('flux_teacher_notes',teacherNotes);document.getElementById('tNoteTeacher').value='';document.getElementById('tNoteText').value='';renderSchool();}
@@ -10512,7 +10532,12 @@ async function syncFromCloud(){
     if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
     if(cloudListWins(d.moodHistory,moodHistory)){moodHistory=d.moodHistory;save('flux_mood',moodHistory);}
     if(d.schoolInfo){schoolInfo=d.schoolInfo;save('flux_school',schoolInfo);}
-    if(d.classes){classes=d.classes;save('flux_classes',classes);}
+    if(d.classes){
+      // A class left on this device stays gone even if the cloud copy predates the delete.
+      const left=fluxLeftClassCodes();
+      classes=left.length?d.classes.filter(c=>!(c&&c.teacherClassCode&&left.includes(String(c.teacherClassCode).toUpperCase()))):d.classes;
+      save('flux_classes',classes);
+    }
     try{if(typeof syncEnrolledTeacherClassesToPlanner==='function')await syncEnrolledTeacherClassesToPlanner();}catch(_){}
     if(d.teacherNotes){teacherNotes=d.teacherNotes;save('flux_teacher_notes',teacherNotes);}
     if(d.profile&&d.profile.name){save('profile',d.profile);fluxSaveStoredString('flux_user_name',d.profile.name.split(' ')[0]);}
@@ -20325,6 +20350,7 @@ async function submitJoinClass(){
         return;
       }
       document.getElementById('joinClassModal')?.remove();
+      try{fluxForgetLeftClass(code);}catch(_){}
       if(typeof showToast==='function')showToast(`Request sent for ${req.className||'class'} — your teacher will approve soon.`,'success');
       return;
     }
@@ -20355,6 +20381,8 @@ async function submitJoinClass(){
       joinRes={ok:true,class_name:cls.class_name,class_id:cls.id,class_code:cls.class_code,teacher_id:cls.teacher_id};
     }
 
+    // Joining again undoes an earlier "delete this class".
+    try{fluxForgetLeftClass(joinRes.class_code||code);}catch(_){}
     const className=joinRes.class_name||'your class';
     if(note){
       try{
