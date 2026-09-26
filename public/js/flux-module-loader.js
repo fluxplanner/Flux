@@ -15,6 +15,7 @@
     // defaultOn: Azfer asked for this one by name, and it was already built but
     // switched off, so nobody had ever seen it.
     { id: 'classroom_student_picker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Random student picker', status: 'beta', module: 'FluxClassroomTools', method: 'renderStudentPicker', defaultOn: true },
+    { id: 'classroom_group_maker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Group maker', status: 'beta', module: 'FluxClassroomTools', method: 'renderGroupMaker', defaultOn: true },
     { id: 'classroom_parent_log', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog', defaultOn: true },
     { id: 'classroom_hall_pass', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Hall pass registry', status: 'beta', module: 'FluxClassroomTools', method: 'renderHallPass' },
     { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket', defaultOn: true },
@@ -254,6 +255,19 @@
 
     let layout = loadLayout(layoutPanelId);
     if (!layout || layout.panelId !== layoutPanelId) layout = defaultLayout(layoutPanelId, mods);
+    /* A module added after this layout was saved is not in it at all, so the
+       filter below dropped it and it could only ever be found in Customize —
+       every teacher who had once pressed Save would never see a new tool. Add
+       any missing module, switched on if it is defaultOn. A module someone
+       turned off is in the layout with visible:false and stays off. */
+    else if (Array.isArray(layout.widgets)) {
+      const known = new Set(layout.widgets.map((w) => w.id));
+      let next = layout.widgets.reduce((m, w) => Math.max(m, Number(w.order) || 0), 0) + 1;
+      mods.forEach((m) => {
+        if (known.has(m.id)) return;
+        layout.widgets.push({ id: m.id, visible: m.defaultOn === true && m.status !== 'planned', order: next++, size: 'md' });
+      });
+    }
 
     const gridId = widgetIdFilter
       ? `fluxWidgetGrid_${panelId}_${widgetIdFilter.join('_')}`

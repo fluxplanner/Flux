@@ -7,15 +7,18 @@
   'use strict';
 
   var COPY = {
+    // The demo lines are the first of each list in app.js (LOGIN_DEMO_LINES and
+    // LOGIN_DEMO_LINES_STAFF); the rotator carries on from them. They used to
+    // be requests to Flux AI, which has no tab any more.
     student: {
       headline: 'Your whole school life,<br><span class="grad">in flow.</span>',
-      sub: 'Flux keeps tasks, classes, notes, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.',
-      demo: 'Quiz me on cellular respiration — 5 questions, AP Bio style.'
+      sub: 'Flux keeps tasks, classes, study tools, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.',
+      demo: 'Count down to the SAT from any day on your calendar.'
     },
     teacher: {
       headline: 'Teach all day.<br><span class="grad">Still have a life.</span>',
-      sub: 'Lesson hub, gradebook, caseload and school ops in Work mode — and a private personal planner for everything after the last bell. One account, two lives, zero overlap.',
-      demo: 'Plan Thursday around my bell schedule and remind me about the staff meeting at 3.'
+      sub: 'Lesson Hub, rosters, classroom tools, caseloads and school ops in Work mode — and a private planner for everything after the last bell. One account, two lives, zero overlap.',
+      demo: "See today's classes bell by bell, with lesson notes for each period."
     }
   };
 

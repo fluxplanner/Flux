@@ -115,12 +115,59 @@
   window.getEventColor = getEventColor;
 
   // ── Stubs / small entry points (sidebar + dashboard CTAs) ─────────
+  /* "Rosters" and "Students" in the sidebar opened the same page as
+     "Dashboard", at the top, so two of the Workspace rows looked broken: you
+     clicked one and nothing seemed to change. They now land on their own
+     section — the class rosters, or the caseload — and flash it once. The
+     dashboard renders after a fetch, so wait for the section to exist. */
+  function revealSection(selectors, panelId) {
+    /* Opening the page renders it twice (nav() and the caller each start a
+       redraw), and each redraw replaces the section outright. So wait until
+       the page has stopped changing for a moment, then flash what is there —
+       otherwise the flash lands on a copy that is about to be thrown away. */
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    let quiet = 0;
+    let finished = false;
+    const started = Date.now();
+    const mo = new MutationObserver(() => { clearTimeout(quiet); quiet = setTimeout(done, 250); });
+    mo.observe(panel, { childList: true, subtree: true });
+    quiet = setTimeout(done, 250);
+    // Something on the page may tick for ever (a clock, a count-up): never
+    // wait longer than this for it to go quiet.
+    const cap = setTimeout(done, 2500);
+    function done() {
+      if (finished) return;
+      let el = null;
+      for (const sel of selectors) {
+        const c = document.querySelector(sel);
+        if (c && c.offsetParent) { el = c; break; }
+      }
+      if (!el && Date.now() - started < 4000) { clearTimeout(quiet); quiet = setTimeout(done, 150); return; }
+      finished = true;
+      mo.disconnect();
+      clearTimeout(quiet);
+      clearTimeout(cap);
+      if (el) flash(el);
+    }
+  }
+  function flash(el) {
+    let smooth = true;
+    try { smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) {}
+    try { el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' }); } catch (_) { el.scrollIntoView(); }
+    el.classList.remove('fx-staff-flash');
+    void el.offsetWidth;
+    el.classList.add('fx-staff-flash');
+    setTimeout(() => el.classList.remove('fx-staff-flash'), 1400);
+  }
+
   function openTeacherClassesPanel() {
     try {
       if (typeof FluxRole !== 'undefined' && FluxRole.isWorkMode && FluxRole.isWorkMode()) {
         if (FluxRole.isTeacher()) {
           if (typeof nav === 'function') nav('teacherDashboard');
           if (typeof renderTeacherDashboard === 'function') renderTeacherDashboard();
+          revealSection(['#teacherDashboard .teacher-main-grid > .teacher-col:first-child'], 'teacherDashboard');
           return;
         }
         if (FluxRole.isPlatformAdmin && FluxRole.isPlatformAdmin()) {
@@ -169,6 +216,7 @@
     try {
       renderCounselorDashboard();
     } catch (_) {}
+    revealSection(['#counselorCaseloadMount:not([hidden])', '#counselorDashboardBody .teacher-grid'], 'counselorDashboard');
   }
   function openAnnouncementsManager() {
     openPostAnnouncementModal('admin');

@@ -372,13 +372,24 @@ test.describe('Staff surfaces read the timetable they teach', () => {
     await page.waitForFunction(() => typeof (window as any).deleteClass === 'function'
       && !!(window as any).currentUser, null, { timeout: 15_000 });
 
+    /* Leaving goes through flux_leave_teacher_class: RLS gives students
+       SELECT only on teacher_students, so the direct update this test used to
+       expect matched no rows for any real student and the class came back.
+       The direct update is kept as the fallback for a database that has not
+       got the function yet, and that path is checked too. */
     const res = await page.evaluate(async () => {
       const w = window as any;
       const calls: Array<Record<string, unknown>> = [];
       const realGetSB = w.getSB;
+      let rpcError: unknown = null;
       /* A chainable stub, so what gets asserted is the real call shape —
-         .from().update().eq().eq() — rather than a convenient simplification. */
+         .rpc(name, args) and .from().update().eq().eq() — rather than a
+         convenient simplification. */
       w.getSB = () => ({
+        rpc(name: string, args: unknown) {
+          calls.push({ rpc: name, args });
+          return { then(res: (r: { error: unknown }) => void) { res({ error: rpcError }); } };
+        },
         from(table: string) {
           const call: Record<string, unknown> = { table, filters: {} as Record<string, unknown> };
           const chain: Record<string, unknown> = {
@@ -390,28 +401,34 @@ test.describe('Staff surfaces read the timetable they teach', () => {
         },
       });
 
-      w.classes = [
-        { id: 999001, name: 'Joined Class', periodLabel: 'A1', teacherClassCode: 'ZZ999Z' },
-        { id: 999002, name: 'Hand-made Class', periodLabel: 'A2' },
-      ];
+      const run = async (cls: unknown[], id: number) => {
+        calls.length = 0;
+        w.classes = cls;
+        w.deleteClass(id);
+        await new Promise((r) => setTimeout(r, 150));
+        return { calls: calls.slice(), ids: w.classes.map((c: any) => c.id) };
+      };
+      const joined = { id: 999001, name: 'Joined Class', periodLabel: 'A1', teacherClassCode: 'ZZ999Z' };
+      const plain = { id: 999002, name: 'Hand-made Class', periodLabel: 'A2' };
 
-      w.deleteClass(999001);
-      await new Promise((r) => setTimeout(r, 150));
-      const afterJoined = { calls: calls.slice(), ids: w.classes.map((c: any) => c.id) };
-
-      calls.length = 0;
-      w.deleteClass(999002);
-      await new Promise((r) => setTimeout(r, 150));
-      const afterPlain = { calls: calls.slice(), ids: w.classes.map((c: any) => c.id) };
+      const afterJoined = await run([joined, plain], 999001);
+      rpcError = { message: 'function flux_leave_teacher_class does not exist' };
+      const afterFallback = await run([{ ...joined }], 999001);
+      rpcError = null;
+      const afterPlain = await run([plain], 999002);
 
       w.getSB = realGetSB;
-      return { afterJoined, afterPlain, userId: w.currentUser?.id };
+      return { afterJoined, afterFallback, afterPlain, userId: w.currentUser?.id };
     });
 
-    // The joined class: gone locally AND unenrolled.
+    // The joined class: gone locally AND unenrolled through the function.
     expect(res.afterJoined.ids, 'the joined class was not removed').not.toContain(999001);
-    expect(res.afterJoined.calls, 'no enrolment update was sent').toHaveLength(1);
-    const call = res.afterJoined.calls[0] as unknown as
+    expect(res.afterJoined.calls, 'no enrolment cancel was sent').toHaveLength(1);
+    expect(res.afterJoined.calls[0]).toEqual({ rpc: 'flux_leave_teacher_class', args: { p_code: 'ZZ999Z' } });
+
+    // An older database without the function: the direct update, scoped to this student and class.
+    expect(res.afterFallback.calls).toHaveLength(2);
+    const call = res.afterFallback.calls[1] as unknown as
       { table: string; patch: unknown; filters: Record<string, unknown> };
     expect(call.table).toBe('teacher_students');
     expect(call.patch).toEqual({ active: false });
