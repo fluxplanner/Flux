@@ -522,3 +522,35 @@ html.flux-lowend #app * { transition: none !important; }
 @media (max-width: 430px) {
   .topbar:has(#topbarCountdown:not([hidden])) #topbarTaskPill { display: none !important; }
 }
+
+/* ── Top bar at laptop widths ────────────────────────────────────────────
+   Since the countdown moved into the top bar, the right-hand group (the
+   countdown, the date, the task count) could not shrink, while the left
+   group was allowed to shrink narrower than its own buttons — so below about
+   1100px the countdown slid over "New task" and the two read as one. Now the
+   left group keeps its size (a long page title truncates instead), the
+   countdown gives way first, and the less-needed pieces step aside as the
+   window narrows. Phones keep their own layout (≤768px). */
+@media (min-width: 769px) {
+  .topbar .topbar-left-cluster { flex: 0 1 auto; min-width: 0; }
+  .topbar .topbar-title-wrap { flex: 0 1 auto; min-width: 0; }
+  .topbar .topbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar .topbar-new-task-btn { flex-shrink: 0; }
+  .topbar .topbar-right { flex: 0 1 auto; min-width: 0; margin-left: auto; }
+  .topbar #topbarCountdown { flex: 0 1 auto; min-width: 0; }
+  .topbar #topbarCountdown .tcd-name { flex: 0 1 auto; min-width: 0; }
+}
+/* Compact countdown: ⏳ 257d. The full name and count stay in its tooltip
+   and one click away in the panel. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .topbar .topbar-cd { padding: 0 11px 0 9px; gap: 5px; }
+  .topbar .topbar-cd .tcd-name,
+  .topbar .topbar-cd .tcd-count { display: none; }
+  .topbar .topbar-cd .tcd-short { display: inline; }
+  .topbar .topbar-cd.is-empty .tcd-short { display: none; }
+}
+@media (min-width: 769px) and (max-width: 900px) {
+  .topbar #datePill { display: none !important; }
+  .topbar .topbar-new-task-btn:not(.topbar-mob-only) .topbar-new-task-label { display: none; }
+  .topbar .topbar-new-task-btn:not(.topbar-mob-only) { padding: 8px 11px; }
+}

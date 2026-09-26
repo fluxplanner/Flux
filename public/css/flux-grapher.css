@@ -1311,3 +1311,76 @@
 .fgx-go:disabled { opacity: .45; cursor: not-allowed; }
 [data-theme='light'] .fgx-sub, [data-theme='light'] .fgx-checks legend { color: #4b5b75; }
 @media (max-width: 480px) { .fgx-row { grid-template-columns: minmax(0, 1fr) 84px; } }
+
+/* ── Typeset equations ───────────────────────────────────────────────────
+   typesetExpr() in flux-grapher.js. The raw text stays in the input (it is
+   what is parsed and edited); at rest a typeset copy covers it — italic
+   letters, raised powers, stacked fractions, x₁ — and while typing the raw
+   text shows, with the typeset version live underneath. Clicks go straight
+   through the copy to the input. */
+.flg-item--expr > .flg-expr,
+.flg-item--expr > .flg-math { grid-column: 3; grid-row: 1; }
+.flg-math {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--flg-ink);
+  font-size: 1.12rem;
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+          mask-image: linear-gradient(90deg, #000 88%, transparent);
+}
+.flg-math:empty { display: none; }
+.flg-math .tx, .flg-math-live .tx { white-space: nowrap; font-size: 1em; line-height: 1.5; }
+.flg-math .tx-formula, .flg-math-live .tx-formula { display: inline-block; }
+.flg-math .tx-line, .flg-math-live .tx-line { text-align: left; }
+.flg-item--expr:focus-within .flg-math { visibility: hidden; }
+:is(#app, #grapherHost) .flg .flg-item--expr:not(:focus-within) .flg-expr:has(+ .flg-math:not(:empty)) { color: transparent; }
+/* Floats just below the row rather than taking a line of its own: it comes
+   and goes with focus, and in the flow it made everything below jump — a
+   click on the next button could land where the button used to be. */
+.flg-math-live {
+  position: absolute;
+  left: 44px;
+  top: calc(100% - 4px);
+  z-index: 6;
+  max-width: calc(100% - 56px);
+  padding: 4px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 10px;
+  background: var(--flg-panel);
+  border: 1px solid var(--flg-line);
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .6);
+  color: var(--flg-ink);
+  font-size: 1rem;
+  pointer-events: none;
+}
+.flg-item--expr:not(:focus-within) .flg-math-live,
+.flg-math-live[hidden] { display: none; }
+.is-hidden .flg-math { opacity: .45; }
+/* Without :has() the raw text cannot be hidden under the copy, so keep the
+   raw text only rather than show both on top of each other. */
+@supports not selector(:has(*)) { .flg-math { display: none; } }
+.flg-item--expr:focus-within { z-index: 5; }
+.flg-reqn .tx-formula { display: inline-block; font-size: 1.02em; }
+.flg-reqn .tx-line { text-align: left; }
+
+/* One-half planner copies (Maths → Grapher, Science → Lab graphs) name their
+   half where the switch used to be. */
+.flg-ptitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--flg-field);
+  border: 1px solid var(--flg-soft);
+  color: var(--flg-ink);
+  font-size: .8rem;
+  font-weight: 700;
+}
+.flg-ptitle b { color: var(--flg-accent); font-family: 'STIX Two Math', 'Times New Roman', Georgia, serif; font-style: italic; font-size: 1.05em; }

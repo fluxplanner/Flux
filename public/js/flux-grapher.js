@@ -732,6 +732,23 @@
   function seriesKnown(c, name) {
     return !!((c.columns && c.columns[name]) || (c.lists && c.lists[name]));
   }
+  /* "ax1" is a times x1, the way Desmos reads it: a run of letters that ends
+     in a column or list name is coefficients in front of that name ("sinx1"
+     keeps its function). Without this, y1 ~ ax1^2 + bx1 + c — exactly what
+     people type — was refused with "Use a column or list on the right". */
+  function splitDataNames(src, isData) {
+    const FNS = (window.FluxExpr && window.FluxExpr.FNS) || {};
+    return src.replace(/[A-Za-zα-ωΑ-Ω][A-Za-z0-9α-ωΑ-Ω_]*/g, (w) => {
+      if (isData(w)) return w;
+      for (let i = 1; i < w.length; i++) {
+        const head = w.slice(0, i), tail = w.slice(i);
+        if (!isData(tail) || !/^[A-Za-zα-ωΑ-Ω]+$/.test(head)) continue;
+        return (FNS[head.toLowerCase()] ? head : head.split('').join(' ')) + ' ' + tail;
+      }
+      return w;
+    });
+  }
+
   function parseRegression(s, c) {
     const E = window.FluxExpr;
     /* [2, 4, 6] ~ m[1, 2, 3] + b: a list written straight into the
@@ -749,10 +766,10 @@
     if (bad) return { error: bad };
     const parts = s.split('~');
     if (parts.length !== 2) return { error: 'A regression has one ~, like y1 ~ m x1 + b.' };
-    const lhs = parts[0].trim(), rhs = parts[1].trim();
     const cols = c.columns || {};
     const lists = c.lists || {};
     const known = (w) => !!(inline[w] || lists[w] || cols[w]);
+    const lhs = parts[0].trim(), rhs = splitDataNames(parts[1].trim(), known);
     if (!lhs) return { error: 'Put a table column or a list before the ~, like y1 ~ m x1 + b.' };
     if (!known(lhs)) {
       const names = Object.keys(cols).concat(Object.keys(lists));
@@ -1575,6 +1592,35 @@
 
   /* ── The rail ───────────────────────────────────────────────────────── */
 
+  /* ── Typeset equations ─────────────────────────────────────────────────
+     Desmos shows y = x² with an italic y and a raised 2; this showed the raw
+     "y=x^2" in a code font. The typed text stays the source of truth — it is
+     what is parsed, saved and edited — and a typeset copy sits over it
+     whenever the field is not being typed in, with a live one beneath it
+     while it is. The typesetting is flux-formula-typeset.js, the same one the
+     formula sheets use, after a few grapher spellings are mapped to what it
+     reads: x1 → x₁ (Desmos writes x_1), sqrt( → √(, pi → π, <= → ≤. */
+  const SUBDIGIT = '₀₁₂₃₄₅₆₇₈₉';
+  function typesetExpr(src) {
+    const T = window.FluxFormulaTypeset;
+    const raw = String(src || '').trim();
+    if (!T || !raw) return '';
+    let t = raw
+      .replace(/<=/g, '≤').replace(/>=/g, '≥').replace(/!=/g, '≠')
+      .replace(/\bsqrt\s*\(/g, '√(')
+      .replace(/\bpi\b/g, 'π').replace(/\btheta\b/g, 'θ')
+      // A letter's trailing digits are its subscript (x1, y12, and the x1
+      // in "ax1"), not a number after it. "1e5" and "sin2" are left alone.
+      .replace(/([A-Za-zα-ωΑ-Ω]+)(\d+)(?![\d.])/g, (m, letters, d, off, str) => {
+        if (/[\d.]/.test(str.charAt(off - 1))) return m;
+        if (/^(a?(sin|cos|tan|sec|csc|cot)h?|arc(sin|cos|tan)|exp|sqrt|abs|ln)$/i.test(letters)) return m;
+        return letters + d.replace(/\d/g, (x) => SUBDIGIT[+x]);
+      });
+    try { return T.toHtml(t); } catch (e) { return ''; }
+  }
+  /** True when the typeset copy says more than the raw text does. */
+  function isFormatted(html) { return /<(sup|sub)>|tx-frac|tx-sqrt|[√≤≥≠πθ]/.test(html); }
+
   Grapher.prototype.exprHTML = function (it, n) {
     const p = this.parsed(it);
     const err = p && p.error ? '<div class="flg-err" role="alert">' + esc(p.error) + '</div>' : '';
@@ -1586,7 +1632,9 @@
       + '<input type="text" class="flg-expr" data-expr="' + esc(it.id) + '" value="' + esc(it.src) + '"'
       + ' placeholder="y = …" spellcheck="false" autocomplete="off" autocapitalize="off"' + (this.kbOpen ? ' inputmode="none"' : '')
       + ' aria-label="Equation ' + (n + 1) + '">'
+      + '<span class="flg-math" aria-hidden="true">' + typesetExpr(it.src) + '</span>'
       + '<button type="button" class="flg-x" data-del="' + esc(it.id) + '" aria-label="Remove equation ' + (n + 1) + '">' + ICON.x + '</button>'
+      + (function () { const h = typesetExpr(it.src); return '<span class="flg-math-live" aria-hidden="true"' + (isFormatted(h) ? '' : ' hidden') + '>' + h + '</span>'; })()
       + err
       + '</div>';
   };
@@ -1857,7 +1905,7 @@
             const stats = [['R²', fmt(fit.r2)]];
             if (fit.r != null) stats.push(['r', fmt(fit.r)]);
             stats.push(['RMSE', fmt(fit.rmse)], ['n', String(fit.n)]);
-            html = (eq ? '<div class="flg-reqn">' + esc(eq) + '</div>' : '')
+            html = (eq ? '<div class="flg-reqn">' + (typesetExpr(eq) || esc(eq)) + '</div>' : '')
               + '<div class="flg-rinfo">' + fit.params.map((pp) => '<span><i>' + esc(pp.name) + '</i> = '
               + esc(pp.u ? fmtWithU(pp.value, pp.u) : fmt(pp.value)) + '</span>').join('') + '</div>'
               + '<div class="flg-rinfo flg-rstats">' + stats.map((q) => '<span><i>' + esc(q[0]) + '</i> = ' + esc(q[1]) + '</span>').join('')
@@ -2177,6 +2225,14 @@
         const it = self.item(d.expr);
         if (!it) return;
         it.src = t.value;
+        const row = t.closest('.flg-item');
+        if (row) {
+          const h = typesetExpr(t.value);
+          const m = row.querySelector('.flg-math');
+          const live = row.querySelector('.flg-math-live');
+          if (m) m.innerHTML = h;
+          if (live) { live.innerHTML = h; live.hidden = !isFormatted(h); }
+        }
         self.pins = self.pins.filter((p) => p.item !== it.id);
         if (self.syncParams()) self.renderParams();
         self.showExprError(it.id);
@@ -3973,13 +4029,19 @@
     setTimeout(done, 700);
   }
 
-  function mountPlanner(host) {
-    host.innerHTML = '<div class="flg-shell flg-shell--planner">'
+  /* `only` pins the planner copy to one half: Maths → Grapher is Functions,
+     Science → Lab graphs is Measurements. Without it (older callers) both
+     halves sit behind the switch as before. */
+  function mountPlanner(host, only) {
+    only = only === 'functions' || only === 'data' ? only : null;
+    host.innerHTML = '<div class="flg-shell flg-shell--planner' + (only ? ' flg-shell--' + only : '') + '">'
       + '<div class="flg-pbar">'
-      +   '<div class="flg-seg" role="tablist" aria-label="Which grapher">'
-      +     '<button type="button" role="tab" data-pmode="functions">Functions</button>'
-      +     '<button type="button" role="tab" data-pmode="data">Measurements</button>'
-      +   '</div>'
+      +   (only
+        ? '<span class="flg-ptitle">' + (only === 'functions' ? '<b>ƒ(x)</b> Functions' : '<b>±</b> Measurements') + '</span>'
+        : '<div class="flg-seg" role="tablist" aria-label="Which grapher">'
+          +     '<button type="button" role="tab" data-pmode="functions">Functions</button>'
+          +     '<button type="button" role="tab" data-pmode="data">Measurements</button>'
+          +   '</div>')
       +   '<span class="flg-grow"></span>'
       +   '<button type="button" class="flg-ibtn" data-pact="save" title="Save to your account" aria-label="Save to your account">' + ICON.cloud + '</button>'
       +   '<button type="button" class="flg-ibtn" data-pact="open" title="Your saved graphs" aria-label="Your saved graphs">' + ICON.folder + '</button>'
@@ -3999,7 +4061,7 @@
       bar.querySelectorAll('[data-pmode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.pmode === mode)));
       glideSeg(bar.querySelector('.flg-seg'), bar.querySelector('[data-pmode="' + mode + '"]'), !prev);
       enterFrom(body.firstElementChild, mode, prev);
-      try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+      if (!only) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) {} }
     }
 
     bar.addEventListener('click', (e) => {
@@ -4016,7 +4078,7 @@
           if (row.kind !== inst.kind) show(row.kind);
           inst.loadDoc(row.payload, { id: row.id, title: row.title });
           toast('Opened "' + row.title + '".', 'success');
-        });
+        }, only ? { kind: only } : null);
       } else if (act === 'full') {
         inst.persistLocal();
         writeJSON(HANDOFF_KEY, { kind: inst.kind, payload: inst.doc, cloud: inst.cloud, at: Date.now() });
@@ -4024,7 +4086,7 @@
       }
     });
 
-    show(readMode());
+    show(only || readMode());
     try {
       if (window.FluxGraphCloud && FluxGraphCloud.onDeleted) {
         FluxGraphCloud.onDeleted((id, title) => { if (inst && host.isConnected) inst.forgetCloud(id, title); });
@@ -4040,7 +4102,7 @@
     if (mode === 'functions' || mode === 'data' || mode === 'full') {
       return create(host, { mode: mode === 'functions' ? 'functions' : 'data', surface: (opts && opts.surface) || 'standalone' });
     }
-    return mountPlanner(host);
+    return mountPlanner(host, opts && opts.only);
   }
 
   function mountFunctions(host) { return create(host, { mode: 'functions', surface: 'standalone' }); }
