@@ -55,7 +55,9 @@ test.describe('planner sweep', () => {
     const item = page.locator('.task-item', { hasText: 'Quick-added task' }).first();
     await item.click({ button: 'right' });
     await expect(page.locator('#fluxTaskCtxMenu')).toBeVisible();
-    await page.locator('#fluxTaskCtxMenu', { hasText: 'Complete' }).getByText('Complete').click();
+    /* The menu closes on any scroll, and a pointer click scrolls the item into
+       view first on a short CI viewport — so press it directly, in one step. */
+    await page.evaluate(() => (document.querySelector('#fluxTaskCtxMenu [data-ctx-id="complete"]') as HTMLElement).click());
     await expect.poll(() => page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 1727291234567.5)?.done)).toBe(true);
   });
 
