@@ -281,8 +281,10 @@
     return new Promise((resolve) => {
       let ok = false;
       sheet(CLOSE + LOGO
-        + '<h2 class="fgc-h">Sign in to ' + (reason === 'open' ? 'open your graphs' : 'save') + '</h2>'
-        + '<p class="fgc-sub">Graphs go to your Flux account, and show up in Flux Planner too. Everything else works without signing in.</p>'
+        + '<h2 class="fgc-h">Sign in to ' + (reason === 'open' ? 'open your graphs' : reason === 'scan' ? 'scan photos of tables' : 'save') + '</h2>'
+        + '<p class="fgc-sub">' + (reason === 'scan'
+          ? 'Scanning a photo of a table is free with a Flux account, a few photos a day. Opening a CSV or Excel file needs no account.'
+          : 'Graphs go to your Flux account, and show up in Flux Planner too. Everything else works without signing in.') + '</p>'
         + '<form class="fgc-form" novalidate>'
         + '<label class="fgc-f"><span>Name</span><input name="n" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="First Last"></label>'
         + '<label class="fgc-f"><span>Password</span><input name="p" type="password" autocomplete="current-password"></label>'
@@ -493,6 +495,7 @@
     open: open,
     get: async function (id) { const s = await need('open'); if (!s) return null; return get(s, id); },
     accountMenu: accountMenu,
+    signInSheet: signInSheet,
     onAccount: onAccount,
     onDeleted: onDeleted,
     displayName: displayName,

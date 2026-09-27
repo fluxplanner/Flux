@@ -1457,3 +1457,208 @@
   font-weight: 700;
 }
 .flg-ptitle b { color: var(--flg-accent); font-family: 'STIX Two Math', 'Times New Roman', Georgia, serif; font-style: italic; font-size: 1.05em; }
+
+/* ══ Importing a table (flux-grapher-import.js) ═════════════════════════
+   The Import button, the offer under an empty table, the drop target, and
+   the sheet where an imported table is checked before it is added. */
+.flg-add.flg-import { flex: 0 0 auto; padding: 0 11px; }
+
+.flg-timport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 2px;
+  font-size: .76rem;
+  color: var(--flg-mut);
+}
+.flg .flg-timport button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  margin: 0;
+  border: 1px solid var(--flg-line);
+  border-radius: 9px;
+  background: var(--flg-field);
+  color: var(--flg-ink);
+  font-size: .76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.flg .flg-timport button:hover { border-color: var(--flg-accent); color: var(--flg-accent); }
+
+.flg.is-drop .flg-stage::after {
+  content: 'Drop a CSV or Excel file, or a photo of a table';
+  position: absolute;
+  inset: 12px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--flg-accent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--flg-accent) 10%, rgba(6, 10, 20, .55));
+  color: var(--flg-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* The sheet. Appended to <body>, so inside the planner it meets the global
+   input rule (styles.css §14, !important) and the pill-button rule; #fgiSheet
+   outranks both. */
+.fgc-sheet.fgi-sheet { width: min(1000px, 100%); padding: 24px 22px 18px; }
+.fgc-sheet.fgi-sheet--busy { width: min(460px, 100%); }
+.fgi-body { display: grid; gap: 14px; min-height: 0; }
+.fgi-body.has-photo { grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); align-items: start; }
+.fgi-photo {
+  margin: 0;
+  position: sticky;
+  top: 0;
+  max-height: min(62dvh, 560px);
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #0a0f1c;
+}
+.fgi-photo img { display: block; width: 100%; height: auto; }
+.fgi-main { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.fgi-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: .8rem; color: #cbd6ea; }
+.fgi-opt { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.fgi-opt--check input { width: 16px; height: 16px; margin: 0; accent-color: #00c2ff; }
+#fgiSheet .fgi-sheetsel {
+  padding: 6px 10px !important; margin: 0 !important; border-radius: 9px !important; font-size: .82rem !important;
+  border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .06); color: #eaf1ff;
+}
+.fgi-scroll {
+  max-height: min(52dvh, 480px);
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .02);
+  scrollbar-width: thin;
+}
+.fgi-table { border-collapse: separate; border-spacing: 0; font-size: .82rem; min-width: 100%; }
+.fgi-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px;
+  background: #16203a;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  text-align: left;
+  vertical-align: top;
+  min-width: 136px;
+}
+.fgi-table thead th.fgi-rn { min-width: 0; }
+.fgi-table th.is-unc { background: #1a2240; }
+.fgi-h { display: flex; align-items: center; gap: 3px; }
+.fgi-pm { flex: 1; min-width: 0; font-weight: 800; color: #fbbf24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 2px; }
+.fgi-pm small { font-weight: 600; color: #9fb0cc; }
+.fgi-unitsp { height: 27px; }
+#fgiSheet .fgi-name, #fgiSheet .fgi-unit, #fgiSheet .fgi-cell {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 7px !important;
+  margin: 0 !important;
+  border-radius: 7px !important;
+  font-size: .82rem !important;
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: #eaf1ff;
+  font-family: inherit;
+}
+#fgiSheet .fgi-name { font-weight: 700; flex: 1; }
+#fgiSheet .fgi-unit { margin-top: 3px !important; color: #9fb0cc; font-size: .76rem !important; }
+#fgiSheet .fgi-cell { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-variant-numeric: tabular-nums; }
+#fgiSheet .fgi-name:hover, #fgiSheet .fgi-unit:hover, #fgiSheet .fgi-cell:hover { border-color: rgba(255, 255, 255, .12); }
+#fgiSheet .fgi-name:focus, #fgiSheet .fgi-unit:focus, #fgiSheet .fgi-cell:focus {
+  outline: none; border-color: rgba(0, 194, 255, .7); background: rgba(0, 194, 255, .07);
+}
+#fgiSheet .fgi-cell.is-odd { border-color: rgba(251, 191, 36, .55); background: rgba(251, 191, 36, .08); }
+.fgi-table td { padding: 1px 3px; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.fgi-table td.fgi-rn, .fgi-table th.fgi-rn { padding: 0 8px; color: #6f809f; font-size: .72rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fgi-table td.fgi-empty { padding: 28px 16px; color: #9fb0cc; text-align: center; line-height: 1.55; }
+#fgiSheet .fgi-role, #fgiSheet .fgi-drop {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 7px !important;
+  background: none;
+  color: #8a9bba;
+  font-size: .8rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+#fgiSheet .fgi-role:hover, #fgiSheet .fgi-drop:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+#fgiSheet .fgi-role[aria-pressed='true'] { color: #fbbf24; border-color: rgba(251, 191, 36, .45); }
+.fgi-more { margin: 0; font-size: .76rem; color: #9fb0cc; }
+.fgi-more[hidden] { display: none; }
+.fgi-warn {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-radius: 11px;
+  font-size: .8rem;
+  line-height: 1.5;
+  color: #fde68a;
+  background: rgba(251, 191, 36, .08);
+  border: 1px solid rgba(251, 191, 36, .25);
+}
+.fgi-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.fgi-left { flex: 1; min-width: 0; font-size: .78rem; color: #9fb0cc; }
+#fgiSheet .fgi-cancel {
+  padding: 11px 16px;
+  margin: 4px 0 0;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 12px;
+  background: none;
+  color: #cbd6ea;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+#fgiSheet .fgi-cancel:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.fgi-add:disabled { opacity: .45; cursor: not-allowed; }
+
+/* While a photo is read: the photo, and a line sweeping down it. */
+.fgi-busy {
+  position: relative;
+  min-height: 120px;
+  max-height: 46dvh;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #0a0f1c;
+}
+.fgi-busy img { display: block; width: 100%; height: auto; opacity: .75; }
+.fgi-sweep {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 36%;
+  background: linear-gradient(180deg, transparent, rgba(0, 194, 255, .28) 85%, rgba(127, 227, 255, .9));
+  border-bottom: 2px solid #7fe3ff;
+  animation: fgiSweep 1.6s ease-in-out infinite alternate;
+}
+@keyframes fgiSweep { from { transform: translateY(-100%); } to { transform: translateY(190%); } }
+
+@media (max-width: 760px) {
+  .fgc-sheet.fgi-sheet { padding: 20px 14px 14px; }
+  .fgi-body.has-photo { grid-template-columns: 1fr; }
+  .fgi-photo { position: static; max-height: 26dvh; }
+  .fgi-scroll { max-height: 44dvh; }
+  .fgi-actions { flex-wrap: wrap; }
+  .fgi-left { flex-basis: 100%; }
+  .fgi-actions .fgi-add { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fgi-sweep { animation: none; transform: translateY(60%); }
+}

@@ -191,6 +191,7 @@
     "public/js/flux-mathfield.js",
     "public/js/flux-grapher.js",
     "public/js/flux-grapher-cloud.js",
+    "public/js/flux-grapher-import.js",
     "public/js/flux-ti84-stats.js",
     "public/js/flux-ti84-engine.js",
     "public/js/flux-ti84-editor.js",
