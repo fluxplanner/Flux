@@ -237,6 +237,9 @@
   const PROP = {};
   PROPS.forEach((p) => { PROP[p.id] = p; });
   const text = (v) => (typeof v === 'function' ? v() : v);
+  function reducedMotion() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
 
   /* ── The tabs ───────────────────────────────────────────────────────── */
 
@@ -306,7 +309,8 @@
     });
     const opts = groups.map((g) => '<optgroup label="' + esc(g[0]) + '">' + g[1].map((p) => '<option value="' + p.id + '">' + esc(p.label) + '</option>').join('') + '</optgroup>').join('');
     this.host.innerHTML = '<div class="fpt" tabindex="-1">'
-      + '<nav class="fpt-views" role="tablist" aria-label="Periodic table views">' + VIEWS.map((v) => '<button type="button" role="tab" class="fpt-view" data-view="' + v[0] + '">' + v[1] + '</button>').join('') + '</nav>'
+      + '<nav class="fpt-views" role="tablist" aria-label="Periodic table views"><span class="fpt-views-glide" aria-hidden="true"></span>'
+      + VIEWS.map((v) => '<button type="button" role="tab" class="fpt-view" data-view="' + v[0] + '">' + v[1] + '</button>').join('') + '</nav>'
       + '<div class="fpt-bar">'
       + '<div class="fpt-search"><input class="fpt-in fpt-q" type="search" autocomplete="off" spellcheck="false" placeholder="Find an element, or try “halogens”, “liquid”, “d-block”" aria-label="Find an element">'
       + '<div class="fpt-sugg" role="listbox" hidden></div></div>'
@@ -321,6 +325,9 @@
       + '</div></div>';
     this.root = this.host.querySelector('.fpt');
     this.explore = this.host.querySelector('.fpt-explore');
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => this.placeGlide(false)).observe(this.host.querySelector('.fpt-views'));
+    }
     this.grid = this.host.querySelector('.fpt-grid');
     this.legend = this.host.querySelector('.fpt-legend');
     this.side = this.host.querySelector('.fpt-side');
@@ -810,6 +817,33 @@
     this.save();
     if (this.o.hash) this.writeHash();
     this.refresh();
+    this.slideIn(VIEW_IDS.indexOf(v) > VIEW_IDS.indexOf(was) ? 1 : -1);
+  };
+  /** The highlight behind the tabs slides to the one chosen. animate: false places it outright. */
+  App.prototype.placeGlide = function (animate) {
+    const bar = this.root.querySelector('.fpt-views');
+    const glide = bar && bar.querySelector('.fpt-views-glide');
+    const on = bar && bar.querySelector('.fpt-view.is-on');
+    if (!glide || !on || !on.offsetWidth) return;
+    const moveOnly = animate && this.glided;
+    glide.classList.toggle('is-instant', !moveOnly);
+    glide.style.width = on.offsetWidth + 'px';
+    glide.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+    this.glided = true;
+    // On a phone the bar scrolls: keep the chosen tab in sight.
+    if (bar.scrollWidth > bar.clientWidth) {
+      const left = on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2;
+      bar.scrollTo({ left: Math.max(0, left), behavior: moveOnly && !reducedMotion() ? 'smooth' : 'auto' });
+    }
+  };
+  /** The page under the tabs comes in from the side of the tab it came from. */
+  App.prototype.slideIn = function (dir) {
+    if (reducedMotion()) return;
+    [this.root.querySelector('.fpt-bar'), this.root.querySelector('.fpt-body')].forEach((el, i) => {
+      if (!el || typeof el.animate !== 'function') return;
+      el.animate([{ opacity: 0, transform: 'translateX(' + dir * 28 + 'px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 320, delay: i * 40, easing: 'cubic-bezier(.22, .8, .24, 1)', fill: 'backwards' });
+    });
   };
   App.prototype.action = function (act, el) {
     const st = this.st;
@@ -846,6 +880,7 @@
     this.root.querySelector('.fpt-unit').hidden = !(v === 'temp' || (v === 'trends' && PROP[this.st.trend].unit === 'temp') || v === 'table');
     this.root.dataset.view = v;
     this.root.classList.toggle('is-explore', isExplore(v));
+    this.placeGlide(true);
   };
   App.prototype.refresh = function () {
     this.sel.value = this.st.trend;

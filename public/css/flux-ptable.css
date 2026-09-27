@@ -106,7 +106,8 @@
   border-radius: 7px; border: 1px solid color-mix(in srgb, var(--c, #888) 45%, transparent);
   background: color-mix(in srgb, var(--c, #888) 20%, var(--fpt-cell)); color: var(--fpt-ink);
   cursor: pointer; overflow: hidden; text-align: center; line-height: 1.05;
-  transition: transform .14s ease, box-shadow .14s ease, opacity .2s ease, filter .2s ease;
+  transition: transform .14s ease, box-shadow .14s ease, opacity .2s ease, filter .2s ease,
+    background-color .35s ease, border-color .35s ease, color .35s ease;
 }
 .fpt .fpt-el::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--c, transparent); opacity: .9; }
 .fpt .fpt-el:hover { transform: translateY(-1px) scale(1.06); z-index: 3; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6); }
@@ -295,21 +296,28 @@
 /* ── Tabs along the top ───────────────────────────────────────────────── */
 
 .fpt-views {
-  display: flex; gap: 3px; width: fit-content; max-width: 100%; padding: 4px; margin-bottom: 12px;
+  position: relative; display: flex; gap: 3px; width: fit-content; max-width: 100%; padding: 4px; margin-bottom: 12px;
   border-radius: 14px; background: var(--fpt-field); border: 1px solid var(--fpt-soft);
   overflow-x: auto; scrollbar-width: none;
 }
 .fpt .fpt-view {
-  appearance: none; flex: none; padding: 8px 15px; margin: 0; border: 0; border-radius: 10px; cursor: pointer;
+  position: relative; z-index: 1; appearance: none; flex: none; padding: 8px 15px; margin: 0; border: 0; border-radius: 10px; cursor: pointer;
   background: transparent; color: var(--fpt-mut); font-size: .85rem; font-weight: 700; white-space: nowrap;
+  transition: color .25s ease;
 }
 .fpt .fpt-view:hover { color: var(--fpt-ink); }
 .fpt .fpt-view:focus-visible { outline: 2px solid var(--fpt-accent); outline-offset: -2px; }
-.fpt .fpt-view.is-on {
-  color: var(--fpt-ink);
+.fpt .fpt-view.is-on { color: var(--fpt-ink); }
+/* One highlight that slides from tab to tab, rather than each tab lighting up
+   on its own. placeGlide() sets its width and position. */
+.fpt-views-glide {
+  position: absolute; top: 4px; left: 0; bottom: 4px; width: 0; border-radius: 10px; pointer-events: none;
   background: color-mix(in srgb, var(--fpt-accent) 20%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fpt-accent) 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fpt-accent) 45%, transparent), 0 6px 18px -8px color-mix(in srgb, var(--fpt-accent) 60%, transparent);
+  transition: transform .38s cubic-bezier(.3, 1.25, .45, 1), width .38s cubic-bezier(.3, 1.25, .45, 1);
 }
+.fpt-views-glide.is-instant { transition: none; }
+@media (prefers-reduced-motion: reduce) { .fpt-views-glide, .fpt .fpt-el { transition: none !important; } }
 
 /* ── The tabs about one element: a small table to pick from, and the page ─ */
 

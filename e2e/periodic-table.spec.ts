@@ -167,6 +167,37 @@ test.describe('Periodic table page', () => {
     await expect(x.locator('.fpx-krow')).toHaveText([/1 electron/, /1 electron/, /empty/]);
   });
 
+  test('switching tabs slides one highlight to the tab chosen, and the page in after it', async ({ page }) => {
+    await page.goto('/periodic.html');
+    const glide = () => page.evaluate(() => {
+      const g = document.querySelector('.fpt-views-glide')!.getBoundingClientRect();
+      const on = document.querySelector('.fpt-view.is-on')!.getBoundingClientRect();
+      return { dx: Math.abs(g.left - on.left), dw: Math.abs(g.width - on.width), sliding: document.querySelector('.fpt-body')!.getAnimations().length };
+    });
+    await expect.poll(async () => (await glide()).dx).toBeLessThan(1);
+    await page.locator('.fpt-view[data-view="isotopes"]').click();
+    // The page comes in with an animation, and the highlight is on its way.
+    const t0 = await glide();
+    expect(t0.sliding, 'the page did not slide in').toBeGreaterThan(0);
+    expect(t0.dx, 'the highlight jumped instead of sliding').toBeGreaterThan(20);
+    // And it arrives, exactly under the tab.
+    await expect.poll(async () => { const g = await glide(); return g.dx + g.dw; }).toBeLessThan(1);
+  });
+
+  test('with reduced motion, tabs switch without moving', async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await page.goto('/periodic.html');
+    await page.locator('.fpt-view[data-view="spectra"]').click();
+    const r = await page.evaluate(() => ({
+      anims: document.querySelector('.fpt-body')!.getAnimations().length,
+      dx: Math.abs(document.querySelector('.fpt-views-glide')!.getBoundingClientRect().left - document.querySelector('.fpt-view.is-on')!.getBoundingClientRect().left),
+    }));
+    expect(r.anims).toBe(0);
+    expect(r.dx).toBeLessThan(1);
+    await ctx.close();
+  });
+
   test('fits a phone without the page scrolling sideways', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     for (const hash of ['#Fe', '#3d/C', '#spectra/H']) {
