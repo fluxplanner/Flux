@@ -82,28 +82,30 @@ test.describe('Periodic trends', () => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as unknown as Win).nav('toolbox'));
     await page.evaluate(() => (window as unknown as Win).fluxStudyHub.selectSubject('chemistry'));
-    await expect(page.locator('#fshPtTrends')).toBeVisible({ timeout: 10_000 });
+    /* Chemistry ▸ Table is the Flux Periodic Table now (flux-ptable.js), the
+       same tool as periodic.html. */
+    const cell = (n: number) => `.fsh-ptable .fpt-el[data-n="${n}"]`;
+    await expect(page.locator(cell(9))).toBeVisible({ timeout: 10_000 });
 
     /* Inline style, not getComputedStyle. The table sits in a scrolling
        container whose subtree the browser skips rendering while it is out of
        view, and computed style comes back as transparent-black there whatever
        is actually painted. The inline value is what this feature sets, so it
        is both the honest signal and the stable one. */
-    const before = await page.evaluate(() =>
-      (document.querySelector('#fshPtGrid .fsh-el[data-n="9"]') as HTMLElement).style.background);
+    const before = await page.locator(cell(9)).evaluate((el) => (el as HTMLElement).style.background);
 
-    await page.locator('#fshPtTrends .fsh-cat-chip[data-trend="en"]').click();
-    await expect(page.locator('#fshPtKey .fsh-ptk')).toBeVisible();
+    await page.locator('.fsh-ptable .fpt-sel').selectOption('en');
+    await expect(page.locator('.fsh-ptable .fpt-key')).toBeVisible();
 
     const after = await page.evaluate(() => {
-      const f = document.querySelector('#fshPtGrid .fsh-el[data-n="9"]')!;   // fluorine, the maximum
-      const he = document.querySelector('#fshPtGrid .fsh-el[data-n="2"]')!;  // helium, no value
+      const f = document.querySelector('.fsh-ptable .fpt-el[data-n="9"]')!;   // fluorine, the maximum
+      const he = document.querySelector('.fsh-ptable .fpt-el[data-n="2"]')!;  // helium, no value
       return {
         fluorine: (f as HTMLElement).style.background,
-        fluorineLabel: f.querySelector('.e-m')?.textContent,
-        heliumLabel: he.querySelector('.e-m')?.textContent,
-        heliumFlagged: he.classList.contains('trend-none'),
-        keyText: document.getElementById('fshPtKey')?.textContent || '',
+        fluorineLabel: f.querySelector('.fpt-v')?.textContent,
+        heliumLabel: he.querySelector('.fpt-v')?.textContent,
+        heliumFlagged: he.classList.contains('is-none'),
+        keyText: document.querySelector('.fsh-ptable .fpt-legend')?.textContent || '',
       };
     });
 
@@ -118,10 +120,10 @@ test.describe('Periodic trends', () => {
     expect(after.keyText, 'the key should state the down-a-group direction').toMatch(/down a group/i);
 
     // Back to Category clears the colouring and restores the masses.
-    await page.locator('#fshPtTrends .fsh-cat-chip[data-trend=""]').click();
+    await page.locator('.fsh-ptable .fpt-sel').selectOption('cat');
     const restored = await page.evaluate(() => {
-      const f = document.querySelector('#fshPtGrid .fsh-el[data-n="9"]') as HTMLElement;
-      return { inline: f.style.background, label: f.querySelector('.e-m')?.textContent };
+      const f = document.querySelector('.fsh-ptable .fpt-el[data-n="9"]') as HTMLElement;
+      return { inline: f.style.background, label: f.querySelector('.fpt-v')?.textContent };
     });
     expect(restored.inline, 'trend colouring outlived the trend').toBe('');
     expect(restored.label, 'the atomic mass did not come back').toBe('19.00');

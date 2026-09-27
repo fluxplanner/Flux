@@ -995,6 +995,14 @@
       if (typeof window.renderFormulaSheet === 'function') { window.renderFormulaSheet(b, 'Chemistry'); return; }
       state.chemTab = 'table';
     }
+    if (state.chemTab === 'table' && window.FluxPTable) {
+      /* The Flux Periodic Table: the same tool as periodic.html, the way
+         Maths → Grapher is the grapher. renderTableTab stays as the fallback
+         for a page that has not loaded it. */
+      b.innerHTML = '<div class="fsh-ptable"><div class="fsh-ptable-host"></div>'
+        + '<a class="fsh-ptable-full" href="periodic.html" target="_blank" rel="noopener">Open the full-page Periodic Table ↗</a></div>';
+      if (window.FluxPTable.mount(b.querySelector('.fsh-ptable-host'), { surface: 'planner', scrollToDetail: true })) return;
+    }
     const CHEM_BODY = {
       table: renderTableTab, atom: renderAtomTab, ions: renderIonsTab,
       balance: renderBalanceTab, molar: renderMolarTab, phdil: renderPhDilTab,

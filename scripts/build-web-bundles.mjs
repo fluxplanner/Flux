@@ -135,8 +135,8 @@ fs.writeFileSync(INDEX, indexHtml);
 //     So after a deploy a returning visitor got the NEW grapher.html with
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
-//     calculator.html is built the same way, for the same reason.
-for (const page of ['grapher.html', 'calculator.html']) {
+//     calculator.html and periodic.html are built the same way, for the same reason.
+for (const page of ['grapher.html', 'calculator.html', 'periodic.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');
