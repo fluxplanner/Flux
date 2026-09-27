@@ -44,7 +44,7 @@
     {
       id: 'periodic',
       name: 'Flux Periodic Table',
-      tagline: 'Every element, trend and tool',
+      tagline: 'Every element and every trend',
       href: 'periodic.html',
       free: true,
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16" y="10" width="5" height="5" rx="1"/><path d="M5 19h14"/></svg>',

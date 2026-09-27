@@ -117,3 +117,29 @@ test('ionic compounds: charges cross over, names follow', () => {
   assert.equal(name(['Al', 3], ['O', -2]), 'Al2O3 aluminum oxide');
   assert.equal(name(['Na', 1], ['Cl', -1]), 'NaCl sodium chloride');
 });
+
+test('the trends worked out from the data', () => {
+  vm.runInContext(readFileSync(new URL('../../public/js/flux-ptable.js', import.meta.url), 'utf8'), sandbox, { filename: 'flux-ptable.js' });
+  const K = W.FluxPTable.core, P = K.PROP;
+  const el = (s) => K.model().find((e) => e.s === s);
+  const top = (id, dir) => K.model().filter((e) => P[id].get(e) != null).sort((a, b) => dir * (P[id].get(b) - P[id].get(a)))[0].s;
+  assert.equal(P.shield.get(el('Na')), 8.8);                  // σ = 11 − 2.20
+  // Palladium has no 5s electron, so its outermost is 4d: 46 − 36 − 9 × 0.35.
+  assert.equal(P.zeff.get(el('Pd')), 6.85);
+  assert.equal(P.zeff.get(el('Ag')), 3.7);
+  assert.equal(P.core.get(el('Na')), 10);
+  assert.equal(P.unpaired.get(el('Cr')), 6);                  // 3d⁵ 4s¹
+  assert.equal(P.unpaired.get(el('Gd')), 8);                  // 4f⁷ 5d¹
+  assert.equal(P.neutrons.get(el('Pb')), 126);                // lead-208
+  assert.equal(P.iso.get(el('Sn')), 10);                      // the most natural isotopes
+  assert.ok(P.vol.get(el('Cs')) > 65, 'Lothar Meyer\'s peak at caesium');
+  assert.equal(P.vol.get(el('O')), null, 'gases are left out of atomic volume');
+  assert.ok(P.liq.get(el('Ga')) > 2000, 'gallium is liquid for over 2000 degrees');
+  assert.equal(top('enA', 1), 'Ne');                          // Allen's scale puts neon on top
+  assert.equal(top('metal', -1), 'Cs');                       // lowest ionization energy: most metallic
+  const p3 = ['Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'];
+  const peak = (id) => { const v = p3.map((s) => P[id].get(el(s))); return p3[v.indexOf(Math.max.apply(null, v))]; };
+  assert.equal(peak('ie2'), 'Na', 'the second ionization energy peaks in group 1');
+  assert.equal(peak('ie3'), 'Mg', 'the third peaks in group 2');
+  assert.equal(peak('ie'), 'Ar');
+});
