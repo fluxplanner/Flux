@@ -827,3 +827,8 @@ body.fsh-desmos-locked { overflow: hidden; }
   .fsh-ptk-dirs{font-size:.78rem}
   .fsh-pt-trends{gap:6px}
 }
+
+/* The Flux Periodic Table in Chemistry ▸ Table (flux-ptable.css styles the tool itself). */
+.fsh-ptable { display: grid; gap: 10px; }
+.fsh-ptable-full { justify-self: end; font-size: 12.5px; font-weight: 700; color: var(--accent, #00c2ff); text-decoration: none; }
+.fsh-ptable-full:hover { text-decoration: underline; }
