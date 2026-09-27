@@ -235,7 +235,10 @@
        with uncertainties, error bars, best-fit and max/min lines. It sat as a
        tab inside Maths → Grapher, where a physics or chemistry student had to
        go looking for it; Maths keeps the Functions grapher. */
-    { id:'labgraph', name:'Lab graphs', ico:'📈', accent:'#2dd4bf', group:'science' },
+    /* Renamed from "Lab graphs" once the unit converter moved in beside the
+       grapher: what it holds now is what every science uses, not one kind of
+       graph. The id stays 'labgraph' so saved places and favourites still open. */
+    { id:'labgraph', name:'Science toolkit', ico:'🧪', accent:'#2dd4bf', group:'science' },
     { id:'math', name:'Mathematics', ico:'∑', accent:'#5b8def', group:'maths-tech' },
     { id:'cs', name:'Computer Science', ico:'💻', accent:'#4fb6c9', group:'maths-tech' },
     // "& Geo" because it still carries the capitals quiz and the world map;
@@ -357,7 +360,8 @@
          Claimed here rather than deleted: its four tables overlap the Ions,
          Solubility and Constants tabs but are not provably a subset of them,
          and dropping a reference table a student is mid-revision with is not a
-         tidy-up. More is left holding only the unit converter. */
+         tidy-up. (More, which held only the unit converter, went when the
+         converter moved to Science toolkit beside the grapher.) */
       { id: 'reference', name: 'Reference', tools: ['constants', 'lg-chem-ref'] },
       { id: 'practice', name: 'Practice', tools: ['worksheet'] },
       /* 'formulas' leaves Reference for the same reason it leaves Data &
@@ -1655,7 +1659,8 @@
     if (_legacyIdx) return _legacyIdx;
     const UL = window.fluxToolbox && window.fluxToolbox.UNIFIED_LAYOUT; if (!UL) return null;
     const SECTION = { math: 'math', cs: 'cs' };
-    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'chemistry', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'music-theory': 'music', 'cs-ref': 'cs' };
+    // The unit converter sits with the Measurements grapher in Science toolkit: every science converts units.
+    const OVERRIDE = { 'physics-sandbox': 'physics', 'chem-ref': 'chemistry', 'unit-conv': 'labgraph', 'codon': 'biology', 'psych-ref': 'psychology', 'math-analysis': 'math', 'math-formulas': 'math', 'geo-ref': 'math', 'gopo-ref': 'glopo', 'hist-skills': 'history', 'lit-ref': 'english', 'arts-ref': 'english', 'music-theory': 'music', 'cs-ref': 'cs' };
     /* spanish-conj, french-conj and translate-ai were dropped rather than
        rehomed. The two conjugators were a second implementation with their own
        hand-written verb tables sitting one tab away from the engine-backed

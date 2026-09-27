@@ -4535,7 +4535,7 @@
   }
 
   /* `only` pins the planner copy to one half: Maths → Grapher is Functions,
-     Science → Lab graphs is Measurements. Without it (older callers) both
+     Science → Science toolkit is Measurements. Without it (older callers) both
      halves sit behind the switch as before. */
   function mountPlanner(host, only) {
     only = only === 'functions' || only === 'data' ? only : null;

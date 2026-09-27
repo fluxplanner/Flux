@@ -4,15 +4,19 @@
    The periodic table as its own tool: periodic.html, and the same thing in
    Study tools ▸ Chemistry ▸ Table, the way the grapher is both.
 
-   The table colours by every periodic trend — size, nuclear charge,
-   shielding, ionization energies, electronegativity, metallic character,
-   mass, density, melting point and more — with the trend across a period
-   and down a group written under it, and a graph of it against atomic
-   number beneath, where the repeating pattern shows. An element opens with
-   everything a course asks about it: configuration and orbital boxes, the
-   ions it makes, every successive ionization energy with the jumps pointed
-   out, its isotopes and how they average to its atomic mass, and its real
-   emission spectrum.
+   Tabs along the top:
+     Table        the periodic table, and everything about an element when
+                  you click it.
+     Trends       colour the table by any periodic trend — size, nuclear
+                  charge, shielding, ionization energies, electronegativity,
+                  metallic character, mass, density, melting point and more —
+                  with the trend across a period and down a group, and a
+                  graph against atomic number where the repeats show.
+     Temperature  melt and boil the table: every element's state at any
+                  temperature from absolute zero to the Sun's surface.
+     Electrons, Spectra, Isotopes, 3D
+                  one element in depth (flux-ptable-explore.js), and its atom
+                  to turn round (flux-ptable-atom3d.js).
 
    Data: flux-periodic.js (the element list the planner already uses) and
    flux-ptable-data.js (generated from PubChem and NIST; see
@@ -234,6 +238,19 @@
   PROPS.forEach((p) => { PROP[p.id] = p; });
   const text = (v) => (typeof v === 'function' ? v() : v);
 
+  /* ── The tabs ───────────────────────────────────────────────────────── */
+
+  const VIEWS = [
+    ['table', 'Table'], ['trends', 'Trends'], ['temp', 'Temperature'],
+    ['electrons', 'Electrons'], ['spectra', 'Spectra'], ['isotopes', 'Isotopes'], ['3d', '3D'],
+  ];
+  const VIEW_IDS = VIEWS.map((v) => v[0]);
+  /** The tabs about one element, and the element each starts on when none is picked. */
+  const EXPLORE = { electrons: 26, spectra: 1, isotopes: 17, '3d': 6 };
+  const isExplore = (v) => Object.prototype.hasOwnProperty.call(EXPLORE, v);
+  /** Link words: #trend/ie/Fe, #electrons/Fe, #3d/C. */
+  const HASH_WORD = { trends: 'trend', temp: 'temperature' };
+
   /* ── The app ────────────────────────────────────────────────────────── */
 
   function loadPrefs() {
@@ -244,18 +261,36 @@
     this.host = host;
     this.o = opts || {};
     const pref = loadPrefs();
+    const trendOk = (id) => PROP[id] && !PROP[id].kind;
     this.st = {
-      colour: PROP[pref.colour] ? pref.colour : 'cat', unit: pref.unit === 'K' ? 'K' : 'C',
-      temp: 298.15, sel: null, tab: pref.tab || 'overview', filling: false, query: '', hl: null, hlLabel: '', catFilter: null,
-      spectrum: 'emission',
+      view: VIEW_IDS.indexOf(pref.view) >= 0 ? pref.view : 'table',
+      // The trend on the Trends tab (older saves kept it as "colour").
+      trend: trendOk(pref.trend) ? pref.trend : trendOk(pref.colour) ? pref.colour : 'ie',
+      tcolour: pref.tcolour === 'block' ? 'block' : 'cat',
+      unit: pref.unit === 'K' ? 'K' : 'C',
+      temp: 298.15, sel: null, tab: pref.tab === 'energy' ? 'energy' : 'overview', query: '', hl: null, hlLabel: '', catFilter: null,
+      // The deeper tabs (flux-ptable-explore.js).
+      filling: false, ion: 0, spectrum: 'emission', compare: Array.isArray(pref.compare) ? pref.compare.filter((n) => n >= 1 && n <= 118).slice(0, 6) : [1, 2, 11],
+      hLo: 2, hHi: 3, isoMode: pref.isoMode === 'rel' ? 'rel' : 'pct', atomMode: pref.atomMode === 'orbitals' ? 'orbitals' : 'bohr', orb: null, orbM: null,
     };
     this.build();
     if (this.o.hash) this.readHash();
+    if (isExplore(this.st.view) && !this.st.sel) this.st.sel = EXPLORE[this.st.view];
     this.refresh();
   }
   App.prototype.save = function () {
     const s = this.st;
-    try { localStorage.setItem(STORE, JSON.stringify({ colour: s.colour, unit: s.unit, tab: s.tab })); } catch (e) { /* private window */ }
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        view: s.view, trend: s.trend, tcolour: s.tcolour, unit: s.unit, tab: s.tab,
+        compare: s.compare, isoMode: s.isoMode, atomMode: s.atomMode,
+      }));
+    } catch (e) { /* private window */ }
+  };
+  /** What the table is coloured by on this tab. */
+  App.prototype.colourId = function () {
+    const v = this.st.view;
+    return v === 'trends' ? this.st.trend : v === 'temp' ? 'state' : v === 'table' ? this.st.tcolour : 'cat';
   };
   App.prototype.els = function () { return model(); };
   App.prototype.byN = byN;
@@ -264,12 +299,14 @@
   App.prototype.build = function () {
     const groups = [];
     PROPS.forEach((p) => {
+      if (p.kind) return;              // categories, blocks and states have tabs of their own
       let g = groups.find((x) => x[0] === p.g);
       if (!g) groups.push(g = [p.g, []]);
       g[1].push(p);
     });
     const opts = groups.map((g) => '<optgroup label="' + esc(g[0]) + '">' + g[1].map((p) => '<option value="' + p.id + '">' + esc(p.label) + '</option>').join('') + '</optgroup>').join('');
     this.host.innerHTML = '<div class="fpt" tabindex="-1">'
+      + '<nav class="fpt-views" role="tablist" aria-label="Periodic table views">' + VIEWS.map((v) => '<button type="button" role="tab" class="fpt-view" data-view="' + v[0] + '">' + v[1] + '</button>').join('') + '</nav>'
       + '<div class="fpt-bar">'
       + '<div class="fpt-search"><input class="fpt-in fpt-q" type="search" autocomplete="off" spellcheck="false" placeholder="Find an element, or try “halogens”, “liquid”, “d-block”" aria-label="Find an element">'
       + '<div class="fpt-sugg" role="listbox" hidden></div></div>'
@@ -280,8 +317,10 @@
       + '<section class="fpt-main"><div class="fpt-legend"></div><div class="fpt-scroll"><div class="fpt-grid" role="grid" aria-label="Periodic table"></div></div>'
       + '<div class="fpt-chart" hidden></div></section>'
       + '<aside class="fpt-side" aria-live="polite"></aside>'
+      + '<section class="fpt-explore" aria-live="polite"></section>'
       + '</div></div>';
     this.root = this.host.querySelector('.fpt');
+    this.explore = this.host.querySelector('.fpt-explore');
     this.grid = this.host.querySelector('.fpt-grid');
     this.legend = this.host.querySelector('.fpt-legend');
     this.side = this.host.querySelector('.fpt-side');
@@ -324,9 +363,12 @@
       const cell = t.closest('.fpt-el');
       if (cell && this.grid.contains(cell)) {
         const n = +cell.dataset.n;
-        self.select(self.st.sel === n ? null : n);
+        // On the tabs about one element there is always one showing: a click changes it.
+        self.select(self.st.sel === n && !isExplore(self.st.view) ? null : n);
         return;
       }
+      const tab = t.closest('.fpt-view');
+      if (tab) { self.setView(tab.dataset.view); return; }
       // A point on the trend graph is that element.
       const pt = t.closest('.fpt-pt');
       if (pt) { self.select(+pt.dataset.n); return; }
@@ -335,7 +377,16 @@
       const act = t.closest('[data-act]');
       if (act) { self.action(act.dataset.act, act); }
     });
-    this.sel.addEventListener('change', () => { this.st.colour = this.sel.value; this.st.catFilter = null; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); });
+    this.root.querySelector('.fpt-views').addEventListener('keydown', (ev) => {
+      if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+      const i = VIEW_IDS.indexOf(this.st.view) + (ev.key === 'ArrowRight' ? 1 : -1);
+      if (i < 0 || i >= VIEW_IDS.length) return;
+      ev.preventDefault();
+      this.setView(VIEW_IDS[i]);
+      const b = this.root.querySelector('.fpt-view[data-view="' + VIEW_IDS[i] + '"]');
+      if (b) b.focus();
+    });
+    this.sel.addEventListener('change', () => { this.st.trend = this.sel.value; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); });
     this.q.addEventListener('input', () => this.search(this.q.value));
     this.q.addEventListener('keydown', (ev) => {
       const items = [...this.sugg.querySelectorAll('[data-pick]')];
@@ -465,7 +516,7 @@
   /* ── Painting the cells ─────────────────────────────────────────────── */
 
   App.prototype.paint = function () {
-    const st = this.st, prop = PROP[st.colour];
+    const st = this.st, cid = this.colourId(), prop = PROP[cid];
     let lo = Infinity, hi = -Infinity;
     const vals = {};
     if (!prop.kind) {
@@ -507,12 +558,12 @@
       b.classList.toggle('is-heat', !prop.kind && !none);
       b.classList.toggle('is-none', none);
       b.querySelector('.fpt-v').textContent = value;
-      const dim = (st.hl && !st.hl.has(e.n)) || (st.catFilter && e.cat !== st.catFilter && st.colour === 'cat');
+      const dim = (st.hl && !st.hl.has(e.n)) || (st.catFilter && e.cat !== st.catFilter && cid === 'cat');
       b.classList.toggle('is-dim', !!dim);
       b.classList.toggle('is-hl', !!(st.hl && st.hl.has(e.n)));
       b.classList.toggle('is-sel', st.sel === e.n);
     });
-    this.root.dataset.colour = st.colour;
+    this.root.dataset.colour = cid;
     this.renderChart();
   };
 
@@ -533,10 +584,10 @@
    * same place every period, which is what "periodic" means.
    */
   App.prototype.renderChart = function () {
-    const box = this.chart, st = this.st, prop = PROP[st.colour];
+    const box = this.chart, st = this.st, prop = PROP[this.colourId()];
     if (!box) return;
     const pts = [];
-    if (!prop.kind) model().forEach((e) => { const v = prop.get(e); if (v != null && Number.isFinite(v) && (!prop.log || v > 0)) pts.push({ e: e, v: v }); });
+    if (!prop.kind && st.view === 'trends') model().forEach((e) => { const v = prop.get(e); if (v != null && Number.isFinite(v) && (!prop.log || v > 0)) pts.push({ e: e, v: v }); });
     if (pts.length < 3) { box.hidden = true; box.innerHTML = ''; return; }
     box.hidden = false;
     /* A phone draws the graph at a readable 640 px and lets it scroll sideways,
@@ -625,26 +676,33 @@
     return esc(this.tempText(K)) + (this.st.unit === 'C' ? ' <small>(' + Math.round(K) + ' K)</small>' : ' <small>(' + Math.round(K - 273.15) + ' °C)</small>');
   };
   App.prototype.renderLegend = function () {
-    const st = this.st, prop = PROP[st.colour];
+    const st = this.st, cid = this.colourId(), prop = PROP[cid], view = st.view;
     let h = '';
     if (st.hl) {
       h += '<div class="fpt-hlbar"><span>Showing <b>' + st.hl.size + '</b> ' + (st.hlLabel ? 'for ' + esc(st.hlLabel) : 'elements') + '</span>'
         + '<button type="button" class="fpt-link" data-act="clearhl">Show all</button></div>';
     }
-    if (prop.kind === 'cat') {
-      h += '<div class="fpt-chips">' + CATS.map((c) => '<button type="button" class="fpt-chip' + (st.catFilter === c[0] ? ' is-on' : '') + '" data-act="cat" data-cat="' + c[0] + '">'
-        + '<i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</button>').join('') + '</div>';
-    } else if (prop.kind === 'block') {
-      h += '<div class="fpt-chips">' + Object.keys(BLOCKS).map((k) => '<span class="fpt-chip is-static"><i style="background:' + BLOCKS[k][1] + '"></i>' + BLOCKS[k][0] + '</span>').join('')
-        + '<span class="fpt-note">The block is the subshell the last electron goes into.</span></div>';
-    } else if (prop.kind === 'state') {
-      const counts = { s: 0, l: 0, g: 0, u: 0 };
-      model().forEach((e) => { counts[stateAt(e, st.temp)]++; });
-      const presets = [[298.15, 'Room'], [310.15, 'Body'], [373.15, 'Water boils'], [1811, 'Iron melts'], [5778, 'Sun’s surface']];
+    if (isExplore(view)) {
+      const e = byN(st.sel);
+      h += '<div class="fpt-pickhint">Pick any element' + (e ? ' — showing <b>' + esc(e.name) + '</b>' : '') + '. Arrow keys move along the table.</div>';
+    } else if (view === 'table') {
+      h += '<div class="fpt-seg fpt-tcolour" role="group" aria-label="Colour the table by">'
+        + [['cat', 'Categories'], ['block', 'Blocks']].map((c) => '<button type="button" class="fpt-chip' + (cid === c[0] ? ' is-on' : '') + '" data-act="tcolour" data-c="' + c[0] + '">' + c[1] + '</button>').join('') + '</div>';
+      if (cid === 'cat') {
+        h += '<div class="fpt-chips">' + CATS.map((c) => '<button type="button" class="fpt-chip' + (st.catFilter === c[0] ? ' is-on' : '') + '" data-act="cat" data-cat="' + c[0] + '">'
+          + '<i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</button>').join('') + '</div>';
+      } else {
+        h += '<div class="fpt-chips">' + Object.keys(BLOCKS).map((k) => '<span class="fpt-chip is-static"><i style="background:' + BLOCKS[k][1] + '"></i>' + BLOCKS[k][0] + '</span>').join('')
+          + '<span class="fpt-note">The block is the subshell the last electron goes into.</span></div>';
+      }
+    } else if (view === 'temp') {
+      const presets = [[0, 'Absolute zero'], [273.15, 'Ice melts'], [298.15, 'Room'], [310.15, 'Body'], [373.15, 'Water boils'], [1811, 'Iron melts'], [5778, 'Sun’s surface']];
       h += '<div class="fpt-temp"><label><span>Temperature</span><input class="fpt-in fpt-range" type="range" min="0" max="6000" step="1" value="' + Math.round(st.temp) + '" aria-label="Temperature in kelvin"></label>'
         + '<b class="fpt-temp-v">' + this.tempLabel() + '</b>'
-        + '<span class="fpt-presets">' + presets.map((p) => '<button type="button" class="fpt-chip" data-act="temp" data-k="' + p[0] + '">' + p[1] + '</button>').join('') + '</span></div>'
-        + '<div class="fpt-chips fpt-states">' + ['s', 'l', 'g', 'u'].map((k) => '<span class="fpt-chip is-static"><i style="background:' + STATES[k][1] + '"></i>' + STATES[k][0] + ' <b>' + counts[k] + '</b></span>').join('') + '</div>';
+        + '<button type="button" class="fpt-chip fpt-play' + (this.playing ? ' is-on' : '') + '" data-act="tplay" aria-pressed="' + !!this.playing + '">' + (this.playing ? '❚❚ Pause' : '▶ Heat it up') + '</button></div>'
+        + '<div class="fpt-presets">' + presets.map((p) => '<button type="button" class="fpt-chip" data-act="temp" data-k="' + p[0] + '">' + p[1] + '</button>').join('') + '</div>'
+        + '<div class="fpt-chips fpt-states">' + ['s', 'l', 'g', 'u'].map((k) => '<span class="fpt-chip is-static"><i style="background:' + STATES[k][1] + '"></i>' + STATES[k][0] + ' <b></b></span>').join('') + '</div>'
+        + '<div class="fpt-events"></div>';
     } else {
       const lo = this.range.lo, hi = this.range.hi;
       const end = (t) => {
@@ -668,54 +726,142 @@
       range.addEventListener('input', () => {
         st.temp = +range.value;
         this.paint();
-        const v = this.legend.querySelector('.fpt-temp-v');
-        if (v) v.innerHTML = this.tempLabel();
-        const counts = { s: 0, l: 0, g: 0, u: 0 };
-        model().forEach((e) => { counts[stateAt(e, st.temp)]++; });
-        this.legend.querySelectorAll('.fpt-states .fpt-chip b').forEach((b, i) => { b.textContent = counts['slgu'[i]]; });
+        this.updateTemp();
       });
+      this.updateTemp();
     }
+  };
+
+  /** The temperature readouts, updated in place so the slider keeps its grip. */
+  App.prototype.updateTemp = function () {
+    const L = this.legend, st = this.st;
+    const range = L.querySelector('.fpt-range');
+    if (range && +range.value !== Math.round(st.temp)) range.value = Math.round(st.temp);
+    const v = L.querySelector('.fpt-temp-v');
+    if (v) v.innerHTML = this.tempLabel();
+    const counts = { s: 0, l: 0, g: 0, u: 0 };
+    model().forEach((e) => { counts[stateAt(e, st.temp)]++; });
+    L.querySelectorAll('.fpt-states .fpt-chip b').forEach((b, i) => { b.textContent = counts['slgu'[i]]; });
+    const ev = L.querySelector('.fpt-events');
+    if (ev) ev.innerHTML = this.tempEvents();
+  };
+  /** The melting or boiling just below the current temperature, and the next one above it. */
+  App.prototype.tempEvents = function () {
+    const T = this.st.temp;
+    let next = null, last = null;
+    model().forEach((e) => {
+      [[mpK(e), 'melt'], [bpK(e), 'boil']].forEach((x) => {
+        const K = x[0];
+        if (K == null || (e.s === 'He' && x[1] === 'melt')) return;       // helium only freezes under pressure
+        if (K > T && (!next || K < next.K)) next = { K: K, what: x[1], e: e };
+        if (K <= T && (!last || K > last.K)) last = { K: K, what: x[1], e: e };
+      });
+    });
+    const say = (x, done) => '<b>' + esc(x.e.name) + '</b> ' + (done ? x.what + 'ed' : x.what + 's') + ' at ' + esc(this.tempText(x.K));
+    return (last ? '<span><i>Just now</i> ' + say(last, true) + '</span>' : '') + (next ? '<span><i>Next</i> ' + say(next, false) + '</span>' : '')
+      + '<span class="fpt-note">At normal atmospheric pressure. Elements with no measured values are striped.</span>';
+  };
+  /** Heat the table from where it is to the surface of the Sun, faster as it gets hotter. */
+  App.prototype.togglePlay = function () {
+    if (this.playing) { cancelAnimationFrame(this.playing); this.playing = null; this.renderLegend(); return; }
+    if (this.st.temp >= 5990) this.st.temp = 0;
+    let last = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+      last = now;
+      this.st.temp = Math.min(6000, this.st.temp + dt * (40 + this.st.temp * 0.35));
+      this.paint();
+      this.updateTemp();
+      if (this.st.temp >= 6000 || !this.root.isConnected || this.st.view !== 'temp') { this.playing = null; this.renderLegend(); return; }
+      this.playing = requestAnimationFrame(step);
+    };
+    this.playing = requestAnimationFrame(step);
+    this.renderLegend();
   };
 
   /* ── Views and actions ──────────────────────────────────────────────── */
 
   App.prototype.select = function (n) {
+    const view = this.st.view;
+    if (!n && isExplore(view)) return;          // the tabs about one element always show one
     this.st.sel = n;
     if (n && this.cells[n]) Object.keys(this.cells).forEach((k) => { this.cells[k].tabIndex = +k === n ? 0 : -1; });
     if (this.o.hash) this.writeHash();
     this.paint();
+    if (isExplore(view)) {
+      this.renderLegend();
+      this.renderExplore();
+      return;
+    }
     this.renderSide();
     // On a narrow screen the details sit under the table: bring them into view.
     if (n && this.root.clientWidth < 1100 && this.o.scrollToDetail !== false && this.side.getBoundingClientRect().top > window.innerHeight - 80) {
       this.side.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
   };
+  /** Switch tab. The element on show stays chosen across tabs. */
+  App.prototype.setView = function (v) {
+    if (VIEW_IDS.indexOf(v) < 0 || v === this.st.view) return;
+    const was = this.st.view;
+    this.st.view = v;
+    if (was === '3d' && window.FluxPTableExplore) window.FluxPTableExplore.leave(this);
+    if (isExplore(v) && !this.st.sel) this.st.sel = EXPLORE[v];
+    this.st.catFilter = null;
+    this.save();
+    if (this.o.hash) this.writeHash();
+    this.refresh();
+  };
   App.prototype.action = function (act, el) {
     const st = this.st;
     switch (act) {
       case 'clearhl': this.q.value = ''; st.query = ''; this.highlight(null); return;
       case 'cat': st.catFilter = st.catFilter === el.dataset.cat ? null : el.dataset.cat; this.paint(); this.renderLegend(); return;
-      case 'temp': st.temp = +el.dataset.k; this.paint(); this.renderLegend(); return;
+      case 'tcolour': st.tcolour = el.dataset.c === 'block' ? 'block' : 'cat'; st.catFilter = null; this.save(); this.paint(); this.renderLegend(); return;
+      case 'temp': st.temp = +el.dataset.k; this.paint(); this.updateTemp(); return;
+      case 'tplay': this.togglePlay(); return;
       case 'tab': st.tab = el.dataset.tab; this.save(); this.renderSide(); return;
       case 'close': this.select(null); return;
       case 'step': this.select(Math.max(1, Math.min(118, st.sel + +el.dataset.d))); return;
-      case 'order': st.filling = !st.filling; this.renderSide(); return;
-      case 'spectrum': st.spectrum = el.dataset.mode; this.renderSide(); return;
+      case 'order': st.filling = !st.filling; if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); return;
+      case 'spectrum': st.spectrum = el.dataset.mode; if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); return;
       case 'goto': this.select(+el.dataset.n); return;
-      case 'colour': st.colour = el.dataset.c; st.catFilter = null; this.save(); if (this.o.hash) this.writeHash(); this.refresh(); return;
+      case 'view': this.setView(el.dataset.view); return;
+      case 'trend': st.trend = el.dataset.c; this.save(); if (this.st.view !== 'trends') this.setView('trends'); else { if (this.o.hash) this.writeHash(); this.refresh(); } return;
       default:
+        if (window.FluxPTableExplore) window.FluxPTableExplore.action(this, act, el);
     }
   };
 
   App.prototype.renderTabs = function () {
+    const v = this.st.view;
+    this.root.querySelectorAll('.fpt-view').forEach((b) => {
+      const on = b.dataset.view === v;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
     this.root.querySelectorAll('.fpt-unit button').forEach((b) => b.classList.toggle('is-on', b.dataset.unit === this.st.unit));
+    // Only the Trends tab has a trend to pick; only temperatures need a unit.
+    this.root.querySelector('.fpt-colour').hidden = v !== 'trends';
+    this.root.querySelector('.fpt-unit').hidden = !(v === 'temp' || (v === 'trends' && PROP[this.st.trend].unit === 'temp') || v === 'table');
+    this.root.dataset.view = v;
+    this.root.classList.toggle('is-explore', isExplore(v));
   };
   App.prototype.refresh = function () {
-    this.sel.value = this.st.colour;
+    this.sel.value = this.st.trend;
     this.renderTabs();
     this.paint();
     this.renderLegend();
-    this.renderSide();
+    if (isExplore(this.st.view)) this.renderExplore();
+    else {
+      if (window.FluxPTableExplore) window.FluxPTableExplore.leave(this);
+      this.renderSide();
+    }
+  };
+  App.prototype.renderExplore = function () {
+    const X2 = window.FluxPTableExplore;
+    if (!X2) { this.explore.innerHTML = '<p class="fpt-lead">This part of the table could not load. Try refreshing.</p>'; return; }
+    X2.render(this, this.st.view, byN(this.st.sel), this.explore);
   };
 
   /* ── Keyboard on the table ──────────────────────────────────────────── */
@@ -753,36 +899,51 @@
     const st = this.st;
     this.root.classList.toggle('has-detail', !!st.sel);
     if (!st.sel) { this.side.innerHTML = this.introHTML(); return; }
-    const e = byN(st.sel);
-    this.side.innerHTML = this.detailHTML(e);
-    const cv = this.side.querySelector('.fpt-bohr');
-    if (cv) cv.innerHTML = bohrSVG(e);
+    this.side.innerHTML = this.detailHTML(byN(st.sel));
   };
 
   App.prototype.introHTML = function () {
     const card = (act, data, icon, title, sub) => '<button type="button" class="fpt-card" data-act="' + act + '" ' + data + '><span class="fpt-card-i" aria-hidden="true">' + icon + '</span><span><b>' + title + '</b><small>' + sub + '</small></span></button>';
-    return '<div class="fpt-intro"><h2>Pick an element</h2><p>Click any element for its electrons, ionization energies, isotopes and emission spectrum. Arrow keys move around the table; <kbd>/</kbd> searches.</p>'
-      + '<p>Or colour the table by a trend — ' + (PROPS.length - 3) + ' of them are under “Colour by”, each with a graph against atomic number.</p>'
+    const v = this.st.view;
+    if (v === 'trends') {
+      return '<div class="fpt-intro"><h2>Trends</h2><p>' + PROPS.filter((p) => !p.kind).length + ' properties under “Colour by”. Each one colours the table, says which way it goes across a period and down a group, and is graphed against atomic number underneath. Click an element for its values.</p>'
+        + '<div class="fpt-cards">'
+        + card('trend', 'data-c="rc"', '◎', 'Atomic radius', 'Smaller across, bigger down')
+        + card('trend', 'data-c="ie"', '⚡', 'Ionization energy', 'The dips at groups 13 and 16')
+        + card('trend', 'data-c="en"', '±', 'Electronegativity', 'Climbing to fluorine')
+        + card('trend', 'data-c="zeff"', '⊕', 'Effective nuclear charge', 'And the shielding behind it')
+        + card('trend', 'data-c="metal"', '◆', 'Metallic character', 'Down and to the left')
+        + card('trend', 'data-c="mp"', '▲', 'Melting point', 'Peaks at carbon and silicon')
+        + '</div></div>';
+    }
+    if (v === 'temp') {
+      return '<div class="fpt-intro"><h2>Melt the table</h2><p>Drag the temperature, or press ▶ to heat everything from absolute zero to the surface of the Sun. At room temperature only two elements are liquid — bromine and mercury — and eleven are gases.</p>'
+        + '<p>Click an element to see its melting and boiling points.</p></div>';
+    }
+    return '<div class="fpt-intro"><h2>Pick an element</h2><p>Click any element for what it is, its numbers and its electrons. Arrow keys move around the table; <kbd>/</kbd> searches.</p>'
       + '<div class="fpt-cards">'
-      + card('colour', 'data-c="rc"', '◎', 'Atomic radius', 'Smaller across, bigger down')
-      + card('colour', 'data-c="ie"', '⚡', 'Ionization energy', 'The dips at groups 13 and 16')
-      + card('colour', 'data-c="en"', '±', 'Electronegativity', 'Climbing to fluorine')
-      + card('colour', 'data-c="zeff"', '⊕', 'Effective nuclear charge', 'And the shielding behind it')
-      + card('colour', 'data-c="metal"', '◆', 'Metallic character', 'Down and to the left')
-      + card('colour', 'data-c="state"', '🌡', 'Melt the table', 'Drag the temperature')
+      + card('view', 'data-view="trends"', '↗', 'Trends', 'Colour the table by 30 properties')
+      + card('view', 'data-view="temp"', '🌡', 'Temperature', 'Melt and boil the table')
+      + card('view', 'data-view="electrons"', '⇅', 'Electrons', 'Configurations and orbital diagrams')
+      + card('view', 'data-view="spectra"', '▥', 'Spectra', 'Line spectra and hydrogen\'s levels')
+      + card('view', 'data-view="isotopes"', '⚖', 'Isotopes', 'Mass spectra and relative atomic mass')
+      + card('view', 'data-view="3d"', '⚛', '3D', 'Every atom, to turn round')
       + '</div></div>';
   };
 
   App.prototype.detailHTML = function (e) {
     const st = this.st;
-    const tabs = [['overview', 'Overview'], ['electrons', 'Electrons'], ['energy', 'Energy'], ['isotopes', 'Isotopes'], ['spectrum', 'Spectrum']];
-    const body = { overview: this.overviewHTML, electrons: this.electronsHTML, energy: this.energyHTML, isotopes: this.isotopesHTML, spectrum: this.spectrumHTML }[st.tab] || this.overviewHTML;
+    const tabs = [['overview', 'Overview'], ['energy', 'Energy and size']];
+    const body = st.tab === 'energy' ? this.energyHTML : this.overviewHTML;
     return '<div class="fpt-detail" style="--c:' + CAT[e.cat].colour + '">'
       + '<div class="fpt-dhead"><div class="fpt-tile"><span class="fpt-tile-n">' + e.n + '</span><span class="fpt-tile-s">' + esc(e.s) + '</span><span class="fpt-tile-m">' + esc(massText(e)) + '</span></div>'
       + '<div class="fpt-dname"><h2>' + esc(e.name) + '</h2><span class="fpt-dcat">' + esc(CAT[e.cat].label.replace(/s$/, '')) + ' · ' + block(e) + '-block</span>'
       + '<div class="fpt-dacts"><button type="button" class="fpt-ibtn" data-act="step" data-d="-1" aria-label="Previous element"' + (e.n === 1 ? ' disabled' : '') + '>‹</button>'
       + '<button type="button" class="fpt-ibtn" data-act="step" data-d="1" aria-label="Next element"' + (e.n === 118 ? ' disabled' : '') + '>›</button>'
       + '<button type="button" class="fpt-ibtn" data-act="close" aria-label="Close">✕</button></div></div></div>'
+      + '<div class="fpt-more" aria-label="More on ' + esc(e.name.toLowerCase()) + '">'
+      + [['electrons', 'Electrons'], ['spectra', 'Spectrum'], ['isotopes', 'Isotopes'], ['3d', 'In 3D']].map((t) => '<button type="button" class="fpt-chip" data-act="view" data-view="' + t[0] + '">' + t[1] + ' →</button>').join('')
+      + '</div>'
       + '<div class="fpt-dtabs" role="tablist">' + tabs.map((t) => '<button type="button" role="tab" aria-selected="' + (st.tab === t[0]) + '" class="fpt-dtab' + (st.tab === t[0] ? ' is-on' : '') + '" data-act="tab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>'
       + '<div class="fpt-dbody">' + body.call(this, e) + '</div></div>';
   };
@@ -801,6 +962,8 @@
   }
 
   App.prototype.overviewHTML = function (e) {
+    let config = null;
+    try { config = C().configText(C().occupancy(e.ec)).short; } catch (err) { config = e.ec || null; }
     const s25 = stateAt(e, 298.15);
     const ox = oxStates(e);
     const flame = FLAME[e.s];
@@ -809,6 +972,7 @@
     const en = e.x.en != null ? e.x.en : e.en;
     let h = '<p class="fpt-fact">' + esc(e.fact || '') + '</p><div class="fpt-kvs">'
       + row('Atomic number', e.n)
+      + (config ? row('Electron configuration', '<span class="fpt-mono">' + esc(config) + '</span>') : '')
       + (neutrons(e) != null ? row('Protons · neutrons · electrons', e.n + ' · ' + neutrons(e) + ' · ' + e.n) : '')
       + row('Relative atomic mass', esc(e.mass === Math.round(e.mass) ? '[' + e.mass + '] — most stable isotope' : String(e.mass)))
       + row('Group · period', (e.g || '—') + ' · ' + e.p)
@@ -823,42 +987,8 @@
       + (e.x.hl ? row('Longest-lived isotope', esc(e.s + '-' + e.x.hl[0] + ': ' + halfText(e.x.hl[1]))) : '')
       + '</div>';
     if (flame) h += '<div class="fpt-flame"><i style="background:' + flame[1] + '"></i>Flame test: <b>' + flame[0] + '</b></div>';
-    h += '<div class="fpt-more">' + ['electrons', 'energy', 'isotopes', 'spectrum'].map((t) => '<button type="button" class="fpt-chip" data-act="tab" data-tab="' + t + '">' + t.charAt(0).toUpperCase() + t.slice(1) + ' →</button>').join('') + '</div>';
-    return h;
-  };
-
-  App.prototype.electronsHTML = function (e) {
-    const F = C();
-    let occ;
-    try { occ = F.occupancy(e.ec); } catch (err) { return '<p class="fpt-note">No configuration on record.</p>'; }
-    const t = F.configText(occ, { filling: this.st.filling });
-    const shells = {};
-    Object.keys(occ).forEach((k) => { shells[k[0]] = (shells[k[0]] || 0) + occ[k]; });
-    const perShell = Object.keys(shells).sort().map((n) => shells[n]);
-    const orb = F.orbitals(occ);
-    const unpaired = orb.reduce((a, o) => a + o.unpaired, 0);
-    const z = P().zeff(e), outer = P().trendValue('outer', e);
-    let h = '<div class="fpt-config"><div class="fpt-config-t">' + esc(t.short) + '</div>'
-      + (t.full !== t.short ? '<div class="fpt-config-f">' + esc(t.full) + '</div>' : '')
-      + '<button type="button" class="fpt-link" data-act="order">' + (this.st.filling ? 'Show in shell order' : 'Show in filling order (4s before 3d)') + '</button></div>';
-    h += '<div class="fpt-sub">Orbital boxes</div><div class="fpt-orbs">' + orb.map((o) => '<div class="fpt-orb"><div class="fpt-boxes">'
-      + o.boxes.map((b) => '<span class="fpt-box">' + (b === 2 ? '↑↓' : b === 1 ? '↑' : '') + '</span>').join('') + '</div><span>' + o.sub + '</span></div>').join('') + '</div>';
-    h += '<div class="fpt-kvs">' + row('Electrons per shell', perShell.join(', '))
-      + row('Outer-shell electrons', outer != null ? outer : '—')
-      + row('Unpaired electrons', unpaired + (unpaired ? ' — paramagnetic' : ' — diamagnetic'))
-      + row('Effective nuclear charge', z != null ? z.toFixed(2) + ' <small>(Slater)</small>' : '—') + '</div>';
-    h += '<div class="fpt-bohr" aria-hidden="true"></div>';
-    // The ions it forms, with where their electrons went.
-    const ions = oxStates(e).filter((q) => q !== 0 && Math.abs(q) <= 4 && (q < 0 ? e.n - q <= 118 : q <= e.n));
-    if (ions.length) {
-      h += '<div class="fpt-sub">Its common ions</div><div class="fpt-ions">' + ions.map((q) => {
-        let r;
-        try { r = F.ionConfig(e.ec, e.n, q); } catch (err) { return ''; }
-        const lab = e.s + F.toSup((Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : '-'));
-        return '<div class="fpt-ion"><b>' + esc(lab) + '</b><span>' + esc(r.text.short) + '</span></div>';
-      }).join('') + '</div>';
-      if (block(e) === 'd') h += '<p class="fpt-note">Transition metals lose their outer s electrons before d — the outer shell empties first.</p>';
-    }
+    // The shell diagram: the model the 3D tab turns round.
+    h += '<div class="fpt-bohr" aria-hidden="true">' + bohrSVG(e) + '</div>';
     return h;
   };
 
@@ -877,42 +1007,6 @@
       + row('Effective nuclear charge', P().zeff(e) != null ? P().zeff(e).toFixed(2) + ' <small>(shielding σ = ' + shielding(e).toFixed(2) + ')</small>' : '—')
       + '</div>';
     if (ie.length > 1) h += ieChart(e, ie);
-    return h;
-  };
-
-  App.prototype.isotopesHTML = function (e) {
-    const iso = e.x.iso;
-    if (!iso) {
-      let h = '<p class="fpt-lead">' + esc(e.name) + ' has no stable isotopes' + (e.x.abC ? ' — what exists in nature is left over from, or made by, radioactive decay' : ' — it is made, not found') + '.</p>';
-      if (e.x.hl) h += '<div class="fpt-kvs">' + row('Longest-lived isotope', esc(e.s + '-' + e.x.hl[0])) + row('Half-life', esc(halfText(e.x.hl[1])) + (e.x.hl[3] ? ' <small>(estimated)</small>' : '')) + '</div>';
-      return h;
-    }
-    const sum = iso.reduce((a, x) => a + x[1] * x[2], 0);
-    const max = Math.max.apply(null, iso.map((x) => x[2]));
-    const pct = (a) => (a * 100 >= 0.01 ? trim0((a * 100).toFixed(a >= 0.1 ? 2 : 3)) : fmt(a * 100, 2));
-    let h = '<table class="fpt-iso"><thead><tr><th>Isotope</th><th>Mass (u)</th><th>Abundance</th></tr></thead><tbody>'
-      + iso.map((x) => '<tr><td><sup>' + x[0] + '</sup>' + esc(e.s) + '</td><td>' + x[1].toFixed(4) + '</td><td><span class="fpt-meter"><i style="width:' + (x[2] / max * 100).toFixed(1) + '%"></i></span>' + pct(x[2]) + '%</td></tr>').join('')
-      + '</tbody></table>';
-    // How the atomic mass comes from them: the working an exam asks for.
-    if (iso.length > 1) {
-      const terms = iso.filter((x) => x[2] >= 0.001).map((x) => '(' + x[1].toFixed(2) + ' × ' + pct(x[2]) + ')');
-      h += '<div class="fpt-sub">Why the atomic mass is ' + esc(String(e.mass)) + '</div><div class="fpt-work">A<sub>r</sub> = [' + terms.join(' + ') + '] ÷ 100 = <b>' + sum.toFixed(3) + '</b></div>'
-        + '<p class="fpt-note">The average of its isotopes\' masses, weighted by how common each one is.</p>';
-    } else h += '<p class="fpt-note">It has only one stable isotope, so its atomic mass is that isotope\'s mass.</p>';
-    return h;
-  };
-
-  App.prototype.spectrumHTML = function (e) {
-    const ln = e.x.ln;
-    if (!ln) return '<p class="fpt-lead">No visible emission lines are on record for ' + esc(e.name) + '.</p>';
-    const mode = this.st.spectrum;
-    let h = '<div class="fpt-seg">' + [['emission', 'Emission'], ['absorption', 'Absorption']].map((m) => '<button type="button" class="fpt-chip' + (mode === m[0] ? ' is-on' : '') + '" data-act="spectrum" data-mode="' + m[0] + '">' + m[1] + '</button>').join('') + '</div>';
-    h += spectrumSVG(e, ln, mode);
-    const strongest = ln.slice().sort((a, b) => b[1] - a[1]).slice(0, 5).sort((a, b) => a[0] - b[0]);
-    h += '<div class="fpt-sub">Strongest lines</div><div class="fpt-lines">' + strongest.map((l) => '<span><i style="background:' + wlColour(l[0]) + '"></i>' + l[0].toFixed(1) + ' nm <small>' + (HC / l[0]).toFixed(2) + ' eV</small></span>').join('') + '</div>';
-    if (e.s === 'H') {
-      h += '<p class="fpt-note">This is the Balmer series: an electron falling to the second energy level from level 3 (red, 656 nm), 4, 5, 6 and on. The lines crowd towards the violet because the levels get closer together as n grows.</p>';
-    } else h += '<p class="fpt-note">Each element\'s lines are its fingerprint — helium was found in the Sun\'s spectrum before it was found on Earth. Wavelengths in air, from NIST.</p>';
     return h;
   };
 
@@ -999,11 +1093,14 @@
     return 'rgb(' + c(r) + ',' + c(g) + ',' + c(b) + ')';
   }
   let specId = 0;
-  function spectrumSVG(e, ln, mode) {
-    const W = 370, H = 64, x = (wl) => ((wl - 380) / 370) * W;
+  /** A line spectrum, 380–750 nm. opts: { h: strip height, axis: false to leave off the scale }. */
+  function spectrumSVG(e, ln, mode, opts) {
+    const o = opts || {};
+    const W = 370, H = o.h || 64, x = (wl) => ((wl - 380) / 370) * W;
+    const axis = o.axis !== false;
     const Imax = Math.max.apply(null, ln.map((l) => l[1]));
     const gid = 'fptRainbow' + (++specId);
-    let s = '<svg viewBox="0 0 ' + W + ' ' + (H + 18) + '" class="fpt-spec" role="img" aria-label="' + esc(e.name) + ' ' + mode + ' spectrum"><defs><linearGradient id="' + gid + '">';
+    let s = '<svg viewBox="0 0 ' + W + ' ' + (H + (axis ? 18 : 2)) + '" class="fpt-spec" role="img" aria-label="' + esc(e.name) + ' ' + mode + ' spectrum"><defs><linearGradient id="' + gid + '">';
     for (let wl = 380; wl <= 750; wl += 10) s += '<stop offset="' + ((wl - 380) / 370).toFixed(3) + '" stop-color="' + wlColour(wl) + '"/>';
     s += '</linearGradient></defs>';
     if (mode === 'absorption') {
@@ -1016,8 +1113,10 @@
         s += '<rect x="' + (x(l[0]) - 0.8).toFixed(2) + '" y="0" width="1.6" height="' + H + '" fill="' + wlColour(l[0]) + '" opacity="' + a.toFixed(2) + '"><title>' + l[0] + ' nm</title></rect>';
       });
     }
-    for (let wl = 400; wl <= 700; wl += 50) s += '<text x="' + x(wl).toFixed(1) + '" y="' + (H + 13) + '" class="fpt-ax fpt-ax--x">' + wl + '</text>';
-    s += '<text x="' + W + '" y="' + (H + 13) + '" class="fpt-ax">nm</text>';
+    if (axis) {
+      for (let wl = 400; wl <= 700; wl += 50) s += '<text x="' + x(wl).toFixed(1) + '" y="' + (H + 13) + '" class="fpt-ax fpt-ax--x">' + wl + '</text>';
+      s += '<text x="' + W + '" y="' + (H + 13) + '" class="fpt-ax">nm</text>';
+    }
     return s + '</svg>';
   }
 
@@ -1026,21 +1125,34 @@
   App.prototype.readHash = function () {
     const h = decodeURIComponent((location.hash || '').slice(1));
     if (!h) return;
-    // #Fe opens an element; #trend/ie colours the table by a trend; both can be given: #trend/ie/Fe.
-    const parts = h.split('/');
-    let rest = parts;
-    if (parts[0] === 'trend' && PROP[parts[1]]) { this.st.colour = parts[1]; rest = parts.slice(2); }
-    const e = rest[0] ? (/^\d+$/.test(rest[0]) ? byN(+rest[0]) : bySym(rest[0])) : null;
-    this.st.sel = e ? e.n : null;
+    /* #Fe opens an element on the table. A tab comes first when it is not the
+       table: #trend/ie/Fe, #temperature/Hg, #electrons/Cr, #spectra/H,
+       #isotopes/Cl, #3d/C. */
+    let parts = h.split('/');
+    const word = parts[0].toLowerCase();
+    const view = VIEW_IDS.find((v) => v === word || HASH_WORD[v] === word);
+    if (view) {
+      this.st.view = view;
+      parts = parts.slice(1);
+      if (view === 'trends' && PROP[parts[0]] && !PROP[parts[0]].kind) { this.st.trend = parts[0]; parts = parts.slice(1); }
+    } else this.st.view = 'table';
+    const e = parts[0] ? (/^\d+$/.test(parts[0]) ? byN(+parts[0]) : bySym(parts[0])) : null;
+    this.st.sel = e ? e.n : (isExplore(this.st.view) ? EXPLORE[this.st.view] : null);
   };
   App.prototype.writeHash = function () {
     const st = this.st;
-    const h = (st.colour !== 'cat' ? '#trend/' + st.colour + (st.sel ? '/' : '') : st.sel ? '#' : '') + (st.sel ? byN(st.sel).s : '');
+    const bits = [];
+    if (st.view !== 'table') bits.push(HASH_WORD[st.view] || st.view);
+    if (st.view === 'trends') bits.push(st.trend);
+    if (st.sel) bits.push(byN(st.sel).s);
+    const h = bits.length ? '#' + bits.join('/') : '';
     try { history.replaceState(null, '', location.pathname + location.search + h); } catch (err) { /* sandboxed */ }
   };
 
   App.prototype.destroy = function () {
     document.removeEventListener('keydown', this.onKey);
+    if (this.playing) cancelAnimationFrame(this.playing);
+    if (this.atom) this.atom.destroy();
     this.host.innerHTML = '';
   };
 
@@ -1057,6 +1169,7 @@
     core: {
       esc: esc, fmt: fmt, trim0: trim0, CAT: CAT, CATS: CATS, PROPS: PROPS, PROP: PROP, KJ: KJ, block: block, stateAt: stateAt,
       mpK: mpK, bpK: bpK, oxStates: oxStates, massText: massText, model: model, wlColour: wlColour, halfText: halfText, STATES: STATES,
+      byN: byN, neutrons: neutrons, bohrSVG: bohrSVG, spectrumSVG: spectrumSVG, VIEWS: VIEWS,
     },
   };
 })();

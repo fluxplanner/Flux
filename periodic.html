@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flux Periodic Table</title>
-<meta name="description" content="A free interactive periodic table from Flux: every periodic trend coloured on the table and graphed against atomic number, and every element's electrons, ionization energies, isotopes and emission spectrum. No account needed.">
+<meta name="description" content="A free interactive periodic table from Flux: every periodic trend, the table melting and boiling with temperature, electron configurations, line spectra and hydrogen's energy levels, mass spectra, and every atom in 3D. No account needed.">
 <meta name="theme-color" content="#070b14">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 
@@ -14,7 +14,7 @@
   computer without an account. The same tool is Study tools ▸ Chemistry ▸
   Table inside the planner.
 -->
-<link rel="stylesheet" href="public/css/flux-ptable.css?v=d1236785">
+<link rel="stylesheet" href="public/css/flux-ptable.css?v=efcd1e84">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a625201">
 <style>
   :root {
@@ -90,11 +90,13 @@
   <main id="ptHost" aria-label="Periodic table"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=9f815640"></script>
+  <script src="public/js/flux-hub.js?v=41c74ac1"></script>
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>
-  <script src="public/js/flux-ptable.js?v=4ad0999c"></script>
+  <script src="public/js/flux-ptable.js?v=7c5de611"></script>
+  <script src="public/js/flux-ptable-atom3d.js?v=6ebfd2ec"></script>
+  <script src="public/js/flux-ptable-explore.js?v=fe38d196"></script>
   <script>
     (function () {
       var host = document.getElementById('ptHost');
