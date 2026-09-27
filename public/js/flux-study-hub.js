@@ -301,7 +301,8 @@
      legacy 'lg-' chips and anything registered later. */
   const UNITS = {
     math: [
-      { id: 'algebra', name: 'Algebra & graphing', tools: ['graph', 'unit', 'matrix'] },
+      // The calculator sits beside the grapher, where Maths opens.
+      { id: 'algebra', name: 'Algebra & graphing', tools: ['graph', 'calc', 'unit', 'matrix'] },
       { id: 'calculus', name: 'Calculus', tools: ['ab-limits', 'ab-theorems', 'ab-apps', 'ab-drill'] },
       { id: 'stats', name: 'Statistics', tools: ['stats', 'normal'] },
       /* Last on purpose — "at the end of the units, put the formula sheet for
