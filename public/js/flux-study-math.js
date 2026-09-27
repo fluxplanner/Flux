@@ -317,7 +317,22 @@
       ['ndM', 'ndS', 'ndX'].forEach((id) => document.getElementById(id).addEventListener('input', draw)); requestAnimationFrame(draw);
     }
 
+    /* The calculator: a TI-84 Plus CE to work beside the questions, with
+       tips alongside and a link to the full page (calculator.html). */
+    function renderCalc(b) {
+      if (!window.FluxTI84) { b.innerHTML = '<div class="fsh-card" style="padding:24px">Calculator still loading — reopen in a moment.</div>'; return; }
+      b.innerHTML = '<div class="fsh-calc"><div class="fsh-calc-dev"></div><aside class="fsh-card fsh-calc-tips">'
+        + '<h3>Works like a TI-84 Plus CE</h3>'
+        + '<p>The same keys, menus and answers — fractions, graphs, tables, lists, matrices, every STAT test, TVM and programs.</p>'
+        + '<ul><li>Click it, then type: numbers, <b>+ − * / ^ ( )</b>, <b>Enter</b>, <b>Backspace</b>, <b>Esc</b> to clear.</li>'
+        + '<li><b>2nd</b> then a key gives the blue function above it; <b>alpha</b> gives the green letter.</li>'
+        + '<li>What you store stays in this browser, like the calculator\'s own memory.</li></ul>'
+        + '<a class="fsh-calc-full" href="calculator.html" target="_blank" rel="noopener">Open full screen ↗</a></aside></div>';
+      window.FluxTI84.mount(b.querySelector('.fsh-calc-dev'), { surface: 'planner' });
+    }
+
     H.register('math', [
+      { id: 'calc', name: 'Calculator', icon: '🧮', desc: 'calculator ti-84 ti84 ti 84 plus ce graphing scientific fraction stat tests regression program finance tvm', render: renderCalc },
       /* Was the Desmos embed. A practical is data-first — a column of readings
          you want a gradient out of — and Desmos could express neither that nor
          "±0.05 s", which is the part a lab report is marked on. This is the
