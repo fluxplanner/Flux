@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 /**
  * The Flux Periodic Table on its own page (periodic.html). The chemistry is
  * covered in test/unit/ptable-chem.test.mjs; these check the page a student
- * uses: the link to an element, the tabs of its panel, colouring the table,
- * the tools lighting the table up, and the quiz taking over clicks.
+ * uses: the link to an element, the tabs of its panel, colouring the table
+ * by each trend, and the graph of a trend against atomic number.
  */
 
 test.describe('Periodic table page', () => {
@@ -42,30 +42,40 @@ test.describe('Periodic table page', () => {
     await expect(page.locator('.fpt-el[data-n="80"] .fpt-v')).toHaveText('Liquid'); // mercury does not
   });
 
-  test('tools light up the table, and clicking the table types into them', async ({ page }) => {
+  test('every trend has its scale, its direction and a graph against atomic number', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 950 });
-    await page.goto('/periodic.html#tools/molar');
-    const inp = page.locator('.fpt-main-in');
-    await inp.fill('CaCO3');
-    await expect(page.locator('.fpt-out .fpt-big')).toContainText('100.09');
-    await expect(page.locator('.fpt-el[data-n="20"]')).toHaveClass(/is-hl/);
-    await expect(page.locator('.fpt-el[data-n="11"]')).toHaveClass(/is-dim/);
+    await page.goto('/periodic.html');
+    // No tools and no quiz: the table and its trends are the whole app.
+    await expect(page.locator('.fpt-view')).toHaveCount(0);
+    const ids = await page.locator('.fpt-sel option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+    for (const id of ['rc', 'rv', 're', 'vol', 'z', 'zeff', 'shield', 'core', 'unpaired', 'ie', 'ie2', 'ie3', 'ea', 'en', 'enA', 'metal', 'mass', 'neutrons', 'd', 'mp', 'bp', 'liq']) {
+      expect(ids, `no "${id}" trend`).toContain(id);
+    }
+    await page.locator('.fpt-sel').selectOption('shield');
+    await expect(page.locator('.fpt-el[data-n="11"] .fpt-v')).toHaveText('8.80');      // sodium: σ = 11 − 2.20
+    await expect(page.locator('.fpt-legend')).toContainText(/Down a group/);
+    const chart = page.locator('.fpt-chart');
+    await expect(chart).toBeVisible();
+    await expect(chart.locator('.fpt-pt')).toHaveCount(118);
+    // A point on the graph opens its element.
+    await chart.locator('.fpt-pt[data-n="26"]').click();
+    await expect(page.locator('.fpt-side h2')).toHaveText('Iron');
+    await expect(page).toHaveURL(/#trend\/shield\/Fe$/);
 
-    await page.locator('.fpt-tbtn[data-tool="balance"]').click();
-    await page.locator('.fpt-main-in').fill('Al + O2 -> Al2O3');
-    await expect(page.locator('.fpt-eq')).toHaveText('4Al + 3O₂ → 2Al₂O₃');
+    // Metallic character runs the scale the other way: caesium is brightest.
+    await page.locator('.fpt-sel').selectOption('metal');
+    await expect(page.locator('.fpt-legend')).toContainText('most metallic');
+    // Categories have no graph.
+    await page.locator('.fpt-sel').selectOption('cat');
+    await expect(chart).toBeHidden();
   });
 
-  test('the quiz takes over clicks on the table', async ({ page }) => {
+  test('a trend link opens with that trend', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 950 });
-    await page.goto('/periodic.html#quiz');
-    const target = await page.evaluate(() => (window as any).FluxPTableQuiz._q.target);
-    await page.locator(`.fpt-el[data-n="${target}"]`).click();
-    await expect(page.locator('.fpt-qfb')).toContainText('✓');
-    // Leaving the quiz gives clicks back to the table.
-    await page.locator('.fpt-view[data-view="table"]').click();
-    await page.locator('.fpt-el[data-n="8"]').click();
-    await expect(page.locator('.fpt-side h2')).toHaveText('Oxygen');
+    await page.goto('/periodic.html#trend/rc/Cl');
+    await expect(page.locator('.fpt-sel')).toHaveValue('rc');
+    await expect(page.locator('.fpt-side h2')).toHaveText('Chlorine');
+    await expect(page.locator('.fpt-el[data-n="17"] .fpt-v')).toHaveText('102');
   });
 
   test('fits a phone without the page scrolling sideways', async ({ page }) => {

@@ -549,15 +549,23 @@ function zeff(el) {
   for (const k in occ) total += occ[k];
   if (total !== el.n) return null;
 
-  /* The outermost s/p shell is the valence one. Pd ([Kr] 4d¹⁰) has no such
-     shell, so fall back to the highest n present at all. */
+  /* The outermost s/p shell is the valence one. */
   let vn = 0;
   for (const k in occ) {
     const n = +k[0], t = k[1];
     if ((t === 's' || t === 'p') && occ[k] > 0 && n > vn) vn = n;
   }
-  if (!vn) for (const k in occ) if (occ[k] > 0) vn = Math.max(vn, +k[0]);
   if (!vn) return null;
+
+  /* Except for Pd ([Kr] 4d¹⁰), which has no 5s electron: its outermost one is
+     4d, and Slater's rules shield a d electron by 0.35 for each other one in
+     its subshell and by 1.00 for every electron inside it — 6.85, not the
+     14.75 that treating 4s/4p as the valence shell gives. */
+  const d = vn + 'd';
+  if (occ[d] > 0) {
+    const inner = el.n - occ[d] - (occ[vn + 'f'] || 0);
+    return Math.round((el.n - inner - (occ[d] - 1) * 0.35) * 100) / 100;
+  }
 
   const inGroup = (occ[vn + 's'] || 0) + (occ[vn + 'p'] || 0);
   let s = 0;

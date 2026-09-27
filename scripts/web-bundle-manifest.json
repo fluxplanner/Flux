@@ -177,8 +177,6 @@
     "public/js/flux-ptable-data.js",
     "public/js/flux-chem.js",
     "public/js/flux-ptable.js",
-    "public/js/flux-ptable-tools.js",
-    "public/js/flux-ptable-quiz.js",
     "public/js/flux-toolbox.js",
     "public/js/flux-toolbox-dp.js",
     "public/js/flux-study-hub.js",

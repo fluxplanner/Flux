@@ -20,7 +20,8 @@
  *   mass, colour (CPK), configuration, Pauling electronegativity, van der Waals
  *   radius, first ionization energy, electron affinity, oxidation states,
  *   state, melting/boiling point, density, discovery year   — PubChem table
- *   covalent radius (Cordero et al. 2008), crust and ocean abundance,
+ *   covalent radius (Cordero et al. 2008), empirical radius (Slater 1964),
+ *   Allen electronegativity (1989), crust and ocean abundance,
  *   longest-lived isotope's half-life (IAEA AMDC)             — PubChem records
  *   isotope masses and natural abundances                     — NIST
  *   every successive ionization energy                        — NIST ASD
@@ -104,6 +105,11 @@ for (let z = 1; z <= 118; z++) {
   const cov = rad && infoText(rad, 'Covalent Atomic Radius');
   // "132(3)[l.s.], 152(6)[h.s.]" and "76(1)[sp3], …" — the first value is the one tables quote.
   e.rc = cov ? num(/^\s*(\d+)/.exec(cov) && /^\s*(\d+)/.exec(cov)[1]) : null;
+  // Slater's empirical radii (1964), and the Allen electronegativity scale (1989) — which, unlike Pauling's, gives the noble gases values.
+  const emp = rad && infoText(rad, 'Empirical Atomic Radius');
+  e.re = emp ? num(emp) : null;
+  const allen = infoText(find(rec, 'Electronegativity'), 'Allen Scale Electronegativity');
+  e.enA = allen ? num(allen) : null;
   const crust = infoText(find(rec, 'Estimated Crustal Abundance'));
   e.abC = crust && !/Not Applicable/.test(crust) ? sciText(crust) : null;          // mg/kg
   const ocean = infoText(find(rec, 'Estimated Oceanic Abundance'));
