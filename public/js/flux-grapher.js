@@ -106,6 +106,10 @@
     keyboard: svgIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 15.5h6"/>', 17),
     redo: svgIcon('<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>', 15),
     trash: svgIcon('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>', 15),
+    upload: svgIcon('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>'),
+    camera: svgIcon('<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>', 15),
+    file: svgIcon('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>', 15),
+    clip: svgIcon('<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>', 15),
   };
 
   function readJSON(key, fallback) {
@@ -1597,6 +1601,8 @@
       +       ICON.plus + ICON.fn + '</button>'
       +     '<button type="button" class="flg-add" data-add="table" title="Add a table" aria-label="Add a table">'
       +       ICON.plus + ICON.table + '</button>'
+      +     '<button type="button" class="flg-add flg-import" data-import title="Import a table: scan a photo, or open a CSV or Excel file" aria-label="Import a table">'
+      +       ICON.upload + '</button>'
       +     '<button type="button" class="flg-kbbtn" data-kb title="Maths keyboard" aria-label="Maths keyboard" aria-pressed="false">' + ICON.keyboard + '</button>'
       +     '<span class="flg-hist">'
       +       '<button type="button" data-hist="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>' + ICON.undo + '</button>'
@@ -1779,6 +1785,12 @@
       + '<div class="flg-twrap"><table class="flg-table"><thead><tr><th class="flg-rn"></th>' + head
       +   '<th class="flg-addcol"><button type="button" data-addcol="' + esc(t.id) + '" title="Add a column" aria-label="Add a column">' + ICON.plus + '</button></th>'
       + '</tr></thead><tbody>' + t.rows.map((_, r) => this.rowHTML(t, r, ct)).join('') + '</tbody></table></div>'
+      // Until the first reading goes in: a long table need not be typed.
+      + (window.FluxGrapherImport && !t.rows.some((r) => r.some((c) => String(c).trim() !== ''))
+        ? '<div class="flg-timport"><span>Long table?</span>'
+          + '<button type="button" class="flg-timp" data-imp="image" data-imt="' + esc(t.id) + '">' + ICON.camera + 'Scan a photo</button>'
+          + '<button type="button" class="flg-timp" data-imp="file" data-imt="' + esc(t.id) + '">' + ICON.file + 'Open a CSV or Excel file</button></div>'
+        : '')
       + '<div class="flg-tfoot">' + this.tfootInner(t, opt) + '</div>'
       + '</div>';
   };
@@ -2257,6 +2269,11 @@
       if (!cells.some((c) => Number.isFinite(num(c.replace(/%$/, ''))))) return;
       grid.push(cells);
     });
+    return this.fillGrid(t, grid, r0, c0);
+  };
+
+  /** Rows of cells written into a table from row r0, typed columns only. */
+  Grapher.prototype.fillGrid = function (t, grid, r0, c0) {
     if (!grid.length) return false;
     const width = Math.max.apply(null, grid.map((g) => g.length));
     /* Pasted values go into typed columns only — a calculated column is
@@ -2428,6 +2445,11 @@
         if (!tb.rows[r]) return;
         if (tb.cols[c] && tb.cols[c].role === 'calc') return;
         tb.rows[r][c] = t.value;
+        // The offer to scan or open a file is for an empty table.
+        if (t.value.trim() !== '') {
+          const offer = t.closest('.flg-item') && t.closest('.flg-item').querySelector('.flg-timport');
+          if (offer) offer.remove();
+        }
         // Always a spare row at the bottom, so the next reading has somewhere to go.
         if (r === tb.rows.length - 1 && t.value.trim() !== '' && tb.rows.length < 2000) {
           tb.rows.push(tb.cols.map(() => ''));
@@ -2551,6 +2573,15 @@
 
     root.addEventListener('paste', (e) => {
       const t = e.target, d = t.dataset || {};
+      // A screenshot of a table, pasted anywhere in the grapher, is scanned.
+      const cd = e.clipboardData;
+      const img = cd && cd.files && Array.prototype.find.call(cd.files, (f) => /^image\//.test(f.type));
+      if (img && window.FluxGrapherImport) {
+        e.preventDefault();
+        const tb = d.cell ? self.itemOf(t) : null;
+        self.runImport('image', tb && tb.type === 'table' ? tb : null, img);
+        return;
+      }
       if (!d.cell) return;
       const text = (e.clipboardData || window.clipboardData).getData('text') || '';
       if (!/[\n\t,;]|\s/.test(text.trim())) return;       // one value — let it through
@@ -2561,11 +2592,32 @@
       self.pasteBlock(tb, text, +parts[0], +parts[1]);
     });
 
+    /* A CSV, Excel file or photo dropped anywhere on the grapher is imported —
+       into the table it lands on, or else an empty or new one. */
+    const hasFiles = (e) => !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0);
+    root.addEventListener('dragover', (e) => {
+      if (!hasFiles(e) || !window.FluxGrapherImport) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      root.classList.add('is-drop');
+    });
+    root.addEventListener('dragleave', (e) => { if (!root.contains(e.relatedTarget)) root.classList.remove('is-drop'); });
+    root.addEventListener('drop', (e) => {
+      root.classList.remove('is-drop');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f || !window.FluxGrapherImport) return;
+      e.preventDefault();
+      const tb = self.itemOf(e.target);
+      self.runImport(null, tb && tb.type === 'table' ? tb : null, f);
+    });
+
     root.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b || !root.contains(b)) return;
       const d = b.dataset;
       if (d.add) { self.addItem(d.add); return; }
+      if (b.hasAttribute('data-import')) { self.importMenu(b, null); return; }
+      if (d.imp) { const tb = self.item(d.imt); self.runImport(d.imp, tb && tb.type === 'table' ? tb : null); return; }
       if (d.del) { self.removeItem(d.del); return; }
       if (d.swatch) { const it = self.item(d.swatch); if (it) self.swatchPop(it, b); return; }
       if (d.tool) { self.tool(d.tool, b); return; }
@@ -2641,7 +2693,9 @@
         openMenu(b, entries);
       } else if (d.tmenu) {
         openMenu(b, [
-          { label: 'Paste data…', run: () => self.pastePrompt(tb, b) },
+          { label: 'Scan a photo of a table…', icon: ICON.camera, run: () => self.runImport('image', tb) },
+          { label: 'Open a CSV or Excel file…', icon: ICON.file, run: () => self.runImport('file', tb) },
+          { label: 'Paste data…', icon: ICON.clip, run: () => self.pastePrompt(tb, b) },
           { label: 'Clear the readings', run: () => {
             if (!window.confirm('Clear every reading in "' + tb.name + '"?')) return;
             tb.rows = [];
@@ -2652,6 +2706,126 @@
         ]);
       }
     });
+  };
+
+  /* ── Importing a table: a photo, a CSV or Excel file, or a paste ─────
+     The reading and the review sheet live in flux-grapher-import.js; this
+     decides which table the rows go into and writes them. */
+
+  Grapher.prototype.importMenu = function (anchor, t) {
+    const I = window.FluxGrapherImport;
+    const left = I && I.scansLeft ? I.scansLeft() : null;
+    openMenu(anchor, [
+      { label: 'Scan a photo of a table' + (left != null ? ' · ' + left + ' left today' : ''), icon: ICON.camera, run: () => this.runImport('image', t) },
+      { label: 'Open a CSV or Excel file', icon: ICON.file, run: () => this.runImport('file', t) },
+      { label: 'Paste from a spreadsheet', icon: ICON.clip, run: () => {
+        const target = t || this.importTarget();
+        const box = this.root.querySelector('.flg-item[data-id="' + CSS.escape(target.id) + '"] [data-tmenu]');
+        this.pastePrompt(target, box || anchor);
+      } },
+    ]);
+  };
+
+  /** The table an import from the Import button fills: an empty one if
+      there is one, otherwise a new one. */
+  Grapher.prototype.importTarget = function () {
+    const empty = this.doc.items.find((i) => i.type === 'table' && !i.rows.some((r) => r.some((c) => String(c).trim() !== '')));
+    if (empty) return empty;
+    const n = this.doc.items.filter((i) => i.type === 'table').length;
+    const it = blankTable(n, this.kind);
+    it.colour = PALETTE[this.doc.items.length % PALETTE.length];
+    this.doc.items.push(it);
+    this.renderItems();
+    return it;
+  };
+
+  /** Pick (or take) a file, read it, show it for checking, then add it. */
+  Grapher.prototype.runImport = async function (kind, t, file) {
+    const I = window.FluxGrapherImport;
+    if (!I) { toast('Importing is still loading. Try again in a moment.', 'warning'); return; }
+    // Scanning needs an account: ask before the photo is picked, not after.
+    if ((kind === 'image' || (file && I.kindOf(file) === 'image')) && !(await I.hasSession())) {
+      const C = window.FluxGraphCloud;
+      if (this.surface === 'planner' || !C || !C.signInSheet) { toast('Sign in to Flux to scan photos of tables — it is free.', 'warning'); return; }
+      if (!(await C.signInSheet('scan'))) return;
+    }
+    const f = file || await I.pick(kind);
+    if (!f) return;
+    const isPhoto = I.kindOf(f) === 'image';
+    let table = null;
+    try {
+      if (isPhoto) {
+        const busy = I.busySheet();
+        let res;
+        try {
+          res = await I.scan(f, busy.show);
+        } finally {
+          if (!busy.cancelled) busy.close();
+        }
+        if (busy.cancelled) { if (res && res.url) URL.revokeObjectURL(res.url); return; }
+        table = await I.review([{ name: 'Photo', grid: res.grid, headed: res.headed }],
+          { from: 'photo', url: res.url, left: res.left, limit: res.limit });
+      } else {
+        const sources = await I.readFile(f);
+        table = await I.review(sources, { from: 'file', fileName: f.name });
+      }
+    } catch (e) {
+      if (e && e.code === 'auth') {
+        const C = window.FluxGraphCloud;
+        if (this.surface === 'planner' || !C || !C.signInSheet) { toast('Sign in to Flux to scan photos of tables — it is free.', 'warning'); return; }
+        if (await C.signInSheet('scan')) this.runImport(kind, t, f);
+        return;
+      }
+      toast((e && e.message) || 'Could not import that.', e && e.code === 'limit' ? 'warning' : 'error');
+      return;
+    }
+    if (!table) return;
+    const target = t && this.item(t.id) ? this.item(t.id) : this.importTarget();
+    this.applyImport(target, table);
+  };
+
+  /**
+   * Write an imported table in. An empty table takes its columns — names,
+   * units and uncertainty columns — from the import; one with readings in
+   * keeps its columns and gets the rows added after its last reading.
+   */
+  Grapher.prototype.applyImport = function (t, table) {
+    const filled = t.rows.some((r) => r.some((c) => String(c).trim() !== ''));
+    const n = table.rows.length;
+    if (filled) {
+      let r0 = 0;
+      t.rows.forEach((r, i) => { if (r.some((c) => String(c).trim() !== '')) r0 = i + 1; });
+      const room = Math.max(0, 2000 - r0);
+      this.fillGrid(t, table.rows.slice(0, room), r0, 0);
+      toast('Added ' + Math.min(n, room) + ' row' + (n === 1 ? '' : 's') + ' to "' + t.name + '".', 'success');
+      return;
+    }
+    const fnMode = this.kind === 'functions';
+    const tNo = this.doc.items.filter((i) => i.type === 'table').indexOf(t) + 1;
+    const ids = table.cols.map(() => newId());
+    let values = 0;
+    t.cols = table.cols.map((c, j) => {
+      if (c.role === 'unc') return { id: ids[j], name: '', unit: '', role: 'unc', of: ids[c.of] };
+      values++;
+      /* In Functions the columns are named like Desmos's, x1 and y1, so a
+         regression can refer to them; the heading's unit still comes in. */
+      const name = fnMode ? (values === 1 ? 'x' + tNo : values === 2 ? 'y' + tNo : '') : str(c.name, 40);
+      return { id: ids[j], name: name, unit: str(c.unit, 20), role: 'value' };
+    });
+    if (fnMode) t.cols.forEach((c) => { if (c.role === 'value' && !c.name) c.name = this.freshName(t, 'c'); });
+    t.rows = table.rows.map((r) => t.cols.map((_, j) => str(r[j], 40)));
+    t.rows.push(t.cols.map(() => ''));
+    const vals = t.cols.filter((c) => c.role === 'value');
+    t.xCol = vals[0].id;
+    t.yCol = (vals[1] || vals[0]).id;
+    if (table.name && /^Data \d+$/.test(t.name)) t.name = str(table.name, 60);
+    this.touch();
+    this.renderItems();
+    this.draw();
+    if (this.kind === 'data') this.tool('home');
+    const label = (c, fallback) => (c && c.name) || fallback;
+    toast('Added ' + n + ' row' + (n === 1 ? '' : 's') + '. ' + label(vals[0], 'The first column') + ' is on x and '
+      + label(vals[1] || vals[0], 'the second') + ' on y — change that in a column\'s menu.', 'success');
   };
 
   Grapher.prototype.pastePrompt = function (t, anchor) {

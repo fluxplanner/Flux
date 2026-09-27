@@ -35,6 +35,28 @@ export async function bumpDailyGuard(bucket: string): Promise<number | null> {
   }
 }
 
+/**
+ * Give one count back — the provider failed, so the request did nothing and
+ * should not use up the day's allowance. Best effort: a read then a write,
+ * so a request counted in between is lost — at worst one extra request that
+ * day, which is why this is only used for refunds.
+ */
+export async function refundDailyGuard(bucket: string): Promise<void> {
+  try {
+    const sb = serviceClient();
+    const day = new Date().toISOString().slice(0, 10);
+    const { data } = await sb.from("flux_ai_guard").select("count")
+      .eq("bucket", bucket).eq("day", day).maybeSingle();
+    const n = Number(data?.count);
+    if (!Number.isFinite(n) || n <= 0) return;
+    await sb.from("flux_ai_guard")
+      .update({ count: n - 1, updated_at: new Date().toISOString() })
+      .eq("bucket", bucket).eq("day", day);
+  } catch (e) {
+    console.error("rate-limit: refund failed:", e);
+  }
+}
+
 export async function sha256Hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest(
     "SHA-256",

@@ -9,10 +9,33 @@ import {
   bumpDailyGuard,
   clientIp,
   isAnonRoleJwt,
+  refundDailyGuard,
   sha256Hex,
 } from "../_shared/rate-limit.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
+/* Photo → data table for the grapher ("table_scan"). Free on every plan with
+   an account, a daily allowance each; Pro/School get more once payments are on. */
+const SCAN_DAILY = Number(Deno.env.get("AI_PROXY_SCAN_DAILY") ?? "10");
+const SCAN_PRO_DAILY = Number(Deno.env.get("AI_PROXY_SCAN_PRO_DAILY") ?? "60");
+/** ~6 MB of base64. The grapher sends a JPEG no longer than 2000 px (well under 1 MB). */
+const SCAN_MAX_IMAGE_CHARS = 8_000_000;
+/* The server's own instructions for a scan. A free scan reads a table and
+   does nothing else, whatever system prompt or messages a client sends —
+   otherwise "table_scan" would be free general image analysis. */
+const TABLE_SCAN_SYSTEM = [
+  "You read data tables from photos for a graphing tool used by students. Reply with one JSON object and nothing else:",
+  '{"columns":[{"name":"...","unit":"..."}],"rows":[["...","..."]]}',
+  '- columns: one entry per column of the table, left to right. name is the heading without its unit. unit is the unit given in the heading — from forms like "Time (s)", "Time / s", "t [s]" or "(t ± 0.1) / s" — or "" if there is none. If the heading gives an uncertainty such as "± 0.1", keep it in the name, e.g. "Time ± 0.1".',
+  "- rows: one array per row of data, top to bottom, with exactly one string per column.",
+  "- Copy every number exactly as written: the same digits, decimal places, trailing zeros and sign. Never calculate, round, correct or fill in a value. Write a decimal comma as a point (4,5 → 4.5) and a power of ten in e-notation (3.2 × 10⁻³ → 3.2e-3).",
+  "- A value written with its uncertainty, like 2.35 ± 0.05, stays as written.",
+  '- An empty, crossed-out or unreadable cell is "".',
+  "- Leave out rows that are not readings, such as a mean or total row, and any writing outside the table.",
+  "- A heading split over two lines is one heading. If there are several tables, read the largest.",
+  '- If there is no table in the photo, reply {"columns":[],"rows":[]}.',
+].join("\n");
+const TABLE_SCAN_USER = "Read the table in this photo.";
 // P0 A5: auth is required independent of payments. Guest mode (the app signed
 // out sends the anon key as Bearer) keeps working through a narrow,
 // table-backed allowance; disable entirely with AI_PROXY_ALLOW_GUESTS=false.
@@ -59,6 +82,8 @@ Deno.serve(async (req) => {
     responseFormat?: "json_object";
     /** Stream the reply as SSE (`data: {"delta":"…"}` … `data: [DONE]`). Text-only. */
     stream?: boolean;
+    /** "table_scan": read a data table off a photo, metered on its own daily allowance. */
+    task?: string;
     /**
      * Agentic tool loop: round 1 is the user's message, rounds 2+ are hidden
      * TOOL RESULTS continuations of the same turn — only round 1 is metered.
@@ -85,9 +110,30 @@ Deno.serve(async (req) => {
   }
 
   const hasImage = !!body.imageBase64;
+  const isTableScan = body.task === "table_scan";
+  if (isTableScan) {
+    if (!hasImage) {
+      return json({ error: "Invalid request: a photo is required" }, 400, origin);
+    }
+    if (String(body.imageBase64).length > SCAN_MAX_IMAGE_CHARS) {
+      return json({
+        error: "image_too_large",
+        message: "That photo is too big. Crop it to the table and try again.",
+      }, 413, origin);
+    }
+    body.system = TABLE_SCAN_SYSTEM;
+    body.systemPrompt = undefined;
+    body.messages = [{ role: "user", content: TABLE_SCAN_USER }];
+    body.responseFormat = "json_object";
+    body.stream = false;
+    body.routing = undefined;
+  }
   const routeMode = body.routing?.mode ?? "";
-  const isBYOK = routeMode === "openai_compatible" ||
-    routeMode === "anthropic_messages";
+  // Vision always runs on Flux's own keys (callVision ignores routing), so an
+  // image request is never "bring your own key" — treating it as one skipped
+  // the plan check and the daily guard for a call Flux pays for.
+  const isBYOK = !hasImage && (routeMode === "openai_compatible" ||
+    routeMode === "anthropic_messages");
 
   if (!userId) {
     // Guest allowance: text-only, low model tier, hard per-IP+fingerprint
@@ -95,7 +141,9 @@ Deno.serve(async (req) => {
     if (hasImage) {
       return json({
         error: "auth_required",
-        message: "Sign in to use image analysis.",
+        message: isTableScan
+          ? "Sign in to scan photos of tables — it's free."
+          : "Sign in to use image analysis.",
       }, 401, origin);
     }
     const fp = typeof (body as { fingerprint?: unknown }).fingerprint === "string"
@@ -132,7 +180,8 @@ Deno.serve(async (req) => {
   if (PAYMENTS_ENABLED && userId && !isBYOK) {
     entitlement = await getEntitlement(userId);
 
-    if (hasImage && !entitlement.imageAnalysis) {
+    // Scanning a table is free on every plan; its own allowance is below.
+    if (hasImage && !isTableScan && !entitlement.imageAnalysis) {
       return json({
         error: "feature_requires_pro",
         feature: "image_analysis",
@@ -170,6 +219,29 @@ Deno.serve(async (req) => {
       body.model = sys.includes("flux_tool")
         ? "openai/gpt-oss-120b"
         : "openai/gpt-oss-20b";
+    }
+  }
+
+  /* A scan's own daily allowance, counted before the call and given back if
+     the provider fails. Fails open like the signed-in guard above: a guard
+     hiccup should not cost a student the scan. */
+  let scanBucket: string | null = null;
+  let scanLimit = SCAN_DAILY;
+  let scansUsed: number | null = null;
+  if (isTableScan && userId) {
+    if (entitlement?.imageAnalysis) scanLimit = SCAN_PRO_DAILY;
+    const n = await bumpDailyGuard("scan:" + userId);
+    if (n !== null && n > scanLimit) {
+      return json({
+        error: "scan_daily_limit",
+        message: `You have used today's ${scanLimit} photo scans. They come back tomorrow.`,
+        daily_limit: scanLimit,
+        scans_left: 0,
+      }, 429, origin);
+    }
+    if (n !== null) {
+      scanBucket = "scan:" + userId;
+      scansUsed = n;
     }
   }
 
@@ -237,6 +309,7 @@ Deno.serve(async (req) => {
       // Provider failed — give the user their quota back.
       refundAIUsage(userId).catch(console.error);
     }
+    if (scanBucket) refundDailyGuard(scanBucket).catch(console.error);
     return json(
       { error: "AI service error", details: String(e) },
       502,
@@ -244,8 +317,11 @@ Deno.serve(async (req) => {
     );
   }
 
+  const scanInfo = isTableScan && scansUsed !== null
+    ? { scans_left: Math.max(0, scanLimit - scansUsed), daily_limit: scanLimit }
+    : {};
   return json(
-    { content: [{ type: "text", text: stripThinkBlocks(text) }] },
+    { content: [{ type: "text", text: stripThinkBlocks(text) }], ...scanInfo },
     200,
     origin,
   );
@@ -902,6 +978,7 @@ async function callVision(body: {
   mimeType?: string;
   system?: string;
   systemPrompt?: string;
+  responseFormat?: "json_object";
 }): Promise<string> {
   const geminiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
   const groqKey = Deno.env.get("GROQ_API_KEY")?.trim();
@@ -959,6 +1036,7 @@ async function callGemini(body: {
   mimeType?: string;
   system?: string;
   systemPrompt?: string;
+  responseFormat?: "json_object";
 }): Promise<string> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) {
@@ -992,6 +1070,14 @@ async function callGemini(body: {
   };
   if (system) {
     reqBody.systemInstruction = { parts: [{ text: system }] };
+  }
+  if (body.responseFormat === "json_object") {
+    // Copying a table: JSON out, and no creativity with the digits.
+    reqBody.generationConfig = {
+      responseMimeType: "application/json",
+      temperature: 0.1,
+      maxOutputTokens: 8192,
+    };
   }
 
   const res = await fetch(
