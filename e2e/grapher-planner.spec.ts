@@ -40,12 +40,18 @@ test.describe('Grapher in the planner', () => {
     expect(h, `a cell is ${h}px tall — the planner's !important input rule is winning`).toBeLessThan(36);
   });
 
-  test('Lab graphs is a science subject in its own right', async ({ page }) => {
+  test('Science toolkit is a science subject: the grapher and the unit converter, together', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 950 });
     await gotoScenario(page, 'student-semester');
     await page.evaluate(() => (window as any).nav('toolbox'));
     await page.locator('#fshGroups .fsh-group[data-group="science"]').click();
-    await expect(page.locator('#fshRail .fsh-pill[data-sub="labgraph"]')).toContainText('Lab graphs');
+    await expect(page.locator('#fshRail .fsh-pill[data-sub="labgraph"]')).toContainText('Science toolkit');
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('labgraph'));
+    await expect(page.locator('#fshChemTabs [data-tool="lab"]')).toBeVisible();
+    await expect(page.locator('#fshChemTabs [data-tool="lg-unit-conv"]')).toBeVisible();
+    // It left Chemistry, where it sat alone in a "More" unit.
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
+    await expect(page.locator('#fshUnits [data-unit="more"]')).toHaveCount(0);
   });
 
   test('the grapher\'s own buttons are not painted like planner buttons', async ({ page }) => {

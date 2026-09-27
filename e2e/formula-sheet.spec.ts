@@ -86,4 +86,26 @@ test.describe('Formula sheet', () => {
       expect(s.items, `${s.id} has sections but no formulas in them`).toBeGreaterThan(4);
     }
   });
+
+  /* Physics → Constants showed an empty card: the gravity row is a
+     placeholder, resolved from the student's programme, and the sheet copied
+     it without resolving it. */
+  test('every formula has something written in it, g included', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const w = window as unknown as { FluxFormulaSheet: { sheetFor: (s: string) => { unit: string; items: { f: string }[] }[] } };
+      const empty: string[] = [];
+      let g = '';
+      for (const id of ['math', 'physics', 'chemistry', 'biology']) {
+        for (const sec of w.FluxFormulaSheet.sheetFor(id) || []) {
+          for (const it of sec.items) {
+            if (!String(it.f || '').trim()) empty.push(id + ' › ' + sec.unit);
+            if (/^g = /.test(it.f)) g = it.f;
+          }
+        }
+      }
+      return { empty, g };
+    });
+    expect(res.empty, 'empty formula cards').toEqual([]);
+    expect(res.g).toMatch(/^g = 9\.8/);
+  });
 });

@@ -73,6 +73,18 @@
     ? '<div class="ffs-math">' + window.FluxFormulaTypeset.toHtml(f) + '</div>'
     : '<code>' + esc(f) + '</code>');
 
+  /** One FORMULA_SHEET row as {f, note}. The gravity row is a placeholder
+      resolved from the student's programme (DP 9.8, MYP 10) — copied as it
+      stood, it was an empty card in Constants. */
+  function item(it) {
+    let row = it;
+    if (it.gravity) {
+      row = typeof window.fluxGravityRow === 'function' ? window.fluxGravityRow()
+        : { f: 'g = 9.8 m/s²  (MYP: 10)', vars: ['gravitational field strength — DP uses 9.8, MYP rounds to 10'] };
+    }
+    return { f: row.f, note: (row.vars || []).join(' · ') };
+  }
+
   /** Groups from FLUX_FORMULA_DATA, normalised to {f, note}. */
   function fromToolbox(subject, plan) {
     const src = (window.FLUX_FORMULA_DATA || {})[subject] || [];
@@ -84,7 +96,7 @@
         const g = byTitle.get(title);
         if (!g) continue;
         used.add(title);
-        for (const it of g.items || []) items.push({ f: it.f, note: (it.vars || []).join(' · ') });
+        for (const it of g.items || []) items.push(item(it));
       }
       return { unit: p.unit, items };
     });
@@ -94,7 +106,7 @@
     const orphans = [];
     for (const g of src) {
       if (used.has(g.title)) continue;
-      for (const it of g.items || []) orphans.push({ f: it.f, note: (it.vars || []).join(' · ') });
+      for (const it of g.items || []) orphans.push(item(it));
     }
     if (orphans.length) out.push({ unit: 'Also in this subject', items: orphans });
     return out.filter((s) => s.items.length);

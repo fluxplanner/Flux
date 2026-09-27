@@ -340,7 +340,7 @@
          the steepest/shallowest gradient method live in the standalone tool at
          /grapher.html, which needs no account at all. */
       /* Functions only: equations, sliders, regressions. The Measurements
-         half moved to Science → Lab graphs (registered below). */
+         half moved to Science → Science toolkit (registered below). */
       { id: 'graph', name: 'Grapher', icon: '📈', desc: 'graph plot function equation curve slider regression desmos', render: (b) => { if (window.FluxGrapher) { window.FluxGrapher.mount(b, { mode: 'simple', only: 'functions' }); } else { b.innerHTML = '<div class="fsh-card" style="padding:24px">Grapher still loading — reopen in a moment.</div>'; } }, ai: { name: 'graphEval', description: 'Evaluate f(x). Arg: "x^2+1 @ 3" (expr @ x).', params: { expr: 'string', x: 'number' }, run: (a) => { const m = String(a).split('@'); const fn = compile(m[0]); return +fn(parseFloat(m[1] || 0)).toFixed(6); } } },
       { id: 'unit', name: 'Unit circle', icon: '🧭', desc: 'unit circle sin cos tan trigonometry angle', render: renderUnitCircle },
       { id: 'matrix', name: 'Matrix', icon: '⊞', desc: 'matrix determinant inverse transpose', render: renderMatrix },

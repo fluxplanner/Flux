@@ -347,6 +347,8 @@ function fluxGravityRow(){
   if (myp && !dp) return { f:'g = 10 m/s²',   vars:['gravitational field strength — the value MYP papers use'] };
   return { f:'g = 9.8 m/s²  (MYP: 10)', vars:['gravitational field strength — DP uses 9.8, MYP rounds to 10'] };
 }
+// flux-formula-sheet.js reads the same table; the bundle keeps each file's names to itself.
+window.fluxGravityRow = fluxGravityRow;
 
 function renderFormulaSheet(body, only){
   if (!only) {

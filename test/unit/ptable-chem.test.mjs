@@ -143,3 +143,49 @@ test('the trends worked out from the data', () => {
   assert.equal(peak('ie3'), 'Mg', 'the third peaks in group 2');
   assert.equal(peak('ie'), 'Ar');
 });
+
+test('the deeper tabs: Aufbau exceptions, hydrogen\'s lines, Cl₂, and the atom in 3D', () => {
+  if (!W.FluxPTable) vm.runInContext(readFileSync(new URL('../../public/js/flux-ptable.js', import.meta.url), 'utf8'), sandbox, { filename: 'flux-ptable.js' });
+  for (const f of ['flux-ptable-atom3d.js', 'flux-ptable-explore.js']) {
+    vm.runInContext(readFileSync(new URL('../../public/js/' + f, import.meta.url), 'utf8'), sandbox, { filename: f });
+  }
+  const X = W.FluxPTableExplore, A3 = W.FluxAtom3D, K = W.FluxPTable.core;
+  const el = (s) => K.model().find((e) => e.s === s);
+
+  // Chromium and copper break the Aufbau order; iron does not.
+  const cr = X.exception(el('Cr'));
+  assert.equal(cr.predicted, '[Ar] 3d⁴ 4s²');
+  assert.equal(cr.actual, '[Ar] 3d⁵ 4s¹');
+  assert.equal(cr.halfOrFull, true);
+  assert.equal(X.exception(el('Cu')).dCount, 10);
+  assert.equal(X.exception(el('Fe')), null);
+  // Every element the data says is an exception really differs from Aufbau.
+  const odd = K.model().filter((e) => X.exception(e)).map((e) => e.s);
+  for (const s of ['Cr', 'Cu', 'Mo', 'Ag', 'Au', 'Pd']) assert.ok(odd.includes(s), s + ' should be an exception');
+
+  // Hydrogen: Balmer's red line, the Lyman limit, and the ionization energy it gives.
+  assert.equal(+X.hLine(3, 2).nm.toFixed(2), 656.46);                // vacuum (NIST 656.461); 656.28 in air
+  assert.equal(+X.hLine(3, 2).air.toFixed(1), 656.3);
+  assert.equal(+X.hLine(Infinity, 1).nm.toFixed(1), 91.2);
+  assert.equal(Math.round(X.hLine(Infinity, 1).kJ), 1312);
+  assert.equal(+X.hLevel(2).toFixed(2), -3.40);
+
+  // Cl₂: three molecular-ion peaks, about 9 : 6 : 1.
+  const peaks = X.diatomicPeaks(el('Cl').x.iso);
+  same(peaks.map((p) => p[0]), [70, 72, 74]);
+  assert.ok(Math.abs(peaks.reduce((a, p) => a + p[1], 0) - 1) < 1e-9);
+  assert.ok(Math.abs(peaks[0][1] / peaks[2][1] - 9.76) < 0.05);
+
+  // The 3D atom: iron-56, and potassium's shells from its configuration (2, 8, 8, 1 — not 2, 8, 9).
+  const fe = X.atomParts(el('Fe'));
+  assert.equal(fe.A, 56);
+  same(fe.shells, [2, 8, 14, 2]);
+  same(X.atomParts(el('K')).shells, [2, 8, 8, 1]);
+  const nuc = A3.nucleus(26, 56);
+  assert.equal(nuc.length, 56);
+  assert.equal(nuc.filter((n) => n.p).length, 26);
+  // A p_x orbital is a dumbbell along x.
+  const px = A3.orbitalCloud(1, 0, 600, 3);
+  const mean = (k) => px.reduce((a, p) => a + Math.abs(p[k]), 0) / px.length;
+  assert.ok(mean('x') > 2 * mean('y') && mean('x') > 2 * mean('z'));
+});

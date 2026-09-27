@@ -397,7 +397,7 @@
 
   /** The list of saved graphs. onPick receives the full row. `opts.kind`
    *  lists only that half — the planner's Maths grapher shows function
-   *  graphs, Lab graphs shows measurement graphs. */
+   *  graphs, Science toolkit shows measurement graphs. */
   async function open(onPick, opts) {
     const s = await need('open');
     if (!s) return;

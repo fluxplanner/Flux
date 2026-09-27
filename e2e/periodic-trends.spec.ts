@@ -94,6 +94,9 @@ test.describe('Periodic trends', () => {
        is both the honest signal and the stable one. */
     const before = await page.locator(cell(9)).evaluate((el) => (el as HTMLElement).style.background);
 
+    // Trends have a tab of their own; the Table tab is the plain table.
+    await expect(page.locator('.fsh-ptable .fpt-sel')).toBeHidden();
+    await page.locator('.fsh-ptable .fpt-view[data-view="trends"]').click();
     await page.locator('.fsh-ptable .fpt-sel').selectOption('en');
     await expect(page.locator('.fsh-ptable .fpt-key')).toBeVisible();
 
@@ -119,8 +122,8 @@ test.describe('Periodic trends', () => {
     expect(after.keyText, 'the key should state the across-a-period direction').toMatch(/across a period/i);
     expect(after.keyText, 'the key should state the down-a-group direction').toMatch(/down a group/i);
 
-    // Back to Category clears the colouring and restores the masses.
-    await page.locator('.fsh-ptable .fpt-sel').selectOption('cat');
+    // Back on the Table tab the colouring is gone and the masses are back.
+    await page.locator('.fsh-ptable .fpt-view[data-view="table"]').click();
     const restored = await page.evaluate(() => {
       const f = document.querySelector('.fsh-ptable .fpt-el[data-n="9"]') as HTMLElement;
       return { inline: f.style.background, label: f.querySelector('.fpt-v')?.textContent };
