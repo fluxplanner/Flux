@@ -45,6 +45,7 @@
 :is(#app, #ptHost) .fpt .fpt-link { border-radius: 4px !important; }
 :is(#app, #ptHost) .fpt .fpt-view { border-radius: 10px !important; }
 :is(#app, #ptHost) .fpt.is-explore .fpt-el { border-radius: 4px !important; }
+@container fpt (max-width: 600px) { :is(#app, #ptHost) .fpt .fpt-el { border-radius: 4px !important; } }
 :is(#app, #ptHost) .fpt :is(.fpx-cbtn, .fpx-cmp-l) { border-radius: 9px !important; }
 :is(#app, #ptHost) .fpt .fpx-krow { border-radius: 10px !important; }
 /* A class's display beats the browser's own [hidden] rule, so restate it. */
@@ -328,8 +329,21 @@
 .fpt.is-explore .fpt-main { position: sticky; top: 12px; }
 @container (max-width: 1060px) { .fpt.is-explore .fpt-main { position: static; } }
 .fpt.is-explore .fpt-grid { min-width: 0; gap: 2px; grid-template-columns: 12px repeat(18, minmax(0, 1fr)); grid-template-rows: 12px repeat(7, auto) 6px auto auto; }
-/* Named: the nearest container to the grid is .fpt-scroll, which is always narrow here. */
-@container fpt (max-width: 600px) { .fpt.is-explore .fpt-grid { min-width: 470px; } }
+/* A phone: every tab's table fits the screen — symbols and colours, no
+   sideways scrolling; an element's numbers are one tap away in the panel.
+   Named, because the grid's nearest container is .fpt-scroll. */
+@container fpt (max-width: 600px) {
+  .fpt .fpt-grid { min-width: 0; gap: 2px; grid-template-columns: 12px repeat(18, minmax(0, 1fr)); grid-template-rows: 12px repeat(7, auto) 6px auto auto; }
+  .fpt .fpt-el { aspect-ratio: 1; padding: 0; }
+  .fpt .fpt-el::before { height: 2px; }
+  .fpt :is(.fpt-n, .fpt-nm, .fpt-v) { display: none; }
+  .fpt .fpt-s { margin: 0; font-size: clamp(7.5px, 2.6cqw, 12.5px); }
+  .fpt :is(.fpt-lbl, .fpt-fmark) { font-size: 8px; }
+  .fpt .fpt-fmark { padding-right: 2px; }
+  .fpt .fpt-el:hover, .fpt .fpt-el.is-sel { transform: scale(1.2); }
+  /* The series chips keep to one line; the result card names the region. */
+  .fpx .fpt-seg .fpt-chip small { display: none; }
+}
 .fpt.is-explore .fpt-el { aspect-ratio: 1; padding: 0; border-radius: 4px; }
 .fpt.is-explore .fpt-el::before { height: 2px; }
 .fpt.is-explore :is(.fpt-n, .fpt-nm, .fpt-v) { display: none; }
@@ -380,6 +394,8 @@
 .fpx-cmp-row .fpt-spec { max-width: none; border-radius: 6px; }
 .fpx-cmp .fpt-spec .fpt-ax { font-size: 4.5px; }
 .fpx .fpt-iso td:last-child { display: table-cell; }
+.fpx-tablewrap { overflow-x: auto; scrollbar-width: thin; }
+.fpx-tablewrap .fpt-iso th { letter-spacing: .02em; }
 .fpx-krow span.is-prose { font-family: inherit; font-size: .78rem; }
 .fpt-more { margin-bottom: 12px; }
 .fpx-hcols { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 8px; }

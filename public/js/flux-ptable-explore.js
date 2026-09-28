@@ -352,9 +352,9 @@
       h += '<div class="fpt-work">A<sub>r</sub> = Σ (isotope mass × % abundance) ÷ 100<br>= [' + big.map((x) => '(' + x[1].toFixed(2) + ' × ' + pct(x[2]) + ')').join(' + ') + '] ÷ 100<br>= <b>' + sum.toFixed(3) + '</b></div>'
         + '<p class="fpt-note">With whole mass numbers instead, as exam questions often give them, it comes to ' + iso.reduce((a, x) => a + x[0] * x[2], 0).toFixed(2) + '. The data booklet gives ' + esc(core.massText(e)) + '.</p>';
     } else h += '<p class="fpt-lead">One stable isotope, so its relative atomic mass is that isotope\'s mass: ' + iso[0][1].toFixed(4) + '.</p>';
-    h += '<table class="fpt-iso"><thead><tr><th>Isotope</th><th>Protons</th><th>Neutrons</th><th>Mass</th><th>Abundance</th></tr></thead><tbody>'
+    h += '<div class="fpx-tablewrap"><table class="fpt-iso"><thead><tr><th>Isotope</th><th>Protons</th><th>Neutrons</th><th>Mass</th><th>Abundance</th></tr></thead><tbody>'
       + iso.map((x) => '<tr><td><sup>' + x[0] + '</sup>' + esc(e.s) + '</td><td>' + e.n + '</td><td>' + (x[0] - e.n) + '</td><td>' + x[1].toFixed(4) + '</td><td>' + pct(x[2]) + '%</td></tr>').join('')
-      + '</tbody></table><p class="fpt-note">Isotopes have the same protons and electrons, so the same chemistry; only the number of neutrons differs.</p></section>';
+      + '</tbody></table></div><p class="fpt-note">Isotopes have the same protons and electrons, so the same chemistry; only the number of neutrons differs.</p></section>';
     if (DIATOMIC.indexOf(e.s) >= 0) {
       const peaks = diatomicPeaks(iso).filter((p) => p[1] >= 0.001);
       const least = Math.min.apply(null, peaks.map((p) => p[1]));

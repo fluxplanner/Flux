@@ -211,6 +211,11 @@
   white-space: nowrap;
   user-select: none;
 }
+/* On a phone the word costs a whole tab's width — Science toolkit's unit
+   converter sat off-screen behind it. The line alone still marks the split. */
+@media (max-width: 600px) {
+  .fsh-tab-divider { font-size: 0; letter-spacing: 0; padding-left: 0; margin: 0 2px; height: 22px; }
+}
 
 /* ── unit row ──────────────────────────────────────────────────────────────
    The third level: umbrella → subject → unit → tool.

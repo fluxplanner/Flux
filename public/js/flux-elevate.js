@@ -4,7 +4,8 @@
  * Layered enhancements that build on existing infrastructure:
  *   1. Smart contextual greeting (time/streak/workload aware)
  *   2. Auto-save micro-indicator for notes/textareas
- *   3. Milestone celebrations (5/10/25/50/100/250/500/1000 lifetime tasks)
+ *   3. (Milestone celebrations — the "Milestone Unlocked" pop-up at 5, 10, 25…
+ *      completed tasks — were removed at Azfer's request, 2026-09-27.)
  *   4. First-visit keyboard hint rail
  *   5. Illustrated empty states (task list)
  *   6. Quick-command chip toolbar on dashboard
@@ -16,21 +17,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY_LIFETIME = 'flux_elv_lifetime_done';
-  var STORAGE_KEY_LAST_MS  = 'flux_elv_last_milestone';
   var STORAGE_KEY_HINT_SEEN= 'flux_elv_hints_seen_v1';
   var STORAGE_KEY_CMD_RAIL = 'flux_elv_cmd_rail_dismissed_v1';
-
-  var MILESTONES = [
-    { n: 5,    title: 'First five down',           sub: 'You\'re building momentum.', emoji: '' },
-    { n: 10,   title: 'Ten tasks crushed',         sub: 'Habits are forming.',        emoji: '' },
-    { n: 25,   title: 'Quarter-century of focus',  sub: 'You show up every day.',    emoji: '' },
-    { n: 50,   title: 'Half a hundred',            sub: 'Consistency is your edge.', emoji: '' },
-    { n: 100,  title: 'Centurion',                 sub: 'A hundred completed tasks. Wild.', emoji: '' },
-    { n: 250,  title: 'Two-fifty club',            sub: 'You\'re a Flux power user.', emoji: '' },
-    { n: 500,  title: 'Five hundred milestone',    sub: 'Genuinely impressive.',      emoji: '' },
-    { n: 1000, title: 'Thousand-task legend',      sub: 'You built a planet of focus.', emoji: '' },
-  ];
 
   function motionOk() {
     if (document.documentElement.classList.contains('flux-reduce-motion')) return false;
@@ -192,64 +180,6 @@
     }, true);
   }
 
-  /* ── 4. Milestone celebration ──────────────────────────────── */
-  function countLifetimeDone() {
-    var tasks = Array.isArray(window.tasks) ? window.tasks : [];
-    var stored = load(STORAGE_KEY_LIFETIME, null);
-    var doneNow = tasks.filter(function (t) { return t.done; }).length;
-    // Lifetime should be monotonic: take max(stored, doneNow).
-    var lifetime = Math.max(stored | 0, doneNow);
-    if (lifetime !== (stored | 0)) save(STORAGE_KEY_LIFETIME, lifetime);
-    return lifetime;
-  }
-
-  function maybeFireMilestone() {
-    var n = countLifetimeDone();
-    var last = load(STORAGE_KEY_LAST_MS, 0) | 0;
-    var hit = null;
-    for (var i = 0; i < MILESTONES.length; i++) {
-      var m = MILESTONES[i];
-      if (n >= m.n && last < m.n) { hit = m; break; }
-    }
-    if (!hit) return;
-    save(STORAGE_KEY_LAST_MS, hit.n);
-    showMilestone(hit, n);
-  }
-
-  function showMilestone(m, n) {
-    var ok = motionOk();
-    var overlay = document.createElement('div');
-    overlay.className = 'flux-elv-milestone';
-    overlay.innerHTML =
-      '<div class="flux-elv-milestone__card">'
-      +   '<div class="flux-elv-milestone__num">' + m.n + '</div>'
-      +   '<div class="flux-elv-milestone__label">Milestone Unlocked ' + m.emoji + '</div>'
-      +   '<div class="flux-elv-milestone__title">' + escHtml(m.title) + '</div>'
-      +   '<div class="flux-elv-milestone__sub">' + escHtml(m.sub) + '</div>'
-      +   '<button class="flux-elv-milestone__btn" type="button">Keep going</button>'
-      + '</div>';
-    document.body.appendChild(overlay);
-    function close() {
-      overlay.classList.remove('visible');
-      setTimeout(function () { overlay.remove(); }, 350);
-    }
-    overlay.querySelector('.flux-elv-milestone__btn').addEventListener('click', close);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
-    });
-    requestAnimationFrame(function () {
-      overlay.classList.add('visible');
-      if (ok) fireConfetti();
-    });
-    // Auto-close after 6.5s
-    setTimeout(close, 6500);
-    // Forward to existing toast for the announce/log
-    try {
-      if (typeof window.showToast === 'function') window.showToast('🎉 ' + m.title + ' (' + m.n + ' tasks)', 'success', 4000);
-    } catch (_) {}
-  }
-
   function fireConfetti() {
     var colors = ['#00C2FF', '#7C5CFF', '#22FF88', '#F5A623', '#FF6B9D', '#4DDBFF'];
     var count = Math.min(72, Math.round(window.innerWidth / 22));
@@ -272,29 +202,6 @@
         p.addEventListener('animationend', function () { p.remove(); }, { once: true });
       })(i);
     }
-  }
-
-  /* ── Hook task completion → milestone check ─────────────────── */
-  function hookTaskComplete() {
-    var pending = null;
-    function maybeCheck() {
-      clearTimeout(pending);
-      pending = setTimeout(maybeFireMilestone, 600);
-    }
-    document.addEventListener('change', function (e) {
-      var cb = e.target;
-      if (!cb || cb.type !== 'checkbox') return;
-      // Only react to task-style checkboxes
-      if (cb.classList && (
-            cb.classList.contains('task-item-check')
-         || cb.classList.contains('st-task-cb')
-         || cb.closest('.task-item')
-         || cb.closest('[data-task-id]'))) {
-        if (cb.checked) maybeCheck();
-      }
-    }, true);
-    // Also re-check periodically as a safety net (tasks could be updated programmatically)
-    setInterval(maybeCheck, 12000);
   }
 
   /* ── 5. First-visit hint rail ──────────────────────────────── */
@@ -455,13 +362,6 @@
 
   function init() {
     hookAutoSave();
-    hookTaskComplete();
-    // Initial seed of lifetime counter (don't fire on existing legacy completes)
-    if (load(STORAGE_KEY_LIFETIME, null) == null) {
-      var seed = (window.tasks || []).filter(function (t) { return t.done; }).length;
-      save(STORAGE_KEY_LIFETIME, seed);
-      save(STORAGE_KEY_LAST_MS, MILESTONES.reduce(function (acc, m) { return seed >= m.n ? m.n : acc; }, 0));
-    }
     var obs = new MutationObserver(schedule);
     obs.observe(document.body, { childList: true, subtree: true });
     schedule();
@@ -481,10 +381,6 @@
   window.FluxElevate = {
     refresh: schedule,
     showSavePill: showSavePill,
-    fireMilestone: function (n) {
-      var m = MILESTONES.find(function (x) { return x.n === n; }) || MILESTONES[0];
-      showMilestone(m, n);
-    },
     resetHints: function () {
       save(STORAGE_KEY_HINT_SEEN, false);
       save(STORAGE_KEY_CMD_RAIL, false);

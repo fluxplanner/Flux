@@ -781,8 +781,9 @@
           s.close();
         }
       });
-      const first = box.querySelector('.fgi-add');
-      if (first && !first.disabled) first.focus();
+      // Focus the sheet, not a button: a ring round "Add" on opening reads as a warning.
+      const title = box.querySelector('#fgiH');
+      if (title) { title.tabIndex = -1; title.focus({ preventScroll: true }); }
     });
   }
 

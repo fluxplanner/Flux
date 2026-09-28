@@ -39,7 +39,8 @@ test.describe('College Prep sections', () => {
     // Activities opens by default — it is the part you fill in first.
     expect(before.panes[0].on).toBe(true);
     expect(before.panes[0].cards).toContain('My Activities');
-    expect(before.panes[0].cards).toContain('Goals & Milestones');
+    // Goals & Milestones was removed (2026-09-27): no EC milestones anywhere in the planner.
+    expect(before.panes[0].cards).not.toContain('Goals & Milestones');
     expect(before.panes[1].cards).toContain('Target Schools');
 
     const after = await page.evaluate(() => {
@@ -145,5 +146,25 @@ test.describe('College Prep sections', () => {
     expect(r.stripe, 'the activity row does not show its colour').toBe('rgb(255, 0, 255)');
     expect(r.reopened, 'editing an activity did not load its saved colour').toBe('#ff00ff');
     expect(r.cleared, 'clearing the form left the browser default instead of ours').toBe('#fbbf24');
+  });
+
+  test('milestones are gone: no pop-up, no EC milestone rows, no calendar toggle for them', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      const today = w.fluxLocalYMD ? w.fluxLocalYMD(new Date()) : new Date().toISOString().slice(0, 10);
+      // An EC goal saved before the removal is left in the data but shown nowhere.
+      localStorage.setItem('flux_ec_goals', JSON.stringify([{ id: 1, title: 'Reach 100 volunteer hours', deadline: today, done: false }]));
+      if (typeof w.renderCalendar === 'function') w.renderCalendar();
+      return {
+        popup: typeof w.FluxElevate?.fireMilestone,
+        rows: document.body.innerText.includes('EC milestone'),
+        toggle: !!document.getElementById('ecSchedShowOnCal'),
+        card: !!document.getElementById('ecGoalsList'),
+      };
+    });
+    expect(r.popup).toBe('undefined');
+    expect(r.rows).toBe(false);
+    expect(r.toggle).toBe(false);
+    expect(r.card).toBe(false);
   });
 });
