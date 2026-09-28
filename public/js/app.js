@@ -5000,6 +5000,7 @@ function fluxSaveCountdown(){
   // When it was set, so the panel can show how much of the wait has gone.
   const setAt=prev&&prev.date===date&&prev.setAt?prev.setAt:Date.now();
   save(FLUX_COUNTDOWN_KEY,{label,date,time,setAt});
+  fluxCountdownStamp();
   syncKey('countdown',1);
   const f=document.getElementById('countdownForm');if(f)f.hidden=true;
   fluxCountdownChanged();
@@ -5007,6 +5008,7 @@ function fluxSaveCountdown(){
 }
 function fluxClearCountdown(){
   save(FLUX_COUNTDOWN_KEY,null);
+  fluxCountdownStamp();
   syncKey('countdown',1);
   const f=document.getElementById('countdownForm');if(f)f.hidden=true;
   fluxCountdownChanged();
@@ -5015,6 +5017,55 @@ function fluxClearCountdown(){
 window.fluxToggleCountdownForm=fluxToggleCountdownForm;
 window.fluxSaveCountdown=fluxSaveCountdown;
 window.fluxClearCountdown=fluxClearCountdown;
+
+/* ── The countdown on every device ───────────────────────────────────────────
+   Setting a countdown called syncKey('countdown'), but flux_countdown was never
+   in getCloudPayload() — so it stayed on the device it was set on (a Mac's
+   countdown never reached the iPad). It travels now, newest change wins: each
+   save or clear stamps flux_countdown_at, so clearing it on one device clears
+   it on the others, and a device that never had one cannot wipe one that was
+   set somewhere else. */
+const FLUX_COUNTDOWN_AT='flux_countdown_at';
+function fluxCountdownStamp(){save(FLUX_COUNTDOWN_AT,Date.now());}
+/** When this device's countdown last changed. Countdowns set before the stamp existed fall back to setAt. */
+function fluxCountdownChangedAt(){
+  const at=+load(FLUX_COUNTDOWN_AT,0)||0;
+  if(at)return at;
+  const c=fluxGetCountdown();
+  return c&&+c.setAt?+c.setAt:0;
+}
+function fluxCountdownCloudSlice(){return{v:fluxGetCountdown(),at:fluxCountdownChangedAt()};}
+/** A countdown from the cloud, checked: only the fields the pill reads, in the shapes it expects. */
+function fluxCleanCountdown(v){
+  if(!v||typeof v!=='object')return null;
+  const date=String(v.date||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return null;
+  const label=String(v.label||'').trim().slice(0,80);
+  if(!label)return null;
+  const time=/^\d{2}:\d{2}$/.test(String(v.time||''))?String(v.time):'';
+  const out={label,date,time};
+  if(Number.isFinite(+v.setAt)&&+v.setAt>0)out.setAt=+v.setAt;
+  return out;
+}
+/** Adopt the cloud's countdown if it changed more recently; send ours if ours is newer. */
+function fluxApplyCountdownFromCloud(slice){
+  if(!slice||typeof slice!=='object'||!('at' in slice))return false;
+  const cloudAt=+slice.at||0,localAt=fluxCountdownChangedAt();
+  if(cloudAt>localAt){
+    const next=fluxCleanCountdown(slice.v);
+    // Malformed is not the same as cleared: ignore it rather than wipe a good one.
+    if(slice.v!=null&&!next)return false;
+    save(FLUX_COUNTDOWN_KEY,next);
+    save(FLUX_COUNTDOWN_AT,cloudAt);
+    try{fluxCountdownChanged();}catch(_){}
+    return true;
+  }
+  // This device's countdown is the newer one (set before countdowns synced): send it up.
+  if(localAt>cloudAt)syncKey('countdown',1);
+  return false;
+}
+window.fluxCountdownCloudSlice=fluxCountdownCloudSlice;
+window.fluxApplyCountdownFromCloud=fluxApplyCountdownFromCloud;
 
 /* ── Counting down from the calendar ─────────────────────────────────────────
    The countdown lived only on the dashboard, but the day you want to count
@@ -5028,6 +5079,7 @@ function fluxSetCountdown(label,date,time){
   if(!date||!label)return false;
   const prev=fluxGetCountdown();
   save(FLUX_COUNTDOWN_KEY,{label,date,time:time||'',setAt:prev&&prev.date===date&&prev.setAt?prev.setAt:Date.now()});
+  fluxCountdownStamp();
   syncKey('countdown',1);
   fluxCountdownChanged();
   if(typeof showToast==='function')showToast('✓ Counting down to '+label+' — it’s in the top bar');
@@ -9951,6 +10003,9 @@ function getCloudPayload(){
     // the device that started it — copying its end timestamp across would show
     // a second device a countdown nobody there set.
     timeTools:(window.FluxTimeTools?.getCloudSlice?FluxTimeTools.getCloudSlice():load('flux_time_tools_v1',{alarms:[],worldClocks:[]})),
+    // The top-bar countdown (a trip, the SAT). Unlike the stopwatch above, it is
+    // a date the student chose, so it belongs on every device. Newest change wins.
+    countdown:fluxCountdownCloudSlice(),
     // The classes a member of staff TEACHES, plus the work set for each. A
     // separate key from the student `classes` above: same shape, opposite
     // meaning, and sharing one would feed a teacher's timetable into the GPA
@@ -10438,6 +10493,12 @@ async function syncFromCloud(){
     }
     if(d.studyHub&&typeof d.studyHub==='object'){
       try{if(window.fluxStudyHub?.applyFromCloud)fluxStudyHub.applyFromCloud(d.studyHub);else save('flux_study_hub',d.studyHub);}catch(_){}
+    }
+    if(d.countdown&&typeof d.countdown==='object'){
+      try{fluxApplyCountdownFromCloud(d.countdown);}catch(_){}
+    }else if(fluxCountdownChangedAt()){
+      // A cloud copy from before countdowns synced: this device's has never been sent.
+      try{syncKey('countdown',1);}catch(_){}
     }
     if(d.timeTools&&typeof d.timeTools==='object'){
       try{if(window.FluxTimeTools?.applyFromCloud)FluxTimeTools.applyFromCloud(d.timeTools);}catch(_){}
