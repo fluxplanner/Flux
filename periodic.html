@@ -6,6 +6,12 @@
 <title>Flux Periodic Table</title>
 <meta name="description" content="A free interactive periodic table from Flux: every periodic trend, the table melting and boiling with temperature, electron configurations, line spectra and hydrogen's energy levels, mass spectra, and every atom in 3D. No account needed.">
 <meta name="theme-color" content="#070b14">
+<!-- On a phone's home screen these pages run full-screen like the planner:
+     the page's own dark colour under the clock, not a white bar, and the
+     header padded down clear of the notch (env(safe-area-inset-*) below). -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 
 <!--
@@ -29,6 +35,8 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  /* A solid colour behind everything, so no edge of the screen can show white. */
+  html { background: #070b14; }
   body {
     min-height: 100dvh;
     background:
@@ -43,7 +51,8 @@
   }
   header.top {
     display: flex; align-items: center; gap: 10px;
-    height: 52px; padding: 0 clamp(8px, 1.6vw, 14px);
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-right, 0px)) 0 max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--border);
     background: rgba(8, 12, 22, .78);
     backdrop-filter: blur(16px) saturate(150%);
@@ -59,7 +68,10 @@
   }
   .hbtn:hover { color: var(--text); background: rgba(255,255,255,.06); }
   .hbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  main { padding: clamp(12px, 2.4vw, 26px) clamp(10px, 2.4vw, 28px) 48px; max-width: 1680px; margin: 0 auto; }
+  main {
+    padding: clamp(12px, 2.4vw, 26px) max(clamp(10px, 2.4vw, 28px), env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) max(clamp(10px, 2.4vw, 28px), env(safe-area-inset-left, 0px));
+    max-width: 1680px; margin: 0 auto;
+  }
   .toast {
     position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50;
     padding: 9px 14px; border-radius: 10px; font-size: .86rem; font-weight: 600;

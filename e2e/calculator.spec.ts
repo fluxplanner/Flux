@@ -57,6 +57,35 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84-home')).toBeVisible();
   });
 
+  test('2nd OFF switches it off, and only ON switches it back on', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/calculator.html');
+    const key = (k: string) => page.locator(`.t84 [data-k="${k}"]`).click();
+    for (const k of ['6', 'mul', '7', 'enter']) await key(k);
+    await expect(lastOut(page)).toHaveText('42');
+    for (const k of ['2nd', 'on']) await key(k);
+    await expect(page.locator('.t84')).toHaveClass(/is-off/);
+    await expect(page.locator('.t84-scr')).toBeHidden();
+    // Switched off, the other keys do nothing — typing or tapping.
+    await key('5');
+    await page.keyboard.type('9');
+    await key('on');
+    await expect(page.locator('.t84')).not.toHaveClass(/is-off/);
+    await expect(lastOut(page), 'the screen comes back as it was').toHaveText('42');
+    await expect(page.locator('.t84-entry'), 'nothing typed while it was off').not.toContainText(/[59]/);
+  });
+
+  test('no white shows around the standalone pages on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const url of ['/calculator.html', '/grapher.html', '/periodic.html']) {
+      await page.goto(url);
+      const bg = await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+      expect(bg, `${url} has no page colour of its own`).toBe('rgb(7, 11, 20)');
+      await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveAttribute('content', 'black-translucent');
+      await expect(page.locator('.fxhub-btn:visible')).toBeVisible();
+    }
+  });
+
   test('Study tools → Maths has it, and the planner leaves its keys alone', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 950 });
     await gotoScenario(page, 'student-semester');

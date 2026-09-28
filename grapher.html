@@ -6,6 +6,12 @@
 <title>Flux Grapher</title>
 <meta name="description" content="Free graphing from Flux: functions like Desmos, and lab data with uncertainty columns, error bars and a best-fit gradient with its uncertainty. No account needed.">
 <meta name="theme-color" content="#070b14">
+<!-- On a phone's home screen these pages run full-screen like the planner:
+     the page's own dark colour under the clock, not a white bar, and the
+     header padded down clear of the notch (env(safe-area-inset-*) below). -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 
 <!--
@@ -22,7 +28,7 @@
   inside the planner so both look the same.
 -->
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
-<link rel="stylesheet" href="public/css/flux-grapher.css?v=235357e3">
+<link rel="stylesheet" href="public/css/flux-grapher.css?v=b84e1a19">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a625201">
 <style>
   :root {
@@ -37,6 +43,8 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  /* A solid colour behind everything, so no edge of the screen can show white. */
+  html { background: #070b14; }
   body {
     background:
       radial-gradient(120% 80% at 50% -10%, rgba(0,194,255,.10), transparent 55%),
@@ -59,8 +67,8 @@
     align-items: center;
     gap: 10px;
     flex: 0 0 auto;
-    height: 52px;
-    padding: 0 clamp(8px, 1.6vw, 14px);
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-right, 0px)) 0 max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--border);
     background: rgba(8, 12, 22, .78);
     backdrop-filter: blur(16px) saturate(150%);
@@ -123,7 +131,11 @@
   }
   .sep { width: 1px; height: 22px; background: var(--border2); margin: 0 6px; }
 
-  main#grapherHost { flex: 1 1 auto; min-height: 0; position: relative; }
+  /* Clear of the notch and the home bar when it runs full-screen; all zero in a browser tab. */
+  main#grapherHost {
+    flex: 1 1 auto; min-height: 0; position: relative;
+    margin: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
 
   .mode-btn .ms { display: none; }
   @media (max-width: 560px) {
@@ -193,7 +205,7 @@
   <script src="public/js/flux-lab-fit.js?v=d1991389"></script>
   <script src="public/js/flux-formula-typeset.js?v=4b6135e4"></script>
   <script src="public/js/flux-mathfield.js?v=ddaf78a5"></script>
-  <script src="public/js/flux-grapher.js?v=4a396e39"></script>
+  <script src="public/js/flux-grapher.js?v=817afaa4"></script>
   <script src="public/js/flux-grapher-cloud.js?v=17ab9912"></script>
   <script src="public/js/flux-grapher-import.js?v=e69aafc4"></script>
   <script src="public/js/flux-grapher-tour.js?v=cc94e84d"></script>
