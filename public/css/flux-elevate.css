@@ -3,7 +3,6 @@
    - Smart contextual greeting refresh
    - Streak ring widget
    - Auto-save micro-indicator
-   - Milestone celebration overlay
    - Illustrated empty states
    - First-visit hint pills
    - Quick-command chip toolbar
@@ -142,93 +141,7 @@
   .flux-elv-save-pill { bottom: calc(86px + var(--bnav-height,62px)); right: 12px; }
 }
 
-/* ───── Milestone celebration overlay ──────────────────────────── */
-.flux-elv-milestone {
-  position: fixed; inset: 0;
-  z-index: 10001;
-  background: radial-gradient(ellipse at center, rgba(var(--accent-rgb),.18) 0%, rgba(0,0,0,.65) 60%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0;
-  transition: opacity .35s ease;
-  pointer-events: none;
-}
-.flux-elv-milestone.visible { opacity: 1; pointer-events: auto; }
-.flux-elv-milestone__card {
-  background: linear-gradient(135deg, rgba(21,29,48,.96), rgba(11,15,26,.96));
-  border: 1px solid rgba(var(--accent-rgb),.4);
-  border-radius: 24px;
-  padding: 36px 44px;
-  text-align: center;
-  max-width: 420px; width: calc(100% - 32px);
-  box-shadow:
-    0 32px 80px rgba(0,0,0,.6),
-    0 0 0 1px rgba(var(--accent-rgb),.18),
-    0 0 60px rgba(var(--accent-rgb),.25);
-  transform: scale(.92) translateY(20px);
-  opacity: 0;
-  transition: all .45s cubic-bezier(.34,1.56,.64,1);
-  position: relative;
-  overflow: hidden;
-}
-.flux-elv-milestone.visible .flux-elv-milestone__card {
-  transform: scale(1) translateY(0);
-  opacity: 1;
-}
-.flux-elv-milestone__card::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb),.08), transparent 50%, rgba(var(--purple-rgb),.08));
-  pointer-events: none;
-}
-.flux-elv-milestone__num {
-  font-size: 4.2rem;
-  font-weight: 900;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background: linear-gradient(135deg, var(--accent, #00C2FF), var(--purple, #7C5CFF), var(--green, #22FF88));
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -.04em;
-  line-height: 1;
-  margin-bottom: 4px;
-  animation: fluxElvNumPop .7s cubic-bezier(.34,1.56,.64,1) .15s both;
-}
-@keyframes fluxElvNumPop {
-  0%   { transform: scale(.3); opacity: 0; }
-  60%  { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.flux-elv-milestone__label {
-  font-size: .68rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .15em;
-  color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-  margin-bottom: 12px;
-}
-.flux-elv-milestone__title {
-  font-size: 1.42rem; font-weight: 800;
-  color: var(--text); margin-bottom: 6px;
-}
-.flux-elv-milestone__sub {
-  font-size: .88rem; font-weight: 500;
-  color: var(--muted2, #7b809a);
-  margin-bottom: 22px;
-  line-height: 1.5;
-}
-.flux-elv-milestone__btn {
-  padding: 11px 24px;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  border: none; border-radius: 999px;
-  color: #fff; font-weight: 700; font-size: .86rem;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(var(--accent-rgb),.35);
-  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
-}
-.flux-elv-milestone__btn:hover {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 10px 28px rgba(var(--accent-rgb),.5);
-}
+/* ───── Confetti (FluxElevate.confetti) ───────────────────────── */
 .flux-elv-confetti {
   position: fixed;
   width: 9px; height: 14px;
@@ -495,17 +408,6 @@
     padding: 5px 10px;
   }
 
-  /* Milestone modal: fits narrow screens */
-  .flux-elv-milestone__card {
-    padding: 28px 22px;
-    border-radius: 20px;
-    max-width: calc(100vw - 32px);
-  }
-  .flux-elv-milestone__num { font-size: 3.4rem; }
-  .flux-elv-milestone__title { font-size: 1.18rem; }
-  .flux-elv-milestone__sub { font-size: .78rem; margin-bottom: 18px; }
-  .flux-elv-milestone__btn { padding: 10px 20px; font-size: .8rem; }
-
   /* Empty-state art: lighter on mobile */
   .flux-elv-empty__art { width: 80px; height: 80px; }
   .flux-elv-empty__art svg { width: 52px; height: 52px; }
@@ -524,7 +426,6 @@
   .flux-elv-streak-ring__fire,
   .flux-elv-empty__art svg,
   .flux-elv-save-pill::before { animation: none !important; }
-  .flux-elv-milestone__num { animation: none !important; }
   .flux-elv-greet-sub,
   .flux-elv-hero-strip,
   .flux-elv-empty { animation: none !important; }

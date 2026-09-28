@@ -1509,6 +1509,7 @@
    input rule (styles.css §14, !important) and the pill-button rule; #fgiSheet
    outranks both. */
 .fgc-sheet.fgi-sheet { width: min(1000px, 100%); padding: 24px 22px 18px; }
+.fgi-sheet #fgiH:focus { outline: none; }
 .fgc-sheet.fgi-sheet--busy { width: min(460px, 100%); }
 .fgi-body { display: grid; gap: 14px; min-height: 0; }
 .fgi-body.has-photo { grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); align-items: start; }
