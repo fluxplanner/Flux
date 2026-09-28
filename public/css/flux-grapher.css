@@ -997,25 +997,39 @@
 .flg-pbody { position: relative; flex: 1; min-height: 0; }
 .flg-pbody > .flg { position: absolute; inset: 0; }
 
-/* ── Phones ───────────────────────────────────────────────────────────── */
-@media (max-width: 760px) {
+/* ── Phones, and any portrait screen: the graph on top, the list under it ─
+   Side by side, a portrait iPad (820–1024 px wide) left the graph a 450 px
+   strip more than twice as tall as it was wide. Anything taller than it is
+   wide, up to a small laptop, stacks the way phones always did. */
+@media (max-width: 760px), (orientation: portrait) and (max-width: 1100px) {
   .flg {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(250px, 56%) minmax(0, 1fr);
+    /* Never taller than it is wide: on a very tall, narrow screen (Split View
+       at a third of an iPad) 56% of the height made a portrait graph. */
+    grid-template-rows: minmax(250px, min(56%, 110vw)) minmax(0, 1fr);
   }
   .flg-stage { order: 1; border-bottom: 1px solid var(--flg-soft); }
   .flg-rail { order: 2; border-right: 0; }
   .flg-kb { order: 3; }
   .flg.has-kb { grid-template-rows: minmax(170px, 1fr) minmax(70px, 24%) auto; }
   .flg.has-kb.is-railless { grid-template-rows: minmax(0, 1fr) 0 auto; }
-  .flg-key { height: 38px; font-size: .86rem; }
   .flg.is-railless { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0; }
   .flg-shell--planner { height: 82vh; min-height: 520px; }
+}
+
+/* ── Phones ───────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .flg-key { height: 38px; font-size: .86rem; }
   .flg-results { max-width: calc(100% - 64px); font-size: .72rem; }
   .flg-tools { right: 8px; bottom: 8px; gap: 5px; }
   .flg-railbtn { right: 8px; top: 8px; }
   .flg-tools button, .flg-railbtn { width: 32px; height: 32px; border-radius: 10px; }
 }
+
+/* A framed Measurements plot too narrow to spare a gutter (a phone, either
+   way up): the view buttons sit just above its x-axis numbers instead of on
+   them. The grapher sets .is-tight and --flg-axis-gap as it draws. */
+.flg--data .flg-stage.is-tight .flg-tools { bottom: calc(var(--flg-axis-gap, 0px) + 6px); }
 
 @media (prefers-reduced-motion: reduce) {
   .flg-pop, .flg-toast { animation: none; }

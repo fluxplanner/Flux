@@ -123,7 +123,7 @@ test('the test forms compute from lists and store their results', () => {
   same(st.mats.B, [[12, 18], [28, 42]]);
 });
 
-test('programs: blocks, loops, labels and the screen', () => {
+test('programs: blocks, loops, labels and the screen', async () => {
   const P = W.FluxTIPrgm, E = W.FluxTIEditor;
   const k = P._test.compile(['If A=1:Then', 'Disp 1', 'Else', 'Disp 2', 'End', 'While 0', 'End', 'Lbl Q']);
   assert.equal(k.endOf[1], 5);
@@ -144,6 +144,8 @@ test('programs: blocks, loops, labels and the screen', () => {
     push(a) { this.stack.push(a); }, top() { return this.stack[this.stack.length - 1]; }, error(kind) { this.errors.push(kind); },
   };
   P.run(c, 'DEMO', E.nodesFromCode('prgmDEMO'));
+  // It runs in 12ms slices; on a busy machine one slice is not the whole program.
+  for (let i = 0; i < 100 && c.runner; i++) await new Promise((res) => setTimeout(res, 10));
   same(c.errors, []);
   const h = st.ui.history[st.ui.history.length - 1];
   // Numbers from Disp sit at the right edge; text starts at the left.
@@ -167,7 +169,9 @@ test('programs: Input waits for an answer, errors stop with the line', async () 
   assert.equal(r.state, 'input');
   r.ed.insertTok('7');
   r.submit();
-  await new Promise((res) => setTimeout(res, 30));
+  // The program carries on in timer steps; wait for it to finish rather than
+  // for a fixed 30ms, which a busy machine overshoots.
+  for (let i = 0; i < 100 && c.runner; i++) await new Promise((res) => setTimeout(res, 10));
   const h = st.ui.history[st.ui.history.length - 1];
   same(h.lines, [{ t: 'N=7' }, { t: '49', r: true }]);
   assert.equal(c.runner, null);

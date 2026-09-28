@@ -177,5 +177,37 @@
      hub silently never showing up there. */
   setTimeout(mountAll, 1200);
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, PRODUCTS: PRODUCTS };
+  /* Added to a phone's home screen, Flux runs as an app, and a link that opens
+     a new window leaves it for Safari's pop-up sheet: a white bar across the
+     top and no way back to the planner but closing it. Between Flux's own
+     pages it stays in the app instead — every one of them has this switcher
+     to come back by. In a normal browser tab, new windows are left alone. */
+  function installed() {
+    try {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+    } catch (e) { return false; }
+  }
+  function isFluxPage(href) {
+    try {
+      var u = new URL(href, location.href);
+      if (u.origin !== location.origin) return false;
+      var path = u.pathname.replace(/\.html$/, '');
+      return PRODUCTS.some(function (p) { var n = '/' + p.href.replace(/\.html$/, ''); return path.slice(-n.length) === n; });
+    } catch (e) { return false; }
+  }
+  function openPage(href) {
+    if (installed() && isFluxPage(href)) location.href = href;
+    else window.open(href, '_blank', 'noopener');
+  }
+  // Capture phase, for the same reason as the menu: the planner stops clicks bubbling.
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest && e.target.closest('a[target="_blank"][href]');
+    if (!a || !installed() || !isFluxPage(a.href)) return;
+    e.preventDefault();
+    location.href = a.href;
+  }, true);
+
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS };
 })();

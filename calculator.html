@@ -6,6 +6,12 @@
 <title>Flux Calculator</title>
 <meta name="description" content="A free graphing calculator from Flux that works like a TI-84 Plus CE: MathPrint, graphs, tables, lists, matrices, stat tests, finance and programs. No account needed.">
 <meta name="theme-color" content="#070b14">
+<!-- On a phone's home screen these pages run full-screen like the planner:
+     the page's own dark colour under the clock, not a white bar, and the
+     header padded down clear of the notch (env(safe-area-inset-*) below). -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 
 <!--
@@ -14,7 +20,7 @@
   any school computer and needs no account. Its memory (variables, lists,
   programs) stays in this browser, like the handheld's RAM.
 -->
-<link rel="stylesheet" href="public/css/flux-ti84.css?v=03a39497">
+<link rel="stylesheet" href="public/css/flux-ti84.css?v=159ad045">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a625201">
 <style>
   :root {
@@ -29,6 +35,8 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  /* A solid colour behind everything, so no edge of the screen can show white. */
+  html { background: #070b14; }
   body {
     min-height: 100dvh;
     background:
@@ -42,7 +50,8 @@
   }
   header.top {
     display: flex; align-items: center; gap: 10px;
-    height: 52px; padding: 0 clamp(8px, 1.6vw, 14px);
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-right, 0px)) 0 max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--border);
     background: rgba(8, 12, 22, .78);
     backdrop-filter: blur(16px) saturate(150%);
@@ -59,10 +68,10 @@
     justify-content: center;
     align-items: start;
     gap: clamp(20px, 4vw, 48px);
-    padding: clamp(16px, 4vw, 40px) 16px 48px;
+    padding: clamp(16px, 4vw, 40px) max(16px, env(safe-area-inset-right, 0px)) calc(48px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   }
   .tips {
-    position: sticky; top: 72px;
+    position: sticky; top: calc(72px + env(safe-area-inset-top, 0px));
     padding: 18px 20px;
     border: 1px solid var(--border);
     border-radius: 16px;
@@ -115,12 +124,12 @@
   </main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=41c74ac1"></script>
+  <script src="public/js/flux-hub.js?v=06e3956b"></script>
   <script src="public/js/flux-ti84-stats.js?v=fe6c2118"></script>
   <script src="public/js/flux-ti84-engine.js?v=bb45e37a"></script>
   <script src="public/js/flux-ti84-editor.js?v=f25537da"></script>
   <script src="public/js/flux-ti84-menus.js?v=9fbb20cc"></script>
-  <script src="public/js/flux-ti84.js?v=a7674448"></script>
+  <script src="public/js/flux-ti84.js?v=9e1024ea"></script>
   <script src="public/js/flux-ti84-graph.js?v=2fe32e0f"></script>
   <script src="public/js/flux-ti84-apps.js?v=81c1b069"></script>
   <script src="public/js/flux-ti84-prgm.js?v=97693bbd"></script>

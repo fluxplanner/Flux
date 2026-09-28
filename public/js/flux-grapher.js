@@ -3027,7 +3027,7 @@
     return { x: axisTitle(xn, xu), y: axisTitle(yn, yu) };
   };
 
-  Grapher.prototype.frame = function (W, H) {
+  Grapher.prototype.frame = function (W, H, print) {
     if (this.kind === 'functions') return { L: 0, T: 0, R: W, B: H, pw: W, ph: H, box: false };
     const at = this.axisTitles();
     /* The left margin follows the widest y label, so "−0.00125" is never
@@ -3038,7 +3038,11 @@
     const L = Math.round(widest * 7.2 + 18 + (at.y ? 22 : 0));
     const T = this.doc.title ? 44 : 16;
     const B = 30 + (at.x ? 26 : 0);
-    const R = 18;
+    /* On screen the zoom buttons stand in the bottom-right corner, and at 18 px
+       they sat on the last x-axis number. Where there is room, leave them a
+       gutter; phones lift the buttons instead (flux-grapher.css). Saved images
+       have no buttons, so no gutter. */
+    const R = print || W < 600 ? 18 : 68;
     return { L: L, T: T, R: W - R, B: H - B, pw: Math.max(10, W - R - L), ph: Math.max(10, H - B - T), box: true };
   };
 
@@ -3541,10 +3545,18 @@
 
   Grapher.prototype.svg = function (W, H, print) {
     const d = this.doc;
-    const fr = this.frame(W, H);
+    const fr = this.frame(W, H, print);
     const v = this.viewFor(fr);
     const m = mapper(v, fr);
-    if (!print) this._last = { fr: fr, v: v, m: m, W: W, H: H };
+    if (!print) {
+      this._last = { fr: fr, v: v, m: m, W: W, H: H };
+      // How far the x-axis numbers reach up from the bottom, for the phone button stack.
+      const st = this.$('Stage');
+      if (st) {
+        st.classList.toggle('is-tight', !!fr.box && W < 600);
+        if (fr.box) st.style.setProperty('--flg-axis-gap', Math.round(H - fr.B + 22) + 'px');
+      }
+    }
     const c = (n) => cls(n, print);
     const clip = this.uid + (print ? 'P' : 'C');
     const at = this.axisTitles();
@@ -4587,7 +4599,8 @@
       } else if (act === 'full') {
         inst.persistLocal();
         writeJSON(HANDOFF_KEY, { kind: inst.kind, payload: inst.doc, cloud: inst.cloud, at: Date.now() });
-        window.open('grapher.html', '_blank', 'noopener');
+        if (window.FluxHub && window.FluxHub.openPage) window.FluxHub.openPage('grapher.html');
+        else window.open('grapher.html', '_blank', 'noopener');
       }
     });
 

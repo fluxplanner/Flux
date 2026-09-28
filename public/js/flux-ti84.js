@@ -204,6 +204,7 @@
   /** Physical keyboard: digits, letters (as alpha), operators, arrows, Enter, Backspace, Escape. */
   Calc.prototype.keyboard = function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (this.off) return;
     const t = e.target;
     if (t && t !== this.el && t.closest && t.closest('button') == null && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
     // A focused key button keeps Enter/Space for itself.
@@ -222,6 +223,8 @@
 
   /** A key on the keypad: resolve 2nd/alpha, then hand it to the screen on top. */
   Calc.prototype.press = function (id) {
+    // Switched off, the only key that does anything is ON — as on the handheld.
+    if (this.off) { if (id === 'on') this.power(true); return; }
     if (this.runner && this.runner.key(id, this.mod)) { this.mod = this.alock ? 'alpha' : ''; return; }
     if (id === '2nd') { this.mod = this.mod === '2nd' ? '' : '2nd'; this.render(); return; }
     if (id === 'alpha') {
@@ -237,7 +240,17 @@
     else if (this.mod === 'alpha') code = this.alock && id === 'enter' ? 'enter' : ALPHA_TOP[id] || (ALPHA[id] != null ? 'a:' + ALPHA[id] : id);
     if (this.alock && this.mod === 'alpha' && ALPHA[id] != null) this.mod = 'alpha';
     else { this.mod = ''; this.alock = false; }
+    if (code === 'off') { this.power(false); return; }
     this.dispatch(code);
+  };
+  /** 2nd OFF blanks the screen; ON brings back exactly what was on it. Not
+      saved: a reload always opens switched on. */
+  Calc.prototype.power = function (on) {
+    this.off = !on;
+    this.mod = '';
+    this.alock = false;
+    this.el.classList.toggle('is-off', this.off);
+    this.render();
   };
   Calc.prototype.dispatch = function (code) {
     const app = this.top();
