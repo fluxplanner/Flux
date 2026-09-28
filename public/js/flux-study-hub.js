@@ -611,7 +611,7 @@
   // ════════════════════════════════════════════════════════════════════════
   //  CHEMISTRY FLAGSHIP
   // ════════════════════════════════════════════════════════════════════════
-  const CATS = [['all','All','#8b90ad'],['alkali','Alkali','#e23e57'],['alkaline','Alkaline earth','#f47b2f'],['transition','Transition','#3a5bd9'],['post-transition','Post-transition','#2d8aa6'],['metalloid','Metalloid','#5b3fd6'],['nonmetal','Nonmetal','#1f9e74'],['halogen','Halogen','#1f9bb8'],['noble','Noble gas','#8a3fd6'],['lanthanide','Lanthanide','#c23d96'],['actinide','Actinide','#c23d5a']];
+  const CATS = [['all','All','#8b90ad'],['alkali','Alkali','#e23e57'],['alkaline','Alkaline earth','#f47b2f'],['transition','Transition','#3a5bd9'],['post-transition','Post-transition','#2d8aa6'],['metalloid','Metalloid','#86a82a'],['nonmetal','Nonmetal','#1f9e74'],['halogen','Halogen','#c89a14'],['noble','Noble gas','#8a3fd6'],['lanthanide','Lanthanide','#c23d96'],['actinide','Actinide','#d5689d']];
   let ptCat = 'all', ptQuery = '', ptTrend = '';
   const trendList = () => (window.fluxPeriodic && window.fluxPeriodic.TRENDS) || [];
   function elCell(e) { const m = e.mass === Math.round(e.mass) ? e.mass : e.mass.toFixed(2); return `<button type="button" class="fsh-el" data-cat="${e.cat}" data-n="${e.n}" data-mass="${m}" style="grid-row:${e.row};grid-column:${e.col}" aria-label="${esc(e.name)}"><span class="e-n">${e.n}</span><span class="e-s">${esc(e.s)}</span><span class="e-m">${m}</span></button>`; }
