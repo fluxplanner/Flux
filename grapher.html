@@ -44,7 +44,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
   /* A solid colour behind everything, so no edge of the screen can show white. */
-  html { background: #070b14; }
+  html, body { background-color: #070b14; }
   body {
     background:
       radial-gradient(120% 80% at 50% -10%, rgba(0,194,255,.10), transparent 55%),
@@ -60,7 +60,9 @@
      switch between the two graphers, and a row of icons. The page itself
      never scrolls — the rail scrolls inside the tool — so the plot cannot be
      pushed off the bottom by a growing table. */
-  .wrap { height: 100dvh; display: flex; flex-direction: column; }
+  /* Pinned to the screen's edges rather than 100dvh tall: on an iPhone the two
+     disagree, and the difference showed as an empty strip along the bottom. */
+  .wrap { position: fixed; inset: 0; display: flex; flex-direction: column; }
 
   header.top {
     display: flex;
@@ -70,10 +72,11 @@
     height: calc(52px + env(safe-area-inset-top, 0px));
     padding: env(safe-area-inset-top, 0px) max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-right, 0px)) 0 max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--border);
-    background: rgba(8, 12, 22, .78);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    position: relative;
+    /* Solid, not frosted glass. iPhone Safari carries the colour of a bar at
+       the top up behind the clock; a see-through one it shows as a blur of
+       whatever is scrolling underneath. */
+    background: #080c16;
+    position: sticky; top: 0;
     z-index: 5;
   }
   .brand { display: flex; align-items: center; flex: 0 0 auto; }
@@ -131,11 +134,17 @@
   }
   .sep { width: 1px; height: 22px; background: var(--border2); margin: 0 6px; }
 
-  /* Clear of the notch and the home bar when it runs full-screen; all zero in a browser tab. */
+  /* Clear of a landscape iPhone's notch. The home bar at the bottom is left to
+     the list and the keypad, which pad themselves above it, so the tool's own
+     colour still runs to the bottom edge. All zero in a desktop browser. */
   main#grapherHost {
     flex: 1 1 auto; min-height: 0; position: relative;
-    margin: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    margin: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
   }
+  #grapherHost .flg-rail { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #grapherHost .flg-kb { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #grapherHost .flg.has-kb .flg-rail { padding-bottom: 10px; }
+  #grapherHost .flg.is-railless .flg-rail { padding: 0; }
 
   .mode-btn .ms { display: none; }
   @media (max-width: 560px) {
@@ -149,6 +158,13 @@
     .sep, #ghHelp, #ghPng, .fxhub-btn-label { display: none; }
     .fxhub-btn { padding: 7px 9px; }
   }
+  /* A zoomed-in iPhone is 320 wide: fewer icons, so the switcher never leaves the screen. */
+  @media (max-width: 380px) {
+    header.top { gap: 4px; }
+    #ghShare { display: none; }
+    .mode-btn { padding: 7px 8px; }
+  }
+  @media (max-width: 340px) { .brand { display: none; } }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: .001ms !important; transition-duration: .001ms !important; }

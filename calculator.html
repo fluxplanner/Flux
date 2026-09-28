@@ -36,7 +36,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   /* A solid colour behind everything, so no edge of the screen can show white. */
-  html { background: #070b14; }
+  html, body { background-color: #070b14; }
   body {
     min-height: 100dvh;
     background:
@@ -53,9 +53,10 @@
     height: calc(52px + env(safe-area-inset-top, 0px));
     padding: env(safe-area-inset-top, 0px) max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-right, 0px)) 0 max(clamp(8px, 1.6vw, 14px), env(safe-area-inset-left, 0px));
     border-bottom: 1px solid var(--border);
-    background: rgba(8, 12, 22, .78);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    /* Solid, not frosted glass. iPhone Safari carries the colour of a bar at
+       the top up behind the clock; a see-through one it shows as a blur of
+       whatever is scrolling underneath. */
+    background: #080c16;
     position: sticky; top: 0; z-index: 5;
   }
   .brand-mark { width: 30px; height: 30px; border-radius: 9px; display: block; }

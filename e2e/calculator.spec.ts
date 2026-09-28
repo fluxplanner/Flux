@@ -86,6 +86,28 @@ test.describe('Calculator', () => {
     }
   });
 
+  test('the switcher stays on screen down to 320 wide, headers are solid, and the grapher reaches the bottom', async ({ page }) => {
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 700 });
+      for (const url of ['/calculator.html', '/grapher.html', '/periodic.html']) {
+        await page.goto(url);
+        const r = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('.fxhub-btn')].find((e) => (e as HTMLElement).offsetParent)!.getBoundingClientRect();
+          const h = getComputedStyle(document.querySelector('header.top')!);
+          return { left: b.left, right: b.right, vw: innerWidth, bg: h.backgroundColor, blur: h.backdropFilter };
+        });
+        expect(r.right, `${url} at ${width}: the Flux button runs off the side`).toBeLessThanOrEqual(r.vw);
+        expect(r.left).toBeGreaterThanOrEqual(0);
+        // A see-through header is what iPhone Safari blurs behind the clock.
+        expect(r.bg, `${url}: header is see-through`).toBe('rgb(8, 12, 22)');
+        expect(r.blur === 'none' || r.blur === '').toBe(true);
+      }
+    }
+    await page.goto('/grapher.html');
+    const gap = await page.evaluate(() => innerHeight - document.querySelector('.wrap')!.getBoundingClientRect().bottom);
+    expect(gap, 'an empty strip under the grapher').toBe(0);
+  });
+
   test('on a home-screen app, Open full screen stays in the app', async ({ page, context }) => {
     // What iOS reports when Flux was added to the home screen.
     await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));

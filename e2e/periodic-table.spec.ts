@@ -207,4 +207,59 @@ test.describe('Periodic table page', () => {
       expect(over, `${hash}: the page is wider than the phone`).toBeLessThanOrEqual(0);
     }
   });
+
+  test('switching Overview and Energy leaves the page where it is', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/periodic.html#Fe');
+    // Safari focuses the nearest focusable box when a button is tapped; the
+    // whole table being one is what scrolled the page back up.
+    expect(await page.locator('.fpt').getAttribute('tabindex')).toBeNull();
+    const tabs = page.locator('.fpt-dtabs');
+    // Scrolled down, with the tabs in the middle of the screen.
+    await tabs.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 300));
+    const before = await tabs.evaluate((el) => el.getBoundingClientRect().top);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    await page.locator('.fpt-dtab[data-tab="energy"]').click();
+    await expect(page.locator('.fpt-dtab[data-tab="energy"]')).toHaveClass(/is-on/);
+    expect(Math.abs((await tabs.evaluate((el) => el.getBoundingClientRect().top)) - before)).toBeLessThan(2);
+    await page.locator('.fpt-dtab[data-tab="overview"]').click();
+    expect(Math.abs((await tabs.evaluate((el) => el.getBoundingClientRect().top)) - before)).toBeLessThan(2);
+  });
+
+  test('printing: colour or black and white, a key, the Flux mark, and no name cut short', async ({ page }) => {
+    await page.goto('/periodic.html');
+    await page.locator('#ptPrint').click();
+    const menu = page.locator('#ptPrintMenu');
+    await expect(menu).toBeVisible();
+    await menu.locator('[data-ink="bw"]').click();
+    await expect(page.locator('#ptPrintKey'), 'black and white has no colours for a key to name').toBeDisabled();
+    await menu.locator('[data-ink="colour"]').click();
+    await page.locator('#ptPrintKey').check();
+    expect(JSON.parse((await page.evaluate(() => localStorage.getItem('flux_ptable_print')))!)).toEqual({ ink: 'colour', key: true });
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+
+    // What the Print button prepares, then the page as the printer lays it out.
+    await page.evaluate(() => (window as any).fluxPeriodicPage.instance.setPrint({ ink: 'colour', key: true }));
+    await page.emulateMedia({ media: 'print' });
+    for (const size of [{ width: 979, height: 739 }, { width: 717, height: 1045 }]) {
+      await page.setViewportSize(size);
+      await expect(page.locator('.print-mark')).toBeVisible();
+      await expect(page.locator('.fpt-printkey')).toBeVisible();
+      await expect(page.locator('.fpt-printkey')).toContainText('Alkali metals');
+      await expect(page.locator('.fpt-printkey')).toContainText('Noble gases');
+      const cut = await page.evaluate(() => [...document.querySelectorAll('.fpt-el')].filter((el) => {
+        const r = el.querySelector('.fpt-nm')!.getBoundingClientRect(), c = el.getBoundingClientRect();
+        return r.left < c.left || r.right > c.right;
+      }).map((el) => el.getAttribute('aria-label')));
+      expect(cut, `${size.width}px page: names running out of their cells`).toEqual([]);
+    }
+    // Colour fills the cells; black and white leaves them white with no strip.
+    const fill = () => page.locator('.fpt-el[data-n="26"]').evaluate((el) => getComputedStyle(el).backgroundColor);
+    // Polled: the cells fade between colours.
+    await expect.poll(fill).not.toBe('rgb(255, 255, 255)');
+    await page.evaluate(() => (window as any).fluxPeriodicPage.instance.setPrint({ ink: 'bw', key: true }));
+    await expect.poll(fill).toBe('rgb(255, 255, 255)');
+    await expect(page.locator('.fpt-printkey'), 'no key in black and white').toBeHidden();
+  });
 });
