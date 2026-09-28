@@ -402,12 +402,12 @@
 .fsh-el[data-cat="alkaline"]{--el-c:linear-gradient(150deg,#ffb259,#f47b2f)}
 .fsh-el[data-cat="transition"]{--el-c:linear-gradient(150deg,#5b8def,#3a5bd9)}
 .fsh-el[data-cat="post-transition"]{--el-c:linear-gradient(150deg,#4fb6c9,#2d8aa6)}
-.fsh-el[data-cat="metalloid"]{--el-c:linear-gradient(150deg,#7d6cf0,#5b3fd6)}
+.fsh-el[data-cat="metalloid"]{--el-c:linear-gradient(150deg,#a9c94a,#7f9c22)}
 .fsh-el[data-cat="nonmetal"]{--el-c:linear-gradient(150deg,#37c98a,#1f9e74)}
-.fsh-el[data-cat="halogen"]{--el-c:linear-gradient(150deg,#36c5d6,#1f9bb8)}
+.fsh-el[data-cat="halogen"]{--el-c:linear-gradient(150deg,#e9bf3a,#c29314)}
 .fsh-el[data-cat="noble"]{--el-c:linear-gradient(150deg,#b16cf0,#8a3fd6)}
 .fsh-el[data-cat="lanthanide"]{--el-c:linear-gradient(150deg,#e069b4,#c23d96)}
-.fsh-el[data-cat="actinide"]{--el-c:linear-gradient(150deg,#e0697f,#c23d5a)}
+.fsh-el[data-cat="actinide"]{--el-c:linear-gradient(150deg,#f09ac2,#d5689d)}
 .fsh-el[data-cat="unknown"]{--el-c:linear-gradient(150deg,#5b6478,#414a5e)}
 
 /* element detail */

@@ -54,9 +54,12 @@
   const CATS = [
     ['alkali', 'Alkali metals', '#e8475f'], ['alkaline', 'Alkaline earth metals', '#f58a3d'],
     ['transition', 'Transition metals', '#4a70e8'], ['post-transition', 'Post-transition metals', '#2e9fbd'],
-    ['metalloid', 'Metalloids', '#8a63f2'], ['nonmetal', 'Other nonmetals', '#25a97c'],
-    ['halogen', 'Halogens', '#17b3cc'], ['noble', 'Noble gases', '#a855e8'],
-    ['lanthanide', 'Lanthanides', '#d94aa0'], ['actinide', 'Actinides', '#e2566f'],
+    /* Spaced so no two read alike, even as the faint tints the cells use:
+       metalloids were a violet beside the noble gases' purple, halogens a
+       cyan beside the post-transition teal, and actinides the alkali red. */
+    ['metalloid', 'Metalloids', '#9fbf3b'], ['nonmetal', 'Other nonmetals', '#25a97c'],
+    ['halogen', 'Halogens', '#f0c93e'], ['noble', 'Noble gases', '#a855e8'],
+    ['lanthanide', 'Lanthanides', '#d94aa0'], ['actinide', 'Actinides', '#f29ac4'],
     ['unknown', 'Unknown chemistry', '#8a90a6'],
   ];
   const CAT = {};
