@@ -4599,7 +4599,8 @@
       } else if (act === 'full') {
         inst.persistLocal();
         writeJSON(HANDOFF_KEY, { kind: inst.kind, payload: inst.doc, cloud: inst.cloud, at: Date.now() });
-        window.open('grapher.html', '_blank', 'noopener');
+        if (window.FluxHub && window.FluxHub.openPage) window.FluxHub.openPage('grapher.html');
+        else window.open('grapher.html', '_blank', 'noopener');
       }
     });
 

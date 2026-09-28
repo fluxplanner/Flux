@@ -86,6 +86,23 @@ test.describe('Calculator', () => {
     }
   });
 
+  test('on a home-screen app, Open full screen stays in the app', async ({ page, context }) => {
+    // What iOS reports when Flux was added to the home screen.
+    await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as any).nav('toolbox'));
+    await page.waitForTimeout(600);
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('math'));
+    await page.locator('#fshUnits .fsh-unit[data-unit="algebra"]').click();
+    await page.locator('#fshChemTabs [data-tool="calc"]').click();
+    const pages = context.pages().length;
+    await page.locator('.fsh-calc-full').click();
+    await page.waitForURL(/calculator(\.html)?$/);
+    expect(context.pages().length, 'no second window, which iOS shows as a Safari sheet').toBe(pages);
+    await expect(page.locator('.fxhub-btn:visible')).toBeVisible();
+  });
+
   test('Study tools → Maths has it, and the planner leaves its keys alone', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 950 });
     await gotoScenario(page, 'student-semester');
