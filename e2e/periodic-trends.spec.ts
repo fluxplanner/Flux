@@ -79,12 +79,9 @@ test.describe('Periodic trends', () => {
 
   test('picking a trend recolours the table and shows the scale', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 1000 });
-    await gotoScenario(page, 'student-semester');
-    await page.evaluate(() => (window as unknown as Win).nav('toolbox'));
-    await page.evaluate(() => (window as unknown as Win).fluxStudyHub.selectSubject('chemistry'));
-    /* Chemistry ▸ Table is the Flux Periodic Table now (flux-ptable.js), the
-       same tool as periodic.html. */
-    const cell = (n: number) => `.fsh-ptable .fpt-el[data-n="${n}"]`;
+    /* On the full page: the planner's table is the simple one (below). */
+    await page.goto('/periodic.html');
+    const cell = (n: number) => `.fpt .fpt-el[data-n="${n}"]`;
     await expect(page.locator(cell(9))).toBeVisible({ timeout: 10_000 });
 
     /* Inline style, not getComputedStyle. The table sits in a scrolling
@@ -95,20 +92,20 @@ test.describe('Periodic trends', () => {
     const before = await page.locator(cell(9)).evaluate((el) => (el as HTMLElement).style.background);
 
     // Trends have a tab of their own; the Table tab is the plain table.
-    await expect(page.locator('.fsh-ptable .fpt-sel')).toBeHidden();
-    await page.locator('.fsh-ptable .fpt-view[data-view="trends"]').click();
-    await page.locator('.fsh-ptable .fpt-sel').selectOption('en');
-    await expect(page.locator('.fsh-ptable .fpt-key')).toBeVisible();
+    await expect(page.locator('.fpt-sel')).toBeHidden();
+    await page.locator('.fpt-view[data-view="trends"]').click();
+    await page.locator('.fpt-sel').selectOption('en');
+    await expect(page.locator('.fpt-key')).toBeVisible();
 
     const after = await page.evaluate(() => {
-      const f = document.querySelector('.fsh-ptable .fpt-el[data-n="9"]')!;   // fluorine, the maximum
-      const he = document.querySelector('.fsh-ptable .fpt-el[data-n="2"]')!;  // helium, no value
+      const f = document.querySelector('.fpt-el[data-n="9"]')!;   // fluorine, the maximum
+      const he = document.querySelector('.fpt-el[data-n="2"]')!;  // helium, no value
       return {
         fluorine: (f as HTMLElement).style.background,
         fluorineLabel: f.querySelector('.fpt-v')?.textContent,
         heliumLabel: he.querySelector('.fpt-v')?.textContent,
         heliumFlagged: he.classList.contains('is-none'),
-        keyText: document.querySelector('.fsh-ptable .fpt-legend')?.textContent || '',
+        keyText: document.querySelector('.fpt-legend')?.textContent || '',
       };
     });
 
@@ -123,12 +120,36 @@ test.describe('Periodic trends', () => {
     expect(after.keyText, 'the key should state the down-a-group direction').toMatch(/down a group/i);
 
     // Back on the Table tab the colouring is gone and the masses are back.
-    await page.locator('.fsh-ptable .fpt-view[data-view="table"]').click();
+    await page.locator('.fpt-view[data-view="table"]').click();
     const restored = await page.evaluate(() => {
-      const f = document.querySelector('.fsh-ptable .fpt-el[data-n="9"]') as HTMLElement;
+      const f = document.querySelector('.fpt-el[data-n="9"]') as HTMLElement;
       return { inline: f.style.background, label: f.querySelector('.fpt-v')?.textContent };
     });
     expect(restored.inline, 'trend colouring outlived the trend').toBe('');
     expect(restored.label, 'the atomic mass did not come back').toBe('19.00');
+  });
+
+  test("the planner's table is the simple one: tap an element, read about it", async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await gotoScenario(page, 'student-semester');
+    // Whatever tab the full page was left on, the planner's table does not follow it.
+    await page.evaluate(() => localStorage.setItem('flux_ptable_v1', JSON.stringify({ view: 'trends', trend: 'en', tab: 'energy' })));
+    await page.evaluate(() => (window as unknown as Win).nav('toolbox'));
+    await page.evaluate(() => (window as unknown as Win).fluxStudyHub.selectSubject('chemistry'));
+    const t = page.locator('.fsh-ptable');
+    await expect(t.locator('.fpt-el[data-n="26"]')).toBeVisible({ timeout: 10_000 });
+    await expect(t.locator('.fpt-views'), 'no tabs').toBeHidden();
+    await expect(t.locator('.fpt-bar'), 'no search or trend picker').toBeHidden();
+    await expect(t.locator('.fpt-legend')).toContainText('Alkali metals');
+    await expect(t.locator('.fsh-ptable-full')).toHaveAttribute('href', 'periodic.html');
+    await expect(t.locator('.fsh-ptable-full')).toContainText('full Periodic Table');
+
+    await t.locator('.fpt-el[data-n="26"]').click();
+    await expect(t.locator('.fpt-detail h2')).toHaveText('Iron');
+    await expect(t.locator('.fpt-dtab'), 'one page of facts, no tabs').toHaveCount(0);
+    await expect(t.locator('.fpt-kvs')).toContainText('Electron configuration');
+    await expect(t.locator('.fpt-fulllinks a').first()).toHaveAttribute('href', 'periodic.html#electrons/Fe');
+    expect(JSON.parse((await page.evaluate(() => localStorage.getItem('flux_ptable_v1')))!).view,
+      "the planner's table must not change what the full page opens on").toBe('trends');
   });
 });

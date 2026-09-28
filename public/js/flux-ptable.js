@@ -276,12 +276,16 @@
       filling: false, ion: 0, spectrum: 'emission', compare: Array.isArray(pref.compare) ? pref.compare.filter((n) => n >= 1 && n <= 118).slice(0, 6) : [1, 2, 11],
       hLo: 2, hHi: 3, isoMode: pref.isoMode === 'rel' ? 'rel' : 'pct', atomMode: pref.atomMode === 'orbitals' ? 'orbitals' : 'bohr', orb: null, orbM: null,
     };
+    /* simple: the planner's table. Just the table and what an element is —
+       the tabs, trends and search live on the full page (periodic.html). */
+    if (this.o.simple) Object.assign(this.st, { view: 'table', tcolour: 'cat', tab: 'overview' });
     this.build();
-    if (this.o.hash) this.readHash();
+    if (this.o.hash && !this.o.simple) this.readHash();
     if (isExplore(this.st.view) && !this.st.sel) this.st.sel = EXPLORE[this.st.view];
     this.refresh();
   }
   App.prototype.save = function () {
+    if (this.o.simple) return;       // the planner's table must not change what the full page opens on
     const s = this.st;
     try {
       localStorage.setItem(STORE, JSON.stringify({
@@ -308,7 +312,10 @@
       g[1].push(p);
     });
     const opts = groups.map((g) => '<optgroup label="' + esc(g[0]) + '">' + g[1].map((p) => '<option value="' + p.id + '">' + esc(p.label) + '</option>').join('') + '</optgroup>').join('');
-    this.host.innerHTML = '<div class="fpt" tabindex="-1">'
+    /* No tabindex on the root. Safari never focuses a tapped button, so it
+       focused this instead — and scrolled the page up to show all of it,
+       which threw a reader back to the top on every tap of Overview. */
+    this.host.innerHTML = '<div class="fpt' + (this.o.simple ? ' is-simple' : '') + '">'
       + '<nav class="fpt-views" role="tablist" aria-label="Periodic table views"><span class="fpt-views-glide" aria-hidden="true"></span>'
       + VIEWS.map((v) => '<button type="button" role="tab" class="fpt-view" data-view="' + v[0] + '">' + v[1] + '</button>').join('') + '</nav>'
       + '<div class="fpt-bar">'
@@ -354,10 +361,13 @@
       h += '<button type="button" class="fpt-el" role="gridcell" data-n="' + e.n + '" data-cat="' + e.cat + '" style="grid-row:' + (e.row + 1) + ';grid-column:' + (e.col + 1) + '"'
         + ' aria-label="' + esc(e.name) + ', ' + e.n + '" tabindex="' + (e.n === 1 ? 0 : -1) + '">'
         + '<span class="fpt-n">' + e.n + '</span><span class="fpt-s">' + esc(e.s) + '</span>'
-        + '<span class="fpt-nm">' + esc(e.name) + '</span><span class="fpt-v"></span></button>';
+        + '<span class="fpt-nm" style="--len:' + e.name.length + '">' + esc(e.name) + '</span><span class="fpt-v"></span></button>';
     });
     // Where the f-block comes from.
     h += '<div class="fpt-fmark" style="grid-row:10;grid-column:1/4">57–71</div><div class="fpt-fmark" style="grid-row:11;grid-column:1/4">89–103</div>';
+    // The printed key sits in the gap above the transition metals, where a
+    // data booklet puts it. Empty, and hidden on screen, until setPrint asks.
+    h += '<div class="fpt-printkey" style="grid-row:2/5;grid-column:4/14" aria-hidden="true"></div>';
     this.grid.innerHTML = h;
     this.cells = {};
     this.grid.querySelectorAll('.fpt-el').forEach((b) => { this.cells[b.dataset.n] = b; });
@@ -421,7 +431,7 @@
     this.onKey = (ev) => {
       if (!this.root.isConnected) return;
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test((ev.target && ev.target.tagName) || '');
-      if (ev.key === '/' && !inField) { ev.preventDefault(); this.q.focus(); }
+      if (ev.key === '/' && !inField && !this.o.simple) { ev.preventDefault(); this.q.focus(); }
       else if (ev.key === 'Escape' && !inField && this.st.sel) this.select(null);
     };
     document.addEventListener('keydown', this.onKey);
@@ -692,6 +702,8 @@
     if (isExplore(view)) {
       const e = byN(st.sel);
       h += '<div class="fpt-pickhint">Pick any element' + (e ? ' — showing <b>' + esc(e.name) + '</b>' : '') + '. Arrow keys move along the table.</div>';
+    } else if (view === 'table' && this.o.simple) {
+      h += '<div class="fpt-chips">' + CATS.map((c) => '<span class="fpt-chip is-static"><i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</span>').join('') + '</div>';
     } else if (view === 'table') {
       h += '<div class="fpt-seg fpt-tcolour" role="group" aria-label="Colour the table by">'
         + [['cat', 'Categories'], ['block', 'Blocks']].map((c) => '<button type="button" class="fpt-chip' + (cid === c[0] ? ' is-on' : '') + '" data-act="tcolour" data-c="' + c[0] + '">' + c[1] + '</button>').join('') + '</div>';
@@ -853,11 +865,11 @@
       case 'tcolour': st.tcolour = el.dataset.c === 'block' ? 'block' : 'cat'; st.catFilter = null; this.save(); this.paint(); this.renderLegend(); return;
       case 'temp': st.temp = +el.dataset.k; this.paint(); this.updateTemp(); return;
       case 'tplay': this.togglePlay(); return;
-      case 'tab': st.tab = el.dataset.tab; this.save(); this.renderSide(); return;
+      case 'tab': st.tab = el.dataset.tab; this.save(); this.keepPlace('.fpt-dtabs', () => this.renderSide()); return;
       case 'close': this.select(null); return;
       case 'step': this.select(Math.max(1, Math.min(118, st.sel + +el.dataset.d))); return;
-      case 'order': st.filling = !st.filling; if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); return;
-      case 'spectrum': st.spectrum = el.dataset.mode; if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); return;
+      case 'order': st.filling = !st.filling; this.keepPlace('[data-act="order"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
+      case 'spectrum': st.spectrum = el.dataset.mode; this.keepPlace('[data-act="spectrum"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
       case 'goto': this.select(+el.dataset.n); return;
       case 'view': this.setView(el.dataset.view); return;
       case 'trend': st.trend = el.dataset.c; this.save(); if (this.st.view !== 'trends') this.setView('trends'); else { if (this.o.hash) this.writeHash(); this.refresh(); } return;
@@ -933,8 +945,26 @@
   App.prototype.renderSide = function () {
     const st = this.st;
     this.root.classList.toggle('has-detail', !!st.sel);
-    if (!st.sel) { this.side.innerHTML = this.introHTML(); return; }
+    if (!st.sel) { this.side.innerHTML = this.o.simple ? this.simpleIntroHTML() : this.introHTML(); return; }
     this.side.innerHTML = this.detailHTML(byN(st.sel));
+  };
+  /** Redraw without the page moving: what was under the finger stays under it. */
+  App.prototype.keepPlace = function (sel, redraw) {
+    const was = this.root.querySelector(sel);
+    const y = was ? was.getBoundingClientRect().top : null;
+    redraw();
+    const now = y == null ? null : this.root.querySelector(sel);
+    if (!now) return;
+    const d = now.getBoundingClientRect().top - y;
+    if (Math.abs(d) < 1) return;
+    let box = now.parentElement;
+    while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+    if (box && box !== document.body) box.scrollTop += d;
+    else window.scrollBy(0, d);
+  };
+
+  App.prototype.simpleIntroHTML = function () {
+    return '<div class="fpt-intro"><h2>Tap an element</h2><p>Tap any element to see what it is, its electrons and its key numbers.</p></div>';
   };
 
   App.prototype.introHTML = function () {
@@ -976,11 +1006,19 @@
       + '<div class="fpt-dacts"><button type="button" class="fpt-ibtn" data-act="step" data-d="-1" aria-label="Previous element"' + (e.n === 1 ? ' disabled' : '') + '>‹</button>'
       + '<button type="button" class="fpt-ibtn" data-act="step" data-d="1" aria-label="Next element"' + (e.n === 118 ? ' disabled' : '') + '>›</button>'
       + '<button type="button" class="fpt-ibtn" data-act="close" aria-label="Close">✕</button></div></div></div>'
-      + '<div class="fpt-more" aria-label="More on ' + esc(e.name.toLowerCase()) + '">'
+      + (this.o.simple ? '<div class="fpt-dbody">' + this.overviewHTML(e) + '</div>' + this.fullLinksHTML(e) + '</div>'
+        : '<div class="fpt-more" aria-label="More on ' + esc(e.name.toLowerCase()) + '">'
       + [['electrons', 'Electrons'], ['spectra', 'Spectrum'], ['isotopes', 'Isotopes'], ['3d', 'In 3D']].map((t) => '<button type="button" class="fpt-chip" data-act="view" data-view="' + t[0] + '">' + t[1] + ' →</button>').join('')
       + '</div>'
       + '<div class="fpt-dtabs" role="tablist">' + tabs.map((t) => '<button type="button" role="tab" aria-selected="' + (st.tab === t[0]) + '" class="fpt-dtab' + (st.tab === t[0] ? ' is-on' : '') + '" data-act="tab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>'
-      + '<div class="fpt-dbody">' + body.call(this, e) + '</div></div>';
+      + '<div class="fpt-dbody">' + body.call(this, e) + '</div></div>');
+  };
+  /** The planner's table stops at the basics; the rest of this element is a tap away on the full page. */
+  App.prototype.fullLinksHTML = function (e) {
+    return '<div class="fpt-fulllinks"><span>More on ' + esc(e.name.toLowerCase()) + ' in the full Periodic Table</span><div class="fpt-more">'
+      + [['electrons', 'Electrons'], ['spectra', 'Spectrum'], ['isotopes', 'Isotopes'], ['3d', 'In 3D'], ['trend/ie', 'Trends']].map((t) =>
+        '<a class="fpt-chip" href="periodic.html#' + t[0] + '/' + encodeURIComponent(e.s) + '" target="_blank" rel="noopener">' + t[1] + ' ↗</a>').join('')
+      + '</div></div>';
   };
 
   const row = (k, v) => '<div class="fpt-kv"><span>' + k + '</span><b>' + v + '</b></div>';
@@ -1182,6 +1220,38 @@
     if (st.sel) bits.push(byN(st.sel).s);
     const h = bits.length ? '#' + bits.join('/') : '';
     try { history.replaceState(null, '', location.pathname + location.search + h); } catch (err) { /* sandboxed */ }
+  };
+
+  /* ── Printing ───────────────────────────────────────────────────────── */
+
+  /** How the table prints: ink 'colour' or 'bw', and whether a key names the
+      colours (black and white has none to name). */
+  App.prototype.setPrint = function (opts) {
+    const bw = !!opts && opts.ink === 'bw';
+    const key = !!opts && !!opts.key && !bw;
+    this.root.classList.toggle('print-bw', bw);
+    this.root.classList.toggle('print-key', key);
+    const box = this.grid.querySelector('.fpt-printkey');
+    if (box) box.innerHTML = key ? this.printKeyHTML() : '';
+  };
+  /** The key for whatever the table is coloured by right now. */
+  App.prototype.printKeyHTML = function () {
+    const prop = PROP[this.colourId()];
+    const item = (c, label) => '<li><i style="--c:' + c + '"></i>' + esc(label) + '</li>';
+    let title = 'Key', body;
+    if (prop.kind === 'cat') body = '<ul>' + CATS.map((c) => item(c[2], c[1])).join('') + '</ul>';
+    else if (prop.kind === 'block') body = '<ul>' + Object.keys(BLOCKS).map((k) => item(BLOCKS[k][1], BLOCKS[k][0])).join('') + '</ul>';
+    else if (prop.kind === 'state') {
+      title = 'State at ' + this.tempText(this.st.temp);
+      body = '<ul>' + ['s', 'l', 'g', 'u'].map((k) => item(STATES[k][1], STATES[k][0])).join('') + '</ul>';
+    } else {
+      // A trend: its scale from lowest to highest value.
+      title = prop.label;
+      const stops = [0, .25, .5, .75, 1].map((x) => P().trendColor(prop.reverse ? 1 - x : x)).join(', ');
+      body = '<div class="fpt-pk-grad" style="background:linear-gradient(90deg, ' + stops + ')"></div>'
+        + '<div class="fpt-pk-ends"><span>Lowest</span><span>Highest</span></div>';
+    }
+    return '<b class="fpt-pk-h">' + esc(title) + '</b>' + body;
   };
 
   App.prototype.destroy = function () {

@@ -1003,9 +1003,16 @@
       /* The Flux Periodic Table: the same tool as periodic.html, the way
          Maths → Grapher is the grapher. renderTableTab stays as the fallback
          for a page that has not loaded it. */
-      b.innerHTML = '<div class="fsh-ptable"><div class="fsh-ptable-host"></div>'
-        + '<a class="fsh-ptable-full" href="periodic.html" target="_blank" rel="noopener">Open the full-page Periodic Table ↗</a></div>';
-      if (window.FluxPTable.mount(b.querySelector('.fsh-ptable-host'), { surface: 'planner', scrollToDetail: true })) return;
+      /* Kept simple here — tap an element, read about it. Everything else
+         (trends, temperature, electrons, spectra, isotopes, 3D) is on the
+         full page, and the banner says so. */
+      b.innerHTML = '<div class="fsh-ptable">'
+        + '<a class="fsh-ptable-full" href="periodic.html" target="_blank" rel="noopener">'
+        + '<span class="fsh-ptable-full-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16" y="10" width="5" height="5" rx="1"/><path d="M5 19h14"/></svg></span>'
+        + '<span class="fsh-ptable-full-t"><b>Need more? Open the full Periodic Table</b><small>Trends, temperature, electron configurations, spectra, isotopes and every atom in 3D. Free, on its own page.</small></span>'
+        + '<span class="fsh-ptable-full-go" aria-hidden="true">Open ↗</span></a>'
+        + '<div class="fsh-ptable-host"></div></div>';
+      if (window.FluxPTable.mount(b.querySelector('.fsh-ptable-host'), { surface: 'planner', simple: true, scrollToDetail: true })) return;
     }
     const CHEM_BODY = {
       table: renderTableTab, atom: renderAtomTab, ions: renderIonsTab,

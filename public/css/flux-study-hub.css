@@ -835,5 +835,18 @@ body.fsh-desmos-locked { overflow: hidden; }
 
 /* The Flux Periodic Table in Chemistry ▸ Table (flux-ptable.css styles the tool itself). */
 .fsh-ptable { display: grid; gap: 10px; }
-.fsh-ptable-full { justify-self: end; font-size: 12.5px; font-weight: 700; color: var(--accent, #00c2ff); text-decoration: none; }
-.fsh-ptable-full:hover { text-decoration: underline; }
+/* The banner above the planner's (simple) table: where the rest of it is. */
+#app .fsh-ptable-full {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: 14px; text-decoration: none; color: var(--text, #eaf1ff);
+  border: 1px solid color-mix(in srgb, var(--accent, #00c2ff) 30%, transparent);
+  background: color-mix(in srgb, var(--accent, #00c2ff) 8%, transparent);
+  transition: border-color .15s ease, background .15s ease;
+}
+#app .fsh-ptable-full:hover { border-color: color-mix(in srgb, var(--accent, #00c2ff) 60%, transparent); background: color-mix(in srgb, var(--accent, #00c2ff) 12%, transparent); }
+.fsh-ptable-full-i { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 10px; color: var(--accent, #00c2ff); background: color-mix(in srgb, var(--accent, #00c2ff) 14%, transparent); }
+.fsh-ptable-full-t { flex: 1; min-width: 0; }
+.fsh-ptable-full-t b { display: block; font-size: 13.5px; }
+.fsh-ptable-full-t small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--muted2, #9fb0cc); }
+.fsh-ptable-full-go { flex: none; font-size: 12.5px; font-weight: 800; color: var(--accent, #00c2ff); }
+@media (max-width: 520px) { .fsh-ptable-full-go { display: none; } }
