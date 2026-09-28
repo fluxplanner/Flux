@@ -101,3 +101,44 @@ test('the top bar never overlaps at laptop widths', async ({ page }) => {
   }
   await expect(page.locator('#topbarCountdown')).toHaveAttribute('title', /Last Day of School/);
 });
+
+/* A countdown set on a Mac never reached the iPad: flux_countdown was saved and
+   syncKey('countdown') fired, but the value was never in getCloudPayload(). It
+   travels now, and the newest change wins — including a cleared one. */
+test('the countdown goes to every device, and the newest change wins', async ({ page }) => {
+  await gotoScenario(page, 'student-semester');
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    const ymd = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return w.fluxLocalYMD(d); };
+    const out: Record<string, unknown> = {};
+    w.fluxSetCountdown('Trip', ymd(30), '');
+    const sent = w.getCloudPayload().countdown;
+    out.sentLabel = sent?.v?.label;
+    out.sentStamped = sent?.at > 0;
+    // Another device changed it later: this one follows.
+    out.took = w.fluxApplyCountdownFromCloud({ v: { label: 'Results day', date: ymd(12), time: '09:00' }, at: sent.at + 5000 });
+    out.nowLabel = w.fluxGetCountdown()?.label;
+    out.pill = document.getElementById('topbarCountdown')?.textContent || '';
+    // An older copy never overwrites a newer one.
+    out.oldTook = w.fluxApplyCountdownFromCloud({ v: { label: 'Stale', date: ymd(3), time: '' }, at: 1 });
+    out.afterOld = w.fluxGetCountdown()?.label;
+    // Junk from the cloud is ignored: not shown, and not allowed to wipe a good one.
+    out.junkTook = w.fluxApplyCountdownFromCloud({ v: { label: '<b>x</b>', date: 'soon' }, at: Date.now() + 60000 });
+    out.afterJunk = w.fluxGetCountdown()?.label;
+    // Cleared on another device: cleared here too.
+    w.fluxSetCountdown('Trip', ymd(30), '');
+    w.fluxApplyCountdownFromCloud({ v: null, at: Date.now() + 120000 });
+    out.afterClear = w.fluxGetCountdown();
+    return out;
+  });
+  expect(r.sentLabel, 'the countdown is not in what gets uploaded').toBe('Trip');
+  expect(r.sentStamped).toBe(true);
+  expect(r.took).toBe(true);
+  expect(r.nowLabel).toBe('Results day');
+  expect(r.pill).toContain('Results day');
+  expect(r.oldTook).toBe(false);
+  expect(r.afterOld).toBe('Results day');
+  expect(r.junkTook).toBe(false);
+  expect(r.afterJunk, 'a malformed countdown from the cloud replaced a good one').toBe('Results day');
+  expect(r.afterClear, 'clearing on another device did not clear it here').toBeNull();
+});
