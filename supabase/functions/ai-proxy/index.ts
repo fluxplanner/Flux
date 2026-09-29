@@ -12,6 +12,12 @@ import {
   refundDailyGuard,
   sha256Hex,
 } from "../_shared/rate-limit.ts";
+import {
+  fitMessages,
+  isGeminiModelGone,
+  isTooLargeError,
+  newestGeminiFlash,
+} from "../_shared/ai-models.ts";
 
 const PAYMENTS_ENABLED = Deno.env.get("PAYMENTS_ENABLED") === "true";
 /* Photo → data table for the grapher ("table_scan"). Free on every plan with
@@ -475,7 +481,6 @@ function pipeSSE(
 const GROQ_MODEL_LADDER = [
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "qwen/qwen3.6-27b",
 ];
 
 /**
@@ -493,6 +498,9 @@ const GROQ_RETIRED_MODELS = new Set([
   "mixtral-8x7b-32768",
   "gemma-7b-it",
   "gemma2-9b-it",
+  // Retired by 2026-09-28: every request that reached it came back 404
+  // model_not_found, so it was the last, dead rung of the ladder above.
+  "qwen/qwen3.6-27b",
 ]);
 
 function groqFallbackChain(model: string): string[] {
@@ -546,18 +554,27 @@ async function openGroqStream(body: {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
   if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
   let lastErr = "";
-  // Two passes: if the first exhausts the ladder against a rate limit, wait the
-  // cooldown Groq quoted and run it once more. Errors without a stated wait
-  // (a dead model, a bad key) skip the second pass and surface immediately.
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let sawTooLarge = false;
+  let compact = false;
+  // Up to three passes. If every model refused the request as too large, the
+  // next pass sends a shortened conversation (see fitMessages). If the ladder
+  // ran into a rate limit, wait the cooldown Groq quoted and run it once more.
+  // Errors that are neither (a bad key) surface immediately.
+  for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
-      const waitMs = groqRetryAfterMs(lastErr);
-      if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
-      console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
-      await napFor(waitMs);
+      if (sawTooLarge && !compact) {
+        compact = true;
+        console.warn("ai-proxy: too large for every model, retrying with a shorter conversation");
+      } else {
+        const waitMs = groqRetryAfterMs(lastErr);
+        if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
+        console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
+        await napFor(waitMs);
+      }
     }
+    sawTooLarge = false;
     for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
-      const payload = buildOpenAIChatPayload(body, model);
+      const payload = buildOpenAIChatPayload(body, model, compact);
       payload.stream = true;
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -570,6 +587,7 @@ async function openGroqStream(body: {
       if (res.ok && res.body) return res;
       const err = await res.text().catch(() => "");
       lastErr = `Groq error ${res.status}: ${err}`;
+      if (res.status === 413) sawTooLarge = true;
       if (!isRetryableGroqStatus(res.status)) break;
       console.warn(`ai-proxy: ${model} unavailable (${res.status}), falling back`);
     }
@@ -766,6 +784,14 @@ async function callAnthropicMessages(
  */
 const SYSTEM_PROMPT_MAX_CHARS = 6000;
 
+/**
+ * The retry for a conversation every model refused as too large: about 3,500
+ * tokens of prompt (≈4 characters a token) plus a 1,024-token answer, which
+ * sits well inside the smallest per-minute allowance on the ladder. The
+ * instructions (already capped above) and the newest turns are what is kept.
+ */
+const COMPACT_PROMPT_CHARS = 14_000;
+
 function clampSystemPrompt(system: unknown): string | undefined {
   if (typeof system !== "string" || !system) return system as undefined;
   if (system.length <= SYSTEM_PROMPT_MAX_CHARS) return system;
@@ -787,6 +813,7 @@ function buildOpenAIChatPayload(
     responseFormat?: "json_object";
   },
   model: string,
+  compact = false,
 ): Record<string, unknown> {
   const system = clampSystemPrompt(body.system ?? body.systemPrompt);
   let messages = Array.isArray(body.messages) ? [...body.messages] : [];
@@ -796,6 +823,7 @@ function buildOpenAIChatPayload(
   if (messages.length === 0) {
     messages = [{ role: "user", content: body.message ?? "" }];
   }
+  if (compact) messages = fitMessages(messages, COMPACT_PROMPT_CHARS);
   const jsonMode = body.responseFormat === "json_object";
   const isGptOss = /gpt-oss/.test(model);
   // gpt-oss and qwen3 think before answering. Left alone Groq inlines that
@@ -816,7 +844,7 @@ function buildOpenAIChatPayload(
        and roughly triples how many messages fit in a minute. Reasoning is
        drawn from this same allowance, which is affordable now that
        reasoning_effort is low/medium rather than high. */
-    max_tokens: jsonMode ? 1024 : 2048,
+    max_tokens: jsonMode || compact ? 1024 : 2048,
     temperature: jsonMode ? 0.2 : 0.7,
   };
   /* Reasoning is not free: the scratchpad is generated before the answer and
@@ -867,20 +895,30 @@ async function callGroq(body: {
   responseFormat?: "json_object";
 }): Promise<string> {
   let lastErr: unknown = null;
-  // Same two-pass shape as the streaming path: one wait-and-retry when the
-  // whole ladder is rate limited, otherwise fail on the first real error.
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let sawTooLarge = false;
+  let compact = false;
+  // Same passes as the streaming path: a shorter conversation when every model
+  // said "too large", one wait-and-retry when the whole ladder is rate limited,
+  // otherwise fail on the first real error.
+  for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
-      const waitMs = groqRetryAfterMs(lastErr);
-      if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
-      console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
-      await napFor(waitMs);
+      if (sawTooLarge && !compact) {
+        compact = true;
+        console.warn("ai-proxy: too large for every model, retrying with a shorter conversation");
+      } else {
+        const waitMs = groqRetryAfterMs(lastErr);
+        if (waitMs === null || waitMs > GROQ_MAX_RETRY_WAIT_MS) break;
+        console.warn(`ai-proxy: rate limited, waiting ${waitMs}ms before retry`);
+        await napFor(waitMs);
+      }
     }
+    sawTooLarge = false;
     for (const model of groqFallbackChain(body.model ?? GROQ_MODEL_LADDER[0])) {
       try {
-        return await postGroqChatCompletion(buildOpenAIChatPayload(body, model));
+        return await postGroqChatCompletion(buildOpenAIChatPayload(body, model, compact));
       } catch (e) {
         lastErr = e;
+        if (isTooLargeError(e)) sawTooLarge = true;
         if (!isRetryableGroqError(e)) throw e;
         console.warn(`ai-proxy: ${model} unavailable, falling back`);
       }
@@ -1045,10 +1083,6 @@ async function callGemini(body: {
     );
   }
 
-  /** `gemini-1.5-flash-latest` often 404s as Google rotates IDs; override via secret if needed. */
-  const model = (Deno.env.get("GEMINI_VISION_MODEL") ?? "gemini-2.0-flash")
-    .trim();
-
   const lastMsg = body.messages?.length
     ? String(body.messages[body.messages.length - 1]?.content ?? "")
     : (body.message ?? "");
@@ -1080,20 +1114,71 @@ async function callGemini(body: {
     };
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reqBody),
-    },
-  );
+  const post = (model: string) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody),
+      },
+    );
 
-  if (!res.ok) {
+  /* Google retires Gemini ids on its own schedule, and a retired one answers
+     404. The code used to name exactly one — gemini-2.0-flash — so when it
+     went, every photo scan failed with nothing to fall back to. Now: the pinned
+     id if there is one, the one that last worked, Google's own "latest flash"
+     alias, and if every one of those is gone, the newest stable Flash that
+     Google's model list says this key can use. Only "that model is gone"
+     moves on; any other error (a bad photo, a quota) is the real answer. */
+  const tried = new Set<string>();
+  let lastErr = "";
+  const attempt = async (model: string): Promise<string | null> => {
+    if (!model || tried.has(model)) return null;
+    tried.add(model);
+    const res = await post(model);
+    if (res.ok) {
+      _geminiWorkingModel = model;
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    }
     const err = await res.text();
-    throw new Error(`Gemini error ${res.status}: ${err}`);
-  }
+    lastErr = `Gemini error ${res.status}: ${err}`;
+    if (!isGeminiModelGone(res.status, err)) throw new Error(lastErr);
+    console.warn(`ai-proxy: Gemini model ${model} is gone (${res.status}), trying the next`);
+    if (_geminiWorkingModel === model) _geminiWorkingModel = null;
+    return null;
+  };
 
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const pinned = (Deno.env.get("GEMINI_VISION_MODEL") ?? "").trim();
+  for (const model of [pinned, _geminiWorkingModel ?? "", "gemini-flash-latest"]) {
+    const out = await attempt(model);
+    if (out !== null) return out;
+  }
+  const discovered = await discoverGeminiFlash(GEMINI_API_KEY);
+  if (discovered) {
+    const out = await attempt(discovered);
+    if (out !== null) return out;
+  }
+  throw new Error(lastErr || "Gemini error: no usable model");
+}
+
+/** The Gemini id that last answered, tried early next time. Lives as long as the isolate. */
+let _geminiWorkingModel: string | null = null;
+
+/** Newest stable Flash this key can call, from Google's model list; null if the list is unavailable. */
+async function discoverGeminiFlash(key: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${key}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const found = newestGeminiFlash(data?.models ?? []);
+    if (found) console.warn(`ai-proxy: Google's model list offers ${found}`);
+    return found;
+  } catch (e) {
+    console.error("ai-proxy: could not list Gemini models", e);
+    return null;
+  }
 }
