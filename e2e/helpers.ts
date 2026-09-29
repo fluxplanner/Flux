@@ -101,6 +101,13 @@ async function unitIdsOf(page: Page): Promise<string[]> {
   await page.waitForFunction(() => {
     const strip = document.querySelector('#fshChemTabs[data-sid]') as HTMLElement | null;
     if (!strip) return false;
+    /* selectSubject lights the pill at once but builds the panel a frame
+       later, so straight after the call the strip and row still agree — on the
+       *old* subject. Under load that frame arrives late enough for the walk
+       below to click the previous subject's first chip, watch it be swapped
+       out from under the click, and burn the whole 60s budget retrying. */
+    const pill = document.querySelector('#fshRail .fsh-pill.active') as HTMLElement | null;
+    if (pill && pill.dataset.sub && pill.dataset.sub !== strip.dataset.sid) return false;
     const row = document.querySelector('.fsh-units[data-sid]') as HTMLElement | null;
     return !row || row.dataset.sid === strip.dataset.sid;
   }, undefined, { timeout: 10_000 });
