@@ -3,6 +3,27 @@ import { verifyUserJWT, serviceClient, json, corsHeaders } from "../_shared/auth
 const OWNER_EMAIL = (Deno.env.get("FLUX_OWNER_EMAIL") ||
   "azfermohammed21@gmail.com").toLowerCase();
 
+/**
+ * The owner's Auth user id — the identity that actually cannot change.
+ *
+ * Every gate here used to compare the caller's email against OWNER_EMAIL, but
+ * accounts are moving to name + password, where the stored address is a
+ * synthesised one. The moment the owner's address changes, all of them return
+ * 403 and he loses every Auth Admin action at once — including
+ * auth_set_password, which is the only way to get anyone else back into their
+ * account now that there is no email-based reset. The email check stays as a
+ * fallback, so this is strictly additive.
+ *
+ * Matches OWNER_UID in public/js/app.js. Override with FLUX_OWNER_UID.
+ */
+const OWNER_UID = (Deno.env.get("FLUX_OWNER_UID") ||
+  "eabe2b1f-e428-4181-8530-8e5366eb3975").trim();
+
+function isOwnerCaller(email: string, userId: string) {
+  if (OWNER_UID && userId && userId === OWNER_UID) return true;
+  return !!email && email === OWNER_EMAIL;
+}
+
 type JsonRecord = Record<string, unknown>;
 type OwnerRow = { id: string; data: JsonRecord | null; updated_at?: string };
 type DevAccount = {
@@ -33,8 +54,8 @@ function findDev(ownerData: JsonRecord, email: string) {
   return devAccounts(ownerData).find((d) => normEmail(d.email) === email) || null;
 }
 
-function canPushRelease(ownerData: JsonRecord, email: string) {
-  if (email === OWNER_EMAIL) return { ok: true, role: "owner" };
+function canPushRelease(ownerData: JsonRecord, email: string, userId: string) {
+  if (isOwnerCaller(email, userId)) return { ok: true, role: "owner" };
   const dev = findDev(ownerData, email);
   if (!dev) return { ok: false, role: "user" };
   const role = String(dev.role || "viewer").toLowerCase();
@@ -214,7 +235,7 @@ Deno.serve(async (req) => {
     const ownerData = asRecord(ownerRow.data);
     const platformConfig = asRecord(ownerData.platformConfig);
     const gate = platformConfig.releaseGate || null;
-    const pushAuth = canPushRelease(ownerData, email);
+    const pushAuth = canPushRelease(ownerData, email, callerUserId);
 
     if (req.method === "GET") {
       return json({
@@ -222,7 +243,7 @@ Deno.serve(async (req) => {
         gate,
         role: pushAuth.role,
         canPush: pushAuth.ok,
-        canManagePreview: email === OWNER_EMAIL,
+        canManagePreview: isOwnerCaller(email, callerUserId),
       }, 200, origin);
     }
 
@@ -265,11 +286,11 @@ Deno.serve(async (req) => {
     /**
      * Owner-only write to public.platform_settings — the one place that
      * changes what *every* planner shows. That table has no write policy on
-     * purpose, so this (service role, behind the OWNER_EMAIL check) is the
+     * purpose, so this (service role, behind the isOwnerCaller check) is the
      * only way in.
      */
     if (action === "set_platform_ui") {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner can change platform UI settings" }, 403, origin);
       }
 
@@ -314,7 +335,7 @@ Deno.serve(async (req) => {
      * are left alone, so a stale client cannot roll back a release.
      */
     if (action === "set_platform_broadcast") {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner can change the platform broadcast" }, 403, origin);
       }
       const next = {
@@ -327,7 +348,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "sync_platform_to_devs") {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner can sync platform config to dev accounts" }, 403, origin);
       }
       const targetMode = String(body.targetMode || "all") === "selected"
@@ -415,7 +436,7 @@ Deno.serve(async (req) => {
       action === "auth_revoke_sessions" ||
       action === "owner_patch_user_role"
     ) {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner may call Auth Admin actions" }, 403, origin);
       }
 
@@ -435,8 +456,8 @@ Deno.serve(async (req) => {
           throw new Error(res.error?.message || "Auth user not found");
         }
         const ue = normEmail(res.data.user.email);
-        if (ue === OWNER_EMAIL) {
-          throw new Error("Refusing operator on owner email identity");
+        if (ue === OWNER_EMAIL || (OWNER_UID && trimmed === OWNER_UID)) {
+          throw new Error("Refusing operator on owner identity");
         }
         return res.data.user;
       }
@@ -711,7 +732,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "set_staging_enabled") {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner can enable update mode" }, 403, origin);
       }
       const prevGate = asRecord(platformConfig.releaseGate);
@@ -736,7 +757,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "save_preview_access") {
-      if (email !== OWNER_EMAIL) {
+      if (!isOwnerCaller(email, callerUserId)) {
         return json({ error: "Only the owner can change preview access" }, 403, origin);
       }
       const allowedDevEmails = new Set(devAccounts(ownerData).map((d) => normEmail(d.email)));
