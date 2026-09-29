@@ -850,3 +850,80 @@ body.fsh-desmos-locked { overflow: hidden; }
 .fsh-ptable-full-t small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--muted2, #9fb0cc); }
 .fsh-ptable-full-go { flex: none; font-size: 12.5px; font-weight: 800; color: var(--accent, #00c2ff); }
 @media (max-width: 520px) { .fsh-ptable-full-go { display: none; } }
+
+/* ── Music: enharmonic ring labels, inversions, Roman numerals ─────────── */
+.fsh-ring-label.fsh-ring-alt { font-size: 10.5px; opacity: .75; }
+.fsh-respelled { padding: 8px 11px; border-radius: 10px; background: rgba(var(--fsh-accent-rgb), .08); border: 1px solid rgba(var(--fsh-accent-rgb), .22); color: var(--fsh-ink-2); }
+.fsh-piano--mini { height: 58px; margin: 10px 0 8px; }
+.fsh-pkey.bass { box-shadow: inset 0 -6px 0 #f5b83d; }
+.fsh-inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
+.fsh-inv { padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, .035); border: 1px solid var(--fsh-line); }
+.fsh-inv-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fsh-mut); }
+.fsh-inv-sym { font-size: 24px; font-weight: 800; margin: 4px 0 8px; }
+.fsh-inv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
+.fsh-inv-row span { color: var(--fsh-mut); }
+.fsh-inv-row small { color: var(--fsh-mut); font-weight: 500; }
+.fsh-btn.fsh-btn--small { padding: 5px 11px; font-size: 12px; min-height: 0; letter-spacing: normal; }
+.fsh-numtable { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 10px; }
+.fsh-numtable th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fsh-mut); padding: 6px 8px; border-bottom: 1px solid var(--fsh-line); }
+.fsh-numtable td { padding: 7px 8px; border-bottom: 1px solid var(--fsh-line); vertical-align: middle; }
+.fsh-numtable td.fsh-num { font-weight: 800; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; }
+.fsh-num-alt { font-family: ui-sans-serif, system-ui; font-weight: 500; font-size: 11px; color: var(--fsh-mut); margin-top: 2px; }
+.fsh-numcompare { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: rgba(176, 108, 240, .07); border: 1px solid rgba(176, 108, 240, .22); }
+.fsh-numcompare-h { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+.fsh-numcompare .fsh-numtable { margin-top: 4px; }
+@media (max-width: 520px) { .fsh-numtable { font-size: 12.5px; } .fsh-numtable td, .fsh-numtable th { padding: 6px 5px; } }
+
+/* ── English: Literature unit ───────────────────────────────────────────── */
+.fsh-gloss-h { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--fsh-mut); margin: 18px 0 8px; }
+.fsh-gloss > .fsh-gloss-h:first-child { margin-top: 4px; }
+.fsh-steps { margin: 0 0 6px; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
+.fsh-steps li { counter-increment: step; display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; align-items: start; font-size: 13.5px; line-height: 1.55; }
+.fsh-steps li::before { content: counter(step); grid-row: span 2; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 12.5px; background: rgba(var(--fsh-accent-rgb), .16); color: var(--fsh-accent); }
+.fsh-steps li b { display: block; }
+.fsh-steps li span { color: var(--fsh-ink-2); }
+.fsh-lit-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 4px 22px; }
+.fsh-bullets { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: var(--fsh-ink-2); }
+.fsh-bullets li { margin: 3px 0; }
+.fsh-plan { display: grid; gap: 10px; }
+.fsh-plan-f { display: grid; gap: 4px; font-size: 12px; color: var(--fsh-mut); }
+.fsh-plan-p { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--fsh-line); background: rgba(255, 255, 255, .025); }
+.fsh-plan-n { grid-column: 1 / -1; font-weight: 700; font-size: 13px; }
+.fsh-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fsh-mediums { min-width: 760px; }
+.fsh-mediums th[scope="row"] { text-align: left; font-size: 12.5px; text-transform: none; letter-spacing: 0; color: var(--fsh-ink); white-space: nowrap; }
+.fsh-mediums td { font-size: 12.5px; line-height: 1.45; color: var(--fsh-ink-2); vertical-align: top; }
+/* On a phone the five-column comparison becomes one block per idea, each
+   entry labelled with its medium, instead of a table to scroll sideways. */
+@media (max-width: 640px) {
+  .fsh-mediums { min-width: 0; }
+  .fsh-mediums thead { display: none; }
+  .fsh-mediums, .fsh-mediums tbody, .fsh-mediums tr, .fsh-mediums th, .fsh-mediums td { display: block; width: auto; }
+  .fsh-mediums tr { padding: 10px 0; border-bottom: 1px solid var(--fsh-line); }
+  .fsh-mediums th[scope="row"] { border: 0; padding: 0 0 6px; font-size: 14px; white-space: normal; }
+  .fsh-mediums td { border: 0; padding: 3px 0; display: grid; grid-template-columns: 104px 1fr; gap: 8px; }
+  .fsh-mediums td::before { content: attr(data-label); font-weight: 700; color: var(--fsh-mut); font-size: 11.5px; }
+}
+
+/* ── Science toolkit: Lab report ────────────────────────────────────────── */
+.fsh-lab-secs { display: grid; gap: 8px; }
+.fsh-lab-sec { border: 1px solid var(--fsh-line); border-radius: 12px; background: rgba(255, 255, 255, .025); padding: 0 14px; }
+.fsh-lab-sec > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; padding: 11px 0; font-weight: 700; font-size: 14px; }
+.fsh-lab-sec > summary::-webkit-details-marker { display: none; }
+.fsh-lab-sec > summary::after { content: '+'; margin-left: auto; color: var(--fsh-mut); font-weight: 600; }
+.fsh-lab-sec[open] > summary::after { content: '−'; }
+.fsh-lab-sec p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.6; color: var(--fsh-ink-2); }
+.fsh-lab-n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; background: rgba(var(--fsh-accent-rgb), .16); color: var(--fsh-accent); }
+.fsh-checks { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.fsh-checks li::before { content: '✓'; color: var(--fsh-accent); font-weight: 800; margin-right: 8px; }
+.fsh-lab-crit { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--fsh-line); margin-bottom: 8px; }
+.fsh-lab-crit-h { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.fsh-lab-crit-h span { color: var(--fsh-mut); font-size: 12.5px; white-space: nowrap; }
+.fsh-lab-crit p { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--fsh-ink-2); }
+.fsh-lab-rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.fsh-lab-rule { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--fsh-line); background: rgba(255, 255, 255, .025); font-size: 13px; line-height: 1.5; }
+.fsh-lab-rule b { display: block; margin-bottom: 2px; }
+.fsh-lab-rule span { color: var(--fsh-ink-2); }
+.fsh-lab-calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.fsh-lab-steps { margin: 10px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6; color: var(--fsh-ink-2); }
+.fsh-lab-ta { min-height: 72px; resize: vertical; font: inherit; }

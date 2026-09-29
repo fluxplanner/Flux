@@ -154,6 +154,162 @@
     return out.filter((s) => s.items.length);
   }
 
+  /* ── Your working ──────────────────────────────────────────────────────
+     Drag a formula (or tap its +) into the pad and it becomes a line you can
+     edit — change a subscript, rename a symbol, put numbers in. "Plug in
+     values" does the routine part of showing working: fill in what you know,
+     leave the one you want blank, and it writes the substituted line and the
+     answer underneath (flux-working-math.js does the reading and solving).
+     Every line stays editable, so the working ends up in the student's own
+     notation. Saved per subject on this device. */
+  const PAD_KEY = 'flux_formula_working_v1';
+  const PAD_MAX = 80;
+  function loadPad() {
+    try {
+      if (typeof window.load === 'function') return window.load(PAD_KEY, {}) || {};
+      return JSON.parse(localStorage.getItem(PAD_KEY) || '{}') || {};
+    } catch (_) { return {}; }
+  }
+  function savePad(all) {
+    try {
+      if (typeof window.save === 'function') window.save(PAD_KEY, all);
+      else localStorage.setItem(PAD_KEY, JSON.stringify(all));
+    } catch (_) { /* full or private storage: the working still shows until the page closes */ }
+  }
+  function padShell() {
+    return `<aside class="ffw" aria-label="Your working">
+      <div class="ffw-h"><div><b>Your working</b><span class="ffw-sub">Drag a formula here or tap its +. Every line is editable — type _ for a subscript (v_1), ^ for a power.</span></div>
+        <div class="ffw-acts"><button type="button" class="ffw-btn" data-ffw="copy" title="Copy all your working">Copy</button><button type="button" class="ffw-btn" data-ffw="clear" title="Clear your working">Clear</button></div></div>
+      <div class="ffw-lines"></div>
+      <button type="button" class="ffw-btn ffw-blank" data-ffw="blank">+ Blank line</button>
+    </aside>`;
+  }
+  function mountPad(sid, el, sheet) {
+    const all = loadPad();
+    let lines = Array.isArray(all[sid]) ? all[sid].filter((l) => l && typeof l.text === 'string').slice(0, PAD_MAX) : [];
+    let open = -1;                              // the line whose plug-in panel is showing
+    const M = () => window.FluxWorkingMath;
+    /* "m_1v_1" is how people type m₁v₁, but to the typesetter _1v_1 is one
+       subscript label. Digits after _ become real subscript digits for the
+       preview and for plugging in; the line keeps what was typed. */
+    const SUBD = '₀₁₂₃₄₅₆₇₈₉';
+    const norm = (t) => String(t).replace(/_(\d+)/g, (m, d) => d.split('').map((c) => SUBD[+c]).join(''));
+    const show = (t) => (String(t).trim() ? typeset(norm(t)) : '<span class="ffw-empty">empty line</span>');
+    const persist = () => { all[sid] = lines; savePad(all); };
+    const lineHTML = (l, i) => {
+      const a = M() && l.kind !== 'ans' ? M().analyse(norm(l.text)) : { ok: false };
+      const plug = open === i && a.ok
+        ? `<div class="ffw-plug"><div class="ffw-plug-h">Fill in what you know — leave the one to find blank.</div>
+            <div class="ffw-syms">${a.symbols.map((n) => `<label class="ffw-sym"><span>${typeset(n)}</span><input class="ffw-val" data-sym="${esc(n)}" inputmode="decimal" placeholder="?" spellcheck="false" aria-label="Value of ${esc(n)}"></label>`).join('')}</div>
+            <div class="ffw-plug-go"><label class="ffw-sf">Sig figs <select class="ffw-sfsel">${[2, 3, 4, 5].map((n) => `<option${n === 3 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+              <button type="button" class="ffw-btn ffw-btn--go" data-ffw="write" data-i="${i}">Write it out</button></div>
+            <div class="ffw-err" role="status"></div>
+            ${/(sin|cos|tan)/.test(l.text) ? '<div class="ffw-hint">Angles are in degrees.</div>' : ''}</div>`
+        : '';
+      return `<div class="ffw-line ffw-line--${esc(l.kind || 'note')}" data-i="${i}">
+        <div class="ffw-math">${show(l.text)}</div>
+        <div class="ffw-row"><input class="ffw-in" data-i="${i}" value="${esc(l.text)}" spellcheck="false" aria-label="Edit this line">
+          ${a.ok ? `<button type="button" class="ffw-btn ffw-btn--plug" data-ffw="plug" data-i="${i}" aria-expanded="${open === i}" title="Plug in values — fill in what you know, leave one blank">Plug in</button>` : ''}
+          <button type="button" class="ffw-x" data-ffw="del" data-i="${i}" aria-label="Remove this line" title="Remove">✕</button></div>
+        ${plug}</div>`;
+    };
+    const draw = () => {
+      const box = el.querySelector('.ffw-lines');
+      box.innerHTML = lines.length
+        ? lines.map(lineHTML).join('')
+        : '<div class="ffw-drop-hint">Drop a formula here to start showing your working.</div>';
+      el.classList.toggle('has-lines', lines.length > 0);
+      if (window.FluxFormulaTypeset && window.FluxFormulaTypeset.fit) window.FluxFormulaTypeset.fit(el);
+    };
+    const api = {
+      add(text, kind, fromButton) {
+        if (lines.length >= PAD_MAX) { if (window.showToast) window.showToast('Your working is full — clear some lines first.', 'warning'); return; }
+        lines.push({ text: String(text || ''), kind: kind || 'formula' });
+        open = -1;
+        persist(); draw();
+        // On a narrow screen the pad sits above the sheet, out of sight.
+        const r = el.getBoundingClientRect();
+        if (fromButton && (r.bottom < 0 || r.top > (window.innerHeight || 800))) {
+          if (window.showToast) window.showToast('Added to your working', 'success');
+        }
+        el.classList.remove('is-flash'); void el.offsetWidth; el.classList.add('is-flash');
+      },
+    };
+
+    el.addEventListener('input', (e) => {
+      const inp = e.target.closest('.ffw-in');
+      if (!inp) return;
+      const i = +inp.dataset.i;
+      lines[i].text = inp.value;
+      persist();
+      const math = inp.closest('.ffw-line').querySelector('.ffw-math');
+      math.innerHTML = show(inp.value);
+    });
+    // Whether "Plug in values" applies can change as a line is edited; settle it when editing ends.
+    el.addEventListener('change', (e) => { if (e.target.closest('.ffw-in')) draw(); });
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ffw]');
+      if (!b) return;
+      const act = b.dataset.ffw, i = +b.dataset.i;
+      if (act === 'del') { lines.splice(i, 1); if (open === i) open = -1; persist(); draw(); return; }
+      if (act === 'plug') { open = open === i ? -1 : i; draw(); const f = el.querySelector('.ffw-val'); if (f) f.focus(); return; }
+      if (act === 'blank') { api.add('', 'note'); const ins = el.querySelectorAll('.ffw-in'); if (ins.length) ins[ins.length - 1].focus(); return; }
+      if (act === 'clear') { if (!lines.length || window.confirm('Clear all your working for this subject?')) { lines = []; open = -1; persist(); draw(); } return; }
+      if (act === 'copy') {
+        const text = lines.map((l) => l.text).join('\n');
+        try { navigator.clipboard.writeText(text); b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1200); }
+        catch (_) { if (window.showToast) window.showToast('Copying is blocked here.', 'warning'); }
+        return;
+      }
+      if (act === 'write') {
+        const panel = b.closest('.ffw-plug');
+        const texts = {};
+        panel.querySelectorAll('.ffw-val').forEach((inp) => { texts[inp.dataset.sym] = inp.value; });
+        const sf = +panel.querySelector('.ffw-sfsel').value || 3;
+        const r = M().plugIn(norm(lines[i].text), texts, { sf: sf });
+        if (r.error) { panel.querySelector('.ffw-err').textContent = r.error; return; }
+        lines.splice(i + 1, 0, { text: r.substituted, kind: 'sub' }, { text: r.answer, kind: 'ans' });
+        lines = lines.slice(0, PAD_MAX);
+        open = -1;
+        persist(); draw();
+      }
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.closest('.ffw-val')) {
+        e.preventDefault();
+        const go = e.target.closest('.ffw-plug').querySelector('[data-ffw="write"]');
+        if (go) go.click();
+      }
+    });
+
+    // Drag from the sheet onto the pad.
+    sheet.addEventListener('dragstart', (e) => {
+      const item = e.target.closest && e.target.closest('.ffs-item');
+      if (!item || !e.dataTransfer) return;
+      e.dataTransfer.setData('text/plain', item.dataset.f);
+      e.dataTransfer.setData('application/x-flux-formula', item.dataset.f);
+      e.dataTransfer.effectAllowed = 'copy';
+      el.classList.add('is-target');
+    });
+    sheet.addEventListener('dragend', () => el.classList.remove('is-target', 'is-over'));
+    el.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      el.classList.add('is-over');
+    });
+    el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('is-over'); });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('is-target', 'is-over');
+      const f = e.dataTransfer && (e.dataTransfer.getData('application/x-flux-formula') || e.dataTransfer.getData('text/plain'));
+      if (f) api.add(f, 'formula');
+    });
+
+    draw();
+    return api;
+  }
+
   function sheetFor(sid) {
     if (sid === 'math') return fromMaths(MATHS);
     if (sid === 'physics') return fromToolbox('Physics', PHYSICS);
@@ -170,7 +326,7 @@
       return;
     }
     const total = units.reduce((n, u) => n + u.items.length, 0);
-    body.innerHTML = `<div class="ffs">
+    body.innerHTML = `<div class="ffs-wrap">${padShell()}<div class="ffs">
       <div class="ffs-head">
         <div>
           <h3 class="ffs-title">Formula sheet</h3>
@@ -186,10 +342,10 @@
           <h4 class="ffs-unit-h"><span class="ffs-unit-n">${i + 1}</span>${esc(u.unit)}<span class="ffs-unit-c">${u.items.length}</span></h4>
           <div class="ffs-items">
             ${u.items.map((it) => `
-              <div class="ffs-item" data-hay="${esc(((it.name || '') + ' ' + it.f + ' ' + (it.note || '')).toLowerCase())}">
+              <div class="ffs-item" draggable="true" data-f="${esc(it.f)}" data-hay="${esc(((it.name || '') + ' ' + it.f + ' ' + (it.note || '')).toLowerCase())}">
                 ${it.name ? `<div class="ffs-name">${esc(it.name)}</div>` : ''}
                 <div class="ffs-f">${typeset(it.f)}
-                  <button type="button" class="ffs-copy" data-copy="${esc(it.f)}" aria-label="Copy formula" title="Copy">⧉</button>
+                  <span class="ffs-f-acts"><button type="button" class="ffs-add" data-add="${esc(it.f)}" aria-label="Add to your working" title="Add to your working">+</button><button type="button" class="ffs-copy" data-copy="${esc(it.f)}" aria-label="Copy formula" title="Copy">⧉</button></span>
                 </div>
                 ${it.note ? `<div class="ffs-note">${esc(it.note)}</div>` : ''}
                 ${it.ex ? `<div class="ffs-ex">${esc(it.ex)}</div>` : ''}
@@ -197,9 +353,10 @@
           </div>
         </section>`).join('')}
       <p class="ffs-empty" hidden>Nothing matches that.</p>
-    </div>`;
+    </div></div>`;
 
     const root = body.querySelector('.ffs');
+    const pad = mountPad(sid, body.querySelector('.ffw'), root);
     const fit = () => { if (window.FluxFormulaTypeset && window.FluxFormulaTypeset.fit) window.FluxFormulaTypeset.fit(root); };
     requestAnimationFrame(fit);
     // Cards change width with the window and the sidebar; refit when they do.
@@ -215,6 +372,8 @@
         if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
+      const add = e.target.closest('.ffs-add');
+      if (add) { pad.add(add.dataset.add, 'formula', true); return; }
       const copy = e.target.closest('.ffs-copy');
       if (copy) {
         try {

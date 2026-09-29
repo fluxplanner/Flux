@@ -264,7 +264,7 @@
     return {
       id: newId(), type: 'table', name: 'Data ' + (n + 1), colour: PALETTE[n % PALETTE.length],
       hidden: false, cols: [cx, cy], rows: rows, xCol: cx.id, yCol: cy.id,
-      fits: fnMode ? [] : ['linear'], lineColours: {}, custom: null, manuals: [], minmax: false,
+      fits: fnMode ? [] : ['linear'], lineColours: {}, custom: null, manuals: [], minmax: false, weighted: false,
     };
   }
   function blankDoc(kind) {
@@ -360,6 +360,8 @@
         ? { expr: str(it.custom.expr, 200) } : null,
       manuals: normManuals(it),
       minmax: !!it.minmax,
+      // Fits weighted by each reading's error bars (1/σ²) instead of all alike.
+      weighted: !!it.weighted,
     };
   }
 
@@ -1840,6 +1842,10 @@
       + '<div class="flg-fitrow">'
       + '<button type="button" class="flg-chip' + (t.minmax ? ' is-on' : '') + '" data-minmax="' + esc(t.id) + '" aria-pressed="' + t.minmax + '"'
       +   ' title="Steepest and shallowest lines through the error bars">max/min</button>'
+      + (this.kind === 'data'
+          ? '<button type="button" class="flg-chip' + (t.weighted ? ' is-on' : '') + '" data-weighted="' + esc(t.id) + '" aria-pressed="' + !!t.weighted + '"'
+            + ' title="Weight the lines of best fit by each reading\'s error bars — precise readings pull the line harder">weight by error bars</button>'
+          : '')
       + (t.minmax
           ? '<span class="flg-fchip flg-fchip--mm">' + colourBtn('mm:steep', lineColour(t, 'mm:steep', STEEP), '7 5', 'steepest line') + '<span>Steepest</span></span>'
             + '<span class="flg-fchip flg-fchip--mm">' + colourBtn('mm:shallow', lineColour(t, 'mm:shallow', SHALLOW), '7 5', 'shallowest line') + '<span>Shallowest</span></span>'
@@ -2663,6 +2669,12 @@
         self.renderTfoot(tb);
         self._resHTML = null;
         self.draw();
+      } else if (d.weighted) {
+        tb.weighted = !tb.weighted;
+        self.touch();
+        self.renderTfoot(tb);
+        self._resHTML = null;
+        self.draw();
       } else if (d.minmax) {
         tb.minmax = !tb.minmax;
         self.touch();
@@ -3048,11 +3060,25 @@
 
   Grapher.prototype.viewFor = function (fr) {
     const w = this.doc.win;
-    let v = (this.kind === 'data' && w.auto) ? this.autoView()
+    const auto = this.kind === 'data' && w.auto;
+    let v = auto ? this.autoView()
       : { xLo: w.xMin, xHi: w.xMax, yLo: w.yMin, yHi: w.yMax };
     if (w.square && fr.pw > 0 && fr.ph > 0) {
-      const cy = (v.yLo + v.yHi) / 2, half = (v.xHi - v.xLo) * fr.ph / fr.pw / 2;
-      v = { xLo: v.xLo, xHi: v.xHi, yLo: cy - half, yHi: cy + half };
+      if (auto) {
+        /* Fitting to the data with equal scales: widen whichever axis needs it
+           so every reading stays in view. Deriving y from the x range, as a
+           typed window does, squeezed 12…62 into a band from 31 to 36 — the
+           readings vanished and "Fit to the data" brought the same view back.
+           An axis that starts at zero keeps zero at its edge. */
+        const s = Math.max((v.xHi - v.xLo) / fr.pw, (v.yHi - v.yLo) / fr.ph);
+        const grow = (lo, hi, span) => (lo === 0 ? [0, span] : hi === 0 ? [-span, 0]
+          : [(lo + hi) / 2 - span / 2, (lo + hi) / 2 + span / 2]);
+        const gx = grow(v.xLo, v.xHi, s * fr.pw), gy = grow(v.yLo, v.yHi, s * fr.ph);
+        v = { xLo: gx[0], xHi: gx[1], yLo: gy[0], yHi: gy[1] };
+      } else {
+        const cy = (v.yLo + v.yHi) / 2, half = (v.xHi - v.xLo) * fr.ph / fr.pw / 2;
+        v = { xLo: v.xLo, xHi: v.xHi, yLo: cy - half, yHi: cy + half };
+      }
     }
     return v;
   };
@@ -3403,18 +3429,26 @@
   Grapher.prototype.fitsFor = function (t, pts) {
     const F = window.FluxLabFit;
     if (!F || pts.length < 2 || !t.fits || !t.fits.length) return [];
-    const sig = JSON.stringify([pts, t.fits, t.custom ? t.custom.expr : '']);
+    const weighted = this.kind === 'data' && !!t.weighted;
+    const sig = JSON.stringify([pts, t.fits, t.custom ? t.custom.expr : '', weighted]);
     const hit = FIT_CACHE.get(t);
     if (hit && hit.sig === sig) return hit.list;
+    const canWeight = (k) => weighted && (F.WEIGHTABLE || []).indexOf(k) >= 0;
     const list = t.fits.map((kind, i) => {
-      let res, name = this.fitName(kind);
+      let res, name = this.fitName(kind), note = '';
       if (kind === 'custom') res = customFit(t.custom && t.custom.expr, pts);
       else if (kind === 'auto') {
         const b = F.best ? F.best(pts) : { error: 'Automatic fitting has not loaded.' };
         res = b.error ? { error: b.error } : { fit: b.fit };
-        if (!b.error) name = 'Best fit: ' + b.name;
-      } else res = F.fit(kind, pts);
-      return { kind: kind, name: name, res: res, dash: DASHES[i % DASHES.length] };
+        if (!b.error) {
+          name = 'Best fit: ' + b.name;
+          // The type is chosen on the readings; its line is then weighted like any other.
+          if (canWeight(b.kind)) res = F.fit(b.kind, pts, { weighted: true });
+        }
+      } else res = F.fit(kind, pts, { weighted: canWeight(kind) });
+      if (res && res.fit && res.fit.weighted) name += ' (weighted)';
+      else if (weighted && kind !== 'auto') note = 'Not weighted — only straight-line, polynomial and inverse fits use the error bars.';
+      return { kind: kind, name: name, res: res, note: note, dash: DASHES[i % DASHES.length] };
     });
     FIT_CACHE.set(t, { sig: sig, list: list });
     return list;
@@ -3864,6 +3898,9 @@
   function paramRows(f) {
     const rows = (f.params || []).map((p) => [p.name, p.u != null && p.u > 0 ? fmtWithU(p.value, p.u) : fmt(p.value)]);
     rows.push(['R²', fmt(f.r2)]);
+    /* A weighted fit's ± comes from the error bars; χ²/ν says whether the bars
+       and the line agree (≈ 1 good, ≫ 1 bars too small, ≪ 1 bars generous). */
+    if (f.weighted && f.chi2nu != null && Number.isFinite(f.chi2nu)) rows.push(['χ²/ν', fmt(f.chi2nu)]);
     return rows;
   }
   function rowsHTML(rows) {
@@ -3894,6 +3931,7 @@
         body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'fit:' + f.kind, t.colour), f.dash) + '<span>' + esc(f.name) + '</span></div>';
         if (!f.res || f.res.error) { body += '<div class="flg-rc-err">' + esc(f.res ? f.res.error : 'No fit.') + '</div>'; return; }
         body += '<div class="flg-rc-eq">' + esc(f.res.fit.equation(fmt)) + '</div>' + rowsHTML(paramRows(f.res.fit));
+        if (f.note) body += '<div class="flg-rc-note">' + esc(f.note) + '</div>';
       });
       manuals.forEach((mn, i) => {
         const ml = manualLine(mn);
