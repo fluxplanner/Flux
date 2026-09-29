@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitMessages, isTooLargeError, isGeminiModelGone, newestGeminiFlash } from '../../supabase/functions/_shared/ai-models.ts';
+import { readFileSync } from 'node:fs';
+import { transformSync } from 'esbuild';
+
+/* CI runs Node 20, which cannot import a .ts file (type stripping arrived in
+   Node 22.18). Strip the types with esbuild — already here for the web
+   bundles — and import the result, so this runs the same on every Node. */
+const src = readFileSync(new URL('../../supabase/functions/_shared/ai-models.ts', import.meta.url), 'utf8');
+const { code } = transformSync(src, { loader: 'ts', format: 'esm' });
+const { fitMessages, isTooLargeError, isGeminiModelGone, newestGeminiFlash } =
+  await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
 
 /**
  * ai-proxy's model choice and conversation trimming. Two live failures drove
