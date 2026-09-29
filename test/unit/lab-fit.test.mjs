@@ -244,3 +244,46 @@ test('the automatic best fit prefers the simpler model when both fit', () => {
   assert.equal(F.best(decay).kind, 'exponential', 'exact exponential data');
   assert.ok(F.best([{ x: 1, y: 1 }, { x: 2, y: 2 }]).error, 'two points cannot be compared');
 });
+
+/* ── Weighted by the error bars ────────────────────────────────────────
+   Hand-worked with the weighted normal equations: w = 1/σ² = 100, 100, 100,
+   0.25; S = 300.25, Σwx = 300.75, Σwy = 301.25, Σwx² = 502.25,
+   Σwxy = 503.75, Δ = 60350. */
+test('weighting by the error bars: a reading with a huge bar barely moves the line', () => {
+  const pts = [
+    { x: 0, y: 0, dy: 0.1 }, { x: 1, y: 1, dy: 0.1 }, { x: 2, y: 2, dy: 0.1 }, { x: 3, y: 5, dy: 2 },
+  ];
+  const plain = F.fit('linear', pts).fit;
+  assert.ok(Math.abs(plain.m - 1.6) < 1e-12, 'unweighted, the stray point drags m to 1.6');
+  const w = F.fit('linear', pts, { weighted: true }).fit;
+  assert.equal(w.weighted, true);
+  assert.ok(Math.abs(w.m - 60650 / 60350) < 1e-9, `m = ${w.m}`);
+  assert.ok(Math.abs(w.c - (-200 / 60350)) < 1e-9, `c = ${w.c}`);
+  assert.ok(Math.abs(w.um - Math.sqrt(300.25 / 60350)) < 1e-9, 'u(m) comes from the bars: √(S/Δ)');
+  assert.ok(Math.abs(w.uc - Math.sqrt(502.25 / 60350)) < 1e-9, 'u(c) = √(Σwx²/Δ)');
+  assert.equal(w.dof, 2);
+  assert.ok(Math.abs(w.chi2 - 0.9941) < 1e-3, `χ² = ${w.chi2}`);
+});
+
+test('weighted through the origin: m = Σwxy / Σwx², u(m) = 1/√Σwx²', () => {
+  const w = F.fit('proportional', [{ x: 1, y: 1, dy: 0.1 }, { x: 2, y: 2.2, dy: 0.2 }], { weighted: true }).fit;
+  assert.ok(Math.abs(w.m - 1.05) < 1e-12);
+  assert.ok(Math.abs(w.um - 1 / Math.sqrt(200)) < 1e-12);
+});
+
+test('x error bars count too, seen through the slope', () => {
+  // Same readings; the last one's uncertainty is in x instead of y. On a line
+  // of slope ~1 an x bar of 2 weighs about the same as a y bar of 2.
+  const yBars = F.fit('linear', [{ x: 0, y: 0, dy: 0.1 }, { x: 1, y: 1, dy: 0.1 }, { x: 2, y: 2, dy: 0.1 }, { x: 3, y: 5, dy: 2 }], { weighted: true }).fit;
+  const xBars = F.fit('linear', [{ x: 0, y: 0, dy: 0.1 }, { x: 1, y: 1, dy: 0.1 }, { x: 2, y: 2, dy: 0.1 }, { x: 3, y: 5, dx: 2 }], { weighted: true }).fit;
+  assert.ok(Math.abs(xBars.m - yBars.m) < 0.01, `${xBars.m} vs ${yBars.m}`);
+});
+
+test('a weighted fit refuses readings with no error bar, and leaves curved fits alone', () => {
+  const r = F.fit('linear', [{ x: 0, y: 0, dy: 0.1 }, { x: 1, y: 1 }, { x: 2, y: 2, dy: 0.1 }], { weighted: true });
+  assert.match(r.error, /error bar on every reading/);
+  const pw = F.fit('power', [{ x: 1, y: 2, dy: 0.1 }, { x: 2, y: 8, dy: 0.1 }, { x: 3, y: 18, dy: 0.1 }], { weighted: true });
+  assert.ok(pw.fit && !pw.fit.weighted, 'power fits are not weighted');
+  const quad = F.fit('quadratic', [{ x: 0, y: 1, dy: 0.1 }, { x: 1, y: 2, dy: 0.1 }, { x: 2, y: 5, dy: 0.1 }, { x: 3, y: 10, dy: 0.1 }], { weighted: true }).fit;
+  assert.ok(Math.abs(quad.values[0] - 1) < 1e-9 && Math.abs(quad.values[2] - 1) < 1e-9, 'y = x² + 1 recovered exactly');
+});

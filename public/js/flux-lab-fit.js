@@ -458,6 +458,118 @@
     return Math.abs(v);
   }
 
+  /* ── Weighting the fit by the error bars ──────────────────────────────
+     An ordinary least-squares line treats every reading as equally good. A
+     weighted fit doesn't: each point counts in proportion to 1/σ², so a
+     reading with a small error bar pulls the line harder than one with a big
+     bar — which is what the bars are saying.
+
+     σ combines the y bar with the x bar seen through the slope there (the
+     "effective variance", σ² = u(y)² + (f′(x)·u(x))²). The slope depends on
+     the weights and the weights on the slope, so it is refined a few times;
+     four rounds settle it for any real lab data.
+
+     The uncertainties then come from the bars — √ of the diagonal of the
+     covariance matrix (ΣwφφT)⁻¹ — not from the scatter, and χ²/ν says whether
+     the two agree: about 1 is right; much more than 1 means the bars are too
+     small (or the model is wrong); much less, that they are generous.
+
+     Only fits that are linear in their parameters are weighted this way:
+     straight line, through the origin, quadratic, cubic, inverse and inverse
+     square. The curved fits found by taking logs are left alone rather than
+     half-weighted. */
+  const WEIGHT_BASES = {
+    linear: { names: ['m', 'c'], basis: [(x) => x, () => 1] },
+    proportional: { names: ['m'], basis: [(x) => x] },
+    quadratic: { names: ['a', 'b', 'c'], basis: [(x) => x * x, (x) => x, () => 1] },
+    cubic: { names: ['a', 'b', 'c', 'd'], basis: [(x) => x * x * x, (x) => x * x, (x) => x, () => 1] },
+    inverse: { names: ['a', 'b'], basis: [(x) => 1 / x, () => 1] },
+    inverseSquare: { names: ['a', 'b'], basis: [(x) => 1 / (x * x), () => 1] },
+  };
+  function weightedEquation(kind, p, fmt) {
+    const s = (v, suffix) => (v < 0 ? ' − ' : ' + ') + fmt(Math.abs(v)) + suffix;
+    switch (kind) {
+      case 'linear': return `y = ${fmt(p[0])}x${s(p[1], '')}`;
+      case 'proportional': return `y = ${fmt(p[0])}x`;
+      case 'quadratic': return `y = ${fmt(p[0])}x²${s(p[1], 'x')}${s(p[2], '')}`;
+      case 'cubic': return `y = ${fmt(p[0])}x³${s(p[1], 'x²')}${s(p[2], 'x')}${s(p[3], '')}`;
+      case 'inverse': return `y = ${fmt(p[0])}/x${s(p[1], '')}`;
+      default: return `y = ${fmt(p[0])}/x²${s(p[1], '')}`;
+    }
+  }
+  function weightedFit(kind, points) {
+    const def = WEIGHT_BASES[kind];
+    if (!def) return null;
+    const pts = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    const k = def.basis.length, n = pts.length;
+    if (n < k) return { error: 'Not enough readings for that fit.' };
+    const ux = pts.map((p) => Math.abs(Number(p.dx) || 0));
+    const uy = pts.map((p) => Math.abs(Number(p.dy) || 0));
+    if (pts.some((p, i) => !(uy[i] > 0) && !(ux[i] > 0))) {
+      return { error: 'A weighted fit needs an error bar on every reading. Add an uncertainty (±) column, or switch weighting off.' };
+    }
+    if ((kind === 'inverse' || kind === 'inverseSquare') && pts.some((p) => p.x === 0)) {
+      return { error: 'An inverse fit cannot use a reading at x = 0.' };
+    }
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    let p = null, A = null;
+    let slopeAt = () => 0;
+    // Readings with only an x bar need a slope before they have any σ at all:
+    // start from the unweighted fit.
+    const seed = basisFit(kind, def.names, def.basis, xs, ys);
+    if (seed) {
+      const f = seed.predict;
+      slopeAt = (x) => { const h = Math.max(1e-6, Math.abs(x) * 1e-6); return (f(x + h) - f(x - h)) / (2 * h); };
+    }
+    let w = null;
+    for (let round = 0; round < 4; round++) {
+      w = xs.map((x, i) => {
+        const s2 = uy[i] * uy[i] + Math.pow(slopeAt(x) * ux[i], 2);
+        return s2 > 0 ? 1 / s2 : 0;
+      });
+      if (w.some((v) => !(v > 0) || !Number.isFinite(v))) {
+        return { error: 'Every reading needs a y error bar, or an x bar where the line is not flat.' };
+      }
+      A = [];
+      const b = [];
+      for (let i = 0; i < k; i++) { A.push(new Array(k).fill(0)); b.push(0); }
+      for (let r = 0; r < n; r++) {
+        const row = def.basis.map((f) => f(xs[r]));
+        for (let i = 0; i < k; i++) {
+          b[i] += w[r] * row[i] * ys[r];
+          for (let j = 0; j < k; j++) A[i][j] += w[r] * row[i] * row[j];
+        }
+      }
+      p = solve(A, b);
+      if (!p || p.some((v) => !Number.isFinite(v))) return { error: 'These readings do not define that fit.' };
+      const pp = p;
+      const f = (x) => { let t = 0; for (let i = 0; i < k; i++) t += pp[i] * def.basis[i](x); return t; };
+      slopeAt = (x) => { const h = Math.max(1e-6, Math.abs(x) * 1e-6); return (f(x + h) - f(x - h)) / (2 * h); };
+    }
+    const vals = p;
+    const predict = (x) => { let t = 0; for (let i = 0; i < k; i++) t += vals[i] * def.basis[i](x); return t; };
+    const inv = invert(A);
+    const us = inv ? inv.map((row, i) => Math.sqrt(Math.max(0, row[i]))) : vals.map(() => null);
+    let chi2 = 0;
+    for (let r = 0; r < n; r++) chi2 += w[r] * Math.pow(ys[r] - predict(xs[r]), 2);
+    const dof = n - k;
+    const out = {
+      kind: kind,
+      weighted: true,
+      params: def.names.map((nm, i) => ({ name: nm, value: vals[i], u: us[i] })),
+      values: vals,
+      r2: rSquared(ys, xs.map(predict)),
+      chi2: chi2,
+      dof: dof,
+      chi2nu: dof > 0 ? chi2 / dof : null,
+      predict: predict,
+      equation: (fmt) => weightedEquation(kind, vals, fmt),
+    };
+    if (kind === 'linear') Object.assign(out, { m: vals[0], c: vals[1], um: us[0], uc: us[1] });
+    if (kind === 'proportional') Object.assign(out, { m: vals[0], c: 0, um: us[0], uc: null });
+    return out;
+  }
+
   const FITS = { linear: linear, proportional: proportional, quadratic: quadratic, cubic: cubic };
 
   /**
@@ -465,12 +577,16 @@
    * a bad column of pasted data is a normal thing for a student to have, not
    * an exceptional one.
    */
-  function fit(kind, points) {
+  function fit(kind, points, opts) {
     const usable = (points || []).filter(
       (p) => Number.isFinite(p.x) && Number.isFinite(p.y),
     );
     if (usable.length < 2) {
       return { error: 'Two points with numbers in both columns are needed before anything can be fitted.' };
+    }
+    if (opts && opts.weighted && WEIGHT_BASES[kind]) {
+      const w = weightedFit(kind, usable);
+      return w && w.error ? { error: w.error } : { fit: w };
     }
     const xs = usable.map((p) => p.x), ys = usable.map((p) => p.y);
 
@@ -557,6 +673,8 @@
     nonlinear: nonlinear,
     transformed: transformed,
     minMaxGradient: minMaxGradient,
+    weightedFit: weightedFit,
+    WEIGHTABLE: Object.keys(WEIGHT_BASES),
     resolveUncertainty: resolveUncertainty,
     rSquared: rSquared,
     moments: moments,

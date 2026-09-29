@@ -1,17 +1,21 @@
 /* ============================================================================
-   FLUX STUDY HUB · Music module (Pass 1)
-   Bespoke native tools: Circle of Fifths (interactive SVG ring), Elements of
-   Music wheel (crisp SVG), Scale/Chord explorer (piano + WebAudio), intervals.
-   Registers with window.fluxStudyHub.
+   FLUX STUDY HUB · Music module
+   Circle of fifths, scales & chords, chord inversions, Roman numerals,
+   intervals and the dimensions ring. Registers with window.fluxStudyHub.
+
+   Every note name comes from flux-music-theory.js, which spells by letter:
+   B♭ major is B♭ C D E♭ F G A, never "A♯ C D D♯ F G A", and a key that would
+   need double sharps (A♯ major) is shown as the key musicians write (B♭).
    ========================================================================== */
 (function () {
   'use strict';
   function boot() {
     const H = window.fluxStudyHub;
-    if (!H || !H.register) { return setTimeout(boot, 60); }
+    const T = window.FluxMusicTheory;
+    if (!H || !H.register || !T) { return setTimeout(boot, 60); }
     const esc = H.helpers.esc;
-    const PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
-    const noteName = (pc) => PC[((pc % 12) + 12) % 12];
+    const nm = T.name;
+    const list = (ns) => Array.from(ns, nm).join(' ');
 
     const pol = (cx, cy, r, deg) => { const a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
     function wedge(cx, cy, rI, rO, a1, a2) {
@@ -20,37 +24,130 @@
       return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${rO} ${rO} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L${x3.toFixed(2)} ${y3.toFixed(2)} A${rI} ${rI} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
     }
 
+    // ── Sound and keyboard ───────────────────────────────────────────────────
+    let actx = null;
+    /** Semitones above middle C, played one after another (a chord arpeggiated from the bass). */
+    function play(semis) {
+      try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+      semis.forEach((s, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = 261.63 * Math.pow(2, s / 12); const t = actx.currentTime + i * 0.16; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.42); });
+    }
+    /** Pitch values rising from the first note, so a chord is voiced from its bass upward. */
+    function rising(notes) {
+      let prev = -1;
+      return notes.map((n) => { let v = T.pc(n); while (v <= prev) v += 12; prev = v; return v; });
+    }
+    /* Two octaves from C. `lit` lights every key of those pitch classes; `exact`
+       lights just those keys (0–23), and `bass` marks the lowest one. */
+    function pianoHTML(opts) {
+      const lit = new Set((opts.lit || []).map((v) => ((v % 12) + 12) % 12));
+      const exact = opts.exact ? new Set(opts.exact) : null;
+      const on = (k) => (exact ? exact.has(k) : lit.has(k % 12));
+      const whites = [0, 2, 4, 5, 7, 9, 11], octaves = 2, whiteCount = whites.length * octaves;
+      let html = `<div class="fsh-piano${opts.mini ? ' fsh-piano--mini' : ''}">`;
+      for (let o = 0; o < octaves; o++) for (let wi = 0; wi < whites.length; wi++) { const k = whites[wi] + o * 12; html += `<div class="fsh-pkey${on(k) ? ' on' : ''}${opts.bass === k ? ' bass' : ''}" data-pc="${k}"></div>`; }
+      const blackOver = [0, 1, 3, 4, 5], blackPcOff = [1, 3, 6, 8, 10];
+      for (let o = 0; o < octaves; o++) for (let b = 0; b < blackOver.length; b++) { const leftPct = (o * whites.length + blackOver[b] + 0.72) / whiteCount * 100; const k = blackPcOff[b] + o * 12; html += `<div class="fsh-pkey black${on(k) ? ' on' : ''}${opts.bass === k ? ' bass' : ''}" style="left:${leftPct}%" data-pc="${k}"></div>`; }
+      return html + '</div>';
+    }
+
+    /** Scale or chord notes from a root, swapped to the practical spelling when it needs double accidentals. */
+    const typeWord = (t) => (/^(Dorian|Mixolydian)$/.test(t) ? t : t.toLowerCase());
+    function spell(rootName, kind, type) {
+      const make = (r) => (kind === 'scale' ? T.scale(r, type) : T.chord(r, type));
+      let root = T.parse(rootName), notes = make(root), note = '';
+      if (T.hasDouble(notes)) {
+        const alt = T.respell(root);
+        const altNotes = alt ? make(alt) : null;
+        if (altNotes && !T.hasDouble(altNotes)) {
+          const doubles = notes.filter((n) => Math.abs(n.a) >= 2).map(nm);
+          note = `${nm(root)} ${typeWord(type)} would need ${T.andList(doubles)}, so it is written as ${nm(alt)} ${typeWord(type)} — same sounds, easier to read.`;
+          root = alt; notes = altNotes;
+        }
+      }
+      return { root, notes, note };
+    }
+    const ROOT_CHOICES = ['C', 'C♯', 'D♭', 'D', 'D♯', 'E♭', 'E', 'F', 'F♯', 'G♭', 'G', 'G♯', 'A♭', 'A', 'A♯', 'B♭', 'B'];
+    const rootSelect = (id, val, choices) => `<select id="${id}" class="fsh-input" style="flex:0 0 92px" aria-label="Root">${(choices || ROOT_CHOICES).map((p) => `<option${p === val ? ' selected' : ''}>${p}</option>`).join('')}</select>`;
+
     // ── Circle of Fifths ─────────────────────────────────────────────────────
-    const COF = [[0, 'C', 'Am', '—'], [7, 'G', 'Em', '1♯'], [2, 'D', 'Bm', '2♯'], [9, 'A', 'F♯m', '3♯'], [4, 'E', 'C♯m', '4♯'], [11, 'B', 'G♯m', '5♯'], [6, 'G♭', 'E♭m', '6♭'], [1, 'D♭', 'B♭m', '5♭'], [8, 'A♭', 'Fm', '4♭'], [3, 'E♭', 'Cm', '3♭'], [10, 'B♭', 'Gm', '2♭'], [5, 'F', 'Dm', '1♭']];
-    const MAJ_DEG = [0, 2, 4, 5, 7, 9, 11], MAJ_QUAL = ['', 'm', 'm', '', '', 'm', '°'], ROMAN = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
-    function diatonic(rootPc) { return MAJ_DEG.map((d, i) => ({ roman: ROMAN[i], chord: noteName(rootPc + d) + MAJ_QUAL[i] })); }
-    function scaleOf(rootPc, pattern) { return pattern.map((s) => noteName(rootPc + s)); }
-    let cofSel = 0;
-    function cofInfoHTML(i) {
-      const [pc, maj, min, sig] = COF[i]; const chords = diatonic(pc);
-      return `<div class="fsh-keyinfo"><h3 style="margin:0 0 8px;font-size:20px">Key of ${esc(maj)} major</h3>
-        <div class="row"><span>Key signature</span><span>${esc(sig)}</span></div>
-        <div class="row"><span>Relative minor</span><span>${esc(min)}</span></div>
-        <div class="row"><span>Scale</span><span>${scaleOf(pc, MAJ_DEG).map(esc).join(' ')}</span></div>
-        <div class="row" style="border:0"><span>Diatonic chords</span><span></span></div>
-        <div class="fsh-chips-row" style="margin-top:6px">${chords.map((c) => `<span class="fsh-shellbar"><b>${esc(c.roman)}</b> ${esc(c.chord)}</span>`).join('')}</div></div>`;
+    let cof = { i: 0, ring: 'major', alt: false };
+    function cofKey() {
+      const row = T.CIRCLE[cof.i];
+      const t = cof.ring === 'major'
+        ? (cof.alt && row.majorAlt ? row.majorAlt : row.major)
+        : (cof.alt && row.minorAlt ? row.minorAlt : row.minor);
+      return T.keyFor(t, cof.ring);
+    }
+    function chipsHTML(triads) {
+      return triads.map((c) => `<span class="fsh-shellbar"><b>${esc(c.numeral)}</b> ${esc(c.symbol)}</span>`).join('');
+    }
+    function minorExtraHTML(k) {
+      const har = T.diatonicTriads(k.tonic, 'Harmonic minor');
+      const lead = nm(T.scale(k.tonic, 'Harmonic minor')[6]);
+      return `<p class="fsh-note">Harmonic minor raises the 7th to <b>${esc(lead)}</b>: v becomes <b>V</b> (${esc(har[4].symbol)}) and VII becomes <b>vii°</b> (${esc(har[6].symbol)}) — the chords that pull a minor key home.</p>`;
+    }
+    /** The pair that shares this key signature, chord by chord, numbered from each home note. */
+    function compareHTML(k) {
+      const majorTonic = k.mode === 'major' ? k.tonic : T.parse(k.relative.replace(/ major$/, ''));
+      const majorLabel = nm(majorTonic) + ' major';
+      const minorLabel = k.mode === 'major' ? k.relative : k.label;
+      const rows = T.relativeNumerals(majorTonic);
+      return `<div class="fsh-numcompare"><div class="fsh-numcompare-h">Same chords, different numbers</div>
+        <p class="fsh-note" style="margin:0 0 8px">${esc(majorLabel)} and ${esc(minorLabel)} share a key signature, so they share every chord — but a Roman numeral counts from the key's home note, so each chord gets a new number.</p>
+        <table class="fsh-numtable"><thead><tr><th>Chord</th><th>in ${esc(majorLabel)}</th><th>in ${esc(minorLabel)}</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr><td>${esc(r.symbol)}</td><td>${esc(r.inMajor)}</td><td>${esc(r.inMinor)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function cofInfoHTML() {
+      const k = cofKey();
+      const triads = T.diatonicTriads(k.tonic, k.mode === 'major' ? 'Major' : 'Natural minor');
+      const sig = k.signatureNotes.length ? `${esc(k.signatureText)} · ${k.signatureNotes.map(esc).join(' ')}` : 'No sharps or flats';
+      const enh = k.enharmonic
+        ? `<div class="row"><span>Enharmonic key</span><span><button type="button" class="fsh-btn fsh-btn--small" data-act="alt">${esc(k.enharmonic.label)} (${esc(k.enharmonic.signatureText)})</button></span></div>
+           <p class="fsh-note">Enharmonic keys sound identical but are spelled differently. Composers pick whichever is easier to read — usually the one with fewer sharps or flats, or the one that matches the music around it.</p>`
+        : '';
+      return `<div class="fsh-keyinfo"><h3 style="margin:0 0 8px;font-size:20px">${esc(k.label)}</h3>
+        <div class="row"><span>Key signature</span><span>${sig}</span></div>
+        <div class="row"><span>Relative ${k.mode === 'major' ? 'minor' : 'major'}</span><span>${esc(k.relative)}</span></div>
+        <div class="row"><span>Scale</span><span>${esc(list(k.scale))}</span></div>
+        ${enh}
+        <div class="row" style="border:0"><span>Chords in the key</span><span></span></div>
+        <div class="fsh-chips-row" style="margin-top:6px">${chipsHTML(triads)}</div>
+        ${k.mode === 'minor' ? minorExtraHTML(k) : ''}
+        ${compareHTML(k)}</div>`;
+    }
+    function ringLabel(x, y, main, alt, cls) {
+      if (!alt) return `<text class="fsh-ring-label${cls}" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${esc(main)}</text>`;
+      return `<text class="fsh-ring-label${cls}" x="${x.toFixed(1)}" y="${(y - 7).toFixed(1)}">${esc(main)}</text>`
+        + `<text class="fsh-ring-label fsh-ring-alt${cls}" x="${x.toFixed(1)}" y="${(y + 9).toFixed(1)}">${esc(alt)}</text>`;
     }
     function renderCircle(body) {
       const cx = 230, cy = 230, rO = 215, rMid = 150, rI = 92;
-      const segs = COF.map((k, i) => {
+      const segs = T.CIRCLE.map((k, i) => {
         const a1 = i * 30 - 15, a2 = i * 30 + 15, mid = i * 30;
         const [mx, my] = pol(cx, cy, (rO + rMid) / 2, mid), [nx, ny] = pol(cx, cy, (rMid + rI) / 2, mid);
         const hue = i * 30;
-        return `<g class="fsh-ring-seg${i === cofSel ? ' active' : ''}" data-i="${i}">
-          <path d="${wedge(cx, cy, rMid, rO, a1, a2)}" fill="hsl(${hue} 58% ${i === cofSel ? 56 : 46}%)" stroke="rgba(0,0,0,.25)" stroke-width="1"></path>
-          <path d="${wedge(cx, cy, rI, rMid, a1, a2)}" fill="hsl(${hue} 42% ${i === cofSel ? 40 : 30}%)" stroke="rgba(0,0,0,.25)" stroke-width="1"></path>
-          <text class="fsh-ring-label" x="${mx.toFixed(1)}" y="${my.toFixed(1)}">${esc(k[1])}</text>
-          <text class="fsh-ring-label min" x="${nx.toFixed(1)}" y="${ny.toFixed(1)}">${esc(k[2])}</text></g>`;
+        const onMaj = cof.i === i && cof.ring === 'major', onMin = cof.i === i && cof.ring === 'minor';
+        return `<g class="fsh-ring-seg${onMaj ? ' active' : ''}" data-i="${i}" data-ring="major">
+            <path d="${wedge(cx, cy, rMid, rO, a1, a2)}" fill="hsl(${hue} 58% ${onMaj ? 58 : 46}%)" stroke="${onMaj ? '#fff' : 'rgba(0,0,0,.25)'}" stroke-width="${onMaj ? 2 : 1}"></path>
+            ${ringLabel(mx, my, k.major, k.majorAlt, '')}</g>
+          <g class="fsh-ring-seg${onMin ? ' active' : ''}" data-i="${i}" data-ring="minor">
+            <path d="${wedge(cx, cy, rI, rMid, a1, a2)}" fill="hsl(${hue} 42% ${onMin ? 44 : 30}%)" stroke="${onMin ? '#fff' : 'rgba(0,0,0,.25)'}" stroke-width="${onMin ? 2 : 1}"></path>
+            ${ringLabel(nx, ny, k.minor + 'm', k.minorAlt ? k.minorAlt + 'm' : '', ' min')}</g>`;
       }).join('');
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Circle of Fifths</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Tap a key for its signature, relative minor and diatonic chords.</p>
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Circle of Fifths</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Tap a major key (outside) or a minor key (inside). The three at the bottom have two names — the same keys spelled two ways.</p>
         <div class="fsh-ring-wrap"><svg class="fsh-ring-svg" id="cofSvg" viewBox="0 0 460 460" role="img" aria-label="Circle of fifths">${segs}<circle cx="${cx}" cy="${cy}" r="${rI - 4}" fill="rgba(8,11,20,.6)" stroke="var(--fsh-line)"></circle><text class="fsh-ring-center" x="${cx}" y="${cy - 6}">5ths</text><text class="fsh-ring-label min" x="${cx}" y="${cy + 16}">major · minor</text></svg>
-        <div id="cofInfo">${cofInfoHTML(cofSel)}</div></div></div>`;
-      document.getElementById('cofSvg').addEventListener('click', (e) => { const g = e.target.closest('.fsh-ring-seg'); if (!g) return; cofSel = +g.dataset.i; renderCircle(body); });
+        <div id="cofInfo">${cofInfoHTML()}</div></div></div>`;
+      body.querySelector('#cofSvg').addEventListener('click', (e) => {
+        const g = e.target.closest('[data-ring]');
+        if (!g) return;
+        cof = { i: +g.dataset.i, ring: g.dataset.ring, alt: false };
+        renderCircle(body);
+      });
+      body.querySelector('#cofInfo').addEventListener('click', (e) => {
+        if (!e.target.closest('[data-act="alt"]')) return;
+        cof.alt = !cof.alt;
+        renderCircle(body);
+      });
     }
 
     // ── Dimensions & metadimensions (classic IB listening framework) ─────────
@@ -86,53 +183,121 @@
     }
 
     // ── Scale / chord explorer ───────────────────────────────────────────────
-    const SCALES = { 'Major': [0, 2, 4, 5, 7, 9, 11], 'Natural minor': [0, 2, 3, 5, 7, 8, 10], 'Harmonic minor': [0, 2, 3, 5, 7, 8, 11], 'Dorian': [0, 2, 3, 5, 7, 9, 10], 'Mixolydian': [0, 2, 4, 5, 7, 9, 10], 'Major pentatonic': [0, 2, 4, 7, 9], 'Minor pentatonic': [0, 3, 5, 7, 10], 'Blues': [0, 3, 5, 6, 7, 10] };
-    const CHORDS = { 'Major': [0, 4, 7], 'Minor': [0, 3, 7], 'Diminished': [0, 3, 6], 'Augmented': [0, 4, 8], 'Major 7': [0, 4, 7, 11], 'Minor 7': [0, 3, 7, 10], 'Dominant 7': [0, 4, 7, 10], 'sus2': [0, 2, 7], 'sus4': [0, 5, 7] };
-    let scRoot = 0, scMode = 'scale', scType = 'Major', actx = null;
-    function play(pcs) {
-      try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-      pcs.forEach((pc, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = 261.63 * Math.pow(2, pc / 12); const t = actx.currentTime + i * 0.16; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.42); });
-    }
-    function pianoHTML(activePcs) {
-      const whites = [0, 2, 4, 5, 7, 9, 11], octaves = 2, whiteCount = whites.length * octaves;
-      let html = '<div class="fsh-piano">';
-      for (let o = 0; o < octaves; o++) for (let wi = 0; wi < whites.length; wi++) { const pc = whites[wi] + o * 12; const on = activePcs.indexOf(((pc % 12) + 12) % 12) !== -1; html += `<div class="fsh-pkey${on ? ' on' : ''}" data-pc="${pc}"></div>`; }
-      const blackOver = [0, 1, 3, 4, 5], blackPcOff = [1, 3, 6, 8, 10];
-      for (let o = 0; o < octaves; o++) for (let b = 0; b < blackOver.length; b++) { const whiteIndexGlobal = o * whites.length + blackOver[b]; const leftPct = (whiteIndexGlobal + 0.72) / whiteCount * 100; const pc = blackPcOff[b] + o * 12; const on = activePcs.indexOf(((pc % 12) + 12) % 12) !== -1; html += `<div class="fsh-pkey black${on ? ' on' : ''}" style="left:${leftPct}%" data-pc="${pc}"></div>`; }
-      return html + '</div>';
-    }
+    let ex = { root: 'C', mode: 'scale', type: 'Major' };
     function renderExplorer(body) {
-      const opts = scMode === 'scale' ? Object.keys(SCALES) : Object.keys(CHORDS);
-      if (opts.indexOf(scType) === -1) scType = opts[0];
-      const pattern = (scMode === 'scale' ? SCALES : CHORDS)[scType];
-      const pcs = pattern.map((s) => ((scRoot + s) % 12 + 12) % 12);
-      const names = pattern.map((s) => noteName(scRoot + s));
-      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Scale &amp; chord explorer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a root and type — see the notes light up, then hear them.</p>
+      const opts = Object.keys(ex.mode === 'scale' ? T.SCALES : T.CHORDS);
+      if (opts.indexOf(ex.type) === -1) ex.type = opts[0];
+      const s = spell(ex.root, ex.mode, ex.type);
+      const values = rising(s.notes);
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Scale &amp; chord explorer</h3><p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Pick a root and type — see the notes spelled properly and lit up, then hear them.</p>
         <div class="fsh-field" style="flex-wrap:wrap">
-          <select id="scRoot" class="fsh-input" style="flex:0 0 90px">${PC.map((p, i) => `<option value="${i}"${i === scRoot ? ' selected' : ''}>${p}</option>`).join('')}</select>
-          <div class="fsh-seg" id="scModeSeg"><button type="button" data-mode="scale" class="${scMode === 'scale' ? 'active' : ''}">Scale</button><button type="button" data-mode="chord" class="${scMode === 'chord' ? 'active' : ''}">Chord</button></div>
-          <select id="scType" class="fsh-input" style="flex:1;min-width:140px">${opts.map((o) => `<option${o === scType ? ' selected' : ''}>${o}</option>`).join('')}</select>
+          ${rootSelect('scRoot', ex.root)}
+          <div class="fsh-seg" id="scModeSeg"><button type="button" data-mode="scale" class="${ex.mode === 'scale' ? 'active' : ''}">Scale</button><button type="button" data-mode="chord" class="${ex.mode === 'chord' ? 'active' : ''}">Chord</button></div>
+          <select id="scType" class="fsh-input" style="flex:1;min-width:140px" aria-label="Type">${opts.map((o) => `<option${o === ex.type ? ' selected' : ''}>${o}</option>`).join('')}</select>
           <button type="button" class="fsh-btn" id="scPlay">▶ Play</button></div>
-        <div class="fsh-out"><span class="big" style="font-size:20px">${names.map(esc).join(' · ')}</span></div>
-        ${pianoHTML(pcs)}</div>`;
-      document.getElementById('scRoot').addEventListener('change', (e) => { scRoot = +e.target.value; renderExplorer(body); });
-      document.getElementById('scType').addEventListener('change', (e) => { scType = e.target.value; renderExplorer(body); });
-      document.getElementById('scModeSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; scMode = b.dataset.mode; renderExplorer(body); });
-      document.getElementById('scPlay').addEventListener('click', () => play(pattern.map((s) => scRoot + s)));
+        <div class="fsh-out"><span class="big" style="font-size:20px">${Array.from(s.notes, nm).map(esc).join(' · ')}</span></div>
+        ${s.note ? `<p class="fsh-note fsh-respelled">${esc(s.note)}</p>` : ''}
+        ${pianoHTML({ lit: values })}</div>`;
+      body.querySelector('#scRoot').addEventListener('change', (e) => { ex.root = e.target.value; renderExplorer(body); });
+      body.querySelector('#scType').addEventListener('change', (e) => { ex.type = e.target.value; renderExplorer(body); });
+      body.querySelector('#scModeSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; ex.mode = b.dataset.mode; renderExplorer(body); });
+      body.querySelector('#scPlay').addEventListener('click', () => play(values));
       body.querySelectorAll('.fsh-pkey').forEach((k) => k.addEventListener('click', () => play([+k.dataset.pc])));
+    }
+
+    // ── Chord inversions ─────────────────────────────────────────────────────
+    const INV_TYPES = ['Major', 'Minor', 'Diminished', 'Augmented', 'Dominant 7', 'Major 7', 'Minor 7', 'Half-diminished 7', 'Diminished 7'];
+    let inv = { root: 'C', type: 'Major' };
+    function renderInversions(body) {
+      const s = spell(inv.root, 'chord', inv.type);
+      const invs = T.inversions(s.root, inv.type);
+      const seventh = invs.length === 4;
+      const cards = invs.map((v) => {
+        const values = rising(v.notes);
+        const shift = values[0] >= 12 ? 12 : 0;   // keep the voicing on the two-octave keyboard
+        const keys = values.map((x) => x - shift);
+        return `<div class="fsh-inv" data-inv="${v.inversion}">
+          <div class="fsh-inv-h">${esc(v.name)}</div>
+          <div class="fsh-inv-sym">${esc(v.symbol)}</div>
+          <div class="fsh-inv-row"><span>Bass note</span><b>${esc(nm(v.bass))}</b></div>
+          <div class="fsh-inv-row"><span>Low → high</span><b>${esc(list(v.notes))}</b></div>
+          <div class="fsh-inv-row"><span>Figured bass</span><b>${esc(v.figureShort || '—')}${seventh || !v.figureShort ? '' : ` <small>(${esc(v.figure)})</small>`}</b></div>
+          ${pianoHTML({ exact: keys, bass: keys[0], mini: true })}
+          <button type="button" class="fsh-btn fsh-btn--small" data-play="${values.join(',')}">▶ Play</button></div>`;
+      }).join('');
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Chord inversions</h3>
+        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Same notes, different note in the bass. The bass decides the name: the root → root position, the 3rd → first inversion, the 5th → second${seventh ? ', the 7th → third' : ''}.</p>
+        <div class="fsh-field" style="flex-wrap:wrap">
+          ${rootSelect('invRoot', inv.root)}
+          <select id="invType" class="fsh-input" style="flex:1;min-width:160px" aria-label="Chord">${INV_TYPES.map((o) => `<option${o === inv.type ? ' selected' : ''}>${o}</option>`).join('')}</select></div>
+        ${s.note ? `<p class="fsh-note fsh-respelled">${esc(s.note)}</p>` : ''}
+        <div class="fsh-inv-grid">${cards}</div>
+        <p class="fsh-note">Slash chords name the bass after the slash: <b>C/E</b> is a C chord with E at the bottom. Figured bass counts the intervals above the bass${seventh ? ' — 7, 6/5, 4/3 and 4/2 for a seventh chord' : ' — nothing for root position, 6 for first inversion, 6/4 for second'}.</p></div>`;
+      body.querySelector('#invRoot').addEventListener('change', (e) => { inv.root = e.target.value; renderInversions(body); });
+      body.querySelector('#invType').addEventListener('change', (e) => { inv.type = e.target.value; renderInversions(body); });
+      body.querySelector('.fsh-inv-grid').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-play]');
+        if (b) play(b.dataset.play.split(',').map(Number));
+      });
+    }
+
+    // ── Roman numerals ───────────────────────────────────────────────────────
+    let num = { tonic: 'C', mode: 'major' };
+    function renderNumerals(body) {
+      const tonics = num.mode === 'major' ? T.MAJOR_TONICS : T.MINOR_TONICS;
+      if (tonics.indexOf(num.tonic) === -1) num.tonic = num.mode === 'major' ? 'C' : 'A';
+      const k = T.keyFor(num.tonic, num.mode);
+      const triads = T.diatonicTriads(k.tonic, k.mode === 'major' ? 'Major' : 'Natural minor');
+      const har = k.mode === 'minor' ? T.diatonicTriads(k.tonic, 'Harmonic minor') : null;
+      const rows = triads.map((c, d) => {
+        const extra = har && (d === 4 || d === 6)
+          ? `<div class="fsh-num-alt">harmonic minor: <b>${esc(har[d].numeral)}</b> ${esc(har[d].symbol)}</div>` : '';
+        return `<tr><td class="fsh-num">${esc(c.numeral)}${extra}</td><td>${esc(c.symbol)}</td><td>${esc(list(c.notes))}</td><td>${esc(c.quality.toLowerCase())}</td>
+          <td><button type="button" class="fsh-btn fsh-btn--small" data-play="${rising(c.notes).join(',')}" aria-label="Play ${esc(c.symbol)}">▶</button></td></tr>`;
+      }).join('');
+      body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Roman numerals</h3>
+        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Numerals name each chord by its place in the key: capitals for major chords, small letters for minor, ° for diminished. They count from the key's home note, so the same chord gets a different numeral in a different key.</p>
+        <div class="fsh-field" style="flex-wrap:wrap">
+          ${rootSelect('numTonic', num.tonic, tonics)}
+          <div class="fsh-seg" id="numMode"><button type="button" data-mode="major" class="${num.mode === 'major' ? 'active' : ''}">Major</button><button type="button" data-mode="minor" class="${num.mode === 'minor' ? 'active' : ''}">Minor</button></div></div>
+        <div class="fsh-out"><span class="big" style="font-size:18px">${esc(k.label)}</span> <span style="color:var(--fsh-mut);font-size:13px">· ${esc(k.signatureText)}</span></div>
+        <table class="fsh-numtable fsh-numtable--key"><thead><tr><th>Numeral</th><th>Chord</th><th>Notes</th><th>Quality</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+        ${compareHTML(k)}</div>`;
+      body.querySelector('#numTonic').addEventListener('change', (e) => { num.tonic = e.target.value; renderNumerals(body); });
+      body.querySelector('#numMode').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-mode]');
+        if (!b || b.dataset.mode === num.mode) return;
+        // Keep the same key signature when switching: C major ↔ A minor.
+        const next = T.keyFor(num.tonic, num.mode).relative;
+        num = { mode: b.dataset.mode, tonic: next.replace(/ (major|minor)$/, '') };
+        renderNumerals(body);
+      });
+      body.querySelector('.fsh-numtable--key').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-play]');
+        if (b) play(b.dataset.play.split(',').map(Number));
+      });
     }
 
     // ── Intervals reference ──────────────────────────────────────────────────
     const INTERVALS = [[0, 'Unison'], [1, 'Minor 2nd'], [2, 'Major 2nd'], [3, 'Minor 3rd'], [4, 'Major 3rd'], [5, 'Perfect 4th'], [6, 'Tritone'], [7, 'Perfect 5th'], [8, 'Minor 6th'], [9, 'Major 6th'], [10, 'Minor 7th'], [11, 'Major 7th'], [12, 'Octave']];
     function renderIntervals(body) { body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 12px;font-size:16px">📐 Intervals</h3><div class="fsh-formula-list">${INTERVALS.map((i) => `<div class="fsh-formula"><div class="nm">${i[0]} semitone${i[0] === 1 ? '' : 's'}</div><div class="fx">${esc(i[1])}</div></div>`).join('')}</div></div>`; }
 
+    const parseRootType = (a, table, fallback) => {
+      const m = String(a).trim().match(/^([A-G](?:𝄪|𝄫|x|##|bb|#|♯|b|♭)?)\s+(.+)$/i);
+      if (!m) throw new Error(fallback);
+      const type = Object.keys(table).find((k) => k.toLowerCase() === m[2].trim().toLowerCase()) || Object.keys(table)[0];
+      return { root: m[1], type };
+    };
+
     H.register('music', [
-      { id: 'circle', name: 'Circle of 5ths', icon: '🎼', desc: 'circle of fifths key signature relative minor chords ring', render: renderCircle, ai: { name: 'circleOfFifths', description: 'Key info. Arg: a major key like "G".', params: { key: 'string' }, run: (a) => { const row = COF.find((r) => r[1].toUpperCase() === String(a).trim().toUpperCase()) || COF[0]; return { key: row[1] + ' major', signature: row[3], relativeMinor: row[2], scale: scaleOf(row[0], MAJ_DEG), chords: diatonic(row[0]).map((c) => c.roman + ' ' + c.chord) }; } } },
+      { id: 'circle', name: 'Circle of 5ths', icon: '🎼', desc: 'circle of fifths key signature relative minor enharmonic keys chords ring', render: renderCircle, ai: { name: 'circleOfFifths', description: 'Key info. Arg: a key like "G" or "E minor".', params: { key: 'string' }, run: (a) => { const m = String(a).trim().match(/^(\S+)\s*(minor|min|m)?$/i); const k = T.keyFor(m ? m[1] : 'C', m && m[2] ? 'minor' : 'major') || T.keyFor('C', 'major'); return { key: k.label, signature: k.signatureText, accidentals: k.signatureNotes, relative: k.relative, enharmonic: k.enharmonic ? k.enharmonic.label : null, writtenAs: k.respelledFrom ? k.why : null, scale: Array.from(k.scale, nm), chords: T.diatonicTriads(k.tonic, k.mode === 'major' ? 'Major' : 'Natural minor').map((c) => c.numeral + ' ' + c.symbol) }; } } },
       { id: 'dimensions', name: 'Dimensions', icon: '◎', desc: 'dimensions metadimensions music ring pitch rhythm timbre style context', render: renderDimensions },
-      { id: 'explorer', name: 'Scales & chords', icon: '🎹', desc: 'scale chord explorer piano notes major minor', render: renderExplorer, ai: { name: 'scaleNotes', description: 'Scale notes. Arg: "C Major".', params: { root: 'string', type: 'string' }, run: (a) => { const m = String(a).trim().match(/^([A-G][#♯b♭]?)\s+(.+)$/i); if (!m) throw new Error('Use "C Major"'); const root = PC.indexOf(m[1].replace('#', '♯').replace('b', '♭').toUpperCase()); const pat = SCALES[Object.keys(SCALES).find((k) => k.toLowerCase() === m[2].toLowerCase())] || SCALES.Major; return scaleOf(root < 0 ? 0 : root, pat); } } },
+      { id: 'explorer', name: 'Scales & chords', icon: '🎹', desc: 'scale chord explorer piano notes major minor spelling', render: renderExplorer, ai: { name: 'scaleNotes', description: 'Scale notes. Arg: "B♭ Major".', params: { root: 'string', type: 'string' }, run: (a) => { const q = parseRootType(a, T.SCALES, 'Use "C Major"'); const s = spell(q.root, 'scale', q.type); return { notes: Array.from(s.notes, nm), note: s.note || null }; } } },
+      { id: 'inversions', name: 'Inversions', icon: '🔁', desc: 'chord inversions first second third inversion bass slash chord figured bass 6 6/4 6/5 4/3 4/2', render: renderInversions, ai: { name: 'chordInversions', description: 'Inversions of a chord. Arg: "C Major" or "G Dominant 7".', params: { root: 'string', type: 'string' }, run: (a) => { const q = parseRootType(a, T.CHORDS, 'Use "G Dominant 7"'); const s = spell(q.root, 'chord', q.type); return T.inversions(s.root, q.type).map((v) => ({ name: v.name, symbol: v.symbol, bass: nm(v.bass), notes: Array.from(v.notes, nm), figuredBass: v.figure })); } } },
+      { id: 'numerals', name: 'Roman numerals', icon: 'Ⅳ', desc: 'roman numerals harmony diatonic chords major minor key relative I IV V vi', render: renderNumerals, ai: { name: 'romanNumerals', description: 'Diatonic chords of a key. Arg: "D major" or "B minor".', params: { key: 'string' }, run: (a) => { const m = String(a).trim().match(/^(\S+)\s*(major|minor|maj|min|m)?$/i); const k = T.keyFor(m ? m[1] : 'C', m && /^m(in(or)?)?$/i.test(m[2] || '') ? 'minor' : 'major'); return T.diatonicTriads(k.tonic, k.mode === 'major' ? 'Major' : 'Natural minor').map((c) => c.numeral + ' = ' + c.symbol); } } },
       { id: 'intervals', name: 'Intervals', icon: '📏', desc: 'intervals semitones music theory', render: renderIntervals },
     ]);
-    H.addAITool({ name: 'chordNotes', subject: 'music', description: 'Chord notes. Arg: "D Minor 7".', params: { root: 'string', type: 'string' }, run: (a) => { const m = String(a).trim().match(/^([A-G][#♯b♭]?)\s+(.+)$/i); if (!m) throw new Error('Use "D Minor 7"'); const root = PC.indexOf(m[1].replace('b', '♭').replace('#', '♯').toUpperCase()); const pat = CHORDS[Object.keys(CHORDS).find((k) => k.toLowerCase() === m[2].toLowerCase())] || CHORDS.Major; return pat.map((s) => noteName((root < 0 ? 0 : root) + s)); } });
+    H.addAITool({ name: 'chordNotes', subject: 'music', description: 'Chord notes. Arg: "D Minor 7".', params: { root: 'string', type: 'string' }, run: (a) => { const q = parseRootType(a, T.CHORDS, 'Use "D Minor 7"'); return Array.from(spell(q.root, 'chord', q.type).notes, nm); } });
   }
   boot();
 })();

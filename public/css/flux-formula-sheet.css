@@ -87,7 +87,8 @@
 .ffs-item { position: relative; }
 .ffs-f:has(.ffs-math) { display: block; }
 .ffs-math { padding: 10px 22px 6px; color: var(--text); overflow-x: auto; }
-.ffs-f:has(.ffs-math) .ffs-copy { position: absolute; top: 8px; right: 8px; }
+.ffs-f-acts { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.ffs-f:has(.ffs-math) .ffs-f-acts { position: absolute; top: 8px; right: 8px; }
 .ref-formula-eq--tx {
   font-family: inherit;
   white-space: normal;
@@ -110,6 +111,15 @@
   opacity: 0; transition: opacity .15s, color .15s, border-color .15s;
 }
 .ffs-item:hover .ffs-copy, .ffs-copy:focus-visible { opacity: 1; }
+/* + adds the formula to Your working: always visible, since it is the way in on a phone. */
+.ffs-add {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent); font-size: 1rem; font-weight: 700; line-height: 1; padding: 0;
+}
+.ffs-add:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.ffs-item[draggable="true"] { cursor: grab; }
+.ffs-item[draggable="true"]:active { cursor: grabbing; }
 .ffs-copy:hover { color: var(--accent); border-color: var(--border2); }
 .ffs-note { margin-top: 7px; font-size: .72rem; line-height: 1.5; color: var(--muted2); }
 .ffs-ex {
@@ -125,3 +135,66 @@
   .ffs-items { grid-template-columns: 1fr; }
   #app .ffs .ffs-search { max-width: none; flex: 1 1 100%; }
 }
+
+
+/* ── Your working ─────────────────────────────────────────────────────────
+   Beside the sheet on a wide screen (sticky, so it stays in reach while you
+   scroll for formulas), above it on a narrow one. */
+.ffs-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1180px) {
+  .ffs-wrap { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; }
+  .ffs-wrap > .ffw { order: 2; position: sticky; top: 12px; max-height: calc(100vh - 140px); overflow: auto; }
+}
+.ffw {
+  border: 1px dashed var(--border2); border-radius: 16px; padding: 14px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  transition: border-color .15s, background .15s, box-shadow .3s;
+}
+.ffw.has-lines { border-style: solid; }
+.ffw.is-target { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.ffw.is-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.ffw.is-flash { animation: ffwFlash .7s ease; }
+@keyframes ffwFlash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+@media (prefers-reduced-motion: reduce) { .ffw.is-flash { animation: none; } }
+.ffw-h { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.ffw-h b { display: block; font-size: .92rem; }
+.ffw-sub { display: block; font-size: .72rem; line-height: 1.45; color: var(--muted2); margin-top: 2px; }
+.ffw-acts { display: flex; gap: 6px; flex-shrink: 0; }
+.ffw-btn {
+  padding: 5px 11px; border-radius: 9px; cursor: pointer; font: inherit; font-size: .74rem; font-weight: 650;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--border2); color: var(--text);
+}
+.ffw-btn:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.ffw-btn--go, .ffw-btn--plug { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.ffw-blank { margin-top: 10px; }
+.ffw-lines { display: grid; gap: 8px; }
+.ffw-drop-hint { padding: 22px 10px; text-align: center; font-size: .8rem; color: var(--muted2); border-radius: 12px; border: 1px dashed var(--border); }
+.ffw-line { border-radius: 12px; border: 1px solid var(--border); background: rgba(255, 255, 255, .025); padding: 8px 10px; }
+.ffw-line--sub { border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.ffw-line--ans { border-left: 3px solid #34d399; background: rgba(52, 211, 153, .06); }
+.ffw-math { padding: 4px 2px 6px; overflow-x: auto; min-height: 22px; }
+.ffw-empty { color: var(--muted); font-size: .78rem; font-style: italic; }
+.ffw-row { display: flex; gap: 6px; align-items: center; }
+#app .ffw .ffw-in, .ffw .ffw-in {
+  flex: 1 1 auto; min-width: 0; width: auto; margin: 0; padding: 6px 8px !important; font-size: .8rem !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; border-radius: 8px; min-height: 0;
+  border: 1px solid var(--border); background: rgba(0, 0, 0, .18); color: var(--text);
+}
+.ffw-x { flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0; }
+.ffw-x:hover { color: #f87171; }
+.ffw-plug { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
+.ffw-plug-h { font-size: .74rem; color: var(--muted2); }
+.ffw-syms { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.ffw-sym { display: flex; align-items: center; gap: 6px; font-size: .8rem; }
+.ffw-sym > span { min-width: 34px; text-align: right; }
+#app .ffw .ffw-val, .ffw .ffw-val {
+  flex: 1 1 auto; min-width: 0; width: 100%; margin: 0; padding: 5px 7px !important; font-size: .8rem !important;
+  border-radius: 8px; border: 1px solid var(--border2); background: rgba(0, 0, 0, .2); color: var(--text); min-height: 0;
+}
+.ffw-plug-go { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ffw-sf { font-size: .74rem; color: var(--muted2); display: inline-flex; align-items: center; gap: 6px; }
+#app .ffw .ffw-sfsel, .ffw .ffw-sfsel { width: auto; min-width: 56px; margin: 0; padding: 3px 6px !important; font-size: .78rem !important; min-height: 0; }
+.ffw-err { font-size: .74rem; color: #fbbf24; min-height: 0; }
+.ffw-err:empty { display: none; }
+.ffw-hint { font-size: .7rem; color: var(--muted); }
+.ffw-btn--plug { white-space: nowrap; }

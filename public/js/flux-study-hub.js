@@ -335,11 +335,15 @@
     // the 'rh-' and 'orc-' prefixes are those modules' own. Grouping along a
     // line the code already draws beats inventing a taxonomy over the top.
     english: [
-      { id: 'writing', name: 'Writing & language', tools: ['essay', 'grammar', 'cite', 'devices', 'ipa'] },
+      { id: 'writing', name: 'Writing & language', tools: ['essay', 'grammar', 'cite', 'ipa'] },
+      /* Literature: reading poems, plays, films and comics closely. The general
+         literary devices glossary moves here from Writing, beside the poetry
+         packet it belongs with. */
+      { id: 'literature', name: 'Literature', tools: ['devices', 'lit-poetry', 'lit-commentary', 'lit-graphic', 'lit-mediums'] },
       { id: 'rhetoric', name: 'Rhetoric', tools: ['rh-situation', 'rh-devices', 'rh-fallacies', 'rh-essays'] },
     ],
     music: [
-      { id: 'theory', name: 'Theory', tools: ['circle', 'explorer', 'intervals', 'dimensions'] },
+      { id: 'theory', name: 'Theory', tools: ['circle', 'explorer', 'inversions', 'numerals', 'intervals', 'dimensions'] },
       { id: 'orchestra', name: 'Orchestra', tools: ['orc-transpose', 'orc-score', 'orc-markings'] },
     ],
     /* Chemistry reaches here through renderChem rather than renderRegistered,

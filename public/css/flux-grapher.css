@@ -1677,3 +1677,4 @@
 @media (prefers-reduced-motion: reduce) {
   .fgi-sweep { animation: none; transform: translateY(60%); }
 }
+.flg-rc-note { color: var(--flg-mut, #9fb0cc); font-size: .72rem; line-height: 1.45; margin-top: 4px; }
