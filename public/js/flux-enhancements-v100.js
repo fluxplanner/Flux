@@ -242,7 +242,7 @@
     return names.length?'Top 3 focus: '+names.slice(0,3).join(' · '):null;
   }
   function prod52(){return 'Weekly plan: review dashboard intel + move one big task earlier.';}
-  function prod53(){return 'Monthly: set one goal in Extracurriculars and tie weekly tasks to it.';}
+  function prod53(){return 'Monthly: pick one activity to push forward and give it a task each week.';}
   function prod54(){
     const subs=[...new Set(ctxTasks().filter(t=>!t.done&&t.subject).map(t=>t.subject))];
     return subs.length?'Group by subject: '+subs.length+' active subjects — use Board view.':null;
@@ -269,7 +269,7 @@
   function prod64(){return 'Completion times: Flux learns per-subject estimates as you log timer + complete work.';}
   function prod65(){return 'Weekly review: check Grades + Mood + this intel panel every Sunday.';}
   function prod66(){return 'Reflection: what one task deserved more time last week?';}
-  function prod67(){return 'Goal tracking: mark EC goals complete in Extracurriculars when done.';}
+  function prod67(){return 'Activities: keep College Prep → Activities up to date as you go, not the week an application is due.';}
   function prod68(){return intel04();}
   function prod69(){
     const n=safeLoad(STORAGE.DISTRACT,0);

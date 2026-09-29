@@ -17,7 +17,7 @@ import { gotoScenario } from './helpers';
 const TYPE_ROWS: Record<string, string[]> = {
   task: ['Title', 'Date', 'Subject', 'Priority', 'Notes'],
   event: ['Title', 'Date', 'Notes'],
-  ec: ['Extracurricular', 'Title', 'Date', 'Notes'],
+  ec: ['Activity', 'Title', 'Date', 'Notes'],
 };
 
 async function openDialog(page: import('@playwright/test').Page) {
