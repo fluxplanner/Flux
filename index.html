@@ -19,14 +19,25 @@
 (function(){
   try{localStorage.removeItem('flux_liquid_glass');}catch(e){}
   document.documentElement.setAttribute('data-flux-glass','off');
-  /* Low-end device class (iPhone 6-era: <=2 cores, <=2GB RAM, or iOS<=12).
-     Set pre-paint so flux-lowend.css strips GPU-heavy effects with no flash.
-     Capable devices are never flagged, so their look is unchanged. */
+  /* Lighter effects. Set pre-paint so flux-lowend.css strips the GPU-heavy
+     effects (blur, glow, big shadows) with no flash.
+
+     The original test was <=2 cores, <=2GB RAM or iOS<=12 — iPhone 6-era. A
+     school iPad passes all three: Safari does not expose navigator.deviceMemory
+     at all, it reports 4 cores, and it runs a current iPadOS. So a touch
+     device with no more than 4 cores — how Safari describes any phone or
+     tablet — gets the lighter build too (Azfer's call, 2026-09-29). Measured
+     at 6x CPU throttle, one Study Tools click went from 25 main-thread freezes
+     (2,029 ms blocked) to 1 (91 ms). Laptops are pointer:fine and unaffected;
+     Settings → Text & motion → Lighter effects overrides it either way
+     (flux_lowend_mode, kept per device and not synced). */
   try{
     var n=navigator||{},ua=n.userAgent||'',cores=n.hardwareConcurrency||0,mem=n.deviceMemory||0;
     var oldIOS=false,mm=ua.match(/OS (\d+)_/);
     if(/iPhone|iPad|iPod/.test(ua)&&mm)oldIOS=parseInt(mm[1],10)<=12;
-    var weak=(cores&&cores<=2)||(mem&&mem<=2)||oldIOS;
+    var coarse=false;
+    try{coarse=!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);}catch(e4){}
+    var weak=(cores&&cores<=2)||(mem&&mem<=2)||oldIOS||(coarse&&(!cores||cores<=4));
     var pref=null;try{pref=localStorage.getItem('flux_lowend_mode');}catch(e2){}
     var on=pref==='1'?true:(pref==='0'?false:weak);
     if(on)document.documentElement.setAttribute('data-flux-lowend','1');
@@ -2464,6 +2475,10 @@
             <div><div class="slabel">Reduce motion</div><div class="ssub">Minimize animations (also respects system setting)</div></div>
             <button type="button" class="toggle" id="reduceMotionToggle" onclick="toggleReduceMotion()" aria-label="Reduce motion" aria-pressed="false"></button>
           </div>
+          <div class="srow" style="border:none;margin-top:8px">
+            <div><div class="slabel">Lighter effects</div><div class="ssub">Fewer blurs and glows, so Flux runs smoothly. On by itself for phones and tablets; this choice is kept on this device only.</div></div>
+            <button type="button" class="toggle" id="lowendToggle" onclick="toggleLowend()" aria-label="Lighter effects" aria-pressed="false"></button>
+          </div>
         </div>
         <div class="card" id="fluxA11ySuiteCard" style="display:none;margin-bottom:10px">
           <h3>Accessibility suite</h3>
@@ -2910,7 +2925,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.f8802bc9.js"></script>
+<script defer src="public/bundles/flux-core.13aa6767.js"></script>
 <script defer src="public/bundles/flux-features.98fb6110.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 

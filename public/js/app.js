@@ -1233,6 +1233,20 @@ function toggleReduceMotion(){
   save('flux_reduce_motion',!load('flux_reduce_motion',false));
   applyReduceMotion();
 }
+/* Lighter effects: html[data-flux-lowend] is decided before first paint by
+   the boot script in index.html (phones and tablets get it). This switch
+   overrides that for this device only — raw localStorage, not save(), so it
+   is read before sign-in and never synced to a laptop. */
+function fluxLowendOn(){return document.documentElement.getAttribute('data-flux-lowend')==='1';}
+function applyLowendToggle(){fluxSetToggle(document.getElementById('lowendToggle'),fluxLowendOn());}
+function toggleLowend(){
+  const next=!fluxLowendOn();
+  try{localStorage.setItem('flux_lowend_mode',next?'1':'0');}catch(e){}
+  if(next)document.documentElement.setAttribute('data-flux-lowend','1');
+  else document.documentElement.removeAttribute('data-flux-lowend');
+  applyLowendToggle();
+}
+window.toggleLowend=toggleLowend;
 function snoozeTask(){showToast('Snooze is no longer available','info');}
 function toggleTaskBulkMode(_force){
   _taskBulkMode=typeof _force==='boolean'?_force:!_taskBulkMode;
@@ -7641,7 +7655,7 @@ function switchStab(id,el){
      looks exactly like a broken switch rather than a missing init call.
      Running all of it for any of the three is safe: every one of these is
      idempotent and already re-ran on each visit to the old pane. */
-  if(id==='appearance'||id==='theme'||id==='text'){if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();if(typeof window.wireSettingsToggles==='function')window.wireSettingsToggles();else if(typeof wireSettingsToggles==='function')wireSettingsToggles();}
+  if(id==='appearance'||id==='theme'||id==='text'){applyLowendToggle();if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}if(window.FluxA11y?.renderSettingsMount)FluxA11y.renderSettingsMount();if(window.FluxPersonal&&FluxPersonal.initSettingsUI)FluxPersonal.initSettingsUI();if(window.FluxPersonal&&FluxPersonal.renderPanelLayoutSettings)FluxPersonal.renderPanelLayoutSettings();if(typeof window.wireSettingsToggles==='function')window.wireSettingsToggles();else if(typeof wireSettingsToggles==='function')wireSettingsToggles();}
   if(id==='data'){
     if(typeof renderStorageMeter==='function')renderStorageMeter();
     try{if(window.FluxStorageRepair?.renderSettingsCard)FluxStorageRepair.renderSettingsCard();}catch(_){}
@@ -13668,6 +13682,7 @@ function showApp(){
   renderSchool();updateTStats();
   renderScheduleConflictNotices();
   if(window.FluxA11y?.applyAll)FluxA11y.applyAll();else{applyFontScale();applyReduceMotion();}
+  applyLowendToggle();
   if(typeof initConnectivityAndNotifications==='function')initConnectivityAndNotifications();
   if(typeof handleDeepLinkParams==='function')handleDeepLinkParams();
   updateNavAriaCurrent('dashboard');
