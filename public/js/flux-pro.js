@@ -517,8 +517,6 @@ document.addEventListener('contextmenu', e=>{
     {id:'tomorrow',icon:'🌅', label:'Due tomorrow',
       action:()=>{ const d=new Date(); d.setDate(d.getDate()+1); window.fluxSetTaskDate && window.fluxSetTaskDate(realId, d.toISOString().slice(0,10)); }},
     'sep',
-    {id:'ai',   icon:'✦', label:'Ask AI about this',
-      action:()=>{ window.fluxAskAIAbout && window.fluxAskAIAbout(realId); }},
     {id:'duplicate', icon:'❏', label:'Duplicate task',
       action:()=>{ window.fluxDuplicateTask && window.fluxDuplicateTask(realId); }},
     'sep',

@@ -35,7 +35,7 @@
     { sel: '.flg-stage', title: 'Explore the graph',
       body: 'Drag to move, scroll or pinch to zoom. Click a curve to see its zeros, maximums, minimums and intersections, then click a grey dot to pin its coordinates.' },
     { sel: '.flg-results:not([hidden])', title: 'Results and key',
-      body: 'Every fitted equation, gradient ± uncertainty and line colour. The − button folds it away, and a saved image then leaves it out too.' },
+      body: 'Every fitted equation, gradient and line colour. Turn on “weight by error bars” under a table to add the ± from your error bars. The − button folds it away, and a saved image then leaves it out too.' },
     { sel: '.flg-clear', title: 'Start again',
       body: 'Clear everything empties the tables and lines in one go. Undo brings it all back if you change your mind.' },
     { sel: '.flg-tool-window', title: 'Window, title and axes',

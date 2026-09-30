@@ -67,15 +67,17 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('.brand-mark')).toBeVisible();
   });
 
-  test('measurements: readings become points, a fit, and its gradient with an uncertainty', async ({ page }) => {
+  test('measurements: readings become points, a fit, and its gradient — plain until weighting is on', async ({ page }) => {
     await open(page, { mode: 'data' });
     await expect(page.locator('#modeData')).toHaveAttribute('aria-selected', 'true');
     await fillReadings(page, [['1', '2.1'], ['2', '3.9'], ['3', '6.2'], ['4', '7.8'], ['5', '10.1']]);
     expect(await page.locator('.flg-plot circle.flg-pt').count(), 'the readings were not plotted').toBe(5);
     await expect(page.locator('.flg-results')).toBeVisible();
-    // m = 1.99 ± 0.06 for these readings — it goes in a lab report, so check the number.
-    await expect(page.locator('.flg-rc')).toContainText('1.990 ± 0.060');
+    // m = 1.99 for these readings — it goes in a lab report, so check the number.
     await expect(page.locator('.flg-rc-eq')).toContainText('y = 1.99x');
+    // No ± by default: the uncertainty comes from the error bars, once
+    // "weight by error bars" is switched on (study-suggestions.spec.ts).
+    await expect(page.locator('.flg-rc')).not.toContainText('±');
   });
 
   test('an uncertainty column belongs to one value column and draws its bars', async ({ page }) => {
@@ -363,6 +365,25 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('.flg-fchip')).toHaveCount(2);
   });
 
+  test('units take exponents like Desmos: cm^3 becomes cm³, upright, in the field and on the axis', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    const unit = page.locator('.flg-cunit').nth(1);
+    await unit.click();
+    await unit.pressSequentially('cm^3');
+    await expect(unit).toHaveValue('cm³');
+    await unit.press('End');
+    await unit.pressSequentially(' s^-1');
+    await expect(unit).toHaveValue('cm³ s⁻¹');
+    const stored = await page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.items[0].cols[1].unit);
+    expect(stored).toBe('cm³ s⁻¹');
+    await expect(unit).toHaveCSS('font-style', 'normal');
+    await expect(page.locator('.flg-plot')).toContainText('cm³ s⁻¹');
+    // A unit saved before this, typed with ^, shows the same way.
+    await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].cols[0].unit = 'm^2'; g.renderItems(); g.draw(); });
+    await expect(page.locator('.flg-cunit').nth(0)).toHaveValue('m²');
+    await expect(page.locator('.flg-plot')).toContainText('m²');
+  });
+
   test('a manual line is dragged into place by its handles', async ({ page }) => {
     await open(page, { mode: 'data' });
     await fillReadings(page, [['1', '2'], ['2', '4'], ['3', '6'], ['4', '8']]);
@@ -382,6 +403,23 @@ test.describe('Flux Grapher', () => {
     expect(after.x1).toBe(before.x1);
     await expect(page.locator('.flg-results')).toContainText('Manual line');
     await expect(page.locator('.flg-results')).toContainText('RMSE');
+
+    // Clicking off the line puts its handles away; clicking the line brings them back.
+    const a = (await page.locator('.flg-plot .flg-mhandle').nth(0).boundingBox())!;
+    const b = (await page.locator('.flg-plot .flg-mhandle').nth(1).boundingBox())!;
+    const mid = { x: (a.x + a.width / 2 + b.x + b.width / 2) / 2, y: (a.y + a.height / 2 + b.y + b.height / 2) / 2 };
+    // An empty corner of the plotting area, well away from the line.
+    const plot = (await page.locator('.flg-plot').boundingBox())!;
+    const fr = await page.evaluate(() => (window as any).fluxGrapherPage.instance._last.fr);
+    await page.mouse.click(plot.x + fr.R - 30, plot.y + fr.B - 30);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(0);
+    await expect(page.locator('.flg-plot .flg-manual')).toHaveCount(1);
+    await page.mouse.click(mid.x, mid.y);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
+    expect(await line(0), 'a click on the line selects it without moving it').toEqual(after);
+    // A click in the table counts as off the line too.
+    await page.locator('.flg-cell').first().click();
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(0);
   });
 
   test('several manual lines: each drags on its own, and together they give m ± Δm', async ({ page }) => {
@@ -391,7 +429,9 @@ test.describe('Flux Grapher', () => {
     await page.waitForTimeout(200);
     await page.locator('[data-manual]').click();
     await page.waitForTimeout(300);
-    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(4);
+    // Only the line just added shows its handles.
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
+    await expect(page.locator('.flg-plot .flg-manual')).toHaveCount(2);
     await expect(page.locator('.flg-plot .flg-mlabel'), 'with two lines, each is numbered on the graph').toHaveCount(2);
     await expect(page.locator('.flg-fchip--manual')).toHaveCount(2);
     const lines = () => page.evaluate(() => (window as any).fluxGrapherPage.instance.doc.items[0].manuals.map((m: any) => ({ ...m })));
@@ -400,7 +440,7 @@ test.describe('Flux Grapher', () => {
     expect(slope(start[1]), 'the second line starts at a different gradient, not on top of the first').not.toBeCloseTo(slope(start[0]), 3);
 
     // Drag the second line's right handle: only that line moves.
-    const h = (await page.locator('.flg-plot .flg-mhandle').nth(3).boundingBox())!;
+    const h = (await page.locator('.flg-plot .flg-mhandle').nth(1).boundingBox())!;
     await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
     await page.mouse.down();
     await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 - 60, { steps: 5 });
@@ -418,7 +458,9 @@ test.describe('Flux Grapher', () => {
 
     await page.locator('.flg-fchip--manual').first().locator('[data-unmanual]').click();
     await page.waitForTimeout(200);
-    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(2);
+    // Clicking the remove button was a click off the lines, so no handles show.
+    await expect(page.locator('.flg-plot .flg-manual')).toHaveCount(1);
+    await expect(page.locator('.flg-plot .flg-mhandle')).toHaveCount(0);
     await expect(res).not.toContainText('From your manual lines');
     expect((await lines())[0], 'removing line 1 leaves line 2').toEqual(moved[1]);
   });

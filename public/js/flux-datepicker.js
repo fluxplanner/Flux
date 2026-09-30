@@ -14,6 +14,12 @@
  *
  * Opt out per input with `data-flux-datepicker="off"`.
  *
+ * `data-fdp-quick` on an input adds Today / Tomorrow / Clear buttons under it,
+ * the same three the "Change due date" box on a task card offers.
+ *
+ * On phones and tablets the tap itself is cancelled, so the phone's own date
+ * wheel never opens and this calendar shows instead (see "touch" below).
+ *
  * Self-contained IIFE. Exposes window.FluxDatePicker.
  */
 (function () {
@@ -117,6 +123,11 @@
     // Flip above when there is no room below, and keep it on screen sideways.
     var below = window.innerHeight - r.bottom;
     var top = (below < h + 12 && r.top > h + 12) ? r.top - h - 6 : r.bottom + 6;
+    /* On a phone neither side may have room: a due-date field halfway down
+       New task put the calendar's last two rows and its Today button below the
+       bottom of the screen, where a fixed popup cannot be scrolled to. Keep it
+       all on screen, covering the field if it must. */
+    top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
     var left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8));
     pop.style.top = Math.round(top) + 'px';
     pop.style.left = Math.round(left) + 'px';
@@ -140,7 +151,7 @@
     closePicker();
   }
 
-  function openPicker(input) {
+  function openPicker(input, viaTouch) {
     if (open && open.input === input) { closePicker(); return; }
     closePicker();
     var sel = parseIso(input.value);
@@ -149,7 +160,7 @@
     pop.setAttribute('role', 'dialog');
     pop.setAttribute('aria-label', 'Choose a date');
     document.body.appendChild(pop);
-    open = { input: input, pop: pop, view: sel || new Date() };
+    open = { input: input, pop: pop, view: sel || new Date(), touch: !!viaTouch };
     input.setAttribute('aria-expanded', 'true');
     paint();
     place();
@@ -203,16 +214,22 @@
     if (cur) cur.focus({ preventScroll: true });
   }
 
-  function commit(isoStr) {
-    if (!open) return;
-    var input = open.input;
+  function setValue(input, isoStr) {
     input.value = isoStr;
     // Existing code listens on change (and some on input) — fire both so this
     // is indistinguishable from the native picker.
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function commit(isoStr) {
+    if (!open) return;
+    var input = open.input, viaTouch = open.touch;
+    setValue(input, isoStr);
     closePicker();
-    input.focus({ preventScroll: true });
+    // Not after a tap: on a phone, focusing the field is exactly what opens
+    // the phone's own date wheel on top of the date just picked.
+    if (!viaTouch) input.focus({ preventScroll: true });
   }
 
   /* ---------- events ---------- */
@@ -257,6 +274,34 @@
     }
   }, true);
 
+  /* ---------- touch ---------- */
+  /* Safari on an iPhone or iPad opens its own date wheel as soon as a date
+     field takes focus, and a tap focuses the field before any click handler
+     runs — so the preventDefault on click above comes too late there, and the
+     phone's picker won over this one. Cancelling the tap's touchend stops the
+     focus (and the click) from happening at all, and the Flux calendar opens
+     in its place. A finger that moved was scrolling the page, not tapping the
+     field, and is left alone. */
+  var touchAt = null;
+  document.addEventListener('touchstart', function (e) {
+    var t = e.target;
+    var inp = t instanceof Element ? t.closest('input[type="date"]') : null;
+    touchAt = inp && isUpgraded(inp) && e.touches.length === 1
+      ? { input: inp, x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { capture: true, passive: true });
+  document.addEventListener('touchend', function (e) {
+    var at = touchAt;
+    touchAt = null;
+    if (!at || !e.cancelable) return;
+    var p = e.changedTouches && e.changedTouches[0];
+    if (!p || Math.abs(p.clientX - at.x) > 10 || Math.abs(p.clientY - at.y) > 10) return;
+    e.preventDefault();
+    // Put away the keyboard if the tap came from a text field, say the title.
+    var a = document.activeElement;
+    if (a && a !== document.body && a !== at.input && typeof a.blur === 'function') a.blur();
+    openPicker(at.input, true);
+  }, { capture: true, passive: false });
+
   document.addEventListener('keydown', function (e) {
     if (!open) return;
     if (e.key === 'Escape') { e.preventDefault(); var i = open.input; closePicker(); i.focus(); return; }
@@ -287,9 +332,36 @@
     return inp.dataset.fluxDatepicker !== 'off' && inp.dataset.fdpReady === '1';
   }
 
+  /* ---------- quick picks ---------- */
+
+  function addQuick(inp) {
+    if (!inp.hasAttribute('data-fdp-quick') || inp.dataset.fdpQuickReady === '1') return;
+    inp.dataset.fdpQuickReady = '1';
+    var row = document.createElement('div');
+    row.className = 'fdp-quick';
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', 'Quick dates');
+    row.innerHTML = '<button type="button" class="btn-sec fdp-chip" data-fdp-q="0">Today</button>'
+      + '<button type="button" class="btn-sec fdp-chip" data-fdp-q="1">Tomorrow</button>'
+      + '<button type="button" class="btn-sec fdp-chip fdp-chip--clear" data-fdp-q="">Clear</button>';
+    row.addEventListener('click', function (e) {
+      var b = e.target instanceof Element ? e.target.closest('[data-fdp-q]') : null;
+      if (!b) return;
+      var q = b.getAttribute('data-fdp-q');
+      var d = new Date();
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + Number(q || 0));
+      if (q !== '' && !inRange(inp, d)) return;
+      if (open && open.input === inp) closePicker();
+      setValue(inp, q === '' ? '' : iso(d));
+    });
+    inp.insertAdjacentElement('afterend', row);
+  }
+
   function upgrade(root) {
     (root || document).querySelectorAll('input[type="date"]').forEach(function (inp) {
-      if (inp.dataset.fdpReady === '1' || inp.dataset.fluxDatepicker === 'off') return;
+      if (inp.dataset.fluxDatepicker === 'off') return;
+      addQuick(inp);
+      if (inp.dataset.fdpReady === '1') return;
       inp.dataset.fdpReady = '1';
       inp.classList.add('fdp-input');
     });

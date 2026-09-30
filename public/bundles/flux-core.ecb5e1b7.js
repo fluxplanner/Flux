@@ -489,7 +489,7 @@ ${(l.fluxTags||[]).length?(l.fluxTags||[]).map($=>`<span class="task-chip" style
 </div>
 ${O}${M}${N}${B}
 </div>
-<!-- Four buttons, hard limit. This row had grown to nine \u2014 a school/outside
+<!-- Three buttons, hard limit. This row had grown to nine \u2014 a school/outside
      pill, repeat options, copy link, Google Calendar, co-work and these four \u2014
      which made every task card look like a toolbar. What went where:
        \xB7 school vs outside \u2192 "Belongs to" in the Edit modal
@@ -498,12 +498,14 @@ ${O}${M}${N}${B}
        \xB7 Google Calendar   \u2192 Google has been paused since Canvas shipped, so
                              this button did nothing for anyone
        \xB7 co-work           \u2192 the feature is being retired; see flux-cowork.js
-     Keep this at four. Anything new belongs in the Edit modal or the
+       \xB7 \u2726 Ask Flux AI     \u2192 removed (Azfer, 2026-09-29), here and from the
+                             right-click / long-press menus; Flux AI is not a
+                             destination to be sent to from a task any more
+     Keep this at three. Anything new belongs in the Edit modal or the
      right-click menu, not here. -->
 <div class="task-actions">
 ${!l.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${l.id})" title="Start focus timer">\u23F1</button>`:""}
 <button class="task-action-btn" onclick="openEdit(${l.id})" title="Edit">\u270E</button>
-<button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${l.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">\u2726</button>
 <button class="task-action-btn" onclick="deleteTask(${l.id})" title="Delete">\u2715</button>
 </div>
 </div>`},u=fluxWindowedListHtml(s,c,"tasks");let f=u.html;if(i.length){const l=load("flux_show_completed",!1);f+=`<div class="completed-toggle ${l?"":"collapsed"}" onclick="toggleCompletedTasks()">
