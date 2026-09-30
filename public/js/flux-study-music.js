@@ -256,7 +256,7 @@
           <td><button type="button" class="fsh-btn fsh-btn--small" data-play="${rising(c.notes).join(',')}" aria-label="Play ${esc(c.symbol)}">▶</button></td></tr>`;
       }).join('');
       body.innerHTML = `<div class="fsh-card" style="padding:20px"><h3 style="margin:0 0 4px;font-size:16px">Roman numerals</h3>
-        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Numerals name each chord by its place in the key: capitals for major chords, small letters for minor, ° for diminished. They count from the key's home note, so the same chord gets a different numeral in a different key.</p>
+        <p class="sub" style="color:var(--fsh-mut);font-size:12px;margin:0 0 14px">Numerals name each chord by its place in the key: capitals for major chords, small letters for minor, ° for diminished. They count from the key's home note, so the same chord gets a different numeral in a different key: C major is I in C major but III in A minor, and A minor is vi in C major but i in A minor.</p>
         <div class="fsh-field" style="flex-wrap:wrap">
           ${rootSelect('numTonic', num.tonic, tonics)}
           <div class="fsh-seg" id="numMode"><button type="button" data-mode="major" class="${num.mode === 'major' ? 'active' : ''}">Major</button><button type="button" data-mode="minor" class="${num.mode === 'minor' ? 'active' : ''}">Minor</button></div></div>
