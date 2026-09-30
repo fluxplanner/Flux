@@ -10,8 +10,11 @@ import { test, expect, type Page } from '@playwright/test';
  * ai-proxy is stubbed: no real account is used and no AI call is made.
  */
 
-async function open(page: Page, opts: { signedIn?: boolean } = {}) {
-  await page.addInitScript(({ signedIn }) => {
+async function open(page: Page, opts: { signedIn?: boolean; paused?: boolean } = {}) {
+  await page.addInitScript(({ signedIn, paused }) => {
+    // Import is switched off for students for now (IMPORT_ON in
+    // flux-grapher.js); this keeps the paused feature under test.
+    if (!paused) (window as any).__fluxGrapherImport = true;
     try {
       localStorage.setItem('flux_grapher_tour', 'done');
       localStorage.setItem('flux_grapher_mode', 'data');
@@ -24,7 +27,7 @@ async function open(page: Page, opts: { signedIn?: boolean } = {}) {
         localStorage.setItem('flux_grapher_signed_out', '1');
       }
     } catch (e) {}
-  }, { signedIn: !!opts.signedIn });
+  }, { signedIn: !!opts.signedIn, paused: !!opts.paused });
   await page.goto('/grapher.html');
   await page.waitForTimeout(700);
 }
@@ -46,6 +49,50 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 test.describe('Importing a table into the grapher', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
+  });
+
+  test('while paused: no scan or file options anywhere, and a dropped file or pasted photo does nothing', async ({ page }) => {
+    let calls = 0;
+    await page.route('**/functions/v1/ai-proxy', async (route) => { calls++; await route.abort(); });
+    await open(page, { signedIn: true, paused: true });
+    await expect(page.locator('.flg--data .flg-table')).toBeVisible();
+    await expect(page.locator('[data-import]')).toHaveCount(0);
+    await expect(page.locator('.flg-timport')).toHaveCount(0);
+
+    // The table's own menu keeps pasting, loses scanning and opening.
+    await page.locator('.flg--data [data-tmenu]').first().click();
+    const menu = page.locator('.flg-menu-i');
+    await expect(menu.filter({ hasText: 'Paste data' })).toHaveCount(1);
+    await expect(menu.filter({ hasText: 'Scan a photo' })).toHaveCount(0);
+    await expect(menu.filter({ hasText: 'CSV or Excel' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // A dropped file is refused rather than opened in place of the grapher.
+    const url = page.url();
+    const dropped = await page.evaluate(() => {
+      const root = document.querySelector('.flg') as HTMLElement;
+      const dt = new DataTransfer();
+      dt.items.add(new File(['x,y\n1,2\n'], 'data.csv', { type: 'text/csv' }));
+      const over = new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true });
+      root.dispatchEvent(over);
+      const drop = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+      root.dispatchEvent(drop);
+      return { overCancelled: over.defaultPrevented, dropCancelled: drop.defaultPrevented };
+    });
+    expect(dropped).toEqual({ overCancelled: true, dropCancelled: true });
+    await expect(page.locator('#fgiSheet')).toHaveCount(0);
+    expect(page.url()).toBe(url);
+
+    // A screenshot pasted into a cell is not sent anywhere.
+    await page.evaluate(() => {
+      const cell = document.querySelector('.flg--data [data-cell]') as HTMLElement;
+      const dt = new DataTransfer();
+      dt.items.add(new File([new Uint8Array([137, 80, 78, 71])], 'shot.png', { type: 'image/png' }));
+      cell.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(300);
+    await expect(page.locator('.fgc-sheet, #fgiSheet')).toHaveCount(0);
+    expect(calls).toBe(0);
   });
 
   test('a CSV file: headings become names and units, ± becomes uncertainty, and the mean row stays out', async ({ page }) => {

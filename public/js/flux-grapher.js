@@ -32,6 +32,18 @@
 (function () {
   'use strict';
 
+  /* Photo scans and opening CSV/Excel files are switched off for now
+     (Azfer, 2026-09-29): no Import button, no "Long table?" offer under an
+     empty table, no scan/open entries in a table's menu, and a pasted
+     screenshot or dropped file does nothing. Typing and pasting text from a
+     spreadsheet still work. flux-grapher-import.js stays loaded and tested,
+     so turning this back to true restores all of it; e2e/grapher-import
+     sets window.__fluxGrapherImport to keep those tests running meanwhile. */
+  const IMPORT_ON = false;
+  function importer() {
+    return IMPORT_ON || window.__fluxGrapherImport === true ? window.FluxGrapherImport || null : null;
+  }
+
   const PALETTE = ['#00c2ff', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#fb923c', '#f87171', '#22d3ee'];
   const WORK_KEYS = { data: 'flux_lab_graph', functions: 'flux_grapher_fns' };
   const MODE_KEY = 'flux_grapher_mode';
@@ -1603,8 +1615,8 @@
       +       ICON.plus + ICON.fn + '</button>'
       +     '<button type="button" class="flg-add" data-add="table" title="Add a table" aria-label="Add a table">'
       +       ICON.plus + ICON.table + '</button>'
-      +     '<button type="button" class="flg-add flg-import" data-import title="Import a table: scan a photo, or open a CSV or Excel file" aria-label="Import a table">'
-      +       ICON.upload + '</button>'
+      +     (importer() ? '<button type="button" class="flg-add flg-import" data-import title="Import a table: scan a photo, or open a CSV or Excel file" aria-label="Import a table">'
+      +       ICON.upload + '</button>' : '')
       +     '<button type="button" class="flg-kbbtn" data-kb title="Maths keyboard" aria-label="Maths keyboard" aria-pressed="false">' + ICON.keyboard + '</button>'
       +     '<span class="flg-hist">'
       +       '<button type="button" data-hist="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>' + ICON.undo + '</button>'
@@ -1788,7 +1800,7 @@
       +   '<th class="flg-addcol"><button type="button" data-addcol="' + esc(t.id) + '" title="Add a column" aria-label="Add a column">' + ICON.plus + '</button></th>'
       + '</tr></thead><tbody>' + t.rows.map((_, r) => this.rowHTML(t, r, ct)).join('') + '</tbody></table></div>'
       // Until the first reading goes in: a long table need not be typed.
-      + (window.FluxGrapherImport && !t.rows.some((r) => r.some((c) => String(c).trim() !== ''))
+      + (importer() && !t.rows.some((r) => r.some((c) => String(c).trim() !== ''))
         ? '<div class="flg-timport"><span>Long table?</span>'
           + '<button type="button" class="flg-timp" data-imp="image" data-imt="' + esc(t.id) + '">' + ICON.camera + 'Scan a photo</button>'
           + '<button type="button" class="flg-timp" data-imp="file" data-imt="' + esc(t.id) + '">' + ICON.file + 'Open a CSV or Excel file</button></div>'
@@ -2582,7 +2594,7 @@
       // A screenshot of a table, pasted anywhere in the grapher, is scanned.
       const cd = e.clipboardData;
       const img = cd && cd.files && Array.prototype.find.call(cd.files, (f) => /^image\//.test(f.type));
-      if (img && window.FluxGrapherImport) {
+      if (img && importer()) {
         e.preventDefault();
         const tb = d.cell ? self.itemOf(t) : null;
         self.runImport('image', tb && tb.type === 'table' ? tb : null, img);
@@ -2602,8 +2614,11 @@
        into the table it lands on, or else an empty or new one. */
     const hasFiles = (e) => !!(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0);
     root.addEventListener('dragover', (e) => {
-      if (!hasFiles(e) || !window.FluxGrapherImport) return;
+      if (!hasFiles(e)) return;
       e.preventDefault();
+      // Refused, not ignored: an unhandled drop makes the browser open the
+      // file in place of the grapher.
+      if (!importer()) { e.dataTransfer.dropEffect = 'none'; return; }
       e.dataTransfer.dropEffect = 'copy';
       root.classList.add('is-drop');
     });
@@ -2611,8 +2626,9 @@
     root.addEventListener('drop', (e) => {
       root.classList.remove('is-drop');
       const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (!f || !window.FluxGrapherImport) return;
+      if (!f) return;
       e.preventDefault();
+      if (!importer()) return;
       const tb = self.itemOf(e.target);
       self.runImport(null, tb && tb.type === 'table' ? tb : null, f);
     });
@@ -2705,8 +2721,10 @@
         openMenu(b, entries);
       } else if (d.tmenu) {
         openMenu(b, [
-          { label: 'Scan a photo of a table…', icon: ICON.camera, run: () => self.runImport('image', tb) },
-          { label: 'Open a CSV or Excel file…', icon: ICON.file, run: () => self.runImport('file', tb) },
+          ...(importer() ? [
+            { label: 'Scan a photo of a table…', icon: ICON.camera, run: () => self.runImport('image', tb) },
+            { label: 'Open a CSV or Excel file…', icon: ICON.file, run: () => self.runImport('file', tb) },
+          ] : []),
           { label: 'Paste data…', icon: ICON.clip, run: () => self.pastePrompt(tb, b) },
           { label: 'Clear the readings', run: () => {
             if (!window.confirm('Clear every reading in "' + tb.name + '"?')) return;
@@ -2725,7 +2743,7 @@
      decides which table the rows go into and writes them. */
 
   Grapher.prototype.importMenu = function (anchor, t) {
-    const I = window.FluxGrapherImport;
+    const I = importer();
     const left = I && I.scansLeft ? I.scansLeft() : null;
     openMenu(anchor, [
       { label: 'Scan a photo of a table' + (left != null ? ' · ' + left + ' left today' : ''), icon: ICON.camera, run: () => this.runImport('image', t) },
@@ -2753,7 +2771,8 @@
 
   /** Pick (or take) a file, read it, show it for checking, then add it. */
   Grapher.prototype.runImport = async function (kind, t, file) {
-    const I = window.FluxGrapherImport;
+    if (!IMPORT_ON && window.__fluxGrapherImport !== true) return;
+    const I = importer();
     if (!I) { toast('Importing is still loading. Try again in a moment.', 'warning'); return; }
     // Scanning needs an account: ask before the photo is picked, not after.
     if ((kind === 'image' || (file && I.kindOf(file) === 'image')) && !(await I.hasSession())) {
