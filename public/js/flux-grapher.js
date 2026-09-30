@@ -202,8 +202,31 @@
     return v.toFixed(dp).replace(/^-/, '−');
   }
 
+  /* Units read like Desmos exponents, but upright: typing cm^3 gives cm³ and
+     m s^-2 gives m s⁻² (Azfer, 2026-09-29). Unicode superscripts rather than
+     markup, so the same text works in an <input>, an SVG axis title, a saved
+     image and copied numbers. ^(-2) and ^{-2} work too, once closed. */
+  const SUP_CHARS = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '-': '⁻', '−': '⁻', '+': '⁺' };
+  const toSup = (e) => Array.from(e).map((c) => SUP_CHARS[c] || '').join('');
+  function supUnit(s) {
+    return String(s == null ? '' : s)
+      .replace(/\^\s*(?:\(\s*([-−+]?\d+)\s*\)|\{\s*([-−+]?\d+)\s*\}|([-−+]?\d+))/g, (m, a, b, c) => toSup(a || b || c))
+      // Digits typed straight after an exponent carry it on: ^1 then 2 is ¹².
+      .replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺])(\d+)/g, (m, a, d) => a + toSup(d));
+  }
+  /** Rewrite a unit field as it is typed, keeping the caret where it was. */
+  function liveSupUnit(inp, e) {
+    if (e && e.isComposing) return;
+    const v = inp.value, next = supUnit(v);
+    if (next === v) return;
+    const caret = inp.selectionStart == null ? v.length : inp.selectionStart;
+    const at = supUnit(v.slice(0, caret)).length;
+    inp.value = next;
+    try { inp.setSelectionRange(at, at); } catch (err) {}
+  }
+
   function axisTitle(label, unit) {
-    const l = String(label || '').trim(), u = String(unit || '').trim();
+    const l = String(label || '').trim(), u = supUnit(String(unit || '').trim());
     if (!l && !u) return '';
     return u ? (l ? l + ' / ' + u : u) : l;
   }
@@ -1777,7 +1800,7 @@
         + (role ? '<span class="flg-axtag" aria-hidden="true">' + role + '</span>' : '')
         + '<input type="text" class="flg-cname" data-cname="' + esc(c.id) + '" value="' + esc(c.name) + '" placeholder="name" spellcheck="false" aria-label="Column name">'
         + '<button type="button" class="flg-cmenu" data-cmenu="' + esc(c.id) + '" aria-label="Column options">' + ICON.chev + '</button>'
-        + '</div><input type="text" class="flg-cunit" data-cunit="' + esc(c.id) + '" value="' + esc(c.unit) + '" placeholder="unit" spellcheck="false" aria-label="Unit">'
+        + '</div><input type="text" class="flg-cunit" data-cunit="' + esc(c.id) + '" value="' + esc(supUnit(c.unit)) + '" placeholder="unit" spellcheck="false" aria-label="Unit">'
         + (c.role === 'calc'
           ? '<div class="flg-calcrow"><span aria-hidden="true">=</span><input type="text" class="flg-cexpr' + (k && k.error ? ' is-bad' : '') + '" data-cexpr="' + esc(c.id) + '"'
             + ' value="' + esc(c.expr) + '" placeholder="' + esc(this.formulaHint(t)) + '" spellcheck="false" autocomplete="off"'
@@ -2498,6 +2521,7 @@
           const box = t.closest('.flg-item');
           box.querySelectorAll('option[value="' + CSS.escape(col.id) + '"]').forEach((o) => { o.textContent = col.name || 'column'; });
         } else {
+          liveSupUnit(t, e);
           col.unit = t.value.slice(0, 20);
         }
         // Renaming a column changes what the formulas that use it can see.
@@ -2675,6 +2699,8 @@
         self.draw();
       } else if (d.manual) {
         self.addManual(tb);
+        // A new line arrives with its handles out, ready to drag.
+        self._manSel = tb.manuals[tb.manuals.length - 1] || null;
         self.touch();
         self.renderTfoot(tb);
         self._resHTML = null;
@@ -3177,7 +3203,7 @@
       + '<div class="flg-wrow flg-wrow--lab"><span class="flg-wax"></span>'
       + '<input type="text" data-wd="' + ax + 'Label" value="' + esc(d[ax + 'Label']) + '" placeholder="'
       + esc(((ax === 'x' ? at.x : at.y) || '').split(' / ')[0] || ax + ' axis name') + '" aria-label="' + ax + ' axis name">'
-      + '<input type="text" class="flg-wunit" data-wd="' + ax + 'Unit" value="' + esc(d[ax + 'Unit']) + '" placeholder="unit" aria-label="' + ax + ' axis unit">'
+      + '<input type="text" class="flg-wunit" data-wd="' + ax + 'Unit" value="' + esc(supUnit(d[ax + 'Unit'])) + '" placeholder="unit" aria-label="' + ax + ' axis unit">'
       + '</div>';
     const html = '<div class="flg-win">'
       + '<input type="text" class="flg-wtitle" data-wd="title" value="' + esc(d.title) + '" placeholder="Graph title" aria-label="Graph title">'
@@ -3192,6 +3218,7 @@
       el.addEventListener('input', (e) => {
         const t = e.target, ds = t.dataset;
         if (ds.wd) {
+          if (/Unit$/.test(ds.wd)) liveSupUnit(t, e);
           d[ds.wd] = t.value.slice(0, 120);
           self.touch();
           self.draw();
@@ -3525,7 +3552,9 @@
       + '" stroke="' + col + '" stroke-width="2.4" stroke-opacity=".85" stroke-dasharray="1 0"'
       + (print ? '' : ' class="flg-manual"') + '/>';
     const many = t.manuals.length > 1;
-    if (!print) {
+    // The handles belong to the line you last clicked; the rest are plain lines
+    // until you click them, so a graph with several stays readable.
+    if (!print && this._manSel === mn) {
       [[mn.x1, mn.y1], [mn.x2, mn.y2]].forEach((pt) => {
         s += '<circle class="flg-mhandle" cx="' + m.sx(pt[0]).toFixed(1) + '" cy="' + m.sy(pt[1]).toFixed(1)
           + '" r="7" fill="#ffffff" stroke="' + col + '" stroke-width="3"/>';
@@ -3555,9 +3584,13 @@
         const ax = L.m.sx(mn.x1), ay = L.m.sy(mn.y1);
         const bx = L.m.sx(mn.x2), by = L.m.sy(mn.y2);
         const da = Math.hypot(p.x - ax, p.y - ay), db = Math.hypot(p.x - bx, p.y - by);
-        // Handles always beat a line body, so a handle on top of another line can still be grabbed.
-        if (da <= 12 && (!best || da < best.d)) best = { t: t, mn: mn, which: 'a', d: da };
-        if (db <= 12 && (!best || db < best.d)) best = { t: t, mn: mn, which: 'b', d: db };
+        // Handles always beat a line body, so a handle on top of another line
+        // can still be grabbed. Only the selected line shows handles, so only
+        // its handles can be grabbed; on any other line that spot is just line.
+        if (this._manSel === mn) {
+          if (da <= 12 && (!best || da < best.d)) best = { t: t, mn: mn, which: 'a', d: da };
+          if (db <= 12 && (!best || db < best.d)) best = { t: t, mn: mn, which: 'b', d: db };
+        }
         const len = Math.hypot(bx - ax, by - ay) || 1;
         const d = Math.abs((by - ay) * p.x - (bx - ax) * p.y + bx * ay - by * ax) / len;
         if (d <= 7 && (!best || d + 20 < best.d)) best = { t: t, mn: mn, which: 'line', d: d + 20 };
@@ -3913,9 +3946,12 @@
 
   /* ── Results card (the numbers that go in the write-up) ─────────────── */
 
-  /** One fit's numbers: every parameter with its uncertainty, then R². */
+  /** One fit's numbers: every parameter, then R². The ± on each parameter is
+      shown only once "weight by error bars" is on (Azfer, 2026-09-29): an
+      unweighted line of best fit is reported as plain values, and the
+      uncertainty comes from the error bars when the student asks for it. */
   function paramRows(f) {
-    const rows = (f.params || []).map((p) => [p.name, p.u != null && p.u > 0 ? fmtWithU(p.value, p.u) : fmt(p.value)]);
+    const rows = (f.params || []).map((p) => [p.name, f.weighted && p.u != null && p.u > 0 ? fmtWithU(p.value, p.u) : fmt(p.value)]);
     rows.push(['R²', fmt(f.r2)]);
     /* A weighted fit's ± comes from the error bars; χ²/ν says whether the bars
        and the line agree (≈ 1 good, ≫ 1 bars too small, ≪ 1 bars generous). */
@@ -4017,6 +4053,8 @@
       moved = 0;
       downAt = pos(e);
       dragLine = pts.size === 1 ? self.manualHit(downAt) : null;
+      // Pressing a manual line selects it, which brings up its handles.
+      if (dragLine && self._manSel !== dragLine.mn) { self._manSel = dragLine.mn; self.draw(); }
       stage.classList.add('is-grabbing');
       self.hideTrace();
     });
@@ -4078,10 +4116,21 @@
       }
       if (!pts.size) {
         stage.classList.remove('is-grabbing');
-        if (moved <= 3 && downAt && e.type === 'pointerup') self.clickAt(downAt);
+        if (moved <= 3 && downAt && e.type === 'pointerup') {
+          // A click off every manual line puts the handles away; panning does not.
+          if (self._manSel) { self._manSel = null; self.draw(); }
+          self.clickAt(downAt);
+        }
         downAt = null;
       }
     };
+    // So does clicking anywhere outside the graph — the table, a button, the page.
+    this._manOff = (e) => {
+      if (!self._manSel || plot.contains(e.target)) return;
+      self._manSel = null;
+      self.draw();
+    };
+    document.addEventListener('pointerdown', this._manOff, true);
     plot.addEventListener('pointerup', end);
     plot.addEventListener('pointercancel', end);
     plot.addEventListener('pointerleave', () => { if (!pts.size) self.hideTrace(); });
@@ -4283,8 +4332,8 @@
       + '<div class="fgx-preview"><img alt="Preview of the image that will be saved"></div>'
       + '<form class="fgx-form" novalidate>'
       +   field('title', 'Title', d.title, data ? 'e.g. Extension of a spring against load' : 'e.g. y = x² and its tangent at x = 1', 120, true)
-      +   '<div class="fgx-row">' + field('xLabel', 'x-axis name', xn, data ? 'e.g. Load' : 'e.g. x', 40, true) + field('xUnit', 'Unit', xu, data ? 'e.g. N' : 'optional', 20, false) + '</div>'
-      +   '<div class="fgx-row">' + field('yLabel', 'y-axis name', yn, data ? 'e.g. Extension' : 'e.g. y', 40, true) + field('yUnit', 'Unit', yu, data ? 'e.g. cm' : 'optional', 20, false) + '</div>'
+      +   '<div class="fgx-row">' + field('xLabel', 'x-axis name', xn, data ? 'e.g. Load' : 'e.g. x', 40, true) + field('xUnit', 'Unit', supUnit(xu), data ? 'e.g. N' : 'optional', 20, false) + '</div>'
+      +   '<div class="fgx-row">' + field('yLabel', 'y-axis name', yn, data ? 'e.g. Extension' : 'e.g. y', 40, true) + field('yUnit', 'Unit', supUnit(yu), data ? 'e.g. cm' : 'optional', 20, false) + '</div>'
       +   '<fieldset class="fgx-checks"><legend>Double-check</legend>'
       +     check('c1', 'The title, axis names and units are right')
       +     check('c2', data ? 'Every reading is in, with its uncertainty' : 'Every equation I need is on the graph')
@@ -4348,7 +4397,10 @@
     document.addEventListener('keydown', onKey, true);
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
     box.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
-    form.addEventListener('input', () => { validate(); preview(); });
+    form.addEventListener('input', (e) => {
+      if (e.target.name === 'xUnit' || e.target.name === 'yUnit') liveSupUnit(e.target, e);
+      validate(); preview();
+    });
     form.addEventListener('change', validate);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -4522,6 +4574,7 @@
     clearTimeout(this._saveT);
     clearTimeout(this._histT);
     if (this._onKey) document.removeEventListener('keydown', this._onKey);
+    if (this._manOff) document.removeEventListener('pointerdown', this._manOff, true);
     if (this.surface === 'planner') this.persistLocal();
     if (this._ro) this._ro.disconnect();
     if (this._onResize) window.removeEventListener('resize', this._onResize);

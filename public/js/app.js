@@ -4899,7 +4899,7 @@ ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" styl
 </div>
 ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
 </div>
-<!-- Four buttons, hard limit. This row had grown to nine — a school/outside
+<!-- Three buttons, hard limit. This row had grown to nine — a school/outside
      pill, repeat options, copy link, Google Calendar, co-work and these four —
      which made every task card look like a toolbar. What went where:
        · school vs outside → "Belongs to" in the Edit modal
@@ -4908,12 +4908,14 @@ ${stBar}${frictionBadge}${srsBadge}${ghostHtml}
        · Google Calendar   → Google has been paused since Canvas shipped, so
                              this button did nothing for anyone
        · co-work           → the feature is being retired; see flux-cowork.js
-     Keep this at four. Anything new belongs in the Edit modal or the
+       · ✦ Ask Flux AI     → removed (Azfer, 2026-09-29), here and from the
+                             right-click / long-press menus; Flux AI is not a
+                             destination to be sent to from a task any more
+     Keep this at three. Anything new belongs in the Edit modal or the
      right-click menu, not here. -->
 <div class="task-actions">
 ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick="event.stopPropagation();startTimerFromTask(${t.id})" title="Start focus timer">⏱</button>`:''}
 <button class="task-action-btn" onclick="openEdit(${t.id})" title="Edit">✎</button>
-<button class="task-action-btn task-action-btn--ai" onclick="event.stopPropagation();askFluxAIAboutTask(${t.id})" title="Ask Flux AI about this task" style="color:var(--accent);font-size:.72rem;letter-spacing:-.01em;padding:0 7px">✦</button>
 <button class="task-action-btn" onclick="deleteTask(${t.id})" title="Delete">✕</button>
 </div>
 </div>`;

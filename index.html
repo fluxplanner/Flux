@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.63adef9d.css">
+<link rel="stylesheet" href="public/bundles/flux.25a571e7.css">
 </head>
 <body>
 <noscript>
@@ -2848,7 +2848,7 @@
       <div><label class="modal-micro-label" for="taskPriority">Priority</label><select id="taskPriority"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
     </div>
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
-      <div><label class="modal-micro-label" for="taskDate">Due date</label><input type="date" id="taskDate"></div>
+      <div><label class="modal-micro-label" for="taskDate">Due date</label><input type="date" id="taskDate" data-fdp-quick></div>
       <div><label class="modal-micro-label" for="taskType">Type</label><select id="taskType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="reading">Reading</option><option value="other">Other</option></select></div>
     </div>
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
@@ -2878,7 +2878,7 @@
       <div class="mrow"><label>Subject</label><select id="editSubject"><option value="">No subject</option></select></div>
       <div class="mrow"><label>Priority</label><select id="editPriority"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
       <div class="mrow"><label>Type</label><select id="editType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="reading">Reading</option><option value="other">Other</option></select></div>
-      <div class="mrow"><label>Due Date</label><input type="date" id="editDue"></div>
+      <div class="mrow"><label>Due Date</label><input type="date" id="editDue" data-fdp-quick></div>
       <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
@@ -2925,8 +2925,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.13aa6767.js"></script>
-<script defer src="public/bundles/flux-features.0597d646.js"></script>
+<script defer src="public/bundles/flux-core.ecb5e1b7.js"></script>
+<script defer src="public/bundles/flux-features.0445bd34.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

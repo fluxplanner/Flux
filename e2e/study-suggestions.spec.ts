@@ -118,7 +118,7 @@ test.describe('Science toolkit · Lab report', () => {
 });
 
 test.describe('Measurements grapher', () => {
-  test('fits can be weighted by the error bars', async ({ page }) => {
+  test('fits ignore the error bars until weighting is switched on, then carry ±', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/grapher.html');
     await page.evaluate(() => (window as any).fluxGrapherPage.show('data'));
@@ -130,7 +130,8 @@ test.describe('Measurements grapher', () => {
       t.rows = [['0', '0', '0.1'], ['1', '1', '0.1'], ['2', '2', '0.1'], ['3', '5', '2']];
       g.render ? g.render() : g.draw();
     });
-    await expect(page.locator('.flg-rc')).toContainText('m1.60 ± 0.35');
+    await expect(page.locator('.flg-rc')).toContainText('Straight line');
+    await expect(page.locator('.flg-rc')).not.toContainText('±');
     await page.locator('[data-weighted]').first().click();
     await expect(page.locator('.flg-rc')).toContainText('Straight line (weighted)');
     await expect(page.locator('.flg-rc')).toContainText('m1.005 ± 0.071');
