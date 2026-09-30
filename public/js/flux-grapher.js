@@ -48,6 +48,8 @@
   const WORK_KEYS = { data: 'flux_lab_graph', functions: 'flux_grapher_fns' };
   const MODE_KEY = 'flux_grapher_mode';
   const HANDOFF_KEY = 'flux_grapher_handoff';
+  const IMG_BG_KEY = 'flux_grapher_img_bg';     // background of a saved image: white | planner | black
+  const PRINT_KEY = 'flux_grapher_print_mono';  // true once someone says their printer is black and white
   const KB_KEY = 'flux_grapher_keypad';
 
   /* ── The on-screen maths keypad ──────────────────────────────────────
@@ -111,6 +113,7 @@
     eye: svgIcon('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', 14),
     eyeOff: svgIcon('<path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.1 4M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/>', 14),
     image: svgIcon('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>'),
+    print: svgIcon('<path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8" rx="1"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>'),
     cloud: svgIcon('<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.3 12 3.5 3.5 0 0 0 6.5 19z"/><path d="M12 12v6M9.5 14.5 12 12l2.5 2.5"/>'),
     folder: svgIcon('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
     expand: svgIcon('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'),
@@ -130,6 +133,7 @@
       return raw ? JSON.parse(raw) : fallback;
     } catch (e) { return fallback; }
   }
+  function imgBg() { const v = readJSON(IMG_BG_KEY, 'white'); return INKS[v] ? v : 'white'; }
   function writeJSON(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
   }
@@ -1027,26 +1031,76 @@
     };
   }
 
-  /* Colours for the exported image. On screen the stylesheet decides; a PNG
-     going into a report is dark ink on white whatever theme made it. */
-  const PRINT = {
-    'flg-bgall': 'fill:#ffffff',
-    'flg-plotbg': 'fill:#ffffff',
-    'flg-gmin': 'stroke:#f1f4f8;stroke-width:1',
-    'flg-gmaj': 'stroke:#dde3ec;stroke-width:1',
-    'flg-axis': 'stroke:#334155;stroke-width:1.5',
-    'flg-zero': 'stroke:#94a3b8;stroke-width:1',
-    'flg-frame': 'stroke:#334155;stroke-width:1.2;fill:none',
-    'flg-tick': 'fill:#334155;font-size:13px;font-family:Helvetica,Arial,sans-serif',
-    'flg-tick flg-halo': 'fill:#334155;font-size:13px;font-family:Helvetica,Arial,sans-serif;paint-order:stroke;stroke:#fff;stroke-width:3px',
-    'flg-axlabel': 'fill:#0f172a;font-size:15px;font-weight:600;font-family:Helvetica,Arial,sans-serif',
-    'flg-axlabel flg-halo': 'fill:#0f172a;font-size:15px;font-weight:600;font-family:Helvetica,Arial,sans-serif;paint-order:stroke;stroke:#fff;stroke-width:4px',
-    'flg-title': 'fill:#0f172a;font-size:19px;font-weight:700;font-family:Helvetica,Arial,sans-serif',
-    'flg-leg': 'fill:#ffffff;fill-opacity:.94;stroke:#cbd5e1;stroke-width:1',
-    'flg-legt': 'fill:#0f172a;font-size:13px;font-family:Helvetica,Arial,sans-serif',
-    'flg-pinbox': 'fill:#ffffff;stroke:#cbd5e1;stroke-width:1',
-    'flg-pint': 'fill:#0f172a;font-size:12px;font-family:Helvetica,Arial,sans-serif',
+  /* Colours for a saved image or a print. On screen the stylesheet decides.
+
+     Three backgrounds (Azfer, 2026-09-30): white paper, the planner's own dark
+     blue, and black. White used to be drawn in pale greys — grid #f1f4f8,
+     numbers #334155 at normal weight — and on a printer the grid, the axis
+     numbers and the lighter lines all but vanished, so it is heavier now.
+     `mono` is for a black-and-white printer: every line and point in one ink,
+     told apart by their dashes. */
+  const INKS = {
+    white: { bg: '#ffffff', gmin: '#d5dbe4', gmaj: '#9ba6b5', axis: '#0f172a', zero: '#475569', frame: '#0f172a',
+      tick: '#0f172a', text: '#000000', leg: '#ffffff', legLine: '#94a3b8', mono: '#000000', paper: true },
+    planner: { bg: '#0B0F1A', gmin: 'rgba(255,255,255,.07)', gmaj: 'rgba(255,255,255,.17)', axis: '#cbd5e1', zero: '#64748b', frame: '#94a3b8',
+      tick: '#cbd5e1', text: '#f1f5f9', leg: '#121826', legLine: 'rgba(255,255,255,.18)', mono: '#ffffff', paper: false },
+    black: { bg: '#000000', gmin: '#1c1c1c', gmaj: '#3b3b3b', axis: '#e5e5e5', zero: '#737373', frame: '#a3a3a3',
+      tick: '#e5e5e5', text: '#ffffff', leg: '#0a0a0a', legLine: '#404040', mono: '#ffffff', paper: false },
   };
+  const FONT = 'font-family:Helvetica,Arial,sans-serif';
+  function printStyles(K) {
+    const halo = ';paint-order:stroke;stroke:' + K.bg;
+    return {
+      'flg-bgall': 'fill:' + K.bg,
+      'flg-plotbg': 'fill:' + K.bg,
+      'flg-gmin': 'stroke:' + K.gmin + ';stroke-width:1',
+      'flg-gmaj': 'stroke:' + K.gmaj + ';stroke-width:1.2',
+      'flg-axis': 'stroke:' + K.axis + ';stroke-width:2',
+      'flg-zero': 'stroke:' + K.zero + ';stroke-width:1.3',
+      'flg-frame': 'stroke:' + K.frame + ';stroke-width:1.6;fill:none',
+      'flg-tick': 'fill:' + K.tick + ';font-size:14px;font-weight:600;' + FONT,
+      'flg-tick flg-halo': 'fill:' + K.tick + ';font-size:14px;font-weight:600;' + FONT + halo + ';stroke-width:3px',
+      'flg-axlabel': 'fill:' + K.text + ';font-size:16px;font-weight:700;' + FONT,
+      'flg-axlabel flg-halo': 'fill:' + K.text + ';font-size:16px;font-weight:700;' + FONT + halo + ';stroke-width:4px',
+      'flg-title': 'fill:' + K.text + ';font-size:20px;font-weight:700;' + FONT,
+      'flg-leg': 'fill:' + K.leg + ';fill-opacity:.95;stroke:' + K.legLine + ';stroke-width:1',
+      'flg-legt': 'fill:' + K.text + ';font-size:13.5px;' + FONT,
+      'flg-pinbox': 'fill:' + K.leg + ';stroke:' + K.legLine + ';stroke-width:1',
+      'flg-pint': 'fill:' + K.text + ';font-size:12px;' + FONT,
+    };
+  }
+  let PRINT = printStyles(INKS.white);
+  function inkOf(ink) { return INKS[ink && ink.bg] || INKS.white; }
+
+  /** A series colour made dark enough to print: pale cyan and yellow on white
+      paper came out barely there. Darker colours are left as they are. */
+  function forPaper(c) {
+    const m = /^#([0-9a-f]{6})$/i.exec(c);
+    if (!m) return c;
+    const n = parseInt(m[1], 16), rgb = [n >> 16 & 255, n >> 8 & 255, n & 255];
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+    if (L <= 0.22) return c;
+    const k = Math.sqrt(0.22 / L);
+    return '#' + rgb.map((v) => Math.round(v * k).toString(16).padStart(2, '0')).join('');
+  }
+  /** Finish an exported drawing for its background: one ink for a black-and-
+      white printer, pale colours darkened for paper, and every line and point
+      a little heavier, since a printer loses the thin ones. */
+  function inkSVG(svg, K, mono) {
+    return svg
+      .replace(/(stroke|fill)="([^"]+)"/g, (m0, a, c) => {
+        if (/^(none|transparent|#fff|#ffffff|white)$/i.test(c) || /^url\(/.test(c) || /^rgba\(0,\s*0,\s*0/.test(c)) return m0;
+        // The number on a manual line's badge: the badge's own background colour.
+        if (c === '#0b0d12') return mono ? a + '="' + K.bg + '"' : m0;
+        if (mono) return a + '="' + K.mono + '"';
+        return K.paper ? a + '="' + forPaper(c) + '"' : m0;
+      })
+      // In one ink a manual line would look like the fit beside it: dash-dot it.
+      .replace(/stroke-dasharray="1 0"/g, mono ? 'stroke-dasharray="12 4 2 4"' : 'stroke-dasharray="1 0"')
+      .replace(/stroke-width="([\d.]+)"/g, (m0, w) => 'stroke-width="' + (+w * 1.35).toFixed(2) + '"')
+      .replace(/(<circle class="flg-pt"[^>]*?) r="([\d.]+)"/g, (m0, pre, r) => pre + ' r="' + (+r * 1.3).toFixed(1) + '"');
+  }
   function cls(name, print) {
     return 'class="' + name + '"' + (print && PRINT[name] ? ' style="' + PRINT[name] + '"' : '');
   }
@@ -1845,6 +1899,23 @@
     return k ? k.name : kind;
   };
 
+  /** The automatic fit's chip says which line it chose — "Best fit: Quadratic"
+      — not just "Best fit" (Azfer, 2026-09-30). */
+  Grapher.prototype.autoName = function (t) {
+    const pts = tablePoints(t);
+    const f = pts.length >= 2 ? this.fitsFor(t, pts).find((x) => x.kind === 'auto') : null;
+    return f && f.res && f.res.fit ? f.name : 'Best fit';
+  };
+  Grapher.prototype.syncAutoNames = function () {
+    if (!this.host) return;
+    this.host.querySelectorAll('[data-autoname]').forEach((el) => {
+      const t = this.item(el.getAttribute('data-autoname'));
+      if (!t) return;
+      const name = this.autoName(t);
+      if (el.textContent !== name) el.textContent = name;
+    });
+  };
+
   Grapher.prototype.tfootInner = function (t, opt) {
     const values = this.plotCols(t);
     const o = opt || ((sel) => values.map((v) => '<option value="' + esc(v.id) + '"' + (v.id === sel ? ' selected' : '') + '>'
@@ -1853,7 +1924,7 @@
       + ' title="Colour of this line" aria-label="Colour of the ' + esc(label) + '">' + dashSample(colour, dash) + '</button>';
     const chips = (t.fits || []).map((k, i) => '<span class="flg-fchip">'
       + colourBtn('fit:' + k, lineColour(t, 'fit:' + k, t.colour), DASHES[i % DASHES.length], this.fitName(k) + ' fit')
-      + '<span>' + esc(this.fitName(k)) + '</span>'
+      + '<span' + (k === 'auto' ? ' data-autoname="' + esc(t.id) + '"' : '') + '>' + esc(k === 'auto' ? this.autoName(t) : this.fitName(k)) + '</span>'
       + '<button type="button" data-unfit="' + esc(k) + '" aria-label="Remove the ' + esc(this.fitName(k)) + ' fit" title="Remove">' + ICON.x + '</button></span>').join('');
     return '<label class="flg-axsel"><span>x</span><select data-xcol="' + esc(t.id) + '" aria-label="Column on the x axis">' + o(t.xCol) + '</select></label>'
       + '<label class="flg-axsel"><span>y</span><select data-ycol="' + esc(t.id) + '" aria-label="Column on the y axis">' + o(t.yCol) + '</select></label>'
@@ -3296,6 +3367,7 @@
     this.resolve();
     plot.innerHTML = this.svg(W, H, false);
     this.renderResults();
+    this.syncAutoNames();
     this.paintRowInfo();
   };
 
@@ -3629,8 +3701,10 @@
     return (p.types || []).map((t) => KP_NAMES[t] || t).join(' · ');
   }
 
-  Grapher.prototype.svg = function (W, H, print) {
+  Grapher.prototype.svg = function (W, H, print, ink) {
     const d = this.doc;
+    const K = inkOf(ink);
+    if (print) PRINT = printStyles(K);
     const fr = this.frame(W, H, print);
     const v = this.viewFor(fr);
     const m = mapper(v, fr);
@@ -3762,7 +3836,7 @@
     // The key in a saved image follows the results card: shown when it is open, gone when it is collapsed.
     if (print && !this.resCollapsed) P.push(this.legendSVG(fr));
     P.push('</svg>');
-    return P.join('');
+    return print ? inkSVG(P.join(''), K, !!(ink && ink.mono)) : P.join('');
   };
 
   Grapher.prototype.drawExpr = function (it, m, v, fr) {
@@ -3893,13 +3967,15 @@
           if (!f.res || !f.res.fit) return;
           let text = f.name + ':  ' + f.res.fit.equation(fmt);
           const extra = [];
-          if (f.res.fit.um != null && f.res.fit.m != null) extra.push('m = ' + fmtWithU(f.res.fit.m, f.res.fit.um));
+          // The ± only once the fit is weighted by the error bars, as in the results card.
+          if (f.res.fit.weighted && f.res.fit.um != null && f.res.fit.m != null) extra.push('m = ' + fmtWithU(f.res.fit.m, f.res.fit.um));
           if (Number.isFinite(f.res.fit.r2)) extra.push('R² = ' + fmt(f.res.fit.r2));
           if (extra.length) text += '   (' + extra.join(', ') + ')';
           lines.push({ colour: lineColour(it, 'fit:' + f.kind, it.colour), text: text, dash: f.dash, fit: true });
         });
         (it.manuals || []).forEach((mn, i) => {
-          lines.push({ colour: manualColour(it, mn), text: manualName(it, i) + ':  ' + manualEq(manualLine(mn)), fit: true });
+          // '1 0' draws solid, and marks the line so a black-and-white print can dash it.
+          lines.push({ colour: manualColour(it, mn), text: manualName(it, i) + ':  ' + manualEq(manualLine(mn)), dash: '1 0', fit: true });
         });
         const spread = manualSpread(it);
         if (spread) lines.push({ text: 'From the manual lines:  m = ' + fmtWithU(spread.m, spread.um) + ',  c = ' + fmtWithU(spread.c, spread.uc), bare: true });
@@ -4334,6 +4410,10 @@
       +   field('title', 'Title', d.title, data ? 'e.g. Extension of a spring against load' : 'e.g. y = x² and its tangent at x = 1', 120, true)
       +   '<div class="fgx-row">' + field('xLabel', 'x-axis name', xn, data ? 'e.g. Load' : 'e.g. x', 40, true) + field('xUnit', 'Unit', supUnit(xu), data ? 'e.g. N' : 'optional', 20, false) + '</div>'
       +   '<div class="fgx-row">' + field('yLabel', 'y-axis name', yn, data ? 'e.g. Extension' : 'e.g. y', 40, true) + field('yUnit', 'Unit', supUnit(yu), data ? 'e.g. cm' : 'optional', 20, false) + '</div>'
+      +   '<fieldset class="fgx-bg"><legend>Background</legend><div class="fgx-seg" role="radiogroup" aria-label="Background">'
+      +     [['white', 'White'], ['planner', 'Planner'], ['black', 'Black']].map((b) => '<label class="fgx-bgopt"><input type="radio" name="bg" value="' + b[0] + '"'
+      +       (b[0] === imgBg() ? ' checked' : '') + '><span><i class="fgx-sw fgx-sw--' + b[0] + '" aria-hidden="true"></i>' + b[1] + '</span></label>').join('')
+      +   '</div></fieldset>'
       +   '<fieldset class="fgx-checks"><legend>Double-check</legend>'
       +     check('c1', 'The title, axis names and units are right')
       +     check('c2', data ? 'Every reading is in, with its uncertainty' : 'Every equation I need is on the graph')
@@ -4354,6 +4434,7 @@
       ['title', 'xLabel', 'xUnit', 'yLabel', 'yUnit'].forEach((k) => { v[k] = form.elements[k].value.trim(); });
       return v;
     };
+    const chosenBg = () => { const r = form.querySelector('input[name="bg"]:checked'); return r ? r.value : 'white'; };
     const apply = (v) => { Object.keys(v).forEach((k) => { d[k] = v[k].slice(0, 120); }); };
     const preview = () => {
       clearTimeout(previewT);
@@ -4362,7 +4443,7 @@
         const keep = { title: d.title, xLabel: d.xLabel, xUnit: d.xUnit, yLabel: d.yLabel, yUnit: d.yUnit };
         apply(cur);
         let svg = '';
-        try { svg = self.svg(1600, 1000, true); } catch (e) {}
+        try { svg = self.svg(1600, 1000, true, { bg: chosenBg() }); } catch (e) {}
         apply(keep);
         if (url) URL.revokeObjectURL(url);
         url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
@@ -4401,6 +4482,11 @@
       if (e.target.name === 'xUnit' || e.target.name === 'yUnit') liveSupUnit(e.target, e);
       validate(); preview();
     });
+    form.addEventListener('change', (e) => {
+      if (e.target.name !== 'bg') return;
+      writeJSON(IMG_BG_KEY, e.target.value);
+      preview();
+    });
     form.addEventListener('change', validate);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -4413,7 +4499,7 @@
       self.touch();
       self.draw();
       if (self._winEl) closePop();
-      self._downloadPNG();
+      self._downloadPNG({ bg: chosenBg() });
       close();
     });
     validate();
@@ -4423,9 +4509,58 @@
     return back;
   };
 
-  Grapher.prototype._downloadPNG = function () {
+  /* ── Printing ──────────────────────────────────────────────────────
+     A graph printed from the browser used to be the screen's dark drawing,
+     which on paper came out as faint grey lines and near-invisible numbers.
+     Printing now lays out the white, print-weight drawing on its own page,
+     after asking one question: is the printer black and white? If it is,
+     every line and point prints black, told apart by its dashes. */
+  Grapher.prototype.printMenu = function (anchor) {
+    const mono = readJSON(PRINT_KEY, false) === true;
+    const html = '<div class="flg-printmenu"><div class="flg-pm-h">Print</div>'
+      + '<p class="flg-pm-q">Does your printer only print in black and white?</p>'
+      + '<div class="flg-pm-seg" role="radiogroup" aria-label="Printer">'
+      + '<button type="button" role="radio" data-pmono="0" aria-checked="' + !mono + '">No, colour</button>'
+      + '<button type="button" role="radio" data-pmono="1" aria-checked="' + mono + '">Yes, black &amp; white</button></div>'
+      + '<p class="flg-pm-note">Black &amp; white prints every line and point in black, each line with its own dashes.</p>'
+      + '<button type="button" class="flg-pm-go" data-pgo>Print</button></div>';
+    openPop(anchor, html, (el) => {
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pmono]');
+        if (b) {
+          writeJSON(PRINT_KEY, b.dataset.pmono === '1');
+          el.querySelectorAll('[data-pmono]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+          return;
+        }
+        if (e.target.closest('[data-pgo]')) { closePop(); this.printGraph(readJSON(PRINT_KEY, false) === true); }
+      });
+    });
+  };
+  /** Lay the print-weight drawing out on its own page, print it, tidy up. */
+  Grapher.prototype.preparePrint = function (mono) {
+    let sheet = document.getElementById('flgPrintSheet');
+    if (!sheet) { sheet = document.createElement('div'); sheet.id = 'flgPrintSheet'; document.body.appendChild(sheet); }
+    sheet.innerHTML = '<div class="flg-print-mark"><img src="public/flux-planner-logo.png" alt="" width="18" height="18"><span>Flux Grapher</span></div>'
+      + this.svg(1500, 1000, true, { bg: 'white', mono: !!mono });
+    document.documentElement.classList.add('flg-printing');
+  };
+  Grapher.prototype.printGraph = function (mono) {
+    this.preparePrint(mono);
+    const done = () => {
+      window.removeEventListener('afterprint', done);
+      document.documentElement.classList.remove('flg-printing');
+      const sheet = document.getElementById('flgPrintSheet');
+      if (sheet) sheet.innerHTML = '';
+    };
+    window.addEventListener('afterprint', done);
+    // Safari can return from print() before afterprint; the class does no harm meanwhile.
+    try { window.print(); } catch (e) { done(); }
+  };
+
+  Grapher.prototype._downloadPNG = function (ink) {
     const W = 1600, H = 1000;
-    const svg = this.svg(W, H, true);
+    const svg = this.svg(W, H, true, ink);
+    const bgFill = inkOf(ink).bg;
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     const img = new Image();
     const name = (this.doc.title || (this.kind === 'data' ? 'graph' : 'functions'))
@@ -4434,7 +4569,7 @@
       const cv = document.createElement('canvas');
       cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = bgFill;
       ctx.fillRect(0, 0, W, H);
       ctx.drawImage(img, 0, 0, W, H);
       URL.revokeObjectURL(url);
@@ -4673,6 +4808,7 @@
       +   '<button type="button" class="flg-ibtn" data-pact="save" title="Save to your account" aria-label="Save to your account">' + ICON.cloud + '</button>'
       +   '<button type="button" class="flg-ibtn" data-pact="open" title="Your saved graphs" aria-label="Your saved graphs">' + ICON.folder + '</button>'
       +   '<button type="button" class="flg-ibtn" data-pact="png" title="Download as an image" aria-label="Download as an image">' + ICON.image + '</button>'
+      +   '<button type="button" class="flg-ibtn" data-pact="print" title="Print" aria-label="Print the graph">' + ICON.print + '</button>'
       +   '<button type="button" class="flg-ibtn" data-pact="full" title="Open the full-screen grapher" aria-label="Open the full-screen grapher">' + ICON.expand + '</button>'
       + '</div>'
       + '<div class="flg-pbody"></div>'
@@ -4698,6 +4834,7 @@
       const act = b.dataset.pact;
       const C = window.FluxGraphCloud;
       if (act === 'png') inst.exportPNG();
+      else if (act === 'print') inst.printMenu(b);
       else if (act === 'save') { if (C) C.save(inst); else toast('Saving has not loaded yet.', 'warning'); }
       else if (act === 'open') {
         if (!C) { toast('Saving has not loaded yet.', 'warning'); return; }

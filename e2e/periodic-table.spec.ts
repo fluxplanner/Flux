@@ -263,3 +263,44 @@ test.describe('Periodic table page', () => {
     await expect(page.locator('.fpt-printkey'), 'no key in black and white').toBeHidden();
   });
 });
+
+test.describe('Periodic table page: taps that must not move it, and paper', () => {
+  test('the ‹ › arrows change the element without moving the page, even if the browser scrolls on the tap', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/periodic.html#spectra/Fe');
+    await expect(page.locator('.fpt-view[data-view="spectra"]')).toHaveAttribute('aria-selected', 'true');
+    const arrow = () => page.locator('[data-act="step"][data-d="1"]').filter({ visible: true }).first();
+    // Scrolled down, with the arrow still on screen near the top.
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-act="step"][data-d="1"]')].find((x) => x.getBoundingClientRect().height) as HTMLElement;
+      window.scrollBy(0, b.getBoundingClientRect().top - 140);
+    });
+    const y0 = await page.evaluate(() => window.scrollY);
+    expect(y0).toBeGreaterThan(50);
+    /* Safari can scroll during a tap, to whatever it decides to focus.
+       Chromium never does, so a scroll between finger-down and the click
+       stands in for it (on pointerup, so the click still reaches the arrow). */
+    await page.evaluate(() => document.addEventListener('pointerup', () => window.scrollTo(0, 0), { capture: true, once: true }));
+    const box = (await arrow().boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.locator('.fpx h2, .fpx-head h2').first()).toContainText('Cobalt');
+    await page.waitForTimeout(600);
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - y0), 'the page moved').toBeLessThan(3);
+  });
+
+  test('on paper: black numbers round the edge, one page, and no room for the browser\'s date line', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/periodic.html');
+    await page.emulateMedia({ media: 'print' });
+    const lbl = await page.evaluate(() => { const s = getComputedStyle(document.querySelector('.fpt-lbl')!); return { c: s.color, o: s.opacity }; });
+    expect(lbl).toEqual({ c: 'rgb(0, 0, 0)', o: '1' });
+    for (const landscape of [true, false]) {
+      const pdf = await page.pdf({ landscape, format: 'Letter', preferCSSPageSize: true });
+      const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+      expect(pages, (landscape ? 'landscape' : 'portrait') + ' printed a second page').toBe(1);
+    }
+    // @page margin 0 is what leaves the browser no margin to print its date and time in.
+    const zeroMargin = await page.evaluate(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => r instanceof CSSPageRule && r.style.margin === '0px'); } catch (e) { return false; } }));
+    expect(zeroMargin).toBe(true);
+  });
+});

@@ -378,6 +378,30 @@
 
   App.prototype.wire = function () {
     const self = this;
+    /* A tap never scrolls: if the page moved between finger down and the
+       click, the browser did it — Safari scrolling to whatever it chose to
+       focus — so put it back before anything else happens. Not for fields:
+       there iOS scrolls on purpose, to keep the keyboard off the box. */
+    let down = null;
+    const scroller = (el) => {
+      let box = el && el.parentElement;
+      while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+      return box && box !== document.body ? box : null;
+    };
+    this.root.addEventListener('pointerdown', (ev) => {
+      const t = ev.target;
+      if (!(t instanceof Element) || t.closest('input, select, textarea')) { down = null; return; }
+      const box = scroller(t);
+      down = { box: box, y: box ? box.scrollTop : window.scrollY, at: Date.now() };
+    }, true);
+    this.root.addEventListener('click', () => {
+      const d = down;
+      down = null;
+      if (!d || Date.now() - d.at > 1000) return;
+      const now = d.box ? d.box.scrollTop : window.scrollY;
+      if (Math.abs(now - d.y) < 30) return;
+      if (d.box) d.box.scrollTop = d.y; else window.scrollTo(0, d.y);
+    }, true);
     this.root.addEventListener('click', (ev) => {
       const t = ev.target;
       const cell = t.closest('.fpt-el');
@@ -809,17 +833,24 @@
     this.st.sel = n;
     if (n && this.cells[n]) Object.keys(this.cells).forEach((k) => { this.cells[k].tabIndex = +k === n ? 0 : -1; });
     if (this.o.hash) this.writeHash();
-    this.paint();
+    /* Picking another element — a cell, the ‹ › arrows, a link — redraws the
+       panel you are reading, and the page must not move while it does. Chrome
+       hides this with scroll anchoring; Safari has none, so on an iPhone every
+       arrow tap after scrolling down threw the reader back up the page
+       (Azfer, 2026-09-30). keepPlace pins the panel's top where it was. */
     if (isExplore(view)) {
-      this.renderLegend();
-      this.renderExplore();
+      this.keepPlace('.fpt-explore', () => { this.paint(); this.renderLegend(); this.renderExplore(); });
       return;
     }
-    this.renderSide();
     // On a narrow screen the details sit under the table: bring them into view.
-    if (n && this.root.clientWidth < 1100 && this.o.scrollToDetail !== false && this.side.getBoundingClientRect().top > window.innerHeight - 80) {
+    const reveal = n && this.root.clientWidth < 1100 && this.o.scrollToDetail !== false && this.side.getBoundingClientRect().top > window.innerHeight - 80;
+    if (reveal) {
+      this.paint();
+      this.renderSide();
       this.side.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
     }
+    this.keepPlace('.fpt-side', () => { this.paint(); this.renderSide(); });
   };
   /** Switch tab. The element on show stays chosen across tabs. */
   App.prototype.setView = function (v) {
@@ -951,19 +982,43 @@
     if (!st.sel) { this.side.innerHTML = this.o.simple ? this.simpleIntroHTML() : this.introHTML(); return; }
     this.side.innerHTML = this.detailHTML(byN(st.sel));
   };
-  /** Redraw without the page moving: what was under the finger stays under it. */
+  /** Redraw without the page moving: what was under the finger stays under it.
+      Held for half a second as well, because charts and the 3D view finish
+      laying out after the redraw returns, and Safari (no scroll anchoring)
+      lets that late growth or shrinkage slide the page. A wheel, touch or key
+      from the reader ends the hold at once, so it never fights them. */
   App.prototype.keepPlace = function (sel, redraw) {
     const was = this.root.querySelector(sel);
     const y = was ? was.getBoundingClientRect().top : null;
     redraw();
-    const now = y == null ? null : this.root.querySelector(sel);
-    if (!now) return;
-    const d = now.getBoundingClientRect().top - y;
-    if (Math.abs(d) < 1) return;
-    let box = now.parentElement;
-    while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
-    if (box && box !== document.body) box.scrollTop += d;
-    else window.scrollBy(0, d);
+    if (y == null) return;
+    const fix = () => {
+      const now = this.root.querySelector(sel);
+      if (!now) return;
+      const d = now.getBoundingClientRect().top - y;
+      if (Math.abs(d) < 1) return;
+      let box = now.parentElement;
+      while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+      if (box && box !== document.body) box.scrollTop += d;
+      else window.scrollBy(0, d);
+    };
+    fix();
+    if (this._holdStop) this._holdStop();
+    let live = true;
+    const until = Date.now() + 500;
+    const kinds = ['wheel', 'touchstart', 'keydown'];
+    const stop = () => { live = false; kinds.forEach((k) => window.removeEventListener(k, stop, true)); if (this._holdStop === stop) this._holdStop = null; };
+    kinds.forEach((k) => window.addEventListener(k, stop, { capture: true, passive: true }));
+    this._holdStop = stop;
+    const tick = () => {
+      if (!live) return;
+      if (Date.now() > until) { stop(); return; }
+      fix();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    // A hidden tab runs no frames; the timer still ends the hold.
+    setTimeout(() => { if (live) { fix(); stop(); } }, 520);
   };
 
   App.prototype.simpleIntroHTML = function () {

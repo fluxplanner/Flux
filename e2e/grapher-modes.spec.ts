@@ -365,6 +365,58 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('.flg-fchip')).toHaveCount(2);
   });
 
+  test('the automatic best fit says which line it chose, on its chip and in the results', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2.1'], ['2', '4.4'], ['3', '8.9'], ['4', '16.2'], ['5', '24.8']]);
+    await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].fits = ['auto']; g.renderTfoot(g.doc.items[0]); g.draw(); });
+    await expect(page.locator('[data-autoname]')).toHaveText('Best fit: Quadratic');
+    await expect(page.locator('.flg-rc')).toContainText('Best fit: Quadratic');
+    // Readings that fall on a line change the choice, and the chip follows.
+    await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].rows = [['1', '2'], ['2', '4.1'], ['3', '5.9'], ['4', '8'], ['', '']]; g.renderItems(); g.draw(); });
+    await expect(page.locator('[data-autoname]')).toHaveText(/^Best fit: (Straight line|Through the origin)$/);
+  });
+
+  test('printing asks about a black-and-white printer, then prints the white, heavy drawing on its own', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4.2'], ['3', '5.9'], ['4', '8.1']]);
+    await page.evaluate(() => { (window as any).__printed = 0; window.print = () => { (window as any).__printed++; }; });
+    await page.locator('#ghPrint').click();
+    await expect(page.locator('.flg-printmenu')).toContainText('black and white');
+    await page.locator('[data-pmono="1"]').click();
+    await page.locator('[data-pgo]').click();
+    expect(await page.evaluate(() => (window as any).__printed)).toBe(1);
+    const sheet = page.locator('#flgPrintSheet svg');
+    await expect(sheet).toHaveCount(1);
+    const inks = await page.evaluate(() => {
+      const svg = document.querySelector('#flgPrintSheet svg')!.outerHTML;
+      return Array.from(new Set((svg.match(/(?:stroke|fill)="(#[0-9a-fA-F]{6})"/g) || []).map((m) => m.slice(m.indexOf('#'), -1).toLowerCase())));
+    });
+    expect(inks.filter((c) => c !== '#000000' && c !== '#ffffff'), 'a black-and-white print still has colour in it').toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.classList.contains('flg-printing'))).toBe(true);
+    // Remembered for next time.
+    expect(await page.evaluate(() => localStorage.getItem('flux_grapher_print_mono'))).toBe('true');
+  });
+
+  test('a saved image can have a white, planner or black background', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    await fillReadings(page, [['1', '2'], ['2', '4.2'], ['3', '5.9']]);
+    const bgOf = (bg: string) => page.evaluate((b) => {
+      const svg = (window as any).fluxGrapherPage.instance.svg(800, 500, true, { bg: b });
+      return (/class="flg-bgall" style="fill:([^;"]+)/.exec(svg) || [])[1];
+    }, bg);
+    expect(await bgOf('white')).toBe('#ffffff');
+    expect((await bgOf('planner'))!.toLowerCase()).toBe('#0b0f1a');
+    expect(await bgOf('black')).toBe('#000000');
+    await page.locator('#ghPng').click();
+    const sheet = page.locator('.fgx-sheet');
+    await expect(sheet.locator('input[name="bg"]')).toHaveCount(3);
+    await sheet.locator('.fgx-bgopt', { hasText: 'Black' }).click();
+    expect(await page.evaluate(() => localStorage.getItem('flux_grapher_img_bg'))).toBe('"black"');
+    // White paper gets a grid you can see once it is printed.
+    const grid = await page.evaluate(() => (/class="flg-gmaj" style="stroke:([^;"]+)/.exec((window as any).fluxGrapherPage.instance.svg(800, 500, true, { bg: 'white' })) || [])[1]);
+    expect(grid).toBe('#9ba6b5');
+  });
+
   test('units take exponents like Desmos: cm^3 becomes cm³, upright, in the field and on the axis', async ({ page }) => {
     await open(page, { mode: 'data' });
     const unit = page.locator('.flg-cunit').nth(1);

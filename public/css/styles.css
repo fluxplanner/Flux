@@ -2787,6 +2787,14 @@ body.flux-has-impersonate-banner.flux-has-release-banner .sidebar{top:calc(34px 
 .task-chip-priority.low{background:rgba(var(--green-rgb),.06);color:var(--green)}
 .task-chip-time{background:rgba(var(--purple-rgb),.06);color:var(--purple);border:1px solid rgba(var(--purple-rgb),.12)}
 
+/* Completed filter: the two-week rule, said once at the top, and on each card */
+.flux-done-notice{
+  display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border-radius:12px;
+  font-size:.78rem;line-height:1.4;color:var(--muted2,var(--muted));
+  background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.16);
+}
+.task-chip-expiry{background:rgba(255,255,255,.03);color:var(--muted);border:1px dashed rgba(255,255,255,.12)}
+
 /* Show/hide completed toggle */
 .completed-toggle{
   display:flex;align-items:center;gap:8px;padding:8px 0;
