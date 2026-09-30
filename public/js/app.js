@@ -3105,6 +3105,34 @@ function migrateCompletedAtBackfill(){
   if(changed){save('tasks',tasks);syncKey('tasks',tasks);}
 }
 
+/* Finished tasks are deleted two weeks after they were completed (Azfer,
+   2026-09-30); the Completed filter on the dashboard says so. The clock runs
+   from the later of completion and the day this arrived, so the tasks people
+   finished months ago are not wiped the moment they update — everyone gets the
+   full two weeks' notice. Deleting syncs, so every device agrees. */
+const FLUX_DONE_KEEP_MS=14*864e5;
+const FLUX_DONE_PURGE_FROM=new Date(2026,8,30).getTime();
+function fluxDoneAtMs(t){
+  const v=t&&t.completedAt;
+  const n=typeof v==='number'?v:Date.parse(v);
+  return Number.isFinite(n)?n:NaN;
+}
+/** When a finished task is deleted, in ms; NaN for a task that is not done. */
+function fluxDoneExpiresMs(t){
+  if(!t||!t.done)return NaN;
+  const at=fluxDoneAtMs(t);
+  return Math.max(Number.isFinite(at)?at:Date.now(),FLUX_DONE_PURGE_FROM)+FLUX_DONE_KEEP_MS;
+}
+function fluxPurgeOldCompleted(){
+  const now=Date.now();
+  const keep=tasks.filter(t=>!(t&&t.done&&fluxDoneExpiresMs(t)<=now));
+  const n=tasks.length-keep.length;
+  if(!n)return 0;
+  tasks=keep;save('tasks',tasks);syncKey('tasks',tasks);
+  return n;
+}
+window.fluxPurgeOldCompleted=fluxPurgeOldCompleted;
+
 // Tab config — each tab has id, icon, label, visible flag
 /* School-joining is switched off for now (owner request): the "Join your
    school" card and the "Join a Teacher Class" button are both pulled from the
@@ -4784,6 +4812,9 @@ function renderTasks(){
       if(d!==0)return d;
       return (a.id||0)-(b.id||0);
     });
+  }else if(taskFilter==='done'){
+    // Most recently finished first.
+    list.sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   }else{
   const energy=readFluxEnergyLevel();
   let moodStress=5;
@@ -4814,7 +4845,10 @@ function renderTasks(){
     const smartMeta=window.FluxSmartLists?.getEmptyMeta?.(taskFilter);
     const emptyTitle=smartMeta?.title||(msgs[taskFilter]||msgs.all);
     const emptyIcon=smartMeta?.icon||(icons[taskFilter]||icons.all);
-    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette</div></div>`;
+    const emptySub=taskFilter==='done'
+      ?'Tasks you finish show here for 2 weeks, then they are deleted.'
+      :'Use the <span class="kbd-hint">+</span> menu or <span class="kbd-hint">T</span> quick add · <span class="kbd-hint">⌘⇧K</span> search · <span class="kbd-hint">⌘K</span> palette';
+    el.innerHTML=`<div class="empty flux-empty-smart flux-empty-animated"><div class="empty-icon flux-empty-bounce">${emptyIcon}</div><div class="empty-title">${emptyTitle}</div><div class="empty-sub">${emptySub}</div></div>`;
     requestAnimationFrame(()=>{try{const em=el.querySelector('.empty');if(em)window.FluxAnim?.emptyStateIn?.(em);}catch(e){}});
     return;
   }
@@ -4894,6 +4928,7 @@ ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
+${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
 </div>
@@ -4922,7 +4957,10 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   };
   const win=fluxWindowedListHtml(active,renderCard,'tasks');
   let html=win.html;
-  if(done.length){
+  if(taskFilter==='done'){
+    html=`<div class="flux-done-notice" role="note"><span aria-hidden="true">🗑</span> Finished tasks are deleted 2 weeks after you complete them. Untick one to keep it.</div>`
+      +done.map(renderCard).join('');
+  }else if(done.length){
     const showDone=load('flux_show_completed',false);
     html+=`<div class="completed-toggle ${showDone?'':'collapsed'}" onclick="toggleCompletedTasks()">
       <span class="completed-toggle-label">Completed</span>
@@ -10433,7 +10471,7 @@ async function syncFromCloud(){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
     }
     if(d.tasks&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
-      tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();
+      tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();fluxPurgeOldCompleted();
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
       try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
@@ -14800,6 +14838,9 @@ function handleCheckoutReturn(){
   try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
   try{if(window.FluxStorageRepair?.install)FluxStorageRepair.install();}catch(_){}
   migrateCompletedAtBackfill();
+  fluxPurgeOldCompleted();
+  // A tab left open for days still clears on time.
+  setInterval(()=>{try{if(fluxPurgeOldCompleted()){renderTasks();renderStats();}}catch(_){}},36e5);
   loadSettingsUI();
   const sb=document.getElementById('sidebar');if(sb&&sidebarCollapsed)sb.classList.add('collapsed');
   try{

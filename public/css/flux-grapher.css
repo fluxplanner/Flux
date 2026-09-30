@@ -1678,3 +1678,48 @@
   .fgi-sweep { animation: none; transform: translateY(60%); }
 }
 .flg-rc-note { color: var(--flg-mut, #9fb0cc); font-size: .72rem; line-height: 1.45; margin-top: 4px; }
+
+/* ── Saving and printing (Azfer, 2026-09-30) ─────────────────────────────
+   Save image picks a background — white, the planner's blue, or black — and
+   Print asks whether the printer is black and white before it prints. */
+.fgx-bg { margin: 2px 0 0; padding: 8px 12px 10px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 12px; }
+.fgx-bg legend { padding: 0 6px; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a9b6cc; }
+.fgx-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.fgx-bgopt { position: relative; cursor: pointer; }
+.fgx-bgopt input { position: absolute; opacity: 0; pointer-events: none; }
+.fgx-bgopt span {
+  display: flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 6px; border-radius: 9px;
+  font-size: .8rem; font-weight: 700; color: #a9b6cc; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .03);
+}
+.fgx-bgopt input:checked + span { color: #eaf1ff; border-color: rgba(0, 194, 255, .7); background: rgba(0, 194, 255, .12); }
+.fgx-bgopt input:focus-visible + span { outline: 2px solid #00c2ff; outline-offset: 1px; }
+.fgx-sw { flex: none; width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .35); }
+.fgx-sw--white { background: #ffffff; }
+.fgx-sw--planner { background: #0B0F1A; }
+.fgx-sw--black { background: #000000; }
+
+.flg-printmenu { width: 260px; padding: 6px 6px 4px; }
+.flg-pm-h { margin: 0 0 6px; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #a9b6cc; }
+.flg-pm-q { margin: 0 0 8px; font-size: .86rem; font-weight: 600; line-height: 1.35; }
+.flg-pm-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; margin-bottom: 8px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); }
+.flg-pop .flg-pm-seg button {
+  appearance: none; border: 0; margin: 0; padding: 7px 6px; border-radius: 8px; cursor: pointer;
+  font-size: .78rem; font-weight: 700; color: #a9b6cc; background: transparent;
+}
+.flg-pop .flg-pm-seg button[aria-checked="true"] { color: #062030; background: linear-gradient(135deg, #7fe3ff, #00c2ff); }
+.flg-pm-note { margin: 0 0 10px; font-size: .74rem; line-height: 1.4; color: #a9b6cc; }
+.flg-pop .flg-pm-go {
+  width: 100%; padding: 9px; border: 0; border-radius: 10px; cursor: pointer;
+  font-size: .86rem; font-weight: 800; color: #062030; background: linear-gradient(135deg, #7fe3ff, #00c2ff);
+}
+
+/* The print-weight drawing on its own page; everything else stays off paper. */
+#flgPrintSheet { display: none; }
+@media print {
+  html.flg-printing, html.flg-printing body { background: #fff !important; min-height: 0 !important; height: auto !important; }
+  html.flg-printing body > *:not(#flgPrintSheet) { display: none !important; }
+  html.flg-printing #flgPrintSheet { display: block; padding: 8mm 10mm; color: #000; }
+  #flgPrintSheet svg { display: block; width: 100%; height: auto; max-height: 180mm; break-inside: avoid; }
+  .flg-print-mark { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font: 700 10px Helvetica, Arial, sans-serif; color: #333; }
+  .flg-print-mark img { width: 18px; height: 18px; padding: 2px; border-radius: 5px; background: #0b0f1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

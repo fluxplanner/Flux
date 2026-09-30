@@ -311,6 +311,10 @@
   .fpt:not(.print-bw) .fpt-el { background: color-mix(in srgb, var(--c, #fff) 20%, #fff) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fpt:not(.print-bw) .fpt-el.is-heat { background: color-mix(in srgb, var(--c, #fff) 55%, #fff) !important; }
   .fpt.print-bw .fpt-el { border-color: #555 !important; }
+  /* The group and period numbers round the edge are a pale grey at 75% on
+     screen, which on paper all but vanished. Black, and a touch larger. */
+  .fpt .fpt-lbl, .fpt .fpt-fmark { color: #000 !important; opacity: 1 !important; font-weight: 700; font-size: 11px; }
+  .fpt, .fpt-body, .fpt-main, .fpt-scroll, .fpt-grid { break-inside: avoid; }
   .fpt.print-bw .fpt-el::before { display: none !important; }
   /* The key, in the gap above the transition metals. */
   .fpt.print-key .fpt-printkey {

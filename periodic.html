@@ -20,7 +20,7 @@
   computer without an account. The same tool is Study tools ▸ Chemistry ▸
   Table inside the planner.
 -->
-<link rel="stylesheet" href="public/css/flux-ptable.css?v=991a0162">
+<link rel="stylesheet" href="public/css/flux-ptable.css?v=8f161c71">
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a625201">
 <style>
   :root {
@@ -106,10 +106,17 @@
   }
   /* Only on paper: the Flux mark, top left. */
   .print-mark { display: none; }
+  /* No page margin, so the browser has nowhere to print its own header and
+     footer (the date and time, the address); the body pads the page instead. */
+  @page { margin: 0; }
   @media print {
     header.top, .toast { display: none; }
-    body { background: #fff; color: #000; }
-    main { padding: 0; }
+    /* min-height: 100dvh is the *screen's* height, and Safari keeps it when
+       printing: on a landscape page that ran the body onto a second, empty
+       sheet. On paper the body is as tall as the table, no taller. */
+    html, body { min-height: 0 !important; height: auto !important; background: #fff !important; }
+    body { color: #000; padding: 9mm 11mm; }
+    main { padding: 0; max-width: none; }
     .print-mark {
       display: flex; align-items: center; gap: 6px; margin: 0 0 6px;
       font-size: 10px; font-weight: 700; letter-spacing: .01em; color: #333;
@@ -155,7 +162,7 @@
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>
-  <script src="public/js/flux-ptable.js?v=fdbd70b7"></script>
+  <script src="public/js/flux-ptable.js?v=2930e791"></script>
   <script src="public/js/flux-ptable-atom3d.js?v=6ebfd2ec"></script>
   <script src="public/js/flux-ptable-explore.js?v=e77e1b21"></script>
   <script>
