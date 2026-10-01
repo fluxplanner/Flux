@@ -1040,11 +1040,11 @@
      `mono` is for a black-and-white printer: every line and point in one ink,
      told apart by their dashes. */
   const INKS = {
-    white: { bg: '#ffffff', gmin: '#d5dbe4', gmaj: '#9ba6b5', axis: '#0f172a', zero: '#475569', frame: '#0f172a',
+    white: { bg: '#ffffff', gmin: '#d5dbe4', gmaj: '#9ba6b5', axis: '#0f172a', frame: '#0f172a',
       tick: '#0f172a', text: '#000000', leg: '#ffffff', legLine: '#94a3b8', mono: '#000000', paper: true },
-    planner: { bg: '#0B0F1A', gmin: 'rgba(255,255,255,.07)', gmaj: 'rgba(255,255,255,.17)', axis: '#cbd5e1', zero: '#64748b', frame: '#94a3b8',
+    planner: { bg: '#0B0F1A', gmin: 'rgba(255,255,255,.07)', gmaj: 'rgba(255,255,255,.17)', axis: '#cbd5e1', frame: '#94a3b8',
       tick: '#cbd5e1', text: '#f1f5f9', leg: '#121826', legLine: 'rgba(255,255,255,.18)', mono: '#ffffff', paper: false },
-    black: { bg: '#000000', gmin: '#1c1c1c', gmaj: '#3b3b3b', axis: '#e5e5e5', zero: '#737373', frame: '#a3a3a3',
+    black: { bg: '#000000', gmin: '#1c1c1c', gmaj: '#3b3b3b', axis: '#e5e5e5', frame: '#a3a3a3',
       tick: '#e5e5e5', text: '#ffffff', leg: '#0a0a0a', legLine: '#404040', mono: '#ffffff', paper: false },
   };
   const FONT = 'font-family:Helvetica,Arial,sans-serif';
@@ -1055,8 +1055,10 @@
       'flg-plotbg': 'fill:' + K.bg,
       'flg-gmin': 'stroke:' + K.gmin + ';stroke-width:1',
       'flg-gmaj': 'stroke:' + K.gmaj + ';stroke-width:1.2',
-      'flg-axis': 'stroke:' + K.axis + ';stroke-width:2',
-      'flg-zero': 'stroke:' + K.zero + ';stroke-width:1.3',
+      // The x = 0 and y = 0 lines: the darkest, heaviest lines on the page, so
+      // they stand out from the grid on paper (Azfer, 2026-09-30).
+      'flg-axis': 'stroke:' + K.axis + ';stroke-width:2.8',
+      'flg-zero': 'stroke:' + K.axis + ';stroke-width:2.6',
       'flg-frame': 'stroke:' + K.frame + ';stroke-width:1.6;fill:none',
       'flg-tick': 'fill:' + K.tick + ';font-size:14px;font-weight:600;' + FONT,
       'flg-tick flg-halo': 'fill:' + K.tick + ';font-size:14px;font-weight:600;' + FONT + halo + ';stroke-width:3px',
