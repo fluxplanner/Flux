@@ -738,8 +738,7 @@
 .flg-results {
   position: absolute;
   z-index: 2;
-  /* Wide enough for an equation and its m and R² on one line. */
-  max-width: min(420px, calc(100% - 80px));
+  max-width: min(300px, calc(100% - 80px));
   max-height: calc(100% - 24px);
   overflow: auto;
   padding: 6px 10px 8px;
@@ -771,16 +770,15 @@
 .flg-rc-h { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: .78rem; }
 .flg-rc-h i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 .flg-rc-eq {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; margin: 4px 0;
-  font-family: var(--flg-mono); font-size: .84rem; color: var(--flg-ink); word-break: break-word;
+  /* Name, then "= value": the equals signs line up down the card. */
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 6px; row-gap: 2px; align-items: baseline;
+  margin: 4px 0; font-family: var(--flg-mono); font-size: .78rem; color: var(--flg-ink);
 }
-.flg-rc-eqn { font-weight: 700; }
-/* m = −25.75, R² = 0.888: on the equation's line, a step quieter than it. */
-.flg-rc-pv { font-size: .76rem; white-space: nowrap; }
-.flg-rc-eqn + .flg-rc-pv { margin-left: 6px; }
-.flg-rc-pv + .flg-rc-pv::before { content: '·'; margin-right: 8px; color: var(--flg-mut); }
-.flg-rc-pv > span { color: var(--flg-mut); font-weight: 600; }
-.flg-rc-pv b { font-weight: 700; }
+.flg-rc-k { color: var(--flg-mut); font-weight: 600; white-space: nowrap; }
+.flg-rc-v { font-weight: 700; word-break: break-word; }
+/* The equation leads, a size up and in full ink; the numbers sit under it. */
+.flg-rc-eqrow { font-size: .86rem; font-weight: 700; color: var(--flg-ink); margin-bottom: 1px; }
+.flg-rc-whole { grid-column: 1 / -1; font-size: .86rem; font-weight: 700; word-break: break-word; }
 .flg-rc-form { margin-left: 2px; font-family: var(--flg-mono); font-weight: 600; color: var(--flg-mut); opacity: .85; }
 .flg-rc-err { color: #fbbf24; font-size: .74rem; line-height: 1.45; margin-top: 4px; }
 

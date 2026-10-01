@@ -4051,14 +4051,26 @@
     if (f.weighted && f.chi2nu != null && Number.isFinite(f.chi2nu)) rows.push(['χ²/ν', fmt(f.chi2nu)]);
     return rows;
   }
-  /** The numbers on the same line as the equation — "y = −25.75x  m = −25.75
-      R² = 0.888" — rather than in a table underneath with the values pushed
-      to the far edge (Azfer, 2026-09-30). Wraps on a narrow card. */
-  function valuesHTML(rows) {
-    return rows.map((r) => '<span class="flg-rc-pv"><span>' + esc(r[0]) + ' =</span> <b>' + esc(r[1]) + '</b></span>').join('');
-  }
+  /** The equation, then each number on its own line beneath it, every "="
+      lined up — a list without the bullets (Azfer, 2026-09-30):
+
+          y  = −25.75x
+          m  = −25.75
+          R² = 0.888
+
+      The old table pushed the values to the card's far edge, away from
+      their names. A two-column grid keeps name and value side by side. */
   function eqLine(eq, rows) {
-    return '<div class="flg-rc-eq">' + (eq ? '<span class="flg-rc-eqn">' + esc(eq) + '</span>' : '') + valuesHTML(rows) + '</div>';
+    const cut = eq ? eq.indexOf(' = ') : -1;
+    const head = cut > 0 ? [[eq.slice(0, cut), eq.slice(cut + 3)]] : [];
+    // The space between the spans is ignored by the grid but kept in the text,
+    // so a copied or read-aloud line says "m = −25.75", not "m= −25.75".
+    const pairs = (k, v, cls) => '<span class="flg-rc-k' + cls + '">' + esc(k) + '</span> <span class="flg-rc-v' + cls + '">= ' + esc(v) + '</span> ';
+    return '<div class="flg-rc-eq">'
+      + (eq && cut <= 0 ? '<span class="flg-rc-whole">' + esc(eq) + '</span>' : '')
+      + head.map((r) => pairs(r[0], r[1], ' flg-rc-eqrow')).join('')
+      + rows.map((r) => pairs(r[0], r[1], '')).join('')
+      + '</div>';
   }
 
   /** Gradient and intercept with uncertainty from two or more manual lines. */
