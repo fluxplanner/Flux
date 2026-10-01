@@ -3760,8 +3760,14 @@
     }
 
     if (fr.box) {
-      if (v.yLo < 0 && v.yHi > 0) P.push('<line x1="' + fr.L + '" y1="' + m.sy(0) + '" x2="' + fr.R + '" y2="' + m.sy(0) + '" ' + c('flg-zero') + '/>');
-      if (v.xLo < 0 && v.xHi > 0) P.push('<line x1="' + m.sx(0) + '" y1="' + fr.T + '" x2="' + m.sx(0) + '" y2="' + fr.B + '" ' + c('flg-zero') + '/>');
+      /* On paper a 0 that falls on the edge of the plot gets its zero line too.
+         Readings starting at x = 0 put the y-axis 0 on the frame's thin left
+         edge, while y = 0 crossing the middle drew a heavy zero line, so the
+         two 0 lines printed at different weights (Azfer, 2026-09-30). */
+      const yz = print ? v.yLo <= 0 && v.yHi >= 0 : v.yLo < 0 && v.yHi > 0;
+      const xz = print ? v.xLo <= 0 && v.xHi >= 0 : v.xLo < 0 && v.xHi > 0;
+      if (yz) P.push('<line x1="' + fr.L + '" y1="' + m.sy(0) + '" x2="' + fr.R + '" y2="' + m.sy(0) + '" ' + c('flg-zero') + '/>');
+      if (xz) P.push('<line x1="' + m.sx(0) + '" y1="' + fr.T + '" x2="' + m.sx(0) + '" y2="' + fr.B + '" ' + c('flg-zero') + '/>');
       P.push('<rect x="' + fr.L + '" y="' + fr.T + '" width="' + fr.pw + '" height="' + fr.ph + '" ' + c('flg-frame') + '/>');
       xs.forEach((t) => {
         const X = m.sx(t);
