@@ -371,9 +371,22 @@ test.describe('Flux Grapher', () => {
     await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].fits = ['auto']; g.renderTfoot(g.doc.items[0]); g.draw(); });
     await expect(page.locator('[data-autoname]')).toHaveText('Best fit: Quadratic');
     await expect(page.locator('.flg-rc')).toContainText('Best fit: Quadratic');
+    await expect(page.locator('.flg-rc-form')).toHaveText('y = ax² + bx + c');
+    // The numbers sit on the equation's line, not in a table under it.
+    const eq = page.locator('.flg-rc-eq').first();
+    await expect(eq.locator('.flg-rc-eqn')).toContainText('y = ');
+    await expect(eq.locator('.flg-rc-pv')).toHaveCount(4);
+    await expect(eq).toContainText('R² = ');
+    await expect(page.locator('.flg-rc table')).toHaveCount(0);
+    const sameLine = await eq.evaluate((el) => {
+      const e = el.querySelector('.flg-rc-eqn')!.getBoundingClientRect(), v = el.querySelector('.flg-rc-pv')!.getBoundingClientRect();
+      const mid = (v.top + v.bottom) / 2;
+      return mid > e.top && mid < e.bottom;
+    });
+    expect(sameLine, 'the first number should sit on the equation\'s line').toBe(true);
     // Readings that fall on a line change the choice, and the chip follows.
     await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].rows = [['1', '2'], ['2', '4.1'], ['3', '5.9'], ['4', '8'], ['', '']]; g.renderItems(); g.draw(); });
-    await expect(page.locator('[data-autoname]')).toHaveText(/^Best fit: (Straight line|Through the origin)$/);
+    await expect(page.locator('[data-autoname]')).toHaveText(/^Best fit: (Linear|Proportional)$/);
   });
 
   test('printing asks about a black-and-white printer, then prints the white, heavy drawing on its own', async ({ page }) => {
