@@ -397,6 +397,22 @@ test.describe('Flux Grapher', () => {
     expect(await page.evaluate(() => localStorage.getItem('flux_grapher_print_mono'))).toBe('true');
   });
 
+  test('on paper both 0 lines are equally heavy, even when one falls on the edge of the plot', async ({ page }) => {
+    await open(page, { mode: 'data' });
+    // Readings from x = 0 put the y-axis 0 on the frame's left edge; y crosses 0 mid-plot.
+    await fillReadings(page, [['0', '-4.1'], ['1', '-1.8'], ['2', '0.2'], ['3', '2.1'], ['4', '4.2']]);
+    const zeros = await page.evaluate(() => {
+      const svg = (window as any).fluxGrapherPage.instance.svg(1600, 1000, true, { bg: 'white' });
+      return (svg.match(/<line [^>]*class="flg-zero"[^>]*>/g) || []).map((l: string) => {
+        const a = (k: string) => +(new RegExp(k + '="([^"]+)"').exec(l) || [])[1];
+        return { vertical: a('x1') === a('x2'), style: (/style="([^"]+)"/.exec(l) || [])[1] };
+      });
+    });
+    expect(zeros.map((z: any) => z.vertical).sort()).toEqual([false, true]);
+    expect(zeros[0].style).toBe(zeros[1].style);
+    expect(zeros[0].style).toContain('stroke-width:2.6');
+  });
+
   test('a saved image can have a white, planner or black background', async ({ page }) => {
     await open(page, { mode: 'data' });
     await fillReadings(page, [['1', '2'], ['2', '4.2'], ['3', '5.9']]);
