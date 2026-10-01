@@ -4552,12 +4552,25 @@
      every line and point prints black, told apart by its dashes. */
   Grapher.prototype.printMenu = function (anchor) {
     const mono = readJSON(PRINT_KEY, false) === true;
+    const H = window.FluxHub;
+    // A home-screen app on an iPhone or iPad cannot print (see FluxHub.canPrint):
+    // the image is made ahead, while the menu is open, so the tap on Print can
+    // open the Share sheet straight away — Safari refuses it after a wait.
+    const viaShare = !!(H && H.canPrint && !H.canPrint());
+    let ready = null, making = null;
+    const prepare = () => {
+      ready = null;
+      const m = readJSON(PRINT_KEY, false) === true;
+      making = this.pngBlob(2400, 1600, { bg: 'white', mono: m }).then((b) => { ready = b; return b; }, () => null);
+    };
+    if (viaShare) prepare();
     const html = '<div class="flg-printmenu"><div class="flg-pm-h">Print</div>'
       + '<p class="flg-pm-q">Does your printer only print in black and white?</p>'
       + '<div class="flg-pm-seg" role="radiogroup" aria-label="Printer">'
       + '<button type="button" role="radio" data-pmono="0" aria-checked="' + !mono + '">No, colour</button>'
       + '<button type="button" role="radio" data-pmono="1" aria-checked="' + mono + '">Yes, black &amp; white</button></div>'
       + '<p class="flg-pm-note">Black &amp; white prints every line and point in black, each line with its own dashes.</p>'
+      + (viaShare ? '<p class="flg-pm-note flg-pm-share">On your phone this opens the Share menu: choose <b>Print</b> there.</p>' : '')
       + '<button type="button" class="flg-pm-go" data-pgo>Print</button></div>';
     openPop(anchor, html, (el) => {
       el.addEventListener('click', (e) => {
@@ -4565,9 +4578,16 @@
         if (b) {
           writeJSON(PRINT_KEY, b.dataset.pmono === '1');
           el.querySelectorAll('[data-pmono]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+          if (viaShare) prepare();
           return;
         }
-        if (e.target.closest('[data-pgo]')) { closePop(); this.printGraph(readJSON(PRINT_KEY, false) === true); }
+        if (!e.target.closest('[data-pgo]')) return;
+        if (!viaShare) { closePop(); this.printGraph(readJSON(PRINT_KEY, false) === true); return; }
+        closePop();
+        const name = this.fileName() + '.png', title = this.doc.title || 'Graph';
+        const done = (r) => { if (r === 'saved') toast('Saved as an image. Open it and use Share, then Print.', 'success'); };
+        if (ready) H.printImage(ready, name, title).then(done);
+        else making.then((blob) => { if (blob) H.printImage(blob, name, title).then(done); else toast('Could not make the page to print.', 'error'); });
       });
     });
   };
@@ -4592,39 +4612,45 @@
     try { window.print(); } catch (e) { done(); }
   };
 
-  Grapher.prototype._downloadPNG = function (ink) {
-    const W = 1600, H = 1000;
+  Grapher.prototype.fileName = function () {
+    return (this.doc.title || (this.kind === 'data' ? 'graph' : 'functions'))
+      .replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'graph';
+  };
+  /** The exported drawing as a PNG, on its background. */
+  Grapher.prototype.pngBlob = function (W, H, ink) {
     const svg = this.svg(W, H, true, ink);
     const bgFill = inkOf(ink).bg;
-    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
-    const img = new Image();
-    const name = (this.doc.title || (this.kind === 'data' ? 'graph' : 'functions'))
-      .replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'graph';
-    img.onload = function () {
-      const cv = document.createElement('canvas');
-      cv.width = W; cv.height = H;
-      const ctx = cv.getContext('2d');
-      ctx.fillStyle = bgFill;
-      ctx.fillRect(0, 0, W, H);
-      ctx.drawImage(img, 0, 0, W, H);
-      URL.revokeObjectURL(url);
-      cv.toBlob(function (b) {
-        if (!b) { toast('Could not turn the graph into an image.', 'error'); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(b);
-        a.download = name + '.png';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-        toast('Image saved.', 'success');
-      }, 'image/png');
-    };
-    img.onerror = function () {
-      URL.revokeObjectURL(url);
-      toast('Could not turn the graph into an image.', 'error');
-    };
-    img.src = url;
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.onload = function () {
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = bgFill;
+        ctx.fillRect(0, 0, W, H);
+        ctx.drawImage(img, 0, 0, W, H);
+        URL.revokeObjectURL(url);
+        cv.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png');
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('svg')); };
+      img.src = url;
+    });
+  };
+
+  Grapher.prototype._downloadPNG = function (ink) {
+    const name = this.fileName();
+    const svg = this.svg(1600, 1000, true, ink);
+    this.pngBlob(1600, 1000, ink).then(function (b) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = name + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+      toast('Image saved.', 'success');
+    }, function () { toast('Could not turn the graph into an image.', 'error'); });
     return svg;
   };
 

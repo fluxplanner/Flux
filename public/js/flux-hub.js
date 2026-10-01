@@ -209,5 +209,40 @@
     location.href = a.href;
   }, true);
 
-  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS };
+  /* ── Printing where the browser cannot ───────────────────────────────
+     A web app saved to an iPhone or iPad home screen has no printing at all:
+     window.print() there simply does nothing, so the grapher's and the
+     periodic table's Print buttons failed without a word on Azfer's phone
+     (2026-10-01). There, the page hands an image of what would have printed
+     to the phone's Share sheet, which has Print in it. Everywhere else the
+     browser prints as before. */
+  function canPrint() {
+    var ua = navigator.userAgent || '';
+    var apple = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    return typeof window.print === 'function' && !(apple && installed());
+  }
+  /** Give a PNG to the Share sheet (Print is in it), or save it where sharing
+      files is not possible. Resolves 'shared', 'saved' or 'cancelled'. Call it
+      straight from the tap: Safari only opens the sheet for a fresh one. */
+  function printImage(blob, fileName, title) {
+    function save() {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      return 'saved';
+    }
+    var file = null;
+    try { file = new File([blob], fileName, { type: blob.type || 'image/png' }); } catch (e) { /* very old browser */ }
+    if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file], title: title || fileName })
+        .then(function () { return 'shared'; }, function (e) { return e && e.name === 'AbortError' ? 'cancelled' : save(); });
+    }
+    return Promise.resolve(save());
+  }
+
+  window.FluxHub = { mount: mount, mountAll: mountAll, openPage: openPage, PRODUCTS: PRODUCTS, canPrint: canPrint, printImage: printImage };
 })();

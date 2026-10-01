@@ -1293,23 +1293,121 @@
     if (box) box.innerHTML = key ? this.printKeyHTML() : '';
   };
   /** The key for whatever the table is coloured by right now. */
-  App.prototype.printKeyHTML = function () {
+  /** What the printed key says: a title, and either named colours or, for a
+      trend, its scale from lowest to highest. */
+  App.prototype.printKeyData = function () {
     const prop = PROP[this.colourId()];
-    const item = (c, label) => '<li><i style="--c:' + c + '"></i>' + esc(label) + '</li>';
-    let title = 'Key', body;
-    if (prop.kind === 'cat') body = '<ul>' + CATS.map((c) => item(c[2], c[1])).join('') + '</ul>';
-    else if (prop.kind === 'block') body = '<ul>' + Object.keys(BLOCKS).map((k) => item(BLOCKS[k][1], BLOCKS[k][0])).join('') + '</ul>';
-    else if (prop.kind === 'state') {
-      title = 'State at ' + this.tempText(this.st.temp);
-      body = '<ul>' + ['s', 'l', 'g', 'u'].map((k) => item(STATES[k][1], STATES[k][0])).join('') + '</ul>';
-    } else {
-      // A trend: its scale from lowest to highest value.
-      title = prop.label;
-      const stops = [0, .25, .5, .75, 1].map((x) => P().trendColor(prop.reverse ? 1 - x : x)).join(', ');
-      body = '<div class="fpt-pk-grad" style="background:linear-gradient(90deg, ' + stops + ')"></div>'
+    if (prop.kind === 'cat') return { title: 'Key', items: CATS.map((c) => [c[2], c[1]]) };
+    if (prop.kind === 'block') return { title: 'Key', items: Object.keys(BLOCKS).map((k) => [BLOCKS[k][1], BLOCKS[k][0]]) };
+    if (prop.kind === 'state') return { title: 'State at ' + this.tempText(this.st.temp), items: ['s', 'l', 'g', 'u'].map((k) => [STATES[k][1], STATES[k][0]]) };
+    return { title: prop.label, stops: [0, .25, .5, .75, 1].map((x) => P().trendColor(prop.reverse ? 1 - x : x)) };
+  };
+  App.prototype.printKeyHTML = function () {
+    const k = this.printKeyData();
+    const body = k.items
+      ? '<ul>' + k.items.map((it) => '<li><i style="--c:' + it[0] + '"></i>' + esc(it[1]) + '</li>').join('') + '</ul>'
+      : '<div class="fpt-pk-grad" style="background:linear-gradient(90deg, ' + k.stops.join(', ') + ')"></div>'
         + '<div class="fpt-pk-ends"><span>Lowest</span><span>Highest</span></div>';
+    return '<b class="fpt-pk-h">' + esc(k.title) + '</b>' + body;
+  };
+
+  /** The printed table as a PNG, for a phone that cannot print a page (a
+      home-screen app on an iPhone or iPad; see FluxHub.canPrint). The same
+      layout, ink and key as on paper, drawn cell by cell onto a canvas. */
+  App.prototype.printImage = function (opts) {
+    const o = opts || {};
+    const bw = o.ink === 'bw', key = !bw && !!o.key;
+    const W = 3000, H = 1980, M = 70, lab = 64, head = 96, labRow = 48;
+    const cw = (W - 2 * M - lab) / 18, ch = cw * 1.12, gap = ch * 0.35;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const font = (weight, px) => weight + ' ' + Math.round(px) + 'px -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+    const rgbOf = (c) => {
+      g.fillStyle = '#000'; g.fillStyle = c || '#ffffff';
+      const v = g.fillStyle;
+      if (v[0] === '#') return [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16));
+      const m = /rgba?\(([^)]+)\)/.exec(v);
+      return m ? m[1].split(',').slice(0, 3).map((x) => +x) : [255, 255, 255];
+    };
+    const tint = (c, k) => 'rgb(' + rgbOf(c).map((v) => Math.round(v * k + 255 * (1 - k))).join(',') + ')';
+    const box = (x, y, w, h, r) => {
+      g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+    };
+    const fit = (text, weight, px, max) => {
+      g.font = font(weight, px);
+      const w = g.measureText(text).width;
+      if (w > max) g.font = font(weight, px * max / w);
+    };
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    // The Flux mark, top left, as on paper.
+    g.fillStyle = '#0b0f1a'; box(M, 30, 44, 44, 10); g.fill();
+    g.fillStyle = '#7fe3ff'; g.font = font('800', 26); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('F', M + 22, 53);
+    g.fillStyle = '#333'; g.textAlign = 'left'; g.font = font('700', 28); g.fillText('Flux Periodic Table', M + 58, 53);
+    const x0 = M + lab, y0 = head + labRow;
+    const colX = (col) => x0 + (col - 1) * cw;
+    const rowY = (row) => (row <= 7 ? y0 + (row - 1) * ch : y0 + 7 * ch + gap + (row - 9) * ch);
+    // Group and period numbers, black.
+    g.fillStyle = '#000'; g.font = font('700', 30); g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let c = 1; c <= 18; c++) g.fillText(String(c), colX(c) + cw / 2, head + labRow / 2);
+    for (let r = 1; r <= 7; r++) g.fillText(String(r), M + lab / 2, rowY(r) + ch / 2);
+    g.textAlign = 'right'; g.font = font('700', 28);
+    g.fillText('57–71', colX(3) - 18, rowY(9) + ch / 2);
+    g.fillText('89–103', colX(3) - 18, rowY(10) + ch / 2);
+    // The cells.
+    model().forEach((e) => {
+      const cell = this.cells[e.n];
+      const c = cell ? cell.style.getPropertyValue('--c').trim() : '';
+      const heat = cell && cell.classList.contains('is-heat');
+      const x = colX(e.col) + 3, y = rowY(e.row) + 3, w = cw - 6, h = ch - 6;
+      box(x, y, w, h, 9);
+      g.fillStyle = bw || !c ? '#fff' : tint(c, heat ? 0.55 : 0.2);
+      g.fill();
+      if (!bw && c) {
+        g.save(); box(x, y, w, h, 9); g.clip();
+        g.fillStyle = c; g.fillRect(x, y, w, h * 0.07);
+        g.restore();
+      }
+      box(x, y, w, h, 9);
+      g.lineWidth = 2; g.strokeStyle = bw ? '#555' : '#777'; g.stroke();
+      g.fillStyle = '#000';
+      g.textAlign = 'left'; g.textBaseline = 'top'; g.font = font('600', 22);
+      g.fillText(String(e.n), x + 9, y + h * 0.1);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = font('800', 56);
+      g.fillText(e.s, x + w / 2, y + h * 0.43);
+      fit(e.name, '500', 19, w - 12);
+      g.fillText(e.name, x + w / 2, y + h * 0.68);
+      const v = cell ? (cell.querySelector('.fpt-v') || {}).textContent || '' : '';
+      if (v) { fit(v, '600', 19, w - 12); g.fillText(v, x + w / 2, y + h * 0.85); }
+    });
+    // The key, in the gap above the transition metals.
+    if (key) {
+      const k = this.printKeyData();
+      const kx = colX(4) + 10, ky = rowY(1) + 20, kw = colX(13) - colX(4) - 20;
+      g.fillStyle = '#000'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = font('700', 30);
+      g.fillText(k.title, kx, ky + 14);
+      g.font = font('500', 26);
+      if (k.items) {
+        const per = Math.ceil(k.items.length / 3), colW = kw / 3;
+        k.items.forEach((it, i) => {
+          const ix = kx + Math.floor(i / per) * colW, iy = ky + 62 + (i % per) * 46;
+          box(ix, iy - 15, 30, 32, 4); g.fillStyle = tint(it[0], 0.2); g.fill();
+          g.fillStyle = it[0]; g.fillRect(ix, iy - 15, 30, 8);
+          box(ix, iy - 15, 30, 32, 4); g.strokeStyle = '#777'; g.lineWidth = 2; g.stroke();
+          g.fillStyle = '#000'; g.fillText(it[1], ix + 42, iy);
+        });
+      } else {
+        const gw = Math.min(kw, 900), gy = ky + 60;
+        const grad = g.createLinearGradient(kx, 0, kx + gw, 0);
+        k.stops.forEach((s, i) => grad.addColorStop(i / (k.stops.length - 1), s));
+        g.fillStyle = grad; g.fillRect(kx, gy, gw, 36);
+        g.strokeStyle = '#777'; g.lineWidth = 2; g.strokeRect(kx, gy, gw, 36);
+        g.fillStyle = '#000'; g.font = font('500', 24);
+        g.fillText('Lowest', kx, gy + 62); g.textAlign = 'right'; g.fillText('Highest', kx + gw, gy + 62);
+      }
     }
-    return '<b class="fpt-pk-h">' + esc(title) + '</b>' + body;
+    return new Promise((resolve, reject) => cv.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png'));
   };
 
   App.prototype.destroy = function () {
