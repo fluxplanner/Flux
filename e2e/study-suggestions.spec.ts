@@ -134,7 +134,7 @@ test.describe('Measurements grapher', () => {
     await expect(page.locator('.flg-rc')).not.toContainText('±');
     await page.locator('[data-weighted]').first().click();
     await expect(page.locator('.flg-rc')).toContainText('Straight line (weighted)');
-    await expect(page.locator('.flg-rc')).toContainText('m1.005 ± 0.071');
+    await expect(page.locator('.flg-rc')).toContainText('m = 1.005 ± 0.071');
     await expect(page.locator('.flg-rc')).toContainText('χ²/ν');
   });
 

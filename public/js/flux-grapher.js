@@ -3546,6 +3546,13 @@
   const FIT_CACHE = new WeakMap();
 
   /** Every fit switched on for a table: [{ kind, name, res, dash }]. */
+  /* The automatic fit says what *type* of line it chose (Azfer, 2026-09-30):
+     the menu's names describe a line ("Through the origin") rather than name
+     its type, so "Best fit: Through the origin" did not read as one. The
+     general form goes beside it in the results. */
+  const FIT_TYPES = { linear: 'Linear', proportional: 'Proportional', quadratic: 'Quadratic', power: 'Power', exponential: 'Exponential',
+    logarithmic: 'Logarithmic', cubic: 'Cubic', inverse: 'Inverse', inverseSquare: 'Inverse square', sine: 'Sinusoidal' };
+
   Grapher.prototype.fitsFor = function (t, pts) {
     const F = window.FluxLabFit;
     if (!F || pts.length < 2 || !t.fits || !t.fits.length) return [];
@@ -3555,20 +3562,22 @@
     if (hit && hit.sig === sig) return hit.list;
     const canWeight = (k) => weighted && (F.WEIGHTABLE || []).indexOf(k) >= 0;
     const list = t.fits.map((kind, i) => {
-      let res, name = this.fitName(kind), note = '';
+      let res, name = this.fitName(kind), note = '', form = '';
       if (kind === 'custom') res = customFit(t.custom && t.custom.expr, pts);
       else if (kind === 'auto') {
         const b = F.best ? F.best(pts) : { error: 'Automatic fitting has not loaded.' };
         res = b.error ? { error: b.error } : { fit: b.fit };
         if (!b.error) {
-          name = 'Best fit: ' + b.name;
+          name = 'Best fit: ' + (FIT_TYPES[b.kind] || b.name);
+          const k = fitKinds().find((x) => x.id === b.kind);
+          form = k && k.hint ? k.hint : '';
           // The type is chosen on the readings; its line is then weighted like any other.
           if (canWeight(b.kind)) res = F.fit(b.kind, pts, { weighted: true });
         }
       } else res = F.fit(kind, pts, { weighted: canWeight(kind) });
       if (res && res.fit && res.fit.weighted) name += ' (weighted)';
       else if (weighted && kind !== 'auto') note = 'Not weighted — only straight-line, polynomial and inverse fits use the error bars.';
-      return { kind: kind, name: name, res: res, note: note, dash: DASHES[i % DASHES.length] };
+      return { kind: kind, name: name, form: form, res: res, note: note, dash: DASHES[i % DASHES.length] };
     });
     FIT_CACHE.set(t, { sig: sig, list: list });
     return list;
@@ -4042,8 +4051,14 @@
     if (f.weighted && f.chi2nu != null && Number.isFinite(f.chi2nu)) rows.push(['χ²/ν', fmt(f.chi2nu)]);
     return rows;
   }
-  function rowsHTML(rows) {
-    return '<table>' + rows.map((r) => '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>').join('') + '</table>';
+  /** The numbers on the same line as the equation — "y = −25.75x  m = −25.75
+      R² = 0.888" — rather than in a table underneath with the values pushed
+      to the far edge (Azfer, 2026-09-30). Wraps on a narrow card. */
+  function valuesHTML(rows) {
+    return rows.map((r) => '<span class="flg-rc-pv"><span>' + esc(r[0]) + ' =</span> <b>' + esc(r[1]) + '</b></span>').join('');
+  }
+  function eqLine(eq, rows) {
+    return '<div class="flg-rc-eq">' + (eq ? '<span class="flg-rc-eqn">' + esc(eq) + '</span>' : '') + valuesHTML(rows) + '</div>';
   }
 
   /** Gradient and intercept with uncertainty from two or more manual lines. */
@@ -4067,9 +4082,10 @@
       if (!fits.length && !manuals.length && !t.minmax) return;
       let body = '';
       fits.forEach((f) => {
-        body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'fit:' + f.kind, t.colour), f.dash) + '<span>' + esc(f.name) + '</span></div>';
+        body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'fit:' + f.kind, t.colour), f.dash) + '<span>' + esc(f.name) + '</span>'
+          + (f.form ? '<span class="flg-rc-form">' + esc(f.form) + '</span>' : '') + '</div>';
         if (!f.res || f.res.error) { body += '<div class="flg-rc-err">' + esc(f.res ? f.res.error : 'No fit.') + '</div>'; return; }
-        body += '<div class="flg-rc-eq">' + esc(f.res.fit.equation(fmt)) + '</div>' + rowsHTML(paramRows(f.res.fit));
+        body += eqLine(f.res.fit.equation(fmt), paramRows(f.res.fit));
         if (f.note) body += '<div class="flg-rc-note">' + esc(f.note) + '</div>';
       });
       manuals.forEach((mn, i) => {
@@ -4077,21 +4093,20 @@
         let ss = 0;
         pts.forEach((p) => { ss += Math.pow(p.y - ml.predict(p.x), 2); });
         body += '<div class="flg-rc-fit">' + dashSample(manualColour(t, mn), '') + '<span>' + esc(manualName(t, i)) + '</span></div>'
-          + '<div class="flg-rc-eq">' + esc(manualEq(ml)) + '</div>'
-          + rowsHTML([['m', fmt(ml.m)], ['c', fmt(ml.c)], ['RMSE', fmt(Math.sqrt(ss / pts.length))]]);
+          + eqLine(manualEq(ml), [['m', fmt(ml.m)], ['c', fmt(ml.c)], ['RMSE', fmt(Math.sqrt(ss / pts.length))]]);
       });
       const spread = manualSpread(t);
       if (spread) {
         // The by-hand version of max/min: the gradient is the middle of your
         // steepest and shallowest lines, give or take half the gap between them.
         body += '<div class="flg-rc-fit"><span>From your manual lines</span></div>'
-          + rowsHTML([['m', fmtWithU(spread.m, spread.um)], ['c', fmtWithU(spread.c, spread.uc)]]);
+          + eqLine('', [['m', fmtWithU(spread.m, spread.um)], ['c', fmtWithU(spread.c, spread.uc)]]);
       }
       if (t.minmax && window.FluxLabFit) {
         const mm = window.FluxLabFit.minMaxGradient(pts);
         body += '<div class="flg-rc-fit">' + dashSample(lineColour(t, 'mm:steep', STEEP), '7 5') + dashSample(lineColour(t, 'mm:shallow', SHALLOW), '7 5') + '<span>Max / min gradient</span></div>';
         body += mm
-          ? rowsHTML([['m max', fmt(mm.mMax)], ['m min', fmt(mm.mMin)], ['m (bars)', fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)]])
+          ? eqLine('', [['m max', fmt(mm.mMax)], ['m min', fmt(mm.mMin)], ['m (bars)', fmtWithU((mm.mMax + mm.mMin) / 2, mm.uncertainty)]])
           : '<div class="flg-rc-err">Needs error bars on the first and last points, with x bars that do not overlap.</div>';
       }
       cards.push('<div class="flg-rc"><div class="flg-rc-h"><i style="background:' + t.colour + '"></i><span>' + esc(t.name) + '</span></div>' + body + '</div>');
