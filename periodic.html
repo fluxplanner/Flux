@@ -100,6 +100,7 @@
   .pmenu-row b { display: block; }
   .pmenu-row small { display: block; color: var(--muted2); font-size: .74rem; line-height: 1.35; }
   .pmenu-row.is-off { opacity: .45; cursor: default; }
+  .pmenu-note { margin: -4px 2px 10px; font-size: .74rem; line-height: 1.4; color: var(--muted2); }
   .pmenu-go {
     width: 100%; padding: 9px; border: 0; border-radius: 10px; cursor: pointer;
     font: inherit; font-size: .86rem; font-weight: 800; color: #062030; background: linear-gradient(135deg, #7fe3ff, #00c2ff);
@@ -158,11 +159,11 @@
   <main id="ptHost" aria-label="Periodic table"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=06e3956b"></script>
+  <script src="public/js/flux-hub.js?v=5a3ce604"></script>
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>
-  <script src="public/js/flux-ptable.js?v=2930e791"></script>
+  <script src="public/js/flux-ptable.js?v=a22a9106"></script>
   <script src="public/js/flux-ptable-atom3d.js?v=6ebfd2ec"></script>
   <script src="public/js/flux-ptable-explore.js?v=e77e1b21"></script>
   <script>
@@ -204,6 +205,24 @@
       function setPrintPrefs(p) {
         try { localStorage.setItem(PRINT_PREFS, JSON.stringify(p)); } catch (e) { /* private window */ }
         syncPrintMenu();
+        prepareShare();
+      }
+      /* A home-screen app on an iPhone or iPad cannot print at all, so there
+         the table goes to the Share sheet as an image, which has Print in it.
+         The image is drawn while the menu is open: Safari only opens the sheet
+         straight from the tap, not after a wait. */
+      var viaShare = !!(window.FluxHub && FluxHub.canPrint && !FluxHub.canPrint());
+      var shareImg = null, shareMaking = null;
+      function prepareShare() {
+        if (!viaShare || !app || !app.printImage) return;
+        shareImg = null;
+        shareMaking = app.printImage(printPrefs()).then(function (b) { shareImg = b; return b; }, function () { return null; });
+      }
+      if (viaShare) {
+        var note = document.createElement('p');
+        note.className = 'pmenu-note';
+        note.innerHTML = 'On your phone this opens the Share menu: choose <b>Print</b> there.';
+        pMenu.insertBefore(note, document.getElementById('ptPrintGo'));
       }
       function syncPrintMenu() {
         var p = printPrefs();
@@ -216,6 +235,7 @@
       function onPrintKey(e) { if (e.key === 'Escape') { closePrintMenu(); pBtn.focus(); } }
       function openPrintMenu() {
         syncPrintMenu();
+        prepareShare();
         pMenu.hidden = false;
         pBtn.setAttribute('aria-expanded', 'true');
         document.addEventListener('click', onPrintOutside, true);
@@ -235,6 +255,17 @@
       pKey.addEventListener('change', function () { var p = printPrefs(); p.key = pKey.checked; setPrintPrefs(p); });
       document.getElementById('ptPrintGo').addEventListener('click', function () {
         closePrintMenu();
+        if (viaShare) {
+          var send = function (blob) {
+            if (!blob) { toast('Could not make the page to print.'); return; }
+            FluxHub.printImage(blob, 'periodic-table.png', 'Flux Periodic Table').then(function (r) {
+              if (r === 'saved') toast('Saved as an image. Open it and use Share, then Print.');
+            });
+          };
+          if (shareImg) send(shareImg);
+          else if (shareMaking) shareMaking.then(send);
+          return;
+        }
         if (app) app.setPrint(printPrefs());
         window.print();
       });
