@@ -372,18 +372,17 @@ test.describe('Flux Grapher', () => {
     await expect(page.locator('[data-autoname]')).toHaveText('Best fit: Quadratic');
     await expect(page.locator('.flg-rc')).toContainText('Best fit: Quadratic');
     await expect(page.locator('.flg-rc-form')).toHaveText('y = ax² + bx + c');
-    // The numbers sit on the equation's line, not in a table under it.
+    // The numbers are listed under the equation, one per line, the "=" signs lined up.
     const eq = page.locator('.flg-rc-eq').first();
-    await expect(eq.locator('.flg-rc-eqn')).toContainText('y = ');
-    await expect(eq.locator('.flg-rc-pv')).toHaveCount(4);
-    await expect(eq).toContainText('R² = ');
+    await expect(eq.locator('.flg-rc-k')).toHaveText(['y', 'a', 'b', 'c', 'R²']);
     await expect(page.locator('.flg-rc table')).toHaveCount(0);
-    const sameLine = await eq.evaluate((el) => {
-      const e = el.querySelector('.flg-rc-eqn')!.getBoundingClientRect(), v = el.querySelector('.flg-rc-pv')!.getBoundingClientRect();
-      const mid = (v.top + v.bottom) / 2;
-      return mid > e.top && mid < e.bottom;
-    });
-    expect(sameLine, 'the first number should sit on the equation\'s line').toBe(true);
+    const rows = await eq.evaluate((el) => [...el.querySelectorAll('.flg-rc-v')].map((v) => {
+      const r = v.getBoundingClientRect();
+      return { left: Math.round(r.left), top: Math.round(r.top), text: v.textContent };
+    }));
+    expect(rows[0].text).toMatch(/^= /);
+    expect(new Set(rows.map((r) => r.left)).size, 'the = signs should line up').toBe(1);
+    for (let i = 1; i < rows.length; i++) expect(rows[i].top, 'each number on its own line').toBeGreaterThan(rows[i - 1].top);
     // Readings that fall on a line change the choice, and the chip follows.
     await page.evaluate(() => { const g = (window as any).fluxGrapherPage.instance; g.doc.items[0].rows = [['1', '2'], ['2', '4.1'], ['3', '5.9'], ['4', '8'], ['', '']]; g.renderItems(); g.draw(); });
     await expect(page.locator('[data-autoname]')).toHaveText(/^Best fit: (Linear|Proportional)$/);
