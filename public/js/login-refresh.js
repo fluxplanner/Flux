@@ -12,12 +12,12 @@
     // be requests to Flux AI, which has no tab any more.
     student: {
       headline: 'Your whole school life,<br><span class="grad">in flow.</span>',
-      sub: 'Flux keeps tasks, classes, study tools, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.',
+      sub: 'Flux keeps tasks, classes, study tools, grades and focus in one calm place — and brings in your assignments from Canvas.',
       demo: 'Count down to the SAT from any day on your calendar.'
     },
     teacher: {
       headline: 'Teach all day.<br><span class="grad">Still have a life.</span>',
-      sub: 'Lesson Hub, rosters, classroom tools, caseloads and school ops in Work mode — and a private planner for everything after the last bell. One account, two lives, zero overlap.',
+      sub: 'Lesson Hub, classroom tools, meeting notes and staff messages in Work mode — and a private planner for everything after the last bell. One account, two lives, zero overlap.',
       demo: "See today's classes bell by bell, with lesson notes for each period."
     }
   };
