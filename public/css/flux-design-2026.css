@@ -554,3 +554,22 @@ html.flux-lowend #app * { transition: none !important; }
   .topbar .topbar-new-task-btn:not(.topbar-mob-only) .topbar-new-task-label { display: none; }
   .topbar .topbar-new-task-btn:not(.topbar-mob-only) { padding: 8px 11px; }
 }
+
+/* Phone: the task filters in one row you can swipe along, not three stacked
+   rows with "By importance" floating beside them (demo polish, 2026-10-01). */
+@media (max-width: 768px) {
+  #dashboard .dash-filters-row { flex-wrap: wrap; row-gap: 8px; }
+  #dashboard #filterChips {
+    flex: 1 1 100%;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 0 !important;
+  }
+  #dashboard #filterChips::-webkit-scrollbar { display: none; }
+  #dashboard #filterChips .tmode-btn { flex: 0 0 auto; padding: 7px 14px !important; font-size: .8rem !important; }
+}
+/* An empty toolbar beside "Tasks" (nothing has been added to it) still took a
+   line of its own on a phone, leaving a gap under the heading. */
+#dashboard .dash-toolbar:not(:has(:not(.dash-toolbar-views))):has(.dash-toolbar-views:empty) { display: none; }

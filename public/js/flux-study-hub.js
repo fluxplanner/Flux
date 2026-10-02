@@ -1468,7 +1468,7 @@
   function buildShell() {
     const host = $('stSections'); if (!host) return false;
     if ($('toolbox')) $('toolbox').classList.add('fsh-active');
-    host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Native, interactive tools for all ${SUBJECTS.length} subjects — calculators, simulations, references and your Classic tools, no tab-hopping.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
+    host.innerHTML = `<div id="fshRoot" class="fsh"><div class="fsh-hero"><div class="fsh-hero-text"><h1>Study Tools</h1><p>Interactive tools for all ${SUBJECTS.length} subjects, sorted into the units you're taught: calculators, simulations, references and practice, all in one place.</p></div><div class="fsh-search"><span class="fsh-search-ico">⌕</span><input id="fshSearch" type="search" placeholder="Search tools, subjects & elements…" autocomplete="off"><button type="button" class="fsh-search-clear" id="fshSearchClear" hidden aria-label="Clear">×</button><span class="fsh-search-key" aria-hidden="true">/</span></div></div>
       <div class="fsh-group-row" id="fshGroups" role="tablist" aria-label="Subject areas">${groupRowHtml()}</div>
       <div class="fsh-rail-wrap"><div class="fsh-rail" id="fshRail"></div></div>
       <div class="fsh-stage" id="fshStage"></div></div>`;

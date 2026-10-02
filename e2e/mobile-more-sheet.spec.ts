@@ -183,3 +183,23 @@ test.describe('Mobile More sheet lifecycle', () => {
     }
   });
 });
+
+/*
+ * The underline under the bottom bar follows the highlighted button. A
+ * teacher's home panel is teacherDashboard, which lights up Home; the
+ * underline looked up that id itself, found no button for it and went under
+ * More, so Home was lit and More was underlined (2026-10-02).
+ */
+test('a teacher\'s home: the underline sits under Home, the button that is lit', async ({ page }) => {
+  await gotoScenario(page, 'teacher-workflow');
+  await page.evaluate(() => (window as any).nav('teacherDashboard'));
+  await expect(page.locator('.bnav-item[data-tab="dashboard"]')).toHaveClass(/active/);
+  await expect.poll(() => page.evaluate(() => {
+    const bar = document.getElementById('fluxBnavIndicator');
+    const home = document.querySelector('.bnav-item[data-tab="dashboard"]');
+    if (!bar || !home) return 'missing';
+    const b = bar.getBoundingClientRect(), h = home.getBoundingClientRect();
+    const mid = b.left + b.width / 2;
+    return mid > h.left && mid < h.right ? 'under Home' : 'elsewhere';
+  }), { timeout: 3_000 }).toBe('under Home');
+});

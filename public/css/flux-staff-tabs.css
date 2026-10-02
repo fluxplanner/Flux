@@ -53,6 +53,11 @@
   padding:0 10px;border-right:1px solid rgba(255,255,255,.06);
 }
 .lh-stat:last-child,.ao-stat:last-child,.sw-stat:last-child{border-right:none}
+/* Four counts on a phone: two by two, not three and one left over. */
+@media(max-width:520px){
+  .lh-stats{display:grid;grid-template-columns:1fr 1fr;row-gap:14px}
+  .lh-stat:nth-child(2n){border-right:none}
+}
 .lh-stat-num,.ao-stat-num,.sw-stat-num{
   font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1;
 }

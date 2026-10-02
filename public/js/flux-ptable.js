@@ -1068,7 +1068,10 @@
       return '<div class="fpt-intro"><h2>Melt the table</h2><p>Drag the temperature, or press ▶ to heat everything from absolute zero to the surface of the Sun. At room temperature only two elements are liquid — bromine and mercury — and eleven are gases.</p>'
         + '<p>Click an element to see its melting and boiling points.</p></div>';
     }
-    return '<div class="fpt-intro"><h2>Pick an element</h2><p>Click any element for what it is, its numbers and its electrons. Arrow keys move around the table; <kbd>/</kbd> searches.</p>'
+    // Keys only mean something with a keyboard; on a phone or tablet it's a tap.
+    const keys = !window.matchMedia || window.matchMedia('(pointer: fine)').matches;
+    return '<div class="fpt-intro"><h2>Pick an element</h2><p>' + (keys ? 'Click' : 'Tap') + ' any element for what it is, its numbers and its electrons.'
+      + (keys ? ' Arrow keys move around the table; <kbd>/</kbd> searches.' : '') + '</p>'
       + '<div class="fpt-cards">'
       + card('view', 'data-view="trends"', '↗', 'Trends', 'Colour the table by 30 properties')
       + card('view', 'data-view="temp"', '🌡', 'Temperature', 'Melt and boil the table')

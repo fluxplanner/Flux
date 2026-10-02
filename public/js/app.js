@@ -1019,38 +1019,37 @@ function checkTimePoverty(){
 }
 
 // ══ BREAK IT DOWN (AI-powered task splitter) ══
+/* Steps for a task: Flux AI when it can be reached, the usual steps for that
+   kind of task when it can't (a guest, no signal, the AI having a bad day),
+   so the button always gives something useful. This used to read the reply
+   as data.choices[0].message.content, a shape ai-proxy has never returned —
+   every "Breaking it down…" ended in "Could not break down task". */
+async function fluxSuggestSteps(t){
+  const name=String(t&&(t.name||t.text)||'').trim();
+  if(name){
+    try{
+      const txt=await fluxAiSimple(
+        'You are a study coach for a high-school student. Reply with ONLY a JSON array of 3 to 6 short, concrete steps (each under 60 characters) that get this task finished, in order. No numbering and no other text.',
+        'Task: "'+name+'"'+(t.type?' (a '+t.type+')':'')+(t.notes?'\nNotes: '+String(t.notes).slice(0,300):''));
+      const a=txt.indexOf('['),b=txt.lastIndexOf(']');
+      const arr=a>=0&&b>a?JSON.parse(txt.slice(a,b+1)):[];
+      const steps=(Array.isArray(arr)?arr:[]).map(x=>String(x||'').replace(/^\s*(\d+[.)]|[-•*])\s*/,'').trim()).filter(Boolean).slice(0,8);
+      if(steps.length>=2)return{steps,ai:true};
+    }catch(_){}
+  }
+  const P=window.FluxTaskPlan;
+  return{steps:P?P.stepsFor(t&&t.type,[]).map(x=>x.name):['Get started','Keep going','Finish and check'],ai:false};
+}
 async function breakItDown(taskId){
   const task=tasks.find(t=>t.id===taskId);if(!task)return;
   const btn=document.getElementById('breakdown-btn-'+taskId);
   if(btn){btn.textContent='Breaking down...';btn.disabled=true;btn.classList.add('btn-loading');}
-
-  try{
-    const res=await fetch(API.ai,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+((await getSB()?.auth?.getSession())?.data?.session?.access_token||'')},
-      body:JSON.stringify({
-        // No model pinned on purpose: ai-proxy picks a live one from its
-        // fallback ladder, so a Groq decommission can't strand this feature.
-        messages:[
-          {role:'system',content:'You are a productivity assistant. Return ONLY a JSON array of exactly 5 short, actionable sub-tasks. No explanation, no markdown, just the array: ["sub-task 1","sub-task 2","sub-task 3","sub-task 4","sub-task 5"]'},
-          {role:'user',content:`Break down this task into 5 immediate actionable sub-tasks: "${task.name}"`}
-        ],
-        max_tokens:300,temperature:0.4
-      })
-    });
-    const data=await res.json();
-    const txt=(data.choices?.[0]?.message?.content||'').trim().replace(/```json|```/g,'');
-    const start=txt.indexOf('['),end=txt.lastIndexOf(']');
-    const subtasks=JSON.parse(txt.slice(start,end+1));
-    if(!Array.isArray(subtasks)||!subtasks.length)throw new Error('Invalid response');
-    task.subtasks=(subtasks||[]).map(s=>({text:s,done:false}));
-    save('tasks',tasks);
-    renderTasks();
-    syncKey('tasks',tasks);
-  }catch(e){
-    if(btn){btn.textContent='Break it Down';btn.disabled=false;btn.classList.remove('btn-loading');}
-    showToast('Could not break down task: '+e.message,'error');
-  }
+  const r=await fluxSuggestSteps(task);
+  task.subtasks=r.steps.map(s=>({text:s,done:false}));
+  save('tasks',tasks);
+  renderTasks();
+  syncKey('tasks',tasks);
+  if(btn){btn.textContent='Break it Down';btn.disabled=false;btn.classList.remove('btn-loading');}
 }
 
 // ══ PLAN IT OUT — a big task spread over the days before it is due ══
@@ -3837,9 +3836,10 @@ function nav(id,btn,navOpt){
       // the bar — the same rule the .active class follows above. Without it the
       // underline was never told to move for Settings, Profile, Goals, Mood,
       // Notes or School, so it sat under whichever primary tab you opened last
-      // and looked permanently stuck.
-      const tabBtn=document.querySelector(`.bnav-item[data-tab="${id}"]`)
-        ||document.getElementById('moreBtn');
+      // and looked permanently stuck. Looked up by the logical id, as the
+      // highlight is: a teacher's or counselor's home panel lights up Home, and
+      // the underline went under More beside it.
+      const tabBtn=bni||document.getElementById('moreBtn');
       if(tabBtn)FluxVisual.animateNavIndicator(tabBtn);
     }
   }catch(e){}
@@ -4694,22 +4694,23 @@ function avgEstMinutesForSubject(subjectKey){
   }
   return avg;
 }
-function autoSplitEditSubtasks(){
+/* "Suggest steps" in Edit task. It used to split the title in half
+   ("E2E Algebra" / "homework"); now it asks for real steps, with the usual
+   steps for the task's type when Flux AI can't be reached. */
+async function autoSplitEditSubtasks(ev){
   const title=(document.getElementById('editText')?.value||'').trim();
   const ta=document.getElementById('editSubtasks');
   if(!ta||!title){if(typeof showToast==='function')showToast('Add a task title first','warning');return;}
-  let parts=title.split(/[.;]\s+/).map(s=>s.trim()).filter(Boolean);
-  if(parts.length<2){
-    const halves=title.split(/\s+(?:and|&|\+)\s+/i);
-    if(halves.length>=2)parts=halves.map(s=>s.trim()).filter(Boolean);
+  const btn=ev&&ev.currentTarget||document.querySelector('#editModal [onclick^="autoSplitEditSubtasks"]');
+  const label=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Thinking…';}
+  try{
+    const r=await fluxSuggestSteps({name:title,type:document.getElementById('editType')?.value||'',notes:document.getElementById('editNotes')?.value||''});
+    ta.value=r.steps.join('\n');
+    if(typeof showToast==='function')showToast(r.ai?'Steps suggested. Edit them as you like.':'Here are the usual steps for this kind of task.','success');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=label||'Suggest steps';}
   }
-  if(parts.length<2){
-    const words=title.split(/\s+/);
-    const mid=Math.ceil(words.length/2);
-    parts=[words.slice(0,mid).join(' '),words.slice(mid).join(' ')].filter(Boolean);
-  }
-  ta.value=parts.slice(0,12).join('\n');
-  if(typeof showToast==='function')showToast('Subtasks drafted — edit lines as needed','success');
 }
 // ══ MOBILE DASHBOARD RENDER ═══════════════════════════════════════════
 // Populates the mobile-only dashboard stack (date strip, 4 stat chips,
@@ -6781,7 +6782,11 @@ function removeExtra(id){
 }
 function renderExtrasList(){
   const el = document.getElementById('extrasList'); if(!el) return;
-  if(!extras.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">No activities added yet. Add your first one below!</div>'; return; }
+  // The type chips belong to the form, not the list: drawn before the empty
+  // case returns, or a student with no activities yet got a "Type" label and
+  // nothing to pick.
+  renderECTypeChips();
+  if(!extras.length){ el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">No activities added yet. Add your first one below!</div>'; fillWeeklyExtraLinkSelect(); return; }
   el.innerHTML = extras.map(e => {
     const typeArr = Array.isArray(e.types) ? e.types : (e.type ? [e.type] : ['activity']);
     const badges = typeArr.map(t => {
@@ -19025,12 +19030,12 @@ function showPostLoginRolePicker(opts){
           <button type="button" id="plrpStudent" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(var(--accent-rgb),.06),rgba(124,92,255,.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
             <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Student</div>
-            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Assignments, study plans, AI tutor, and your counselor.</div>
+            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Assignments, Canvas, your calendar and study tools for every class.</div>
           </button>
           <button type="button" id="plrpStaff" style="text-align:left;padding:18px 18px 16px;border-radius:18px;border:1px solid var(--border2);background:linear-gradient(165deg,rgba(124,92,255,.08),rgba(var(--accent-rgb),.04));color:var(--text);cursor:pointer;font-family:inherit;transition:transform .12s, border-color .12s, box-shadow .12s">
             <div style="font-size:2rem;margin-bottom:6px"></div>
             <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Staff</div>
-            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Teacher, counselor, or admin. Post assignments and manage your class.</div>
+            <div style="font-size:.78rem;color:var(--muted2);line-height:1.4">Teacher, counselor or admin. Lesson Hub, classroom tools and messages.</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
               <span style="font-size:.6rem;padding:2px 7px;border-radius:5px;background:rgba(124,92,255,.16);color:var(--purple, #a78bfa);font-weight:700">Teacher</span>
               <span style="font-size:.6rem;padding:2px 7px;border-radius:5px;background:rgba(124,92,255,.16);color:var(--purple, #a78bfa);font-weight:700">Counselor</span>
