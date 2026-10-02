@@ -2787,6 +2787,30 @@ body.flux-has-impersonate-banner.flux-has-release-banner .sidebar{top:calc(34px 
 .task-chip-priority.low{background:rgba(var(--green-rgb),.06);color:var(--green)}
 .task-chip-time{background:rgba(var(--purple-rgb),.06);color:var(--purple);border:1px solid rgba(var(--purple-rgb),.12)}
 
+/* Plan it out (a big task spread over the days before it is due) */
+.task-chip-plan{background:rgba(var(--accent-rgb),.08);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.22)}
+.plan-entry{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.plan-entry span{font-size:.74rem;color:var(--muted)}
+.plan-card{max-width:520px}
+.plan-task{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:-4px 0 12px;font-size:.84rem}
+.plan-task span{color:var(--muted)}
+.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.plan-grid{grid-template-columns:1fr 1fr}.plan-grid>:last-child{grid-column:1/-1}}
+.plan-check{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted2);margin:2px 0 10px;cursor:pointer}
+.plan-check input{width:15px;height:15px;margin:0}
+.plan-note{font-size:.76rem;color:var(--muted2);margin-bottom:8px}
+.plan-preview{max-height:min(34vh,280px);overflow:auto;border:1px solid var(--border2);border-radius:12px;padding:6px 10px;margin-bottom:12px}
+/* One grid for the whole list, so day, minutes and step line up row to row. */
+.plan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:max-content max-content minmax(0,1fr);column-gap:14px;font-size:.8rem}
+.plan-list li{display:contents}
+.plan-list li>span{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);align-self:stretch}
+.plan-list li:last-child>span{border-bottom:0}
+.plan-day{color:var(--muted2);white-space:nowrap}
+.plan-min{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--accent);white-space:nowrap}
+.plan-what{font-weight:600}
+.plan-sum{font-size:.76rem;color:var(--muted2);padding:6px 0 2px}
+.plan-warn{font-size:.76rem;color:var(--gold,#fbbf24);padding:2px 0 4px}
+
 /* Completed filter: the two-week rule, said once at the top, and on each card */
 .flux-done-notice{
   display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border-radius:12px;
