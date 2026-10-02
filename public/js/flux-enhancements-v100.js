@@ -583,8 +583,13 @@
     });
     const ob=document.getElementById('dashAddTaskModal');
     if(ob){
+      /* Only on opening: any later style change on the open modal used to
+         re-apply the defaults over the type and subject just picked. */
+      let wasOpen=ob.style.display==='flex';
       const mo=new MutationObserver(()=>{
-        if(ob.style.display==='flex')applyAddTaskDefaults();
+        const open=ob.style.display==='flex';
+        if(open&&!wasOpen)applyAddTaskDefaults();
+        wasOpen=open;
       });
       mo.observe(ob,{attributes:true,attributeFilter:['style']});
     }

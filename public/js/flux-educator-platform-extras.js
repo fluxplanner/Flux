@@ -231,13 +231,29 @@
     if (typeof showToast === 'function') showToast('School-wide grade reports — export from each class for now.', 'info');
   }
   function openAdminMessenger() {
-    if (typeof showToast === 'function') showToast('Message users from User Management.', 'info');
+    openAdminUserManager();
   }
   function openSchoolSettingsModal() {
     if (typeof showToast === 'function') showToast('School settings — use Profile and Operations.', 'info');
   }
+  let lastAdminUsers = [];
   function exportUsersCSV() {
-    if (typeof showToast === 'function') showToast('CSV export coming soon.', 'info');
+    if (!lastAdminUsers.length) {
+      if (typeof showToast === 'function') showToast('No users to export.', 'info');
+      return;
+    }
+    const cols = ['display_name', 'role', 'school', 'department', 'subject', 'grade_level'];
+    const cell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const csv = [cols.join(',')]
+      .concat(lastAdminUsers.map((u) => cols.map((c) => cell(u[c])).join(',')))
+      .join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'flux-users.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   function openAdminUserDetail() {
     if (typeof showToast === 'function') showToast('User detail — use Message from the list.', 'info');
@@ -456,7 +472,6 @@
               (c) => `
           <div class="admin-class-row">
             <div class="acr-name">${esc(c.class_name)}</div>
-            <button type="button" onclick="openAdminClassView('${c.id}')" class="edu-action-btn small secondary">View</button>
           </div>`
             )
             .join('')}
@@ -468,10 +483,8 @@
         <div class="admin-tools-grid">
           <button type="button" onclick="openSchoolCalendar()" class="admin-tool-btn"><span></span><div>School Calendar</div></button>
           <button type="button" onclick="openAdminUserManager()" class="admin-tool-btn"><span></span><div>All Users</div></button>
-          <button type="button" onclick="openAdminGradebookView()" class="admin-tool-btn"><span></span><div>Grade Reports</div></button>
           <button type="button" onclick="openAdminMessenger()" class="admin-tool-btn"><span></span><div>Message All</div></button>
           <button type="button" onclick="openEmergencyAlertModal()" class="admin-tool-btn urgent"><span></span><div>Emergency Alert</div></button>
-          <button type="button" onclick="openSchoolSettingsModal()" class="admin-tool-btn"><span>⚙</span><div>School Settings</div></button>
         </div>
       </div>
     </div>
@@ -493,6 +506,7 @@
         .order('role')
         .order('display_name');
       users = data || [];
+      lastAdminUsers = users;
     } catch (_) {
       if (typeof showToast === 'function') showToast('Could not load users.', 'error');
       return;
@@ -744,6 +758,7 @@
     const modal = document.createElement('div');
     modal.id = 'fluxPostAnnounceRoot';
     modal.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px';
     modal.innerHTML = `
     <div style="background:rgba(10,12,20,.92);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:26px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
       <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px">Post ${isAdmin ? 'School-Wide ' : ''}Announcement</h3>
