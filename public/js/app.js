@@ -13505,7 +13505,12 @@ function isSupabaseNetworkFailure(err){
 async function pingSupabaseReachable(sb){
   if(!sb)return{ok:false,reason:'no_client'};
   try{
-    const{error}=await sb.from('user_roles').select('user_id').limit(1);
+    /* supabase-js retries a failed fetch with backoff, so on a blocked or
+       very slow network this awaited for well over 10 s and the sign-in
+       screen stayed blank. Give up after 3 s: login is still allowed. */
+    const timeout=new Promise(res=>setTimeout(()=>res({error:{message:'Failed to fetch',__fluxTimeout:true}}),3000));
+    const{error}=await Promise.race([sb.from('user_roles').select('user_id').limit(1),timeout]);
+    if(error&&error.__fluxTimeout)return{ok:false,reason:'offline'};
     if(!error)return{ok:true};
     if(isSupabaseNetworkFailure(error))return{ok:false,reason:'offline'};
     return{ok:true};
