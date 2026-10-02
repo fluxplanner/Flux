@@ -20495,6 +20495,8 @@ function renderTeacherClassCard(cls){
 // modals if available; otherwise show a friendly "coming soon" toast so we
 // don't throw ReferenceError when buttons are clicked.
 function openTeacherAnnouncementModal(){
+  const _r=typeof FluxRole!=='undefined'?FluxRole.current:'';
+  if((_r==='admin'||_r==='staff')&&typeof window.openPostAnnouncementModal==='function')return window.openPostAnnouncementModal('admin');
   if(typeof window.openCreateAnnouncementModal==='function')return window.openCreateAnnouncementModal();
   if(typeof showToast==='function')showToast('Announcement composer coming next release','info',2400);
 }
