@@ -294,4 +294,8 @@
   .fluxw-grat-input-row .fluxw-btn{width:100%}
   .fluxw-important-bar .fluxw-imp-row{flex-direction:column;align-items:stretch}
   .fluxw-important-bar .fluxw-imp-row input[type="date"]{min-width:0}
+  /* On a phone the stacked pin form filled the first screen and pushed the
+     month itself below the fold: the calendar comes first, the form after. */
+  #calendar.panel.active{display:flex!important;flex-direction:column}
+  #calendar.panel.active > #fluxWishlistImportantHost{order:1}
 }

@@ -452,7 +452,7 @@
           <div class="spd-hello">${esc(typeof getTimeGreeting === 'function' ? getTimeGreeting() : 'Hello')}, ${esc(first)}</div>
           <div class="spd-sub">${esc(roleLabel)} · Work mode · ${esc(fmtLongDay(new Date()))}</div>
         </div>
-        <div class="spdx-stats">
+        <div class="spdx-stats"${events.length || dueSoon.length ? '' : ' hidden'}>
           <div class="spdx-stat"><b>${events.length}</b><span>events today</span></div>
           <div class="spdx-stat"><b>${dueSoon.length}</b><span>tasks due</span></div>
           ${officeHours
@@ -557,7 +557,13 @@
       if (error) return empty('Could not load your notes.');
       const notes = data || [];
       const weekAgo = localDay(new Date(Date.now() - 6 * 86400000));
-      if (stat) stat.textContent = String(notes.filter((n) => String(n.meeting_date || '') >= weekAgo).length);
+      const weekCount = notes.filter((n) => String(n.meeting_date || '') >= weekAgo).length;
+      if (stat) {
+        stat.textContent = String(weekCount);
+        // The strip starts hidden on a day with nothing in it: three zeros
+        // read as a broken page. A note this week is something to show.
+        if (weekCount) stat.closest('.spdx-stats')?.removeAttribute('hidden');
+      }
       if (!notes.length) return empty('No notes yet — <b>Meeting note</b> above starts one.');
       list.innerHTML = notes.slice(0, 4).map((n) =>
         `<button type="button" class="spdx-row spdx-row--btn" data-spdx-note><span class="spdx-row-tag spdx-tag-ev">${esc(String(n.meeting_date || '').slice(5) || 'note')}</span><span class="spdx-row-name">${esc(n.title || 'Meeting')}</span></button>`
@@ -594,7 +600,10 @@
         .sort((a, b) => (a.week_start < b.week_start ? -1 : 1))
         .slice(0, 6);
       if (!bks.length) return empty('No bookings yet — slots are open.');
-      if (stat) stat.textContent = String(bks.length);
+      if (stat) {
+        stat.textContent = String(bks.length);
+        if (bks.length) stat.closest('.spdx-stats')?.removeAttribute('hidden');
+      }
       list.innerHTML = bks.map((b) => {
         const s = slotById[b.slot_id] || {};
         const when = [s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1, 3) : '', s.start_time || ''].filter(Boolean).join(' ');
