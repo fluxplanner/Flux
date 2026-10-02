@@ -12,9 +12,11 @@ test.describe('Counselor path', () => {
     await expect(page.locator('#counselorDashboardBody')).not.toContainText('Counselor record not found');
   });
 
-  test('counselor dashboard shows schedule sections', async ({ page }) => {
+  test('counselor dashboard shows its quick actions', async ({ page }) => {
     const body = page.locator('#counselorDashboardBody');
-    await expect(body).toContainText(/Today|Appointments|Upcoming|Messages/i);
+    await expect(body).toContainText(/Meeting note/);
+    await expect(body).toContainText(/Crisis protocol/);
+    await expect(body).toContainText(/Message a colleague/);
   });
 
   test('counselor overview is not cluttered by workspace widget grid', async ({ page }) => {
@@ -47,8 +49,11 @@ test.describe('Counselor path', () => {
   test('the stat strip is gone when every count is zero', async ({ page }) => {
     await expect(page.locator('#counselorDashboard.panel.active')).toBeVisible();
     await expect(page.locator('#counselorDashboard .teacher-stats')).toHaveCount(0);
-    // What replaces it says more than a zero did, and is still there.
-    await expect(page.locator('#counselorDashboardBody')).toContainText(/No appointments today/i);
+    // With counselor contact off nothing can be booked or sent, so the two
+    // cards that could only ever say "No appointments" / "No messages" are
+    // gone too; the quick actions are what a counselor sees instead.
+    await expect(page.locator('#counselorDashboardBody')).not.toContainText(/No appointments today|No unread messages/i);
+    await expect(page.locator('#counselorDashboardBody [data-co-go]')).toHaveCount(4);
     // No students can book while counselor contact is paused: no empty
     // "Booking requests" card, and no availability to set for it.
     await expect(page.locator('#counselorDashboardBody')).not.toContainText(/Booking requests|Edit availability/);
