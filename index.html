@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.c23cdf1b.css">
+<link rel="stylesheet" href="public/bundles/flux.8bc7d11e.css">
 </head>
 <body>
 <noscript>
@@ -2861,6 +2861,10 @@
       <input type="checkbox" id="taskSRS" style="width:14px;height:14px;margin:0;flex-shrink:0">
       Spaced Repetition — auto-schedule review tasks at 1, 7 &amp; 30 days
     </label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted2);cursor:pointer;padding:4px 0;margin-bottom:8px">
+      <input type="checkbox" id="taskPlanAfter" style="width:14px;height:14px;margin:0;flex-shrink:0">
+      Plan it out — spread the work over the days before it’s due
+    </label>
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
       <div style="flex:1"><label class="modal-micro-label" for="taskRecurringType">Repeat</label><select id="taskRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
     </div>
@@ -2883,6 +2887,7 @@
       <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
       <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
+    <div class="mrow plan-entry"><button type="button" class="btn-sec" onclick="planItOutFromEdit()">Plan it out</button><span>Spread the work over the days before it’s due, a little each day.</span></div>
     <div class="mrow"><label>Sub-tasks (one per line)</label>
       <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
         <textarea id="editSubtasks" style="min-height:70px;flex:1;min-width:200px;margin:0" placeholder="Sub-task 1&#10;Sub-task 2"></textarea>
@@ -2926,8 +2931,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.527eb8f6.js"></script>
-<script defer src="public/bundles/flux-features.de531f4b.js"></script>
+<script defer src="public/bundles/flux-core.b9ba97a2.js"></script>
+<script defer src="public/bundles/flux-features.f80f23b1.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

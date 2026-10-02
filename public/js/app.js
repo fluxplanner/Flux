@@ -1053,6 +1053,124 @@ async function breakItDown(taskId){
   }
 }
 
+// ══ PLAN IT OUT — a big task spread over the days before it is due ══
+/* Azfer, 2026-10-01: "Break up assignments into pieces with a helper/algorithm
+   to tell you what to do everyday to finish in time. Ask user to give goals".
+   FluxTaskPlan (flux-task-plan.js) picks the days and names the steps; this
+   asks the questions and turns each session into a task on its day, tied to
+   its parent by planOf, so it shows in Today and on the calendar like any
+   other. Planning again replaces the sessions not done yet and keeps the rest. */
+function fluxPlanPieces(id){return tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(id));}
+function fluxPlanTask(id){return tasks.find(x=>String(x.id)===String(id));}
+function fluxPlanValues(t){
+  const v=(id)=>document.getElementById(id);
+  const today=todayStr();
+  let start=(v('planStart')&&v('planStart').value)||today;
+  if(start<today)start=today;
+  if(t.date&&start>t.date)start=t.date;
+  return{
+    goal:(v('planGoal')?.value||'').trim(),
+    total:Math.max(0,parseInt(v('planTotal')?.value,10)||0),
+    max:Math.max(15,parseInt(v('planMax')?.value,10)||60),
+    start,
+    skipWk:!!v('planSkipWk')?.checked,
+  };
+}
+function fluxPlanCompute(t,vals){
+  const P=window.FluxTaskPlan;
+  const mine=fluxPlanPieces(t.id);
+  const doneMin=mine.filter(x=>x.done).reduce((s,x)=>s+(x.estTime||0),0);
+  const own=new Set(mine.map(x=>String(x.id)));
+  // A day's other planned sessions count in full; anything else due that day
+  // counts a little, since most of its work happened on earlier days.
+  const busy=(d)=>tasks.filter(x=>!x.done&&x.date===d&&String(x.id)!==String(t.id)&&!own.has(String(x.id)))
+    .reduce((s,x)=>s+(x.planOf!=null?(x.estTime||0):15),0);
+  return P.plan({totalMin:Math.max(0,vals.total-doneMin),start:vals.start,due:t.date,maxPerDay:vals.max,skipWeekends:vals.skipWk,
+    skip:(d)=>{try{return typeof isBreak==='function'&&isBreak(d);}catch(_){return false;}},busy,steps:P.stepsFor(t.type,t.subtasks)});
+}
+function fluxPlanPreview(t){
+  const box=document.getElementById('planPreview'),go=document.getElementById('planGo');
+  if(!box)return;
+  const vals=fluxPlanValues(t);
+  const r=fluxPlanCompute(t,vals);
+  if(!r.sessions.length){
+    box.innerHTML='<div class="plan-sum">Nothing left to plan.</div>';
+    if(go){go.disabled=true;go.textContent='Add to my planner';}
+    return;
+  }
+  // "Wed, Oct 7": short enough for the day column on a phone.
+  const day=(d)=>{try{return fluxParseLocalYMD(d).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});}catch(_){return d;}};
+  const lastDay=r.sessions[r.sessions.length-1].date;
+  const most=Math.max(...r.sessions.map(s=>s.minutes));
+  box.innerHTML='<ol class="plan-list">'+r.sessions.map(s=>`<li><span class="plan-day">${esc(day(s.date))}</span><span class="plan-min">${s.minutes} min</span><span class="plan-what">${esc(s.label)}</span></li>`).join('')+'</ol>'
+    +`<div class="plan-sum">${r.sessions.length} session${r.sessions.length===1?'':'s'} · done by ${esc(day(lastDay))}${lastDay<t.date?', the day before it’s due':''}</div>`
+    +(r.tight?`<div class="plan-warn">Tight: some days need up to ${most} minutes. Start sooner, raise “Most a day”${vals.skipWk?', or work on weekends':''}.</div>`:'');
+  if(go){go.disabled=false;go.textContent=`Add ${r.sessions.length} session${r.sessions.length===1?'':'s'} to my planner`;}
+}
+function closePlanItOut(){const m=document.getElementById('planItOutModal');if(m)m.remove();}
+function openPlanItOut(id){
+  const P=window.FluxTaskPlan,t=fluxPlanTask(id);
+  if(!P||!t)return;
+  if(t.planOf!=null){const parent=fluxPlanTask(t.planOf);if(parent){openPlanItOut(parent.id);return;}}
+  if(!t.date){showToast('Give it a due date first, then plan it out.','warning');openEdit(t.id);return;}
+  closePlanItOut();
+  const prev=t.plan||{};
+  const done=fluxPlanPieces(t.id).filter(x=>x.done);
+  const doneMin=done.reduce((s,x)=>s+(x.estTime||0),0);
+  const total=prev.totalMin||t.estTime||P.defaultMinutes(t.type);
+  const maxDay=prev.maxPerDay||load('flux_plan_max_per_day',60);
+  const skipWk=prev.skipWeekends!=null?!!prev.skipWeekends:!!load('flux_plan_skip_weekends',false);
+  const today=todayStr();
+  const ov=document.createElement('div');
+  ov.id='planItOutModal';ov.className='modal-overlay';ov.style.display='flex';
+  ov.innerHTML=`<div class="modal-card plan-card" role="dialog" aria-modal="true" aria-labelledby="planTitle">
+    <div class="modal-title" id="planTitle">Plan it out</div>
+    <div class="plan-task"><b>${esc(t.name)}</b><span>Due ${esc(fmtFluxDate(t.date,'weekday'))}</span></div>
+    <div class="mrow"><label for="planGoal">What does finished look like?</label><textarea id="planGoal" placeholder="e.g. 1,500 words, three sources, checked against the rubric" style="min-height:50px;margin:0">${esc(prev.goal||'')}</textarea></div>
+    <div class="plan-grid">
+      <div class="mrow"><label for="planTotal">Time it needs (min)</label><input type="number" id="planTotal" min="10" max="6000" step="5" value="${total}"></div>
+      <div class="mrow"><label for="planMax">Most in a day (min)</label><input type="number" id="planMax" min="15" max="600" step="5" value="${maxDay}"></div>
+      <div class="mrow"><label for="planStart">Start</label><input type="date" id="planStart" value="${today>t.date?t.date:today}"></div>
+    </div>
+    <label class="plan-check"><input type="checkbox" id="planSkipWk"${skipWk?' checked':''}> Skip weekends</label>
+    ${done.length?`<div class="plan-note">${done.length} session${done.length===1?'':'s'} done already (${doneMin} min). This plans the rest.</div>`:''}
+    <div class="plan-preview" id="planPreview" aria-live="polite"></div>
+    <div class="mactions"><button type="button" class="btn-sec" data-plan-cancel>Cancel</button><button type="button" id="planGo">Add to my planner</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',(e)=>{if(e.target===ov||e.target.closest('[data-plan-cancel]'))closePlanItOut();});
+  ov.addEventListener('input',()=>fluxPlanPreview(t));
+  ov.addEventListener('change',()=>fluxPlanPreview(t));
+  document.getElementById('planGo').addEventListener('click',()=>confirmPlanItOut(t.id));
+  fluxPlanPreview(t);
+  // A keyboard covering the plan the moment it opens helps nobody on a phone.
+  if(!(window.matchMedia&&matchMedia('(pointer: coarse)').matches))setTimeout(()=>{try{document.getElementById('planGoal').focus({preventScroll:true});}catch(_){}},50);
+}
+function confirmPlanItOut(id){
+  const t=fluxPlanTask(id);if(!t)return;
+  const vals=fluxPlanValues(t);
+  const r=fluxPlanCompute(t,vals);
+  if(!r.sessions.length){showToast('Nothing left to plan.','info');return;}
+  snapshotTasks();
+  tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
+  const base=Date.now();
+  r.sessions.forEach((s,i)=>{
+    const p={id:base+i+Math.random(),name:t.name+' · '+s.label,date:s.date,subject:t.subject||'',priority:t.priority||'med',type:t.type||'hw',
+      estTime:s.minutes,difficulty:t.difficulty||3,notes:vals.goal?'Goal: '+vals.goal:'',subtasks:[],done:false,rescheduled:0,createdAt:base,
+      planOf:t.id,planPart:s.part,planParts:s.of,scope:t.scope};
+    p.urgencyScore=calcUrgency(p);
+    tasks.push(p);
+  });
+  t.plan={goal:vals.goal,totalMin:vals.total,maxPerDay:vals.max,skipWeekends:vals.skipWk,at:base};
+  save('flux_plan_max_per_day',vals.max);save('flux_plan_skip_weekends',vals.skipWk);
+  save('tasks',tasks);syncKey('tasks',tasks);
+  closePlanItOut();renderStats();renderTasks();renderCalendar();
+  const first=r.sessions[0];
+  showToast(`Added ${r.sessions.length} session${r.sessions.length===1?'':'s'}. The first is ${first.date===todayStr()?'today':fmtFluxDate(first.date,'weekday')}.`,'success');
+}
+function planItOutFromEdit(){const id=editingId;saveEdit();openPlanItOut(id);}
+window.openPlanItOut=openPlanItOut;window.closePlanItOut=closePlanItOut;window.planItOutFromEdit=planItOutFromEdit;
+
 // ══ ENERGY-BASED SMART SORT ══
 function readFluxEnergyLevel(){
   try{
@@ -4244,6 +4362,8 @@ function addTask(){
   syncKey('tasks',tasks);
   requestAnimationFrame(()=>{try{const ne=document.querySelector(`[data-task-id="${task.id}"]`);if(ne)window.FluxAnim?.taskEnterSingle?.(ne);}catch(e){}});
   if(typeof window.fluxGCalAutoPushTask==='function')try{window.fluxGCalAutoPushTask(task);}catch(e){}
+  const planAfter=document.getElementById('taskPlanAfter');
+  if(planAfter&&planAfter.checked){planAfter.checked=false;if(task.date)setTimeout(()=>openPlanItOut(task.id),250);else showToast('Add a due date to plan it out.','warning');}
 }
 function toggleTask(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
@@ -4272,6 +4392,14 @@ function toggleTask(id){
       else generateSRSReviews(t);
     },800);
     showUndoSnackbar('Task completed','undoLastChange');
+    // A planned task finished early needs none of the sessions still ahead of it.
+    if(t.plan&&tasks.some(x=>x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done))tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
+    // The last session of a plan: say so, so the task itself gets ticked when it is handed in.
+    if(t.planOf!=null){
+      const parent=tasks.find(x=>String(x.id)===String(t.planOf));
+      const left=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.planOf)&&!x.done).length;
+      if(parent&&!parent.done&&!left)setTimeout(()=>{try{showToast('That was the last session for “'+parent.name+'”. Tick it off once it’s handed in.','success');}catch(_){}},900);
+    }
     try{if(window.FluxMoodVelocity?.onTaskCompleted)FluxMoodVelocity.onTaskCompleted();}catch(_){}
     setTimeout(showAutoNext,1200);
     const recType=t.recurringType||(t.recurringWeekly?'weekly':null);
@@ -4315,7 +4443,7 @@ function toggleTask(id){
 // Calendar cleanup is fire-and-forget: undo is unbounded (Cmd+Z, not just the
 // 5s snackbar), so there is no window to defer it behind. An undone delete
 // restores the task as un-synced — push it again to put it back on Calendar.
-function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id);save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
+function deleteTask(id){snapshotTasks();tasks=tasks.filter(x=>x.id!==id&&!(x.planOf!=null&&String(x.planOf)===String(id)&&!x.done));save('tasks',tasks);try{if(typeof window.fluxGCalRemoveTaskFromGCal==='function')Promise.resolve(window.fluxGCalRemoveTaskFromGCal(id)).catch(()=>{});}catch(_){}showUndoSnackbar('Task deleted','undoLastChange');renderStats();renderTasks();renderCalendar();renderCountdown();checkAllPanic();syncKey('tasks',tasks);}
 function setFilter(f,el){
   if(f==='reading'||f==='snoozed')f='active';
   try{if(window.FluxSmartLists?.clearActive)FluxSmartLists.clearActive();}catch(_){}
@@ -4928,6 +5056,7 @@ ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
+${t.planOf!=null&&t.planParts?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
 ${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>

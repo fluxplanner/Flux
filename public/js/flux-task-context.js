@@ -84,6 +84,7 @@
       { id:'edit',     label:'Edit',     icon:'✎', fn:()=>{ if(typeof window.openEdit==='function') window.openEdit(tid); } },
       { id:'today',    label:'Set due today',    icon:'📅', fn:()=>setDue(tid, 0) },
       { id:'tomorrow', label:'Set due tomorrow', icon:'➡',  fn:()=>setDue(tid, 1) },
+      { id:'plan',     label:'Plan it out',      icon:'🗓', fn:()=>{ if(typeof window.openPlanItOut==='function') window.openPlanItOut(tid); } },
       { id:'dup',      label:'Duplicate', icon:'⎘', fn:()=>duplicateTaskLocal(tid) },
       { type:'sep' },
       { id:'del',      label:'Delete', icon:'🗑', danger:true, fn:()=>{ if(typeof window.deleteTask==='function') window.deleteTask(tid); } },

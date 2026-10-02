@@ -516,6 +516,8 @@ document.addEventListener('contextmenu', e=>{
       action:()=>{ window.fluxSetTaskDate && window.fluxSetTaskDate(realId, new Date().toISOString().slice(0,10)); }},
     {id:'tomorrow',icon:'🌅', label:'Due tomorrow',
       action:()=>{ const d=new Date(); d.setDate(d.getDate()+1); window.fluxSetTaskDate && window.fluxSetTaskDate(realId, d.toISOString().slice(0,10)); }},
+    {id:'plan', icon:'🗓', label:'Plan it out',
+      action:()=>{ if(typeof window.openPlanItOut==='function') window.openPlanItOut(realId); }},
     'sep',
     {id:'duplicate', icon:'❏', label:'Duplicate task',
       action:()=>{ window.fluxDuplicateTask && window.fluxDuplicateTask(realId); }},
