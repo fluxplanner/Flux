@@ -12,9 +12,11 @@ test.describe('Counselor path', () => {
     await expect(page.locator('#counselorDashboardBody')).not.toContainText('Counselor record not found');
   });
 
-  test('counselor dashboard shows schedule sections', async ({ page }) => {
+  test('counselor dashboard shows its quick actions', async ({ page }) => {
     const body = page.locator('#counselorDashboardBody');
-    await expect(body).toContainText(/Today|Appointments|Upcoming|Messages/i);
+    await expect(body).toContainText(/Meeting note/);
+    await expect(body).toContainText(/Crisis protocol/);
+    await expect(body).toContainText(/Message a colleague/);
   });
 
   test('counselor overview is not cluttered by workspace widget grid', async ({ page }) => {
