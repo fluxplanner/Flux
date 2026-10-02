@@ -142,8 +142,11 @@
     }
     const names = await loadStudentNames(sb(), pending.map((a) => a.student_id));
     if (!pending.length) {
-      host.innerHTML =
-        '<div class="ca-empty">No booking requests waiting for you.</div>';
+      // Students can't book while counselor contact is paused (app.js), so
+      // "none waiting" would be a promise of requests that cannot come.
+      host.innerHTML = window.fluxCounselorContactOn && !window.fluxCounselorContactOn()
+        ? ''
+        : '<div class="ca-empty">No booking requests waiting for you.</div>';
       return;
     }
     host.innerHTML = `

@@ -573,3 +573,17 @@ html.flux-lowend #app * { transition: none !important; }
 /* An empty toolbar beside "Tasks" (nothing has been added to it) still took a
    line of its own on a phone, leaving a gap under the heading. */
 #dashboard .dash-toolbar:not(:has(:not(.dash-toolbar-views))):has(.dash-toolbar-views:empty) { display: none; }
+/* Class joining is off (fluxStudentLinksOn in app.js), so the teacher-side ways
+   to reach students are hidden. !important beats the inline display the role
+   code writes on every nav item. */
+.flux-no-student-links [data-needs-students] { display: none !important; }
+/* Without rosters the teacher dashboard's bottom row is only Messages. */
+#teacherDashboard .teacher-main-grid.teacher-main-grid--solo { grid-template-columns: minmax(0, 460px); }
+/* Counselor contact is paused (fluxCounselorContactOn in app.js): no student
+   can link to a counselor, so the "Students" entry has nobody to show. */
+.flux-no-counselor-contact [data-needs-counselor-links] { display: none !important; }
+/* Educators on a phone: the More sheet's built-in buttons are the student tabs.
+   syncMoreSheetForEducator (app.js) adds the educator's own sidebar entries;
+   these hide the student ones. The owner's admin slot is left alone. */
+#moreSheet.more-sheet--edu .more-sheet-item[data-nav-tab]:not([data-edu-item]):not(#moreSheetAdminSlot *),
+#moreSheet.more-sheet--edu .more-sheet-item[data-action="book-counselor"] { display: none !important; }

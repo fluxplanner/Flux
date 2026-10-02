@@ -53,6 +53,16 @@
   padding:0 10px;border-right:1px solid rgba(255,255,255,.06);
 }
 .lh-stat:last-child,.ao-stat:last-child,.sw-stat:last-child{border-right:none}
+/* Exit ticket: one question, big enough to read off a projector. */
+.lh-exit{
+  margin-bottom:18px;padding:18px 20px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(var(--accent-rgb),.10),rgba(124,92,255,.06));
+  border:1px solid rgba(var(--accent-rgb),.28);
+}
+.lh-exit[hidden]{display:none}
+.lh-exit-label{font-size:.62rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
+.lh-exit-q{font-size:1.25rem;font-weight:700;line-height:1.35;color:var(--text);margin:8px 0 14px}
+.lh-exit-actions{display:flex;flex-wrap:wrap;gap:8px}
 /* Four counts on a phone: two by two, not three and one left over. */
 @media(max-width:520px){
   .lh-stats{display:grid;grid-template-columns:1fr 1fr;row-gap:14px}

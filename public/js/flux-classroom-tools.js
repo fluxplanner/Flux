@@ -937,6 +937,11 @@
     renderClassroomTimer,
     renderHallPass,
     renderExitTicket,
+    /** A random exit question, never the one just shown (Lesson Hub's button). */
+    exitQuestion(previous) {
+      const pool = EXIT_QUESTIONS.filter((q) => q !== previous);
+      return pool[Math.floor(Math.random() * pool.length)];
+    },
     renderOopsBroadcast,
     renderStudentClassAlerts,
     fetchRosterStudents,

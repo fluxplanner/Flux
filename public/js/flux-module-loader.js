@@ -11,24 +11,24 @@
 
   const CATALOG = [
     { id: 'classroom_quick_grade', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Quick-Grade buckets', status: 'beta', module: 'FluxClassroomTools', method: 'renderQuickGrade', defaultOn: true },
-    { id: 'classroom_accommodations', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Accommodation cheat-sheet', status: 'beta', module: 'FluxClassroomTools', method: 'renderAccommodations' },
+    { id: 'classroom_accommodations', needsStudents: true, flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Accommodation cheat-sheet', status: 'beta', module: 'FluxClassroomTools', method: 'renderAccommodations' },
     // defaultOn: Azfer asked for this one by name, and it was already built but
     // switched off, so nobody had ever seen it.
     { id: 'classroom_student_picker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Random student picker', status: 'beta', module: 'FluxClassroomTools', method: 'renderStudentPicker', defaultOn: true },
     { id: 'classroom_group_maker', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Group maker', status: 'beta', module: 'FluxClassroomTools', method: 'renderGroupMaker', defaultOn: true },
-    { id: 'classroom_parent_log', flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog', defaultOn: true },
+    { id: 'classroom_parent_log', needsStudents: true, flag: 'enable_classroom_tools', roles: ['teacher', 'counselor'], scope: 'work', title: 'Parent contact log', status: 'beta', module: 'FluxClassroomTools', method: 'renderParentLog', defaultOn: true },
     { id: 'classroom_hall_pass', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Hall pass registry', status: 'beta', module: 'FluxClassroomTools', method: 'renderHallPass' },
     { id: 'classroom_exit_ticket', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Exit ticket generator', status: 'beta', module: 'FluxClassroomTools', method: 'renderExitTicket', defaultOn: true },
     { id: 'classroom_timer', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Classroom timer', status: 'beta', module: 'FluxClassroomTools', method: 'renderClassroomTimer', defaultOn: true },
-    { id: 'classroom_oops_broadcast', flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Oops broadcast', status: 'beta', module: 'FluxClassroomTools', method: 'renderOopsBroadcast' },
+    { id: 'classroom_oops_broadcast', needsStudents: true, flag: 'enable_classroom_tools', roles: ['teacher'], scope: 'work', title: 'Oops broadcast', status: 'beta', module: 'FluxClassroomTools', method: 'renderOopsBroadcast' },
     { id: 'admin_duty_alerts', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Duty roster alerts', status: 'beta', module: 'FluxAdminWidgets', method: 'renderDutyAlerts' },
     { id: 'admin_sub_swap', flag: 'enable_school_ops', roles: ['admin', 'staff'], scope: 'work', title: 'Sub-coverage swap', status: 'beta', module: 'FluxAdminWidgets', method: 'renderSubSwap' },
     { id: 'admin_ops_health', flag: 'enable_ops_health_panel', roles: ['admin', 'owner'], scope: 'work', title: 'System health', status: 'beta', module: 'FluxOpsHealth', method: 'renderHealthPanel' },
-    { id: 'counselor_caseload', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Caseload dashboard', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderCaseloadWidget' },
-    { id: 'counselor_meeting_log', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Private meeting log', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderMeetingLog' },
-    { id: 'counselor_wellness_queue', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Wellness check-in queue', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderWellnessQueue' },
+    { id: 'counselor_caseload', needsCounselorLinks: true, flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Caseload dashboard', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderCaseloadWidget' },
+    { id: 'counselor_meeting_log', needsCounselorLinks: true, flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Private meeting log', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderMeetingLog' },
+    { id: 'counselor_wellness_queue', needsCounselorLinks: true, flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Wellness check-in queue', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderWellnessQueue' },
     { id: 'counselor_crisis_sheet', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Crisis protocol cheat-sheet', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderCrisisCheatSheet' },
-    { id: 'counselor_referrals', flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Referral tracker', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderReferralTracker' },
+    { id: 'counselor_referrals', needsCounselorLinks: true, flag: 'enable_caseload_engine', roles: ['counselor'], scope: 'work', title: 'Referral tracker', status: 'beta', module: 'FluxCaseloadEngine', method: 'renderReferralTracker' },
     { id: 'counselor_appointments', flag: 'enable_counselor_caseload', roles: ['counselor'], scope: 'work', title: 'Appointment scheduler', status: 'live', module: 'FluxCounselorAppointments' },
     { id: 'personal_brain_dump', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Brain dump', status: 'beta', module: 'FluxPersonalHub', method: 'renderBrainDump' },
     { id: 'personal_commute', flag: 'enable_personal_hub', roles: ['teacher', 'counselor', 'staff', 'admin'], scope: 'personal', title: 'Commute tracker', status: 'beta', module: 'FluxPersonalHub', method: 'renderCommute' },
@@ -100,6 +100,12 @@
 
   function moduleEnabled(item) {
     if (!suiteEnabled()) return false;
+    // These pick a student off the teacher's roster; with class joining off no
+    // roster has anyone on it, and they fell back to "Paste student user ID".
+    if (item.needsStudents && !window.fluxStudentLinksOn?.()) return false;
+    // These pick from the students linked to this counselor, and a student
+    // links only from the "My counselor" card, which is paused (app.js).
+    if (item.needsCounselorLinks && !window.fluxCounselorContactOn?.()) return false;
     try {
       return !!window.FluxFeatureFlags?.isEnabled(item.flag, false);
     } catch (_) {
@@ -524,7 +530,10 @@
     renderWidgetGrid,
     renderCounselorWorkspaceGrids,
     renderStaffPersonalHubGrids,
-    counselorWorkspaceTabs: () => COUNSELOR_WORKSPACE_TABS.slice(),
+    // Only tabs with something switched on in them: a tab whose widgets are all
+    // off would open on an empty page.
+    counselorWorkspaceTabs: () => COUNSELOR_WORKSPACE_TABS.filter((t) =>
+      t.widgetIds.some((id) => { const m = CATALOG.find((c) => c.id === id); return m && moduleEnabled(m); })),
     staffPersonalHubTabs: () => STAFF_PERSONAL_HUB_TABS.slice(),
     exportEnabledData,
     SUITE_FLAG,

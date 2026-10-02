@@ -75,9 +75,11 @@ test.describe('planner tour', () => {
     await gotoScenario(page, 'teacher-workflow');
     await startTour(page);
     const titles = await walkTour(page);
-    for (const t of ['Work and Personal', 'Work hub', 'Messages', 'Lesson Hub', 'Resources', 'Rosters']) {
+    for (const t of ['Work and Personal', 'Work hub', 'Messages', 'Lesson Hub', 'Resources']) {
       expect(titles, `no step for ${t}`).toContain(t);
     }
+    // Rosters is hidden while students can't join a class.
+    expect(titles).not.toContain('Rosters');
     for (const studentOnly of ['Study tools', 'College Prep', 'Mood', 'School Info']) {
       expect(titles).not.toContain(studentOnly);
     }
@@ -249,13 +251,8 @@ test.describe('staff workspace', () => {
     await expect(panel.locator('.ftr-group:visible')).toHaveCount(1);
   });
 
-  test('Rosters jumps to the class rosters instead of the top of the dashboard', async ({ page }) => {
-    await gotoScenario(page, 'teacher-workflow');
-    await page.evaluate(() => (window as any).nav('lessonHub'));
-    await page.locator('#sidebar .nav-item[onclick*="openTeacherClassesPanel"]').click();
-    await expect(page.locator('#teacherDashboard.panel.active')).toBeVisible();
-    await expect(page.locator('#teacherDashboard .teacher-main-grid > .teacher-col').first()).toHaveClass(/fx-staff-flash/, { timeout: 4000 });
-  });
+  /* "Rosters jumps to the class rosters" lived here. Rosters is hidden while
+     class joining is off; the teacher-workflow spec checks it stays hidden. */
 });
 
 test.describe('staff workspace, round two', () => {
