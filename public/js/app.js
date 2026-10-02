@@ -5186,6 +5186,7 @@ function openDashAddTaskModal(){
   if(!m)return;
   fluxSyncSubjectUiForRole();
   populateSubjectSelects();
+  const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}

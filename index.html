@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.f829f5f0.css">
+<link rel="stylesheet" href="public/bundles/flux.89c9f6a1.css">
 </head>
 <body>
 <noscript>
@@ -2868,14 +2868,24 @@
         <button type="button" onclick="showTemplateMenu()" title="Use a template" style="padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);cursor:pointer;font-size:.72rem;font-weight:600;flex-shrink:0;white-space:nowrap">Templates</button>
       </div>
     </div>
-    <div class="irow modal-labeled-row" style="margin-bottom:8px">
-      <div><label class="modal-micro-label" for="taskSubject">Subject</label><select id="taskSubject"><option value="">No subject</option></select></div>
-      <div><label class="modal-micro-label" for="taskPriority">Priority</label><select id="taskPriority"><option value="high">High Priority</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
-    </div>
-    <div class="irow modal-labeled-row" style="margin-bottom:8px">
+    <!-- What you need to add a task sits up front; the rest waits behind
+         "More options" (Azfer, 2026-10-02: the window was crowded and felt
+         overwhelming). Every field keeps its id, so addTask() is unchanged. -->
+    <div class="irow modal-labeled-row nt-pair" style="margin-bottom:8px">
       <div><label class="modal-micro-label" for="taskDate">Due date</label><input type="date" id="taskDate" data-fdp-quick></div>
       <div><label class="modal-micro-label" for="taskType">Type</label><select id="taskType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="reading">Reading</option><option value="other">Other</option></select></div>
     </div>
+    <div class="irow modal-labeled-row nt-pair" style="margin-bottom:8px">
+      <div><label class="modal-micro-label" for="taskSubject">Subject</label><select id="taskSubject"><option value="">No subject</option></select></div>
+      <div><label class="modal-micro-label" for="taskPriority">Priority</label><select id="taskPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted2);cursor:pointer;padding:4px 0;margin-bottom:8px">
+      <input type="checkbox" id="taskPlanAfter" style="width:14px;height:14px;margin:0;flex-shrink:0">
+      Plan it out — spread the work over the days before it’s due
+    </label>
+    <details class="nt-more" id="taskMoreOptions">
+      <summary>More options <span>time, notes, repeat…</span></summary>
+      <div class="nt-more-body">
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
       <div style="flex:0 1 140px"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
       <div style="flex:1;min-width:120px"><label class="modal-micro-label" for="taskDifficulty">Difficulty (1–5)</label><input type="number" id="taskDifficulty" placeholder="1–5" min="1" max="5" style="width:100%;margin:0"></div>
@@ -2885,15 +2895,13 @@
       <input type="checkbox" id="taskSRS" style="width:14px;height:14px;margin:0;flex-shrink:0">
       Spaced Repetition — auto-schedule review tasks at 1, 7 &amp; 30 days
     </label>
-    <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted2);cursor:pointer;padding:4px 0;margin-bottom:8px">
-      <input type="checkbox" id="taskPlanAfter" style="width:14px;height:14px;margin:0;flex-shrink:0">
-      Plan it out — spread the work over the days before it’s due
-    </label>
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
       <div style="flex:1"><label class="modal-micro-label" for="taskRecurringType">Repeat</label><select id="taskRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
     </div>
-    <label style="display:none"><input type="checkbox" id="taskRecurringWeekly"></label>
     <div class="mrow" style="margin-bottom:8px"><label>Waiting on (optional)</label><input type="text" id="taskWaitingOn" placeholder="e.g. teacher reply, group member" style="margin:0"></div>
+      </div>
+    </details>
+    <label style="display:none"><input type="checkbox" id="taskRecurringWeekly"></label>
     <div class="mactions"><button type="button" onclick="closeDashAddTaskModal()" class="btn-sec">Cancel</button><button type="button" onclick="addTask()">+ Add Task</button></div>
   </div>
 </div>
@@ -2955,7 +2963,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.4bcd948c.js"></script>
+<script defer src="public/bundles/flux-core.9d3b92d5.js"></script>
 <script defer src="public/bundles/flux-features.64173844.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
