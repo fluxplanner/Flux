@@ -6068,7 +6068,7 @@ function renderWeeklyRulesList(){
     const sch=fluxEventScope(r)==='school';
     const isEc=fluxIsEcCalendarItem(r);
     const border=isEc?'rgba(251,191,36,.35)':'var(--border2)';
-    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">EC</span>':'';
+    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">Activity</span>':'';
     return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--card2);border-radius:10px;margin-bottom:6px;border:1px solid ${border}"><div style="min-width:0"><div style="font-weight:600">${esc(r.title)}${badge}</div><div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${days}${r.time?' · '+esc(r.time):''}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="toggleWeeklyRuleScope('${r.id}')" title="School vs outside">${sch?'🏫':'🌐'}</button><button type="button" class="btn-sec" style="padding:4px 10px;font-size:.72rem" onclick="deleteWeeklyRule('${r.id}')">Remove</button></div></div>`;
   }).join('');
 }

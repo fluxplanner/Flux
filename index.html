@@ -1415,7 +1415,7 @@
                      does too. -->
                 <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
-                <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none">+ EC</button>
+                <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none" title="Add an activity from College Prep">+ Activity</button>
               </div>
             </div>
             <div class="cal-cd-form" id="calCountdownForm" hidden>
@@ -1559,7 +1559,7 @@
         <div id="addEventTypeRow" style="display:flex;gap:8px;margin-bottom:16px">
           <button type="button" id="addEventTypeTask" onclick="setAddEventType('task')" style="flex:1;background:var(--accent)">Task</button>
           <button type="button" id="addEventTypeEvent" onclick="setAddEventType('event')" style="flex:1" class="btn-sec">Event</button>
-          <button type="button" id="addEventTypeEc" onclick="setAddEventType('ec')" style="flex:1" class="btn-sec">EC</button>
+          <button type="button" id="addEventTypeEc" onclick="setAddEventType('ec')" style="flex:1" class="btn-sec">Activity</button>
         </div>
         <div class="mrow" id="addEventExtraRow" style="display:none"><label>Activity</label>
           <select id="addEventExtraSelect" style="margin:0" onchange="onAddEventExtraPick()"><option value="">Select activity…</option></select>
@@ -2955,8 +2955,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.0e517646.js"></script>
-<script defer src="public/bundles/flux-features.cba67ff2.js"></script>
+<script defer src="public/bundles/flux-core.4bcd948c.js"></script>
+<script defer src="public/bundles/flux-features.64173844.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
