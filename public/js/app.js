@@ -21574,6 +21574,12 @@ async function renderCounselorDashboard(){
         ${FLUX_COUNSELOR_CONTACT_ENABLED?`<button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">Edit availability</button>`:''}
         ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
+      <div class="spdx-actions">
+        <button type="button" class="spdx-act" data-co-go="note">+ Meeting note</button>
+        <button type="button" class="spdx-act" data-co-go="counselorWorkspace">Crisis protocol</button>
+        <button type="button" class="spdx-act" data-co-go="staffMessages">Message a colleague</button>
+        <button type="button" class="spdx-act" data-co-go="staffHub">Work hub</button>
+      </div>
 
       ${(()=>{
         /* Same rule as the teacher strip above (~18471): only the counts that
@@ -21599,6 +21605,9 @@ async function renderCounselorDashboard(){
         ?FluxCounselorConsent.renderCounselorSummary(_counselorCaseload)
         :''}
 
+      ${/* With counselor contact off no student can book or message, so these
+           two cards could only ever say "No appointments" / "No messages". */
+        !FLUX_COUNSELOR_CONTACT_ENABLED&&!todayAppts.length&&!upcomingAppts.length&&!messages.length&&!pendingAppts.length?'':`
       <div class="teacher-grid">
         ${FLUX_COUNSELOR_CONTACT_ENABLED||pendingAppts.length?`<div class="teacher-section teacher-section--pending">
           <div class="section-header"><h3>Booking requests</h3>${pendingAppts.length?`<span class="sw-mini-tag">${pendingAppts.length} pending</span>`:''}</div>
@@ -21637,12 +21646,23 @@ async function renderCounselorDashboard(){
             </div>`).join('')
             :'<div style="font-size:.82rem;color:var(--muted2);padding:12px 0">No unread messages</div>'}
         </div>
-      </div>
+      </div>`}
     </div>`;
+  if(!FLUX_COUNSELOR_CONTACT_ENABLED){
+    const sub=document.querySelector('#counselorDashboard .flux-page-sub');
+    if(sub)sub.textContent='Meeting notes, the crisis protocol and your colleagues, a tap away.';
+  }
 
   host.querySelectorAll('[data-message-sender]').forEach(row=>{
     row.addEventListener('click',()=>FluxMessaging.openThreadById(row.dataset.messageSender));
   });
+  host.querySelectorAll('[data-co-go]').forEach(b=>b.addEventListener('click',()=>{
+    const to=b.dataset.coGo;
+    if(to!=='note'){nav(to);return;}
+    nav('staffMeetingNotes');
+    try{window.FluxStaffPlatform?.renderMeetingNotesPanel?.();}catch(_){}
+    setTimeout(()=>{try{window.FluxStaffPlatform?.openNewMeetingNoteModal?.();}catch(_){}},250);
+  }));
   try{
     const caseloadMount=document.getElementById('counselorCaseloadMount');
     if(window.FluxCounselorCaseload?.wireCounselorSection&&caseloadMount){

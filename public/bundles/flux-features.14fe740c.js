@@ -771,9 +771,9 @@ THINGS THE STUDENT TAUGHT YOU (treat as true, apply without being asked):
       <div class="mrow"><label>Priority</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${["normal","important","urgent",pe?"emergency":""].filter(Boolean).map(Ee=>`
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.82rem">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit">
             <input type="radio" name="annPriority" value="${Ee}" ${Ee==="normal"?"checked":""}>
-            <span>${Ee}</span>
+            <span>${Ee.charAt(0).toUpperCase()+Ee.slice(1)}</span>
           </label>`).join("")}
         </div>
       </div>
@@ -781,12 +781,12 @@ THINGS THE STUDENT TAUGHT YOU (treat as true, apply without being asked):
       <div class="mrow"><label>Audience</label>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           ${["student","teacher","counselor","staff"].map(Ee=>`
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.82rem">
-            <input type="checkbox" name="annTarget" value="${Ee}" checked> ${Ee}s
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit">
+            <input type="checkbox" name="annTarget" value="${Ee}" checked> ${{student:"Students",teacher:"Teachers",counselor:"Counselors",staff:"Other staff"}[Ee]}
           </label>`).join("")}
         </div>
       </div>
-      <div class="mrow"><label><input type="checkbox" id="annPinned"> Pin</label></div>
+      <div class="mrow"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit"><input type="checkbox" id="annPinned" style="width:auto;margin:0"> Pin to the top</label></div>
       <div class="mrow"><label>Expires</label><input type="date" id="annExpiry"></div>`:""}
       <div id="annError" style="display:none;font-size:.78rem;color:var(--red);margin-top:10px"></div>
       <div style="display:flex;gap:8px;margin-top:16px">

@@ -770,9 +770,9 @@
             .filter(Boolean)
             .map(
               (p) => `
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.82rem">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit">
             <input type="radio" name="annPriority" value="${p}" ${p === 'normal' ? 'checked' : ''}>
-            <span>${p}</span>
+            <span>${p.charAt(0).toUpperCase() + p.slice(1)}</span>
           </label>`
             )
             .join('')}
@@ -786,14 +786,14 @@
           ${['student', 'teacher', 'counselor', 'staff']
             .map(
               (r) => `
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.82rem">
-            <input type="checkbox" name="annTarget" value="${r}" checked> ${r}s
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit">
+            <input type="checkbox" name="annTarget" value="${r}" checked> ${{ student: 'Students', teacher: 'Teachers', counselor: 'Counselors', staff: 'Other staff' }[r]}
           </label>`
             )
             .join('')}
         </div>
       </div>
-      <div class="mrow"><label><input type="checkbox" id="annPinned"> Pin</label></div>
+      <div class="mrow"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);margin:0;white-space:nowrap;font-family:inherit"><input type="checkbox" id="annPinned" style="width:auto;margin:0"> Pin to the top</label></div>
       <div class="mrow"><label>Expires</label><input type="date" id="annExpiry"></div>`
           : ''
       }
