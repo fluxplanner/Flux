@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.89c9f6a1.css">
+<link rel="stylesheet" href="public/bundles/flux.a2cd2c4c.css">
 </head>
 <body>
 <noscript>
@@ -2911,30 +2911,41 @@
   <div class="modal-card">
     <div class="modal-title">Edit Task</div>
     <div class="mrow"><label>Task</label><input type="text" id="editText"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <!-- Same split as New task: the common fields up front, the rest behind
+         "More options", which opens by itself when the task already uses one. -->
+    <div class="nt-pair" style="margin-bottom:4px">
+      <div class="mrow"><label>Due Date</label><input type="date" id="editDue" data-fdp-quick></div>
+      <div class="mrow"><label>Type</label><select id="editType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="reading">Reading</option><option value="other">Other</option></select></div>
+    </div>
+    <div class="nt-pair">
       <div class="mrow"><label>Subject</label><select id="editSubject"><option value="">No subject</option></select></div>
       <div class="mrow"><label>Priority</label><select id="editPriority"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></div>
-      <div class="mrow"><label>Type</label><select id="editType"><option value="hw">Homework</option><option value="test">Test</option><option value="quiz">Quiz</option><option value="project">Project</option><option value="essay">Essay</option><option value="lab">Lab</option><option value="reading">Reading</option><option value="other">Other</option></select></div>
-      <div class="mrow"><label>Due Date</label><input type="date" id="editDue" data-fdp-quick></div>
-      <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
-      <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
     </div>
     <div class="mrow plan-entry"><button type="button" class="btn-sec" onclick="planItOutFromEdit()">Plan it out</button><span>Spread the work over the days before it’s due, a little each day.</span></div>
     <div class="mrow"><label>Sub-tasks (one per line)</label>
-      <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div class="ed-subtasks" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
         <textarea id="editSubtasks" style="min-height:70px;flex:1;min-width:200px;margin:0" placeholder="Sub-task 1&#10;Sub-task 2"></textarea>
-        <button type="button" class="btn-sec" onclick="completeAllSubtasksInEdit()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap" title="Mark all subtasks complete">All ✓</button>
+        <button type="button" class="btn-sec" onclick="completeAllSubtasksInEdit()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap" title="Mark all subtasks complete">Mark all done</button>
         <button type="button" class="btn-sec" onclick="autoSplitEditSubtasks(event)" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap">Suggest steps</button>
       </div>
     </div>
-    <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
     <label style="display:none"><input type="checkbox" id="editRecurringWeekly"></label>
+    <details class="nt-more" id="editMoreOptions">
+      <summary>More options <span>notes, time, repeat…</span></summary>
+      <div class="nt-more-body">
+    <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
+    <div class="nt-pair">
+      <div class="mrow"><label>Est. Minutes</label><input type="number" id="editEstTime" min="5" max="480"></div>
+      <div class="mrow"><label>Difficulty (1–5)</label><input type="number" id="editDifficulty" min="1" max="5"></div>
+    </div>
     <div class="mrow"><label>Waiting on</label><input type="text" id="editWaitingOn" placeholder="Optional" style="margin:0"></div>
     <div class="mrow"><label>Blocked By</label><div id="editDeps" style="max-height:140px;overflow-y:auto"></div></div>
     <div class="mrow" style="margin-bottom:8px"><label class="modal-micro-label" for="editRecurringType">Repeat</label><select id="editRecurringType" style="margin:0;width:100%"><option value="none">No repeat</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
     <!-- Moved here from the 🏫/🌐 pill on the task card. The card is down to four
          buttons, and this is a property of the task, so it belongs with the rest. -->
     <div class="mrow" style="margin-bottom:8px"><label class="modal-micro-label" for="editScope">Belongs to</label><select id="editScope" style="margin:0;width:100%"><option value="school">School</option><option value="outside">Outside school</option></select></div>
+      </div>
+    </details>
     <div class="mactions"><button onclick="closeEdit()" class="btn-sec">Cancel</button><button onclick="saveEdit()">Save</button></div>
   </div>
 </div>
@@ -2963,7 +2974,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.9d3b92d5.js"></script>
+<script defer src="public/bundles/flux-core.ac236f60.js"></script>
 <script defer src="public/bundles/flux-features.64173844.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
