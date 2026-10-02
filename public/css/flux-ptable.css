@@ -149,6 +149,8 @@
 .fpt-chip b { font-variant-numeric: tabular-nums; }
 .fpt-note { font-size: .78rem; color: var(--fpt-mut); line-height: 1.5; margin: 6px 0 0; }
 .fpt-center { text-align: center; }
+.fpt-mnemo { margin: -2px 0 8px; padding: 0 10px; font-size: .8rem; line-height: 1.45; color: var(--fpt-ink); }
+.fpt .fpt-dia b { font-size: .78em; opacity: .8; }
 .fpt-hlbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 6px 10px; border-radius: 10px; font-size: .8rem; background: color-mix(in srgb, var(--fpt-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--fpt-accent) 30%, transparent); }
 .fpt .fpt-link { appearance: none; border: 0; background: none; padding: 0; margin: 0; color: var(--fpt-accent); font-weight: 700; font-size: .8rem; cursor: pointer; }
 .fpt .fpt-link:hover { text-decoration: underline; }
