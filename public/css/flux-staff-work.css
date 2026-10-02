@@ -12,6 +12,7 @@
 }
 
 .spdx-stats { display: flex; gap: 10px; }
+.spdx-stats[hidden] { display: none; }
 .spdx-stat {
   min-width: 92px;
   padding: 10px 14px;
