@@ -344,6 +344,39 @@
     cardHtml: function () { return '<div class="card" id="fluxTeacherClasses"></div>'; },
     list: function () { return refresh().slice(); },
     /**
+     * Add several classes at once — teacher sign-up's "Create your classes"
+     * step, while class joining is off and a roster would have no one on it.
+     * rows: [{ name, period ("A1", "3"), days, room, timeStart, timeEnd }].
+     * Returns how many were added.
+     */
+    addMany: function (rows) {
+      refresh();
+      var added = 0;
+      (rows || []).forEach(function (r, i) {
+        var name = cleanName(r && r.name);
+        if (!name) return;
+        var p = parsePeriod(r.period, r.days || '');
+        classes.push({
+          id: Date.now() + i,
+          period: p.period,
+          periodLabel: String(r.period || '').trim(),
+          days: p.days,
+          name: name,
+          room: String(r.room || '').trim(),
+          timeStart: r.timeStart || '',
+          timeEnd: r.timeEnd || '',
+          color: COLORS[classes.length % COLORS.length],
+          work: [],
+          students: [],
+        });
+        added++;
+      });
+      if (!added) return 0;
+      classes.sort(byPeriod);
+      persist();
+      return added;
+    },
+    /**
      * The timetable belonging to whoever is signed in, or null meaning
      * "not yours — use the student list".
      *

@@ -3256,6 +3256,15 @@ window.fluxPurgeOldCompleted=fluxPurgeOldCompleted;
    School tab. Flip this to true to bring the whole flow back — the modals,
    handlers and storage were left in place deliberately. */
 const FLUX_SCHOOL_JOIN_ENABLED=false;
+/* A teacher reaches students only through a class roster, and with joining
+   off no student can be on one. So the teacher side that sends to students —
+   New assignment, rosters, announcements, and the widgets that ask which
+   student — goes with it, rather than being offered and leading nowhere
+   (Azfer, 2026-10-02, before the staff demo: "Hide them"). Anything marked
+   data-needs-students is hidden by the class below; modules ask
+   fluxStudentLinksOn(). */
+window.fluxStudentLinksOn=()=>FLUX_SCHOOL_JOIN_ENABLED;
+document.documentElement.classList.toggle('flux-no-student-links',!FLUX_SCHOOL_JOIN_ENABLED);
 
 /* Notebook paused. The sidebar tab labelled "Notebook" is panel 'notes', and
    its 🧠 Knowledge sub-view is flux-notebook.js — a NotebookLM-style workspace
@@ -3289,8 +3298,26 @@ const FLUX_NOTEBOOK_ENABLED=false;
    untouched — this removes only the student-facing way in.
 
    Staff office hours are part of the same pause but live in their own module,
-   gated by enable_office_hours in flux-feature-flags.js. */
+   gated by enable_office_hours in flux-feature-flags.js.
+
+   The counselor's side follows (2026-10-02, the same "hide what leads nowhere"
+   call as fluxStudentLinksOn): with no student able to book, "Edit
+   availability" and an always-empty "Booking requests" card only invited a
+   counselor to wait for requests that cannot arrive. Both come back with
+   this flag, and any request already waiting is still shown. */
 const FLUX_COUNSELOR_CONTACT_ENABLED=false;
+window.fluxCounselorContactOn=()=>FLUX_COUNSELOR_CONTACT_ENABLED;
+// Hides data-needs-counselor-links (the counselor's "Students" entry).
+document.documentElement.classList.toggle('flux-no-counselor-contact',!FLUX_COUNSELOR_CONTACT_ENABLED);
+/* Page lines in index.html that list what these paused features add carry
+   their wording for while they are off; the deferred bundle runs after the
+   page is parsed, so the elements are there. */
+document.querySelectorAll('[data-copy-no-student-links]').forEach(el=>{
+  if(!FLUX_SCHOOL_JOIN_ENABLED)el.textContent=el.dataset.copyNoStudentLinks;
+});
+document.querySelectorAll('[data-copy-no-counselor-contact]').forEach(el=>{
+  if(!FLUX_COUNSELOR_CONTACT_ENABLED)el.textContent=el.dataset.copyNoCounselorContact;
+});
 
 const DEFAULT_TABS=[
   {id:'dashboard',icon:'⚡',label:'Dashboard',visible:true},
@@ -3917,10 +3944,48 @@ function navMob(id,opt){closeDrawer();closeMobileSheet();nav(id,null,opt);}
 
 // ── Mobile "More" bottom sheet ──
 let _moreSheetCloseTimer=null;
+/* The More sheet's own buttons are the student tabs. A teacher or counselor
+   on a phone got those — College Prep, Mood, Study tools — and no way at all
+   to Lesson Hub, Messages, Resources or the Work hub, which live only in the
+   sidebar a phone never shows (2026-10-02). For educators the sheet now offers
+   whatever the sidebar shows for their role and mode, minus Dashboard and
+   Calendar, which the bottom bar already has; each one clicks the sidebar
+   entry itself, so it does exactly what the laptop does. */
+function syncMoreSheetForEducator(){
+  const sh=document.getElementById('moreSheet');
+  const grid=sh?.querySelector('.more-sheet-grid');
+  if(!grid)return;
+  let slot=document.getElementById('moreSheetEduSlot');
+  if(!slot){
+    slot=document.createElement('div');
+    slot.id='moreSheetEduSlot';
+    slot.style.display='contents';
+    grid.insertBefore(slot,grid.firstChild);
+  }
+  const edu=typeof FluxRole!=='undefined'&&FluxRole.isEducator&&FluxRole.isEducator();
+  sh.classList.toggle('more-sheet--edu',!!edu);
+  slot.innerHTML='';
+  if(!edu)return;
+  const shown=el=>getComputedStyle(el).display!=='none';
+  const home=/^nav\('(dashboard|calendar)'/;
+  document.querySelectorAll('#sidebar .nav-item, #sidebar .school-work-tab').forEach(src=>{
+    if(!shown(src)||home.test(src.getAttribute('onclick')||''))return;
+    const label=(src.querySelector('.nl')?.textContent||src.getAttribute('title')||src.textContent||'').trim();
+    if(!label)return;
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='more-sheet-item';
+    b.dataset.eduItem='1';
+    b.innerHTML=`<span class="more-sheet-icon" aria-hidden="true">${src.querySelector('.ni')?.innerHTML||''}</span><span class="more-sheet-label">${esc(label)}</span>`;
+    b.addEventListener('click',()=>{closeMobileSheet();src.click();});
+    slot.appendChild(b);
+  });
+}
 function openMobileSheet(){
   const ov=document.getElementById('moreSheetOverlay');
   const sh=document.getElementById('moreSheet');
   if(!ov||!sh)return;
+  try{syncMoreSheetForEducator();}catch(_){}
   // A reopen must cancel the pending close fallback, or it would fire and
   // shut the sheet the user just opened.
   if(_moreSheetCloseTimer){clearTimeout(_moreSheetCloseTimer);_moreSheetCloseTimer=null;}
@@ -4132,10 +4197,10 @@ function buildEducatorNavAugmentation(isMob,schoolClassicLabelEscaped){
 <button type="button" class="nav-item" onclick="${n('counselorMeetings',true)}" data-tab="counselorMeetings" data-role-tab="counselor" style="display:none"><span class="ni">${getNavIconHtml('counselorMeetings')}</span><span class="nl">Meetings</span></button>
 <button type="button" class="nav-item" onclick="${n('adminOps',true)}" data-tab="adminOps" data-role-tab="admin" style="display:none"><span class="ni">${getNavIconHtml('adminOps')}</span><span class="nl">Operations</span></button>
 <button type="button" class="nav-item" onclick="${n('staffWorkboard',true)}" data-tab="staffWorkboard" data-role-tab="staff" style="display:none"><span class="ni">${getNavIconHtml('staffWorkboard')}</span><span class="nl">Workboard</span></button>
-<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav style="display:none"><span class="ni">${getNavIconHtml('rosters')}</span><span class="nl">Rosters</span></button>
+<button type="button" class="nav-item" onclick="openTeacherClassesPanel()" data-tab="teacherDashboard" data-teacher-nav data-needs-students style="display:none"><span class="ni">${getNavIconHtml('rosters')}</span><span class="nl">Rosters</span></button>
 <button type="button" class="nav-item" onclick="openTeacherGradebook()" data-tab="teacherDashboard" data-teacher-nav-todo style="display:none"><span class="ni">${getNavIconHtml('gradebook')}</span><span class="nl">Gradebook</span></button>
 <button type="button" class="nav-item" onclick="${isMob?`navMob('counselorWorkspace');try{renderCounselorWorkspace()}catch(e){}`:`nav('counselorWorkspace',this);try{renderCounselorWorkspace()}catch(e){}`}" data-tab="counselorWorkspace" data-counselor-nav style="display:none"><span class="ni">${getNavIconHtml('counselorWorkspace')}</span><span class="nl">Caseload tools</span></button>
-<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav style="display:none"><span class="ni">${getNavIconHtml('students')}</span><span class="nl">Students</span></button>
+<button type="button" class="nav-item" onclick="openCounselorStudentList()" data-tab="counselorDashboard" data-counselor-nav data-needs-counselor-links style="display:none"><span class="ni">${getNavIconHtml('students')}</span><span class="nl">Students</span></button>
 <button type="button" class="nav-item" onclick="openAdminUserManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('users')}</span><span class="nl">Users</span></button>
 <button type="button" class="nav-item" onclick="openSchoolCalendar()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('calendar')}</span><span class="nl">Calendar</span></button>
 <button type="button" class="nav-item" onclick="openAnnouncementsManager()" data-tab="adminDashboard" data-admin-nav style="display:none"><span class="ni">${getNavIconHtml('announce')}</span><span class="nl">Announce</span></button>
@@ -13769,7 +13834,7 @@ const LOGIN_DEMO_LINES=[
 const LOGIN_DEMO_LINES_STAFF=[
   "See today's classes bell by bell, with lesson notes for each period.",
   'Pick a random student, split a class into groups, or hand out an exit ticket.',
-  'Create a class, share its join code, and watch the roster fill.',
+  FLUX_SCHOOL_JOIN_ENABLED?'Create a class, share its join code, and watch the roster fill.':'Put a timer on the board, big enough to read from the back row.',
   'Message colleagues one-to-one or in a group chat.',
   'Flip to Personal mode and your evenings stay yours.'
 ];
@@ -15750,7 +15815,7 @@ function fluxTourSteps(){
   const role=R.current;
   const dash={
     teacher:'Your classes today and the classroom tools you reach for most: a student picker, a group maker, exit tickets and a timer. Customize picks which tools show.',
-    counselor:'Today’s appointments, any booking requests and your messages, on one screen.',
+    counselor:FLUX_COUNSELOR_CONTACT_ENABLED?'Today’s appointments, any booking requests and your messages, on one screen.':'Today’s appointments and your messages, on one screen.',
     admin:'A school-wide overview, announcements and meeting requests.',
     staff:'Your department tools, the request queue and shared links.',
   };
@@ -15763,12 +15828,15 @@ function fluxTourSteps(){
   ];
   if(role==='teacher')steps.push(
     tab('lessonHub','Lesson Hub','Today’s classes bell by bell, with lesson notes, attendance and material reminders for each period.'),
-    tab('teacherResources','Resources','Free, classroom-ready lessons, simulations and texts sorted by subject, with a web search on top.'),
+    tab('teacherResources','Resources','Free, classroom-ready lessons, simulations and texts sorted by subject, with a web search on top.')
+  );
+  // Rosters only while students can join one (fluxStudentLinksOn).
+  if(role==='teacher'&&FLUX_SCHOOL_JOIN_ENABLED)steps.push(
     {sel:'#sidebar .nav-item[onclick*="openTeacherClassesPanel"]',go:true,title:'Rosters',body:'Create a class, share its join code, and see who has joined.'}
   );
   if(role==='counselor')steps.push(
-    tab('counselorMeetings','Meetings','What is coming up, any booking requests, and the notes you keep on meetings.'),
-    tab('counselorWorkspace','Caseload tools','Your caseload, wellness check-ins, referrals and crisis protocols, in tabs.')
+    tab('counselorMeetings','Meetings',FLUX_COUNSELOR_CONTACT_ENABLED?'What is coming up, any booking requests, and the notes you keep on meetings.':'What is coming up, and the notes you keep on each 1:1, parent call or IEP meeting.'),
+    tab('counselorWorkspace','Caseload tools',FLUX_COUNSELOR_CONTACT_ENABLED?'Your caseload, wellness check-ins, referrals and crisis protocols, in tabs.':'Crisis protocols: the steps to follow and who to call, ready when you need them.')
   );
   if(role==='admin')steps.push(tab('adminOps','Operations','Staff roster, sub coverage, duties and faculty announcements.'));
   if(role==='staff')steps.push(tab('staffWorkboard','Workboard','Department tools, the request queue and shared tools.'));
@@ -19530,8 +19598,9 @@ function renderTeacherOnboard_Welcome(container){
       <h2 class="onboard-step-title">Welcome to Flux for teachers</h2>
       <p class="onboard-step-sub">Your classes, your lessons and your classroom tools in one place, with a separate planner for the rest of your life.</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span></span> Create classes with a join code to share with students</div>
-        <div class="onboard-feature"><span></span> Post assignments that land in your students’ planners</div>
+        ${FLUX_SCHOOL_JOIN_ENABLED?`<div class="onboard-feature"><span></span> Create classes with a join code to share with students</div>
+        <div class="onboard-feature"><span></span> Post assignments that land in your students’ planners</div>`
+        :`<div class="onboard-feature"><span></span> Your timetable: the classes you teach, period by period</div>`}
         <div class="onboard-feature"><span></span> Lesson Hub: today’s classes bell by bell, with notes and attendance</div>
         <div class="onboard-feature"><span></span> Classroom tools: a student picker, group maker, exit tickets and a timer</div>
         <div class="onboard-feature"><span></span> Message colleagues, and switch to Personal mode for your own planner</div>
@@ -19548,7 +19617,7 @@ function renderTeacherOnboard_Profile(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Your teaching profile</h2>
-      <p class="onboard-step-sub">This is how students and parents will see you in Flux.</p>
+      <p class="onboard-step-sub">${FLUX_SCHOOL_JOIN_ENABLED?'This is how students and parents will see you in Flux.':'This is how colleagues will see you in Flux.'}</p>
       <div class="mrow"><label>Full Name *</label>
         <input id="to_name" placeholder="e.g. Mr. Rodriguez" value="${esc(presetName)}">
       </div>
@@ -19599,8 +19668,10 @@ function renderTeacherOnboard_Classes(container){
   container.innerHTML=`
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
-      <h2 class="onboard-step-title">Create your classes</h2>
-      <p class="onboard-step-sub">Create at least one class. Students join by entering the class code you'll share. You can add more later.</p>
+      <h2 class="onboard-step-title">${FLUX_SCHOOL_JOIN_ENABLED?'Create your classes':'The classes you teach'}</h2>
+      <p class="onboard-step-sub">${FLUX_SCHOOL_JOIN_ENABLED
+        ?'Create at least one class. Students join by entering the class code you’ll share. You can add more later.'
+        :'Add each class you teach and when it meets. Lesson Hub then shows today’s, bell by bell. You can change them any time in School Info.'}</p>
       <div id="classBuilderList"></div>
       <button class="onboard-add-btn" id="toAddClassRow">+ Add another class</button>
       <div id="classBuilderError" class="onboard-error" style="display:none"></div>
@@ -19671,6 +19742,16 @@ async function saveTeacherClasses_andNext(){
     if(name)collected.push({name,period,room,days,time_start,time_end});
   });
   if(!collected.length){setErr('Add at least one class name (or hit Skip).');return;}
+  // With joining off a roster would have no one on it: the classes go on the
+  // teacher's own timetable instead, which is what Lesson Hub reads.
+  if(!FLUX_SCHOOL_JOIN_ENABLED){
+    const added=window.FluxTeacherClasses?.addMany?.(collected.map(c=>({
+      name:c.name,period:c.period,days:c.days,room:c.room,timeStart:c.time_start,timeEnd:c.time_end,
+    })))||0;
+    if(!added){setErr('Couldn’t save your classes — try again, or Skip and add them in School Info.');return;}
+    window.__eduOnboardNext?.();
+    return;
+  }
   const sb=getSB();const u=currentUser;
   if(!sb||!u){setErr('Auth unavailable — try again.');return;}
   try{
@@ -19701,11 +19782,25 @@ function renderTeacherOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're all set!</h2>
-      <p class="onboard-step-sub">Your teacher account is ready. Share each class code with its students so they can join.</p>
+      <p class="onboard-step-sub">${FLUX_SCHOOL_JOIN_ENABLED
+        ?'Your teacher account is ready. Share each class code with its students so they can join.'
+        :'Your teacher account is ready. Lesson Hub has today’s classes, and School Info holds your whole timetable.'}</p>
       <div id="teacherClassCodes" style="margin:20px 0"></div>
       <button class="onboard-next-btn" id="toFinishBtn">Go to Dashboard →</button>
     </div>`;
   document.getElementById('toFinishBtn')?.addEventListener('click',finishOnboarding);
+  if(!FLUX_SCHOOL_JOIN_ENABLED){
+    const el=document.getElementById('teacherClassCodes');
+    const mine=window.FluxTeacherClasses?.list?.()||[];
+    if(el)el.innerHTML=mine.length?mine.map(c=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;margin-bottom:8px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:800;color:var(--accent);min-width:2.4em">${esc(c.periodLabel||String(c.period||''))}</div>
+          <div style="flex:1;font-size:.85rem;font-weight:700">${esc(c.name)}</div>
+          ${c.room?`<div style="font-size:.72rem;color:var(--muted2)">Room ${esc(c.room)}</div>`:''}
+        </div>`).join('')
+      :'<div style="font-size:.78rem;color:var(--muted2)">You can add the classes you teach any time in School Info.</div>';
+    return;
+  }
   const sb=getSB();const u=currentUser;
   if(!sb||!u)return;
   sb.from('teacher_classes')
@@ -19731,7 +19826,9 @@ function runCounselorOnboarding(){
   runOnboardingSteps([
     renderCounselorOnboard_Welcome,
     renderCounselorOnboard_Profile,
-    renderCounselorOnboard_Availability,
+    // Availability is for student bookings, which are paused with counselor
+    // contact; asking for it would be setting times no one can book.
+    ...(FLUX_COUNSELOR_CONTACT_ENABLED?[renderCounselorOnboard_Availability]:[]),
     renderCounselorOnboard_Finish,
   ],'counselor');
 }
@@ -19742,11 +19839,14 @@ function renderCounselorOnboard_Welcome(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">Welcome, counselor</h2>
-      <p class="onboard-step-sub">Appointments, messages and your caseload tools in one place, with a separate planner for the rest of your life.</p>
+      <p class="onboard-step-sub">${FLUX_COUNSELOR_CONTACT_ENABLED?'Appointments, messages and your caseload tools in one place, with a separate planner for the rest of your life.':'Meetings, notes and messages in one place, with a separate planner for the rest of your life.'}</p>
       <div class="onboard-feature-list">
-        <div class="onboard-feature"><span></span> Mark the times you are free for student appointments</div>
+        ${FLUX_COUNSELOR_CONTACT_ENABLED?`<div class="onboard-feature"><span></span> Mark the times you are free for student appointments</div>
         <div class="onboard-feature"><span></span> Message students and colleagues</div>
-        <div class="onboard-feature"><span></span> Caseload tools: wellness check-ins, referrals and crisis protocols</div>
+        <div class="onboard-feature"><span></span> Caseload tools: wellness check-ins, referrals and crisis protocols</div>`
+        :`<div class="onboard-feature"><span></span> Notes for every 1:1, parent call or IEP meeting</div>
+        <div class="onboard-feature"><span></span> Message colleagues one-to-one or in a group</div>
+        <div class="onboard-feature"><span></span> Crisis protocols, ready when you need them</div>`}
         <div class="onboard-feature"><span></span> Switch to Personal mode for your own planner</div>
       </div>
       <button class="onboard-next-btn" id="cWelcomeNext">Set Up Account →</button>
@@ -19852,7 +19952,7 @@ function renderCounselorOnboard_Finish(container){
     <div class="onboard-step glass">
       <div class="onboard-step-icon"></div>
       <h2 class="onboard-step-title">You're set up!</h2>
-      <p class="onboard-step-sub">Your counselor dashboard is ready. Meetings, notes and your caseload tools are in the sidebar.</p>
+      <p class="onboard-step-sub">${FLUX_COUNSELOR_CONTACT_ENABLED?'Your counselor dashboard is ready. Meetings, notes and your caseload tools are in the sidebar.':'Your counselor dashboard is ready. Meetings, notes and crisis protocols are in the sidebar.'}</p>
       <button class="onboard-next-btn" id="coFinishBtn">Go to Dashboard →</button>
     </div>`;
   document.getElementById('coFinishBtn')?.addEventListener('click',finishOnboarding);
@@ -20042,6 +20142,9 @@ async function renderTeacherDashboard(){
     }
   }catch(_){}
 
+  // Rosters, assignments, submissions and announcements all need students on
+  // a roster; with joining off they are left out (see fluxStudentLinksOn).
+  const links=FLUX_SCHOOL_JOIN_ENABLED;
   const totalAssignments=classesRows.reduce((s,c)=>s+((c.teacher_assignments||[]).length||0),0);
   const pendingReview=recentCompletions.filter(c=>c.status==='submitted').length;
   const dueSoon=classesRows.flatMap(c=>(c.teacher_assignments||[]).map(a=>({...a,_class:c.class_name})))
@@ -20077,9 +20180,9 @@ async function renderTeacherDashboard(){
         </div>
         <div class="teacher-topbar-actions">
           ${teacherGoogleStatusChipHtml()}
-          <button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New assignment</button>
+          ${links?`<button class="teacher-action-btn primary" data-action="new-assignment"><span>+</span> New assignment</button>
           <button class="teacher-action-btn" data-action="new-class"><span></span> New roster</button>
-          <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>
+          <button class="teacher-action-btn" data-action="new-announcement"><span></span> Announce</button>`:''}
           ${window.FluxTeacherLessonAI?.dashboardButtonHtml?.()||''}
           ${window.FluxTeacherCopilot?.dashboardButtonHtml?.()||''}
         </div>
@@ -20094,13 +20197,13 @@ async function renderTeacherDashboard(){
            quiet day. When every count is zero the strip is dropped entirely
            and the now-bar leads instead. */
         const stats=[
-          {n:classesRows.length,     label:'Rosters'},
-          {n:totalAssignments,       label:'Assignments'},
-          {n:pendingJoins.length,    label:'Join queue', cls:'tstat-alert'},
-          {n:pendingReview,          label:'To review',  cls:'tstat-alert'},
+          {n:classesRows.length,     label:'Rosters',    students:true},
+          {n:totalAssignments,       label:'Assignments',students:true},
+          {n:pendingJoins.length,    label:'Join queue', cls:'tstat-alert', students:true},
+          {n:pendingReview,          label:'To review',  cls:'tstat-alert', students:true},
           {n:unreadMessages.length,  label:'Messages',   cls:'tstat-alert'},
-          {n:dueSoon.length,         label:'Due soon',   cls:'tstat-warn'},
-        ].filter(s=>s.n>0);
+          {n:dueSoon.length,         label:'Due soon',   cls:'tstat-warn', students:true},
+        ].filter(s=>s.n>0&&(links||!s.students));
         if(!stats.length)return'';
         return `<div class="teacher-stats-strip">${stats.map(s=>
           `<div class="teacher-stat ${s.cls||''}"><div class="tstat-num">${s.n}</div><div class="tstat-label">${esc(s.label)}</div></div>`
@@ -20111,8 +20214,8 @@ async function renderTeacherDashboard(){
 
       ${wellnessSectionHtml}
 
-      ${window.FluxAssignmentRecovery?.bannerHtml?.(pendingRecovery.length)||''}
-      ${pendingJoins.length>0?`
+      ${links&&window.FluxAssignmentRecovery?.bannerHtml?.(pendingRecovery.length)||''}
+      ${links&&pendingJoins.length>0?`
       <div class="flux-join-request-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.28);border-radius:14px">
         <span style="font-size:1.2rem"></span>
         <span style="flex:1;font-size:.84rem;font-weight:600">${pendingJoins.length} student${pendingJoins.length===1?'':'s'} waiting to join your class${pendingJoins.length===1?'':'es'}</span>
@@ -20121,8 +20224,8 @@ async function renderTeacherDashboard(){
 
       <div id="teacherDashModulesMount" class="teacher-modules-mount" aria-label="Workspace modules"></div>
 
-      <div class="teacher-main-grid">
-        <div class="teacher-col">
+      ${links||unreadMessages.length?`<div class="teacher-main-grid${links?'':' teacher-main-grid--solo'}">
+        ${links?`<div class="teacher-col">
           <div class="teacher-section-head">
             <!-- "Your Classes" until now, which made three different things
                  share one name: this card, the sidebar entry, and the IA
@@ -20171,7 +20274,7 @@ async function renderTeacherDashboard(){
                 <div class="status-chip status-${esc(c.status)}">${esc(c.status)}</div>
               </div>`;
             }).join('')}
-        </div>
+        </div>`:''}
 
         <div class="teacher-col">
           <div class="teacher-section-head">
@@ -20191,7 +20294,7 @@ async function renderTeacherDashboard(){
               </div>`;
             }).join('')}
 
-          <div class="teacher-section-head" style="margin-top:20px">
+          ${links?`<div class="teacher-section-head" style="margin-top:20px">
             <h3>Announcements</h3>
             <button class="tsec-add" data-action="new-announcement">+ New</button>
           </div>
@@ -20200,9 +20303,9 @@ async function renderTeacherDashboard(){
               <div class="teacher-announce-row priority-${esc(a.priority||'normal')}">
                 <div class="tann-title">${esc(a.title)}</div>
                 <div class="tann-time">${timeAgo(new Date(a.created_at))}</div>
-              </div>`).join('')}
+              </div>`).join('')}`:''}
         </div>
-      </div>
+      </div>`:''}
     </div>`;
 
   host.querySelectorAll('[data-action="new-assignment"]').forEach(b=>b.addEventListener('click',()=>openCreateAssignmentModal()));
@@ -21466,7 +21569,7 @@ async function renderCounselorDashboard(){
           <div class="teacher-greeting">${esc(getTimeGreeting())}, ${esc(greetFirst)}</div>
           <div class="teacher-date">${subjLine?esc(subjLine)+' · ':''}${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
         </div>
-        <button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">Edit availability</button>
+        ${FLUX_COUNSELOR_CONTACT_ENABLED?`<button type="button" class="teacher-action-btn" onclick="openCounselorAvailabilityEditor('${esc(counselorRow.id)}')">Edit availability</button>`:''}
         ${window.FluxCounselorCopilot?.dashboardButtonHtml?.()||''}
       </div>
 
@@ -21495,10 +21598,10 @@ async function renderCounselorDashboard(){
         :''}
 
       <div class="teacher-grid">
-        <div class="teacher-section teacher-section--pending">
+        ${FLUX_COUNSELOR_CONTACT_ENABLED||pendingAppts.length?`<div class="teacher-section teacher-section--pending">
           <div class="section-header"><h3>Booking requests</h3>${pendingAppts.length?`<span class="sw-mini-tag">${pendingAppts.length} pending</span>`:''}</div>
           ${pendingRowsHtml}
-        </div>
+        </div>`:''}
         <div class="teacher-section">
           <div class="section-header"><h3>Today's schedule</h3></div>
           ${todayAppts.length?todayAppts.map(a=>`

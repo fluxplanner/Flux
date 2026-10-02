@@ -109,6 +109,9 @@
       const raw = localStorage.getItem(`${COUNSELOR_WS_TAB_KEY}_${uid}`);
       const tabs = window.FluxModuleLoader?.counselorWorkspaceTabs?.() || [];
       if (raw && tabs.some((t) => t.id === raw)) return raw;
+      // The first tab there is: Caseload is left out while students can't
+      // link to a counselor, and opening on it showed nothing.
+      if (tabs.length) return tabs[0].id;
     } catch (_) {}
     return 'caseload';
   }
@@ -172,7 +175,7 @@
           </div>
           <div class="cw-topbar-actions" id="counselorWsToolbar"></div>
         </div>
-        <div class="stabs cw-tabs" role="tablist" aria-label="Caseload tool sections">${tabButtons}</div>
+        ${tabs.length>1?`<div class="stabs cw-tabs" role="tablist" aria-label="Caseload tool sections">${tabButtons}</div>`:''}
         <div class="cw-panels">${tabPanels}</div>
         <p class="cw-hint">Tip: press <kbd>⌘</kbd><kbd>K</kbd> (or <kbd>Ctrl</kbd><kbd>K</kbd>) for the staff command palette.</p>
       </div>`;
@@ -301,7 +304,16 @@
             ${window.FluxDriveImport?.enabled?.()?'<button class="lh-action-btn" id="lhDriveImportBtn">Drive import</button>':''}
             <button class="lh-action-btn" id="lhSubPlanBtn">Sub-plan template</button>
             <button class="lh-action-btn" id="lhExitTicketBtn">Exit ticket</button>
-            <button class="lh-action-btn primary" id="lhBroadcastBtn">Announce</button>
+            ${window.fluxStudentLinksOn?.()?'<button class="lh-action-btn primary" id="lhBroadcastBtn">Announce</button>':''}
+          </div>
+        </div>
+        <div class="lh-exit" id="lhExit" hidden>
+          <div class="lh-exit-label">Exit ticket</div>
+          <div class="lh-exit-q" id="lhExitQ"></div>
+          <div class="lh-exit-actions">
+            <button class="lh-action-btn" id="lhExitAgain">Another</button>
+            <button class="lh-action-btn" id="lhExitCopy">Copy</button>
+            <button class="lh-action-btn" id="lhExitClose">Done</button>
           </div>
         </div>
 
@@ -372,7 +384,8 @@
       }
     });
     document.getElementById('lhSubPlanBtn')?.addEventListener('click',()=>{
-      const lines=[`SUB PLAN — ${esc(meName())} — ${esc(dateLabel)}`,''];
+      // Plain text for the clipboard: escaping it turned "O'Brien" into O&#39;Brien.
+      const lines=[`SUB PLAN — ${meName()} — ${dateLabel}`,''];
       classes.forEach(c=>{
         const k=stateKey(c.period);
         const s=state[k]||{};
@@ -385,13 +398,28 @@
       lines.push('Emergency contact: Front office');
       const text=lines.join('\n');
       navigator.clipboard?.writeText(text).then(
-        ()=>toast('Sub-plan copied to clipboard','success'),
-        ()=>toast('Copy failed — see console','warn')
+        ()=>toast('Sub-plan copied — paste it into an email or a doc','success'),
+        ()=>toast('Couldn’t copy the sub-plan — try again','warn')
       );
-      console.log(text);
     });
+    // Exit ticket: a check-for-understanding question to put on the board,
+    // from the same list as the dashboard's Exit ticket generator.
+    const exitCard=document.getElementById('lhExit');
+    const exitQ=document.getElementById('lhExitQ');
+    const newExitQ=()=>{
+      const q=window.FluxClassroomTools?.exitQuestion?.(exitQ.textContent)||'In one sentence, what was the main idea of today’s lesson?';
+      exitQ.textContent=q;
+    };
     document.getElementById('lhExitTicketBtn')?.addEventListener('click',()=>{
-      toast('Exit-ticket builder coming next release — for now jot the prompt in lesson notes','info',2400);
+      exitCard.hidden=false;newExitQ();
+    });
+    document.getElementById('lhExitAgain')?.addEventListener('click',newExitQ);
+    document.getElementById('lhExitClose')?.addEventListener('click',()=>{exitCard.hidden=true;});
+    document.getElementById('lhExitCopy')?.addEventListener('click',()=>{
+      navigator.clipboard?.writeText(exitQ.textContent).then(
+        ()=>toast('Question copied','success'),
+        ()=>toast('Copy failed — select the question instead','warn')
+      );
     });
     document.getElementById('lhBroadcastBtn')?.addEventListener('click',()=>{
       if(typeof window.openTeacherAnnouncementModal==='function')window.openTeacherAnnouncementModal();

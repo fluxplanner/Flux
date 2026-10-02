@@ -21,10 +21,20 @@ test.describe('Counselor path', () => {
     await expect(page.locator('#counselorDashboardBody #fluxWidgetGrid_counselorDashboard')).toHaveCount(0);
   });
 
-  test('counselor caseload tools live on workspace tab', async ({ page }) => {
+  /*
+   * A student links to a counselor only from the "My counselor" card, which is
+   * paused (FLUX_COUNSELOR_CONTACT_ENABLED). The caseload, wellness queue,
+   * referrals and meeting log all pick from those students and fell back to
+   * "Paste student user ID", so they are hidden; the crisis sheet needs no
+   * student and stays, on its own without a one-tab tab bar.
+   */
+  test('caseload tools: only what works without linked students', async ({ page }) => {
     await page.locator('[data-tab="counselorWorkspace"]').first().click();
     await expect(page.locator('#counselorWorkspace.panel.active')).toBeVisible();
-    await expect(page.locator('#counselorWorkspaceBody .cw-tabs')).toBeVisible();
+    await expect(page.locator('#counselorWorkspaceBody')).toContainText('Crisis protocol cheat-sheet');
+    await expect(page.locator('#counselorWorkspaceBody .cw-tabs')).toHaveCount(0);
+    await expect(page.locator('#fluxWidget_counselor_caseload, #fluxWidget_counselor_referrals, #fluxWidget_counselor_wellness_queue')).toHaveCount(0);
+    await expect(page.locator('[data-counselor-nav][onclick*="openCounselorStudentList"]').first()).toBeHidden();
   });
 
   /*
@@ -38,7 +48,10 @@ test.describe('Counselor path', () => {
     await expect(page.locator('#counselorDashboard.panel.active')).toBeVisible();
     await expect(page.locator('#counselorDashboard .teacher-stats')).toHaveCount(0);
     // What replaces it says more than a zero did, and is still there.
-    await expect(page.locator('#counselorDashboardBody')).toContainText(/No pending requests/i);
+    await expect(page.locator('#counselorDashboardBody')).toContainText(/No appointments today/i);
+    // No students can book while counselor contact is paused: no empty
+    // "Booking requests" card, and no availability to set for it.
+    await expect(page.locator('#counselorDashboardBody')).not.toContainText(/Booking requests|Edit availability/);
   });
 
   test('a count that has something to say still shows', async ({ page }) => {

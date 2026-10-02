@@ -203,3 +203,23 @@ test('a teacher\'s home: the underline sits under Home, the button that is lit',
     return mid > h.left && mid < h.right ? 'under Home' : 'elsewhere';
   }), { timeout: 3_000 }).toBe('under Home');
 });
+
+/*
+ * The sheet's own buttons are the student tabs. A teacher on a phone got
+ * College Prep, Mood and Study tools, and no way to Lesson Hub, Messages or
+ * Resources, which only the sidebar had (2026-10-02). Educators now get their
+ * sidebar's entries, and each one opens what it opens on a laptop.
+ */
+test('a teacher\'s More sheet offers their own pages, not the student tabs', async ({ page }) => {
+  await gotoScenario(page, 'teacher-workflow');
+  await page.locator('#moreBtn').click();
+  await expectSheetOpen(page);
+  const shown = await page.evaluate(() => [...document.querySelectorAll('#moreSheet .more-sheet-item')]
+    .filter((e) => getComputedStyle(e).display !== 'none')
+    .map((e) => (e.querySelector('.more-sheet-label')?.textContent || '').trim()));
+  for (const t of ['Work hub', 'Messages', 'Lesson Hub', 'Resources', 'Settings']) expect(shown).toContain(t);
+  for (const t of ['College Prep', 'Mood', 'Study tools']) expect(shown).not.toContain(t);
+  await page.locator('#moreSheet .more-sheet-item', { hasText: 'Lesson Hub' }).click();
+  await expectSheetClosed(page);
+  await expect(page.locator('#lessonHub.panel.active')).toBeVisible();
+});
