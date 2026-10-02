@@ -427,11 +427,13 @@
     const rows = ordered
       .map((w) => {
         const m = mods.find((x) => x.id === w.id);
-        if (!m) return '';
+        // Commands (palette, CSV export) have no card on the page, so a
+        // toggle for them here switched nothing anyone could see.
+        if (!m || m.kind === 'command') return '';
         return `<div class="flux-widget-config-row" data-wid="${esc(w.id)}">
           <label class="flux-widget-config-toggle">
             <input type="checkbox" data-wid="${esc(w.id)}" ${w.visible ? 'checked' : ''}/>
-            <span>${esc(m.title)} <em>(${esc(m.status)})</em></span>
+            <span>${esc(m.title)}</span>
           </label>
           <span class="flux-widget-config-move">
             <button type="button" class="flux-widget-config-up" aria-label="Move up" title="Move up">↑</button>
@@ -440,7 +442,7 @@
         </div>`;
       })
       .join('');
-    ov.innerHTML = `<div class="modal flux-widget-config-modal">
+    ov.innerHTML = `<div class="modal flux-widget-config-modal" style="padding:22px 24px;width:100%;max-width:520px">
       <h3>Customize workspace</h3>
       <p style="font-size:.78rem;color:var(--muted2)">Toggle modules on/off and reorder them with ↑ ↓. Layout is stored on this device only.</p>
       <div class="flux-widget-config-list" id="fluxWidgetConfigList">${rows}</div>

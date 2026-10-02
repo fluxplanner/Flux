@@ -5964,3 +5964,33 @@ body{
 .form-error{font-size:.78rem;color:var(--red);padding:9px 13px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:10px;margin-bottom:12px}
 .cbm-date-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important;color:var(--accent)!important}
 .cbm-time-btn:hover{background:rgba(var(--accent-rgb),.1)!important;border-color:rgba(var(--accent-rgb),.3)!important;color:var(--accent)!important}
+
+/* New task window: essentials up front, the rest behind "More options".
+   Two fields a row on every width, so a phone does not get a column of
+   six full-width boxes. */
+:is(#dashAddTaskModal,#editModal) .nt-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+:is(#dashAddTaskModal,#editModal) .nt-pair>div{min-width:0}
+:is(#dashAddTaskModal,#editModal) .nt-pair select,:is(#dashAddTaskModal,#editModal) .nt-pair input{width:100%}
+:is(#dashAddTaskModal,#editModal) .nt-more{margin:4px 0 10px;border-top:1px solid var(--border);padding-top:8px}
+:is(#dashAddTaskModal,#editModal) .nt-more>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;
+  font-size:.8rem;font-weight:700;color:var(--muted);padding:6px 0;user-select:none}
+:is(#dashAddTaskModal,#editModal) .nt-more>summary::-webkit-details-marker{display:none}
+:is(#dashAddTaskModal,#editModal) .nt-more>summary::before{content:'+';display:inline-block;width:14px;color:var(--accent);font-weight:800}
+:is(#dashAddTaskModal,#editModal) .nt-more[open]>summary::before{content:'−'}
+:is(#dashAddTaskModal,#editModal) .nt-more>summary span{font-weight:500;color:var(--muted2);font-size:.74rem}
+:is(#dashAddTaskModal,#editModal) .nt-more-body{padding-top:6px}
+/* The quick-date chips sit under the date in its half of the row; on a
+   phone three of them wrapped onto two lines. Keep them on one. */
+:is(#dashAddTaskModal,#editModal) .nt-pair .fdp-quick{flex-wrap:nowrap;gap:4px}
+:is(#dashAddTaskModal,#editModal) .nt-pair .fdp-quick .fdp-chip{padding:4px 7px;white-space:nowrap;font-size:.68rem}
+@media (max-width:480px){
+  /* Today and Tomorrow fit beside each other under the date; Clear did not,
+     and the date picker clears a date too. */
+  :is(#dashAddTaskModal,#editModal) .nt-pair .fdp-quick .fdp-chip--clear{display:none}
+}
+@media (max-width:640px){
+  /* Sub-tasks: the box takes the full width, its two buttons sit side by
+     side underneath instead of one beside it and one wrapped below. */
+  #editModal .ed-subtasks textarea{flex:1 1 100%!important;min-width:0!important}
+  #editModal .ed-subtasks .btn-sec{flex:1 1 0!important}
+}

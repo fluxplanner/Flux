@@ -5186,6 +5186,7 @@ function openDashAddTaskModal(){
   if(!m)return;
   fluxSyncSubjectUiForRole();
   populateSubjectSelects();
+  const more=document.getElementById('taskMoreOptions');if(more)more.open=false;
   m.style.display='flex';
   const card=m.querySelector('.modal-card');
   try{if(window.FluxAnim?.modalOpen)FluxAnim.modalOpen(m,card||m);}catch(e){}
@@ -5555,7 +5556,7 @@ function setEnergy(v){
   save('flux_energy',n);
   const emojis=['','😴','😕','😐','😊','🚀'];const labels=['','Very Low','Low','Neutral','Good','Peak'];const el=document.getElementById('energyEmoji');if(el)el.textContent=emojis[n];const lb=document.getElementById('energyLabel');if(lb)lb.textContent=labels[n];renderSmartSug();
 }
-function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;document.getElementById('editSubject').value=t.subject||'';document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';const escopeSel=document.getElementById('editScope');if(escopeSel)escopeSel.value=t.scope==='outside'?'outside':'school';
+function openEdit(id){const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('editText').value=t.name;{const es=document.getElementById('editSubject');if(t.subject&&es&&![...es.options].some(o=>o.value===t.subject)){const o=document.createElement('option');o.value=t.subject;o.textContent=t.subject;es.appendChild(o);}if(es)es.value=t.subject||'';}document.getElementById('editPriority').value=t.priority||'med';document.getElementById('editType').value=t.type||'hw';document.getElementById('editDue').value=t.date||'';document.getElementById('editEstTime').value=t.estTime||'';document.getElementById('editDifficulty').value=t.difficulty||3;document.getElementById('editSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');document.getElementById('editNotes').value=t.notes||'';const er=document.getElementById('editRecurringWeekly');if(er)er.checked=!!t.recurringWeekly;const ert=document.getElementById('editRecurringType');if(ert)ert.value=t.recurringType||(t.recurringWeekly?'weekly':'none');const ew=document.getElementById('editWaitingOn');if(ew)ew.value=t.waitingOn||'';const escopeSel=document.getElementById('editScope');if(escopeSel)escopeSel.value=t.scope==='outside'?'outside':'school';const emo=document.getElementById('editMoreOptions');if(emo)emo.open=!!(t.notes||t.waitingOn||(t.recurringType&&t.recurringType!=='none')||t.recurringWeekly||t.scope==='outside'||(t.blockedBy&&t.blockedBy.length));
   const depEl=document.getElementById('editDeps');
   if(depEl){
     const current=(t.blockedBy||[]).map(bid=>tasks.find(x=>x.id===bid)).filter(Boolean);
@@ -6068,7 +6069,7 @@ function renderWeeklyRulesList(){
     const sch=fluxEventScope(r)==='school';
     const isEc=fluxIsEcCalendarItem(r);
     const border=isEc?'rgba(251,191,36,.35)':'var(--border2)';
-    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">EC</span>':'';
+    const badge=isEc?'<span style="font-size:.65rem;color:var(--gold);margin-left:6px">Activity</span>':'';
     return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--card2);border-radius:10px;margin-bottom:6px;border:1px solid ${border}"><div style="min-width:0"><div style="font-weight:600">${esc(r.title)}${badge}</div><div style="font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${days}${r.time?' · '+esc(r.time):''}</div></div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button type="button" class="scope-pill mini ${sch?'scope-pill-school':'scope-pill-out'}" onclick="toggleWeeklyRuleScope('${r.id}')" title="School vs outside">${sch?'🏫':'🌐'}</button><button type="button" class="btn-sec" style="padding:4px 10px;font-size:.72rem" onclick="deleteWeeklyRule('${r.id}')">Remove</button></div></div>`;
   }).join('');
 }
