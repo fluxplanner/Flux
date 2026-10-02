@@ -11621,6 +11621,10 @@ function showObStep(n){
   if(n===4){
     bindScheduleImportDropzones();
     ensurePdfJsLoaded().catch(()=>{});
+    // Classes you already have (a re-opened setup) or Canvas found on the
+    // last step were counted but never listed, so they could not be seen or
+    // removed here.
+    renderObExtractedClasses();
   }
 }
 /* Multi-select sibling of selectObChip, for "main focus this term". Keeps at
@@ -11769,6 +11773,21 @@ function obNext(){
       p.plannerFeatures=feats.length?feats:['tasks'];
     }
     save('profile',p);
+  }
+  // Students: a school and at least one class before going on (Azfer,
+  // 2026-10-01: "require at login to find school and class info"). Canvas
+  // can fill both in; typing them works just as well. Staff can skip.
+  if(obCurrentStep===3&&obSelectedRole!=='staff'&&!(document.getElementById('obSchool')?.value||'').trim()){
+    const need=document.getElementById('obSchoolNeed');
+    if(need)need.textContent='Add your school to go on: find it with Canvas above, or type its name.';
+    document.getElementById('obSchool')?.focus();
+    return;
+  }
+  if(obCurrentStep===4&&obSelectedRole!=='staff'&&!obExtractedClasses.length){
+    const need=document.getElementById('obClassesNeed');
+    if(need)need.textContent='Add at least one class: from Canvas on the last step, a photo of your schedule, or type it above.';
+    document.getElementById('obManualName')?.focus();
+    return;
   }
   if(obCurrentStep===3){
     schoolInfo.schoolName=document.getElementById('obSchool')?.value.trim()||'';
@@ -12174,6 +12193,72 @@ function addObClass(){
   if(nEl)nEl.focus();
   renderObExtractedClasses();
 }
+/* Fill the School step (and the classes on the next) from Canvas.
+   Canvas has no "my school" field for students. Each course sits in a Canvas
+   account, though, and districts usually give every school its own, named
+   after it — so the account most of your courses share is taken as your
+   school. Where that is only a district-wide or catch-all account, the
+   Canvas address stands in, and the box stays editable either way. The
+   classes and their teachers come straight from your active courses. */
+const OB_CANVAS_GENERIC=/^(manually[- ]created courses|courses|default account|sandbox|sis.*|.*district.*|.*instructure.*|.*\bschools\b.*)$/i;
+function obCanvasSchool(courses,host){
+  const tally=new Map();
+  courses.forEach(c=>{const n=(c.account&&c.account.name||'').trim();if(n&&!OB_CANVAS_GENERIC.test(n))tally.set(n,(tally.get(n)||0)+1);});
+  let best='',most=0;
+  tally.forEach((k,n)=>{if(k>most){best=n;most=k;}});
+  if(best)return{name:best,fromAddress:false};
+  const sub=String(host||'').split('.')[0]||'';
+  return{name:sub?sub.toUpperCase():'',fromAddress:true};
+}
+async function obFindWithCanvas(){
+  const urlEl=document.getElementById('obCanvasUrl'),tokEl=document.getElementById('obCanvasToken');
+  const st=document.getElementById('obCanvasStatus'),btn=document.getElementById('obCanvasGo');
+  const say=(t,bad)=>{if(st){st.textContent=t;st.classList.toggle('is-bad',!!bad);}};
+  const url=(urlEl?.value||'').trim(),tok=(tokEl?.value||'').trim();
+  if(!url||!tok){say('Add your Canvas address and your token first.',true);(url?tokEl:urlEl)?.focus();return;}
+  let host='';
+  try{host=new URL(url.includes('://')?url:'https://'+url).hostname.toLowerCase();}catch(_){}
+  if(!host){say('That Canvas address doesn’t look right. It’s usually like yourschool.instructure.com.',true);return;}
+  if(btn)btn.disabled=true;
+  say('Looking in Canvas…');
+  try{
+    const res=await fetch(API.canvas,{method:'POST',headers:await fluxAuthHeaders(),body:JSON.stringify({host,
+      path:'/api/v1/courses?enrollment_state=active&per_page=100&include[]=account&include[]=teachers&include[]=term',method:'GET',canvasToken:tok})});
+    let data=null;try{data=await res.json();}catch(_){}
+    if(!res.ok||!Array.isArray(data)){
+      const msg=(data&&(data.error||data.message||(Array.isArray(data.errors)&&data.errors.map(e=>e.message).join('; '))))||'';
+      throw new Error(res.status===401||/invalid access token|unauthori/i.test(msg)
+        ?'Canvas didn’t accept that token. Make a new one and paste it again.'
+        :(msg||'Canvas didn’t answer. Check the address and try again.'));
+    }
+    const courses=data.filter(c=>c&&c.name&&c.workflow_state!=='deleted'&&!c.access_restricted_by_date);
+    if(!courses.length){say('Canvas connected, but there are no active classes in it yet. Type your school below.',true);return;}
+    const school=obCanvasSchool(courses,host);
+    const box=document.getElementById('obSchool');
+    if(box&&school.name)box.value=school.name;
+    const need=document.getElementById('obSchoolNeed');if(need)need.textContent='';
+    let added=0;
+    courses.forEach(c=>{
+      const name=cleanClassName(c.name);
+      if(obExtractedClasses.some(x=>x.canvasCourseId===c.id||x.name.toLowerCase()===name.toLowerCase()))return;
+      const t=Array.isArray(c.teachers)&&c.teachers[0]?(c.teachers[0].display_name||c.teachers[0].name||''):'';
+      obExtractedClasses.push({id:Date.now()+Math.random(),period:obExtractedClasses.length+1,periodLabel:'',days:'',name,level:parseClassLevel(name).level,teacher:t,room:'',canvasCourseId:c.id});
+      added++;
+    });
+    renderObExtractedClasses();
+    // Keep the connection, so Canvas assignments sync from the first day.
+    canvasUrl=url;canvasToken=tok;
+    save('flux_canvas_url',url);save('flux_canvas_token',tok);save('flux_canvas_host',host);
+    say((school.name?(school.fromAddress?'Connected to '+school.name+' Canvas':'Found '+school.name):'Connected')
+      +(added?' and '+added+' class'+(added===1?'':'es')+'. They’re on the next step.':'.')
+      +(school.fromAddress?' Change the school name below if it isn’t right.':''));
+  }catch(e){
+    say((e&&e.message)||'Something went wrong talking to Canvas.',true);
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+window.obFindWithCanvas=obFindWithCanvas;
 function removeObClass(idx){
   if(idx<0||idx>=obExtractedClasses.length)return;
   obExtractedClasses.splice(idx,1);

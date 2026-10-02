@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.8bc7d11e.css">
+<link rel="stylesheet" href="public/bundles/flux.33b7ff5c.css">
 </head>
 <body>
 <noscript>
@@ -739,8 +739,23 @@
         <div style="font-size:2rem;margin-bottom:10px;line-height:0"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 22h20 M6 22V10l6-6 6 6v12 M10 22v-5h4v5 M12 9h.01"/></svg></div>
         <div class="ob-title" id="obStep3Title">Your School</div>
         <div class="ob-sub" id="obStep3Sub">Tell us where you go so Flux can personalize your experience.</div>
-        <span class="ob-label">School name <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+        <!-- Students: Canvas fills in the school and the classes (Azfer, 2026-10-01). -->
+        <div class="ob-canvas" data-ob-role="student">
+          <div class="ob-canvas-h"><b>Fill this in from Canvas</b><span>Flux finds your school and your classes, and keeps your Canvas work in sync.</span></div>
+          <span class="ob-label">Your Canvas address</span>
+          <input type="text" id="obCanvasUrl" placeholder="e.g. yourschool.instructure.com" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin:0">
+          <span class="ob-label">Canvas access token</span>
+          <input type="password" id="obCanvasToken" placeholder="Paste the token from Canvas" autocomplete="off" style="margin:0">
+          <details class="ob-canvas-help"><summary>How do I get a token?</summary>
+            <ol><li>Open Canvas and go to <b>Account</b>, then <b>Settings</b>.</li><li>Under <b>Approved Integrations</b>, press <b>+ New Access Token</b>.</li><li>Type “Flux” as the purpose, press <b>Generate Token</b>, and copy it into the box above.</li></ol>
+          </details>
+          <button type="button" class="ob-btn-sec ob-canvas-go" id="obCanvasGo" onclick="obFindWithCanvas()">Find my school and classes</button>
+          <div class="ob-canvas-status" id="obCanvasStatus" aria-live="polite"></div>
+        </div>
+        <div class="ob-or" data-ob-role="student"><span>or type it in</span></div>
+        <span class="ob-label">School name <span style="color:var(--muted);font-weight:400" data-ob-role="staff">(optional)</span></span>
         <input type="text" id="obSchool" placeholder="e.g. Lincoln High School" style="margin:0">
+        <div class="ob-need" id="obSchoolNeed" aria-live="polite"></div>
 
         <!-- STUDENT school details -->
         <div data-ob-role="student">
@@ -833,9 +848,11 @@
           <input type="text" id="obManualTeacher" placeholder="Teacher" style="margin:0">
         </div>
         <button onclick="addObClass()" class="btn-sec" style="width:100%;padding:8px;font-size:.82rem">+ Add Class</button>
+        <div class="ob-need" id="obClassesNeed" aria-live="polite"></div>
         <button class="ob-btn" onclick="obNext()" style="margin-top:14px">Continue →</button>
         <button class="ob-btn-sec" onclick="obBack()">← Back</button>
-        <div class="ob-skip" onclick="obNext()">Skip for now</div>
+        <!-- Students need at least one class (from Canvas, a schedule photo, or typed); staff can skip. -->
+        <div class="ob-skip" data-ob-role="staff" onclick="obNext()">Skip for now</div>
       </div>
 
       <!-- Step 5: Study style (student) / Working style (staff) -->
@@ -2931,7 +2948,7 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.b9ba97a2.js"></script>
+<script defer src="public/bundles/flux-core.2873073b.js"></script>
 <script defer src="public/bundles/flux-features.f80f23b1.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
