@@ -466,6 +466,12 @@
 
   /* ── Search ─────────────────────────────────────────────────────────── */
 
+  /* The seven elements found as two-atom molecules, in HOFBrINCl order: the
+     memory trick students learn, said "Hof-brin-kle". */
+  const DIATOMIC = ['H', 'O', 'F', 'Br', 'I', 'N', 'Cl'];
+  const SUB2 = '₂';
+  const DIATOMIC_NOTE = 'HOFBrINCl (“Hof-brin-kle”): ' + DIATOMIC.map((x) => x + SUB2).join(', ') + '. These seven are found as pairs of atoms.';
+
   const GROUP_WORDS = {
     halogen: (e) => e.cat === 'halogen', 'noble gas': (e) => e.cat === 'noble', noble: (e) => e.cat === 'noble',
     alkali: (e) => e.cat === 'alkali', 'alkali metal': (e) => e.cat === 'alkali', 'alkaline earth': (e) => e.cat === 'alkaline', alkaline: (e) => e.cat === 'alkaline',
@@ -475,7 +481,9 @@
     gas: (e) => stateAt(e, 298.15) === 'g', liquid: (e) => stateAt(e, 298.15) === 'l', solid: (e) => stateAt(e, 298.15) === 's',
     radioactive: radioactive,
     's-block': (e) => block(e) === 's', 'p-block': (e) => block(e) === 'p', 'd-block': (e) => block(e) === 'd', 'f-block': (e) => block(e) === 'f',
-    diatomic: (e) => ['H', 'N', 'O', 'F', 'Cl', 'Br', 'I'].indexOf(e.s) >= 0,
+    diatomic: (e) => DIATOMIC.indexOf(e.s) >= 0,
+    // The way students remember them (Azfer, 2026-10-01).
+    hofbrincl: (e) => DIATOMIC.indexOf(e.s) >= 0,
   };
   function groupWord(q) {
     const s = q.toLowerCase().trim();
@@ -518,7 +526,8 @@
     let html = '';
     if (word) {
       const n = model().filter(groupTest(word)).length;
-      html += '<div class="fpt-sug" data-pick="w:' + esc(word) + '"><b>' + esc(word.charAt(0).toUpperCase() + word.slice(1)) + '</b><span>' + n + ' elements</span></div>';
+      const shown = word === 'hofbrincl' ? 'HOFBrINCl (diatomic)' : word.charAt(0).toUpperCase() + word.slice(1);
+      html += '<div class="fpt-sug" data-pick="w:' + esc(word) + '"><b>' + esc(shown) + '</b><span>' + n + ' elements</span></div>';
     }
     found.slice(0, 7).forEach((e) => {
       html += '<div class="fpt-sug" data-pick="n:' + e.n + '"><span class="fpt-sug-s" style="--c:' + CAT[e.cat].colour + '">' + esc(e.s) + '</span><b>' + esc(e.name) + '</b><span>' + e.n + '</span></div>';
@@ -719,24 +728,35 @@
     const K = this.st.temp;
     return esc(this.tempText(K)) + (this.st.unit === 'C' ? ' <small>(' + Math.round(K) + ' K)</small>' : ' <small>(' + Math.round(K - 273.15) + ' °C)</small>');
   };
+  /** One tap lights up the diatomic elements and shows HOFBrINCl. */
+  App.prototype.diatomicChipHTML = function () {
+    const on = this.st.hl && (this.st.hlLabel === 'diatomic' || this.st.hlLabel === 'hofbrincl');
+    return '<div class="fpt-chips"><button type="button" class="fpt-chip fpt-dia' + (on ? ' is-on' : '') + '" data-act="diatomic" aria-pressed="' + !!on + '">'
+      + '<b>H₂</b> Diatomic · HOFBrINCl</button></div>';
+  };
+
   App.prototype.renderLegend = function () {
     const st = this.st, cid = this.colourId(), prop = PROP[cid], view = st.view;
     let h = '';
     if (st.hl) {
-      h += '<div class="fpt-hlbar"><span>Showing <b>' + st.hl.size + '</b> ' + (st.hlLabel ? 'for ' + esc(st.hlLabel) : 'elements') + '</span>'
-        + '<button type="button" class="fpt-link" data-act="clearhl">Show all</button></div>';
+      const dia = st.hlLabel === 'diatomic' || st.hlLabel === 'hofbrincl';
+      h += '<div class="fpt-hlbar"><span>Showing <b>' + st.hl.size + '</b> ' + (dia ? 'diatomic elements' : st.hlLabel ? 'for ' + esc(st.hlLabel) : 'elements') + '</span>'
+        + '<button type="button" class="fpt-link" data-act="clearhl">Show all</button></div>'
+        + (dia ? '<div class="fpt-mnemo">' + esc(DIATOMIC_NOTE) + '</div>' : '');
     }
     if (isExplore(view)) {
       const e = byN(st.sel);
       h += '<div class="fpt-pickhint">Pick any element' + (e ? ' — showing <b>' + esc(e.name) + '</b>' : '') + '. Arrow keys move along the table.</div>';
     } else if (view === 'table' && this.o.simple) {
-      h += '<div class="fpt-chips">' + CATS.map((c) => '<span class="fpt-chip is-static"><i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</span>').join('') + '</div>';
+      h += '<div class="fpt-chips">' + CATS.map((c) => '<span class="fpt-chip is-static"><i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</span>').join('') + '</div>'
+        + this.diatomicChipHTML();
     } else if (view === 'table') {
       h += '<div class="fpt-seg fpt-tcolour" role="group" aria-label="Colour the table by">'
         + [['cat', 'Categories'], ['block', 'Blocks']].map((c) => '<button type="button" class="fpt-chip' + (cid === c[0] ? ' is-on' : '') + '" data-act="tcolour" data-c="' + c[0] + '">' + c[1] + '</button>').join('') + '</div>';
       if (cid === 'cat') {
         h += '<div class="fpt-chips">' + CATS.map((c) => '<button type="button" class="fpt-chip' + (st.catFilter === c[0] ? ' is-on' : '') + '" data-act="cat" data-cat="' + c[0] + '">'
           + '<i style="background:' + c[2] + '"></i>' + esc(c[1]) + '</button>').join('') + '</div>';
+        h += this.diatomicChipHTML();
       } else {
         h += '<div class="fpt-chips">' + Object.keys(BLOCKS).map((k) => '<span class="fpt-chip is-static"><i style="background:' + BLOCKS[k][1] + '"></i>' + BLOCKS[k][0] + '</span>').join('')
           + '<span class="fpt-note">The block is the subshell the last electron goes into.</span></div>';
@@ -901,6 +921,11 @@
       case 'tplay': this.togglePlay(); return;
       case 'tab': st.tab = el.dataset.tab; this.save(); this.keepPlace('.fpt-dtabs', () => this.renderSide()); return;
       case 'close': this.select(null); return;
+      case 'diatomic': {
+        const on = st.hl && (st.hlLabel === 'diatomic' || st.hlLabel === 'hofbrincl');
+        this.highlight(on ? null : model().filter(GROUP_WORDS.diatomic).map((e) => e.n), on ? null : 'diatomic');
+        return;
+      }
       case 'step': this.select(Math.max(1, Math.min(118, st.sel + +el.dataset.d))); return;
       case 'order': st.filling = !st.filling; this.keepPlace('[data-act="order"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
       case 'spectrum': st.spectrum = el.dataset.mode; this.keepPlace('[data-act="spectrum"]', () => { if (isExplore(st.view)) this.renderExplore(); else this.renderSide(); }); return;
@@ -1108,6 +1133,7 @@
       + row('Relative atomic mass', esc(e.mass === Math.round(e.mass) ? '[' + e.mass + '] — most stable isotope' : String(e.mass)))
       + row('Group · period', (e.g || '—') + ' · ' + e.p)
       + row('State at 25 °C', STATES[s25][0] + (e.x.stNote ? ' (predicted)' : ''))
+      + (DIATOMIC.indexOf(e.s) >= 0 ? row('Found as', '<span class="fpt-mono">' + esc(e.s) + SUB2 + '</span> · diatomic (HOFBrINCl)') : '')
       + row('Melting point', esc(this.tempText(mpK(e))))
       + row('Boiling point', esc(this.tempText(bpK(e))))
       + row('Density', d != null ? fmt(d, 4) + ' g/cm³' : '—')

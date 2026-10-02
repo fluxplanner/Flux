@@ -264,6 +264,30 @@ test.describe('Periodic table page', () => {
   });
 });
 
+test.describe('Periodic table page: the diatomic elements', () => {
+  test('one tap lights up HOFBrINCl, says the trick, and each of the seven says it is found as X₂', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 950 });
+    await page.goto('/periodic.html');
+    const chip = page.locator('[data-act="diatomic"]');
+    await expect(chip).toContainText('HOFBrINCl');
+    await chip.click();
+    await expect(page.locator('.fpt-hlbar')).toContainText('7 diatomic elements');
+    await expect(page.locator('.fpt-mnemo')).toContainText('H₂, O₂, F₂, Br₂, I₂, N₂, Cl₂');
+    const lit = await page.evaluate(() => [...document.querySelectorAll('.fpt-el')].filter((c) => !c.classList.contains('is-dim')).map((c) => (c as HTMLElement).dataset.n).sort((a, b) => +a! - +b!));
+    expect(lit).toEqual(['1', '7', '8', '9', '17', '35', '53']);
+    await chip.click();
+    await expect(page.locator('.fpt-hlbar')).toHaveCount(0);
+    // Typing the trick finds them too.
+    await page.locator('.fpt-q').fill('hofbrincl');
+    await expect(page.locator('.fpt-sug').first()).toContainText('HOFBrINCl (diatomic)');
+    await page.locator('.fpt-q').fill('');
+    await page.locator('.fpt-el[data-n="35"]').click();
+    await expect(page.locator('.fpt-side')).toContainText('Br₂ · diatomic (HOFBrINCl)');
+    await page.locator('.fpt-el[data-n="6"]').click();
+    await expect(page.locator('.fpt-side')).not.toContainText('diatomic');
+  });
+});
+
 test.describe('Periodic table page: taps that must not move it, and paper', () => {
   test('the ‹ › arrows change the element without moving the page, even if the browser scrolls on the tap', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
