@@ -304,19 +304,10 @@
       var root = roots[i];
       if (root.dataset.magicApplied) continue;
       root.dataset.magicApplied = '1';
-      var nums = root.querySelectorAll('.lh-stat-num,.ao-stat-num,.sw-stat-num');
-      nums.forEach(function (el, idx) {
-        var text = el.textContent.trim();
-        var m = text.match(/^(\d+)/);
-        if (!m) return;
-        var to = parseInt(m[1], 10);
-        var suffix = text.slice(m[0].length);
-        el.textContent = '0' + suffix;
-        el.classList.add('flux-counter');
-        setTimeout(function () {
-          animateCounter(el, to, { suffix: suffix, duration: 700 });
-        }, 60 + idx * 80);
-      });
+      /* No counting here any more. flux-staff-2026.js counts these same
+         numbers up as the page opens; with both running, each read the other's
+         half-finished "0" as its target and the slower one finished last, so
+         the Lesson Hub said "0 classes today" over two classes (2026-10-01). */
       var cards = root.querySelectorAll('.lh-class-card,.cm-card,.ao-sub-row,.ao-walk-row,.sw-ticket,.sw-peer,.ao-dir-row');
       cards.forEach(function (card, idx) {
         if (card.style.animation) return;

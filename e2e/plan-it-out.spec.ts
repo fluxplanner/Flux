@@ -98,4 +98,18 @@ test.describe('Plan it out', () => {
     await expect(modal.locator('.plan-task')).toContainText('Biology project');
     await expect(modal.locator('#planTotal')).toHaveValue('360');
   });
+
+  test('Suggest steps in Edit task asks Flux AI, and falls back to the usual steps for the type', async ({ page }) => {
+    let reply: any = { status: 200, body: { content: [{ type: 'text', text: '["Read the prompt", "1. Find three sources", "Write the draft", "Proofread"]' }] } };
+    await page.route('**/functions/v1/ai-proxy', (route) => route.fulfill({ status: reply.status, contentType: 'application/json', body: JSON.stringify(reply.body) }));
+    await setup(page);
+    await page.evaluate(() => (window as any).openEdit(777001));
+    const btn = page.locator('#editModal button', { hasText: 'Suggest steps' });
+    await btn.click();
+    await expect(page.locator('#editSubtasks')).toHaveValue('Read the prompt\nFind three sources\nWrite the draft\nProofread');
+    // Flux AI unreachable (a guest gets 401): the essay's usual steps instead.
+    reply = { status: 401, body: { error: 'Sign in' } };
+    await btn.click();
+    await expect(page.locator('#editSubtasks')).toHaveValue('Research and notes\nOutline\nWrite the draft\nRevise\nFinal read-through');
+  });
 });

@@ -74,7 +74,9 @@ function runShortSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
   const reduce=prefersReducedMotion();
-  const laserAnim=reduce?'none':'fluxLaserGrow 1.35s cubic-bezier(.22,1,.36,1) forwards';
+  // The same wordmark and laser, quicker: 2.5s on every open felt slow once
+  // Flux was being opened again and again (demo prep, 2026-10-01).
+  const laserAnim=reduce?'none':'fluxLaserGrow .95s cubic-bezier(.22,1,.36,1) forwards';
   const acc=fluxSplashAccentHex();
   const acc2=fluxShiftHueHex(acc,-22);
   const rgb=fluxSplashHexToRgb(acc);
@@ -111,7 +113,7 @@ function runShortSplash(callback){
       @keyframes splashFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
       @keyframes fluxLaserGrow{from{width:0}to{width:100%}}
     </style>`;
-  const dur=reduce?720:2100;
+  const dur=reduce?600:1100;
   setTimeout(()=>{
     splash.style.transition='opacity .38s cubic-bezier(.22,1,.36,1)';
     splash.style.opacity='0';

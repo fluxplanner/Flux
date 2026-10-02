@@ -138,7 +138,7 @@
   }
   function intel10(){
     const big=ctxTasks().filter(t=>!t.done&&(t.estTime||0)>=90);
-    return big.length?'Split large task: '+big[0].name+' — use subtasks or Auto-split in edit.':null;
+    return big.length?'Split large task: '+big[0].name+' — open it and use Suggest steps or Plan it out.':null;
   }
   function intel11(){
     const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -553,16 +553,15 @@
 
   function maybeStartupEod(){
     const d=safeToday();
+    /* Logged, but no longer announced: "Welcome back — check priorities &
+       intel" and "End-of-day: review completed tasks & mood" popped up over
+       whatever you opened first, said nothing you could act on, and sat over
+       the screen through a demo (2026-10-01). */
     if(safeLoad(STORAGE.STARTUP,'')!==d&&document.getElementById('dashboard')?.classList.contains('active')){
       safeSave(STORAGE.STARTUP,d);
       logActivity('startup',d);
-      if(typeof showToast==='function')showToast('Welcome back — check priorities & intel.','info');
     }
-    const h=new Date().getHours();
-    if(h>=20&&safeLoad(STORAGE.EOD,'')!==d){
-      safeSave(STORAGE.EOD,d);
-      if(typeof showToast==='function')showToast('End-of-day: review completed tasks & mood.','info');
-    }
+    if(new Date().getHours()>=20&&safeLoad(STORAGE.EOD,'')!==d)safeSave(STORAGE.EOD,d);
   }
 
   function init(){

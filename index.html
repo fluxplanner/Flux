@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.33b7ff5c.css">
+<link rel="stylesheet" href="public/bundles/flux.1a9e199b.css">
 </head>
 <body>
 <noscript>
@@ -259,7 +259,7 @@
           <button type="button" class="lx-aud-tab" id="lxAudTeacher" role="tab" aria-selected="false" data-aud="teacher">For teachers &amp; staff</button>
         </div>
 
-        <h1 class="lx-headline" id="lxHeadline">Your whole school life,<br><span class="grad">in flow.</span></h1>
+        <h1 class="lx-headline" id="lxHeadline" style="text-wrap:balance">Your whole school life,<br><span class="grad">in flow.</span></h1>
         <p class="lx-sub" id="lxSub">Flux keeps tasks, classes, study tools, grades and focus in one calm place — and connects students with the teachers, counselors and schools behind them.</p>
 
         <div class="lx-demo" aria-live="polite">
@@ -540,7 +540,7 @@
             <p class="lx-edu-sub">Role-aware tools that follow your job title.</p>
             <ul class="lx-edu-list">
               <li><span class="lx-edu-chk">✓</span><span><b>Lesson Hub</b> — today's bell schedule, lesson notes and class-by-class planning.</span></li>
-              <li><span class="lx-edu-chk">✓</span><span><b>Rosters &amp; assignments</b> — create a class, share its join code, and post work straight into students’ planners.</span></li>
+              <li><span class="lx-edu-chk">✓</span><span><b>Teacher dashboard</b> — quick-grade buckets, a parent contact log and a class roster for every section you teach.</span></li>
               <li><span class="lx-edu-chk">✓</span><span><b>Classroom tools</b> — a fair student picker, a group maker, exit tickets and a big-screen timer.</span></li>
               <li><span class="lx-edu-chk">✓</span><span><b>Counselor caseload</b> — meetings, notes, wellness check-ins and referrals in one view.</span></li>
               <li><span class="lx-edu-chk">✓</span><span><b>Messages</b> — direct messages and group chats with colleagues.</span></li>
@@ -1814,7 +1814,7 @@
           <button type="button" class="btn-sec" style="padding:4px 10px;font-size:.65rem" onclick="setTimerPresetMins(90)">90</button>
         </div>
         <div style="margin-bottom:14px">
-          <select id="timerSubject" style="width:auto;padding:5px 10px;margin:0;font-size:.78rem;display:inline-block">
+          <select id="timerSubject" style="width:auto;padding:5px 34px 5px 12px !important;margin:0;font-size:.78rem;display:inline-block">
             <option value="">No subject tag</option>
           </select>
         </div>
@@ -2674,7 +2674,7 @@
                there. -->
           <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Guest vs signing in?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Guest keeps data on this device only. Signing in with your name and password syncs encrypted planner data to your account so you can use multiple devices.</p></details>
           <details style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">Will I lose data?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">Clearing browser data or uninstalling the browser can remove local guest data. Sign in with your name and password to sync your planner to the cloud across devices.</p></details>
-          <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">AI only runs when you press a button that uses it — reading a photo of your timetable, or College Prep’s activity ideas — and only sees what that button sends. See the Privacy Policy for details.</p></details>
+          <details><summary style="cursor:pointer;font-weight:600;font-size:.85rem">What does AI see?</summary><p style="font-size:.78rem;color:var(--muted2);line-height:1.65;margin:8px 0 0">AI only runs when you press a button that uses it — reading a photo of your timetable, Suggest steps on a task, or College Prep’s activity ideas — and only sees what that button sends. See the Privacy Policy for details.</p></details>
         </div>
         <div class="card">
           <h3>Send feedback</h3>
@@ -2909,7 +2909,7 @@
       <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
         <textarea id="editSubtasks" style="min-height:70px;flex:1;min-width:200px;margin:0" placeholder="Sub-task 1&#10;Sub-task 2"></textarea>
         <button type="button" class="btn-sec" onclick="completeAllSubtasksInEdit()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap" title="Mark all subtasks complete">All ✓</button>
-        <button type="button" class="btn-sec" onclick="autoSplitEditSubtasks()" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap">Auto-split</button>
+        <button type="button" class="btn-sec" onclick="autoSplitEditSubtasks(event)" style="font-size:.72rem;padding:8px 12px;flex-shrink:0;white-space:nowrap">Suggest steps</button>
       </div>
     </div>
     <div class="mrow"><label>Notes</label><textarea id="editNotes" style="min-height:60px"></textarea></div>
@@ -2948,8 +2948,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.2873073b.js"></script>
-<script defer src="public/bundles/flux-features.f80f23b1.js"></script>
+<script defer src="public/bundles/flux-core.0079007c.js"></script>
+<script defer src="public/bundles/flux-features.f283c5ae.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->
