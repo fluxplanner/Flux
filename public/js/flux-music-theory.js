@@ -60,10 +60,15 @@
     'Harmonic minor': [[0, 0], [1, 2], [2, 3], [3, 5], [4, 7], [5, 8], [6, 11]],
     'Melodic minor': [[0, 0], [1, 2], [2, 3], [3, 5], [4, 7], [5, 9], [6, 11]],
     'Dorian': [[0, 0], [1, 2], [2, 3], [3, 5], [4, 7], [5, 9], [6, 10]],
+    'Phrygian': [[0, 0], [1, 1], [2, 3], [3, 5], [4, 7], [5, 8], [6, 10]],
+    'Lydian': [[0, 0], [1, 2], [2, 4], [3, 6], [4, 7], [5, 9], [6, 11]],
     'Mixolydian': [[0, 0], [1, 2], [2, 4], [3, 5], [4, 7], [5, 9], [6, 10]],
+    'Locrian': [[0, 0], [1, 1], [2, 3], [3, 5], [4, 6], [5, 8], [6, 10]],
     'Major pentatonic': [[0, 0], [1, 2], [2, 4], [4, 7], [5, 9]],
     'Minor pentatonic': [[0, 0], [2, 3], [3, 5], [4, 7], [6, 10]],
     'Blues': [[0, 0], [2, 3], [3, 5], [4, 6], [4, 7], [6, 10]],
+    // Six notes, so one letter is skipped; spelled C D E F♯ G♯ A♯ from C.
+    'Whole tone': [[0, 0], [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]],
   };
   /* sym is how the chord is written after its root; triads have three notes,
      sevenths four — which decides the figured bass of each inversion. */
