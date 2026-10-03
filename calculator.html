@@ -94,6 +94,28 @@
     main { grid-template-columns: minmax(0, 420px); padding-top: 14px; }
     .tips { position: static; }
   }
+  /* A screen wider than it is tall (an iPad held sideways, a laptop): the
+     keys go beside the screen, so the whole calculator fits without
+     scrolling. --col is one column, sized so the keys fit the height. Each
+     part becomes its own container, so the keys' cqw sizes still follow
+     one column rather than the doubled-up calculator. */
+  @media (orientation: landscape) and (min-width: 900px) and (max-height: 1000px) {
+    main {
+      --col: min(42vw, calc((100dvh - 52px - env(safe-area-inset-top, 0px) - 84px) / 1.55));
+      grid-template-columns: auto; padding-top: 16px;
+    }
+    .tips { position: static; max-width: calc(var(--col) * 2 + 64px); margin: 0 auto; }
+    #calcHost .t84-wrap { max-width: none; width: auto; container-type: normal; }
+    #calcHost .t84 {
+      display: grid; grid-template-columns: var(--col) var(--col); grid-template-rows: auto auto 1fr;
+      column-gap: 24px; width: auto; container-type: normal;
+      padding: 18px 20px 22px; border-radius: 32px;
+    }
+    #calcHost .t84-brand, #calcHost .t84-bezel, #calcHost .t84-keys { container-type: inline-size; grid-column: 1; }
+    #calcHost .t84-brand { padding: 0 10px 10px; }
+    #calcHost .t84-bezel { padding: 11px 11px 14px; border-radius: 13px 13px 19px 19px; }
+    #calcHost .t84-keys { grid-column: 2; grid-row: 1 / -1; margin-top: 0; }
+  }
 </style>
 </head>
 <body>

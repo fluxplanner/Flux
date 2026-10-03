@@ -141,4 +141,15 @@ test.describe('Calculator', () => {
     for (const id of ['6', 'mul', '7', 'enter']) await page.locator(`.fsh-calc .t84 [data-k="${id}"]`).click();
     await expect(page.locator('.fsh-calc .t84h-out').last()).toHaveText('42');
   });
+
+  test('an iPad held sideways gets the keys beside the screen, all on view', async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 740 });
+    await page.goto('/calculator.html');
+    const box = await page.evaluate(() => {
+      const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+      return { calcBottom: r('.t84').bottom, vh: innerHeight, screenRight: r('.t84-bezel').right, keysLeft: r('.t84-keys').left };
+    });
+    expect(box.keysLeft, 'the keys should sit beside the screen').toBeGreaterThan(box.screenRight);
+    expect(box.calcBottom, 'the keys run off the bottom of the screen').toBeLessThanOrEqual(box.vh);
+  });
 });
