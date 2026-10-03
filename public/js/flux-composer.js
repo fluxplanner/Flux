@@ -31,20 +31,62 @@
 
   /* ── Sound ──────────────────────────────────────────────────────────────── */
   let actx = null;
+  /* On an iPhone with the ringer switch on silent, Web Audio is muted as if it
+     were a ringtone — the buttons "did nothing". Telling Safari this page plays
+     media (audioSession, Safari 16.4+) and, for older iOS, looping a silent
+     <audio> element started from the same tap moves it to the media channel,
+     which the switch does not mute. Both run once, inside the first tap. */
+  let unlocked = false;
+  function silentWav() {
+    const n = 800, buf = new Uint8Array(44 + n), v = new DataView(buf.buffer);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) buf[o + i] = t.charCodeAt(i); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
+    buf.fill(128, 44);
+    let bin = '';
+    buf.forEach((b) => { bin += String.fromCharCode(b); });
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  function unlockMedia() {
+    if (unlocked) return;
+    unlocked = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
+    try {
+      const el = document.createElement('audio');
+      el.src = silentWav();
+      el.loop = true;
+      el.setAttribute('playsinline', '');
+      el.setAttribute('aria-hidden', 'true');
+      el.volume = 0.01;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) { /* no <audio> */ }
+  }
   function ctx() {
+    unlockMedia();
     if (!actx) {
       try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
     }
-    if (actx.state === 'suspended') actx.resume();
     return actx;
+  }
+  /** Run fn(context) once the context is actually running — on iOS the first
+      tap's resume() finishes after the click, and notes scheduled before it
+      landed at a time that had already passed. */
+  function withAudio(fn) {
+    const c = ctx();
+    if (!c) return;
+    if (c.state === 'running') fn(c);
+    else c.resume().then(() => fn(c), () => fn(c));
   }
   const freq = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
   /* A soft, piano-ish tone: a triangle with a quieter octave sine on top, a
      quick attack and an exponential fade. */
   function tone(midi, at, dur, vol) {
-    const c = ctx();
-    if (!c) return;
-    const t = c.currentTime + (at || 0);
+    withAudio((c) => toneAt(c, midi, at, dur, vol));
+  }
+  function toneAt(c, midi, at, dur, vol) {
+    const t = c.currentTime + 0.03 + (at || 0);
     const d = dur || 0.9;
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t);
@@ -67,7 +109,7 @@
   }
   function click(at, accent) {
     const c = ctx();
-    if (!c) return;
+    if (!c || c.state !== 'running') return;
     const t = c.currentTime + at;
     const o = c.createOscillator(), g = c.createGain();
     o.type = 'square';
@@ -815,6 +857,7 @@
       const mt = st.mt;
       const c = ctx();
       if (!c) return;
+      if (c.state !== 'running') c.resume();
       mt.on = true;
       mt.beat = 0;
       mt.next = c.currentTime + 0.08;

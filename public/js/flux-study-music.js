@@ -28,7 +28,10 @@
     let actx = null;
     /** Semitones above middle C, played one after another (a chord arpeggiated from the bass). */
     function play(semis) {
+      // 'playback' lets iPhones play through the silent switch, like a music app.
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
       try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+      if (actx.state !== 'running') actx.resume();
       semis.forEach((s, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = 261.63 * Math.pow(2, s / 12); const t = actx.currentTime + i * 0.16; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.42); });
     }
     /** Pitch values rising from the first note, so a chord is voiced from its bass upward. */

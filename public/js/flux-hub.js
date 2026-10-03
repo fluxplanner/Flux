@@ -97,6 +97,7 @@
     return '<div class="fxhub-panel" id="' + panelId + '" role="menu" hidden>'
       + '<div class="fxhub-panel-h">Flux</div>'
       + items
+      + '<a class="fxhub-all" href="hub.html">All Flux apps →</a>'
       + '<div class="fxhub-foot">More coming. What is free stays free.</div>'
       + '</div>';
   }

@@ -105,4 +105,15 @@ test.describe('Flux Hub', () => {
     expect(b.right, 'the panel spills off the phone screen').toBeLessThanOrEqual(b.vw);
     expect(b.left).toBeGreaterThanOrEqual(0);
   });
+
+  test('the hub page lists every app, and the switcher links to it', async ({ page }) => {
+    await page.goto('/hub.html');
+    const names = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(names, 'hub.html should list every product').toEqual(
+      expect.arrayContaining(['index.html', 'grapher.html', 'periodic.html', 'composer.html', 'calculator.html']));
+
+    await page.goto('/grapher.html');
+    await page.locator('.fxhub-btn:visible').click();
+    await expect(page.locator('.fxhub-panel .fxhub-all')).toHaveAttribute('href', 'hub.html');
+  });
 });

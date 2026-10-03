@@ -167,6 +167,18 @@
   color: var(--accent, #00c2ff);
 }
 
+.fxhub-all {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--accent, #00c2ff);
+}
+.fxhub-all:hover { background: rgba(255, 255, 255, .05); }
+
 .fxhub-foot {
   padding: 9px 10px 4px;
   margin-top: 4px;
