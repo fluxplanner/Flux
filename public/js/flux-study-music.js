@@ -51,7 +51,7 @@
     }
 
     /** Scale or chord notes from a root, swapped to the practical spelling when it needs double accidentals. */
-    const typeWord = (t) => (/^(Dorian|Mixolydian)$/.test(t) ? t : t.toLowerCase());
+    const typeWord = (t) => (/^(Dorian|Phrygian|Lydian|Mixolydian|Locrian)$/.test(t) ? t : t.toLowerCase());
     function spell(rootName, kind, type) {
       const make = (r) => (kind === 'scale' ? T.scale(r, type) : T.chord(r, type));
       let root = T.parse(rootName), notes = make(root), note = '';
@@ -288,6 +288,26 @@
       const type = Object.keys(table).find((k) => k.toLowerCase() === m[2].trim().toLowerCase()) || Object.keys(table)[0];
       return { root: m[1], type };
     };
+
+    /* Every music tool opens under a link to Flux Composer (composer.html), the
+       same tools and more on their own page — the way Chemistry ▸ Table links
+       to the full Periodic Table. Reassigning the bindings means a tool's own
+       re-render (tapping a key on the circle) keeps the banner too. */
+    const composerBanner = (hash) => '<a class="fsh-ptable-full fsh-composer-full" href="composer.html#' + hash + '" target="_blank" rel="noopener">'
+      + '<span class="fsh-ptable-full-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>'
+      + '<span class="fsh-ptable-full-t"><b>Need more? Open Flux Composer</b><small>Every key on one table, a playable keyboard that writes what you play, cadences, an ear trainer, a metronome and DP Music. Free, on its own page.</small></span>'
+      + '<span class="fsh-ptable-full-go" aria-hidden="true">Open ↗</span></a>';
+    const withComposer = (fn, hash) => (body, picked) => {
+      fn(body, picked);
+      if (!body.querySelector('.fsh-composer-full')) body.insertAdjacentHTML('afterbegin', composerBanner(hash));
+    };
+    window.fluxComposerBanner = withComposer;
+    renderCircle = withComposer(renderCircle, 'keys');
+    renderDimensions = withComposer(renderDimensions, 'dp');
+    renderExplorer = withComposer(renderExplorer, 'scales');
+    renderInversions = withComposer(renderInversions, 'chords');
+    renderNumerals = withComposer(renderNumerals, 'harmony');
+    renderIntervals = withComposer(renderIntervals, 'intervals');
 
     H.register('music', [
       { id: 'circle', name: 'Circle of 5ths', icon: '🎼', desc: 'circle of fifths key signature relative minor enharmonic keys chords ring', render: renderCircle, ai: { name: 'circleOfFifths', description: 'Key info. Arg: a key like "G" or "E minor".', params: { key: 'string' }, run: (a) => { const m = String(a).trim().match(/^(\S+)\s*(minor|min|m)?$/i); const k = T.keyFor(m ? m[1] : 'C', m && m[2] ? 'minor' : 'major') || T.keyFor('C', 'major'); return { key: k.label, signature: k.signatureText, accidentals: k.signatureNotes, relative: k.relative, enharmonic: k.enharmonic ? k.enharmonic.label : null, writtenAs: k.respelledFrom ? k.why : null, scale: Array.from(k.scale, nm), chords: T.diatonicTriads(k.tonic, k.mode === 'major' ? 'Major' : 'Natural minor').map((c) => c.numeral + ' ' + c.symbol) }; } } },

@@ -159,6 +159,12 @@
         + card('Technique & articulation', 'Weighted towards string directions, since that is where most of them appear.', termList(ARTIC));
     }
 
+    // The link to Flux Composer, from flux-study-music.js when it has loaded.
+    const wc = window.fluxComposerBanner || ((fn) => fn);
+    renderTranspose = wc(renderTranspose, 'orchestra');
+    renderScore = wc(renderScore, 'orchestra');
+    renderMarkings = wc(renderMarkings, 'terms');
+
     H.register('music', [
       { id: 'orc-transpose', name: 'Transposition', icon: '🎺', desc: 'transposing instruments horn in f clarinet b flat written sounding concert pitch orchestra', render: renderTranspose,
         ai: { name: 'transposition', description: 'How an orchestral instrument transposes. Arg: instrument name, e.g. "horn".', params: { instrument: 'string' },
