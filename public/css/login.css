@@ -534,7 +534,7 @@ html[data-flux-perf="on"] .login-anime-layer{animation:none!important;display:no
   border-radius:14px!important;cursor:pointer;
   font-family:'Plus Jakarta Sans',system-ui,sans-serif!important;
   font-size:.95rem!important;font-weight:700!important;letter-spacing:-.005em;
-  color:#fff!important;
+  color:var(--on-accent,#fff)!important;
   background:linear-gradient(125deg,var(--accent) 0%,var(--purple) 100%)!important;
   border:1px solid rgba(var(--accent-rgb),.5)!important;
   box-shadow:0 14px 32px rgba(var(--accent-rgb),.32),0 4px 12px rgba(var(--purple-rgb),.22),inset 0 1px 0 rgba(255,255,255,.22)!important;

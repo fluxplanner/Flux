@@ -56,7 +56,7 @@
   padding:10px 16px;border-radius:12px;cursor:pointer;
   font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:700;font-size:.85rem;
   background:var(--accent);
-  border:1px solid rgba(var(--accent-rgb),.45);color:#fff;
+  border:1px solid rgba(var(--accent-rgb),.45);color:var(--on-accent,#fff);
   box-shadow:0 6px 18px -8px rgba(var(--accent-rgb),.48);
   transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease;
 }

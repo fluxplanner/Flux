@@ -255,7 +255,7 @@
   padding: 9px 18px;
   background: linear-gradient(135deg, var(--accent), var(--purple));
   border: none; border-radius: 999px;
-  color: #fff; font-weight: 700; font-size: .8rem;
+  color: var(--on-accent,#fff); font-weight: 700; font-size: .8rem;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(var(--accent-rgb),.3);
   transition: transform .2s cubic-bezier(.34,1.56,.64,1);

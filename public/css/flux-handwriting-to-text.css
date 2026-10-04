@@ -95,7 +95,7 @@
 
 .flux-hw-insert-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent,#fff);
   border: none;
   border-radius: 10px;
   font-weight: 700;

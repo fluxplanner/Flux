@@ -553,7 +553,7 @@ function showPricingPage(){
           </button>
         </div>
         <div style="background:var(--card);border:2px solid var(--accent);border-radius:18px;padding:24px;position:relative;overflow:hidden">
-          <div style="position:absolute;top:14px;right:14px;background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px">MOST POPULAR</div>
+          <div style="position:absolute;top:14px;right:14px;background:var(--accent);color:var(--on-accent,#fff);font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px">MOST POPULAR</div>
           <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px">Student Pro</div>
           <div style="font-size:2rem;font-weight:800;margin-bottom:4px">$2.99<span style="font-size:1rem;font-weight:400;color:var(--muted2)">/month</span></div>
           <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px">30-day free trial</div>
@@ -3307,6 +3307,36 @@ const FLUX_NOTEBOOK_ENABLED=false;
    this flag, and any request already waiting is still shown. */
 const FLUX_COUNSELOR_CONTACT_ENABLED=false;
 window.fluxCounselorContactOn=()=>FLUX_COUNSELOR_CONTACT_ENABLED;
+/* Flux AI is paused (owner's call, 2026-10-04). The Flux AI tab was already
+   retired, but other doors still led to it: AI commands in the ⌘K palette,
+   the Sunday review banner, the quick-add "Flux AI" link, the College Prep
+   activity advisor and the AI schedule reader in setup. They all stay hidden
+   until this is true again. */
+/* Text on an accent-coloured button. White read fine on the old blurple, but
+   on a light accent such as the sky-blue default it falls to about 2:1. Pick
+   navy or white by the accent's brightness, whenever the accent changes. */
+(function fluxOnAccent(){
+  const root=document.documentElement;
+  let last='';
+  const pick=()=>{
+    const a=String(getComputedStyle(root).getPropertyValue('--accent')||'').trim();
+    if(!a||a===last)return;
+    last=a;
+    let m=/^#?([0-9a-f]{6})$/i.exec(a),r,g,b;
+    if(m){r=parseInt(m[1].slice(0,2),16);g=parseInt(m[1].slice(2,4),16);b=parseInt(m[1].slice(4,6),16);}
+    else{const n=a.match(/\d+(\.\d+)?/g);if(!n||n.length<3)return;[r,g,b]=n.map(Number);}
+    const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+    const L=.2126*f(r)+.7152*f(g)+.0722*f(b);
+    // Whichever of white and navy (#04202c) reads better on this accent.
+    root.style.setProperty('--on-accent',(1.05/(L+.05))>=((L+.05)/(.0145+.05))?'#fff':'#04202c');
+  };
+  pick();
+  try{new MutationObserver(pick).observe(root,{attributes:true,attributeFilter:['style','data-theme','class']});}catch(_){}
+  try{new MutationObserver(pick).observe(document.body||root,{attributes:true,attributeFilter:['data-theme']});}catch(_){}
+})();
+const FLUX_AI_ENABLED=false;
+window.fluxAiOn=()=>FLUX_AI_ENABLED;
+document.documentElement.classList.toggle('flux-no-ai',!FLUX_AI_ENABLED);
 // Hides data-needs-counselor-links (the counselor's "Students" entry).
 document.documentElement.classList.toggle('flux-no-counselor-contact',!FLUX_COUNSELOR_CONTACT_ENABLED);
 /* Page lines in index.html that list what these paused features add carry
@@ -4669,8 +4699,20 @@ function updateDashHero(opts){
   try{
     if(playIntro&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
       greet.dataset.fluxGreetIntroDone='1';
+      grad.style.setProperty('--greet-steps',String(line.length));
+      // Size the gradient to the whole line, so its colours sit still while
+      // the letters appear instead of squeezing into the typed part.
+      // scrollWidth is the whole line even while it is clipped; it reads 0
+      // until the dashboard is on screen, so try again on the next frames.
+      let tries=0;
+      const size=()=>{
+        const full=grad.scrollWidth;
+        if(full){grad.style.backgroundSize=Math.ceil(full)+'px 100%';return;}
+        if(++tries<40)requestAnimationFrame(size);
+      };
       grad.classList.add('dash-v2-greet-typewriter');
-      setTimeout(()=>grad.classList.remove('dash-v2-greet-typewriter'),3200);
+      size();
+      setTimeout(()=>{grad.classList.remove('dash-v2-greet-typewriter');grad.style.backgroundSize='';},3200);
     }
   }catch(e){}
 }
@@ -7606,16 +7648,16 @@ function saveConfidences(){save('flux_conf',confidences);const b=event?.target;i
 // ══ THEMES ══
 const THEMES={
   dark:{
-    // Theme 2026 default — GitHub-dark surfaces × Discord blurple accent
+    // Theme 2026 default — GitHub-dark surfaces × sky-blue accent
     // (must stay in sync with flux-theme-2026.css tokens).
     label:'Midnight',
-    vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
+    vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#00BFFF','--accent-rgb':'0,191,255','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
   },
   light:{
-    // Theme 2026 light — GitHub-light surfaces × Discord blurple accent
+    // Theme 2026 light — GitHub-light surfaces × sky-blue accent
     // (must stay in sync with the [data-theme="light"] block in flux-theme-2026.css).
     label:'Cloud',
-    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
+    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#00BFFF','--accent-rgb':'0,191,255','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
   },
   aurora:{
     label:'Aurora',
@@ -7727,18 +7769,19 @@ function loadTheme(){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  // One-time 2026 migration: users still on the old default cyan get the new
-  // default blurple; deliberately-picked custom accents are left alone.
+  // The default accent is sky blue again (Oct 2026, the owner's pick). Applying
+  // a theme stores its accent, so everyone still on the old default blurple
+  // has it saved as if chosen: move them over once. A custom colour stays.
   try{
-    if(!fluxLoadStoredString('flux_accent_2026','')&&
-       String(fluxLoadStoredString('flux_accent','')).replace(/^"|"$/g,'').toLowerCase()==='#00bfff'){
-      fluxSaveStoredString('flux_accent',theme.vars['--accent']||'#5865F2');
-      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242');
+    if(!fluxLoadStoredString('flux_accent_sky','')&&
+       String(fluxLoadStoredString('flux_accent','')).replace(/^"|"$/g,'').toLowerCase()==='#5865f2'){
+      fluxSaveStoredString('flux_accent',theme.vars['--accent']||'#00BFFF');
+      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255');
     }
-    fluxSaveStoredString('flux_accent_2026','1');
+    fluxSaveStoredString('flux_accent_sky','1');
   }catch(_){}
-  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#5865F2')).replace(/^"|"$/g,'');
-  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242')).replace(/^"|"$/g,'');
+  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#00BFFF')).replace(/^"|"$/g,'');
+  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255')).replace(/^"|"$/g,'');
   fluxSaveStoredString('flux_accent',acc);
   fluxSaveStoredString('flux_accent_rgb',rgb);
   document.documentElement.style.setProperty('--accent',acc);
@@ -7950,7 +7993,7 @@ function saveClassScheduleDisplay(v){
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
 }
 /* The swatch row had #00bfff marked active in the HTML whatever the accent
-   was, and the default accent (#5865F2) was not in the row at all. Light the
+   was, and the default accent was not in the row at all. Light the
    swatch that matches, or none when the accent is a custom colour. */
 function fluxSyncAccentSwatches(){
   const cur=String(getComputedStyle(document.documentElement).getPropertyValue('--accent')||'').trim().toLowerCase();
@@ -11762,7 +11805,7 @@ function applyObRoleView(){
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
     setText('obStep4Title','Your Schedule');
-    setText('obStep4Sub','Upload a PDF or photo of your teaching schedule and AI reads it. Or skip and add periods later.');
+    setText('obStep4Sub',FLUX_AI_ENABLED?'Upload a PDF or photo of your teaching schedule and AI reads it. Or skip and add periods later.':'Add the periods you teach below, or skip and add them later in School info.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you work?');
     setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
@@ -11773,7 +11816,7 @@ function applyObRoleView(){
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
     setText('obStep4Title','Your Schedule');
-    setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
+    setText('obStep4Sub',FLUX_AI_ENABLED?'Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.':'Add your classes below, or skip and add them later in School Info.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you study?');
     setText('obStep5Sub','Flux uses this to pace your study goal and suggestions to how you learn best.');
@@ -13130,6 +13173,7 @@ function renderCmdResults(){
     };
     cmds.sort((a,b)=>tier(a)-tier(b));
   }
+  if(!FLUX_AI_ENABLED)cmds=cmds.filter(c=>c.cat!=='Flux AI'&&!/\bFlux AI\b|^AI:|\(AI\)/.test(String(c.label||'')));
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
   // Group by cat
@@ -19024,7 +19068,7 @@ function checkTomorrowLoad(){
 // ── Feature: Weekly review digest (every Sunday) ──
 function checkWeeklyReview(){
   try{
-    if(new Date().getDay()!==0)return;
+    if(new Date().getDay()!==0||!FLUX_AI_ENABLED)return;
     const lastReview=fluxLoadStoredString('flux_last_weekly_review','');
     if(lastReview===todayStr())return;
     fluxSaveStoredString('flux_last_weekly_review',todayStr());

@@ -129,7 +129,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
-  color: #fff;
+  color: var(--on-accent,#fff);
   flex-shrink: 0;
 }
 

@@ -43,7 +43,7 @@
 .flux-drive-actions .flux-drive-btn-primary {
   background: var(--accent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent,#fff);
 }
 
 .flux-drive-list {

@@ -93,8 +93,10 @@
         const ripple = document.createElement('span');
         const size = Math.max(rect.width, rect.height) * 2;
         ripple.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,255,255,0.12);transform:scale(0);animation:ripple-expand 0.5s ease forwards;left:${e.clientX - rect.left - size / 2}px;top:${e.clientY - rect.top - size / 2}px;pointer-events:none;z-index:10`;
-        const prev = btn.style.position;
-        if (!prev || prev === 'static') btn.style.position = 'relative';
+        // Read the computed position, not the inline one: a fixed button (the
+        // Notes and Report buttons) has no inline position, and was made
+        // relative here, which dropped it out of its corner.
+        if (getComputedStyle(btn).position === 'static') btn.style.position = 'relative';
         btn.style.overflow = 'hidden';
         btn.appendChild(ripple);
         setTimeout(() => ripple.remove(), 600);

@@ -73,7 +73,7 @@
 .flux-pui-save {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: #fff;
+  color: var(--on-accent,#fff);
   flex: 1;
   min-width: 160px;
 }

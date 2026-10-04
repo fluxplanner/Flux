@@ -18,10 +18,11 @@
   --flux-elev-bg:#161b22;
   --border:#242b33; --border2:#30363d; --border3:#3d444d;
 
-  /* Accent — Discord blurple (≈5.2:1 with white text) */
-  --accent:#5865F2; --accent-rgb:88,101,242; --accent2:#8b9cff;
-  --accent-hover:#6875f5;
-  --accent-glow:rgba(88,101,242,.30);
+  /* Accent — sky blue, the Flux default (the owner's pick, Oct 2026) */
+  --accent:#00BFFF; --accent-rgb:0,191,255; --accent2:#66d6ff;
+  --accent-hover:#33ccff;
+  --on-accent:#04202c; /* text on an accent background; app.js keeps it in step with custom accents */
+  --accent-glow:rgba(0,191,255,.30);
 
   /* Status — GitHub scale (AA on #0d1117) */
   --green:#3fb950; --green-rgb:63,185,80;
@@ -69,9 +70,9 @@ body[data-theme="light"]{
   --flux-elev-bg:#ffffff;
   --flux-wordmark:#1f2328;
   --flux-wordmark-sub:#57606a;
-  --accent2:#4552d9;
-  --accent-hover:#4a56e2;
-  --accent-glow:rgba(88,101,242,.20);
+  --accent2:#0095cc;
+  --accent-hover:#00a8e6;
+  --accent-glow:rgba(0,191,255,.20);
   --green-rgb:26,127,55;
   --red-rgb:207,34,46;
   --gold-rgb:154,103,0; --gold-badge:#9a6700;
@@ -150,7 +151,7 @@ body[data-theme="light"] .nav-item.active{background:rgba(var(--accent-rgb),.12)
 }
 .btn-sec:hover{background:var(--btn2-hover);border-color:var(--btn2-border-h);color:var(--text)}
 .edu-action-btn.primary,.fsm-start-btn{
-  background:var(--accent);border:1px solid transparent;color:#fff;
+  background:var(--accent);border:1px solid transparent;color:var(--on-accent,#fff);
 }
 .edu-action-btn.primary:hover,.fsm-start-btn:hover:not(:disabled){background:var(--accent-hover)}
 

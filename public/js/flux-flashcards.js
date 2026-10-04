@@ -133,6 +133,9 @@
   }
 
   /* ── Signed-in AI (borrowing the planner's session, read-only) ──────── */
+  /* Flux AI is paused (as FLUX_AI_ENABLED in the planner). "From notes" then
+     uses only the built-in "X is Y" / "term: definition" reader. */
+  var AI_ENABLED = false;
 
   function plannerSession() {
     try {
@@ -785,7 +788,7 @@
       var into = intoId ? F.getDeck(decodeURIComponent(intoId)) : null;
       var tab = prefs().importTab || 'paste';
       if (!/^(paste|ai|file)$/.test(tab)) tab = 'paste';
-      var signedIn = !!plannerSession();
+      var signedIn = AI_ENABLED && !!plannerSession();
       var found = [];
       var aiTitle = '';
 
@@ -833,7 +836,7 @@
           box.oninput = run; box.onchange = null;
           setTimeout(function () { var t = $('.ff-paste', box); if (t) t.focus(); }, 0);
         } else if (tab === 'ai') {
-          box.innerHTML = '<p class="ff-muted">Paste your notes, a chapter or a study guide' + (signedIn ? ' and Flux AI turns it into cards.' : '. <b>Sign in to the Flux Planner</b> to have AI write the cards; without it, Flux picks out lines like “X is Y” and “term: definition”.') + '</p>'
+          box.innerHTML = '<p class="ff-muted">Paste your notes, a chapter or a study guide' + (signedIn ? ' and Flux AI turns it into cards.' : !AI_ENABLED ? '. Flux picks out lines like “X is Y” and “term: definition” and makes each one a card.' : '. <b>Sign in to the Flux Planner</b> to have AI write the cards; without it, Flux picks out lines like “X is Y” and “term: definition”.') + '</p>'
             + '<textarea class="ff-input ff-paste" rows="12" placeholder="Photosynthesis is the process by which plants make glucose from carbon dioxide and water using light energy…"></textarea>'
             + '<div class="ff-import-opts"><label>About <select class="ff-input" name="count"><option>10</option><option selected>20</option><option>30</option><option>50</option></select> cards</label>'
             + '<button type="button" class="ff-btn ff-btn--primary" data-make>' + ICON.sparkle + (signedIn ? 'Make cards' : 'Find cards') + '</button></div>';
@@ -870,7 +873,7 @@
           var text = $('.ff-paste', box).value.trim();
           if (!text) { toast('Paste some notes first', 'warn'); return; }
           var count = parseInt($('[name="count"]', box).value, 10) || 20;
-          if (!signedIn) { found = heuristicCards(text); drawPreview('No “X is Y” or “term: definition” lines found. Sign in to the Flux Planner to let AI write cards from any notes.'); return; }
+          if (!signedIn) { found = heuristicCards(text); drawPreview(AI_ENABLED ? 'No “X is Y” or “term: definition” lines found. Sign in to the Flux Planner to let AI write cards from any notes.' : 'No “X is Y” or “term: definition” lines found. Put each fact on its own line, like “Mitosis: cell division”.'); return; }
           t.disabled = true; t.classList.add('is-busy');
           prev.innerHTML = '<div class="ff-thinking"><span></span><span></span><span></span> Writing your cards…</div>';
           aiCards(text, count).then(function (res) {

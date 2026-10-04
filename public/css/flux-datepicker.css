@@ -176,7 +176,7 @@ input[type="date"].fdp-input[aria-expanded="true"],
 .fdp-day--selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent,#fff);
   font-weight: 800;
   box-shadow: 0 4px 14px rgba(var(--accent-rgb), .35);
 }
