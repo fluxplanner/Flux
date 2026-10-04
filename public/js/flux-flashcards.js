@@ -77,6 +77,17 @@
   }
 
   var ICON = {
+    trophy: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+    timer: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>',
+    target: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
+    checkCircle: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+    party: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.8"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.2.8a2.9 2.9 0 0 0-1.8 3.2 2 2 0 0 1-1.6 2.3L14 9"/><path d="m22 13-.8-.3a2 2 0 0 0-2.4 1 2 2 0 0 1-2.4 1L14 14"/><path d="M11 2l.3.8a2 2 0 0 1-1 2.4 2 2 0 0 0-1 2.4L10 10"/><path d="M11 13c1.9 1.9 2.8 4.2 2 5s-3.1-.1-5-2-2.8-4.2-2-5 3.1.1 5 2Z"/></svg>',
+    grad: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>',
+    langs: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>',
+    flask: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>',
+    dna: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 15c6.7-6 13.3 0 20-6M2 9c6.7 6 13.3 0 20 6"/><path d="M8 11.5v1M12 10v4M16 11.5v1"/></svg>',
+    atom: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2-2-.4-7.6-5.4-12.6S4.2 1.8 2.2 3.8s.4 7.6 5.4 12.6 10.6 7.8 12.6 5.8Z"/><path d="M15.7 15.7c5-5 7.4-10.6 5.4-12.6s-7.6.4-12.6 5.4-7.4 10.6-5.4 12.6 7.6-.4 12.6-5.4Z"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
     back: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
     plus: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     speak: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
@@ -187,12 +198,27 @@
     var s = new Blob([bytes]).stream().pipeThrough(stream);
     return new Response(s).arrayBuffer().then(function (b) { return new Uint8Array(b); });
   }
+  /** The name to show as a deck's creator: the signed-in Flux name, or one typed once. */
+  function myName() {
+    try {
+      var s = plannerSession();
+      var meta = s && s.user && s.user.user_metadata;
+      if (meta && meta.full_name) return String(meta.full_name).trim();
+    } catch (e) {}
+    try {
+      var n = JSON.parse(localStorage.getItem('flux_user_name') || 'null');
+      if (n && typeof n === 'string' && n.trim()) return n.trim();
+    } catch (e) {}
+    return (prefs().myName || '').trim();
+  }
+
   function shareCode(deck) {
-    if (typeof CompressionStream === 'undefined') return Promise.resolve(F.encodeShare(deck));
-    var json = new TextEncoder().encode(JSON.stringify(F.sharePayload(deck)));
+    var sharer = myName();
+    if (typeof CompressionStream === 'undefined') return Promise.resolve(F.encodeShare(deck, sharer));
+    var json = new TextEncoder().encode(JSON.stringify(F.sharePayload(deck, sharer)));
     return streamBytes(json, new CompressionStream('deflate-raw'))
       .then(function (z) { return 'z' + F.b64urlFromBytes(z); })
-      .catch(function () { return F.encodeShare(deck); });
+      .catch(function () { return F.encodeShare(deck, sharer); });
   }
   function readShareCode(code) {
     if (code[0] === 'z') {
@@ -241,6 +267,8 @@
       if (h === lastRoute && view && view.sticky) return;
       lastRoute = h;
       setView(null);
+      // A dialog belongs to the view it was opened from.
+      $$('.ff-modal-ov').forEach(function (m) { if (m._close) m._close(); else m.remove(); });
       try { if (canSpeak) speechSynthesis.cancel(); } catch (e) {}
       window.scrollTo(0, 0);
       var m;
@@ -328,7 +356,7 @@
           }).join('') + '</div>' : '')
         + (samples.length ? '<h2 class="ff-h2">Ready-made decks</h2><div class="ff-grid ff-grid--small">'
           + samples.map(function (s) {
-            return '<div class="ff-sample"><div class="ff-sample-title"><span aria-hidden="true">' + s.emoji + '</span> ' + esc(s.title) + '</div>'
+            return '<div class="ff-sample"><div class="ff-sample-title"><span class="ff-sample-ico" aria-hidden="true">' + (ICON[s.icon] || ICON.cards) + '</span>' + esc(s.title) + '</div>'
               + '<div class="ff-deck-desc">' + esc(s.desc) + '</div><div class="ff-deck-foot">' + plural(s.cards.length, 'card') + '</div>'
               + '<button type="button" class="ff-btn ff-btn--small" data-sample="' + esc(s.id) + '">Add to my decks</button></div>';
           }).join('') + '</div>' : '')
@@ -356,7 +384,7 @@
         if (t.dataset.sample) {
           var s = (window.FluxFlashSamples || []).filter(function (x) { return x.id === t.dataset.sample; })[0];
           if (!s) return;
-          var d = F.newDeck({ title: s.title, desc: s.desc, termLang: s.termLang, defLang: s.defLang, cards: s.cards });
+          var d = F.newDeck({ title: s.title, desc: s.desc, termLang: s.termLang, defLang: s.defLang, cards: s.cards, author: 'Flux' });
           d.sample = s.id;
           F.putDeck(d);
           toast('Added “' + s.title + '”');
@@ -410,7 +438,7 @@
         '<a class="ff-btn ff-btn--small" href="' + base + '/edit">' + ICON.edit + 'Edit</a>')
         + '<header class="ff-deck-head"><h1>' + esc(deck.title) + '</h1>'
         + (deck.desc ? '<p class="ff-deck-desc">' + esc(deck.desc) + '</p>' : '')
-        + '<div class="ff-deck-meta">' + plural(p.total, 'card')
+        + '<div class="ff-deck-meta">' + (F.creator(deck) ? 'Made by <b class="ff-maker">' + esc(F.creator(deck)) + '</b>' + (deck.sharedBy ? ', shared by ' + esc(deck.sharedBy) : '') + ' · ' : '') + plural(p.total, 'card')
         + (exam != null ? (exam >= 0 ? ' · <b>Exam in ' + plural(exam, 'day') + '</b>' : ' · Exam passed') : '')
         + (stars ? ' · ' + stars + ' starred' : '') + '</div>'
         + '<div class="ff-progress" aria-label="Progress">'
@@ -477,6 +505,7 @@
       function close() { ov.remove(); document.removeEventListener('keydown', onEsc, true); }
       function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
       document.addEventListener('keydown', onEsc, true);
+      ov._close = close;
       ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-close]')) close(); });
       if (onReady) onReady(ov, close);
       return close;
@@ -484,40 +513,94 @@
 
     function openShare(deck) {
       if (!deck.cards.length) { toast('Add some cards first', 'warn'); return; }
-      shareCode(deck).then(function (code) {
-        var url = shareUrl(code);
-        modal('<h2>Share “' + esc(deck.title) + '”</h2>'
-          + '<p class="ff-muted">Anyone with this link can copy the deck into their own Flux Flashcards. Your progress stays yours. No account needed to open it.</p>'
-          + '<div class="ff-share-row"><input class="ff-input" readonly value="' + esc(url) + '" aria-label="Share link"><button type="button" class="ff-btn ff-btn--primary" data-copy>Copy</button></div>'
-          + (url.length > 8000 ? '<p class="ff-warn">This is a very big deck, so the link is long. If it does not open, use Export and send the file instead.</p>' : '')
-          + '<div class="ff-modal-foot">' + (navigator.share ? '<button type="button" class="ff-btn" data-native>Share…</button>' : '') + '<button type="button" class="ff-btn" data-close>Done</button></div>',
-        function (ov) {
-          var inp = $('input', ov); inp.focus(); inp.select();
-          $('[data-copy]', ov).onclick = function () { copyText(url, 'Link copied'); };
-          var nat = $('[data-native]', ov);
-          if (nat) nat.onclick = function () { navigator.share({ title: deck.title + ' · Flux Flashcards', url: url }).catch(function () {}); };
-        });
+      // Your own deck with no name on it yet: it takes yours, so the people you
+      // send it to — and everyone they send it on to — see who made it.
+      if (!deck.origin && !deck.author && myName()) { deck.author = myName(); F.putDeck(deck); }
+      var needName = !F.creator(deck) && !myName();
+      modal('<h2>Share “' + esc(deck.title) + '”</h2>'
+        + '<p class="ff-muted">Anyone with the link can open it on any device — no account needed — and save their own copy. Your progress stays yours.</p>'
+        + (needName ? '<label class="ff-name-row">Your name, shown as the creator<input class="ff-input" data-name placeholder="e.g. Azfer M." maxlength="60"></label>' : '')
+        + '<div class="ff-share-row"><input class="ff-input" readonly data-url aria-label="Share link" value="Making the link…"><button type="button" class="ff-btn ff-btn--primary" data-copy>Copy</button></div>'
+        + '<p class="ff-warn" data-long hidden>This is a very big deck, so the link is long. If it does not open, use Export and send the file instead.</p>'
+        + '<div class="ff-collab"><b>Working on it together</b><p class="ff-muted">Friends can add cards to their copy and send you their link back. Open it and Flux offers to add their new cards to this deck — your progress is kept.</p></div>'
+        + '<p class="ff-muted ff-small">' + (F.creator(deck) ? 'Shown as made by <b>' + esc(F.creator(deck)) + '</b>.' : '') + '</p>'
+        + '<div class="ff-modal-foot">' + (navigator.share ? '<button type="button" class="ff-btn" data-native>Share…</button>' : '') + '<button type="button" class="ff-btn" data-close>Done</button></div>',
+      function (ov) {
+        var url = '';
+        var inp = $('[data-url]', ov);
+        function make() {
+          return shareCode(deck).then(function (code) {
+            url = shareUrl(code);
+            inp.value = url;
+            $('[data-long]', ov).hidden = url.length <= 8000;
+            if (!needName) { inp.focus(); inp.select(); }
+          });
+        }
+        make();
+        var nameIn = $('[data-name]', ov);
+        if (nameIn) {
+          nameIn.focus();
+          nameIn.oninput = function () {
+            var v = nameIn.value.trim();
+            setPref('myName', v);
+            if (!deck.origin) { deck.author = v; F.putDeck(deck); }
+            clearTimeout(nameIn._t); nameIn._t = setTimeout(make, 250);
+          };
+        }
+        $('[data-copy]', ov).onclick = function () { if (url) copyText(url, 'Link copied'); };
+        var nat = $('[data-native]', ov);
+        if (nat) nat.onclick = function () { if (url) navigator.share({ title: deck.title + ' · Flux Flashcards', url: url }).catch(function () {}); };
       });
     }
 
     function viewShared(code) {
       host.innerHTML = '<div class="ff-empty"><p>Opening the shared deck…</p></div>';
       readShareCode(code).then(function (deck) {
+        var mine = F.relatedDeck(deck, F.decks());
+        var dif = mine ? F.diffDecks(mine, deck) : null;
+        var newTerms = {};
+        if (dif) dif.added.forEach(function (c) { newTerms[c.term] = 1; });
+        var maker = F.creator(deck);
+        var merge = '';
+        if (mine) {
+          merge = '<div class="ff-merge"><b>This is a version of your deck “' + esc(mine.title) + '”.</b>'
+            + (dif.added.length || dif.changed.length
+              ? '<p>' + (dif.added.length ? plural(dif.added.length, 'new card') : '') + (dif.added.length && dif.changed.length ? ' and ' : '')
+                + (dif.changed.length ? plural(dif.changed.length, 'changed definition') : '') + '. Your progress on the cards you already have is kept.</p>'
+                + '<div class="ff-actions">'
+                + (dif.added.length ? '<button type="button" class="ff-btn ff-btn--primary" data-merge="add">Add the ' + plural(dif.added.length, 'new card') + '</button>' : '')
+                + (dif.changed.length ? '<button type="button" class="ff-btn' + (dif.added.length ? '' : ' ff-btn--primary') + '" data-merge="all">' + (dif.added.length ? 'Add them and take the changes' : 'Take the ' + plural(dif.changed.length, 'change')) + '</button>' : '')
+                + '<a class="ff-btn" href="#/deck/' + encodeURIComponent(mine.id) + '">Open my deck</a></div>'
+              : '<p>It has nothing your deck does not already have.</p><div class="ff-actions"><a class="ff-btn ff-btn--primary" href="#/deck/' + encodeURIComponent(mine.id) + '">Open my deck</a></div>')
+            + '</div>';
+        }
         host.innerHTML = backBar('#/', 'My decks')
           + '<header class="ff-deck-head"><span class="ff-pill">Shared with you</span><h1>' + esc(deck.title) + '</h1>'
           + (deck.desc ? '<p class="ff-deck-desc">' + esc(deck.desc) + '</p>' : '')
-          + '<div class="ff-deck-meta">' + plural(deck.cards.length, 'card') + '</div></header>'
-          + '<div class="ff-actions"><button type="button" class="ff-btn ff-btn--primary ff-btn--big" data-save>Save to my decks</button></div>'
+          + '<div class="ff-deck-meta">' + (maker ? 'Made by <b class="ff-maker">' + esc(maker) + '</b>' + (deck.sharedBy ? ', shared by ' + esc(deck.sharedBy) : '') + ' · ' : (deck.sharedBy ? 'Shared by ' + esc(deck.sharedBy) + ' · ' : '')) + plural(deck.cards.length, 'card') + '</div></header>'
+          + merge
+          + '<div class="ff-actions"><button type="button" class="ff-btn' + (mine ? '' : ' ff-btn--primary ff-btn--big') + '" data-save>' + (mine ? 'Save as a separate copy' : 'Save to my decks') + '</button></div>'
           + '<div class="ff-list">' + deck.cards.slice(0, 200).map(function (c) {
-            return '<div class="ff-row"><div class="ff-row-term">' + fmt(c.term) + '</div><div class="ff-row-def">' + fmt(c.def) + '</div></div>';
+            return '<div class="ff-row"><div class="ff-row-term">' + (newTerms[c.term] ? '<span class="ff-tag ff-tag--new">New</span> ' : '') + fmt(c.term) + '</div><div class="ff-row-def">' + fmt(c.def) + '</div></div>';
           }).join('') + '</div>'
           + (deck.cards.length > 200 ? '<p class="ff-muted">…and ' + (deck.cards.length - 200) + ' more.</p>' : '');
-        $('[data-save]', host).onclick = function () {
-          F.putDeck(deck);
-          toast('Saved to your decks');
-          history.replaceState(null, '', location.pathname + '#/deck/' + encodeURIComponent(deck.id));
+        host.onclick = function (e) {
+          var t = e.target.closest('[data-save],[data-merge]');
+          if (!t) return;
+          if (t.hasAttribute('data-save')) {
+            F.putDeck(deck);
+            toast('Saved to your decks');
+            history.replaceState(null, '', location.pathname + '#/deck/' + encodeURIComponent(deck.id));
+            render();
+            return;
+          }
+          var res = F.mergeInto(mine, deck, { takeChanges: t.dataset.merge === 'all' });
+          F.putDeck(mine);
+          toast('Added ' + plural(res.added, 'card') + (res.changed ? ', updated ' + res.changed : ''));
+          history.replaceState(null, '', location.pathname + '#/deck/' + encodeURIComponent(mine.id));
           render();
         };
+        setView({ cleanup: function () { host.onclick = null; } });
       }).catch(function (err) {
         host.innerHTML = '<div class="ff-empty"><h2>This link did not open</h2><p>' + esc(err && err.message && err.message.length < 140 ? err.message : 'It may have been cut short when it was copied. Ask for the link again.') + '</p><a class="ff-btn ff-btn--primary" href="#/">My decks</a></div>';
       });
@@ -545,7 +628,7 @@
     /* ── Editor ──────────────────────────────────────────────────────── */
 
     function viewNew() {
-      var deck = F.newDeck({ title: '', cards: [{}, {}, {}] });
+      var deck = F.newDeck({ title: '', cards: [{}, {}, {}], author: myName() });
       deck._unsaved = true;
       viewEdit(deck);
     }
@@ -803,7 +886,7 @@
             go('#/deck/' + encodeURIComponent(into.id) + '/edit');
           } else {
             var title = ($('#ffNewTitle', host) || {}).value || aiTitle || 'Imported deck';
-            var d = F.newDeck({ title: title.trim() || 'Imported deck', cards: found });
+            var d = F.newDeck({ title: title.trim() || 'Imported deck', cards: found, author: myName() });
             F.putDeck(d);
             toast('Created “' + d.title + '”');
             go('#/deck/' + encodeURIComponent(d.id));
@@ -927,13 +1010,13 @@
         decks.forEach(function (d) { d.cards.forEach(function (c) { if (c.s && c.s.due && c.s.state !== 'new' && (nextDue == null || c.s.due < nextDue)) nextDue = c.s.due; }); });
         var streak = F.streak();
         stage.innerHTML = '<div class="ff-finish">'
-          + '<div class="ff-finish-ico" aria-hidden="true">' + (done ? '🎉' : '✨') + '</div>'
+          + '<div class="ff-finish-ico" aria-hidden="true">' + (done ? ICON.party : ICON.checkCircle) + '</div>'
           + '<h2>' + (done ? 'Done for now' : 'Nothing due right now') + '</h2>'
-          + (done ? '<p>You reviewed ' + plural(done, 'card') + (again ? ', and ' + again + ' will come back sooner' : '') + '.</p>' : '<p>Every card is scheduled for later. Come back when they are due, or practise another way.</p>')
+          + (done ? '<p>You reviewed ' + plural(done, 'card') + (again ? ', and ' + again + ' will come back sooner' : '') + '.</p>' : '<p>Every card is scheduled for later. Come back when they are due, or practice another way.</p>')
           + (streak ? '<p class="ff-flame-line">' + ICON.flame + ' ' + plural(streak, 'day') + ' in a row</p>' : '')
           + (nextDue ? '<p class="ff-muted">Next review: ' + (nextDue - Date.now() < F.DAY ? 'in ' + F.fmtWait(Math.max(F.MIN, nextDue - Date.now())) : new Date(nextDue).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })) + '</p>' : '')
           + '<div class="ff-actions ff-actions--center">'
-          + (deck ? '<a class="ff-btn ff-btn--primary" href="#/deck/' + encodeURIComponent(deck.id) + '/cards">Practise with flashcards</a><a class="ff-btn" href="#/deck/' + encodeURIComponent(deck.id) + '/test">Take a practice test</a>' : '')
+          + (deck ? '<a class="ff-btn ff-btn--primary" href="#/deck/' + encodeURIComponent(deck.id) + '/cards">Practice with flashcards</a><a class="ff-btn" href="#/deck/' + encodeURIComponent(deck.id) + '/test">Take a practice test</a>' : '')
           + '<a class="ff-btn" href="' + exitHref + '">' + (deck ? 'Back to deck' : 'All decks') + '</a></div></div>';
       }
 
@@ -1032,7 +1115,7 @@
       }
       function roundEnd() {
         var all = known.length + learning.length;
-        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">' + (learning.length ? '💪' : '🎉') + '</div>'
+        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">' + (learning.length ? ICON.target : ICON.party) + '</div>'
           + '<h2>' + (learning.length ? 'You know ' + known.length + ' of ' + all : 'You know all ' + all + '!') + '</h2>'
           + '<div class="ff-donut" style="--p:' + (all ? Math.round(known.length / all * 100) : 0) + '"><span>' + (all ? Math.round(known.length / all * 100) : 0) + '%</span></div>'
           + '<div class="ff-actions ff-actions--center">'
@@ -1158,7 +1241,7 @@
         stage.innerHTML = '<div class="ff-finish"><div class="ff-donut" style="--p:' + pct + '"><span>' + pct + '%</span></div>'
           + '<h2>' + right + ' of ' + round.length + ' right</h2>'
           + '<div class="ff-actions ff-actions--center">'
-          + (missed.length ? '<button type="button" class="ff-btn ff-btn--primary" data-missed>Practise the ' + plural(missed.length, 'one') + ' you missed</button>' : '')
+          + (missed.length ? '<button type="button" class="ff-btn ff-btn--primary" data-missed>Practice the ' + plural(missed.length, 'one') + ' you missed</button>' : '')
           + '<button type="button" class="ff-btn" data-restart>Start over</button></div></div>';
       }
       host.onclick = function (e) {
@@ -1265,7 +1348,7 @@
       function intro() {
         clearInterval(timer);
         clock.textContent = '0.0s';
-        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">⏱️</div><h2>Match every term to its definition</h2>'
+        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">' + ICON.timer + '</div><h2>Match every term to its definition</h2>'
           + '<p class="ff-muted">As fast as you can. A wrong pair adds a second.' + (deck.bestMatch ? ' Your best: <b>' + (deck.bestMatch / 1000).toFixed(1) + 's</b>' : '') + '</p>'
           + '<button type="button" class="ff-btn ff-btn--primary ff-btn--big" data-go>Start</button></div>';
       }
@@ -1302,7 +1385,7 @@
         clock.textContent = (ms / 1000).toFixed(1) + 's';
         var best = !deck.bestMatch || ms < deck.bestMatch;
         if (best) { deck.bestMatch = ms; F.putDeck(deck); }
-        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">' + (best ? '🏆' : '✅') + '</div>'
+        stage.innerHTML = '<div class="ff-finish"><div class="ff-finish-ico" aria-hidden="true">' + (best ? ICON.trophy : ICON.checkCircle) + '</div>'
           + '<h2>' + (ms / 1000).toFixed(1) + ' seconds</h2><p>' + (best ? 'A new best for this deck!' : 'Your best is ' + (deck.bestMatch / 1000).toFixed(1) + 's.') + '</p>'
           + '<button type="button" class="ff-btn ff-btn--primary ff-btn--big" data-go>Play again</button></div>';
       }

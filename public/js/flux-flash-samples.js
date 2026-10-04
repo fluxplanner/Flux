@@ -14,7 +14,7 @@
       id: 'ib-command-terms',
       title: 'IB command terms',
       desc: 'What each command term in a DP question asks you to do.',
-      emoji: '🎓',
+      icon: 'grad',
       cards: rows([
         'Analyse|Break down in order to bring out the essential elements or structure.',
         'Calculate|Obtain a numerical answer showing the relevant stages in the working.',
@@ -38,7 +38,7 @@
       id: 'spanish-verbs',
       title: 'Spanish: 20 everyday verbs',
       desc: 'The verbs you will meet in almost every sentence.',
-      emoji: '🇪🇸',
+      icon: 'langs',
       termLang: 'es-ES',
       defLang: 'en-US',
       cards: rows([
@@ -68,7 +68,7 @@
       id: 'chem-first-20',
       title: 'Chemistry: the first 20 elements',
       desc: 'Element names and symbols, hydrogen to calcium.',
-      emoji: '⚗️',
+      icon: 'flask',
       cards: rows([
         'Hydrogen|H', 'Helium|He', 'Lithium|Li', 'Beryllium|Be', 'Boron|B',
         'Carbon|C', 'Nitrogen|N', 'Oxygen|O', 'Fluorine|F', 'Neon|Ne',
@@ -80,7 +80,7 @@
       id: 'bio-organelles',
       title: 'Biology: cell organelles',
       desc: 'What each part of a cell does.',
-      emoji: '🧬',
+      icon: 'dna',
       cards: rows([
         'Nucleus|Contains the cell\'s DNA and controls its activities.',
         'Mitochondrion|Site of aerobic respiration, which releases energy as ATP.',
@@ -100,7 +100,7 @@
       id: 'physics-si',
       title: 'Physics: SI units',
       desc: 'Each quantity and the unit it is measured in.',
-      emoji: '⚛️',
+      icon: 'atom',
       cards: rows([
         'Force|newton (N)', 'Energy|joule (J)', 'Power|watt (W)', 'Pressure|pascal (Pa)',
         'Frequency|hertz (Hz)', 'Electric charge|coulomb (C)', 'Potential difference|volt (V)',
@@ -112,7 +112,7 @@
       id: 'capitals',
       title: 'World capitals',
       desc: 'The ones people most often get wrong.',
-      emoji: '🌍',
+      icon: 'globe',
       cards: rows([
         'Australia|Canberra', 'Canada|Ottawa', 'Brazil|Brasília', 'Turkey|Ankara', 'Nigeria|Abuja',
         'Switzerland|Bern', 'New Zealand|Wellington', 'Pakistan|Islamabad', 'Morocco|Rabat',

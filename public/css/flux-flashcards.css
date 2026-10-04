@@ -302,7 +302,11 @@ select.ff-input { cursor: pointer; }
 .ff-feedback .ff-link { align-self: flex-start; }
 
 .ff-finish { max-width: 560px; margin: 24px auto; padding: 30px 22px; text-align: center; border: 1px solid var(--border); border-radius: 22px; background: var(--card); }
-.ff-finish-ico { font-size: 2.6rem; line-height: 1; margin-bottom: 10px; }
+.ff-finish-ico { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 20px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ff-finish-ico svg { width: 30px; height: 30px; }
+.ff-sample-title { display: flex; align-items: flex-start; gap: 10px; }
+.ff-sample-ico { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ff-sample-ico svg { width: 18px; height: 18px; }
 .ff-finish h2 { font-size: 1.5rem; margin-bottom: 6px; }
 .ff-finish p { margin: 6px 0; }
 .ff-flame-line { display: inline-flex; align-items: center; gap: 6px; color: #fb923c; font-weight: 800; }
@@ -409,6 +413,15 @@ html[data-flux-theme] .ff-modal { background: var(--bg2, #121826); }
 .ff-modal h2 { font-size: 1.2rem; margin-bottom: 8px; }
 .ff-modal p { margin: 0 0 12px; font-size: .9rem; }
 .ff-share-row { display: flex; gap: 8px; }
+.ff-name-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: .82rem; font-weight: 700; color: var(--muted2); }
+.ff-collab { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.03); }
+.ff-collab b { font-size: .9rem; }
+.ff-collab p { margin: 4px 0 0; font-size: .84rem; }
+.ff-small { font-size: .8rem; margin: 10px 0 0 !important; }
+.ff-maker { color: var(--text); }
+.ff-merge { padding: 16px 18px; margin-bottom: 14px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: var(--ff-radius); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.ff-merge p { margin: 6px 0 12px; color: var(--muted2); }
+.ff-merge .ff-actions { margin: 0; }
 .ff-share-row .ff-input { font-size: .82rem; }
 .ff-modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .ff-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 80; padding: 10px 16px; border-radius: 12px; background: #1b2436; color: #eaf1ff; font-weight: 700; font-size: .9rem; box-shadow: 0 14px 34px -14px #000; transform: translate(-50%, 16px); opacity: 0; transition: transform .25s ease, opacity .25s ease; max-width: calc(100vw - 32px); }

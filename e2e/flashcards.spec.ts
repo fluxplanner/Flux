@@ -98,21 +98,50 @@ test.describe('Flux Flashcards', () => {
     await expect(page.locator('.ff-row-term')).toHaveText(['perro', 'gato', 'casa']);
   });
 
-  test('a share link opens on another device and copies the deck', async ({ page, browser }) => {
-    await addSample(page, 'physics-si');
+  test('a share link names its creator, and a friend\'s edits merge back', async ({ page, browser }) => {
+    // The teacher makes a deck and shares it.
+    await page.goto('/flashcards.html#/new');
+    await page.locator('[name="title"]').fill('Verbs');
+    const term = page.locator('textarea[data-f="term"]').first();
+    await term.fill('hablar');
+    await term.press('Enter');
+    await page.keyboard.type('to speak');
+    await page.locator('[data-done]').click();
     await page.locator('[data-act="share"]').click();
-    const url = await page.locator('.ff-modal input').inputValue();
-    expect(url).toMatch(/#share=[zj][A-Za-z0-9_-]+$/);
+    await page.locator('[data-name]').fill('Ms Rivera');
+    await expect(page.locator('[data-url]')).toHaveValue(/#share=[zj][A-Za-z0-9_-]+$/);
+    await page.waitForTimeout(400);
+    const url = await page.locator('[data-url]').inputValue();
 
+    // A student opens it on their own device, sees who made it, and saves it.
     const other = await browser.newContext();
     const p2 = await other.newPage();
     await p2.goto(url);
-    await expect(p2.locator('.ff-deck-head h1')).toHaveText('Physics: SI units');
-    await expect(p2.locator('.ff-row')).toHaveCount(12);
+    await expect(p2.locator('.ff-deck-head h1')).toHaveText('Verbs');
+    await expect(p2.locator('.ff-maker')).toHaveText('Ms Rivera');
     await p2.locator('[data-save]').click();
-    await expect(p2).toHaveURL(/#\/deck\//);
-    expect(await store(p2)).toHaveLength(1);
+    await expect(p2.locator('.ff-maker')).toHaveText('Ms Rivera');
+
+    // They add a card and send their copy back.
+    await p2.evaluate(() => localStorage.setItem('flux_flash_prefs_v1', JSON.stringify({ myName: 'Sam' })));
+    await p2.locator('a[href$="/edit"]').click();
+    await p2.locator('[data-add]').click();
+    await p2.locator('textarea[data-f="term"]').last().fill('comer');
+    await p2.locator('textarea[data-f="def"]').last().fill('to eat');
+    await p2.locator('[data-done]').click();
+    await p2.locator('[data-act="share"]').click();
+    await expect(p2.locator('[data-url]')).toHaveValue(/#share=/);
+    const back = await p2.locator('[data-url]').inputValue();
     await other.close();
+
+    // The teacher opens it: still made by them, shared by Sam, one new card to add.
+    await page.goto(back);
+    await expect(page.locator('.ff-maker')).toHaveText('Ms Rivera');
+    await expect(page.locator('.ff-deck-meta')).toContainText('shared by Sam');
+    await expect(page.locator('.ff-merge')).toContainText('1 new card');
+    await page.locator('[data-merge="add"]').click();
+    await expect(page.locator('.ff-row')).toHaveCount(2);
+    expect(await store(page)).toHaveLength(1);
   });
 
   test('Write accepts a typo, and Match can be won', async ({ page }) => {
