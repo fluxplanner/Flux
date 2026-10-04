@@ -6528,7 +6528,8 @@ function saveTeacherSchoolInfo(){
     department:(document.getElementById('tsiDepartment')?.value||'').trim(),
     room:(document.getElementById('tsiRoom')?.value||'').trim(),
     officeHours:(document.getElementById('tsiOfficeHours')?.value||'').trim(),
-    extension:(document.getElementById('tsiExtension')?.value||'').trim(),
+    // The phone extension field was removed (owner's call); keep any saved one.
+    extension:(loadTeacherSchoolInfo().extension||''),
     pronouns:(document.getElementById('tsiPronouns')?.value||'').trim(),
     website:(document.getElementById('tsiWebsite')?.value||'').trim(),
   };
@@ -6604,9 +6605,6 @@ function renderSchoolTeacher(){
         </div>
         <div class="mrow"><label for="tsiOfficeHours">Office / Prep hours</label>
           <input id="tsiOfficeHours" type="text" placeholder="e.g. Mon-Wed 3:00-4:00pm" value="${esc(info.officeHours||'')}">
-        </div>
-        <div class="mrow"><label for="tsiExtension">Phone extension</label>
-          <input id="tsiExtension" type="text" placeholder="e.g. x4521" value="${esc(info.extension||'')}">
         </div>
         <div class="mrow"><label for="tsiPronouns">Pronouns (optional)</label>
           <input id="tsiPronouns" type="text" placeholder="e.g. she / her" value="${esc(info.pronouns||'')}">
