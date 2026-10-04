@@ -1687,9 +1687,6 @@
         <div class="mrow"><label for="tsiOfficeHours">Office / prep hours</label>
           <input id="tsiOfficeHours" type="text" placeholder="Mon-Wed 3:00-4:00pm" value="${esc(info.officeHours || '')}">
         </div>
-        <div class="mrow"><label for="tsiExtension">Phone extension</label>
-          <input id="tsiExtension" type="text" value="${esc(info.extension || '')}">
-        </div>
         <div class="mrow"><label for="tsiPronouns">Pronouns (optional)</label>
           <input id="tsiPronouns" type="text" value="${esc(info.pronouns || '')}">
         </div>

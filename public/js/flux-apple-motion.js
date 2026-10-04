@@ -127,7 +127,9 @@ const PILL_GROUPS = [
   { host: '.class-tabs', item: '.class-tab', activeCls: 'active', shape: 'tab' },
   { host: '.efm-tabs', item: '.efm-tab', activeCls: 'active', shape: 'tab' },
   { host: '.ao-dir-tabs', item: '.ao-dir-tab', activeCls: 'active', shape: 'tab' },
-  { host: '.school-work-tabs', item: '.school-work-tab', activeCls: 'active', shape: 'pill' },
+  // In the sidebar it is a nav row like any other, so it gets the sidebar's highlight.
+  { host: '#sidebar .school-work-tabs', item: '.school-work-tab', activeCls: 'active', shape: 'rect' },
+  { host: '.school-work-tabs:not(#sidebar *)', item: '.school-work-tab', activeCls: 'active', shape: 'pill' },
   { host: '.ref-tool-tabs', item: '.ref-tool-tab', activeCls: 'active', shape: 'pill' },
 
   /* Study Tools' own two rows. The sub-tab strip inside a subject is
@@ -439,7 +441,10 @@ function syncPillGroup(group, opts) {
   document.querySelectorAll(group.host).forEach((host) => {
     if (!host || !host.isConnected) return;
     tagPillGroup(host, group);
-    const active = host.querySelector(activeSelector);
+    // Only a visible item. Staff mode marks the hidden classic "School" nav
+    // item active too, and the pill aimed at its empty box stayed behind on
+    // Dashboard while School info was open.
+    const active = Array.prototype.find.call(host.querySelectorAll(activeSelector), (el) => el.getClientRects().length > 0);
     if (active) placePill(host, active, group.shape, opts);
     else hidePill(host);
   });
