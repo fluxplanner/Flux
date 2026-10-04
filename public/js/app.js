@@ -3307,6 +3307,14 @@ const FLUX_NOTEBOOK_ENABLED=false;
    this flag, and any request already waiting is still shown. */
 const FLUX_COUNSELOR_CONTACT_ENABLED=false;
 window.fluxCounselorContactOn=()=>FLUX_COUNSELOR_CONTACT_ENABLED;
+/* Flux AI is paused (owner's call, 2026-10-04). The Flux AI tab was already
+   retired, but other doors still led to it: AI commands in the ⌘K palette,
+   the Sunday review banner, the quick-add "Flux AI" link, the College Prep
+   activity advisor and the AI schedule reader in setup. They all stay hidden
+   until this is true again. */
+const FLUX_AI_ENABLED=false;
+window.fluxAiOn=()=>FLUX_AI_ENABLED;
+document.documentElement.classList.toggle('flux-no-ai',!FLUX_AI_ENABLED);
 // Hides data-needs-counselor-links (the counselor's "Students" entry).
 document.documentElement.classList.toggle('flux-no-counselor-contact',!FLUX_COUNSELOR_CONTACT_ENABLED);
 /* Page lines in index.html that list what these paused features add carry
@@ -11775,7 +11783,7 @@ function applyObRoleView(){
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Where you work, so Flux can set up your staff workspace.');
     setText('obStep4Title','Your Schedule');
-    setText('obStep4Sub','Upload a PDF or photo of your teaching schedule and AI reads it. Or skip and add periods later.');
+    setText('obStep4Sub',FLUX_AI_ENABLED?'Upload a PDF or photo of your teaching schedule and AI reads it. Or skip and add periods later.':'Add the periods you teach below, or skip and add them later in School info.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you work?');
     setText('obStep5Sub','Flux tailors reminders and your workboard to how you like to plan.');
@@ -11786,7 +11794,7 @@ function applyObRoleView(){
     setText('obStep3Title','Your School');
     setText('obStep3Sub','Tell us where you go so Flux can personalize your experience.');
     setText('obStep4Title','Your Schedule');
-    setText('obStep4Sub','Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.');
+    setText('obStep4Sub',FLUX_AI_ENABLED?'Upload a PDF or photo of your schedule — we show each PDF page, then AI reads it. Or skip and add classes manually.':'Add your classes below, or skip and add them later in School Info.');
     setText('obStep5Emoji','');
     setText('obStep5Title','How do you study?');
     setText('obStep5Sub','Flux uses this to pace your study goal and suggestions to how you learn best.');
@@ -13143,6 +13151,7 @@ function renderCmdResults(){
     };
     cmds.sort((a,b)=>tier(a)-tier(b));
   }
+  if(!FLUX_AI_ENABLED)cmds=cmds.filter(c=>c.cat!=='Flux AI'&&!/\bFlux AI\b|^AI:|\(AI\)/.test(String(c.label||'')));
   if(!cmds.length){res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">No results</div>';return;}
   
   // Group by cat
@@ -19037,7 +19046,7 @@ function checkTomorrowLoad(){
 // ── Feature: Weekly review digest (every Sunday) ──
 function checkWeeklyReview(){
   try{
-    if(new Date().getDay()!==0)return;
+    if(new Date().getDay()!==0||!FLUX_AI_ENABLED)return;
     const lastReview=fluxLoadStoredString('flux_last_weekly_review','');
     if(lastReview===todayStr())return;
     fluxSaveStoredString('flux_last_weekly_review',todayStr());

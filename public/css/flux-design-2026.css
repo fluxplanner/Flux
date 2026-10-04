@@ -604,3 +604,9 @@ html.flux-lowend #app * { transition: none !important; }
   background: rgba(var(--accent-rgb), .08) !important;
   border-color: rgba(var(--accent-rgb), .35) !important;
 }
+
+/* Flux AI paused (FLUX_AI_ENABLED in app.js): hide what would lead to it. */
+.flux-no-ai .quick-add-agent-link,
+.flux-no-ai #ecAICard,
+.flux-no-ai #obScheduleImportRoot,
+.flux-no-ai #weeklyReviewBanner { display: none !important; }
