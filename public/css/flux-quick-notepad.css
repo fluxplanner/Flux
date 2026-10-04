@@ -4,7 +4,9 @@
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 1200;
+  /* Above the page and the phone's bottom bar, but under pop-ups and the
+     More sheet: at 1200 it sat on top of the New task form's buttons. */
+  z-index: calc(var(--flux-z-floating-panels, 400) + 1);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -32,7 +34,7 @@
   position: fixed;
   right: 18px;
   bottom: 70px;
-  z-index: 1201;
+  z-index: calc(var(--flux-z-floating-panels, 400) + 2);
   width: min(360px, calc(100vw - 36px));
   display: flex;
   flex-direction: column;
