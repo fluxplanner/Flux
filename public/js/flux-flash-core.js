@@ -450,26 +450,68 @@
     for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
   }
-  /** Only what someone else needs: no progress, no ids. */
-  function sharePayload(deck) {
+  /**
+   * Only what someone else needs: no progress. `o` is the original deck's id
+   * and `a` its creator, both carried unchanged through every re-share, so a
+   * copy of a copy still names who made it and can be merged back into the
+   * original. `by` is whoever sent this link.
+   */
+  function sharePayload(deck, sharer) {
     var p = { t: deck.title || 'Flashcards', c: (deck.cards || []).map(function (c) { return [c.term, c.def]; }) };
     if (deck.desc) p.d = deck.desc;
     if (deck.termLang) p.tl = deck.termLang;
     if (deck.defLang) p.dl = deck.defLang;
+    p.o = (deck.origin && deck.origin.id) || deck.id;
+    var maker = (deck.origin && deck.origin.author) || deck.author || sharer || '';
+    if (maker) p.a = String(maker).slice(0, 80);
+    if (sharer && sharer !== maker) p.by = String(sharer).slice(0, 80);
     return p;
   }
   function fromSharePayload(p) {
     if (!p || !Array.isArray(p.c)) throw new Error('Not a Flux deck');
-    return newDeck({
+    var d = newDeck({
       title: String(p.t || 'Shared deck').slice(0, 120),
       desc: p.d ? String(p.d).slice(0, 500) : '',
       termLang: p.tl || '', defLang: p.dl || '',
       cards: p.c.slice(0, 2000).map(function (r) { return { term: String(r[0] || ''), def: String(r[1] || '') }; }),
     });
+    if (p.o) d.origin = { id: String(p.o).slice(0, 64), author: p.a ? String(p.a).slice(0, 80) : '' };
+    if (p.by) d.sharedBy = String(p.by).slice(0, 80);
+    return d;
+  }
+  /** Who made a deck, for "Made by …". */
+  function creator(deck) { return (deck && ((deck.origin && deck.origin.author) || deck.author)) || ''; }
+  /** My deck that this shared one is a version of: the original, or another copy of it. */
+  function relatedDeck(shared, list) {
+    var o = shared.origin && shared.origin.id;
+    if (!o) return null;
+    return (list || []).filter(function (d) { return !d.deleted && (d.id === o || (d.origin && d.origin.id === o)); })[0] || null;
+  }
+  function termKey(s) { return norm(s, true); }
+  /** What a returned copy would change: cards it adds, and cards whose definition it rewrote. */
+  function diffDecks(mine, theirs) {
+    var byTerm = {};
+    (mine.cards || []).forEach(function (c) { byTerm[termKey(c.term)] = c; });
+    var added = [], changed = [];
+    (theirs.cards || []).forEach(function (c) {
+      var k = termKey(c.term);
+      if (!k) return;
+      var m = byTerm[k];
+      if (!m) added.push(c);
+      else if (String(m.def).trim() !== String(c.def).trim()) changed.push({ card: m, def: c.def });
+    });
+    return { added: added, changed: changed };
+  }
+  /** Bring a returned copy into my deck. Progress on cards I already had is kept. */
+  function mergeInto(mine, theirs, opts) {
+    var dif = diffDecks(mine, theirs);
+    dif.added.forEach(function (c) { mine.cards.push(newCard({ term: c.term, def: c.def })); });
+    if (opts && opts.takeChanges) dif.changed.forEach(function (x) { x.card.def = x.def; });
+    return { added: dif.added.length, changed: opts && opts.takeChanges ? dif.changed.length : 0 };
   }
   /** "j" + base64url(JSON). The page compresses when it can ("z" prefix). */
-  function encodeShare(deck) {
-    var json = JSON.stringify(sharePayload(deck));
+  function encodeShare(deck, sharer) {
+    var json = JSON.stringify(sharePayload(deck, sharer));
     return 'j' + b64urlFromBytes(new TextEncoder().encode(json));
   }
   function decodeShare(code) {
@@ -492,6 +534,7 @@
       termLang: d.termLang || '',
       defLang: d.defLang || '',
       examAt: d.examAt || null,
+      author: d.author || '',
       created: now,
       updated: now,
       cards: (d.cards || []).map(newCard),
@@ -626,6 +669,7 @@
     parseImport: parseImport, detectSep: detectSep, SEPS: SEPS,
     buildTest: buildTest, gradeTest: gradeTest, matchTiles: matchTiles,
     sharePayload: sharePayload, fromSharePayload: fromSharePayload,
+    creator: creator, relatedDeck: relatedDeck, diffDecks: diffDecks, mergeInto: mergeInto,
     encodeShare: encodeShare, decodeShare: decodeShare,
     b64urlFromBytes: b64urlFromBytes, bytesFromB64url: bytesFromB64url,
     newDeck: newDeck, newCard: newCard,

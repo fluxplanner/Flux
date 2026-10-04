@@ -190,3 +190,27 @@ test('the streak counts consecutive study days', () => {
   assert.equal(F.streak({ days: { [day(1)]: 1, [day(2)]: 1 } }, T0), 2, 'not yet today is not a break');
   assert.equal(F.streak({ days: {} }, T0), 0);
 });
+
+test('a re-shared copy keeps its creator, and its changes merge back', () => {
+  const mine = F.newDeck({ title: 'Verbs', author: 'Ms Rivera', cards: [{ term: 'hablar', def: 'to speak' }, { term: 'comer', def: 'to eat' }] });
+  mine.cards[0].s = { state: 'review', S: 12 };
+  // A student opens the teacher's link, edits their copy, and shares it on.
+  const copy = F.decodeShare(F.encodeShare(mine, 'Ms Rivera'));
+  assert.equal(F.creator(copy), 'Ms Rivera');
+  copy.cards.push(F.newCard({ term: 'vivir', def: 'to live' }));
+  copy.cards[1].def = 'to eat (a meal)';
+  const back = F.decodeShare(F.encodeShare(copy, 'Sam'));
+  assert.equal(F.creator(back), 'Ms Rivera', 'still the original creator');
+  assert.equal(back.sharedBy, 'Sam');
+  assert.equal(F.relatedDeck(back, [mine]), mine, 'recognised as a version of my deck');
+
+  const dif = F.diffDecks(mine, back);
+  assert.equal(dif.added.length, 1);
+  assert.equal(dif.changed.length, 1);
+  const res = F.mergeInto(mine, back, { takeChanges: true });
+  assert.deepEqual(plain(res), { added: 1, changed: 1 });
+  assert.equal(mine.cards.length, 3);
+  assert.equal(mine.cards[1].def, 'to eat (a meal)');
+  assert.equal(mine.cards[0].s.S, 12, 'progress kept');
+  assert.equal(F.relatedDeck(F.newDeck({ title: 'x' }), [mine]), null);
+});

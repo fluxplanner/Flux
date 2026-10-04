@@ -10944,9 +10944,12 @@ async function syncFromCloud(){
  */
 async function refreshPlatformBroadcast(){
   try{
+    // syncFromCloud() awaits this, and sign-in awaits that: a fetch with no
+    // time limit meant a slow Supabase left the whole app stuck on "syncing".
     const res=await fetch(`${SB_URL}/rest/v1/platform_settings?key=eq.broadcast&select=value`,{
       headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON},
       cache:'no-store',
+      signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(6000):undefined,
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const rows=await res.json();
@@ -13614,6 +13617,28 @@ async function initAuth(){
     return;
   }
   initOAuthPostMessageListener();
+  /* Never a blank screen. Sign-in waits on the network (the session read can
+     refresh its token, and the account pull follows), and when Supabase is
+     slow those calls can hang with nothing on screen. After 8s, show what this
+     device already has: the planner from local data for a stored session, or
+     the sign-in screen. Whatever finishes later still lands normally. */
+  setTimeout(()=>{
+    try{
+      if(window.__fluxIsOAuthPopupTab)return;
+      const shown=id=>{const el=document.getElementById(id);return !!(el&&el.classList.contains('visible'));};
+      if(shown('app')||shown('loginScreen')||shown('onboarding')||document.getElementById('fluxOfflineOverlay'))return;
+      const sp=document.getElementById('splash');if(sp){sp.style.display='none';sp.innerHTML='';}
+      let stored=null;
+      try{stored=JSON.parse(localStorage.getItem('sb-lfigdijuqmbensebnevo-auth-token')||'null');}catch(_){}
+      if(stored&&stored.user&&stored.user.id){
+        if(!currentUser){currentUser=stored.user;window.currentUser=stored.user;}
+        showApp();
+        if(typeof showToast==='function')showToast('Still connecting — showing what is saved on this device.','info',6000);
+      }else{
+        showLoginScreen();
+      }
+    }catch(e){console.warn('[Flux] boot watchdog',e);}
+  },8000);
   try{
     const hash=window.location.hash;
     const params=new URLSearchParams(window.location.search);
@@ -13645,12 +13670,19 @@ async function initAuth(){
 
     const isOAuthCallback=!isEmailLink&&(hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup);
 
+    /* The reachability ping runs alongside the session read instead of in
+       front of it: a signed-in student's session is already on the device, and
+       waiting a network round trip (up to 3s) before even looking at it made
+       every open slower. Nothing waits for the answer: it only sets the flag
+       the health panel reads, and sign-in is allowed either way. */
     if(!isOAuthCallback&&!isEmailLink){
-      const reach=await pingSupabaseReachable(sb);
-      window.__fluxSupabaseReachable=!!(reach&&reach.ok);
-      if(!reach.ok&&reach.reason==='offline'){
-        console.warn('[Flux] Supabase unreachable at startup — login still allowed');
-      }
+      pingSupabaseReachable(sb).then(reach=>{
+        window.__fluxSupabaseReachable=!!(reach&&reach.ok);
+        if(!reach.ok&&reach.reason==='offline'){
+          console.warn('[Flux] Supabase unreachable at startup — login still allowed');
+        }
+        return reach;
+      });
     }else{
       window.__fluxSupabaseReachable=true;
     }
@@ -14129,7 +14161,7 @@ async function handleSignedIn(user,session){
       sessionStorage.setItem('flux_gmail_token',session.provider_token);
     }
     try{
-      if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')await FluxGoogle.afterSignIn(session);
+      if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')Promise.resolve(FluxGoogle.afterSignIn(session)).catch(()=>{}); // network: Gmail, Google Tasks, Canvas check — never hold the app for it
     }catch(_){}
     try{
       if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){
@@ -14326,7 +14358,7 @@ async function handleSignedIn(user,session){
     sessionStorage.setItem('flux_gmail_token',session.provider_token);
   }
   try{
-    if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')await FluxGoogle.afterSignIn(session);
+    if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')Promise.resolve(FluxGoogle.afterSignIn(session)).catch(()=>{}); // network: Gmail, Google Tasks, Canvas check — never hold the app for it
   }catch(_){}
   try{
     if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){

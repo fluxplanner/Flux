@@ -113,23 +113,45 @@ function runShortSplash(callback){
       @keyframes splashFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
       @keyframes fluxLaserGrow{from{width:0}to{width:100%}}
     </style>`;
-  const dur=reduce?600:1100;
-  setTimeout(()=>{
-    splash.style.transition='opacity .38s cubic-bezier(.22,1,.36,1)';
+  /* Start signing in now, behind the splash, rather than after it. This used
+     to hold a fixed 1.5s before initAuth() even began, so every open paid the
+     animation and then the sign-in on top. Now the splash lifts as soon as
+     there is something to show (the app, the login screen, onboarding or the
+     offline notice), and never later than 9s (the boot watchdog in initAuth shows something by 8s). */
+  const runId=String(Date.now())+Math.random();
+  splash.dataset.run=runId;
+  const started=performance.now();
+  const MIN_MS=reduce?0:350, MAX_MS=9000;
+  const visible=(id,cls)=>{const el=document.getElementById(id);if(!el)return false;if(cls&&!el.classList.contains(cls))return false;return el.style.display!=='none'&&el.offsetWidth>0;};
+  const ready=()=>visible('app','visible')||visible('loginScreen','visible')||visible('onboarding','visible')||!!document.getElementById('fluxOfflineOverlay');
+  let lifted=false;
+  const lift=()=>{
+    if(lifted||splash.dataset.run!==runId)return;
+    lifted=true;
+    splash.style.transition='opacity .3s cubic-bezier(.22,1,.36,1)';
     splash.style.opacity='0';
     setTimeout(()=>{
+      // A cinematic intro may have taken the splash over meanwhile; leave it alone.
+      if(splash.dataset.run!==runId)return;
       splash.style.display='none';
       splash.innerHTML='';
       splash.style.opacity='1';
-      callback();
-    },380);
-  },dur);
+    },300);
+  };
+  const watch=()=>{
+    if(lifted||splash.dataset.run!==runId)return;
+    const t=performance.now()-started;
+    if((t>=MIN_MS&&ready())||t>=MAX_MS)lift();
+    else setTimeout(watch,50);
+  };
+  setTimeout(()=>{try{callback();}catch(e){console.error(e);}watch();},0);
 }
 
 /** ~3s War Robots–inspired Flux intro: hyperspace → rings → logo → handoff */
 function runCinematicSplash(callback){
   const splash=document.getElementById('splash');
   if(!splash){callback();return;}
+  splash.dataset.run='cinematic';
   if(prefersReducedMotion()||isLikelyLowEndDevice()){
     runShortSplash(callback);
     return;

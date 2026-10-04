@@ -124,7 +124,9 @@
     state.inFlight = true;
     return fetch(SB_URL + '/rest/v1/platform_settings?key=eq.ui&select=value', {
       headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },
-      cache: 'no-store'
+      cache: 'no-store',
+      // Without a limit, a hung request kept inFlight set and blocked every later refresh.
+      signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(6000) : undefined
     })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
       .then(function (rows) {
