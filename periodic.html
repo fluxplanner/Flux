@@ -13,6 +13,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Periodic">
 
 <!--
   The standalone periodic table, made the way grapher.html is: no app
@@ -21,7 +23,7 @@
   Table inside the planner.
 -->
 <link rel="stylesheet" href="public/css/flux-ptable.css?v=68e3b6b4">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=c632108f">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=e475386e">
 <style>
   :root {
     --bg: #070b14;
@@ -129,6 +131,7 @@
     }
   }
 </style>
+<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
 </head>
 <body>
   <header class="top">
@@ -159,7 +162,7 @@
   <main id="ptHost" aria-label="Periodic table"></main>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=f2a74e4a"></script>
+  <script src="public/js/flux-hub.js?v=ceb0eaa0"></script>
   <script src="public/js/flux-periodic.js?v=a33c798e"></script>
   <script src="public/js/flux-ptable-data.js?v=8af848a3"></script>
   <script src="public/js/flux-chem.js?v=07de6a14"></script>

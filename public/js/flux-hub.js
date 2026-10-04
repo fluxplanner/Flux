@@ -87,7 +87,7 @@
         + '<span class="fxhub-item-mark" aria-hidden="true">' + p.mark + '</span>'
         + '<span class="fxhub-item-text">'
         + '<span class="fxhub-item-name">' + esc(p.name)
-        + (p.free ? '<span class="fxhub-free">free</span>' : '') + '</span>'
+        + '</span>'
         + '<span class="fxhub-item-tag">' + esc(p.tagline) + '</span>'
         + '</span>'
         + (here ? '<span class="fxhub-here">Open</span>' : '')

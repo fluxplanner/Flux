@@ -146,19 +146,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* Worth saying quietly: the grapher costs nothing and needs no account. */
-.fxhub-free {
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: .56rem;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #0a2e1f;
-  background: linear-gradient(135deg, #10d9a0, #4ade80);
-}
-
 .fxhub-here {
   font-size: .62rem;
   font-weight: 700;

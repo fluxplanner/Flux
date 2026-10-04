@@ -116,4 +116,23 @@ test.describe('Flux Hub', () => {
     await page.locator('.fxhub-btn:visible').click();
     await expect(page.locator('.fxhub-panel .fxhub-all')).toHaveAttribute('href', 'hub.html');
   });
+
+  test('the other apps wear the planner theme only when signed in', async ({ page }) => {
+    await page.goto('/hub.html');
+    const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    await page.evaluate(() => {
+      localStorage.setItem('flux_theme', '"ember"');
+      localStorage.setItem('flux_accent', '"#f97316"');
+      localStorage.setItem('flux_accent_rgb', '"249,115,22"');
+    });
+    await page.goto('/calculator.html');
+    expect(await accent(), 'signed out, the page should keep its own colours').toBe('#00c2ff');
+
+    await page.evaluate(() => localStorage.setItem('sb-test-auth-token', '{"x":1}'));
+    await page.goto('/calculator.html');
+    expect(await accent()).toBe('#f97316');
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 8, 4)');
+    await page.locator('.fxhub-btn:visible').click();
+    await expect(page.locator('.fxhub-free')).toHaveCount(0);
+  });
 });
