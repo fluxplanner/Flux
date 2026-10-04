@@ -13,6 +13,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flux Grapher">
 
 <!--
   The standalone grapher.
@@ -28,8 +30,8 @@
   inside the planner so both look the same.
 -->
 <link rel="stylesheet" href="public/css/flux-tex.css?v=b68bf637">
-<link rel="stylesheet" href="public/css/flux-grapher.css?v=cba22650">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=c632108f">
+<link rel="stylesheet" href="public/css/flux-grapher.css?v=6c863d54">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=e475386e">
 <style>
   /* No page margin when printing, so the browser has nowhere to put its own
      date, time and address; the print sheet pads itself instead. */
@@ -173,6 +175,7 @@
     * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
   }
 </style>
+<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
 </head>
 <body>
   <div class="wrap">
@@ -222,7 +225,7 @@
   </div>
 
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
-  <script src="public/js/flux-hub.js?v=f2a74e4a"></script>
+  <script src="public/js/flux-hub.js?v=ceb0eaa0"></script>
   <script src="public/js/flux-expr.js?v=e3f51ae5"></script>
   <script src="public/js/flux-lab-fit.js?v=da22f751"></script>
   <script src="public/js/flux-formula-typeset.js?v=4b6135e4"></script>
