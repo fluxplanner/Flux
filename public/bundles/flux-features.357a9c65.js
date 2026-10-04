@@ -1820,7 +1820,13 @@ ${B(p)}`}async function H(p,c,y){const s=typeof window.getSB=="function"?window.
           <div class="lh-stat"><div class="lh-stat-num">${N.reduce((se,te)=>se+(R[w(te.period)]&&R[w(te.period)].materials&&R[w(te.period)].materials.length||0),0)}</div><div class="lh-stat-lbl">Materials queued</div></div>
         </div>
 
-        ${N.length===0?`
+        ${N.length===0&&x.some(se=>se&&se.name)?(()=>{const se=new Date().getDay(),te=(()=>{try{return window.FluxNow?.cycleToday?.()||""}catch{return""}})(),de=se===0||se===6?"It\u2019s the weekend":te?`Nothing on your timetable meets on ${W(te)} Day`:"Nothing on your timetable meets today",be=x.filter(ae=>ae&&ae.name).slice().sort((ae,me)=>String(ae.periodLabel||ae.period).localeCompare(String(me.periodLabel||me.period)));return`
+          <div class="lh-empty">
+            <div class="lh-empty-icon"></div>
+            <div class="lh-empty-title">No classes today</div>
+            <div class="lh-empty-sub">${de}. Your ${be.length} class${be.length===1?"":"es"} show up here on the days they meet.</div>
+            <div class="lh-empty-sub" style="margin-top:8px">${be.map(ae=>`<b>${W(ae.periodLabel||"P"+ae.period)}</b> ${W(ae.name)}`).join(" \xB7 ")}</div>
+          </div>`})():N.length===0?`
           <div class="lh-empty">
             <div class="lh-empty-icon"></div>
             <div class="lh-empty-title">No classes yet</div>
