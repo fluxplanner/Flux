@@ -10944,9 +10944,12 @@ async function syncFromCloud(){
  */
 async function refreshPlatformBroadcast(){
   try{
+    // syncFromCloud() awaits this, and sign-in awaits that: a fetch with no
+    // time limit meant a slow Supabase left the whole app stuck on "syncing".
     const res=await fetch(`${SB_URL}/rest/v1/platform_settings?key=eq.broadcast&select=value`,{
       headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON},
       cache:'no-store',
+      signal:(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(6000):undefined,
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const rows=await res.json();
