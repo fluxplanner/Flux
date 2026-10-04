@@ -117,11 +117,11 @@ function runShortSplash(callback){
      to hold a fixed 1.5s before initAuth() even began, so every open paid the
      animation and then the sign-in on top. Now the splash lifts as soon as
      there is something to show (the app, the login screen, onboarding or the
-     offline notice), and never later than 6s. */
+     offline notice), and never later than 9s (the boot watchdog in initAuth shows something by 8s). */
   const runId=String(Date.now())+Math.random();
   splash.dataset.run=runId;
   const started=performance.now();
-  const MIN_MS=reduce?0:350, MAX_MS=6000;
+  const MIN_MS=reduce?0:350, MAX_MS=9000;
   const visible=(id,cls)=>{const el=document.getElementById(id);if(!el)return false;if(cls&&!el.classList.contains(cls))return false;return el.style.display!=='none'&&el.offsetWidth>0;};
   const ready=()=>visible('app','visible')||visible('loginScreen','visible')||visible('onboarding','visible')||!!document.getElementById('fluxOfflineOverlay');
   let lifted=false;

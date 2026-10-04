@@ -13617,6 +13617,28 @@ async function initAuth(){
     return;
   }
   initOAuthPostMessageListener();
+  /* Never a blank screen. Sign-in waits on the network (the session read can
+     refresh its token, and the account pull follows), and when Supabase is
+     slow those calls can hang with nothing on screen. After 8s, show what this
+     device already has: the planner from local data for a stored session, or
+     the sign-in screen. Whatever finishes later still lands normally. */
+  setTimeout(()=>{
+    try{
+      if(window.__fluxIsOAuthPopupTab)return;
+      const shown=id=>{const el=document.getElementById(id);return !!(el&&el.classList.contains('visible'));};
+      if(shown('app')||shown('loginScreen')||shown('onboarding')||document.getElementById('fluxOfflineOverlay'))return;
+      const sp=document.getElementById('splash');if(sp){sp.style.display='none';sp.innerHTML='';}
+      let stored=null;
+      try{stored=JSON.parse(localStorage.getItem('sb-lfigdijuqmbensebnevo-auth-token')||'null');}catch(_){}
+      if(stored&&stored.user&&stored.user.id){
+        if(!currentUser){currentUser=stored.user;window.currentUser=stored.user;}
+        showApp();
+        if(typeof showToast==='function')showToast('Still connecting — showing what is saved on this device.','info',6000);
+      }else{
+        showLoginScreen();
+      }
+    }catch(e){console.warn('[Flux] boot watchdog',e);}
+  },8000);
   try{
     const hash=window.location.hash;
     const params=new URLSearchParams(window.location.search);
