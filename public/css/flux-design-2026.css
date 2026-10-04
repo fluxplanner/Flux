@@ -457,6 +457,10 @@ body[data-theme="light"] #app * { scrollbar-color: rgba(15, 23, 42, .2) transpar
     right: auto !important;
     bottom: 112px !important;
   }
+  /* That foot is only empty on a tall screen. On a projector (1280×720) the
+     list runs under the button and Profile and Settings sat behind it, so
+     leave room at the end of the list to scroll them clear. */
+  body:not(.sidebar-collapsed) #sidebar .sidebar-nav { padding-bottom: 60px !important; }
 }
 
 /* ── Motion off ──────────────────────────────────────────────────────────── */
@@ -587,3 +591,16 @@ html.flux-lowend #app * { transition: none !important; }
    these hide the student ones. The owner's admin slot is left alone. */
 #moreSheet.more-sheet--edu .more-sheet-item[data-nav-tab]:not([data-edu-item]):not(#moreSheetAdminSlot *),
 #moreSheet.more-sheet--edu .more-sheet-item[data-action="book-counselor"] { display: none !important; }
+
+/* ── Light theme: outlined buttons ───────────────────────────────────────
+   These buttons draw their outline in see-through white, which is invisible
+   on the light theme's white cards: on a projector, Meeting note, Log PD,
+   Sub-plan template and Mark all present read as plain text. */
+[data-theme="light"] :is(.spdx-act, .lh-action-btn, .lh-att-btn, .lh-mat-btn, .cm-action-btn, .fluxw-btn-sec, .fluxw-pri-toggle) {
+  background: rgba(15, 23, 42, .04) !important;
+  border-color: rgba(15, 23, 42, .14) !important;
+}
+[data-theme="light"] :is(.spdx-act, .lh-action-btn, .lh-att-btn, .lh-mat-btn, .cm-action-btn, .fluxw-btn-sec, .fluxw-pri-toggle):hover {
+  background: rgba(var(--accent-rgb), .08) !important;
+  border-color: rgba(var(--accent-rgb), .35) !important;
+}
