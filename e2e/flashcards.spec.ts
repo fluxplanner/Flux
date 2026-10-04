@@ -58,6 +58,46 @@ test.describe('Flux Flashcards', () => {
     expect((await store(page))[0].cards.find((c: any) => c.term === 'Australia').s).toBeUndefined();
   });
 
+  test('Learn never walls you off: more new cards and a full review are always on offer', async ({ page }) => {
+    const deckUrl = await addSample(page, 'capitals');
+    // A small daily number, so the session ends early.
+    await page.evaluate(() => {
+      const st = JSON.parse(localStorage.getItem('flux_flash_decks_v1')!);
+      st.decks[0].newPerDay = 5;
+      localStorage.setItem('flux_flash_decks_v1', JSON.stringify(st));
+    });
+    await page.goto(deckUrl + '/learn');
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Space');
+      await page.keyboard.press('4');
+    }
+    await expect(page.locator('.ff-finish h2')).toHaveText('Done for now');
+    await page.locator('[data-more="new"]').click();
+    await expect(page.locator('.ff-scount')).toHaveText('10 to go');
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Space');
+      await page.keyboard.press('4');
+    }
+    await expect(page.locator('[data-more="new"]')).toHaveCount(0);
+    await page.locator('[data-more="all"]').click();
+    await expect(page.locator('.ff-scount')).toHaveText('15 to go');
+  });
+
+  test('decks can be deleted from the list and from the deck page', async ({ page }) => {
+    page.on('dialog', (d) => d.accept());
+    await addSample(page, 'capitals');
+    await page.goto('/flashcards.html#/');
+    await page.locator('[data-sample="physics-si"]').click();
+    await page.goto('/flashcards.html#/');
+    await expect(page.locator('.ff-deck')).toHaveCount(2);
+    await page.locator('.ff-deck-wrap', { hasText: 'World capitals' }).locator('[data-del]').click();
+    await expect(page.locator('.ff-deck')).toHaveCount(1);
+    await page.locator('.ff-deck').click();
+    await page.locator('[data-act="delete"]').click();
+    await expect(page).toHaveURL(/#\/$/);
+    expect(await store(page)).toHaveLength(0);
+  });
+
   test('typing an answer in Learn marks it and suggests a grade', async ({ page }) => {
     const deckUrl = await addSample(page, 'capitals');
     await page.goto(deckUrl + '/learn');

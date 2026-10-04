@@ -10,7 +10,7 @@ test.describe('Flux Composer', () => {
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/composer.html');
     await expect(page.locator('.fc-tile')).toHaveCount(30);
-    for (const tab of ['keyboard', 'scales', 'chords', 'harmony', 'intervals', 'rhythm', 'orchestra', 'terms', 'dp', 'keys']) {
+    for (const tab of ['keyboard', 'scales', 'chords', 'harmony', 'intervals', 'rhythm', 'beats', 'orchestra', 'terms', 'dp', 'keys']) {
       await page.locator(`.fc-tabs [data-tab="${tab}"]`).click();
       await expect(page.locator(`.fc-tabs [data-tab="${tab}"]`)).toHaveAttribute('aria-selected', 'true');
       await expect(page.locator('#fcBody .fc-card').first()).toBeVisible();
@@ -49,5 +49,48 @@ test.describe('Flux Composer', () => {
     await page.locator('#ivNew').click();
     await page.locator('[data-ans]').first().click();
     await expect(page.locator('.fc-pill', { hasText: 'Score' })).toContainText('/ 1');
+  });
+
+  test('the beat maker plays, takes clicks, travels as a link and downloads a WAV', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/composer.html#beats');
+    const steps = page.locator('#btGrid .fc-bt-step');
+    await expect(steps).toHaveCount(13 * 16);
+    // Boom bap loads first: a kick on step 1.
+    await expect(page.locator('[data-r="kick"][data-s="0"]')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('#btClear').click();
+    await expect(page.locator('#btGrid [aria-pressed="true"]')).toHaveCount(0);
+    await page.locator('[data-r="snare"][data-s="4"]').click();
+    await page.locator('[data-r="k0"][data-s="2"]').click();
+    await expect(page.locator('#btGrid [aria-pressed="true"]')).toHaveCount(2);
+
+    await page.locator('#btGo').click();
+    await expect(page.locator('#btGo')).toHaveText('■ Stop');
+    await expect(page.locator('#btGrid .is-now').first()).toBeAttached();
+    await page.locator('#btGo').click();
+    await expect(page.locator('#btGo')).toHaveText('▶ Play');
+
+    const link = page.url();
+    expect(link).toMatch(/#beats\/\d+-\d+-\d+-[mM]-[0-9a-f]{52}$/);
+    await page.goto('/composer.html#keys');
+    await page.goto(link);
+    await expect(page.locator('#btGrid [aria-pressed="true"]')).toHaveCount(2);
+    await expect(page.locator('[data-r="snare"][data-s="4"]')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('#btPreset').selectOption('House');
+    await expect(page.locator('#btBpmV')).toHaveText('124');
+    const [wav] = await Promise.all([page.waitForEvent('download'), page.locator('#btWav').click()]);
+    expect(wav.suggestedFilename()).toBe('flux-beat-124bpm.wav');
+    expect(errors).toEqual([]);
+  });
+
+  test('the beat maker fits a phone without sideways scrolling', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 760 });
+    await page.goto('/composer.html#beats');
+    await expect(page.locator('#btGrid')).toBeVisible();
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(over).toBeLessThanOrEqual(0);
   });
 });

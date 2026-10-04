@@ -300,13 +300,13 @@
     function deckTile(d) {
       var p = F.progress(d), due = F.dueCount(d);
       var seg = function (n, cls) { return n ? '<i class="' + cls + '" style="flex:' + n + '"></i>' : ''; };
-      return '<a class="ff-deck" href="#/deck/' + encodeURIComponent(d.id) + '">'
+      return '<div class="ff-deck-wrap"><a class="ff-deck" href="#/deck/' + encodeURIComponent(d.id) + '">'
         + '<div class="ff-deck-top"><span class="ff-deck-title">' + esc(d.title) + '</span>'
         + (due ? '<span class="ff-due" title="Cards due for review">' + due + ' due</span>' : '') + '</div>'
         + (d.desc ? '<div class="ff-deck-desc">' + esc(d.desc) + '</div>' : '')
         + '<div class="ff-meter" aria-hidden="true">' + seg(p.mastered, 'm-mastered') + seg(p.known, 'm-known') + seg(p.learning, 'm-learning') + seg(p.fresh, 'm-new') + '</div>'
         + '<div class="ff-deck-foot">' + plural(p.total, 'card') + (p.total ? ' · ' + Math.round((p.mastered + p.known) / p.total * 100) + '% known' : '') + '</div>'
-        + '</a>';
+        + '</a><button type="button" class="ff-icon-btn ff-deck-del" data-del="' + esc(d.id) + '" aria-label="Delete ' + esc(d.title) + '" title="Delete deck">' + ICON.trash + '</button></div>';
     }
 
     function plannerNotesWithCards() {
@@ -332,7 +332,7 @@
       host.innerHTML =
         '<section class="ff-hero">'
         + '<div class="ff-hero-text"><h1>Flashcards that remember for you</h1>'
-        + '<p>Flux schedules every card for the moment you are about to forget it, so a few minutes a day is enough. No ads, ever.</p></div>'
+        + '<p>Flux schedules every card for the moment you are about to forget it, so a few minutes a day is enough. Every mode is free and unlimited — no ads, no Pro, no daily caps.</p></div>'
         + '<div class="ff-today">'
         + '<div class="ff-stat"><b>' + due + '</b><span>due now</span></div>'
         + '<div class="ff-stat"><b class="ff-flame">' + ICON.flame + streak + '</b><span>day streak</span></div>'
@@ -378,8 +378,15 @@
       drawDecks();
 
       host.onclick = function (e) {
-        var t = e.target.closest('[data-sample],[data-note],[data-act],[data-tab]');
+        var t = e.target.closest('[data-sample],[data-note],[data-act],[data-tab],[data-del]');
         if (!t) return;
+        if (t.dataset.del) {
+          var dd = F.getDeck(t.dataset.del);
+          if (dd && window.confirm('Delete “' + dd.title + '” and its ' + plural(dd.cards.length, 'card') + '? This cannot be undone.')) {
+            F.removeDeck(dd.id); toast('Deleted “' + dd.title + '”'); render();
+          }
+          return;
+        }
         if (t.dataset.tab) { setPref('importTab', t.dataset.tab); return; }
         if (t.dataset.sample) {
           var s = (window.FluxFlashSamples || []).filter(function (x) { return x.id === t.dataset.sample; })[0];
@@ -448,7 +455,7 @@
         }).join('') + '</div></header>'
         + (few ? '<div class="ff-empty"><h2>No cards yet</h2><p>Add some cards to start studying.</p><a class="ff-btn ff-btn--primary" href="' + base + '/edit">Add cards</a> <a class="ff-btn" href="' + base + '/import">Import</a></div>'
           : '<div class="ff-modes">'
-          + mode(base + '/learn', ICON.brain, 'Learn', due || newToday ? (due ? due + ' due' : '') + (due && newToday ? ' · ' : '') + (newToday ? newToday + ' new' : '') : 'All done for today', true)
+          + mode(base + '/learn', ICON.brain, 'Learn', due || newToday ? (due ? due + ' due' : '') + (due && newToday ? ' · ' : '') + (newToday ? newToday + ' new' : '') : 'Caught up · keep going', true)
           + mode(base + '/cards', ICON.cards, 'Flashcards', 'Flip and sort')
           + mode(base + '/write', ICON.pen, 'Write', 'Type the answer')
           + mode(base + '/test', ICON.test, 'Test', 'A practice test')
@@ -1009,23 +1016,42 @@
         var nextDue = null;
         decks.forEach(function (d) { d.cards.forEach(function (c) { if (c.s && c.s.due && c.s.state !== 'new' && (nextDue == null || c.s.due < nextDue)) nextDue = c.s.due; }); });
         var streak = F.streak();
+        // Never a wall: the daily new-card number is a suggestion, and you can
+        // always learn more or go over everything again.
+        var freshLeft = decks.reduce(function (n, d) { return n + d.cards.filter(F.isNew).length; }, 0);
+        var seen = decks.reduce(function (n, d) { return n + d.cards.filter(function (c) { return !F.isNew(c); }).length; }, 0);
+        var more = (freshLeft ? '<button type="button" class="ff-btn ff-btn--primary" data-more="new">Learn ' + Math.min(freshLeft, 20) + ' more new cards</button>' : '')
+          + (seen ? '<button type="button" class="ff-btn' + (freshLeft ? '' : ' ff-btn--primary') + '" data-more="all">Go over all ' + plural(seen, 'card') + ' again</button>' : '');
         stage.innerHTML = '<div class="ff-finish">'
           + '<div class="ff-finish-ico" aria-hidden="true">' + (done ? ICON.party : ICON.checkCircle) + '</div>'
           + '<h2>' + (done ? 'Done for now' : 'Nothing due right now') + '</h2>'
           + (done ? '<p>You reviewed ' + plural(done, 'card') + (again ? ', and ' + again + ' will come back sooner' : '') + '.</p>' : '<p>Every card is scheduled for later. Come back when they are due, or practice another way.</p>')
           + (streak ? '<p class="ff-flame-line">' + ICON.flame + ' ' + plural(streak, 'day') + ' in a row</p>' : '')
           + (nextDue ? '<p class="ff-muted">Next review: ' + (nextDue - Date.now() < F.DAY ? 'in ' + F.fmtWait(Math.max(F.MIN, nextDue - Date.now())) : new Date(nextDue).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })) + '</p>' : '')
+          + (more ? '<div class="ff-actions ff-actions--center">' + more + '</div>' : '')
           + '<div class="ff-actions ff-actions--center">'
-          + (deck ? '<a class="ff-btn ff-btn--primary" href="#/deck/' + encodeURIComponent(deck.id) + '/cards">Practice with flashcards</a><a class="ff-btn" href="#/deck/' + encodeURIComponent(deck.id) + '/test">Take a practice test</a>' : '')
+          + (deck ? '<a class="ff-btn" href="#/deck/' + encodeURIComponent(deck.id) + '/cards">Practice with flashcards</a><a class="ff-btn" href="#/deck/' + encodeURIComponent(deck.id) + '/test">Take a practice test</a>' : '')
           + '<a class="ff-btn" href="' + exitHref + '">' + (deck ? 'Back to deck' : 'All decks') + '</a></div></div>';
       }
 
+      function keepGoing(kind) {
+        decks.forEach(function (d) {
+          var pick = kind === 'new'
+            ? d.cards.filter(F.isNew).slice(0, 20)
+            : F.shuffle(d.cards.filter(function (c) { return !F.isNew(c); }));
+          pick.forEach(function (c) { items.push({ deck: d, card: c }); });
+        });
+        total = done + items.length;
+        next();
+      }
+
       host.onclick = function (e) {
-        var t = e.target.closest('[data-grade],[data-dir],[data-undo],[data-star],[data-speak]');
+        var t = e.target.closest('[data-grade],[data-dir],[data-undo],[data-star],[data-speak],[data-more]');
         if (!t) {
           if (cur && !revealed && e.target.closest('.ff-learn-card')) reveal();
           return;
         }
+        if (t.dataset.more) return keepGoing(t.dataset.more);
         if (t.dataset.speak != null) return speak(t.dataset.speak, t.dataset.lang);
         if (t.dataset.grade) return grade(+t.dataset.grade);
         if (t.dataset.dir) { dir = t.dataset.dir; setPref('learnDir', dir); syncDir(); if (cur) draw(); return; }
