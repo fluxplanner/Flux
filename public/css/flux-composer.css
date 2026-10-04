@@ -119,6 +119,8 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
 .fc-staves { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; overflow-x: auto; }
 .fc-staff { display: block; max-width: 100%; height: auto; flex: 0 0 auto; padding: 4px 6px; border-radius: 12px; background: #f7f5ee; }
 .fc-line { stroke: #2b2b36; stroke-width: 1.1; }
+.fc-ottava { fill: #1d1d27; font: italic 700 13px Georgia, serif; }
+.fc-ottava-line { stroke-dasharray: 4 4; }
 .fc-clef { fill: #1d1d27; font-family: 'Noto Music', 'Bravura', 'Segoe UI Symbol', 'Apple Symbols', serif; }
 .fc-clef--treble { font-size: 64px; }
 .fc-clef--bass { font-size: 40px; }

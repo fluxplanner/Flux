@@ -164,9 +164,22 @@
     const notes = opts.notes || [];
     const clef = opts.clef || (notes.length && notes.reduce((s, p) => s + p.oct * 7 + p.l, 0) / notes.length < 28 ? 'bass' : 'treble');
     const H = 7;                 // half a space, in px
-    const top = 34;              // y of the top line
+    /* Notes far above or below the staff are written an octave or two lower
+       or higher under 8va / 15ma (8vb / 15mb), as printed music does, rather
+       than on a ladder of ledger lines running off the top of the picture. */
+    const steps = notes.map((p) => p.oct * 7 + p.l);
+    const hi = steps.length ? Math.max.apply(null, steps) : 0;
+    const lo = steps.length ? Math.min.apply(null, steps) : 0;
+    let shift = 0;
+    while (steps.length && shift > -14 && hi + shift > BOTTOM[clef] + 8 + 7) shift -= 7;
+    while (steps.length && shift < 14 && lo + shift < BOTTOM[clef] - 7) shift += 7;
+    const ottava = shift === -7 ? '8va' : shift === -14 ? '15ma' : shift === 7 ? '8vb' : shift === 14 ? '15mb' : '';
+    // Room for whatever ledger lines are left, above and below.
+    const above = Math.max(0, (hi + shift - (BOTTOM[clef] + 8)) * H + 14);
+    const below = Math.max(0, (BOTTOM[clef] - (lo + shift)) * H + 14);
+    const top = Math.max(34, above + 12) + (ottava && shift < 0 ? 14 : 0); // y of the top line
     const bottom = top + 8 * H;  // y of the bottom line
-    const yOf = (d) => bottom - (d - BOTTOM[clef]) * H;
+    const yOf = (d) => bottom - (d - BOTTOM[clef]) * H; // d on the staff, after any octave shift
     const sig = opts.sig || { sharps: 0, flats: 0 };
     const sigCount = sig.sharps || sig.flats;
     const sigKind = sig.sharps ? 'sharp' : 'flat';
@@ -179,7 +192,12 @@
       const order = sig.sharps ? [3, 0, 4, 1, 5, 2, 6] : [6, 2, 5, 1, 4, 0, 3];
       order.slice(0, sigCount).forEach((l) => sigLetters.add(l));
     }
-    let s = `<svg class="fc-staff" viewBox="0 0 ${width} ${bottom + 46}" width="${width}" role="img" aria-label="${esc(opts.label || 'Staff')}">`;
+    const height = bottom + Math.max(46, below + 16) + (ottava && shift > 0 ? 14 : 0);
+    let s = `<svg class="fc-staff" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${esc(opts.label || 'Staff')}${ottava ? ', ' + ottava : ''}">`;
+    if (ottava) {
+      const oy = shift < 0 ? 14 : height - 8;
+      s += `<text x="${startX}" y="${oy}" class="fc-ottava">${ottava}</text><line x1="${startX + 36}" x2="${width - 10}" y1="${oy - 4}" y2="${oy - 4}" class="fc-line fc-ottava-line"/>`;
+    }
     for (let i = 0; i < 5; i++) s += `<line x1="6" x2="${width - 6}" y1="${top + i * 2 * H}" y2="${top + i * 2 * H}" class="fc-line"/>`;
     s += clef === 'treble'
       ? `<text x="10" y="${bottom + 9}" class="fc-clef fc-clef--treble">𝄞</text>`
@@ -190,8 +208,8 @@
       });
     }
     notes.forEach((p, i) => {
-      const d = p.oct * 7 + p.l;
-      const x = opts.chord ? startX + 20 + (opts.chord && i > 0 && d - (notes[i - 1].oct * 7 + notes[i - 1].l) === 1 ? 14 : 0) : startX + 16 + i * colW;
+      const d = p.oct * 7 + p.l + shift;
+      const x = opts.chord ? startX + 20 + (opts.chord && i > 0 && d - shift - (notes[i - 1].oct * 7 + notes[i - 1].l) === 1 ? 14 : 0) : startX + 16 + i * colW;
       const y = yOf(d);
       // Ledger lines above and below the staff.
       for (let ld = BOTTOM[clef] - 2; ld >= d; ld -= 2) s += `<line x1="${x - 11}" x2="${x + 11}" y1="${yOf(ld)}" y2="${yOf(ld)}" class="fc-line"/>`;

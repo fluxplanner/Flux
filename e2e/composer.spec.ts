@@ -86,6 +86,28 @@ test.describe('Flux Composer', () => {
     expect(errors).toEqual([]);
   });
 
+  test('very high and very low notes stay on the picture, under 8va or 8vb', async ({ page }) => {
+    await page.goto('/composer.html#keyboard');
+    const fit = await page.evaluate(() => {
+      const C = (window as any).FluxComposer;
+      return [[96, 98, 100, 103, 105], [12, 14, 16], [60, 64, 67]].map((set) => {
+        const host = document.createElement('div');
+        host.innerHTML = C.staffSVG({ notes: set.map((m: number) => C.spellMidi(m, false)) });
+        document.body.appendChild(host);
+        const svg = host.querySelector('svg')!;
+        const box = svg.viewBox.baseVal;
+        const inside = [...svg.querySelectorAll('ellipse')].every((e) => {
+          const cy = +e.getAttribute('cy')!;
+          return cy > 4 && cy < box.height - 4;
+        });
+        const mark = svg.querySelector('.fc-ottava')?.textContent || '';
+        host.remove();
+        return { inside, mark };
+      });
+    });
+    expect(fit).toEqual([{ inside: true, mark: '15ma' }, { inside: true, mark: '15mb' }, { inside: true, mark: '' }]);
+  });
+
   test('the beat maker fits a phone without sideways scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 760 });
     await page.goto('/composer.html#beats');
