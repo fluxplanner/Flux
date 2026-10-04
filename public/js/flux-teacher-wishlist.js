@@ -216,7 +216,7 @@
     card.id='fluxClassSectionsCard';
     card.innerHTML=
       '<div class="fluxw-hd">'+
-        '<span class="fluxw-emoji" aria-hidden="true">📚</span>'+
+        '<span class="fluxw-emoji" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg></span>'+
         '<h3>Today\'s sections</h3>'+
         '<span class="fluxw-sub" id="fluxSectionSub">'+pc+' periods</span>'+
         '<select class="fluxw-period-count" id="fluxPeriodCount" aria-label="Number of class periods" onchange="FluxWishlist.setPeriodCount(this.value)">'+
@@ -230,14 +230,28 @@
     renderSections();
   }
 
+  /* The classes this teacher has today, by period, from the same source as
+     Lesson Hub — so a blank name box shows the real class instead of empty. */
+  function todaysClassNames(){
+    var out={};
+    try{
+      var src=(window.FluxTeacherClasses&&FluxTeacherClasses.mine&&FluxTeacherClasses.mine())||window.classes||[];
+      var list=(window.FluxNow&&FluxNow.classesForDay)?FluxNow.classesForDay(src,FluxNow.cycleToday()):src;
+      (list||[]).forEach(function(c){ if(c&&c.period&&c.name&&!out[c.period])out[c.period]=c.name; });
+    }catch(_){}
+    return out;
+  }
+
   function renderSections(){
     var grid=document.getElementById('fluxSectionGrid');
     if(!grid)return;
     var pc=periodCount();
     var all=readSections();
+    var known=todaysClassNames();
     var parts=[];
     for(var i=1;i<=pc;i++){
       var d=all[i]||{name:'',notes:''};
+      if(!d.name&&known[i])d={name:known[i],notes:d.notes||''};
       parts.push(
         '<div class="fluxw-section" data-period="'+i+'">'+
           '<div class="fluxw-section-num">P'+i+'</div>'+

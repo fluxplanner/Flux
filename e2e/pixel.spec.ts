@@ -67,6 +67,20 @@ test.describe('Flux Pixel', () => {
     expect((await items(page)).map((i: any) => i.sid)).toEqual(['resistor', 'flask', 'beaker', 'resistor']);
   });
 
+  test('stamps can be searched by name or group', async ({ page }) => {
+    await newPage(page);
+    await page.locator('[data-tool="stamp"]').click();
+    await page.locator('.px-stamp-q').fill('volc');
+    await expect(page.locator('.px-stamp:visible')).toHaveCount(1);
+    await expect(page.locator('[data-stamp="volcano"]')).toBeVisible();
+    await page.locator('.px-stamp-q').fill('circuits');
+    await expect(page.locator('.px-stamp:visible')).toHaveCount(16);
+    await page.locator('.px-stamp-q').fill('zzz');
+    await expect(page.locator('.px-stamp-none')).toBeVisible();
+    await page.locator('.px-stamp-q').fill('');
+    await expect(page.locator('.px-stamp:visible')).toHaveCount(88);
+  });
+
   test('select, move, resize and undo', async ({ page }) => {
     const box = await newPage(page);
     await page.locator('[data-tool="rect"]').click();

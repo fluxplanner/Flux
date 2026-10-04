@@ -448,9 +448,11 @@
         }
         if (it && (it.type === 'text' || it.type === 'label')) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
         if (st.tool === 'stamp') {
-          html += '<div class="px-sec px-stamps"><span class="px-sec-h">Stamps — pick one, then tap the page</span>' + (window.FluxPixelStamps || []).map(function (g) {
-            return '<div class="px-stamp-g"><b>' + esc(g.group) + '</b><div class="px-stamp-row">' + g.items.map(function (s) {
-              return '<button type="button" class="px-stamp' + (st.stamp === s.id ? ' is-on' : '') + '" data-stamp="' + s.id + '" title="' + esc(s.name) + '" aria-label="' + esc(s.name) + '"><svg viewBox="-6 -6 112 112"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' + s.svg + '</g></svg></button>';
+          html += '<div class="px-sec px-stamps"><span class="px-sec-h">Stamps — pick one, then tap the page</span>'
+            + '<input type="search" class="px-stamp-q" placeholder="Search stamps" aria-label="Search stamps" value="' + esc(st.stampQ || '') + '">'
+            + '<p class="px-stamp-none" hidden>No stamp by that name.</p>' + (window.FluxPixelStamps || []).map(function (g) {
+            return '<div class="px-stamp-g" data-group="' + esc(g.group.toLowerCase()) + '"><b>' + esc(g.group) + '</b><div class="px-stamp-row">' + g.items.map(function (s) {
+              return '<button type="button" class="px-stamp' + (st.stamp === s.id ? ' is-on' : '') + '" data-stamp="' + s.id + '" data-name="' + esc(s.name.toLowerCase()) + '" title="' + esc(s.name) + '" aria-label="' + esc(s.name) + '"><svg viewBox="-6 -6 112 112"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' + s.svg + '</g></svg></button>';
             }).join('') + '</div></div>';
           }).join('') + '</div>';
         }
@@ -466,6 +468,7 @@
           + '<div class="px-sec"><button type="button" class="px-link px-danger" data-act="clear">Clear the page</button></div>'
           + '<p class="px-keys">V select · P pen · H highlight · E erase · L line · A arrow · R box · O circle · T text · B label · S stamps · Del delete · Ctrl+Z undo</p>';
         props.innerHTML = html;
+        if (st.stampQ) filterStamps();
       }
       function drawTools() { $$('[data-tool]', host).forEach(function (b) { b.classList.toggle('is-on', b.dataset.tool === st.tool); b.setAttribute('aria-pressed', b.dataset.tool === st.tool); }); }
       function applyZoom() {
@@ -743,7 +746,24 @@
             .then(function () { toast('Copied — paste it into your notes, a doc or a slide'); }, function () { toast('Could not copy — use PNG instead', 'warn'); });
         }
       };
+      /** Show only the stamps whose name or group matches the search. */
+      function filterStamps() {
+        var q = (st.stampQ || '').trim().toLowerCase(), any = false;
+        $$('.px-stamp-g', host).forEach(function (g) {
+          var shown = 0, groupHit = g.getAttribute('data-group').indexOf(q) >= 0;
+          $$('.px-stamp', g).forEach(function (b) {
+            var on = !q || groupHit || b.getAttribute('data-name').indexOf(q) >= 0;
+            b.hidden = !on;
+            if (on) shown++;
+          });
+          g.hidden = !shown;
+          if (shown) any = true;
+        });
+        var none = $('.px-stamp-none', host);
+        if (none) none.hidden = any;
+      }
       host.oninput = function (e) {
+        if (e.target.matches('.px-stamp-q')) { st.stampQ = e.target.value; filterStamps(); return; }
         var it = selected();
         if (e.target.matches('.px-title')) { doc.title = e.target.value.trim() || 'Untitled drawing'; save(); return; }
         if (e.target.matches('[data-width]')) { var v = +e.target.value; if (it) { it.width = v; drawItems(); } else st.width = v; return; }
