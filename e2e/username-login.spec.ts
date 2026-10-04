@@ -20,6 +20,12 @@ import { test, expect } from '@playwright/test';
 test.describe('Name + password sign-in', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/?e2e=1&scenario=guest');
+    /* The harness boots straight into the app, which detaches the sign-in
+       chrome 600ms later. These tests only ever passed because the splash
+       used to hold startup back for 1.5s; open the sign-in screen explicitly. */
+    await page.waitForFunction(() => typeof (window as any).showLoginScreen === 'function');
+    await page.waitForTimeout(800);
+    await page.evaluate(() => (window as any).showLoginScreen());
     /* Until the sign-in form exists, not a fixed 2 s: under a full parallel
        run the page took longer than that, and every test here failed with
        "the name field is missing" — on main as much as on any branch. */

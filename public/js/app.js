@@ -13645,12 +13645,19 @@ async function initAuth(){
 
     const isOAuthCallback=!isEmailLink&&(hash.includes('access_token')||hash.includes('error')||params.has('code')||params.has('error')||isOAuthPopup);
 
+    /* The reachability ping runs alongside the session read instead of in
+       front of it: a signed-in student's session is already on the device, and
+       waiting a network round trip (up to 3s) before even looking at it made
+       every open slower. Nothing waits for the answer: it only sets the flag
+       the health panel reads, and sign-in is allowed either way. */
     if(!isOAuthCallback&&!isEmailLink){
-      const reach=await pingSupabaseReachable(sb);
-      window.__fluxSupabaseReachable=!!(reach&&reach.ok);
-      if(!reach.ok&&reach.reason==='offline'){
-        console.warn('[Flux] Supabase unreachable at startup — login still allowed');
-      }
+      pingSupabaseReachable(sb).then(reach=>{
+        window.__fluxSupabaseReachable=!!(reach&&reach.ok);
+        if(!reach.ok&&reach.reason==='offline'){
+          console.warn('[Flux] Supabase unreachable at startup — login still allowed');
+        }
+        return reach;
+      });
     }else{
       window.__fluxSupabaseReachable=true;
     }
@@ -14129,7 +14136,7 @@ async function handleSignedIn(user,session){
       sessionStorage.setItem('flux_gmail_token',session.provider_token);
     }
     try{
-      if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')await FluxGoogle.afterSignIn(session);
+      if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')Promise.resolve(FluxGoogle.afterSignIn(session)).catch(()=>{}); // network: Gmail, Google Tasks, Canvas check — never hold the app for it
     }catch(_){}
     try{
       if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){
@@ -14326,7 +14333,7 @@ async function handleSignedIn(user,session){
     sessionStorage.setItem('flux_gmail_token',session.provider_token);
   }
   try{
-    if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')await FluxGoogle.afterSignIn(session);
+    if(window.FluxGoogle&&typeof FluxGoogle.afterSignIn==='function')Promise.resolve(FluxGoogle.afterSignIn(session)).catch(()=>{}); // network: Gmail, Google Tasks, Canvas check — never hold the app for it
   }catch(_){}
   try{
     if(window.FluxAIConnections&&typeof FluxAIConnections.renderConnectionsPanel==='function'){
