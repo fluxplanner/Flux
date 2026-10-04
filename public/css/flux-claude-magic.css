@@ -14,7 +14,11 @@
 .flux-counter-pop { animation: fluxCounterPop .32s var(--ease-spring, cubic-bezier(.34,1.56,.64,1)) both; }
 
 /* ── Ripple effect ── */
-.flux-ripple-host { position: relative !important; overflow: hidden !important; }
+/* Only a button that sat in the normal flow is made relative: forcing it on a
+   fixed one (the Notes and Report buttons) threw it out of its corner on the
+   first click. A fixed or absolute button already holds the ripple. */
+.flux-ripple-host { overflow: hidden !important; }
+.flux-ripple-host.flux-ripple-static { position: relative !important; }
 .flux-ripple {
   position: absolute; border-radius: 50%;
   background: rgba(255,255,255,.16);

@@ -48,6 +48,7 @@
   /* ── Ripple effect ─────────────────────────────────────────── */
   function createRipple(btn, clientX, clientY) {
     if (!btn || !motionOk()) return;
+    if (!btn.classList.contains('flux-ripple-host') && getComputedStyle(btn).position === 'static') btn.classList.add('flux-ripple-static');
     btn.classList.add('flux-ripple-host');
     var rect = btn.getBoundingClientRect();
     var x = (clientX || rect.left + rect.width / 2) - rect.left;
