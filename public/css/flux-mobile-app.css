@@ -204,6 +204,7 @@
   justify-content: center;
   line-height: 0;
 }
+.more-sheet-icon > svg,
 .more-sheet-icon .ms-svg-wrap svg.nt-svg{
   width: 26px;
   height: 26px;

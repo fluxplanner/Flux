@@ -3976,7 +3976,10 @@ function syncMoreSheetForEducator(){
     b.type='button';
     b.className='more-sheet-item';
     b.dataset.eduItem='1';
-    b.innerHTML=`<span class="more-sheet-icon" aria-hidden="true">${src.querySelector('.ni')?.innerHTML||''}</span><span class="more-sheet-label">${esc(label)}</span>`;
+    // The sidebar's icon wrapper is sized only inside the sidebar: copied as
+    // is, every icon here came out 0×0. Give it the sheet's own wrapper.
+    const icon=(src.querySelector('.ni')?.innerHTML||'').replace(/\bni-svg-wrap\b/g,'ms-svg-wrap');
+    b.innerHTML=`<span class="more-sheet-icon" aria-hidden="true">${icon}</span><span class="more-sheet-label">${esc(label)}</span>`;
     b.addEventListener('click',()=>{closeMobileSheet();src.click();});
     slot.appendChild(b);
   });
