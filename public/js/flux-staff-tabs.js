@@ -324,7 +324,21 @@
           <div class="lh-stat"><div class="lh-stat-num">${classes.reduce((acc,c)=>acc+((state[stateKey(c.period)]&&state[stateKey(c.period)].materials&&state[stateKey(c.period)].materials.length)||0),0)}</div><div class="lh-stat-lbl">Materials queued</div></div>
         </div>
 
-        ${classes.length===0?`
+        ${classes.length===0&&source.some(c=>c&&c.name)?(()=>{
+          /* Classes exist, none meet today. This used to say "No classes yet,
+             add them in School Info", so a teacher who had just added three
+             on a Sunday was told to do it again. */
+          const dow=new Date().getDay();
+          const cyc=(()=>{try{return window.FluxNow?.cycleToday?.()||'';}catch(_){return '';}})();
+          const why=(dow===0||dow===6)?'It’s the weekend':cyc?`Nothing on your timetable meets on ${esc(cyc)} Day`:'Nothing on your timetable meets today';
+          const all=source.filter(c=>c&&c.name).slice().sort((a,b)=>String(a.periodLabel||a.period).localeCompare(String(b.periodLabel||b.period)));
+          return `
+          <div class="lh-empty">
+            <div class="lh-empty-icon"></div>
+            <div class="lh-empty-title">No classes today</div>
+            <div class="lh-empty-sub">${why}. Your ${all.length} class${all.length===1?'':'es'} show up here on the days they meet.</div>
+            <div class="lh-empty-sub" style="margin-top:8px">${all.map(c=>`<b>${esc(c.periodLabel||('P'+c.period))}</b> ${esc(c.name)}`).join(' · ')}</div>
+          </div>`;})():classes.length===0?`
           <div class="lh-empty">
             <div class="lh-empty-icon"></div>
             <div class="lh-empty-title">No classes yet</div>
