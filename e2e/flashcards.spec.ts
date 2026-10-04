@@ -83,6 +83,21 @@ test.describe('Flux Flashcards', () => {
     await expect(page.locator('.ff-scount')).toHaveText('15 to go');
   });
 
+  test('decks can be deleted from the list and from the deck page', async ({ page }) => {
+    page.on('dialog', (d) => d.accept());
+    await addSample(page, 'capitals');
+    await page.goto('/flashcards.html#/');
+    await page.locator('[data-sample="physics-si"]').click();
+    await page.goto('/flashcards.html#/');
+    await expect(page.locator('.ff-deck')).toHaveCount(2);
+    await page.locator('.ff-deck-wrap', { hasText: 'World capitals' }).locator('[data-del]').click();
+    await expect(page.locator('.ff-deck')).toHaveCount(1);
+    await page.locator('.ff-deck').click();
+    await page.locator('[data-act="delete"]').click();
+    await expect(page).toHaveURL(/#\/$/);
+    expect(await store(page)).toHaveLength(0);
+  });
+
   test('typing an answer in Learn marks it and suggests a grade', async ({ page }) => {
     const deckUrl = await addSample(page, 'capitals');
     await page.goto(deckUrl + '/learn');

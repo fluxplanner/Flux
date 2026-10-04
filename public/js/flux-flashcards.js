@@ -300,13 +300,13 @@
     function deckTile(d) {
       var p = F.progress(d), due = F.dueCount(d);
       var seg = function (n, cls) { return n ? '<i class="' + cls + '" style="flex:' + n + '"></i>' : ''; };
-      return '<a class="ff-deck" href="#/deck/' + encodeURIComponent(d.id) + '">'
+      return '<div class="ff-deck-wrap"><a class="ff-deck" href="#/deck/' + encodeURIComponent(d.id) + '">'
         + '<div class="ff-deck-top"><span class="ff-deck-title">' + esc(d.title) + '</span>'
         + (due ? '<span class="ff-due" title="Cards due for review">' + due + ' due</span>' : '') + '</div>'
         + (d.desc ? '<div class="ff-deck-desc">' + esc(d.desc) + '</div>' : '')
         + '<div class="ff-meter" aria-hidden="true">' + seg(p.mastered, 'm-mastered') + seg(p.known, 'm-known') + seg(p.learning, 'm-learning') + seg(p.fresh, 'm-new') + '</div>'
         + '<div class="ff-deck-foot">' + plural(p.total, 'card') + (p.total ? ' · ' + Math.round((p.mastered + p.known) / p.total * 100) + '% known' : '') + '</div>'
-        + '</a>';
+        + '</a><button type="button" class="ff-icon-btn ff-deck-del" data-del="' + esc(d.id) + '" aria-label="Delete ' + esc(d.title) + '" title="Delete deck">' + ICON.trash + '</button></div>';
     }
 
     function plannerNotesWithCards() {
@@ -378,8 +378,15 @@
       drawDecks();
 
       host.onclick = function (e) {
-        var t = e.target.closest('[data-sample],[data-note],[data-act],[data-tab]');
+        var t = e.target.closest('[data-sample],[data-note],[data-act],[data-tab],[data-del]');
         if (!t) return;
+        if (t.dataset.del) {
+          var dd = F.getDeck(t.dataset.del);
+          if (dd && window.confirm('Delete “' + dd.title + '” and its ' + plural(dd.cards.length, 'card') + '? This cannot be undone.')) {
+            F.removeDeck(dd.id); toast('Deleted “' + dd.title + '”'); render();
+          }
+          return;
+        }
         if (t.dataset.tab) { setPref('importTab', t.dataset.tab); return; }
         if (t.dataset.sample) {
           var s = (window.FluxFlashSamples || []).filter(function (x) { return x.id === t.dataset.sample; })[0];
