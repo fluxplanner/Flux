@@ -55,6 +55,18 @@ test.describe('Flux Pixel', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the stamp list stays open while placing stamp after stamp', async ({ page }) => {
+    const box = await newPage(page);
+    await page.locator('[data-tool="stamp"]').click();
+    for (const [i, id] of ['resistor', 'flask', 'beaker', 'resistor'].entries()) {
+      await page.locator(`[data-stamp="${id}"]`).click();
+      await page.mouse.click(box.x + 150 + i * 140, box.y + 300);
+    }
+    await expect(page.locator('[data-stamp="beaker"]')).toBeVisible();
+    await page.waitForTimeout(500);
+    expect((await items(page)).map((i: any) => i.sid)).toEqual(['resistor', 'flask', 'beaker', 'resistor']);
+  });
+
   test('select, move, resize and undo', async ({ page }) => {
     const box = await newPage(page);
     await page.locator('[data-tool="rect"]').click();

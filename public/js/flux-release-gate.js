@@ -240,18 +240,17 @@
         console.warn('[FluxRelease] release-admin fetch failed; falling back',e);
       }
     }
+    /* Fallback: read the gate from the owner's own row. RLS hides that row
+       from everyone else, so only the owner can use this — and the owner's
+       row is simply their own id. (This used to download up to 100 users'
+       whole data to search for it, which timed out and loaded the database.) */
+    if(!isOwnerLocal())return null;
     let sb=null;
     try{sb=typeof getSB==='function'?getSB():null;}catch(_){}
     if(!sb)return null;
     try{
-      if(!window.__fluxOwnerRowId){
-        const rows=await sb.from('user_data').select('id,data').limit(100);
-        const hit=(rows&&rows.data||[]).find(r=>r&&r.data&&r.data.ownerEmail===ownerEmail());
-        if(hit){
-          window.__fluxOwnerRowId=hit.id;
-          const g=hit.data.platformConfig&&hit.data.platformConfig.releaseGate;
-          if(g){saveGate(g);return g;}
-        }
+      if(!window.__fluxOwnerRowId&&typeof currentUser!=='undefined'&&currentUser&&currentUser.id){
+        window.__fluxOwnerRowId=currentUser.id;
       }
       if(window.__fluxOwnerRowId){
         const res=await sb.from('user_data').select('data').eq('id',window.__fluxOwnerRowId).single();
