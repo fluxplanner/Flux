@@ -293,7 +293,7 @@
   font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; white-space: nowrap;
   transition: all .15s;
 }
-.flux-oh-book-btn:hover { background: var(--accent); color: #fff; }
+.flux-oh-book-btn:hover { background: var(--accent); color: var(--on-accent,#fff); }
 .flux-oh-book-btn:disabled { opacity: .5; cursor: default; }
 
 .flux-oh-booked-badge {

@@ -49,7 +49,7 @@
 .flux-gmail-edu-filters .flux-gmail-edu-btn-primary {
   background: var(--accent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent,#fff);
   font-weight: 600;
 }
 

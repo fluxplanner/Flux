@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.4fc2f64d.css">
+<link rel="stylesheet" href="public/bundles/flux.621da945.css">
 </head>
 <body>
 <noscript>
@@ -1970,7 +1970,7 @@
             <input type="file" id="picUpload" accept="image/*" style="display:none" onchange="handlePicUpload(event)">
           </div>
           <div>
-            <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px"><span id="profileName">Your Name</span><span id="proPlanBadge" style="display:none;background:var(--accent);color:#fff;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px">Pro</span></div>
+            <div style="font-size:1.2rem;font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px"><span id="profileName">Your Name</span><span id="proPlanBadge" style="display:none;background:var(--accent);color:var(--on-accent,#fff);font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px">Pro</span></div>
             <div style="font-size:.75rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-top:2px" id="profileSubline">Set up your profile</div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px" id="profileBadges"></div>
           </div>
@@ -2975,8 +2975,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.c5de271b.js"></script>
-<script defer src="public/bundles/flux-core.e81a57ea.js"></script>
-<script defer src="public/bundles/flux-features.ae096589.js"></script>
+<script defer src="public/bundles/flux-core.99a76749.js"></script>
+<script defer src="public/bundles/flux-features.c78a152a.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

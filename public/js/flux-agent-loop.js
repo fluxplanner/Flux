@@ -435,7 +435,7 @@
         <div class="flux-tool-card-h">Flux proposes ${writes.length} change${writes.length === 1 ? '' : 's'} — review before anything happens</div>
         <div class="flux-ai-proposal-rows">${rows}</div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button type="button" class="flux-ai-prop-apply" style="flex:1;padding:8px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;cursor:pointer">Apply</button>
+          <button type="button" class="flux-ai-prop-apply" style="flex:1;padding:8px;border-radius:10px;border:none;background:var(--accent);color:var(--on-accent,#fff);font-weight:700;font-size:.8rem;cursor:pointer">Apply</button>
           <button type="button" class="flux-ai-prop-cancel" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-size:.8rem;cursor:pointer">Cancel</button>
         </div>
       </div>`;

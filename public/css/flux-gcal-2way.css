@@ -84,7 +84,7 @@
 .flux-gcal-2way-btn--primary {
   background: var(--accent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent,#fff);
 }
 
 .flux-gcal-2way-hint {

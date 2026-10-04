@@ -730,7 +730,7 @@ html.flux-layout-pulse .ob-chip.active{
 html.flux-layout-pulse .ob-btn{
   padding:14px 18px !important;border-radius:14px !important;
   background:var(--accent) !important;
-  border:1px solid rgba(var(--accent-rgb),.5) !important;color:#fff !important;
+  border:1px solid rgba(var(--accent-rgb),.5) !important;color:var(--on-accent,#fff) !important;
   box-shadow:0 10px 26px -10px rgba(var(--accent-rgb),.55) !important;
   font-weight:800 !important;letter-spacing:-.01em;
   transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease !important;

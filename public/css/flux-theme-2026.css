@@ -21,6 +21,7 @@
   /* Accent — sky blue, the Flux default (the owner's pick, Oct 2026) */
   --accent:#00BFFF; --accent-rgb:0,191,255; --accent2:#66d6ff;
   --accent-hover:#33ccff;
+  --on-accent:#04202c; /* text on an accent background; app.js keeps it in step with custom accents */
   --accent-glow:rgba(0,191,255,.30);
 
   /* Status — GitHub scale (AA on #0d1117) */
@@ -150,7 +151,7 @@ body[data-theme="light"] .nav-item.active{background:rgba(var(--accent-rgb),.12)
 }
 .btn-sec:hover{background:var(--btn2-hover);border-color:var(--btn2-border-h);color:var(--text)}
 .edu-action-btn.primary,.fsm-start-btn{
-  background:var(--accent);border:1px solid transparent;color:#fff;
+  background:var(--accent);border:1px solid transparent;color:var(--on-accent,#fff);
 }
 .edu-action-btn.primary:hover,.fsm-start-btn:hover:not(:disabled){background:var(--accent-hover)}
 

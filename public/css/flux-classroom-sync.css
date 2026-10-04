@@ -45,7 +45,7 @@
 .flux-classroom-actions .flux-classroom-btn-primary {
   background: var(--accent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent,#fff);
 }
 
 .flux-classroom-filter {

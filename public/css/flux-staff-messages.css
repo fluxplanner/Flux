@@ -19,7 +19,7 @@
   color: var(--accent); border-radius: 999px; padding: 4px 12px;
   font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; transition: all .15s;
 }
-.fsm-new-btn:hover { background: var(--accent); color: #fff; }
+.fsm-new-btn:hover { background: var(--accent); color: var(--on-accent,#fff); }
 .fsm-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
 .fsm-list-empty { color: var(--muted2); font-size: .82rem; padding: 14px; line-height: 1.5; }
 
@@ -100,7 +100,7 @@
 }
 .fsm-composer textarea:focus { outline: none; border-color: rgba(95, 142, 255, .5); }
 .fsm-send {
-  background: var(--accent); border: none; color: #fff; border-radius: 999px;
+  background: var(--accent); border: none; color: var(--on-accent,#fff); border-radius: 999px;
   width: 40px; height: 40px; font-size: .95rem; cursor: pointer; flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center; transition: transform .12s;
 }
@@ -139,7 +139,7 @@
 .fsm-person-check { opacity: 0; color: var(--accent); font-weight: 800; }
 .fsm-person.picked .fsm-person-check { opacity: 1; }
 .fsm-start-btn {
-  background: var(--accent); border: none; color: #fff; border-radius: 12px;
+  background: var(--accent); border: none; color: var(--on-accent,#fff); border-radius: 12px;
   padding: 11px; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer;
 }
 .fsm-start-btn:disabled { opacity: .45; cursor: default; }

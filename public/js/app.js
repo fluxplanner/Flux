@@ -553,7 +553,7 @@ function showPricingPage(){
           </button>
         </div>
         <div style="background:var(--card);border:2px solid var(--accent);border-radius:18px;padding:24px;position:relative;overflow:hidden">
-          <div style="position:absolute;top:14px;right:14px;background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px">MOST POPULAR</div>
+          <div style="position:absolute;top:14px;right:14px;background:var(--accent);color:var(--on-accent,#fff);font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px">MOST POPULAR</div>
           <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px">Student Pro</div>
           <div style="font-size:2rem;font-weight:800;margin-bottom:4px">$2.99<span style="font-size:1rem;font-weight:400;color:var(--muted2)">/month</span></div>
           <div style="font-size:.8rem;color:var(--muted2);margin-bottom:20px">30-day free trial</div>
@@ -3312,6 +3312,28 @@ window.fluxCounselorContactOn=()=>FLUX_COUNSELOR_CONTACT_ENABLED;
    the Sunday review banner, the quick-add "Flux AI" link, the College Prep
    activity advisor and the AI schedule reader in setup. They all stay hidden
    until this is true again. */
+/* Text on an accent-coloured button. White read fine on the old blurple, but
+   on a light accent such as the sky-blue default it falls to about 2:1. Pick
+   navy or white by the accent's brightness, whenever the accent changes. */
+(function fluxOnAccent(){
+  const root=document.documentElement;
+  let last='';
+  const pick=()=>{
+    const a=String(getComputedStyle(root).getPropertyValue('--accent')||'').trim();
+    if(!a||a===last)return;
+    last=a;
+    let m=/^#?([0-9a-f]{6})$/i.exec(a),r,g,b;
+    if(m){r=parseInt(m[1].slice(0,2),16);g=parseInt(m[1].slice(2,4),16);b=parseInt(m[1].slice(4,6),16);}
+    else{const n=a.match(/\d+(\.\d+)?/g);if(!n||n.length<3)return;[r,g,b]=n.map(Number);}
+    const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+    const L=.2126*f(r)+.7152*f(g)+.0722*f(b);
+    // Whichever of white and navy (#04202c) reads better on this accent.
+    root.style.setProperty('--on-accent',(1.05/(L+.05))>=((L+.05)/(.0145+.05))?'#fff':'#04202c');
+  };
+  pick();
+  try{new MutationObserver(pick).observe(root,{attributes:true,attributeFilter:['style','data-theme','class']});}catch(_){}
+  try{new MutationObserver(pick).observe(document.body||root,{attributes:true,attributeFilter:['data-theme']});}catch(_){}
+})();
 const FLUX_AI_ENABLED=false;
 window.fluxAiOn=()=>FLUX_AI_ENABLED;
 document.documentElement.classList.toggle('flux-no-ai',!FLUX_AI_ENABLED);

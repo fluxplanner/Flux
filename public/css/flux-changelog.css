@@ -34,7 +34,7 @@
 .flux-changelog-chip.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent,#fff);
 }
 .flux-changelog-chip-n {
   font-family: 'JetBrains Mono', monospace;

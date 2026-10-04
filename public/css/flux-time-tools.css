@@ -148,7 +148,7 @@
   line-height: 1;
 }
 .ftt-sw:hover { color: var(--text); border-color: var(--accent); }
-.ftt-sw.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ftt-sw.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent,#fff); }
 /* The colour and background swatches show the value itself; a name for
    "linear-gradient(160deg,#0f2027,#203a43,#2c5364)" tells you nothing. */
 .ftt-chip {
@@ -400,7 +400,7 @@
 .ftt-day input:checked + span {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent,#fff);
 }
 /* Keyboard users need to see focus — the real checkbox is visually hidden. */
 .ftt-day input:focus-visible + span {

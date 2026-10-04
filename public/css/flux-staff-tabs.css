@@ -396,7 +396,7 @@
   width:30px;height:30px;border-radius:50%;
   background:linear-gradient(135deg,var(--accent),var(--purple,#7c5cff));
   display:flex;align-items:center;justify-content:center;
-  font-weight:700;color:#fff;font-size:.78rem;flex-shrink:0;
+  font-weight:700;color:var(--on-accent,#fff);font-size:.78rem;flex-shrink:0;
 }
 .ao-dir-info{flex:1;min-width:0}
 .ao-dir-name{font-size:.82rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

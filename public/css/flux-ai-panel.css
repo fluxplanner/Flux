@@ -548,7 +548,7 @@
   height: 30px;
   min-width: 30px;
   background: linear-gradient(135deg, var(--accent), var(--purple));
-  color: #fff;
+  color: var(--on-accent,#fff);
   font-size: 0.65rem;
   font-weight: 800;
   border: 1px solid rgba(var(--accent-rgb),.35);
@@ -584,7 +584,7 @@
   box-shadow: 0 4px 18px rgba(0,0,0,.08), var(--liquid-edge) !important;
 }
 #ai.flux-ai-panel .ai-bub.user{
-  color: #fff;
+  color: var(--on-accent,#fff);
   background: var(--accent);
   border: 1px solid rgba(var(--accent-rgb),.35);
   border-top-right-radius: 4px;
