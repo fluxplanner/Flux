@@ -4669,8 +4669,20 @@ function updateDashHero(opts){
   try{
     if(playIntro&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
       greet.dataset.fluxGreetIntroDone='1';
+      grad.style.setProperty('--greet-steps',String(line.length));
+      // Size the gradient to the whole line, so its colours sit still while
+      // the letters appear instead of squeezing into the typed part.
+      // scrollWidth is the whole line even while it is clipped; it reads 0
+      // until the dashboard is on screen, so try again on the next frames.
+      let tries=0;
+      const size=()=>{
+        const full=grad.scrollWidth;
+        if(full){grad.style.backgroundSize=Math.ceil(full)+'px 100%';return;}
+        if(++tries<40)requestAnimationFrame(size);
+      };
       grad.classList.add('dash-v2-greet-typewriter');
-      setTimeout(()=>grad.classList.remove('dash-v2-greet-typewriter'),3200);
+      size();
+      setTimeout(()=>{grad.classList.remove('dash-v2-greet-typewriter');grad.style.backgroundSize='';},3200);
     }
   }catch(e){}
 }
@@ -7606,16 +7618,16 @@ function saveConfidences(){save('flux_conf',confidences);const b=event?.target;i
 // ══ THEMES ══
 const THEMES={
   dark:{
-    // Theme 2026 default — GitHub-dark surfaces × Discord blurple accent
+    // Theme 2026 default — GitHub-dark surfaces × sky-blue accent
     // (must stay in sync with flux-theme-2026.css tokens).
     label:'Midnight',
-    vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
+    vars:{'--bg':'#0d1117','--bg2':'#10161f','--card':'#161b22','--card2':'#1c2128','--card-solid':'#161b22','--border':'#242b33','--border2':'#30363d','--text':'#e6edf3','--muted':'#6e7681','--muted2':'#8b949e','--accent':'#00BFFF','--accent-rgb':'0,191,255','--green':'#3fb950','--red':'#f85149','--gold':'#d29922','--purple':'#a371f7','--orange':'#f0883e'}
   },
   light:{
-    // Theme 2026 light — GitHub-light surfaces × Discord blurple accent
+    // Theme 2026 light — GitHub-light surfaces × sky-blue accent
     // (must stay in sync with the [data-theme="light"] block in flux-theme-2026.css).
     label:'Cloud',
-    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#5865F2','--accent-rgb':'88,101,242','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
+    vars:{'--bg':'#f6f8fa','--bg2':'#eef1f5','--card':'#ffffff','--card2':'#f6f8fa','--card-solid':'#ffffff','--border':'#d8dee4','--border2':'#d0d7de','--text':'#1f2328','--muted':'#6e7781','--muted2':'#57606a','--accent':'#00BFFF','--accent-rgb':'0,191,255','--green':'#1a7f37','--red':'#cf222e','--gold':'#9a6700','--purple':'#8250df','--orange':'#bc4c00'}
   },
   aurora:{
     label:'Aurora',
@@ -7727,18 +7739,19 @@ function loadTheme(){
   Object.entries(custom)
     .filter(([k])=>k!=='--accent'&&k!=='--accent-rgb')
     .forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
-  // One-time 2026 migration: users still on the old default cyan get the new
-  // default blurple; deliberately-picked custom accents are left alone.
+  // The default accent is sky blue again (Oct 2026, the owner's pick). Applying
+  // a theme stores its accent, so everyone still on the old default blurple
+  // has it saved as if chosen: move them over once. A custom colour stays.
   try{
-    if(!fluxLoadStoredString('flux_accent_2026','')&&
-       String(fluxLoadStoredString('flux_accent','')).replace(/^"|"$/g,'').toLowerCase()==='#00bfff'){
-      fluxSaveStoredString('flux_accent',theme.vars['--accent']||'#5865F2');
-      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242');
+    if(!fluxLoadStoredString('flux_accent_sky','')&&
+       String(fluxLoadStoredString('flux_accent','')).replace(/^"|"$/g,'').toLowerCase()==='#5865f2'){
+      fluxSaveStoredString('flux_accent',theme.vars['--accent']||'#00BFFF');
+      fluxSaveStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255');
     }
-    fluxSaveStoredString('flux_accent_2026','1');
+    fluxSaveStoredString('flux_accent_sky','1');
   }catch(_){}
-  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#5865F2')).replace(/^"|"$/g,'');
-  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'88,101,242')).replace(/^"|"$/g,'');
+  let acc=(fluxLoadStoredString('flux_accent',theme.vars['--accent']||'#00BFFF')).replace(/^"|"$/g,'');
+  let rgb=(fluxLoadStoredString('flux_accent_rgb',theme.vars['--accent-rgb']||'0,191,255')).replace(/^"|"$/g,'');
   fluxSaveStoredString('flux_accent',acc);
   fluxSaveStoredString('flux_accent_rgb',rgb);
   document.documentElement.style.setProperty('--accent',acc);
@@ -7950,7 +7963,7 @@ function saveClassScheduleDisplay(v){
   if(typeof renderDynamicFocus==='function')renderDynamicFocus();
 }
 /* The swatch row had #00bfff marked active in the HTML whatever the accent
-   was, and the default accent (#5865F2) was not in the row at all. Light the
+   was, and the default accent was not in the row at all. Light the
    swatch that matches, or none when the accent is a custom colour. */
 function fluxSyncAccentSwatches(){
   const cur=String(getComputedStyle(document.documentElement).getPropertyValue('--accent')||'').trim().toLowerCase();

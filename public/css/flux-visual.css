@@ -25,7 +25,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .dash-v2-greet-typewriter {
-    animation: typewrite-greet 1.8s steps(28) 0.4s forwards, blink-cursor-greet 0.8s step-end infinite 2.2s;
+    animation: typewrite-greet 1.8s steps(var(--greet-steps, 28)) 0.4s forwards, blink-cursor-greet 0.8s step-end infinite 2.2s;
   }
 }
 
@@ -888,4 +888,14 @@ body[data-flux-mesh='off']::before {
   border-radius: 0 2px 2px 0;
   pointer-events: none;
   transition: width 0.12s ease-out;
+}
+
+/* The motion layers add a shimmer to every big heading. On the greeting that
+   painted the whole line over the typewriter span, so the words were already
+   there and only the cursor moved. The span below draws its own gradient. */
+#dashGreeting.flux-shimmer-text {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--text) !important;
+  animation: none !important;
 }
