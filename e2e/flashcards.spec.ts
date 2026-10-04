@@ -58,6 +58,31 @@ test.describe('Flux Flashcards', () => {
     expect((await store(page))[0].cards.find((c: any) => c.term === 'Australia').s).toBeUndefined();
   });
 
+  test('Learn never walls you off: more new cards and a full review are always on offer', async ({ page }) => {
+    const deckUrl = await addSample(page, 'capitals');
+    // A small daily number, so the session ends early.
+    await page.evaluate(() => {
+      const st = JSON.parse(localStorage.getItem('flux_flash_decks_v1')!);
+      st.decks[0].newPerDay = 5;
+      localStorage.setItem('flux_flash_decks_v1', JSON.stringify(st));
+    });
+    await page.goto(deckUrl + '/learn');
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Space');
+      await page.keyboard.press('4');
+    }
+    await expect(page.locator('.ff-finish h2')).toHaveText('Done for now');
+    await page.locator('[data-more="new"]').click();
+    await expect(page.locator('.ff-scount')).toHaveText('10 to go');
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Space');
+      await page.keyboard.press('4');
+    }
+    await expect(page.locator('[data-more="new"]')).toHaveCount(0);
+    await page.locator('[data-more="all"]').click();
+    await expect(page.locator('.ff-scount')).toHaveText('15 to go');
+  });
+
   test('typing an answer in Learn marks it and suggests a grade', async ({ page }) => {
     const deckUrl = await addSample(page, 'capitals');
     await page.goto(deckUrl + '/learn');
