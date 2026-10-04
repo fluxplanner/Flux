@@ -25,6 +25,12 @@
 
   var CACHE_KEY = 'flux_platform_ui';
   var REFRESH_MS = 5 * 60 * 1000;
+  // Even a forced refresh (opening Settings) asks the server at most this
+  // often, and a failed ask waits this long too. Without it, one browser that
+  // kept re-rendering Settings sent ~1,700 requests in 90 minutes while
+  // Supabase was already struggling.
+  var MIN_GAP_MS = 60 * 1000;
+  var TRY_KEY = 'flux_platform_ui_try';
 
   // Hiding Settings would remove the only route back to this control panel.
   var NEVER_HIDE = { settings: 1, dashboard: 1 };
@@ -121,6 +127,10 @@
     if (!force && c && c.cachedAt && (Date.now() - c.cachedAt) < REFRESH_MS) {
       return Promise.resolve(state.hiddenTabs);
     }
+    var lastTry = 0;
+    try { lastTry = +localStorage.getItem(TRY_KEY) || 0; } catch (e) { /* no storage */ }
+    if (Date.now() - lastTry < MIN_GAP_MS) return Promise.resolve(state.hiddenTabs);
+    try { localStorage.setItem(TRY_KEY, String(Date.now())); } catch (e) { /* no storage */ }
     state.inFlight = true;
     return fetch(SB_URL + '/rest/v1/platform_settings?key=eq.ui&select=value', {
       headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON },

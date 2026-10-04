@@ -447,7 +447,7 @@
             + '</div>';
         }
         if (it && (it.type === 'text' || it.type === 'label')) html += '<div class="px-sec px-toggles"><button type="button" class="px-chip' + (it.bold ? ' is-on' : '') + '" data-toggle="bold">Bold</button><button type="button" class="px-chip" data-act="edittext">Edit text</button></div>';
-        if (st.tool === 'stamp' && !it) {
+        if (st.tool === 'stamp') {
           html += '<div class="px-sec px-stamps"><span class="px-sec-h">Stamps — pick one, then tap the page</span>' + (window.FluxPixelStamps || []).map(function (g) {
             return '<div class="px-stamp-g"><b>' + esc(g.group) + '</b><div class="px-stamp-row">' + g.items.map(function (s) {
               return '<button type="button" class="px-stamp' + (st.stamp === s.id ? ' is-on' : '') + '" data-stamp="' + s.id + '" title="' + esc(s.name) + '" aria-label="' + esc(s.name) + '"><svg viewBox="-6 -6 112 112"><g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' + s.svg + '</g></svg></button>';
