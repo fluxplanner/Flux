@@ -422,6 +422,8 @@
       var list = Array.isArray(names) ? names : String(names || '').split(/[\n,]/);
       c.students = list.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
       persist();
+      // The picker and the group maker share these lists: tell the other one.
+      try { window.dispatchEvent(new CustomEvent('flux:class-students', { detail: { classId: classId } })); } catch (e) {}
       return c.students.slice();
     },
     // Test seams.

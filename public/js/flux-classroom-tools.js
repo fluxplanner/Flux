@@ -440,6 +440,17 @@
     });
   }
 
+  /** Repaint a widget when another one changes a class's names, unless the
+      change came from inside this widget (it has already repainted). */
+  function onStudentsChanged(mount, paint) {
+    const handler = () => {
+      if (!mount.isConnected) { window.removeEventListener('flux:class-students', handler); return; }
+      if (mount.contains(document.activeElement)) return;
+      paint();
+    };
+    window.addEventListener('flux:class-students', handler);
+  }
+
   /**
    * Random student picker.
    *
@@ -545,6 +556,7 @@
     }
 
     paint();
+    onStudentsChanged(mount, paint);
   }
 
   /**
@@ -682,6 +694,7 @@
     }
 
     paint();
+    onStudentsChanged(mount, paint);
   }
 
   /* This was a second, worse countdown: a local `remaining` counter decremented

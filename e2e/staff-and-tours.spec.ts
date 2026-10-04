@@ -234,6 +234,17 @@ test.describe('staff workspace', () => {
     await expect(qg.locator('.flux-qg-card')).toHaveCount(0);
   });
 
+  test('names saved in the student picker reach the group maker straight away', async ({ page }) => {
+    await gotoScenario(page, 'teacher-workflow');
+    await expect(page.locator('#fluxPickerEdit')).toBeVisible();
+    await page.locator('#fluxPickerEdit').click();
+    await page.locator('#fluxPickerNames').fill('Ava\nBen\nCara\nDev');
+    await page.locator('#fluxPickerSave').click();
+    await expect(page.locator('#fluxPickerSpin')).toBeEnabled();
+    const groups = page.locator('.flux-widget-cell[data-widget-id="classroom_group_maker"]');
+    await expect(groups).not.toContainText('No names for this class yet');
+  });
+
   test('teacher resources narrow as you type and by subject', async ({ page }) => {
     await gotoScenario(page, 'teacher-workflow');
     await page.evaluate(() => (window as any).nav('teacherResources'));

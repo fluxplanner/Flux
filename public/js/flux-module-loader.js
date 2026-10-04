@@ -540,4 +540,19 @@
     exportEnabledData,
     SUITE_FLAG,
   };
+
+  /* The teacher dashboard is drawn by the core bundle, and this file arrives
+     with the later one. When the dashboard won that race, it found no loader,
+     skipped its modules and never asked again, so a teacher could open Flux
+     to a dashboard with none of their tools on it. Fill an empty mount now,
+     and keep trying for a few seconds: the role it needs may still be on its
+     way from the server. */
+  (function fillTeacherDash(tries) {
+    try {
+      const mount = document.getElementById('teacherDashModulesMount');
+      if (mount && !mount.querySelector('.flux-widget-grid')) renderWidgetGrid('teacherDashboard', { container: mount });
+      if (mount && mount.querySelector('.flux-widget-grid')) return;
+    } catch (_) {}
+    if (tries < 25) setTimeout(() => fillTeacherDash(tries + 1), 400);
+  })(0);
 })();
