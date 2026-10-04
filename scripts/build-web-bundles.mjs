@@ -136,7 +136,7 @@ fs.writeFileSync(INDEX, indexHtml);
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'hub.html']) {
+for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'hub.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');

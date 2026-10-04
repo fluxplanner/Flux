@@ -10222,6 +10222,7 @@ function getCloudPayload(){
     ibProgramProgress:getIbProgramProgress(),
     recurringSeries:(window.FluxRecurring?.getCloudSlice?FluxRecurring.getCloudSlice():load('flux_recurring_series_v1',{})),
     subjectThemePack:(window.FluxSubjectThemes?.getCloudSlice?FluxSubjectThemes.getCloudSlice():load('flux_subject_theme_pack_v1',{})),
+    flashDecks:(window.FluxFlash?.getCloudSlice?FluxFlash.getCloudSlice():undefined),
     cmdPaletteRecents:(window.FluxCmdPaletteV2?.getCloudSlice?FluxCmdPaletteV2.getCloudSlice():load('flux_cmd_palette_recents_v1',[])),
     globalSearchRecents:(window.FluxGlobalSearchV2?.getCloudSlice?FluxGlobalSearchV2.getCloudSlice():load('flux_global_search_recents_v1',[])),
     smartLists:(window.FluxSmartLists?.getCloudSlice?FluxSmartLists.getCloudSlice():load('flux_smart_lists_v1',{})),
@@ -10675,6 +10676,10 @@ async function syncFromCloud(){
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
       try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
+    }
+    // Flux Flashcards decks: merged deck by deck; push back if this device had newer ones.
+    if(window.FluxFlash?.applyFromCloud){
+      try{if(FluxFlash.applyFromCloud(d.flashDecks||{decks:[]}))syncKey('flashDecks');}catch(_){}
     }
     if(d.subjectThemePack&&typeof d.subjectThemePack==='object'){
       try{if(window.FluxSubjectThemes?.applyFromCloud)FluxSubjectThemes.applyFromCloud(d.subjectThemePack);else save('flux_subject_theme_pack_v1',d.subjectThemePack);}catch(_){}
