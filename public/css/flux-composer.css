@@ -277,3 +277,33 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
   .fc-tabs, .fc-btn, .fc-row { display: none !important; }
   .fc-card { background: #fff; color: #000; border-color: #ccc; break-inside: avoid; }
 }
+
+/* ── Beat Maker ──────────────────────────────────────────────────────────── */
+.fc-card--beats kbd { padding: 0 6px; border: 1px solid var(--fc-line2); border-bottom-width: 2px; border-radius: 5px; font: 600 .76rem/1.5 ui-monospace, Menlo, monospace; color: var(--fc-ink); }
+.fc-bt-sliders input[type="range"] { width: clamp(110px, 22vw, 200px); accent-color: #a78bfa; }
+.fc-bt-sliders b { min-width: 3ch; color: var(--fc-ink); font-variant-numeric: tabular-nums; }
+.fc-bt-grid { display: grid; gap: 5px; margin: 4px 0 14px; max-width: 920px; }
+.fc-bt-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; }
+.fc-bt-row--drum + .fc-bt-row--key, .fc-bt-row--key + .fc-bt-row--bass { margin-top: 8px; }
+.fc-bt-name { font-size: .78rem; font-weight: 700; color: var(--fc-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-bt-steps { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; }
+.fc-bt-step {
+  appearance: none; margin: 0; padding: 0; cursor: pointer; aspect-ratio: 1; min-width: 0; max-height: 40px;
+  border-radius: 6px; border: 1px solid var(--fc-line); background: rgba(255, 255, 255, .045);
+  transition: background .08s, transform .08s;
+}
+.fc-bt-step:nth-child(4n+1) { background: rgba(255, 255, 255, .085); }
+.fc-bt-step:hover { border-color: rgba(167, 139, 250, .6); }
+.fc-bt-step:focus-visible { outline: 2px solid var(--fc-acc2); outline-offset: 1px; }
+.fc-bt-row--drum .fc-bt-step[aria-pressed="true"] { background: linear-gradient(135deg, #c4b5fd, #a78bfa); border-color: transparent; }
+.fc-bt-row--key .fc-bt-step[aria-pressed="true"] { background: linear-gradient(135deg, #7dd3fc, #00c2ff); border-color: transparent; }
+.fc-bt-row--bass .fc-bt-step[aria-pressed="true"] { background: linear-gradient(135deg, #fdba74, #fb923c); border-color: transparent; }
+.fc-bt-step.is-now { box-shadow: 0 0 0 2px rgba(255, 255, 255, .55) inset; }
+.fc-bt-step.is-now[aria-pressed="true"] { transform: scale(1.08); }
+.fc-bt-actions { margin: 0; }
+@media (max-width: 560px) {
+  .fc-bt-row { grid-template-columns: 50px minmax(0, 1fr); gap: 5px; }
+  .fc-bt-name { font-size: .68rem; }
+  .fc-bt-steps { gap: 2px; }
+  .fc-bt-step { border-radius: 4px; }
+}

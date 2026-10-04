@@ -13,6 +13,7 @@
      harmony    Roman numerals, cadences and common progressions, playable
      intervals  every interval, and an ear trainer
      rhythm     note values, time signatures and a metronome
+     beats      Beat Maker: a 16-step drum machine with bass and melody
      orchestra  ranges, transposition, score order and clefs
      terms      a searchable glossary: tempo, dynamics, articulation, form…
      dp         IB DP Music: dimensions, areas of inquiry, contexts, roles,
@@ -450,9 +451,23 @@
   /* ── Mount ──────────────────────────────────────────────────────────────── */
   const TABS = [
     ['keys', 'Keys'], ['keyboard', 'Keyboard'], ['scales', 'Scales & modes'], ['chords', 'Chords'],
-    ['harmony', 'Harmony'], ['intervals', 'Intervals'], ['rhythm', 'Rhythm'], ['orchestra', 'Orchestra'],
+    ['harmony', 'Harmony'], ['intervals', 'Intervals'], ['rhythm', 'Rhythm'], ['beats', 'Beat Maker'], ['orchestra', 'Orchestra'],
     ['terms', 'Terms'], ['dp', 'DP Music'],
   ];
+
+  /* Beat Maker rows and styles. Rows are 16 steps, x = hit; missing rows are empty. */
+  const BT_DRUMS = [['kick', 'Kick'], ['snare', 'Snare'], ['clap', 'Clap'], ['hat', 'Hi-hat'], ['open', 'Open'], ['tom', 'Tom'], ['bell', 'Cowbell']];
+  const BT_KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+  const BT_IDS = BT_DRUMS.map((d) => d[0]).concat(['k0', 'k1', 'k2', 'k3', 'k4', 'bass']);
+  const BT_PRESETS = {
+    'Boom bap': { bpm: 90, swing: 25, kick: 'x......x..x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bass: 'x......x..x.....', k2: '..........x.....', k1: 'x...............' },
+    House: { bpm: 124, swing: 0, kick: 'x...x...x...x...', clap: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', open: '..x...x...x...x.', bass: '..x...x...x...x.' },
+    Rock: { bpm: 110, swing: 0, kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', tom: '.............xx.', bass: 'x.....x.x.......' },
+    Trap: { bpm: 140, swing: 0, kick: 'x......x..x.....', snare: '........x.......', hat: 'x.xxx.x.x.xxxxxx', open: '.......x........', bass: 'x......x..x.....' },
+    Reggaeton: { bpm: 96, swing: 0, kick: 'x...x...x...x...', snare: '...x..x....x..x.', hat: 'x.x.x.x.x.x.x.x.', bass: 'x..x..x.x..x..x.' },
+    'Bossa nova': { bpm: 120, swing: 0, kick: 'x..xx..xx..xx..x', clap: 'x..x..x...x..x..', hat: 'xxxxxxxxxxxxxxxx', bass: 'x..x....x..x....', k2: 'x.......x.......' },
+    Funk: { bpm: 100, swing: 15, kick: 'x.x....x..x.....', snare: '....x..x.x..x..x', hat: 'xxxxxxxxxxxxxxxx', bell: 'x.....x.....x...', bass: 'x.x....x..x..x..' },
+  };
 
   function mount(host, opts) {
     opts = opts || {};
@@ -469,6 +484,7 @@
       tr: { i: 8, note: 'C', dir: 'sounding' },
       terms: { q: '', group: 'All' },
       dp: { sel: { kind: 'core', i: 0 } },
+      bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, on: false, timer: null, bar: 0, step: 0 },
     };
     const VALID = new Set(TABS.map((t) => t[0]));
     function readHash() {
@@ -476,6 +492,7 @@
       const h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
       const [tab, rest] = h.split('/');
       if (VALID.has(tab)) st.tab = tab;
+      if (tab === 'beats' && rest) btFromCode(rest);
       if (tab === 'keys' && rest) {
         const m = /^(.+?)-(major|minor)$/.exec(rest);
         if (m && T().parse(m[1])) st.key = { tonic: m[1], mode: m[2] };
@@ -483,9 +500,10 @@
     }
     function writeHash() {
       if (!opts.hash) return;
-      const h = '#' + st.tab + (st.tab === 'keys' ? '/' + st.key.tonic + '-' + st.key.mode : '');
+      const h = '#' + st.tab + (st.tab === 'keys' ? '/' + st.key.tonic + '-' + st.key.mode : st.tab === 'beats' ? '/' + btCode() : '');
       if (location.hash !== h) history.replaceState(null, '', h);
     }
+    btLoad('Boom bap');
     readHash();
 
     host.innerHTML = `<div class="fc-root">
@@ -496,7 +514,7 @@
     tabsEl.addEventListener('click', (e) => {
       const b = e.target.closest('[data-tab]');
       if (!b || b.dataset.tab === st.tab) return;
-      stopMetronome();
+      stopMetronome(); stopBeats();
       st.tab = b.dataset.tab;
       render();
       b.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
@@ -510,7 +528,15 @@
       playSteps(steps, gap);
     });
 
-    const RENDER = { keys: renderKeys, keyboard: renderKeyboard, scales: renderScales, chords: renderChords, harmony: renderHarmony, intervals: renderIntervals, rhythm: renderRhythm, orchestra: renderOrchestra, terms: renderTerms, dp: renderDP };
+    // Space plays and stops the Beat Maker, unless you are typing or on a button.
+    document.addEventListener('keydown', (e) => {
+      if (st.tab !== 'beats' || e.key !== ' ' || e.repeat || !host.isConnected) return;
+      if (e.target.closest && e.target.closest('input, select, textarea, button, [contenteditable]')) return;
+      e.preventDefault();
+      if (st.bt.on) stopBeats(); else startBeats();
+    });
+
+    const RENDER = { keys: renderKeys, keyboard: renderKeyboard, scales: renderScales, chords: renderChords, harmony: renderHarmony, intervals: renderIntervals, rhythm: renderRhythm, beats: renderBeats, orchestra: renderOrchestra, terms: renderTerms, dp: renderDP };
     function render() {
       tabsEl.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === st.tab)));
       (RENDER[st.tab] || renderKeys)();
@@ -885,6 +911,260 @@
       mt.timer = null;
     }
 
+    /* ── Beat Maker ───────────────────────────────────────────────────────── */
+    /* A 16-step drum machine with a bass line and a melody on the key's
+       pentatonic scale, so anything a student clicks in sounds right. Every
+       sound is made here with Web Audio — no samples to download. A beat
+       travels as a link (#beats/…) and downloads as a WAV. */
+    function renderBeats() {
+      const bt = st.bt;
+      const melody = btMelody();
+      const rows = BT_DRUMS.map(([id, label]) => [id, label, 'drum'])
+        .concat(melody.map((m, i) => ['k' + i, nm(m.note), 'key']))
+        .concat([['bass', 'Bass ' + nm(melody[melody.length - 1].note), 'bass']]);
+      const grid = rows.map(([id, label, kind]) => `<div class="fc-bt-row fc-bt-row--${kind}"><span class="fc-bt-name">${esc(label)}</span><div class="fc-bt-steps">${btRow(id).map((on, s) => `<button type="button" class="fc-bt-step" data-r="${id}" data-s="${s}" aria-pressed="${on}" aria-label="${esc(label)}, step ${s + 1}"></button>`).join('')}</div></div>`).join('');
+      body.innerHTML = card('Beat Maker', 'Click the squares to build a beat, then press play — or start from a style. The melody and bass use the key’s pentatonic scale, so every note fits. <kbd>Space</kbd> plays and stops.',
+        `<div class="fc-row">
+           <button type="button" class="fc-btn fc-btn--primary" id="btGo" aria-pressed="${bt.on}">${bt.on ? '■ Stop' : '▶ Play'}</button>
+           <label class="fc-inline">Style ${selectHTML('btPreset', bt.preset, ['Choose…'].concat(Object.keys(BT_PRESETS)), 'Start from a style')}</label>
+           <label class="fc-inline">Key ${selectHTML('btKey', bt.key, BT_KEYS, 'Key')}</label>
+           ${segHTML('btMode', bt.mode, [['major', 'Major'], ['minor', 'Minor']])}
+         </div>
+         <div class="fc-row fc-bt-sliders">
+           <label class="fc-inline">Tempo <input type="range" id="btBpm" min="60" max="180" value="${bt.bpm}" aria-label="Tempo in beats per minute"><b id="btBpmV">${bt.bpm}</b></label>
+           <label class="fc-inline">Swing <input type="range" id="btSwing" min="0" max="60" value="${bt.swing}" aria-label="Swing"><b id="btSwingV">${bt.swing}%</b></label>
+         </div>
+         <div class="fc-bt-grid" id="btGrid">${grid}</div>
+         <div class="fc-row fc-bt-actions">
+           <button type="button" class="fc-btn" id="btInspire">Inspire me</button>
+           <button type="button" class="fc-btn" id="btClear">Clear</button>
+           <button type="button" class="fc-btn" id="btShare">Copy link</button>
+           <button type="button" class="fc-btn" id="btWav">Download WAV</button>
+         </div>`, 'fc-card--beats');
+      const q = (s) => body.querySelector(s);
+      q('#btGo').addEventListener('click', () => { if (bt.on) stopBeats(); else startBeats(); });
+      q('#btGrid').addEventListener('click', (e) => {
+        const b = e.target.closest('.fc-bt-step');
+        if (!b) return;
+        const row = btRow(b.dataset.r), s = +b.dataset.s;
+        row[s] = !row[s];
+        b.setAttribute('aria-pressed', String(row[s]));
+        if (row[s] && !bt.on) withAudio((c) => btSound(c, btOut(c), c.currentTime + 0.02, b.dataset.r));
+        writeHash();
+      });
+      q('#btPreset').addEventListener('change', (e) => { if (BT_PRESETS[e.target.value]) { btLoad(e.target.value); renderBeats(); writeHash(); } });
+      q('#btKey').addEventListener('change', (e) => { bt.key = e.target.value; renderBeats(); writeHash(); });
+      q('#btMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.mode = b.dataset.v; renderBeats(); writeHash(); });
+      q('#btBpm').addEventListener('input', (e) => { bt.bpm = +e.target.value; q('#btBpmV').textContent = bt.bpm; });
+      q('#btBpm').addEventListener('change', writeHash);
+      q('#btSwing').addEventListener('input', (e) => { bt.swing = +e.target.value; q('#btSwingV').textContent = bt.swing + '%'; });
+      q('#btSwing').addEventListener('change', writeHash);
+      q('#btClear').addEventListener('click', () => { btBlank(); bt.preset = 'Choose…'; renderBeats(); writeHash(); });
+      q('#btInspire').addEventListener('click', () => { btInspire(); renderBeats(); writeHash(); });
+      q('#btShare').addEventListener('click', () => {
+        writeHash();
+        const url = location.href.split('#')[0] + '#beats/' + btCode();
+        try { navigator.clipboard.writeText(url).then(() => toast('Link copied'), () => window.prompt('Copy this link:', url)); } catch (e) { window.prompt('Copy this link:', url); }
+      });
+      q('#btWav').addEventListener('click', btDownload);
+    }
+    function btRow(id) { return st.bt.rows[id] || (st.bt.rows[id] = new Array(16).fill(false)); }
+    function btBlank() { BT_IDS.forEach((id) => { st.bt.rows[id] = new Array(16).fill(false); }); }
+    function btLoad(name) {
+      const p = BT_PRESETS[name];
+      btBlank();
+      BT_IDS.forEach((id) => { if (p[id]) st.bt.rows[id] = p[id].split('').map((ch) => ch === 'x'); });
+      st.bt.bpm = p.bpm; st.bt.swing = p.swing; st.bt.preset = name;
+    }
+    /** The five pentatonic notes, highest first, with the midi each plays. */
+    function btMelody() {
+      const bt = st.bt;
+      const notes = T().scale(T().parse(bt.key), bt.mode === 'minor' ? 'Minor pentatonic' : 'Major pentatonic');
+      const midi = risingMidi(notes, 4);
+      return notes.map((note, i) => ({ note, midi: midi[i] })).reverse();
+    }
+    function btInspire() {
+      const bt = st.bt;
+      ['k0', 'k1', 'k2', 'k3', 'k4', 'bass'].forEach((id) => { bt.rows[id] = new Array(16).fill(false); });
+      let at = 2 + Math.floor(Math.random() * 3);
+      for (let s = 0; s < 16; s++) {
+        if (s % 4 === 0 ? Math.random() < 0.6 : Math.random() < 0.28) {
+          at = Math.max(0, Math.min(4, at + [-1, -1, 0, 1, 1, 2, -2][Math.floor(Math.random() * 7)]));
+          bt.rows['k' + at][s] = true;
+        }
+        if (btRow('kick')[s] || (s % 8 === 0) || (s % 4 === 3 && Math.random() < 0.25)) bt.rows.bass[s] = true;
+      }
+    }
+    function btCode() {
+      const bt = st.bt;
+      const hex = BT_IDS.map((id) => btRow(id).reduce((n, on, i) => n | (on ? 1 << (15 - i) : 0), 0).toString(16).padStart(4, '0')).join('');
+      return [bt.bpm, bt.swing, BT_KEYS.indexOf(bt.key), bt.mode === 'minor' ? 'm' : 'M', hex].join('-');
+    }
+    function btFromCode(code) {
+      const m = /^(\d{2,3})-(\d{1,2})-(\d{1,2})-([mM])-([0-9a-f]{52})$/i.exec(code || '');
+      if (!m) return false;
+      const bt = st.bt;
+      bt.bpm = Math.max(60, Math.min(180, +m[1]));
+      bt.swing = Math.min(60, +m[2]);
+      bt.key = BT_KEYS[+m[3]] || 'C';
+      bt.mode = m[4] === 'm' ? 'minor' : 'major';
+      BT_IDS.forEach((id, r) => {
+        const n = parseInt(m[5].slice(r * 4, r * 4 + 4), 16);
+        bt.rows[id] = Array.from({ length: 16 }, (_, i) => !!(n & (1 << (15 - i))));
+      });
+      bt.preset = 'Choose…';
+      return true;
+    }
+
+    /* Sounds: each takes the context, where to send it and when. */
+    const noiseBufs = new WeakMap();
+    function noise(c) {
+      let b = noiseBufs.get(c);
+      if (!b) {
+        b = c.createBuffer(1, c.sampleRate, c.sampleRate);
+        const d = b.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        noiseBufs.set(c, b);
+      }
+      const s = c.createBufferSource();
+      s.buffer = b;
+      return s;
+    }
+    const outs = new WeakMap();
+    /** A gentle compressor in front of the speakers, so a full beat never clips. */
+    function btOut(c) {
+      let o = outs.get(c);
+      if (!o) {
+        o = c.createDynamicsCompressor();
+        o.threshold.value = -14; o.ratio.value = 4;
+        const g = c.createGain();
+        g.gain.value = 0.9;
+        o.connect(g); g.connect(c.destination);
+        outs.set(c, o);
+      }
+      return o;
+    }
+    function env(c, dest, t, peak, decay) {
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      g.connect(dest);
+      return g;
+    }
+    function osc(c, type, f, to, t, dur, dest) {
+      const o = c.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur * 0.4);
+      o.connect(dest);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    function noiseHit(c, dest, t, type, f, q, peak, decay) {
+      const n = noise(c), fl = c.createBiquadFilter();
+      fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+      n.connect(fl); fl.connect(env(c, dest, t, peak, decay));
+      n.start(t); n.stop(t + decay + 0.05);
+    }
+    function btSound(c, dest, t, id) {
+      if (id === 'kick') osc(c, 'sine', 150, 42, t, 0.42, env(c, dest, t, 1, 0.42));
+      else if (id === 'snare') { noiseHit(c, dest, t, 'highpass', 1200, 0.7, 0.55, 0.18); osc(c, 'triangle', 200, 160, t, 0.1, env(c, dest, t, 0.45, 0.1)); }
+      else if (id === 'clap') [0, 0.011, 0.022].forEach((d, i) => noiseHit(c, dest, t + d, 'bandpass', 1400, 0.9, 0.6, i === 2 ? 0.16 : 0.03));
+      else if (id === 'hat') noiseHit(c, dest, t, 'highpass', 7500, 0.7, 0.28, 0.05);
+      else if (id === 'open') noiseHit(c, dest, t, 'highpass', 7000, 0.7, 0.24, 0.32);
+      else if (id === 'tom') osc(c, 'sine', 210, 120, t, 0.32, env(c, dest, t, 0.75, 0.32));
+      else if (id === 'bell') {
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 3;
+        bp.connect(env(c, dest, t, 0.4, 0.28));
+        osc(c, 'square', 540, 0, t, 0.28, bp); osc(c, 'square', 800, 0, t, 0.28, bp);
+      } else if (id === 'bass') {
+        const midi = btMelody()[4].midi - 24;
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(220, t + 0.25); lp.Q.value = 5;
+        lp.connect(env(c, dest, t, 0.5, 0.3));
+        osc(c, 'sawtooth', freq(midi), 0, t, 0.3, lp); osc(c, 'sine', freq(midi), 0, t, 0.3, lp);
+      } else if (id[0] === 'k') {
+        const midi = btMelody()[+id[1]].midi;
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.value = 2800;
+        lp.connect(env(c, dest, t, 0.22, 0.4));
+        osc(c, 'triangle', freq(midi), 0, t, 0.4, lp); osc(c, 'square', freq(midi), 0, t, 0.12, env(c, lp, t, 0.25, 0.12));
+      }
+    }
+    /** When step s starts, counted from the start of the bar; odd 16ths are swung late. */
+    function btStepTime(s) {
+      const d = 60 / st.bt.bpm / 4;
+      return s * d + (s % 2 ? (st.bt.swing / 100) * d * 0.66 : 0);
+    }
+    function btPlayStep(c, dest, t, s) {
+      BT_IDS.forEach((id) => { if (btRow(id)[s]) btSound(c, dest, t, id); });
+    }
+    function startBeats() {
+      const bt = st.bt;
+      withAudio((c) => {
+        if (bt.on) return;
+        bt.on = true;
+        bt.step = 0;
+        bt.bar = c.currentTime + 0.08;
+        const out = btOut(c);
+        // The metronome's look-ahead scheduler: sounds are booked on the audio clock.
+        bt.timer = setInterval(() => {
+          let t;
+          while ((t = bt.bar + btStepTime(bt.step)) < c.currentTime + 0.12) {
+            const s = bt.step;
+            btPlayStep(c, out, t, s);
+            setTimeout(() => {
+              const g = document.getElementById('btGrid');
+              if (!g || !bt.on) return;
+              g.querySelectorAll('.is-now').forEach((el) => el.classList.remove('is-now'));
+              g.querySelectorAll(`[data-s="${s}"]`).forEach((el) => el.classList.add('is-now'));
+            }, Math.max(0, (t - c.currentTime) * 1000));
+            bt.step += 1;
+            if (bt.step === 16) { bt.step = 0; bt.bar += 60 / bt.bpm * 4; }
+          }
+        }, 25);
+        btButton();
+      });
+    }
+    function stopBeats() {
+      const bt = st.bt;
+      bt.on = false;
+      if (bt.timer) clearInterval(bt.timer);
+      bt.timer = null;
+      document.querySelectorAll('#btGrid .is-now').forEach((el) => el.classList.remove('is-now'));
+      btButton();
+    }
+    function btButton() {
+      const b = document.getElementById('btGo');
+      if (!b) return;
+      b.textContent = st.bt.on ? '■ Stop' : '▶ Play';
+      b.setAttribute('aria-pressed', String(st.bt.on));
+    }
+    /** Four bars, rendered offline as fast as the computer can, as a 16-bit WAV. */
+    function btDownload() {
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OAC) { toast('This browser cannot make a WAV.'); return; }
+      const rate = 44100, bar = 60 / st.bt.bpm * 4, bars = 4;
+      const c = new OAC(1, Math.ceil(rate * (bar * bars + 0.6)), rate);
+      const out = btOut(c);
+      for (let b = 0; b < bars; b++) for (let s = 0; s < 16; s++) btPlayStep(c, out, 0.02 + b * bar + btStepTime(s), s);
+      c.startRendering().then((buf) => {
+        const d = buf.getChannelData(0), n = d.length;
+        const wav = new DataView(new ArrayBuffer(44 + n * 2));
+        const str = (o, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(o + i, t.charCodeAt(i)); };
+        str(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+        wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate * 2, true);
+        wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); str(36, 'data'); wav.setUint32(40, n * 2, true);
+        for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+        a.download = 'flux-beat-' + st.bt.bpm + 'bpm.wav';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      }, () => toast('Could not make the WAV.'));
+    }
+
     /* ── Orchestra ────────────────────────────────────────────────────────── */
     function renderOrchestra() {
       const tr = st.tr;
@@ -1005,7 +1285,7 @@
     render();
     return {
       readHash() { readHash(); render(); },
-      setTab(tab) { if (VALID.has(tab)) { stopMetronome(); st.tab = tab; render(); } },
+      setTab(tab) { if (VALID.has(tab)) { stopMetronome(); stopBeats(); st.tab = tab; render(); } },
       get tab() { return st.tab; },
     };
   }
