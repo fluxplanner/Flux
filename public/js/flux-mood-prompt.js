@@ -9,9 +9,10 @@
 
    THE RULE THAT KEEPS THIS FROM BECOMING A NAG
    --------------------------------------------
-   Each window resolves at most once per day, and dismissing counts as
-   resolving. So the ceiling is two prompts a day, each closed by one tap, and
-   one you dismiss does not come back until tomorrow.
+   At most once a day. Answering or dismissing either window resolves the
+   day, and so does a mood already logged today on any device (the mood
+   history syncs). The evening card only appears if the morning went
+   unanswered.
 
    That ceiling is what earns this the right to be a modal. It has been all
    three shapes, and the order matters: it began as a fixed card floating
@@ -77,6 +78,16 @@
     });
   }
 
+  function loggedToday() {
+    try {
+      var hist = typeof window.load === 'function'
+        ? window.load('flux_mood', [])
+        : JSON.parse(localStorage.getItem('flux_mood') || '[]');
+      var t = today();
+      return Array.isArray(hist) && hist.some(function (m) { return m && m.date === t; });
+    } catch (e) { return false; }
+  }
+
   function currentWindow() {
     var h = new Date().getHours();
     if (h >= AM.from && h < AM.to) return AM;
@@ -90,7 +101,14 @@
   function shouldAsk(win) {
     if (!win) return false;
     var s = load();
-    if (s[win.key] === today()) return false;
+    /* Once a day, not once per window. Answering (or dismissing) the morning
+       card used to leave the evening one still to come, and each device kept
+       its own record — so a "Good" tapped on the phone was asked again on the
+       laptop and the iPad. Azfer had it pop up three times after answering. */
+    if (s.am === today() || s.pm === today()) return false;
+    // Logged anywhere today — another device, or the Mood tab. The mood
+    // history syncs; this prompt's own record does not.
+    if (loggedToday()) return false;
     // Just answered the other window — don't pounce with the next question.
     if (s.at && Date.now() - s.at < QUIET_AFTER_ANSWER_MS) return false;
     /* Dashboard only. It is now a modal so it *could* open anywhere, but the

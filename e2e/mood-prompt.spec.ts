@@ -6,8 +6,8 @@ import { gotoScenario } from './helpers';
  *
  * Two things matter here and both are easy to get wrong.
  *
- * 1. It must not nag. Each window resolves at most once a day and dismissing
- *    counts as resolving, so the ceiling is two prompts a day. That ceiling is
+ * 1. It must not nag. One answer or dismissal settles the day, and so does a
+ *    mood synced in from another device, so the ceiling is one prompt a day. That ceiling is
  *    the only thing that makes a blocking modal acceptable here, so these are
  *    the tests holding it up. A regression that re-asks after a dismissal
  *    would be the most annoying bug in the app, and it would only surface for
@@ -212,42 +212,44 @@ test.describe('Mood check-in prompt', () => {
     expect(res.escapedDoesNotReask).toBe(true);
   });
 
-  test('morning and evening are tracked separately', async ({ page }) => {
+  test('one answer settles the day, on any device', async ({ page }) => {
     await gotoApp(page);
 
     const res = await page.evaluate(async () => {
       const M = (window as any).FluxMoodPrompt;
+      const W = window as any;
+      const p = (n: number) => (n < 10 ? '0' : '') + n;
+      const d = new Date();
+      const today = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+
       M._show(M._windows.AM);
       document.querySelector<HTMLElement>('#fluxMoodPrompt .fmp-face[data-v="3"]')!.click();
       await new Promise((r) => setTimeout(r, 250));
       const afterAm = M._state();
-      // Evening is still unresolved, so it can ask later the same day — but
-      // not in the same breath. Answering anything buys a minute of quiet,
-      // so the evening card must be refused right now...
-      const pmQuietRightAfter = M._shouldAsk(M._windows.PM);
-      // ...and offered once that minute has passed. Rewinding the stamp is how
-      // real time would arrive, without making the test sleep through it.
-      (window as any).save('flux_mood_prompt_v1', { ...afterAm, at: Date.now() - 120000 });
-      const pmStillOpen = M._shouldAsk(M._windows.PM);
+      // Long after the morning answer, the evening still does not ask.
+      W.save('flux_mood_prompt_v1', { ...afterAm, at: Date.now() - 6 * 3600 * 1000 });
+      const pmAfterAm = M._shouldAsk(M._windows.PM);
+
+      // Another device: no prompt record here, but today's mood has synced in.
+      W.save('flux_mood_prompt_v1', {});
+      const pmWithSyncedMood = M._shouldAsk(M._windows.PM);
+
+      // Nothing answered and nothing logged today: it may ask.
+      W.save('flux_mood', W.load('flux_mood', []).filter((m: any) => m.date !== today));
+      const pmFresh = M._shouldAsk(M._windows.PM);
       M._show(M._windows.PM);
       const pmTitle = document.querySelector('.fmp-title')!.textContent;
-      const pmAsk = document.querySelector('.fmp-ask')!.textContent;
       document.querySelector<HTMLElement>('#fluxMoodPrompt .fmp-face[data-v="5"]')!.click();
       await new Promise((r) => setTimeout(r, 250));
-      const p = (n: number) => (n < 10 ? '0' : '') + n;
-      const d = new Date();
-      const today = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-      const entry = (window as any).moodHistory.find((m: any) => m.date === today);
-      return { afterAm, pmQuietRightAfter, pmStillOpen, pmTitle, pmAsk, afterPm: M._state(), entry };
+      const entry = W.moodHistory.find((m: any) => m.date === today);
+      return { afterAm, pmAfterAm, pmWithSyncedMood, pmFresh, pmTitle, entry };
     });
 
     expect(res.afterAm.am).toBeTruthy();
-    expect(res.afterAm.pm).toBeFalsy();
-    expect(res.pmQuietRightAfter).toBe(false);
-    expect(res.pmStillOpen).toBe(true);
+    expect(res.pmAfterAm).toBe(false);
+    expect(res.pmWithSyncedMood).toBe(false);
+    expect(res.pmFresh).toBe(true);
     expect(res.pmTitle).toBe('Evening check-in');
-    expect(res.pmAsk).toBe('How did today go?');
-    expect(res.afterPm.pm).toBeTruthy();
     // Both readings survive on the record; the headline mood is the latest.
     expect(res.entry.moodAm).toBe(3);
     expect(res.entry.moodPm).toBe(5);
