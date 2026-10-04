@@ -143,3 +143,6 @@
   .px-colors { grid-template-columns: repeat(12, 1fr); }
   .px-stamp-row { grid-template-columns: repeat(6, 1fr); }
 }
+.px-stamp-q { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: .86rem; }
+.px-stamp-q:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.px-stamp-none { margin: 4px 0 0; font-size: .82rem; color: var(--muted2); }
