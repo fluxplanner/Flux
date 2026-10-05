@@ -62,8 +62,10 @@
     return { t: type, b: b };
   }
   function clone(nodes) {
-    return nodes.map((n) => (n.t === 'tok' ? Object.assign({}, n) : { t: n.t, b: n.b.map(clone) }));
+    return nodes.map((n) => (n.t === 'tok' ? Object.assign({}, n) : n.t === 'fn' ? { t: 'fn', f: n.f, b: n.b.map(clone) } : { t: n.t, b: n.b.map(clone) }));
   }
+  /** A function call with a box per argument; trailing empty boxes are optional arguments left out. */
+  function fnArgs(b) { let k = b.length; while (k > 1 && !b[k - 1]) k--; return b.slice(0, k).join(','); }
 
   function Editor(opts) {
     this.root = [];
@@ -106,7 +108,20 @@
     else c.blk.splice(c.i, 0, n);
     c.i += 1;
   };
-  Editor.prototype.insertTok = function (code, disp) { this.insertNode(tok(code, disp)); };
+  Editor.prototype.insertTok = function (code, disp) {
+    // Inside a function's boxes, "," moves to the next box and a closing ")" steps out after the call.
+    const p = (code === ',' || code === ')') && this.parentOf(this.cur.blk);
+    if (p && p.node.t === 'fn') {
+      // Only when no bracket of the user's own is still open in this box.
+      const open = this.cur.blk.filter((n) => n.t === 'tok' && /[({]$/.test(n.c)).length;
+      const shut = this.cur.blk.filter((n) => n.t === 'tok' && /^[)}]$/.test(n.c)).length;
+      if (open <= shut) {
+        if (code === ',' && p.bi < p.node.b.length - 1) { const b = p.node.b[p.bi + 1]; this.cur = { blk: b, i: b.length }; return; }
+        if (code === ')') { this.cur = { blk: p.blk, i: p.i + 1 }; return; }
+      }
+    }
+    this.insertNode(tok(code, disp));
+  };
   /** Insert several tokens from a code string (a pasted answer, a menu item). */
   Editor.prototype.insertCode = function (code) {
     splitCode(code).forEach((c) => this.insertTok(c));
@@ -120,6 +135,15 @@
     let f = focus;
     if (f == null) { f = n.b.findIndex((b) => b.length === 0); if (f < 0) f = TPL[type].focus; }
     this.cur = { blk: n.b[f], i: n.b[f].length };
+  };
+  /** A function with one box per argument, e.g. randInt(□,□); the cursor goes in the first box. */
+  Editor.prototype.insertFn = function (f, n) {
+    if (!this.mathprint) { this.insertTok(f); return; }
+    const node = { t: 'fn', f: f, b: [] };
+    for (let k = 0; k < n; k++) node.b.push([]);
+    this.cur.blk.splice(this.cur.i, 0, node);
+    this.cur.i += 1;
+    this.cur = { blk: node.b[0], i: 0 };
   };
   /** Insert a whole tree (a history entry being pasted). */
   /** True when the thing just before the cursor is a value an infix operator can follow (5, x, ), Ans, a template…). */
@@ -225,6 +249,7 @@
   function serBlock(b) {
     return b.map((n) => {
       if (n.t === 'tok') return n.c;
+      if (n.t === 'fn') return n.f + fnArgs(n.b.map(serBlock)) + ')';
       return TPL[n.t].ser(n.b.map(serBlock));
     }).join('');
   }
@@ -259,6 +284,7 @@
       return '<span class="t84t">' + esc(n.d) + '</span>';
     }
     const B = (k) => htmlBlock(n.b[k], cur, mark);
+    if (n.t === 'fn') return '<span class="t84t">' + esc(displayOf(n.f)) + '</span>' + n.b.map((b, k) => B(k)).join('<span class="t84t">,</span>') + '<span class="t84t">)</span>';
     switch (n.t) {
       case 'frac': return '<span class="t84fr"><span class="t84fr-n">' + B(0) + '</span><span class="t84fr-d">' + B(1) + '</span></span>';
       case 'mixed': return '<span class="t84mx">' + B(0) + '<span class="t84fr"><span class="t84fr-n">' + B(1) + '</span><span class="t84fr-d">' + B(2) + '</span></span></span>';
@@ -285,6 +311,7 @@
     return b.map((n) => {
       if (n.t === 'tok') return n.d;
       const t = n.b.map(textBlock);
+      if (n.t === 'fn') return displayOf(n.f) + fnArgs(t) + ')';
       switch (n.t) {
         case 'frac': return t[0] + '/' + t[1];
         case 'mixed': return t[0] + '+' + t[1] + '/' + t[2];
