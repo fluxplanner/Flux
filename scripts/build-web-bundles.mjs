@@ -103,16 +103,56 @@ async function buildCss(name, files) {
   return { name, out, files: files.length, bytes: res.code.length };
 }
 
+/* Synara (synara.html) is its own app, written as ES modules in
+ * public/synara/js — copied from the Synara repo by its `npm run flux`.
+ * Loose modules would hit the same trap as grapher.html's scripts (step 2b):
+ * the service worker serves them stale-while-revalidate, and a new main.js
+ * importing an old store.js fails with "does not provide an export named …".
+ * So it ships as one hashed script and one hashed stylesheet, cache-first
+ * like the planner's bundles. Not precached: planner users never load it. */
+const SYNARA = path.join(ROOT, 'public', 'synara');
+async function buildSynara() {
+  const js = await esbuild.build({
+    entryPoints: [path.join(SYNARA, 'js', 'main.js')],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    pure: PURE,
+    legalComments: 'none',
+    metafile: true,
+    write: false,
+  });
+  const code = js.outputFiles[0].text;
+  const jsOut = hashedName('flux-synara.js', code);
+  fs.writeFileSync(path.join(OUT, jsOut), code);
+
+  // Same cascade order as Synara's own index.html; print.css loads there
+  // with media="print", so here it is wrapped in @media print.
+  const css = ['tokens', 'base', 'components', 'app']
+    .map((n) => fs.readFileSync(path.join(SYNARA, 'css', n + '.css'), 'utf8'))
+    .concat(`@media print {\n${fs.readFileSync(path.join(SYNARA, 'css', 'print.css'), 'utf8')}\n}`)
+    .join('\n');
+  const min = await esbuild.transform(css, { loader: 'css', minify: true, legalComments: 'none' });
+  const cssOut = hashedName('flux-synara.css', min.code);
+  fs.writeFileSync(path.join(OUT, cssOut), min.code);
+
+  return [
+    { name: 'flux-synara.js', out: jsOut, files: Object.keys(js.metafile.inputs).length, bytes: code.length },
+    { name: 'flux-synara.css', out: cssOut, files: 5, bytes: min.code.length },
+  ];
+}
+
 const results = [];
 results.push(await buildVendor('flux-vendor.js', manifest.vendor));
 results.push(await buildClassic('flux-core.js', manifest.core));
 results.push(await buildClassic('flux-features.js', manifest.features));
 results.push(await buildCss('flux.css', manifest.css));
+const synara = fs.existsSync(path.join(SYNARA, 'js', 'main.js')) ? await buildSynara() : [];
 
 /* ── Post-build wiring (B5.4) ── */
 
 // 1. Prune stale bundle outputs (older hashes) so git status stays exact.
-const keep = new Set([...results.map((r) => r.out), 'precache-manifest.json']);
+const keep = new Set([...results.map((r) => r.out), ...synara.map((r) => r.out), 'precache-manifest.json']);
 for (const f of fs.readdirSync(OUT)) {
   if (!keep.has(f) && /^flux(-\w+)?\.[0-9a-f]{8}\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f));
   if (!keep.has(f) && /^flux(-\w+)?\.(js|css)$/.test(f)) fs.unlinkSync(path.join(OUT, f)); // pre-hash era outputs
@@ -130,13 +170,24 @@ for (const r of results) {
 }
 fs.writeFileSync(INDEX, indexHtml);
 
+// 2a. synara.html loads its two bundles the same way.
+const SYNARA_HTML = path.join(ROOT, 'synara.html');
+if (synara.length && fs.existsSync(SYNARA_HTML)) {
+  let page = fs.readFileSync(SYNARA_HTML, 'utf8');
+  for (const r of synara) {
+    const [base, ext] = r.name.split('.');
+    page = page.replace(new RegExp(`public/bundles/${base}(\\.[0-9a-f]{8})?\\.${ext}`, 'g'), `public/bundles/${r.out}`);
+  }
+  fs.writeFileSync(SYNARA_HTML, page);
+}
+
 // 2b. grapher.html loads plain source files — it has to work on its own —
 //     and the service worker serves unhashed files stale-while-revalidate.
 //     So after a deploy a returning visitor got the NEW grapher.html with
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html', 'hub.html']) {
+for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html', 'synara.html', 'hub.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');
@@ -164,7 +215,7 @@ if (stamped === sw && !sw.includes(`const BUILD = '${build}';`)) {
   fs.writeFileSync(SW, stamped);
 }
 
-for (const r of results) {
+for (const r of [...results, ...synara]) {
   console.log(`  ${r.out.padEnd(30)} ${String(r.files).padStart(3)} files  ${(r.bytes / 1024).toFixed(0)} KB`);
 }
 console.log(`Bundles written to public/bundles/ (build ${build})`);
