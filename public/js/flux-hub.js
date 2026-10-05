@@ -81,6 +81,15 @@
       free: true,
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><rect x="8" y="5" width="8" height="4" rx=".8"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg>',
     },
+    {
+      // Its own brand rather than "Flux …": Synara keeps its name and violet look.
+      id: 'synara',
+      name: 'Synara',
+      tagline: 'Epilepsy meds, seizures, safety card',
+      href: 'synara.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h3.75l2.25-6 3.75 10.5 2.6-6.75H21"/></svg>',
+    },
   ];
 
   function esc(s) {

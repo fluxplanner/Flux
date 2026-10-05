@@ -72,6 +72,8 @@
   .app--calculator { --c1: #fbbf24; --c2: #f97316; }
   .app--flashcards { --c1: #f9a8d4; --c2: #f472b6; }
   .app--pixel { --c1: #6ee7b7; --c2: #34d399; }
+  /* Synara's own violet: purple is the epilepsy awareness colour. */
+  .app--synara { --c1: #c9a7ff; --c2: #7c4dff; }
   .note { margin: 28px auto 0; text-align: center; font-size: .85rem; color: var(--muted2); }
   .note a { color: #7fe3ff; }
 </style>
@@ -91,7 +93,7 @@
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=7fc9bdd6"></script>
+  <script src="public/js/flux-hub.js?v=9cfc23d2"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -104,6 +106,7 @@
         flashcards: 'Decks that schedule every card for when you are about to forget it, plus flip cards, write, practice tests, a match game, cards from your notes and Quizlet import. No ads.',
         composer: 'A table of every key, a keyboard that writes what you play, scales, chords, cadences, an ear trainer, a beat maker and DP Music.',
         calculator: 'A calculator that works like the TI-84 Plus CE, with graphs, tables and statistics, in your browser.',
+        synara: 'For students with epilepsy: dose reminders and a medication calendar, a seizure log that spots patterns with missed doses, sleep and stress, and an emergency card a teacher can follow, one tap away. Stays on this device.',
       };
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var host = document.getElementById('apps');
