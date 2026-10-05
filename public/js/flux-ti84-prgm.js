@@ -627,9 +627,9 @@
   EditApp.prototype.render = function () {
     const mark = this.c.cursorMark();
     if (this.line < this.top0) this.top0 = this.line;
-    if (this.line >= this.top0 + VIS) this.top0 = this.line - VIS + 1;
+    if (this.line >= this.top0 + this.c.rows(VIS)) this.top0 = this.line - this.c.rows(VIS) + 1;
     let html = '<div class="t84p"><div class="t84p-t">PROGRAM:' + esc(this.name) + '</div>';
-    this.lines.slice(this.top0, this.top0 + VIS).forEach((code, j) => {
+    this.lines.slice(this.top0, this.top0 + this.c.rows(VIS)).forEach((code, j) => {
       const i = this.top0 + j, on = i === this.line;
       html += '<div class="t84p-l' + (on ? ' is-row' : '') + '">'
         + (on ? this.editor().html(mark) : Ed().htmlNodes(Ed().nodesFromCode(code))) + '</div>';

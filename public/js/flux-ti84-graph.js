@@ -721,7 +721,7 @@
 
   /* ── Table ──────────────────────────────────────────────────────────── */
 
-  const TROWS = 8;
+  const TROWS0 = 8;
   function TableApp(c) {
     this.c = c;
     this.row = 0;
@@ -734,8 +734,8 @@
   TableApp.prototype.fns = function () { return activeFns(this.c.st).filter((f) => !f.par && !f.pol); };
   TableApp.prototype.xs = function () {
     const st = this.c.st;
-    if (st.tbl.indpnt === 'ask') return Array.from({ length: TROWS }, (_, i) => (this.asked[i] == null ? null : this.asked[i]));
-    return Array.from({ length: TROWS }, (_, i) => +(this.start + i * st.tbl['ΔTbl']).toPrecision(12));
+    if (st.tbl.indpnt === 'ask') return Array.from({ length: this.c.rows(TROWS0) }, (_, i) => (this.asked[i] == null ? null : this.asked[i]));
+    return Array.from({ length: this.c.rows(TROWS0) }, (_, i) => +(this.start + i * st.tbl['ΔTbl']).toPrecision(12));
   };
   TableApp.prototype.editor = function () {
     if (this.col !== 0 || this.c.st.tbl.indpnt !== 'ask') return null;
@@ -754,7 +754,7 @@
     const st = this.c.st, fns = this.fns();
     if (k === 'down') {
       this.commit();
-      if (this.row < TROWS - 1) this.row++;
+      if (this.row < this.c.rows(TROWS0) - 1) this.row++;
       else if (st.tbl.indpnt === 'auto') this.start = +(this.start + st.tbl['ΔTbl']).toPrecision(12);
       return true;
     }
@@ -787,7 +787,7 @@
     if (!shown.length) html += '<div class="t84tb-h">Y₁</div>';
     shown.forEach((fn) => { html += '<div class="t84tb-h" style="color:' + fn.colour + '">' + esc(fn.name) + '</div>'; });
     let selText = '';
-    for (let r = 0; r < TROWS; r++) {
+    for (let r = 0; r < this.c.rows(TROWS0); r++) {
       const x = xs[r];
       const selX = this.row === r && this.col === 0;
       html += '<div class="t84tb-c' + (selX ? ' is-sel' : '') + '">' + (selX && this.ed ? this.ed.html(this.c.cursorMark()) : esc(x == null ? '' : f(x))) + '</div>';

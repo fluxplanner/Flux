@@ -109,6 +109,8 @@
 .t84-scr .t84t--str { white-space: pre-wrap; }
 .t84-scr .t84sup { display: inline-block; font-size: .7em; vertical-align: .62em; line-height: 1; }
 .t84-scr .t84sub { display: inline-block; font-size: .7em; vertical-align: -.3em; line-height: 1; }
+.t84-scr .t84pc-n { margin-left: .1em; }
+.t84-scr .t84pc-n, .t84-scr .t84pc-n ~ .t84sub { font-size: .8em; }
 .t84-scr .t84fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .08em; font-size: .92em; line-height: 1.15; }
 .t84-scr .t84fr-n { padding: 0 .15em .04em; border-bottom: .075em solid currentColor; min-width: 100%; text-align: center; }
 .t84-scr .t84fr-d { padding: .04em .15em 0; }

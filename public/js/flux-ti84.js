@@ -332,11 +332,29 @@
     if (TYPES[code] != null) { ed.insertTok(TYPES[code]); return true; }
     return false;
   };
+  /**
+   * How many rows a list on the screen shows: base on the handheld's 4:3 screen, more when the
+   * screen is taller (beside the keys on a laptop), so menus fill it instead of scrolling.
+   */
+  Calc.prototype.rows = function (base) {
+    const s = this.scr && this.scr.closest('.t84-screen');
+    if (!s || !s.clientWidth) return base;
+    // A row is about one line of screen text (4.9% of the width at 1.3 line height), a little less to fill the screen.
+    const extra = Math.floor((s.clientHeight - s.clientWidth * 0.75) / (s.clientWidth * 0.06));
+    return extra > 0 ? base + extra : base;
+  };
   /** Paste a menu item into an entry line. */
   Calc.prototype.insertItem = function (ed, item) {
     ed.mathprint = this.st.mode.mathprint && ed.mathprint !== false;
-    // nPr/nCr after a number stay infix (5 nCr 2); on their own they give two boxes to fill.
-    if ((item.tpl === 'npr' || item.tpl === 'ncr') && ed.afterValue()) { ed.insertCode(item.ins); return; }
+    // nPr/nCr: a number just typed becomes the first box (6 then nCr gives ₆C□); after anything else
+    // that is a value, e.g. ")", they stay infix.
+    if (item.tpl === 'npr' || item.tpl === 'ncr') {
+      if (ed.mathprint && ed.takeNumber) {
+        const num = ed.takeNumber();
+        if (num.length) { ed.insertTpl(item.tpl, [num, []], 1); return; }
+      }
+      if (ed.afterValue()) { ed.insertCode(item.ins); return; }
+    }
     // A function of two or more arguments gets a box for each, as MathPrint does: randInt(□,□).
     const ar = !item.tpl && ed.mathprint && window.FluxTI && window.FluxTI.FN_ARITY[item.ins];
     if (ar && ar[1] >= 2 && ed.insertFn) { ed.insertFn(item.ins, Math.max(ar[0], 2)); return; }
@@ -709,14 +727,15 @@
   MenuApp.prototype.items = function () { return (this.tabs[this.tab] && this.tabs[this.tab].items) || []; };
   MenuApp.prototype.render = function () {
     const items = this.items();
+    const MR = this.c.rows(MENU_ROWS);
     if (this.sel < this.top0) this.top0 = this.sel;
-    if (this.sel >= this.top0 + MENU_ROWS) this.top0 = this.sel - MENU_ROWS + 1;
+    if (this.sel >= this.top0 + MR) this.top0 = this.sel - MR + 1;
     let html = '<div class="t84m"><div class="t84m-tabs">'
       + this.tabs.map((t, i) => '<span class="t84m-tab' + (i === this.tab ? ' is-on' : '') + '">' + esc(t.name) + '</span>').join('') + '</div>';
     if (!items.length) html += '<div class="t84m-none">' + (/PRGM/.test(this.id) ? 'No programs yet — NEW ▸ Create New' : 'Empty') + '</div>';
-    items.slice(this.top0, this.top0 + MENU_ROWS).forEach((it, j) => {
+    items.slice(this.top0, this.top0 + MR).forEach((it, j) => {
       const i = this.top0 + j;
-      const more = j === MENU_ROWS - 1 && this.top0 + MENU_ROWS < items.length;
+      const more = j === MR - 1 && this.top0 + MR < items.length;
       const fewer = j === 0 && this.top0 > 0;
       html += '<div class="t84m-i' + (i === this.sel ? ' is-sel' : '') + '"><span class="t84m-k">' + MN().itemKey(i)
         + (more ? '↓' : fewer ? '↑' : ':') + '</span>' + esc(it.l) + '</div>';
@@ -752,10 +771,11 @@
 
   function CatalogApp(c, target) { this.c = c; this.target = target; this.list = MN().catalog(); this.sel = 0; this.top0 = 0; }
   CatalogApp.prototype.render = function () {
+    const MR = this.c.rows(MENU_ROWS);
     if (this.sel < this.top0) this.top0 = this.sel;
-    if (this.sel >= this.top0 + MENU_ROWS) this.top0 = this.sel - MENU_ROWS + 1;
+    if (this.sel >= this.top0 + MR) this.top0 = this.sel - MR + 1;
     return '<div class="t84m"><div class="t84m-tabs"><span class="t84m-tab is-on">CATALOG</span><span class="t84m-hint">letter keys jump</span></div>'
-      + this.list.slice(this.top0, this.top0 + MENU_ROWS).map((it, j) => '<div class="t84m-i' + (this.top0 + j === this.sel ? ' is-sel' : '') + '"><span class="t84m-k">▸</span>' + esc(it.l) + '</div>').join('')
+      + this.list.slice(this.top0, this.top0 + MR).map((it, j) => '<div class="t84m-i' + (this.top0 + j === this.sel ? ' is-sel' : '') + '"><span class="t84m-k">▸</span>' + esc(it.l) + '</div>').join('')
       + '</div>';
   };
   CatalogApp.prototype.key = function (k) {
@@ -928,7 +948,7 @@
   FormApp.prototype.render = function () {
     const rows = this.rows();
     const mark = this.c.cursorMark();
-    const VISIBLE = this.o.title ? 8 : 9;
+    const VISIBLE = this.c.rows(this.o.title ? 8 : 9);
     if (this.row < this.top0) this.top0 = this.row;
     if (this.row >= this.top0 + VISIBLE) this.top0 = this.row - VISIBLE + 1;
     const cursor = '<span class="t84c' + (mark ? ' t84c--' + (mark === '2' ? 'second' : 'alpha') : '') + '">' + esc(mark) + '</span>';
@@ -962,7 +982,7 @@
   /** Results the way the calculator lists them: a title, then name=value lines. */
   function ReportApp(c, title, rows, opts) { this.c = c; this.title = title; this.rowsData = rows; this.o = opts || {}; this.top0 = 0; }
   ReportApp.prototype.render = function () {
-    const VIS = 9;
+    const VIS = this.c.rows(9);
     const rows = this.rowsData;
     return '<div class="t84r"><div class="t84f-title">' + esc(this.title) + '</div>'
       + rows.slice(this.top0, this.top0 + VIS).map((r, j) => {
@@ -974,7 +994,7 @@
   };
   ReportApp.prototype.key = function (k) {
     if (k === 'up') { this.top0 = Math.max(0, this.top0 - 1); return true; }
-    if (k === 'down') { this.top0 = Math.min(Math.max(0, this.rowsData.length - 9), this.top0 + 1); return true; }
+    if (k === 'down') { this.top0 = Math.min(Math.max(0, this.rowsData.length - this.c.rows(9)), this.top0 + 1); return true; }
     if (k === 'clear' || k === 'quit' || k === 'enter') { this.c.pop(); if (this.o.onClose) this.o.onClose(); return true; }
     return false;
   };
@@ -1096,7 +1116,7 @@
   };
   YEditApp.prototype.render = function () {
     const st = this.c.st, names = this.names(), mark = this.c.cursorMark();
-    const VIS = 8;
+    const VIS = this.c.rows(8);
     if (this.line - 1 < this.top0) this.top0 = Math.max(0, this.line - 1);
     if (this.line - 1 >= this.top0 + VIS) this.top0 = this.line - VIS;
     let html = '<div class="t84y"><div class="t84y-plots' + (this.line === 0 ? ' is-row' : '') + '">'
@@ -1172,7 +1192,7 @@
   };
   ListEditApp.prototype.render = function () {
     const st = this.c.st, cols = this.cols(), mark = this.c.cursorMark();
-    const VISC = 3, VISR = 7;
+    const VISC = 3, VISR = this.c.rows(7);
     if (this.col < this.left0) this.left0 = this.col;
     if (this.col >= this.left0 + VISC) this.left0 = this.col - VISC + 1;
     const r0 = Math.max(0, this.row);
@@ -1391,11 +1411,12 @@
   MemApp.prototype.render = function () {
     const items = this.items();
     if (this.sel >= items.length) this.sel = Math.max(0, items.length - 1);
+    const MR = this.c.rows(MENU_ROWS);
     if (this.sel < this.top0) this.top0 = this.sel;
-    if (this.sel >= this.top0 + MENU_ROWS) this.top0 = this.sel - MENU_ROWS + 1;
+    if (this.sel >= this.top0 + MR) this.top0 = this.sel - MR + 1;
     return '<div class="t84m"><div class="t84m-tabs"><span class="t84m-tab is-on">MEMORY</span><span class="t84m-hint">del deletes</span></div>'
       + (items.length ? '' : '<div class="t84m-none">Nothing stored</div>')
-      + items.slice(this.top0, this.top0 + MENU_ROWS).map((it, j) => '<div class="t84m-i' + (this.top0 + j === this.sel ? ' is-sel' : '') + '"><span class="t84m-k">▸</span>' + esc(it.l) + '<span class="t84m-kind">' + esc(it.kind) + '</span></div>').join('')
+      + items.slice(this.top0, this.top0 + MR).map((it, j) => '<div class="t84m-i' + (this.top0 + j === this.sel ? ' is-sel' : '') + '"><span class="t84m-k">▸</span>' + esc(it.l) + '<span class="t84m-kind">' + esc(it.kind) + '</span></div>').join('')
       + '</div>';
   };
   MemApp.prototype.key = function (k) {

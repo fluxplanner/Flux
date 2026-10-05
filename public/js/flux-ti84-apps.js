@@ -701,7 +701,7 @@
   GridApp.prototype.render = function () {
     const st = this.c.st, mark = this.c.cursorMark();
     const [n, m] = this.dims();
-    const VISR = 5, VISC = 3;
+    const VISR = this.c.rows(5), VISC = 3;
     if (this.r < this.top0) this.top0 = this.r;
     if (this.r >= this.top0 + VISR) this.top0 = this.r - VISR + 1;
     if (this.col < this.left0) this.left0 = this.col;
