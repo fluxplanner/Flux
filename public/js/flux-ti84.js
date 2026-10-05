@@ -335,6 +335,8 @@
   /** Paste a menu item into an entry line. */
   Calc.prototype.insertItem = function (ed, item) {
     ed.mathprint = this.st.mode.mathprint && ed.mathprint !== false;
+    // nPr/nCr after a number stay infix (5 nCr 2); on their own they give two boxes to fill.
+    if ((item.tpl === 'npr' || item.tpl === 'ncr') && ed.afterValue()) { ed.insertCode(item.ins); return; }
     if (item.tpl && ed.mathprint) {
       if (item.tpl === 'exp') { ed.insertTok('e'); ed.insertTpl('pow'); return; }
       const pre = item.pre ? [Ed().nodesFromCode(item.pre)] : null;
@@ -351,7 +353,7 @@
     if (item.wiz && target === this.home && this.st.ui.wizards !== false && A && A.wizard(this, item.wiz)) return;
     const ed = target && target.editor ? target.editor() : null;
     if (!ed || item.ins == null) return;
-    if (target === this.home && ed.isEmpty() && ANS_FIRST_CODES.has(item.ins)) ed.insertTok('Ans');
+    if (target === this.home && ed.isEmpty() && ANS_FIRST_CODES.has(item.ins) && !((item.tpl === 'npr' || item.tpl === 'ncr') && this.st.mode.mathprint)) ed.insertTok('Ans');
     this.insertItem(ed, item);
   };
   Calc.prototype.action = function (act, target, item) {

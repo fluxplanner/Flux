@@ -28,6 +28,8 @@
     sum: { n: 4, focus: 0, ser: (b) => 'Σ(' + b[3] + ',' + b[0] + ',' + b[1] + ',' + b[2] + ')' },
     deriv: { n: 3, focus: 0, ser: (b) => 'nDeriv(' + b[1] + ',' + b[0] + ',' + b[2] + ')' },
     int: { n: 4, focus: 0, ser: (b) => 'fnInt(' + b[2] + ',' + b[3] + ',' + b[0] + ',' + b[1] + ')' },
+    npr: { n: 2, focus: 0, ser: (b) => '((' + b[0] + ') nPr (' + b[1] + '))' },
+    ncr: { n: 2, focus: 0, ser: (b) => '((' + b[0] + ') nCr (' + b[1] + '))' },
   };
   /** Which block ↑ and ↓ lead to, per template and block. */
   const VERT = {
@@ -120,6 +122,13 @@
     this.cur = { blk: n.b[f], i: n.b[f].length };
   };
   /** Insert a whole tree (a history entry being pasted). */
+  /** True when the thing just before the cursor is a value an infix operator can follow (5, x, ), Ans, a template…). */
+  Editor.prototype.afterValue = function () {
+    const c = this.cur;
+    if (c.i === 0) return false;
+    const n = c.blk[c.i - 1];
+    return n.t !== 'tok' || /[0-9A-Za-zθπ.)\]}²³¹!°′ʳᵀ⟧⟩₀-₉]$/.test(n.c);
+  };
   Editor.prototype.insertNodes = function (nodes) { clone(nodes).forEach((n) => this.insertNode(n)); };
 
   /* ── Moving ─────────────────────────────────────────────────────────── */
@@ -261,6 +270,8 @@
       case 'sum': return '<span class="t84big"><span class="t84big-hi">' + B(2) + '</span><span class="t84big-op">Σ</span><span class="t84big-lo">' + B(0) + '<span class="t84t">=</span>' + B(1) + '</span></span><span class="t84t">(</span>' + B(3) + '<span class="t84t">)</span>';
       case 'deriv': return '<span class="t84fr t84fr--op"><span class="t84fr-n"><span class="t84t">d</span></span><span class="t84fr-d"><span class="t84t">d</span>' + B(0) + '</span></span><span class="t84t">(</span>' + B(1) + '<span class="t84t">)</span><span class="t84bar">|</span><sub class="t84sub">' + htmlBlock(n.b[0], null, '') + '<span class="t84t">=</span>' + B(2) + '</sub>';
       case 'int': return '<span class="t84big"><span class="t84big-hi">' + B(1) + '</span><span class="t84big-op t84big-op--int">∫</span><span class="t84big-lo">' + B(0) + '</span></span>' + B(2) + '<span class="t84t">d</span>' + B(3);
+      case 'npr': return B(0) + '<span class="t84t"> nPr </span>' + B(1);
+      case 'ncr': return B(0) + '<span class="t84t"> nCr </span>' + B(1);
       default: return '';
     }
   }
@@ -285,6 +296,8 @@
         case 'sum': return 'Σ(' + t[3] + ',' + t[0] + ',' + t[1] + ',' + t[2] + ')';
         case 'deriv': return 'nDeriv(' + t[1] + ',' + t[0] + ',' + t[2] + ')';
         case 'int': return 'fnInt(' + t[2] + ',' + t[3] + ',' + t[0] + ',' + t[1] + ')';
+        case 'npr': return t[0] + ' nPr ' + t[1];
+        case 'ncr': return t[0] + ' nCr ' + t[1];
         default: return '';
       }
     }).join('');
@@ -341,6 +354,8 @@
       case 'sum': return 'Σ(';
       case 'deriv': return 'nDeriv(';
       case 'int': return 'fnInt(';
+      case 'npr': return ' nPr ';
+      case 'ncr': return ' nCr ';
       default: return '';
     }
   }

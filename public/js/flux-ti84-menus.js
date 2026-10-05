@@ -32,7 +32,7 @@
         I('lcm('), I('gcd('), I('remainder('), I('▶n/d◀▶Un/d'), I('▶F◀▶D'), { l: 'Un/d', tpl: 'mixed', ins: '+' }, { l: 'n/d', tpl: 'frac', ins: '/' },
       ] },
       { name: 'CMPLX', items: [I('conj('), I('real('), I('imag('), I('angle('), { l: 'abs(', tpl: 'abs', ins: 'abs(' }, I('▶Rect'), I('▶Polar'), { l: 'e^(', tpl: 'exp', ins: 'e^(' }] },
-      { name: 'PROB', items: [I('rand'), I('nPr', ' nPr '), I('nCr', ' nCr '), I('!'), I('randInt('), I('randNorm('), I('randBin('), I('randIntNoRep(')] },
+      { name: 'PROB', items: [I('rand'), { l: 'nPr', tpl: 'npr', ins: ' nPr ' }, { l: 'nCr', tpl: 'ncr', ins: ' nCr ' }, I('!'), I('randInt('), I('randNorm('), I('randBin('), I('randIntNoRep(')] },
       { name: 'FRAC', items: [{ l: 'n/d', tpl: 'frac', ins: '/' }, { l: 'Un/d', tpl: 'mixed', ins: '+' }, I('▶F◀▶D'), I('▶n/d◀▶Un/d')] },
     ],
     TEST: [
