@@ -57,6 +57,17 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84-home')).toBeVisible();
   });
 
+  test('nCr from the PROB menu gives two boxes to fill, or follows a number', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/calculator.html');
+    const keys = async (...ks: string[]) => { for (const k of ks) await page.locator(`.t84 [data-k="${k}"]`).click(); };
+    const nCr = ['math', 'right', 'right', 'right', '3'];
+    await keys(...nCr, '5', 'right', '2', 'enter');
+    await expect(lastOut(page)).toHaveText('10');
+    await keys('6', ...nCr, '3', 'enter');
+    await expect(lastOut(page)).toHaveText('20');
+  });
+
   test('2nd OFF switches it off, and only ON switches it back on', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/calculator.html');
