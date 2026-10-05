@@ -57,7 +57,7 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84-home')).toBeVisible();
   });
 
-  test('nCr from the PROB menu gives two boxes to fill, or follows a number', async ({ page }) => {
+  test('nCr and other functions give boxes to fill', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');
     const keys = async (...ks: string[]) => { for (const k of ks) await page.locator(`.t84 [data-k="${k}"]`).click(); };
@@ -66,6 +66,11 @@ test.describe('Calculator', () => {
     await expect(lastOut(page)).toHaveText('10');
     await keys('6', ...nCr, '3', 'enter');
     await expect(lastOut(page)).toHaveText('20');
+    // Functions of two or more arguments get a box each: , moves on, ) steps out.
+    await keys('math', 'right', '9', '1', '2', 'right', '1', '8', 'enter');
+    await expect(lastOut(page)).toHaveText('6');
+    await keys('math', 'right', '7', '3', 'comma', '9', 'rparen', 'add', '1', 'enter');
+    await expect(lastOut(page)).toHaveText('10');
   });
 
   test('2nd OFF switches it off, and only ON switches it back on', async ({ page }) => {

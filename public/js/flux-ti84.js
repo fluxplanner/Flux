@@ -337,6 +337,9 @@
     ed.mathprint = this.st.mode.mathprint && ed.mathprint !== false;
     // nPr/nCr after a number stay infix (5 nCr 2); on their own they give two boxes to fill.
     if ((item.tpl === 'npr' || item.tpl === 'ncr') && ed.afterValue()) { ed.insertCode(item.ins); return; }
+    // A function of two or more arguments gets a box for each, as MathPrint does: randInt(□,□).
+    const ar = !item.tpl && ed.mathprint && window.FluxTI && window.FluxTI.FN_ARITY[item.ins];
+    if (ar && ar[1] >= 2 && ed.insertFn) { ed.insertFn(item.ins, Math.max(ar[0], 2)); return; }
     if (item.tpl && ed.mathprint) {
       if (item.tpl === 'exp') { ed.insertTok('e'); ed.insertTpl('pow'); return; }
       const pre = item.pre ? [Ed().nodesFromCode(item.pre)] : null;

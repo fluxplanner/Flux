@@ -109,13 +109,15 @@
     .tips { position: static; max-width: calc(var(--col) * 2 + 64px); margin: 0 auto; }
     #calcHost .t84-wrap { max-width: none; width: auto; container-type: normal; }
     #calcHost .t84 {
-      display: grid; grid-template-columns: var(--col) var(--col); grid-template-rows: auto auto 1fr;
+      display: grid; grid-template-columns: var(--col) var(--col); grid-template-rows: auto 1fr;
       column-gap: 24px; width: auto; container-type: normal;
       padding: 18px 20px 22px; border-radius: 32px;
     }
     #calcHost .t84-brand, #calcHost .t84-bezel, #calcHost .t84-keys { container-type: inline-size; grid-column: 1; }
     #calcHost .t84-brand { padding: 0 10px 10px; }
-    #calcHost .t84-bezel { padding: 11px 11px 14px; border-radius: 13px 13px 19px 19px; }
+    #calcHost .t84-bezel { padding: 11px 11px 14px; border-radius: 13px 13px 19px 19px; display: flex; flex-direction: column; }
+    /* The screen runs the full height of the keys beside it. */
+    #calcHost .t84-screen { flex: 1; aspect-ratio: auto; min-height: calc(var(--col) * .75); }
     #calcHost .t84-keys { grid-column: 2; grid-row: 1 / -1; margin-top: 0; }
   }
 </style>
@@ -153,9 +155,9 @@
   <script src="public/js/flux-hub.js?v=7fc9bdd6"></script>
   <script src="public/js/flux-ti84-stats.js?v=fe6c2118"></script>
   <script src="public/js/flux-ti84-engine.js?v=bb45e37a"></script>
-  <script src="public/js/flux-ti84-editor.js?v=c60ab4b8"></script>
+  <script src="public/js/flux-ti84-editor.js?v=fbbc32f6"></script>
   <script src="public/js/flux-ti84-menus.js?v=2cfedd6e"></script>
-  <script src="public/js/flux-ti84.js?v=30b58fc2"></script>
+  <script src="public/js/flux-ti84.js?v=c22e0130"></script>
   <script src="public/js/flux-ti84-graph.js?v=2fe32e0f"></script>
   <script src="public/js/flux-ti84-apps.js?v=81c1b069"></script>
   <script src="public/js/flux-ti84-prgm.js?v=97693bbd"></script>
