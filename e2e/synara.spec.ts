@@ -102,8 +102,10 @@ test.describe('Synara', () => {
     expect(brand.toLowerCase()).toBe('#7c4dff');
   });
 
-  test('the hub lists it in its own colour', async ({ page }) => {
+  test('the hub lists it beside the planner, in its own colour', async ({ page }) => {
     await page.goto('/hub.html');
+    const hrefs = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(hrefs.slice(0, 2), 'Synara should sit next to the planner at the top').toEqual(['index.html', 'synara.html']);
     const card = page.locator('#apps a.app--synara');
     await expect(card).toHaveAttribute('href', 'synara.html');
     await expect(card.locator('.app-name')).toHaveText('Synara');
