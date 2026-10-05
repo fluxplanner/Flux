@@ -153,6 +153,15 @@
     const n = c.blk[c.i - 1];
     return n.t !== 'tok' || /[0-9A-Za-zθπ.)\]}²³¹!°′ʳᵀ⟧⟩₀-₉]$/.test(n.c);
   };
+  /** Remove and return the plain number (digits, ".", Ans, a variable) just before the cursor. */
+  Editor.prototype.takeNumber = function () {
+    const c = this.cur;
+    let k = c.i;
+    while (k > 0 && c.blk[k - 1].t === 'tok' && /^([0-9.]|Ans|[A-Zθ])$/.test(c.blk[k - 1].c)) k--;
+    const out = c.blk.splice(k, c.i - k);
+    c.i = k;
+    return out;
+  };
   Editor.prototype.insertNodes = function (nodes) { clone(nodes).forEach((n) => this.insertNode(n)); };
 
   /* ── Moving ─────────────────────────────────────────────────────────── */
@@ -296,8 +305,9 @@
       case 'sum': return '<span class="t84big"><span class="t84big-hi">' + B(2) + '</span><span class="t84big-op">Σ</span><span class="t84big-lo">' + B(0) + '<span class="t84t">=</span>' + B(1) + '</span></span><span class="t84t">(</span>' + B(3) + '<span class="t84t">)</span>';
       case 'deriv': return '<span class="t84fr t84fr--op"><span class="t84fr-n"><span class="t84t">d</span></span><span class="t84fr-d"><span class="t84t">d</span>' + B(0) + '</span></span><span class="t84t">(</span>' + B(1) + '<span class="t84t">)</span><span class="t84bar">|</span><sub class="t84sub">' + htmlBlock(n.b[0], null, '') + '<span class="t84t">=</span>' + B(2) + '</sub>';
       case 'int': return '<span class="t84big"><span class="t84big-hi">' + B(1) + '</span><span class="t84big-op t84big-op--int">∫</span><span class="t84big-lo">' + B(0) + '</span></span>' + B(2) + '<span class="t84t">d</span>' + B(3);
-      case 'npr': return B(0) + '<span class="t84t"> nPr </span>' + B(1);
-      case 'ncr': return B(0) + '<span class="t84t"> nCr </span>' + B(1);
+      // Textbook form: ₙCᵣ, with the two boxes as the small n and r.
+      case 'npr': return '<sub class="t84sub t84pc-n">' + B(0) + '</sub><span class="t84t">P</span><sub class="t84sub">' + B(1) + '</sub>';
+      case 'ncr': return '<sub class="t84sub t84pc-n">' + B(0) + '</sub><span class="t84t">C</span><sub class="t84sub">' + B(1) + '</sub>';
       default: return '';
     }
   }
