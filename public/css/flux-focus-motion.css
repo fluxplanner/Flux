@@ -1,0 +1,53 @@
+/* Flux · Focus timer motion (flux-focus-motion.js): the car, circuit and bezel
+   ticks laid over the Pomodoro ring, and the draggable floating pill. */
+
+#timer .ffm-orbit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+#timer .ffm-shape { display: none; }
+#timer .ffm-circuit {
+  fill: none;
+  /* A lane line along the ring: shows on the coloured arc and on the track. */
+  stroke: rgba(255, 255, 255, .6);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+#timer .ffm-car {
+  fill: #fff;
+  stroke: var(--accent, #00bfff);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb, 0, 191, 255), .85));
+}
+#timer .ffm-ticker {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+}
+#timer .ffm-tick {
+  stroke: var(--muted, #8a93a6);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: .45;
+}
+#timer .ffm-tick--major {
+  stroke: var(--accent, #00bfff);
+  opacity: .8;
+}
+
+/* Desktop: the pill can be dragged; anime.js drives its transform while it
+   moves, so the CSS transform transition would fight it. */
+.flux-pomo-pill.ffm-draggable {
+  cursor: grab;
+  touch-action: none;
+  transition: box-shadow .15s ease;
+}
+.flux-pomo-pill.ffm-draggable:active { cursor: grabbing; }
+
+@media print {
+  #timer .ffm-orbit { display: none; }
+}
