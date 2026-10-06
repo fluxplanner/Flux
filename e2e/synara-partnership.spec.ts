@@ -275,6 +275,42 @@ test.describe('Synara sync through a Flux account', () => {
     for (const d of [A, B, C]) await d.ctx.close();
   });
 
+  test('the real connector uses the Flux sign-in and reports problems by their cause', async ({ page }) => {
+    // A pretend Flux session, and every Supabase request answered here:
+    // nothing reaches the real project.
+    const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const sub = '11111111-1111-1111-1111-111111111111';
+    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, exp, role: 'authenticated', aud: 'authenticated' })}.sig`;
+    await page.addInitScript(([t, s, e]) => {
+      localStorage.setItem('sb-lfigdijuqmbensebnevo-auth-token', JSON.stringify({
+        access_token: t, refresh_token: 'r', token_type: 'bearer', expires_in: 3600, expires_at: e,
+        user: { id: s, email: 'student@example.com', aud: 'authenticated', role: 'authenticated' },
+      }));
+    }, [token, sub, exp] as const);
+
+    let answer = { status: 401, body: { code: '42501', message: 'permission denied for table synara_vaults' } };
+    const seen: string[] = [];
+    await page.route('**/*.supabase.co/**', (route) => {
+      seen.push(route.request().headers().authorization || '');
+      return route.fulfill({ status: answer.status, contentType: 'application/json', body: JSON.stringify(answer.body) });
+    });
+
+    await page.goto('/synara.html');
+    await page.waitForFunction(() => !!(window as unknown as { FluxSynaraVault?: unknown }).FluxSynaraVault);
+    const call = () => page.evaluate(async () => {
+      const v = (window as unknown as { FluxSynaraVault: { account(): Promise<{ id: string }>; get(): Promise<unknown> } }).FluxSynaraVault;
+      try { await v.get(); return 'ok'; } catch (e) { return (e as { code: string }).code; }
+    });
+
+    expect(await page.evaluate(() => (window as unknown as { FluxSynaraVault: { account(): Promise<{ id: string }> } }).FluxSynaraVault.account().then((a) => a && a.id))).toBe(sub);
+    expect(await call(), 'refused: sign in again, not "not ready"').toBe('signed-out');
+    expect(seen.at(-1)).toBe(`Bearer ${token}`);
+
+    answer = { status: 404, body: { code: 'PGRST205', message: "Could not find the table 'public.synara_vaults' in the schema cache" } };
+    expect(await call()).toBe('not-ready');
+  });
+
   test('deleting everything on one device never syncs an empty record over the others', async ({ browser }) => {
     const shared = { row: null as Row, writes: 0 };
     const A = await device(browser, shared);

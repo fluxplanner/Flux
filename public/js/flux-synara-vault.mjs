@@ -35,11 +35,14 @@ if (!window.FluxSynaraVault) {
 
   const fail = (code, cause) => Object.assign(new Error(code), { code, cause });
 
+  /* By code, not by message: "permission denied for table synara_vaults"
+     names the table too, and is a sign-in problem, not a missing table. */
   function wrap(error) {
     const msg = String((error && (error.message || error.details)) || '');
     const code = error && error.code;
-    if (code === 'PGRST205' || code === '42P01' || /synara_vaults|schema cache/i.test(msg)) return fail('not-ready', error);
-    if (/fetch|network|Failed to fetch|Load failed/i.test(msg)) return fail('offline', error);
+    if (code === 'PGRST205' || code === '42P01') return fail('not-ready', error);
+    if (code === '42501' || /^PGRST30\d$/.test(code || '') || /JWT/i.test(msg)) return fail('signed-out', error);
+    if (/fetch|network|Load failed/i.test(msg)) return fail('offline', error);
     return fail('failed', error);
   }
 

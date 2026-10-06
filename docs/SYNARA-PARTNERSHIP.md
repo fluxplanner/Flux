@@ -84,8 +84,12 @@ developers) can read it without the student's sync key.
 
 **What remains before calling it done:**
 
-1. **Apply the migration** to the production Supabase project. Until then the
-   app shows "Sync isn't switched on for Flux yet" and nothing is sent.
+1. ~~**Apply the migration**~~ Done 2026-10-06 (FluxPlanner project, migration
+   `synara_vaults`). Checked after applying: anon is refused outright (no
+   grants), a signed-in user can't write another user's row (RLS), their own
+   row passes, the live API answers `42501 permission denied` to the public
+   key, and Supabase's security and performance advisors report nothing for
+   the table or its trigger.
 2. **Under-13 users (COPPA).** Flux accounts may belong to children. Synced data
    is encrypted and unreadable to Flux, but an account still exists. Confirm
    Flux's sign-up flow already handles age and parental consent the way the rest

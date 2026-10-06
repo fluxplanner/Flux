@@ -6,6 +6,12 @@
 -- devices as a "sync key"). This table only ever holds ciphertext. Flux can
 -- see that a row exists, its size and when it changed — not what is in it.
 -- See docs/SYNARA-PARTNERSHIP.md.
+--
+-- Applied to the FluxPlanner project on 2026-10-06 as migration "synara_vaults".
+--
+-- Access follows the newest tables here (flux_password_help): nothing for
+-- anon, only the four operations signed-in students need, policies scoped
+-- to authenticated, and (select auth.uid()) so it is evaluated once per query.
 
 CREATE TABLE IF NOT EXISTS public.synara_vaults (
   user_id     UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
@@ -19,11 +25,16 @@ CREATE TABLE IF NOT EXISTS public.synara_vaults (
   CONSTRAINT synara_vaults_iv   CHECK (length(iv) BETWEEN 12 AND 32)
 );
 
+COMMENT ON TABLE public.synara_vaults IS 'Synara sync: one end-to-end encrypted copy of a student''s Synara record per account. Ciphertext only; the key never leaves the student''s devices. See docs/SYNARA-PARTNERSHIP.md.';
+
 -- The server sets the time, so a device's clock cannot fake "newer".
 CREATE OR REPLACE FUNCTION public.synara_vaults_touch()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
-  NEW.updated_at := NOW();
+  NEW.updated_at := pg_catalog.now();
   RETURN NEW;
 END;
 $$;
@@ -35,19 +46,22 @@ CREATE TRIGGER synara_vaults_touch
 
 ALTER TABLE public.synara_vaults ENABLE ROW LEVEL SECURITY;
 
+REVOKE ALL ON public.synara_vaults FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.synara_vaults TO authenticated;
+
 CREATE POLICY "synara_vaults_select_own"
-  ON public.synara_vaults FOR SELECT
-  USING (auth.uid() = user_id);
+  ON public.synara_vaults FOR SELECT TO authenticated
+  USING ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "synara_vaults_insert_own"
-  ON public.synara_vaults FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  ON public.synara_vaults FOR INSERT TO authenticated
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "synara_vaults_update_own"
-  ON public.synara_vaults FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  ON public.synara_vaults FOR UPDATE TO authenticated
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "synara_vaults_delete_own"
-  ON public.synara_vaults FOR DELETE
-  USING (auth.uid() = user_id);
+  ON public.synara_vaults FOR DELETE TO authenticated
+  USING ((SELECT auth.uid()) = user_id);
