@@ -53,6 +53,34 @@ test.describe('Synara', () => {
     await expect(page.locator('.screen-inner[data-route="meds"]')).toBeVisible();
   });
 
+  test('says it is powered by Flux, with the Flux logo, but never on the emergency card', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 860 });
+    await page.goto('/synara.html');
+    const welcomeBadge = page.locator('#welcome .powered-by');
+    await expect(welcomeBadge).toBeVisible();
+    await expect(welcomeBadge).toHaveAttribute('href', /fluxplanner\.github\.io\/Flux/);
+    // The logo path differs inside Flux; a broken image would still be "visible".
+    expect(await welcomeBadge.locator('img').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth)).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: 'Look around with example data' }).click();
+    await expect(page.locator('.sidebar-powered')).toBeVisible();
+    await page.locator('.sos-btn').click();
+    await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
+    await expect(page.locator('#emergency .powered-by')).toHaveCount(0);
+  });
+
+  test('the page itself never scrolls past the app', async ({ page }) => {
+    // A hidden file input on You once stretched the page, and a scroll wheel
+    // could carry the whole window off into blank space.
+    await page.setViewportSize({ width: 1280, height: 760 });
+    await withExampleData(page);
+    for (const route of ['home', 'meds', 'track', 'safety', 'you']) {
+      await page.locator(`.tab[data-to="${route}"]`).click();
+      const extra = await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight);
+      expect(extra, `#/${route} makes the page taller than the window`).toBeLessThanOrEqual(0);
+    }
+  });
+
   test('#/sos lands straight on the emergency card', async ({ page }) => {
     await withExampleData(page);
     await page.goto('/synara.html#/sos');
@@ -70,6 +98,7 @@ test.describe('Synara', () => {
 
     await page.locator('#appbar .fxhub-btn').click();
     await expect(page.locator('.fxhub-item.is-here .fxhub-item-name')).toHaveText('Synara');
+    await expect(page.locator('.fxhub-item--synara .fxhub-item-mark--logo svg')).toBeVisible();
     const b = await page.locator('.fxhub-panel').boundingBox();
     expect(b!.x + b!.width).toBeLessThanOrEqual(1280);
 
@@ -109,6 +138,10 @@ test.describe('Synara', () => {
     const card = page.locator('#apps a.app--synara');
     await expect(card).toHaveAttribute('href', 'synara.html');
     await expect(card.locator('.app-name')).toHaveText('Synara');
+    // Set apart from the other apps: its own logo tile and a violet gradient frame.
+    await expect(card.locator('.app-icon--logo svg')).toBeVisible();
+    expect(await card.evaluate((a) => getComputedStyle(a, '::before').backgroundImage)).toContain('linear-gradient');
+    await expect(page.locator('#apps .app-icon--logo'), 'only Synara wears its own logo').toHaveCount(1);
     await card.click();
     await expect(page.locator('#welcome')).toBeVisible();
   });
