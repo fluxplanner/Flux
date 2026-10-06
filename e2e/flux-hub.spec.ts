@@ -110,7 +110,7 @@ test.describe('Flux Hub', () => {
     await page.goto('/hub.html');
     const names = await page.locator('#apps .app').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
     expect(names, 'hub.html should list every product').toEqual(
-      expect.arrayContaining(['index.html', 'grapher.html', 'periodic.html', 'composer.html', 'calculator.html']));
+      expect.arrayContaining(['index.html', 'grapher.html', 'periodic.html', 'composer.html', 'calculator.html', 'synara.html']));
 
     await page.goto('/grapher.html');
     await page.locator('.fxhub-btn:visible').click();
