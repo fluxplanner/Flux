@@ -5840,6 +5840,9 @@ function renderCalendar(){
     const ds=fluxLocalYMD(new Date(calYear,calMonth,d));
     const wk=weeklyVirtualEventsForDate(ds);
     if(wk.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...wk);}
+    // Synara dose times, only while the student has linked Synara (flux-synara-link.js).
+    const sy=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
+    if(sy.length){if(!evMap[d])evMap[d]=[];evMap[d].push(...sy);}
   }
   let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
   let calConflictDates=new Set();
@@ -5850,10 +5853,10 @@ function renderCalendar(){
   for(let i=first-1;i>=0;i--)html+=`<div class="cal-day other"><div class="cal-dn">${prevDays-i}</div></div>`;
   for(let d=1;d<=days;d++){const dt=new Date(calYear,calMonth,d),ds=fluxLocalYMD(dt);const isToday=dt.getTime()===now.getTime(),isNP=isBreak(ds),rk=isNP?restDayKind(ds)||'lazy':null,ab=getCycleDayLabel(ds);const rawT=tMap[d]||[],rawE=evMap[d]||[];const tlist=[...rawT].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));const elist=[...rawE].sort((a,b)=>fluxScopeSortKey(a)-fluxScopeSortKey(b)||fluxTimeSortMinutes(a.time)-fluxTimeSortMinutes(b.time));// Task bars — school items first
 const taskBars=tlist.slice(0,3).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';const out=fluxEventScope(t)==='outside';const tm=t.time?formatCalTimeShort(t.time):'';const lab=tm?`${esc(t.name)} · ${esc(tm)}`:esc(t.name);return`<div class="cal-task-bar" style="background:${c}22;border-left:2px solid ${c};opacity:${out?0.75:(t.done?0.5:1)};text-decoration:${t.done?'line-through':'none'}">${lab}</div>`;}).join('');
-const eventBars=elist.slice(0,2).map(e=>{const out=fluxEventScope(e)==='outside';const wk=e._weekly;const isEc=fluxIsEcCalendarItem(e);const bg=isEc?'rgba(251,191,36,.14)':wk?(out?'rgba(148,163,184,.1)':'rgba(0,194,255,.12)'):(out?'rgba(148,163,184,.12)':'rgba(192,132,252,.15)');const br=isEc?'var(--gold)':wk?(out?'var(--border2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');const tm=e.time?formatCalTimeShort(e.time):'';const title=e.title||'Event';const lab=tm?`${esc(title)} · ${esc(tm)}`:esc(title);return`<div class="cal-task-bar" style="background:${bg};border-left:2px solid ${br}">${lab}</div>`;}).join('');
+const eventBars=elist.slice(0,2).map(e=>{const out=fluxEventScope(e)==='outside';const wk=e._weekly;const isEc=fluxIsEcCalendarItem(e);const sy=e._synara;const bg=sy?'rgba(156,122,255,.15)':isEc?'rgba(251,191,36,.14)':wk?(out?'rgba(148,163,184,.1)':'rgba(0,194,255,.12)'):(out?'rgba(148,163,184,.12)':'rgba(192,132,252,.15)');const br=sy?'#9c7aff':isEc?'var(--gold)':wk?(out?'var(--border2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');const tm=e.time?formatCalTimeShort(e.time):'';const title=e.title||'Event';const lab=tm?`${esc(title)} · ${esc(tm)}`:esc(title);return`<div class="cal-task-bar" style="background:${bg};border-left:2px solid ${br}">${lab}</div>`;}).join('');
 const allCount=tlist.length+elist.length;const dots=taskBars+eventBars;const abCol=ab==='A'?'var(--accent)':ab==='B'?'var(--green)':ab?'var(--gold)':'var(--muted)';const abLabel=ab?`<div style="font-size:${ab.length>2?'.4rem':'.45rem'};font-family:'JetBrains Mono',monospace;color:${abCol};line-height:1;margin-top:1px;max-width:100%;text-overflow:ellipsis;overflow:hidden">${esc(ab)}</div>`:'';const overFlag=tlist.some(t=>!t.done&&new Date(t.date+'T00:00:00')<now)?'<div style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--red)"></div>':'';const hiddenCount=Math.max(0,tlist.length-3)+Math.max(0,elist.length-2);const countBadge=hiddenCount>0?`<div class="cal-day-count">+${hiddenCount}</div>`:'';const restCls=isNP?` no-hw ${rk==='sick'?'rest-sick':'rest-lazy'}`:'';const dayMins=tlist.filter(t=>!t.done).reduce((s,t)=>s+(t.estTime||30),0);const heatCls=!isNP&&!d===calSelected?(dayMins>=180?' cal-heat-3':dayMins>=90?' cal-heat-2':dayMins>=30?' cal-heat-1':''):'';
 // Compact dots for mobile — show up to 4 per day, colored by subject/event type
-const _mobMax=4;const _taskDots=tlist.slice(0,_mobMax).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';return`<span class="cal-dot-compact" style="background:${c};opacity:${t.done?0.35:1}"></span>`;});const _evSlots=Math.max(0,_mobMax-_taskDots.length);const _evDots=elist.slice(0,_evSlots).map(e=>{const wk=e._weekly;const out=fluxEventScope(e)==='outside';const isEc=fluxIsEcCalendarItem(e);const c=isEc?'var(--gold)':wk?(out?'var(--muted2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<span class="cal-dot-compact" style="background:${c};opacity:${wk?0.85:1}"></span>`;});const _dotsHTML=(_taskDots.concat(_evDots)).join('')+(allCount>_mobMax?`<span class="cal-dot-compact cal-dot-more">+${allCount-_mobMax}</span>`:'');const compactDotsEl=_dotsHTML?`<div class="cal-dots-mobile" aria-hidden="true">${_dotsHTML}</div>`:'';
+const _mobMax=4;const _taskDots=tlist.slice(0,_mobMax).map(t=>{const s=getSubjects()[t.subject];const c=s?s.color:'var(--accent)';return`<span class="cal-dot-compact" style="background:${c};opacity:${t.done?0.35:1}"></span>`;});const _evSlots=Math.max(0,_mobMax-_taskDots.length);const _evDots=elist.slice(0,_evSlots).map(e=>{const wk=e._weekly;const out=fluxEventScope(e)==='outside';const isEc=fluxIsEcCalendarItem(e);const c=e._synara?'#9c7aff':isEc?'var(--gold)':wk?(out?'var(--muted2)':'var(--accent)'):(out?'var(--muted2)':'var(--purple)');return`<span class="cal-dot-compact" style="background:${c};opacity:${wk?0.85:1}"></span>`;});const _dotsHTML=(_taskDots.concat(_evDots)).join('')+(allCount>_mobMax?`<span class="cal-dot-compact cal-dot-more">+${allCount-_mobMax}</span>`:'');const compactDotsEl=_dotsHTML?`<div class="cal-dots-mobile" aria-hidden="true">${_dotsHTML}</div>`:'';
 const conflictCls=calConflictDates.has(ds)?' cal-day--conflict':'';const busyCls=gcalBusyDates.has(ds)?' cal-day--gcal-busy':'';let dayTitle='';if(conflictCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('syllabus.cal_marker'))}"`;else if(busyCls&&typeof fluxT==='function')dayTitle=` title="${esc(fluxT('gcal.cal_marker'))}"`;const gcalBarsHtml=window.FluxGCalBusy?.enabled?.()&&window.FluxGCalBusy.renderBusyBarsHtml?FluxGCalBusy.renderBusyBarsHtml(ds,2):'';html+=`<div class="cal-day ${isToday?'today ':''}${d===calSelected?'selected ':''}${restCls}${heatCls}${conflictCls}${busyCls}" data-cal-date="${ds}" data-rest-kind="${rk||''}"${dayTitle} ondragover="fluxCalDragOver(event)" ondragleave="fluxCalDragLeave(event)" ondrop="fluxCalDrop(event)" onclick="selectDay(${d})" style="position:relative">${overFlag}<div class="cal-dn">${d}</div>${abLabel}<div class="cal-dots">${dots}</div>${compactDotsEl}${gcalBarsHtml?`<div class="cal-gcal-busy-stack">${gcalBarsHtml}</div>`:''}${countBadge}</div>`;}
   document.getElementById('calGrid').innerHTML=html;
   try{fluxDecorateCountdownDay();}catch(_){}
@@ -5894,6 +5897,7 @@ function renderCalDay(){
   const day=tasks.filter(t=>{if(!t.date)return false;const d=new Date(t.date+'T00:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const events=(load('flux_events',[])).filter(e=>{if(!e.date)return false;const d=new Date(e.date+'T12:00:00');return d.getFullYear()===calYear&&d.getMonth()===calMonth&&d.getDate()===calSelected;});
   const weekly=weeklyVirtualEventsForDate(ds);
+  const synara=window.FluxSynara?window.FluxSynara.dosesForDate(ds):[];
   const el=document.getElementById('calDayTasks');
   let conflictHint='';
   try{if(window.FluxSyllabusConflict?.renderDayHint)conflictHint=FluxSyllabusConflict.renderDayHint(ds)||'';}catch(_){}
@@ -5904,15 +5908,19 @@ function renderCalDay(){
   let travelHint='';
   try{if(window.FluxTravelTime?.renderDayHint)travelHint=FluxTravelTime.renderDayHint(ds)||'';}catch(_){}
   const dayHints=conflictHint+gcalHint+bufferHint+travelHint;
-  if(!day.length&&!events.length&&!weekly.length){
+  if(!day.length&&!events.length&&!weekly.length&&!synara.length){
     if(dayHints){el.innerHTML=dayHints;return;}
     el.innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:4px 0">Nothing scheduled.</div>';
     return;
   }
-  const blocks=[];weekly.forEach(w=>blocks.push({k:'w',o:w}));events.forEach(e=>blocks.push({k:'e',o:e}));day.forEach(t=>blocks.push({k:'t',o:t}));
-  const ord={w:0,e:1,t:2};
+  const blocks=[];synara.forEach(s=>blocks.push({k:'s',o:s}));weekly.forEach(w=>blocks.push({k:'w',o:w}));events.forEach(e=>blocks.push({k:'e',o:e}));day.forEach(t=>blocks.push({k:'t',o:t}));
+  const ord={s:0,w:0,e:1,t:2};
   blocks.sort((a,b)=>{const s=fluxScopeSortKey(a.o)-fluxScopeSortKey(b.o);if(s!==0)return s;const ta=fluxTimeSortMinutes(a.o.time),tb=fluxTimeSortMinutes(b.o.time);if(ta!==tb)return ta-tb;return ord[a.k]-ord[b.k];});
   el.innerHTML=dayHints+blocks.map(({k,o})=>{
+    if(k==='s'){
+      // A Synara dose: read-only here; it is logged in Synara.
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(156,122,255,.1);border:1px solid rgba(156,122,255,.35);border-radius:10px;margin-bottom:6px"><span style="font-size:.85rem">💊</span><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#a78bfa">Synara · medication</div><div style="font-size:.85rem;font-weight:600">${esc(o.title)}</div>${o.time?`<div style="font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${esc(formatCalTimeShort(o.time))}</div>`:''}</div><a href="synara.html#/meds" style="font-size:.78rem;font-weight:700;color:#a78bfa;text-decoration:none;padding:4px 6px" title="Log this dose in Synara">Log →</a></div>`;
+    }
     if(k==='w'){
       const sch=fluxEventScope(o)==='school';
       const isEc=fluxIsEcCalendarItem(o);
@@ -6658,6 +6666,8 @@ function renderSchool(){
     sidEl.type='password';
     const sb=document.getElementById('revealSIDBtn');if(sb){sb.textContent='👁';sb.setAttribute('title','Show');}
   }
+  // A shortcut to Synara's seizure safety card, while Synara is linked.
+  try{if(window.FluxSynara)window.FluxSynara.decorateSchool();}catch(_){}
   const cl=document.getElementById('classesList');
   if(!cl)return;
   if(!classes.length){cl.innerHTML='<div class="empty"><div class="empty-icon"></div><div class="empty-title">No classes yet</div><div class="empty-sub">Add classes below or import from a photo</div></div>';}

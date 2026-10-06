@@ -191,6 +191,8 @@
     "public/js/flux-lab-fit.js",
     "public/js/flux-expr.js",
     "public/js/flux-hub.js",
+    "public/js/flux-purple-day.js",
+    "public/js/flux-synara-link.js",
     "public/js/flux-flash-core.js",
     "public/js/flux-mathfield.js",
     "public/js/flux-grapher.js",
