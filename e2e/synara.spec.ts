@@ -37,6 +37,64 @@ test.describe('Synara', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the intro asks about epilepsy, shares a fact, then hands over the sections', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/synara.html');
+    const welcome = page.locator('#welcome');
+
+    await page.getByRole('button', { name: 'Set it up for me' }).click();
+    await expect(welcome.getByRole('heading', { name: 'First, a little about you' })).toBeVisible();
+    // Backing out at the questions still leaves nothing saved.
+    expect(await page.evaluate(() => localStorage.getItem('synara.v2'))).toBeNull();
+
+    await page.getByLabel('What should we call you?').fill('Riley Ellison');
+    await welcome.getByRole('button', { name: /^Absence/ }).click();
+    await welcome.getByRole('button', { name: /^Focal impaired awareness/ }).click();
+    await expect(welcome.getByRole('button', { name: /^Absence/ })).toHaveAttribute('aria-pressed', 'true');
+
+    // A typo in the year is caught, and nothing moves on.
+    await page.getByLabel('What year were you diagnosed?').fill('21');
+    await welcome.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#intro-year-error')).toContainText('Enter a year');
+    await page.getByLabel('What year were you diagnosed?').fill('2021');
+    await welcome.getByRole('button', { name: 'Continue' }).click();
+
+    // A fact, with its source, and another on request.
+    await expect(welcome.getByRole('heading', { name: 'You’re not alone, Riley' })).toBeVisible();
+    await expect(welcome.locator('.intro-fact figcaption')).toContainText('Source:');
+    const first = await welcome.locator('.intro-fact-t').textContent();
+    await welcome.getByRole('button', { name: 'Another fact' }).click();
+    await expect(welcome.locator('.intro-fact-t')).not.toHaveText(first!);
+
+    // The answers went into the real record.
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('synara.v2')!).profile);
+    expect(saved).toMatchObject({ name: 'Riley Ellison', seizureType: 'Absence, Focal impaired awareness', diagnosed: '2021' });
+
+    // Back keeps the answers.
+    await welcome.getByRole('button', { name: 'Back' }).click();
+    await expect(page.getByLabel('What should we call you?')).toHaveValue('Riley Ellison');
+    await welcome.getByRole('button', { name: 'Continue' }).click();
+    await welcome.getByRole('button', { name: 'Continue' }).click();
+
+    // The sections: tapping one leaves the intro and opens its editor.
+    await expect(welcome.getByRole('heading', { name: 'Now, fill in your sections' })).toBeVisible();
+    await welcome.getByRole('button', { name: /What your seizures look like/ }).click();
+    await expect(welcome).toBeHidden();
+    await page.locator('#card-text').fill('I stare and don’t answer for about 30 seconds.');
+    await page.locator('.sheet [data-action="card-save"]').click();
+
+    // Home keeps the list until it's done, and ticks off what is.
+    const card = page.locator('.setup-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.setup-h')).toHaveText(/^1 of \d sections done$/);
+    await expect(card.locator('.setup-row[data-done="true"]')).toHaveText(/What your seizures look like/);
+    await card.getByRole('button', { name: 'Hide this list' }).click();
+    await expect(page.locator('.setup-card')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   test('SOS opens the emergency card, with the timer, and Close gives the app back', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await withExampleData(page);

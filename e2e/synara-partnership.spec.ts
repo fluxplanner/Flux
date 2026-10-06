@@ -182,6 +182,15 @@ test.describe('Synara in the Flux Planner', () => {
 test.describe('Synara sync through a Flux account', () => {
   type Row = { ciphertext: string; iv: string; version: number; updated_at: string } | null;
 
+  /** Through the intro with no answers, to an empty record. */
+  async function startEmpty(page: Page) {
+    await page.getByRole('button', { name: 'Set it up for me' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Go to Synara' }).click();
+    await expect(page.locator('#welcome')).toBeHidden();
+  }
+
   /** A device: its own browser, sharing one Flux account's vault with the others. */
   async function device(browser: Browser, shared: { row: Row; writes: number }) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -231,7 +240,7 @@ test.describe('Synara sync through a Flux account', () => {
 
     const B = await device(browser, shared);
     await B.page.goto('/synara.html');
-    await B.page.getByRole('button', { name: 'Set it up for me' }).click();
+    await startEmpty(B.page);
     await B.page.locator('.tab[data-to="you"]').click();
     await B.page.getByRole('button', { name: /Sync across your devices/ }).click();
     await B.page.locator('#sync-key').fill('  ' + key.toLowerCase() + ' ');
@@ -256,7 +265,7 @@ test.describe('Synara sync through a Flux account', () => {
     // A wrong key is refused without touching anything.
     const C = await device(browser, shared);
     await C.page.goto('/synara.html');
-    await C.page.getByRole('button', { name: 'Set it up for me' }).click();
+    await startEmpty(C.page);
     await C.page.locator('.tab[data-to="you"]').click();
     await C.page.getByRole('button', { name: /Sync across your devices/ }).click();
     await C.page.locator('#sync-key').fill('0000-0000-0000-0000-0000-0000-00');
