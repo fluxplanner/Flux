@@ -136,9 +136,28 @@ async function buildSynara() {
   const cssOut = hashedName('flux-synara.css', min.code);
   fs.writeFileSync(path.join(OUT, cssOut), min.code);
 
+  // Synara's sync talks to Flux through this (public/js/flux-synara-vault.mjs):
+  // the planner's Supabase sign-in, bundled from node_modules — nothing from a
+  // CDN. The underscore keeps the name inside the prune and service-worker
+  // patterns, flux(-\w+)?.<hash>.js.
+  const vault = await esbuild.build({
+    entryPoints: [path.join(ROOT, 'public', 'js', 'flux-synara-vault.mjs')],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    pure: PURE,
+    legalComments: 'none',
+    metafile: true,
+    write: false,
+  });
+  const vaultCode = vault.outputFiles[0].text;
+  const vaultOut = hashedName('flux-synara_vault.js', vaultCode);
+  fs.writeFileSync(path.join(OUT, vaultOut), vaultCode);
+
   return [
     { name: 'flux-synara.js', out: jsOut, files: Object.keys(js.metafile.inputs).length, bytes: code.length },
     { name: 'flux-synara.css', out: cssOut, files: 5, bytes: min.code.length },
+    { name: 'flux-synara_vault.js', out: vaultOut, files: Object.keys(vault.metafile.inputs).length, bytes: vaultCode.length },
   ];
 }
 
@@ -187,7 +206,7 @@ if (synara.length && fs.existsSync(SYNARA_HTML)) {
 //     the OLD scripts, and the page broke ("G.create is not a function").
 //     A content hash in each query string makes every version its own URL.
 //     calculator.html, periodic.html and composer.html are built the same way, for the same reason.
-for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html', 'synara.html', 'hub.html']) {
+for (const page of ['grapher.html', 'calculator.html', 'periodic.html', 'composer.html', 'flashcards.html', 'pixel.html', 'synara.html', 'partners.html', 'landing.html', 'hub.html']) {
   const file = path.join(ROOT, page);
   if (!fs.existsSync(file)) continue;
   const before = fs.readFileSync(file, 'utf8');

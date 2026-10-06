@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="public/css/flux-hub.css?v=35b4c145">
-<link rel="stylesheet" href="public/bundles/flux-synara.a378cc5a.css">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=3991badf">
+<link rel="stylesheet" href="public/bundles/flux-synara.78a831cf.css">
 
 <script>
   /* The saved light/dark choice, before first paint: a student who picked
@@ -71,7 +71,10 @@
 </noscript>
 
 <!-- Plain script tags, not the planner's bundles: this page stands alone. -->
-<script src="public/js/flux-hub.js?v=67baef6f"></script>
-<script src="public/bundles/flux-synara.34c0cfe2.js"></script>
+<script src="public/js/flux-hub.js?v=43e992d6"></script>
+<!-- Sync's link to the Flux sign-in (public/js/flux-synara-vault.mjs). Deferred
+     so it never holds up Synara's first screen; Synara's sync waits for it. -->
+<script defer src="public/bundles/flux-synara_vault.8c75d2ba.js"></script>
+<script src="public/bundles/flux-synara.0c6ef55b.js"></script>
 </body>
 </html>

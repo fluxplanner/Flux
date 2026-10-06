@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flux Partners — we build your app, you help students find Flux</title>
+<meta name="description" content="Flux builds and hosts free web apps for student organizations, clubs and nonprofits, with their own name, colours and logo. In return, partners tell their community about Flux. Includes the partner kit: logos, colours, blurbs and ready-made posts.">
+<meta name="theme-color" content="#070b14">
+<link rel="icon" type="image/png" href="public/flux-planner-logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<!--
+  Flux Partners: the program page and the partner kit, in one place. Built like
+  hub.html — no bundles, no sign-in. Partners are listed by hand below; the
+  first is Synara (synara.html). The kit is everything a partner needs to
+  talk about Flux: logo files, colours, words to copy, ready-made posts
+  (including one for Purple Day, March 26), a "Powered by Flux" badge for
+  their own site, and screenshots (public/partners/).
+-->
+<link rel="stylesheet" href="public/css/flux-hub.css?v=3991badf">
+<style>
+  :root { --bg: #070b14; --text: #eaf1ff; --muted2: #9fb0cc; --accent: #00c2ff; --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.15); --card: rgba(18,25,42,.78); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background-color: #070b14; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(0,194,255,.12), transparent 55%),
+      radial-gradient(80% 60% at 100% 10%, rgba(156,122,255,.12), transparent 55%),
+      linear-gradient(170deg, #0a0f1c 0%, #070b14 55%, #05070f 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.55;
+  }
+  a { color: #7fe3ff; }
+  header.top {
+    display: flex; align-items: center; gap: 10px;
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+    border-bottom: 1px solid var(--border); background: #080c16;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 9px; display: block; }
+  .brand-name { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; }
+  .grow { flex: 1; }
+  main { max-width: 1040px; margin: 0 auto; padding: clamp(28px, 6vw, 64px) max(16px, env(safe-area-inset-right, 0px)) calc(56px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .pd-slot:not(:empty) { margin: 0 0 22px; }
+
+  .hero { text-align: center; max-width: 720px; margin: 0 auto clamp(30px, 5vw, 52px); }
+  .eyebrow { display: inline-block; margin-bottom: 14px; padding: 4px 12px; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #c4b5fd; background: rgba(156,122,255,.12); border: 1px solid rgba(156,122,255,.32); }
+  .hero h1 { margin: 0 0 12px; font-size: clamp(2rem, 5.5vw, 3.1rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.07; }
+  .hero h1 span { background: linear-gradient(120deg, #7fe3ff, var(--accent) 35%, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { margin: 0 auto; max-width: 600px; color: var(--muted2); font-size: clamp(1rem, 2vw, 1.12rem); }
+  .ctas { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 22px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; font: inherit; font-size: .92rem; font-weight: 800; text-decoration: none; cursor: pointer; border: 1px solid var(--border2); color: var(--text); background: rgba(255,255,255,.04); }
+  .btn:hover { background: rgba(255,255,255,.08); }
+  .btn-pri { border-color: transparent; color: #061020; background: linear-gradient(120deg, #7fe3ff, #00c2ff); }
+  .btn-pri:hover { background: linear-gradient(120deg, #9be9ff, #2bcbff); }
+  .btn:focus-visible, .copy:focus-visible, .swatch:focus-visible { outline: 2px solid #7fe3ff; outline-offset: 2px; }
+
+  section.block { margin-top: clamp(36px, 6vw, 64px); }
+  h2 { margin: 0 0 6px; font-size: clamp(1.4rem, 3vw, 1.9rem); letter-spacing: -.02em; line-height: 1.15; }
+  .sub { margin: 0 0 20px; color: var(--muted2); }
+  h3 { margin: 0 0 6px; font-size: 1.05rem; letter-spacing: -.01em; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+  .card { padding: 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
+  .card p { margin: 0; color: #cbd6ea; font-size: .94rem; }
+  .step-n { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border-radius: 10px; font-weight: 800; color: #061020; background: linear-gradient(135deg, #7fe3ff, #00c2ff); }
+
+  /* The partner, in its own violet — the same frame it wears on the hub. */
+  .partner {
+    position: relative; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center;
+    padding: 22px; border-radius: 20px; border: 1px solid transparent;
+    background: linear-gradient(155deg, rgba(156,122,255,.16), rgba(89,38,212,.04) 55%), var(--card);
+    box-shadow: 0 22px 48px -28px rgba(124,77,255,.75);
+  }
+  .partner::before {
+    content: ''; position: absolute; inset: -1px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(135deg, #e0cfff, #9c7aff 40%, #5926d4);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .partner-logo { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); box-shadow: 0 10px 26px -10px rgba(124,77,255,.95), inset 0 1px 0 rgba(255,255,255,.25); }
+  .partner-logo svg { width: 100%; height: 100%; }
+  .partner h3 { font-size: 1.3rem; margin: 0; }
+  .partner .meta { margin: 2px 0 8px; font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #c4b5fd; }
+  .partner p { margin: 0 0 12px; color: #d9ccff; }
+  .partner .btn { border-color: rgba(167,139,250,.5); }
+  @media (max-width: 520px) { .partner { grid-template-columns: 1fr; } }
+
+  .kit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .logo-tile { display: grid; place-items: center; height: 150px; margin-bottom: 14px; border-radius: 14px; background: #0b1120; border: 1px solid var(--border); }
+  .logo-tile.light { background: #f6f8fa; }
+  .logo-tile img { max-width: 60%; max-height: 110px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .swatch { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 12px; font: inherit; font-size: .85rem; color: var(--text); background: rgba(255,255,255,.03); border: 1px solid var(--border); cursor: pointer; }
+  .swatch i { display: block; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.15); }
+  .swatch code { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--muted2); }
+
+  .copy-block { position: relative; margin-top: 10px; padding: 14px 16px; border-radius: 12px; background: #0b1120; border: 1px solid var(--border); font-size: .92rem; color: #dbe6f7; white-space: pre-wrap; }
+  .copy-block.code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .76rem; color: #b9c8e2; overflow-x: auto; white-space: pre; }
+  .copy-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .copy-row h3 { margin: 0; }
+  .copy { flex: none; display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 10px; font: inherit; font-size: .8rem; font-weight: 800; color: #7fe3ff; background: rgba(0,194,255,.08); border: 1px solid rgba(0,194,255,.3); cursor: pointer; text-decoration: none; }
+  .copy[data-done] { color: #6ee7b7; border-color: rgba(110,231,183,.4); background: rgba(110,231,183,.08); }
+  .label { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; vertical-align: 2px; color: #e0cfff; background: rgba(156,122,255,.18); border: 1px solid rgba(156,122,255,.4); }
+
+  .badge-preview { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px; border-radius: 12px; background: #f6f8fa; }
+
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+  .shot { margin: 0; }
+  .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .shot figcaption { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: .85rem; color: var(--muted2); }
+
+  ul.rules { margin: 0; padding-left: 1.2em; color: #cbd6ea; }
+  ul.rules li { margin: 4px 0; }
+
+  .join { text-align: center; padding: clamp(24px, 5vw, 40px); }
+  .join p { margin: 0 auto 16px; max-width: 560px; color: #cbd6ea; }
+  .foot { margin-top: 28px; text-align: center; font-size: .85rem; color: var(--muted2); }
+</style>
+<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
+<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="hub.html" aria-label="All Flux apps">
+      <img class="brand-mark" src="public/flux-planner-logo.png" alt="" width="32" height="32">
+      <span class="brand-name">Flux</span>
+    </a>
+    <span class="grow"></span>
+    <div data-flux-hub="partners"></div>
+  </header>
+
+  <main>
+    <div class="pd-slot" data-purple-day-slot></div>
+
+    <section class="hero">
+      <span class="eyebrow">Flux Partners</span>
+      <h1>We build your app. <span>You help students find Flux.</span></h1>
+      <p>Flux builds and hosts web apps for student organizations, clubs and nonprofits — free, with your own name, colours and logo. In return, you tell your community about Flux.</p>
+      <div class="ctas">
+        <a class="btn btn-pri" href="mailto:azfermohammed21@gmail.com?subject=Flux%20Partners">Become a partner</a>
+        <a class="btn" href="#kit">Partner kit</a>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="how-h">
+      <h2 id="how-h">How it works</h2>
+      <p class="sub">A simple trade, written down so both sides know what they get.</p>
+      <div class="grid3">
+        <div class="card"><div class="step-n">1</div><h3>We build it</h3><p>A real app made for your mission, built and hosted on Flux at no cost. No ads, no account needed, and your users’ data stays theirs.</p></div>
+        <div class="card"><div class="step-n">2</div><h3>It stays yours</h3><p>Your name, your colours, your logo. Flux lists it on the hub with a Partner label, and a small “Powered by Flux” credit is the only Flux branding inside.</p></div>
+        <div class="card"><div class="step-n">3</div><h3>You spread the word</h3><p>Share Flux with your community: a post, a newsletter mention, a link on your site. The kit below has the words, logos and posts ready to go.</p></div>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="partners-h">
+      <h2 id="partners-h">Our partners</h2>
+      <p class="sub">Every partner app is on the Flux hub, next to Flux’s own.</p>
+      <article class="partner">
+        <span class="partner-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg></span>
+        <div>
+          <h3>Synara</h3>
+          <div class="meta">Partner since October 2026</div>
+          <p>Medication reminders, a seizure log that spots patterns, and an emergency safety card a teacher can follow — for students with epilepsy. Everything stays on the student’s device.</p>
+          <a class="btn" href="synara.html">Open Synara →</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="block" id="kit" aria-labelledby="kit-h">
+      <h2 id="kit-h">Partner kit</h2>
+      <p class="sub">Everything you need to tell people about Flux. Copy anything on this page, as is.</p>
+
+      <div class="kit-grid">
+        <div class="card">
+          <div class="logo-tile"><img src="public/flux-planner-logo.png" alt="The Flux logo"></div>
+          <div class="copy-row"><h3>Flux logo</h3><a class="copy" href="public/flux-planner-logo.png" download="flux-logo.png">Download PNG</a></div>
+          <p style="margin-top:6px">680 × 680, transparent. Reads on dark or light backgrounds.</p>
+        </div>
+        <div class="card">
+          <div class="logo-tile light"><img src="icons/icon-512.png" alt="The Flux app icon" style="border-radius:22%"></div>
+          <div class="copy-row"><h3>App icon</h3><a class="copy" href="icons/icon-512.png" download="flux-app-icon.png">Download PNG</a></div>
+          <p style="margin-top:6px">512 × 512. Use it where a square icon fits better, like a link card.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Colours</h3>
+        <p style="margin-bottom:12px">Tap a colour to copy it.</p>
+        <div class="swatches">
+          <button type="button" class="swatch" data-copy="#00C2FF"><i style="background:#00c2ff"></i>Flux cyan <code>#00C2FF</code></button>
+          <button type="button" class="swatch" data-copy="#6A7DFF"><i style="background:#6a7dff"></i>Flux indigo <code>#6A7DFF</code></button>
+          <button type="button" class="swatch" data-copy="#A78BFA"><i style="background:#a78bfa"></i>Flux violet <code>#A78BFA</code></button>
+          <button type="button" class="swatch" data-copy="#070B14"><i style="background:#070b14"></i>Night <code>#070B14</code></button>
+          <button type="button" class="swatch" data-copy="#EAF1FF"><i style="background:#eaf1ff"></i>Snow <code>#EAF1FF</code></button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="copy-row"><h3>One line</h3><button type="button" class="copy" data-copy-from="w1">Copy</button></div>
+        <div class="copy-block" id="w1">Flux is the free planner for school — your classes, Canvas assignments, calendar and study tools in one calm place.</div>
+
+        <div class="copy-row" style="margin-top:18px"><h3>Short</h3><button type="button" class="copy" data-copy-from="w2">Copy</button></div>
+        <div class="copy-block" id="w2">Flux is a free planner built for real school life. It puts your classes, Canvas assignments and calendar in one place, breaks big projects into a little each day, and comes with 118 interactive study tools across 16 subjects. There are free tools anyone can open with no account: a grapher, a periodic table, flashcards, a TI-84-style calculator and more.</div>
+
+        <div class="copy-row" style="margin-top:18px"><h3>About the partnership</h3><button type="button" class="copy" data-copy-from="w3">Copy</button></div>
+        <div class="copy-block" id="w3">Synara is built and hosted by Flux, the free planner for school. Flux made Synara for us as part of its partner program, so students with epilepsy can track their medication and seizures and carry a safety card anyone can follow. If you’re a student, Flux is worth a look for your classes and study tools: https://fluxplanner.github.io/Flux/</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Ready-made posts</h3>
+        <p>Written for Synara to post. Swap in your own voice if you like.</p>
+
+        <div class="copy-row" style="margin-top:16px"><h3 style="font-size:.95rem">Launch post</h3><button type="button" class="copy" data-copy-from="p1">Copy</button></div>
+        <div class="copy-block" id="p1">Synara is live 💜 Medication reminders, a seizure log that spots patterns, and an emergency card a teacher can follow — for students with epilepsy.
+
+It’s built and hosted by our partner Flux, the free planner for school. Students: check out Flux for your classes, Canvas work and study tools too.
+
+Synara → https://fluxplanner.github.io/Flux/synara.html
+Flux → https://fluxplanner.github.io/Flux/</div>
+
+        <div class="copy-row" style="margin-top:16px"><h3 style="font-size:.95rem">Purple Day post <span class="label">March 26</span></h3><button type="button" class="copy" data-copy-from="p2">Copy</button></div>
+        <div class="copy-block" id="p2">It’s Purple Day 💜 the world’s day for epilepsy awareness.
+
+Around 50 million people live with epilepsy. If someone has a seizure: stay with them, keep them safe, turn them on their side, and time it. Call 911 if it lasts more than 5 minutes.
+
+Synara helps students with epilepsy track their meds and seizures and carry a safety card anyone can follow. Today Flux — the free planner for school that builds and hosts Synara — has gone purple with us. Thank you, Flux.
+
+https://fluxplanner.github.io/Flux/synara.html
+#PurpleDay #EpilepsyAwareness</div>
+
+        <div class="copy-row" style="margin-top:16px"><h3 style="font-size:.95rem">Newsletter mention</h3><button type="button" class="copy" data-copy-from="p3">Copy</button></div>
+        <div class="copy-block" id="p3">Our app, Synara, is built and hosted by Flux — a free planner made for students. If school feels like a lot to keep track of, Flux puts your classes, Canvas assignments, calendar and study tools in one place. It’s free, and you can try it without an account: https://fluxplanner.github.io/Flux/</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>“Powered by Flux” badge for your website</h3>
+        <p>The same credit Synara shows inside the app. Paste the HTML anywhere on your site.</p>
+        <div class="badge-preview" style="margin-top:12px" id="badgePreview"></div>
+        <div class="copy-row" style="margin-top:12px"><h3 style="font-size:.95rem">HTML</h3><button type="button" class="copy" data-copy-from="badgeCode">Copy</button></div>
+        <div class="copy-block code" id="badgeCode">&lt;a href="https://fluxplanner.github.io/Flux/landing.html" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px 6px 10px;border-radius:999px;border:1px solid #d0d7de;background:#fff;color:#57606a;font:500 13px/1 system-ui,sans-serif;text-decoration:none"&gt;Powered by &lt;img src="https://fluxplanner.github.io/Flux/public/flux-planner-logo.png" alt="" width="18" height="18"&gt;&lt;b style="color:#1f2328"&gt;Flux&lt;/b&gt;&lt;/a&gt;</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Screenshots</h3>
+        <p style="margin-bottom:12px">For posts, slides or your website.</p>
+        <div class="shots">
+          <figure class="shot"><img src="public/partners/flux-hub.jpg" alt="The Flux hub, with every Flux app and Synara" loading="lazy" width="1440" height="900"><figcaption>The Flux hub <a href="public/partners/flux-hub.jpg" download>Download</a></figcaption></figure>
+          <figure class="shot"><img src="public/partners/flux-landing.jpg" alt="The Flux landing page" loading="lazy" width="1440" height="900"><figcaption>Flux Planner <a href="public/partners/flux-landing.jpg" download>Download</a></figcaption></figure>
+          <figure class="shot"><img src="public/partners/synara.jpg" alt="Synara's home screen" loading="lazy" width="1440" height="900"><figcaption>Synara on Flux <a href="public/partners/synara.jpg" download>Download</a></figcaption></figure>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>A few ground rules</h3>
+        <ul class="rules">
+          <li>Call it <strong>Flux</strong> or <strong>Flux Planner</strong>, and link to <a href="https://fluxplanner.github.io/Flux/">fluxplanner.github.io/Flux</a>.</li>
+          <li>Use the logo as it is: don’t recolour, stretch or crop it.</li>
+          <li>Flux builds and hosts partner apps; what a partner app says — like medical information — is the partner’s own.</li>
+          <li>Questions about the kit? <a href="mailto:azfermohammed21@gmail.com?subject=Flux%20partner%20kit">Email Flux</a>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="block card join" aria-labelledby="join-h">
+      <h2 id="join-h">Have an idea for an app?</h2>
+      <p>If you run a student club, a nonprofit or a school group and there’s an app that would help the people you serve, tell us about it.</p>
+      <a class="btn btn-pri" href="mailto:azfermohammed21@gmail.com?subject=Flux%20Partners">Email Flux about partnering</a>
+    </section>
+
+    <p class="foot"><a href="hub.html">Every Flux app →</a></p>
+  </main>
+
+  <script src="public/js/flux-hub.js?v=43e992d6"></script>
+  <script>
+    (function () {
+      // The badge preview is the snippet itself, so what you see is what you paste.
+      var prev = document.getElementById('badgePreview');
+      prev.innerHTML = document.getElementById('badgeCode').textContent
+        + '<span style="color:#57606a;font-size:.85rem">on a light page</span>';
+
+      function flash(el, text) {
+        var was = el.textContent;
+        el.setAttribute('data-done', '');
+        el.textContent = text;
+        setTimeout(function () { el.removeAttribute('data-done'); el.textContent = was; }, 1500);
+      }
+      function copyText(text, done) {
+        function fallback() {
+          var t = document.createElement('textarea');
+          t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+          document.body.appendChild(t); t.select();
+          try { if (document.execCommand('copy')) done(); } catch (e) { /* still on screen to select by hand */ }
+          t.remove();
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+        else fallback();
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-copy], button[data-copy-from]');
+        if (!btn) return;
+        var text = btn.getAttribute('data-copy');
+        if (text == null) {
+          var src = document.getElementById(btn.getAttribute('data-copy-from'));
+          text = src ? src.textContent : '';
+        }
+        if (!text) return;
+        var target = btn.classList.contains('swatch') ? btn.querySelector('code') : btn;
+        copyText(text, function () { flash(target, 'Copied'); });
+      });
+    })();
+  </script>
+</body>
+</html>

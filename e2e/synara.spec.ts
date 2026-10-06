@@ -97,7 +97,8 @@ test.describe('Synara', () => {
     await expect(page.locator('#appbar .fxhub-btn')).toHaveCount(1);
 
     await page.locator('#appbar .fxhub-btn').click();
-    await expect(page.locator('.fxhub-item.is-here .fxhub-item-name')).toHaveText('Synara');
+    await expect(page.locator('.fxhub-item.is-here .fxhub-item-name')).toHaveText(/^Synara/);
+    await expect(page.locator('.fxhub-item.is-here .fxhub-partner')).toHaveText('Partner');
     await expect(page.locator('.fxhub-item--synara .fxhub-item-mark--logo svg')).toBeVisible();
     const b = await page.locator('.fxhub-panel').boundingBox();
     expect(b!.x + b!.width).toBeLessThanOrEqual(1280);
@@ -137,7 +138,7 @@ test.describe('Synara', () => {
     expect(hrefs.slice(0, 2), 'Synara should sit next to the planner at the top').toEqual(['index.html', 'synara.html']);
     const card = page.locator('#apps a.app--synara');
     await expect(card).toHaveAttribute('href', 'synara.html');
-    await expect(card.locator('.app-name')).toHaveText('Synara');
+    await expect(card.locator('.app-name')).toHaveText(/^Synara/);
     // Set apart from the other apps: its own logo tile and a violet gradient frame.
     await expect(card.locator('.app-icon--logo svg')).toBeVisible();
     expect(await card.evaluate((a) => getComputedStyle(a, '::before').backgroundImage)).toContain('linear-gradient');

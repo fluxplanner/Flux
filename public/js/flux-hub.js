@@ -41,6 +41,8 @@
       tagline: 'Epilepsy meds, seizures, safety card',
       href: 'synara.html',
       free: true,
+      // A Flux Partner: built and hosted by Flux for another organization (partners.html).
+      partner: true,
       mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h3.75l2.25-6 3.75 10.5 2.6-6.75H21"/></svg>',
       /* Its real logo, drawn in place of the mark: the white pulse from
          public/synara/icons/icon.svg, filling a tile that the CSS paints in
@@ -122,6 +124,7 @@
           : '<span class="fxhub-item-mark" aria-hidden="true">' + p.mark + '</span>')
         + '<span class="fxhub-item-text">'
         + '<span class="fxhub-item-name">' + esc(p.name)
+        + (p.partner ? '<span class="fxhub-partner">Partner</span>' : '')
         + '</span>'
         + '<span class="fxhub-item-tag">' + esc(p.tagline) + '</span>'
         + '</span>'
