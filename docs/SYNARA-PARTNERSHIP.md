@@ -13,7 +13,7 @@ exists because of that, and the rules that keep a health app safe inside it.
 | Partner program and kit | `partners.html`, screenshots in `public/partners/` |
 | Purple Day | `public/js/flux-purple-day.js` |
 | Planner link | `public/js/flux-synara-link.js`, hooks in `app.js` `renderCalendar`, `renderCalDay`, `renderSchool` |
-| Sync | `public/js/flux-synara-vault.mjs`, `supabase/migrations/20261005120000_synara_vaults.sql` |
+| Sync | `public/js/flux-synara-vault.mjs`, `supabase/migrations/20261006110610_synara_vaults.sql` |
 | Tests | `e2e/synara.spec.ts`, `e2e/synara-partnership.spec.ts` |
 
 ## Its own brand
