@@ -202,6 +202,17 @@ try{
   }
 }catch(_){}
 
+// Synara (synara.html) keeps its own data in this browser under 'synara.*' keys with
+// no account. It is a separate app, so nothing the planner clears may take it along.
+function fluxIsOtherAppKey(k){return typeof k==='string'&&k.indexOf('synara.')===0;}
+function fluxClearLocalStorageKeepingApps(){
+  const keep={};
+  try{Object.keys(localStorage).forEach(k=>{if(fluxIsOtherAppKey(k))keep[k]=localStorage.getItem(k);});}catch(_){}
+  localStorage.clear();
+  Object.entries(keep).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(_){}});
+}
+window.fluxClearLocalStorageKeepingApps=fluxClearLocalStorageKeepingApps;
+
 // ══ DATA VERSION — bump when schema needs pruning; never drop user task/note data ══
 const DATA_VERSION=6;
 (function checkDataVersion(){
@@ -228,6 +239,7 @@ const DATA_VERSION=6;
     // Supabase JS client session + preview bubbles must survive version bumps.
     if(k.startsWith('sb-')||k.includes('supabase'))return true;
     if(k.startsWith('imp:'))return true;
+    if(fluxIsOtherAppKey(k))return true;
     return false;
   }
   Object.keys(localStorage).forEach(k=>{
@@ -8198,7 +8210,7 @@ function clearCache(){
       }catch(_){}
     }
   }
-  localStorage.clear();
+  fluxClearLocalStorageKeepingApps();
   Object.entries(survived).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(_){}});
   tasks=[];notes=[];habits=[];goals=[];colleges=[];moodHistory=[];extras=[];ecSchools=[];ecGoals=[];
   renderStats();renderTasks();
@@ -8596,7 +8608,7 @@ async function fluxDeleteMyData(){
   // Clear wholesale rather than matching a flux_ prefix: keys are namespaced
   // through fluxNamespacedKey() (impersonation prefixes, and plain names like
   // 'profile' and 'classes'), so prefix matching silently leaves data behind.
-  try{localStorage.clear();sessionStorage.clear();}catch(_){}
+  try{fluxClearLocalStorageKeepingApps();sessionStorage.clear();}catch(_){}
   location.replace(location.pathname);
 }
 window.fluxDeleteMyData=fluxDeleteMyData;
@@ -14360,7 +14372,7 @@ async function handleSignedIn(user,session){
         }
       }catch(_){}
     }catch(_){}
-    localStorage.clear();
+    fluxClearLocalStorageKeepingApps();
     Object.entries(survived).forEach(([k,v])=>localStorage.setItem(k,v));
     try{if(window.FluxFeatureFlags?.clear)FluxFeatureFlags.clear();}catch(_){}
     // Reset all in-memory state
@@ -14812,7 +14824,7 @@ function handleSignedOut(){
       if(v!==null)kept[nk]=v;
     }catch(_){}
   });
-  localStorage.clear();
+  fluxClearLocalStorageKeepingApps();
   Object.entries(kept).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(_){}});
   window.location.replace(getRedirectURL());
 }

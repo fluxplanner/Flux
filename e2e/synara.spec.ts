@@ -17,6 +17,21 @@ async function withExampleData(page: import('@playwright/test').Page) {
 }
 
 test.describe('Synara', () => {
+  test('opening the planner for the first time keeps Synara\'s data', async ({ page }) => {
+    // A student who used Synara first, then opens the planner on the same device:
+    // the planner's first-run cleanup used to drop every key not starting with flux_.
+    await withExampleData(page);
+    const before = await page.evaluate(() => localStorage.getItem('synara.v2'));
+    expect(before).toBeTruthy();
+    await page.evaluate(() => localStorage.removeItem('flux_data_version'));
+    await page.goto('/?e2e=1&scenario=student-semester');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    expect(await page.evaluate(() => localStorage.getItem('synara.v2'))).toBe(before);
+    // Clearing planner data leaves it too.
+    await page.evaluate(() => (window as any).fluxClearLocalStorageKeepingApps());
+    expect(await page.evaluate(() => localStorage.getItem('synara.v2'))).toBe(before);
+  });
+
   test('asks first, then every tab answers a real click', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
