@@ -43,15 +43,23 @@
 </head>
 <body>
 
-<a class="skip-link" href="#screen">Skip to content</a>
-
 <div class="app-shell">
+  <!-- Inside the shell, so it goes inert with the app while a sheet or the
+       emergency card is open. main.js moves focus rather than following the
+       href, which the router would read as a route. -->
+  <a class="skip-link" href="#screen" data-action="skip-to-content">Skip to content</a>
   <nav class="tabbar" id="tabbar" aria-label="Main navigation"></nav>
   <div class="shell-main">
     <header class="appbar" id="appbar">
       <!-- Flux's app switcher; Synara moves it into each new app bar. -->
       <div data-flux-hub="synara"></div>
     </header>
+    <!-- Shown only while a seizure timer runs (safety.js sets data-timer on
+         <html>): closing the emergency card never stops the clock. -->
+    <button class="timer-banner" type="button" data-action="open-emergency">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/><path d="M12 2v3"/></svg>
+      Seizure timer still running — open the emergency card
+    </button>
     <main class="screen" id="screen" tabindex="-1"></main>
   </div>
 </div>
