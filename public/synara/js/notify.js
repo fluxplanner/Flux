@@ -10,7 +10,9 @@
    is alive. That means:
 
      - Works: app open, or backgrounded in the browser on desktop
-       and Android.
+       and Android. Chrome on Android only shows notifications
+       through a service worker, so they go through Flux's (main.js
+       registers it) whenever there is one.
      - Does not work: browser fully closed, phone restarted, or iOS
        Safari with the tab evicted from memory — which it will be.
 
@@ -21,7 +23,7 @@
    UI says so plainly rather than implying a guarantee it cannot keep.
    ============================================================ */
 
-import { dayKey, minutesOf, prettyTime } from './util.js';
+import { dayKey, addDays, parseStamp, minutesOf, prettyTime } from './util.js';
 import * as store from './store.js';
 
 /** Honest capability string for the settings screen. */
@@ -43,6 +45,15 @@ export function support() {
       ok: false,
       reason: 'On iPhone, add Synara to your home screen first — Safari only ' +
               'allows notifications for installed apps.',
+    };
+  }
+
+  // Android browsers show notifications only through a service worker.
+  if (/Android/i.test(navigator.userAgent) && !('serviceWorker' in navigator)) {
+    return {
+      ok: false,
+      reason: 'This browser can’t show reminders on Android. Open Synara in Chrome, ' +
+              'or keep a phone alarm.',
     };
   }
 
@@ -84,26 +95,69 @@ function inQuietHours(settings, date) {
   return from > to ? (now >= from || now < to) : (now >= from && now < to);
 }
 
-function fire(med, time) {
-  try {
-    const n = new Notification('Time for your medication', {
-      body: `${med.name} ${med.dose} — ${prettyTime(time)}`,
-      tag: `synara-${med.id}-${time}`,   // replaces rather than stacks
-      icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
-    });
-    n.onclick = () => {
-      window.focus();
-      location.hash = '#/meds';
-      n.close();
-    };
-  } catch (err) {
-    console.warn('[synara] could not show notification:', err);
-  }
+/* Set when a notification couldn't be shown on this device, so the
+   settings card says so instead of "On". Cleared when one gets through. */
+let failed = false;
+
+export function lastFailed() {
+  return failed;
 }
 
 /**
- * Schedule every remaining dose for today.
+ * Show one notification; true if it was shown. Through the service
+ * worker when there is one: Chrome on Android allows nothing else (the
+ * page's own `new Notification()` throws there). Otherwise from the
+ * page. `hash` is where tapping it should land.
+ */
+async function show(title, options, hash = '') {
+  if (permission() !== 'granted') return false;
+  const opts = {
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    ...options,
+    data: { url: location.href.split('#')[0] + hash },
+  };
+
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg && reg.active) {
+      await reg.showNotification(title, opts);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[synara] the service worker could not show a notification:', err);
+  }
+
+  try {
+    const n = new Notification(title, opts);
+    n.onclick = () => {
+      window.focus();
+      if (hash) location.hash = hash;
+      n.close();
+    };
+    return true;
+  } catch (err) {
+    console.warn('[synara] could not show notification:', err);
+    return false;
+  }
+}
+
+async function fire(day, med, time) {
+  const fresh = store.get();
+  if (!fresh.settings.remindersOn) return;
+  if (inQuietHours(fresh.settings, new Date())) return;
+  // Re-check: they may have taken it in the meantime.
+  if (store.doseStatus(day, med.id, time, fresh) !== 'pending') return;
+
+  failed = !(await show('Time for your medication', {
+    body: `${[med.name, med.dose].filter(Boolean).join(' ')} — ${prettyTime(time)}`,
+    tag: `synara-${med.id}-${time}`,   // replaces rather than stacks
+  }, '#/meds'));
+}
+
+/**
+ * Schedule every remaining dose for today, and plan again just after
+ * midnight, so a tab left open overnight still reminds the next day.
  *
  * Re-run whenever meds or settings change — it clears first, so it is
  * safe to call repeatedly.
@@ -118,32 +172,30 @@ export function schedule() {
 
   const now = new Date();
   const today = dayKey(now);
-  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const tomorrow = addDays(today, 1);
   let scheduled = 0;
 
-  // dosesOn() only returns what is scheduled today, so a stopped med
-  // or yesterday's old time can never fire a reminder.
-  for (const { med, time } of store.dosesOn(today, state)) {
-    const at = minutesOf(time) - (reminderLead || 0);
-    if (at <= nowMins) continue;
+  // Tomorrow too, for an early reminder that falls before midnight
+  // (a 12:15 AM dose, 30 minutes early). dosesOn() only returns what is
+  // scheduled that day, so a stopped med or an old time never fires.
+  for (const day of [today, tomorrow]) {
+    for (const { med, time } of store.dosesOn(day, state)) {
+      // Already dealt with? Don't nag.
+      if (store.doseStatus(day, med.id, time, state) !== 'pending') continue;
 
-    // Already dealt with? Don't nag.
-    if (store.doseStatus(today, med.id, time, state) !== 'pending') continue;
+      // A real date rather than minutes since midnight: on the days the
+      // clocks change, counting minutes fired an hour early or late.
+      const at = parseStamp(`${day}T${time}`);
+      at.setMinutes(at.getMinutes() - (reminderLead || 0));
+      if (at <= now) continue;
 
-    const delayMs = (at - nowMins) * 60000;
-    // A same-day delay is always far inside setTimeout's ~24-day limit.
-    timers.push(setTimeout(() => {
-      const fresh = store.get();
-      if (!fresh.settings.remindersOn) return;
-      if (inQuietHours(fresh.settings, new Date())) return;
-      // Re-check: they may have taken it in the meantime.
-      if (store.doseStatus(dayKey(), med.id, time, fresh) !== 'pending') return;
-      fire(med, time);
-    }, delayMs));
-
-    scheduled++;
+      // Under two days: far inside setTimeout's ~24-day limit.
+      timers.push(setTimeout(() => fire(day, med, time), at - now));
+      scheduled++;
+    }
   }
 
+  timers.push(setTimeout(schedule, parseStamp(`${tomorrow}T00:00`) - now + 5000));
   return scheduled;
 }
 
@@ -159,17 +211,16 @@ export function start() {
   });
 }
 
-/** A one-off notification so the student can confirm it actually works. */
-export function test() {
-  if (permission() !== 'granted') return false;
-  try {
-    new Notification('Synara reminders are on', {
-      body: 'This is what a dose reminder will look like.',
-      icon: 'icons/icon-192.png',
-      tag: 'synara-test',
-    });
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * A one-off notification so the student can confirm it actually works.
+ * Resolves to 'sent', 'not-allowed' or 'failed'.
+ */
+export async function test() {
+  if (permission() !== 'granted') return 'not-allowed';
+  const shown = await show('Synara reminders are on', {
+    body: 'This is what a dose reminder will look like.',
+    tag: 'synara-test',
+  });
+  failed = !shown;
+  return shown ? 'sent' : 'failed';
 }
