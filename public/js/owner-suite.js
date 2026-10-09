@@ -1718,7 +1718,7 @@
           if(v!==null)stash[nk]=v;
         }catch(_){}
       });
-      localStorage.clear();
+      if(typeof window.fluxClearLocalStorageKeepingApps==='function')window.fluxClearLocalStorageKeepingApps();else localStorage.clear();
       Object.entries(stash).forEach(([nk,v])=>{
         try{localStorage.setItem(nk,v);}catch(_){}
       });
