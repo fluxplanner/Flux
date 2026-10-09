@@ -63,6 +63,7 @@ export function seed(state) {
     neuroPhone: '(555) 010-4488',
     allergies: 'Penicillin',
     bloodType: 'O+',
+    rescueMed: '',   // none at school — see the nurse's note on the card
   };
 
   /* ---------- Meds ---------- */
@@ -251,10 +252,12 @@ export function seed(state) {
 
     during: [
       'Stay with her and start timing immediately.',
+      'If she is stiffening or shaking, gently help her down to the floor.',
       'Move chairs, desks, and anything hard or sharp out of the way.',
-      'Put something soft under her head.',
+      'If she is on the floor, put something soft under her head.',
       'Loosen anything tight around her neck.',
       'If she is not aware or not awake, gently turn her onto her side.',
+      'If she is confused or wandering, stay beside her and gently guide her away from danger, like stairs or the road. Don\'t grab or hold her.',
       'Stay calm and speak normally — she may be able to hear you.',
     ],
 
@@ -279,6 +282,8 @@ export function seed(state) {
       'She does not wake up or return to normal afterwards.',
       'She is having trouble breathing, or her lips stay blue.',
       'She was injured, or it happened in water.',
+      'It looks different from her usual seizures.',
+      'She has diabetes or a heart condition, or is pregnant.',
     ],
 
     forTeacher:
@@ -288,7 +293,8 @@ export function seed(state) {
 
     forNurse:
       'No rescue medication is prescribed at school. Standard first aid only. ' +
-      'Call Dana Ellison first, then Dr. Raghavan\'s office if EMS criteria are met. ' +
+      'If any "Call 911" sign applies, call 911 first, then Dana Ellison. ' +
+      'Otherwise call Dana Ellison; Dr. Raghavan\'s office can advise afterwards. ' +
       'Maya prefers to rest in the dark side room rather than the main bay.',
 
     forCoach:

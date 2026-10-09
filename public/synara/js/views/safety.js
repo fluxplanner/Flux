@@ -20,7 +20,8 @@
    ============================================================ */
 
 import {
-  html, raw, esc, telHref, dialable, prettyDate, prettyTime, initials, timeOf, dayKey, stamp,
+  html, raw, esc, telHref, dialable, prettyDate, prettyTime, initials, timeOf, dayKey, stamp, parseKey,
+  monthName,
 } from '../util.js';
 import * as store from '../store.js';
 import {
@@ -143,6 +144,14 @@ function completeness(state) {
 
 /* ---------- Contacts ---------- */
 
+/* "Mom · (555) 014-2007". The line wraps rather than truncating, and the
+   number itself never breaks: on a phone, the "First call" pill used to
+   squeeze it to "Mom · (5…" — hiding the one number that matters most.
+   A teacher on a laptop, where Call buttons can't dial, needs to read it. */
+function contactLine(c) {
+  return `<span class="contact-rt">${esc(c.relation)}${c.relation && c.phone ? ' · ' : ''}<span class="contact-ph">${esc(c.phone)}</span></span>`;
+}
+
 function contactRow(c) {
   return `
     <li class="contact-row">
@@ -151,7 +160,7 @@ function contactRow(c) {
         <span class="avatar" aria-hidden="true">${esc(initials(c.name))}</span>
         <span class="contact-body">
           <span class="contact-n">${esc(c.name)}</span>
-          <span class="contact-r">${c.primary ? '<span class="pill pill-brand">First call</span>' : ''}<span class="truncate">${esc(c.relation)}${c.relation ? ' · ' : ''}${esc(c.phone)}</span></span>
+          <span class="contact-r">${c.primary ? '<span class="pill pill-brand">First call</span>' : ''}${contactLine(c)}</span>
         </span>
       </button>
       ${callButton(c)}
@@ -247,6 +256,7 @@ function medicalSection(state) {
   const meds = store.activeMeds(state);
   const rows = [
     ['Seizure type', profile.seizureType],
+    ['Rescue medication', profile.rescueMed],
     ['Allergies', profile.allergies],
     ['Blood type', profile.bloodType],
     ['Neurologist', [profile.neurologist, profile.neuroPhone].filter(Boolean).join(' · ')],
@@ -323,23 +333,32 @@ const EMS_SECONDS = 5 * 60;
 let tick = null;
 let stoppedAfter = null;   // seconds, once "It stopped" is pressed
 let startedStamp = null;   // "YYYY-MM-DDTHH:mm" the timer started
+let heldStart = null;      // the same start, in memory, for when storage is blocked
 
 function readStart() {
-  try {
-    const v = JSON.parse(sessionStorage.getItem(TIMER_KEY) || 'null');
-    // Ignore anything stale — a timer left over from hours ago is not
-    // this seizure.
-    if (v && typeof v.ms === 'number' && Date.now() - v.ms < 3 * 60 * 60 * 1000) return v;
-  } catch { /* storage blocked: the timer still works, just not across reloads */ }
+  // This page's own copy is always the latest; storage is for after a reload.
+  let v = heldStart;
+  if (!v) {
+    try {
+      v = JSON.parse(sessionStorage.getItem(TIMER_KEY) || 'null');
+    } catch { /* storage blocked: the timer still works, just not across reloads */ }
+  }
+  // Ignore anything stale — a timer left over from hours ago is not
+  // this seizure.
+  if (v && typeof v.ms === 'number' && Date.now() - v.ms < 3 * 60 * 60 * 1000) return v;
   return null;
 }
 
 function writeStart(v) {
+  heldStart = v;
   try {
     if (v) sessionStorage.setItem(TIMER_KEY, JSON.stringify(v));
     else sessionStorage.removeItem(TIMER_KEY);
   } catch { /* see above */ }
 }
+
+/* Said wherever the rescue medication is shown. */
+const RESCUE_NOTE = 'From their seizure action plan. Only give it if you are trained to.';
 
 const clock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
@@ -348,7 +367,7 @@ function timerMarkup() {
     <section class="em-timer" data-state="idle" aria-labelledby="em-timer-h">
       <div class="em-timer-top">
         <h3 id="em-timer-h" class="em-timer-h">${icon('timer', 18)} Seizure timer</h3>
-        <span class="em-timer-hint" data-timer-hint>Start it the moment the seizure begins</span>
+        <span class="em-timer-hint" data-timer-hint>Start it now. If the seizure began earlier, you can add the minutes you missed.</span>
       </div>
       <div class="em-timer-clock" data-timer-clock aria-hidden="true">0:00</div>
       <div class="sr-only" aria-live="assertive" data-timer-live></div>
@@ -373,23 +392,40 @@ function setTimerView(root, mode, secs) {
 
   if (mode === 'running' || mode === 'over') {
     const over = mode === 'over';
+    // The clock counts from when Start was pressed, which is rarely when
+    // the seizure began — so the 5 minutes are "from when it began", and
+    // "+1 min" lets whoever arrived late add the time they missed.
     hint.textContent = over
       ? 'Over 5 minutes — call 911 now'
-      : `Call 911 if it reaches 5:00 · ${clock(Math.max(0, EMS_SECONDS - secs))} to go`;
+      : `Call 911 at 5 minutes from when it began · ${clock(Math.max(0, EMS_SECONDS - secs))} to go`;
     // Only rebuild the buttons when the state changes, or a button
     // being pressed would be swapped out from under the finger.
     if (changed) {
+      const hadFocus = actionsEl.contains(document.activeElement);
       actionsEl.innerHTML = `
         ${over ? `<a class="btn btn-lg btn-block btn-emergency" href="tel:911">${icon('phone', 20)} Call 911 now</a>` : ''}
         <button class="btn btn-lg btn-block ${over ? 'btn-on-danger-ghost' : 'btn-outline'}" data-action="timer-stop">
           ${icon('stop', 18)} It stopped
-        </button>`;
+        </button>
+        ${over ? '' : '<button class="btn btn-block btn-quiet" data-action="timer-earlier">+1 min — it began earlier</button>'}`;
+      if (hadFocus) actionsEl.querySelector('[data-action="timer-stop"]')?.focus({ preventScroll: true });
     }
   } else if (mode === 'stopped') {
-    hint.textContent = `It lasted ${clock(secs)}`;
+    // Five minutes or more still needs 911 after the seizure ends (CDC,
+    // Epilepsy Foundation). Stay red with the call button — never a
+    // green "done" that hides it. Red is almost always showing already;
+    // at most this is the same single switch the timer makes at 5:00.
+    const long = secs >= EMS_SECONDS;
+    box.dataset.state = long ? 'over' : 'stopped';
+    hint.textContent = long
+      ? `It lasted ${clock(secs)}. That is 5 minutes or longer, so call 911 if no one has yet.`
+      : `It lasted ${clock(secs)}`;
     actionsEl.innerHTML = `
-      <button class="btn btn-lg btn-block btn-primary" data-action="timer-log">${icon('note', 18)} Log this seizure</button>
-      <button class="btn btn-block btn-quiet" data-action="timer-reset">Reset timer</button>`;
+      ${long ? `<a class="btn btn-lg btn-block btn-emergency" href="tel:911">${icon('phone', 20)} Call 911</a>` : ''}
+      <button class="btn btn-lg btn-block ${long ? 'btn-on-danger-ghost' : 'btn-primary'}" data-action="timer-log">${icon('note', 18)} Log this seizure</button>
+      <button class="btn btn-block ${long ? 'btn-on-danger-ghost' : 'btn-quiet'}" data-action="timer-reset">Reset timer</button>`;
+    const live = box.querySelector('[data-timer-live]');
+    if (live) live.textContent = hint.textContent;
   }
 }
 
@@ -436,7 +472,9 @@ function emBlock(heading, inner, tone = '') {
     </section>`;
 }
 
-export function showEmergency(state) {
+/** `onClose` runs after the card closes (main.js holds the first-run
+    welcome back until then, when #/sos opened the card). */
+export function showEmergency(state, { onClose } = {}) {
   const { card, contacts, profile } = state;
   // The big green button must ring someone. If the first-call contact
   // has no usable number, fall to the first one who does.
@@ -445,7 +483,7 @@ export function showEmergency(state) {
   const others = contacts.filter((c) => c !== primary);
   const meds = store.activeMeds(state);
   const name = profile.name || 'This student';
-  const meta = [profile.grade, profile.school].filter(Boolean).join(' · ');
+  const meta = [profile.pronouns, profile.grade, profile.school].filter(Boolean).join(' · ');
 
   const callPrimary = primary ? `
     <a class="em-call" href="${telHref(primary.phone)}">
@@ -461,7 +499,7 @@ export function showEmergency(state) {
       <li class="contact-row contact-row-flat">
         <span class="contact-body">
           <span class="contact-n">${esc(c.name)}</span>
-          <span class="contact-r"><span class="truncate">${esc(c.relation)}</span></span>
+          <span class="contact-r">${contactLine(c)}</span>
         </span>
         ${callButton(c)}
       </li>`).join('')}</ul>`) : '';
@@ -470,8 +508,17 @@ export function showEmergency(state) {
     profile.seizureType && `<div class="kv-row"><dt class="kv-k">Seizure type</dt><dd class="kv-v">${esc(profile.seizureType)}</dd></div>`,
     profile.allergies && `<div class="kv-row"><dt class="kv-k">Allergies</dt><dd class="kv-v">${esc(profile.allergies)}</dd></div>`,
     meds.length && `<div class="kv-row"><dt class="kv-k">Medications</dt><dd class="kv-v">${meds.map((m) => `${esc(m.name)} ${esc(m.dose)}`).join(', ')}</dd></div>`,
+    profile.bloodType && `<div class="kv-row"><dt class="kv-k">Blood type</dt><dd class="kv-v">${esc(profile.bloodType)}</dd></div>`,
     profile.neurologist && `<div class="kv-row"><dt class="kv-k">Neurologist</dt><dd class="kv-v">${esc(profile.neurologist)}${profile.neuroPhone ? ` · ${esc(profile.neuroPhone)}` : ''}</dd></div>`,
   ].filter(Boolean).join('');
+
+  // Rescue medication sits right under the steps, where "follow their
+  // seizure action plan" points — not at the bottom with the details.
+  const rescue = profile.rescueMed ? emBlock('Rescue medication', `
+    <div class="stack stack-2">
+      <p class="prose em-rescue">${esc(profile.rescueMed)}</p>
+      <p class="t-sm ink-2">${esc(RESCUE_NOTE)}</p>
+    </div>`) : '';
 
   const steps = (list, tone) => (list && list.length ? stepsList(list, tone) : '');
 
@@ -496,6 +543,7 @@ export function showEmergency(state) {
         </div>
 
         ${raw(card.during && card.during.length ? emBlock('What to do right now', steps(card.during, 'ok')) : '')}
+        ${raw(rescue)}
         ${raw(card.callEms && card.callEms.length ? emBlock('Call 911 if', steps(card.callEms, 'ems'), 'bad') : '')}
         ${raw(card.doNot && card.doNot.length ? emBlock('Do NOT', steps(card.doNot, 'bad')) : '')}
         ${raw(card.looksLike ? emBlock('What their seizures look like', `<p class="prose">${esc(card.looksLike)}</p>`) : '')}
@@ -517,7 +565,10 @@ export function showEmergency(state) {
         setTimerView(root, 'stopped', stoppedAfter);
       }
     },
-    onClose: stopTicking,
+    onClose() {
+      stopTicking();
+      if (onClose) onClose();
+    },
   });
 }
 
@@ -529,20 +580,40 @@ export function showEmergency(state) {
    as a clean one-page document, not a screenshot of an app.
    ============================================================ */
 
+/* "Oct 9, 2026". A printed card can sit in a binder for a year, and
+   without the year nobody can tell how old it is. */
+function printDate(key) {
+  const d = parseKey(key);
+  return `${monthName(d.getMonth())} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/* The order follows how the paper gets used: who this is and the 911
+   box, then who to call — near the top, so it can never be pushed onto
+   a second page — then what to do. Long role notes are what overflow,
+   and the footer names the student, so a second page still says whose. */
 function printMarkup(state) {
   const { card, contacts, profile } = state;
   const meds = store.activeMeds(state);
-  const list = (items, cls = '') =>
-    items && items.length ? `<ol class="${cls}">${items.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : '';
+  const list = (items, cls) =>
+    `<ol${cls ? ` class="${cls}"` : ''}>${items.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`;
+  // No heading over an empty box: "Afterwards" may have been cleared.
+  const steps = (heading, items, cls) =>
+    (items && items.length ? `<section><h2>${heading}</h2>${list(items, cls)}</section>` : '');
 
+  const sub = [profile.pronouns, profile.grade, profile.school].filter(Boolean).join(' · ');
   const facts = [
-    ['Grade / school', [profile.grade, profile.school].filter(Boolean).join(', ')],
     ['Seizure type', profile.seizureType],
     ['Allergies', profile.allergies],
-    ['Medications', meds.map((m) =>
-      `${m.name} ${m.dose} (${store.currentTimes(m).map(prettyTime).join(', ')})`).join('; ')],
+    ['Blood type', profile.bloodType],
+    ['Medications', meds.map((m) => {
+      const times = store.currentTimes(m).map(prettyTime).join(', ');
+      return `${m.name}${m.dose ? ` ${m.dose}` : ''}${times ? ` (${times})` : ''}`;
+    }).join('; ')],
     ['Neurologist', [profile.neurologist, profile.neuroPhone].filter(Boolean).join(' — ')],
   ].filter(([, v]) => v);
+
+  // The first-call contact leads, as on the emergency screen.
+  const callList = [...contacts].sort((a, b) => Number(b.primary) - Number(a.primary));
 
   const roles = [
     ['forTeacher', 'Teachers'], ['forNurse', 'School nurse'], ['forCoach', 'Coaches and PE'],
@@ -554,41 +625,62 @@ function printMarkup(state) {
         <div>
           <p class="pc-kicker">Seizure action card</p>
           <h1 class="pc-name">${esc(profile.name || 'Student name')}</h1>
+          ${sub ? `<p class="pc-sub">${esc(sub)}</p>` : ''}
         </div>
         <div class="pc-911">In an emergency<strong>Call 911</strong></div>
       </header>
 
       ${facts.length ? `<dl class="pc-facts">${facts.map(([k, v]) =>
-        `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
+        `<div${k === 'Medications' ? ' class="pc-wide"' : ''}><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
+
+      <section class="pc-who">
+        <h2>Who to call</h2>
+        ${callList.length ? `<table class="pc-contacts"><tbody>${callList.map((c) => `
+          <tr>
+            <td><strong>${esc(c.name)}</strong>${c.primary ? ' <span class="pc-first">Call first</span>' : ''}</td>
+            <td>${esc(c.relation)}</td>
+            <td>${esc(c.phone)}</td>
+          </tr>`).join('')}
+        </tbody></table>` : '<p>No contacts added yet.</p>'}
+      </section>
+
+      ${profile.rescueMed ? `<section class="pc-rescue"><h2>Rescue medication</h2>
+        <p>${esc(profile.rescueMed)}</p><p class="pc-note">${esc(RESCUE_NOTE)}</p></section>` : ''}
 
       ${card.looksLike ? `<section><h2>What their seizures look like</h2><p>${esc(card.looksLike)}</p></section>` : ''}
 
       <div class="pc-cols">
-        <section><h2>What to do</h2>${list(card.during)}</section>
-        <section><h2>Do NOT</h2>${list(card.doNot, 'pc-not')}</section>
-      </div>
-
-      <section class="pc-ems"><h2>Call 911 if</h2>${list(card.callEms)}</section>
-
-      <div class="pc-cols">
-        <section><h2>Afterwards</h2>${list(card.after)}</section>
-        <section>
-          <h2>Who to call</h2>
-          ${contacts.length ? `<table class="pc-contacts"><tbody>${contacts.map((c) => `
-            <tr><td><strong>${esc(c.name)}</strong>${c.primary ? ' (call first)' : ''}<br>${esc(c.relation)}</td><td>${esc(c.phone)}</td></tr>`).join('')}
-          </tbody></table>` : '<p>No contacts added.</p>'}
-        </section>
+        <div>
+          ${steps('What to do', card.during)}
+          ${steps('Afterwards', card.after)}
+        </div>
+        <div>
+          ${steps('Do NOT', card.doNot, 'pc-not')}
+          ${card.callEms && card.callEms.length ? `<section class="pc-ems"><h2>Call 911 if</h2>${list(card.callEms, 'pc-if')}</section>` : ''}
+        </div>
       </div>
 
       ${roles.length ? `<section class="pc-roles">${roles.map(([k, label]) =>
         `<div><h3>${label}</h3><p>${esc(card[k])}</p></div>`).join('')}</section>` : ''}
 
       <footer class="pc-foot">
-        Printed ${prettyDate(dayKey(), { relative: false })}${card.updated ? ` · card last updated ${prettyDate(card.updated, { relative: false })}` : ''}.
+        ${profile.name ? `${esc(profile.name)}’s seizure action card. ` : ''}
+        Printed ${printDate(dayKey())}${card.updated ? ` · card last updated ${printDate(card.updated)}` : ''}.
         Standard seizure first aid — confirm with the student's neurologist. Made with Synara.
       </footer>
     </article>`;
 }
+
+/* Ctrl+P, or Print in the browser's own menu, prints whatever is in
+   #print-card — which used to be empty until the button was pressed,
+   and stale after any edit. So it is filled from the live record on
+   every change and again just before printing. */
+function fillPrintCard(state = store.get()) {
+  const target = document.getElementById('print-card');
+  if (target) target.innerHTML = printMarkup(state);
+}
+store.subscribe(fillPrintCard);
+window.addEventListener('beforeprint', () => fillPrintCard());
 
 /* ============================================================
    Editing
@@ -610,7 +702,7 @@ const FIELD_LABEL = {
 const FIELD_HINT = {
   looksLike: 'Plain words beat medical terms — a substitute teacher has to recognise this.',
   forTeacher: 'What should happen in class? Who do they send for? Anything in a 504 plan?',
-  forNurse: 'Rescue medication, who to call first, where they like to recover.',
+  forNurse: 'Rescue medication, who to call after 911, where they like to recover.',
   forCoach: 'Activity limits, water rules, whether they can return to play the same day.',
 };
 
@@ -631,7 +723,7 @@ export const actions = {
           </label>
           <textarea class="textarea textarea-tall" id="card-text" name="text" maxlength="4000">${text}</textarea>
           <span class="hint">
-            ${isList ? 'Each line becomes a numbered step on the card.' : (FIELD_HINT[field] || '')}
+            ${isList ? `Each line becomes one step on the card.${store.CORE_STEPS.has(field) ? ' Clear it all to go back to the standard steps.' : ''}` : (FIELD_HINT[field] || '')}
           </span>
         </div>
       `,
@@ -643,14 +735,20 @@ export const actions = {
     const field = node.dataset.field;
     if (!FIELD_LABEL[field]) return;
     const text = sheetValues().text || '';
-    const value = LIST_FIELDS.has(field)
+    let value = LIST_FIELDS.has(field)
       // People paste numbered lists; the card numbers them itself.
       ? text.split('\n').map((l) => l.replace(/^\s*(\d+[.)]|[-*•])\s*/, '').trim()).filter(Boolean)
       : text.trim();
 
+    // Cleared, "What to do", "What NOT to do" or "Call 911 if" would
+    // vanish from the emergency card without a word. Empty means the
+    // standard steps instead (store.CORE_STEPS), and the toast says so.
+    const restored = store.CORE_STEPS.has(field) && !value.length;
+    if (restored) value = store.defaultSteps(field);
+
     await store.updateCard({ [field]: value });
     closeSheet();
-    toast('Safety card updated', 'ok');
+    toast(restored ? 'The standard steps are back — the emergency card always needs these' : 'Safety card updated', 'ok');
   },
 
   'contact-open'(node, state) {
@@ -704,7 +802,8 @@ export const actions = {
       return;
     }
     // A number nobody can dial is worse than none on an emergency card.
-    if ((String(v.phone || '').match(/\d/g) || []).length < 3) {
+    // Same test as the Call buttons, so an extension alone doesn't pass.
+    if (!dialable(v.phone)) {
       toast('That phone number doesn\'t look complete', 'bad');
       return;
     }
@@ -737,6 +836,17 @@ export const actions = {
     writeStart({ ms: Date.now(), at: startedStamp });
     startTicking(emergencyEl());
     emergencyEl().querySelector('[data-action="timer-stop"]')?.focus({ preventScroll: true });
+  },
+
+  /* Whoever starts the timer has usually arrived after the seizure began.
+     Each press moves the start back a minute, so the 5-minute line counts
+     from when it began. Past 5:00 the button goes, and Call 911 comes. */
+  'timer-earlier'() {
+    const start = readStart();
+    if (!start) return;
+    const ms = start.ms - 60 * 1000;
+    writeStart({ ms, at: stamp(new Date(ms)) });
+    startTicking(emergencyEl());
   },
 
   'timer-stop'() {
@@ -772,8 +882,7 @@ export const actions = {
   /* ---- Print ---- */
 
   'print-card'(node, state) {
-    const target = document.getElementById('print-card');
-    if (!target) return;
+    if (!document.getElementById('print-card')) return;
     // Saved to an iPhone or iPad home screen, the app cannot print at
     // all: print() silently does nothing. Say so instead.
     const ua = navigator.userAgent;
@@ -784,7 +893,7 @@ export const actions = {
       toast('To print, open this page in Safari. Home-screen apps can’t print on iPhone or iPad.', 'bad');
       return;
     }
-    target.innerHTML = printMarkup(state);
+    fillPrintCard(state);
     window.print();
   },
 };
