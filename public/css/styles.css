@@ -1678,8 +1678,9 @@ details.card[open]>summary{border-radius:var(--r) var(--r) 0 0;border-bottom:1px
 }
 
 /* ══ ITEM 17 — BUTTON POLISH ══ */
-button{transition:all .12s ease!important}
-button:active:not(:disabled){transform:scale(.97)!important}
+/* .ffm-draggable: the Pomodoro pill is moved by anime.js transforms while pressed (flux-focus-motion.js). */
+button:not(.ffm-draggable){transition:all .12s ease!important}
+button:active:not(:disabled):not(.ffm-draggable){transform:scale(.97)!important}
 
 
 
