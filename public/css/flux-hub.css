@@ -175,6 +175,54 @@
   color: var(--muted2, #9fb0cc);
 }
 
+/* ── Synara ─────────────────────────────────────────────────────────────────
+   Synara is its own brand inside Flux, so its entry wears its own logo (the
+   white pulse on a violet tile) and a violet gradient frame. The frame is a
+   masked ::before rather than a border-image, which would square off the
+   rounded corners. Selectors carry an extra class so they still win on
+   synara.html, whose own stylesheet loads after this one. */
+.fxhub-item.fxhub-item--synara {
+  position: relative;
+  border-color: transparent;
+  background: linear-gradient(155deg, rgba(156, 122, 255, .14), rgba(89, 38, 212, .03) 60%);
+}
+.fxhub-item.fxhub-item--synara:hover {
+  background: linear-gradient(155deg, rgba(156, 122, 255, .22), rgba(89, 38, 212, .06) 60%);
+}
+.fxhub-item.fxhub-item--synara::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #e0cfff, #9c7aff 40%, #5926d4);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.fxhub-item .fxhub-item-mark.fxhub-item-mark--logo {
+  color: #fff;
+  background: linear-gradient(135deg, #9c7aff, #5926d4);
+  border-color: transparent;
+  box-shadow: 0 6px 16px -8px rgba(124, 77, 255, .9), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.fxhub-item-mark--logo svg { width: 100%; height: 100%; }
+.fxhub-partner {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: .55rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #e0cfff;
+  background: rgba(156, 122, 255, .2);
+  border: 1px solid rgba(156, 122, 255, .4);
+}
+/* Synara's own light theme: the pale lavender would vanish on white. */
+[data-theme="light"] .fxhub-partner { color: #5926d4; }
+@media (prefers-color-scheme: light) { html[data-host="flux"]:not([data-theme="dark"]) .fxhub-partner { color: #5926d4; } }
+
 /* ── Phones ─────────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {
   /* The word is redundant beside the mark once space is tight. */

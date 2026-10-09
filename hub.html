@@ -18,7 +18,7 @@
   no bundles, no sign-in — and drawn from FluxHub.PRODUCTS in flux-hub.js, so
   a product added to the app switcher appears here too without editing this.
 -->
-<link rel="stylesheet" href="public/css/flux-hub.css?v=e475386e">
+<link rel="stylesheet" href="public/css/flux-hub.css?v=3991badf">
 <style>
   :root { --bg: #070b14; --text: #eaf1ff; --muted2: #9fb0cc; --accent: #00c2ff; --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.15); --card: rgba(18,25,42,.78); }
   * { box-sizing: border-box; }
@@ -72,12 +72,38 @@
   .app--calculator { --c1: #fbbf24; --c2: #f97316; }
   .app--flashcards { --c1: #f9a8d4; --c2: #f472b6; }
   .app--pixel { --c1: #6ee7b7; --c2: #34d399; }
-  /* Synara's own violet: purple is the epilepsy awareness colour. */
-  .app--synara { --c1: #c9a7ff; --c2: #7c4dff; }
+  /* Synara's own violet: purple is the epilepsy awareness colour. It is its
+     own brand, so its card is set apart: its real logo for the icon, a violet
+     gradient frame (a masked ::before, so the rounded corners survive), a
+     faint violet wash inside, and a violet glow. */
+  .app--synara {
+    --c1: #c9a7ff; --c2: #7c4dff;
+    border-color: transparent;
+    background: linear-gradient(155deg, rgba(156,122,255,.16), rgba(89,38,212,.04) 55%), var(--card);
+    box-shadow: 0 22px 48px -28px rgba(124,77,255,.75);
+  }
+  .app--synara::before {
+    content: ''; position: absolute; inset: -1px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(135deg, #e0cfff, #9c7aff 40%, #5926d4);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .app--synara:hover { border-color: transparent; box-shadow: 0 26px 56px -22px rgba(124,77,255,.95); }
+  .app-icon--logo { color: #fff; background: linear-gradient(135deg, #9c7aff, #5926d4); box-shadow: 0 10px 26px -10px rgba(124,77,255,.95), inset 0 1px 0 rgba(255,255,255,.25); }
+  .app-icon--logo svg { width: 100%; height: 100%; }
   .note { margin: 28px auto 0; text-align: center; font-size: .85rem; color: var(--muted2); }
   .note a { color: #7fe3ff; }
+  .pd-slot:not(:empty) { margin: 0 0 18px; }
+  /* Partner apps (Synara) are built and hosted by Flux for another organization. */
+  .app-partner { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #e0cfff; background: rgba(156,122,255,.18); border: 1px solid rgba(156,122,255,.4); }
+  .partners-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 18px; padding: 16px 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--border); }
+  .partners-strip p { margin: 0; font-size: .92rem; color: #cbd6ea; }
+  .partners-strip strong { color: var(--text); }
+  .partners-strip a { font-weight: 800; font-size: .9rem; color: #c4b5fd; text-decoration: none; white-space: nowrap; }
+  .partners-strip a:hover { text-decoration: underline; }
 </style>
 <script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
+<script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
 </head>
 <body>
   <header class="top">
@@ -89,11 +115,17 @@
       <h1>Every Flux app, <span style="white-space:nowrap">one tap away.</span></h1>
       <p>The planner for your whole school life, and free study tools that open on any computer — no account needed.</p>
     </section>
+    <!-- Filled by flux-purple-day.js on March 26 only. -->
+    <div class="pd-slot" data-purple-day-slot></div>
     <div class="apps" id="apps" aria-label="Flux apps"></div>
+    <aside class="partners-strip" aria-label="Flux Partners">
+      <p><strong>Flux Partners.</strong> Synara is built and hosted by Flux for the team behind it. Want Flux to build your organization’s app?</p>
+      <a href="partners.html">See Flux Partners →</a>
+    </aside>
     <p class="note">Bookmark this page, or add it to your home screen, to get to every Flux app.</p>
   </main>
 
-  <script src="public/js/flux-hub.js?v=8f845593"></script>
+  <script src="public/js/flux-hub.js?v=43e992d6"></script>
   <script>
     (function () {
       /* A sentence each, longer than the switcher's one-line tagline. A
@@ -117,8 +149,10 @@
       }
       host.innerHTML = list.map(function (p) {
         return '<a class="app app--' + esc(p.id) + '" href="' + esc(p.href) + '">'
-          + '<div class="app-top"><span class="app-icon" aria-hidden="true">' + p.mark + '</span>'
-          + '<div><div class="app-name">' + esc(p.name) + '</div><div class="app-tag">' + esc(p.tagline) + '</div></div></div>'
+          + '<div class="app-top">' + (p.logo
+            ? '<span class="app-icon app-icon--logo" aria-hidden="true">' + p.logo + '</span>'
+            : '<span class="app-icon" aria-hidden="true">' + p.mark + '</span>')
+          + '<div><div class="app-name">' + esc(p.name) + (p.partner ? '<span class="app-partner">Partner</span>' : '') + '</div><div class="app-tag">' + esc(p.tagline) + '</div></div></div>'
           + '<p class="app-desc">' + esc(MORE[p.id] || p.tagline) + '</p>'
           + '<div class="app-foot"><span class="go">Open →</span></div>'
           + '</a>';
