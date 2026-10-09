@@ -53,6 +53,14 @@
       logo: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19h4l2.5-6.5L16.5 23l2.8-7H26"/></svg>',
     },
     {
+      id: 'teacher',
+      name: 'Flux Teacher',
+      tagline: 'Learn from your class materials',
+      href: 'teacher.html',
+      free: true,
+      mark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3Z"/><path d="M6.5 11v5.2c3.1 2.4 7.9 2.4 11 0V11M21.5 8v6"/></svg>',
+    },
+    {
       id: 'grapher',
       name: 'Flux Grapher',
       tagline: 'Equations and lab data',

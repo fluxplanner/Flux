@@ -1715,7 +1715,7 @@
   /* ── Display ─────────────────────────────────────────────────────────── */
 
   const SUPMINUS = '⁻';
-  /** A real as the calculator shows it: 10 significant digits, .5 not 0.5, ⁻ for negative, ᴇ for powers of ten. */
+  /** A real as the calculator shows it: 10 significant digits, .5 not 0.5, ⁻ for negative, ᴇ only when ordinary notation gets unwieldy. */
   function fmtReal(x, mode) {
     const m = mode || {};
     if (x === 0) return '0';
@@ -1737,18 +1737,27 @@
       if (parseFloat(ms) >= lim) { e += engineering ? 3 : 1; ms = fmtM(parseFloat(ms) / lim); }
       return dropLead(ms) + 'ᴇ' + (e < 0 ? SUPMINUS + (-e) : e);
     };
-    if (notation === 'sci') s = sci(false);
-    else if (notation === 'eng') s = sci(true);
-    else {
-      const r = +a.toPrecision(10);
-      if (r >= 1e10 || r < 1e-3) s = sci(false);
-      else if (digits === 'float') s = dropLead(trimZeros(r.toPrecision(10)));
-      else {
-        s = a.toFixed(digits);
-        if (s.replace(/[^0-9]/g, '').replace(/^0+/, '').length > 10) s = sci(false);
-        else s = dropLead(s);
-      }
-    }
+    const expandExponent = (text) => {
+      const m = /^(\d+)(?:\.(\d*))?[eE]([+-]?\d+)$/.exec(text);
+      if (!m) return text;
+      const all = m[1] + (m[2] || '');
+      const point = m[1].length + Number(m[3]);
+      if (point <= 0) return '0.' + '0'.repeat(-point) + all;
+      if (point >= all.length) return all + '0'.repeat(point - all.length);
+      return all.slice(0, point) + '.' + all.slice(point);
+    };
+    const rounded = digits === 'float'
+      ? expandExponent(a.toPrecision(10))
+      : a < 1e21 ? a.toFixed(digits) : null;
+    const ordinary = rounded == null ? null : dropLead(digits === 'float' ? trimZeros(rounded) : rounded);
+    const ordinaryWidth = ordinary == null ? Infinity : ordinary.length + (neg ? 1 : 0);
+
+    /* Sci and Eng used to turn every answer into exponent form, so 32 became
+       3.2ᴇ1. Keep decimal notation whenever the displayed answer fits in a
+       short line; use Sci/Eng only for results that would otherwise be long.
+       The setting still selects which exponent style to use for those values. */
+    if (ordinaryWidth > 11) s = sci(notation === 'eng');
+    else s = ordinary;
     return (neg ? SUPMINUS : '') + s;
   }
   function trimZeros(s) { return s.indexOf('.') >= 0 && s.indexOf('e') < 0 ? s.replace(/0+$/, '').replace(/\.$/, '') : s; }
