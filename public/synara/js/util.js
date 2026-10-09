@@ -183,15 +183,19 @@ export function prettyStamp(s) {
   return `${prettyDate(datePart)} at ${prettyTime(timePart || '00:00')}`;
 }
 
-/** Rough "3 days ago" for history lists. */
-export function timeAgo(s) {
+/**
+ * Rough "3 days ago" for history lists. Past a day it counts calendar
+ * days, as "days since the last seizure" does, so the two agree: a
+ * seizure on Sunday afternoon is "3 days ago" all through Wednesday,
+ * not "2 days ago" until the afternoon.
+ */
+export function timeAgo(s, now = new Date()) {
   const then = parseStamp(s);
-  const mins = Math.round((Date.now() - then.getTime()) / 60000);
+  const mins = Math.round((now.getTime() - then.getTime()) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
+  const days = daysBetween(dayKey(then), dayKey(now));
+  if (mins < 24 * 60 || days < 1) return `${Math.floor(mins / 60)}h ago`;
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;
   const months = Math.round(days / 30);
