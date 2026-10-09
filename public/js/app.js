@@ -4569,11 +4569,13 @@ function toggleCompletedTasks(){
   const toggle=document.querySelector('.completed-toggle');
   if(wrap)wrap.style.display=show?'':'none';
   if(toggle)toggle.classList.toggle('collapsed',!show);
+  if(show&&wrap){try{window.FluxMotionMore?.revealChildren(wrap);}catch(_){}}
 }
 // ── TOPBAR TASK COUNT PILL ──────────────────────────────────
 function updateTopbarStats(){
   const pill=document.getElementById('topbarTaskPill');
   if(!pill)return;
+  const before=pill.textContent;
   const now=new Date();now.setHours(0,0,0,0);
   const active=tasks.filter(t=>!t.done);
   const overdue=active.filter(t=>t.date&&new Date(t.date+'T00:00:00')<now);
@@ -4603,6 +4605,7 @@ function updateTopbarStats(){
     pill.style.border='1px solid rgba(16,217,160,.25)';
     pill.style.color='var(--green)';
   }
+  if(before&&pill.textContent!==before){try{window.FluxMotionMore?.bump(pill);}catch(_){}}
 }
 
 // ── TOPBAR NEXT CLASS PILL ───────────────────────────────────
@@ -5663,6 +5666,7 @@ function changeMonth(d){
     renderCalendar();
     const gdd=document.getElementById('calGlassDropdown');
     if(gdd&&!gdd.hidden&&typeof renderCalGlassDropdown==='function')renderCalGlassDropdown();
+    if(!animate&&!reduced){try{window.FluxMotionMore?.calRipple(document.getElementById('calGrid'),d);}catch(_){}}
     if(animate){
       const g=document.getElementById('calGrid');
       if(g){
@@ -7284,15 +7288,15 @@ function fluxPersistMood(patch){
   try{syncKey('moodHistory',moodHistory);}catch(_){}
   return entry;
 }
-function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');fluxPersistMood({mood,stress,sleep});const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';}
+function saveMoodEntry(){const mood=parseInt(String(load('flux_mood_today',3)),10)||3;const stress=parseInt(document.getElementById('stressSlider').value||'3',10);const sleep=parseFloat(document.getElementById('sleepHours').value||'7');fluxPersistMood({mood,stress,sleep});try{const h=document.getElementById('moodHistory');window.FluxMotionMore?.pop(h&&h.lastElementChild);}catch(_){}const b=event?.target;if(b){b.textContent='✓ Saved!';setTimeout(()=>b.textContent='Save Check-In',1500);}const ba=document.getElementById('burnoutAlert');if(ba)ba.style.display=(stress>=8&&sleep<6)?'block':'none';}
 /* Same five faces as the buttons, in the same order — see the comment on the
    mood buttons in index.html for why step 1 is 😰. Previously 😞 and 😕 both
    resolved to `frown`, so two different days drew an identical face in a strip
    whose entire job is showing the difference between days. */
 function renderMoodHistory(){const el=document.getElementById('moodHistory');if(!el)return;const last30=moodHistory.slice(-30);const moodEmoji=['','😰','😞','😐','🙂','😄'];if(!last30.length){el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No entries yet.</div>';return;}el.innerHTML=last30.map(m=>`<div title="${m.date}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.95rem;background:var(--card2);border:1px solid var(--border)">${moodEmoji[m.mood]}</div>`).join('');const avg=last30.reduce((s,m)=>s+m.mood,0)/last30.length;const ins=document.getElementById('moodInsight');if(ins)ins.textContent=avg>=4?'😊 You\'ve been feeling pretty good lately!':avg<=2?'😟 Rough stretch — remember to rest.':'😐 Mood has been neutral. Keep pushing!';}
 function renderAffirmation(){if(window.FluxPersonal&&FluxPersonal.renderAffirmation){FluxPersonal.renderAffirmation();return;}const el=document.getElementById('affirmation');if(!el)return;el.textContent='"Progress, not perfection."';}
-function stopBreathing(){if(!breathingActive)return;clearInterval(breathTimer);breathTimer=null;breathingActive=false;const btn=document.getElementById('breathBtn');if(btn)btn.textContent='Start';const circle=document.getElementById('breathCircle');if(circle){circle.style.transform='scale(1)';circle.textContent='START';}}
-function startBreathing(){if(breathingActive){stopBreathing();return;}if(breathTimer){clearInterval(breathTimer);breathTimer=null;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];const circle=document.getElementById('breathCircle');if(!circle){stopBreathing();return;}circle.textContent=p.label+'\n'+countdown;circle.style.transform='scale('+p.scale+')';countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
+function stopBreathing(){if(!breathingActive)return;clearInterval(breathTimer);breathTimer=null;breathingActive=false;const btn=document.getElementById('breathBtn');if(btn)btn.textContent='Start';const circle=document.getElementById('breathCircle');try{window.FluxMotionMore?.breathStop();}catch(_){}if(circle){circle.style.transform='scale(1)';circle.textContent='START';}}
+function startBreathing(){if(breathingActive){stopBreathing();return;}if(breathTimer){clearInterval(breathTimer);breathTimer=null;}breathingActive=true;document.getElementById('breathBtn').textContent='Stop';const phases=[{label:'Inhale',secs:4,scale:1.5},{label:'Hold',secs:7,scale:1.5},{label:'Exhale',secs:8,scale:1}];let pi=0,countdown=phases[0].secs;const tick=()=>{const p=phases[pi];const circle=document.getElementById('breathCircle');if(!circle){stopBreathing();return;}circle.textContent=p.label+'\n'+countdown;if(countdown===p.secs){let eased=false;try{eased=!!window.FluxMotionMore?.breath(circle,p.scale,p.secs*1000);}catch(_){}if(!eased)circle.style.transform='scale('+p.scale+')';}countdown--;if(countdown<0){pi=(pi+1)%3;countdown=phases[pi].secs;}};tick();breathTimer=setInterval(tick,1000);}
 /* Stop breath + timer when user navigates away from mood/timer panel to prevent
    ghost intervals running in the background. */
 try{document.addEventListener('flux-nav',(e)=>{const id=e&&e.detail&&e.detail.panel;if(id&&id!=='mood'&&breathingActive)stopBreathing();});}catch(_){}
@@ -7316,7 +7320,7 @@ function updateTDisplay(){const m=Math.floor(tSecs/60),s=tSecs%60;const txt=Stri
 function syncFluxPomoPill(){const pill=document.getElementById('fluxPomoPill');if(!pill)return;const show=!!(tRunning&&tMode==='pomodoro');if(show!==_fluxPomoPillVisible){_fluxPomoPillVisible=show;if(show){pill.hidden=false;pill.setAttribute('aria-hidden','false');try{if(window.FluxAnim?.pillAppear)FluxAnim.pillAppear(pill);else{pill.style.display='flex';}}catch(e){pill.style.display='flex';}}else{try{if(window.FluxAnim?.pillDisappear)FluxAnim.pillDisappear(pill,()=>{pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');});else{pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');}}catch(e){pill.hidden=true;pill.style.display='none';pill.setAttribute('aria-hidden','true');}}}else if(show){pill.hidden=false;if(pill.style.display==='none'||!pill.style.display)pill.style.display='flex';}}
 function fluxFocusPomoPill(){try{if(typeof matchMedia!=='undefined'&&matchMedia('(max-width:768px)').matches){if(typeof navMob==='function'){navMob('timer');return;}}const tab=document.querySelector('[data-tab="timer"]');if(typeof nav==='function')nav('timer',tab);}catch(e){if(typeof nav==='function')nav('timer');}}
 try{window.fluxFocusPomoPill=fluxFocusPomoPill;}catch(e){}
-function renderTDots(){const el=document.getElementById('timerDots');if(!el)return;const c=Math.min((tDone%4)||(tDone>0?4:0),4);el.innerHTML=[0,1,2,3].map(i=>`<div class="t-dot ${i<c?'done':''}"></div>`).join('');const lbl=document.getElementById('tSessionLbl');if(lbl)lbl.textContent=`Session ${(tDone%4)+1} of 4`;}
+function renderTDots(){const el=document.getElementById('timerDots');if(!el)return;const c=Math.min((tDone%4)||(tDone>0?4:0),4);const prevC=+(el.dataset.c||-1);el.dataset.c=c;el.innerHTML=[0,1,2,3].map(i=>`<div class="t-dot ${i<c?'done':''}"></div>`).join('');if(prevC>=0&&c>prevC){try{window.FluxMotionMore?.pop(el.children[c-1]);}catch(_){}}const lbl=document.getElementById('tSessionLbl');if(lbl)lbl.textContent=`Session ${(tDone%4)+1} of 4`;}
 function updateTStats(){const a=document.getElementById('tSessions'),b=document.getElementById('tMinutes'),c=document.getElementById('tStreak');if(a)a.textContent=tDone;if(b)b.textContent=tMins;if(c)c.textContent=tStreak;}
 function renderSubjectBudget(){
   const el=document.getElementById('subjectBudget');if(!el)return;
@@ -15644,7 +15648,10 @@ function showUndoSnackbar(msg,undoFn){
   bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
   bar.innerHTML=`<span style="color:var(--text)">${esc(msg)}</span><button onclick="undoLastChange();document.getElementById('undoSnackbar')?.remove()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo</button><button onclick="this.closest('#undoSnackbar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
   document.body.appendChild(bar);
-  setTimeout(()=>{const el=document.getElementById('undoSnackbar');if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);}},5000);
+  const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>bar.remove(),400);}};
+  // With motion on, a bar runs down the 5 seconds (and pauses while hovered); otherwise a plain timer.
+  let timed=null;try{timed=window.FluxMotionMore?.undoTimer(bar,5000,fade);}catch(_){}
+  if(!timed)setTimeout(fade,5000);
 }
 
 

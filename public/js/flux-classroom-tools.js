@@ -551,6 +551,7 @@
             <div class="flux-picker-meta">${wrapped
               ? 'Everyone has had a turn — new round'
               : (pool.length - rounds[c.id].length) + ' left this round'}</div>`;
+          try { window.FluxMotionMore?.pickerReel(res.querySelector('.flux-picker-name'), pool, pick); } catch (_) {}
         }
       });
     }

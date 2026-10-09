@@ -368,6 +368,7 @@
           if(v==null)return;state[k].attendance=v.trim()||'';
         }
         persist();renderLessonHub();
+        try{window.FluxMotionMore?.pop(document.querySelector(`.lh-class-card[data-period="${CSS.escape(p)}"] .lh-att-mini`));}catch(_){}
       });
     });
     host.querySelectorAll('.lh-mat-btn').forEach(btn=>{

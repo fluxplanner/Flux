@@ -11,7 +11,7 @@
  */
 // Aliased: this module already has its own spring(name) helper that resolves a
 // named preset, so anime's factory comes in under a distinct name.
-import { animate, stagger, spring as animeSpring, createAnimatable, eases } from 'animejs';
+import { animate, stagger, spring as animeSpring, createAnimatable, cubicBezier } from 'animejs';
 
 const APPLE_SPRING = {
   snappy: { stiffness: 480, damping: 34, mass: 1 },
@@ -21,11 +21,10 @@ const APPLE_SPRING = {
   release: { stiffness: 360, damping: 24, mass: 0.95 },
 };
 
-// anime.js 4 removed the `ease: 'cubicBezier(...)'` string form — it warns and
-// then ignores the curve, so every one of these was silently animating linear.
-// The function form is the supported replacement; the curves are unchanged.
-const bez = (a, b, c, d) =>
-  (typeof eases?.cubicBezier === 'function' ? eases.cubicBezier(a, b, c, d) : undefined);
+// anime.js 4 has no 'cubicBezier(...)' ease string and no eases.cubicBezier: the
+// curve function is its own export. (Reading eases.cubicBezier left every curve
+// here undefined, so they all fell back to the default ease.)
+const bez = (a, b, c, d) => cubicBezier(a, b, c, d);
 
 const APPLE_EASE = {
   standard: bez(0.25, 0.1, 0.25, 1),

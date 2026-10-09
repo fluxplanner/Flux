@@ -16,6 +16,7 @@ import {
   utils,
   waapi,
   eases,
+  cubicBezier,
 } from 'animejs';
 
 const prefersReducedMotion = () => {
@@ -56,12 +57,10 @@ window.__fluxAnime = {
   utils,
   waapi,
   eases,
+  cubicBezier,
 };
 
-const easeSnap =
-  typeof eases.cubicBezier === 'function'
-    ? eases.cubicBezier(1, 0.038, 0, 1.01)
-    : 'out(3)';
+const easeSnap = cubicBezier(1, 0.038, 0, 1.01);
 
 function escHtml(s) {
   return String(s)
@@ -228,7 +227,8 @@ function initFluxAnimeLogin() {
     ensureLoginSvgLayer(loginRoot);
     const drawables = svg.createDrawable('#loginAnimeSvg path');
     const canScroll = loginRoot.scrollHeight > loginRoot.clientHeight + 32;
-    const scrollCtl = canScroll ? onScroll({ target: loginRoot, sync: true }) : null;
+    // container: the login screen scrolls itself; onScroll's default (the body) never moves.
+    const scrollCtl = canScroll ? onScroll({ target: loginRoot, container: loginRoot, sync: true }) : null;
     track(
       loginRevertibles,
       animate(drawables, {
@@ -250,7 +250,7 @@ function initFluxAnimeLogin() {
     const spots = loginRoot.querySelectorAll('.login-spotlight-item');
     if (spots.length) {
       const canScroll = loginRoot.scrollHeight > loginRoot.clientHeight + 32;
-      const sc = canScroll ? onScroll({ target: loginRoot, sync: true }) : null;
+      const sc = canScroll ? onScroll({ target: loginRoot, container: loginRoot, sync: true }) : null;
       track(
         loginRevertibles,
         animate(spots, {
@@ -418,9 +418,10 @@ function initPanelScrollPathDraw(mainEl, panelId) {
     const drawables = svg.createDrawable('.flux-dash-scroll-paths svg path');
     let scrollCtl = null;
     if (panel.scrollHeight > panel.clientHeight + 48) {
-      scrollCtl = onScroll({ target: panel, sync: true });
+      // The panel is the scroller (#flux-main is overflow:hidden), so it must be the container too.
+      scrollCtl = onScroll({ target: panel, container: panel, sync: true });
     } else if (mainEl.scrollHeight > mainEl.clientHeight + 48) {
-      scrollCtl = onScroll({ target: mainEl, sync: true });
+      scrollCtl = onScroll({ target: mainEl, container: mainEl, sync: true });
     }
     const useLoop = scrollCtl === null;
     track(
@@ -439,6 +440,8 @@ function initPanelScrollPathDraw(mainEl, panelId) {
   } catch (e) {
     console.warn('flux-animations: panel scroll paths', e);
   }
+  // Long pages get a reading-progress line; measured a beat later, once the panel has rendered.
+  setTimeout(() => { try { window.FluxMotionMore?.readingProgress(panel.classList.contains('active') ? panel : null); } catch (_) {} }, 400);
 }
 
 function initMainScrollPathDraw(mainEl, panelId) {
@@ -556,6 +559,7 @@ function taskComplete(taskEl, checkboxEl, onDone) {
   };
 
   particleBurst(chk || taskEl);
+  try { window.FluxMotionMore?.tickAndStrike(chk, nameEl); } catch (_) {}
 
   try {
     const tl = createTimeline({ onComplete: finish });
