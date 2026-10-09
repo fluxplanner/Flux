@@ -168,6 +168,16 @@
     if (!r) { el.innerHTML = ''; return; }
     el.dataset.state = r.state;
     el.innerHTML = bodyHtml(r) + nudgeHtml(r);
+    // How far through the period: a thin line along the bar's bottom edge.
+    if (r.state === 'period' && r.periodMinutes > 0) {
+      var line = document.createElement('i');
+      line.className = 'fsn-prog';
+      line.setAttribute('aria-hidden', 'true');
+      el.appendChild(line);
+      var frac = 1 - (r.minutesLeft / r.periodMinutes);
+      if (window.FluxMotionMore && window.FluxMotionMore.periodProgress) window.FluxMotionMore.periodProgress(line, frac);
+      else line.style.transform = 'scaleX(' + Math.max(0, Math.min(1, frac)) + ')';
+    }
   }
 
   /* ── mounting ─────────────────────────────────────────────────────────────

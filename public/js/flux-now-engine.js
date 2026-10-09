@@ -103,6 +103,7 @@
           state: 'period',
           cls: p.c,
           minutesLeft: left,
+          periodMinutes: p.end - p.start,
           next: todays[i + 1] ? todays[i + 1].c : null,
           sentence: `${p.c.name}${p.c.room ? ' · Rm ' + p.c.room : ''} — ${minToLabel(left)} left.`,
         };

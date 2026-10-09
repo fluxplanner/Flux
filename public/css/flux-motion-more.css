@@ -1,0 +1,88 @@
+/* Flux · More motion (flux-motion-more.js): the parts those animations draw. */
+
+/* Task completion: the tick drawn inside the check, and the strike line. */
+.check .fmm-tick { width: 15px; height: 15px; display: block; }
+.check .fmm-tick path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fmm-strike-host { position: relative; }
+.fmm-strike {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52%;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: .7;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* Undo snackbar: the time left to undo, running down along the bottom. */
+#undoSnackbar { overflow: hidden; }
+.fmm-undo-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: .7;
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+/* Long pages: reading progress along the top edge. */
+.fmm-read {
+  /* !important: panels give every direct child position:relative (styles.css, scroll-path hosts). */
+  position: sticky !important;
+  top: 0;
+  z-index: 5;
+  height: 2px;
+  margin-bottom: -2px;
+  pointer-events: none;
+}
+.fmm-read i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb, 0, 191, 255), .2), var(--accent, #00bfff));
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  border-radius: 0 2px 2px 0;
+}
+
+/* Random student picker: the reel rolls over the (hidden) picked name, one name tall. */
+.fmm-reeling { color: transparent !important; }
+.fmm-reel-win {
+  position: absolute;
+  height: 1.35em;
+  line-height: 1.35em;
+  overflow: hidden;
+  color: var(--accent);
+}
+.fmm-reel { display: block; }
+.fmm-reel > span { display: block; height: 1.35em; white-space: nowrap; }
+
+/* Staff Now: how far through the period, along the bar's bottom edge. */
+.fsn { position: relative; overflow: hidden; }
+.fsn-prog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(var(--accent-rgb, 0, 191, 255), .45);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+@media print {
+  .fmm-read, .fmm-undo-timer, .fsn-prog { display: none !important; }
+}
