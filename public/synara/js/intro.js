@@ -174,8 +174,8 @@ function welcomeStep() {
 
       <p class="welcome-note">
         ${raw(icon('lock', 14))}
-        <span>Everything stays on this device — nothing is uploaded and there is
-        no account. Synara is a student project, not a medical device.</span>
+        <span>Everything stays on this device. No account needed, and nothing is
+        uploaded unless you turn on encrypted sync later. Synara is not a medical device.</span>
       </p>
 
       ${raw(poweredByFlux('welcome-powered'))}

@@ -4,6 +4,9 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
  * Synara for a keyboard, switch or screen-reader user, and for anyone
  * reading it on a dim phone: where focus lands when something closes, the
  * skip link, what the check-in says out loud, and contrast in both themes.
+ * Then what it tells students about itself (no notes meant for developers,
+ * privacy copy that matches what it does, a manifest for the home screen),
+ * and sync on a computer two students share.
  * Real clicks and real key presses throughout, as in synara.spec.ts.
  */
 
@@ -148,7 +151,9 @@ test.describe('Synara: focus and keyboard', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await withExampleData(page);
     await page.locator('.tab[data-to="safety"]').click();
-    const before = await page.locator('.contact-row').count();
+    const rows = page.locator('.screen-inner[data-route="safety"] .contact-row');
+    await expect(rows.first()).toBeVisible();
+    const before = await rows.count();
 
     await page.locator('[data-action="contact-open"][data-id]').first().click();
     await page.locator('#sheet [data-action="contact-delete"]').click();
@@ -158,7 +163,7 @@ test.describe('Synara: focus and keyboard', () => {
 
     await page.locator('#backdrop').click({ position: { x: 195, y: 60 } });
     await expect(page.locator('#sheet')).toBeHidden();
-    await expect(page.locator('.contact-row')).toHaveCount(before);
+    await expect(rows).toHaveCount(before);
   });
 
   test('the check-in stepper speaks its new value from a live region that stays put', async ({ page }) => {
@@ -261,5 +266,121 @@ test.describe('Synara: contrast', () => {
     await page.locator('.tab[data-to="safety"]').click();
     const sub = page.locator('.appbar-s');
     expect(await sub.evaluate((t) => t.scrollWidth <= t.clientWidth)).toBe(true);
+  });
+});
+
+test.describe('Synara: what it says about itself', () => {
+  test('no notes meant for developers, and privacy copy that matches what it does', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/synara.html');
+    await expect(page.locator('#welcome .welcome-note')).toContainText('unless you turn on encrypted sync');
+    await page.getByRole('button', { name: 'Look around with example data' }).click();
+    await expect(page.locator('#welcome')).toBeHidden();
+
+    for (const route of ['safety', 'you']) {
+      await page.locator(`.tab[data-to="${route}"]`).click();
+      const text = await page.locator('#screen').innerText();
+      for (const dev of ['React Native', 'HIPAA', 'COPPA', 'student project', 'not built yet']) {
+        expect(text, `"${dev}" on ${route}`).not.toContain(dev);
+      }
+    }
+
+    // Sync is off here, and the data card says what that means, Google Fonts included.
+    await expect(page.locator('.list-row-static .row-t', { hasText: /^Stored on this device$/ })).toBeVisible();
+    const data = page.locator('section[aria-labelledby="data-h"] .disclaimer');
+    await expect(data).toContainText('an encrypted copy is kept in your Flux account');
+    await expect(data).toContainText('Google Fonts');
+    await expect(page.locator('section[aria-labelledby="rem-h"] .disclaimer')).toContainText('only remind you while it');
+
+    // About reads as sentences, not the source file's line breaks.
+    const about = page.locator('section[aria-labelledby="about-h"] p').first();
+    expect(await about.evaluate((p) => getComputedStyle(p).whiteSpace)).toBe('normal');
+    await expect(about).toContainText('built around school life');
+  });
+
+  test('a manifest makes it an app on the home screen, with the emergency card as a shortcut', async ({ page, request }) => {
+    await page.goto('/synara.html');
+    const url = new URL((await page.locator('link[rel="manifest"]').getAttribute('href'))!, page.url());
+    const res = await request.get(url.href);
+    expect(res.ok()).toBe(true);
+    const m = await res.json();
+    expect(m.display).toBe('standalone');
+    expect(new URL(m.start_url, url).pathname).toBe('/synara.html');
+    const sos = m.shortcuts.find((s: { url: string }) => new URL(s.url, url).hash === '#/sos');
+    expect(sos, 'an "Emergency card" shortcut to #/sos').toBeTruthy();
+    expect(new URL(sos.url, url).pathname).toBe('/synara.html');
+    for (const icon of m.icons) {
+      expect((await request.get(new URL(icon.src, url).href)).ok(), icon.src).toBe(true);
+    }
+    // And the browser reads it without complaint.
+    const cdp = await page.context().newCDPSession(page);
+    const parsed = await cdp.send('Page.getAppManifest');
+    expect(parsed.errors).toEqual([]);
+  });
+});
+
+test.describe('Synara: sync on a shared computer', () => {
+  type Row = { ciphertext: string; iv: string; version: number; updated_at: string } | null;
+
+  test('a second student signed in to Flux never gets the first one\'s record, or loses their own', async ({ page }) => {
+    // One browser, one Flux sign-in at a time, a vault per account.
+    const rows: Record<string, Row> = { 'student-a': null, 'student-b': null };
+    let who = 'student-a';
+    let writes = 0;
+    await page.exposeFunction('__vault', (op: string, arg: { ciphertext: string; iv: string }) => {
+      if (op === 'account') return { id: who, email: `${who}@example.com` };
+      if (op === 'get') return rows[who];
+      if (op === 'put') {
+        writes += 1;
+        rows[who] = { ciphertext: arg.ciphertext, iv: arg.iv, version: 1, updated_at: new Date(Date.UTC(2027, 0, 1, 0, 0, writes)).toISOString() };
+        return { updated_at: rows[who]!.updated_at };
+      }
+      if (op === 'remove') { rows[who] = null; return true; }
+      return null;
+    });
+    await page.addInitScript(() => {
+      const w = window as unknown as { __vault: (op: string, arg?: unknown) => Promise<unknown>; FluxSynaraVault: unknown };
+      w.FluxSynaraVault = {
+        account: () => w.__vault('account'),
+        get: () => w.__vault('get'),
+        put: (r: unknown) => w.__vault('put', r),
+        remove: () => w.__vault('remove'),
+      };
+    });
+
+    // Student A turns sync on.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await withExampleData(page);
+    await page.locator('.tab[data-to="you"]').click();
+    await page.getByRole('button', { name: /Sync across your devices/ }).click();
+    await page.getByRole('button', { name: 'Start syncing from this device' }).click();
+    await expect(page.locator('.sync-key code')).toBeVisible();
+    await page.locator('.sheet [data-action="close-sheet"]').first().click();
+    await expect(page.locator('#sheet')).toBeHidden();
+    expect(rows['student-a']).not.toBeNull();
+    await expect(page.locator('.list-row-static .row-t', { hasText: 'with encrypted sync' })).toBeVisible();
+
+    // Student B, who syncs from their own phone, signs in to Flux here.
+    const bRow = { ciphertext: 'B-OWN-COPY', iv: 'B-IV', version: 1, updated_at: '2027-02-01T00:00:00.000Z' };
+    rows['student-b'] = { ...bRow };
+    who = 'student-b';
+
+    // A change to the record in this browser (A's) goes nowhere near B's
+    // account, and no "which copy should Synara keep?" asks B to overwrite
+    // their own synced copy with it.
+    await page.locator('[data-action="profile-edit"]').first().click();
+    await page.locator('#p-name').fill('Maya E.');
+    await page.locator('.sheet [data-action="profile-save"]').last().click();
+    await expect(page.locator('.row-s', { hasText: 'different Flux account' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#sheet')).toBeHidden();
+    expect(rows['student-b']).toEqual(bRow);
+
+    // A signs back in: syncing carries on where it left off.
+    who = 'student-a';
+    const before = writes;
+    await page.getByRole('button', { name: /Sync across your devices/ }).click();
+    await page.getByRole('button', { name: 'Sync now' }).click();
+    await expect.poll(() => writes).toBeGreaterThan(before);
+    expect(rows['student-b']).toEqual(bRow);
   });
 });

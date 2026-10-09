@@ -216,6 +216,17 @@ function errorCode(e) {
   return (e && (e.code || e.message)) || 'failed';
 }
 
+/* A shared computer: Synara's storage belongs to the browser, Flux's
+   sign-in to whoever signed in last. Sync remembers whose account it was
+   turned on in (meta.user), and does nothing in anyone else's: one
+   student's record must never land in another's account, or replace
+   their synced copy. */
+function sameAccount(meta, who) {
+  if (meta.user && who && who.id !== meta.user) {
+    throw Object.assign(new Error('other-account'), { code: 'other-account' });
+  }
+}
+
 /* ============================================================
    Sync
    ============================================================ */
@@ -249,6 +260,8 @@ export function syncNow() {
     setStatus({ phase: 'syncing', error: '' });
     try {
       const raw = decodeKey(meta.key);
+      const who = await account();
+      sameAccount(meta, who);
       const remote = await v.get();
       const what = decide(await hash(localRecord()), remote, meta);
       if (what === 'push') await push(meta, raw);
@@ -261,6 +274,9 @@ export function syncNow() {
         setStatus({ phase: 'conflict' });
         return what;
       }
+      // Turned on before sync remembered the account: this round just
+      // reached the copy this key opens, so the account is the right one.
+      if (!meta.user && who) writeMeta({ ...readMeta(), user: who.id });
       setStatus({ phase: 'idle', error: '' });
       return what;
     } catch (e) {
@@ -277,8 +293,15 @@ export async function resolve(choice) {
   const raw = decodeKey(meta.key);
   setStatus({ phase: 'syncing', error: '' });
   try {
-    if (choice === 'cloud') await pull(meta, raw, await need(vault()).get());
-    else await push(meta, raw);
+    sameAccount(meta, await account());
+    const remote = await need(vault()).get();
+    if (choice === 'cloud') await pull(meta, raw, remote);
+    else {
+      // Only over a copy this key opens (it throws 'wrong-key' otherwise):
+      // never over one made with a newer key, or in someone else's account.
+      if (remote) await decrypt(remote, raw);
+      await push(meta, raw);
+    }
     setStatus({ phase: 'idle' });
   } catch (e) {
     setStatus({ phase: 'error', error: errorCode(e) });
@@ -289,10 +312,11 @@ export async function resolve(choice) {
 /** First device: make a key and upload this device's record. */
 export async function startNew() {
   const v = need(await vaultReady());
-  if (!(await account())) throw Object.assign(new Error('signed-out'), { code: 'signed-out' });
+  const who = await account();
+  if (!who) throw Object.assign(new Error('signed-out'), { code: 'signed-out' });
   if (await v.get()) throw Object.assign(new Error('has-copy'), { code: 'has-copy' });
   const raw = crypto.getRandomValues(new Uint8Array(16));
-  await push({ key: encodeKey(raw) }, raw);
+  await push({ key: encodeKey(raw), user: who.id }, raw);
   setStatus({ phase: 'idle', error: '' });
 }
 
@@ -316,7 +340,8 @@ export async function inspect(keyInput) {
 /** Another device, confirmed: replace this device's record with the synced one. */
 export async function join(key) {
   const raw = decodeKey(key);
-  await pull({ key }, raw, await need(vault()).get());
+  const who = await account();
+  await pull({ key, ...(who ? { user: who.id } : {}) }, raw, await need(vault()).get());
   setStatus({ phase: 'idle', error: '' });
 }
 

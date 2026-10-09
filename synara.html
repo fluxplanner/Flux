@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Synara — epilepsy care for students</title>
-<meta name="description" content="Medication reminders, a seizure log that finds patterns, and an emergency safety card a teacher can follow — for students with epilepsy. Everything stays on this device. No account.">
+<meta name="description" content="Medication reminders, a seizure log that finds patterns, and an emergency safety card a teacher can follow — for students with epilepsy. It stays on this device unless you turn on encrypted sync. No account needed.">
 <meta name="theme-color" content="#f6f5fa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121019" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,6 +13,10 @@
 <meta name="apple-mobile-web-app-title" content="Synara">
 <link rel="icon" href="public/synara/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="public/synara/icons/icon-180.png">
+<!-- Synara's own manifest, so "Add to Home Screen" makes it an app: on
+     iPhone that is what lets it ask for notifications, and on Android a
+     long-press on the icon offers the emergency card (#/sos). -->
+<link rel="manifest" href="public/synara/manifest.webmanifest">
 
 <!--
   Synara: medication, seizures and a school safety card for students with
@@ -21,7 +25,9 @@
   load flux-theme-carry.js. The source lives in the Synara repo and is
   copied to public/synara/ by its `npm run flux`; `npm run build:web` here
   bundles it into the two public/bundles/flux-synara.* files below.
-  Data stays in this browser (localStorage "synara.v2").
+  Data stays in this browser (localStorage "synara.v2"), plus an encrypted
+  copy in the student's Flux account only if they turn on sync (sync.js).
+  The font comes from Google Fonts; You → Your data says so.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +64,7 @@
          <html>): closing the emergency card never stops the clock. -->
     <button class="timer-banner" type="button" data-action="open-emergency">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/><path d="M12 2v3"/></svg>
-      Seizure timer still running — open the emergency card
+      Seizure timer still running — open it
     </button>
     <main class="screen" id="screen" tabindex="-1"></main>
   </div>
