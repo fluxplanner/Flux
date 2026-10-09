@@ -25,7 +25,7 @@
    ============================================================ */
 
 import {
-  dayKey, addDays, parseStamp, daysBetween, lastNDays,
+  dayKey, addDays, parseStamp, daysBetween, lastNDays, minutesOf,
   tally, plural, prettySeconds,
 } from './util.js';
 import { effectiveStatus, doseStatus, dosesOn } from './store.js';
@@ -129,32 +129,42 @@ export function topInsight(state) {
      runs over the stretches with no seizure in them, and the seizures
      have to come after a missed or late dose clearly more often. */
 
-const WINDOW_MS = 48 * 3600000;
 const SLIPPED = new Set(['missed', 'late']);
 
-/** Doses due from `from` up to (not at) `to`, in ms: any due, and any marked missed or late. */
-function doseWindow(state, from, to) {
-  let due = false;
-  let slipped = false;
-  const last = dayKey(new Date(to));
-  for (let day = dayKey(new Date(from)); day <= last; day = addDays(day, 1)) {
-    for (const { med, time } of dosesOn(day, state)) {
-      const at = parseStamp(`${day}T${time}`).getTime();
-      if (at < from || at >= to) continue;
-      due = true;
-      if (SLIPPED.has(doseStatus(day, med.id, time, state))) slipped = true;
-    }
+/**
+ * The doses due on `day`: when (minutes after midnight), and whether
+ * each was marked missed or late. Kept in `cache` for one pass, since
+ * neighbouring seizures and stretches ask about the same days.
+ */
+function dayDoses(state, day, cache) {
+  let list = cache.get(day);
+  if (!list) {
+    list = dosesOn(day, state).map(({ med, time }) => ({
+      mins: minutesOf(time),
+      slipped: SLIPPED.has(doseStatus(day, med.id, time, state)),
+    }));
+    cache.set(day, list);
   }
-  return { due, slipped };
+  return list;
 }
 
-/** The same two answers for one whole day. */
-function dayFlags(state, day) {
-  const doses = dosesOn(day, state);
-  return {
-    due: doses.length > 0,
-    slipped: doses.some(({ med, time }) => SLIPPED.has(doseStatus(day, med.id, time, state))),
+/** The 48 hours before a seizure: any dose due, and any marked missed or late. */
+function beforeSeizure(state, s, cache) {
+  const [day, time] = s.at.split('T');
+  const at = minutesOf(time);
+  let due = false;
+  let slipped = false;
+  const look = (d, inWindow) => {
+    for (const dose of dayDoses(state, d, cache)) {
+      if (!inWindow(dose.mins)) continue;
+      due = true;
+      if (dose.slipped) slipped = true;
+    }
   };
+  look(addDays(day, -2), (m) => m >= at);   // from this time two days before
+  look(addDays(day, -1), () => true);
+  look(day, (m) => m < at);                 // up to the seizure, not after
+  return { due, slipped };
 }
 
 /**
@@ -162,17 +172,21 @@ function dayFlags(state, day) {
  * before it) with doses due and no seizure, how many had a dose marked
  * missed or late? From when tracking began, at most a year back.
  */
-function slipBaseline(state, seizureDays) {
+function slipBaseline(state, seizureDays, cache) {
   const today = dayKey();
   const yearAgo = addDays(today, -366);
   const first = state.meds.reduce((min, m) => (m.added < min ? m.added : min), today);
+  const flags = (day) => {
+    const list = dayDoses(state, day, cache);
+    return { due: list.length > 0, slipped: list.some((d) => d.slipped) };
+  };
   let prevDay = first > yearAgo ? first : yearAgo;
-  let prev = dayFlags(state, prevDay);
+  let prev = flags(prevDay);
   let stretches = 0;
   let slipped = 0;
 
   for (let day = addDays(prevDay, 1); day < today; day = addDays(day, 1)) {
-    const cur = dayFlags(state, day);
+    const cur = flags(day);
     const seizureFree = !seizureDays.has(day) && !seizureDays.has(prevDay);
     if (seizureFree && (prev.due || cur.due)) {
       stretches++;
@@ -206,10 +220,10 @@ function doseProximity(state, sz) {
   let followed = 0;
   let checkable = 0;
   const followedDays = new Set();
+  const cache = new Map();
 
   for (const s of sz) {
-    const at = parseStamp(s.at).getTime();
-    const { due, slipped } = doseWindow(state, at - WINDOW_MS, at);
+    const { due, slipped } = beforeSeizure(state, s, cache);
     // No dose due in the 48 hours before (before any medication was
     // tracked): it can't say anything either way, so it stays out.
     if (!due) continue;
@@ -228,7 +242,7 @@ function doseProximity(state, sz) {
   if (pct < 60) return null;   // at 50% it is a coin flip
 
   // Two weeks of ordinary stretches, at least, to compare against.
-  const base = slipBaseline(state, new Set(sz.map(dayOf)));
+  const base = slipBaseline(state, new Set(sz.map(dayOf)), cache);
   if (base.stretches < 14) return null;
 
   // Plus one each way, so a short spotless record can't make the
