@@ -67,8 +67,8 @@ const state = {
   morph: null,
   shape: 'focus',
   pos: { p: 0 },
-  lastP: 0,
   drawn: false,
+  visible: false,
 };
 
 function el(tag, attrs, parent) {
@@ -125,7 +125,8 @@ function moveCar(p) {
   if (!state.carAnim) return;
   if (state.carTween) state.carTween.pause();
   // A reset (or a big jump) moves at once; a normal tick glides for the second.
-  if (reduced() || Math.abs(p - state.pos.p) > 0.08) {
+  // Off screen it just jumps, so the animation engine is not kept running for a hidden ring.
+  if (reduced() || !state.visible || Math.abs(p - state.pos.p) > 0.08) {
     state.pos.p = p;
     state.carAnim.seek(p * 1000);
     return;
@@ -154,6 +155,7 @@ function watchVisibility() {
   if (typeof IntersectionObserver !== 'function') return;
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => {
+      state.visible = e.isIntersecting;
       if (e.isIntersecting && !state.drawn) { state.drawn = true; drawIn(); }
       else if (!e.isIntersecting) state.drawn = false;
     });
@@ -213,7 +215,7 @@ function startFlourish() {
 
 /* ── The floating Pomodoro pill: drag it anywhere (desktop) ─────────────── */
 
-const pill = { el: null, drag: null };
+const pill = { el: null, drag: null, foldRaf: 0, moved: false, firedAt: 0 };
 
 function readOffset() {
   try {
@@ -231,68 +233,117 @@ function applyOffset(o) {
   if (!pill.el) return;
   pill.el.style.translate = o.x || o.y ? o.x + 'px ' + o.y + 'px' : '';
 }
+const isDesktop = () => window.matchMedia('(min-width: 769px)').matches;
+const isShown = (p) => !p.hidden && p.style.display !== 'none' && p.getBoundingClientRect().width > 0;
+
 /** Pull the pill back on screen if a smaller window left it outside. */
 function keepOnScreen() {
   const p = pill.el;
-  if (!p || p.hidden || p.style.display === 'none') return;
+  if (!p || !isDesktop() || !isShown(p)) return;
   const r = p.getBoundingClientRect();
-  if (!r.width) return;
   const o = readOffset();
   const dx = r.left < 8 ? 8 - r.left : r.right > innerWidth - 8 ? innerWidth - 8 - r.right : 0;
   const dy = r.top < 8 ? 8 - r.top : r.bottom > innerHeight - 8 ? innerHeight - 8 - r.bottom : 0;
   if (dx || dy) {
-    const n = { x: o.x + dx, y: o.y + dy };
+    const n = { x: Math.round(o.x + dx), y: Math.round(o.y + dy) };
     writeOffset(n);
     applyOffset(n);
   }
 }
 
+/**
+ * Fold a finished drag into the saved offset. onSettle can fire in the middle of
+ * anime's release handler (and more than once), so this waits a frame and only
+ * folds once nothing is still moving.
+ */
+function fold(d) {
+  pill.foldRaf = 0;
+  if (!d || d !== pill.drag || d.grabbed) return;
+  const anims = (d.animate && d.animate.animations) || {};
+  for (const k in anims) {
+    if (anims[k] && !anims[k].paused) { pill.foldRaf = requestAnimationFrame(() => fold(d)); return; }
+  }
+  if (!d.x && !d.y) return;
+  const o = readOffset();
+  const n = { x: Math.round(o.x + d.x), y: Math.round(o.y + d.y) };
+  writeOffset(n);
+  applyOffset(n);
+  d.setX(0, true);
+  d.setY(0, true);
+  keepOnScreen();
+}
+
+function dropDrag() {
+  cancelAnimationFrame(pill.foldRaf);
+  pill.foldRaf = 0;
+  if (pill.drag) { try { pill.drag.revert(); } catch (_) { /* already gone */ } pill.drag = null; }
+}
+
+/** The draggable only exists while the pill is on screen, so its bounds are always measured from a real box. */
+function syncDrag() {
+  const p = pill.el;
+  if (!p) return;
+  if (!isDesktop()) {
+    dropDrag();
+    p.style.translate = '';
+    p.classList.remove('ffm-draggable');
+    return;
+  }
+  applyOffset(readOffset());
+  p.classList.add('ffm-draggable');
+  if (!isShown(p)) { dropDrag(); return; }
+  if (pill.drag) return;
+  try {
+    pill.drag = createDraggable(p, {
+      // Kept inside the window (the pill is position: fixed, so the body means the viewport).
+      container: document.body,
+      containerPadding: 8,
+      // A springy settle after a throw; reduced motion settles without the bounce.
+      ...(reduced() ? {} : {
+        releaseEase: spring({
+          stiffness: 120,
+          damping: 6,
+        }),
+      }),
+      onGrab: () => { pill.moved = false; },
+      onDrag: () => { pill.moved = true; },
+      // anime turns pointer events off on the slightest move, which can swallow the click;
+      // a press that never became a drag still opens the timer.
+      onRelease: () => {
+        if (pill.moved) return;
+        pill.firedAt = performance.now();
+        try { if (typeof window.fluxFocusPomoPill === 'function') window.fluxFocusPomoPill(); } catch (_) { /* nav not ready */ }
+      },
+      onSettle: (d) => {
+        cancelAnimationFrame(pill.foldRaf);
+        pill.foldRaf = requestAnimationFrame(() => fold(d));
+      },
+    });
+  } catch (_) {
+    pill.drag = null;
+  }
+}
+
 function initPill() {
   const p = document.getElementById('fluxPomoPill');
-  if (!p || pill.drag) return;
+  if (!p || pill.el) return;
   pill.el = p;
-  const desktop = window.matchMedia('(min-width: 769px)');
-  const enable = () => {
-    if (pill.drag) { pill.drag.revert(); pill.drag = null; }
-    if (!desktop.matches) { p.style.translate = ''; p.classList.remove('ffm-draggable'); return; }
-    applyOffset(readOffset());
-    p.classList.add('ffm-draggable');
-    try {
-      pill.drag = createDraggable(p, {
-        // Kept inside the window (the pill is position: fixed, so the body means the viewport).
-        container: document.body,
-        containerPadding: 8,
-        // A springy settle after a throw; reduced motion settles without the bounce.
-        ...(reduced() ? {} : {
-          releaseEase: spring({
-            stiffness: 120,
-            damping: 6,
-          }),
-        }),
-        // Once it has settled, fold the drag into the saved offset and zero the drag itself.
-        onSettle: (d) => {
-          if (!d.x && !d.y) return;
-          const o = readOffset();
-          const n = { x: Math.round(o.x + d.x), y: Math.round(o.y + d.y) };
-          writeOffset(n);
-          applyOffset(n);
-          d.setX(0, true);
-          d.setY(0, true);
-          keepOnScreen();
-        },
-      });
-    } catch (_) {
-      pill.drag = null;
+  // onRelease already opened the timer for that press; skip the native click that may follow it.
+  p.addEventListener('click', (e) => {
+    if (e.detail && performance.now() - pill.firedAt < 400) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
     }
-  };
-  enable();
-  try { desktop.addEventListener('change', enable); } catch (_) { /* old Safari */ }
-  window.addEventListener('resize', keepOnScreen);
-  // The window may have shrunk since the pill was last dropped; check once its appear animation is done.
-  // (The drag bounds themselves are measured on every grab.)
+  }, true);
+  const later = () => requestAnimationFrame(() => { syncDrag(); keepOnScreen(); });
+  try { window.matchMedia('(min-width: 769px)').addEventListener('change', later); } catch (_) { /* old Safari */ }
+  window.addEventListener('resize', later);
+  // Shown and hidden by app.js; build the drag once its appear animation has settled.
   new MutationObserver(() => {
-    if (!p.hidden && pill.drag) setTimeout(keepOnScreen, 700);
+    if (p.hidden) { dropDrag(); return; }
+    setTimeout(() => { syncDrag(); keepOnScreen(); }, 700);
   }).observe(p, { attributes: true, attributeFilter: ['hidden'] });
+  syncDrag();
 }
 
 /* ── Hooks for app.js ───────────────────────────────────────────────────── */

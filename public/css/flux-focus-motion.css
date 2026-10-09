@@ -18,6 +18,8 @@
   stroke-width: 1.2;
   stroke-linecap: round;
 }
+/* Light theme: a white lane line would vanish on the pale track. */
+[data-theme="light"] #timer .ffm-circuit { stroke: rgba(10, 20, 40, .35); }
 #timer .ffm-car {
   fill: #fff;
   stroke: var(--accent, #00bfff);
