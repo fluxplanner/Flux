@@ -253,7 +253,7 @@ function doseProximity(state, sz) {
         : 'None of your 48-hour stretches without a seizure had one. ') +
       'That doesn\'t show the dose caused the seizure. Talk it over with your neurologist, ' +
       'and don\'t change how you take your medicine on your own.',
-    evidence: `${followed}/${checkable} seizures · ${pct}% vs ${basePct}% at other times`,
+    evidence: `${followed}/${checkable} seizures · ${pct}% vs ${basePct}% otherwise`,
     strength: 100 + pct,
   };
 }

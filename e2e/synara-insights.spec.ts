@@ -81,7 +81,7 @@ test.describe('Synara patterns', () => {
     // against about one ordinary 48 hours in five.
     await expect(card.locator('.insight-t')).toHaveText('3 of your 4 seizures came after a missed or late dose');
     await expect(card.locator('.insight-d')).toContainText('That doesn\'t show the dose caused the seizure.');
-    await expect(card.locator('.insight-e')).toHaveText('3/4 seizures · 75% vs 19% at other times');
+    await expect(card.locator('.insight-e')).toHaveText('3/4 seizures · 75% vs 19% otherwise');
     await expect(card.locator('.hint')).toHaveText('A pattern in your log, not proof of a cause. Talk it over with your neurologist.');
 
     await card.getByRole('button', { name: 'All patterns' }).click();
@@ -115,7 +115,7 @@ test.describe('Synara patterns', () => {
     await expect(ins.locator('.insight-d')).toContainText('less than 48 hours after a dose marked missed or late');
     await expect(ins.locator('.insight-d')).toContainText('of your 48-hour stretches without a seizure had one');
     await expect(ins.locator('.insight-d')).toContainText('don\'t change how you take your medicine on your own');
-    await expect(ins.locator('.insight-e')).toHaveText(/^3\/3 seizures · 100% vs \d+% at other times$/);
+    await expect(ins.locator('.insight-e')).toHaveText(/^3\/3 seizures · 100% vs \d+% otherwise$/);
   });
 
   test('the seizure history counts days the way the header does', async ({ page }) => {

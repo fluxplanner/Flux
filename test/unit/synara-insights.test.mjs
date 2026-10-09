@@ -128,7 +128,7 @@ test('a real pattern is reported with the comparison, and without claiming a cau
     assert.match(ins.detail, /doesn't show the dose caused the seizure/);
     assert.match(ins.detail, /neurologist/);
     assert.match(ins.detail, /don't change how you take your medicine on your own/);
-    const [, base] = ins.evidence.match(/^3\/3 seizures · 100% vs (\d+)% at other times$/);
+    const [, base] = ins.evidence.match(/^3\/3 seizures · 100% vs (\d+)% otherwise$/);
     assert.ok(Number(base) < 20, `the baseline (${base}%) should be the few stretches with a miss`);
   });
 });
@@ -159,7 +159,7 @@ test('the example data still shows its planted dose pattern, because it is real'
     const ins = insights(s)[0];
     assert.equal(ins.id, 'dose-proximity');
     assert.equal(ins.title, '3 of your 4 seizures came after a missed or late dose');
-    assert.equal(ins.evidence, '3/4 seizures · 75% vs 19% at other times');
+    assert.equal(ins.evidence, '3/4 seizures · 75% vs 19% otherwise');
   });
 });
 
