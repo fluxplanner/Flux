@@ -321,18 +321,21 @@
       const g = group(tid);
       const olds = g.released.slice().sort(cmpBlock);
       const news = fresh[tid].sort((a, b) => cmpBlock({ date: a.date, start: a.s }, { date: b.date, start: b.s }));
-      news.forEach((b, i) => {
-        const old = olds[i];
-        if (old) {
-          b.id = old.id; b.key = old.key;
-          const same = old.date === b.date && toMin(old.start) === b.s && old.minutes === b.minutes;
-          b.was = same ? null : { date: old.date, start: old.start, minutes: old.minutes, missed: old.missed };
-        } else {
-          b.id = null; b.key = tid + ':' + (++g.maxSeq);
-          b.was = null; b.isNew = true;
-        }
+      const pair = (b, old) => {
+        olds.splice(olds.indexOf(old), 1);
+        b.id = old.id; b.key = old.key;
+        const same = old.date === b.date && toMin(old.start) === b.s && old.minutes === b.minutes;
+        b.was = same ? null : { date: old.date, start: old.start, minutes: old.minutes, missed: old.missed };
+      };
+      // A block landing where an old one already is keeps that one; the rest
+      // take the old ones in time order.
+      news.forEach((b) => { const old = olds.find((x) => x.date === b.date && toMin(x.start) === b.s); if (old) pair(b, old); });
+      news.forEach((b) => {
+        if (b.key) return;
+        if (olds.length) pair(b, olds[0]);
+        else { b.id = null; b.key = tid + ':' + (++g.maxSeq); b.was = null; b.isNew = true; }
       });
-      olds.slice(news.length).forEach((x) => drop.push({ id: x.id, key: x.key, taskId: tid, date: x.date, start: x.start, minutes: x.minutes, missed: x.missed }));
+      olds.forEach((x) => drop.push({ id: x.id, key: x.key, taskId: tid, date: x.date, start: x.start, minutes: x.minutes, missed: x.missed }));
     });
 
     const names = {}, dues = {};

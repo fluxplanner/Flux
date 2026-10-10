@@ -215,6 +215,19 @@ test('a new block for a task gets a key after its existing ones', () => {
   assert.equal(again.blocks.filter((b) => b.isNew).length, 1);
 });
 
+test('a block that lands where it already was keeps its id, even when an earlier one is new', () => {
+  // Thursday's block is already there; another was taken out. Planning again
+  // (Monday and Tuesday full) adds one on Wednesday, before it — Thursday's
+  // stays Thursday's rather than "moving" to Wednesday.
+  const tasks = [task(1, '2026-10-09', 90)];
+  const thu = { id: 7001, key: '1:2', taskId: 1, date: '2026-10-08', start: '16:00', minutes: 45, done: false, pinned: false };
+  const r = plan({ tasks, blocks: [thu], load: { '2026-10-05': 120, '2026-10-06': 120 } });
+  assert.deepEqual(of(r, 1), [['2026-10-07', '16:00', 45], ['2026-10-08', '16:00', 45]]);
+  const kept = r.blocks.find((b) => b.id === 7001);
+  assert.deepEqual([kept.date, kept.start, kept.was], ['2026-10-08', '16:00', null]);
+  assert.deepEqual(r.blocks.filter((b) => b.isNew).map((b) => b.key), ['1:3']);
+});
+
 test('a block happening right now is left alone', () => {
   const first = plan({ tasks: [task(1, '2026-10-06', 45)] });
   const again = plan({ nowMin: 16 * 60 + 15, tasks: [task(1, '2026-10-06', 45)], blocks: applied(first) });
