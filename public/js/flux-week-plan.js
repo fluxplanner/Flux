@@ -80,6 +80,11 @@
     return MON[p.getMonth()] + ' ' + p.getDate();
   }
   const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  /** "Due Thu", "Due today", "Overdue since yesterday". */
+  function dueLead(date, today) {
+    const d = daysBetween(today, date);
+    return d < 0 ? 'Overdue since ' + dayWord(date, today) : d === 0 ? 'Due today' : 'Due ' + dayWord(date, today);
+  }
 
   /** Study hours for each weekday (0 = Sunday), filling gaps with the defaults. */
   function normAvail(a) {
@@ -285,7 +290,7 @@
         left -= size;
       }
       const placed = c.need - left;
-      const lead = c.d < 0 ? 'Overdue since ' + dayWord(t.date, today) : c.d === 0 ? 'Due today' : 'Due ' + dayWord(t.date, today);
+      const lead = dueLead(t.date, today);
       if (mine.length) {
         const bits = [lead];
         if (!c.est) bits.push('no estimate, so ~' + c.total + ' min');
@@ -294,7 +299,7 @@
         const nd = new Set(mine.map((b) => b.date)).size;
         if (mine.length > 1) bits.push(nd > 1 ? 'split over ' + nd + ' days' : 'in ' + mine.length + ' blocks');
         if (onDue) bits.push('on the day it’s due (no room before)');
-        reasons[c.tid] = bits.join(', ');
+        reasons[c.tid] = { text: bits.join(', '), detail: bits.slice(1).join(', ') };
       }
       if (left >= 5) {
         const when = c.d < 0 ? 'this week' : c.d === 0 ? 'today' : 'before then';
@@ -355,7 +360,9 @@
           key: b.key, id: b.id == null ? null : b.id, taskId: b.taskId, name: names[tid] || b.name || '', due: dues[tid] || '',
           date: day.date, start: toHM(b.s), end: toHM(b.s + b.minutes), minutes: b.minutes,
           kept: b.kept || null, pinned: !!b.pinned, isNew: !!b.isNew, was: b.was || null,
-          reason: b.kept === 'done' ? 'Done' : b.kept === 'live' ? 'Happening now' : b.kept ? 'You moved this one' : (reasons[tid] || ''),
+          reason: b.kept === 'done' ? 'Done' : b.kept === 'live' ? 'Happening now' : b.kept ? 'You moved this one' : (reasons[tid] ? reasons[tid].text : ''),
+          // The reason after "Due Thu": that part stays true as the week goes on.
+          detail: !b.kept && reasons[tid] ? reasons[tid].detail : null,
         });
       });
     });
@@ -398,6 +405,6 @@
 
   window.FluxWeekPlan = {
     propose: propose, warnings: warnings, classMeets: classMeets, defaultAvail: defaultAvail, normAvail: normAvail,
-    toMin: toMin, toHM: toHM, addDays: addDays, dayWord: dayWord, DEFAULT_MIN: DEFAULT_MIN, cap1: cap1,
+    toMin: toMin, toHM: toHM, addDays: addDays, dayWord: dayWord, dueLead: dueLead, DEFAULT_MIN: DEFAULT_MIN, cap1: cap1,
   };
 })();

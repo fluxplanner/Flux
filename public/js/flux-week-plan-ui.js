@@ -369,7 +369,7 @@
         <div class="pw-b-time">${h(span(t.time, end))}</div>
         <div class="pw-b-main">
           <div class="pw-b-name">${h(t.name)}${t.planParts > 1 ? ` <span class="pw-muted">· ${t.planPart} of ${t.planParts}</span>` : ''}</div>
-          ${t.weekBlock.reason ? `<div class="pw-b-why">${h(t.weekBlock.reason)}</div>` : ''}
+          ${reasonNow(t, td) ? `<div class="pw-b-why">${h(reasonNow(t, td))}</div>` : ''}
           ${(warn[key] || []).length ? `<div class="pw-b-warn">${warn[key].map(h).join(' · ')}</div>` : ''}
         </div>
         ${t.done || editing ? '' : `<div class="pw-b-acts">
@@ -389,6 +389,12 @@
       ${Object.keys(byDay).map((d) => `<section class="pw-pday" aria-labelledby="pwd-${d}"><h3 class="pw-pday-h" id="pwd-${d}"><span>${h(dayLabel(d))}</span>
         <span class="pw-muted">${mins(byDay[d].reduce((s, t) => s + (+t.estTime || 0), 0))}</span></h3>
         <ul class="pw-blocks">${byDay[d].map(row).join('')}</ul></section>`).join('')}</div>`;
+  }
+  /** Why a block is there, as of today: "Due tomorrow" on Monday is "Due today" by Tuesday. */
+  function reasonNow(t, td) {
+    const wb = t.weekBlock, parent = allTasks().find((x) => String(x.id) === String(t.planOf));
+    if (wb.why == null || !parent || parent.done || !parent.date || /^You moved/.test(wb.reason || '')) return wb.reason || '';
+    return W().dueLead(parent.date, td) + (wb.why ? ', ' + wb.why : '');
   }
   function weekActions() {
     const open = appliedBlocks().filter((t) => !t.done).length;
@@ -439,7 +445,8 @@
         if (b.kept) { Object.assign(old, { planPart: b.part, planParts: b.of }); return; }
         if (old.date !== b.date || (old.time || '') !== b.start || +old.estTime !== b.minutes) moved++;
         Object.assign(old, { date: b.date, time: b.start, estTime: b.minutes, planPart: b.part, planParts: b.of });
-        old.weekBlock = Object.assign({}, old.weekBlock, { key: b.key, pinned: !!(b.pinned || old.weekBlock.pinned), reason: b.reason, date: b.date, start: b.start, minutes: b.minutes });
+        // Where the plan puts it now; pinned only if the student just put it there.
+        old.weekBlock = Object.assign({}, old.weekBlock, { key: b.key, pinned: !!b.pinned, reason: b.reason, why: b.detail, date: b.date, start: b.start, minutes: b.minutes });
         if (typeof window.calcUrgency === 'function') old.urgencyScore = window.calcUrgency(old);
         return;
       }
@@ -451,7 +458,7 @@
         subject: parent.subject || '', priority: parent.priority || 'med', type: parent.type || 'hw',
         estTime: b.minutes, difficulty: parent.difficulty || 3, notes: '', subtasks: [], done: false, rescheduled: 0, createdAt: base,
         planOf: parent.id, planPart: b.part, planParts: b.of, scope: parent.scope,
-        weekBlock: { key: b.key, pinned: !!b.pinned, reason: b.reason, date: b.date, start: b.start, minutes: b.minutes, at: base },
+        weekBlock: { key: b.key, pinned: !!b.pinned, reason: b.reason, why: b.detail, date: b.date, start: b.start, minutes: b.minutes, at: base },
       };
       if (typeof window.calcUrgency === 'function') t.urgencyScore = window.calcUrgency(t);
       next.push(t);
@@ -544,7 +551,7 @@
     if (!t || !v) return;
     if (typeof window.snapshotTasks === 'function') window.snapshotTasks();
     Object.assign(t, { date: v.date, time: v.start, estTime: v.minutes });
-    t.weekBlock = Object.assign({}, t.weekBlock, { pinned: true, reason: 'You moved this one', date: v.date, start: v.start, minutes: v.minutes });
+    t.weekBlock = Object.assign({}, t.weekBlock, { pinned: true, reason: 'You moved this one', why: null, date: v.date, start: v.start, minutes: v.minutes });
     if (typeof window.calcUrgency === 'function') t.urgencyScore = window.calcUrgency(t);
     persist();
     st.changed = true; st.editing = null;

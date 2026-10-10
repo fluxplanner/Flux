@@ -288,3 +288,17 @@ test('nothing to plan gives an empty week, not an error', () => {
   assert.equal(r.days.length, 7);
   assert.deepEqual(clone(W.propose({ today: 'soon' })).days, []);
 });
+
+test('a reason splits into "Due …" and the rest, so the week view can say it again on a later day', () => {
+  const r = plan({ tasks: [task(2, '2026-10-09', 90, { type: 'essay' }), task(3, '2026-10-06', 0, { type: 'lab' })] });
+  const essay = r.blocks.find((b) => b.taskId === 2), lab = r.blocks.find((b) => b.taskId === 3);
+  assert.equal(essay.reason, 'Due Fri, ~90 min left, split over 2 days');
+  assert.equal(essay.detail, '~90 min left, split over 2 days');
+  assert.equal(lab.detail, 'no estimate, so ~60 min');
+  assert.equal(W.dueLead('2026-10-09', '2026-10-08'), 'Due tomorrow');
+  assert.equal(W.dueLead('2026-10-09', '2026-10-09'), 'Due today');
+  assert.equal(W.dueLead('2026-10-09', '2026-10-10'), 'Overdue since yesterday');
+  // Kept blocks keep their own reason and have no detail.
+  const again = plan({ tasks: [task(2, '2026-10-09', 90, { type: 'essay' })], blocks: applied(r, (b) => ({ pinned: b.taskId === 2 })) });
+  assert.equal(again.blocks.find((b) => b.taskId === 2).detail, null);
+});

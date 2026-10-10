@@ -228,6 +228,7 @@ test.describe('Plan my week', () => {
     await page.locator('#dashPlanWeekBtn').click();
     await expect(modal(page).locator('#pwSub')).toHaveText('This week');
     const row = modal(page).locator(`.pw-block[data-key="${algebra.key}"]`);
+    await expect(row.locator('.pw-b-why')).toHaveText('Due Wed, ~45 min left');
 
     // Escape closes the editor and does nothing else: the app's own Escape
     // handlers used to close the dialog too, or press "Remove unfinished blocks".
@@ -259,6 +260,21 @@ test.describe('Plan my week', () => {
     await expect(modal(page)).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).FluxOverlays.anyOpen())).toBe(false);
     expect(await blocks(page)).toEqual(all);
+
+    // A day on, Monday's block is missed and its reason still reads right.
+    await page.clock.fastForward('24:00:00');
+    await page.locator('#dashPlanWeekBtn').click();
+    await expect(modal(page).locator('#pwdMissed')).toBeVisible();
+    await expect(row.locator('.pw-b-why')).toHaveText('Due tomorrow, ~45 min left');
+
+    // Planning again fits it back in. Even if it had been moved before it was
+    // missed, where the plan puts it now is the plan's, not "moved".
+    await page.evaluate((id) => { (window as any).tasks.find((t: any) => t.id === id).weekBlock.pinned = true; }, algebra.id);
+    await modal(page).locator('[data-act="to-avail"]').click();
+    await modal(page).locator('[data-act="propose"]').click();
+    await expect(block(page, 'Algebra homework').locator('.pw-was')).toHaveText('Missed Mon, Oct 5 4:00 PM');
+    await modal(page).locator('[data-act="approve"]').click();
+    expect((await blocks(page)).find((x) => x.id === algebra.id)).toMatchObject({ date: '2026-10-06', pinned: false });
   });
 
   test('Ctrl+Z on the suggestion takes back a move or removal there, never a change made elsewhere', async ({ page }) => {
