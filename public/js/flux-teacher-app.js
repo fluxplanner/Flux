@@ -1,4 +1,4 @@
-/* Flux Teacher beta — a private, source-guided study session. This page is
+/* Flux Tutor beta — a private, source-guided study session. This page is
    intentionally self-contained: it organizes material the student supplies
    and never pretends a local heuristic is an AI tutor. */
 (function () {
@@ -129,8 +129,8 @@
     return `<section class="ft-hero">
       <div class="ft-kicker">A study session that starts with you</div>
       <h1>Learn it. <span>Then explain it.</span></h1>
-      <p>Bring the topic, notes and questions you are working on. Flux Teacher turns them into a clear path through the material and a chance to practise from memory.</p>
-      <div class="ft-beta-note">${icon('info', 17)}<span><strong>Early beta:</strong> Flux Teacher organizes the material you provide into a guided study flow. It does not generate lessons with AI or grade your answers. Photos and files are read in this browser and are not sent to Flux AI. Photo OCR reads English best and can miss handwriting, equations and diagram details, so review the text before you study.</span></div>
+      <p>Bring the topic, notes and questions you are working on. Flux Tutor turns them into a clear path through the material and a chance to practise from memory.</p>
+      <div class="ft-beta-note">${icon('info', 17)}<span><strong>Early beta:</strong> Flux Tutor organizes the material you provide into a guided study flow. It does not generate lessons with AI or grade your answers. Photos and files are read in this browser and are not sent to Flux AI. Photo OCR reads English best and can miss handwriting, equations and diagram details, so review the text before you study.</span></div>
     </section>`;
   }
 
@@ -426,7 +426,7 @@
           ${inputField('ftTopic', 'Topic or learning goal', d.topic, 'e.g. How natural selection changes a population', { wide: true, required: true, max: 160 })}
           ${inputField('ftSubject', 'Class or subject', d.subject, 'e.g. Biology · Unit 4', { max: 100 })}
           ${inputField('ftSourceTitle', 'Source name', d.sourceTitle, 'e.g. Class slides, chapter 6', { max: 180 })}
-          ${inputField('ftSourceUrl', 'Source link (optional)', d.sourceUrl, 'https://…', { type: 'url', wide: true, max: 500, help: 'Flux Teacher keeps the link beside your lesson. It does not fetch or upload the page.' })}
+          ${inputField('ftSourceUrl', 'Source link (optional)', d.sourceUrl, 'https://…', { type: 'url', wide: true, max: 500, help: 'Flux Tutor keeps the link beside your lesson. It does not fetch or upload the page.' })}
           ${inputField('ftMaterial', 'Class notes or extracted material', d.material, 'Paste notes here, or add a photo or file below. You can also start with just a topic.', { textarea: true, notes: true, wide: true, max: LIMIT, help: 'Imported text appears here so you can correct it before building your session.' })}
           <div class="ft-importer ft-field--wide" role="group" aria-label="Add study material from a photo or file">
             <div class="ft-import-copy"><strong>Have a photo or file?</strong><span>Photos and scanned PDF pages use English OCR on this device. PDFs, Word documents and text files are read in your browser. First-time OCR downloads a reader; your material is not uploaded.</span></div>
@@ -521,8 +521,8 @@
     const terms = keyTerms(s.material);
     if (!blocks.length) {
       return `<section class="ft-card ft-panel" aria-labelledby="ft-step-heading">
-        <div class="ft-section-head"><div><h2 id="ft-step-heading" tabindex="-1">Build a lesson from your material</h2><p>Flux Teacher keeps the lesson tied to your class, so add the relevant notes or excerpt here.</p></div></div>
-        <div class="ft-no-source"><b>There is no source text in this session yet.</b>Open <button class="ft-link-btn" type="button" data-action="edit">Edit session</button> and paste a short part of your notes, slides or reading. Flux Teacher will break it into manageable sections for active recall.</div>
+        <div class="ft-section-head"><div><h2 id="ft-step-heading" tabindex="-1">Build a lesson from your material</h2><p>Flux Tutor keeps the lesson tied to your class, so add the relevant notes or excerpt here.</p></div></div>
+        <div class="ft-no-source"><b>There is no source text in this session yet.</b>Open <button class="ft-link-btn" type="button" data-action="edit">Edit session</button> and paste a short part of your notes, slides or reading. Flux Tutor will break it into manageable sections for active recall.</div>
         <div class="ft-card-nav"><span></span><button type="button" class="ft-btn" data-action="step" data-step="2">Go to practice ${icon('arrow', 16)}</button></div>
       </section>`;
     }

@@ -48,7 +48,7 @@
     },
     {
       id: 'teacher',
-      name: 'Flux Teacher',
+      name: 'Flux Tutor',
       tagline: 'Learn from your class materials',
       href: 'teacher.html',
       free: true,
