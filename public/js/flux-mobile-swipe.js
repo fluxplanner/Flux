@@ -6,6 +6,13 @@
    • Below threshold, animates back to resting
    • Mobile only (≤900px); mouse/desktop uses existing click interactions
    • Only binds once per task row; idempotent across re-renders
+
+   A scroll must never complete a task. The row is touch-action: pan-y, so
+   the browser scrolls a vertical drag itself and keeps telling us where the
+   finger is — a scroll that drifted 80px sideways used to count as a swipe,
+   and so did one whose first 6px happened to lean sideways. Now a swipe has
+   to be plainly horizontal from the start and stay that way, and anything
+   the browser took for a scroll or cancelled is never an action.
    ════════════════════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
@@ -13,6 +20,8 @@
   const MAX_DRAG = 140;   // clamp so the row doesn't fly off screen
   const ANIM_BACK_MS = 180;
   const ANIM_OUT_MS = 220;
+  const SLOP = 12;        // px of movement before deciding what the finger is doing
+  const DRIFT = 28;       // px of vertical drift that turns a swipe back into nothing
 
   function isMobile(){
     try{ return window.matchMedia('(max-width: 900px)').matches && matchMedia('(pointer: coarse)').matches; }
@@ -49,6 +58,19 @@
     return inner;
   }
 
+  /** Where every scroller above the row sits, to tell afterwards whether the list scrolled. */
+  function scrollMarks(row){
+    const marks = [window.scrollY || 0];
+    for(let el = row.parentElement; el; el = el.parentElement) marks.push(el.scrollTop || 0);
+    return marks;
+  }
+  function scrolledSince(row, marks){
+    const now = scrollMarks(row);
+    if(now.length !== marks.length) return true;
+    for(let i = 0; i < now.length; i++) if(Math.abs(now[i] - marks[i]) > 4) return true;
+    return false;
+  }
+
   function bindRow(row){
     if(row.__fluxSwipeBound) return;
     row.__fluxSwipeBound = true;
@@ -59,8 +81,8 @@
     const inner = wrapInner(row);
     row.classList.add('task-swipeable');
 
-    let startX = 0, startY = 0;
-    let curDx = 0;
+    let startX = 0, startY = 0, startMarks = null;
+    let curDx = 0, curDy = 0;
     let tracking = false;
     let locked = null; // 'h' | 'v' | null
 
@@ -70,7 +92,9 @@
       const t = e.touches[0];
       startX = t.clientX;
       startY = t.clientY;
+      startMarks = scrollMarks(row);
       curDx = 0;
+      curDy = 0;
       tracking = true;
       locked = null;
       inner.style.transition = 'none';
@@ -79,17 +103,20 @@
 
     const onMove = (e) => {
       if(!tracking) return;
+      if(e.touches.length !== 1){ snapBack(); return; }
       const t = e.touches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
-      // Lock axis on first meaningful movement to not interfere with vertical scroll
+      curDy = dy;
       if(!locked){
-        if(Math.abs(dx) > 6 || Math.abs(dy) > 6){
-          locked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
-        }
+        if(Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+        // Horizontal only when it is at least twice as sideways as it is
+        // vertical (under ~27°). Anything else is left to scroll.
+        locked = Math.abs(dx) >= 2 * Math.abs(dy) ? 'h' : 'v';
       }
       if(locked !== 'h') return;
-      e.preventDefault();
+      if(Math.abs(dy) > DRIFT){ snapBack(); return; }
+      if(e.cancelable) e.preventDefault();
       const clamped = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dx));
       curDx = clamped;
       inner.style.transform = `translateX(${clamped}px)`;
@@ -106,8 +133,31 @@
       row.classList.toggle('task-swipe-armed', Math.abs(clamped) >= TH);
     };
 
+    /* Back to rest, no action. Also what a cancelled touch gets: the browser
+       cancels when it takes the gesture over (a scroll), never to confirm one. */
+    function snapBack(){
+      if(!tracking) return;
+      tracking = false;
+      locked = 'v';
+      curDx = 0;
+      row.classList.remove('task-swipe-active', 'task-swipe-armed');
+      inner.style.transition = `transform ${ANIM_BACK_MS}ms cubic-bezier(.2,.85,.3,1.1)`;
+      inner.style.transform = 'translateX(0)';
+      setTimeout(() => {
+        inner.style.transition = '';
+        row.classList.remove('task-swipe-left','task-swipe-right');
+      }, ANIM_BACK_MS);
+    }
+
     const finish = () => {
       if(!tracking) return;
+      // Still clearly sideways at the end, and the list did not move under the
+      // finger (if it did, this was a scroll whatever the numbers say).
+      const scrolled = !startMarks || scrolledSince(row, startMarks);
+      if(locked !== 'h' || scrolled || Math.abs(curDy) > DRIFT || Math.abs(curDx) < 2 * Math.abs(curDy)){
+        snapBack();
+        return;
+      }
       tracking = false;
       row.classList.remove('task-swipe-active', 'task-swipe-armed');
       const dir = curDx > 0 ? 1 : -1;
@@ -155,7 +205,7 @@
     row.addEventListener('touchstart', onStart, { passive: true });
     row.addEventListener('touchmove', onMove, { passive: false });
     row.addEventListener('touchend', finish);
-    row.addEventListener('touchcancel', finish);
+    row.addEventListener('touchcancel', snapBack);
   }
 
   function scanAndBind(){
