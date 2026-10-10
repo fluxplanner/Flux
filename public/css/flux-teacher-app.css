@@ -104,10 +104,25 @@ body {
   display: grid; gap: 10px; margin-top: -4px; padding: 14px;
   border: 1px solid rgba(255,255,255,.09); border-radius: 13px;
   background: rgba(255,255,255,.025);
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.ft-importer.is-dragging {
+  border-color: rgba(125, 211, 252, .75);
+  background: rgba(125, 211, 252, .09);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, .12);
 }
 .ft-import-copy { display: grid; gap: 3px; }
 .ft-import-copy strong { color: #dbe6fa; font-size: .77rem; }
 .ft-import-copy span { color: var(--ft-dim); font-size: .7rem; line-height: 1.45; }
+.ft-drop-prompt {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px;
+  padding: 10px 12px; border: 1px dashed rgba(125, 211, 252, .32); border-radius: 10px;
+  color: var(--ft-muted); background: rgba(125, 211, 252, .035); font-size: .72rem;
+}
+.ft-drop-prompt strong { color: #d9f2ff; font-size: .74rem; }
+.ft-importer.is-dragging .ft-drop-prompt {
+  border-color: rgba(125, 211, 252, .8); background: rgba(125, 211, 252, .1);
+}
 .ft-import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ft-import-actions .ft-btn { min-height: 38px; padding: 8px 12px; font-size: .75rem; }
 .ft-upload-status {

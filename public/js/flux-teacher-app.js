@@ -184,6 +184,18 @@
     if (submit) submit.disabled = importBusy;
   }
 
+  function hasDraggedFiles(event) {
+    return !!(event.dataTransfer && event.dataTransfer.types
+      && Array.from(event.dataTransfer.types).includes('Files'));
+  }
+
+  function setDropHighlight(zone, active) {
+    if (!zone) return;
+    zone.classList.toggle('is-dragging', active);
+    const prompt = zone.querySelector('.ft-drop-prompt strong');
+    if (prompt) prompt.textContent = active ? 'Release to add your files' : 'Drop photos or files here';
+  }
+
   function attachmentMarkup(attachments) {
     if (!attachments || !attachments.length) return '';
     return attachments.map((item) => `<li><span class="ft-file-kind">${esc(item.kind)}</span><span class="ft-file-name" title="${esc(item.name)}">${esc(item.name)}</span></li>`).join('');
@@ -430,6 +442,7 @@
           ${inputField('ftMaterial', 'Class notes or extracted material', d.material, 'Paste notes here, or add a photo or file below. You can also start with just a topic.', { textarea: true, notes: true, wide: true, max: LIMIT, help: 'Imported text appears here so you can correct it before building your session.' })}
           <div class="ft-importer ft-field--wide" role="group" aria-label="Add study material from a photo or file">
             <div class="ft-import-copy"><strong>Have a photo or file?</strong><span>Photos and scanned PDF pages use English OCR on this device. PDFs, Word documents and text files are read in your browser. First-time OCR downloads a reader; your material is not uploaded.</span></div>
+            <div class="ft-drop-prompt" aria-live="polite"><strong>Drop photos or files here</strong><span>or choose one below</span></div>
             <div class="ft-import-actions">
               <button class="ft-btn ft-btn--quiet" type="button" data-action="pick-photo">Add a photo</button>
               <button class="ft-btn ft-btn--quiet" type="button" data-action="pick-file">Choose files</button>
@@ -643,6 +656,35 @@
     const expectedKind = input.id === 'ftPhotoFiles' ? 'Photo' : 'File';
     importFiles(input.files, expectedKind);
     input.value = '';
+  });
+
+  root.addEventListener('dragenter', (event) => {
+    const zone = event.target.closest && event.target.closest('.ft-importer');
+    if (!zone || !hasDraggedFiles(event)) return;
+    event.preventDefault();
+    setDropHighlight(zone, true);
+  });
+
+  root.addEventListener('dragover', (event) => {
+    const zone = event.target.closest && event.target.closest('.ft-importer');
+    if (!zone || !hasDraggedFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    setDropHighlight(zone, true);
+  });
+
+  root.addEventListener('dragleave', (event) => {
+    const zone = event.target.closest && event.target.closest('.ft-importer');
+    if (!zone || (event.relatedTarget && zone.contains(event.relatedTarget))) return;
+    setDropHighlight(zone, false);
+  });
+
+  root.addEventListener('drop', (event) => {
+    const zone = event.target.closest && event.target.closest('.ft-importer');
+    if (!zone || !hasDraggedFiles(event)) return;
+    event.preventDefault();
+    setDropHighlight(zone, false);
+    importFiles(event.dataTransfer.files, 'Any');
   });
 
   root.addEventListener('click', (event) => {
