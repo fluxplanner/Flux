@@ -111,6 +111,50 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84m-tabs')).toContainText('ZOOM');
   });
 
+  test('recursive sequences graph as a WEB cobweb and trace by sequence index', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/calculator.html');
+    await page.evaluate(() => {
+      const c = (window as any).fluxCalculatorPage.instance;
+      c.st.mode.graph = 'seq';
+      c.st.ui.fmt.seqAxes = 'web';
+      c.st.win.nMin = 0; c.st.win.nMax = 5; c.st.win.PlotStart = 0; c.st.win.PlotStep = 1;
+      c.st.win.Xmin = 0; c.st.win.Xmax = 5; c.st.win.Xscl = 1;
+      c.st.y['u(n)'] = 'u(n-1)+1';
+      c.st.sequences.u = { nMin: 0, initial: [1] };
+      c.save();
+    });
+    const key = (k: string) => page.locator(`.t84 [data-k="${k}"]`).click();
+    await key('graph');
+    const canvas = page.locator('.t84g canvas');
+    await expect(canvas).toBeVisible();
+    await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => {
+      const g = c.getContext('2d')!;
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let ink = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] < 200 || d[i + 2] < 200) ink++;
+      return ink;
+    })).toBeGreaterThan(500);
+    await key('trace');
+    await expect(page.locator('.t84g-top')).toContainText('WEB');
+    await expect(page.locator('.t84g-bot')).toContainText('n=0');
+    await expect(page.locator('.t84g-bot')).toContainText('X=1');
+    await expect(page.locator('.t84g-bot')).toContainText('Y=0');
+    await key('right');
+    await expect(page.locator('.t84g-bot')).toContainText('X=1');
+    await expect(page.locator('.t84g-bot')).toContainText('Y=2');
+    await page.evaluate(() => {
+      const c = (window as any).fluxCalculatorPage.instance;
+      c.st.ui.fmt.seqAxes = 'uv';
+      c.st.y['v(n)'] = 'v(n-1)+2';
+      c.st.sequences.v = { nMin: 0, initial: [10] };
+      c.save(); c.render();
+    });
+    await expect(page.locator('.t84g-top')).toContainText('UV phase plot');
+    await expect(page.locator('.t84g-bot')).toContainText('u(n)=1');
+    await expect(page.locator('.t84g-bot')).toContainText('v(n)=10');
+  });
+
   test('nCr and other functions give boxes to fill', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');

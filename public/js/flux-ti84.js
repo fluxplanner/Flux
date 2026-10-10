@@ -105,7 +105,7 @@
     return {
       history: [], ynodes: {}, yOn: yOn, yCol: yCol, yStyle: {}, prgms: {},
       plots: [0, 1, 2].map(() => ({ on: false, type: 'scatter', x: 'L₁', y: 'L₂', f: '1', mark: '□', col: '#1f6feb' })),
-      fmt: { coord: true, grid: 'off', axes: true, label: false, expr: true, detect: false, thick: true },
+      fmt: { coord: true, grid: 'off', axes: true, label: false, expr: true, detect: false, thick: true, seqAxes: 'time' },
       wizards: true, zoomSto: null, zoomPrev: null, draw: [],
     };
   }
@@ -118,6 +118,8 @@
     const out = Object.assign(T().freshState(), st);
     out.mode = Object.assign(fresh.mode, st.mode || {});
     out.win = Object.assign(fresh.win, st.win || {});
+    if (!Number.isFinite(st.win && st.win.PlotStep) && Number.isFinite(st.win && st.win.nStep)) out.win.PlotStep = st.win.nStep;
+    if (!Number.isFinite(st.win && st.win.PlotStart)) out.win.PlotStart = Number.isFinite(st.win && st.win.nMin) ? st.win.nMin : fresh.win.PlotStart;
     out.sequences = Object.assign({}, fresh.sequences);
     Object.keys(fresh.sequences).forEach((n) => { out.sequences[n] = Object.assign({}, fresh.sequences[n], (st.sequences || {})[n] || {}); });
     out.tbl = Object.assign(fresh.tbl, st.tbl || {});
@@ -972,12 +974,12 @@
     const st = this.c.st;
     const digits = [['FLOAT', 'float']];
     for (let d = 0; d <= 9; d++) digits.push([String(d), d]);
-    return [
+    const rows = [
       { get: () => st.mode.mathprint, set: (v) => { st.mode.mathprint = v; }, opts: [['MATHPRINT', true], ['CLASSIC', false]] },
       { get: () => st.mode.notation, set: (v) => { st.mode.notation = v; }, opts: [['NORMAL', 'normal'], ['SCI', 'sci'], ['ENG', 'eng']] },
       { get: () => st.mode.digits, set: (v) => { st.mode.digits = v; }, opts: digits },
       { get: () => st.mode.angle, set: (v) => { st.mode.angle = v; }, opts: [['RADIAN', 'rad'], ['DEGREE', 'deg']] },
-      { get: () => st.mode.graph, set: (v) => { st.mode.graph = v; if (v === 'seq') { st.win.Xmin = st.win.nMin; st.win.Xmax = st.win.nMax; st.win.Xscl = st.win.nStep; } }, opts: [['FUNCTION', 'func'], ['PARAMETRIC', 'par'], ['POLAR', 'pol'], ['SEQUENCE', 'seq']] },
+      { get: () => st.mode.graph, set: (v) => { st.mode.graph = v; }, opts: [['FUNCTION', 'func'], ['PARAMETRIC', 'par'], ['POLAR', 'pol'], ['SEQUENCE', 'seq']] },
       { get: () => st.ui.fmt.thick, set: (v) => { st.ui.fmt.thick = v; }, opts: [['THICK', true], ['THIN', false]] },
       { get: () => st.mode.complex, set: (v) => { st.mode.complex = v; }, opts: [['REAL', 'real'], ['a+bi', 'a+bi'], ['re^(θi)', 're^θi']] },
       { label: 'FRACTION TYPE:', get: () => st.mode.fracType, set: (v) => { st.mode.fracType = v; }, opts: [['n/d', 'n/d'], ['Un/d', 'Un/d']] },
@@ -985,6 +987,7 @@
       { label: 'STAT DIAGNOSTICS:', get: () => st.mode.statDiag, set: (v) => { st.mode.statDiag = v; }, opts: [['OFF', false], ['ON', true]] },
     ];
     if (st.mode.model !== 'evo') rows.push({ label: 'STAT WIZARDS:', get: () => st.ui.wizards !== false, set: (v) => { st.ui.wizards = v; }, opts: [['ON', true], ['OFF', false]] });
+    return rows;
   };
   ModeApp.prototype.render = function () {
     const rows = this.rows();

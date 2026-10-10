@@ -89,6 +89,37 @@ test('sequence mode supports recursive u(n), v(n), w(n) values and initial terms
   assert.equal(show('u(2)', st), '8');
 });
 
+test('sequence WEB and phase axes produce the documented coordinate pairs', () => {
+  const st = T.freshState();
+  st.mode.graph = 'seq';
+  st.win.nMin = 0; st.win.nMax = 3; st.win.PlotStart = 0; st.win.PlotStep = 1;
+  st.y['u(n)'] = 'u(n-1)+1';
+  st.y['v(n)'] = 'v(n-1)+1';
+  st.sequences.u = { nMin: 0, initial: [1] };
+  st.sequences.v = { nMin: 0, initial: [10] };
+  st.ui = { fmt: { seqAxes: 'time' }, yOn: { 'u(n)': true, 'v(n)': true }, yCol: { 'u(n)': '#00f', 'v(n)': '#f00' }, yStyle: {} };
+  const G = W.FluxTIGraph, fns = G.activeFns(st);
+  const web = G.sequenceGraphData(st, fns, 'web');
+  assert.equal(web.series.length, 2, 'WEB plots each selected sequence');
+  same(web.series[0].points, [[1, 2], [2, 3], [3, 4]]);
+  same(G.sequenceTraceData(st, fns, 'web', 1), { x: 2, y: 3, labels: ['X', 'Y'] });
+  same(G.sequenceWebTrail(st, fns, 0, 2), [[1, 0], [1, 2], [2, 2]]);
+  const phase = G.sequenceGraphData(st, fns, 'uv');
+  same(phase.series[0].points, [[1, 10], [2, 11], [3, 12], [4, 13]]);
+  same(G.sequenceTraceData(st, fns, 'uv', 3), { x: 4, y: 13, labels: ['u(n)', 'v(n)'] });
+  st.win.PlotStart = 1; st.win.PlotStep = 2;
+  same(G.sequenceGraphData(st, G.activeFns(st), 'web').series[0].points, [[2, 4]]);
+  same(G.sequenceGraphData(st, G.activeFns(st), 'uv').series[0].points, [[2, 11], [4, 13]]);
+  const c = { st, push(form) { this.form = form; } };
+  G.format(c);
+  const format = c.form;
+  same(format.rows()[0].opts, [['Time', 'time'], ['Web', 'web'], ['uv', 'uv'], ['vw', 'vw'], ['uw', 'uw']]);
+  format.rows()[0].set('uv');
+  assert.equal(st.ui.fmt.seqAxes, 'uv');
+  G.window(c);
+  same(c.form.rows().slice(0, 4).map((row) => row.label), ['nMin=', 'nMax=', 'PlotStart=', 'PlotStep=']);
+});
+
 test('Evo separates intervals, groups distributions, and keeps stat wizards on', () => {
   const st = T.freshState();
   st.mode.model = 'evo';
@@ -101,6 +132,8 @@ test('Evo separates intervals, groups distributions, and keeps stat wizards on',
   same(distr.tabs.map((tab) => tab.name), ['NORMAL', 't', 'χ²', 'F', 'BINOMIAL', 'POISSON', 'GEOMETRIC', 'DRAW']);
   const modeRows = new Core.ModeApp({ st }).rows();
   assert.equal(modeRows.some((row) => row.label === 'STAT WIZARDS:'), false);
+  const ce = T.freshState(); ce.ui = { fmt: {}, wizards: true };
+  assert.equal(new Core.ModeApp({ st: ce }).rows().some((row) => row.label === 'STAT WIZARDS:'), true);
   const apps = new Core.AppsHomeApp({ st });
   assert.match(apps.render(), /Function Editor/);
   assert.match(apps.render(), /Python, unavailable/);

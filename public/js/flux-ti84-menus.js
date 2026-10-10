@@ -82,7 +82,7 @@
     ],
     VWIN: [
       { name: 'X/Y', items: ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'TraceStep', 'ΔX', 'ΔY', 'XFact', 'YFact'].map((n) => sys(n)) },
-      { name: 'T/θ', items: ['Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'].map((n) => sys(n)) },
+      { name: 'T/θ/n', items: ['Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'PlotStart', 'PlotStep'].map((n) => sys(n)) },
     ],
     VSTAT: [
       { name: 'XY', items: ['n', 'x̄', 'Sx', 'σx', 'ȳ', 'Sy', 'σy', 'minX', 'maxX', 'minY', 'maxY'].map((n) => sys(n)) },

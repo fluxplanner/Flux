@@ -22,6 +22,12 @@
   const graphPixelsY = (st) => st.mode.model === 'evo' ? 209 : 164;
   const esc = (s) => core().esc(s);
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
+  const seqStart = (w) => Number.isFinite(w.PlotStart) ? w.PlotStart : (Number.isFinite(w.nMin) ? w.nMin : 0);
+  const seqStep = (w) => Number.isInteger(w.PlotStep) && w.PlotStep > 0 ? w.PlotStep : 1;
+  const seqFirst = (w) => {
+    const start = seqStart(w), min = Number.isFinite(w.nMin) ? w.nMin : start, step = seqStep(w);
+    return start + Math.max(0, Math.ceil((min - start) / step)) * step;
+  };
 
   /* ── Functions to draw ──────────────────────────────────────────────── */
 
@@ -50,9 +56,83 @@
     const names = mode === 'seq' ? ['u(n)', 'v(n)', 'w(n)'] : T().YNAMES;
     names.forEach((n) => {
       if (!st.y[n] || !String(st.y[n]).trim() || st.ui.yOn[n] === false) return;
-      try { out.push({ name: n, colour: st.ui.yCol[n], style: st.ui.yStyle[n] || 'thick', f: T().compileFn(st.y[n], st, [mode === 'seq' ? 'n' : 'X']), code: st.y[n], seq: mode === 'seq' }); } catch (e) { /* left off */ }
+      try { out.push({ name: n, colour: st.ui.yCol[n], style: st.ui.yStyle[n] || 'thick', f: T().compileFn(mode === 'seq' ? n + '' : st.y[n], st, [mode === 'seq' ? 'n' : 'X']), code: st.y[n], seq: mode === 'seq' }); } catch (e) { /* left off */ }
     });
     return out;
+  }
+
+  /** Data for TI's sequence cobweb (WEB) and phase (uv/vw/uw) plots. */
+  function sequenceGraphData(st, fns, axes) {
+    const w = st.win;
+    const byName = Object.create(null);
+    fns.forEach((fn) => { byName[fn.name] = fn; });
+    if (axes === 'web') {
+      const last = Math.floor(w.nMax), stride = seqStep(w);
+      const first = Math.ceil(seqFirst(w) + stride);
+      if (last < first || last - first > 1000) return { kind: 'web', reference: null, series: [] };
+      const series = fns.map((fn) => {
+        const points = [];
+        for (let n = first; n <= last; n += stride) {
+          const current = num(fn.f(n - stride)), next = num(fn.f(n));
+          if (!Number.isFinite(current) || !Number.isFinite(next)) { points.push(null); continue; }
+          // The WEB graph is u(n) against u(n−1); TRACE draws the stair-step.
+          points.push([current, next]);
+        }
+        return { name: fn.name, colour: fn.colour, style: fn.style, points };
+      });
+      return { kind: 'web', reference: [w.Xmin, w.Xmax, w.Ymin, w.Ymax], series };
+    }
+    const pair = { uv: ['u(n)', 'v(n)'], vw: ['v(n)', 'w(n)'], uw: ['u(n)', 'w(n)'] }[axes];
+    if (!pair || !byName[pair[0]] || !byName[pair[1]]) return { kind: 'phase', series: [] };
+    const a = byName[pair[0]], b = byName[pair[1]];
+    const first = Math.ceil(seqFirst(w)), last = Math.floor(w.nMax);
+    const stride = seqStep(w);
+    if (last < first || last - first > 1000) return { kind: 'phase', series: [] };
+    const points = [];
+    for (let n = first; n <= last; n += stride) {
+      const x = num(a.f(n)), y = num(b.f(n));
+      points.push(Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null);
+    }
+    return { kind: 'phase', series: [{ name: axes, colour: a.colour, style: a.style, points }] };
+  }
+
+  function sequenceTraceData(st, fns, axes, n, fnIndex, webCursor) {
+    if (axes === 'web') {
+      const fn = fns[fnIndex || 0];
+      if (!fn) return null;
+      if (webCursor === 0) {
+        const x = num(fn.f(n));
+        return Number.isFinite(x) ? { x, y: 0, labels: ['X', 'Y'] } : null;
+      }
+      const stride = seqStep(st.win);
+      const current = num(fn.f(n)), next = num(fn.f(n + stride));
+      if (!Number.isFinite(current) || !Number.isFinite(next)) return null;
+      const diagonal = webCursor % 2 === 0;
+      return diagonal ? { x: next, y: next, labels: ['X', 'Y'] } : { x: current, y: next, labels: ['X', 'Y'] };
+    }
+    const pair = { uv: ['u(n)', 'v(n)'], vw: ['v(n)', 'w(n)'], uw: ['u(n)', 'w(n)'] }[axes];
+    if (pair) {
+      const a = fns.find((it) => it.name === pair[0]), b = fns.find((it) => it.name === pair[1]);
+      if (!a || !b) return null;
+      const x = num(a.f(n)), y = num(b.f(n));
+      return Number.isFinite(x) && Number.isFinite(y) ? { x, y, labels: pair } : null;
+    }
+    return null;
+  }
+
+  function sequenceWebTrail(st, fns, fnIndex, cursor) {
+    const fn = fns[fnIndex || 0], w = st.win;
+    if (!fn) return [];
+    const start = seqFirst(w), stride = seqStep(w), points = [];
+    const initial = num(fn.f(start));
+    points.push(Number.isFinite(initial) ? [initial, 0] : null);
+    for (let k = 1; k <= Math.max(0, cursor || 0); k++) {
+      const n = start + Math.floor((k - 1) / 2) * stride;
+      const current = num(fn.f(n)), next = num(fn.f(n + stride));
+      if (!Number.isFinite(current) || !Number.isFinite(next)) { points.push(null); continue; }
+      points.push(k % 2 === 1 ? [current, next] : [next, next]);
+    }
+    return points;
   }
 
   /* ── Drawing ────────────────────────────────────────────────────────── */
@@ -70,7 +150,7 @@
    * What the drawings were made on. Change the window, Y= or the graph mode
    * and the calculator redraws from scratch, losing Line(, Shade( and the rest.
    */
-  function drawSig(st) { return JSON.stringify([st.win, st.y, st.ui.yOn, st.mode.graph]); }
+  function drawSig(st) { return JSON.stringify([st.win, st.y, st.ui.yOn, st.mode.graph, st.ui.fmt.seqAxes]); }
   function markDrawn(st) { st.ui.drawSig = drawSig(st); }
 
   function draw(canvas, c, extra) {
@@ -124,7 +204,9 @@
     const lw = fmt.thick ? 2.4 : 1.3;
     // A test's Draw shows its distribution alone.
     if (!(extra && extra.only)) {
-      activeFns(st).forEach((fn) => plotFn(g, F, fn, st, fn.style === 'thin' ? 1.3 : lw, fmt));
+      const fns = activeFns(st);
+      if (st.mode.graph === 'seq' && fmt.seqAxes && fmt.seqAxes !== 'time') drawSequenceMode(g, F, st, fns, fmt, lw);
+      else fns.forEach((fn) => plotFn(g, F, fn, st, fn.style === 'thin' ? 1.3 : lw, fmt));
       st.ui.plots.forEach((p, i) => { if (p.on) plotStat(g, F, p, st, i); });
     }
     st.ui.draw.forEach((d) => { if (d.k !== 'shade') drawItem(g, F, d, c); });
@@ -132,6 +214,43 @@
     const dist = shades.find((s) => s.dist);
     if (dist) plotCurve(g, F, st, distPdf(dist.dist), '#1b1b1f', 1.6);
     return F;
+  }
+
+  function drawSequenceMode(g, F, st, fns, fmt, lw) {
+    const data = sequenceGraphData(st, fns, fmt.seqAxes);
+    if (data.kind === 'web' && data.reference && fmt.axes) {
+      const x0 = Math.max(st.win.Xmin, st.win.Ymin), x1 = Math.min(st.win.Xmax, st.win.Ymax);
+      if (x0 < x1) {
+        g.save();
+        g.strokeStyle = '#8a929e'; g.lineWidth = 1; g.setLineDash([4, 3]);
+        g.beginPath(); g.moveTo(F.sx(x0), F.sy(x0)); g.lineTo(F.sx(x1), F.sy(x1)); g.stroke();
+        g.restore();
+      }
+    }
+    data.series.forEach((series) => {
+      const points = series.points;
+      g.strokeStyle = series.colour; g.fillStyle = series.colour;
+      g.lineWidth = series.style === 'thin' ? 1.3 : lw; g.lineJoin = 'round'; g.lineCap = 'round';
+      if (series.style === 'dot') {
+        points.forEach((point, i) => { if (point && i % 3 === 0) g.fillRect(F.sx(point[0]) - 1, F.sy(point[1]) - 1, 2, 2); });
+        return;
+      }
+      if (series.style === 'path') g.setLineDash([3, 2]);
+      g.beginPath();
+      let pen = false;
+      points.forEach((point) => {
+        if (!point) { pen = false; return; }
+        if (!point.every(Number.isFinite)) { pen = false; return; }
+        if (!pen) { g.moveTo(F.sx(point[0]), F.sy(point[1])); pen = true; }
+        else g.lineTo(F.sx(point[0]), F.sy(point[1]));
+      });
+      g.stroke();
+      if (series.style === 'path') g.setLineDash([]);
+      if (series.style === 'animate') {
+        const last = points.slice().reverse().find((point) => point && point.every(Number.isFinite));
+        if (last) { g.beginPath(); g.arc(F.sx(last[0]), F.sy(last[1]), 2.7, 0, Math.PI * 2); g.fill(); }
+      }
+    });
   }
 
   function plotCurve(g, F, st, f, colour, lw) {
@@ -160,7 +279,7 @@
     const span = w.Ymax - w.Ymin;
     const pts = [];
     if (fn.seq) {
-      const lo = w.nMin, hi = w.nMax, step = w.nStep;
+      const lo = seqFirst(w), hi = w.nMax, step = seqStep(w);
       if (!(step > 0) || (hi - lo) / step > 1000) return;
       for (let n = lo; n <= hi + step * 1e-9; n += step) {
         const y = num(fn.f(Math.round(n)));
@@ -466,7 +585,7 @@
   GraphApp.prototype.fns = function () { return activeFns(this.c.st); };
   GraphApp.prototype.snapX = function (x) {
     const st = this.c.st, w = st.win, dx = (w.Xmax - w.Xmin) / graphPixelsX(st);
-    if (st.mode.graph === 'seq' && w.nStep > 0) return +(w.nMin + Math.round((x - w.nMin) / w.nStep) * w.nStep).toPrecision(12);
+    if (st.mode.graph === 'seq' && w.PlotStep > 0) return +(seqFirst(w) + Math.round((x - seqFirst(w)) / seqStep(w)) * seqStep(w)).toPrecision(12);
     const step = w.TraceStep || 2 * dx;
     return +(w.Xmin + Math.round((x - w.Xmin) / step) * step).toPrecision(12);
   };
@@ -480,6 +599,13 @@
     this.msg = '';
     if (this.cx == null) this.centre();
     if (this.fnIndex >= this.fns().length) this.fnIndex = 0;
+    if (this.c.st.mode.graph === 'seq') {
+      const w = this.c.st.win;
+      this.seqN = Math.max(Math.ceil(w.nMin), Math.min(Math.floor(w.nMax), Math.round(seqFirst(w))));
+      this.cx = this.seqN;
+      this.seqWebCursor = 0;
+      this.fnIndex = 0;
+    }
   };
   GraphApp.prototype.yOf = function (fn, x) {
     if (!fn || fn.par || fn.pol) return NaN;
@@ -493,6 +619,8 @@
   GraphApp.prototype.startCalc = function (which) {
     const fns = this.fns();
     this.result = null;
+    const seqAxes = this.c.st.mode.graph === 'seq' && (this.c.st.ui.fmt.seqAxes || 'time');
+    if (seqAxes && which !== 'value') { this.mode = 'view'; this.msg = 'Only CALC Value is available in sequence mode'; return; }
     if (!fns.length || !['func', 'seq'].includes(this.c.st.mode.graph)) { this.mode = 'view'; this.msg = fns.length ? 'CALC unavailable in this graph mode' : 'No functions are on — press y='; return; }
     this.mode = 'calc';
     this.msg = '';
@@ -518,7 +646,23 @@
     let res;
     try {
       switch (k.which) {
-        case 'value': res = { x: this.cx, y: f(this.cx) }; break;
+        case 'value': {
+          const st = this.c.st, axes = st.mode.graph === 'seq' ? (st.ui.fmt.seqAxes || 'time') : 'time';
+          if (st.mode.graph !== 'seq' || axes === 'time') res = { x: this.cx, y: f(this.cx), n: st.mode.graph === 'seq' ? this.cx : null };
+          else if (axes === 'web') {
+            const n = Math.round(this.cx), source = n - seqStep(st.win);
+            const point = sequenceTraceData(st, fns, axes, source, this.fnIndex, 1);
+            if (!point) T().fail('INVALID');
+            this.seqN = source; this.seqWebCursor = 1;
+            res = { title: 'Value', x: point.x, y: point.y, n: n };
+          } else {
+            const n = Math.round(this.cx), point = sequenceTraceData(st, fns, axes, n, this.fnIndex);
+            if (!point) T().fail('INVALID');
+            this.seqN = n;
+            res = { title: 'Value', x: point.x, y: point.y, n: n };
+          }
+          break;
+        }
         case 'zero': {
           const a = Math.min(k.marks[0], k.marks[1]), b = Math.max(k.marks[0], k.marks[1]);
           const x = zeroBetween(f, a, b);
@@ -574,6 +718,11 @@
     if (Number.isFinite(res.x)) this.c.st.vars.X = +res.x.toPrecision(14);
     if (Number.isFinite(res.y)) this.c.st.vars.Y = +res.y.toPrecision(14);
   };
+  function calcMenu(c, parent) {
+    const menu = new (core().MenuApp)(c, 'CALC', parent);
+    if (c.st.mode.graph === 'seq') menu.tabs = [{ name: 'CALCULATE', items: [{ l: 'value', act: 'gcalc:value' }] }];
+    return menu;
+  }
   GraphApp.prototype.key = function (k) {
     const c = this.c, st = c.st, w = st.win, fns = this.fns();
     const dx = (w.Xmax - w.Xmin) / graphPixelsX(st), dy = (w.Ymax - w.Ymin) / graphPixelsY(st);
@@ -591,7 +740,11 @@
         this.typed = null;
         if (typeof v !== 'number') T().fail('DATA TYPE');
         this.cx = v;
-        if (v < w.Xmin || v > w.Xmax) { const half = (w.Xmax - w.Xmin) / 2; w.Xmin = v - half; w.Xmax = v + half; }
+        if (st.mode.graph === 'seq') {
+          this.seqN = Math.max(Math.ceil(w.nMin), Math.min(Math.floor(w.nMax), Math.round(v)));
+          this.cx = this.seqN;
+          this.seqWebCursor = 0;
+        } else if (v < w.Xmin || v > w.Xmax) { const half = (w.Xmax - w.Xmin) / 2; w.Xmin = v - half; w.Xmax = v + half; }
         this.result = null;
         if (this.mode === 'calc') this.calcEnter();
         return true;
@@ -605,7 +758,7 @@
     }
     if (k === 'trace') { this.startTrace(); this.result = null; return true; }
     if (k === 'graph') { this.mode = 'view'; this.result = null; this.msg = ''; return true; }
-    if (k === 'calc') { c.push(new (core().MenuApp)(c, 'CALC', this)); return true; }
+    if (k === 'calc') { c.push(calcMenu(c, this)); return true; }
     if (k === 'zoom') { c.push(new (core().MenuApp)(c, 'ZOOM', this)); return true; }
     if (this.mode === 'view' && /^(left|right|up|down)$/.test(k)) { this.mode = 'free'; this.centre(); return true; }
     if (this.mode === 'view' && st.mode.model === 'evo' && (k === 'add' || k === 'sub')) { quickZoom(c, k === 'add'); return true; }
@@ -640,8 +793,18 @@
       const fn = fns[this.fnIndex];
       if (k === 'left' || k === 'right') {
         const d = k === 'left' ? -1 : 1;
-        if (fn && fn.seq) {
-          this.cx = this.snapX(this.cx + d * w.nStep);
+        if (st.mode.graph === 'seq' && st.ui.fmt.seqAxes && st.ui.fmt.seqAxes !== 'time') {
+          const lo = Math.ceil(w.nMin), hi = Math.floor(w.nMax), axes = st.ui.fmt.seqAxes;
+          if (axes === 'web') {
+            const start = seqFirst(w), step = seqStep(w);
+            const maxCursor = Math.max(0, 2 * Math.floor((hi - start) / step));
+            this.seqWebCursor = Math.max(0, Math.min(maxCursor, (this.seqWebCursor || 0) + d));
+            if (this.seqWebCursor >= 1) this.seqN = Math.min(hi, start + Math.floor((this.seqWebCursor - 1) / 2) * step);
+            else this.seqN = Math.max(lo, start);
+          } else this.seqN = Math.max(lo, Math.min(hi, (this.seqN == null ? Math.round(this.cx) : this.seqN) + d * seqStep(w)));
+          this.cx = this.seqN;
+        } else if (fn && fn.seq) {
+          this.cx = this.snapX(this.cx + d * (w.PlotStep || 1));
         } else if (fn && (fn.par || fn.pol)) {
           const step = fn.par ? w.Tstep : w['θstep'];
           this.ct = (this.ct == null ? (fn.par ? w.Tmin : w['θmin']) : this.ct) + d * step;
@@ -661,10 +824,13 @@
       if (k === 'enter') {
         if (this.mode === 'calc') { this.calcEnter(); return true; }
         // ENTER while tracing re-centres the window on the cursor.
-        const y = this.yOf(fn, this.cx);
+        const seqAxes = st.mode.graph === 'seq' && st.ui.fmt.seqAxes;
+        const seqPoint = seqAxes && seqAxes !== 'time' ? sequenceTraceData(st, fns, seqAxes, this.seqN == null ? Math.round(this.cx) : this.seqN) : null;
+        const x = seqPoint ? seqPoint.x : this.cx;
+        const y = seqPoint ? seqPoint.y : this.yOf(fn, this.cx);
         if (Number.isFinite(y)) {
           const hx = (w.Xmax - w.Xmin) / 2, hy = (w.Ymax - w.Ymin) / 2;
-          w.Xmin = this.cx - hx; w.Xmax = this.cx + hx; w.Ymin = y - hy; w.Ymax = y + hy;
+          w.Xmin = x - hx; w.Xmax = x + hx; w.Ymin = y - hy; w.Ymax = y + hy;
         }
         return true;
       }
@@ -685,6 +851,17 @@
     const g = canvas.getContext('2d');
     const fns = this.fns();
     const fn = fns[this.fnIndex];
+    if (this.mode === 'trace' && st.mode.graph === 'seq' && fmt.seqAxes === 'web') {
+      const trail = sequenceWebTrail(st, fns, this.fnIndex, this.seqWebCursor || 0);
+      g.strokeStyle = fn ? fn.colour : '#1f6feb'; g.lineWidth = 2.2; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath(); let pen = false;
+      trail.forEach((point) => {
+        if (!point) { pen = false; return; }
+        if (!pen) { g.moveTo(F.sx(point[0]), F.sy(point[1])); pen = true; }
+        else g.lineTo(F.sx(point[0]), F.sy(point[1]));
+      });
+      g.stroke();
+    }
     const fx = (v) => esc(T().fmtReal(+v.toPrecision(10)));
     const cross = (X, Y, colour) => {
       g.strokeStyle = colour || '#111317';
@@ -706,6 +883,11 @@
         const p = this.pointOf(fn, t);
         x = p[0]; y = p[1];
         bottom = '<b>' + (fn.par ? 'T' : 'θ') + '=' + fx(t) + '</b><b>X=' + (Number.isFinite(x) ? fx(x) : '') + '</b><b>Y=' + (Number.isFinite(y) ? fx(y) : '') + '</b>';
+      } else if (fn.seq && st.ui.fmt.seqAxes && st.ui.fmt.seqAxes !== 'time') {
+        const point = sequenceTraceData(st, fns, st.ui.fmt.seqAxes, this.seqN == null ? Math.round(this.cx) : this.seqN, this.fnIndex, this.seqWebCursor || 0);
+        x = point ? point.x : NaN; y = point ? point.y : NaN;
+        const n = this.seqN == null ? Math.round(this.cx) : this.seqN;
+        bottom = '<b>n=' + fx(n) + '</b><b>' + (point ? point.labels[0] + '=' + fx(x) : 'X=') + '</b><b>' + (point ? point.labels[1] + '=' + fx(y) : 'Y=') + '</b>';
       } else {
         y = this.yOf(fn, x);
         bottom = '<b>X=' + fx(x) + '</b><b>Y=' + (Number.isFinite(y) ? fx(y) : '') + '</b>';
@@ -727,15 +909,16 @@
           poiText = poi.label;
         }
       }
-      if (fmt.expr) {
+      if (fmt.expr && !(fn.seq && fmt.seqAxes && fmt.seqAxes !== 'time')) {
         const E = window.FluxTIEditor;
         topText = fn.name + '=' + (E ? E.textNodes(st.ui.ynodes[fn.name] || E.nodesFromCode(fn.code)) : fn.code);
       }
+      if (fn.seq && fmt.seqAxes && fmt.seqAxes !== 'time') topText = fmt.seqAxes === 'web' ? 'WEB · u(n) vs u(n−1)' : fmt.seqAxes.toUpperCase() + ' phase plot';
       if (poiText) topText = (topText ? topText + '  ·  ' : '') + poiText;
       let p = '';
       if (this.calc) {
         const steps = CALC_STEPS[this.calc.which];
-        p = steps[this.calc.step] + (this.typed != null ? ' ' + this.typed : '');
+        p = (st.mode.graph === 'seq' && this.calc.which === 'value' ? 'n=' : steps[this.calc.step]) + (this.typed != null ? ' ' + this.typed : '');
         this.calc.marks.forEach((m, i) => {
           if (this.calc.which === 'isect') return;
           const X = F.sx(m);
@@ -745,10 +928,10 @@
           g.moveTo(X, 2); g.lineTo(X + 7 * dir, 6); g.lineTo(X, 10);
           g.fill();
         });
-      } else if (this.typed != null) p = 'X=' + this.typed;
+      } else if (this.typed != null) p = (st.mode.graph === 'seq' ? 'n=' : 'X=') + this.typed;
       if (this.result) {
         p = this.result.title || this.result.label || '';
-        if (this.result.title) bottom = '<b>X=' + fx(this.result.x) + '</b><b>Y=' + fx(this.result.y) + '</b>';
+        if (this.result.title) bottom = (this.result.n != null ? '<b>n=' + fx(this.result.n) + '</b>' : '') + '<b>X=' + fx(this.result.x) + '</b><b>Y=' + fx(this.result.y) + '</b>';
       }
       if (p) { prompt.hidden = false; prompt.textContent = p; }
     } else if (this.mode === 'trace' || this.mode === 'calc') {
@@ -759,7 +942,7 @@
     bot.innerHTML = bottom;
     if (this.pendingCalcMenu) {
       this.pendingCalcMenu = false;
-      this.c.push(new (core().MenuApp)(this.c, 'CALC', this));
+      this.c.push(calcMenu(this.c, this));
       this.c.render();
     }
   };
@@ -938,11 +1121,10 @@
       if (st.mode.graph === 'par') rows.push(n('Tmin'), n('Tmax'), n('Tstep'));
       if (st.mode.graph === 'pol') rows.push(n('θmin'), n('θmax'), n('θstep'));
       if (st.mode.graph === 'seq') {
-        ['nMin', 'nMax', 'nStep'].forEach((key) => rows.push({ label: key + '=', type: 'num', get: () => w[key], set: (v) => {
-          if ((key === 'nMin' || key === 'nMax') && !Number.isInteger(v)) T().fail('DOMAIN');
-          if (key === 'nStep' && !(v > 0)) T().fail('DOMAIN');
+        ['nMin', 'nMax', 'PlotStart', 'PlotStep'].forEach((key) => rows.push({ label: key + '=', type: 'num', get: () => w[key], set: (v) => {
+          if ((key === 'nMin' || key === 'nMax' || key === 'PlotStart' || key === 'PlotStep') && !Number.isInteger(v)) T().fail('DOMAIN');
+          if (key === 'PlotStep' && !(v > 0)) T().fail('DOMAIN');
           w[key] = v;
-          w.Xmin = w.nMin; w.Xmax = w.nMax; w.Xscl = w.nStep;
         } }));
       }
       rows.push(n('Xmin'), n('Xmax'), n('Xscl'), n('Ymin'), n('Ymax'), n('Yscl'));
@@ -963,14 +1145,17 @@
   function formatForm(c) {
     const f = c.st.ui.fmt;
     const ch = (label, key, opts) => ({ label: label, type: 'choice', get: () => f[key], set: (v) => { f[key] = v; }, opts: opts });
-    return new (core().FormApp)(c, [
+    const rows = [];
+    if (c.st.mode.graph === 'seq') rows.push(ch('Axes:', 'seqAxes', [['Time', 'time'], ['Web', 'web'], ['uv', 'uv'], ['vw', 'vw'], ['uw', 'uw']]));
+    rows.push(
       ch('', 'coord', [['CoordOn', true], ['CoordOff', false]]),
       ch('', 'grid', [['GridOff', 'off'], ['GridDot', 'dot'], ['GridLine', 'line']]),
       ch('Axes:', 'axes', [['On', true], ['Off', false]]),
       ch('', 'label', [['LabelOff', false], ['LabelOn', true]]),
       ch('', 'expr', [['ExprOn', true], ['ExprOff', false]]),
-      ch('Detect Asymptotes:', 'detect', [['Off', false], ['On', true]]),
-    ], { title: 'FORMAT' });
+      ch('Detect Asymptotes:', 'detect', [['Off', false], ['On', true]])
+    );
+    return new (core().FormApp)(c, rows, { title: 'FORMAT' });
   }
   const PLOT_TYPES = [['Scatter', 'scatter'], ['xyLine', 'xyline'], ['Histogram', 'hist'], ['ModBox', 'modbox'], ['Box', 'box'], ['NormProb', 'normprob']];
   function plotForm(c, i) {
@@ -1114,6 +1299,9 @@
     command: command,
     applyZoom: applyZoom,
     activeFns: activeFns,
+    sequenceGraphData: sequenceGraphData,
+    sequenceTraceData: sequenceTraceData,
+    sequenceWebTrail: sequenceWebTrail,
     markDrawn: markDrawn,
     GraphApp: GraphApp,
     TableApp: TableApp,
