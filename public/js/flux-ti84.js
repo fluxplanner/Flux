@@ -820,6 +820,19 @@
         if (draw) this.tabs.push(draw);
       }
     }
+    if (c.st.mode.model === 'evo' && id === 'ZOOM') {
+      const items = [
+        ['Zoom Box', 'zbox', 'ZBox'], ['Zoom In', 'zin', 'Zoom In'], ['Zoom Out', 'zout', 'Zoom Out'],
+        ['Zoom Default', 'ZoomDefault', 'ZoomDefault'], ['Zoom Square', 'ZSquare', 'ZSquare'],
+        ['Zoom [-10,10]', 'ZoomMinus1010', 'ZoomMinus1010'], ['Zoom Trig', 'ZTrig', 'ZTrig'],
+        ['Zoom Fit', 'ZoomFit', 'ZoomFit'], ['Zoom Stat', 'ZoomStat', 'ZoomStat'],
+        ['Zoom Quadrant1', 'ZQuadrant1', 'ZQuadrant1'], ['Zoom Integer', 'ZInteger', 'ZInteger'],
+        ...[2, 3, 4, 5, 8, 10].map((d) => ['Zoom Frac1/' + d, 'ZoomFrac1/' + d, 'ZoomFrac1/' + d]),
+      ].map(([label, action, code]) => ({ l: label, act: 'zoom:' + action, ins: code }));
+      const memory = this.tabs.find((tab) => tab.name === 'MEMORY');
+      this.tabs = [{ name: 'ZOOM', items: items }];
+      if (memory) this.tabs.push(memory);
+    }
     this.tab = (opts && opts.tab) || 0;
     this.sel = 0;
     this.top0 = 0;

@@ -81,7 +81,7 @@
       { name: 'Y-VARS', items: [{ l: 'Function…', sub: 'VFUNC' }, { l: 'Parametric…', sub: 'VPAR' }, { l: 'Polar…', sub: 'VPOL' }, { l: 'Sequence…', sub: 'VSEQ' }, { l: 'On/Off…', sub: 'VONOFF' }] },
     ],
     VWIN: [
-      { name: 'X/Y', items: ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'ΔX', 'ΔY', 'XFact', 'YFact'].map((n) => sys(n)) },
+      { name: 'X/Y', items: ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'TraceStep', 'ΔX', 'ΔY', 'XFact', 'YFact'].map((n) => sys(n)) },
       { name: 'T/θ', items: ['Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'].map((n) => sys(n)) },
     ],
     VSTAT: [

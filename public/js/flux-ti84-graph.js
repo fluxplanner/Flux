@@ -2,7 +2,7 @@
    FLUX · Calculator graphing — flux-ti84-graph.js
    ------------------------------------------------------------------------
    The graph keys of the calculator: GRAPH with a free-moving cursor, TRACE
-   (one pixel at a time, ↑/↓ between functions, type a number to jump),
+   (window TraceStep increments, ↑/↓ between functions, type a number to jump),
    2nd CALC (value, zero, minimum, maximum, intersect, dy/dx, ∫f(x)dx with
    the calculator's Left Bound?/Right Bound?/Guess? prompts), ZOOM and its
    memory, WINDOW, 2nd FORMAT, 2nd TBLSET and TABLE, the three STAT PLOTs,
@@ -467,7 +467,8 @@
   GraphApp.prototype.snapX = function (x) {
     const st = this.c.st, w = st.win, dx = (w.Xmax - w.Xmin) / graphPixelsX(st);
     if (st.mode.graph === 'seq' && w.nStep > 0) return +(w.nMin + Math.round((x - w.nMin) / w.nStep) * w.nStep).toPrecision(12);
-    return +(w.Xmin + Math.round((x - w.Xmin) / dx) * dx).toPrecision(12);
+    const step = w.TraceStep || 2 * dx;
+    return +(w.Xmin + Math.round((x - w.Xmin) / step) * step).toPrecision(12);
   };
   GraphApp.prototype.centre = function () {
     const w = this.c.st.win;
@@ -607,6 +608,7 @@
     if (k === 'calc') { c.push(new (core().MenuApp)(c, 'CALC', this)); return true; }
     if (k === 'zoom') { c.push(new (core().MenuApp)(c, 'ZOOM', this)); return true; }
     if (this.mode === 'view' && /^(left|right|up|down)$/.test(k)) { this.mode = 'free'; this.centre(); return true; }
+    if (this.mode === 'view' && st.mode.model === 'evo' && (k === 'add' || k === 'sub')) { quickZoom(c, k === 'add'); return true; }
     if (this.mode === 'free' || this.mode === 'zbox' || this.mode === 'zin' || this.mode === 'zout') {
       if (k === 'left') { this.cx -= dx; return true; }
       if (k === 'right') { this.cx += dx; return true; }
@@ -765,12 +767,22 @@
   /* ── Zoom ───────────────────────────────────────────────────────────── */
 
   function savePrev(st) { st.ui.zoomPrev = Object.assign({}, st.win); }
+  function quickZoom(c, inward) {
+    const st = c.st, w = st.win;
+    const cx = (w.Xmin + w.Xmax) / 2, cy = (w.Ymin + w.Ymax) / 2;
+    const fx = inward ? 1 / Math.max(1.01, w.XFact || 2) : Math.max(1.01, w.XFact || 2);
+    const fy = inward ? 1 / Math.max(1.01, w.YFact || 2) : Math.max(1.01, w.YFact || 2);
+    savePrev(st);
+    const hx = (w.Xmax - w.Xmin) * fx / 2, hy = (w.Ymax - w.Ymin) * fy / 2;
+    w.Xmin = cx - hx; w.Xmax = cx + hx;
+    w.Ymin = cy - hy; w.Ymax = cy + hy;
+  }
   function applyZoom(c, which) {
     const st = c.st, w = st.win;
     const set = (o) => { savePrev(st); Object.assign(w, o); };
     switch (which) {
-      case 'ZStandard': set({ Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1 }); return true;
-      case 'ZDecimal': set({ Xmin: -6.6, Xmax: 6.6, Xscl: 1, Ymin: -4.1, Ymax: 4.1, Yscl: 1 }); return true;
+      case 'ZStandard': case 'ZoomMinus1010': set({ Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1, TraceStep: null }); return true;
+      case 'ZDecimal': case 'ZoomDefault': set({ Xmin: -6.6, Xmax: 6.6, Xscl: 1, Ymin: -4.1, Ymax: 4.1, Yscl: 1, TraceStep: 0.1 }); return true;
       case 'ZQuadrant1': set({ Xmin: 0, Xmax: 13.2, Xscl: 1, Ymin: 0, Ymax: 8.2, Yscl: 1 }); return true;
       case 'ZTrig': {
         const deg = st.mode.angle === 'deg';
@@ -779,7 +791,13 @@
       }
       case 'ZInteger': {
         const cx = Math.round((w.Xmin + w.Xmax) / 2), cy = Math.round((w.Ymin + w.Ymax) / 2);
-        set({ Xmin: cx - graphPixelsX(st) / 2, Xmax: cx + graphPixelsX(st) / 2, Xscl: 10, Ymin: cy - graphPixelsY(st) / 2, Ymax: cy + graphPixelsY(st) / 2, Yscl: 10 });
+        set({ Xmin: cx - graphPixelsX(st) / 2, Xmax: cx + graphPixelsX(st) / 2, Xscl: 10, Ymin: cy - graphPixelsY(st) / 2, Ymax: cy + graphPixelsY(st) / 2, Yscl: 10, TraceStep: 1 });
+        return true;
+      }
+      case 'ZoomFrac1/2': case 'ZoomFrac1/3': case 'ZoomFrac1/4': case 'ZoomFrac1/5': case 'ZoomFrac1/8': case 'ZoomFrac1/10': {
+        const denominator = Number(which.slice('ZoomFrac1/'.length));
+        const dx = 1 / (2 * denominator), spanX = dx * graphPixelsX(st), spanY = dx * graphPixelsY(st);
+        set({ Xmin: -spanX / 2, Xmax: spanX / 2, Xscl: 1, Ymin: -spanY / 2, Ymax: spanY / 2, Yscl: 1, TraceStep: 1 / denominator });
         return true;
       }
       case 'ZSquare': {
@@ -928,7 +946,7 @@
         } }));
       }
       rows.push(n('Xmin'), n('Xmax'), n('Xscl'), n('Ymin'), n('Ymax'), n('Yscl'));
-      if (st.mode.graph === 'func') rows.push(n('Xres'));
+      if (st.mode.graph === 'func') rows.push(n('Xres'), { label: 'TraceStep=', type: 'num', get: () => w.TraceStep || 2 * (w.Xmax - w.Xmin) / graphPixelsX(st), set: (v) => { if (!(v > 0)) T().fail('DOMAIN'); w.TraceStep = v; } });
       rows.push({ label: 'ΔX=', type: 'num', get: () => +((w.Xmax - w.Xmin) / graphPixelsX(st)).toPrecision(10), set: (v) => { if (!(v > 0)) T().fail('DOMAIN'); w.Xmax = w.Xmin + v * graphPixelsX(st); } });
       return rows;
     }, { title: 'WINDOW' });
@@ -1001,7 +1019,7 @@
     const fmtOn = { GridOn: ['grid', 'dot'], GridOff: ['grid', 'off'], AxesOn: ['axes', true], AxesOff: ['axes', false], LabelOn: ['label', true],
       LabelOff: ['label', false], CoordOn: ['coord', true], CoordOff: ['coord', false] };
     if (fmtOn[name]) { st.ui.fmt[fmtOn[name][0]] = fmtOn[name][1]; return { done: true }; }
-    if (/^(ZStandard|ZTrig|ZDecimal|ZSquare|ZInteger|ZoomStat|ZoomFit|ZQuadrant1|ZoomRcl|ZoomSto)$/.test(name)) { applyZoom(c, name); return { done: true }; }
+    if (/^(ZStandard|ZTrig|ZDecimal|ZSquare|ZInteger|ZoomStat|ZoomFit|ZQuadrant1|ZoomRcl|ZoomSto|ZoomDefault|ZoomMinus1010|ZoomFrac1\/(2|3|4|5|8|10))$/.test(name)) { applyZoom(c, name); return { done: true }; }
     switch (name) {
       case 'DispGraph': return { show: 'graph' };
       case 'DispTable': return { show: 'table' };

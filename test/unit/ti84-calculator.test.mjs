@@ -106,6 +106,32 @@ test('Evo separates intervals, groups distributions, and keeps stat wizards on',
   assert.match(apps.render(), /Python, unavailable/);
 });
 
+test('Evo exposes 17 zoom presets, fractional trace steps, and quick zoom keys', () => {
+  const st = T.freshState();
+  st.mode.model = 'evo';
+  st.ui = { zoomPrev: null, yOn: {}, yCol: {}, yStyle: {}, plots: [] };
+  const Core = W.FluxTI84.core;
+  const zoomMenu = new Core.MenuApp({ st }, 'ZOOM');
+  const zooms = zoomMenu.tabs[0].items;
+  assert.equal(zooms.length, 17);
+  assert.equal(zooms[0].l, 'Zoom Box');
+  assert.equal(zooms[3].l, 'Zoom Default');
+  assert.equal(zooms[11].l, 'Zoom Frac1/2');
+  assert.equal(zooms[16].l, 'Zoom Frac1/10');
+
+  const G = W.FluxTIGraph;
+  assert.equal(G.applyZoom({ st }, 'ZoomFrac1/2'), true);
+  assert.equal((st.win.Xmax - st.win.Xmin) / 319, 0.25);
+  assert.equal((st.win.Ymax - st.win.Ymin) / 209, 0.25);
+  assert.equal(st.win.TraceStep, 0.5);
+  const before = st.win.Xmax - st.win.Xmin;
+  const graph = new G.GraphApp({ st });
+  assert.equal(graph.key('add'), true);
+  assert.ok(st.win.Xmax - st.win.Xmin < before);
+  assert.equal(graph.key('sub'), true);
+  assert.equal(st.win.Xmax - st.win.Xmin, before);
+});
+
 test('distributions and the STAT tests', () => {
   const near = (a, b, tol = 5e-10) => assert.ok(Math.abs(a - b) <= tol, `${a} ≠ ${b}`);
   near(S.invT(0.975, 10), 2.228138852, 5e-9);

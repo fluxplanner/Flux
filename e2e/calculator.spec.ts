@@ -91,6 +91,26 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84m-tabs')).toContainText('CONVERT ANSWER');
   });
 
+  test('Evo zoom menu has 17 presets and plus/minus quick zoom', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/calculator.html');
+    await page.locator('.t84-model-control select').selectOption('evo');
+    const key = (k: string) => page.locator(`.t84 [data-k="${k}"]`).click();
+    await key('graph');
+    const range = () => page.evaluate(() => {
+      const w = (window as any).fluxCalculatorPage.instance.st.win;
+      return w.Xmax - w.Xmin;
+    });
+    const before = await range();
+    await key('add');
+    expect(await range()).toBeLessThan(before);
+    await key('sub');
+    expect(await range()).toBeCloseTo(before, 8);
+    await key('zoom');
+    await expect.poll(() => page.evaluate(() => (window as any).fluxCalculatorPage.instance.top().items().length)).toBe(17);
+    await expect(page.locator('.t84m-tabs')).toContainText('ZOOM');
+  });
+
   test('nCr and other functions give boxes to fill', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');

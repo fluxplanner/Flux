@@ -20,7 +20,7 @@ This audit compares the shipped Flux84 code with TI's published Plus CE and Evo 
 - **Sequences:** recursive values, tables, and time-series plots are present. TI's cobweb/stair-step and phase plot modes are not.
 - **Trace points of interest:** Flux scans sampled points and refines candidates. It can miss narrow or repeated features and is not TI's implementation.
 - **Graph styles:** all eight style labels are offered, but `animate` is currently a static endpoint marker and several graph-style details are approximate.
-- **Zoom:** common zooms, previous/store/recall are present, but not all 17 Evo zoom tools or Evo's `+`/`−` quick zoom and fractional zoom choices.
+- **Zoom:** Evo now has all 17 named presets, fractional TraceStep values, and `+`/`−` quick zoom. The algorithms have not been compared pixel-for-pixel against TI, so behavior is not certified as exact.
 - **TI-BASIC:** Flux runs a useful subset; it is not a complete TI-BASIC implementation and cannot run arbitrary downloaded TI programs.
 - **Statistics and numeric behavior:** the principal calculations are implemented and tested selectively. This has not been compared against TI for every input domain, rounding case, error, or displayed answer.
 
@@ -28,7 +28,6 @@ This audit compares the shipped Flux84 code with TI's published Plus CE and Evo 
 
 - TI's **Lines & Conics** app: implicit line/conic templates, multiple conic graphs, conic analysis, and their trace behavior.
 - **Inequality Graphing** (the published Evo specification lists 16 inequality graphs) and **Transformation Graphing**.
-- The full set of 17 interactive zoom tools, including fractional zooms and quick zoom.
 - Cobweb and phase sequence plots; graph/table horizontal and vertical split-screen modes.
 - Graph background images.
 - A Python interpreter and the TI app/runtime ecosystem, including Help, EasyData, SmartPad, and compatible TI apps. Flux labels Python and Lines & Conics unavailable in the Evo Apps screen.
@@ -37,8 +36,8 @@ This audit compares the shipped Flux84 code with TI's published Plus CE and Evo 
 
 ## Verification performed
 
-- `npm run test:unit`: 270 passing tests on the current working tree.
-- `npm run test:e2e -- e2e/calculator.spec.ts`: 10 passing browser checks, including the Evo mode, calculator graph, app integration, phone sizing, landscape tablet sizing, and clear/undo refinement.
+- `npm run test:unit`: 271 passing tests on the current working tree.
+- `npm run test:e2e -- e2e/calculator.spec.ts`: 11 passing browser checks, including all 17 Evo zoom entries, `+`/`−` quick zoom, Evo mode, calculator graph, app integration, phone sizing, landscape tablet sizing, and clear/undo refinement.
 - New focused tests cover scientific notation display, recursive sequences, selected Evo menus, launcher availability labels, and the one-clear undo interaction. This is meaningful regression coverage, not a test of every calculator command.
 
 ## TI references

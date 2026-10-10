@@ -108,7 +108,7 @@
         mathprint: true, notation: 'normal', digits: 'float', angle: 'rad', graph: 'func', model: 'ce',
         complex: 'real', answers: 'auto', fracType: 'n/d', statDiag: false,
       },
-      win: { Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1, Xres: 1, XFact: 4, YFact: 4,
+      win: { Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1, Xres: 1, XFact: 4, YFact: 4, TraceStep: null,
         Tmin: 0, Tmax: 2 * Math.PI, Tstep: Math.PI / 24, 'θmin': 0, 'θmax': 2 * Math.PI, 'θstep': Math.PI / 24,
         nMin: 0, nMax: 10, nStep: 1 },
       tbl: { TblStart: 0, 'ΔTbl': 1, indpnt: 'auto', depend: 'auto' },
@@ -770,10 +770,11 @@
 
   /* ── System variables (VARS) ─────────────────────────────────────────── */
 
-  const WIN_KEYS = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'XFact', 'YFact', 'Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'];
+  const WIN_KEYS = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'XFact', 'YFact', 'TraceStep', 'Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'];
   const TVM_KEYS = { tvmN: 'N', 'I%': 'I', PV: 'PV', PMT: 'PMT', FV: 'FV', 'P/Y': 'PY', 'C/Y': 'CY' };
   function getSys(name, cx) {
     const st = cx.st;
+    if (name === 'TraceStep') return st.win.TraceStep || 2 * (st.win.Xmax - st.win.Xmin) / (st.mode.model === 'evo' ? 319 : 264);
     if (WIN_KEYS.indexOf(name) >= 0) return st.win[name];
     if (name === 'ΔX') return R((st.win.Xmax - st.win.Xmin) / (st.mode.model === 'evo' ? 319 : 264));
     if (name === 'ΔY') return R((st.win.Ymax - st.win.Ymin) / (st.mode.model === 'evo' ? 209 : 164));
