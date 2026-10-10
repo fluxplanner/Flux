@@ -187,6 +187,7 @@
     ov.addEventListener('change', onChange);
     ov.addEventListener('input', onInput);
     ov.addEventListener('keydown', onKey);
+    document.addEventListener('click', onUndoBar, true);
     st.release = safe(() => window.FluxA11y.trapFocus(ov.querySelector('.pw-card')), null);
     // On the overlay stack: the app's single-key shortcuts stay quiet while it
     // is open, and an Escape that reaches the document closes this, not a
@@ -203,6 +204,7 @@
       safe(() => window.FluxA11y.releaseFocus(card));
     }
     safe(() => window.FluxOverlays.pop('planWeekModal'));
+    document.removeEventListener('click', onUndoBar, true);
     if (!quiet) st = null;
   }
 
@@ -605,10 +607,30 @@
       return;
     }
     safe(() => window.undoLastChange());
-    if (st.view === 'week' && !appliedBlocks().length) go('avail');
-    else render(false);
-    announce('Last change undone.');
+    afterUndo();
     safe(() => (document.querySelector('#planWeekModal [data-act="undo"]') || document.getElementById('pwTitle')).focus(), null);
+  }
+  /** The planner was just put back: show it as it is now. */
+  function afterUndo() {
+    if (st.view === 'plan') {
+      // Under the suggestion: suggest again from it.
+      st.plan = W().propose(gather()); st.removed = []; st.hist = []; st.editing = null;
+      render(false);
+    } else if (st.view === 'week' && !appliedBlocks().length) go('avail');
+    else { st.editing = null; render(false); }
+    announce('Last change undone.');
+  }
+  /** The app's Undo bar sits above this dialog (a block moved here shows one,
+      and so does approving a moment ago). Its Undo is the app's undo; once it
+      has run, bring the dialog up to date. */
+  function onUndoBar(e) {
+    const btn = e.target && e.target.closest ? e.target.closest('#undoSnackbar button') : null;
+    if (!btn || !st || !/undoLastChange/.test(btn.getAttribute('onclick') || '')) return;
+    setTimeout(() => {
+      if (!st || !document.getElementById('planWeekModal')) return;
+      afterUndo();
+      safe(() => document.getElementById('pwTitle').focus({ preventScroll: true }), null);
+    }, 0);
   }
 
   function addBusy(d) {

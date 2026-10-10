@@ -254,6 +254,17 @@ test.describe('Plan my week', () => {
     await expect(row.locator('.pw-b-warn')).toHaveCount(0);
     expect(await blocks(page)).toEqual(all);
 
+    // So does the Undo on the bar a move shows, which sits above the dialog.
+    await row.locator('[data-act="edit"]').click();
+    await page.locator('#pwEdDay').selectOption('2026-10-07');
+    await modal(page).locator('[data-act="save-move"]').click();
+    await expect(row.locator('.pw-b-warn')).toHaveText('That’s a rest day');
+    await page.locator('#undoSnackbar button', { hasText: 'Undo' }).click();
+    await expect(row.locator('.pw-b-warn')).toHaveCount(0);
+    await expect(modal(page).locator('section.pw-pday', { has: page.locator('#pwd-2026-10-05') }).locator(`.pw-block[data-key="${algebra.key}"]`)).toHaveCount(1);
+    await expect(page.locator('#pwTitle')).toBeFocused();
+    expect(await blocks(page)).toEqual(all);
+
     // With focus outside the dialog, Escape still closes it properly.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press('Escape');
