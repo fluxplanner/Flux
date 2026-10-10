@@ -81,7 +81,7 @@ test.describe('Ticking a task off', () => {
     expect(ev.slice(0, 2).sort()).toEqual(['filled', 'saved']);
     expect(ev[2]).toBe('rebuilt');
     expect(await stored(page, 9100)).toBe(true);
-    await expect(page.locator('#undoSnackbar')).toContainText('Task completed');
+    await expect(page.locator('#undoSnackbar')).toContainText('Task 0');
   });
 
   test('ticking one task does not replay the animation on the rest of the list', async ({ page }) => {
@@ -162,12 +162,20 @@ test.describe('Ticking a task off', () => {
 
   test('with reduced motion the tick is just as immediate, with no burst', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await watch(page, 9108);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__particles = 0;
+      new MutationObserver((recs) => recs.forEach((r) => r.addedNodes.forEach((n: any) => {
+        if (n.classList && (n.classList.contains('task-burst-particle') || n.classList.contains('confetti-piece'))) w.__particles++;
+      }))).observe(document.body, { childList: true });
+    });
     await check(page, 9108).click();
-    const now = await page.evaluate(() => ({
-      filled: document.querySelector('#taskList .task-item[data-task-id="9108"] .check')!.classList.contains('done'),
-      particles: document.querySelectorAll('.task-burst-particle,.confetti-piece').length,
-    }));
-    expect(now).toEqual({ filled: true, particles: 0 });
+    await expect.poll(() => events(page)).toContain('rebuilt');
+    const ev = await events(page);
+    expect(ev.indexOf('filled')).toBeGreaterThan(-1);
+    expect(ev.indexOf('filled')).toBeLessThan(ev.indexOf('rebuilt'));
+    expect(await page.evaluate(() => (window as any).__particles)).toBe(0);
     expect(await stored(page, 9108)).toBe(true);
   });
 });

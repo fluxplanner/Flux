@@ -89,7 +89,11 @@ test.describe('Swiping task rows on a phone', () => {
     await gesture(client, page, from, line(from, 200, 4, 10));
     expect(await toggles(page), 'one swipe, one toggle').toEqual([8103]);
     expect(await isDone(page, 8103)).toBe(true);
-    await expect(page.locator('#undoSnackbar')).toContainText('Task completed');
+    // Named, so a swipe you did not mean is easy to spot — and one tap undoes it.
+    const bar = page.locator('#undoSnackbar');
+    await expect(bar).toContainText('Swipe task 3');
+    await bar.getByRole('button', { name: 'Undo' }).tap();
+    await expect.poll(() => isDone(page, 8103)).toBe(false);
   });
 
   test('scrolling straight down the list completes nothing', async ({ page }) => {

@@ -1287,7 +1287,9 @@ function _renderToastItem(item,onDone){
     stack.id='fluxToastStack';
     stack.setAttribute('aria-live','polite');
     stack.setAttribute('aria-atomic','false');
-    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:var(--flux-dock-clearance,20px);z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
+    // Above the Undo bar while it shows (--flux-undo-lift): a toast landing
+    // on top of it (the "Up next" one follows every tick) hid the Undo button.
+    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--flux-dock-clearance,20px) + var(--flux-undo-lift,0px));z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
     document.body.appendChild(stack);
   }
   const t=document.createElement('div');
@@ -4569,7 +4571,7 @@ function toggleTask(id){
       if(window.FluxSrsV2?.enabled?.()&&typeof FluxSrsV2.scheduleReviews==='function')FluxSrsV2.scheduleReviews(t);
       else generateSRSReviews(t);
     },800);
-    showUndoSnackbar('Task completed','undoLastChange');
+    showUndoSnackbar('Done: “'+String(t.name||'Task').slice(0,48)+'”','undoLastChange');
     // A planned task finished early needs none of the sessions still ahead of it.
     if(t.plan&&tasks.some(x=>x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done))tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
     // The last session of a plan: say so, so the task itself gets ticked when it is handed in.
@@ -5164,7 +5166,9 @@ function renderTasks(){
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},reading:{l:'Reading',c:'var(--blue)'},other:{l:'Other',c:'var(--muted)'}};
   const todayS=todayStr();
   const active=list.filter(t=>!t.done);
-  const done=list.filter(t=>t.done);
+  // Finished tasks newest first, whatever order the open ones are in: the one
+  // you just ticked (by accident or not) is at the top of Completed.
+  const done=list.filter(t=>t.done).sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   const renderCard=t=>{
     const sub=getSubjects()[t.subject];
     const isOver=isTaskOverdueDay(t);
@@ -10910,7 +10914,9 @@ async function syncFromCloud(){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
     }
     if(Array.isArray(d.tasks)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
+      const _tasksBefore=tasks;
       tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones);
+      try{fluxNoteRemoteTaskChanges(_tasksBefore,tasks);}catch(_){}
       migrateCompletedAtBackfill();fluxPurgeOldCompleted();
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
@@ -15828,30 +15834,76 @@ function showSessionRecap(subject,mins){
 
 
 // ══ VERSION HISTORY + UNDO ════════════════════════════════════
+/* Each entry is the list as it was before one change. Undo puts that back —
+   except for tasks a cloud pull has changed since (another device's edits),
+   which it leaves as they are now. Restoring the whole old list would have
+   quietly dropped them, and the next save would have deleted them everywhere. */
 let _taskHistory=[];
 function snapshotTasks(){
-  _taskHistory.push(JSON.parse(JSON.stringify(tasks)));
+  _taskHistory.push({before:JSON.parse(JSON.stringify(tasks)),remote:new Set()});
   if(_taskHistory.length>10)_taskHistory.shift();
+}
+const fluxTaskKey=t=>window.FluxListMerge?FluxListMerge.keyOf(t):String(t&&t.id);
+/** A cloud pull changed these tasks: undo must not roll them back. */
+function fluxNoteRemoteTaskChanges(before,after){
+  if(!_taskHistory.length)return;
+  const hash=t=>window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t);
+  const a=new Map((before||[]).map(t=>[fluxTaskKey(t),hash(t)]));
+  const b=new Map((after||[]).map(t=>[fluxTaskKey(t),hash(t)]));
+  const changed=[];
+  a.forEach((h,k)=>{if(b.get(k)!==h)changed.push(k);});
+  b.forEach((h,k)=>{if(!a.has(k))changed.push(k);});
+  if(changed.length)_taskHistory.forEach(e=>changed.forEach(k=>e.remote.add(k)));
 }
 function undoLastChange(){
   if(!_taskHistory.length){showToast('Nothing to undo','info');return;}
-  tasks=_taskHistory.pop();
+  const e=_taskHistory.pop();
+  if(!e.remote.size){tasks=e.before;}
+  else{
+    const now=new Map(tasks.map(t=>[fluxTaskKey(t),t]));
+    const out=[];
+    const seen=new Set();
+    e.before.forEach(t=>{
+      const k=fluxTaskKey(t);seen.add(k);
+      if(!e.remote.has(k))out.push(t);
+      else if(now.has(k))out.push(now.get(k));
+    });
+    tasks.forEach(t=>{const k=fluxTaskKey(t);if(e.remote.has(k)&&!seen.has(k))out.unshift(t);});
+    tasks=out;
+  }
   save('tasks',tasks);
-  renderStats();renderTasks();renderCalendar();renderCountdown();
+  fluxTaskRebuildNow();
   syncKey('tasks',tasks);
   showToast('↩ Change undone','info');
 }
+/** Toasts sit above the Undo bar while it is up, so nothing covers its button. */
+function fluxUndoLift(){
+  const bar=document.getElementById('undoSnackbar');
+  const h=bar&&bar.isConnected?Math.ceil(bar.getBoundingClientRect().height)+10:0;
+  document.documentElement.style.setProperty('--flux-undo-lift',h+'px');
+}
+function fluxDismissUndo(){document.getElementById('undoSnackbar')?.remove();fluxUndoLift();}
+window.fluxDismissUndo=fluxDismissUndo;
 function showUndoSnackbar(msg,undoFn){
   const existing=document.getElementById('undoSnackbar');if(existing)existing.remove();
   const bar=document.createElement('div');
   bar.id='undoSnackbar';
-  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
-  bar.innerHTML=`<span style="color:var(--text)">${esc(msg)}</span><button onclick="undoLastChange();document.getElementById('undoSnackbar')?.remove()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo</button><button onclick="this.closest('#undoSnackbar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
+  // Read out when it appears, so a tick (or a swipe you did not mean) is never silent.
+  bar.setAttribute('role','status');
+  bar.style.cssText='position:fixed;bottom:var(--flux-dock-clearance,20px);left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
+  bar.innerHTML=`<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:56vw">${esc(msg)}</span><button type="button" onclick="undoLastChange();fluxDismissUndo()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0" title="Undo (Ctrl+Z)">Undo</button><button type="button" aria-label="Dismiss" onclick="fluxDismissUndo()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
   document.body.appendChild(bar);
-  const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>bar.remove(),400);}};
-  // With motion on, a bar runs down the 5 seconds (and pauses while hovered); otherwise a plain timer.
+  fluxUndoLift();
+  const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>{bar.remove();fluxUndoLift();},400);}};
+  // With motion on, a bar runs down the 5 seconds (and pauses while hovered); otherwise a plain timer that pauses the same way.
   let timed=null;try{timed=window.FluxMotionMore?.undoTimer(bar,5000,fade);}catch(_){}
-  if(!timed)setTimeout(fade,5000);
+  if(!timed){
+    let left=5000,start=Date.now(),timer=setTimeout(fade,left);
+    const pause=()=>{if(!timer)return;clearTimeout(timer);timer=0;left-=Date.now()-start;};
+    const play=()=>{if(timer||!bar.isConnected)return;start=Date.now();timer=setTimeout(fade,Math.max(1200,left));};
+    bar.addEventListener('pointerenter',pause);bar.addEventListener('pointerleave',play);
+    bar.addEventListener('focusin',pause);bar.addEventListener('focusout',play);
+  }
 }
 
 
