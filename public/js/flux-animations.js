@@ -368,10 +368,10 @@ function animateActivePanelCards() {
   } catch (_) {}
 }
 
-/** Main panels that get the drifting scroll-drawn accent lines. */
+/** Main panels that get the drifting scroll-drawn accent lines. Not the
+ *  calendar: lines drifting behind a dense grid read as glitches there. */
 const FLUX_SCROLL_PATH_PANELS = new Set([
   'dashboard',
-  'calendar',
   'goals',
   'school',
   'notes',
@@ -440,8 +440,6 @@ function initPanelScrollPathDraw(mainEl, panelId) {
   } catch (e) {
     console.warn('flux-animations: panel scroll paths', e);
   }
-  // Long pages get a reading-progress line; measured a beat later, once the panel has rendered.
-  setTimeout(() => { try { window.FluxMotionMore?.readingProgress(panel.classList.contains('active') ? panel : null); } catch (_) {} }, 400);
 }
 
 function initMainScrollPathDraw(mainEl, panelId) {

@@ -4453,7 +4453,7 @@ function addTask(){
   const wo=(document.getElementById('taskWaitingOn')?.value||'').trim();
   const _recTypeAdd=(document.getElementById('taskRecurringType')?.value)||'none';
   const staffPersonal=fluxIsStaffPersonalMode();
-  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:staffPersonal?'':(document.getElementById('taskSubject')?.value||''),priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringType:_recTypeAdd!=='none'?_recTypeAdd:undefined,recurringWeekly:_recTypeAdd==='weekly'||!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined,scope:staffPersonal?'outside':'school'};
+  const task={id:Date.now(),name,date:document.getElementById('taskDate').value,subject:staffPersonal?'':(document.getElementById('taskSubject')?.value||''),priority:document.getElementById('taskPriority').value,type:document.getElementById('taskType').value,estTime:parseInt(document.getElementById('taskEstTime').value)||0,difficulty:parseInt(document.getElementById('taskDifficulty').value)||3,notes:document.getElementById('taskNotes').value.trim(),time:document.getElementById('taskTime')?.value||'',subtasks:[],done:false,rescheduled:0,createdAt:Date.now(),srsEnabled:document.getElementById('taskSRS')?.checked||false,recurringType:_recTypeAdd!=='none'?_recTypeAdd:undefined,recurringWeekly:_recTypeAdd==='weekly'||!!document.getElementById('taskRecurringWeekly')?.checked,waitingOn:wo||undefined,scope:staffPersonal?'outside':'school'};
   if(FLUX_FLAGS.PAYMENTS_ENABLED&&FLUX_FLAGS.ENFORCE_TASK_LIMITS){
     const activeTasks=tasks.filter(t=>!t.done).length;
     const maxTasks=FLUX_PLANS[_entitlement.plan]?.maxActiveTasks??Infinity;
@@ -4466,7 +4466,7 @@ function addTask(){
   try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(task);}catch(_){}
   save('tasks',tasks);if(task.subject){if(window.FluxGhostDraftV2?.enabled?.()&&typeof FluxGhostDraftV2.scheduleInject==='function')FluxGhostDraftV2.scheduleInject(task);else setTimeout(()=>injectGhostDraft(task),1500);}
   if(window.Flux100&&typeof Flux100.captureLastTaskFromModal==='function')try{Flux100.captureLastTaskFromModal(task);}catch(e){}
-  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';
+  document.getElementById('taskName').value='';document.getElementById('taskNotes').value='';{const tt=document.getElementById('taskTime');if(tt)tt.value='';}
   closeDashAddTaskModal();
   renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();panicCheck(task);
   syncKey('tasks',tasks);
@@ -5971,7 +5971,16 @@ function setAddEventScope(scope){
   if(sb)sb.classList.toggle('event-scope-btn-on',onSchool);
   if(ob)ob.classList.toggle('event-scope-btn-on',!onSchool);
 }
+/* A task added from the calendar uses the same New task form as everywhere
+   else (estimates, plan it out, repeats…), dated to the selected day. */
+function openCalendarNewTask(){
+  const ymd=fluxLocalYMD(new Date(calYear,calMonth,calSelected));
+  closeAddEventModal();
+  openDashAddTaskModal();
+  const d=document.getElementById('taskDate');if(d)d.value=ymd;
+}
 function openAddEventModal(preferredType){
+  if(preferredType==='task'){openCalendarNewTask();return;}
   const modal=document.getElementById('addEventModal');if(!modal)return;
   fluxSyncSubjectUiForRole();
   editCalendarEventId=null;
@@ -5984,7 +5993,7 @@ function openAddEventModal(preferredType){
   const trow=document.getElementById('addEventTypeRow');if(trow)trow.style.display='flex';
   const defaultScope=preferredType==='ec'?'outside':(fluxIsStaffPersonalMode()?'outside':'school');
   setAddEventScope(defaultScope);
-  setAddEventType(preferredType==='ec'?'ec':'task');
+  setAddEventType(preferredType==='ec'?'ec':'event');
   modal.hidden=false;
   modal.style.display='flex';
   modal.setAttribute('aria-hidden','false');

@@ -133,39 +133,6 @@ function breathStop() {
   if (breathAnim) { safe(() => breathAnim.pause()); breathAnim = null; }
 }
 
-/* ── Panels: reading progress ──────────────────────────────────────────── */
-
-/**
- * A 2px line along the top of a long page that fills as you scroll it.
- * (Measured straight from the panel's scroll position: onScroll needs a target
- * inside the scroller, and the panel is both here.)
- */
-let readOff = null;
-function readingProgress(panel) {
-  if (readOff) { readOff(); readOff = null; }
-  document.querySelectorAll('.fmm-read').forEach((n) => n.remove());
-  if (!ok() || !panel) return;
-  if (panel.scrollHeight < panel.clientHeight * 1.6) return;
-  safe(() => {
-    const bar = document.createElement('div');
-    bar.className = 'fmm-read';
-    bar.setAttribute('aria-hidden', 'true');
-    bar.innerHTML = '<i></i>';
-    panel.insertBefore(bar, panel.firstChild);
-    const fill = bar.firstChild;
-    let raf = 0;
-    const paint = () => {
-      raf = 0;
-      const max = panel.scrollHeight - panel.clientHeight;
-      fill.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, panel.scrollTop / max) : 0).toFixed(4) + ')';
-    };
-    const onScrollEvt = () => { if (!raf) raf = requestAnimationFrame(paint); };
-    panel.addEventListener('scroll', onScrollEvt, { passive: true });
-    paint();
-    readOff = () => { panel.removeEventListener('scroll', onScrollEvt); cancelAnimationFrame(raf); };
-  });
-}
-
 /* ── Staff ─────────────────────────────────────────────────────────────── */
 
 /**
@@ -239,7 +206,7 @@ function watchStaffOverlays() {
 
 window.FluxMotionMore = {
   ok, tickAndStrike, revealChildren, bump, pop, calRipple, undoTimer, breath, breathStop,
-  readingProgress, pickerReel, periodProgress, enterOverlay,
+  pickerReel, periodProgress, enterOverlay,
 };
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchStaffOverlays, { once: true });
