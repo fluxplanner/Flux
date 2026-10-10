@@ -25,6 +25,13 @@ function block(page: Page, heading: string) {
   return page.locator('#emergency .em-block').filter({ has: page.getByRole('heading', { name: heading, exact: true }) });
 }
 
+/** Right after the card opens or its buttons change, a second tap on Close,
+    "It stopped", "Log this seizure" or "Reset" is ignored for 0.7 s
+    (safety.js), so a test that means to press one waits that out. */
+async function settled(page: Page) {
+  await expect(page.locator('#emergency')).not.toHaveAttribute('data-settling', 'true');
+}
+
 test.describe('Synara first aid', () => {
   test('a seizure past 5 minutes keeps Call 911 up after "It stopped"', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -41,15 +48,86 @@ test.describe('Synara first aid', () => {
     const earlier = card.getByRole('button', { name: '+1 min — it began earlier' });
     for (let i = 0; i < 5; i++) await earlier.click();
     await expect(timer).toHaveAttribute('data-state', 'over');
-    await expect(timer.getByRole('link', { name: 'Call 911 now' })).toHaveAttribute('href', 'tel:911');
-    await expect(earlier).toHaveCount(0);
+    await expect(timer.getByRole('link', { name: /Over 5 minutes — call 911 now/ })).toHaveAttribute('href', 'tel:911');
+    // Still there: a late arrival may need more than five minutes added.
+    await expect(earlier).toBeVisible();
 
-    // It ending doesn't make it safe: 5 minutes or more still needs 911.
+    // It ending doesn't make it safe: 5 minutes or more still needs 911,
+    // and the call button takes focus.
+    await settled(page);
     await card.getByRole('button', { name: 'It stopped' }).click();
     await expect(timer).toHaveAttribute('data-state', 'over');
     await expect(timer.locator('[data-timer-hint]')).toContainText('call 911 if no one has yet');
-    await expect(timer.getByRole('link', { name: 'Call 911' })).toHaveAttribute('href', 'tel:911');
+    const call = timer.getByRole('link', { name: 'Call 911', exact: true });
+    await expect(call).toHaveAttribute('href', 'tel:911');
+    await expect(call).toBeFocused();
     await expect(timer.getByRole('button', { name: 'Log this seizure' })).toBeVisible();
+  });
+
+  for (const width of [320, 390, 1280]) {
+    test(`seven taps on "+1 min" at ${width}px never stop the timer or close the card`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await withExampleData(page);
+      const card = await openEmergency(page);
+      const timer = card.locator('.em-timer');
+      await card.getByRole('button', { name: 'Start timer' }).click();
+      await settled(page);
+
+      // Someone who arrived seven minutes late taps the same spot, fast.
+      const earlier = card.getByRole('button', { name: '+1 min — it began earlier' });
+      const box = (await earlier.boundingBox())!;
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      for (let i = 0; i < 7; i++) {
+        await page.mouse.click(x, y);
+        expect(await page.evaluate(([px, py]) =>
+          document.elementFromPoint(px, py)?.closest('[data-action]')?.getAttribute('data-action'), [x, y]),
+        `tap ${i + 1} would land on something else`).toBe('timer-earlier');
+      }
+      await expect(timer).toHaveAttribute('data-state', 'over');
+      await expect(timer.locator('[data-timer-clock]')).toHaveText(/^7:\d\d$/);
+      await expect(card.getByRole('button', { name: 'It stopped' })).toBeVisible();
+      await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
+      await expect(page.locator('#sheet')).toBeHidden();
+    });
+  }
+
+  test('seven Enters on "+1 min" keep it running, with focus where it was', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await withExampleData(page);
+    const card = await openEmergency(page);
+    const timer = card.locator('.em-timer');
+    await card.getByRole('button', { name: 'Start timer' }).click();
+    const earlier = card.getByRole('button', { name: '+1 min — it began earlier' });
+    await earlier.focus();
+    for (let i = 0; i < 7; i++) await page.keyboard.press('Enter');
+    await expect(timer).toHaveAttribute('data-state', 'over');
+    await expect(timer.locator('[data-timer-clock]')).toHaveText(/^7:\d\d$/);
+    await expect(earlier).toBeFocused();
+    await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
+    await expect(page.locator('#sheet')).toBeHidden();
+  });
+
+  test('a double tap never lands on the button that replaced the one tapped', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await withExampleData(page);
+
+    // SOS sits where the card's Close does: the second tap must not close it.
+    await page.locator('.sos-btn').dblclick();
+    const card = page.locator('#emergency[data-open="true"]');
+    await expect(card).toBeVisible();
+
+    // Start, twice: "It stopped" comes up under the finger.
+    const timer = card.locator('.em-timer');
+    await card.getByRole('button', { name: 'Start timer' }).dblclick();
+    await expect(timer).toHaveAttribute('data-state', 'running');
+
+    // "It stopped", twice: "Log this seizure" comes up under the finger.
+    await settled(page);
+    await card.getByRole('button', { name: 'It stopped' }).dblclick();
+    await expect(timer).toHaveAttribute('data-state', 'stopped');
+    await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
+    await expect(page.locator('#sheet')).toBeHidden();
   });
 
   test('a short seizure ends calmly, and the timer works with storage blocked', async ({ page }) => {
@@ -65,9 +143,11 @@ test.describe('Synara first aid', () => {
     await expect(timer).toHaveAttribute('data-state', 'running');
     await card.getByRole('button', { name: '+1 min — it began earlier' }).click();
     await expect(timer.locator('[data-timer-clock]')).toHaveText(/^1:\d\d$/);
+    await settled(page);
     await card.getByRole('button', { name: 'It stopped' }).click();
     await expect(timer).toHaveAttribute('data-state', 'stopped');
     await expect(timer.getByRole('link', { name: /Call 911/ })).toHaveCount(0);
+    await expect(timer.getByRole('button', { name: 'Log this seizure' })).toBeFocused();
   });
 
   test('the card covers wandering seizures, rescue plans and every reason to call 911', async ({ page }) => {
@@ -164,6 +244,7 @@ test.describe('Synara first aid', () => {
     await expect(rescue).toContainText('Midazolam nasal spray');
     await expect(rescue).toContainText('Only give it if you are trained to');
     await expect(block(page, 'Medical details')).toContainText('O+');
+    await settled(page);
     await card.locator('[data-action="close-emergency"]').click();
 
     await page.locator('.tab[data-to="safety"]').click();
@@ -213,6 +294,7 @@ test.describe('Synara first aid', () => {
     await expect(block(page, 'What to do right now')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('synara.v2'))).toBeNull();
 
+    await settled(page);
     await card.locator('[data-action="close-emergency"]').click();
     await expect(page.locator('#welcome')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Set it up for me' })).toBeVisible();

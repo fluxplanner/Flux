@@ -364,11 +364,53 @@ const RESCUE_NOTE = 'From their seizure action plan. Only give it if you are tra
 
 const clock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
+/* ---------- Nothing moves under a finger ----------
+   Someone who arrived six minutes late taps "+1 min" six times in the
+   same spot, fast, or presses Enter six times. So in the running and
+   over states the buttons are the same nodes in the same places: at
+   5:00 they only change colour, and Call 911 appears in the slot above
+   the clock, which is the same height either way (app.css). Focus never
+   moves on its own while the timer runs.
+
+   Where the buttons have to change — Start becoming "It stopped",
+   "It stopped" becoming "Log this seizure" — a second tap or Enter that
+   arrives within SETTLE_MS of the change was meant for the old button,
+   so the actions that end something (stop, log, reset, close the card)
+   ignore it. Calling 911 and "+1 min" are never held back. */
+const SETTLE_MS = 700;
+const SETTLE_GUARDED = '.em-timer [data-action="timer-stop"], .em-timer [data-action="timer-log"], ' +
+  '.em-timer [data-action="timer-reset"], [data-action="close-emergency"]';
+let settleUntil = 0;
+let settleTimer = null;
+
+/* The card is marked while it settles (tests wait on it; nothing shows). */
+function settle() {
+  settleUntil = Date.now() + SETTLE_MS;
+  const card = emergencyEl();
+  if (card) card.dataset.settling = 'true';
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => { if (card) delete card.dataset.settling; }, SETTLE_MS);
+}
+
+document.addEventListener('click', (e) => {
+  if (Date.now() >= settleUntil) return;
+  const node = e.target instanceof Element ? e.target.closest(SETTLE_GUARDED) : null;
+  if (!node || !node.closest('#emergency')) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
+
+const callNow = (label) =>
+  `<a class="btn btn-lg btn-block btn-emergency em-timer-911" href="tel:911" data-timer-911>` +
+  `${icon('phone', 20)} <span data-timer-911-label>${esc(label)}</span></a>`;
+
 function timerMarkup() {
   return `
     <section class="em-timer" data-state="idle" aria-labelledby="em-timer-h">
       <div class="em-timer-top">
         <h3 id="em-timer-h" class="em-timer-h">${icon('timer', 18)} Seizure timer</h3>
+      </div>
+      <div class="em-timer-slot" data-timer-slot>
         <span class="em-timer-hint" data-timer-hint>Start it now. If the seizure began earlier, you can add the minutes you missed.</span>
       </div>
       <div class="em-timer-clock" data-timer-clock aria-hidden="true">0:00</div>
@@ -381,37 +423,60 @@ function timerMarkup() {
     </section>`;
 }
 
+/* The slot above the clock holds either a line of text or, from 5:00,
+   the Call 911 button. Swapped only when its content changes. */
+function setSlot(box, kind, content) {
+  const slot = box.querySelector('[data-timer-slot]');
+  if (!slot) return;
+  if (kind === 'text') {
+    let hint = slot.querySelector('[data-timer-hint]');
+    if (!hint) {
+      slot.innerHTML = '<span class="em-timer-hint" data-timer-hint></span>';
+      hint = slot.querySelector('[data-timer-hint]');
+    }
+    if (hint.textContent !== content) hint.textContent = content;
+    return;
+  }
+  const label = slot.querySelector('[data-timer-911-label]');
+  if (!label) slot.innerHTML = callNow(content);
+  else if (label.textContent !== content) label.textContent = content;
+}
+
 function setTimerView(root, mode, secs) {
   const box = root.querySelector('.em-timer');
   if (!box) return;
   const clockEl = box.querySelector('[data-timer-clock]');
-  const hint = box.querySelector('[data-timer-hint]');
   const actionsEl = box.querySelector('[data-timer-actions]');
-  const changed = box.dataset.state !== mode;
+  const live = box.querySelector('[data-timer-live]');
+  const was = box.dataset.state;
+  const before = actionsEl.getBoundingClientRect().top;
 
-  box.dataset.state = mode;
   clockEl.textContent = clock(secs);
 
   if (mode === 'running' || mode === 'over') {
     const over = mode === 'over';
+    box.dataset.state = mode;
     // The clock counts from when Start was pressed, which is rarely when
     // the seizure began — so the 5 minutes are "from when it began", and
-    // "+1 min" lets whoever arrived late add the time they missed.
-    hint.textContent = over
-      ? 'Over 5 minutes — call 911 now'
-      : `Call 911 at 5 minutes from when it began · ${clock(Math.max(0, EMS_SECONDS - secs))} to go`;
-    // Only rebuild the buttons when the state changes, or a button
-    // being pressed would be swapped out from under the finger.
-    if (changed) {
-      const hadFocus = actionsEl.contains(document.activeElement);
+    // "+1 min" lets whoever arrived late add the time they missed. It
+    // stays past 5:00: the record should say how long it really lasted.
+    if (over) setSlot(box, '911', 'Over 5 minutes — call 911 now');
+    else setSlot(box, 'text', `Call 911 at 5 minutes from when it began · ${clock(Math.max(0, EMS_SECONDS - secs))} to go`);
+
+    let stop = actionsEl.querySelector('[data-action="timer-stop"]');
+    let earlier = actionsEl.querySelector('[data-action="timer-earlier"]');
+    if (!stop || !earlier) {
+      // Idle (or stopped) to running: the one rebuild, right after Start.
       actionsEl.innerHTML = `
-        ${over ? `<a class="btn btn-lg btn-block btn-emergency" href="tel:911">${icon('phone', 20)} Call 911 now</a>` : ''}
-        <button class="btn btn-lg btn-block ${over ? 'btn-on-danger-ghost' : 'btn-outline'}" data-action="timer-stop">
-          ${icon('stop', 18)} It stopped
-        </button>
-        ${over ? '' : '<button class="btn btn-block btn-quiet" data-action="timer-earlier">+1 min — it began earlier</button>'}`;
-      if (hadFocus) actionsEl.querySelector('[data-action="timer-stop"]')?.focus({ preventScroll: true });
+        <button class="btn btn-lg btn-block" data-action="timer-stop">${icon('stop', 18)} It stopped</button>
+        <button class="btn btn-block" data-action="timer-earlier">+1 min — it began earlier</button>`;
+      stop = actionsEl.querySelector('[data-action="timer-stop"]');
+      earlier = actionsEl.querySelector('[data-action="timer-earlier"]');
+      settle();
     }
+    // Same nodes, new colours: on red they need the light-on-red look.
+    stop.className = `btn btn-lg btn-block ${over ? 'btn-on-danger-ghost' : 'btn-outline'}`;
+    earlier.className = `btn btn-block ${over ? 'btn-on-danger-ghost' : 'btn-quiet'}`;
   } else if (mode === 'stopped') {
     // Five minutes or more still needs 911 after the seizure ends (CDC,
     // Epilepsy Foundation). Stay red with the call button — never a
@@ -419,16 +484,32 @@ function setTimerView(root, mode, secs) {
     // at most this is the same single switch the timer makes at 5:00.
     const long = secs >= EMS_SECONDS;
     box.dataset.state = long ? 'over' : 'stopped';
-    hint.textContent = long
+    const said = long
       ? `It lasted ${clock(secs)}. That is 5 minutes or longer, so call 911 if no one has yet.`
       : `It lasted ${clock(secs)}`;
+    if (long) setSlot(box, '911', 'Call 911');
+    else setSlot(box, 'text', said);
     actionsEl.innerHTML = `
-      ${long ? `<a class="btn btn-lg btn-block btn-emergency" href="tel:911">${icon('phone', 20)} Call 911</a>` : ''}
+      ${long ? `<p class="em-timer-hint em-timer-said" data-timer-hint>${esc(said)}</p>` : ''}
       <button class="btn btn-lg btn-block ${long ? 'btn-on-danger-ghost' : 'btn-primary'}" data-action="timer-log">${icon('note', 18)} Log this seizure</button>
       <button class="btn btn-block ${long ? 'btn-on-danger-ghost' : 'btn-quiet'}" data-action="timer-reset">Reset timer</button>`;
-    const live = box.querySelector('[data-timer-live]');
-    if (live) live.textContent = hint.textContent;
+    if (live) live.textContent = said;
+    settle();
   }
+
+  // Belt and braces: if anything above the buttons changed height (a
+  // hint wrapping onto another line at a large text size), whatever is
+  // under the finger now may not be what it was aimed at.
+  if (was !== box.dataset.state && Math.abs(actionsEl.getBoundingClientRect().top - before) > 1) settle();
+}
+
+/* After "It stopped": five minutes or more still needs 911, so the call
+   button takes focus; a short one goes to "Log this seizure". */
+function focusAfterStop(root) {
+  const target = (stoppedAfter || 0) >= EMS_SECONDS
+    ? root.querySelector('[data-timer-911]')
+    : root.querySelector('[data-action="timer-log"]');
+  target?.focus({ preventScroll: true });
 }
 
 function startTicking(root) {
@@ -576,8 +657,11 @@ export function showEmergency(state, { onClose } = {}) {
       } else if (stoppedAfter != null) {
         setTimerView(root, 'stopped', stoppedAfter);
         // That swapped out Start timer, which had focus: never leave it on <body>.
-        root.querySelector('[data-action="timer-log"]')?.focus({ preventScroll: true });
+        focusAfterStop(root);
       }
+      // A double tap on SOS must not land its second tap on Close, which
+      // sits in the same corner of the red bar.
+      settle();
     },
     onClose() {
       stopTicking();
@@ -854,7 +938,8 @@ export const actions = {
 
   /* Whoever starts the timer has usually arrived after the seizure began.
      Each press moves the start back a minute, so the 5-minute line counts
-     from when it began. Past 5:00 the button goes, and Call 911 comes. */
+     from when it began. It stays where it is past 5:00 (Call 911 comes in
+     above the clock), so the log can say how long it really lasted. */
   'timer-earlier'() {
     const start = readStart();
     if (!start) return;
@@ -871,7 +956,7 @@ export const actions = {
     startedStamp = start.at;
     writeStart(null);
     setTimerView(emergencyEl(), 'stopped', stoppedAfter);
-    emergencyEl().querySelector('[data-action="timer-log"]')?.focus({ preventScroll: true });
+    focusAfterStop(emergencyEl());
   },
 
   'timer-reset'() {

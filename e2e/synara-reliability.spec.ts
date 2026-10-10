@@ -66,6 +66,8 @@ test.describe('Synara with storage that is full or blocked', () => {
     const card = page.locator('#emergency[data-open="true"]');
     await expect(card).toBeVisible();
     await expect(card.locator('.em-name')).toHaveText('Maya Ellison');
+    // A second tap on Close right after the card opens is ignored for 0.7 s.
+    await expect(page.locator('#emergency')).not.toHaveAttribute('data-settling', 'true');
     await card.locator('[data-action="close-emergency"]').click();
 
     await expect(page.locator('.save-notice')).toContainText('Changes aren’t saving right now');

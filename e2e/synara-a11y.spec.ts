@@ -16,6 +16,13 @@ async function withExampleData(page: Page) {
   await expect(page.locator('#welcome')).toBeHidden();
 }
 
+/** Right after the emergency card opens or its timer buttons change, a
+    second tap on Close, "It stopped", "Log this seizure" or "Reset" is
+    ignored for 0.7 s (safety.js); a test that means to press one waits. */
+async function settled(page: Page) {
+  await expect(page.locator('#emergency')).not.toHaveAttribute('data-settling', 'true');
+}
+
 /** WCAG contrast of an element's text against the solid fills behind it. */
 function contrastOf(el: Element): number {
   const parse = (c: string) => {
@@ -63,6 +70,7 @@ test.describe('Synara: focus and keyboard', () => {
 
     await page.keyboard.press('Enter');
     await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
+    await settled(page);
     await page.locator('#emergency [data-action="close-emergency"]').click();
     await expect(page.locator('#emergency')).toBeHidden();
     await expect(sos).toBeFocused();
@@ -74,7 +82,9 @@ test.describe('Synara: focus and keyboard', () => {
     await page.locator('.sos-btn').click();
     const card = page.locator('#emergency[data-open="true"]');
     await card.locator('[data-action="timer-start"]').click();
+    await settled(page);
     await card.locator('[data-action="timer-stop"]').click();
+    await settled(page);
     await card.locator('[data-action="timer-log"]').click();
     await expect(page.locator('#sheet[data-open="true"]')).toBeVisible();
     await page.keyboard.press('Escape');
@@ -88,6 +98,7 @@ test.describe('Synara: focus and keyboard', () => {
     await page.locator('.sos-btn').click();
     const card = page.locator('#emergency[data-open="true"]');
     await card.locator('[data-action="timer-start"]').click();
+    await settled(page);
     await card.locator('[data-action="timer-stop"]').click();
     await page.keyboard.press('Escape');
     await expect(page.locator('#emergency')).toBeHidden();
@@ -105,6 +116,7 @@ test.describe('Synara: focus and keyboard', () => {
     await page.locator('.sos-btn').click();
     const card = page.locator('#emergency[data-open="true"]');
     await card.locator('[data-action="timer-start"]').click();
+    await settled(page);
     await card.locator('[data-action="close-emergency"]').click();
     await expect(banner).toBeVisible();
     await expect(banner).toContainText('Seizure timer still running');
@@ -115,7 +127,9 @@ test.describe('Synara: focus and keyboard', () => {
 
     await banner.click();
     await expect(card.locator('[data-action="timer-stop"]')).toBeFocused();
+    await settled(page);
     await card.locator('[data-action="timer-stop"]').click();
+    await settled(page);
     await card.locator('[data-action="close-emergency"]').click();
     await expect(page.locator('#emergency')).toBeHidden();
     await expect(banner).toBeHidden();

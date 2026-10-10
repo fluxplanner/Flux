@@ -1097,7 +1097,28 @@
   text-transform: uppercase;
   color: var(--brand-ink);
 }
-.em-timer-hint { font-size: var(--t-sm); color: var(--ink-2); line-height: var(--lh-snug); }
+.em-timer-hint {
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  line-height: var(--lh-snug);
+  /* "· 4:59 to go" changes every second: same-width digits, so the line
+     never rewraps and pushes the buttons down mid-tap. */
+  font-variant-numeric: tabular-nums;
+}
+/* Holds the hint, or from 5:00 the Call 911 button, at the same height
+   either way (a 56px button; three lines of hint fit too), so nothing
+   below it moves under a finger at 5:00 (safety.js). */
+.em-timer-slot {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+}
+.em-timer-911 {
+  white-space: normal;
+  text-align: center;
+  text-wrap: balance;
+  line-height: 1.2;
+}
 .em-timer-clock {
   font-size: clamp(56px, 18vw, 88px);
   font-weight: var(--w-black);
