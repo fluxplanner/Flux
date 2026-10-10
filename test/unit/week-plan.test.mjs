@@ -302,3 +302,9 @@ test('a reason splits into "Due …" and the rest, so the week view can say it a
   const again = plan({ tasks: [task(2, '2026-10-09', 90, { type: 'essay' })], blocks: applied(r, (b) => ({ pinned: b.taskId === 2 })) });
   assert.equal(again.blocks.find((b) => b.taskId === 2).detail, null);
 });
+
+test('a daily limit shorter than a usual block still gets study in, in blocks that short', () => {
+  const r = plan({ maxPerDay: 15, tasks: [task(1, '2026-10-08', 60)] });
+  assert.deepEqual(of(r, 1), [['2026-10-05', '16:00', 15], ['2026-10-06', '16:00', 15], ['2026-10-07', '16:00', 15]]);
+  assert.equal(r.unscheduled[0].reason, 'Due Thu. Only 45 of 60 min fit: your daily limit (15 min) is used up before then.');
+});

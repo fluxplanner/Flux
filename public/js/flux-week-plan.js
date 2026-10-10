@@ -158,7 +158,8 @@
     const N = Math.max(1, Math.min(14, Math.round(+o.days || 7)));
     const last = addDays(today, N - 1);
     const maxPerDay = Math.max(15, Math.round(+o.maxPerDay || 120));
-    const minBlock = Math.max(5, +o.minBlock || 20);
+    // A daily limit under a short block's length makes the blocks that short.
+    const minBlock = Math.min(maxPerDay, Math.max(5, +o.minBlock || 20));
     const maxBlock = Math.max(minBlock, +o.maxBlock || 60);
     const gap = o.gap != null ? Math.max(0, +o.gap) : 10;
     const avail = normAvail(o.avail);
