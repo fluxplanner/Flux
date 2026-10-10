@@ -15053,6 +15053,9 @@ function initQuickAdd(){
 let _dragTaskId=null,_dragOverId=null;
 function initTaskDrag(){
   const list=document.getElementById('taskList');if(!list)return;
+  // Once per element: a second set made every drop splice the list twice.
+  if(list.__fluxDragBound)return;
+  list.__fluxDragBound=true;
   list.addEventListener('dragstart',e=>{
     const item=e.target.closest('[data-task-id]');if(!item)return;
     _dragTaskId=fluxParseId(item.dataset.taskId);
@@ -15146,29 +15149,34 @@ function initMobileNav(){
 }
 
 // ══ DASHBOARD INIT ══
+/* Once per page. showApp() runs more than once while signing in, and every
+   run used to add another clock interval, another set of drag and swipe
+   listeners on the task list and another tab-switch listener — so one swipe
+   ticked a task two or three times over (an even count leaves it unticked). */
+let _fluxDashFeaturesInit=false;
 function initDashboardFeatures(){
-  initTopbar();
-  initQuickAdd();
   initTaskDrag();
-  initMobileNav();
-  smartReorderDashboard();
+  if(!_fluxDashFeaturesInit){
+    _fluxDashFeaturesInit=true;
+    initTopbar();
+    initQuickAdd();
+    initMobileNav();
+    smartReorderDashboard();
+    setInterval(()=>{checkTimePoverty();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
+    initIntelligenceEngine();
+    initPomodoroVisibilityPause();
+    initV4Systems();
+    if(typeof fluxRenderV4Dashboard==='function')setInterval(fluxRenderV4Dashboard,5*60*1000);
+  }
+  // Redraws only — safe to repeat once the account's settings have arrived.
   checkTimePoverty();
-  setInterval(()=>{checkTimePoverty();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
-  initIntelligenceEngine();
-  // New systems
-  initPomodoroVisibilityPause();
-  initTaskSwipeGestures();
   applyCollapsedSections();
   applyHighContrast();
   renderSavedViewsDropdown();
   if(typeof updateMomentumUI==='function'){try{updateMomentumUI();}catch(_){}}
   renderEffortReport();
   renderSubjectEfficiencyHeatmap();
-  initV4Systems();
-  if(typeof fluxRenderV4Dashboard==='function'){
-    fluxRenderV4Dashboard();
-    setInterval(fluxRenderV4Dashboard,5*60*1000);
-  }
+  if(typeof fluxRenderV4Dashboard==='function')fluxRenderV4Dashboard();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -16245,42 +16253,9 @@ function applyHighContrast(){
 }
 
 // ══ TASK SWIPE GESTURES ═══════════════════════════════════════
-function initTaskSwipeGestures(){
-  const list=document.getElementById('taskList');if(!list)return;
-  let _touchStartX=0,_touchEl=null;
-  list.addEventListener('touchstart',e=>{
-    _touchEl=e.target.closest('[data-task-id]');
-    if(_touchEl)_touchStartX=e.touches[0].clientX;
-  },{passive:true});
-  list.addEventListener('touchmove',e=>{
-    if(!_touchEl)return;
-    const dx=e.touches[0].clientX-_touchStartX;
-    if(Math.abs(dx)>10){
-      _touchEl.style.transform=`translateX(${Math.sign(dx)*Math.min(Math.abs(dx),80)}px)`;
-      _touchEl.style.transition='none';
-      _touchEl.style.opacity=String(1-Math.abs(dx)/200);
-    }
-  },{passive:true});
-  list.addEventListener('touchend',e=>{
-    if(!_touchEl)return;
-    const dx=e.changedTouches[0].clientX-_touchStartX;
-    _touchEl.style.transition='transform .3s var(--ease-spring),opacity .3s';
-    if(dx>60){
-      // Swipe right → complete
-      const id=fluxParseId(_touchEl.dataset.taskId);
-      _touchEl.style.transform='translateX(100vw)';_touchEl.style.opacity='0';
-      setTimeout(()=>toggleTask(id),300);
-    }else if(dx<-60){
-      // Swipe left → show reschedule
-      const id=fluxParseId(_touchEl.dataset.taskId);
-      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
-      openEdit(id);
-    }else{
-      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
-    }
-    _touchEl=null;
-  },{passive:true});
-}
+// Live in flux-mobile-swipe.js. A second handler here completed a task on any
+// touch that drifted 60px sideways — no check on vertical movement at all, so
+// scrolling the list ticked tasks off — and fired alongside that one.
 
 
 // ══ LOADING SKELETONS ═════════════════════════════════════════
