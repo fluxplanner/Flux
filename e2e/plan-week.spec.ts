@@ -198,6 +198,24 @@ test.describe('Plan my week', () => {
     // Finishing the essay itself clears its unfinished blocks.
     await page.evaluate(() => (window as any).toggleTask(881002));
     await expect.poll(async () => (await blocks(page)).filter((x) => x.of === 881002 && !x.done).length).toBe(0);
+    // (The essay had an estimate, so Flux asks how long it really took.)
+    await page.locator('#fluxEffortSkip').click();
+
+    // Work finished some other way (a sync, say) no longer needs its blocks,
+    // even one the student moved: planning again offers to take it off.
+    await page.evaluate(() => {
+      const w = window as any;
+      const lab = w.tasks.find((x: any) => x.weekBlock && x.planOf === 881003);
+      lab.time = '19:00';
+      w.tasks.find((x: any) => x.id === 881003).done = true;
+    });
+    await page.locator('#dashPlanWeekBtn').click();
+    await modal(page).locator('[data-act="to-avail"]').click();
+    await modal(page).locator('[data-act="propose"]').click();
+    await expect(block(page, 'Lab write-up')).toHaveCount(0);
+    await expect(modal(page).locator('.pw-note', { hasText: 'no longer needed' })).toHaveText('1 unfinished block is no longer needed and will be taken off.');
+    await modal(page).locator('[data-act="approve"]').click();
+    expect((await blocks(page)).filter((x) => x.of === 881003)).toEqual([]);
   });
 
   test('week view: Escape only closes the editor, a move onto a rest day is flagged, Ctrl+Z undoes it here', async ({ page }) => {

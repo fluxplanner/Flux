@@ -106,6 +106,8 @@
     const all = allTasks();
     const shown = typeof window.fluxTaskVisibleInMode === 'function' ? all.filter((t) => safe(() => window.fluxTaskVisibleInMode(t), true)) : all;
     const doneMin = {}, planned = new Set(), load = {};
+    // A block for work that is finished (or gone) is no longer needed, even one the student moved.
+    const open = new Set(all.filter((t) => t && !t.done && t.planOf == null).map((t) => String(t.id)));
     all.forEach((p) => {
       if (!p || p.planOf == null) return;
       const pid = String(p.planOf);
@@ -124,7 +126,7 @@
       })),
       blocks: all.filter(isBlock).map((t) => ({
         id: t.id, key: t.weekBlock.key, taskId: t.planOf, name: String(t.name || '').replace(/ · Study$/, ''), date: t.date, start: t.time || '', minutes: +t.estTime || 0,
-        done: !!t.done, pinned: !!t.weekBlock.pinned || movedSince(t),
+        done: !!t.done, pinned: open.has(String(t.planOf)) && (!!t.weekBlock.pinned || movedSince(t)),
       })),
     });
   }
