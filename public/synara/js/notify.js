@@ -24,6 +24,13 @@
 import { dayKey, minutesOf, prettyTime } from './util.js';
 import * as store from './store.js';
 
+/* Relative to the page. Inside Flux the page is synara.html at the site
+   root, where icons/ holds the planner's icon, so Synara's is elsewhere
+   (the same rule as the Flux logo in ui.js). */
+const ICON = typeof document !== 'undefined' && document.documentElement.dataset.host === 'flux'
+  ? 'public/synara/icons/icon-192.png'
+  : 'icons/icon-192.png';
+
 /** Honest capability string for the settings screen. */
 export function support() {
   if (!('Notification' in window)) {
@@ -89,8 +96,8 @@ function fire(med, time) {
     const n = new Notification('Time for your medication', {
       body: `${med.name} ${med.dose} — ${prettyTime(time)}`,
       tag: `synara-${med.id}-${time}`,   // replaces rather than stacks
-      icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
+      icon: ICON,
+      badge: ICON,
     });
     n.onclick = () => {
       window.focus();
@@ -165,7 +172,7 @@ export function test() {
   try {
     new Notification('Synara reminders are on', {
       body: 'This is what a dose reminder will look like.',
-      icon: 'icons/icon-192.png',
+      icon: ICON,
       tag: 'synara-test',
     });
     return true;

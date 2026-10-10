@@ -49,6 +49,9 @@ const CARE_FIELDS = [
   ['neuroPhone', 'Neurologist phone', '(555) 010-4488'],
   ['allergies', 'Allergies', 'Penicillin'],
   ['bloodType', 'Blood type', 'O+'],
+  ['rescueMed', 'Rescue medication', 'From your seizure action plan',
+    'Only if your seizure action plan has one: what it is, when it is given, and where it is kept. ' +
+    'Copy it from the plan your doctor or school nurse gave you. Leave it blank if you don’t have one.'],
 ];
 
 export function render(state) {
@@ -491,11 +494,12 @@ function describeBackup(parsed) {
 export const actions = {
   'profile-edit'(node, state) {
     const p = state.profile;
-    const fields = CARE_FIELDS.map(([key, label, ph]) => `
+    const fields = CARE_FIELDS.map(([key, label, ph, hint]) => `
       <div class="field">
         <label class="label" for="p-${key}">${label}</label>
         <input class="input" id="p-${key}" name="${key}" value="${esc(p[key] || '')}"
-               placeholder="${esc(ph)}" autocomplete="off" maxlength="200" />
+               placeholder="${esc(ph)}" autocomplete="off" maxlength="200"${hint ? ` aria-describedby="p-${key}-hint"` : ''} />
+        ${hint ? `<span class="hint" id="p-${key}-hint">${esc(hint)}</span>` : ''}
       </div>`).join('');
 
     openSheet({

@@ -86,6 +86,10 @@ export function emptyState() {
       seizureType: '', diagnosed: '',
       neurologist: '', neuroPhone: '',
       allergies: '', bloodType: '',
+      // Rescue medication, in the words of their seizure action plan:
+      // what it is, when it's given, and where it's kept. Optional — not
+      // everyone has one — and shown on the emergency and printed cards.
+      rescueMed: '',
     },
 
     /* meds[] — {id, name, dose, form, notes, color, added, ended, schedule}
@@ -127,20 +131,27 @@ export function emptyState() {
        headings would be worse than useless in the moment it is needed.
        Only the genuinely personal fields start blank.
 
-       Wording follows standard public guidance ("Stay, Safe, Side").
-       The card itself tells the user to confirm it with a neurologist. */
+       Wording follows standard public guidance (Epilepsy Foundation
+       "Stay, Safe, Side"; CDC seizure first aid). It covers seizures
+       where someone stiffens and shakes AND ones where they stare or
+       wander, and it leaves room for a rescue-medicine plan rather
+       than contradicting one. The card itself tells the user to
+       confirm it with a neurologist. */
     card: {
       looksLike: '',
       during: [
         'Stay with them and start timing the seizure.',
+        'If they are stiffening or shaking, gently help them down to the floor.',
         'Move anything hard or sharp out of the way.',
-        'Put something soft under their head.',
+        'If they are on the floor, put something soft under their head.',
         'Loosen anything tight around their neck.',
         'If they are not aware or not awake, gently turn them onto their side.',
+        'If they are confused or wandering, stay beside them and gently guide them away from danger, like stairs, roads, or water. Don\'t grab or hold them.',
+        'If they have a seizure action plan, follow it. Only give rescue medicine if you are trained to.',
         'Stay calm and speak normally — they may be able to hear you.',
       ],
       doNot: [
-        'Do NOT put anything in their mouth. They cannot swallow their tongue.',
+        'Do NOT put anything in their mouth — they cannot swallow their tongue. Rescue medicine from their seizure plan is the only exception.',
         'Do NOT hold them down or try to stop the movements.',
         'Do NOT give food, drink, or pills until they are fully awake.',
         'Do NOT crowd them — ask other people to step back.',
@@ -158,6 +169,9 @@ export function emptyState() {
         'They do not wake up or return to normal afterwards.',
         'They are having trouble breathing, or their lips stay blue.',
         'They were injured, or it happened in water.',
+        'It looks different from their usual seizures.',
+        'They have diabetes or a heart condition, or are pregnant.',
+        'Rescue medicine was given, or their seizure plan says to call.',
       ],
       forTeacher: '',
       forNurse: '',
@@ -332,6 +346,48 @@ function firstDoseDays(doses) {
 
 const byNewest = (a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
 
+/* The card's core first-aid lists. An empty one would silently drop
+   "What to do", "Do NOT" or "Call 911 if" from the emergency screen and
+   print an empty box, so empty means "use the standard steps". Only
+   "Afterwards" may be cleared. */
+export const CORE_STEPS = new Set(['during', 'doNot', 'callEms']);
+
+/** The standard first-aid list for one of the card's step fields. */
+export function defaultSteps(field) {
+  return [...(emptyState().card[field] || [])];
+}
+
+/* The standard steps as the first version wrote them. A list still
+   exactly like this was never edited, so it moves to today's wording:
+   the steps added since (a seizure where they wander, rescue medicine,
+   more reasons to call 911) reach cards made before them, not just new
+   ones. A list the student changed is theirs and is left alone. */
+const FIRST_STEPS = {
+  during: [
+    'Stay with them and start timing the seizure.',
+    'Move anything hard or sharp out of the way.',
+    'Put something soft under their head.',
+    'Loosen anything tight around their neck.',
+    'If they are not aware or not awake, gently turn them onto their side.',
+    'Stay calm and speak normally — they may be able to hear you.',
+  ],
+  doNot: [
+    'Do NOT put anything in their mouth. They cannot swallow their tongue.',
+    'Do NOT hold them down or try to stop the movements.',
+    'Do NOT give food, drink, or pills until they are fully awake.',
+    'Do NOT crowd them — ask other people to step back.',
+  ],
+  callEms: [
+    'The seizure lasts longer than 5 minutes.',
+    'A second seizure starts soon after the first.',
+    'They do not wake up or return to normal afterwards.',
+    'They are having trouble breathing, or their lips stay blue.',
+    'They were injured, or it happened in water.',
+  ],
+};
+
+const sameList = (a, b) => a.length === b.length && a.every((s, i) => s === b[i]);
+
 /**
  * Bring any stored shape up to the current one, validating as it goes.
  * Exported for tests; the app reaches it through init() and importJSON().
@@ -369,7 +425,12 @@ export function migrate(stored) {
   if (src.card && typeof src.card === 'object') {
     for (const key of ['during', 'doNot', 'after', 'callEms']) {
       const list = strList(src.card[key]);
-      if (list) card[key] = list;
+      if (!list) continue;
+      // An empty core list keeps the standard steps (see CORE_STEPS), and
+      // one never edited since the first version gets today's (FIRST_STEPS).
+      if (!list.length && CORE_STEPS.has(key)) continue;
+      if (FIRST_STEPS[key] && sameList(list, FIRST_STEPS[key])) continue;
+      card[key] = list;
     }
     for (const key of ['looksLike', 'forTeacher', 'forNurse', 'forCoach']) {
       if (typeof src.card[key] === 'string') card[key] = str(src.card[key]);

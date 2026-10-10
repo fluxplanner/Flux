@@ -207,15 +207,24 @@ export function uid(prefix = 'id') {
 
 export const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
-/** Turn "(555) 010-2244" into something tel: accepts. */
+/* "ext. 214", "ext 214", "x214", "#214": what follows is an extension. */
+const EXT_RE = /\s*(?:ext\.?|x|#)\s*/i;
+
+/** Turn "(555) 010-2244" into something tel: accepts. An extension is
+    dialed after a pause (","), not glued onto the number: "(555) 018-8300
+    ext. 214" used to become tel:5550188300214, a number that does not exist. */
 export function telHref(phone) {
-  return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
+  const [main, ext] = String(phone).split(EXT_RE);
+  const digits = (ext || '').replace(/\D/g, '');
+  return `tel:${main.replace(/[^\d+]/g, '')}${digits ? `,${digits}` : ''}`;
 }
 
 /** True when a number has enough digits to actually dial. An emergency
-    button that rings nothing is worse than no button. */
+    button that rings nothing is worse than no button. An extension
+    alone doesn't count. */
 export function dialable(phone) {
-  return (String(phone || '').match(/\d/g) || []).length >= 3;
+  const main = String(phone || '').split(EXT_RE)[0];
+  return (main.match(/\d/g) || []).length >= 3;
 }
 
 /** Initials for the avatar, max two letters. */

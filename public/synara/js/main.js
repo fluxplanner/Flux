@@ -287,11 +287,13 @@ function onHashChange() {
     el.screen.scrollTop = 0;
     render();
   }
-  if (next.sos) {
-    safety.showEmergency(store.get());
-    // Drop the alias so closing the card and pressing back behave normally.
-    history.replaceState(null, '', '#/safety');
-  }
+  if (next.sos) openSos();
+}
+
+function openSos(opts) {
+  safety.showEmergency(store.get(), opts);
+  // Drop the alias so closing the card and pressing back behave normally.
+  history.replaceState(null, '', '#/safety');
 }
 
 /* The home screen shows a live countdown, and every screen has a
@@ -328,7 +330,18 @@ async function boot() {
   store.subscribe(render);
   render();
 
-  if (firstRun) intro.show();
+  if (firstRun && first.sos) {
+    // The emergency shortcut, on a device that has never run Synara: a
+    // teacher's bookmark or a shared link, maybe mid-seizure. The card
+    // works with nothing set up, so it comes first and the intro waits
+    // until it is closed — unless it closed to log the seizure, since
+    // the intro starts the record afresh and would throw that entry away.
+    openSos({
+      onClose: () => setTimeout(() => {
+        if (!isSheetOpen() && !isEmergencyOpen()) intro.show();
+      }),
+    });
+  } else if (firstRun) intro.show();
   else if (first.sos) onHashChange();
 
   window.addEventListener('hashchange', onHashChange);

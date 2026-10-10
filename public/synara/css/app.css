@@ -916,14 +916,19 @@
 }
 .contact-r {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
   min-width: 0;
   font-size: var(--t-sm);
   color: var(--ink-3);
   line-height: var(--lh-snug);
   margin-top: 2px;
 }
+/* Relation and number wrap below the "First call" pill rather than being
+   cut off, and the number itself never breaks across lines. */
+.contact-rt { min-width: 0; }
+.contact-ph { white-space: nowrap; }
 
 .call-btn {
   flex: none;
