@@ -193,6 +193,13 @@ test.describe('Synara reminders', () => {
         constructor() { throw new TypeError("Failed to construct 'Notification': Illegal constructor."); }
       }
       Object.defineProperty(window, 'Notification', { value: AndroidNotification, configurable: true, writable: true });
+      // The headless browser CI runs has no notification backend, so a real
+      // registration.showNotification() rejects there. Record what reaches
+      // the service worker instead; whether Synara routes the test there is
+      // what this checks.
+      const shown: string[] = [];
+      ServiceWorkerRegistration.prototype.showNotification = function (title: string) { shown.push(title); return Promise.resolve(); };
+      ServiceWorkerRegistration.prototype.getNotifications = function () { return Promise.resolve(shown.map((title) => ({ title }))) as never; };
     });
     await withExampleData(page);
     await page.evaluate(() => navigator.serviceWorker.ready);
