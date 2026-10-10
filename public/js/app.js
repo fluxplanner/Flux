@@ -4478,22 +4478,87 @@ function addTask(){
   const planAfter=document.getElementById('taskPlanAfter');
   if(planAfter&&planAfter.checked){planAfter.checked=false;if(task.date)setTimeout(()=>openPlanItOut(task.id),250);else showToast('Add a due date to plan it out.','warning');}
 }
+/* ── Ticking a task off ─────────────────────────────────────────────────────
+   It used to wait for the whole completion animation (~800ms) before it saved
+   anything or filled the check, then rebuilt the list and replayed the enter
+   animation on every row. A tick felt ignored, a reload or a cloud pull in that
+   window lost it, and a second tap landed on a row about to be replaced.
+
+   Now the tick is saved and painted at once (the check fills on the next
+   frame); the motion is one small burst and the tick drawing itself; and the
+   list is rebuilt once, a beat after the last tick — so rows do not move
+   under your finger while you work down a list, and never mid-press. */
+const FLUX_TASK_REBUILD_MS=550;
+let _fluxTaskRebuildTimer=0,_fluxTaskRebuildDue=0,_fluxTaskPress=false,_fluxTaskReleasedAt=0;
+function fluxTaskMotionOn(){
+  try{
+    const h=document.documentElement;
+    return !(matchMedia('(prefers-reduced-motion: reduce)').matches||h.classList.contains('flux-reduce-motion')||h.getAttribute('data-flux-perf')==='on'||h.hasAttribute('data-flux-lowend'));
+  }catch(_){return false;}
+}
+/** Every row for this task shows its new state now, without a rebuild. */
+function fluxPaintTaskDone(id,done){
+  document.querySelectorAll(`[data-task-id="${id}"]`).forEach(row=>{
+    row.classList.toggle('task-done',!!done);
+    row.querySelectorAll('.task-text').forEach(n=>n.classList.toggle('done',!!done));
+    const chk=row.querySelector('.check');
+    if(!chk)return;
+    chk.classList.toggle('done',!!done);
+    chk.classList.toggle('check-pop',!!done);
+    if(!done){chk.textContent='';row.querySelectorAll('.fmm-strike').forEach(n=>n.remove());}
+    else if(!chk.querySelector('.fmm-tick'))chk.textContent='✓';
+    if(chk.hasAttribute('aria-checked'))chk.setAttribute('aria-checked',done?'true':'false');
+  });
+}
+function fluxTaskRebuildNow(){
+  clearTimeout(_fluxTaskRebuildTimer);_fluxTaskRebuildTimer=0;_fluxTaskRebuildDue=0;
+  renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();
+}
+/** Rebuild after `ms`, pushed back by every later tick, and held while a finger or button is down on a task. */
+function fluxQueueTaskRebuild(ms){
+  const due=Date.now()+Math.max(0,ms||0);
+  if(_fluxTaskRebuildTimer&&due<=_fluxTaskRebuildDue)return;
+  clearTimeout(_fluxTaskRebuildTimer);
+  _fluxTaskRebuildDue=due;
+  const run=()=>{
+    if(_fluxTaskPress||Date.now()-_fluxTaskReleasedAt<150){_fluxTaskRebuildTimer=setTimeout(run,80);return;}
+    fluxTaskRebuildNow();
+  };
+  _fluxTaskRebuildTimer=setTimeout(run,Math.max(0,due-Date.now()));
+}
+document.addEventListener('pointerdown',e=>{
+  try{if(e.target&&e.target.closest&&e.target.closest('.task-item,#taskList,#calDayTasks'))_fluxTaskPress=true;}catch(_){}
+},true);
+['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,()=>{
+  if(_fluxTaskPress){_fluxTaskPress=false;_fluxTaskReleasedAt=Date.now();}
+},true));
+window.fluxQueueTaskRebuild=fluxQueueTaskRebuild;
+/** Space or Enter on a task's check box does what a click does. */
+function fluxCheckKey(e,el){
+  if(e.key!==' '&&e.key!=='Enter')return;
+  e.preventDefault();e.stopPropagation();
+  if(!e.repeat)el.click();
+}
+window.fluxCheckKey=fluxCheckKey;
+
 function toggleTask(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
   snapshotTasks();
   const wasDone=t.done;
   t.done=!wasDone;
-  let card=null;
+  const motionOn=fluxTaskMotionOn();
   if(t.done){
     t.completedAt=Date.now();
-    card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
-    if(card){
-      card.classList.add('completing');
-      setTimeout(()=>{try{if(card.isConnected)card.classList.remove('completing');}catch(_){}},620);
+    const card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
+    fluxPaintTaskDone(id,true);
+    if(card&&motionOn){
+      // One burst and the tick drawing itself. No confetti over the page and no
+      // second particle system: they were most of the lag on a phone.
       const chk=card.querySelector('.check');
+      const nameEl=card.querySelector('.task-text.task-primary-line')||card.querySelector('.task-text');
+      try{window.FluxMotionMore?.tickAndStrike(chk,nameEl);}catch(_){}
       if(chk)spawnTaskBurstFromEl(chk);
     }
-    spawnConfetti();
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
     // V4 Effort Accuracy: ask for actual time when an estimate exists.
@@ -4532,26 +4597,13 @@ function toggleTask(id){
       }
     }
   }
-  const flush=function(){
-    save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);
-  };
-  // Animation callback must fire to persist + re-render. If anime.js fails to
-  // load (CDN block) or its onComplete never fires, the task would visually
-  // stay un-checked AND silently fail to save. Safety timer ensures flush
-  // runs within 800ms regardless — animations are ~600ms so this only kicks
-  // in on genuine failure, never preempts the real callback.
-  let _flushed=false;
-  const safeFlush=function(){ if(_flushed)return; _flushed=true; flush(); };
-  let skipAnime=false;
-  try{
-    skipAnime=matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.getAttribute('data-flux-perf')==='on';
-  }catch(_){}
-  if(t.done&&!wasDone&&card&&typeof window.fluxAnimeOnTaskComplete==='function'&&!skipAnime){
-    window.fluxAnimeOnTaskComplete(card,safeFlush);
-    setTimeout(safeFlush,800);
-  }else{
-    safeFlush();
-  }
+  else fluxPaintTaskDone(id,false);
+  // Saved now, before any motion: a reload or a cloud pull a moment later finds it.
+  save('tasks',tasks);
+  syncKey('tasks',tasks);
+  // A beat to see the tick before the row moves — shorter with motion off,
+  // where nothing is animating, but still long enough to see it filled.
+  fluxQueueTaskRebuild(motionOn?FLUX_TASK_REBUILD_MS:300);
 }
 // Calendar cleanup is fire-and-forget: undo is unbounded (Cmd+Z, not just the
 // 5s snackbar), so there is no window to defer it behind. An undone delete
@@ -5176,7 +5228,7 @@ function renderTasks(){
     }
     return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
-<div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
+<div class="check ${t.done?'done':''}" role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="${esc(t.name)}" onkeydown="fluxCheckKey(event,this)" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
 <div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas"></span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
@@ -5229,16 +5281,21 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   }
   const listSig=list.map(t=>`${t.id}:${t.done?1:0}`).join('|');
   const prevSig=el.dataset.fluxTaskListSig||'';
-  const listChanged=listSig!==prevSig;
   el.dataset.fluxTaskListSig=listSig;
   el.innerHTML=html;
   fluxArmListSentinel(el,win.rest,renderCard);
-  requestAnimationFrame(()=>{
-    try{
-      const items=[...el.querySelectorAll('.task-item')];
-      if(listChanged&&items.length&&window.FluxAnim?.tasksEnter)FluxAnim.tasksEnter(items);
-    }catch(e){}
-  });
+  /* Only rows that were not in the list before come in. This used to replay
+     the entrance on every row whenever anything changed — tick one task and
+     all forty faded and slid in again. The first render of a list still does. */
+  if(listSig!==prevSig){
+    const before=new Set(prevSig?prevSig.split('|').map(x=>x.slice(0,x.lastIndexOf(':'))):[]);
+    requestAnimationFrame(()=>{
+      try{
+        const items=[...el.querySelectorAll('.task-item')].filter(n=>!prevSig||!before.has(String(n.dataset.taskId)));
+        if(items.length&&window.FluxAnim?.tasksEnter)FluxAnim.tasksEnter(items);
+      }catch(e){}
+    });
+  }
   if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
   if(typeof fluxRenderDashMob==='function')fluxRenderDashMob();
   try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
@@ -5653,7 +5710,7 @@ function completeAllSubtasksInEdit(){
   showToast('All subtasks marked complete','success');
 }
 function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const _scopeSel=document.getElementById('editScope');if(_scopeSel)t.scope=_scopeSel.value==='outside'?'outside':'school';const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
-function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
+function spawnConfetti(){if(!fluxTaskMotionOn())return;const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
 function changeMonth(d){
@@ -15817,7 +15874,8 @@ function addMomentum(){
     }catch(e){}
   }
   if(_momentum>=3)showToast(''+_momentum+'× Momentum! Keep going!','success');
-  if(_momentum>=5)spawnConfetti();
+  // Once, on reaching five — not again with every tick after it.
+  if(_momentum===5)spawnConfetti();
 }
 function updateMomentumUI(){
   try{
@@ -18223,7 +18281,7 @@ function renderTimeline(){
 // ══ 4. FULL KEYBOARD NAVIGATION ══
 function initFullKeyboardNav(){
   let focusIdx=-1;
-  const getFocusable=()=>[...document.querySelectorAll('.nav-item,.bnav-item,button:not([disabled]),.task-item,.card')].filter(el=>el.offsetParent!==null&&!el.closest('#splash')&&!el.closest('#loginScreen'));
+  const getFocusable=()=>[...document.querySelectorAll('.nav-item,.bnav-item,button:not([disabled]),.task-item .check[tabindex],.task-item,.card')].filter(el=>el.offsetParent!==null&&!el.closest('#splash')&&!el.closest('#loginScreen'));
 
   document.addEventListener('keydown',e=>{
     const tag=document.activeElement?.tagName;
@@ -18255,12 +18313,13 @@ function initFullKeyboardNav(){
       e.preventDefault();
     }
 
-    if(e.key==='Enter'&&document.activeElement?.classList.contains('task-item')){
+    // flux-pro.js may already have ticked this row (it listens first): once only.
+    if(e.key==='Enter'&&!e.defaultPrevented&&document.activeElement?.classList.contains('task-item')){
       const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id)toggleTask(id);
     }
 
-    if(e.key==='Delete'&&document.activeElement?.classList.contains('task-item')){
+    if(e.key==='Delete'&&!e.defaultPrevented&&document.activeElement?.classList.contains('task-item')){
       const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id&&confirm('Delete this task?'))deleteTask(id);
     }

@@ -3287,6 +3287,10 @@ html[data-flux-perf="on"] .focus-card{
 
 /* ── TASK COMPLETION CELEBRATION ── */
 .task-item.completing{animation:taskComplete .5s var(--ease-spring) forwards!important}
+/* A finished task's check pops once, when it is ticked (toggleTask adds
+   .check-pop) — not again every time the list is rebuilt, which replayed it on
+   every finished row at once. */
+.task-item .check.done:not(.check-pop){animation:none!important}
 @keyframes taskComplete{
   0%{transform:scale(1);box-shadow:none}
   25%{transform:scale(1.015);box-shadow:0 0 20px rgba(var(--green-rgb),.2)}

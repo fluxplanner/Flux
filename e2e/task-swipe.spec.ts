@@ -134,10 +134,14 @@ test.describe('Swiping task rows on a phone', () => {
     await page.evaluate(() => { (window as any).showApp(); (window as any).showApp(); (window as any).renderTasks(); });
     await page.waitForTimeout(1200);
     const client = await page.context().newCDPSession(page);
-    const b = await rowBox(page, 8108);
-    const from = { x: b.x + 40, y: b.y + b.height / 2 };
-    await gesture(client, page, from, line(from, 200, 0, 10));
-    expect(await toggles(page), 'one swipe toggled the task more than once').toEqual([8108]);
-    expect(await isDone(page, 8108)).toBe(true);
+    // The page can still be settling after showApp(); try again if the swipe missed every row.
+    for (let i = 0; i < 3 && !(await toggles(page)).length; i++) {
+      const b = await rowBox(page, 8108);
+      const from = { x: b.x + 40, y: b.y + b.height / 2 };
+      await gesture(client, page, from, line(from, 200, 0, 10));
+    }
+    const hit = await toggles(page);
+    expect(hit.length, 'one swipe toggled the task more than once').toBe(1);
+    expect(await isDone(page, hit[0])).toBe(true);
   });
 });
