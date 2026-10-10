@@ -545,11 +545,13 @@ button.list-row:active, label.list-row:active { background: var(--bg-sunken); }
 
 /* ---------- Toast ---------- */
 
+/* Above every overlay, the welcome included: a "Could not save" said
+   underneath the screen that caused it is never seen. */
 .toast {
   position: fixed;
   left: 50%;
   bottom: calc(var(--nav-h) + var(--safe-bottom) + var(--s-4));
-  z-index: 120;
+  z-index: 300;
   transform: translate(-50%, 12px);
   max-width: min(460px, calc(100vw - 32px));
   padding: var(--s-3) var(--s-5);

@@ -190,7 +190,7 @@ function fluxCard(state) {
               School info, on this device. Seizures, contacts and notes stay in Synara.</span>
           </span>
           <button class="switch" data-action="flux-link-toggle" role="switch"
-                  aria-checked="${state.settings.fluxLink}" aria-labelledby="fluxlink-label"></button>
+                  aria-checked="${!!state.settings.fluxLink}" aria-labelledby="fluxlink-label"></button>
         </div>
         <button class="list-row" data-action="sync-open">
           <span class="med-dot" data-color="blue" aria-hidden="true">${raw(icon('sync', 20))}</span>
@@ -295,18 +295,28 @@ export function showConflict() {
 
 const LEADS = [[0, 'On time'], [10, '10 min early'], [15, '15 min early'], [30, '30 min early']];
 
+/* "On" only when this device will really show them. A backup restored
+   from another phone, or a browser that has forgotten its permission,
+   keeps remindersOn saved while nothing can fire. */
+function remindersOnHere(state) {
+  return state.settings.remindersOn && notify.support().ok && notify.permission() === 'granted';
+}
+
+function reminderNote(state, cap, perm, on) {
+  if (!cap.ok) return cap.reason;
+  if (perm === 'denied') return 'Notifications are blocked for this site in your browser settings.';
+  if (state.settings.remindersOn && !on) return 'Not allowed on this device yet. Turn this on to allow notifications.';
+  if (on && notify.lastFailed()) return 'Your last reminder didn’t show on this device. Keep a phone alarm for your doses.';
+  return on ? 'On — while Synara is open in a tab or installed.' : 'A nudge at each dose time.';
+}
+
 function remindersCard(state) {
-  const { remindersOn, reminderLead } = state.settings;
+  const { reminderLead } = state.settings;
   const cap = notify.support();
   const perm = notify.permission();
   const blocked = !cap.ok || perm === 'denied';
-  const on = remindersOn && !blocked;
-
-  const note = !cap.ok
-    ? cap.reason
-    : perm === 'denied'
-      ? 'Notifications are blocked for this site in your browser settings.'
-      : on ? 'On — while Synara is open in a tab or installed.' : 'A nudge at each dose time.';
+  const on = remindersOnHere(state);
+  const note = reminderNote(state, cap, perm, on);
 
   const leads = LEADS.map(([v, label]) => `
     <button class="segment" data-action="reminder-lead" data-value="${v}"
@@ -516,7 +526,8 @@ export const actions = {
   },
 
   async 'reminders-toggle'(node, state) {
-    const turningOn = !state.settings.remindersOn;
+    // Follows what the switch shows, so tapping an "off" switch turns it on.
+    const turningOn = !remindersOnHere(state);
     if (turningOn) {
       const cap = notify.support();
       if (!cap.ok) {
@@ -537,9 +548,11 @@ export const actions = {
     await store.updateSettings({ reminderLead: Number(node.dataset.value) || 0 });
   },
 
-  'reminders-test'() {
-    const sent = notify.test();
-    toast(sent ? 'Test sent — check your notifications' : 'Couldn\'t send a test', sent ? 'ok' : 'bad');
+  async 'reminders-test'() {
+    const result = await notify.test();
+    if (result === 'sent') toast('Test sent — check your notifications', 'ok');
+    else if (result === 'not-allowed') toast('Notifications aren’t allowed for Synara on this device', 'bad');
+    else toast('This browser didn’t show it. Keep a phone alarm for your doses.', 'bad');
   },
 
   async 'theme-set'(node) {
@@ -571,10 +584,14 @@ export const actions = {
     }
 
     const text = await file.text();
-    let parsed;
+    let parsed = null;
     try {
       parsed = JSON.parse(text);
     } catch {
+      /* not JSON: said below */
+    }
+    // Checked before asking to replace everything, not after.
+    if (!store.isBackup(parsed)) {
       toast('That file isn\'t a Synara backup', 'bad');
       return;
     }
@@ -590,8 +607,8 @@ export const actions = {
           await store.importJSON(text);
           toast('Backup restored', 'ok');
         } catch (err) {
-          toast(err.message === 'not-synara'
-            ? 'That file isn\'t a Synara backup'
+          toast(err.message === 'save-failed'
+            ? 'Couldn’t restore it — your browser storage may be full or blocked.'
             : 'Couldn\'t read that backup', 'bad');
         }
       },

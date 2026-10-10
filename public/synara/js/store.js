@@ -14,7 +14,7 @@
    Imported by main.js, insights.js, notify.js, and every view.
    ============================================================ */
 
-import { dayKey, stamp, uid, minutesOf } from './util.js';
+import { dayKey, stamp, timeOf, uid, minutesOf, parseStamp } from './util.js';
 
 /* The key name is historical; the shape inside is versioned separately. */
 const STORAGE_KEY = 'synara.v2';
@@ -92,12 +92,15 @@ export function emptyState() {
       rescueMed: '',
     },
 
-    /* meds[] — {id, name, dose, form, notes, color, added, ended, schedule}
+    /* meds[] — {id, name, dose, form, notes, color, added, addedAt, ended, schedule}
 
        A medication carries its whole schedule history, not just its
        current times:
 
          added     first day it is tracked
+         addedAt   "HH:MM" it was added that day (null if unknown). Doses
+                   already past their grace window by then were never
+                   tracked, so they can't count as missed.
          ended     first day it is NO LONGER tracked (null while current)
          schedule  [{from, times}] ascending — each entry applies from
                    its `from` day until the next entry starts
@@ -263,6 +266,7 @@ function sanitizeMed(m, firstDoseDay) {
     notes: str(m.notes, 600),
     color: COLORS.has(m.color) ? m.color : 'violet',
     added,
+    addedAt: isTime(m.addedAt) ? m.addedAt : null,
     ended,
     schedule,
   };
@@ -498,17 +502,68 @@ function notify() {
   }
 }
 
+/* ============================================================
+   Saving
+   ------------------------------------------------------------
+   A change only becomes the app's state once it is saved. If the save
+   fails (storage full, or blocked), nothing changes: the screen and
+   the stored record keep matching, and the student is told. Changing
+   memory first used to leave the two apart, so the NEXT save quietly
+   stored a value nobody had seen — a dose tapped to "taken" twice
+   during a full-storage spell was later saved as "missed".
+
+   One exception. If nothing is stored on this device at all and it
+   can't save (a private window, storage switched off), refusing every
+   change would leave the app unusable, the emergency card included.
+   Then Synara runs in memory, and says so on every screen.
+   ============================================================ */
+
+let hasRecord = false;    // a record is stored on this device
+let memoryOnly = false;   // nothing can be saved; running in memory
+let saveFailed = false;   // the last attempt to save failed
+
 /**
- * Mutate and persist in one step. `mutator` changes the live state in
- * place; we persist, then notify. Writes are awaited so a future
- * network backend naturally applies backpressure.
+ * 'ok', 'failing' (a record is stored but changes can't be saved right
+ * now), or 'memory' (nothing is saved on this device at all).
+ */
+export function saveStatus() {
+  if (memoryOnly) return 'memory';
+  return saveFailed ? 'failing' : 'ok';
+}
+
+/** JSON in, JSON out: the state never holds anything else. */
+const copy = (s) => JSON.parse(JSON.stringify(s));
+
+/** Save `next`; only then make it the state. See above for memory mode. */
+async function commit(next) {
+  try {
+    await backend.write(next);
+    hasRecord = true;
+    memoryOnly = false;
+    saveFailed = false;
+  } catch (err) {
+    saveFailed = true;
+    if (hasRecord) {
+      notify();      // repaint with the unchanged state, and the warning
+      throw err;
+    }
+    memoryOnly = true;
+  }
+  state = next;
+  notify();
+  return state;
+}
+
+/**
+ * Change and persist in one step. `mutator` changes a copy of the
+ * state; the copy replaces it once saved. Writes are awaited so a
+ * future network backend naturally applies backpressure.
  */
 export async function update(mutator) {
   if (!ready) throw new Error('not-ready');
-  mutator(state);
-  await backend.write(state);
-  notify();
-  return state;
+  const next = copy(state);
+  mutator(next);
+  return commit(next);
 }
 
 /**
@@ -531,6 +586,9 @@ function onExternalChange(e) {
   if (e.key !== STORAGE_KEY) return;
   try {
     state = e.newValue ? migrate(JSON.parse(e.newValue)) : emptyState();
+    hasRecord = !!e.newValue;
+    // What's on screen is now what's stored, not something held in memory.
+    if (hasRecord) memoryOnly = false;
     ready = true;
     notify();
   } catch (err) {
@@ -560,8 +618,19 @@ export async function init() {
     return { state, firstRun: true };
   }
 
+  hasRecord = true;
   state = migrate(stored);
-  await backend.write(state);
+  // Saving the upgraded shape back is a nicety, not a reason to fail to
+  // start. The record was read, so it can be shown — and the emergency
+  // card opened — even when storage is too full to write it back.
+  if (JSON.stringify(state) !== JSON.stringify(stored)) {
+    try {
+      await backend.write(state);
+    } catch (err) {
+      console.warn('[synara] could not save the upgraded record:', err);
+      saveFailed = true;
+    }
+  }
   return { state, firstRun: false };
 }
 
@@ -572,21 +641,24 @@ export async function init() {
  */
 export async function wipe() {
   await backend.clear();
+  hasRecord = false;
   state = emptyState();
   notify();
 }
 
-/** Replace everything with an empty record, optionally re-seeding. */
+/**
+ * Replace everything with an empty record, optionally re-seeding. The
+ * old record stays stored until the new one has saved over it.
+ */
 export async function reset({ seedFn } = {}) {
-  await backend.clear();
-  state = emptyState();
+  if (!ready) throw new Error('not-ready');
+  const next = emptyState();
   if (seedFn) {
-    seedFn(state);
-    state.settings.seeded = true;
+    seedFn(next);
+    next.settings.seeded = true;
   }
-  await backend.write(state);
-  notify();
-  return state;
+  // The same shape a reload would give, so nothing differs until then.
+  return commit(migrate(next));
 }
 
 /* ============================================================
@@ -601,6 +673,13 @@ export function timesOn(med, day) {
   for (const entry of med.schedule) {
     if (entry.from <= day) times = entry.times;
     else break;
+  }
+  // Added at 3pm with an 8am dose: that morning's dose was over before
+  // Synara knew about it, so it isn't "7h overdue" and never counts as
+  // missed. A dose still inside its grace window stays, to be logged.
+  if (day === med.added && med.addedAt) {
+    const from = minutesOf(med.addedAt) - GRACE_MINUTES;
+    times = times.filter((t) => minutesOf(t) >= from);
   }
   return times;
 }
@@ -656,6 +735,7 @@ export function addMed({ name, dose = '', form = 'tablet', times = [], notes = '
       notes: str(notes, 600).trim(),
       color: COLORS.has(color) ? color : 'violet',
       added: today,
+      addedAt: timeOf(),
       ended: null,
       schedule: [{ from: today, times: normTimes(times) }],
     });
@@ -780,13 +860,16 @@ export function effectiveStatus(day, medId, time, s = state) {
   const logged = doseStatus(day, medId, time, s);
   if (logged !== 'pending') return logged;
 
-  const today = dayKey();
-  if (day < today) return 'missed';
-  if (day > today) return 'pending';
+  // Real clock time, not the date: a 11:30pm dose still has its hour of
+  // grace after midnight, rather than turning "missed" at 12:00.
+  // Whole minutes, as everywhere else that counts down to a dose.
+  const late = minutesLate(day, time);
+  return late > GRACE_MINUTES ? 'missed' : 'pending';
+}
 
-  const now = new Date();
-  const passed = now.getHours() * 60 + now.getMinutes() > minutesOf(time) + GRACE_MINUTES;
-  return passed ? 'missed' : 'pending';
+/** Minutes since a dose was due, to the minute (negative if still ahead). */
+export function minutesLate(day, time) {
+  return Math.round((parseStamp(stamp()) - parseStamp(`${day}T${time}`)) / 60000);
 }
 
 /* ---- Seizures ---- */
@@ -899,9 +982,17 @@ export function exportJSON() {
   return JSON.stringify(state, null, 2);
 }
 
+/** True for something shaped like an exported Synara record. */
+export function isBackup(parsed) {
+  return !!parsed && typeof parsed === 'object' &&
+    Array.isArray(parsed.meds) && Array.isArray(parsed.seizures) &&
+    !!parsed.doses && typeof parsed.doses === 'object';
+}
+
 /**
  * Replace the whole record with an exported file. Throws
- * Error('not-json') or Error('not-synara') without touching anything.
+ * Error('not-json'), Error('not-synara') or Error('save-failed')
+ * without touching anything.
  */
 export async function importJSON(text) {
   let parsed;
@@ -910,13 +1001,7 @@ export async function importJSON(text) {
   } catch {
     throw new Error('not-json');
   }
-  const looksRight = parsed && typeof parsed === 'object' &&
-    Array.isArray(parsed.meds) && Array.isArray(parsed.seizures) &&
-    parsed.doses && typeof parsed.doses === 'object';
-  if (!looksRight) throw new Error('not-synara');
-
-  state = migrate(parsed);
-  await backend.write(state);
-  notify();
-  return state;
+  if (!isBackup(parsed)) throw new Error('not-synara');
+  if (!ready) throw new Error('not-ready');
+  return commit(migrate(parsed));
 }
