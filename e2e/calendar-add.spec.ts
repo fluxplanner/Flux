@@ -11,11 +11,13 @@ import { gotoScenario } from './helpers';
  * a task added from the calendar quietly lost its time and notes.
  *
  * These pin the merged behaviour: the poorer path stays gone, and the surviving
- * dialog really does save every field it shows.
+ * dialog really does save every field it shows. A task picked there now opens
+ * the same New task form as the rest of the planner (dated to the selected
+ * day), so a calendar task gets estimates, plan-it-out and repeats too; the
+ * calendar dialog keeps events and activities.
  */
 
 const TYPE_ROWS: Record<string, string[]> = {
-  task: ['Title', 'Date', 'Subject', 'Priority', 'Notes'],
   event: ['Title', 'Date', 'Notes'],
   ec: ['Activity', 'Title', 'Date', 'Notes'],
 };
@@ -58,14 +60,21 @@ test.describe('Calendar add dialog', () => {
     expect(await page.locator('#calAddBtn').count(), '#calAddBtn is back').toBe(0);
   });
 
-  test('a task keeps its time and notes — the fields the old dialog dropped', async ({ page }) => {
+  test('a task opens the New task form for that day and keeps its time and notes', async ({ page }) => {
     await openDialog(page);
-    await page.fill('#addEventTitle', 'Guard task');
-    await page.fill('#addEventTime', '14:30');
-    await page.fill('#addEventNotes', 'guard notes');
-    await page.selectOption('#addEventPriority', 'high');
-    await page.locator('#addEventPrimaryBtn').click();
+    const day = await page.evaluate(() => (document.querySelector('.cal-day.selected[data-cal-date]') as HTMLElement | null)?.dataset.calDate || '');
+    await page.locator('#addEventTypeTask').click();
     await expect(page.locator('#addEventModal')).toBeHidden();
+    await expect(page.locator('#dashAddTaskModal')).toBeVisible();
+    if (day) await expect(page.locator('#taskDate'), 'the selected day did not reach the form').toHaveValue(day);
+
+    await page.fill('#taskName', 'Guard task');
+    await page.locator('#taskMoreOptions > summary').click();
+    await page.fill('#taskTime', '14:30');
+    await page.fill('#taskNotes', 'guard notes');
+    await page.selectOption('#taskPriority', 'high');
+    await page.locator('#dashAddTaskModal button', { hasText: 'Add Task' }).click();
+    await expect(page.locator('#dashAddTaskModal')).toBeHidden();
 
     const saved = await page.evaluate(() => {
       const t = (JSON.parse(localStorage.getItem('tasks') || '[]') as Record<string, unknown>[])
@@ -74,6 +83,7 @@ test.describe('Calendar add dialog', () => {
     });
     expect(saved, 'the task was not saved at all').not.toBeNull();
     expect(saved!.date, 'the selected day did not reach the task').toBeTruthy();
+    if (day) expect(saved!.date).toBe(day);
     expect(saved!.time).toBe('14:30');
     expect(saved!.notes).toBe('guard notes');
     expect(saved!.priority).toBe('high');
@@ -96,12 +106,12 @@ test.describe('Calendar add dialog', () => {
 
   test('an empty title is refused instead of saving a blank row', async ({ page }) => {
     await openDialog(page);
-    const before = await page.evaluate(() => JSON.parse(localStorage.getItem('tasks') || '[]').length);
+    const before = await page.evaluate(() => JSON.parse(localStorage.getItem('flux_events') || '[]').length);
     await page.locator('#addEventPrimaryBtn').click();
     await page.waitForTimeout(400);
     await expect(page.locator('#addEventModal'), 'the dialog closed on an empty title').toBeVisible();
-    const after = await page.evaluate(() => JSON.parse(localStorage.getItem('tasks') || '[]').length);
-    expect(after, 'a nameless task was saved').toBe(before);
+    const after = await page.evaluate(() => JSON.parse(localStorage.getItem('flux_events') || '[]').length);
+    expect(after, 'a nameless event was saved').toBe(before);
   });
 
   test('each type shows the fields it needs and hides the ones it does not', async ({ page }) => {

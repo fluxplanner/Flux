@@ -115,4 +115,52 @@ test.describe('Flux Composer', () => {
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(over).toBeLessThanOrEqual(0);
   });
+
+  /*
+   * DP Music: the portfolio ("Exploring music in context") asks for diverse
+   * music across four areas of inquiry and personal, local and global
+   * contexts. One listening sheet could only ever hold one piece, so a sheet
+   * per piece, tagged, with a coverage grid that shows the gaps.
+   */
+  test('listening sheets: one per piece, tagged, kept, and counted in the coverage grid', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('seeded')) {
+        sessionStorage.setItem('seeded', '1');
+        localStorage.setItem('flux_composer_listening', JSON.stringify({ Piece: 'Bolero, Ravel, 1928', Texture: 'one melody over a snare ostinato' }));
+      }
+    });
+    await page.goto('/composer.html');
+    await page.locator('.fc-tabs [data-tab="dp"]').click();
+
+    // The old single sheet becomes the first piece, nothing lost.
+    await expect(page.locator('[data-ls="piece"]')).toHaveValue('Bolero, Ravel, 1928');
+    await expect(page.locator('[data-ls-dim="Texture"]')).toHaveValue('one melody over a snare ostinato');
+
+    await page.selectOption('[data-ls="area"]', '2');
+    await page.selectOption('[data-ls="context"]', 'Global');
+    await page.locator('#lsNew').click();
+    await expect(page.locator('[data-ls="piece"]')).toBeFocused();
+    await page.fill('[data-ls="piece"]', 'Wade in the Water');
+    await page.selectOption('[data-ls="area"]', '1');
+    await page.selectOption('[data-ls="context"]', 'Local');
+    await page.fill('[data-ls-dim="Melody"]', 'call and response');
+
+    const cell = (row: number, col: number) => page.locator(`#lsCov tbody tr:nth-child(${row}) td:nth-of-type(${col})`);
+    await expect(cell(2, 3)).toHaveClass(/is-on/); // Area 2 · Global
+    await expect(cell(1, 2)).toHaveClass(/is-on/); // Area 1 · Local
+    await expect(cell(3, 1)).not.toHaveClass(/is-on/);
+    await expect(page.locator('#lsPick option')).toHaveText(['Bolero, Ravel, 1928', 'Wade in the Water']);
+
+    await page.reload();
+    await page.locator('.fc-tabs [data-tab="dp"]').click();
+    await expect(page.locator('[data-ls="piece"]')).toHaveValue('Wade in the Water');
+    await expect(page.locator('[data-ls-dim="Melody"]')).toHaveValue('call and response');
+    await page.selectOption('#lsPick', { label: 'Bolero, Ravel, 1928' });
+    await expect(page.locator('[data-ls="context"]')).toHaveValue('Global');
+
+    page.once('dialog', (d) => d.accept());
+    await page.locator('#lsClear').click();
+    await expect(page.locator('#lsPick option')).toHaveText(['Wade in the Water']);
+    await expect(cell(2, 3)).not.toHaveClass(/is-on/);
+  });
 });

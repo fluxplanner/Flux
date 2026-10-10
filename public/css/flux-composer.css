@@ -250,8 +250,20 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
 .fc-dp-cell { padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, .035); border: 1px solid var(--fc-line); }
 .fc-dp-cell p { margin: 4px 0 0; font-size: .84rem; color: var(--fc-mut); line-height: 1.45; }
 .fc-dp-n { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #c4b5fd; margin-bottom: 2px; }
-.fc-ls-row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: start; margin-bottom: 8px; font-size: .86rem; font-weight: 700; }
+.fc-ls-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; font-size: .86rem; font-weight: 700; }
 .fc-ls-row span { padding-top: 9px; }
+.fc-ls-pick { align-items: start; }
+.fc-ls-row .fc-select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.fc-ls-pick .fc-ls-row { flex: 1; min-width: 220px; margin-bottom: 0; }
+.fc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fc-cov { width: 100%; border-collapse: separate; border-spacing: 6px; font-size: .86rem; }
+.fc-cov th { color: var(--fc-mut); font-weight: 700; text-align: center; }
+.fc-cov tbody th { text-align: left; white-space: nowrap; }
+.fc-cov td {
+  text-align: center; padding: 10px 6px; border-radius: 10px;
+  border: 1px dashed var(--fc-line2); color: var(--fc-mut);
+}
+.fc-cov td.is-on { border: 1px solid rgba(var(--fc-nat), .55); background: rgba(var(--fc-nat), .16); color: var(--fc-ink); font-weight: 800; }
 
 .fc-toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50;
@@ -266,7 +278,7 @@ textarea.fc-input { resize: vertical; line-height: 1.45; }
   .fc-hide-sm { display: none; }
   .fc-rng-row { grid-template-columns: 96px 1fr; }
   .fc-rng-t { grid-column: 2; margin-top: -3px; }
-  .fc-ls-row { grid-template-columns: 1fr; gap: 4px; }
+  .fc-ls-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .fc-ls-row span { padding-top: 0; }
   .fc-piano { height: 120px; }
   .fc-piano--small { height: 90px; }

@@ -160,34 +160,38 @@ test.describe('Synara', () => {
     await expect(page.locator('#emergency[data-open="true"]')).toBeVisible();
   });
 
-  test('the Flux switcher lives in its app bar, marks Synara, and survives re-renders', async ({ page }) => {
+  // The nine-dot control is a plain link to the Flux Hub now (no menu), so
+  // these check the link: it lives in Synara's app bar, survives re-renders,
+  // stays on screen on a phone, and leads to the Hub with Synara on it.
+  test('the Flux Hub link lives in its app bar and survives re-renders', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 860 });
     await withExampleData(page);
 
-    // Synara redraws its app bar on every change; the switcher is moved, not lost.
+    // Synara redraws its app bar on every change; the link is moved, not lost.
     await page.locator('.tab[data-to="safety"]').click();
     await page.locator('.tab[data-to="home"]').click();
-    await expect(page.locator('#appbar .fxhub-btn')).toHaveCount(1);
+    const link = page.locator('#appbar .fxhub-btn');
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute('href', 'hub.html');
+    await expect(link).toHaveAttribute('aria-label', 'Open the Flux Hub');
+    const b = (await link.boundingBox())!;
+    expect(b.x + b.width).toBeLessThanOrEqual(1280);
 
-    await page.locator('#appbar .fxhub-btn').click();
-    await expect(page.locator('.fxhub-item.is-here .fxhub-item-name')).toHaveText(/^Synara/);
-    await expect(page.locator('.fxhub-item.is-here .fxhub-partner')).toHaveText('Partner');
-    await expect(page.locator('.fxhub-item--synara .fxhub-item-mark--logo svg')).toBeVisible();
-    const b = await page.locator('.fxhub-panel').boundingBox();
-    expect(b!.x + b!.width).toBeLessThanOrEqual(1280);
-
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.fxhub-panel')).toBeHidden();
+    await link.click();
+    await expect(page).toHaveURL(/\/hub(\.html)?$/);
+    await expect(page.locator('#apps a.app--synara .app-name')).toHaveText(/^Synara/);
   });
 
-  test('on a phone the switcher menu stays on screen', async ({ page }) => {
+  test('on a phone the Flux Hub link stays on screen', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await withExampleData(page);
-    await page.locator('#appbar .fxhub-btn').click();
-    const b = (await page.locator('.fxhub-panel').boundingBox())!;
-    expect(b.x, 'menu runs off the left edge').toBeGreaterThanOrEqual(0);
-    expect(b.x + b.width, 'menu runs off the right edge').toBeLessThanOrEqual(375);
-    await page.locator('.fxhub-panel a', { hasText: 'Flux Grapher' }).click();
+    const link = page.locator('#appbar .fxhub-btn');
+    const b = (await link.boundingBox())!;
+    expect(b.x, 'link runs off the left edge').toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width, 'link runs off the right edge').toBeLessThanOrEqual(375);
+    await link.click();
+    await expect(page).toHaveURL(/\/hub(\.html)?$/);
+    await page.locator('#apps a.app--grapher').click();
     await expect(page).toHaveURL(/grapher/);
   });
 

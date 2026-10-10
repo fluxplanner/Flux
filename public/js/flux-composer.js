@@ -1232,9 +1232,48 @@
     }
 
     /* ── DP Music ─────────────────────────────────────────────────────────── */
+    /* Listening sheets: one per piece, each tagged with its area of inquiry and
+       context, because the "Exploring music in context" portfolio asks for
+       diverse music across all four areas and personal, local and global
+       contexts. There used to be a single sheet (SHEET_KEY); it becomes the
+       first piece and the old key is left as it was. */
     const SHEET_KEY = 'flux_composer_listening';
-    function loadSheet() { try { return JSON.parse(localStorage.getItem(SHEET_KEY) || '{}') || {}; } catch (e) { return {}; } }
-    function saveSheet(v) { try { localStorage.setItem(SHEET_KEY, JSON.stringify(v)); } catch (e) { /* private window */ } }
+    const SHEETS_KEY = 'flux_composer_listening_v2';
+    let sheetSeq = 0;
+    const blankSheet = () => ({ id: 'p' + Date.now().toString(36) + (sheetSeq++), piece: '', area: '', context: '', notes: {} });
+    function cleanSheet(s) {
+      const notes = {};
+      if (s.notes && typeof s.notes === 'object') DIMS.forEach(([d]) => { if (typeof s.notes[d] === 'string' && s.notes[d]) notes[d] = s.notes[d].slice(0, 4000); });
+      return {
+        id: typeof s.id === 'string' && s.id ? s.id.slice(0, 40) : blankSheet().id,
+        piece: typeof s.piece === 'string' ? s.piece.slice(0, 300) : '',
+        area: AREAS.some((a) => a[0] === s.area) ? s.area : '',
+        context: CONTEXTS.some((c) => c[0] === s.context) ? s.context : '',
+        notes,
+      };
+    }
+    function loadSheets() {
+      let v = null;
+      try { v = JSON.parse(localStorage.getItem(SHEETS_KEY) || 'null'); } catch (e) { v = null; }
+      if (!v || typeof v !== 'object' || !Array.isArray(v.sheets)) {
+        let old = {};
+        try { old = JSON.parse(localStorage.getItem(SHEET_KEY) || '{}') || {}; } catch (e) { old = {}; }
+        const first = blankSheet();
+        if (typeof old.Piece === 'string') first.piece = old.Piece;
+        DIMS.forEach(([d]) => { if (typeof old[d] === 'string' && old[d]) first.notes[d] = old[d]; });
+        v = { sheets: [first], current: first.id };
+      }
+      v.sheets = v.sheets.filter((s) => s && typeof s === 'object').map(cleanSheet);
+      if (!v.sheets.length) v.sheets = [blankSheet()];
+      if (!v.sheets.some((s) => s.id === v.current)) v.current = v.sheets[0].id;
+      return v;
+    }
+    let sheetSaveWarned = false;
+    function saveSheets(v) {
+      try { localStorage.setItem(SHEETS_KEY, JSON.stringify(v)); sheetSaveWarned = false; } catch (e) {
+        if (!sheetSaveWarned) { sheetSaveWarned = true; toast('Could not save here — storage may be full or blocked.'); }
+      }
+    }
     function renderDP() {
       const sel = st.dp.sel;
       const cx = 235, cy = 235;
@@ -1251,7 +1290,14 @@
           ${lines.map((l, li) => `<text text-anchor="middle" dominant-baseline="central" y="${lines.length > 1 ? li * 13 - 6.5 : 0}">${esc(l)}</text>`).join('')}</g>`;
       };
       const info = sel.kind === 'core' ? ['Pitch & rhythm', 'The two fundamental dimensions — every musical idea is organised pitch in organised time.'] : (sel.kind === 'meta' ? METADIMS[sel.i] : DIMS[sel.i]);
-      const sheet = loadSheet();
+      const book = loadSheets();
+      const cur = book.sheets.find((x) => x.id === book.current);
+      const pieceName = (x, i) => x.piece.trim() || 'Untitled piece ' + (i + 1);
+      const opt = (v, l, on) => `<option value="${esc(v)}"${v === on ? ' selected' : ''}>${esc(l)}</option>`;
+      const coverage = () => `<table class="fc-cov"><thead><tr><th scope="col">Area</th>${CONTEXTS.map((c) => `<th scope="col">${esc(c[0])}</th>`).join('')}</tr></thead><tbody>${AREAS.map((a) => `<tr><th scope="row" title="${esc(a[1])}">Area ${esc(a[0])}</th>${CONTEXTS.map((c) => {
+        const n = book.sheets.filter((x) => x.area === a[0] && x.context === c[0]).length;
+        return n ? `<td class="is-on">${n}<span class="fc-sr"> ${n === 1 ? 'piece' : 'pieces'}</span></td>` : '<td><span aria-hidden="true">—</span><span class="fc-sr">none yet</span></td>';
+      }).join('')}</tr>`).join('')}</tbody></table>`;
       const ring = `<div class="fc-dp-ring"><svg viewBox="0 0 470 470" class="fc-ring" role="group" aria-label="Dimensions and metadimensions">
           <circle cx="${cx}" cy="${cy}" r="228" class="fc-ring-meta"/><circle cx="${cx}" cy="${cy}" r="168" class="fc-ring-dim"/><circle cx="${cx}" cy="${cy}" r="72" class="fc-ring-core"/>
           <text x="${cx}" y="24" text-anchor="middle" class="fc-ring-cap">METADIMENSIONS</text>
@@ -1261,33 +1307,65 @@
           <g class="fc-dim fc-dim--core${sel.kind === 'core' ? ' is-on' : ''}" data-kind="core" data-i="0" tabindex="0" role="button" aria-label="Pitch and rhythm"><circle cx="${cx}" cy="${cy}" r="60"/><text x="${cx}" y="${cy - 9}" text-anchor="middle">Pitch</text><text x="${cx}" y="${cy + 13}" text-anchor="middle">Rhythm</text></g>
         </svg><div class="fc-dp-info"><h3 class="fc-h3">${esc(info[0])}</h3><p>${esc(info[1])}</p></div></div>`;
       const grid = (rows, cls) => `<div class="fc-dp-grid${cls ? ' ' + cls : ''}">${rows.map((r) => `<div class="fc-dp-cell">${r.length === 3 ? `<span class="fc-dp-n">${esc(r[0])}</span><b>${esc(r[1])}</b><p>${esc(r[2])}</p>` : `<b>${esc(r[0])}</b><p>${esc(r[1])}</p>`}</div>`).join('')}</div>`;
-      const fields = DIMS.map(([d]) => `<label class="fc-ls-row"><span>${esc(d)}</span><textarea class="fc-input" data-ls="${esc(d)}" rows="2" placeholder="What do you hear?">${esc(sheet[d] || '')}</textarea></label>`).join('');
+      const fields = DIMS.map(([d]) => `<label class="fc-ls-row"><span>${esc(d)}</span><textarea class="fc-input" data-ls-dim="${esc(d)}" rows="2" placeholder="What do you hear?">${esc(cur.notes[d] || '')}</textarea></label>`).join('');
       body.innerHTML = card('Dimensions &amp; metadimensions', 'The listening framework: dimensions describe the sound itself, metadimensions its context and meaning. Tap one.', ring)
         + card('Areas of inquiry', 'IB DP Music (first assessed 2022) studies music through four areas of inquiry.', grid(AREAS))
         + card('Contexts &amp; roles', 'Each area is explored in personal, local and global contexts, working as a researcher, creator and performer.', grid(CONTEXTS) + grid(ROLES))
         + card('Assessment components', 'Check your school’s current subject guide for weightings and word limits.', grid(COMPONENTS.map((c) => [c[1], c[0], c[2]]), 'fc-dp-grid--wide'))
-        + card('Listening sheet', 'Notes on a piece, one dimension at a time. Saved on this device; Copy puts it on your clipboard for an essay or portfolio.',
-          `<label class="fc-ls-row"><span>Piece</span><input class="fc-input" data-ls="Piece" placeholder="Title, composer / artist, year" value="${esc(sheet.Piece || '')}"></label>${fields}
-           <div class="fc-row"><button type="button" class="fc-btn fc-btn--primary" id="lsCopy">Copy</button><button type="button" class="fc-btn" id="lsClear">Clear</button></div>`);
+        + card('Listening sheets', 'Notes on each piece, one dimension at a time, tagged with its area of inquiry and context. Saved on this device; Copy puts the open sheet on your clipboard for an essay or portfolio.',
+          `<div class="fc-row fc-ls-pick"><label class="fc-ls-row"><span>Your pieces</span><select class="fc-select" id="lsPick">${book.sheets.map((x, i) => opt(x.id, pieceName(x, i), book.current)).join('')}</select></label><button type="button" class="fc-btn" id="lsNew">New piece</button></div>
+           <label class="fc-ls-row"><span>Piece</span><input class="fc-input" data-ls="piece" placeholder="Title, composer / artist, year" value="${esc(cur.piece)}"></label>
+           <label class="fc-ls-row"><span>Area of inquiry</span><select class="fc-select" data-ls="area">${opt('', 'Choose…', cur.area)}${AREAS.map((a) => opt(a[0], 'Area ' + a[0] + ' · ' + a[1], cur.area)).join('')}</select></label>
+           <label class="fc-ls-row"><span>Context</span><select class="fc-select" data-ls="context">${opt('', 'Choose…', cur.context)}${CONTEXTS.map((c) => opt(c[0], c[0], cur.context)).join('')}</select></label>${fields}
+           <div class="fc-row"><button type="button" class="fc-btn fc-btn--primary" id="lsCopy">Copy</button><button type="button" class="fc-btn" id="lsClear">Delete this piece</button></div>`)
+        + card('Portfolio coverage', 'Pieces you have notes on, by area of inquiry and context. The portfolio asks for diverse music, so the empty cells show where to look next.', `<div id="lsCov">${coverage()}</div>`);
       const pick = (g) => { st.dp.sel = { kind: g.dataset.kind, i: +g.dataset.i }; renderDP(); };
       body.querySelectorAll('.fc-dim').forEach((g) => {
         g.addEventListener('click', () => pick(g));
         g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g); } });
       });
-      body.querySelectorAll('[data-ls]').forEach((el) => el.addEventListener('input', () => {
-        const v = loadSheet();
-        v[el.dataset.ls] = el.value;
-        saveSheet(v);
+      const save = () => saveSheets(book);
+      body.querySelectorAll('[data-ls]').forEach((el) => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+        cur[el.dataset.ls] = el.value;
+        save();
+        if (el.dataset.ls === 'piece') {
+          const o = body.querySelector(`#lsPick option[value="${CSS.escape(cur.id)}"]`);
+          if (o) o.textContent = pieceName(cur, book.sheets.indexOf(cur));
+        } else body.querySelector('#lsCov').innerHTML = coverage();
       }));
+      body.querySelectorAll('[data-ls-dim]').forEach((el) => el.addEventListener('input', () => {
+        if (el.value) cur.notes[el.dataset.lsDim] = el.value; else delete cur.notes[el.dataset.lsDim];
+        save();
+      }));
+      body.querySelector('#lsPick').addEventListener('change', (e) => {
+        book.current = e.target.value;
+        save();
+        renderDP();
+        body.querySelector('#lsPick')?.focus();
+      });
+      body.querySelector('#lsNew').addEventListener('click', () => {
+        const fresh = blankSheet();
+        book.sheets.push(fresh);
+        book.current = fresh.id;
+        save();
+        renderDP();
+        body.querySelector('[data-ls="piece"]')?.focus();
+      });
       body.querySelector('#lsCopy').addEventListener('click', () => {
-        const v = loadSheet();
-        const text = ['Piece'].concat(DIMS.map((d) => d[0])).filter((k) => (v[k] || '').trim()).map((k) => k + ': ' + v[k].trim()).join('\n');
+        const area = AREAS.find((a) => a[0] === cur.area);
+        const lines = [['Piece', cur.piece], ['Area of inquiry', area ? 'Area ' + area[0] + ': ' + area[1] : ''], ['Context', cur.context]]
+          .concat(DIMS.map(([d]) => [d, cur.notes[d] || '']))
+          .filter(([, v]) => v.trim()).map(([k, v]) => k + ': ' + v.trim());
+        const text = lines.join('\n');
         if (!text) { toast('Nothing to copy yet.'); return; }
         try { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => window.prompt('Copy this:', text)); } catch (e) { window.prompt('Copy this:', text); }
       });
       body.querySelector('#lsClear').addEventListener('click', () => {
-        if (!window.confirm('Clear the listening sheet?')) return;
-        saveSheet({});
+        if (!window.confirm('Delete the notes on “' + pieceName(cur, book.sheets.indexOf(cur)) + '”?')) return;
+        book.sheets = book.sheets.filter((x) => x.id !== cur.id);
+        if (!book.sheets.length) book.sheets.push(blankSheet());
+        book.current = book.sheets[0].id;
+        save();
         renderDP();
       });
     }
