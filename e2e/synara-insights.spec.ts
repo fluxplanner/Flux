@@ -67,7 +67,8 @@ async function openWith(page: Page, kind: 'before' | 'after') {
 
 async function openPatterns(page: Page) {
   await page.locator('.tab[data-to="track"]').click();
-  await page.getByRole('tab', { name: 'Patterns' }).click();
+  // Log / Patterns are a pair of aria-pressed buttons (synara-a11y.spec.ts).
+  await page.getByRole('button', { name: 'Patterns', exact: true }).click();
   await expect(page.locator('#patterns-h')).toBeVisible();
 }
 
