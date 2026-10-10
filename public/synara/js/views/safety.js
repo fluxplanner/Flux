@@ -691,10 +691,11 @@ function printDate(key) {
   return `${monthName(d.getMonth())} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
-/* The order follows how the paper gets used: who this is and the 911
-   box, then who to call — near the top, so it can never be pushed onto
-   a second page — then what to do. Long role notes are what overflow,
-   and the footer names the student, so a second page still says whose. */
+/* The order follows how the paper gets used: who this is, the date and
+   "confirm with their neurologist", and the 911 box, then who to call —
+   near the top, so none of it can be pushed onto a second page — then
+   what to do. Long role notes are what overflow, one note at a time, and
+   the footer names the student, so a second page still says whose. */
 function printMarkup(state) {
   const { card, contacts, profile } = state;
   const meds = store.activeMeds(state);
@@ -730,6 +731,8 @@ function printMarkup(state) {
           <p class="pc-kicker">Seizure action card</p>
           <h1 class="pc-name">${esc(profile.name || 'Student name')}</h1>
           ${sub ? `<p class="pc-sub">${esc(sub)}</p>` : ''}
+          <p class="pc-dated">Printed ${printDate(dayKey())}${card.updated ? ` · card last updated ${printDate(card.updated)}` : ''}.
+            Standard seizure first aid — confirm with the student's neurologist.</p>
         </div>
         <div class="pc-911">In an emergency<strong>Call 911</strong></div>
       </header>
@@ -768,9 +771,7 @@ function printMarkup(state) {
         `<div><h3>${label}</h3><p>${esc(card[k])}</p></div>`).join('')}</section>` : ''}
 
       <footer class="pc-foot">
-        ${profile.name ? `${esc(profile.name)}’s seizure action card. ` : ''}
-        Printed ${printDate(dayKey())}${card.updated ? ` · card last updated ${printDate(card.updated)}` : ''}.
-        Standard seizure first aid — confirm with the student's neurologist. Made with Synara.
+        ${profile.name ? `${esc(profile.name)}’s seizure action card, printed ${printDate(dayKey())}. ` : ''}Made with Synara.
       </footer>
     </article>`;
 }

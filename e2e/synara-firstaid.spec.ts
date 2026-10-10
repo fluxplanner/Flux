@@ -289,6 +289,20 @@ test.describe('Synara first aid', () => {
     await expect(pc.locator('.pc-foot')).toContainText(`${new Date().getFullYear()}`);
   });
 
+  test('the example card prints on one page, dated, with "confirm with their neurologist" at the top', async ({ page }) => {
+    await withExampleData(page);
+    await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+    const head = page.locator('#print-card .pc-head');
+    await expect(head).toContainText(`Printed`);
+    await expect(head).toContainText(`${new Date().getFullYear()}`);
+    await expect(head).toContainText('confirm with the student\'s neurologist');
+    for (const format of ['Letter', 'A4'] as const) {
+      const pdf = (await page.pdf({ format })).toString('latin1');
+      const pages = (pdf.match(/\/Type\s*\/Page[^s]/g) || []).length;
+      expect(pages, `${format}: the example card runs onto a second page`).toBe(1);
+    }
+  });
+
   test('printing from the browser menu prints the current card, numbered and dark on white', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await withExampleData(page);

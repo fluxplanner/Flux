@@ -10,7 +10,8 @@ import { buildSync } from 'esbuild';
  *   - the rescue medication was cut at 200 characters, mid-instruction;
  *   - "Do NOT put anything in their mouth" had an exception EF/CDC don't;
  *   - an update's migration looked like an edit to sync, so the second
- *     device asked "which copy to keep?" though nobody had changed a thing.
+ *     device asked "which copy to keep?" though nobody had changed a thing;
+ *   - "Cell # (555) 014-2007" lost its Call button to extension parsing.
  *
  * The files are browser modules, so esbuild bundles them, and each test
  * imports its own copy (fresh module state) with its own fake storage.
@@ -19,7 +20,8 @@ import { buildSync } from 'esbuild';
 const { outputFiles } = buildSync({
   stdin: {
     contents: `export * as store from './store.js';
-               export * as sync from './sync.js';`,
+               export * as sync from './sync.js';
+               export * as util from './util.js';`,
     resolveDir: fileURLToPath(new URL('../../public/synara/js', import.meta.url)),
   },
   bundle: true, format: 'esm', write: false, platform: 'neutral',
@@ -226,4 +228,24 @@ test('when the other device already uploaded the same record, migrated, there is
   await c.store.init();
   await c.sync.start();
   assert.equal(await c.sync.syncNow(), 'conflict');
+});
+
+test('an extension is only an extension after the number: "Cell #" and "Text or call" still dial', async () => {
+  const { util } = await load();
+  const cases = [
+    ['(555) 018-8300 ext. 214', 'tel:5550188300,214', true],
+    ['(555) 018-8300 extension 214', 'tel:5550188300,214', true],
+    ['555-0100 x12', 'tel:5550100,12', true],
+    ['(555) 010-2244#3', 'tel:5550102244,3', true],
+    ['Cell # (555) 014-2007', 'tel:5550142007', true],
+    ['Text or call (555) 014-2007', 'tel:5550142007', true],
+    ['+44 20 7946 0958', 'tel:+442079460958', true],
+    ['ext. 214', 'tel:,214', false],
+    ['x12', 'tel:,12', false],
+    ['', 'tel:', false],
+  ];
+  for (const [typed, href, ok] of cases) {
+    assert.equal(util.telHref(typed), href, typed);
+    assert.equal(util.dialable(typed), ok, typed);
+  }
 });
