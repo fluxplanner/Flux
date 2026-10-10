@@ -96,15 +96,17 @@
 .btn-danger-soft { background: var(--bad-soft); color: var(--bad-ink); }
 .btn-danger-soft:hover { background: var(--bad-600); color: #fff; }
 
-/* Used on the red safety hero and the over-five-minutes timer. */
+/* Used on the red safety hero and the over-five-minutes timer. The ghost
+   darkens the red rather than lightening it: a white wash took white text
+   down to 3.1:1 on the hero's lighter end. */
 .btn-on-danger { background: #fff; color: var(--bad-700); }
 .btn-on-danger:hover { background: #fff5f6; color: var(--bad-700); }
 .btn-on-danger-ghost {
-  background: rgba(255, 255, 255, .16);
+  background: rgba(0, 0, 0, .2);
   color: #fff;
-  border-color: rgba(255, 255, 255, .35);
+  border-color: rgba(255, 255, 255, .45);
 }
-.btn-on-danger-ghost:hover { background: rgba(255, 255, 255, .26); color: #fff; }
+.btn-on-danger-ghost:hover { background: rgba(0, 0, 0, .3); color: #fff; }
 
 /* The one button allowed to be this loud. */
 .btn-emergency {
@@ -401,7 +403,8 @@ button.list-row:active, label.list-row:active { background: var(--bg-sunken); }
   width: 42px;
   height: 42px;
   border-radius: var(--r-full);
-  background: linear-gradient(135deg, var(--v-400), var(--v-600));
+  /* -500 to -700: white initials on -400 were under 4:1. */
+  background: linear-gradient(135deg, var(--v-500), var(--v-700));
   color: #fff;
   font-size: var(--t-sm);
   font-weight: var(--w-black);
@@ -545,11 +548,13 @@ button.list-row:active, label.list-row:active { background: var(--bg-sunken); }
 
 /* ---------- Toast ---------- */
 
+/* Above every overlay, the welcome included: a "Could not save" said
+   underneath the screen that caused it is never seen. */
 .toast {
   position: fixed;
   left: 50%;
   bottom: calc(var(--nav-h) + var(--safe-bottom) + var(--s-4));
-  z-index: 120;
+  z-index: 300;
   transform: translate(-50%, 12px);
   max-width: min(460px, calc(100vw - 32px));
   padding: var(--s-3) var(--s-5);
@@ -565,7 +570,7 @@ button.list-row:active, label.list-row:active { background: var(--bg-sunken); }
 }
 .toast[data-open="true"] { opacity: 1; transform: translate(-50%, 0); }
 .toast[data-tone="bad"] { background: var(--bad-700); }
-[data-theme="dark"] .toast:not([data-tone="bad"]) {
+:root[data-theme="dark"] .toast:not([data-tone="bad"]) {
   background: #2a2638;
   border: 1px solid var(--line-strong);
 }
@@ -587,10 +592,12 @@ button.list-row:active, label.list-row:active { background: var(--bg-sunken); }
   background: var(--bg-sunken);
   font-size: var(--t-xs);
   line-height: var(--lh-body);
-  color: var(--ink-3);
+  /* --ink-2, not -3: small print on the sunken grey, and it carries
+     "check this with a doctor". */
+  color: var(--ink-2);
 }
 .disclaimer > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
-.disclaimer strong { color: var(--ink-2); }
+.disclaimer strong { color: var(--ink); }
 
 /* ---------- Numbered steps ---------- */
 

@@ -183,15 +183,19 @@ export function prettyStamp(s) {
   return `${prettyDate(datePart)} at ${prettyTime(timePart || '00:00')}`;
 }
 
-/** Rough "3 days ago" for history lists. */
-export function timeAgo(s) {
+/**
+ * Rough "3 days ago" for history lists. Past a day it counts calendar
+ * days, as "days since the last seizure" does, so the two agree: a
+ * seizure on Sunday afternoon is "3 days ago" all through Wednesday,
+ * not "2 days ago" until the afternoon.
+ */
+export function timeAgo(s, now = new Date()) {
   const then = parseStamp(s);
-  const mins = Math.round((Date.now() - then.getTime()) / 60000);
+  const mins = Math.round((now.getTime() - then.getTime()) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
+  const days = daysBetween(dayKey(then), dayKey(now));
+  if (mins < 24 * 60 || days < 1) return `${Math.floor(mins / 60)}h ago`;
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;
   const months = Math.round(days / 30);
@@ -207,15 +211,34 @@ export function uid(prefix = 'id') {
 
 export const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
-/** Turn "(555) 010-2244" into something tel: accepts. */
+/* "ext. 214", "ext 214", "x214", "#214" — but only AFTER the number and
+   only digits to the end. Anywhere else those letters are words: "Cell #
+   (555) 014-2007" and "Text or call (555) 014-2007" are plain numbers,
+   and splitting them on the first "#" or "x" made them undialable. */
+const EXT_AFTER = /^(.*\d.*?)\s*(?:ext(?:ension)?\.?|x|#)\s*(\d+)\s*$/i;
+const EXT_ONLY = /^\s*(?:ext(?:ension)?\.?|x|#)\s*\d+\s*$/i;
+
+/** { main, ext } of a typed phone number; ext is '' when there is none. */
+export function splitPhone(phone) {
+  const text = String(phone || '');
+  if (EXT_ONLY.test(text)) return { main: '', ext: text.replace(/\D/g, '') };
+  const m = text.match(EXT_AFTER);
+  return m ? { main: m[1], ext: m[2] } : { main: text, ext: '' };
+}
+
+/** Turn "(555) 010-2244" into something tel: accepts. An extension is
+    dialed after a pause (","), not glued onto the number: "(555) 018-8300
+    ext. 214" used to become tel:5550188300214, a number that does not exist. */
 export function telHref(phone) {
-  return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
+  const { main, ext } = splitPhone(phone);
+  return `tel:${main.replace(/[^\d+]/g, '')}${ext ? `,${ext}` : ''}`;
 }
 
 /** True when a number has enough digits to actually dial. An emergency
-    button that rings nothing is worse than no button. */
+    button that rings nothing is worse than no button. An extension
+    alone doesn't count. */
 export function dialable(phone) {
-  return (String(phone || '').match(/\d/g) || []).length >= 3;
+  return (splitPhone(phone).main.match(/\d/g) || []).length >= 3;
 }
 
 /** Initials for the avatar, max two letters. */

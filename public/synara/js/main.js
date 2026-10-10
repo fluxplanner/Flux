@@ -162,9 +162,31 @@ function renderAppbar(state) {
   if (hostSwitch) el.appbar.insertBefore(hostSwitch, el.appbar.querySelector('.sos-btn'));
 }
 
+/* While changes can't be saved, every screen says so: nobody should find
+   out by losing a dose they logged. Calm on purpose — nothing flashes. */
+function saveNotice() {
+  const status = store.saveStatus();
+  if (status === 'ok') return '';
+  const memory = status === 'memory';
+  return html`
+    <div class="insight save-notice" data-tone="watch">
+      <span class="insight-ico" aria-hidden="true">${raw(icon('alert', 20))}</span>
+      <span class="insight-body">
+        <span class="insight-t">${memory ? 'Not saving on this device' : 'Changes aren’t saving right now'}</span>
+        <span class="insight-d">${memory
+          ? 'Your browser isn’t letting Synara save, so what you add will be gone when you close it. ' +
+            'Download a backup to keep it. The emergency card still works.'
+          : 'Your browser’s storage is full or blocked. What you see is what was last saved. ' +
+            'The emergency card still works.'}</span>
+        ${raw(memory ? '<button class="btn btn-sm btn-outline mt-3" data-action="data-export">Download a backup</button>' : '')}
+      </span>
+    </div>
+  `;
+}
+
 function renderScreen(state) {
   el.screen.innerHTML = html`
-    <div class="screen-inner" data-route="${route}">${raw(VIEWS[route].render(state))}</div>
+    <div class="screen-inner" data-route="${route}">${raw(saveNotice())}${raw(VIEWS[route].render(state))}</div>
   `;
 }
 
@@ -215,8 +237,21 @@ const ACTIONS = {
   'close-sheet'() { closeSheet(); },
   'close-emergency'() { closeEmergency(); },
 
+  /* The skip link. Followed as a link, #screen would reach the router
+     as a route it doesn't know, and send the student to Home. */
+  'skip-to-content'() {
+    el.screen.focus();
+  },
+
   'open-emergency'() {
-    safety.showEmergency(store.get());
+    safety.showEmergency(store.get(), introWaiting ? { onClose: introAfterCard } : undefined);
+  },
+
+  /* The welcome's own way to the emergency card: on a device that has
+     never run Synara, the welcome covers everything else. */
+  'intro-sos'() {
+    if (isWelcomeOpen()) closeWelcome();
+    firstRunCard();
   },
 
   /* A section from the setup list (intro.js): leave the intro if it's
@@ -287,12 +322,71 @@ function onHashChange() {
     el.screen.scrollTop = 0;
     render();
   }
-  if (next.sos) {
-    safety.showEmergency(store.get());
-    // Drop the alias so closing the card and pressing back behave normally.
-    history.replaceState(null, '', '#/safety');
-  }
+  if (next.sos) openSos();
 }
+
+function openSos(opts) {
+  safety.showEmergency(store.get(), opts);
+  // Drop the alias so closing the card and pressing back behave normally —
+  // except on a first run (below), where a reload has to reopen the card.
+  if (!introWaiting) dropSosAlias();
+}
+
+function dropSosAlias() {
+  if (parseHash().sos) history.replaceState(null, '', '#/safety');
+}
+
+/* ============================================================
+   First run that starts on the emergency card
+   ------------------------------------------------------------
+   A teacher's bookmark to #/sos, or a shared link, on a device that has
+   never run Synara — maybe mid-seizure. The card works with nothing set
+   up, so it comes first and the intro waits. The intro starts a record
+   afresh, so it never comes up over one (a seizure just logged), and
+   never while the timer runs or a stopped one hasn't been logged: that
+   would hide the clock behind a welcome screen, and "Look around with
+   example data" would put someone else's emergency card up. Until the
+   intro is done, #/sos stays in the address, so a reload brings the
+   card (and the running timer) straight back.
+   ============================================================ */
+
+let introWaiting = false;
+
+function firstRunCard() {
+  introWaiting = true;
+  openSos({ onClose: introAfterCard });
+}
+
+function introAfterCard() {
+  // After the card has gone, and after whatever closing it opened (the
+  // seizure log sheet) has had its turn.
+  setTimeout(() => {
+    if (!introWaiting) return;
+    if (store.hasData()) {
+      introWaiting = false;
+      dropSosAlias();
+      return;
+    }
+    if (isSheetOpen() || isEmergencyOpen() || isWelcomeOpen() || safety.timerPending()) return;
+    introWaiting = false;
+    intro.show({ fromCard: true });
+  });
+}
+
+/* From the welcome that followed the card, Escape goes back to the card. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !isWelcomeOpen() || !intro.cameFromCard()) return;
+  if (isSheetOpen() || isEmergencyOpen()) return;
+  run('intro-sos');
+});
+
+/* Once a record exists, the first run is over: #/sos becomes #/safety. */
+store.subscribe(() => {
+  if (store.hasData()) {
+    introWaiting = false;
+    dropSosAlias();
+  }
+});
 
 /* The home screen shows a live countdown, and every screen has a
    notion of "today". Once a minute is enough — anything faster is
@@ -302,21 +396,43 @@ function startClock() {
   setInterval(() => {
     if (isEmergencyOpen()) return;
     const today = dayKey();
+    // A new day has its own doses to remind about (notify.js also plans
+    // for midnight; this catches a clock or time-zone change).
+    if (today !== lastDay) notify.schedule();
     if (route === 'home' || today !== lastDay) render();
     lastDay = today;
   }, 60000);
 }
 
+/* The worker keeps what it fetches. Once it is in charge of this page —
+   after the first visit, and after each Flux update empties its cache —
+   fetch the page and its own files through it, so the emergency card
+   opens on a day there's no signal. */
+function keepForOffline() {
+  const files = [...document.querySelectorAll('script[src], link[rel="stylesheet"][href]')]
+    .map((node) => node.getAttribute('src') || node.getAttribute('href'))
+    .filter((url) => !/^([a-z]+:)?\/\//i.test(url));
+  for (const url of [location.pathname, ...files]) fetch(url).catch(() => {});
+}
+
 function registerServiceWorker() {
-  // Inside Flux, Flux's own service worker already covers this page.
-  if (HOSTED) return;
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => {
+  // Inside Flux, Flux's own service worker covers this page. Synara
+  // registers it too (the same one, the planner's way): a student who
+  // never opens the planner still needs it, for the emergency card
+  // offline and for reminders on Android.
+  const register = () => {
+    const done = HOSTED
+      ? navigator.serviceWorker.register(new URL('service-worker.js', location.href), { updateViaCache: 'none' })
+      : navigator.serviceWorker.register('sw.js');
+    done.catch((err) => {
       // Offline support is a bonus, never a reason to fail to start.
       console.warn('[synara] service worker not registered:', err);
     });
-  });
+  };
+  if (HOSTED) navigator.serviceWorker.addEventListener('controllerchange', keepForOffline);
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
 }
 
 async function boot() {
@@ -328,7 +444,10 @@ async function boot() {
   store.subscribe(render);
   render();
 
-  if (firstRun) intro.show();
+  // A first run through #/sos, or reloaded while its timer runs, starts
+  // on the card (see "First run that starts on the emergency card").
+  if (firstRun && (first.sos || safety.timerPending())) firstRunCard();
+  else if (firstRun) intro.show();
   else if (first.sos) onHashChange();
 
   window.addEventListener('hashchange', onHashChange);
@@ -348,6 +467,8 @@ async function boot() {
   sync.start();
 }
 
+/* Whatever went wrong, the emergency card still has to open: it needs
+   nothing but what is already in memory (or standard first aid). */
 boot().catch((err) => {
   console.error('[synara] failed to start:', err);
   el.screen.innerHTML = html`
@@ -356,10 +477,12 @@ boot().catch((err) => {
         <span class="empty-ico">${raw(icon('alert', 32))}</span>
         <span class="empty-t">Synara couldn't start</span>
         <span class="empty-s">
-          Your browser may be blocking local storage. Try turning off private
-          browsing, or reload the page.
+          Reloading the page usually fixes it. The emergency card still opens from here.
         </span>
-        <button class="btn btn-primary" data-action="reload">Reload</button>
+        <button class="btn btn-primary" data-action="open-emergency">
+          ${raw(icon('shield', 18))} Open emergency card
+        </button>
+        <button class="btn btn-outline" data-action="reload">Reload</button>
       </div>
     </div>
   `;

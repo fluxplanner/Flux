@@ -49,6 +49,9 @@ const CARE_FIELDS = [
   ['neuroPhone', 'Neurologist phone', '(555) 010-4488'],
   ['allergies', 'Allergies', 'Penicillin'],
   ['bloodType', 'Blood type', 'O+'],
+  ['rescueMed', 'Rescue medication', 'From your seizure action plan',
+    'Only if your seizure action plan has one: what it is, when it is given, and where it is kept. ' +
+    'Copy it from the plan your doctor or school nurse gave you. Leave it blank if you don’t have one.'],
 ];
 
 export function render(state) {
@@ -156,6 +159,8 @@ const SYNC_ERRORS = {
   'not-ready': 'Sync isn’t switched on for Flux yet.',
   'wrong-key': 'This device’s sync key doesn’t open the synced copy.',
   gone: 'Turned off: the synced copy was deleted on another device.',
+  'other-account': 'Paused: a different Flux account is signed in on this device than the one it syncs with.',
+  'save-failed': 'This device’s storage is full or blocked, so the synced changes couldn’t be saved here yet.',
 };
 
 function syncNote() {
@@ -187,7 +192,7 @@ function fluxCard(state) {
               School info, on this device. Seizures, contacts and notes stay in Synara.</span>
           </span>
           <button class="switch" data-action="flux-link-toggle" role="switch"
-                  aria-checked="${state.settings.fluxLink}" aria-labelledby="fluxlink-label"></button>
+                  aria-checked="${!!state.settings.fluxLink}" aria-labelledby="fluxlink-label"></button>
         </div>
         <button class="list-row" data-action="sync-open">
           <span class="med-dot" data-color="blue" aria-hidden="true">${raw(icon('sync', 20))}</span>
@@ -204,8 +209,9 @@ function fluxCard(state) {
 
 const PRIVACY = html`
   <ul class="sheet-list">
-    <li>${raw(icon('lock', 16))}<span>Synara encrypts everything on this device before it leaves. Flux stores
-      a locked copy it can’t open — not your medication, seizures or contacts.</span></li>
+    <li>${raw(icon('lock', 16))}<span>Synara encrypts everything on this device before it leaves. Flux keeps
+      a locked copy it can’t open. It can see that your account uses Synara and when the copy last
+      changed, but never your medication, seizures or contacts.</span></li>
     <li>${raw(icon('info', 16))}<span>The key stays on your devices. You’ll get a <strong>sync key</strong> to
       enter on your other devices. If you lose every device and the key, the synced copy can’t be
       opened — but each device keeps its own.</span></li>
@@ -292,18 +298,29 @@ export function showConflict() {
 
 const LEADS = [[0, 'On time'], [10, '10 min early'], [15, '15 min early'], [30, '30 min early']];
 
+/* "On" only when this device will really show them. A backup restored
+   from another phone, or a browser that has forgotten its permission,
+   keeps remindersOn saved while nothing can fire. */
+function remindersOnHere(state) {
+  return state.settings.remindersOn && notify.support().ok && notify.permission() === 'granted';
+}
+
+function reminderNote(state, cap, perm, on) {
+  if (!cap.ok) return cap.reason;
+  if (perm === 'denied') return 'Notifications are blocked for this site in your browser settings.';
+  if (state.settings.remindersOn && !on) return 'Not allowed on this device yet. Turn this on to allow notifications.';
+  if (on && notify.lastFailed()) return 'Your last reminder didn’t show on this device. Keep a phone alarm for your doses.';
+  // Installed or not, the page has to be open for its timers to run.
+  return on ? 'On — only while Synara is open.' : 'A nudge at each dose time.';
+}
+
 function remindersCard(state) {
-  const { remindersOn, reminderLead } = state.settings;
+  const { reminderLead } = state.settings;
   const cap = notify.support();
   const perm = notify.permission();
   const blocked = !cap.ok || perm === 'denied';
-  const on = remindersOn && !blocked;
-
-  const note = !cap.ok
-    ? cap.reason
-    : perm === 'denied'
-      ? 'Notifications are blocked for this site in your browser settings.'
-      : on ? 'On — while Synara is open in a tab or installed.' : 'A nudge at each dose time.';
+  const on = remindersOnHere(state);
+  const note = reminderNote(state, cap, perm, on);
 
   const leads = LEADS.map(([v, label]) => `
     <button class="segment" data-action="reminder-lead" data-value="${v}"
@@ -339,10 +356,10 @@ function remindersCard(state) {
       <div class="disclaimer">
         ${raw(icon('alert', 16))}
         <span>
-          <strong>Keep a phone alarm as your real backup.</strong> A website can only
-          remind you while it's running. Close the browser or restart the phone and
-          the reminder is gone. Dependable reminders need a native app — the strongest
-          reason to build Synara's next version in React Native.
+          <strong>Keep a phone alarm as your real backup.</strong> Synara can only
+          remind you while it's open, in a browser tab or from your home screen.
+          Close it or restart your phone and no reminder comes. On iPhone,
+          switching to another app can stop it too.
         </span>
       </div>
     </section>
@@ -388,7 +405,7 @@ function dataCard(state) {
           <li class="list-row list-row-static">
             <span class="med-dot" data-color="mint" aria-hidden="true">${raw(icon('lock', 20))}</span>
             <span class="row-body">
-              <span class="row-t">Stored on this device only</span>
+              <span class="row-t">${sync.enabled() ? 'On this device, with encrypted sync' : 'Stored on this device'}</span>
               <span class="row-s">${plural(days, 'day')} of doses · ${plural(seizures, 'seizure')} · ${plural(checkins, 'check-in')}</span>
             </span>
           </li>
@@ -438,12 +455,11 @@ function dataCard(state) {
       <div class="disclaimer">
         ${raw(icon('info', 16))}
         <span>
-          <strong>Nothing leaves this device.</strong> No account, no server, no
-          analytics. That also means clearing your browser's data deletes it, and it
-          won't follow you to a new phone on its own — download a backup now and then.
-          Cloud sync is deliberately not built yet: once health data syncs to a server
-          or a parent's phone, HIPAA, COPPA, and school-district rules all apply, and
-          that conversation comes before the code.
+          <strong>Your record stays on this device.</strong> No account needed, and
+          no analytics.${sync.available() ? ' If you turn on Sync, an encrypted copy is kept in your Flux account: Flux can’t read it, but it can see that you use Synara and when it last synced.' : ''}
+          Clearing your browser's data deletes what's here, and it won't move to a new
+          phone on its own, so download a backup now and then. The font comes from
+          Google Fonts, so Google can see the page was opened, but never what's in it.
         </span>
       </div>
     </section>
@@ -455,14 +471,14 @@ function aboutCard() {
     <section class="section" aria-labelledby="about-h">
       <h2 id="about-h">About</h2>
       <div class="card">
-        <p class="prose">
+        <p>
           <strong>Synara</strong> puts medication reminders, seizure tracking, and an
           emergency card in one place, built around school life rather than a clinic.
         </p>
         <hr class="hr" />
-        <p class="t-sm ink-3 prose">
-          Version 2.2 · a student project, not a medical device. Nothing here is
-          medical advice — always confirm your care plan with your neurologist.
+        <p class="t-sm ink-3">
+          Version 2.2. Synara is not a medical device, and nothing here is medical
+          advice. Always check your care plan with your neurologist or school nurse.
         </p>
         <hr class="hr" />
         <div class="about-flux">
@@ -478,6 +494,14 @@ function aboutCard() {
    Actions
    ============================================================ */
 
+/** "120 of 600 characters" under the rescue medication box. */
+function rescueCount(n) {
+  const max = store.RESCUE_MED_MAX;
+  return n > max
+    ? `${n} of ${max} characters: ${n - max} too many to save`
+    : `${n} of ${max} characters`;
+}
+
 /** What's in a backup file, in words, before anything is replaced. */
 function describeBackup(parsed) {
   const meds = Array.isArray(parsed.meds) ? parsed.meds.length : 0;
@@ -491,28 +515,60 @@ function describeBackup(parsed) {
 export const actions = {
   'profile-edit'(node, state) {
     const p = state.profile;
-    const fields = CARE_FIELDS.map(([key, label, ph]) => `
+    const fields = CARE_FIELDS.map(([key, label, ph, hint]) => {
+      const describedBy = hint ? ` aria-describedby="p-${key}-hint${key === 'rescueMed' ? ' p-rescueMed-count' : ''}"` : '';
+      // The rescue medication is copied from an action plan and runs to a
+      // few sentences: room to see it all, and a count instead of a
+      // maxlength, which would cut a paste off without a word.
+      const control = key === 'rescueMed'
+        ? `<textarea class="textarea" id="p-${key}" name="${key}" rows="4"
+                     placeholder="${esc(ph)}" autocomplete="off"${describedBy}>${esc(p[key] || '')}</textarea>
+           <span class="hint" id="p-rescueMed-count" data-rescue-count>${rescueCount((p[key] || '').length)}</span>`
+        : `<input class="input" id="p-${key}" name="${key}" value="${esc(p[key] || '')}"
+                  placeholder="${esc(ph)}" autocomplete="off" maxlength="200"${describedBy} />`;
+      return `
       <div class="field">
         <label class="label" for="p-${key}">${label}</label>
-        <input class="input" id="p-${key}" name="${key}" value="${esc(p[key] || '')}"
-               placeholder="${esc(ph)}" autocomplete="off" maxlength="200" />
-      </div>`).join('');
+        ${control}
+        ${hint ? `<span class="hint" id="p-${key}-hint">${esc(hint)}</span>` : ''}
+      </div>`;
+    }).join('');
 
     openSheet({
       title: 'Your details',
       body: html`<form class="stack stack-4" data-action="profile-save" novalidate>${raw(fields)}</form>`,
       footer: '<button class="btn btn-primary" data-action="profile-save">Save</button>',
+      onMount(sheet) {
+        const box = sheet.querySelector('#p-rescueMed');
+        const count = sheet.querySelector('[data-rescue-count]');
+        if (!box || !count) return;
+        box.addEventListener('input', () => {
+          count.textContent = rescueCount(box.value.trim().length);
+          count.classList.toggle('text-bad', box.value.trim().length > store.RESCUE_MED_MAX);
+        });
+      },
     });
   },
 
   async 'profile-save'() {
-    await store.updateProfile(sheetValues());
+    const values = sheetValues();
+    // Never shorten it quietly: the end of it is often "call 911 after
+    // giving it" or where it's kept.
+    const rescue = (values.rescueMed || '').trim();
+    if (rescue.length > store.RESCUE_MED_MAX) {
+      const over = rescue.length - store.RESCUE_MED_MAX;
+      toast(`The rescue medication is ${over} ${over === 1 ? 'character' : 'characters'} too long to save. Shorten it, or keep the details in the action plan.`, 'bad');
+      document.getElementById('p-rescueMed')?.focus();
+      return;
+    }
+    await store.updateProfile(values);
     closeSheet();
     toast('Details saved', 'ok');
   },
 
   async 'reminders-toggle'(node, state) {
-    const turningOn = !state.settings.remindersOn;
+    // Follows what the switch shows, so tapping an "off" switch turns it on.
+    const turningOn = !remindersOnHere(state);
     if (turningOn) {
       const cap = notify.support();
       if (!cap.ok) {
@@ -533,9 +589,11 @@ export const actions = {
     await store.updateSettings({ reminderLead: Number(node.dataset.value) || 0 });
   },
 
-  'reminders-test'() {
-    const sent = notify.test();
-    toast(sent ? 'Test sent — check your notifications' : 'Couldn\'t send a test', sent ? 'ok' : 'bad');
+  async 'reminders-test'() {
+    const result = await notify.test();
+    if (result === 'sent') toast('Test sent — check your notifications', 'ok');
+    else if (result === 'not-allowed') toast('Notifications aren’t allowed for Synara on this device', 'bad');
+    else toast('This browser didn’t show it. Keep a phone alarm for your doses.', 'bad');
   },
 
   async 'theme-set'(node) {
@@ -567,10 +625,14 @@ export const actions = {
     }
 
     const text = await file.text();
-    let parsed;
+    let parsed = null;
     try {
       parsed = JSON.parse(text);
     } catch {
+      /* not JSON: said below */
+    }
+    // Checked before asking to replace everything, not after.
+    if (!store.isBackup(parsed)) {
       toast('That file isn\'t a Synara backup', 'bad');
       return;
     }
@@ -586,8 +648,8 @@ export const actions = {
           await store.importJSON(text);
           toast('Backup restored', 'ok');
         } catch (err) {
-          toast(err.message === 'not-synara'
-            ? 'That file isn\'t a Synara backup'
+          toast(err.message === 'save-failed'
+            ? 'Couldn’t restore it — your browser storage may be full or blocked.'
             : 'Couldn\'t read that backup', 'bad');
         }
       },

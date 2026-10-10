@@ -119,6 +119,8 @@ test.describe('Synara', () => {
     await expect(card).toBeVisible();
     await expect(card.locator('[data-action="timer-start"]')).toBeVisible();
 
+    // A second tap on Close right after SOS is ignored (SOS sits where Close does).
+    await expect(page.locator('#emergency')).not.toHaveAttribute('data-settling', 'true');
     await card.locator('[data-action="close-emergency"]').first().click();
     await expect(page.locator('#emergency')).toBeHidden();
     // The page behind must take taps again, not just look as if it would.
