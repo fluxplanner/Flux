@@ -525,11 +525,12 @@ function startTicking(root) {
     const over = secs >= EMS_SECONDS;
     setTimerView(root, over ? 'over' : 'running', secs);
 
-    // Screen readers hear each whole minute, and the 5-minute line once.
+    // Screen readers hear each whole minute, and the 5-minute line once
+    // (with the real count: "+1 min" can jump straight past five).
     const minute = Math.floor(secs / 60);
     if (live && minute !== lastMinute && minute > 0) {
       live.textContent = over && !announcedOver
-        ? 'Five minutes. Call 911 now.'
+        ? `${minute} minutes. Call 911 now.`
         : `${minute} ${minute === 1 ? 'minute' : 'minutes'}`;
       if (over) announcedOver = true;
     }
