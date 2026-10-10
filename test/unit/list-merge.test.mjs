@@ -120,3 +120,76 @@ test('tombstones union to the later time and old ones expire', () => {
   const t = M.mergeTombs({ 1: now - 10, 2: now - 50 * 864e5 }, { 1: now - 5, 3: now - 1 }, now, 45 * 864e5);
   assert.deepEqual(plain(t), { 1: now - 5, 3: now - 1 });
 });
+
+// ── No resurrections, no duplicates ──────────────────────────────────────────
+
+test('a task deleted here stays deleted when another device pushes its older copy back', () => {
+  const agreed = [T(1), T(2, { updatedAt: 1000 })];
+  const base = M.hashes([T(1)]);                       // our push after the delete
+  const stalePush = plain(agreed);                     // a device that had not pulled yet
+  const r = M.merge([T(1)], stalePush, { base, localTomb: { 2: 5000 } });
+  assert.deepEqual(plain(r.list.map((t) => t.id)), [1]);
+  assert.equal(r.differsFromCloud, true, 'the delete has to go back up');
+});
+
+test('a task deleted on another device is not pushed back from here', () => {
+  const agreed = [T(1), T(2)];
+  const r = M.merge(plain(agreed), [T(1)], { base: M.hashes(agreed), cloudTomb: { 2: 5000 } });
+  assert.deepEqual(plain(r.list.map((t) => t.id)), [1]);
+  assert.equal(r.differsFromCloud, false);
+});
+
+test('a task either side holds twice comes out once', () => {
+  const agreed = [T(1), T(2)];
+  const r = M.merge([T(1), T(2), T(2)], [T(1), T(3), T(3), T(2)], { base: M.hashes(agreed) });
+  assert.deepEqual(plain(r.list.map((t) => t.id)).sort(), [1, 2, 3]);
+});
+
+test('the same Canvas assignment imported on two devices is one task, under the id the cloud has', () => {
+  const agreed = [T(1)];
+  const mine = T(111, { name: 'Lab report', canvasCourseId: 5, canvasAssignmentId: 9, updatedAt: 2000 });
+  const theirs = T(222, { name: 'Lab report', canvasCourseId: 5, canvasAssignmentId: 9, updatedAt: 1900 });
+  const r = M.merge([mine, T(1)], [theirs, T(1)], { base: M.hashes(agreed) });
+  const lab = r.list.filter((t) => t.canvasAssignmentId === 9);
+  assert.equal(lab.length, 1);
+  assert.equal(lab[0].id, 222);
+  assert.equal(r.list.length, 2);
+});
+
+test('ticking your copy before the other device\'s copy arrived keeps the tick', () => {
+  const agreed = [T(1)];
+  const mine = T(111, { canvasCourseId: 5, canvasAssignmentId: 9, done: true, updatedAt: 3000 });
+  const theirs = T(222, { canvasCourseId: 5, canvasAssignmentId: 9, updatedAt: 1000 });
+  const r = M.merge([mine, T(1)], [theirs, T(1)], { base: M.hashes(agreed) });
+  const lab = r.list.filter((t) => t.canvasAssignmentId === 9);
+  assert.equal(lab.length, 1);
+  assert.equal(lab[0].id, 222);
+  assert.equal(lab[0].done, true);
+  assert.equal(r.differsFromCloud, true);
+});
+
+test('two different assignments, or one already shared, are left alone', () => {
+  const shared = T(222, { canvasCourseId: 5, canvasAssignmentId: 9 });
+  const base = M.hashes([shared]);
+  const other = T(333, { canvasCourseId: 5, canvasAssignmentId: 10 });
+  const r = M.merge([shared, other], [shared], { base });
+  assert.deepEqual(plain(r.list.map((t) => t.id)).sort(), [222, 333]);
+  assert.equal(M.sourceKey(T(1)), '');
+  assert.notEqual(M.sourceKey(shared), M.sourceKey(T(2, { canvasCourseId: 6, canvasAssignmentId: 9 })));
+});
+
+test('a repeat ticked on two devices spawns one next step', () => {
+  const agreed = [T(1, { seriesId: 's1', date: '2026-10-05' })];
+  const base = M.hashes(agreed);
+  const doneHere = [T(1, { seriesId: 's1', date: '2026-10-05', done: true, updatedAt: 5000 }), T(50, { seriesId: 's1', date: '2026-10-12', updatedAt: 5000 })];
+  const doneThere = [T(1, { seriesId: 's1', date: '2026-10-05', done: true, updatedAt: 4000 }), T(60, { seriesId: 's1', date: '2026-10-12', updatedAt: 4000 })];
+  const r = M.merge(doneHere, doneThere, { base });
+  assert.equal(r.list.filter((t) => t.date === '2026-10-12').length, 1);
+});
+
+test('a note without an id, edited on another device, is not kept beside the edited copy', () => {
+  const old = { title: 'Notes', body: 'v1' };
+  const base = M.hashes([old]);
+  const r = M.merge([plain(old)], [{ title: 'Notes', body: 'v2' }], { base });
+  assert.deepEqual(plain(r.list), [{ title: 'Notes', body: 'v2' }]);
+});

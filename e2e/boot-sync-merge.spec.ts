@@ -72,6 +72,20 @@ test.describe('Opening Flux signed in', () => {
     expect(boot.state.pushedBeforeFirstPull).toBe(false);
   });
 
+  test('an assignment imported here and on another device before either synced shows once', async ({ page }) => {
+    const mine = { id: 7201, name: 'Lab report', date: day(2), canvasCourseId: 5, canvasAssignmentId: 9, done: false, createdAt: Date.now() - 1000 };
+    const theirs = { ...mine, id: 7302, createdAt: Date.now() - 2000, updatedAt: Date.now() - 2000 };
+    const boot = await bootSignedIn(page, { tasks: [mine, ...TASKS], cloud: { tasks: [theirs, ...TASKS], onboarded: true } });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect.poll(() => boot.state.pulls, { timeout: 10_000 }).toBeGreaterThan(0);
+    await expect(page.locator('#fluxRoleSkeletonOverlay')).toHaveCount(0, { timeout: 10_000 });
+    const ids = await page.evaluate(() => (window as any).tasks.filter((t: any) => t.canvasAssignmentId === 9).map((t: any) => t.id));
+    expect(ids, 'the same assignment came out twice').toEqual([7302]);
+    await expect(page.locator('#taskList .task-item', { hasText: 'Lab report' })).toHaveCount(1);
+    expect((boot.state.cloud.tasks || []).filter((t: any) => t.canvasAssignmentId === 9).length).toBe(1);
+  });
+
   test('opening never reloads the page', async ({ page }) => {
     await bootSignedIn(page, { tasks: TASKS });
     let navigations = 0;

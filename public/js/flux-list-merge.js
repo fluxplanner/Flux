@@ -53,6 +53,25 @@
     return out;
   }
 
+  /* Where an item came from, when it is a copy of something outside Flux (or
+     the next step of a repeating task). Two devices that each import the same
+     Canvas assignment before either has synced give it two ids; matched by
+     this, the merge keeps one. */
+  const SOURCE_FIELDS=[
+    ['canvasAssignmentId','canvasCourseId'],['canvasQuizId','canvasCourseId'],['canvasCalendarEventId'],
+    ['canvasModuleItemId'],['canvasAnnouncementId'],['canvasDiscussionId'],['classroomCourseWorkId'],
+    ['googleTaskId'],['gmailMessageId'],['teacherAssignmentId'],
+  ];
+  function sourceKey(it){
+    if(!it||typeof it!=='object')return '';
+    for(const [f,g] of SOURCE_FIELDS){
+      if(it[f]!=null&&it[f]!=='')return f+':'+(g?String(it[g])+':':'')+String(it[f]);
+    }
+    // A repeat spawns its next instance when it is ticked; ticked on two devices, it spawned twice.
+    if(it.seriesId&&it.date&&!it.done)return 'series:'+it.seriesId+':'+it.date;
+    return '';
+  }
+
   const stamp=it=>(it&&+it.updatedAt)||0;
   const born=it=>(it&&(+it.updatedAt||+it.createdAt||(typeof it.id==='number'&&it.id>1e12?it.id:0)))||0;
 
@@ -100,6 +119,10 @@
         const gone=+ct[k]||0;
         if(gone&&stamp(l)<=gone)return null;              // deleted on another device
         if(!base&&!gone&&born(l)<=lastSyncAt&&lastSyncAt)return null; // old copy, never told
+        // No id to follow it by: the cloud had exactly this and now does not,
+        // so it was edited or deleted elsewhere. Keeping it would leave the
+        // old version beside the edited one.
+        if(k.indexOf('h:')===0&&base&&hb!==undefined)return null;
         why.local.push(k);
         return l;                                          // new here, or edited since
       }
@@ -115,12 +138,38 @@
     const keys=new Set([...L.keys(),...C.keys()]);
     keys.forEach(k=>pick.set(k,decide(k)));
 
+    // The same thing made on both sides since they last agreed (see
+    // sourceKey): one item, under the id the cloud already has, so no other
+    // device gains a second copy — with this device's edits if they are newer.
+    const isNew=k=>!base||base[k]===undefined;
+    const twin=new Map();   // local key -> cloud key it was folded into
+    const bySource=new Map();
+    C.forEach((c,k)=>{
+      if(L.has(k)||!pick.get(k)||!isNew(k))return;
+      const s=sourceKey(c);
+      if(s&&!bySource.has(s))bySource.set(s,k);
+    });
+    if(bySource.size)L.forEach((l,k)=>{
+      if(C.has(k)||!pick.get(k)||!isNew(k))return;
+      const s=sourceKey(l),kc=s&&bySource.get(s);
+      if(!kc)return;
+      bySource.delete(s);
+      const c=pick.get(kc);
+      if(stamp(l)>stamp(c))pick.set(kc,Object.assign({},l,{id:c.id}));
+      pick.set(k,null);
+      twin.set(k,kc);
+    });
+
     // Local order first (it is what the student is looking at), then anything
-    // new from the cloud, newest-first the way addTask() unshifts.
+    // new from the cloud, newest-first the way addTask() unshifts. Each item
+    // once, even if a side held it twice.
     const out=[];
     const fresh=[];
-    cloud.forEach(it=>{const k=keyOf(it);if(!L.has(k)&&pick.get(k))fresh.push(pick.get(k));});
-    local.forEach(it=>{const v=pick.get(keyOf(it));if(v)out.push(v);});
+    const placed=new Set(twin.values());
+    const emitted=new Set();
+    const emit=(arr,k)=>{const v=pick.get(k);if(v&&!emitted.has(k)){emitted.add(k);arr.push(v);}};
+    cloud.forEach(it=>{const k=keyOf(it);if(!L.has(k)&&!placed.has(k))emit(fresh,k);});
+    local.forEach(it=>{const k=keyOf(it);emit(out,twin.has(k)?twin.get(k):k);});
     const list=fresh.concat(out);
 
     const sameAs=(arr)=>{
@@ -145,5 +194,5 @@
     return out;
   }
 
-  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs};
+  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs,sourceKey};
 })();
