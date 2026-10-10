@@ -102,7 +102,7 @@ export function render(state) {
         <strong>Check this with a doctor.</strong> The first-aid steps follow
         standard public seizure first aid, but every person's seizures are
         different. Confirm this card with your neurologist and school nurse
-        before relying on it. Synara is a student project, not a medical device.
+        before relying on it. Synara is not a medical device.
       </span>
     </div>
   `;
@@ -324,7 +324,8 @@ function rolesSection(card) {
    Nothing blinks, pulses, or flashes, ever.
 
    The start time lives in sessionStorage, so closing the card by
-   accident or reloading mid-seizure doesn't lose the count.
+   accident or reloading mid-seizure doesn't lose the count, and the app
+   says the timer is still running (flagTimer).
    ============================================================ */
 
 const TIMER_KEY = 'synara.timer';
@@ -355,6 +356,7 @@ function writeStart(v) {
     if (v) sessionStorage.setItem(TIMER_KEY, JSON.stringify(v));
     else sessionStorage.removeItem(TIMER_KEY);
   } catch { /* see above */ }
+  flagTimer();
 }
 
 /* Said wherever the rescue medication is shown. */
@@ -462,6 +464,16 @@ function stopTicking() {
   tick = null;
 }
 
+/* Closing the card doesn't stop the clock, so while it runs <html> is
+   marked and a bar under the app bar says so (synara.html, app.css):
+   whoever closed it, by accident or to look something up, knows the
+   timer is still counting and gets back to it in one tap. */
+function flagTimer() {
+  if (readStart()) document.documentElement.dataset.timer = 'running';
+  else delete document.documentElement.dataset.timer;
+}
+flagTimer();
+
 /* ---------- The overlay ---------- */
 
 function emBlock(heading, inner, tone = '') {
@@ -563,6 +575,8 @@ export function showEmergency(state, { onClose } = {}) {
         root.querySelector('[data-action="timer-stop"]')?.focus({ preventScroll: true });
       } else if (stoppedAfter != null) {
         setTimerView(root, 'stopped', stoppedAfter);
+        // That swapped out Start timer, which had focus: never leave it on <body>.
+        root.querySelector('[data-action="timer-log"]')?.focus({ preventScroll: true });
       }
     },
     onClose() {

@@ -159,6 +159,7 @@ const SYNC_ERRORS = {
   'not-ready': 'Sync isn’t switched on for Flux yet.',
   'wrong-key': 'This device’s sync key doesn’t open the synced copy.',
   gone: 'Turned off: the synced copy was deleted on another device.',
+  'other-account': 'Paused: a different Flux account is signed in on this device than the one it syncs with.',
 };
 
 function syncNote() {
@@ -207,8 +208,9 @@ function fluxCard(state) {
 
 const PRIVACY = html`
   <ul class="sheet-list">
-    <li>${raw(icon('lock', 16))}<span>Synara encrypts everything on this device before it leaves. Flux stores
-      a locked copy it can’t open — not your medication, seizures or contacts.</span></li>
+    <li>${raw(icon('lock', 16))}<span>Synara encrypts everything on this device before it leaves. Flux keeps
+      a locked copy it can’t open. It can see that your account uses Synara and when the copy last
+      changed, but never your medication, seizures or contacts.</span></li>
     <li>${raw(icon('info', 16))}<span>The key stays on your devices. You’ll get a <strong>sync key</strong> to
       enter on your other devices. If you lose every device and the key, the synced copy can’t be
       opened — but each device keeps its own.</span></li>
@@ -352,10 +354,10 @@ function remindersCard(state) {
       <div class="disclaimer">
         ${raw(icon('alert', 16))}
         <span>
-          <strong>Keep a phone alarm as your real backup.</strong> A website can only
-          remind you while it's running. Close the browser or restart the phone and
-          the reminder is gone. Dependable reminders need a native app — the strongest
-          reason to build Synara's next version in React Native.
+          <strong>Keep a phone alarm as your real backup.</strong> Synara can only
+          remind you while it's open, in a browser tab or from your home screen.
+          Close it or restart your phone and no reminder comes. On iPhone,
+          switching to another app can stop it too.
         </span>
       </div>
     </section>
@@ -401,7 +403,7 @@ function dataCard(state) {
           <li class="list-row list-row-static">
             <span class="med-dot" data-color="mint" aria-hidden="true">${raw(icon('lock', 20))}</span>
             <span class="row-body">
-              <span class="row-t">Stored on this device only</span>
+              <span class="row-t">${sync.enabled() ? 'On this device, with encrypted sync' : 'Stored on this device'}</span>
               <span class="row-s">${plural(days, 'day')} of doses · ${plural(seizures, 'seizure')} · ${plural(checkins, 'check-in')}</span>
             </span>
           </li>
@@ -451,12 +453,11 @@ function dataCard(state) {
       <div class="disclaimer">
         ${raw(icon('info', 16))}
         <span>
-          <strong>Nothing leaves this device.</strong> No account, no server, no
-          analytics. That also means clearing your browser's data deletes it, and it
-          won't follow you to a new phone on its own — download a backup now and then.
-          Cloud sync is deliberately not built yet: once health data syncs to a server
-          or a parent's phone, HIPAA, COPPA, and school-district rules all apply, and
-          that conversation comes before the code.
+          <strong>Your record stays on this device.</strong> No account needed, and
+          no analytics.${sync.available() ? ' If you turn on Sync, an encrypted copy is kept in your Flux account: Flux can’t read it, but it can see that you use Synara and when it last synced.' : ''}
+          Clearing your browser's data deletes what's here, and it won't move to a new
+          phone on its own, so download a backup now and then. The font comes from
+          Google Fonts, so Google can see the page was opened, but never what's in it.
         </span>
       </div>
     </section>
@@ -468,14 +469,14 @@ function aboutCard() {
     <section class="section" aria-labelledby="about-h">
       <h2 id="about-h">About</h2>
       <div class="card">
-        <p class="prose">
+        <p>
           <strong>Synara</strong> puts medication reminders, seizure tracking, and an
           emergency card in one place, built around school life rather than a clinic.
         </p>
         <hr class="hr" />
-        <p class="t-sm ink-3 prose">
-          Version 2.2 · a student project, not a medical device. Nothing here is
-          medical advice — always confirm your care plan with your neurologist.
+        <p class="t-sm ink-3">
+          Version 2.2. Synara is not a medical device, and nothing here is medical
+          advice. Always check your care plan with your neurologist or school nurse.
         </p>
         <hr class="hr" />
         <div class="about-flux">

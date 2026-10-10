@@ -237,6 +237,12 @@ const ACTIONS = {
   'close-sheet'() { closeSheet(); },
   'close-emergency'() { closeEmergency(); },
 
+  /* The skip link. Followed as a link, #screen would reach the router
+     as a route it doesn't know, and send the student to Home. */
+  'skip-to-content'() {
+    el.screen.focus();
+  },
+
   'open-emergency'() {
     safety.showEmergency(store.get());
   },

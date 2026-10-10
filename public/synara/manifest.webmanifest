@@ -1,0 +1,24 @@
+{
+  "name": "Synara",
+  "short_name": "Synara",
+  "description": "Medication reminders, a seizure log and an emergency card, for students with epilepsy.",
+  "start_url": "../../synara.html",
+  "scope": "../../synara.html",
+  "display": "standalone",
+  "background_color": "#f6f5fa",
+  "theme_color": "#f6f5fa",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Emergency card",
+      "short_name": "SOS",
+      "description": "Open the seizure emergency card",
+      "url": "../../synara.html#/sos",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

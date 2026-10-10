@@ -50,8 +50,8 @@ export function support() {
   if (iOS && !standalone) {
     return {
       ok: false,
-      reason: 'On iPhone, add Synara to your home screen first — Safari only ' +
-              'allows notifications for installed apps.',
+      reason: 'On iPhone, add Synara to your Home Screen first (Share, then Add to ' +
+              'Home Screen) and open it from there. Safari only allows notifications for those.',
     };
   }
 

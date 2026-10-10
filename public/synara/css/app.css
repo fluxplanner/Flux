@@ -41,6 +41,9 @@
   z-index: 20;
 }
 
+/* Title and subtitle wrap rather than end in "…": on a phone they get
+   only what the switcher and SOS leave (about 200px at 390 wide), and
+   "Good afterno…" or "updated Fri, Oc…" says less than a second line. */
 .appbar-title { min-width: 0; flex: 1 1 auto; }
 .appbar-t {
   display: block;
@@ -49,18 +52,17 @@
   letter-spacing: -0.025em;
   line-height: 1.15;
   color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .appbar-s {
   display: block;
   font-size: var(--t-sm);
   color: var(--ink-3);
   margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .appbar-t { font-size: var(--t-lg); }
 }
 
 /* SOS — present in the app bar on every screen, deliberately. The whole
@@ -336,7 +338,10 @@
    Home
    ============================================================ */
 
-/* Next-dose card — the most-looked-at surface in the app. */
+/* Next-dose card — the most-looked-at surface in the app. Its text is
+   white, so no fill here is lighter than --v-500 (4.8:1) or --ok-700
+   (5.3:1), and the sheen stays faint: with -400 and #0fb981 ends, the
+   lighter corners took the small print down to 2.5–3.9:1. */
 .next-dose {
   position: relative;
   overflow: hidden;
@@ -347,15 +352,13 @@
   border: none;
   color: #fff;
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .16), transparent 55%),
-    linear-gradient(140deg, var(--v-700), var(--v-500) 60%, var(--v-400));
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .08), transparent 55%),
+    linear-gradient(140deg, var(--v-800), var(--v-600) 60%, var(--v-500));
   box-shadow: var(--sh-lg);
 }
-.next-dose .eyebrow { color: rgba(255, 255, 255, .78); }
+.next-dose .eyebrow { color: #fff; }
 .next-dose[data-state="due"] {
-  background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .2), transparent 55%),
-    linear-gradient(140deg, var(--v-600), var(--v-500) 55%, #a07dff);
+  background: linear-gradient(140deg, var(--v-600), var(--v-500));
 }
 .next-dose[data-state="overdue"] {
   background:
@@ -365,8 +368,8 @@
 .next-dose[data-state="overdue"] .eyebrow { color: #fcd08a; }
 .next-dose[data-state="clear"] {
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .18), transparent 55%),
-    linear-gradient(140deg, var(--ok-700), var(--ok-500));
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .08), transparent 55%),
+    linear-gradient(140deg, #03583d, var(--ok-700));
 }
 
 .next-dose-when {
@@ -379,7 +382,7 @@
 .next-dose-when-sm { font-size: var(--t-xl); letter-spacing: -0.02em; }
 .next-dose-what {
   font-size: var(--t-base);
-  color: rgba(255, 255, 255, .9);
+  color: #fff;
   line-height: var(--lh-snug);
 }
 .next-dose-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
@@ -391,20 +394,22 @@
   gap: 4px;
   margin-top: var(--s-3);
   padding: 4px 0;
-  color: rgba(255, 255, 255, .85);
+  color: #fff;
   font-size: var(--t-sm);
   font-weight: var(--w-semi);
 }
-.next-dose-more:hover { color: #fff; text-decoration: underline; }
+.next-dose-more:hover { text-decoration: underline; }
 
+/* The ghost darkens the violet rather than lightening it, so its white
+   label keeps its contrast (as .btn-on-danger-ghost). */
 .btn-on-brand { background: #fff; color: var(--v-700); }
 .btn-on-brand:hover { background: #f7f4ff; }
 .btn-on-brand-ghost {
-  background: rgba(255, 255, 255, .14);
+  background: rgba(0, 0, 0, .18);
   color: #fff;
-  border-color: rgba(255, 255, 255, .28);
+  border-color: rgba(255, 255, 255, .45);
 }
-.btn-on-brand-ghost:hover { background: rgba(255, 255, 255, .24); }
+.btn-on-brand-ghost:hover { background: rgba(0, 0, 0, .28); }
 
 /* ---------- Stats ---------- */
 
@@ -500,9 +505,11 @@
 }
 .tick:hover { border-color: var(--brand); }
 .tick:active { transform: scale(.88); }
-.tick[data-status="taken"]  { background: var(--ok);   border-color: var(--ok);   color: #fff; }
-.tick[data-status="late"]   { background: var(--warn); border-color: var(--warn); color: #fff; }
-.tick[data-status="missed"] { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+/* Dark glyphs: white on these fills was 1.9–3.7:1, the glyph that has
+   to carry the status for anyone who can't tell the fills apart. */
+.tick[data-status="taken"]  { background: var(--ok);   border-color: var(--ok);   color: var(--n-900); }
+.tick[data-status="late"]   { background: var(--warn); border-color: var(--warn); color: var(--n-900); }
+.tick[data-status="missed"] { background: var(--bad);  border-color: var(--bad);  color: var(--n-900); }
 
 /* ---------- Quick actions ---------- */
 
@@ -608,7 +615,7 @@
   font-size: 11px;
   font-weight: var(--w-bold);
   letter-spacing: .04em;
-  color: var(--ink-faint);
+  color: var(--ink-3);
   padding-bottom: var(--s-1);
 }
 
@@ -628,9 +635,27 @@
 }
 .cal-day:hover { box-shadow: 0 0 0 2px var(--line-strong); }
 .cal-day:active { transform: scale(.9); }
-.cal-day[data-status="taken"]  { background: var(--ok);   color: #fff; }
-.cal-day[data-status="late"]   { background: var(--warn); color: #fff; }
-.cal-day[data-status="missed"] { background: var(--bad);  color: #fff; }
+/* Dark ink, not white: white on these fills was 1.9–3.7:1. The fills
+   are mid-tone in both themes, so one ink works for both. */
+.cal-day[data-status="taken"]  { background: var(--ok);   color: var(--n-900); }
+.cal-day[data-status="late"]   { background: var(--warn); color: var(--n-900); }
+.cal-day[data-status="missed"] { background: var(--bad);  color: var(--n-900); }
+
+/* Never colour alone: each status carries the same glyph as the dose
+   ticks, and the legend shows it too. */
+.cal-day[data-status="taken"]::before,
+.cal-day[data-status="late"]::before,
+.cal-day[data-status="missed"]::before {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: var(--w-black);
+  line-height: 1;
+}
+.cal-day[data-status="taken"]::before,  .cal-swatch[data-k="taken"]::before  { content: '✓'; }
+.cal-day[data-status="late"]::before,   .cal-swatch[data-k="late"]::before   { content: '!'; }
+.cal-day[data-status="missed"]::before, .cal-swatch[data-k="missed"]::before { content: '✕'; }
 
 /* Today is an INNER ring, seizure days an OUTER one — the two must
    never be confusable on this grid. */
@@ -661,6 +686,17 @@
   font-weight: var(--w-semi);
 }
 .cal-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.cal-swatch[data-k] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  font-weight: var(--w-black);
+  line-height: 1;
+  color: var(--n-900);
+}
 .cal-swatch[data-k="taken"]   { background: var(--ok); }
 .cal-swatch[data-k="late"]    { background: var(--warn); }
 .cal-swatch[data-k="missed"]  { background: var(--bad); }
@@ -718,7 +754,7 @@
   color: var(--ink-2);
   transition: background var(--motion) var(--ease), color var(--motion) var(--ease);
 }
-.subtab[aria-selected="true"] {
+.subtab[aria-pressed="true"] {
   background: var(--bg-raised);
   color: var(--brand-ink);
   box-shadow: var(--sh-sm);
@@ -813,14 +849,16 @@
    Safety card
    ============================================================ */
 
+/* -700 to -600 only, and a fainter sheen: the lighter -500 end left the
+   white text under 4:1 where it reached the corner. */
 .safety-hero {
   position: relative;
   overflow: hidden;
   padding: var(--s-6);
   border-radius: var(--r-xl);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .16), transparent 55%),
-    linear-gradient(140deg, var(--bad-700), var(--bad-600) 55%, var(--bad-500));
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .08), transparent 55%),
+    linear-gradient(140deg, var(--bad-700), var(--bad-600));
   color: #fff;
   box-shadow: var(--sh-lg);
 }
@@ -836,7 +874,7 @@
 }
 .safety-hero h2 { color: #fff; font-size: var(--t-xl); letter-spacing: -0.02em; }
 .safety-hero p {
-  color: rgba(255, 255, 255, .92);
+  color: #fff;
   font-size: var(--t-sm);
   line-height: var(--lh-body);
   margin-top: var(--s-2);
@@ -990,16 +1028,26 @@
   font-weight: var(--w-black);
   letter-spacing: .01em;
 }
+/* Darker than the bar, not lighter: a white wash took "Close" to 4.2:1
+   under the pointer, and the pointer is right there after tapping SOS. */
 .em-close {
   min-height: 44px;
   padding: 0 18px;
   border-radius: var(--r-full);
-  background: rgba(255, 255, 255, .18);
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .45);
   color: #fff;
   font-size: var(--t-sm);
   font-weight: var(--w-bold);
 }
-.em-close:hover { background: rgba(255, 255, 255, .3); }
+.em-close:hover { background: rgba(0, 0, 0, .32); }
+
+/* The violet focus ring all but vanishes on red or violet. Wherever a
+   control sits on one of those fills, the ring is white. */
+.em-bar :focus-visible,
+.em-timer[data-state="over"] :focus-visible,
+.safety-hero :focus-visible,
+.next-dose :focus-visible { outline-color: #fff; }
 
 .em-body {
   flex: 1 1 auto;
@@ -1058,8 +1106,13 @@
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
-.em-timer[data-state="idle"] .em-timer-clock { color: var(--ink-faint); }
+.em-timer[data-state="idle"] .em-timer-clock { color: var(--ink-3); }
 .em-timer-actions { display: flex; flex-direction: column; gap: var(--s-2); }
+/* AAA here, as promised for the emergency screens (tokens.css): the
+   deeper violet with white in light (7.9:1), the paler one with dark
+   text in dark (9.2:1). */
+.emergency .btn-primary,
+.emergency .btn-primary:hover { background: var(--brand-ink); }
 
 .em-timer[data-state="over"] {
   background: var(--bad-700);
@@ -1070,6 +1123,27 @@
 .em-timer[data-state="over"] .em-timer-hint,
 .em-timer[data-state="over"] .em-timer-clock { color: #fff; }
 .em-timer[data-state="over"] .em-timer-hint { font-size: var(--t-md); font-weight: var(--w-black); }
+
+/* Under the app bar while a timer runs and the card is closed (safety.js
+   marks <html>). It only says so: no ticking digits, nothing blinks. */
+.timer-banner { display: none; }
+:root[data-timer="running"] .timer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  flex: none;
+  min-height: 44px;
+  padding: var(--s-2) var(--s-4);
+  background: var(--bad-soft);
+  color: var(--bad-ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--bad) 45%, transparent);
+  font-size: var(--t-sm);
+  font-weight: var(--w-bold);
+  text-align: center;
+}
+:root[data-timer="running"] .timer-banner:hover { text-decoration: underline; }
+.timer-banner svg { flex: none; }
 
 .em-timer[data-state="stopped"] { border-color: var(--ok); }
 .em-timer[data-state="stopped"] .em-timer-hint { color: var(--ok-ink); font-weight: var(--w-bold); }
