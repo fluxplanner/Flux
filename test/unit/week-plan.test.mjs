@@ -115,6 +115,14 @@ test('overdue work goes first and as soon as possible', () => {
   const r = plan({ tasks: [task(2, '2026-10-08', 45), task(1, '2026-10-03', 30, { name: 'Late quiz corrections' })] });
   assert.deepEqual(of(r, 1), [['2026-10-05', '16:00', 30]]);
   assert.equal(r.blocks.find((b) => b.taskId === 1).reason, 'Overdue since Oct 3, ~30 min left');
+  // Three hours late: today up to the daily limit, the rest tomorrow; not one a day.
+  const big = plan({ tasks: [task(1, '2026-10-01', 180)] });
+  assert.deepEqual(of(big, 1), [['2026-10-05', '16:00', 60], ['2026-10-05', '17:15', 60], ['2026-10-06', '16:00', 60]]);
+});
+
+test('study time already over for today is "left", not "set"', () => {
+  const r = plan({ nowMin: 22 * 60, tasks: [task(1, '2026-10-06', 60)] });
+  assert.equal(r.unscheduled[0].reason, 'Due tomorrow, and there’s no study time left before then.');
 });
 
 test('due tomorrow with no room before: the due day only when it is due late enough', () => {

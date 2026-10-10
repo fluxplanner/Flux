@@ -268,9 +268,10 @@
         const floor = Math.min(want, minBlock);
         const opts = elig.map((day) => ({ day: day, room: roomOn(day, endBy(day)) })).filter((x) => x.room >= floor);
         if (!opts.length) break;
-        const fresh = opts.filter((x) => !mine.some((b) => b.date === x.day.date));
+        // Late work as soon as possible, more than one block a day if need be;
+        // the rest on the emptiest day it isn't on yet.
+        const fresh = urgent ? [] : opts.filter((x) => !mine.some((b) => b.date === x.day.date));
         const pool = fresh.length ? fresh : opts;
-        // Late work as soon as possible; the rest on the emptiest day.
         pool.sort((a, b) => (urgent ? 0 : a.day.used - b.day.used) || (a.day.date < b.day.date ? -1 : 1));
         const pick = pool[0].day, room = Math.floor(pool[0].room / 5) * 5;
         // The only day left takes as much as it can, not just an even share.
@@ -300,7 +301,7 @@
         const timed = elig.filter((x) => x.win);
         let why;
         if (!elig.length || elig.every((x) => x.rest)) why = c.d === 0 ? 'today is a rest day' : 'there are only rest days ' + when;
-        else if (!timed.length) why = c.d === 0 && !days[0].off ? 'there’s no study time left today' : 'there’s no study time set ' + when;
+        else if (!timed.length) why = 'there’s no study time ' + (elig.every((x) => x.off || x.rest) ? 'set ' : 'left ') + when;
         else if (timed.every((x) => x.cap - x.used < Math.min(left, minBlock))) why = 'your daily limit (' + maxPerDay + ' min) is used up ' + when;
         else why = 'there’s no free time left in your study hours ' + when;
         // Due today at a time before study time even starts: say that, not "no room".
