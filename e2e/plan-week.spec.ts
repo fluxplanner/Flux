@@ -288,6 +288,27 @@ test.describe('Plan my week', () => {
     expect((await blocks(page)).find((x) => x.id === algebra.id)).toMatchObject({ date: '2026-10-06', pinned: false });
   });
 
+  test('a busy time added in step 1 is a calendar event, and the plan works around it', async ({ page }) => {
+    await setup(page);
+    await page.locator('#dashPlanWeekBtn').click();
+    const mon = modal(page).locator('.pw-day[data-date="2026-10-05"]');
+    await mon.locator('[data-act="busy"]').click();
+    await expect(page.locator('#pwBusyWhat')).toBeFocused();
+    await page.locator('#pwBusyWhat').fill('Practice');
+    await page.locator('#pwBusyFrom').fill('16:00');
+    await page.locator('#pwBusyTo').fill('17:00');
+    await page.locator('#pwBusyTo').press('Enter');
+    await expect(mon.locator('.pw-commit')).toContainText('Practice');
+    await expect(mon.locator('[data-act="busy"]')).toBeFocused();
+    const events = await page.evaluate(() => (window as any).load('flux_events', []).filter((e: any) => e.title === 'Practice'));
+    expect(events).toMatchObject([{ date: '2026-10-05', time: '16:00', endTime: '17:00', scope: 'outside' }]);
+
+    await modal(page).locator('[data-act="propose"]').click();
+    // After practice and a ten-minute breather, on the quarter hour.
+    await expect(block(page, 'Algebra homework').locator('.pw-b-time')).toHaveText('5:15 – 6:00 PM');
+    await expect(modal(page).locator('section.pw-pday', { has: page.locator('#pwd-2026-10-05') }).locator('.pw-around')).toContainText('Practice 4:00 – 5:00 PM');
+  });
+
   test('Ctrl+Z on the suggestion takes back a move or removal there, never a change made elsewhere', async ({ page }) => {
     await setup(page);
     // Something done elsewhere first, which the app's undo would take back.

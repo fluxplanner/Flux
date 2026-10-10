@@ -709,9 +709,10 @@
       e.preventDefault();
       e.stopPropagation();
       if (st) undo();
-    } else if (e.key === 'Enter' && e.target.closest('.pw-edit') && e.target.tagName !== 'BUTTON') {
+    } else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.closest('.pw-edit, .pw-busy-form')) {
+      // Enter in a small form saves it, like its button.
       e.preventDefault();
-      const save = e.target.closest('.pw-edit').querySelector('[data-act^="save-"]');
+      const save = e.target.closest('.pw-edit, .pw-busy-form').querySelector('[data-act^="save-"], [data-act="busy-add"]');
       if (save) save.click();
     }
   }
