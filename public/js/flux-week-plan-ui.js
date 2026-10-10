@@ -27,7 +27,11 @@
   /* ── small helpers ─────────────────────────────────────────────────────── */
   const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const safe = (fn, def) => { try { const v = fn(); return v === undefined ? def : v; } catch (_) { return def; } };
-  const today = () => (typeof window.todayStr === 'function' ? window.todayStr() : W().addDays('2000-01-01', 0));
+  const today = () => {
+    if (typeof window.todayStr === 'function') return window.todayStr();
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
   const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
   const dates = () => Array.from({ length: 7 }, (_, i) => W().addDays(today(), i));
   const loadKey = (k, d) => (typeof window.load === 'function' ? window.load(k, d) : d);
