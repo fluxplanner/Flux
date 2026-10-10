@@ -23,14 +23,20 @@
 
 import { dayKey, addDays, uid } from './util.js';
 
-/* Offsets in days back from today. Three of the four seizures land
-   within 48h of a missed or late evening dose — deliberately not all
+/* Offsets in days back from today. Three of the four seizures come
+   less than 48h after a missed evening dose — deliberately not all
    four. The one at day 38 was triggered by strobe lighting with a
    clean dose record around it, so the engine reports 3/4 rather than
    a suspiciously tidy 100%. Real correlations have exceptions; a demo
-   without them is a lie. All four follow a short-sleep night. */
-const MISSED_EVENING = [4, 12, 25, 26, 41];
-const LATE_DOSES     = [2, 6, 9, 17, 22, 31];
+   without them is a lie. All four follow a short-sleep night.
+
+   Lapses away from the seizures stay rare (two late days, both
+   recent, so dose consistency visibly slips). The engine only reports
+   the dose pattern when it beats chance: with a lapse every few days,
+   most 48-hour stretches hold one, 3 of 4 proves nothing, and it
+   rightly stays quiet. */
+const MISSED_EVENING = [4, 12, 25, 26];
+const LATE_DOSES     = [2, 9];
 const HISTORY_DAYS   = 45;
 
 /* The evening dose moved from 9pm to 8pm this many days ago, and a
@@ -175,7 +181,7 @@ export function seed(state) {
 
   /* ---------- Seizures ----------
      Placed deliberately: each one follows a short-sleep night, and
-     three of the four fall within 48h of a missed or late evening
+     three of the four come less than 48h after a missed evening
      dose. The engine discovers that; it is not told. */
   const events = [
     {

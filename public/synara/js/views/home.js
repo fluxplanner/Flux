@@ -317,7 +317,9 @@ function checkinPrompt() {
   `;
 }
 
-/* ---------- Insight ---------- */
+/* ---------- Insight ----------
+   The one card most likely to be taken as a verdict, so it says what it
+   is right under it, as the Patterns tab does under the full list. */
 
 function insightCard(ins) {
   return html`
@@ -334,6 +336,7 @@ function insightCard(ins) {
           <span class="insight-e">${ins.evidence}</span>
         </span>
       </div>
+      <p class="hint">A pattern in your log, not proof of a cause. Talk it over with your neurologist.</p>
     </section>
   `;
 }
