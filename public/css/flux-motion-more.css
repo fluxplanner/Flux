@@ -38,25 +38,6 @@
   pointer-events: none;
 }
 
-/* Long pages: reading progress along the top edge. */
-.fmm-read {
-  /* !important: panels give every direct child position:relative (styles.css, scroll-path hosts). */
-  position: sticky !important;
-  top: 0;
-  z-index: 5;
-  height: 2px;
-  margin-bottom: -2px;
-  pointer-events: none;
-}
-.fmm-read i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, rgba(var(--accent-rgb, 0, 191, 255), .2), var(--accent, #00bfff));
-  transform-origin: 0 50%;
-  transform: scaleX(0);
-  border-radius: 0 2px 2px 0;
-}
-
 /* Random student picker: the reel rolls over the (hidden) picked name, one name tall. */
 .fmm-reeling { color: transparent !important; }
 .fmm-reel-win {
@@ -84,5 +65,5 @@
 }
 
 @media print {
-  .fmm-read, .fmm-undo-timer, .fsn-prog { display: none !important; }
+  .fmm-undo-timer, .fsn-prog { display: none !important; }
 }
