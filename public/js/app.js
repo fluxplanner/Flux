@@ -2078,9 +2078,16 @@ try{
  */
 function fluxNavHome(id){
   if(_fluxUserNavIntent)return false;
+  /* Signing in draws the planner once its account has loaded (showApp). The
+     route home that follows found the dashboard already open and drew it all
+     again, replaying its entrance — one of the "refreshes" on opening. A
+     different home (an educator's, in Work mode) still goes through nav(). */
+  if(_fluxBootDrawn&&id==='dashboard'&&!(FluxRole.isWorkMode&&FluxRole.isWorkMode())&&document.getElementById('dashboard')?.classList.contains('active'))return true;
   if(typeof nav==='function')nav(id);
   return true;
 }
+/** True from sign-in's one redraw until its route home has run. */
+let _fluxBootDrawn=false;
 window.fluxNavHome=fluxNavHome;
 
 /** Route educator to role-appropriate home after mode switch or sign-in. */
@@ -2216,13 +2223,15 @@ function showDashboardRoleSkeleton(){
 }
 window.showDashboardRoleSkeleton=showDashboardRoleSkeleton;
 
-function clearDashboardRoleSkeleton(){
+/** opts.render===false: just take it off — the caller redraws straight after. */
+function clearDashboardRoleSkeleton(opts){
   const el=document.getElementById('dashboard');
   if(!el)return;
   const hadOverlay=el.dataset.fluxRoleSkeleton==='1'||!!document.getElementById('fluxRoleSkeletonOverlay');
   delete el.dataset.fluxRoleSkeleton;
   document.getElementById('fluxRoleSkeletonOverlay')?.remove();
   if(!document.getElementById('taskList'))ensureDashboardDom();
+  if(opts&&opts.render===false)return;
   if(hadOverlay||el.classList.contains('active')){
     try{
       renderStats();renderTasks();renderCountdown();renderSmartSug();
@@ -10862,7 +10871,8 @@ function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll){
 }
 window.fluxApplyCloudList=fluxApplyCloudList;
 
-async function syncFromCloud(){
+/** opts.render===false: apply the row but leave the redraw to the caller (sign-in draws once, after it). */
+async function syncFromCloud(opts){
   if(!currentUser)return;
   // Owner is previewing as a teacher — don't pull the owner's cloud data
   // into the preview bubble (it'd visually look like a leak even though
@@ -11174,12 +11184,8 @@ async function syncFromCloud(){
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
-    renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderNotesList();renderExtrasList();renderSchoolsList();renderMoodHistory();renderSchool();updateTStats();
-    populateSubjectSelects();
-    // Re-apply accent after renders in case sidebar was rebuilt
-    updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
-    if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
-    updateMasterBacklogCardVisibility();
+    if(opts&&opts.render===false)window.__fluxPullNeedsRender=true;
+    else fluxRenderAfterPull();
     /* Stamped here, at the end, rather than where it is read: if applying
        threw part way through, the next pull must try again rather than skip
        a payload it never finished using. */
@@ -11189,6 +11195,17 @@ async function syncFromCloud(){
     _syncFromCloudInFlight=false;
     if(_pullSettled)fluxCloudPullSettled();
   }
+}
+
+/** Everything a pull can change, redrawn. */
+function fluxRenderAfterPull(){
+  window.__fluxPullNeedsRender=false;
+  renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderNotesList();renderExtrasList();renderSchoolsList();renderMoodHistory();renderSchool();updateTStats();
+  populateSubjectSelects();
+  // Re-apply accent after renders in case sidebar was rebuilt
+  updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
+  if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
+  updateMasterBacklogCardVisibility();
 }
 
 /* A pull has been and gone: pushes may now go out. Until the first one of a
@@ -14365,6 +14382,12 @@ function showApp(){
   // B4: drop the marketing/login chrome out of the live document once the app
   // is up (delayed past the login teardown animations).
   setTimeout(()=>{try{detachLandingChrome();}catch(_){}},600);
+  // A sign-in pull left its redraw to this one: the two bits above don't cover.
+  if(window.__fluxPullNeedsRender){
+    window.__fluxPullNeedsRender=false;
+    try{updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));}catch(_){}
+    try{if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();}catch(_){}
+  }
 }
 
 function initFluxExtensionIdSettings(){
@@ -14665,7 +14688,8 @@ async function handleSignedIn(user,session){
     await syncToCloud({beforePull:true});
   }
 
-  await syncFromCloud();
+  // Its redraw waits for the one below, once the role is known too.
+  await syncFromCloud({render:false});
   }finally{popSyncUiActivity();}
 
   initFluxSessionIdleAdvisory();
@@ -14815,7 +14839,11 @@ async function handleSignedIn(user,session){
   try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
   try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
   try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
-  try{clearDashboardRoleSkeleton();}catch(_){}
+  /* From here to the end the planner is drawn once: showApp() below (or, on
+     the onboarding path, the finally block). It used to be drawn here, again
+     in showApp(), again by the route home and again in the finally block —
+     the list rebuilt four times inside half a second, each one eating a tap. */
+  try{clearDashboardRoleSkeleton({render:false});}catch(_){}
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
@@ -14847,6 +14875,7 @@ async function handleSignedIn(user,session){
       // Educator: skip the student questionnaire entirely; show the app shell
       // first so the role-specific onboarding overlay sits on top of it.
       showApp();
+      _fluxBootDrawn=true;
       _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
       try{renderImpersonatePill();}catch(_){}
       try{startOnboarding(resolvedRole);}catch(e){console.warn('[Flux] startOnboarding',e);}
@@ -14863,6 +14892,7 @@ async function handleSignedIn(user,session){
     const ob=document.getElementById('onboarding');
     if(ob)ob.classList.remove('visible');
     showApp();
+    _fluxBootDrawn=true;
     // Staff used to be left out because the tour only knew the student tabs;
     // it now has steps for every role and for Work and Personal mode.
     if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
@@ -14916,10 +14946,13 @@ async function handleSignedIn(user,session){
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}
     try{ensureDashboardDom();}catch(_){}
-    try{clearDashboardRoleSkeleton();}catch(_){}
     const appEl=document.getElementById('app');
-    if(appEl&&!appEl.classList.contains('visible'))try{showApp();}catch(_){}
-    else if(_signInFailed)try{showApp();}catch(_){}
+    const reshow=(appEl&&!appEl.classList.contains('visible'))||_signInFailed;
+    // Drawn already, or about to be: the skeleton comes off without a redraw of its own.
+    try{clearDashboardRoleSkeleton({render:!(_fluxBootDrawn||reshow||window.__fluxPullNeedsRender)});}catch(_){}
+    if(reshow){try{showApp();}catch(_){}}
+    else if(window.__fluxPullNeedsRender){try{fluxRenderAfterPull();}catch(_){}}
+    _fluxBootDrawn=false;
     setTimeout(()=>{
       try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
       try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}

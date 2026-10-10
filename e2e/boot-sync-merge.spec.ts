@@ -83,6 +83,35 @@ test.describe('Opening Flux signed in', () => {
     expect(await page.evaluate(() => sessionStorage.getItem('__fluxBootLoads'))).toBe('1');
   });
 
+  test('opening draws the task list twice at most: what is on this device, then the account', async ({ page }) => {
+    // It was five: once from this device, then the pull, the skeleton coming
+    // off, showApp() again, the route home and the skeleton check again, all
+    // inside half a second. Each one replaced every row under the finger.
+    await bootSignedIn(page, { tasks: TASKS });
+    await page.addInitScript(() => {
+      const w = window as any;
+      w.__listDraws = 0;
+      w.__panelEnters = 0;
+      new MutationObserver((recs) => {
+        for (const r of recs) {
+          const t = r.target as HTMLElement;
+          // Drawn where you can see it (the first, hidden draw behind the splash is not one).
+          const shown = document.getElementById('app')?.classList.contains('visible');
+          if (shown && r.type === 'childList' && t.id === 'taskList' && [...r.addedNodes].some((n) => (n as HTMLElement).classList?.contains('task-item'))) w.__listDraws++;
+          if (r.type === 'attributes' && t.id === 'dashboard' && t.classList.contains('flux-panel-enter')) w.__panelEnters++;
+        }
+      }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect(page.locator('#fluxRoleSkeletonOverlay')).toHaveCount(0, { timeout: 10_000 });
+    await page.waitForTimeout(2500);
+    const seen = await page.evaluate(() => ({ draws: (window as any).__listDraws, enters: (window as any).__panelEnters }));
+    expect(seen.draws, 'the task list was rebuilt over and over while opening').toBeLessThanOrEqual(2);
+    expect(seen.enters, 'the dashboard replayed its entrance after it was already up').toBe(0);
+    await expect(page.locator('#taskList .task-item')).toHaveCount(TASKS.length);
+  });
+
   test('an idle device stops writing its copy over the cloud', async ({ page }) => {
     const boot = await bootSignedIn(page, { tasks: TASKS });
     await page.goto('/');
