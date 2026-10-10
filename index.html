@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.e6ed30fb.css">
+<link rel="stylesheet" href="public/bundles/flux.db826961.css">
 </head>
 <body>
 <noscript>
@@ -1558,8 +1558,8 @@
       <div class="modal-card">
         <div class="modal-title" id="addEventModalTitle">Add to Calendar</div>
         <div id="addEventTypeRow" style="display:flex;gap:8px;margin-bottom:16px">
-          <button type="button" id="addEventTypeTask" onclick="setAddEventType('task')" style="flex:1;background:var(--accent)">Task</button>
-          <button type="button" id="addEventTypeEvent" onclick="setAddEventType('event')" style="flex:1" class="btn-sec">Event</button>
+          <button type="button" id="addEventTypeTask" onclick="openCalendarNewTask()" style="flex:1" class="btn-sec">Task</button>
+          <button type="button" id="addEventTypeEvent" onclick="setAddEventType('event')" style="flex:1;background:var(--accent)">Event</button>
           <button type="button" id="addEventTypeEc" onclick="setAddEventType('ec')" style="flex:1" class="btn-sec">Activity</button>
         </div>
         <div class="mrow" id="addEventExtraRow" style="display:none"><label>Activity</label>
@@ -2888,6 +2888,7 @@
       <summary>More options <span>time, notes, repeat…</span></summary>
       <div class="nt-more-body">
     <div class="irow modal-labeled-row" style="margin-bottom:8px">
+      <div style="flex:0 1 120px"><label class="modal-micro-label" for="taskTime">Due time</label><input type="time" id="taskTime" style="width:100%;margin:0"></div>
       <div style="flex:0 1 140px"><label class="modal-micro-label" for="taskEstTime">Est. time (min)</label><input type="number" id="taskEstTime" placeholder="Minutes" min="5" max="480" style="width:100%;margin:0"></div>
       <div style="flex:1;min-width:120px"><label class="modal-micro-label" for="taskDifficulty">Difficulty (1–5)</label><input type="number" id="taskDifficulty" placeholder="1–5" min="1" max="5" style="width:100%;margin:0"></div>
     </div>
@@ -2974,8 +2975,8 @@
 <div id="toastLive" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
-<script type="module" src="public/bundles/flux-vendor.0fd5e41a.js"></script>
-<script defer src="public/bundles/flux-core.3f6790b1.js"></script>
+<script type="module" src="public/bundles/flux-vendor.d9742ec0.js"></script>
+<script defer src="public/bundles/flux-core.bef1a02a.js"></script>
 <script defer src="public/bundles/flux-features.e0860a55.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
