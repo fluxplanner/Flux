@@ -545,6 +545,12 @@ function stopTicking() {
   tick = null;
 }
 
+/** A timer is running, or one stopped and its seizure isn't logged yet:
+    main.js holds the first-run intro back until neither is true. */
+export function timerPending() {
+  return !!readStart() || stoppedAfter != null;
+}
+
 /* Closing the card doesn't stop the clock, so while it runs <html> is
    marked and a bar under the app bar says so (synara.html, app.css):
    whoever closed it, by accident or to look something up, knows the

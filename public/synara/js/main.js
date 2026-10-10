@@ -244,7 +244,14 @@ const ACTIONS = {
   },
 
   'open-emergency'() {
-    safety.showEmergency(store.get());
+    safety.showEmergency(store.get(), introWaiting ? { onClose: introAfterCard } : undefined);
+  },
+
+  /* The welcome's own way to the emergency card: on a device that has
+     never run Synara, the welcome covers everything else. */
+  'intro-sos'() {
+    if (isWelcomeOpen()) closeWelcome();
+    firstRunCard();
   },
 
   /* A section from the setup list (intro.js): leave the intro if it's
@@ -320,9 +327,66 @@ function onHashChange() {
 
 function openSos(opts) {
   safety.showEmergency(store.get(), opts);
-  // Drop the alias so closing the card and pressing back behave normally.
-  history.replaceState(null, '', '#/safety');
+  // Drop the alias so closing the card and pressing back behave normally —
+  // except on a first run (below), where a reload has to reopen the card.
+  if (!introWaiting) dropSosAlias();
 }
+
+function dropSosAlias() {
+  if (parseHash().sos) history.replaceState(null, '', '#/safety');
+}
+
+/* ============================================================
+   First run that starts on the emergency card
+   ------------------------------------------------------------
+   A teacher's bookmark to #/sos, or a shared link, on a device that has
+   never run Synara — maybe mid-seizure. The card works with nothing set
+   up, so it comes first and the intro waits. The intro starts a record
+   afresh, so it never comes up over one (a seizure just logged), and
+   never while the timer runs or a stopped one hasn't been logged: that
+   would hide the clock behind a welcome screen, and "Look around with
+   example data" would put someone else's emergency card up. Until the
+   intro is done, #/sos stays in the address, so a reload brings the
+   card (and the running timer) straight back.
+   ============================================================ */
+
+let introWaiting = false;
+
+function firstRunCard() {
+  introWaiting = true;
+  openSos({ onClose: introAfterCard });
+}
+
+function introAfterCard() {
+  // After the card has gone, and after whatever closing it opened (the
+  // seizure log sheet) has had its turn.
+  setTimeout(() => {
+    if (!introWaiting) return;
+    if (store.hasData()) {
+      introWaiting = false;
+      dropSosAlias();
+      return;
+    }
+    if (isSheetOpen() || isEmergencyOpen() || isWelcomeOpen() || safety.timerPending()) return;
+    introWaiting = false;
+    intro.show({ fromCard: true });
+  });
+}
+
+/* From the welcome that followed the card, Escape goes back to the card. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !isWelcomeOpen() || !intro.cameFromCard()) return;
+  if (isSheetOpen() || isEmergencyOpen()) return;
+  run('intro-sos');
+});
+
+/* Once a record exists, the first run is over: #/sos becomes #/safety. */
+store.subscribe(() => {
+  if (store.hasData()) {
+    introWaiting = false;
+    dropSosAlias();
+  }
+});
 
 /* The home screen shows a live countdown, and every screen has a
    notion of "today". Once a minute is enough — anything faster is
@@ -380,18 +444,10 @@ async function boot() {
   store.subscribe(render);
   render();
 
-  if (firstRun && first.sos) {
-    // The emergency shortcut, on a device that has never run Synara: a
-    // teacher's bookmark or a shared link, maybe mid-seizure. The card
-    // works with nothing set up, so it comes first and the intro waits
-    // until it is closed — unless it closed to log the seizure, since
-    // the intro starts the record afresh and would throw that entry away.
-    openSos({
-      onClose: () => setTimeout(() => {
-        if (!isSheetOpen() && !isEmergencyOpen()) intro.show();
-      }),
-    });
-  } else if (firstRun) intro.show();
+  // A first run through #/sos, or reloaded while its timer runs, starts
+  // on the card (see "First run that starts on the emergency card").
+  if (firstRun && (first.sos || safety.timerPending())) firstRunCard();
+  else if (firstRun) intro.show();
   else if (first.sos) onHashChange();
 
   window.addEventListener('hashchange', onHashChange);

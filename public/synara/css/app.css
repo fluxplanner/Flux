@@ -1307,6 +1307,8 @@
 .welcome-points svg { flex: none; color: var(--brand); }
 
 .welcome-actions { display: flex; flex-direction: column; gap: var(--s-3); width: 100%; margin-top: var(--s-3); }
+/* The way to the emergency card from a welcome that covers everything. */
+.welcome-sos, .welcome-sos:hover { color: var(--bad-ink); }
 
 .welcome-note {
   display: flex;

@@ -127,6 +127,7 @@ html, body {
   border-radius: 6pt;
 }
 .pc-rescue { border-width: 1.5pt; }
+.pc-rescue p:not(.pc-note) { white-space: pre-line; }
 .pc .pc-note { margin-top: 2pt; font-size: 8.5pt; color: #444; }
 
 .pc-contacts { width: 100%; border-collapse: collapse; }

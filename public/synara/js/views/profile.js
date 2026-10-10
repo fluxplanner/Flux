@@ -492,6 +492,14 @@ function aboutCard() {
    Actions
    ============================================================ */
 
+/** "120 of 600 characters" under the rescue medication box. */
+function rescueCount(n) {
+  const max = store.RESCUE_MED_MAX;
+  return n > max
+    ? `${n} of ${max} characters: ${n - max} too many to save`
+    : `${n} of ${max} characters`;
+}
+
 /** What's in a backup file, in words, before anything is replaced. */
 function describeBackup(parsed) {
   const meds = Array.isArray(parsed.meds) ? parsed.meds.length : 0;
@@ -505,23 +513,53 @@ function describeBackup(parsed) {
 export const actions = {
   'profile-edit'(node, state) {
     const p = state.profile;
-    const fields = CARE_FIELDS.map(([key, label, ph, hint]) => `
+    const fields = CARE_FIELDS.map(([key, label, ph, hint]) => {
+      const describedBy = hint ? ` aria-describedby="p-${key}-hint${key === 'rescueMed' ? ' p-rescueMed-count' : ''}"` : '';
+      // The rescue medication is copied from an action plan and runs to a
+      // few sentences: room to see it all, and a count instead of a
+      // maxlength, which would cut a paste off without a word.
+      const control = key === 'rescueMed'
+        ? `<textarea class="textarea" id="p-${key}" name="${key}" rows="4"
+                     placeholder="${esc(ph)}" autocomplete="off"${describedBy}>${esc(p[key] || '')}</textarea>
+           <span class="hint" id="p-rescueMed-count" data-rescue-count>${rescueCount((p[key] || '').length)}</span>`
+        : `<input class="input" id="p-${key}" name="${key}" value="${esc(p[key] || '')}"
+                  placeholder="${esc(ph)}" autocomplete="off" maxlength="200"${describedBy} />`;
+      return `
       <div class="field">
         <label class="label" for="p-${key}">${label}</label>
-        <input class="input" id="p-${key}" name="${key}" value="${esc(p[key] || '')}"
-               placeholder="${esc(ph)}" autocomplete="off" maxlength="200"${hint ? ` aria-describedby="p-${key}-hint"` : ''} />
+        ${control}
         ${hint ? `<span class="hint" id="p-${key}-hint">${esc(hint)}</span>` : ''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     openSheet({
       title: 'Your details',
       body: html`<form class="stack stack-4" data-action="profile-save" novalidate>${raw(fields)}</form>`,
       footer: '<button class="btn btn-primary" data-action="profile-save">Save</button>',
+      onMount(sheet) {
+        const box = sheet.querySelector('#p-rescueMed');
+        const count = sheet.querySelector('[data-rescue-count]');
+        if (!box || !count) return;
+        box.addEventListener('input', () => {
+          count.textContent = rescueCount(box.value.trim().length);
+          count.classList.toggle('text-bad', box.value.trim().length > store.RESCUE_MED_MAX);
+        });
+      },
     });
   },
 
   async 'profile-save'() {
-    await store.updateProfile(sheetValues());
+    const values = sheetValues();
+    // Never shorten it quietly: the end of it is often "call 911 after
+    // giving it" or where it's kept.
+    const rescue = (values.rescueMed || '').trim();
+    if (rescue.length > store.RESCUE_MED_MAX) {
+      const over = rescue.length - store.RESCUE_MED_MAX;
+      toast(`The rescue medication is ${over} ${over === 1 ? 'character' : 'characters'} too long to save. Shorten it, or keep the details in the action plan.`, 'bad');
+      document.getElementById('p-rescueMed')?.focus();
+      return;
+    }
+    await store.updateProfile(values);
     closeSheet();
     toast('Details saved', 'ok');
   },

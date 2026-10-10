@@ -153,8 +153,12 @@ export function emptyState() {
         'If they have a seizure action plan, follow it. Only give rescue medicine if you are trained to.',
         'Stay calm and speak normally — they may be able to hear you.',
       ],
+      // No exception, as the Epilepsy Foundation and CDC put it: rescue
+      // medicine is the action plan's business (the step above and the
+      // Rescue medication block), not something a bystander should read
+      // as permission to put anything in a seizing person's mouth.
       doNot: [
-        'Do NOT put anything in their mouth — they cannot swallow their tongue. Rescue medicine from their seizure plan is the only exception.',
+        'Do NOT put anything in their mouth. They cannot swallow their tongue.',
         'Do NOT hold them down or try to stop the movements.',
         'Do NOT give food, drink, or pills until they are fully awake.',
         'Do NOT crowd them — ask other people to step back.',
@@ -219,6 +223,14 @@ const THEMES   = new Set(['system', 'light', 'dark']);
 
 const isDay = (v) => typeof v === 'string' && DAY_RE.test(v);
 const str = (v, max = 4000) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+/* Profile fields are short (a name, a grade), except the rescue
+   medication, which is copied from a seizure action plan: what it is,
+   when it is given, when to call 911, where it is kept. The edit sheet
+   refuses to save more than this rather than cutting it off. */
+export const RESCUE_MED_MAX = 600;
+const PROFILE_MAX = { rescueMed: RESCUE_MED_MAX };
+const profileStr = (key, v) => str(v, PROFILE_MAX[key] || 200);
 const num = (v, lo, hi, fallback) =>
   (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback);
 const strList = (v) => (Array.isArray(v) ? v.map((x) => str(x, 600)).filter(Boolean).slice(0, 30) : null);
@@ -361,11 +373,11 @@ export function defaultSteps(field) {
   return [...(emptyState().card[field] || [])];
 }
 
-/* The standard steps as the first version wrote them. A list still
-   exactly like this was never edited, so it moves to today's wording:
-   the steps added since (a seizure where they wander, rescue medicine,
-   more reasons to call 911) reach cards made before them, not just new
-   ones. A list the student changed is theirs and is left alone. */
+/* Earlier versions of the standard steps. A list still exactly like one
+   of these was never edited, so it moves to today's wording: the steps
+   added since (a seizure where they wander, rescue medicine, more reasons
+   to call 911) reach cards made before them, not just new ones. A list
+   the student changed is theirs and is left alone. */
 const FIRST_STEPS = {
   during: [
     'Stay with them and start timing the seizure.',
@@ -390,7 +402,22 @@ const FIRST_STEPS = {
   ],
 };
 
+/* A pre-release wording of "Do NOT" made rescue medicine an exception
+   to "nothing in their mouth". EF and CDC guidance has no exception, so a
+   card that still has it, untouched, goes back to today's line. */
+const OLD_STEPS = {
+  during: [FIRST_STEPS.during],
+  doNot: [FIRST_STEPS.doNot, [
+    'Do NOT put anything in their mouth — they cannot swallow their tongue. Rescue medicine from their seizure plan is the only exception.',
+    'Do NOT hold them down or try to stop the movements.',
+    'Do NOT give food, drink, or pills until they are fully awake.',
+    'Do NOT crowd them — ask other people to step back.',
+  ]],
+  callEms: [FIRST_STEPS.callEms],
+};
+
 const sameList = (a, b) => a.length === b.length && a.every((s, i) => s === b[i]);
+const untouched = (key, list) => (OLD_STEPS[key] || []).some((old) => sameList(list, old));
 
 /**
  * Bring any stored shape up to the current one, validating as it goes.
@@ -422,7 +449,7 @@ export function migrate(stored) {
 
   const profile = { ...base.profile };
   if (src.profile && typeof src.profile === 'object') {
-    for (const key of Object.keys(base.profile)) profile[key] = str(src.profile[key], 200);
+    for (const key of Object.keys(base.profile)) profile[key] = profileStr(key, src.profile[key]);
   }
 
   const card = { ...base.card };
@@ -431,9 +458,9 @@ export function migrate(stored) {
       const list = strList(src.card[key]);
       if (!list) continue;
       // An empty core list keeps the standard steps (see CORE_STEPS), and
-      // one never edited since the first version gets today's (FIRST_STEPS).
+      // one never edited since an earlier version gets today's (OLD_STEPS).
       if (!list.length && CORE_STEPS.has(key)) continue;
-      if (FIRST_STEPS[key] && sameList(list, FIRST_STEPS[key])) continue;
+      if (untouched(key, list)) continue;
       card[key] = list;
     }
     for (const key of ['looksLike', 'forTeacher', 'forNurse', 'forCoach']) {
@@ -598,6 +625,25 @@ function onExternalChange(e) {
 
 let listeningForOtherTabs = false;
 
+/* The record exactly as it was read, when loading it changed it — a
+   migration (a new field, today's first-aid wording). A migration is not
+   an edit: sync.js compares this against the hash it saved at the last
+   sync, so an update alone never looks like a change to upload or to
+   argue over with another device. */
+let readBeforeMigration = null;
+
+/** JSON of the stored record before this load migrated it, or null. */
+export function premigrated() {
+  return readBeforeMigration;
+}
+
+/** True once a record exists here: stored, or held in memory because
+    this browser can't save. The first-run intro starts a record afresh,
+    so it never opens over one. */
+export function hasData() {
+  return hasRecord || memoryOnly;
+}
+
 /**
  * Load persisted state, migrating if needed.
  *
@@ -624,6 +670,7 @@ export async function init() {
   // start. The record was read, so it can be shown — and the emergency
   // card opened — even when storage is too full to write it back.
   if (JSON.stringify(state) !== JSON.stringify(stored)) {
+    readBeforeMigration = JSON.stringify(stored);
     try {
       await backend.write(state);
     } catch (err) {
@@ -963,7 +1010,7 @@ export function updateCard(patch) {
 export function updateProfile(patch) {
   return update((s) => {
     for (const key of Object.keys(s.profile)) {
-      if (typeof patch[key] === 'string') s.profile[key] = str(patch[key], 200).trim();
+      if (typeof patch[key] === 'string') s.profile[key] = profileStr(key, patch[key].trim());
     }
   });
 }

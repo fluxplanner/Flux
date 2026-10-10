@@ -167,7 +167,33 @@ test.describe('Synara first aid', () => {
     for (const reason of ['longer than 5 minutes', 'different from their usual', 'pregnant', 'Rescue medicine was given']) {
       await expect(ems).toContainText(reason);
     }
-    await expect(block(page, 'Do NOT')).toContainText('Rescue medicine from their seizure plan is the only exception');
+    // EF and CDC: nothing in their mouth, with no exception. Rescue medicine
+    // is the action plan's step, not a bystander's reading of "Do NOT".
+    const doNot = block(page, 'Do NOT');
+    await expect(doNot).toContainText('Do NOT put anything in their mouth. They cannot swallow their tongue.');
+    await expect(doNot).not.toContainText('exception');
+  });
+
+  test('a card that got the "only exception" wording, untouched, goes back to the plain line', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem('synara.v2')) return;
+      localStorage.setItem('synara.v2', JSON.stringify({
+        v: 3, meds: [], doses: {}, seizures: [], checkins: {}, contacts: [],
+        card: {
+          doNot: [
+            'Do NOT put anything in their mouth — they cannot swallow their tongue. Rescue medicine from their seizure plan is the only exception.',
+            'Do NOT hold them down or try to stop the movements.',
+            'Do NOT give food, drink, or pills until they are fully awake.',
+            'Do NOT crowd them — ask other people to step back.',
+          ],
+        },
+      }));
+    });
+    await page.goto('/synara.html#/safety');
+    await page.locator('.sos-btn').click();
+    const doNot = block(page, 'Do NOT');
+    await expect(doNot).toContainText('Do NOT put anything in their mouth. They cannot swallow their tongue.');
+    await expect(doNot).not.toContainText('exception');
   });
 
   test('a card made before these steps existed gets them, unless it was edited', async ({ page }) => {
@@ -298,5 +324,116 @@ test.describe('Synara first aid', () => {
     await card.locator('[data-action="close-emergency"]').click();
     await expect(page.locator('#welcome')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Set it up for me' })).toBeVisible();
+
+    // Closed by accident: the welcome leads back, by its button or Escape,
+    // and until the intro is done a reload brings the card back too.
+    await expect(page).toHaveURL(/#\/sos$/);
+    await page.keyboard.press('Escape');
+    await expect(card).toBeVisible();
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+    await page.getByRole('button', { name: 'Back to the emergency card' }).click();
+    await expect(card).toBeVisible();
+    await page.reload();
+    await expect(card).toBeVisible();
+    await expect(page.locator('#welcome')).toBeHidden();
+
+    // Once there is a record, #/sos is just the Safety tab again.
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+    await page.getByRole('button', { name: 'Look around with example data' }).click();
+    await expect(page).toHaveURL(/#\/safety$/);
+  });
+
+  test('on a fresh device the welcome waits while the timer runs, and never puts up the example card', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/synara.html#/sos');
+    const card = page.locator('#emergency[data-open="true"]');
+    const timer = card.locator('.em-timer');
+    await card.getByRole('button', { name: 'Start timer' }).click();
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+
+    // Not the welcome: the app, with the timer's banner to get back.
+    await expect(page.locator('#welcome')).toBeHidden();
+    const banner = page.locator('.timer-banner');
+    await expect(banner).toBeVisible();
+
+    // A reload mid-seizure lands on the card, still counting.
+    await page.reload();
+    await expect(card).toBeVisible();
+    await expect(timer).toHaveAttribute('data-state', 'running');
+
+    // Stopped and not logged yet: still no welcome.
+    await settled(page);
+    await card.getByRole('button', { name: 'It stopped' }).click();
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+    await expect(page.locator('#welcome')).toBeHidden();
+
+    // Reset, and the card closed: now the welcome.
+    await page.locator('.sos-btn').click();
+    await settled(page);
+    await card.getByRole('button', { name: 'Reset timer' }).click();
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+    await expect(page.locator('#welcome')).toBeVisible();
+  });
+
+  test('a seizure logged from the card on a fresh device is kept, and the welcome never wipes it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/synara.html#/sos');
+    const card = page.locator('#emergency[data-open="true"]');
+    await card.getByRole('button', { name: 'Start timer' }).click();
+    await settled(page);
+    await card.getByRole('button', { name: 'It stopped' }).click();
+    await settled(page);
+    await card.getByRole('button', { name: 'Log this seizure' }).click();
+    await page.locator('.sheet-foot .btn-primary').click();
+    await expect(page.locator('#sheet')).toBeHidden();
+    await expect(page.locator('#welcome')).toBeHidden();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('synara.v2') || '{}'));
+    expect(saved.seizures).toHaveLength(1);
+    await expect(page).toHaveURL(/#\/safety$/);
+  });
+
+  test('the welcome on a fresh device has its own way to the emergency card', async ({ page }) => {
+    await page.goto('/synara.html');
+    await page.locator('#welcome').getByRole('button', { name: 'Open emergency card' }).click();
+    const card = page.locator('#emergency[data-open="true"]');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('link', { name: 'Call 911' })).toHaveAttribute('href', 'tel:911');
+    await settled(page);
+    await card.locator('[data-action="close-emergency"]').click();
+    await expect(page.getByRole('button', { name: 'Set it up for me' })).toBeVisible();
+  });
+
+  test('a rescue plan of several sentences is kept whole, and one too long is refused, not cut', async ({ page }) => {
+    await withExampleData(page);
+    await page.locator('.tab[data-to="you"]').click();
+    const plan = 'Valtoco (diazepam nasal spray) 10 mg: one spray in one nostril if a seizure lasts 5 minutes or longer, ' +
+      'or 3 or more seizures within 1 hour. Do NOT give a second dose unless at least 4 hours have passed. ' +
+      'Call 911 after giving it. Kept in the nurse\'s office, top drawer.';
+    expect(plan.length).toBeGreaterThan(200);
+    await page.getByRole('button', { name: 'Edit your details' }).click();
+    const box = page.getByLabel('Rescue medication');
+    await box.fill(plan);
+    await expect(page.locator('[data-rescue-count]')).toHaveText(`${plan.length} of 600 characters`);
+    await page.locator('.sheet-foot [data-action="profile-save"]').click();
+    await expect(page.locator('#sheet')).toBeHidden();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('synara.v2')!).profile.rescueMed)).toBe(plan);
+    await page.locator('.sos-btn').click();
+    await expect(block(page, 'Rescue medication')).toContainText('Call 911 after giving it. Kept in the nurse\'s office, top drawer.');
+    await settled(page);
+    await page.locator('#emergency [data-action="close-emergency"]').click();
+
+    await page.getByRole('button', { name: 'Edit your details' }).click();
+    await box.fill(plan.repeat(3));
+    await expect(page.locator('[data-rescue-count]')).toContainText('too many to save');
+    await page.locator('.sheet-foot [data-action="profile-save"]').click();
+    await expect(page.locator('#toast')).toContainText('too long to save');
+    await expect(page.locator('#sheet[data-open="true"]')).toBeVisible();
+    await expect(box).toBeFocused();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('synara.v2')!).profile.rescueMed)).toBe(plan);
   });
 });
