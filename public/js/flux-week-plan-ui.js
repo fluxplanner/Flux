@@ -22,7 +22,7 @@
   'use strict';
 
   const W = () => window.FluxWeekPlan;
-  let st = null; // { view, avail, maxPerDay, goal, fresh, plan, removed, editing, busyFor, changed, release }
+  let st = null; // { view, avail, maxPerDay, goal, fresh, plan, removed, hist, editing, busyFor, changed, release }
 
   /* ── small helpers ─────────────────────────────────────────────────────── */
   const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -61,6 +61,8 @@
   function announce(msg) { const el = document.getElementById('pwLive'); if (el) { el.textContent = ''; setTimeout(() => { el.textContent = msg; }, 30); } }
   const allTasks = () => (Array.isArray(window.tasks) ? window.tasks : []);
   const isBlock = (t) => !!(t && t.weekBlock && t.planOf != null);
+  // Educators keep Work and Personal apart; students see everything.
+  const visible = (t) => typeof window.fluxTaskVisibleInMode !== 'function' || safe(() => window.fluxTaskVisibleInMode(t), true);
 
   /* ── what Flux already knows ───────────────────────────────────────────── */
   function prefs() {
@@ -104,7 +106,7 @@
   function gather() {
     const ds = dates();
     const all = allTasks();
-    const shown = typeof window.fluxTaskVisibleInMode === 'function' ? all.filter((t) => safe(() => window.fluxTaskVisibleInMode(t), true)) : all;
+    const shown = all.filter(visible);
     const doneMin = {}, planned = new Set(), load = {};
     // A block for work that is finished (or gone) is no longer needed, even one the student moved.
     const open = new Set(all.filter((t) => t && !t.done && t.planOf == null).map((t) => String(t.id)));
@@ -112,9 +114,10 @@
       if (!p || p.planOf == null) return;
       const pid = String(p.planOf);
       if (p.done) doneMin[pid] = (doneMin[pid] || 0) + (+p.estTime || 0);
-      else if (!p.weekBlock) {
+      else if (!p.weekBlock || !visible(p)) {
         // Plan it out's sessions: already planned, and they take up their day.
-        planned.add(pid);
+        // So do the other planner's blocks, which are left alone.
+        if (!p.weekBlock) planned.add(pid);
         if (ds.includes(p.date)) load[p.date] = (load[p.date] || 0) + (+p.estTime || 0);
       }
     });
@@ -124,7 +127,7 @@
         id: t.id, name: t.name, date: t.date || '', time: t.time || '', estTime: +t.estTime || 0,
         type: t.type || 'hw', priority: t.priority || 'med', doneMin: doneMin[String(t.id)] || 0, planned: planned.has(String(t.id)),
       })),
-      blocks: all.filter(isBlock).map((t) => ({
+      blocks: all.filter((t) => isBlock(t) && visible(t)).map((t) => ({
         id: t.id, key: t.weekBlock.key, taskId: t.planOf, name: String(t.name || '').replace(/ · Study$/, ''), date: t.date, start: t.time || '', minutes: +t.estTime || 0,
         done: !!t.done, pinned: open.has(String(t.planOf)) && (!!t.weekBlock.pinned || movedSince(t)),
       })),
@@ -155,7 +158,7 @@
   /** Blocks of the week that are still on (and any left unticked from the last few days). */
   function appliedBlocks() {
     const td = today(), last = W().addDays(td, 6), back = W().addDays(td, -7);
-    return allTasks().filter((t) => isBlock(t) && t.date && t.date <= last && (t.date >= td || (!t.done && t.date >= back)))
+    return allTasks().filter((t) => isBlock(t) && visible(t) && t.date && t.date <= last && (t.date >= td || (!t.done && t.date >= back)))
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (W().toMin(a.time) || 0) - (W().toMin(b.time) || 0)));
   }
 
@@ -164,7 +167,7 @@
     if (!W()) return;
     closePlanWeek(true);
     const p = prefs();
-    st = { view: appliedBlocks().length ? 'week' : 'avail', avail: p.avail, maxPerDay: p.maxPerDay, goal: p.goal, fresh: p.fresh, plan: null, removed: [], editing: null, busyFor: null, changed: false };
+    st = { view: appliedBlocks().length ? 'week' : 'avail', avail: p.avail, maxPerDay: p.maxPerDay, goal: p.goal, fresh: p.fresh, plan: null, removed: [], hist: [], editing: null, busyFor: null, changed: false };
     const ov = document.createElement('div');
     ov.id = 'planWeekModal';
     ov.className = 'modal-overlay';
@@ -406,7 +409,7 @@
     }
     savePrefs();
     st.plan = W().propose(gather());
-    st.removed = [];
+    st.removed = []; st.hist = [];
     go('plan');
     const n = st.plan.blocks.filter((b) => !b.kept).length;
     announce(`${n} study block${n === 1 ? '' : 's'} suggested.${st.plan.unscheduled.length ? ' ' + st.plan.unscheduled.length + ' didn’t fit.' : ''}`);
@@ -489,6 +492,7 @@
     const b = planBlocks().find((x) => x.key === key);
     const v = readEditor();
     if (!b || !v) return;
+    remember();
     Object.assign(b, v, { end: W().toHM(W().toMin(v.start) + v.minutes), pinned: true });
     if (b.kept === 'pinned' || b.kept === 'live') b.kept = null; // changed again: it's this plan's to write
     b.reason = b.reason && !/^You moved/.test(b.reason) ? b.reason : 'You moved this one';
@@ -502,6 +506,7 @@
   function removeFromPlan(key) {
     const b = planBlocks().find((x) => x.key === key);
     if (!b) return;
+    remember();
     b.removed = true;
     st.removed.push(b);
     render(false);
@@ -511,6 +516,7 @@
   function restore(key) {
     const i = st.removed.findIndex((b) => b.key === key);
     if (i < 0) return;
+    remember();
     const b = st.removed.splice(i, 1)[0];
     b.removed = false;
     render(false);
@@ -572,13 +578,27 @@
     if (!appliedBlocks().length) go('avail'); else render(true);
     announce(`Removed ${n} unfinished block${n === 1 ? '' : 's'}.`);
   }
+  /** Before a move, a removal or a put-back in the suggestion, so Ctrl+Z can take it back. */
+  function remember() {
+    st.hist.push({ blocks: st.plan.blocks.map((b) => Object.assign({}, b)), removed: st.removed.map((b) => b.key) });
+    if (st.hist.length > 20) st.hist.shift();
+  }
   function undo() {
-    safe(() => window.undoLastChange());
     if (st.view === 'plan') {
-      // The planner changed under the suggestion: suggest again from it.
-      st.plan = W().propose(gather()); st.removed = []; st.editing = null;
+      // Nothing is in the planner yet, so this takes back the last change to
+      // the suggestion, never something done elsewhere in Flux.
+      const prev = st.hist.pop();
+      if (!prev) { announce('Nothing to undo. Nothing changes until you approve.'); return; }
+      st.plan.blocks = prev.blocks;
+      st.removed = prev.removed.map((k) => st.plan.blocks.find((b) => b.key === k)).filter(Boolean);
+      st.editing = null;
       render(false);
-    } else if (st.view === 'week' && !appliedBlocks().length) go('avail');
+      announce('Last change undone.');
+      safe(() => (document.querySelector('#planWeekModal [data-act="approve"]') || document.getElementById('pwTitle')).focus(), null);
+      return;
+    }
+    safe(() => window.undoLastChange());
+    if (st.view === 'week' && !appliedBlocks().length) go('avail');
     else render(false);
     announce('Last change undone.');
     safe(() => (document.querySelector('#planWeekModal [data-act="undo"]') || document.getElementById('pwTitle')).focus(), null);
@@ -590,7 +610,9 @@
     const s = W().toMin(from), e = W().toMin(to);
     if (s == null || e == null || e <= s) { toast('Add a start and an end time.', 'warning'); return; }
     const events = loadKey('flux_events', []) || [];
-    events.push({ id: String(Date.now()), title: what, date: d, time: W().toHM(s), endTime: W().toHM(e), notes: '', scope: 'outside' });
+    // Life outside class, unless that would hide it from an educator's Work calendar.
+    const scope = visible({ scope: 'outside' }) ? 'outside' : 'school';
+    events.push({ id: String(Date.now()), title: what, date: d, time: W().toHM(s), endTime: W().toHM(e), notes: '', scope: scope });
     saveKey('flux_events', events);
     sync('events', 1);
     safe(() => window.renderCalendar(), null);

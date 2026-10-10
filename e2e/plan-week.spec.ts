@@ -261,6 +261,65 @@ test.describe('Plan my week', () => {
     expect(await blocks(page)).toEqual(all);
   });
 
+  test('Ctrl+Z on the suggestion takes back a move or removal there, never a change made elsewhere', async ({ page }) => {
+    await setup(page);
+    // Something done elsewhere first, which the app's undo would take back.
+    await page.evaluate(() => (window as any).toggleTask(881003));
+    const lab = () => page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 881003).done);
+    expect(await lab()).toBe(true);
+
+    await page.locator('#dashPlanWeekBtn').click();
+    await modal(page).locator('[data-act="propose"]').click();
+    await expect(modal(page).locator('.pw-block')).toHaveCount(3);
+    const algebra = block(page, 'Algebra homework');
+    await expect(algebra.locator('.pw-b-time')).toHaveText('4:00 – 4:45 PM');
+
+    await algebra.locator('[data-act="edit"]').click();
+    await page.locator('#pwEdStart').fill('18:00');
+    await modal(page).locator('[data-act="save-edit"]').click();
+    await expect(algebra.locator('.pw-b-time')).toHaveText('6:00 – 6:45 PM');
+    await block(page, 'History essay').first().locator('[data-act="remove"]').click();
+    await expect(modal(page).locator('.pw-block')).toHaveCount(2);
+
+    await page.locator('#pwTitle').focus();
+    await page.keyboard.press('Control+z');
+    await expect(modal(page).locator('.pw-block')).toHaveCount(3);
+    await expect(modal(page).locator('.pw-unsched')).not.toContainText('You took');
+    await page.keyboard.press('Control+z');
+    await expect(algebra.locator('.pw-b-time')).toHaveText('4:00 – 4:45 PM');
+    await expect(algebra.locator('.pw-b-why')).not.toContainText('You moved');
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('#pwLive')).toHaveText('Nothing to undo. Nothing changes until you approve.');
+    expect(await lab()).toBe(true);
+    expect(await blocks(page)).toEqual([]);
+  });
+
+  test('an educator\'s Work and Personal blocks stay apart: planning one never takes the other\'s off', async ({ page }) => {
+    await setup(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.tasks.find((t: any) => t.id === 881002).scope = 'outside';
+      w.__mode = 'all';
+      w.fluxTaskVisibleInMode = (t: any) => w.__mode === 'all' || (w.__mode === 'work') === !(t && t.scope === 'outside');
+    });
+    await page.locator('#dashPlanWeekBtn').click();
+    await modal(page).locator('[data-act="propose"]').click();
+    await modal(page).locator('[data-act="approve"]').click();
+    const essay = (await blocks(page)).filter((x) => x.of === 881002);
+    expect(essay).toHaveLength(2);
+
+    // In Work mode the essay (Personal) and its blocks are out of sight, and left alone.
+    await page.evaluate(() => { (window as any).__mode = 'work'; });
+    await page.locator('#dashPlanWeekBtn').click();
+    await expect(block(page, 'History essay')).toHaveCount(0);
+    await modal(page).locator('[data-act="clear"]').click();
+    await expect.poll(async () => (await blocks(page)).filter((x) => x.of === 881002)).toEqual(essay);
+    await modal(page).locator('[data-act="propose"]').click();
+    await expect(modal(page).locator('.pw-note', { hasText: 'no longer needed' })).toHaveCount(0);
+    await modal(page).locator('[data-act="approve"]').click();
+    expect((await blocks(page)).filter((x) => x.of === 881002)).toEqual(essay);
+  });
+
   test('keyboard and screen reader: focus moves in, stays in, and comes back; no serious axe findings', async ({ page }) => {
     await setup(page);
     await page.evaluate(() => (window as any).nav('calendar'));
