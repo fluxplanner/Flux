@@ -6,11 +6,31 @@
 
   const KEY = 'flux_teacher.beta.v1';
   const LIMIT = 12000;
+  const MAX_ATTACHMENTS = 8;
+  const MAX_FILE_BYTES = 15 * 1024 * 1024;
+  const MAX_PDF_PAGES = 12;
+  const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  const MAMMOTH_SRC = 'https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js';
   const root = document.getElementById('teacherApp');
+  const libraryLoads = Object.create(null);
+  let ocrWorkerPromise = null;
+  let importBusy = false;
   const fresh = () => ({
-    draft: { topic: '', subject: '', sourceTitle: '', sourceUrl: '', material: '', question: '' },
+    draft: { topic: '', subject: '', sourceTitle: '', sourceUrl: '', material: '', question: '', attachments: [] },
     session: null,
   });
+
+  function cleanAttachments(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item) => item && typeof item === 'object' && typeof item.name === 'string')
+      .slice(0, MAX_ATTACHMENTS)
+      .map((item) => ({
+        name: item.name.slice(0, 180),
+        kind: typeof item.kind === 'string' ? item.kind.slice(0, 30) : 'File',
+      }));
+  }
 
   function load() {
     try {
@@ -21,6 +41,7 @@
         Object.keys(out.draft).forEach((k) => {
           if (typeof saved.draft[k] === 'string') out.draft[k] = saved.draft[k].slice(0, LIMIT);
         });
+        out.draft.attachments = cleanAttachments(saved.draft.attachments);
       }
       if (saved.session && typeof saved.session === 'object' && typeof saved.session.topic === 'string') {
         out.session = {
@@ -29,6 +50,7 @@
           sourceTitle: typeof saved.session.sourceTitle === 'string' ? saved.session.sourceTitle.slice(0, 180) : '',
           sourceUrl: safeUrl(saved.session.sourceUrl),
           material: typeof saved.session.material === 'string' ? saved.session.material.slice(0, LIMIT) : '',
+          attachments: cleanAttachments(saved.session.attachments),
           question: typeof saved.session.question === 'string' ? saved.session.question.slice(0, 700) : '',
           warmup: typeof saved.session.warmup === 'string' ? saved.session.warmup.slice(0, 2000) : '',
           teachback: typeof saved.session.teachback === 'string' ? saved.session.teachback.slice(0, 2400) : '',
@@ -108,7 +130,7 @@
       <div class="ft-kicker">A study session that starts with you</div>
       <h1>Learn it. <span>Then explain it.</span></h1>
       <p>Bring the topic, notes and questions you are working on. Flux Teacher turns them into a clear path through the material and a chance to practise from memory.</p>
-      <div class="ft-beta-note">${icon('info', 17)}<span><strong>Early beta:</strong> Flux Teacher organizes the material you provide into a guided study flow. It does not generate lessons with AI or grade your answers. Your session is saved only in this browser.</span></div>
+      <div class="ft-beta-note">${icon('info', 17)}<span><strong>Early beta:</strong> Flux Teacher organizes the material you provide into a guided study flow. It does not generate lessons with AI or grade your answers. Photos and files are read in this browser and are not sent to Flux AI. Photo OCR reads English best and can miss handwriting, equations and diagram details, so review the text before you study.</span></div>
     </section>`;
   }
 
@@ -126,6 +148,275 @@
       ${options.help ? `<span class="ft-help">${options.help}</span>` : ''}</div>`;
   }
 
+  function loadLibrary(globalName, src) {
+    if (window[globalName]) return Promise.resolve(window[globalName]);
+    if (libraryLoads[globalName]) return libraryLoads[globalName];
+    libraryLoads[globalName] = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.dataset.ftLibrary = globalName;
+      script.onload = () => window[globalName]
+        ? resolve(window[globalName])
+        : reject(new Error(`The ${globalName} reader did not start.`));
+      script.onerror = () => reject(new Error(`Could not load the ${globalName} reader. Check your connection and try again.`));
+      document.head.appendChild(script);
+    }).catch((error) => {
+      libraryLoads[globalName] = null;
+      throw error;
+    });
+    return libraryLoads[globalName];
+  }
+
+  function setImportStatus(message, state = '') {
+    const status = document.getElementById('ftUploadStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.hidden = !message;
+    status.dataset.state = state;
+  }
+
+  function updateImportControls() {
+    root.querySelectorAll('[data-action="pick-photo"], [data-action="pick-file"]').forEach((button) => {
+      button.disabled = importBusy || data.draft.attachments.length >= MAX_ATTACHMENTS;
+    });
+    const submit = root.querySelector('#ftForm button[type="submit"]');
+    if (submit) submit.disabled = importBusy;
+  }
+
+  function attachmentMarkup(attachments) {
+    if (!attachments || !attachments.length) return '';
+    return attachments.map((item) => `<li><span class="ft-file-kind">${esc(item.kind)}</span><span class="ft-file-name" title="${esc(item.name)}">${esc(item.name)}</span></li>`).join('');
+  }
+
+  function refreshAttachmentList() {
+    const list = document.getElementById('ftAttachmentList');
+    if (!list) return;
+    list.innerHTML = attachmentMarkup(data.draft.attachments);
+    list.hidden = !data.draft.attachments.length;
+    updateImportControls();
+  }
+
+  function readFileText(file) {
+    if (typeof file.text === 'function') return file.text();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Could not read this file.'));
+      reader.readAsText(file);
+    });
+  }
+
+  function normalizeExtractedText(text) {
+    return String(text || '').replace(/\r\n?/g, '\n').replace(/[\t ]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  async function getOcrWorker() {
+    if (!ocrWorkerPromise) {
+      ocrWorkerPromise = loadLibrary('Tesseract', TESSERACT_SRC).then((tesseract) => {
+        if (typeof tesseract.createWorker !== 'function') throw new Error('The OCR reader is unavailable.');
+        return tesseract.createWorker('eng', 1, {
+          logger(message) {
+            if (message && message.status === 'recognizing text' && typeof message.progress === 'number') {
+              const label = document.getElementById('ftUploadStatus')?.dataset.currentFile || 'Reading image';
+              setImportStatus(`${label} · ${Math.round(message.progress * 100)}%`);
+            }
+          },
+        });
+      }).catch((error) => {
+        ocrWorkerPromise = null;
+        throw error;
+      });
+    }
+    return ocrWorkerPromise;
+  }
+
+  window.addEventListener('pagehide', () => {
+    if (!ocrWorkerPromise) return;
+    ocrWorkerPromise.then((worker) => worker.terminate()).catch(() => {});
+    ocrWorkerPromise = null;
+  });
+
+  async function recognizeImage(source, label) {
+    const status = document.getElementById('ftUploadStatus');
+    if (status) status.dataset.currentFile = `${label} · reading on this device`;
+    setImportStatus(`${label} · loading local OCR reader…`);
+    const worker = await getOcrWorker();
+    const result = await worker.recognize(source);
+    return normalizeExtractedText(result && result.data && result.data.text);
+  }
+
+  async function extractPhotoText(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new Error('This photo could not be opened. Try a JPG or PNG image.'));
+        element.src = url;
+      });
+      if (!image.naturalWidth || !image.naturalHeight) throw new Error('This photo has no readable image data.');
+      const scale = Math.min(1, 2400 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Could not prepare this photo for OCR.');
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      try {
+        return await recognizeImage(canvas, file.name);
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function loadPdfReader() {
+    const pdfjs = await loadLibrary('pdfjsLib', PDFJS_SRC);
+    try { pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (_) {}
+    return pdfjs;
+  }
+
+  async function extractPdfText(file) {
+    const pdfjs = await loadPdfReader();
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
+    const pages = [];
+    try {
+      for (let number = 1; number <= pageCount; number++) {
+        setImportStatus(`Reading ${file.name} · page ${number} of ${pageCount}…`);
+        const page = await pdf.getPage(number);
+        try {
+          const textContent = await page.getTextContent();
+          let text = normalizeExtractedText(textContent.items.map((item) => item.str || '').join(' '));
+          if (text.replace(/\s/g, '').length < 24) {
+            const natural = page.getViewport({ scale: 1 });
+            const scale = Math.min(1.6, 2200 / Math.max(natural.width, natural.height));
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error(`Could not prepare page ${number} of ${file.name} for OCR.`);
+            try {
+              await page.render({ canvasContext: context, viewport }).promise;
+              text = await recognizeImage(canvas, `${file.name} · page ${number}`);
+            } finally {
+              canvas.width = 0;
+              canvas.height = 0;
+            }
+          }
+          if (text) pages.push(`Page ${number}\n${text}`);
+        } finally {
+          page.cleanup();
+        }
+      }
+      if (pdf.numPages > MAX_PDF_PAGES) pages.push(`[Only the first ${MAX_PDF_PAGES} pages were read.]`);
+      return pages.join('\n\n');
+    } finally {
+      await pdf.destroy();
+    }
+  }
+
+  async function extractWordText(file) {
+    const mammoth = await loadLibrary('mammoth', MAMMOTH_SRC);
+    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return normalizeExtractedText(result && result.value);
+  }
+
+  function fileKind(file) {
+    const name = String(file.name || '').toLowerCase();
+    if ((file.type || '').startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|tiff?|heic|heif)$/.test(name)) return 'Photo';
+    if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'PDF';
+    if (name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'Word';
+    if (/\.(txt|md|markdown|csv|json|html?|xml)$/.test(name) || (file.type || '').startsWith('text/')) return 'Text';
+    return '';
+  }
+
+  async function extractFileText(file, kind) {
+    if (kind === 'Photo') return extractPhotoText(file);
+    if (kind === 'PDF') return extractPdfText(file);
+    if (kind === 'Word') return extractWordText(file);
+    if (kind === 'Text') {
+      const raw = await readFileText(file);
+      if (/\.html?$/i.test(file.name)) {
+        const parsed = new DOMParser().parseFromString(raw, 'text/html');
+        parsed.querySelectorAll('script, style, template').forEach((node) => node.remove());
+        return normalizeExtractedText(parsed.body.textContent);
+      }
+      return normalizeExtractedText(raw);
+    }
+    throw new Error('Use a photo, PDF, Word document, or text-based file.');
+  }
+
+  function appendImportedText(file, kind, text) {
+    const area = document.getElementById('ftMaterial');
+    const current = String(area ? area.value : data.draft.material || '');
+    const separator = `${current.trim() ? '\n\n' : ''}[${file.name}]\n`;
+    const room = LIMIT - current.length - separator.length;
+    if (room < 1) throw new Error('Your notes have reached the 12,000-character limit. Remove some text before adding this file.');
+    const body = normalizeExtractedText(text);
+    if (!body) throw new Error(`No readable text found in ${file.name}.`);
+    const shortened = body.length > room;
+    data.draft.material = (current + separator + body.slice(0, room)).slice(0, LIMIT);
+    data.draft.attachments = cleanAttachments([...data.draft.attachments, { name: file.name, kind }]);
+    if (area) area.value = data.draft.material;
+    refreshAttachmentList();
+    save();
+    return shortened;
+  }
+
+  async function importFiles(fileList, expectedKind) {
+    if (importBusy) return;
+    const selected = Array.from(fileList || []);
+    if (!selected.length) return;
+    const room = Math.max(0, MAX_ATTACHMENTS - data.draft.attachments.length);
+    const files = selected.slice(0, room);
+    const errors = [];
+    let added = 0;
+    let truncated = 0;
+    importBusy = true;
+    updateImportControls();
+    if (!files.length) {
+      importBusy = false;
+      updateImportControls();
+      setImportStatus(`You can add up to ${MAX_ATTACHMENTS} source files to one session.`, 'error');
+      return;
+    }
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      try {
+        const kind = fileKind(file);
+        if (!kind || (expectedKind === 'Photo' && kind !== 'Photo') || (expectedKind === 'File' && kind === 'Photo')) {
+          throw new Error('This file type is not supported. Try a photo, PDF, DOCX, TXT, MD, CSV, JSON, HTML or XML file.');
+        }
+        if (file.size > MAX_FILE_BYTES) throw new Error('Files must be 15 MB or smaller.');
+        if (file.size === 0) throw new Error('This file is empty.');
+        setImportStatus(`Reading ${file.name} (${index + 1} of ${files.length})…`);
+        const text = await extractFileText(file, kind);
+        if (appendImportedText(file, kind, text)) truncated++;
+        added++;
+      } catch (error) {
+        errors.push(`${file.name}: ${error && error.message ? error.message : 'Could not read this file.'}`);
+      }
+    }
+    importBusy = false;
+    updateImportControls();
+    const omitted = selected.length - files.length;
+    const summary = [];
+    if (added) summary.push(`${added} ${added === 1 ? 'file' : 'files'} added to your notes.`);
+    if (truncated) summary.push('Some text was shortened to fit the study-note limit.');
+    if (omitted) summary.push(`Only ${MAX_ATTACHMENTS} source files can be added to one session.`);
+    if (errors.length) summary.push(errors.join('\n'));
+    setImportStatus(summary.join(' '), errors.length && !added ? 'error' : '');
+  }
+
   function formView() {
     const d = data.draft;
     return `${hero()}<section class="ft-card ft-form-card" aria-labelledby="ft-form-title">
@@ -136,7 +427,19 @@
           ${inputField('ftSubject', 'Class or subject', d.subject, 'e.g. Biology · Unit 4', { max: 100 })}
           ${inputField('ftSourceTitle', 'Source name', d.sourceTitle, 'e.g. Class slides, chapter 6', { max: 180 })}
           ${inputField('ftSourceUrl', 'Source link (optional)', d.sourceUrl, 'https://…', { type: 'url', wide: true, max: 500, help: 'Flux Teacher keeps the link beside your lesson. It does not fetch or upload the page.' })}
-          ${inputField('ftMaterial', 'Paste notes, a reading excerpt or class material', d.material, 'Paste the part you need to understand. You can also start with just a topic and add material later.', { textarea: true, notes: true, wide: true, max: LIMIT, help: 'Use material you are allowed to study here. Text stays in this browser and is not sent to an AI service.' })}
+          ${inputField('ftMaterial', 'Class notes or extracted material', d.material, 'Paste notes here, or add a photo or file below. You can also start with just a topic.', { textarea: true, notes: true, wide: true, max: LIMIT, help: 'Imported text appears here so you can correct it before building your session.' })}
+          <div class="ft-importer ft-field--wide" role="group" aria-label="Add study material from a photo or file">
+            <div class="ft-import-copy"><strong>Have a photo or file?</strong><span>Photos and scanned PDF pages use English OCR on this device. PDFs, Word documents and text files are read in your browser. First-time OCR downloads a reader; your material is not uploaded.</span></div>
+            <div class="ft-import-actions">
+              <button class="ft-btn ft-btn--quiet" type="button" data-action="pick-photo">Add a photo</button>
+              <button class="ft-btn ft-btn--quiet" type="button" data-action="pick-file">Choose files</button>
+              <input class="ft-visually-hidden" id="ftPhotoFiles" type="file" accept="image/*" multiple tabindex="-1" aria-label="Choose photos of your study material">
+              <input class="ft-visually-hidden" id="ftMaterialFiles" type="file" accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.html,.htm,.xml,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple tabindex="-1" aria-label="Choose study material files">
+            </div>
+            <div class="ft-upload-status" id="ftUploadStatus" role="status" aria-live="polite" hidden></div>
+            <ul class="ft-attachment-list" id="ftAttachmentList" aria-label="Source files read into your notes"${d.attachments.length ? '' : ' hidden'}>${attachmentMarkup(d.attachments)}</ul>
+            <span class="ft-help">Up to ${MAX_ATTACHMENTS} files · 15 MB each · 12,000 characters of notes. Review OCR text for handwriting, equations and diagrams.</span>
+          </div>
           ${inputField('ftQuestion', 'A question you need to answer (optional)', d.question, 'e.g. Explain how a change in the environment affects allele frequency.', { textarea: true, wide: true, max: 700 })}
         </div>
         <div class="ft-status" id="ftFormError" role="alert"></div>
@@ -189,7 +492,7 @@
       <div class="ft-session-top"><div>
         <div class="ft-kicker">Your study session</div>
         <h1 class="ft-session-title">${esc(s.topic)}</h1>
-        <div class="ft-session-meta">${s.subject ? `<span class="ft-chip">${esc(s.subject)}</span>` : ''}${s.sourceTitle ? `<span class="ft-chip">${icon('book', 13)} ${esc(s.sourceTitle)}</span>` : ''}${s.completedAt ? '<span class="ft-chip">Session complete</span>' : '<span class="ft-chip">Saved on this device</span>'}</div>
+        <div class="ft-session-meta">${s.subject ? `<span class="ft-chip">${esc(s.subject)}</span>` : ''}${s.sourceTitle ? `<span class="ft-chip">${icon('book', 13)} ${esc(s.sourceTitle)}</span>` : ''}${(s.attachments || []).map((item) => `<span class="ft-chip ft-chip--file" title="${esc(item.name)}">${esc(item.kind)} · ${esc(item.name)}</span>`).join('')}${s.completedAt ? '<span class="ft-chip">Session complete</span>' : '<span class="ft-chip">Saved on this device</span>'}</div>
       </div><div class="ft-session-actions"><button type="button" class="ft-btn ft-btn--quiet" data-action="edit">Edit session</button><button type="button" class="ft-link-btn" data-action="new">New session</button></div></div>
       <nav class="ft-step-tabs" aria-label="Study session steps">${stepNames.map((name, i) => `<button type="button" class="ft-step-tab" data-action="step" data-step="${i}" aria-current="${s.step === i ? 'step' : 'false'}"><span class="ft-step-num">${i + 1}</span>${name}</button>`).join('')}</nav>
       <div class="ft-progress" role="progressbar" aria-label="Study session progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="${s.step + 1}"><span style="width:${((s.step + 1) / 4) * 100}%"></span></div>
@@ -279,6 +582,7 @@
 
   function render() {
     root.innerHTML = data.session ? sessionView() : formView();
+    updateImportControls();
   }
 
   function syncDraft(form) {
@@ -305,7 +609,7 @@
       return;
     }
     data.session = {
-      topic: d.topic.trim(), subject: d.subject.trim(), sourceTitle: d.sourceTitle.trim(),
+      topic: d.topic.trim(), subject: d.subject.trim(), sourceTitle: d.sourceTitle.trim(), attachments: cleanAttachments(d.attachments),
       sourceUrl: safeUrl(d.sourceUrl), material: d.material.slice(0, LIMIT), question: d.question.trim(),
       warmup: '', teachback: '', explain: {}, answers: {}, confidence: '', step: 0,
       noteIndex: 0, questionIndex: 0, showSource: false, completedAt: '',
@@ -333,11 +637,25 @@
     startSession(event.target);
   });
 
+  root.addEventListener('change', (event) => {
+    const input = event.target;
+    if (input.id !== 'ftPhotoFiles' && input.id !== 'ftMaterialFiles') return;
+    const expectedKind = input.id === 'ftPhotoFiles' ? 'Photo' : 'File';
+    importFiles(input.files, expectedKind);
+    input.value = '';
+  });
+
   root.addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
     if (!button || !root.contains(button)) return;
     const s = data.session;
     switch (button.dataset.action) {
+      case 'pick-photo':
+        document.getElementById('ftPhotoFiles')?.click();
+        break;
+      case 'pick-file':
+        document.getElementById('ftMaterialFiles')?.click();
+        break;
       case 'step':
         if (!s) return;
         s.step = Math.max(0, Math.min(3, Number(button.dataset.step) || 0));
@@ -345,7 +663,7 @@
         break;
       case 'edit':
         if (s) {
-          data.draft = { topic: s.topic, subject: s.subject, sourceTitle: s.sourceTitle, sourceUrl: s.sourceUrl, material: s.material, question: s.question };
+          data.draft = { topic: s.topic, subject: s.subject, sourceTitle: s.sourceTitle, sourceUrl: s.sourceUrl, material: s.material, question: s.question, attachments: cleanAttachments(s.attachments) };
           data.session = null;
           save();
           render();
