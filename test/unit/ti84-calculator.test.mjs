@@ -68,12 +68,42 @@ test('degree mode, DMS and the display modes', () => {
   st.mode.digits = 'float';
   st.mode.notation = 'sci';
   assert.equal(show('1234', st), '1234');
+  assert.equal(show('32', st), '32');
+  assert.equal(show('0.5', st), '.5');
 });
 
 test('rand matches a new TI-84 (seed 0)', () => {
   const st = T.freshState();
   assert.equal(show('rand', st), '.9435974025');
   assert.equal(show('rand', st), '.908318861');
+});
+
+test('sequence mode supports recursive u(n), v(n), w(n) values and initial terms', () => {
+  const st = T.freshState();
+  st.mode.graph = 'seq';
+  st.y['u(n)'] = 'u(n-1)+u(n-2)';
+  st.sequences.u = { nMin: 0, initial: [0, 1] };
+  assert.equal(show('u(10)', st), '55');
+  assert.equal(show('{u(0),u(1),u(2),u(3),u(4)}', st), '{0 1 1 2 3}');
+  T.run('7→u(0)', st);
+  assert.equal(show('u(2)', st), '8');
+});
+
+test('Evo separates intervals, groups distributions, and keeps stat wizards on', () => {
+  const st = T.freshState();
+  st.mode.model = 'evo';
+  st.ui = { fmt: { thick: true }, wizards: false };
+  const Core = W.FluxTI84.core;
+  const stat = new Core.MenuApp({ st }, 'STAT');
+  assert.ok(stat.tabs.some((tab) => tab.name === 'INTERVALS'));
+  assert.equal(stat.tabs.find((tab) => tab.name === 'INTERVALS').items.length, 6);
+  const distr = new Core.MenuApp({ st }, 'DISTR');
+  same(distr.tabs.map((tab) => tab.name), ['NORMAL', 't', 'χ²', 'F', 'BINOMIAL', 'POISSON', 'GEOMETRIC', 'DRAW']);
+  const modeRows = new Core.ModeApp({ st }).rows();
+  assert.equal(modeRows.some((row) => row.label === 'STAT WIZARDS:'), false);
+  const apps = new Core.AppsHomeApp({ st });
+  assert.match(apps.render(), /Function Editor/);
+  assert.match(apps.render(), /Python, unavailable/);
 });
 
 test('distributions and the STAT tests', () => {

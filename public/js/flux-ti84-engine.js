@@ -100,14 +100,17 @@
     for (let k = 1; k <= 6; k++) lists['L' + SUB[k]] = [];
     const y = {};
     YNAMES.forEach((n) => { y[n] = ''; });
+    ['u(n)', 'v(n)', 'w(n)'].forEach((n) => { y[n] = ''; });
     return {
       vars: {}, ans: 0, lists: lists, mats: {}, strs: {}, y: y, sys: {},
+      sequences: { u: { initial: [0] }, v: { initial: [0] }, w: { initial: [0] } },
       mode: {
-        mathprint: true, notation: 'normal', digits: 'float', angle: 'rad', graph: 'func',
+        mathprint: true, notation: 'normal', digits: 'float', angle: 'rad', graph: 'func', model: 'ce',
         complex: 'real', answers: 'auto', fracType: 'n/d', statDiag: false,
       },
       win: { Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1, Xres: 1, XFact: 4, YFact: 4,
-        Tmin: 0, Tmax: 2 * Math.PI, Tstep: Math.PI / 24, 'θmin': 0, 'θmax': 2 * Math.PI, 'θstep': Math.PI / 24 },
+        Tmin: 0, Tmax: 2 * Math.PI, Tstep: Math.PI / 24, 'θmin': 0, 'θmax': 2 * Math.PI, 'θstep': Math.PI / 24,
+        nMin: 0, nMax: 10, nStep: 1 },
       tbl: { TblStart: 0, 'ΔTbl': 1, indpnt: 'auto', depend: 'auto' },
       tvm: { N: 0, I: 0, PV: 0, PMT: 0, FV: 0, PY: 1, CY: 1, begin: false },
       seed: [12345, 67890],
@@ -215,6 +218,9 @@
         i += nm[0].length; continue;
       }
       let hit = null;
+      if ('uvw'.indexOf(c) >= 0 && s[i + 1] === '(') {
+        out.push({ k: 'seqname', v: c }); i++; continue;
+      }
       for (const w of VOCAB) { if (s.startsWith(w, i)) { hit = w; break; } }
       if (hit) {
         let kind = 'word';
@@ -223,7 +229,7 @@
         out.push({ k: kind, v: hit });
         i += hit.length; continue;
       }
-      if (/[A-Zθ]/.test(c)) { out.push({ k: 'var', v: c }); i++; continue; }
+      if (/[A-Zθ]/.test(c) || c === 'n') { out.push({ k: 'var', v: c }); i++; continue; }
       if (c === 'e') { out.push({ k: 'const', v: 'e' }); i++; continue; }
       if (c === 'i') { out.push({ k: 'imag' }); i++; continue; }
       if ('+-−*×/÷^()[]{},:=<>⁻!\'′'.indexOf(c) >= 0) { out.push({ k: 'op', v: c }); i++; continue; }
@@ -272,6 +278,12 @@
       return { k: k.k, v: k.v };
     }
     if (k.k === 'yname') return { k: 'yname', v: k.v };
+    if (k.k === 'seqname') {
+      if (!this.eat('(')) fail('SYNTAX');
+      const args = this.args(')');
+      if (args.length !== 1) fail('ARGUMENT');
+      return { k: 'seqtarget', v: k.v, n: args[0] };
+    }
     if (k.k === 'sys') return { k: 'sys', v: k.v };
     if (k.k === 'word' && k.v === 'rand') return { k: 'seed' };
     if (k.k === 'word' && k.v === 'dim(') {
@@ -432,6 +444,12 @@
         if (this.eat('(')) return { k: 'ycall', v: k.v, args: this.args(')') };
         return { k: 'yval', v: k.v };
       }
+      case 'seqname': {
+        if (!this.eat('(')) fail('SYNTAX');
+        const args = this.args(')');
+        if (args.length !== 1) fail('ARGUMENT');
+        return { k: 'seqcall', v: k.v, args: args };
+      }
       case 'op': {
         if (k.v === '(') { const e = this.expr(); this.close(')'); return e; }
         if (k.v === '{') return { k: 'list', items: this.args('}') };
@@ -555,6 +573,11 @@
         if (isList(a)) return list(a.v.map((x) => scalarOf(evalY(n.v, x, cx))));
         return evalY(n.v, a, cx);
       }
+      case 'seqcall': {
+        const a = ev(n.args[0], cx);
+        if (isList(a)) return list(a.v.map((x) => scalarOf(evalSequence(n.v, x, cx))));
+        return evalSequence(n.v, a, cx);
+      }
       case 'neg': return neg(ev(n.a, cx));
       case 'bin': return evBin(n, cx);
       case 'post': return evPost(n.op, ev(n.a, cx), cx);
@@ -582,6 +605,7 @@
 
   /** Y₁ at a given x: the stored text is parsed and evaluated with X bound. */
   function evalY(name, x, cx) {
+    if (/^[uvw]\(n\)$/.test(name)) return evalSequence(name[0], x, cx);
     const src = cx.st.y[name];
     if (src == null || !String(src).trim()) fail('INVALID');
     if (cx.depth > 12) fail('MEMORY');
@@ -596,6 +620,33 @@
       cx.depth--;
       if (had) cx.locals.X = saved; else delete cx.locals.X;
       if (hadT) cx.locals.T = savedT; else delete cx.locals.T;
+    }
+  }
+  function evalSequence(name, index, cx) {
+    if (!isNum(index) || index !== Math.floor(index) || Math.abs(index) > 10000) return NaN;
+    const cfg = (cx.st.sequences && cx.st.sequences[name]) || { initial: [0] };
+    const nMin = Number.isInteger(cfg.nMin) ? cfg.nMin : (Number.isInteger(cx.st.win.nMin) ? cx.st.win.nMin : 0);
+    const initial = Array.isArray(cfg.initial) && cfg.initial.length ? cfg.initial : [0];
+    const offset = index - nMin;
+    if (offset < 0) return NaN;
+    if (offset < initial.length) return initial[offset];
+    const src = cx.st.y[name + '(n)'];
+    if (src == null || !String(src).trim()) return NaN;
+    if (!cx.seqMemo) cx.seqMemo = Object.create(null);
+    const key = name + ':' + index;
+    if (Object.prototype.hasOwnProperty.call(cx.seqMemo, key)) return cx.seqMemo[key];
+    if (cx.depth > 1000) fail('MEMORY');
+    const had = Object.prototype.hasOwnProperty.call(cx.locals, 'n'), old = cx.locals.n;
+    cx.locals.n = index;
+    cx.depth++;
+    try {
+      const value = ev(cachedExpr(src), cx);
+      if (!isNum(value)) return NaN;
+      cx.seqMemo[key] = value;
+      return value;
+    } finally {
+      cx.depth--;
+      if (had) cx.locals.n = old; else delete cx.locals.n;
     }
   }
   const EXPR_CACHE = new Map();
@@ -654,6 +705,20 @@
         if (!isStr(v)) fail('DATA TYPE');
         st.y[t.v] = v.v;
         return;
+      case 'seqtarget': {
+        if (!isNum(v)) fail('DATA TYPE');
+        const index = ev(t.n, cx);
+        if (!isNum(index) || !Number.isInteger(index) || Math.abs(index) > 10000) fail('INVALID DIM');
+        if (!st.sequences) st.sequences = {};
+        const cfg = st.sequences[t.v] || (st.sequences[t.v] = { initial: [0] });
+        if (!Number.isInteger(cfg.nMin)) cfg.nMin = Number.isInteger(st.win.nMin) ? st.win.nMin : 0;
+        if (!Array.isArray(cfg.initial) || !cfg.initial.length) cfg.initial = [0];
+        const offset = index - cfg.nMin;
+        if (offset < 0 || offset > 999) fail('INVALID DIM');
+        while (cfg.initial.length <= offset) cfg.initial.push(0);
+        cfg.initial[offset] = v;
+        return;
+      }
       case 'sys': setSys(t.v, v, cx); return;
       case 'seed': {
         if (!isNum(v)) fail('DATA TYPE');
@@ -705,13 +770,13 @@
 
   /* ── System variables (VARS) ─────────────────────────────────────────── */
 
-  const WIN_KEYS = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'XFact', 'YFact', 'Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep'];
+  const WIN_KEYS = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'XFact', 'YFact', 'Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'];
   const TVM_KEYS = { tvmN: 'N', 'I%': 'I', PV: 'PV', PMT: 'PMT', FV: 'FV', 'P/Y': 'PY', 'C/Y': 'CY' };
   function getSys(name, cx) {
     const st = cx.st;
     if (WIN_KEYS.indexOf(name) >= 0) return st.win[name];
-    if (name === 'ΔX') return R((st.win.Xmax - st.win.Xmin) / 264);
-    if (name === 'ΔY') return R((st.win.Ymax - st.win.Ymin) / 164);
+    if (name === 'ΔX') return R((st.win.Xmax - st.win.Xmin) / (st.mode.model === 'evo' ? 319 : 264));
+    if (name === 'ΔY') return R((st.win.Ymax - st.win.Ymin) / (st.mode.model === 'evo' ? 209 : 164));
     if (name === 'TblStart' || name === 'ΔTbl') return st.tbl[name];
     if (name in TVM_KEYS) return st.tvm[TVM_KEYS[name]];
     if (/^Str\d$/.test(name)) {
@@ -1750,7 +1815,10 @@
       ? expandExponent(a.toPrecision(10))
       : a < 1e21 ? a.toFixed(digits) : null;
     const ordinary = rounded == null ? null : dropLead(digits === 'float' ? trimZeros(rounded) : rounded);
-    const ordinaryWidth = ordinary == null ? Infinity : ordinary.length + (neg ? 1 : 0);
+    // The minus sign is a separate glyph on the handheld display. Count the
+    // numeric body when deciding whether ordinary notation is too wide; this
+    // keeps a value such as −.9880316241 out of scientific notation.
+    const ordinaryWidth = ordinary == null ? Infinity : ordinary.length;
 
     /* Sci and Eng used to turn every answer into exponent form, so 32 became
        3.2ᴇ1. Keep decimal notation whenever the displayed answer fits in a

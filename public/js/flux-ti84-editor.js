@@ -349,6 +349,7 @@
     if (WORDS) return WORDS;
     const FT = root.FluxTI;
     const list = FT ? Object.keys(FT.FN_ARITY).concat(FT.CMDS, FT.CONV, FT.YNAMES) : [];
+    list.push('u(n)', 'v(n)', 'w(n)');
     WORDS = list.concat(['Ans', 'rand', 'ˣ√', '⁻¹', ' nPr ', ' nCr ', ' and ', ' or ', ' xor ', 'L₁', 'L₂', 'L₃', 'L₄', 'L₅', 'L₆',
       'getKey', 'Pmt_End', 'Pmt_Bgn', '1-Var Stats', '2-Var Stats'])
       .sort((a, b) => b.length - a.length);

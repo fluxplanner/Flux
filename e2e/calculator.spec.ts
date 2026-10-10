@@ -57,6 +57,40 @@ test.describe('Calculator', () => {
     await expect(page.locator('.t84-home')).toBeVisible();
   });
 
+  test('Evo mode has its own Apps screen, conversion key, and one-step clear undo', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/calculator.html');
+    await page.locator('.t84-model-control select').selectOption('evo');
+    await expect(page.locator('.t84')).toHaveClass(/is-evo/);
+    await expect(page.locator('.t84 [data-k="convert"]')).toHaveText('< >');
+
+    const key = (k: string) => page.locator(`.t84 [data-k="${k}"]`).click();
+    await key('7');
+    await key('clear');
+    await key('2nd');
+    await key('clear');
+    await key('enter');
+    await expect(lastOut(page)).toHaveText('7');
+
+    // Undo applies only to the most recent clear: a later edit expires it.
+    await key('9');
+    await key('clear');
+    await key('4');
+    await key('2nd');
+    await key('clear');
+    await key('enter');
+    await expect(lastOut(page)).toHaveText('4');
+
+    await key('apps');
+    await expect(page.locator('.t84-apphome')).toBeVisible();
+    await expect(page.locator('.t84-apphome-item[data-k="app:12"]')).toContainText('Python');
+    await key('clear');
+    await expect(page.locator('.t84-home')).toBeVisible();
+
+    await key('convert');
+    await expect(page.locator('.t84m-tabs')).toContainText('CONVERT ANSWER');
+  });
+
   test('nCr and other functions give boxes to fill', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/calculator.html');
@@ -156,6 +190,8 @@ test.describe('Calculator', () => {
     expect(await k.evaluate((e) => getComputedStyle(e).backgroundImage)).toMatch(/gradient/);
     for (const id of ['6', 'mul', '7', 'enter']) await page.locator(`.fsh-calc .t84 [data-k="${id}"]`).click();
     await expect(page.locator('.fsh-calc .t84h-out').last()).toHaveText('42');
+    await page.locator('.fsh-calc .t84-model-control select').selectOption('evo');
+    await expect(page.locator('.fsh-calc .t84.is-evo')).toBeVisible();
   });
 
   test('an iPad held sideways gets the keys beside the screen, all on view', async ({ page }) => {

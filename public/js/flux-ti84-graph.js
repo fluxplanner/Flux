@@ -18,7 +18,8 @@
 
   const T = () => window.FluxTI;
   const core = () => window.FluxTI84.core;
-  const PX = 264, PY = 164;              // the CE graph's pixel intervals
+  const graphPixelsX = (st) => st.mode.model === 'evo' ? 319 : 264;
+  const graphPixelsY = (st) => st.mode.model === 'evo' ? 209 : 164;
   const esc = (s) => core().esc(s);
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
 
@@ -46,9 +47,10 @@
       }
       return out;
     }
-    T().YNAMES.forEach((n) => {
+    const names = mode === 'seq' ? ['u(n)', 'v(n)', 'w(n)'] : T().YNAMES;
+    names.forEach((n) => {
       if (!st.y[n] || !String(st.y[n]).trim() || st.ui.yOn[n] === false) return;
-      try { out.push({ name: n, colour: st.ui.yCol[n], style: st.ui.yStyle[n] || 'thick', f: T().compileFn(st.y[n], st, ['X']), code: st.y[n] }); } catch (e) { /* left off */ }
+      try { out.push({ name: n, colour: st.ui.yCol[n], style: st.ui.yStyle[n] || 'thick', f: T().compileFn(st.y[n], st, [mode === 'seq' ? 'n' : 'X']), code: st.y[n], seq: mode === 'seq' }); } catch (e) { /* left off */ }
     });
     return out;
   }
@@ -157,7 +159,14 @@
     const w = st.win;
     const span = w.Ymax - w.Ymin;
     const pts = [];
-    if (fn.par || fn.pol) {
+    if (fn.seq) {
+      const lo = w.nMin, hi = w.nMax, step = w.nStep;
+      if (!(step > 0) || (hi - lo) / step > 1000) return;
+      for (let n = lo; n <= hi + step * 1e-9; n += step) {
+        const y = num(fn.f(Math.round(n)));
+        pts.push(Number.isFinite(y) ? [F.sx(n), F.sy(Math.max(w.Ymin - span * 4, Math.min(w.Ymax + span * 4, y)))] : null);
+      }
+    } else if (fn.par || fn.pol) {
       const lo = fn.par ? w.Tmin : w['θmin'], hi = fn.par ? w.Tmax : w['θmax'], step = fn.par ? w.Tstep : w['θstep'];
       if (!(step > 0) || (hi - lo) / step > 20000) return;
       for (let t = lo; t <= hi + step * 1e-9; t += step) {
@@ -181,9 +190,14 @@
         prev = y;
         pts.push([F.sx(x), F.sy(Math.max(w.Ymin - span * 4, Math.min(w.Ymax + span * 4, y)))]);
       }
-      if (fn.style === 'above' || fn.style === 'below') {
+      if (fn.style === 'above' || fn.style === 'below' || fn.style === 'shade') {
         g.globalAlpha = 0.22;
-        pts.forEach((p) => { if (!p) return; if (fn.style === 'above') g.fillRect(p[0] - 1, 0, 2, Math.max(0, p[1])); else g.fillRect(p[0] - 1, p[1], 2, F.H - p[1]); });
+        pts.forEach((p) => {
+          if (!p) return;
+          if (fn.style === 'above') g.fillRect(p[0] - 1, 0, 2, Math.max(0, p[1]));
+          else if (fn.style === 'below') g.fillRect(p[0] - 1, p[1], 2, F.H - p[1]);
+          else { const zero = F.sy(0); g.fillRect(p[0] - 1, Math.min(p[1], zero), 2, Math.abs(zero - p[1])); }
+        });
         g.globalAlpha = 1;
       }
     }
@@ -191,6 +205,7 @@
       pts.forEach((p, i) => { if (p && i % 3 === 0) g.fillRect(p[0] - 1, p[1] - 1, 2, 2); });
       return;
     }
+    if (fn.style === 'path') g.setLineDash([3, 2]);
     g.beginPath();
     let pen = false;
     pts.forEach((p) => {
@@ -198,6 +213,11 @@
       if (!pen) { g.moveTo(p[0], p[1]); pen = true; } else g.lineTo(p[0], p[1]);
     });
     g.stroke();
+    if (fn.style === 'path') g.setLineDash([]);
+    if (fn.style === 'animate') {
+      const end = pts.slice().reverse().find((p) => p);
+      if (end) { g.beginPath(); g.arc(end[0], end[1], 2.7, 0, Math.PI * 2); g.fill(); }
+    }
   }
 
   function listOf(st, name) { const l = st.lists[name]; return Array.isArray(l) ? l.filter((v) => typeof v === 'number') : []; }
@@ -230,6 +250,19 @@
     }
     if (!xs.length) return;
     const fs = freqOf(st, p, xs.length);
+    if (p.type === 'normprob') {
+      const sorted = [];
+      xs.forEach((x, k) => {
+        const count = Math.max(0, Math.min(999, Math.floor(fs[k])));
+        for (let j = 0; j < count && sorted.length < 999; j++) sorted.push(x);
+      });
+      sorted.sort((a, b) => a - b);
+      sorted.forEach((value, k) => {
+        const z = window.FluxTIStats.invNorm((k + 0.5) / sorted.length);
+        mark(F.sx(z), F.sy(value));
+      });
+      return;
+    }
     if (p.type === 'hist') {
       const w = st.win;
       if (!(w.Xscl > 0)) return;
@@ -353,6 +386,58 @@
     return (a + b) / 2;
   }
 
+  const poiCache = new Map();
+  function pointsOfInterest(c, fn, fns) {
+    const w = c.st.win;
+    const key = JSON.stringify([w.Xmin, w.Xmax, w.Ymin, w.Ymax, fn.name, fn.code, fns.map((f) => [f.name, f.code])]);
+    if (poiCache.has(key)) return poiCache.get(key);
+    const points = [];
+    const add = (x, y, label) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < w.Xmin || x > w.Xmax || y < w.Ymin || y > w.Ymax) return;
+      if (points.some((p) => Math.abs(p.x - x) < (w.Xmax - w.Xmin) / 500)) return;
+      points.push({ x: x, y: y, label: label });
+    };
+    if (!fn || fn.par || fn.pol || fn.seq) return points;
+    const N = 480, dx = (w.Xmax - w.Xmin) / N;
+    let lastX = w.Xmin, lastY = num(fn.f(lastX));
+    const ys = [lastY];
+    for (let i = 1; i <= N; i++) {
+      const x = w.Xmin + i * dx, y = num(fn.f(x));
+      ys.push(y);
+      if (Number.isFinite(lastY) && Number.isFinite(y) && (lastY === 0 || (lastY < 0) !== (y < 0))) {
+        try { const root = zeroBetween(fn.f, lastX, x); add(root, 0, 'Zero'); } catch (e) { /* not a bracketed zero */ }
+      }
+      lastX = x; lastY = y;
+    }
+    if (w.Xmin <= 0 && w.Xmax >= 0) add(0, num(fn.f(0)), 'Y-intercept');
+    for (let i = 1; i < N; i++) {
+      const a = ys[i - 1], b = ys[i], d = ys[i + 1];
+      if (![a, b, d].every(Number.isFinite)) continue;
+      const lo = w.Xmin + (i - 1) * dx, hi = w.Xmin + (i + 1) * dx;
+      if (b <= a && b < d) {
+        try { const x = T().goldenMin(fn.f, lo, hi); add(x, num(fn.f(x)), 'Local minimum'); } catch (e) { /* leave this sample out */ }
+      } else if (b >= a && b > d) {
+        try { const x = T().goldenMin((t) => -fn.f(t), lo, hi); add(x, num(fn.f(x)), 'Local maximum'); } catch (e) { /* leave this sample out */ }
+      }
+    }
+    fns.forEach((other) => {
+      if (other === fn || other.par || other.pol || other.seq) return;
+      const diff = (x) => num(fn.f(x)) - num(other.f(x));
+      let px = w.Xmin, py = diff(px);
+      for (let i = 1; i <= N; i++) {
+        const x = w.Xmin + i * dx, y = diff(x);
+        if (Number.isFinite(py) && Number.isFinite(y) && (py === 0 || (py < 0) !== (y < 0))) {
+          try { const root = zeroBetween(diff, px, x); add(root, num(fn.f(root)), 'Intersection'); } catch (e) { /* not bracketed */ }
+        }
+        px = x; py = y;
+      }
+    });
+    points.sort((a, b) => a.x - b.x);
+    if (poiCache.size > 64) poiCache.clear();
+    poiCache.set(key, points);
+    return points;
+  }
+
   /* ── The graph screen ───────────────────────────────────────────────── */
 
   const CALC_STEPS = {
@@ -380,7 +465,8 @@
   }
   GraphApp.prototype.fns = function () { return activeFns(this.c.st); };
   GraphApp.prototype.snapX = function (x) {
-    const w = this.c.st.win, dx = (w.Xmax - w.Xmin) / PX;
+    const st = this.c.st, w = st.win, dx = (w.Xmax - w.Xmin) / graphPixelsX(st);
+    if (st.mode.graph === 'seq' && w.nStep > 0) return +(w.nMin + Math.round((x - w.nMin) / w.nStep) * w.nStep).toPrecision(12);
     return +(w.Xmin + Math.round((x - w.Xmin) / dx) * dx).toPrecision(12);
   };
   GraphApp.prototype.centre = function () {
@@ -396,7 +482,7 @@
   };
   GraphApp.prototype.yOf = function (fn, x) {
     if (!fn || fn.par || fn.pol) return NaN;
-    return num(fn.f(x));
+    return num(fn.f(fn.seq ? Math.round(x) : x));
   };
   GraphApp.prototype.pointOf = function (fn, t) {
     if (fn.par) return [num(fn.fx(t)), num(fn.fy(t))];
@@ -406,10 +492,11 @@
   GraphApp.prototype.startCalc = function (which) {
     const fns = this.fns();
     this.result = null;
-    if (!fns.length || this.c.st.mode.graph !== 'func') { this.mode = 'view'; this.msg = fns.length ? 'CALC needs FUNCTION mode' : 'No functions are on — press y='; return; }
+    if (!fns.length || !['func', 'seq'].includes(this.c.st.mode.graph)) { this.mode = 'view'; this.msg = fns.length ? 'CALC unavailable in this graph mode' : 'No functions are on — press y='; return; }
     this.mode = 'calc';
     this.msg = '';
-    this.calc = { which: which, step: 0, marks: [] };
+    const quickIntersection = which === 'isect' && this.c.st.mode.model === 'evo' && fns.length === 2;
+    this.calc = { which: which, step: quickIntersection ? 2 : 0, marks: quickIntersection ? [0, 1] : [] };
     if (this.cx == null) this.centre();
   };
   /** ENTER during a CALC prompt. */
@@ -488,7 +575,7 @@
   };
   GraphApp.prototype.key = function (k) {
     const c = this.c, st = c.st, w = st.win, fns = this.fns();
-    const dx = (w.Xmax - w.Xmin) / PX, dy = (w.Ymax - w.Ymin) / PY;
+    const dx = (w.Xmax - w.Xmin) / graphPixelsX(st), dy = (w.Ymax - w.Ymin) / graphPixelsY(st);
     // Typing a number moves the trace cursor to that X (and answers X= in CALC value).
     const canType = this.mode === 'trace' || (this.mode === 'calc' && this.calc && this.calc.which !== 'isect');
     if (canType && (/^[0-9]$/.test(k) || k === 'dot' || k === 'neg' || this.typed != null)) {
@@ -551,7 +638,9 @@
       const fn = fns[this.fnIndex];
       if (k === 'left' || k === 'right') {
         const d = k === 'left' ? -1 : 1;
-        if (fn && (fn.par || fn.pol)) {
+        if (fn && fn.seq) {
+          this.cx = this.snapX(this.cx + d * w.nStep);
+        } else if (fn && (fn.par || fn.pol)) {
           const step = fn.par ? w.Tstep : w['θstep'];
           this.ct = (this.ct == null ? (fn.par ? w.Tmin : w['θmin']) : this.ct) + d * step;
         } else {
@@ -601,7 +690,7 @@
       g.beginPath(); g.moveTo(X - 7, Y); g.lineTo(X + 7, Y); g.moveTo(X, Y - 7); g.lineTo(X, Y + 7); g.stroke();
       g.strokeRect(X - 2.5, Y - 2.5, 5, 5);
     };
-    let bottom = '', topText = '';
+    let bottom = '', topText = '', poiText = '';
     if (this.mode === 'free' || this.mode === 'zbox' || this.mode === 'zin' || this.mode === 'zout') {
       cross(F.sx(this.cx), F.sy(this.cy));
       if (this.box) { g.setLineDash([4, 3]); g.strokeRect(F.sx(this.box[0]), F.sy(this.box[1]), F.sx(this.cx) - F.sx(this.box[0]), F.sy(this.cy) - F.sy(this.box[1])); g.setLineDash([]); }
@@ -620,10 +709,27 @@
         bottom = '<b>X=' + fx(x) + '</b><b>Y=' + (Number.isFinite(y) ? fx(y) : '') + '</b>';
       }
       if (Number.isFinite(x) && Number.isFinite(y)) cross(F.sx(x), F.sy(y), fn.colour);
+      if (st.mode.model === 'evo' && this.mode === 'trace' && !fn.seq) {
+        const pois = pointsOfInterest(this.c, fn, fns);
+        let nearest = null;
+        pois.forEach((poi) => {
+          const X = F.sx(poi.x), Y = F.sy(poi.y);
+          const distance = Math.abs(X - F.sx(this.cx));
+          if (!nearest || distance < nearest.distance) nearest = { poi: poi, distance: distance };
+          g.beginPath(); g.fillStyle = '#6546c8'; g.arc(X, Y, 3.4, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = '#ffffff'; g.lineWidth = 1.2; g.stroke();
+        });
+        if (nearest) {
+          const poi = nearest.poi, X = F.sx(poi.x), Y = F.sy(poi.y);
+          g.beginPath(); g.strokeStyle = '#0b8f68'; g.lineWidth = 2.2; g.arc(X, Y, 6.2, 0, Math.PI * 2); g.stroke();
+          poiText = poi.label;
+        }
+      }
       if (fmt.expr) {
         const E = window.FluxTIEditor;
         topText = fn.name + '=' + (E ? E.textNodes(st.ui.ynodes[fn.name] || E.nodesFromCode(fn.code)) : fn.code);
       }
+      if (poiText) topText = (topText ? topText + '  ·  ' : '') + poiText;
       let p = '';
       if (this.calc) {
         const steps = CALC_STEPS[this.calc.which];
@@ -673,20 +779,20 @@
       }
       case 'ZInteger': {
         const cx = Math.round((w.Xmin + w.Xmax) / 2), cy = Math.round((w.Ymin + w.Ymax) / 2);
-        set({ Xmin: cx - PX / 2, Xmax: cx + PX / 2, Xscl: 10, Ymin: cy - PY / 2, Ymax: cy + PY / 2, Yscl: 10 });
+        set({ Xmin: cx - graphPixelsX(st) / 2, Xmax: cx + graphPixelsX(st) / 2, Xscl: 10, Ymin: cy - graphPixelsY(st) / 2, Ymax: cy + graphPixelsY(st) / 2, Yscl: 10 });
         return true;
       }
       case 'ZSquare': {
         const cx = (w.Xmin + w.Xmax) / 2, hy = (w.Ymax - w.Ymin) / 2;
-        set({ Xmin: cx - hy * PX / PY, Xmax: cx + hy * PX / PY });
+        set({ Xmin: cx - hy * graphPixelsX(st) / graphPixelsY(st), Xmax: cx + hy * graphPixelsX(st) / graphPixelsY(st) });
         return true;
       }
       case 'ZoomFit': {
         let lo = Infinity, hi = -Infinity;
         activeFns(st).forEach((fn) => {
           if (fn.par || fn.pol) return;
-          for (let i = 0; i <= PX; i++) {
-            const y = num(fn.f(w.Xmin + (w.Xmax - w.Xmin) * i / PX));
+          for (let i = 0; i <= graphPixelsX(st); i++) {
+            const y = num(fn.f(w.Xmin + (w.Xmax - w.Xmin) * i / graphPixelsX(st)));
             if (Number.isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, y); }
           }
         });
@@ -699,6 +805,7 @@
           if (!p.on) return;
           listOf(st, p.x).forEach((x) => { xl = Math.min(xl, x); xh = Math.max(xh, x); });
           if (p.type === 'scatter' || p.type === 'xyline') listOf(st, p.y).forEach((y) => { yl = Math.min(yl, y); yh = Math.max(yh, y); });
+          else if (p.type === 'normprob') listOf(st, p.x).forEach((y) => { yl = Math.min(yl, y); yh = Math.max(yh, y); });
           else { yl = Math.min(yl, -1); yh = Math.max(yh, 5); }
         });
         if (!Number.isFinite(xl)) return true;
@@ -812,9 +919,17 @@
       const rows = [];
       if (st.mode.graph === 'par') rows.push(n('Tmin'), n('Tmax'), n('Tstep'));
       if (st.mode.graph === 'pol') rows.push(n('θmin'), n('θmax'), n('θstep'));
+      if (st.mode.graph === 'seq') {
+        ['nMin', 'nMax', 'nStep'].forEach((key) => rows.push({ label: key + '=', type: 'num', get: () => w[key], set: (v) => {
+          if ((key === 'nMin' || key === 'nMax') && !Number.isInteger(v)) T().fail('DOMAIN');
+          if (key === 'nStep' && !(v > 0)) T().fail('DOMAIN');
+          w[key] = v;
+          w.Xmin = w.nMin; w.Xmax = w.nMax; w.Xscl = w.nStep;
+        } }));
+      }
       rows.push(n('Xmin'), n('Xmax'), n('Xscl'), n('Ymin'), n('Ymax'), n('Yscl'));
       if (st.mode.graph === 'func') rows.push(n('Xres'));
-      rows.push({ label: 'ΔX=', type: 'num', get: () => +((w.Xmax - w.Xmin) / PX).toPrecision(10), set: (v) => { if (!(v > 0)) T().fail('DOMAIN'); w.Xmax = w.Xmin + v * PX; } });
+      rows.push({ label: 'ΔX=', type: 'num', get: () => +((w.Xmax - w.Xmin) / graphPixelsX(st)).toPrecision(10), set: (v) => { if (!(v > 0)) T().fail('DOMAIN'); w.Xmax = w.Xmin + v * graphPixelsX(st); } });
       return rows;
     }, { title: 'WINDOW' });
   }
@@ -839,7 +954,7 @@
       ch('Detect Asymptotes:', 'detect', [['Off', false], ['On', true]]),
     ], { title: 'FORMAT' });
   }
-  const PLOT_TYPES = [['Scatter', 'scatter'], ['xyLine', 'xyline'], ['Histogram', 'hist'], ['ModBox', 'modbox'], ['Box', 'box']];
+  const PLOT_TYPES = [['Scatter', 'scatter'], ['xyLine', 'xyline'], ['Histogram', 'hist'], ['ModBox', 'modbox'], ['Box', 'box'], ['NormProb', 'normprob']];
   function plotForm(c, i) {
     const p = c.st.ui.plots[i];
     return new (core().FormApp)(c, () => {

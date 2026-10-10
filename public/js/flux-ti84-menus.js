@@ -35,6 +35,10 @@
       { name: 'PROB', items: [I('rand'), { l: 'nPr', tpl: 'npr', ins: ' nPr ' }, { l: 'nCr', tpl: 'ncr', ins: ' nCr ' }, I('!'), I('randInt('), I('randNorm('), I('randBin('), I('randIntNoRep(')] },
       { name: 'FRAC', items: [{ l: 'n/d', tpl: 'frac', ins: '/' }, { l: 'Un/d', tpl: 'mixed', ins: '+' }, I('▶F◀▶D'), I('▶n/d◀▶Un/d')] },
     ],
+    SYMBOLS: [{ name: 'SYMBOLS', items: [I('π'), I('e'), I('i'), I('θ'), I('°'), I('≠'), I('≤'), I('≥')] }],
+    CONVERT: [{ name: 'CONVERT ANSWER', items: [
+      { l: 'Fraction', act: 'ansFraction' }, { l: 'Decimal', act: 'ansDecimal' }, { l: 'n/d ↔ Un/d', act: 'ansMixed' },
+    ] }],
     TEST: [
       { name: 'TEST', items: [I('='), I('≠'), I('>'), I('≥'), I('<'), I('≤')] },
       { name: 'LOGIC', items: [I('and', ' and '), I('or', ' or '), I('xor', ' xor '), I('not(')] },
@@ -74,11 +78,11 @@
     ],
     VARS: [
       { name: 'VARS', items: [{ l: 'Window…', sub: 'VWIN' }, { l: 'Statistics…', sub: 'VSTAT' }, { l: 'Table…', sub: 'VTBL' }, { l: 'String…', sub: 'VSTR' }] },
-      { name: 'Y-VARS', items: [{ l: 'Function…', sub: 'VFUNC' }, { l: 'Parametric…', sub: 'VPAR' }, { l: 'Polar…', sub: 'VPOL' }, { l: 'On/Off…', sub: 'VONOFF' }] },
+      { name: 'Y-VARS', items: [{ l: 'Function…', sub: 'VFUNC' }, { l: 'Parametric…', sub: 'VPAR' }, { l: 'Polar…', sub: 'VPOL' }, { l: 'Sequence…', sub: 'VSEQ' }, { l: 'On/Off…', sub: 'VONOFF' }] },
     ],
     VWIN: [
       { name: 'X/Y', items: ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl', 'Xres', 'ΔX', 'ΔY', 'XFact', 'YFact'].map((n) => sys(n)) },
-      { name: 'T/θ', items: ['Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep'].map((n) => sys(n)) },
+      { name: 'T/θ', items: ['Tmin', 'Tmax', 'Tstep', 'θmin', 'θmax', 'θstep', 'nMin', 'nMax', 'nStep'].map((n) => sys(n)) },
     ],
     VSTAT: [
       { name: 'XY', items: ['n', 'x̄', 'Sx', 'σx', 'ȳ', 'Sy', 'σy', 'minX', 'maxX', 'minY', 'maxY'].map((n) => sys(n)) },
@@ -92,6 +96,7 @@
     VFUNC: [{ name: 'FUNCTION', items: Y.map((n) => I(n)) }],
     VPAR: [{ name: 'PARAMETRIC', items: ['X₁ᴛ', 'Y₁ᴛ', 'X₂ᴛ', 'Y₂ᴛ', 'X₃ᴛ', 'Y₃ᴛ', 'X₄ᴛ', 'Y₄ᴛ', 'X₅ᴛ', 'Y₅ᴛ', 'X₆ᴛ', 'Y₆ᴛ'].map((n) => I(n)) }],
     VPOL: [{ name: 'POLAR', items: ['r₁', 'r₂', 'r₃', 'r₄', 'r₅', 'r₆'].map((n) => I(n)) }],
+    VSEQ: [{ name: 'SEQUENCE', items: ['u(n)', 'v(n)', 'w(n)'].map((n) => I(n)) }],
     VONOFF: [{ name: 'ON/OFF', items: [I('FnOn', 'FnOn '), I('FnOff', 'FnOff ')] }],
     PRGM: [
       { name: 'EXEC', dyn: 'prgmExec' },

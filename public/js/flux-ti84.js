@@ -45,6 +45,18 @@
     [K('sto', 'sto→', 'rcl', 'X'), K('1', '1', 'L1', 'Y', 'num'), K('2', '2', 'L2', 'Z', 'num'), K('3', '3', 'L3', 'θ', 'num'), K('add', '+', 'mem', '"', 'op')],
     [K('on', 'on', 'off'), K('0', '0', 'catalog', '␣', 'num'), K('dot', '.', 'i', ':', 'num'), K('neg', '(−)', 'ans', '?', 'num'), K('enter', 'enter', 'entry', 'solve', 'op')],
   ];
+  /* Evo keeps the same math engine and memory, while changing the keys that
+     TI changed on the physical model. The fraction template takes the old
+     X,T,θ,n key's place; 2nd restores that variable key. */
+  const EVO_TOP = [K('yequ', 'plot', 'stat plot', 'f1', 'top'), TOP[1], TOP[2], TOP[3], TOP[4]];
+  const EVO_MID = [[MID[0][0], MID[0][1], K('del', 'del', 'insert')],
+    [MID[1][0], K('xt', 'a b/c', 'X,T,θ,n'), K('stat', 'stat', 'list', 'distr')]];
+  const EVO_ROWS = [
+    [K('math', 'math', 'symbols', 'A'), K('apps', 'apps', 'angle', 'B'), K('prgm', 'prgm', 'draw', 'C'), K('vars', 'vars', 'matrix'), K('clear', 'clear', 'undo')],
+    [K('inv', 'x⁻¹', '', 'D'), K('pow', '^', 'π', 'H'), K('sin', 'sin', 'sin⁻¹', 'E'), K('cos', 'cos', 'cos⁻¹', 'F'), K('tan', 'tan', 'tan⁻¹', 'G')],
+    [K('sq', 'x²', '√', 'I'), K('comma', ',', 'EE', 'J'), K('lparen', '(', '{', 'K'), K('rparen', ')', '}', 'L'), K('div', '÷', 'e', 'M', 'op')],
+    ROWS[3], ROWS[4], ROWS[5], [K('on', 'on', 'home'), ROWS[6][1], ROWS[6][2], ROWS[6][3], K('convert', '< >', '', '', 'op'), ROWS[6][4]],
+  ];
   const SEC = {
     yequ: 'statplot', window: 'tblset', zoom: 'format', trace: 'calc', graph: 'table', mode: 'quit', del: 'ins', xt: 'link', stat: 'list',
     math: 'test', apps: 'angle', prgm: 'draw', vars: 'distr', inv: 'matrix', sin: 'asin', cos: 'acos', tan: 'atan', pow: 'pi', sq: 'sqrt',
@@ -83,10 +95,11 @@
 
   /* ── State ──────────────────────────────────────────────────────────── */
 
-  const YCOLOURS = ['#1f6feb', '#e5484d', '#1b1b1f', '#c93eae', '#2da44e', '#f08c24', '#8b5a2b', '#1c3d8f', '#3fb2e6', '#d9b300'];
+  const YCOLOURS = ['#1f6feb', '#e5484d', '#1b1b1f', '#c93eae', '#2da44e', '#f08c24', '#8b5a2b', '#1c3d8f', '#3fb2e6', '#d9b300', '#fa7b17', '#7e57c2', '#00897b', '#c62828', '#546e7a'];
   function freshUI() {
     const yOn = {}, yCol = {};
     T().YNAMES.forEach((n, i) => { yOn[n] = true; yCol[n] = YCOLOURS[i]; });
+    ['u(n)', 'v(n)', 'w(n)'].forEach((n, i) => { yOn[n] = true; yCol[n] = YCOLOURS[i]; });
     ['X₁ᴛ', 'Y₁ᴛ', 'X₂ᴛ', 'Y₂ᴛ', 'X₃ᴛ', 'Y₃ᴛ', 'X₄ᴛ', 'Y₄ᴛ', 'X₅ᴛ', 'Y₅ᴛ', 'X₆ᴛ', 'Y₆ᴛ'].forEach((n, i) => { yOn[n] = true; yCol[n] = YCOLOURS[Math.floor(i / 2)]; });
     ['r₁', 'r₂', 'r₃', 'r₄', 'r₅', 'r₆'].forEach((n, i) => { yOn[n] = true; yCol[n] = YCOLOURS[i]; });
     return {
@@ -105,6 +118,8 @@
     const out = Object.assign(T().freshState(), st);
     out.mode = Object.assign(fresh.mode, st.mode || {});
     out.win = Object.assign(fresh.win, st.win || {});
+    out.sequences = Object.assign({}, fresh.sequences);
+    Object.keys(fresh.sequences).forEach((n) => { out.sequences[n] = Object.assign({}, fresh.sequences[n], (st.sequences || {})[n] || {}); });
     out.tbl = Object.assign(fresh.tbl, st.tbl || {});
     out.tvm = Object.assign(fresh.tvm, st.tvm || {});
     out.y = Object.assign(fresh.y, st.y || {});
@@ -159,25 +174,37 @@
   };
 
   Calc.prototype.build = function () {
+    const evo = this.st.mode.model === 'evo';
+    const topKeys = evo ? EVO_TOP : TOP, midKeys = evo ? EVO_MID : MID, rows = evo ? EVO_ROWS : ROWS;
     const keyHTML = (k) => '<div class="t84k-cell">'
       + '<div class="t84k-lab">' + (k.sec ? '<span class="t84k-sec">' + esc(k.sec) + '</span>' : '<span></span>')
       + (k.al ? '<span class="t84k-al">' + esc(k.al) + '</span>' : '<span></span>') + '</div>'
       + '<button type="button" class="t84k t84k--' + k.cls + '" data-k="' + esc(k.id) + '" aria-label="' + esc(k.main) + '">'
       + esc(k.main) + '</button></div>';
     // The wrapper is the size container, so the body's own padding and corners scale with it too.
-    this.host.innerHTML = '<div class="t84-wrap"><div class="t84" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
-      + '<div class="t84-brand"><span class="t84-brand-name">Flux<b>·84</b></span><span class="t84-brand-model">GRAPHING</span></div>'
+    this.host.innerHTML = '<div class="t84-wrap"><div class="t84' + (evo ? ' is-evo' : '') + '" tabindex="0" aria-label="Graphing calculator. Click it, then type or use the keys.">'
+      + '<div class="t84-brand"><span class="t84-brand-name">Flux<b>·84</b></span>'
+      + '<label class="t84-model-control"><select aria-label="Calculator model"><option value="ce">TI-84 Plus CE</option><option value="evo">TI-84 Evo</option></select></label>'
+      + '<span class="t84-brand-model">' + (evo ? 'EVO' : 'PLUS CE') + '</span></div>'
       + '<div class="t84-bezel"><div class="t84-screen" role="application" aria-live="polite">'
       + '<div class="t84-status"></div><div class="t84-scr"></div></div></div>'
       + '<div class="t84-keys">'
-      + '<div class="t84-row t84-row--top">' + TOP.map(keyHTML).join('') + '</div>'
-      + '<div class="t84-mid"><div class="t84-mid-left">' + MID.map((r) => '<div class="t84-row t84-row--3">' + r.map(keyHTML).join('') + '</div>').join('') + '</div>'
+      + '<div class="t84-row t84-row--top">' + topKeys.map(keyHTML).join('') + '</div>'
+      + '<div class="t84-mid"><div class="t84-mid-left">' + midKeys.map((r) => '<div class="t84-row t84-row--3">' + r.map(keyHTML).join('') + '</div>').join('') + '</div>'
       + '<div class="t84-arrows"><button type="button" class="t84a t84a--up" data-k="up" aria-label="Up"></button>'
       + '<button type="button" class="t84a t84a--left" data-k="left" aria-label="Left"></button>'
       + '<button type="button" class="t84a t84a--right" data-k="right" aria-label="Right"></button>'
       + '<button type="button" class="t84a t84a--down" data-k="down" aria-label="Down"></button></div></div>'
-      + ROWS.map((r) => '<div class="t84-row">' + r.map(keyHTML).join('') + '</div>').join('')
+      + rows.map((r) => '<div class="t84-row' + (r.length === 6 ? ' t84-row--6' : '') + '">' + r.map(keyHTML).join('') + '</div>').join('')
       + '</div></div></div>';
+    const modelSelect = this.host.querySelector('.t84-model-control select');
+    modelSelect.value = evo ? 'evo' : 'ce';
+    modelSelect.addEventListener('change', () => {
+      this.st.mode.model = modelSelect.value === 'evo' ? 'evo' : 'ce';
+      this.build();
+      this.render();
+      this.save();
+    });
     this.el = this.host.querySelector('.t84');
     this.scr = this.host.querySelector('.t84-scr');
     this.status = this.host.querySelector('.t84-status');
@@ -235,9 +262,17 @@
       return;
     }
     let code = id;
-    if (this.mod === '2nd') code = SEC[id] || id;
+    if (this.mod === '2nd') {
+      if (this.st.mode.model === 'evo') {
+        const evoSecond = { math: 'symbols', vars: 'matrix', clear: 'undo', on: 'homeApps', pow: 'xroot', xt: 'xt', sto: 'rcl' };
+        code = evoSecond[id] || SEC[id] || id;
+      } else code = SEC[id] || id;
+    }
     // alpha enter is SOLVE — but with A-lock on, enter is just enter (it ends a name or a line).
-    else if (this.mod === 'alpha') code = this.alock && id === 'enter' ? 'enter' : ALPHA_TOP[id] || (ALPHA[id] != null ? 'a:' + ALPHA[id] : id);
+    else if (this.mod === 'alpha') {
+      if (this.st.mode.model === 'evo' && id === 'stat') code = 'distr';
+      else code = this.alock && id === 'enter' ? 'enter' : ALPHA_TOP[id] || (ALPHA[id] != null ? 'a:' + ALPHA[id] : id);
+    } else if (this.st.mode.model === 'evo' && id === 'xt') code = 'fraction';
     if (this.alock && this.mod === 'alpha' && ALPHA[id] != null) this.mod = 'alpha';
     else { this.mod = ''; this.alock = false; }
     if (code === 'off') { this.power(false); return; }
@@ -254,6 +289,8 @@
   };
   Calc.prototype.dispatch = function (code) {
     const app = this.top();
+    if (code !== 'clear' && code !== 'undo') this.clearUndo = null;
+    if (code === 'clear' && this.st.mode.model === 'evo') this.captureClear(app);
     try {
       const handled = app.key ? app.key(code) : false;
       // 2nd QUIT always ends on the home screen. The screen on top saw the key
@@ -268,13 +305,62 @@
     this.save();
   };
 
+  function editorCursor(ed) {
+    if (!ed || !ed.cur) return null;
+    const path = [];
+    let block = ed.cur.blk;
+    while (block !== ed.root) {
+      const parent = ed.parentOf(block);
+      if (!parent) return null;
+      path.unshift({ node: parent.i, block: parent.bi });
+      block = parent.blk;
+    }
+    return { path: path, offset: ed.cur.i };
+  }
+  function restoreEditorCursor(ed, cursor) {
+    if (!ed || !cursor) return;
+    let block = ed.root;
+    for (const step of cursor.path) {
+      const node = block[step.node];
+      if (!node || !node.b || !node.b[step.block]) return;
+      block = node.b[step.block];
+    }
+    ed.cur = { blk: block, i: Math.min(cursor.offset, block.length) };
+  }
+  Calc.prototype.captureClear = function (app) {
+    const ed = app && app.editor ? app.editor() : null;
+    this.clearUndo = {
+      app: app,
+      editor: ed,
+      nodes: ed && ed.snapshot ? ed.snapshot() : null,
+      cursor: editorCursor(ed),
+      history: this.st.ui.history.slice(),
+    };
+  };
+  Calc.prototype.undoClear = function () {
+    const undo = this.clearUndo;
+    if (!undo) return;
+    if (undo.editor && undo.nodes) {
+      undo.editor.load(undo.nodes);
+      restoreEditorCursor(undo.editor, undo.cursor);
+      if (undo.app && undo.app.sync && undo.app.names && undo.app.line > 0) undo.app.sync(undo.app.names()[undo.app.line - 1]);
+    }
+    this.st.ui.history = undo.history;
+    this.clearUndo = null;
+  };
+
   /** Keys every screen shares: the menus, the graph keys, 2nd QUIT. */
   Calc.prototype.global = function (code) {
+    if (code === 'homeApps') { this.push(new AppsHomeApp(this)); return; }
+    if (code === 'undo') { this.undoClear(); return; }
+    if (code === 'convert') { this.openMenu('CONVERT'); return; }
+    if (code === 'fraction' || code === 'xroot') return this.typeInto(this.editorApp().editor(), code);
     const M = {
-      math: 'MATH', test: 'TEST', angle: 'ANGLE', list: 'LIST', matrix: 'MATRIX', distr: 'DISTR', draw: 'DRAW', vars: 'VARS',
+      math: 'MATH', test: 'TEST', symbols: 'SYMBOLS', angle: 'ANGLE', list: 'LIST', matrix: 'MATRIX', distr: 'DISTR', draw: 'DRAW', vars: 'VARS',
       stat: 'STAT', apps: 'APPS', mem: 'MEM', zoom: 'ZOOM', calc: 'CALC', f1: 'F1', f2: 'F2', f4: 'F4', f3: 'MATRIX',
     };
     if (M[code]) {
+      if (code === 'apps' && this.st.mode.model === 'evo') { this.push(new AppsHomeApp(this)); return; }
       if (code === 'calc' && window.FluxTIGraph) { this.quit(); window.FluxTIGraph.graph(this, { calcMenu: true }); return; }
       this.openMenu(M[code]);
       return;
@@ -319,6 +405,8 @@
     if (code === 'bs') { ed.backspace(); return true; }
     if (code === 'ins') { ed.overwrite = !ed.overwrite; return true; }
     if (code === 'pow') { ed.insertTpl('pow'); return true; }
+    if (code === 'fraction') { ed.insertTpl('frac'); return true; }
+    if (code === 'xroot') { ed.insertTpl('nroot'); return true; }
     if (code === 'sqrt') { ed.insertTpl('sqrt'); return true; }
     if (code === 'tenx') { if (ed.mathprint) { ed.insertTok('1'); ed.insertTok('0'); ed.insertTpl('pow'); } else ed.insertTok('10^('); return true; }
     if (code === 'ex') { if (ed.mathprint) { ed.insertTok('e'); ed.insertTpl('pow'); } else ed.insertTok('e^('); return true; }
@@ -390,6 +478,10 @@
       case 'plysmlt': if (A) A.plysmlt(this); return;
       case 'zoom': if (G) G.zoom(this, arg, target === this.home && item && item.ins ? item.ins : null); return;
       case 'gcalc': if (G) G.graph(this, { calc: arg }); return;
+      case 'ansFraction': case 'ansDecimal': case 'ansMixed': {
+        const suffix = name === 'ansFraction' ? '▶Frac' : name === 'ansDecimal' ? '▶Dec' : '▶n/d◀▶Un/d';
+        this.quit(); this.home.ed.insertCode('Ans' + suffix); this.home.exec(); return;
+      }
       case 'prgmNew': if (P) P.create(this); return;
       case 'runPrgm': if (P) P.pasteRun(this, arg); return;
       case 'editPrgm': if (P) P.edit(this, arg); return;
@@ -706,6 +798,28 @@
     this.id = id;
     this.target = target;
     this.tabs = (MN().MENUS[id] || []).map((t) => ({ name: t.name, items: t.dyn ? dynItems(c, t.dyn) : t.items }));
+    if (c.st.mode.model === 'evo' && id === 'STAT') {
+      const source = this.tabs.find((t) => t.name === 'TESTS');
+      if (source) {
+        const intervals = new Set(['zint', 'tint', 'z2int', 't2int', 'p1int', 'p2int']);
+        const both = source.items;
+        source.items = both.filter((it) => !intervals.has(String(it.act || '').split(':')[1]));
+        this.tabs.push({ name: 'INTERVALS', items: both.filter((it) => intervals.has(String(it.act || '').split(':')[1])) });
+      }
+    }
+    if (c.st.mode.model === 'evo' && id === 'DISTR') {
+      const all = this.tabs.find((t) => t.name === 'DISTR');
+      if (all) {
+        const groups = [
+          ['NORMAL', /^normal|^invNorm/], ['t', /^(?:t|invT)/], ['χ²', /^χ²/], ['F', /^F/],
+          ['BINOMIAL', /^(?:binom|invBinom)/], ['POISSON', /^poisson/], ['GEOMETRIC', /^geomet/],
+        ];
+        const items = all.items;
+        const draw = this.tabs.find((t) => t.name === 'DRAW');
+        this.tabs = groups.map((g) => ({ name: g[0], items: items.filter((it) => g[1].test(it.ins)) }));
+        if (draw) this.tabs.push(draw);
+      }
+    }
     this.tab = (opts && opts.tab) || 0;
     this.sel = 0;
     this.top0 = 0;
@@ -767,6 +881,49 @@
     return true;
   };
 
+  /* The Evo's icon launcher is modeled as a real app directory. Unsupported
+     hardware/Python apps are shown as unavailable instead of pretending to run. */
+  const EVO_APPS = [
+    { icon: '⌂', name: 'Calculator', open: (c) => c.quit() },
+    { icon: 'ƒ', name: 'Function Editor', open: (c) => { c.quit(); c.global('yequ'); } },
+    { icon: '▦', name: 'List Editor', open: (c) => { c.quit(); c.action('listEditor', c.home); } },
+    { icon: '⚙', name: 'Mode Settings', open: (c) => { c.quit(); c.global('mode'); } },
+    { icon: '∑', name: 'Statistics', open: (c) => { c.quit(); c.openMenu('STAT', c.home); } },
+    { icon: '⌁', name: 'Graph', open: (c) => { c.quit(); c.global('graph'); } },
+    { icon: '▤', name: 'Table', open: (c) => { c.quit(); c.global('table'); } },
+    { icon: 'xⁿ', name: 'Numeric Solver', open: (c) => { c.quit(); c.action('solver', c.home); } },
+    { icon: '$', name: 'Finance', open: (c) => { c.quit(); const a = window.FluxTIApps; if (a) a.tvm(c); } },
+    { icon: 'P', name: 'Polynomial / System Solver', open: (c) => { c.quit(); const a = window.FluxTIApps; if (a) a.plysmlt(c); } },
+    { icon: '▶', name: 'TI-BASIC Programs', open: (c) => { c.quit(); const p = window.FluxTIPrgm; if (p) p.menu(c); } },
+    { icon: '⌕', name: 'CATALOG', open: (c) => { c.quit(); c.global('catalog'); } },
+    { icon: '🐍', name: 'Python', unavailable: 'Python runtime is not available in Flux84.' },
+    { icon: '◇', name: 'Lines & Conics', unavailable: 'Lines & Conics is not implemented in Flux84 yet.' },
+  ];
+  function AppsHomeApp(c) { this.c = c; this.sel = 0; }
+  AppsHomeApp.prototype.render = function () {
+    return '<div class="t84-apphome"><div class="t84-apphome-title">APPS</div><div class="t84-apphome-grid">'
+      + EVO_APPS.map((app, i) => '<button type="button" class="t84-apphome-item' + (i === this.sel ? ' is-sel' : '')
+        + (app.unavailable ? ' is-disabled' : '') + '" data-k="app:' + i + '" aria-label="' + esc(app.name + (app.unavailable ? ', unavailable' : '')) + '">'
+        + '<span class="t84-apphome-icon" aria-hidden="true">' + esc(app.icon) + '</span><span class="t84-apphome-name">' + esc(app.name) + '</span></button>').join('')
+      + '</div><div class="t84-apphome-hint">Use arrows and ENTER. 2nd QUIT returns to the home screen.</div></div>';
+  };
+  AppsHomeApp.prototype.key = function (k) {
+    if (k === 'clear' || k === 'quit' || k === 'home') { this.c.pop(); return true; }
+    if (k === 'left') { this.sel = (this.sel + EVO_APPS.length - 1) % EVO_APPS.length; return true; }
+    if (k === 'right') { this.sel = (this.sel + 1) % EVO_APPS.length; return true; }
+    if (k === 'up') { this.sel = (this.sel + EVO_APPS.length - 3) % EVO_APPS.length; return true; }
+    if (k === 'down') { this.sel = (this.sel + 3) % EVO_APPS.length; return true; }
+    if (k === 'enter') k = 'app:' + this.sel;
+    const m = /^app:(\d+)$/.exec(k);
+    if (m) {
+      const item = EVO_APPS[Number(m[1])];
+      if (item && item.open) item.open(this.c);
+      else if (item && item.unavailable) this.c.push(new ReportApp(this.c, item.name, [['', item.unavailable]]));
+      return true;
+    }
+    return true;
+  };
+
   /* ── CATALOG ────────────────────────────────────────────────────────── */
 
   function CatalogApp(c, target) { this.c = c; this.target = target; this.list = MN().catalog(); this.sel = 0; this.top0 = 0; }
@@ -807,14 +964,14 @@
       { get: () => st.mode.notation, set: (v) => { st.mode.notation = v; }, opts: [['NORMAL', 'normal'], ['SCI', 'sci'], ['ENG', 'eng']] },
       { get: () => st.mode.digits, set: (v) => { st.mode.digits = v; }, opts: digits },
       { get: () => st.mode.angle, set: (v) => { st.mode.angle = v; }, opts: [['RADIAN', 'rad'], ['DEGREE', 'deg']] },
-      { get: () => st.mode.graph, set: (v) => { st.mode.graph = v; }, opts: [['FUNCTION', 'func'], ['PARAMETRIC', 'par'], ['POLAR', 'pol']] },
+      { get: () => st.mode.graph, set: (v) => { st.mode.graph = v; if (v === 'seq') { st.win.Xmin = st.win.nMin; st.win.Xmax = st.win.nMax; st.win.Xscl = st.win.nStep; } }, opts: [['FUNCTION', 'func'], ['PARAMETRIC', 'par'], ['POLAR', 'pol'], ['SEQUENCE', 'seq']] },
       { get: () => st.ui.fmt.thick, set: (v) => { st.ui.fmt.thick = v; }, opts: [['THICK', true], ['THIN', false]] },
       { get: () => st.mode.complex, set: (v) => { st.mode.complex = v; }, opts: [['REAL', 'real'], ['a+bi', 'a+bi'], ['re^(θi)', 're^θi']] },
       { label: 'FRACTION TYPE:', get: () => st.mode.fracType, set: (v) => { st.mode.fracType = v; }, opts: [['n/d', 'n/d'], ['Un/d', 'Un/d']] },
       { label: 'ANSWERS:', get: () => st.mode.answers, set: (v) => { st.mode.answers = v; }, opts: [['AUTO', 'auto'], ['DEC', 'dec'], ['FRAC-APPROX', 'frac']] },
       { label: 'STAT DIAGNOSTICS:', get: () => st.mode.statDiag, set: (v) => { st.mode.statDiag = v; }, opts: [['OFF', false], ['ON', true]] },
-      { label: 'STAT WIZARDS:', get: () => st.ui.wizards !== false, set: (v) => { st.ui.wizards = v; }, opts: [['ON', true], ['OFF', false]] },
     ];
+    if (st.mode.model !== 'evo') rows.push({ label: 'STAT WIZARDS:', get: () => st.ui.wizards !== false, set: (v) => { st.ui.wizards = v; }, opts: [['ON', true], ['OFF', false]] });
   };
   ModeApp.prototype.render = function () {
     const rows = this.rows();
@@ -1042,9 +1199,10 @@
   function yNames(st) {
     if (st.mode.graph === 'par') return ['X₁ᴛ', 'Y₁ᴛ', 'X₂ᴛ', 'Y₂ᴛ', 'X₃ᴛ', 'Y₃ᴛ', 'X₄ᴛ', 'Y₄ᴛ', 'X₅ᴛ', 'Y₅ᴛ', 'X₆ᴛ', 'Y₆ᴛ'];
     if (st.mode.graph === 'pol') return ['r₁', 'r₂', 'r₃', 'r₄', 'r₅', 'r₆'];
+    if (st.mode.graph === 'seq') return ['u(n)', 'v(n)', 'w(n)'];
     return T().YNAMES.slice();
   }
-  const STYLES = ['thick', 'thin', 'dot', 'above', 'below'];
+  const STYLES = ['thick', 'thin', 'animate', 'path', 'dot', 'above', 'below', 'shade'];
   function YEditApp(c) {
     this.c = c;
     this.line = 1;          // 0 is the Plot row
@@ -1094,6 +1252,7 @@
       return false;
     }
     const ed = this.edFor(name);
+    if (k === 'color') { const colour = st.ui.yCol[name] || YCOLOURS[0]; st.ui.yCol[name] = YCOLOURS[(YCOLOURS.indexOf(colour) + 1) % YCOLOURS.length]; return true; }
     if (this.part === 'text') {
       if (k === 'left' && ed.atTop() && ed.cur.i === 0) { this.part = 'eq'; return true; }
       if (k === 'enter') { this.sync(name); this.line = Math.min(names.length, this.line + 1); this.edFor(names[this.line - 1]).end(); return true; }
@@ -1102,11 +1261,20 @@
       if (this.c.typeInto(ed, k)) { this.sync(name); return true; }
       return false;
     }
-    if (k === 'right') { this.part = this.part === 'style' ? 'eq' : 'text'; if (this.part === 'text') ed.home(); return true; }
+    if (k === 'right') {
+      if (this.part === 'style') this.part = 'color';
+      else if (this.part === 'color') this.part = 'eq';
+      else if (this.part === 'eq') { this.part = 'text'; ed.home(); }
+      else this.part = 'text';
+      return true;
+    }
     if (k === 'left') { this.part = 'style'; return true; }
     if (k === 'enter') {
       if (this.part === 'eq') st.ui.yOn[name] = !(st.ui.yOn[name] !== false);
-      else { const s = st.ui.yStyle[name] || 'thick'; st.ui.yStyle[name] = STYLES[(STYLES.indexOf(s) + 1) % STYLES.length]; }
+      else if (this.part === 'color' || k === 'color') {
+        const colour = st.ui.yCol[name] || YCOLOURS[0];
+        st.ui.yCol[name] = YCOLOURS[(YCOLOURS.indexOf(colour) + 1) % YCOLOURS.length];
+      } else { const s = st.ui.yStyle[name] || 'thick'; st.ui.yStyle[name] = STYLES[(STYLES.indexOf(s) + 1) % STYLES.length]; }
       return true;
     }
     if (k === 'clear' || k === 'quit') { this.c.pop(); return true; }
@@ -1130,6 +1298,7 @@
       const cur = this.line === li;
       html += '<div class="t84y-r' + (cur ? ' is-row' : '') + '">'
         + '<span class="t84y-style t84y-style--' + style + (cur && this.part === 'style' ? ' is-cur' : '') + '" style="--c:' + colour + '"></span>'
+        + '<button type="button" class="t84y-color' + (cur && this.part === 'color' ? ' is-cur' : '') + '" data-k="color" style="--c:' + colour + '" aria-label="Change ' + esc(n) + ' graph color"></button>'
         + '<span class="t84y-name">' + esc(n) + '<span class="t84y-eq' + (on ? ' is-on' : '') + (cur && this.part === 'eq' ? ' is-cur' : '') + '" style="--c:' + colour + '">=</span></span>'
         + '<span class="t84y-ex">' + (cur && this.part === 'text' ? this.edFor(n).html(mark) : Ed().htmlNodes(st.ui.ynodes[n] || Ed().nodesFromCode(st.y[n] || ''))) + '</span></div>';
     });
@@ -1442,7 +1611,7 @@
   window.FluxTI84 = {
     mount: mount,
     core: {
-      Calc: Calc, FormApp: FormApp, ReportApp: ReportApp, MenuApp: MenuApp, ConfirmApp: ConfirmApp,
+      Calc: Calc, FormApp: FormApp, ReportApp: ReportApp, MenuApp: MenuApp, ConfirmApp: ConfirmApp, AppsHomeApp: AppsHomeApp, ModeApp: ModeApp,
       esc: esc, fmt: fmt, outHTML: outHTML, outNodes: outNodes, YCOLOURS: YCOLOURS, yNames: yNames, MENU_KEYS: MENU_KEYS,
     },
   };
