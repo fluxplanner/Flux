@@ -25,6 +25,7 @@
     "public/js/core/debug.js",
     "public/js/flux-storage-keys.js",
     "public/js/flux-storage-repair.js",
+    "public/js/flux-list-merge.js",
     "public/js/flux-role-routing.js",
     "public/js/flux-e2e-harness.js",
     "public/js/flux-ui-modals.js",
