@@ -281,7 +281,15 @@ async function pull(meta, raw, remote) {
   // Remember the server version first, so the re-render this import
   // triggers sees nothing new to upload.
   writeMeta({ ...meta, remoteAt: remote.updated_at });
-  await store.importJSON(withDeviceSettings(plain, store.get()));
+  try {
+    await store.importJSON(withDeviceSettings(plain, store.get()));
+  } catch (err) {
+    // Not saved here (storage full): the other device's changes still
+    // have to come down next time. Marked as seen, they never would, and
+    // this device's next edit would upload over them.
+    writeMeta(meta);
+    throw err;
+  }
   writeMeta({ ...readMeta(), hash: await hash(localRecord()), at: new Date().toISOString() });
 }
 

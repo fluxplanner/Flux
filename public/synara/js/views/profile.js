@@ -160,6 +160,7 @@ const SYNC_ERRORS = {
   'wrong-key': 'This device’s sync key doesn’t open the synced copy.',
   gone: 'Turned off: the synced copy was deleted on another device.',
   'other-account': 'Paused: a different Flux account is signed in on this device than the one it syncs with.',
+  'save-failed': 'This device’s storage is full or blocked, so the synced changes couldn’t be saved here yet.',
 };
 
 function syncNote() {
@@ -309,7 +310,8 @@ function reminderNote(state, cap, perm, on) {
   if (perm === 'denied') return 'Notifications are blocked for this site in your browser settings.';
   if (state.settings.remindersOn && !on) return 'Not allowed on this device yet. Turn this on to allow notifications.';
   if (on && notify.lastFailed()) return 'Your last reminder didn’t show on this device. Keep a phone alarm for your doses.';
-  return on ? 'On — while Synara is open in a tab or installed.' : 'A nudge at each dose time.';
+  // Installed or not, the page has to be open for its timers to run.
+  return on ? 'On — only while Synara is open.' : 'A nudge at each dose time.';
 }
 
 function remindersCard(state) {

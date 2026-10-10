@@ -249,3 +249,33 @@ test('an extension is only an extension after the number: "Cell #" and "Text or 
     assert.equal(util.dialable(typed), ok, typed);
   }
 });
+
+test('a synced change that can’t be saved here (storage full) is pulled again, never skipped', async () => {
+  // Device A has a newer copy with a second seizure.
+  const rec = oldRecord();
+  const a = await load();
+  const mine = a.store.migrate(rec);
+  const theirs = a.store.migrate(rec);
+  theirs.seizures.unshift({ ...theirs.seizures[0], id: 'sz2', at: '2026-10-08T10:00' });
+  const raw = a.sync.decodeKey(KEY);
+  const remote = { ...(await a.sync.encrypt(a.sync.shareable(JSON.stringify(theirs)), raw)), updated_at: '2026-10-10T08:00:00Z' };
+  const meta = JSON.stringify({
+    key: KEY, user: 'u1', remoteAt: '2026-10-09T09:00:00Z',
+    hash: await a.sync.hash(a.sync.shareable(JSON.stringify(mine))),
+  });
+
+  const b = await load({ 'synara.v2': JSON.stringify(mine), 'synara.sync': meta }, { remote });
+  await b.store.init();
+  await b.sync.start();
+  // The record can be read, but nothing more can be written.
+  const setItem = localStorage.setItem;
+  localStorage.setItem = (k, v) => { if (k === 'synara.v2') throw new Error('QuotaExceededError'); setItem(k, v); };
+  assert.equal(await b.sync.syncNow(), 'error');
+  assert.equal(b.sync.getStatus().error, 'save-failed');
+  assert.equal(b.store.get().seizures.length, 1, 'nothing half-applied');
+
+  // Space again: the same round pulls it, rather than calling it seen.
+  localStorage.setItem = setItem;
+  assert.equal(await b.sync.syncNow(), 'pull');
+  assert.equal(b.store.get().seizures.length, 2);
+});
