@@ -112,21 +112,38 @@
         if (ds.includes(p.date)) load[p.date] = (load[p.date] || 0) + (+p.estTime || 0);
       }
     });
-    const commitments = {};
-    ds.forEach((d) => { commitments[d] = commitmentsOn(d); });
-    return {
-      today: today(), nowMin: nowMin(), days: 7, avail: st.avail, maxPerDay: st.maxPerDay,
-      rest: ds.filter((d) => safe(() => window.isBreak(d), false)),
-      commitments: commitments, load: load,
+    return Object.assign(around(), {
+      today: today(), nowMin: nowMin(), days: 7, avail: st.avail, maxPerDay: st.maxPerDay, load: load,
       tasks: shown.filter((t) => t && !t.done && t.planOf == null).map((t) => ({
         id: t.id, name: t.name, date: t.date || '', time: t.time || '', estTime: +t.estTime || 0,
         type: t.type || 'hw', priority: t.priority || 'med', doneMin: doneMin[String(t.id)] || 0, planned: planned.has(String(t.id)),
       })),
       blocks: all.filter(isBlock).map((t) => ({
-        id: t.id, key: t.weekBlock.key, taskId: t.planOf, date: t.date, start: t.time || '', minutes: +t.estTime || 0,
+        id: t.id, key: t.weekBlock.key, taskId: t.planOf, name: String(t.name || '').replace(/ · Study$/, ''), date: t.date, start: t.time || '', minutes: +t.estTime || 0,
         done: !!t.done, pinned: !!t.weekBlock.pinned || movedSince(t),
       })),
-    };
+    });
+  }
+  /** Rest days and what's already on, for each of the seven days. */
+  function around() {
+    const ds = dates(), commitments = {};
+    ds.forEach((d) => { commitments[d] = commitmentsOn(d); });
+    return { rest: ds.filter((d) => safe(() => window.isBreak(d), false)), commitments: commitments };
+  }
+  /** What's off about each applied block where it is now (it may have been
+      moved, or something added on that day since): key → short reasons. */
+  function liveWarnings(list) {
+    const days = W().propose(Object.assign(around(), { today: today(), days: 7, avail: st.avail, maxPerDay: st.maxPerDay })).days;
+    const out = {};
+    list.forEach((t) => {
+      const day = days.find((d) => d.date === t.date);
+      if (t.done || !day) return;
+      const parent = allTasks().find((x) => String(x.id) === String(t.planOf));
+      const me = { key: t.weekBlock.key, date: t.date, start: t.time || '', minutes: +t.estTime || 0, due: parent && !parent.done ? parent.date || '' : '' };
+      const others = list.filter((x) => x !== t && x.date === t.date).map((x) => ({ key: x.weekBlock.key, start: x.time || '', minutes: +x.estTime || 0 }));
+      out[me.key] = W().warnings(me, day, others, st.maxPerDay, today());
+    });
+    return out;
   }
 
   /** Blocks of the week that are still on (and any left unticked from the last few days). */
@@ -149,7 +166,7 @@
     ov.innerHTML = `<div class="modal-card pw-card" role="dialog" aria-modal="true" aria-labelledby="pwTitle" aria-describedby="pwSub">
       <div class="pw-head">
         <h2 class="modal-title" id="pwTitle" tabindex="-1">Plan my week</h2>
-        <button type="button" class="pw-x" data-act="close" aria-label="Close">✕</button>
+        <button type="button" class="pw-x" data-act="close" data-flux-close aria-label="Close">✕</button>
       </div>
       <p class="pw-sub" id="pwSub"></p>
       <div class="pw-body" id="pwBody"></div>
@@ -162,6 +179,10 @@
     ov.addEventListener('input', onInput);
     ov.addEventListener('keydown', onKey);
     st.release = safe(() => window.FluxA11y.trapFocus(ov.querySelector('.pw-card')), null);
+    // On the overlay stack: the app's single-key shortcuts stay quiet while it
+    // is open, and an Escape that reaches the document closes this, not a
+    // dialog under it.
+    safe(() => window.FluxOverlays.push('planWeekModal', () => closePlanWeek()));
     render(true);
   }
   function closePlanWeek(quiet) {
@@ -172,6 +193,7 @@
       // Hands focus back to whatever opened the dialog.
       safe(() => window.FluxA11y.releaseFocus(card));
     }
+    safe(() => window.FluxOverlays.pop('planWeekModal'));
     if (!quiet) st = null;
   }
 
@@ -184,7 +206,7 @@
     else { sub.textContent = 'This week'; body.innerHTML = weekHtml(); act.innerHTML = weekActions(); }
     if (moveFocus) {
       body.scrollTop = 0;
-      setTimeout(() => safe(() => document.getElementById('pwTitle').focus({ preventScroll: true })), 30);
+      safe(() => document.getElementById('pwTitle').focus({ preventScroll: true }));
     }
   }
   function go(view) { st.view = view; st.editing = null; st.busyFor = null; render(true); }
@@ -327,6 +349,7 @@
     const td = today();
     const missed = list.filter((t) => t.date < td);
     const now = list.filter((t) => t.date >= td);
+    const warn = liveWarnings(now);
     const row = (t) => {
       const lbl = `${t.name}, ${dayLabel(t.date)} ${clock(t.time)}`;
       const end = W().toHM((W().toMin(t.time) || 0) + (+t.estTime || 0));
@@ -338,6 +361,7 @@
         <div class="pw-b-main">
           <div class="pw-b-name">${h(t.name)}${t.planParts > 1 ? ` <span class="pw-muted">· ${t.planPart} of ${t.planParts}</span>` : ''}</div>
           ${t.weekBlock.reason ? `<div class="pw-b-why">${h(t.weekBlock.reason)}</div>` : ''}
+          ${(warn[key] || []).length ? `<div class="pw-b-warn">${warn[key].map(h).join(' · ')}</div>` : ''}
         </div>
         ${t.done || editing ? '' : `<div class="pw-b-acts">
           <button type="button" class="btn-sm" data-act="focus" data-id="${h(String(t.id))}" aria-label="Start the focus timer for ${h(lbl)}">Start</button>
@@ -400,11 +424,13 @@
     const next = list.slice();
     live.forEach((b, i) => {
       const old = b.id != null ? byId.get(String(b.id)) : null;
+      if (old && !isBlock(old)) return; // never anything but a study block
       if (old) {
         if (old.done) return;
+        if (b.kept) { Object.assign(old, { planPart: b.part, planParts: b.of }); return; }
         if (old.date !== b.date || (old.time || '') !== b.start || +old.estTime !== b.minutes) moved++;
         Object.assign(old, { date: b.date, time: b.start, estTime: b.minutes, planPart: b.part, planParts: b.of });
-        old.weekBlock = Object.assign({}, old.weekBlock, { key: b.key, pinned: !!(b.pinned || (old.weekBlock && old.weekBlock.pinned)), reason: b.reason, date: b.date, start: b.start, minutes: b.minutes });
+        old.weekBlock = Object.assign({}, old.weekBlock, { key: b.key, pinned: !!(b.pinned || old.weekBlock.pinned), reason: b.reason, date: b.date, start: b.start, minutes: b.minutes });
         if (typeof window.calcUrgency === 'function') old.urgencyScore = window.calcUrgency(old);
         return;
       }
@@ -486,7 +512,7 @@
     focusBlock(key, 'edit');
   }
   function focusBlock(key, act) {
-    setTimeout(() => safe(() => document.querySelector(`#planWeekModal .pw-block[data-key="${CSS.escape(key)}"] [data-act="${act}"]`).focus(), null), 20);
+    safe(() => document.querySelector(`#planWeekModal .pw-block[data-key="${CSS.escape(key)}"] [data-act="${act}"]`).focus(), null);
   }
 
   // Week view changes go straight to the planner, each with undo.
@@ -512,7 +538,8 @@
     st.changed = true; st.editing = null;
     render(false);
     if (typeof window.showUndoSnackbar === 'function') window.showUndoSnackbar('Block moved', 'undoLastChange');
-    announce(`Moved to ${dayLabel(v.date)} ${clock(v.start)}.`);
+    const w = liveWarnings(appliedBlocks().filter((x) => x.date === v.date))[key] || [];
+    announce(`Moved to ${dayLabel(v.date)} ${clock(v.start)}.${w.length ? ' ' + w.join('. ') + '.' : ''}`);
     focusBlock(key, 'edit');
   }
   function dropOne(id) {
@@ -540,9 +567,15 @@
     announce(`Removed ${n} unfinished block${n === 1 ? '' : 's'}.`);
   }
   function undo() {
-    if (typeof window.undoLastChange === 'function') window.undoLastChange();
-    if (!appliedBlocks().length) go('avail'); else render(false);
+    safe(() => window.undoLastChange());
+    if (st.view === 'plan') {
+      // The planner changed under the suggestion: suggest again from it.
+      st.plan = W().propose(gather()); st.removed = []; st.editing = null;
+      render(false);
+    } else if (st.view === 'week' && !appliedBlocks().length) go('avail');
+    else render(false);
     announce('Last change undone.');
+    safe(() => (document.querySelector('#planWeekModal [data-act="undo"]') || document.getElementById('pwTitle')).focus(), null);
   }
 
   function addBusy(d) {
@@ -574,7 +607,7 @@
     else if (a === 'to-week') go('week');
     else if (a === 'propose') propose();
     else if (a === 'approve') approve();
-    else if (a === 'edit') { st.editing = key; render(false); setTimeout(() => safe(() => document.getElementById('pwEdDay').focus(), null), 20); }
+    else if (a === 'edit') { st.editing = key; render(false); safe(() => document.getElementById('pwEdDay').focus(), null); }
     else if (a === 'cancel-edit') { const k = st.editing; st.editing = null; render(false); focusBlock(k, 'edit'); }
     else if (a === 'save-edit') saveEdit(key);
     else if (a === 'save-move') saveMove(key);
@@ -584,7 +617,7 @@
     else if (a === 'drop-one') dropOne(el.dataset.id);
     else if (a === 'clear') clearUnfinished();
     else if (a === 'undo') undo();
-    else if (a === 'busy') { st.busyFor = el.dataset.date; render(false); setTimeout(() => safe(() => document.getElementById('pwBusyWhat').focus(), null), 20); }
+    else if (a === 'busy') { st.busyFor = el.dataset.date; render(false); safe(() => document.getElementById('pwBusyWhat').focus(), null); }
     else if (a === 'busy-cancel') { const d = st.busyFor; st.busyFor = null; render(false); safe(() => document.querySelector(`#planWeekModal .pw-day[data-date="${d}"] [data-act="busy"]`).focus(), null); }
     else if (a === 'busy-add') addBusy(el.dataset.date);
   }
@@ -606,10 +639,19 @@
   }
   function onKey(e) {
     if (e.key === 'Escape') {
+      // Handled here only. The app's document-level Escape handlers would
+      // close the whole dialog, or press its first secondary button (which
+      // in the week view is "Remove unfinished blocks").
       e.preventDefault();
+      e.stopPropagation();
       if (st && st.editing) { const k = st.editing; st.editing = null; render(false); focusBlock(k, 'edit'); }
-      else if (st && st.busyFor) { st.busyFor = null; render(false); }
+      else if (st && st.busyFor) { const d = st.busyFor; st.busyFor = null; render(false); safe(() => document.querySelector(`#planWeekModal .pw-day[data-date="${d}"] [data-act="busy"]`).focus(), null); }
       else closePlanWeek();
+    } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z') && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+      // The app's undo, with this dialog brought up to date afterwards.
+      e.preventDefault();
+      e.stopPropagation();
+      if (st) undo();
     } else if (e.key === 'Enter' && e.target.closest('.pw-edit') && e.target.tagName !== 'BUTTON') {
       e.preventDefault();
       const save = e.target.closest('.pw-edit').querySelector('[data-act^="save-"]');

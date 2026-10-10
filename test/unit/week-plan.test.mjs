@@ -140,6 +140,17 @@ test('due today at a set time: blocks end before it', () => {
   assert.match(r.unscheduled[0].reason, /^Due today, and there’s no free time left in your study hours today\.$/);
 });
 
+test('due today before study time even starts: says so', () => {
+  const r = plan({ tasks: [task(1, '2026-10-05', 20, { time: '15:00', name: 'Worksheet' })] });
+  assert.deepEqual(of(r, 1), []);
+  assert.equal(r.unscheduled[0].reason, 'Due today at 3:00 PM, before your study time starts.');
+});
+
+test('a block whose task has gone keeps its own name', () => {
+  const r = plan({ tasks: [], blocks: [{ id: 9, key: '77:1', taskId: 77, name: 'Old essay', date: '2026-10-06', start: '16:00', minutes: 30, done: false, pinned: true }] });
+  assert.deepEqual(r.blocks.map((b) => [b.name, b.kept]), [['Old essay', 'pinned']]);
+});
+
 test('a task already planned with Plan it out is left alone, and its sessions count against the day', () => {
   const r = plan({
     maxPerDay: 60,

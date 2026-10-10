@@ -63,6 +63,8 @@
     return Math.min(1440, +m[1] * 60 + +m[2]);
   }
   function toHM(min) { const m = Math.max(0, Math.min(1439, Math.round(min))); return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  /** 900 → "3:00 PM". */
+  function clock(min) { const hh = Math.floor(min / 60) % 24; return (hh % 12 || 12) + ':' + pad(min % 60) + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
   const up = (m, step) => Math.ceil(m / step) * step;
   const r5 = (m) => Math.round(m / 5) * 5;
   const cmpBlock = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (toMin(a.start) || 0) - (toMin(b.start) || 0));
@@ -206,7 +208,7 @@
       const day = dayOf(b.date);
       const keep = (why) => {
         if (!day || s == null) return;
-        day.blocks.push({ key: b.key, id: b.id, taskId: b.taskId, s: s, minutes: min, kept: why, pinned: !!b.pinned });
+        day.blocks.push({ key: b.key, id: b.id, taskId: b.taskId, name: b.name, s: s, minutes: min, kept: why, pinned: !!b.pinned });
         day.used += min;
       };
       if (b.done) { keep('done'); return; }
@@ -301,9 +303,12 @@
         else if (!timed.length) why = c.d === 0 && !days[0].off ? 'there’s no study time left today' : 'there’s no study time set ' + when;
         else if (timed.every((x) => x.cap - x.used < Math.min(left, minBlock))) why = 'your daily limit (' + maxPerDay + ' min) is used up ' + when;
         else why = 'there’s no free time left in your study hours ' + when;
+        // Due today at a time before study time even starts: say that, not "no room".
+        const early = !placed && c.d === 0 && dueBy != null && days[0].win && dueBy - gap <= days[0].win.start;
         unscheduled.push({
           taskId: t.id, name: t.name, minutes: left, of: c.need,
-          reason: placed ? lead + '. Only ' + placed + ' of ' + c.need + ' min fit: ' + why + '.' : lead + ', and ' + why + '.',
+          reason: early ? 'Due today at ' + clock(dueBy) + ', before your study time starts.'
+            : placed ? lead + '. Only ' + placed + ' of ' + c.need + ' min fit: ' + why + '.' : lead + ', and ' + why + '.',
         });
       }
     });
@@ -346,7 +351,7 @@
       day.blocks.forEach((b) => {
         const tid = String(b.taskId);
         blocks.push({
-          key: b.key, id: b.id == null ? null : b.id, taskId: b.taskId, name: names[tid] || '', due: dues[tid] || '',
+          key: b.key, id: b.id == null ? null : b.id, taskId: b.taskId, name: names[tid] || b.name || '', due: dues[tid] || '',
           date: day.date, start: toHM(b.s), end: toHM(b.s + b.minutes), minutes: b.minutes,
           kept: b.kept || null, pinned: !!b.pinned, isNew: !!b.isNew, was: b.was || null,
           reason: b.kept === 'done' ? 'Done' : b.kept === 'live' ? 'Happening now' : b.kept ? 'You moved this one' : (reasons[tid] || ''),

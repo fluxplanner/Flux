@@ -74,7 +74,7 @@ test.describe('Plan my week', () => {
     await expect(block(page, 'Lab write-up').locator('.pw-b-time')).toHaveText('6:15 – 7:15 PM');
     // What couldn't be scheduled, and why.
     const unsched = modal(page).locator('.pw-unsched');
-    await expect(unsched.locator('li', { hasText: 'Worksheet' })).toContainText('Due today, and there’s no free time left in your study hours today.');
+    await expect(unsched.locator('li', { hasText: 'Worksheet' })).toContainText('Due today at 3:00 PM, before your study time starts.');
     await expect(unsched.locator('li', { hasText: 'Reading log' })).toContainText('No due date yet');
     // Nothing is written until it's approved.
     expect(await blocks(page)).toEqual([]);
@@ -200,6 +200,49 @@ test.describe('Plan my week', () => {
     await expect.poll(async () => (await blocks(page)).filter((x) => x.of === 881002 && !x.done).length).toBe(0);
   });
 
+  test('week view: Escape only closes the editor, a move onto a rest day is flagged, Ctrl+Z undoes it here', async ({ page }) => {
+    await setup(page);
+    await page.locator('#dashPlanWeekBtn').click();
+    await modal(page).locator('[data-act="propose"]').click();
+    await modal(page).locator('[data-act="approve"]').click();
+    const all = await blocks(page);
+    const algebra = all.find((x) => x.of === 881001)!;
+    await page.locator('#dashPlanWeekBtn').click();
+    await expect(modal(page).locator('#pwSub')).toHaveText('This week');
+    const row = modal(page).locator(`.pw-block[data-key="${algebra.key}"]`);
+
+    // Escape closes the editor and does nothing else: the app's own Escape
+    // handlers used to close the dialog too, or press "Remove unfinished blocks".
+    await row.locator('[data-act="edit"]').click();
+    await expect(page.locator('#pwEdDay')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#pwEdDay')).toHaveCount(0);
+    await expect(modal(page)).toBeVisible();
+    await expect(row.locator('[data-act="edit"]')).toBeFocused();
+    expect(await blocks(page)).toEqual(all);
+
+    // Anywhere is allowed; a rest day is flagged, on the block and out loud.
+    await row.locator('[data-act="edit"]').click();
+    await page.locator('#pwEdDay').selectOption('2026-10-07');
+    await modal(page).locator('[data-act="save-move"]').click();
+    await expect(row.locator('.pw-b-warn')).toHaveText('That’s a rest day');
+    await expect(page.locator('#pwLive')).toContainText('That’s a rest day.');
+    expect((await blocks(page)).find((x) => x.id === algebra.id)).toMatchObject({ date: '2026-10-07', pinned: true });
+
+    // Ctrl+Z is the app's undo, and the dialog shows the result.
+    await row.locator('[data-act="edit"]').focus();
+    await page.keyboard.press('Control+z');
+    await expect(row.locator('.pw-b-warn')).toHaveCount(0);
+    expect(await blocks(page)).toEqual(all);
+
+    // With focus outside the dialog, Escape still closes it properly.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('Escape');
+    await expect(modal(page)).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).FluxOverlays.anyOpen())).toBe(false);
+    expect(await blocks(page)).toEqual(all);
+  });
+
   test('keyboard and screen reader: focus moves in, stays in, and comes back; no serious axe findings', async ({ page }) => {
     await setup(page);
     await page.evaluate(() => (window as any).nav('calendar'));
@@ -235,6 +278,8 @@ test.describe('Plan my week', () => {
     await setup(page, 390, 844);
     await page.locator('#dashPlanWeekBtn').click();
     await modal(page).locator('[data-act="propose"]').click();
+    // Measured once the card's entrance spring has settled.
+    await page.waitForFunction(() => document.querySelector('#planWeekModal .pw-card')!.getAnimations().every((a) => a.playState !== 'running'));
     const fits = await page.evaluate(() => {
       const card = document.querySelector('#planWeekModal .pw-card') as HTMLElement;
       const body = document.getElementById('pwBody')!;
