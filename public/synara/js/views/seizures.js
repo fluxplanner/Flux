@@ -65,17 +65,17 @@ export function subtitle(state) {
 
 export function render(state) {
   return html`
-    <div class="subtabs" role="tablist" aria-label="Seizure views">
-      <button class="subtab" role="tab" id="tab-log" aria-controls="panel-sz"
-              data-action="sz-tab" data-tab="log" aria-selected="${tab === 'log'}">
+    <div class="subtabs" role="group" aria-label="Seizure views">
+      <button class="subtab" aria-controls="panel-sz"
+              data-action="sz-tab" data-tab="log" aria-pressed="${tab === 'log'}">
         ${raw(icon('note', 18))} Log
       </button>
-      <button class="subtab" role="tab" id="tab-patterns" aria-controls="panel-sz"
-              data-action="sz-tab" data-tab="patterns" aria-selected="${tab === 'patterns'}">
+      <button class="subtab" aria-controls="panel-sz"
+              data-action="sz-tab" data-tab="patterns" aria-pressed="${tab === 'patterns'}">
         ${raw(icon('sparkle', 18))} Patterns
       </button>
     </div>
-    <div id="panel-sz" role="tabpanel" aria-labelledby="tab-${tab}" class="stack stack-5">
+    <div id="panel-sz" class="stack stack-5">
       ${raw(tab === 'log' ? logTab(state) : patternsTab(state))}
     </div>
   `;
@@ -429,7 +429,7 @@ function checkinForm() {
         <div class="stepper" role="group" aria-labelledby="sleep-label">
           <button type="button" class="stepper-btn" data-action="checkin-sleep" data-value="-0.5"
                   aria-label="Half an hour less">−</button>
-          <span class="sleep-n" aria-live="polite">${checkinDraft.sleepHours}<small>h</small></span>
+          <span class="sleep-n" aria-live="polite" aria-atomic="true"><span data-sleep-hours>${checkinDraft.sleepHours}</span><small aria-hidden="true">h</small><span class="sr-only"> hours</span></span>
           <button type="button" class="stepper-btn" data-action="checkin-sleep" data-value="0.5"
                   aria-label="Half an hour more">+</button>
         </div>
@@ -442,7 +442,7 @@ function checkinForm() {
       <div class="field">
         <span class="label" id="stress-label">How stressed do you feel today?</span>
         <div class="segments" role="group" aria-labelledby="stress-label">${raw(segments)}</div>
-        <span class="hint text-center">${STRESS_LABELS[checkinDraft.stress] || ''}</span>
+        <span class="hint text-center" data-stress-hint>${STRESS_LABELS[checkinDraft.stress] || ''}</span>
       </div>
 
       <div class="field">
@@ -452,14 +452,6 @@ function checkinForm() {
       </div>
     </div>
   `;
-}
-
-function refreshCheckinSheet(focusSelector) {
-  const v = sheetValues();
-  if (v.notes !== undefined) checkinDraft.notes = v.notes;
-  const body = sheetEl().querySelector('.sheet-body');
-  if (body) body.innerHTML = checkinForm();
-  if (focusSelector) sheetEl().querySelector(focusSelector)?.focus({ preventScroll: true });
 }
 
 /* ============================================================
@@ -556,15 +548,23 @@ export const actions = {
     });
   },
 
+  /* Both change the form in place, not by re-rendering it: a live region
+     that is replaced each time is a new one, and screen readers stay
+     silent about it — the student would hear nothing at all. */
   'checkin-sleep'(node) {
     const delta = Number(node.dataset.value);
     checkinDraft.sleepHours = clamp(Math.round((checkinDraft.sleepHours + delta) * 2) / 2, 0, 16);
-    refreshCheckinSheet(`[data-action="checkin-sleep"][data-value="${node.dataset.value}"]`);
+    const n = sheetEl().querySelector('[data-sleep-hours]');
+    if (n) n.textContent = String(checkinDraft.sleepHours);
   },
 
   'checkin-stress'(node) {
     checkinDraft.stress = Number(node.dataset.value);
-    refreshCheckinSheet(`[data-action="checkin-stress"][data-value="${node.dataset.value}"]`);
+    node.parentElement.querySelectorAll('.segment').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b === node));
+    });
+    const hint = sheetEl().querySelector('[data-stress-hint]');
+    if (hint) hint.textContent = STRESS_LABELS[checkinDraft.stress] || '';
   },
 
   async 'checkin-save'() {

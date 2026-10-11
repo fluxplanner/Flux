@@ -290,6 +290,8 @@
     });
   }
 
+  // Not Study tools: twinkling behind the periodic table and calculators
+  // cost frames those tools need.
   const FLUX_STAR_PANELS = new Set([
     'dashboard',
     'calendar',
@@ -299,7 +301,6 @@
     'timer',
     'mood',
     'profile',
-    'toolbox',
     'settings',
     'canvas',
     'staffTasks',
@@ -472,8 +473,22 @@
     document.body.prepend(canvas);
 
     const ctx = canvas.getContext('2d', { alpha: false });
-    let W = (canvas.width = window.innerWidth);
-    let H = (canvas.height = window.innerHeight);
+    /* Drawn at a quarter of the window's size and stretched by CSS: the
+       picture is nothing but soft gradients, so it looks the same, and each
+       frame fills a sixteenth of the pixels. At full size this canvas cost
+       about half of every frame in the planner, which made busy screens like
+       the periodic table lag on school laptops. */
+    const SCALE = 0.25;
+    let W = 0;
+    let H = 0;
+    function fit() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.max(1, Math.ceil(W * SCALE));
+      canvas.height = Math.max(1, Math.ceil(H * SCALE));
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    }
+    fit();
     let t = 0;
 
     function getAccent() {
@@ -523,9 +538,13 @@
     }
 
     let nodes = [];
+    // Read once per theme change, not per frame: getComputedStyle on every
+    // frame forced a style pass over the whole planner each time.
+    let accentRgb = [0, 191, 255];
 
     function createNodes() {
       const accent = hexToRgb(getAccent());
+      accentRgb = accent;
       const purple = [124, 92, 255];
       nodes = [
         new MeshNode(W * 0.2, H * 0.2, W * 0.5, accent, 0.0008, 0),
@@ -561,7 +580,7 @@
       // Subtle horizontal noise drift
       ctx.save();
       ctx.globalAlpha = 0.015;
-      const [r, g, b] = hexToRgb(getAccent());
+      const [r, g, b] = accentRgb;
       for (let i = 0; i < 5; i++) {
         const y = ((H * i * 0.25) + t * 20) % (H * 1.5) - H * 0.25;
         const grad = ctx.createLinearGradient(0, y, W, y + 100);
@@ -572,17 +591,23 @@
         ctx.fillRect(0, y, W, 1);
       }
       ctx.restore();
-      t += 0.4;
+      t += 0.8;
     }
 
+    /* 12 frames a second: the shapes drift a couple of pixels a second, so
+       more frames bought nothing but work. A canvas hidden by low-end or
+       reduced-motion mode is not drawn at all. */
     let raf = 0;
     let running = true;
     let lastDraw = 0;
-    const frameMs = 1000 / 24;
+    let shown = true;
+    let showTick = 0;
+    const frameMs = 1000 / 12;
     function loop(now) {
       if (!running) return;
       if (!lastDraw || now - lastDraw >= frameMs) {
-        draw();
+        if (showTick++ % 24 === 0) shown = canvas.isConnected && getComputedStyle(canvas).display !== 'none';
+        if (shown) draw();
         lastDraw = now;
       }
       raf = requestAnimationFrame(loop);
@@ -592,8 +617,7 @@
     loop();
 
     function onResize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+      fit();
       createNodes();
     }
     window.addEventListener('resize', onResize);

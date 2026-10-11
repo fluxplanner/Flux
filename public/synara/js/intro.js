@@ -82,6 +82,7 @@ let step = 0;
 let answers = blankAnswers();
 let committed = false;
 let fact = 0;
+let fromCard = false;
 
 function blankAnswers() {
   return { name: '', types: [], diagnosed: '', meds: 'yes', error: '' };
@@ -170,12 +171,15 @@ function welcomeStep() {
         <button class="btn btn-outline btn-lg btn-block" data-action="welcome-demo">
           Look around with example data
         </button>
+        <button class="btn btn-quiet btn-block welcome-sos" data-action="intro-sos">
+          ${raw(icon('shield', 18))} ${fromCard ? 'Back to the emergency card' : 'Open emergency card'}
+        </button>
       </div>
 
       <p class="welcome-note">
         ${raw(icon('lock', 14))}
-        <span>Everything stays on this device — nothing is uploaded and there is
-        no account. Synara is a student project, not a medical device.</span>
+        <span>Everything stays on this device. No account needed, and nothing is
+        uploaded unless you turn on encrypted sync later. Synara is not a medical device.</span>
       </p>
 
       ${raw(poweredByFlux('welcome-powered'))}
@@ -296,13 +300,20 @@ function goTo(n) {
   setWelcome(RENDER[step]());
 }
 
-/** First run: start at the welcome. */
-export function show() {
+/** First run: start at the welcome. `fromCard` when it follows the
+    emergency card (main.js), so Escape and the welcome's button go back. */
+export function show({ fromCard: afterCard = false } = {}) {
   step = 0;
   answers = blankAnswers();
   committed = false;
+  fromCard = afterCard;
   fact = Math.floor(Math.random() * FACTS.length);
   openWelcome(RENDER[0]());
+}
+
+/** On the welcome step, having come from the emergency card. */
+export function cameFromCard() {
+  return fromCard && step === 0;
 }
 
 /* ============================================================

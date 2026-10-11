@@ -16,7 +16,8 @@
       missed doses" is not.
 
    3. SAY "ASSOCIATED WITH", NEVER "CAUSED BY". Four seizures is not
-      a study. DISCLAIMER below renders under the results.
+      a study. DISCLAIMER below renders under the results, and Home
+      puts a short version under the one insight it shows.
 
    Every count of doses goes through store.dosesOn(), which only
    returns what was actually scheduled on that day. That is what stops
@@ -24,7 +25,7 @@
    ============================================================ */
 
 import {
-  dayKey, addDays, parseStamp, daysBetween, lastNDays,
+  dayKey, addDays, parseStamp, daysBetween, lastNDays, minutesOf,
   tally, plural, prettySeconds,
 } from './util.js';
 import { effectiveStatus, doseStatus, dosesOn } from './store.js';
@@ -111,55 +112,162 @@ export function topInsight(state) {
   return insights(state)[0] || null;
 }
 
-/* ---- 1. Seizures following a missed or late dose ----
+/* ---- 1. Seizures after a missed or late dose ----
    The correlation the brief asked for first, and the most actionable:
    unlike sleep or stress, a missed dose is something the app can
-   directly help prevent. */
+   directly help prevent. It is also the one most likely to be acted
+   on, so it has three bars to clear before it says anything:
+
+   - Only doses due BEFORE the seizure, in the 48 hours before it (a
+     missed antiepileptic dose affects blood levels for well over a
+     day). A dose missed after a seizure, often because of it, says
+     nothing about what came first.
+   - Only doses marked missed or late. One nobody logged may well have
+     been taken, and a seizure day is exactly when logging slips.
+   - It has to beat chance. Someone with a late dose every few days
+     has one in plenty of ordinary 48-hour stretches, so the same check
+     runs over the stretches with no seizure in them, and the seizures
+     have to come after a missed or late dose clearly more often. */
+
+const SLIPPED = new Set(['missed', 'late']);
+
+/**
+ * The doses due on `day`: when (minutes after midnight), and whether
+ * each was marked missed or late. Kept in `cache` for one pass, since
+ * neighbouring seizures and stretches ask about the same days.
+ */
+function dayDoses(state, day, cache) {
+  let list = cache.get(day);
+  if (!list) {
+    list = dosesOn(day, state).map(({ med, time }) => ({
+      mins: minutesOf(time),
+      slipped: SLIPPED.has(doseStatus(day, med.id, time, state)),
+    }));
+    cache.set(day, list);
+  }
+  return list;
+}
+
+/** The 48 hours before a seizure: any dose due, and any marked missed or late. */
+function beforeSeizure(state, s, cache) {
+  const [day, time] = s.at.split('T');
+  const at = minutesOf(time);
+  let due = false;
+  let slipped = false;
+  const look = (d, inWindow) => {
+    for (const dose of dayDoses(state, d, cache)) {
+      if (!inWindow(dose.mins)) continue;
+      due = true;
+      if (dose.slipped) slipped = true;
+    }
+  };
+  look(addDays(day, -2), (m) => m >= at);   // from this time two days before
+  look(addDays(day, -1), () => true);
+  look(day, (m) => m < at);                 // up to the seizure, not after
+  return { due, slipped };
+}
+
+/**
+ * The chance baseline: of the 48-hour stretches (each day and the one
+ * before it) with doses due and no seizure, how many had a dose marked
+ * missed or late? From when tracking began, at most a year back.
+ */
+function slipBaseline(state, seizureDays, cache) {
+  const today = dayKey();
+  const yearAgo = addDays(today, -366);
+  const first = state.meds.reduce((min, m) => (m.added < min ? m.added : min), today);
+  const flags = (day) => {
+    const list = dayDoses(state, day, cache);
+    return { due: list.length > 0, slipped: list.some((d) => d.slipped) };
+  };
+  let prevDay = first > yearAgo ? first : yearAgo;
+  let prev = flags(prevDay);
+  let stretches = 0;
+  let slipped = 0;
+
+  for (let day = addDays(prevDay, 1); day < today; day = addDays(day, 1)) {
+    const cur = flags(day);
+    const seizureFree = !seizureDays.has(day) && !seizureDays.has(prevDay);
+    if (seizureFree && (prev.due || cur.due)) {
+      stretches++;
+      if (prev.slipped || cur.slipped) slipped++;
+    }
+    prevDay = day;
+    prev = cur;
+  }
+  return { stretches, slipped };
+}
+
+/**
+ * How often luck alone would give `k` or more out of `n` when each has
+ * chance `p` (0 < p < 1): the upper tail of a binomial. Summed in logs,
+ * so a long record can't underflow it.
+ */
+function chanceOfAtLeast(k, n, p) {
+  let log = n * Math.log(1 - p);          // none of the n
+  const odds = Math.log(p / (1 - p));
+  let total = 0;
+  for (let i = 0; i <= n; i++) {
+    if (i >= k) total += Math.exp(log);
+    log += Math.log((n - i) / (i + 1)) + odds;
+  }
+  return Math.min(1, total);
+}
 
 function doseProximity(state, sz) {
   if (sz.length < MIN_SEIZURES || !state.meds.length) return null;
 
   let followed = 0;
   let checkable = 0;
+  const followedDays = new Set();
+  const cache = new Map();
 
   for (const s of sz) {
-    const day = dayOf(s);
-    let anyScheduled = false;
-    let hit = false;
-
-    // The seizure day and the two before it — a missed antiepileptic
-    // dose affects blood levels for well over 24 hours.
-    for (const offset of [0, -1, -2]) {
-      const checkDay = addDays(day, offset);
-      for (const { med, time } of dosesOn(checkDay, state)) {
-        anyScheduled = true;
-        const status = effectiveStatus(checkDay, med.id, time, state);
-        if (status === 'missed' || status === 'late') { hit = true; break; }
-      }
-      if (hit) break;
+    const { due, slipped } = beforeSeizure(state, s, cache);
+    // No dose due in the 48 hours before (before any medication was
+    // tracked): it can't say anything either way, so it stays out.
+    if (!due) continue;
+    checkable++;
+    if (slipped) {
+      followed++;
+      followedDays.add(dayOf(s));
     }
-
-    // A seizure from before any medication was tracked can't say
-    // anything either way, so it stays out of the denominator.
-    if (anyScheduled) checkable++;
-    if (hit) followed++;
   }
 
-  if (checkable < MIN_SEIZURES || followed < 2) return null;
+  // Several seizures on one day after the same dose are one occasion,
+  // not a pattern. It takes at least two different days.
+  if (checkable < MIN_SEIZURES || followed < 2 || followedDays.size < 2) return null;
 
   const pct = Math.round((followed / checkable) * 100);
   if (pct < 60) return null;   // at 50% it is a coin flip
+
+  // Two weeks of ordinary stretches, at least, to compare against.
+  const base = slipBaseline(state, new Set(sz.map(dayOf)), cache);
+  if (base.stretches < 14) return null;
+
+  // Plus one each way, so a short spotless record can't make the
+  // baseline 0% and every missed dose look like a finding. Below 5%,
+  // chance alone would rarely line them up like this.
+  const chance = (base.slipped + 1) / (base.stretches + 2);
+  if (chanceOfAtLeast(followed, checkable, chance) >= 0.05) return null;
+
+  // 1 of 300 is still one, not "0%".
+  const basePct = base.slipped ? Math.max(1, Math.round((base.slipped / base.stretches) * 100)) : 0;
 
   return {
     id: 'dose-proximity',
     tone: 'alert',
     icon: 'pill',
-    title: `${followed} of your ${checkable} seizures followed a missed or late dose`,
+    title: `${followed} of your ${checkable} seizures came after a missed or late dose`,
     detail:
-      `Within 48 hours before each of those ${plural(followed, 'seizure')}, at least ` +
-      'one scheduled dose was marked missed or late. This is the pattern most worth ' +
-      'mentioning at your next appointment.',
-    evidence: `${followed}/${checkable} seizures · ${pct}%`,
+      `Each of those ${plural(followed, 'seizure')} came less than 48 hours after a dose ` +
+      'marked missed or late. ' +
+      (base.slipped
+        ? `Only ${basePct}% of your 48-hour stretches without a seizure had one. `
+        : 'None of your 48-hour stretches without a seizure had one. ') +
+      'That doesn\'t show the dose caused the seizure. Talk it over with your neurologist, ' +
+      'and don\'t change how you take your medicine on your own.',
+    evidence: `${followed}/${checkable} seizures · ${pct}% vs ${basePct}% otherwise`,
     strength: 100 + pct,
   };
 }
@@ -221,8 +329,8 @@ function stressPattern(state, sz) {
     title: 'Seizure days were higher-stress days',
     detail:
       `You rated stress ${withSeizure.toFixed(1)} out of 5 on seizure days, against ` +
-      `${without.toFixed(1)} otherwise. Stress rarely acts alone — it tends to travel ` +
-      'with the things that do, like less sleep, skipped meals, and broken routine.',
+      `${without.toFixed(1)} otherwise. Stress often shows up alongside other commonly ` +
+      'reported triggers, like short sleep and skipped meals.',
     evidence: `${onSeizureDays.length} seizure days vs ${onOtherDays.length} others`,
     strength: 70 + gap * 10,
   };
@@ -278,19 +386,19 @@ function timeOfDayPattern(sz) {
 
   let best = 0;
   for (let i = 1; i < counts.length; i++) if (counts[i] > counts[best]) best = i;
-  if (counts[best] < 2) return null;
+  // "Most" has to mean more than half: 2 of 4 is not most.
+  if (counts[best] < 2 || counts[best] * 2 <= sz.length) return null;
 
   const pct = Math.round((counts[best] / sz.length) * 100);
-  if (pct < 50) return null;
 
   return {
     id: 'time-of-day',
     tone: 'neutral',
     icon: 'clock',
-    title: `Most of your seizures happen ${BLOCKS[best].label}`,
+    title: `Most of your seizures happened ${BLOCKS[best].label}`,
     detail:
-      `${counts[best]} of ${sz.length} fell in that window. If it holds up, it is worth ` +
-      'asking whether your dose timing lines up with it.',
+      `${counts[best]} of ${sz.length} were in that window. Timing can line up by chance. ` +
+      'If it keeps happening, mention it to your neurologist.',
     evidence: `${counts[best]}/${sz.length} seizures · ${pct}%`,
     strength: 40 + pct / 2,
   };
@@ -364,11 +472,16 @@ function frequencyTrend(sz) {
   const span = daysBetween(oldest, today);
   if (span < 30) return null;
 
+  // Two windows of exactly `half` days, so "the N days before" is true.
+  // The oldest seizure only marks where the log starts, so it falls just
+  // outside them, as does anything dated after today. Fewer than four
+  // inside them is too few to call a trend.
   const half = Math.floor(span / 2);
   const midpoint = addDays(today, -half);
-  const recent = sz.filter((s) => dayOf(s) > midpoint).length;
-  const earlier = sz.length - recent;
-  if (recent === earlier) return null;
+  const floor = addDays(today, -2 * half);
+  const recent = sz.filter((s) => dayOf(s) > midpoint && dayOf(s) <= today).length;
+  const earlier = sz.filter((s) => dayOf(s) > floor && dayOf(s) <= midpoint).length;
+  if (recent + earlier < 4 || recent === earlier) return null;
 
   const fewer = recent < earlier;
 
@@ -401,8 +514,14 @@ export function summary(state) {
 
   // Don't trust array order — an imported or synced record may not be sorted.
   const lastSeizure = sz.length ? sz.map(dayOf).sort().pop() : null;
-  const daysSince = lastSeizure ? daysBetween(lastSeizure, today) : null;
-  const last30 = sz.filter((s) => daysBetween(dayOf(s), today) <= 30).length;
+  // One dated after today (a device with its clock wrong) reads as
+  // today, never as "-3 days since".
+  const daysSince = lastSeizure ? Math.max(0, daysBetween(lastSeizure, today)) : null;
+  // Today and the 29 days before it: 30 days, and nothing from the future.
+  const last30 = sz.filter((s) => {
+    const back = daysBetween(dayOf(s), today);
+    return back >= 0 && back < 30;
+  }).length;
 
   const durations = sz.map((s) => s.duration).filter((d) => d > 0);
   const avgDuration = durations.length ? Math.round(avg(durations)) : null;

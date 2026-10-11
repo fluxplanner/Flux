@@ -46,7 +46,7 @@
   --warn-50:  #fef5e7;
   --warn-100: #fde8c4;
   --warn-500: #f0960b;  /* taken late */
-  --warn-700: #a8620a;
+  --warn-700: #955708;  /* as --warn-ink: 5.3:1 on --warn-soft and --bg (was 4.4) */
 
   --bad-50:  #fdeaee;
   --bad-100: #fbd2da;
@@ -87,7 +87,10 @@
 
   --ink:         var(--n-900);
   --ink-2:       var(--n-600);
-  --ink-3:       var(--n-500);
+  /* Darker than --n-500, which was 4.1:1 on --bg: every secondary line
+     (dose times, hints, labels) has to clear 4.5:1 on all three
+     surfaces, --bg-sunken included. */
+  --ink-3:       #6b6480;
   --ink-faint:   var(--n-400);
   --ink-on-brand:#ffffff;
 
@@ -201,9 +204,13 @@
 
    Surfaces lift with lightness rather than shadow, since shadows
    barely read on dark. Brand shifts lighter so it stays legible
-   against the dark ground.
+   against the dark ground — and so text ON it turns dark: white on
+   the lighter violet is only 3.2:1.
+
+   :root, not a bare [data-theme]: the theme picker's own "Dark"
+   button carries data-theme="dark" too, and must not turn dark.
    ============================================================ */
-[data-theme="dark"] {
+:root[data-theme="dark"] {
   --bg:        var(--n-950);
   --bg-raised: #1e1b29;
   --bg-sunken: #171522;
@@ -213,6 +220,7 @@
   --ink-2:     #b6b0c6;
   --ink-3:     #918ba3;
   --ink-faint: #6f6883;
+  --ink-on-brand: var(--n-950);
 
   --line:        #302c40;
   --line-2:      #272336;
@@ -264,6 +272,7 @@
     --ink-2:     #b6b0c6;
     --ink-3:     #918ba3;
     --ink-faint: #6f6883;
+    --ink-on-brand: var(--n-950);
 
     --line:        #302c40;
     --line-2:      #272336;

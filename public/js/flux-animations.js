@@ -369,7 +369,9 @@ function animateActivePanelCards() {
 }
 
 /** Main panels that get the drifting scroll-drawn accent lines. Not the
- *  calendar: lines drifting behind a dense grid read as glitches there. */
+ *  calendar: lines drifting behind a dense grid read as glitches there.
+ *  Not Study tools either: the periodic table, grapher and calculators are
+ *  dense and busy, and a loop running behind them made them lag. */
 const FLUX_SCROLL_PATH_PANELS = new Set([
   'dashboard',
   'goals',
@@ -378,7 +380,6 @@ const FLUX_SCROLL_PATH_PANELS = new Set([
   'timer',
   'mood',
   'profile',
-  'toolbox',
   'settings',
   'ai',
   'canvas',

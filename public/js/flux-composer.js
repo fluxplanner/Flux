@@ -477,6 +477,10 @@
   const BT_DRUMS = [['kick', 'Kick'], ['snare', 'Snare'], ['clap', 'Clap'], ['hat', 'Hi-hat'], ['open', 'Open'], ['tom', 'Tom'], ['bell', 'Cowbell']];
   const BT_KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   const BT_IDS = BT_DRUMS.map((d) => d[0]).concat(['k0', 'k1', 'k2', 'k3', 'k4', 'bass']);
+  /* Rows that play a pitch, and the notes their menus offer (C3–C6, E1–D3). */
+  const BT_NOTE_IDS = ['k0', 'k1', 'k2', 'k3', 'k4', 'bass'];
+  const BT_MELODY_RANGE = [48, 84];
+  const BT_BASS_RANGE = [28, 50];
   const BT_PRESETS = {
     'Boom bap': { bpm: 90, swing: 25, kick: 'x......x..x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', bass: 'x......x..x.....', k2: '..........x.....', k1: 'x...............' },
     House: { bpm: 124, swing: 0, kick: 'x...x...x...x...', clap: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', open: '..x...x...x...x.', bass: '..x...x...x...x.' },
@@ -502,7 +506,7 @@
       tr: { i: 8, note: 'C', dir: 'sounding' },
       terms: { q: '', group: 'All' },
       dp: { sel: { kind: 'core', i: 0 } },
-      bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, on: false, timer: null, bar: 0, step: 0 },
+      bt: { bpm: 90, swing: 25, key: 'C', mode: 'minor', preset: 'Boom bap', rows: {}, notes: {}, grid: 16, on: false, timer: null, bar: 0, step: 0 },
     };
     const VALID = new Set(TABS.map((t) => t[0]));
     function readHash() {
@@ -937,11 +941,24 @@
     function renderBeats() {
       const bt = st.bt;
       const melody = btMelody();
-      const rows = BT_DRUMS.map(([id, label]) => [id, label, 'drum'])
-        .concat(melody.map((m, i) => ['k' + i, nm(m.note), 'key']))
-        .concat([['bass', 'Bass ' + nm(melody[melody.length - 1].note), 'bass']]);
-      const grid = rows.map(([id, label, kind]) => `<div class="fc-bt-row fc-bt-row--${kind}"><span class="fc-bt-name">${esc(label)}</span><div class="fc-bt-steps">${btRow(id).map((on, s) => `<button type="button" class="fc-bt-step" data-r="${id}" data-s="${s}" aria-pressed="${on}" aria-label="${esc(label)}, step ${s + 1}"></button>`).join('')}</div></div>`).join('');
-      body.innerHTML = card('Beat Maker', 'Click the squares to build a beat, then press play — or start from a style. The melody and bass use the key’s pentatonic scale, so every note fits. <kbd>Space</kbd> plays and stops.',
+      const custom = BT_NOTE_IDS.some((id) => bt.notes[id] != null);
+      const shown = Array.from({ length: 16 }, (_, s) => s).filter((s) => bt.grid === 16 || s % 2 === 0);
+      const stepCls = (s) => (s % 4 === 0 ? ' is-beat' : s % 4 === 2 ? ' is-and' : '');
+      const steps = (id, label) => shown.map((s) => `<button type="button" class="fc-bt-step${stepCls(s)}" data-r="${id}" data-s="${s}" aria-pressed="${btRow(id)[s]}" aria-label="${esc(label)}, ${btCount(s)}"></button>`).join('');
+      const row = (id, name, label, kind) => `<div class="fc-bt-row fc-bt-row--${kind}">${name}<div class="fc-bt-steps">${steps(id, label)}</div></div>`;
+      const count = `<div class="fc-bt-row fc-bt-row--count" aria-hidden="true"><span></span><div class="fc-bt-steps">${shown.map((s) => `<span class="fc-bt-count${stepCls(s)}">${s % 4 === 0 ? s / 4 + 1 : s % 4 === 2 ? '&amp;' : s % 4 === 1 ? 'e' : 'a'}</span>`).join('')}</div></div>`;
+      const noteRow = (id, kind, aria) => {
+        const label = btNoteName(btNote(id));
+        return row(id, `<select class="fc-select fc-bt-note" data-note="${id}" aria-label="${esc(aria)}">${btNoteOptions(id)}</select>`, label, kind);
+      };
+      const grid = count
+        + BT_DRUMS.map(([id, label]) => row(id, `<span class="fc-bt-name">${esc(label)}</span>`, label, 'drum')).join('')
+        + `<div class="fc-bt-sec"><span>Melody</span>${custom ? '<button type="button" class="fc-btn fc-btn--small" id="btNotesReset">Back to the scale</button>' : ''}</div>`
+        + melody.map((m, i) => noteRow('k' + i, 'key', 'Melody row ' + (i + 1) + ' note')).join('')
+        + '<div class="fc-bt-sec"><span>Bass</span></div>'
+        + noteRow('bass', 'bass', 'Bass note');
+      const hidden = bt.grid === 8 && BT_IDS.some((id) => btRow(id).some((on, s) => on && s % 2));
+      body.innerHTML = card('Beat Maker', 'Click the squares to build a beat, then press play — or start from a style. The melody and bass start on the key’s pentatonic scale, so every note fits; pick any row’s note from its menu. Changing the key moves your notes with it; Major or Minor puts them back on that scale. <kbd>Space</kbd> plays and stops.',
         `<div class="fc-row">
            <button type="button" class="fc-btn fc-btn--primary" id="btGo" aria-pressed="${bt.on}">${bt.on ? '■ Stop' : '▶ Play'}</button>
            <label class="fc-inline">Style ${selectHTML('btPreset', bt.preset, ['Choose…'].concat(Object.keys(BT_PRESETS)), 'Start from a style')}</label>
@@ -951,8 +968,10 @@
          <div class="fc-row fc-bt-sliders">
            <label class="fc-inline">Tempo <input type="range" id="btBpm" min="60" max="180" value="${bt.bpm}" aria-label="Tempo in beats per minute"><b id="btBpmV">${bt.bpm}</b></label>
            <label class="fc-inline">Swing <input type="range" id="btSwing" min="0" max="60" value="${bt.swing}" aria-label="Swing"><b id="btSwingV">${bt.swing}%</b></label>
+           <span class="fc-inline" id="btGridLbl">Count ${segHTML('btGridMode', String(bt.grid), [['8', '1 & 2 &'], ['16', '1 e & a']]).replace('role="radiogroup"', 'role="radiogroup" aria-labelledby="btGridLbl"')}</span>
          </div>
-         <div class="fc-bt-grid" id="btGrid">${grid}</div>
+         <div class="fc-bt-grid" id="btGrid" style="--steps:${shown.length}">${grid}</div>
+         ${hidden ? '<p class="fc-note fc-bt-hidden">Some hits are on an “e” or an “a”, which this count leaves out. They still play: switch to 1 e &amp; a to see them.</p>' : ''}
          <div class="fc-row fc-bt-actions">
            <button type="button" class="fc-btn" id="btInspire">Inspire me</button>
            <button type="button" class="fc-btn" id="btClear">Clear</button>
@@ -970,9 +989,22 @@
         if (row[s] && !bt.on) withAudio((c) => btSound(c, btOut(c), c.currentTime + 0.02, b.dataset.r));
         writeHash();
       });
+      q('#btGrid').addEventListener('change', (e) => {
+        const sel = e.target.closest('[data-note]');
+        if (!sel) return;
+        const id = sel.dataset.note;
+        bt.notes[id] = +sel.value === btDefaultNote(id) ? null : +sel.value;
+        if (!bt.on) withAudio((c) => btSound(c, btOut(c), c.currentTime + 0.02, id));
+        renderBeats(); writeHash();
+        const again = body.querySelector(`[data-note="${id}"]`);
+        if (again) again.focus();
+      });
+      const reset = q('#btNotesReset');
+      if (reset) reset.addEventListener('click', () => { bt.notes = {}; renderBeats(); writeHash(); });
+      q('#btGridMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.grid = +b.dataset.v; renderBeats(); });
       q('#btPreset').addEventListener('change', (e) => { if (BT_PRESETS[e.target.value]) { btLoad(e.target.value); renderBeats(); writeHash(); } });
-      q('#btKey').addEventListener('change', (e) => { bt.key = e.target.value; renderBeats(); writeHash(); });
-      q('#btMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.mode = b.dataset.v; renderBeats(); writeHash(); });
+      q('#btKey').addEventListener('change', (e) => { btTranspose(e.target.value); renderBeats(); writeHash(); });
+      q('#btMode').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; bt.mode = b.dataset.v; bt.notes = {}; renderBeats(); writeHash(); });
       q('#btBpm').addEventListener('input', (e) => { bt.bpm = +e.target.value; q('#btBpmV').textContent = bt.bpm; });
       q('#btBpm').addEventListener('change', writeHash);
       q('#btSwing').addEventListener('input', (e) => { bt.swing = +e.target.value; q('#btSwingV').textContent = bt.swing + '%'; });
@@ -986,13 +1018,67 @@
       });
       q('#btWav').addEventListener('click', btDownload);
     }
+    /** How a step is counted aloud: beat 1, 1 e, 1 and, 1 a. */
+    function btCount(s) {
+      const b = Math.floor(s / 4) + 1;
+      return ['beat ' + b, b + ' e', b + ' and', b + ' a'][s % 4];
+    }
+    /** The note a melody or bass row plays: the student's pick, else the scale's. */
+    function btDefaultNote(id) {
+      const m = btMelody();
+      return id === 'bass' ? m[4].midi - 24 : m[+id[1]].midi;
+    }
+    function btNote(id) {
+      const v = st.bt.notes[id];
+      return v != null ? v : btDefaultNote(id);
+    }
+    /** The key's seven notes (major or natural minor), spelled as the key spells them. */
+    function btKeyScale() {
+      return T().scale(T().parse(st.bt.key), st.bt.mode === 'minor' ? 'Natural minor' : 'Major');
+    }
+    /** A midi note named the way the key would write it, with its octave: E♭4. */
+    function btNoteName(midi) {
+      const scale = btKeyScale();
+      const pc = (n) => mod(NATURAL[n.l] + n.a, 12);
+      let n = scale.find((x) => pc(x) === mod(midi, 12));
+      // In a minor key the note under the tonic is the raised 7th: C♯ in D minor, not D♭.
+      if (!n && st.bt.mode === 'minor' && mod(midi + 1, 12) === pc(scale[0])) n = { l: scale[6].l, a: scale[6].a + 1 };
+      if (!n) n = T().parse((scale.some((x) => x.a < 0) ? FLAT_NAMES : SHARP_NAMES)[mod(midi, 12)]);
+      return nm(n) + (Math.floor((midi - NATURAL[n.l] - n.a) / 12) - 1);
+    }
+    /** A row's menu: the key's notes first, then the rest, highest first like the grid. */
+    function btNoteOptions(id) {
+      const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+      const inKey = new Set(btKeyScale().map((n) => mod(NATURAL[n.l] + n.a, 12)));
+      const cur = btNote(id);
+      const opt = (m) => `<option value="${m}"${m === cur ? ' selected' : ''}>${esc(btNoteName(m))}</option>`;
+      const all = [];
+      for (let m = hi; m >= lo; m--) all.push(m);
+      const key = st.bt.key + (st.bt.mode === 'minor' ? ' minor' : ' major');
+      return `<optgroup label="In ${esc(key)}">${all.filter((m) => inKey.has(mod(m, 12))).map(opt).join('')}</optgroup>`
+        + `<optgroup label="Other notes">${all.filter((m) => !inKey.has(mod(m, 12))).map(opt).join('')}</optgroup>`;
+    }
+    /** A new key carries the student's notes with it, by the smallest step. */
+    function btTranspose(key) {
+      const bt = st.bt;
+      const d = mod(BT_KEYS.indexOf(key) - BT_KEYS.indexOf(bt.key) + 5, 12) - 5;
+      bt.key = key;
+      BT_NOTE_IDS.forEach((id) => {
+        if (bt.notes[id] == null) return;
+        const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+        let m = bt.notes[id] + d;
+        while (m > hi) m -= 12;
+        while (m < lo) m += 12;
+        bt.notes[id] = m === btDefaultNote(id) ? null : m;
+      });
+    }
     function btRow(id) { return st.bt.rows[id] || (st.bt.rows[id] = new Array(16).fill(false)); }
     function btBlank() { BT_IDS.forEach((id) => { st.bt.rows[id] = new Array(16).fill(false); }); }
     function btLoad(name) {
       const p = BT_PRESETS[name];
       btBlank();
       BT_IDS.forEach((id) => { if (p[id]) st.bt.rows[id] = p[id].split('').map((ch) => ch === 'x'); });
-      st.bt.bpm = p.bpm; st.bt.swing = p.swing; st.bt.preset = name;
+      st.bt.bpm = p.bpm; st.bt.swing = p.swing; st.bt.preset = name; st.bt.notes = {};
     }
     /** The five pentatonic notes, highest first, with the midi each plays. */
     function btMelody() {
@@ -1016,10 +1102,13 @@
     function btCode() {
       const bt = st.bt;
       const hex = BT_IDS.map((id) => btRow(id).reduce((n, on, i) => n | (on ? 1 << (15 - i) : 0), 0).toString(16).padStart(4, '0')).join('');
-      return [bt.bpm, bt.swing, BT_KEYS.indexOf(bt.key), bt.mode === 'minor' ? 'm' : 'M', hex].join('-');
+      // Picked notes ride on the end, two hex digits a row (00 = the scale's own); a link without them still opens.
+      const notes = BT_NOTE_IDS.some((id) => bt.notes[id] != null)
+        ? BT_NOTE_IDS.map((id) => (bt.notes[id] != null ? bt.notes[id] : 0).toString(16).padStart(2, '0')).join('') : '';
+      return [bt.bpm, bt.swing, BT_KEYS.indexOf(bt.key), bt.mode === 'minor' ? 'm' : 'M', hex].concat(notes ? [notes] : []).join('-');
     }
     function btFromCode(code) {
-      const m = /^(\d{2,3})-(\d{1,2})-(\d{1,2})-([mM])-([0-9a-f]{52})$/i.exec(code || '');
+      const m = /^(\d{2,3})-(\d{1,2})-(\d{1,2})-([mM])-([0-9a-f]{52})(?:-([0-9a-f]{12}))?$/i.exec(code || '');
       if (!m) return false;
       const bt = st.bt;
       bt.bpm = Math.max(60, Math.min(180, +m[1]));
@@ -1029,6 +1118,12 @@
       BT_IDS.forEach((id, r) => {
         const n = parseInt(m[5].slice(r * 4, r * 4 + 4), 16);
         bt.rows[id] = Array.from({ length: 16 }, (_, i) => !!(n & (1 << (15 - i))));
+      });
+      bt.notes = {};
+      if (m[6]) BT_NOTE_IDS.forEach((id, i) => {
+        const v = parseInt(m[6].slice(i * 2, i * 2 + 2), 16);
+        const [lo, hi] = id === 'bass' ? BT_BASS_RANGE : BT_MELODY_RANGE;
+        if (v >= lo && v <= hi && v !== btDefaultNote(id)) bt.notes[id] = v;
       });
       bt.preset = 'Choose…';
       return true;
@@ -1097,13 +1192,13 @@
         bp.connect(env(c, dest, t, 0.4, 0.28));
         osc(c, 'square', 540, 0, t, 0.28, bp); osc(c, 'square', 800, 0, t, 0.28, bp);
       } else if (id === 'bass') {
-        const midi = btMelody()[4].midi - 24;
+        const midi = btNote('bass');
         const lp = c.createBiquadFilter();
         lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(220, t + 0.25); lp.Q.value = 5;
         lp.connect(env(c, dest, t, 0.5, 0.3));
         osc(c, 'sawtooth', freq(midi), 0, t, 0.3, lp); osc(c, 'sine', freq(midi), 0, t, 0.3, lp);
       } else if (id[0] === 'k') {
-        const midi = btMelody()[+id[1]].midi;
+        const midi = btNote(id);
         const lp = c.createBiquadFilter();
         lp.type = 'lowpass'; lp.frequency.value = 2800;
         lp.connect(env(c, dest, t, 0.22, 0.4));
