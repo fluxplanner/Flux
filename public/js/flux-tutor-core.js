@@ -229,6 +229,28 @@
     }
     return prev[n];
   }
+  /** Edit distance where swapping two neighbouring letters ("recieve") is one slip, not two. */
+  function osa(a, b) {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (!m) return n;
+    if (!n) return m;
+    let prev2 = null;
+    let prev = [];
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+        if (prev2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+        cur[j] = v;
+      }
+      prev2 = prev;
+      prev = cur;
+    }
+    return prev[n];
+  }
   function indexOfSeq(hay, needle, from) {
     if (!needle.length || needle.length > hay.length) return -1;
     outer: for (let i = from || 0; i <= hay.length - needle.length; i++) {
@@ -504,15 +526,23 @@
   const BAD_TERM_START = /^(?:it|its|this|that|these|those|there|here|they|them|he|she|we|you|i|which|what|who|whom|whose|one|each|some|many|most|all|both|another|such|their|his|her|our|your|my|any|every|no|none|other|others|few|several|also|then|so|thus|but|and|or|if|when|while|because|since|although|how|why|where|in|on|at|for|from|with|by|of|to|as|during|after|before|today|now)\b/i;
   const REST_BAD = /^(?:not|also|often|usually|always|never|very|still|then|now|found|used|made|located|stored|produced|caused|formed|called|known|named|termed|given|taken|seen|shown|done|being|able|likely|important|responsible|split|set|put|cut|held|kept|left|lost|built|brought|sent|spent|bound|due|about|going|on|in|at|for|to|from|by|with|more|less|much|too|so|only|just|one|two|three)\b/i;
   const VERBISH_TERM = /\b(?:is|are|was|were|has|have|had|will|can|could|should|would|may|might|must|do|does|did|been|being)\b/i;
+  // "X is formed by …", "X was found in …", "X is broken down": a passive, not a definition.
+  // ("Magma is molten rock" and "Organelles are specialised structures" stay definitions.)
+  const PASSIVE_RE = /^\p{L}+(?:ed|en)(?:[.,;:]|$|\s+(?:by|in|on|at|from|to|into|onto|with|as|when|during|through|down|up|out|off|over|under|after|before|because|for|and|or|if|until|via|between|within)\b)/iu;
+  // "Ribosomes are tiny structures that build proteins": a description of what the term is.
+  const DESCRIBES_RE = /^(?:[\p{L}\p{N}'’-]+\s+){1,5}(?:that|which|where|who|whose|used|made|found|consisting|containing)\b/iu;
 
   function cleanTerm(term) {
-    return String(term || '').replace(/[*_`]+/g, '')
-      .replace(/^[\s"'“‘(]+|[\s"'”’):,]+$/g, '')
-      .replace(/^(?:an?|the)\s+/i, '').trim();
+    let t = String(term || '').replace(/[*_`]+/g, '').replace(/^[\s"'“‘]+|[\s"'”’:,]+$/g, '');
+    // Brackets only go when they do not pair up: "ATP (adenosine triphosphate)" keeps its other name.
+    if (/^\(/.test(t) && !/\)/.test(t)) t = t.slice(1);
+    while (/\)$/.test(t) && (t.match(/\(/g) || []).length < (t.match(/\)/g) || []).length) t = t.slice(0, -1).trim();
+    return t.replace(/^[\s"'“‘]+|[\s"'”’:,]+$/g, '').replace(/^(?:an?|the)\s+/i, '').trim();
   }
+  const NAME_ABBR_RE = /\b(St|Mt|Ft|Dr|Mr|Mrs|Ms|Jr|Sr)\.(?=\s+\p{Lu}|$)/gu;
   function termOk(term, maxWords) {
     const t = String(term || '').trim();
-    if (!t || t.length > 60 || /[.!?;"“”=→]/.test(t)) return false;
+    if (!t || t.length > 60 || /[.!?;"“”=→]/.test(t.replace(NAME_ABBR_RE, '$1'))) return false;
     if (!/\p{L}/u.test(t)) return false;
     const w = words(t);
     if (!w.length || w.length > maxWords) return false;
@@ -562,16 +592,23 @@
     m = /^(.{12,}?)\s+(?:is|are)\s+(?:called|known\s+as|termed|named)\s+["“]?([^,;:"”]{2,50}?)["”]?$/i.exec(body);
     if (m) {
       const term = cleanTerm(m[2]);
-      if (termOk(term, 4) && words(m[1]).length >= 4 && !/^(?:it|this|that|they|these|those|he|she)\b/i.test(m[1].trim())) {
-        return { term, aliases: [], def: m[1].trim(), strength: 2 };
+      const lead = m[1].trim();
+      if (termOk(term, 4) && words(lead).length >= 4 && !/^(?:it|this|that|they|these|those|he|she)\b/i.test(lead)) {
+        // "When magma reaches the surface it is called lava": the clause only
+        // makes sense as the whole sentence, so the whole sentence is the description.
+        if (/^(?:when|if|once|after|as soon as|whenever)\b/i.test(lead) || /\b(?:it|they|this|these|that|those)$/i.test(lead)) {
+          return { term, aliases: [], def: body, strength: 2 };
+        }
+        return { term, aliases: [], def: lead, strength: 2 };
       }
     }
     m = /^(.{2,60}?)\s+(?:is|are|was|were)\s+(.{6,})$/i.exec(body);
     if (m) {
       const parts = splitAcronym(cleanTerm(m[1]));
       const rest = m[2].trim().replace(/^:\s*/, '');
-      if (termOk(parts.term, 5) && !REST_BAD.test(rest) && !/^\p{L}+(?:ed|en)\b/iu.test(rest) && words(rest).length >= 3) {
-        return { term: parts.term, aliases: parts.aliases, def: rest, strength: /^(?:a|an|the|one|any|when|how|where)\b/i.test(rest) ? 2 : 1 };
+      if (termOk(parts.term, 5) && !REST_BAD.test(rest) && !PASSIVE_RE.test(rest) && words(rest).length >= 3) {
+        const strong = /^(?:a|an|the|one|any|when|how|where)\b/i.test(rest) || DESCRIBES_RE.test(rest);
+        return { term: parts.term, aliases: parts.aliases, def: rest, strength: strong ? 2 : 1 };
       }
     }
     return null;
@@ -608,7 +645,8 @@
     return Array.from(hits).sort((a, b) => a - b).map((i) => corpus.sentences[i]);
   }
 
-  const CAPS_RE = /(^|[^\p{L}\p{N}'’])(\p{Lu}[\p{Ll}'’-]*\p{Ll}(?:[ \t]+(?:(?:of|the|de|du|des|von|van|der|da|di|la|le|el|al|bin|ibn)[ \t]+)?\p{Lu}[\p{L}'’-]*)+)/gu;
+  // Names in capitals, including ones with a title or "St." in them: "Mount St. Helens", "Dr. Jane Goodall".
+  const CAPS_RE = /(^|[^\p{L}\p{N}'’])((?:(?:St|Mt|Ft|Dr|Mr|Mrs|Ms)\.|\p{Lu}[\p{Ll}'’-]*\p{Ll})(?:[ \t]+(?:(?:of|the|de|du|des|von|van|der|da|di|la|le|el|al|bin|ibn)[ \t]+)?(?:(?:St|Mt|Ft|Dr|Mr|Mrs|Ms|Jr|Sr)\.|\p{Lu}[\p{L}'’-]*))+)/gu;
   const ACRO_RE = /(^|[^\p{L}\p{N}])(\p{Lu}{2,6})s?(?![\p{L}\p{N}])/gu;
   const EXPLAIN_RE = /\b(?:because|cause[sd]?|lead(?:s|ing)? to|result(?:s|ing)? in|so that|therefore|which means|in order to|allows?|helps?|depends? on|produces?|converts?|when|if)\b/i;
   const EXAMPLE_RE = /\b(?:for example|for instance|e\.g\.|such as|an example|example of|examples? include|imagine|suppose|consider)\b/i;
@@ -656,7 +694,10 @@
    * the sentence that best describes them instead of a definition.
    */
   function extractTerms(corpus, opts) {
-    const max = (opts && opts.max) || Math.max(10, Math.min(120, Math.round(corpus.N / 4)));
+    // Every clear definition is kept (up to `max`); weaker finds (a bare "X is …",
+    // a name the notes never define) fill in up to about one per six sentences.
+    const max = (opts && opts.max) || 150;
+    const extra = (opts && opts.extra) || Math.max(6, Math.round(corpus.N / 6));
     const cands = new Map();
     const get = (label) => {
       const clean = cleanTerm(label);
@@ -742,6 +783,7 @@
         sentenceId: sentence.id,
         order: c.def ? sentence.order : (mentions[0] ? mentions[0].order : sentence.order),
         score,
+        strength: c.def ? c.def.strength : 0,
         stems: c.stems,
         mentionCount: mentions.length,
       });
@@ -752,13 +794,20 @@
     const usedDefSentence = new Set();
     list.forEach((t) => {
       if (t.kind === 'definition' && usedDefSentence.has(t.sentenceId)) return;
-      const redundant = kept.some((k) => k.kind !== 'mention' && t.kind === 'mention' && (indexOfSeq(k.stems, t.stems, 0) >= 0 || indexOfSeq(t.stems, k.stems, 0) >= 0));
+      // ("Triple Alliance" is still its own term beside "Alliances": it is the longer, more exact name.)
+      const redundant = t.kind === 'mention' && kept.some((k) => indexOfSeq(k.stems, t.stems, 0) >= 0);
       if (redundant) return;
       if (t.kind === 'definition') usedDefSentence.add(t.sentenceId);
       kept.push(t);
     });
-    return kept.slice(0, max).sort((a, b) => a.order - b.order).map((t) => {
-      delete t.score; delete t.stems; delete t.mentionCount;
+    let weak = 0;
+    const chosen = kept.filter((t) => {
+      if (t.kind === 'definition' && t.strength >= 2) return true;
+      weak++;
+      return weak <= extra;
+    });
+    return chosen.slice(0, max).sort((a, b) => a.order - b.order).map((t) => {
+      delete t.score; delete t.stems; delete t.mentionCount; delete t.strength;
       return t;
     });
   }
@@ -847,6 +896,7 @@
       if (sec.level === 0 && !sec.paraIds.length) return;
       out.push({
         id: 'o' + hashText(sec.id + '|' + sec.title),
+        sectionId: sec.id,
         title: sec.title.slice(0, 200),
         level: sec.level === 0 ? 1 : Math.min(sec.level, 4),
         ref: copyRef(sec.ref),
@@ -987,6 +1037,28 @@
       };
     });
   }
+  /**
+   * The parts of the notes (one per heading) with the terms that belong to
+   * each, for "pick topics". Terms the student added go in a last group.
+   * Returns [{ id, title, level, ref, conceptIds }], in the notes' order.
+   */
+  function topicsFor(corpus, concepts) {
+    const bySection = new Map();
+    const own = [];
+    (concepts || []).forEach((c) => {
+      if (c.sectionId && corpus.sectionById[c.sectionId]) {
+        if (!bySection.has(c.sectionId)) bySection.set(c.sectionId, []);
+        bySection.get(c.sectionId).push(c.id);
+      } else own.push(c.id);
+    });
+    const out = [];
+    corpus.sections.forEach((sec) => {
+      const ids = bySection.get(sec.id);
+      if (ids && ids.length) out.push({ id: sec.id, title: sec.title, level: sec.level || 1, ref: copyRef(sec.ref), conceptIds: ids });
+    });
+    if (own.length) out.push({ id: '', title: 'Terms you added', level: 1, ref: null, conceptIds: own });
+    return out;
+  }
   function sentencesOf(corpus, ids) {
     return (ids || []).map((id) => corpus.byId[id]).filter(Boolean);
   }
@@ -1020,6 +1092,23 @@
   function acceptFor(c, surface) {
     return Array.from(new Set([surface, c.label, c.surface].concat(c.aliases || []).filter(Boolean)));
   }
+  /** Other terms in the notes that share a word with this one or are spelled nearly the same. */
+  function rivalsFor(c, pool) {
+    const mine = new Set(c.stems);
+    const label = norm(c.label);
+    const out = [];
+    (pool || []).forEach((o) => {
+      if (o.id === c.id || out.length >= 8) return;
+      const name = norm(o.label);
+      if (!name || name === label) return;
+      if (o.stems.some((st) => mine.has(st)) || osa(name, label) <= 3) out.push(o.label);
+    });
+    return out;
+  }
+  /** How many times the term or any of its other names appears in a sentence. */
+  function occurrences(sent, lists) {
+    return lists.reduce((n, l) => n + countSeq(sent.stems, l), 0);
+  }
   function goodLength(s) { return s.wc >= 6 && s.wc <= 40; }
   function inlineLabel(other, atStart, surfaceWas) {
     let label = other.surface || other.label;
@@ -1050,7 +1139,8 @@
     const lists = conceptStems(c);
     const ranked = sentencesOf(corpus, c.mentions).filter((s) => goodLength(s) && !(avoid && avoid.has(s.id)))
       .map((s) => ({ s, span: findSpan(s, lists) }))
-      .filter((x) => x.span && x.span.count === 1 && words(x.s.text).length - words(x.span.surface).length >= 4)
+      // Only sentences that name the term once: an "ATP (adenosine triphosphate)" sentence would give it away.
+      .filter((x) => x.span && occurrences(x.s, lists) === 1 && words(x.s.text).length - words(x.span.surface).length >= 4)
       .sort((a, b) => Math.abs(a.s.wc - 16) - Math.abs(b.s.wc - 16) || a.s.order - b.s.order);
     if (!ranked.length) return null;
     const pick = ranked[Math.floor((rnd ? rnd() : 0) * Math.min(3, ranked.length))];
@@ -1059,17 +1149,19 @@
     q.after = pick.s.text.slice(pick.span.end);
     q.answer = pick.span.surface;
     q.accept = acceptFor(c, pick.span.surface);
+    q.others = rivalsFor(c, pool);
     return q;
   }
 
   /** Type the term the description belongs to. */
-  function makeWritten(corpus, c) {
+  function makeWritten(corpus, c, pool) {
     const clue = cluePhrase(c);
     if (!clueOk(clue)) return null;
     const q = base('written', c, 'Type the term from your notes that matches this', defPassage(corpus, c));
     q.stem = clue;
     q.answer = c.label;
     q.accept = acceptFor(c, c.surface);
+    q.others = rivalsFor(c, pool);
     return q;
   }
 
@@ -1117,12 +1209,13 @@
   function makeTrueFalse(corpus, c, pool, rnd, avoid, forceTruth) {
     const r = rnd || Math.random;
     const lists = conceptStems(c);
-    const known = new Set(corpus.sentences.map((s) => norm(s.text)));
+    if (!corpus.knownText) corpus.knownText = new Set(corpus.sentences.map((s) => norm(s.text)));
+    const known = corpus.knownText;
     const swaps = shuffle(others(c, pool), r);
     const wantFalse = forceTruth == null ? r() < 0.5 : !forceTruth;
     const cand = sentencesOf(corpus, c.mentions).filter((s) => s.wc >= 6 && s.wc <= 35 && !(avoid && avoid.has(s.id)))
       .map((s) => ({ s, span: findSpan(s, lists) }))
-      .filter((x) => x.span && x.span.count === 1)
+      .filter((x) => x.span && occurrences(x.s, lists) === 1)
       .sort((a, b) => Math.abs(a.s.wc - 14) - Math.abs(b.s.wc - 14) || a.s.order - b.s.order);
     if (cand.length) {
       const pick = cand[Math.floor(r() * Math.min(3, cand.length))];
@@ -1206,7 +1299,7 @@
       else if (type === 'mcdef') q = makeDefChoice(corpus, c, pool, rnd);
       else if (type === 'tf') q = makeTrueFalse(corpus, c, pool, rnd, avoid);
       else if (type === 'cloze') q = makeCloze(corpus, c, pool, rnd, avoid);
-      else if (type === 'written') q = makeWritten(corpus, c);
+      else if (type === 'written') q = makeWritten(corpus, c, pool);
       if (q) return q;
     }
     return null;
@@ -1217,21 +1310,57 @@
   function contentStems(text) {
     return tokenize(text).map((t) => t.w).filter((w) => !ARTICLES.has(w)).map(stem);
   }
-  function checkTerm(given, accepted) {
-    const g = norm(given);
-    const gStems = contentStems(given).join(' ');
-    for (const alt of accepted) {
-      const a = norm(alt);
-      if (!a) continue;
-      if (g === a) return { verdict: 'correct', score: 1 };
-      if (gStems && gStems === contentStems(alt).join(' ')) return { verdict: 'correct', score: 1 };
+  function answerWords(text) {
+    return norm(text).split(' ').filter((w) => w && !ARTICLES.has(w));
+  }
+  /**
+   * How many spelling slips separate an answer from the expected one, or
+   * Infinity when it is not a slip at all. Each word may be one letter out
+   * (two for words of 12+ letters), at most two slips in all, numbers must be
+   * exact, and the words must line up: "anaerobic" is not a slip for
+   * "aerobic", and "1915" is not a slip for "1914".
+   */
+  function slips(given, expected) {
+    const g = answerWords(given);
+    const a = answerWords(expected);
+    if (!g.length || !a.length) return Infinity;
+    if (g.length !== a.length) return g.join('') === a.join('') ? 1 : Infinity;
+    let total = 0;
+    for (let i = 0; i < a.length; i++) {
+      if (g[i] === a[i] || stem(g[i]) === stem(a[i])) continue;
+      if (/\d/.test(a[i]) || /\d/.test(g[i])) return Infinity;
+      const allow = a[i].length >= 12 ? 2 : a[i].length >= 5 ? 1 : 0;
+      const d = osa(g[i], a[i]);
+      if (d > allow) return Infinity;
+      total += d;
     }
-    for (const alt of accepted) {
-      const a = norm(alt);
-      if (!a) continue;
-      const allow = a.length >= 12 ? 2 : a.length >= 5 ? 1 : 0;
-      if (allow && lev(g, a) <= allow) return { verdict: 'close', score: 1, note: 'Check the spelling: ' + alt.trim() };
-    }
+    return total <= 2 ? total : Infinity;
+  }
+  function sameAnswer(given, alt) {
+    const a = norm(alt);
+    if (!a) return false;
+    if (norm(given) === a) return true;
+    const gs = contentStems(given).join(' ');
+    return !!gs && gs === contentStems(alt).join(' ');
+  }
+  /**
+   * accepted: the answer and its other names. others: other terms from the
+   * same notes that look or sound alike, so that naming a different term is
+   * never passed as a spelling slip or as part of the answer.
+   */
+  function checkTerm(given, accepted, others) {
+    const rivals = (others || []).filter((o) => o && !accepted.some((a) => norm(a) === norm(o)));
+    if (accepted.some((alt) => sameAnswer(given, alt))) return { verdict: 'correct', score: 1 };
+    const rival = rivals.find((o) => sameAnswer(given, o));
+    if (rival) return { verdict: 'incorrect', score: 0, note: '“' + rival.trim() + '” is a different term in your notes.' };
+    let best = null;
+    accepted.forEach((alt) => {
+      const d = slips(given, alt);
+      if (d < Infinity && (!best || d < best.d)) best = { d, alt };
+    });
+    const nearest = rivals.reduce((m, o) => Math.min(m, slips(given, o)), Infinity);
+    if (best && best.d < nearest) return { verdict: 'close', score: 1, note: 'Check the spelling: ' + best.alt.trim() };
+    if (nearest < Infinity) return { verdict: 'incorrect', score: 0 };
     const main = accepted[0] || '';
     const want = contentStems(main).filter((st) => !STOP.has(st));
     if (want.length > 1) {
@@ -1277,7 +1406,7 @@
       return said && said === question.answer ? { verdict: 'correct', score: 1 } : { verdict: 'incorrect', score: 0 };
     }
     if (question.type === 'cloze' || question.type === 'written') {
-      return checkTerm(g, [question.answer].concat(question.accept || []).filter(Boolean));
+      return checkTerm(g, [question.answer].concat(question.accept || []).filter(Boolean), question.others);
     }
     return { verdict: 'incorrect', score: 0 };
   }
@@ -1463,12 +1592,16 @@
    * Move on. Walks forward through steps already seen, then makes the next
    * one from the queue. Returns the step, or null when the session is done.
    */
-  function nextStep(session, corpus, concepts, mastery, nowIso) {
-    if (session.phase !== 'learn') return null;
+  function nextStep(session, corpus, concepts, mastery0, nowIso) {
+    if (!session || session.phase !== 'learn') return null;
+    const mastery = mastery0 || {};
     if (session.index < session.steps.length - 1) {
       session.index++;
       return session.steps[session.index];
     }
+    // Moving on without answering is a skip: the term goes to the back of the line, not lost.
+    const open = currentStep(session);
+    if (open && !open.rec) skipStep(session, nowIso);
     const byId = new Map(concepts.map((c) => [c.id, c]));
     session.queue = session.queue.filter((id) => byId.has(id));
     if (!session.queue.length || session.steps.length >= LIMITS.steps) {
@@ -1526,7 +1659,8 @@
     insertAt(session.queue, gap, id);
   }
   /** Answer the current step. Mastery is updated in place. Returns the record. */
-  function answerStep(session, mastery, given, nowIso) {
+  function answerStep(session, mastery0, given, nowIso) {
+    const mastery = mastery0 || {};
     const step = currentStep(session);
     if (!step || step.rec) return step ? step.rec : null;
     const res = checkAnswer(step.q, given);
@@ -1549,7 +1683,8 @@
     return step.rec;
   }
   /** "I'm not sure": shows the answer and counts as not yet. */
-  function dontKnow(session, mastery, nowIso) {
+  function dontKnow(session, mastery0, nowIso) {
+    const mastery = mastery0 || {};
     const step = currentStep(session);
     if (!step || step.rec) return null;
     const now = nowIso || new Date().toISOString();
@@ -1568,17 +1703,32 @@
     step.conceptIds.forEach((id) => insertAt(session.queue, session.queue.length, id));
     return step.rec;
   }
-  /** Another question on the same term, straight away. */
-  function repeatStep(session) {
+  /**
+   * Another question on the same term(s), next. An unanswered step is left
+   * unmarked. Call nextStep afterwards to get the new question.
+   */
+  function repeatStep(session, nowIso) {
     const step = currentStep(session);
-    if (!step) return false;
+    if (!step || session.phase !== 'learn') return false;
+    if (!step.rec) step.rec = { given: '', verdict: 'skipped', score: 0, at: nowIso || new Date().toISOString() };
+    // A step further on that is still open goes to the back first, so it is not lost.
+    const last = session.steps[session.steps.length - 1];
+    if (last && last !== step && !last.rec) {
+      last.rec = { given: '', verdict: 'skipped', score: 0, at: nowIso || new Date().toISOString() };
+      last.conceptIds.forEach((id) => insertAt(session.queue, session.queue.length, id));
+    }
     step.conceptIds.slice().reverse().forEach((id) => insertAt(session.queue, 0, id));
     session.index = session.steps.length - 1;
     return true;
   }
+  /** Back to the step before (already answered steps are shown as they were). */
   function backStep(session) {
-    if (session.index > 0) session.index--;
+    if (session && session.index > 0) session.index--;
     return currentStep(session);
+  }
+  /** Is the step on screen the newest one (so it can still be answered)? */
+  function atLatest(session) {
+    return !!session && session.index === session.steps.length - 1;
   }
   function learnSummary(session, concepts, mastery) {
     const byId = new Map(concepts.map((c) => [c.id, c]));
@@ -1684,7 +1834,7 @@
     while (out.length < count && guard++ < count * 6) {
       const slotType = types[out.length % types.length];
       if (slotType === 'match') {
-        if (matchDone < Math.max(1, Math.floor(count / 8)) && concepts.length >= 3) {
+        if (matchDone < (singles.length ? Math.max(1, Math.floor(count / 8)) : count) && concepts.length >= 3) {
           const group = shuffle(ordered, rnd).slice(0, 4);
           const q = makeMatch(corpus, group, rnd);
           if (q) { matchDone++; q.id = 'p' + (out.length + 1); out.push(q); continue; }
@@ -1993,6 +2143,7 @@
       hash: str(g.hash, 16),
       outline: (Array.isArray(g.outline) ? g.outline : []).slice(0, 400).filter(plainObject).map((o) => ({
         id: safeKey(o.id) ? o.id : uid('o'),
+        sectionId: str(o.sectionId, 200),
         title: str(o.title, 200) || 'Section',
         level: clampInt(o.level, 1, 4, 1),
         ref: normRef(o.ref),
@@ -2050,11 +2201,13 @@
       out.after = str(q.after, 3000);
       out.answer = str(q.answer, 200);
       out.accept = strList(q.accept, 12, 200);
+      out.others = strList(q.others, 8, 200);
       if (!out.answer) return null;
     } else if (q.type === 'written') {
       out.stem = str(q.stem, 3000);
       out.answer = str(q.answer, 200);
       out.accept = strList(q.accept, 12, 200);
+      out.others = strList(q.others, 8, 200);
       if (!out.answer) return null;
     } else if (q.type === 'match') {
       out.pairs = (Array.isArray(q.pairs) ? q.pairs : []).slice(0, 6).filter((p) => plainObject(p) && safeKey(p.conceptId) && typeof p.term === 'string' && typeof p.def === 'string')
@@ -2225,6 +2378,111 @@
   function hasNotes(set) {
     return (set.sources || []).some((s) => s.text && s.text.trim());
   }
+  function wordCount(text) {
+    const m = String(text || '').match(/[\p{L}\p{N}]+/gu);
+    return m ? m.length : 0;
+  }
+  /**
+   * What a library card shows, without reading the notes: size, how many
+   * terms are mastered, when it was last studied, days to the exam.
+   * today: 'YYYY-MM-DD' (defaults to the device's date).
+   */
+  function summarizeSet(set, today) {
+    const s = set || {};
+    const terms = (s.guide && Array.isArray(s.guide.terms)) ? s.guide.terms : [];
+    const m = masterySummary(terms, s.mastery || {});
+    const day = isYmd(today) ? today : ymd();
+    const tests = Array.isArray(s.tests) ? s.tests : [];
+    const lastTest = tests.length ? tests[tests.length - 1] : null;
+    return {
+      id: s.id || '',
+      title: s.title || '',
+      subject: s.subject || '',
+      examDate: s.examDate || '',
+      daysLeft: isYmd(s.examDate) ? daysBetween(day, s.examDate) : null,
+      createdAt: s.createdAt || '',
+      updatedAt: s.updatedAt || '',
+      studiedAt: s.studiedAt || '',
+      sources: (s.sources || []).length,
+      words: (s.sources || []).reduce((n, src) => n + wordCount(src && src.text), 0),
+      hasGuide: !!s.guide,
+      terms: m.total,
+      mastered: m.mastered,
+      learning: m.learning,
+      weak: m.weak,
+      fresh: m.fresh,
+      percent: m.percent,
+      lastTestPct: lastTest ? lastTest.pct : null,
+      sample: (s.sources || []).some((src) => src && src.kind === 'Sample'),
+    };
+  }
+
+  /* ── Flashcards inside Tutor, and "Send to Flux Flashcards" ─────────── */
+
+  /**
+   * The set's cards: one per key term, with its saved memory state `s` (the
+   * same FSRS state Flux Flashcards keeps, so FluxFlash.preview/review work
+   * on { s } directly). Returns [{ id, term, def, ref, s }].
+   */
+  function cardList(set) {
+    const terms = (set && set.guide && set.guide.terms) || [];
+    const cards = (set && set.cards) || {};
+    return terms.filter((t) => t && t.term && t.def).map((t) => ({
+      id: t.id, term: t.term, def: t.def, ref: t.ref || null,
+      s: Object.prototype.hasOwnProperty.call(cards, t.id) ? cards[t.id] : null,
+    }));
+  }
+  /** Due cards first (most overdue first), then up to newLimit (20) new ones. now: ms. */
+  function cardQueue(set, now, newLimit) {
+    const t = Number.isFinite(now) ? now : Date.now();
+    const list = cardList(set);
+    const due = list.filter((c) => c.s && c.s.state && Number(c.s.due) <= t).sort((a, b) => a.s.due - b.s.due);
+    const fresh = list.filter((c) => !c.s || !c.s.state).slice(0, newLimit == null ? 20 : newLimit);
+    return due.concat(fresh);
+  }
+  function cardCounts(set, now) {
+    const t = Number.isFinite(now) ? now : Date.now();
+    const out = { total: 0, fresh: 0, due: 0, later: 0 };
+    cardList(set).forEach((c) => {
+      out.total++;
+      if (!c.s || !c.s.state) out.fresh++;
+      else if (Number(c.s.due) <= t) out.due++;
+      else out.later++;
+    });
+    return out;
+  }
+  /**
+   * The deck to hand Flux Flashcards (FluxFlash.putDeck): the key terms as
+   * cards. When the set was sent before, `existing` is that deck: its title,
+   * its cards' memory and stars and any cards added in Flashcards are kept,
+   * definitions are brought up to date and new terms are added.
+   * Returns { deck, added, updated } (deck has no id when there is no existing deck).
+   */
+  function flashDeckFrom(set, existing) {
+    const s = set || {};
+    const examAt = isYmd(s.examDate) ? new Date(s.examDate + 'T09:00:00').getTime() : null;
+    const terms = cardList(s);
+    const base0 = plainObject(existing) && Array.isArray(existing.cards) ? existing : null;
+    const cards = base0 ? base0.cards.map((c) => Object.assign({}, c)) : [];
+    const byTerm = new Map(cards.map((c, i) => [norm(c.term), i]));
+    let added = 0;
+    let updated = 0;
+    terms.forEach((t) => {
+      const k = norm(t.term);
+      if (byTerm.has(k)) {
+        const c = cards[byTerm.get(k)];
+        if (c.def !== t.def) { c.def = t.def; updated++; }
+        return;
+      }
+      cards.push({ term: t.term, def: t.def, star: false });
+      byTerm.set(k, cards.length - 1);
+      added++;
+    });
+    const deck = base0
+      ? Object.assign({}, base0, { cards, examAt: base0.examAt || examAt })
+      : { title: (s.title || 'Flux Tutor terms').slice(0, 160), desc: 'Key terms from your Flux Tutor study set' + (s.subject ? ' (' + s.subject.slice(0, 80) + ')' : '') + '.', examAt, cards };
+    return { deck, added, updated };
+  }
 
   /* ── The first beta (flux_teacher.beta.v1) ──────────────────────────── */
 
@@ -2337,7 +2595,11 @@
    * Only Flux Tutor exports (one set or a library backup) and the first
    * beta's saved data are accepted; anything else gets a plain reason.
    */
+  const IMPORT_MAX_CHARS = 40 * 1024 * 1024;
   function parseImport(text) {
+    if (typeof text === 'string' && text.length > IMPORT_MAX_CHARS) {
+      return { sets: [], skipped: 0, error: 'This file is too big to be a Flux Tutor export (over 40 MB).' };
+    }
     let data;
     try { data = JSON.parse(String(text || '')); } catch (_) {
       return { sets: [], skipped: 0, error: 'This file is not a Flux Tutor export. Choose a .json file that Flux Tutor saved.' };
@@ -2455,16 +2717,17 @@
     buildCorpus, formatRef, measure, mentionsOf,
     findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash,
     addTerm, addFact, editItem, removeItem, restoreItem,
-    conceptsFromGuide, explanationFor, maskTerm,
+    conceptsFromGuide, topicsFor, explanationFor, maskTerm,
     makeCloze, makeWritten, makeChoice, makeDefChoice, makeTrueFalse, makeMatch, questionFor, typesForLevel,
-    checkAnswer, isRight, answerText,
+    checkAnswer, isRight, answerText, slips, osa,
     newMastery, applyResult, statusOf, weakness, masterySummary,
-    startLearn, answerCheck, finishCheck, nextStep, currentStep, answerStep, dontKnow, skipStep, repeatStep, backStep, learnSummary,
+    startLearn, answerCheck, finishCheck, nextStep, currentStep, answerStep, dontKnow, skipStep, repeatStep, backStep, atLatest, learnSummary,
     simplerFor, examplesFor,
     buildPracticeTest, gradePracticeTest,
     buildSearchIndex, searchNotes, highlightSegments,
     buildStudyPlan,
-    newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes,
+    newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,
+    cardList, cardQueue, cardCounts, flashDeckFrom,
     migrateLegacy, splitLegacyMaterial,
     exportSet, exportLibrary, parseImport, toMarkdown,
     SAMPLE, sampleSet,
