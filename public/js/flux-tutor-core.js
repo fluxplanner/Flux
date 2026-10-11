@@ -1073,7 +1073,8 @@
           text: t.def,
           full: fromNotes ? sent.text : t.def,
           sentenceId: fromNotes ? sent.id : '',
-          ref: fromNotes ? copyRef(sent.ref) : { source: 'Your study guide', edited: true },
+          // Notes changed since the guide was built: still credit the notes, not the student.
+          ref: fromNotes ? copyRef(sent.ref) : (!t.edited && t.kind !== 'user' && t.ref ? copyRef(t.ref) : { source: 'Your study guide', edited: true }),
         },
         mentions,
         sectionId: sent ? sent.sectionId : '',

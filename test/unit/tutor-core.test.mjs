@@ -654,6 +654,10 @@ test('study guide edits: fix, delete with undo, add; a rebuild keeps them', () =
   const c = T.conceptsFromGuide(S.corpus, guide).find((x) => x.id === osm.id);
   assert.equal(c.definition.full, 'Water moving across a membrane.');
   assert.equal(c.definition.ref.edited, true);
+  // With notes that no longer have the sentence (guide not rebuilt yet), a found term still cites the notes.
+  const stale = T.conceptsFromGuide(T.buildCorpus([{ id: 'other', text: 'Different notes entirely, nothing in common here.' }]), guide);
+  assert.equal(stale.find((x) => x.label === 'Diffusion').definition.ref.source, 'Sample biology notes');
+  assert.equal(stale.find((x) => x.label === 'Turgor').definition.ref.edited, true);
   // Topics for "pick topics": the notes' sections, then the student's own terms.
   const topics = T.topicsFor(S.corpus, T.conceptsFromGuide(S.corpus, guide));
   assert.equal(topics[topics.length - 1].title, 'Terms you added');
