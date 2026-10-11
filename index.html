@@ -1324,6 +1324,9 @@
           <h2 class="dash-v2-work-title">Tasks</h2>
           <div class="dash-toolbar">
             <div class="dash-toolbar-views"></div>
+            <!-- Plan my week (flux-week-plan-ui.js): study blocks for the next
+                 seven days around classes and plans. Also on the calendar. -->
+            <button type="button" class="pw-entry" id="dashPlanWeekBtn" onclick="openPlanWeek()">Plan my week</button>
           </div>
         </div>
 
@@ -1417,6 +1420,7 @@
                 <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
                 <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none" title="Add an activity from College Prep">+ Activity</button>
+                <button type="button" id="calPlanWeekBtn" onclick="openPlanWeek()" class="pw-entry">Plan my week</button>
               </div>
             </div>
             <div class="cal-cd-form" id="calCountdownForm" hidden>
