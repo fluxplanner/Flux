@@ -83,6 +83,12 @@ const save=(k,v)=>{
   if(k==='tasks'||k==='flux_notes'){try{fluxNoteListEdits(k,v);}catch(_){}}
   _fluxSaveRaw(k,v);
 };
+/* This tab's bookkeeping for the merged task and note lists: its own merge
+   base, what it last saved, its tombstones (flux-list-merge.js). It writes
+   through the raw helpers, so its own writes never count as edits. */
+const fluxListSync=(window.FluxListMerge&&typeof FluxListMerge.createListSync==='function')
+  ?FluxListMerge.createListSync({get:k=>_fluxLoadRaw(k,null),set:(k,v)=>_fluxSaveRaw(k,v)})
+  :null;
 /** Prefs historically stored as raw '1'/'0' or via save() (JSON); respects namespacing. */
 function fluxLoadLegacy01(k){
   try{
@@ -270,9 +276,15 @@ const DATA_VERSION=6;
   window.fluxEstimateLocalStorageBytes=estBytes;
   window.fluxCompactStorageIfNeeded=function(){
     if(estBytes()<=5*1024*1024)return;
+    // Keeps the 240 newest notes (they are stored newest first, so slice(-240)
+    // kept the OLDEST), and writes them without edit tracking: through save()
+    // every note trimmed off got a tombstone and was deleted on every device.
     try{
-      const notes=load('flux_notes',[]);
-      if(Array.isArray(notes)&&notes.length>240)save('flux_notes',notes.slice(-240));
+      if(fluxListSync)fluxListSync.compact('flux_notes',240);
+      else{
+        const notes=_fluxLoadRaw('flux_notes',[]);
+        if(Array.isArray(notes)&&notes.length>240)_fluxSaveRaw('flux_notes',notes.slice(0,240));
+      }
     }catch(e){}
     // AI chat shards use physical keys (may include `imp:…` prefix). Must read/write `k` as-is — not `load(key)` (would re-namespace).
     try{
@@ -2347,6 +2359,7 @@ const FluxImpersonate={
     try{
       if(typeof tasks!=='undefined')tasks=load('tasks',[]);
       if(typeof notes!=='undefined')notes=load('flux_notes',[]);
+      if(typeof tasks!=='undefined'&&typeof notes!=='undefined')fluxListSyncFromStorage();
       if(typeof habits!=='undefined')habits=load('flux_habits',[]);
       if(typeof goals!=='undefined')goals=load('flux_goals',[]);
       if(typeof colleges!=='undefined')colleges=load('flux_colleges',[]);
@@ -3201,6 +3214,12 @@ try{
   });
 }catch(_){ window.tasks=tasks; }
 let notes=load('flux_notes',[]);
+/** The lists were just read from storage: so is the base they were agreed against, into this tab. */
+function fluxListSyncFromStorage(){
+  if(!fluxListSync)return;
+  try{fluxListSync.loadBase();fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
+}
+fluxListSyncFromStorage();
 let habits=load('flux_habits',[]);
 function getFluxHabits(){return habits;}
 function setFluxHabits(next){habits=Array.isArray(next)?next:[];save('flux_habits',habits);syncKey('habits',habits);}
@@ -10929,74 +10948,29 @@ function cloudListWins(cloudVal,localVal){
 
    Every save of these lists records which items changed (and stamps their
    updatedAt) or went (a tombstone). The pull then merges against the base —
-   what the cloud held when this device last agreed with it — so a cloud copy
-   can only change an item that this device has not changed since. The rules
-   live in flux-list-merge.js. */
-const FLUX_SYNC_BASE_KEY='flux_sync_base_v1';
-const FLUX_LIST_TOMB_KEY='flux_list_tombstones_v1';
+   what the cloud held when THIS TAB last agreed with it — so a cloud copy can
+   only change an item that this tab has not changed since, and nothing is
+   taken for deleted here unless it was. The rules live in flux-list-merge.js,
+   and so does each tab's base (fluxListSync, by storage at the top). */
 function fluxListStoreKey(cloudKey){return cloudKey==='notes'?'flux_notes':'tasks';}
 
-/** Called by save() for 'tasks' and 'flux_notes'. Literal keys only: it can run before the consts above exist. */
+/** Called by save() for 'tasks' and 'flux_notes'. */
 function fluxNoteListEdits(k,list){
-  const M=window.FluxListMerge;
-  if(!M||!Array.isArray(list))return;
-  const cloudKey=k==='flux_notes'?'notes':'tasks';
-  const seen=window.__fluxListSeen||(window.__fluxListSeen={});
-  const nk=fluxNamespacedKey(k);
-  const prev=seen[nk]||M.hashes(_fluxLoadRaw(k,[]));
-  const next={};
-  const now=Date.now();
-  list.forEach(it=>{
-    if(!it||typeof it!=='object')return;
-    const key=M.keyOf(it),h=M.itemHash(it);
-    next[key]=h;
-    if(prev[key]!==h)it.updatedAt=now;
-  });
-  seen[nk]=next;
-  const tombAll=_fluxLoadRaw('flux_list_tombstones_v1',{})||{};
-  const mine=tombAll[cloudKey]||{};
-  let changed=false;
-  Object.keys(prev).forEach(key=>{
-    if(!(key in next)&&key.indexOf('h:')!==0){mine[key]=now;changed=true;}
-  });
-  Object.keys(next).forEach(key=>{if(mine[key]){delete mine[key];changed=true;}});
-  if(changed){tombAll[cloudKey]=M.mergeTombs(mine,null,now);_fluxSaveRaw('flux_list_tombstones_v1',tombAll);}
+  if(fluxListSync)fluxListSync.noteEdits(k,list);
 }
 /** The next save of this list is not a local edit: it is what a merge produced. */
 function fluxPrimeListSeen(storeKey,list){
-  if(!window.FluxListMerge)return;
-  const seen=window.__fluxListSeen||(window.__fluxListSeen={});
-  seen[fluxNamespacedKey(storeKey)]=FluxListMerge.hashes(list);
+  if(fluxListSync)fluxListSync.prime(storeKey,list);
 }
-/** Remember what the cloud now holds for this list (the list itself, or its hashes). */
+/** Remember, in this tab, what the cloud now holds for this list (the list itself, or its hashes). */
 function fluxRecordSyncBase(cloudKey,listOrHashes){
-  if(!window.FluxListMerge||!listOrHashes||typeof listOrHashes!=='object')return;
-  const all=load(FLUX_SYNC_BASE_KEY,{})||{};
-  all[cloudKey]=Array.isArray(listOrHashes)?FluxListMerge.hashes(listOrHashes):listOrHashes;
-  save(FLUX_SYNC_BASE_KEY,all);
+  if(fluxListSync)fluxListSync.recordBase(cloudKey,listOrHashes);
 }
 /** Merge a cloud list into the local one; saves and returns the result. */
 function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll){
   const storeKey=fluxListStoreKey(cloudKey);
-  const M=window.FluxListMerge;
-  if(!M){save(storeKey,cloud);return cloud;}
-  // An edit can be in memory and not saved yet (a tick mid-animation): stamp
-  // it now, so the merge sees it as the newest thing it is.
-  try{fluxNoteListEdits(storeKey,local);}catch(_){}
-  const bases=load(FLUX_SYNC_BASE_KEY,null);
-  const tombAll=load(FLUX_LIST_TOMB_KEY,{})||{};
-  const cloudTomb=(cloudTombAll&&typeof cloudTombAll==='object'&&cloudTombAll[cloudKey])||{};
-  const r=M.merge(local,cloud,{
-    base:bases&&bases[cloudKey]||null,
-    localTomb:tombAll[cloudKey]||{},
-    cloudTomb,
-    lastSyncAt:+load('flux_last_sync',0)||0,
-  });
-  tombAll[cloudKey]=M.mergeTombs(tombAll[cloudKey],cloudTomb);
-  save(FLUX_LIST_TOMB_KEY,tombAll);
-  fluxRecordSyncBase(cloudKey,cloud);
-  fluxPrimeListSeen(storeKey,r.list);
-  save(storeKey,r.list);
+  if(!fluxListSync){save(storeKey,cloud);return cloud;}
+  const r=fluxListSync.pull(cloudKey,local,cloud,cloudTombAll);
   // Kept something the cloud does not have yet: send it up.
   if(r.differsFromCloud)window.__fluxListNeedsPush=true;
   return r.list;
@@ -11015,10 +10989,18 @@ async function syncFromCloud(opts){
   _syncFromCloudInFlight=true;
   const sb=getSB();if(!sb){_syncFromCloudInFlight=false;return;}
   if(syncUiWantsActivity())setSyncStatus('syncing');
-  // False only when the row was left for later (mid-word): pushes stay held.
-  let _pullSettled=true;
+  /* True once the row has come back and been merged (or there is no row yet,
+     or it is the one already applied). Only then may pushes go out: after a
+     failed pull, or one left for later (mid-word), the next push would send
+     this device's unmerged copy — on a new device, an empty one. */
+  let _pullOk=false;
   try{
     const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
+    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it.
+    if(error&&String(error.code||'')==='PGRST116'){
+      _pullOk=true;
+      return;
+    }
     if(error||!data){
       window._fluxSyncFailed=true;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11045,6 +11027,7 @@ async function syncFromCloud(opts){
     let _cloudFp='';
     try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}
     if(_cloudFp&&_cloudFp===window._fluxLastCloudFingerprint){
+      _pullOk=true;
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11055,7 +11038,6 @@ async function syncFromCloud(opts){
        few seconds after they stop, apply it. Nothing is lost by waiting; the
        row is not going anywhere. */
     if(fluxIsTyping()){
-      _pullSettled=false;
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11210,6 +11192,8 @@ async function syncFromCloud(opts){
     if(Array.isArray(d.notes)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
       notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones);
     }
+    // Both lists are merged: what this device pushes from here on includes the cloud's.
+    _pullOk=true;
     if(cloudListWins(d.habits,habits)){habits=d.habits;save('flux_habits',habits);}
     if(cloudListWins(d.goals,goals)){goals=d.goals;save('flux_goals',goals);}
     if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
@@ -11325,7 +11309,7 @@ async function syncFromCloud(opts){
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
   finally{
     _syncFromCloudInFlight=false;
-    if(_pullSettled)fluxCloudPullSettled();
+    if(_pullOk)fluxCloudPullSettled();
   }
 }
 
@@ -14749,6 +14733,8 @@ async function handleSignedIn(user,session){
       window.__fluxWarnedCounselorEnsure=0;
     }catch(_){}
     console.log('Account switched — wiped previous user data');
+    // The base in this tab was the other account's: none now, so the first pull takes the cloud as it is.
+    fluxListSyncFromStorage();
     try{
       const dg=document.getElementById('dashGreeting');
       if(dg){delete dg.dataset.fluxGreetKey;delete dg.dataset.fluxGreetIntroDone;}
@@ -14763,7 +14749,10 @@ async function handleSignedIn(user,session){
   // A new session for this account: nothing goes up until its first pull is in.
   if(!currentUser||currentUser.id!==user.id){
     _fluxPulledOnce=false;
-    window.__fluxListSeen={};
+    // Edits count from here: anything done before signing in (as a guest)
+    // does not get merged into the account unless it was asked for
+    // (flux_migrate_guest below).
+    try{if(fluxListSync)fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
     window._fluxLastCloudFingerprint=undefined;
   }
   currentUser=user;
@@ -15663,6 +15652,7 @@ function handleCheckoutReturn(){
         reloadState(){
           tasks=load('tasks',[]);
           notes=load('flux_notes',[]);
+          fluxListSyncFromStorage();
           classes=load('flux_classes',[]);
           settings=load('flux_settings',settings);
         },

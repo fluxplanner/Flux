@@ -268,6 +268,8 @@ export async function bootSignedIn(page: Page, opts: {
   tasks: BootTask[];
   cloud?: CloudRow;
   holdFirstPull?: boolean;
+  /** This many reads of the row fail (a 500) before one succeeds. */
+  failPulls?: number;
   extraLocal?: Record<string, unknown>;
 }) {
   const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -286,6 +288,7 @@ export async function bootSignedIn(page: Page, opts: {
     pushes: 0,
     pushedBeforeFirstPull: false,
     firstPullServed: false,
+    failedPulls: 0,
   };
   let release: () => void = () => {};
   const gate = new Promise<void>((r) => { release = r; });
@@ -302,6 +305,10 @@ export async function bootSignedIn(page: Page, opts: {
         // The release gate reads the owner's row; that is not ours.
         if (!url.includes(BOOT_UID)) return json(406, { code: 'PGRST116', message: 'no rows' });
         state.pulls++;
+        if (state.failedPulls < (opts.failPulls || 0)) {
+          state.failedPulls++;
+          return json(500, { code: 'XX000', message: 'upstream unavailable' });
+        }
         const first = state.pulls === 1;
         const snapshot = JSON.parse(JSON.stringify(state.cloud));
         if (first) await gate;

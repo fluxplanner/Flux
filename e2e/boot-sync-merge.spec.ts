@@ -141,6 +141,55 @@ test.describe('Opening Flux signed in', () => {
   });
 });
 
+test.describe('Pulls that fail, and other tabs', () => {
+  test('a pull that fails keeps pushes held until one comes back', async ({ page }) => {
+    // It used to open the gate all the same, and the next push sent this
+    // device's unmerged copy over the cloud — on a new device, an empty one.
+    const boot = await bootSignedIn(page, { tasks: TASKS, failPulls: 1 });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect.poll(() => boot.state.failedPulls, { timeout: 10_000 }).toBe(1);
+    await page.evaluate(() => (window as any).toggleTask(7002));
+    await page.waitForTimeout(3500);   // more than a push interval
+    expect(boot.state.pushes, 'pushed an unmerged copy after a failed pull').toBe(0);
+    await page.evaluate(() => (window as any).FluxSync.pull());
+    await expect.poll(() => boot.cloudTask(7002)?.done, { message: 'the tick never went up once a pull came back', timeout: 10_000 }).toBe(true);
+  });
+
+  test('a tab open from earlier neither drops what another tab added nor undoes its rename', async ({ page, context }) => {
+    // The base lived only in shared storage: tab A's push moved tab B's base
+    // too, so B took A's new task for one it had deleted and its own old copy
+    // of the renamed task for a newer edit — and pushed both back.
+    const boot = await bootSignedIn(page, { tasks: TASKS });
+    await page.goto('/');                                    // tab B
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect(page.locator('#fluxRoleSkeletonOverlay')).toHaveCount(0, { timeout: 10_000 });
+    await page.waitForTimeout(1500);
+    const tabA = await context.newPage();
+    await tabA.goto('/');
+    await expect(tabA.locator('#app')).toHaveClass(/visible/);
+    await expect(tabA.locator('#fluxRoleSkeletonOverlay')).toHaveCount(0, { timeout: 10_000 });
+    await tabA.evaluate(async () => {
+      const w = window as any;
+      w.tasks.unshift({ id: 7150, name: 'Added in tab A', done: false, subtasks: [], createdAt: Date.now() });
+      w.tasks.find((t: any) => t.id === 7001).name = 'Renamed in tab A';
+      w.save('tasks', w.tasks);
+      await w.FluxSync.push();
+    });
+    await expect.poll(() => boot.cloudTask(7150)?.name, { timeout: 10_000 }).toBe('Added in tab A');
+    await tabA.close();
+    const b = await page.evaluate(async () => {
+      const w = window as any;
+      await w.FluxSync.pull();
+      await w.FluxSync.push();
+      return { added: w.tasks.some((t: any) => t.id === 7150), name: w.tasks.find((t: any) => t.id === 7001)?.name };
+    });
+    expect(b, 'tab B undid tab A').toEqual({ added: true, name: 'Renamed in tab A' });
+    expect(boot.cloudTask(7150)?.name, 'the cloud lost tab A\'s task').toBe('Added in tab A');
+    expect(boot.cloudTask(7001)?.name, 'the cloud lost tab A\'s rename').toBe('Renamed in tab A');
+  });
+});
+
 test.describe('A pull that is out while you work', () => {
   test('ticking a task while a pull is in flight is not undone by it', async ({ page }) => {
     // teacher-workflow has a signed-in user; the stub stands in for Supabase.
