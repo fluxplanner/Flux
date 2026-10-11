@@ -84,32 +84,67 @@ test.describe('The task list keeps your place', () => {
     expect(Math.abs((await top(9531)) - was.row)).toBeLessThanOrEqual(12);
   });
 
-  test('a scroll with no wheel, key or touch behind it (momentum, a scrollbar drag) ends the hold at once', async ({ page }) => {
+  /*
+   * After a rebuild the list holds the row you were on in place for up to
+   * 1.5 s, against rows above it growing. A wheel, key or touch ended that
+   * hold, but momentum after a flick and a dragged scrollbar scroll with none
+   * of those behind them: the next height change in the list pulled the page
+   * back to where the rebuild had left it. Scrolled here by script, which
+   * sends no input event either.
+   */
+  const rowTop = (page: Page, id: number) => page.evaluate((i) =>
+    Math.round(document.querySelector(`#taskList .task-item[data-task-id="${i}"]`)!.getBoundingClientRect().top), id);
+  /** Scroll the list's scroller (found the way the app finds it) by dy, in steps, one a frame. */
+  const scrollList = (page: Page, dy: number, steps: number, growAt = -1) => page.evaluate(async ([d, n, g]) => {
+    let el = document.getElementById('taskList')!.parentElement;
+    for (; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) break;
+    }
+    const sc = (el && el !== document.body && el !== document.documentElement) ? el : document.scrollingElement!;
+    for (let i = 0; i < n; i++) {
+      sc.scrollBy({ top: d / n, left: 0, behavior: 'instant' as ScrollBehavior });
+      if (i === g) {   // something in the list changes height mid-flick
+        const pad = document.createElement('div');
+        pad.style.height = '120px';
+        document.getElementById('taskList')!.appendChild(pad);
+      }
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    }
+  }, [dy, steps, growAt] as const);
+  const growList = (page: Page) => page.evaluate(() => {
+    const pad = document.createElement('div');
+    pad.style.height = '160px';
+    document.getElementById('taskList')!.appendChild(pad);
+  });
+
+  test('a scrollbar drag during the hold after a rebuild is not pulled back', async ({ page }) => {
     await seed(page, 60);
     await scrollToRow(page, 9520);
-    // The list's scroller, found the way the app finds it.
-    const scrollBy = (dy: number) => page.evaluate((d) => {
-      let n = document.getElementById('taskList')!.parentElement;
-      for (; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
-        const oy = getComputedStyle(n).overflowY;
-        if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) break;
-      }
-      const sc = (n && n !== document.body && n !== document.documentElement) ? n : document.scrollingElement!;
-      if (d) sc.scrollBy({ top: d, left: 0, behavior: 'instant' as ScrollBehavior });
-      return Math.round(sc.scrollTop);
-    }, dy);
-    await page.evaluate(() => (window as any).renderTasks());   // holds the row in place for a moment
+    await page.evaluate(() => (window as any).renderTasks());   // the hold starts
     await page.waitForTimeout(50);
-    const moved = await scrollBy(300);                            // momentum carrying on, say
-    await page.waitForTimeout(100);
-    // Then something in the list changes height while the hold would still be on.
-    await page.evaluate(() => {
-      const d = document.createElement('div');
-      d.style.height = '160px';
-      document.getElementById('taskList')!.appendChild(d);
-    });
+    await scrollList(page, 300, 1);                              // the thumb dragged 300px down in one go
+    const there = await rowTop(page, 9530);
+    await growList(page);                                        // while the hold would still be on
     await page.waitForTimeout(300);
-    expect(Math.abs((await scrollBy(0)) - moved), 'the page was pulled back against the scroll').toBeLessThanOrEqual(2);
+    // Within a few px: rows above can still settle by a badge's height, and
+    // the browser keeps what is on screen in place when they do. Pulled back
+    // was the whole 300.
+    expect(Math.abs((await rowTop(page, 9530)) - there), 'the page was pulled back against the scrollbar').toBeLessThanOrEqual(16);
+  });
+
+  test('momentum still running after a flick is not pulled back, even when the list changes mid-flick', async ({ page }) => {
+    await seed(page, 60);
+    await scrollToRow(page, 9520);
+    const start = await rowTop(page, 9530);
+    await page.evaluate(() => (window as any).renderTasks());   // the hold starts
+    await page.waitForTimeout(50);
+    await scrollList(page, 360, 12, 4);                          // a frame at a time, no input event at all
+    const there = await rowTop(page, 9530);
+    expect(start - there, 'the list was pulled back mid-flick').toBeGreaterThan(330);
+    await growList(page);
+    await page.waitForTimeout(300);
+    expect(Math.abs((await rowTop(page, 9530)) - there), 'the page was pulled back against the flick').toBeLessThanOrEqual(16);
   });
 
   test('a task added after a rebuild still comes in; the rows already there do not', async ({ page }) => {
