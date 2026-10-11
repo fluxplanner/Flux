@@ -108,6 +108,65 @@ test.describe('Flux Composer', () => {
     expect(fit).toEqual([{ inside: true, mark: '15ma' }, { inside: true, mark: '15mb' }, { inside: true, mark: '' }]);
   });
 
+  /*
+   * "Let users add the and beat, like 1 and 2": the grid was sixteen
+   * unlabelled squares, so nobody could tell which one was the "and". It is
+   * counted now (1 e & a), and can show only the beats and their ands.
+   */
+  test('the beat maker counts 1 e & a, and can show just 1 & 2 &', async ({ page }) => {
+    await page.goto('/composer.html#beats');
+    const count = page.locator('#btGrid .fc-bt-count');
+    await expect(count).toHaveText(['1', 'e', '&', 'a', '2', 'e', '&', 'a', '3', 'e', '&', 'a', '4', 'e', '&', 'a']);
+    await expect(page.locator('[data-r="snare"][data-s="2"]')).toHaveAttribute('aria-label', 'Snare, 1 and');
+
+    await page.locator('#btClear').click();
+    await page.locator('#btGridMode [data-v="8"]').click();
+    await expect(count).toHaveText(['1', '&', '2', '&', '3', '&', '4', '&']);
+    await expect(page.locator('[data-r="kick"] ')).toHaveCount(8);
+    // The "and" of 1 is the eighth note after it: step 3 of 16.
+    await page.locator('[data-r="hat"][data-s="2"]').click();
+    await page.locator('#btGridMode [data-v="16"]').click();
+    await expect(page.locator('[data-r="hat"][data-s="2"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-r="kick"]')).toHaveCount(16);
+
+    // A hit on an "e" is not lost in the simpler view: it says so.
+    await page.locator('[data-r="kick"][data-s="1"]').click();
+    await page.locator('#btGridMode [data-v="8"]').click();
+    await expect(page.locator('.fc-bt-hidden')).toBeVisible();
+  });
+
+  test('each melody and bass row plays the note picked for it, and the link keeps it', async ({ page }) => {
+    await page.goto('/composer.html#beats');
+    // C minor pentatonic, highest first; the bass on the key note.
+    const notes = page.locator('#btGrid [data-note]');
+    await expect(notes).toHaveCount(6);
+    const picked = () => notes.evaluateAll((els) => els.map((e) => (e as HTMLSelectElement).selectedOptions[0].textContent));
+    expect(await picked()).toEqual(['B♭4', 'G4', 'F4', 'E♭4', 'C4', 'C2']);
+    // The key's notes come first, and any note is there.
+    const groups = await page.locator('[data-note="k0"] optgroup').evaluateAll((g) => g.map((x) => x.getAttribute('label')));
+    expect(groups).toEqual(['In C minor', 'Other notes']);
+
+    await page.locator('[data-note="k0"]').selectOption('71');
+    await page.locator('[data-note="bass"]').selectOption('31');
+    expect(await picked()).toEqual(['B4', 'G4', 'F4', 'E♭4', 'C4', 'G1']);
+    await expect(page.locator('[data-note="bass"]')).toBeFocused();
+    await expect(page.locator('[data-r="k0"][data-s="0"]')).toHaveAttribute('aria-label', 'B4, beat 1');
+
+    const link = page.url();
+    expect(link).toMatch(/#beats\/\d+-\d+-\d+-[mM]-[0-9a-f]{52}-[0-9a-f]{12}$/);
+    await page.goto('/composer.html#keys');
+    await page.goto(link);
+    expect(await picked()).toEqual(['B4', 'G4', 'F4', 'E♭4', 'C4', 'G1']);
+
+    // A new key carries the picked notes with it; the rest follow the scale.
+    await page.locator('#btKey').selectOption('D');
+    expect(await picked()).toEqual(['C♯5', 'A4', 'G4', 'F4', 'D4', 'A1']);
+    // Major or Minor puts every row back on that scale.
+    await page.locator('#btMode [data-v="major"]').click();
+    expect(await picked()).toEqual(['B4', 'A4', 'F♯4', 'E4', 'D4', 'D2']);
+    await expect(page.locator('#btNotesReset')).toHaveCount(0);
+  });
+
   test('the beat maker fits a phone without sideways scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 760 });
     await page.goto('/composer.html#beats');
