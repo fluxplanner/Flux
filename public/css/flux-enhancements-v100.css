@@ -19,7 +19,11 @@ body.flux-os-focus .main-content{box-shadow:inset 0 0 0 1px rgba(var(--accent-rg
 .flux100-key-focus{outline:2px solid rgba(var(--accent-rgb),.45);outline-offset:2px;}
 .flux100-recent{box-shadow:0 0 0 1px rgba(245,166,35,.28);}
 
-html[data-flux-theme-time="night"] .main-content{filter:saturate(.95);}
+/* No night filter on .main-content. A 5% desaturation nobody could see put
+   every panel through a filter from 6pm to 6am: the browser drew the whole
+   main area off-screen and filtered it again on every frame anything in it
+   changed, which made the periodic table crawl in the evenings, when
+   students use it most (2026-10-11). */
 
 html.flux100-ambient body::after{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:var(--flux-z-base);

@@ -571,6 +571,19 @@ body[data-flux-mesh='off']::before {
   }
 }
 
+/* Study tools holds the background still (flux-visual.js sets the class while
+   the panel is open): the aurora and ambient wash behind everything, the
+   sidebar logo's shimmer and the quick-add glow stop where they are, and
+   carry on from there when you leave. Each one made the browser redraw and
+   recomposite the whole screen on every frame, behind a periodic table, a
+   graph or a calculator that need those frames. */
+html.flux-tools-still body::before,
+html.flux-tools-still body::after,
+html.flux-tools-still .gradient-animate,
+html.flux-tools-still .flux-fab-glow {
+  animation-play-state: paused !important;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   button:active:not(:disabled):not(.ffm-draggable) {
     transform: scale(0.95) !important;
