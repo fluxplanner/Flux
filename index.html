@@ -117,7 +117,7 @@
 <link rel="preload" href="public/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Flux CSS — 139 per-page stylesheets bundled into one minified file in exact cascade order (see scripts/web-bundle-manifest.json "css"; rebuild: npm run build:web). Google Fonts stays a separate <link> above. -->
 <!-- NB: Flux Pulse layout intentionally NOT loaded (pulse-layout.css + pulse-perf.css removed — caused lag). -->
-<link rel="stylesheet" href="public/bundles/flux.8cbc645c.css">
+<link rel="stylesheet" href="public/bundles/flux.526a0fa7.css">
 </head>
 <body>
 <noscript>
@@ -1324,6 +1324,9 @@
           <h2 class="dash-v2-work-title">Tasks</h2>
           <div class="dash-toolbar">
             <div class="dash-toolbar-views"></div>
+            <!-- Plan my week (flux-week-plan-ui.js): study blocks for the next
+                 seven days around classes and plans. Also on the calendar. -->
+            <button type="button" class="pw-entry" id="dashPlanWeekBtn" onclick="openPlanWeek()">Plan my week</button>
           </div>
         </div>
 
@@ -1417,6 +1420,7 @@
                 <button type="button" id="calCountdownBtn" onclick="fluxCalCountdownToggle()" class="cal-countdown-btn" aria-pressed="false" style="display:none">⏳ Count down</button>
                 <button type="button" id="calAddEventBtn" onclick="openAddEventModal()" class="cal-add-event-btn" style="display:none">+ Add</button>
                 <button type="button" id="calAddEcBtn" onclick="openAddEventModal('ec')" class="cal-add-ec-btn" style="display:none" title="Add an activity from College Prep">+ Activity</button>
+                <button type="button" id="calPlanWeekBtn" onclick="openPlanWeek()" class="pw-entry">Plan my week</button>
               </div>
             </div>
             <div class="cal-cd-form" id="calCountdownForm" hidden>
@@ -2976,8 +2980,8 @@
 <!-- Load scripts: motion catalog (Anime.js v4 + 21st-style CSS pairs), then main animations -->
 <!-- Bundled: 197 per-file scripts collapsed into 3 (see scripts/build-web-bundles.mjs + web-bundle-manifest.json; run npm run build:web to rebuild) -->
 <script type="module" src="public/bundles/flux-vendor.a79385df.js"></script>
-<script defer src="public/bundles/flux-core.bef1a02a.js"></script>
-<script defer src="public/bundles/flux-features.702c171e.js"></script>
+<script defer src="public/bundles/flux-core.7ac340c6.js"></script>
+<script defer src="public/bundles/flux-features.4e543208.js"></script>
 <!-- flux-pulse-layout.js + flux-pulse-perf.js REMOVED (Pulse layout retired) -->
 
 <!-- Feedback modal (vanilla; Radix/shadcn-style dialog pattern) -->

@@ -117,6 +117,8 @@
     "public/js/flux-task-ux.js",
     "public/js/flux-mobile-swipe.js",
     "public/js/flux-task-plan.js",
+    "public/js/flux-week-plan.js",
+    "public/js/flux-week-plan-ui.js",
     "public/js/flux-task-context.js",
     "public/js/flux-gcal-push.js",
     "public/js/flux-gcal-2way.js",

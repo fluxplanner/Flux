@@ -1182,6 +1182,22 @@ function confirmPlanItOut(id){
 function planItOutFromEdit(){const id=editingId;saveEdit();openPlanItOut(id);}
 window.openPlanItOut=openPlanItOut;window.closePlanItOut=closePlanItOut;window.planItOutFromEdit=planItOutFromEdit;
 
+/* Plan my week (flux-week-plan-ui.js) keeps its study blocks as tasks the same
+   way, marked weekBlock. A block says when it is and which of the task's
+   blocks it is; the task it is for says how many this week are done. Both
+   open the week's plan. */
+function fluxWeekPlanChip(t){
+  const open=`onclick="event.stopPropagation();openPlanWeek()"`;
+  if(t.planOf!=null&&t.weekBlock){
+    const part=t.planParts>1?` ${t.planPart} of ${t.planParts}`:'';
+    return`<button type="button" class="task-chip task-chip-plan" title="A study block from Plan my week" ${open}>${t.time?esc(fmtTime(t.time))+' · ':''}Study${part}</button>`;
+  }
+  if(t.done||t.planOf!=null||t.plan)return'';
+  const from=fluxLocalYMD(new Date(Date.now()-6*864e5));
+  const ps=tasks.filter(x=>x.weekBlock&&x.planOf!=null&&String(x.planOf)===String(t.id)&&(x.date||'')>=from);
+  return ps.length?`<button type="button" class="task-chip task-chip-plan" title="Open Plan my week" ${open}>This week · ${ps.filter(x=>x.done).length}/${ps.length} done</button>`:'';
+}
+
 // ══ ENERGY-BASED SMART SORT ══
 function readFluxEnergyLevel(){
   try{
@@ -4493,8 +4509,9 @@ function toggleTask(id){
     spawnConfetti();
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
-    // V4 Effort Accuracy: ask for actual time when an estimate exists.
-    if((t.estTime||0)>0&&t.actualMins==null&&typeof showEffortPrompt==='function'){
+    // V4 Effort Accuracy: ask for actual time when an estimate exists. A Plan my
+    // week block's minutes are a time slot, not a guess, so it isn't asked.
+    if((t.estTime||0)>0&&t.actualMins==null&&!t.weekBlock&&typeof showEffortPrompt==='function'){
       setTimeout(()=>{try{showEffortPrompt(t);}catch(_){}}, 1100);
     }
     if(t.srsEnabled)setTimeout(()=>{
@@ -4502,10 +4519,11 @@ function toggleTask(id){
       else generateSRSReviews(t);
     },800);
     showUndoSnackbar('Task completed','undoLastChange');
-    // A planned task finished early needs none of the sessions still ahead of it.
-    if(t.plan&&tasks.some(x=>x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done))tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
+    // A planned task finished early needs none of the sessions (or Plan my week
+    // blocks) still ahead of it.
+    if(tasks.some(x=>x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done))tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
     // The last session of a plan: say so, so the task itself gets ticked when it is handed in.
-    if(t.planOf!=null){
+    if(t.planOf!=null&&!t.weekBlock){
       const parent=tasks.find(x=>String(x.id)===String(t.planOf));
       const left=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.planOf)&&!x.done).length;
       if(parent&&!parent.done&&!left)setTimeout(()=>{try{showToast('That was the last session for “'+parent.name+'”. Tick it off once it’s handed in.','success');}catch(_){}},900);
@@ -5182,7 +5200,7 @@ ${priChip}
 ${ds?`<span class="task-chip task-chip-due ${isOver?'overdue':''}${isToday?' due-today':''}" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Click to change date" style="cursor:pointer">${ds}${isNP?' '+restEmoji:''}</span>`:`<span class="task-chip task-chip-nodate" onclick="event.stopPropagation();openInlineDatePicker(${t.id},this)" title="Add due date" style="cursor:pointer;opacity:.42">+ date</span>`}
 ${t.estTime?`<span class="task-chip task-chip-time">${t.estTime}m</span>`:''}${estHist}
 ${waitChip}${recChip}${snz}
-${t.planOf!=null&&t.planParts?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
+${t.planOf!=null&&t.planParts&&!t.weekBlock?`<span class="task-chip task-chip-plan" title="Part of a plan: open it to change the days" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.planOf)})" style="cursor:pointer">Step ${t.planPart} of ${t.planParts}</span>`:''}${fluxWeekPlanChip(t)}${t.plan&&!t.done?(()=>{const ps=tasks.filter(x=>x.planOf!=null&&String(x.planOf)===String(t.id));return ps.length?`<span class="task-chip task-chip-plan" title="Open the plan" onclick="event.stopPropagation();openPlanItOut(${fluxIdArg(t.id)})" style="cursor:pointer">Planned · ${ps.filter(x=>x.done).length}/${ps.length}</span>`:'';})():''}
 ${t.done&&taskFilter==='done'&&Number.isFinite(fluxDoneExpiresMs(t))?`<span class="task-chip task-chip-expiry" title="Finished tasks are deleted 2 weeks after you complete them">Deletes ${fmtFluxDate(new Date(fluxDoneExpiresMs(t)),'short')}</span>`:''}
 ${(t.fluxTags||[]).length?(t.fluxTags||[]).map(tg=>`<span class="task-chip" style="background:rgba(var(--purple-rgb),.1);border-color:rgba(var(--purple-rgb),.22);font-size:.6rem">${esc(tg)}</span>`).join(''):''}
 <span class="task-chip" style="background:rgba(255,255,255,.02);color:var(--muted);border:1px solid rgba(255,255,255,.04)">${ti.l}</span>
