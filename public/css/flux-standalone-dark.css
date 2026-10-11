@@ -1,0 +1,10 @@
+/* Flux's own pages beside the planner (grapher, calculator, periodic table,
+ * composer, flashcards, pixel, hub, partners) are drawn dark. Telling the
+ * browser so makes the parts it draws itself dark as well. Without it, an
+ * open dropdown on Windows put the select's light text on the system's white
+ * list, so the options could not be read. Not loaded by the planner, which
+ * sets its own color-scheme per theme (flux-native-controls.css). */
+@media screen {
+  :root { color-scheme: dark; }
+  select option, select optgroup { background-color: #141a26; color: #eaf1ff; }
+}
