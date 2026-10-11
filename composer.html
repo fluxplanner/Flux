@@ -20,21 +20,30 @@
   links here.
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
-<link rel="stylesheet" href="public/css/flux-composer.css?v=c030e7ae">
+<link rel="stylesheet" href="public/css/flux-standalone-dark.css?v=673aab02">
+<link rel="stylesheet" href="public/css/flux-composer.css?v=4d84e390">
 <style>
   :root { --bg: #0a0816; --text: #eaf1ff; --muted2: #9fb0cc; --accent: #a78bfa; --border: rgba(255,255,255,.07); --border2: rgba(255,255,255,.14); --card: rgba(18,25,42,.78); --card2: rgba(28,36,58,.8); }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background-color: #0a0816; }
   body {
     min-height: 100dvh;
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(167,139,250,.12), transparent 55%),
-      radial-gradient(90% 70% at 100% 5%, rgba(0,194,255,.07), transparent 55%),
-      linear-gradient(170deg, #0d0a1d 0%, #0a0816 55%, #06050f 100%);
-    background-attachment: fixed;
+    /* Its own stacking context, so the fixed glow below paints over the
+       body colour and under everything else. */
+    isolation: isolate;
     color: var(--text);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 16px; line-height: 1.5;
+  }
+  /* The glow is its own fixed layer. As a fixed body background it was
+     repainted on every frame of scrolling, which made the page lag. */
+  @media screen {
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(120% 80% at 50% -10%, rgba(167,139,250,.12), transparent 55%),
+      radial-gradient(90% 70% at 100% 5%, rgba(0,194,255,.07), transparent 55%),
+      linear-gradient(170deg, #0d0a1d 0%, #0a0816 55%, #06050f 100%);
+    }
   }
   header.top {
     display: flex; align-items: center; gap: 10px;
@@ -57,7 +66,7 @@
   }
   @media (max-width: 560px) { .title small { display: none; } }
 </style>
-<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
+<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
 </head>
 <body>
@@ -76,7 +85,7 @@
   <!-- Plain script tags, not the app bundles: this page has to stand alone. -->
   <script src="public/js/flux-hub.js?v=423c00d8"></script>
   <script src="public/js/flux-music-theory.js?v=f272dfc4"></script>
-  <script src="public/js/flux-composer.js?v=d3bf986b"></script>
+  <script src="public/js/flux-composer.js?v=8ff1e6fd"></script>
   <script>
     (function () {
       var host = document.getElementById('fcHost');
