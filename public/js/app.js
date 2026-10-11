@@ -5142,6 +5142,15 @@ function fluxTaskControl(row,kind){
   }
   return row.querySelector('.check');
 }
+/* Did the last input come from the keyboard? A click focuses the .check it
+   lands on, and carrying that focus on to the next task after the rebuild
+   meant a later Space or Enter ticked a task nobody chose. Focus follows the
+   list only for the keyboard. */
+let _fluxKeyboardInput=true;
+try{
+  window.addEventListener('keydown',()=>{_fluxKeyboardInput=true;},true);
+  window.addEventListener('pointerdown',()=>{_fluxKeyboardInput=false;},true);
+}catch(_){}
 function fluxTaskListKeep(el){
   try{
     if(!el||!el.isConnected||el.offsetParent===null)return null;
@@ -5155,7 +5164,7 @@ function fluxTaskListKeep(el){
       if(r)keep.anchor={id:r.dataset.taskId,top:r.getBoundingClientRect().top};
     }
     const ae=document.activeElement;
-    if(ae&&ae!==document.body&&el.contains(ae)){
+    if(_fluxKeyboardInput&&ae&&ae!==document.body&&el.contains(ae)){
       const row=ae.closest('[data-task-id]');
       if(row)keep.focus={id:row.dataset.taskId,kind:fluxTaskControlKind(ae,row),done:!!row.closest('#completedTasksWrap')};
     }

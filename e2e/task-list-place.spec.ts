@@ -130,6 +130,20 @@ test.describe('The task list keeps your place', () => {
     await expect.poll(() => page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 9507).done)).toBe(true);
   });
 
+  test('ticking with the mouse hands focus to nothing, so a later Space ticks no other task', async ({ page }) => {
+    await seed(page, 20);
+    await page.locator('#taskList .task-item[data-task-id="9506"]').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+    const box = (await page.locator('#taskList .task-item[data-task-id="9506"] .check').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(900);   // the rebuild takes 9506 out of Active
+    expect(await page.evaluate(() => (document.activeElement as HTMLElement)?.closest('#taskList [data-task-id]')?.getAttribute('data-task-id') ?? null),
+      'focus moved on to the next task after a click').toBeNull();
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 9507).done), 'Space ticked a task nobody chose').toBe(false);
+  });
+
   for (const open of [true, false]) {
     test(`with Completed ${open ? 'open' : 'closed'}, a keyboard tick moves on to the next task, not after the ticked one`, async ({ page }) => {
       await page.evaluate((show) => {
