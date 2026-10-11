@@ -5215,25 +5215,43 @@ function fluxTaskListRestore(el,keep){
    redraw, any of which can change heights above the row you were on. A
    ResizeObserver on the list and what holds it puts the row back before the
    frame is painted. Never against you: a scroll, key or touch of yours ends
-   it, and so does the next rebuild, which keeps its own place. */
+   it, and so does the next rebuild, which keeps its own place.
+
+   "A scroll of yours" includes the ones with no wheel, touch or key behind
+   them — momentum still running after a flick, a scrollbar being dragged.
+   Any scroll that leaves the list somewhere other than where this put it
+   ends the hold; it used to pull the page back for a second and a half. */
 let _fluxRowSteadyStop=null;
 function fluxKeepRowSteady(el,scroller,realign){
   if(_fluxRowSteadyStop)_fluxRowSteadyStop();
   const evs=['wheel','touchstart','keydown','pointerdown'];
+  const win=!scroller||scroller===document.scrollingElement||scroller===document.documentElement||scroller===document.body;
+  const pos=()=>win?(window.scrollY||document.documentElement.scrollTop||0):scroller.scrollTop;
+  // Where our own scrolling (the realign before this, and any below) left it.
+  let ours=pos();
   let ro=null,timer=0;
+  const onScroll=e=>{
+    const t=e.target;
+    if(win?!(t===document||t===window||t===document.documentElement||t===document.body):t!==scroller)return;
+    if(Math.abs(pos()-ours)<=1)return;   // the scroll event of our own scrollBy
+    stop();
+  };
+  const run=()=>{try{realign();}catch(_){}ours=pos();};
   const stop=()=>{
     if(ro){ro.disconnect();ro=null;}
     clearTimeout(timer);
     evs.forEach(ev=>window.removeEventListener(ev,stop,true));
+    window.removeEventListener('scroll',onScroll,true);
     if(_fluxRowSteadyStop===stop)_fluxRowSteadyStop=null;
   };
   _fluxRowSteadyStop=stop;
   evs.forEach(ev=>window.addEventListener(ev,stop,{capture:true,passive:true}));
+  window.addEventListener('scroll',onScroll,{capture:true,passive:true});
   if(typeof ResizeObserver==='function'){
-    ro=new ResizeObserver(()=>{try{realign();}catch(_){}});
+    ro=new ResizeObserver(run);
     for(let n=el;n&&n!==scroller&&n!==document.body&&n!==document.documentElement;n=n.parentElement)ro.observe(n);
   }else{
-    requestAnimationFrame(()=>requestAnimationFrame(realign));
+    requestAnimationFrame(()=>requestAnimationFrame(run));
   }
   timer=setTimeout(stop,1500);
 }

@@ -84,6 +84,34 @@ test.describe('The task list keeps your place', () => {
     expect(Math.abs((await top(9531)) - was.row)).toBeLessThanOrEqual(12);
   });
 
+  test('a scroll with no wheel, key or touch behind it (momentum, a scrollbar drag) ends the hold at once', async ({ page }) => {
+    await seed(page, 60);
+    await scrollToRow(page, 9520);
+    // The list's scroller, found the way the app finds it.
+    const scrollBy = (dy: number) => page.evaluate((d) => {
+      let n = document.getElementById('taskList')!.parentElement;
+      for (; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+        const oy = getComputedStyle(n).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) break;
+      }
+      const sc = (n && n !== document.body && n !== document.documentElement) ? n : document.scrollingElement!;
+      if (d) sc.scrollBy({ top: d, left: 0, behavior: 'instant' as ScrollBehavior });
+      return Math.round(sc.scrollTop);
+    }, dy);
+    await page.evaluate(() => (window as any).renderTasks());   // holds the row in place for a moment
+    await page.waitForTimeout(50);
+    const moved = await scrollBy(300);                            // momentum carrying on, say
+    await page.waitForTimeout(100);
+    // Then something in the list changes height while the hold would still be on.
+    await page.evaluate(() => {
+      const d = document.createElement('div');
+      d.style.height = '160px';
+      document.getElementById('taskList')!.appendChild(d);
+    });
+    await page.waitForTimeout(300);
+    expect(Math.abs((await scrollBy(0)) - moved), 'the page was pulled back against the scroll').toBeLessThanOrEqual(2);
+  });
+
   test('a task added after a rebuild still comes in; the rows already there do not', async ({ page }) => {
     await seed(page, 12);
     await page.evaluate(() => (window as any).renderTasks());
