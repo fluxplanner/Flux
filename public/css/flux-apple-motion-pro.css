@@ -47,7 +47,8 @@ html.flux-aurora-bloom body::before {
     radial-gradient(40% 35% at 22% 28%, rgba(var(--accent-rgb, 95, 142, 255), 0.14), transparent 65%),
     radial-gradient(38% 32% at 78% 72%, rgba(var(--purple-rgb, 168, 116, 255), 0.10), transparent 65%),
     radial-gradient(30% 25% at 50% 100%, rgba(34, 211, 238, 0.08), transparent 70%);
-  filter: blur(20px) saturate(1.1);
+  /* No blur filter: these gradients are already soft, and blurring a
+     full-screen moving layer cost the compositor every frame on every page. */
   animation: fluxAuroraDrift 36s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
   will-change: transform, opacity;
   opacity: 0.85;
