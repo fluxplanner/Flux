@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoScenario } from './helpers';
 
 /**
  * The Flux Periodic Table on its own page (periodic.html). The chemistry is
@@ -326,5 +327,59 @@ test.describe('Periodic table page: taps that must not move it, and paper', () =
     // @page margin 0 is what leaves the browser no margin to print its date and time in.
     const zeroMargin = await page.evaluate(() => [...document.styleSheets].some((sh) => { try { return [...sh.cssRules].some((r) => r instanceof CSSPageRule && r.style.margin === '0px'); } catch (e) { return false; } }));
     expect(zeroMargin).toBe(true);
+  });
+});
+
+/*
+ * "The periodic table is incredibly laggy." Three things were redrawing the
+ * screen behind it all the time, and each is pinned here:
+ *   · the standalone pages painted their glow as a fixed body background,
+ *     which Chrome repaints on every frame of scrolling;
+ *   · the planner's moving backdrop was a full-window canvas redrawn 24
+ *     times a second, reading a style off the page on every frame;
+ *   · Study tools ran twinkling stars and drifting lines behind the table.
+ */
+test.describe('Periodic table: nothing repaints the screen behind it', () => {
+  test('no page paints a fixed body background, signed in or not', async ({ page }) => {
+    const pages = ['periodic', 'composer', 'hub', 'flashcards', 'pixel', 'partners', 'grapher', 'calculator'];
+    const fixed = async () => {
+      const out: string[] = [];
+      for (const p of pages) {
+        await page.goto('/' + p + '.html');
+        if (await page.evaluate(() => getComputedStyle(document.body).backgroundAttachment.includes('fixed'))) out.push(p);
+      }
+      return out;
+    };
+    expect(await fixed(), 'signed out').toEqual([]);
+    await page.evaluate(() => {
+      localStorage.setItem('flux_theme', '"ember"');
+      localStorage.setItem('sb-test-auth-token', '{"x":1}');
+    });
+    expect(await fixed(), 'signed in, wearing the planner theme').toEqual([]);
+    // The glow is still there, on its own layer.
+    await page.goto('/periodic.html');
+    const glow = await page.evaluate(() => getComputedStyle(document.body, '::after').backgroundImage);
+    expect(glow).toContain('radial-gradient');
+  });
+
+  test('in the planner, the backdrop is small and Study tools runs no endless decorations', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate(() => (window as unknown as { nav: (t: string) => void }).nav('toolbox'));
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
+    await expect(page.locator('.fsh-ptable-host .fpt-el')).toHaveCount(118);
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(() => {
+      const c = document.getElementById('fluxMeshCanvas') as HTMLCanvasElement | null;
+      const panel = document.getElementById('toolbox')!;
+      const endless = document.getAnimations()
+        .filter((a) => (a.effect as KeyframeEffect | null)?.target instanceof Element
+          && panel.contains((a.effect as KeyframeEffect).target as Element)
+          && a.effect!.getTiming().iterations === Infinity)
+        .map((a) => (a as CSSAnimation).animationName || 'animation');
+      return { canvas: c ? c.width * c.height : 0, window: innerWidth * innerHeight, endless };
+    });
+    if (r.canvas) expect(r.canvas, 'the backdrop canvas is drawn at full size').toBeLessThanOrEqual(r.window / 8);
+    expect(r.endless, 'endless animations behind the table').toEqual([]);
   });
 });

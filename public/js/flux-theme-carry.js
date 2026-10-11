@@ -62,9 +62,12 @@
   if (s) {
     var names = ['--bg', '--bg2', '--card', '--card2', '--border', '--border2', '--text', '--muted2'];
     for (var i = 0; i < names.length; i++) root.style.setProperty(names[i], s[i]);
+    // The glow sits on its own fixed layer: a fixed body background is
+    // repainted on every frame of scrolling.
     css = '@media screen {'
       + 'html, html body { background-color: ' + s[0] + '; }'
-      + 'html body { background: radial-gradient(120% 80% at 50% -10%, ' + glow + ', transparent 55%), ' + s[0] + '; background-attachment: fixed; color: ' + s[6] + '; }'
+      + 'html body { background: ' + s[0] + '; color: ' + s[6] + '; isolation: isolate; }'
+      + 'html body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(120% 80% at 50% -10%, ' + glow + ', transparent 55%); }'
       + 'html header.top { background: ' + s[1] + '; }'
       + '}';
     var meta = document.querySelector('meta[name="theme-color"]');
