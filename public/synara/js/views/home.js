@@ -12,7 +12,7 @@
    ============================================================ */
 
 import {
-  html, raw, esc, dayKey, addDays, timeOf, minutesOf,
+  html, raw, esc, dayKey, addDays,
   prettyTime, prettyDuration, plural, doseLabel,
 } from '../util.js';
 import * as store from '../store.js';
@@ -60,25 +60,38 @@ function todaysDoses(state) {
  *   2. the most recent dose past its window and still unlogged
  *   3. the next one coming up
  * A dose due now beats a stale one from this morning: it is the one
- * that can still be taken on time.
+ * that can still be taken on time. Just after midnight, last night's
+ * late dose is still inside its window, so it counts as due now.
  */
 function nextDose(state) {
-  const pending = todaysDoses(state).filter((d) => d.status === 'pending');
-  if (!pending.length) return null;
+  const today = dayKey();
+  const yesterday = addDays(today, -1);
+  const lastNight = store.dosesOn(yesterday, state)
+    .filter(({ med, time }) => store.effectiveStatus(yesterday, med.id, time, state) === 'pending')
+    .map(({ med, time }) => ({ med, time, day: yesterday }));
+  const pending = todaysDoses(state)
+    .filter((d) => d.status === 'pending')
+    .map((d) => ({ ...d, day: today }));
+  if (!pending.length && !lastNight.length) return null;
 
-  const now = minutesOf(timeOf());
-  const lateBy = (d) => now - minutesOf(d.time);
+  const lateBy = (d) => store.minutesLate(d.day, d.time);
+  const others = pending.length + lastNight.length - 1;
 
-  const dueNow = pending.find((d) => lateBy(d) >= 0 && lateBy(d) <= store.GRACE_MINUTES);
-  if (dueNow) return { ...dueNow, mode: 'due', others: pending.length - 1 };
+  const dueNow = [...lastNight, ...pending].find((d) => lateBy(d) >= 0 && lateBy(d) <= store.GRACE_MINUTES);
+  if (dueNow) return { ...dueNow, mode: 'due', others };
 
   const overdue = pending.filter((d) => lateBy(d) > store.GRACE_MINUTES);
   if (overdue.length) {
-    return { ...overdue[overdue.length - 1], mode: 'overdue', others: pending.length - 1 };
+    return { ...overdue[overdue.length - 1], mode: 'overdue', others };
   }
 
-  return { ...pending[0], mode: 'upcoming', others: pending.length - 1 };
+  return pending.length ? { ...pending[0], mode: 'upcoming', others } : null;
 }
+
+/* "Mark taken" on a dose hours away is one stray tap from logging
+   tonight's dose at 1am — and counting it on time. So the big button
+   only appears from an hour before. */
+const EARLY_MINUTES = 60;
 
 /** First dose tomorrow, for the all-clear card. */
 function firstTomorrow(state) {
@@ -161,7 +174,7 @@ function nextDoseCard(state) {
     `;
   }
 
-  const delta = minutesOf(next.time) - minutesOf(timeOf());
+  const delta = -store.minutesLate(next.day, next.time);
   const when =
     next.mode === 'overdue' ? `${prettyDuration(-delta)} overdue` :
     next.mode === 'due' ? 'Due now' :
@@ -171,25 +184,17 @@ function nextDoseCard(state) {
     next.mode === 'overdue' ? 'Not logged yet' :
     next.mode === 'due' ? 'Take it now' : 'Next dose';
 
-  const buttons = next.mode === 'overdue'
-    ? `<button class="btn btn-on-brand" data-action="dose-quick"
-               data-med="${next.med.id}" data-time="${next.time}" data-status="late">
-         ${icon('check', 18)} Took it late
-       </button>
-       <button class="btn btn-on-brand-ghost" data-action="dose-quick"
-               data-med="${next.med.id}" data-time="${next.time}" data-status="missed">
-         Missed it
-       </button>`
-    : `<button class="btn btn-on-brand" data-action="dose-quick"
-               data-med="${next.med.id}" data-time="${next.time}" data-status="taken">
-         ${icon('check', 18)} Mark taken
-       </button>
-       ${next.mode === 'due'
-         ? `<button class="btn btn-on-brand-ghost" data-action="dose-quick"
-                    data-med="${next.med.id}" data-time="${next.time}" data-status="missed">
-              Skip
-            </button>`
-         : ''}`;
+  const dose = (status, label, cls) => `
+    <button class="btn ${cls}" data-action="dose-quick" data-day="${next.day}"
+            data-med="${next.med.id}" data-time="${next.time}" data-status="${status}">${label}</button>`;
+  const buttons =
+    next.mode === 'overdue'
+      ? dose('late', `${icon('check', 18)} Took it late`, 'btn-on-brand') + dose('missed', 'Missed it', 'btn-on-brand-ghost')
+    : next.mode === 'due'
+      ? dose('taken', `${icon('check', 18)} Mark taken`, 'btn-on-brand') + dose('missed', 'Missed it', 'btn-on-brand-ghost')
+    : delta <= EARLY_MINUTES
+      ? dose('taken', `${icon('check', 18)} Mark taken`, 'btn-on-brand')
+      : '';
 
   return html`
     <section class="card next-dose" data-state="${next.mode}" aria-label="Next dose">
@@ -198,7 +203,7 @@ function nextDoseCard(state) {
       <span class="next-dose-what">
         ${next.med.name}${next.med.dose ? ` ${next.med.dose}` : ''} · ${prettyTime(next.time)}
       </span>
-      <div class="next-dose-actions">${raw(buttons)}</div>
+      ${raw(buttons ? `<div class="next-dose-actions">${buttons}</div>` : '')}
       ${raw(next.others > 0
         // "Not logged" for doses that aren't due yet reads like a failure,
         // so upcoming ones are just "later today".
@@ -312,7 +317,9 @@ function checkinPrompt() {
   `;
 }
 
-/* ---------- Insight ---------- */
+/* ---------- Insight ----------
+   The one card most likely to be taken as a verdict, so it says what it
+   is right under it, as the Patterns tab does under the full list. */
 
 function insightCard(ins) {
   return html`
@@ -329,6 +336,7 @@ function insightCard(ins) {
           <span class="insight-e">${ins.evidence}</span>
         </span>
       </div>
+      <p class="hint">A pattern in your log, not proof of a cause. Talk it over with your neurologist.</p>
     </section>
   `;
 }
@@ -357,10 +365,10 @@ function quickActions() {
    ============================================================ */
 
 export const actions = {
-  /** The buttons on the next-dose card. */
+  /** The buttons on the next-dose card. Last night's dose logs on last night. */
   async 'dose-quick'(node) {
-    const { med, time, status } = node.dataset;
-    await store.setDoseStatus(dayKey(), med, time, status);
+    const { med, time, status, day } = node.dataset;
+    await store.setDoseStatus(day || dayKey(), med, time, status);
     toast(
       status === 'taken' ? 'Marked taken' :
       status === 'late'  ? 'Marked taken late' : 'Marked missed',

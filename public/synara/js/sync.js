@@ -216,11 +216,58 @@ function errorCode(e) {
   return (e && (e.code || e.message)) || 'failed';
 }
 
+/* A shared computer: Synara's storage belongs to the browser, Flux's
+   sign-in to whoever signed in last. Sync remembers whose account it was
+   turned on in (meta.user), and does nothing in anyone else's: one
+   student's record must never land in another's account, or replace
+   their synced copy. */
+function sameAccount(meta, who) {
+  if (meta.user && who && who.id !== meta.user) {
+    throw Object.assign(new Error('other-account'), { code: 'other-account' });
+  }
+}
+
 /* ============================================================
    Sync
    ============================================================ */
 
 const localRecord = () => shareable(store.exportJSON());
+
+/* Two copies with the same content can still differ as text (key order
+   after an edit, a field one side hasn't been migrated to yet). Run both
+   through the same migrate() before comparing them. */
+const canonical = (plain) => shareable(JSON.stringify(store.migrate(JSON.parse(plain))));
+
+/* A migration is not an edit. When this load upgraded the stored record
+   (a new field, today's first-aid wording) and the record before the
+   upgrade was exactly what was last synced, the upgraded record counts
+   as synced too. Otherwise every device would see "changed here" after
+   an update, and the second one to sync would be asked which copy to
+   keep — risking a dose or seizure logged on the other device. */
+export async function adoptMigration() {
+  const before = store.premigrated();
+  if (!before) return false;
+  const meta = readMeta();
+  if (!meta.key || !meta.hash) return false;
+  try {
+    if (await hash(shareable(before)) !== meta.hash) return false;
+    writeMeta({ ...readMeta(), hash: await hash(localRecord()) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* Both sides look changed. If the synced copy, once migrated, says
+   exactly what this device's record says, there is nothing to choose:
+   remember both as synced. Only a real difference is a conflict. */
+async function sameContent(remote, raw) {
+  try {
+    return canonical(await decrypt(remote, raw)) === canonical(localRecord());
+  } catch {
+    return false;    // a copy this key can't open is a conflict to show
+  }
+}
 
 async function push(meta, raw) {
   const plain = localRecord();
@@ -234,7 +281,15 @@ async function pull(meta, raw, remote) {
   // Remember the server version first, so the re-render this import
   // triggers sees nothing new to upload.
   writeMeta({ ...meta, remoteAt: remote.updated_at });
-  await store.importJSON(withDeviceSettings(plain, store.get()));
+  try {
+    await store.importJSON(withDeviceSettings(plain, store.get()));
+  } catch (err) {
+    // Not saved here (storage full): the other device's changes still
+    // have to come down next time. Marked as seen, they never would, and
+    // this device's next edit would upload over them.
+    writeMeta(meta);
+    throw err;
+  }
   writeMeta({ ...readMeta(), hash: await hash(localRecord()), at: new Date().toISOString() });
 }
 
@@ -249,8 +304,14 @@ export function syncNow() {
     setStatus({ phase: 'syncing', error: '' });
     try {
       const raw = decodeKey(meta.key);
+      const who = await account();
+      sameAccount(meta, who);
       const remote = await v.get();
-      const what = decide(await hash(localRecord()), remote, meta);
+      let what = decide(await hash(localRecord()), remote, meta);
+      if (what === 'conflict' && await sameContent(remote, raw)) {
+        writeMeta({ ...meta, hash: await hash(localRecord()), remoteAt: remote.updated_at, at: new Date().toISOString() });
+        what = 'none';
+      }
       if (what === 'push') await push(meta, raw);
       else if (what === 'pull') await pull(meta, raw, remote);
       else if (what === 'gone') {
@@ -261,6 +322,9 @@ export function syncNow() {
         setStatus({ phase: 'conflict' });
         return what;
       }
+      // Turned on before sync remembered the account: this round just
+      // reached the copy this key opens, so the account is the right one.
+      if (!meta.user && who) writeMeta({ ...readMeta(), user: who.id });
       setStatus({ phase: 'idle', error: '' });
       return what;
     } catch (e) {
@@ -277,8 +341,15 @@ export async function resolve(choice) {
   const raw = decodeKey(meta.key);
   setStatus({ phase: 'syncing', error: '' });
   try {
-    if (choice === 'cloud') await pull(meta, raw, await need(vault()).get());
-    else await push(meta, raw);
+    sameAccount(meta, await account());
+    const remote = await need(vault()).get();
+    if (choice === 'cloud') await pull(meta, raw, remote);
+    else {
+      // Only over a copy this key opens (it throws 'wrong-key' otherwise):
+      // never over one made with a newer key, or in someone else's account.
+      if (remote) await decrypt(remote, raw);
+      await push(meta, raw);
+    }
     setStatus({ phase: 'idle' });
   } catch (e) {
     setStatus({ phase: 'error', error: errorCode(e) });
@@ -289,10 +360,11 @@ export async function resolve(choice) {
 /** First device: make a key and upload this device's record. */
 export async function startNew() {
   const v = need(await vaultReady());
-  if (!(await account())) throw Object.assign(new Error('signed-out'), { code: 'signed-out' });
+  const who = await account();
+  if (!who) throw Object.assign(new Error('signed-out'), { code: 'signed-out' });
   if (await v.get()) throw Object.assign(new Error('has-copy'), { code: 'has-copy' });
   const raw = crypto.getRandomValues(new Uint8Array(16));
-  await push({ key: encodeKey(raw) }, raw);
+  await push({ key: encodeKey(raw), user: who.id }, raw);
   setStatus({ phase: 'idle', error: '' });
 }
 
@@ -316,7 +388,8 @@ export async function inspect(keyInput) {
 /** Another device, confirmed: replace this device's record with the synced one. */
 export async function join(key) {
   const raw = decodeKey(key);
-  await pull({ key }, raw, await need(vault()).get());
+  const who = await account();
+  await pull({ key, ...(who ? { user: who.id } : {}) }, raw, await need(vault()).get());
   setStatus({ phase: 'idle', error: '' });
 }
 
@@ -334,6 +407,9 @@ export async function stop({ deleteCopy = false } = {}) {
    ============================================================ */
 
 export async function start() {
+  // Before anything can compare against the saved hash — and even where
+  // sync can't run (standalone Synara shares this device's storage).
+  await adoptMigration();
   if (!available() || started) return;
   started = true;
 

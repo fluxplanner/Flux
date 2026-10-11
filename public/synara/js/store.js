@@ -14,7 +14,7 @@
    Imported by main.js, insights.js, notify.js, and every view.
    ============================================================ */
 
-import { dayKey, stamp, uid, minutesOf } from './util.js';
+import { dayKey, stamp, timeOf, uid, minutesOf, parseStamp } from './util.js';
 
 /* The key name is historical; the shape inside is versioned separately. */
 const STORAGE_KEY = 'synara.v2';
@@ -86,14 +86,21 @@ export function emptyState() {
       seizureType: '', diagnosed: '',
       neurologist: '', neuroPhone: '',
       allergies: '', bloodType: '',
+      // Rescue medication, in the words of their seizure action plan:
+      // what it is, when it's given, and where it's kept. Optional — not
+      // everyone has one — and shown on the emergency and printed cards.
+      rescueMed: '',
     },
 
-    /* meds[] — {id, name, dose, form, notes, color, added, ended, schedule}
+    /* meds[] — {id, name, dose, form, notes, color, added, addedAt, ended, schedule}
 
        A medication carries its whole schedule history, not just its
        current times:
 
          added     first day it is tracked
+         addedAt   "HH:MM" it was added that day (null if unknown). Doses
+                   already past their grace window by then were never
+                   tracked, so they can't count as missed.
          ended     first day it is NO LONGER tracked (null while current)
          schedule  [{from, times}] ascending — each entry applies from
                    its `from` day until the next entry starts
@@ -127,18 +134,29 @@ export function emptyState() {
        headings would be worse than useless in the moment it is needed.
        Only the genuinely personal fields start blank.
 
-       Wording follows standard public guidance ("Stay, Safe, Side").
-       The card itself tells the user to confirm it with a neurologist. */
+       Wording follows standard public guidance (Epilepsy Foundation
+       "Stay, Safe, Side"; CDC seizure first aid). It covers seizures
+       where someone stiffens and shakes AND ones where they stare or
+       wander, and it leaves room for a rescue-medicine plan rather
+       than contradicting one. The card itself tells the user to
+       confirm it with a neurologist. */
     card: {
       looksLike: '',
       during: [
         'Stay with them and start timing the seizure.',
+        'If they are stiffening or shaking, gently help them down to the floor.',
         'Move anything hard or sharp out of the way.',
-        'Put something soft under their head.',
+        'If they are on the floor, put something soft under their head.',
         'Loosen anything tight around their neck.',
         'If they are not aware or not awake, gently turn them onto their side.',
+        'If they are confused or wandering, stay beside them and gently guide them away from danger, like stairs, roads, or water. Don\'t grab or hold them.',
+        'If they have a seizure action plan, follow it. Only give rescue medicine if you are trained to.',
         'Stay calm and speak normally — they may be able to hear you.',
       ],
+      // No exception, as the Epilepsy Foundation and CDC put it: rescue
+      // medicine is the action plan's business (the step above and the
+      // Rescue medication block), not something a bystander should read
+      // as permission to put anything in a seizing person's mouth.
       doNot: [
         'Do NOT put anything in their mouth. They cannot swallow their tongue.',
         'Do NOT hold them down or try to stop the movements.',
@@ -158,6 +176,9 @@ export function emptyState() {
         'They do not wake up or return to normal afterwards.',
         'They are having trouble breathing, or their lips stay blue.',
         'They were injured, or it happened in water.',
+        'It looks different from their usual seizures.',
+        'They have diabetes or a heart condition, or are pregnant.',
+        'Rescue medicine was given, or their seizure plan says to call.',
       ],
       forTeacher: '',
       forNurse: '',
@@ -202,6 +223,14 @@ const THEMES   = new Set(['system', 'light', 'dark']);
 
 const isDay = (v) => typeof v === 'string' && DAY_RE.test(v);
 const str = (v, max = 4000) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+/* Profile fields are short (a name, a grade), except the rescue
+   medication, which is copied from a seizure action plan: what it is,
+   when it is given, when to call 911, where it is kept. The edit sheet
+   refuses to save more than this rather than cutting it off. */
+export const RESCUE_MED_MAX = 600;
+const PROFILE_MAX = { rescueMed: RESCUE_MED_MAX };
+const profileStr = (key, v) => str(v, PROFILE_MAX[key] || 200);
 const num = (v, lo, hi, fallback) =>
   (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback);
 const strList = (v) => (Array.isArray(v) ? v.map((x) => str(x, 600)).filter(Boolean).slice(0, 30) : null);
@@ -249,6 +278,7 @@ function sanitizeMed(m, firstDoseDay) {
     notes: str(m.notes, 600),
     color: COLORS.has(m.color) ? m.color : 'violet',
     added,
+    addedAt: isTime(m.addedAt) ? m.addedAt : null,
     ended,
     schedule,
   };
@@ -332,6 +362,63 @@ function firstDoseDays(doses) {
 
 const byNewest = (a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
 
+/* The card's core first-aid lists. An empty one would silently drop
+   "What to do", "Do NOT" or "Call 911 if" from the emergency screen and
+   print an empty box, so empty means "use the standard steps". Only
+   "Afterwards" may be cleared. */
+export const CORE_STEPS = new Set(['during', 'doNot', 'callEms']);
+
+/** The standard first-aid list for one of the card's step fields. */
+export function defaultSteps(field) {
+  return [...(emptyState().card[field] || [])];
+}
+
+/* Earlier versions of the standard steps. A list still exactly like one
+   of these was never edited, so it moves to today's wording: the steps
+   added since (a seizure where they wander, rescue medicine, more reasons
+   to call 911) reach cards made before them, not just new ones. A list
+   the student changed is theirs and is left alone. */
+const FIRST_STEPS = {
+  during: [
+    'Stay with them and start timing the seizure.',
+    'Move anything hard or sharp out of the way.',
+    'Put something soft under their head.',
+    'Loosen anything tight around their neck.',
+    'If they are not aware or not awake, gently turn them onto their side.',
+    'Stay calm and speak normally — they may be able to hear you.',
+  ],
+  doNot: [
+    'Do NOT put anything in their mouth. They cannot swallow their tongue.',
+    'Do NOT hold them down or try to stop the movements.',
+    'Do NOT give food, drink, or pills until they are fully awake.',
+    'Do NOT crowd them — ask other people to step back.',
+  ],
+  callEms: [
+    'The seizure lasts longer than 5 minutes.',
+    'A second seizure starts soon after the first.',
+    'They do not wake up or return to normal afterwards.',
+    'They are having trouble breathing, or their lips stay blue.',
+    'They were injured, or it happened in water.',
+  ],
+};
+
+/* A pre-release wording of "Do NOT" made rescue medicine an exception
+   to "nothing in their mouth". EF and CDC guidance has no exception, so a
+   card that still has it, untouched, goes back to today's line. */
+const OLD_STEPS = {
+  during: [FIRST_STEPS.during],
+  doNot: [FIRST_STEPS.doNot, [
+    'Do NOT put anything in their mouth — they cannot swallow their tongue. Rescue medicine from their seizure plan is the only exception.',
+    'Do NOT hold them down or try to stop the movements.',
+    'Do NOT give food, drink, or pills until they are fully awake.',
+    'Do NOT crowd them — ask other people to step back.',
+  ]],
+  callEms: [FIRST_STEPS.callEms],
+};
+
+const sameList = (a, b) => a.length === b.length && a.every((s, i) => s === b[i]);
+const untouched = (key, list) => (OLD_STEPS[key] || []).some((old) => sameList(list, old));
+
 /**
  * Bring any stored shape up to the current one, validating as it goes.
  * Exported for tests; the app reaches it through init() and importJSON().
@@ -362,14 +449,19 @@ export function migrate(stored) {
 
   const profile = { ...base.profile };
   if (src.profile && typeof src.profile === 'object') {
-    for (const key of Object.keys(base.profile)) profile[key] = str(src.profile[key], 200);
+    for (const key of Object.keys(base.profile)) profile[key] = profileStr(key, src.profile[key]);
   }
 
   const card = { ...base.card };
   if (src.card && typeof src.card === 'object') {
     for (const key of ['during', 'doNot', 'after', 'callEms']) {
       const list = strList(src.card[key]);
-      if (list) card[key] = list;
+      if (!list) continue;
+      // An empty core list keeps the standard steps (see CORE_STEPS), and
+      // one never edited since an earlier version gets today's (OLD_STEPS).
+      if (!list.length && CORE_STEPS.has(key)) continue;
+      if (untouched(key, list)) continue;
+      card[key] = list;
     }
     for (const key of ['looksLike', 'forTeacher', 'forNurse', 'forCoach']) {
       if (typeof src.card[key] === 'string') card[key] = str(src.card[key]);
@@ -437,17 +529,68 @@ function notify() {
   }
 }
 
+/* ============================================================
+   Saving
+   ------------------------------------------------------------
+   A change only becomes the app's state once it is saved. If the save
+   fails (storage full, or blocked), nothing changes: the screen and
+   the stored record keep matching, and the student is told. Changing
+   memory first used to leave the two apart, so the NEXT save quietly
+   stored a value nobody had seen — a dose tapped to "taken" twice
+   during a full-storage spell was later saved as "missed".
+
+   One exception. If nothing is stored on this device at all and it
+   can't save (a private window, storage switched off), refusing every
+   change would leave the app unusable, the emergency card included.
+   Then Synara runs in memory, and says so on every screen.
+   ============================================================ */
+
+let hasRecord = false;    // a record is stored on this device
+let memoryOnly = false;   // nothing can be saved; running in memory
+let saveFailed = false;   // the last attempt to save failed
+
 /**
- * Mutate and persist in one step. `mutator` changes the live state in
- * place; we persist, then notify. Writes are awaited so a future
- * network backend naturally applies backpressure.
+ * 'ok', 'failing' (a record is stored but changes can't be saved right
+ * now), or 'memory' (nothing is saved on this device at all).
+ */
+export function saveStatus() {
+  if (memoryOnly) return 'memory';
+  return saveFailed ? 'failing' : 'ok';
+}
+
+/** JSON in, JSON out: the state never holds anything else. */
+const copy = (s) => JSON.parse(JSON.stringify(s));
+
+/** Save `next`; only then make it the state. See above for memory mode. */
+async function commit(next) {
+  try {
+    await backend.write(next);
+    hasRecord = true;
+    memoryOnly = false;
+    saveFailed = false;
+  } catch (err) {
+    saveFailed = true;
+    if (hasRecord) {
+      notify();      // repaint with the unchanged state, and the warning
+      throw err;
+    }
+    memoryOnly = true;
+  }
+  state = next;
+  notify();
+  return state;
+}
+
+/**
+ * Change and persist in one step. `mutator` changes a copy of the
+ * state; the copy replaces it once saved. Writes are awaited so a
+ * future network backend naturally applies backpressure.
  */
 export async function update(mutator) {
   if (!ready) throw new Error('not-ready');
-  mutator(state);
-  await backend.write(state);
-  notify();
-  return state;
+  const next = copy(state);
+  mutator(next);
+  return commit(next);
 }
 
 /**
@@ -470,6 +613,9 @@ function onExternalChange(e) {
   if (e.key !== STORAGE_KEY) return;
   try {
     state = e.newValue ? migrate(JSON.parse(e.newValue)) : emptyState();
+    hasRecord = !!e.newValue;
+    // What's on screen is now what's stored, not something held in memory.
+    if (hasRecord) memoryOnly = false;
     ready = true;
     notify();
   } catch (err) {
@@ -478,6 +624,25 @@ function onExternalChange(e) {
 }
 
 let listeningForOtherTabs = false;
+
+/* The record exactly as it was read, when loading it changed it — a
+   migration (a new field, today's first-aid wording). A migration is not
+   an edit: sync.js compares this against the hash it saved at the last
+   sync, so an update alone never looks like a change to upload or to
+   argue over with another device. */
+let readBeforeMigration = null;
+
+/** JSON of the stored record before this load migrated it, or null. */
+export function premigrated() {
+  return readBeforeMigration;
+}
+
+/** True once a record exists here: stored, or held in memory because
+    this browser can't save. The first-run intro starts a record afresh,
+    so it never opens over one. */
+export function hasData() {
+  return hasRecord || memoryOnly;
+}
 
 /**
  * Load persisted state, migrating if needed.
@@ -499,8 +664,20 @@ export async function init() {
     return { state, firstRun: true };
   }
 
+  hasRecord = true;
   state = migrate(stored);
-  await backend.write(state);
+  // Saving the upgraded shape back is a nicety, not a reason to fail to
+  // start. The record was read, so it can be shown — and the emergency
+  // card opened — even when storage is too full to write it back.
+  if (JSON.stringify(state) !== JSON.stringify(stored)) {
+    readBeforeMigration = JSON.stringify(stored);
+    try {
+      await backend.write(state);
+    } catch (err) {
+      console.warn('[synara] could not save the upgraded record:', err);
+      saveFailed = true;
+    }
+  }
   return { state, firstRun: false };
 }
 
@@ -511,21 +688,24 @@ export async function init() {
  */
 export async function wipe() {
   await backend.clear();
+  hasRecord = false;
   state = emptyState();
   notify();
 }
 
-/** Replace everything with an empty record, optionally re-seeding. */
+/**
+ * Replace everything with an empty record, optionally re-seeding. The
+ * old record stays stored until the new one has saved over it.
+ */
 export async function reset({ seedFn } = {}) {
-  await backend.clear();
-  state = emptyState();
+  if (!ready) throw new Error('not-ready');
+  const next = emptyState();
   if (seedFn) {
-    seedFn(state);
-    state.settings.seeded = true;
+    seedFn(next);
+    next.settings.seeded = true;
   }
-  await backend.write(state);
-  notify();
-  return state;
+  // The same shape a reload would give, so nothing differs until then.
+  return commit(migrate(next));
 }
 
 /* ============================================================
@@ -540,6 +720,13 @@ export function timesOn(med, day) {
   for (const entry of med.schedule) {
     if (entry.from <= day) times = entry.times;
     else break;
+  }
+  // Added at 3pm with an 8am dose: that morning's dose was over before
+  // Synara knew about it, so it isn't "7h overdue" and never counts as
+  // missed. A dose still inside its grace window stays, to be logged.
+  if (day === med.added && med.addedAt) {
+    const from = minutesOf(med.addedAt) - GRACE_MINUTES;
+    times = times.filter((t) => minutesOf(t) >= from);
   }
   return times;
 }
@@ -595,6 +782,7 @@ export function addMed({ name, dose = '', form = 'tablet', times = [], notes = '
       notes: str(notes, 600).trim(),
       color: COLORS.has(color) ? color : 'violet',
       added: today,
+      addedAt: timeOf(),
       ended: null,
       schedule: [{ from: today, times: normTimes(times) }],
     });
@@ -719,13 +907,16 @@ export function effectiveStatus(day, medId, time, s = state) {
   const logged = doseStatus(day, medId, time, s);
   if (logged !== 'pending') return logged;
 
-  const today = dayKey();
-  if (day < today) return 'missed';
-  if (day > today) return 'pending';
+  // Real clock time, not the date: a 11:30pm dose still has its hour of
+  // grace after midnight, rather than turning "missed" at 12:00.
+  // Whole minutes, as everywhere else that counts down to a dose.
+  const late = minutesLate(day, time);
+  return late > GRACE_MINUTES ? 'missed' : 'pending';
+}
 
-  const now = new Date();
-  const passed = now.getHours() * 60 + now.getMinutes() > minutesOf(time) + GRACE_MINUTES;
-  return passed ? 'missed' : 'pending';
+/** Minutes since a dose was due, to the minute (negative if still ahead). */
+export function minutesLate(day, time) {
+  return Math.round((parseStamp(stamp()) - parseStamp(`${day}T${time}`)) / 60000);
 }
 
 /* ---- Seizures ---- */
@@ -819,7 +1010,7 @@ export function updateCard(patch) {
 export function updateProfile(patch) {
   return update((s) => {
     for (const key of Object.keys(s.profile)) {
-      if (typeof patch[key] === 'string') s.profile[key] = str(patch[key], 200).trim();
+      if (typeof patch[key] === 'string') s.profile[key] = profileStr(key, patch[key].trim());
     }
   });
 }
@@ -838,9 +1029,17 @@ export function exportJSON() {
   return JSON.stringify(state, null, 2);
 }
 
+/** True for something shaped like an exported Synara record. */
+export function isBackup(parsed) {
+  return !!parsed && typeof parsed === 'object' &&
+    Array.isArray(parsed.meds) && Array.isArray(parsed.seizures) &&
+    !!parsed.doses && typeof parsed.doses === 'object';
+}
+
 /**
  * Replace the whole record with an exported file. Throws
- * Error('not-json') or Error('not-synara') without touching anything.
+ * Error('not-json'), Error('not-synara') or Error('save-failed')
+ * without touching anything.
  */
 export async function importJSON(text) {
   let parsed;
@@ -849,13 +1048,7 @@ export async function importJSON(text) {
   } catch {
     throw new Error('not-json');
   }
-  const looksRight = parsed && typeof parsed === 'object' &&
-    Array.isArray(parsed.meds) && Array.isArray(parsed.seizures) &&
-    parsed.doses && typeof parsed.doses === 'object';
-  if (!looksRight) throw new Error('not-synara');
-
-  state = migrate(parsed);
-  await backend.write(state);
-  notify();
-  return state;
+  if (!isBackup(parsed)) throw new Error('not-synara');
+  if (!ready) throw new Error('not-ready');
+  return commit(migrate(parsed));
 }

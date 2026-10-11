@@ -23,14 +23,20 @@
 
 import { dayKey, addDays, uid } from './util.js';
 
-/* Offsets in days back from today. Three of the four seizures land
-   within 48h of a missed or late evening dose — deliberately not all
+/* Offsets in days back from today. Three of the four seizures come
+   less than 48h after a missed evening dose — deliberately not all
    four. The one at day 38 was triggered by strobe lighting with a
    clean dose record around it, so the engine reports 3/4 rather than
    a suspiciously tidy 100%. Real correlations have exceptions; a demo
-   without them is a lie. All four follow a short-sleep night. */
-const MISSED_EVENING = [4, 12, 25, 26, 41];
-const LATE_DOSES     = [2, 6, 9, 17, 22, 31];
+   without them is a lie. All four follow a short-sleep night.
+
+   Lapses away from the seizures stay rare (two late days, both
+   recent, so dose consistency visibly slips). The engine only reports
+   the dose pattern when it beats chance: with a lapse every few days,
+   most 48-hour stretches hold one, 3 of 4 proves nothing, and it
+   rightly stays quiet. */
+const MISSED_EVENING = [4, 12, 25, 26];
+const LATE_DOSES     = [2, 9];
 const HISTORY_DAYS   = 45;
 
 /* The evening dose moved from 9pm to 8pm this many days ago, and a
@@ -63,6 +69,7 @@ export function seed(state) {
     neuroPhone: '(555) 010-4488',
     allergies: 'Penicillin',
     bloodType: 'O+',
+    rescueMed: '',   // none at school — see the nurse's note on the card
   };
 
   /* ---------- Meds ---------- */
@@ -174,7 +181,7 @@ export function seed(state) {
 
   /* ---------- Seizures ----------
      Placed deliberately: each one follows a short-sleep night, and
-     three of the four fall within 48h of a missed or late evening
+     three of the four come less than 48h after a missed evening
      dose. The engine discovers that; it is not told. */
   const events = [
     {
@@ -251,10 +258,12 @@ export function seed(state) {
 
     during: [
       'Stay with her and start timing immediately.',
+      'If she is stiffening or shaking, gently help her down to the floor.',
       'Move chairs, desks, and anything hard or sharp out of the way.',
-      'Put something soft under her head.',
+      'If she is on the floor, put something soft under her head.',
       'Loosen anything tight around her neck.',
       'If she is not aware or not awake, gently turn her onto her side.',
+      'If she is confused or wandering, stay beside her and gently guide her away from danger, like stairs or the road. Don\'t grab or hold her.',
       'Stay calm and speak normally — she may be able to hear you.',
     ],
 
@@ -279,6 +288,8 @@ export function seed(state) {
       'She does not wake up or return to normal afterwards.',
       'She is having trouble breathing, or her lips stay blue.',
       'She was injured, or it happened in water.',
+      'It looks different from her usual seizures.',
+      'She has diabetes or a heart condition, or is pregnant.',
     ],
 
     forTeacher:
@@ -288,7 +299,8 @@ export function seed(state) {
 
     forNurse:
       'No rescue medication is prescribed at school. Standard first aid only. ' +
-      'Call Dana Ellison first, then Dr. Raghavan\'s office if EMS criteria are met. ' +
+      'If any "Call 911" sign applies, call 911 first, then Dana Ellison. ' +
+      'Otherwise call Dana Ellison; Dr. Raghavan\'s office can advise afterwards. ' +
       'Maya prefers to rest in the dark side room rather than the main bay.',
 
     forCoach:

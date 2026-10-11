@@ -26,14 +26,22 @@
   html, body { margin: 0; padding: 0; background-color: #0b0d14; }
   body {
     min-height: 100dvh;
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(52,211,153,.09), transparent 55%),
-      linear-gradient(170deg, #0e1220 0%, #0b0d14 55%, #07080d 100%);
-    background-attachment: fixed;
+    /* Its own stacking context, so the fixed glow below paints over the
+       body colour and under everything else. */
+    isolation: isolate;
     color: var(--text);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 16px; line-height: 1.5;
     -webkit-text-size-adjust: 100%;
+  }
+  /* The glow is its own fixed layer. As a fixed body background it was
+     repainted on every frame of scrolling, which made the page lag. */
+  @media screen {
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(120% 80% at 50% -10%, rgba(52,211,153,.09), transparent 55%),
+      linear-gradient(170deg, #0e1220 0%, #0b0d14 55%, #07080d 100%);
+    }
   }
   header.top {
     display: flex; align-items: center; gap: 10px;
@@ -51,7 +59,7 @@
   main { padding: clamp(10px, 2vw, 22px) max(clamp(10px, 2vw, 22px), env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(clamp(10px, 2vw, 22px), env(safe-area-inset-left, 0px)); }
   @media (max-width: 560px) { .title small { display: none; } }
 </style>
-<script src="public/js/flux-theme-carry.js?v=be761bf0"></script>
+<script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 <script src="public/js/flux-purple-day.js?v=1966eb3d"></script>
 </head>
 <body>

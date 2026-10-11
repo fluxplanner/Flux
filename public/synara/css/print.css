@@ -2,17 +2,20 @@
    print.css — the printed seizure action card
    ------------------------------------------------------------
    Loaded by index.html with media="print", so it costs nothing on
-   screen. js/views/safety.js fills #print-card and calls print().
+   screen. js/views/safety.js keeps #print-card filled, so the button,
+   Ctrl+P and the browser's own Print menu all print the same card.
 
    A printed copy in the front office's binder or taped inside a
    locker is how most schools actually handle this. It has to be one
    clean page that works in black and white — so every warning is
-   carried by words and borders, never colour alone.
+   carried by words and borders, never colour alone. If a long note
+   for teachers or coaches doesn't fit, that is what runs over: who
+   to call and what to do always come first.
    ============================================================ */
 
 @page {
   size: letter;
-  margin: 14mm;
+  margin: 11mm 12mm;
 }
 
 .app-shell, .backdrop, .sheet, .emergency, .welcome, .toast, .skip-link {
@@ -28,41 +31,48 @@ html, body {
 
 .print-card { display: block !important; }
 
+/* Black on white whatever the app's theme. Headings otherwise take the
+   theme's --ink, which in dark mode is near-white: invisible on paper. */
+.pc, .pc h1, .pc h2, .pc h3 { color: #111; }
+
 .pc {
   font-family: var(--font);
-  font-size: 10.5pt;
-  line-height: 1.4;
-  color: #111;
+  font-size: 9pt;
+  line-height: 1.25;
 }
 
-.pc section, .pc-cols > section { break-inside: avoid; }
+.pc section { break-inside: avoid; }
 
 .pc-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   gap: 16pt;
-  padding-bottom: 8pt;
-  margin-bottom: 10pt;
+  padding-bottom: 5pt;
+  margin-bottom: 6pt;
   border-bottom: 3pt solid #111;
 }
 .pc-kicker {
   margin: 0;
-  font-size: 8.5pt;
+  font-size: 8pt;
   font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 .pc-name {
   margin: 2pt 0 0;
-  font-size: 24pt;
+  font-size: 22pt;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
+.pc .pc-sub { margin-top: 2pt; font-size: 10pt; font-weight: 600; }
+/* On page one whatever happens: a card taped up on its own still says
+   when it was printed and that it is standard first aid. */
+.pc .pc-dated { margin-top: 3pt; font-size: 7.5pt; color: #444; }
 .pc-911 {
   flex: none;
-  padding: 6pt 12pt;
+  padding: 5pt 12pt;
   border: 2.5pt solid #111;
   border-radius: 6pt;
   font-size: 8.5pt;
@@ -73,10 +83,12 @@ html, body {
 
 .pc-facts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5pt 18pt;
-  margin: 0 0 4pt;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: dense;
+  gap: 4pt 14pt;
+  margin: 0;
 }
+.pc-facts .pc-wide { grid-column: span 2; }
 .pc-facts dt {
   font-size: 7.5pt;
   font-weight: 700;
@@ -87,53 +99,83 @@ html, body {
 .pc-facts dd { margin: 0; font-weight: 600; }
 
 .pc h2 {
-  margin: 10pt 0 4pt;
-  font-size: 10pt;
+  margin: 5pt 0 2pt;
+  font-size: 9.5pt;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
-.pc h3 { margin: 0 0 2pt; font-size: 9.5pt; font-weight: 800; }
+.pc h3 { margin: 0 0 2pt; font-size: 9pt; font-weight: 800; }
 .pc p { margin: 0; }
 
-.pc ol { margin: 0; padding-left: 15pt; }
-.pc li { margin: 2pt 0; }
-.pc-not { list-style: none; padding-left: 0; }
-.pc-not li::before { content: '✕  '; font-weight: 800; }
+/* base.css takes list markers off for the app. The paper needs them
+   back, or wrapped steps run into each other. */
+.pc ol { margin: 0; padding-left: 14pt; list-style: decimal; }
+.pc li { margin: 0.5pt 0; }
+.pc ol.pc-if { list-style: disc; }
+.pc ol.pc-not { list-style: none; }
+.pc-not li { position: relative; }
+.pc-not li::before { content: '✕'; position: absolute; left: -12pt; font-weight: 800; }
 
 .pc-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18pt;
+  gap: 16pt;
 }
 
-.pc-ems {
-  margin-top: 10pt;
-  padding: 2pt 10pt 8pt;
+.pc-ems, .pc-rescue {
+  margin-top: 6pt;
+  padding: 1pt 10pt 6pt;
   border: 2.5pt solid #111;
   border-radius: 6pt;
 }
+.pc-rescue { border-width: 1.5pt; }
+.pc-rescue p:not(.pc-note) { white-space: pre-line; }
+.pc .pc-note { margin-top: 2pt; font-size: 8.5pt; color: #444; }
 
 .pc-contacts { width: 100%; border-collapse: collapse; }
 .pc-contacts td {
-  padding: 3pt 0;
+  padding: 1.5pt 8pt 1.5pt 0;
   border-bottom: 0.75pt solid #bbb;
   vertical-align: top;
 }
-.pc-contacts td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+.pc-contacts td:last-child {
+  padding-right: 0;
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.pc-first {
+  margin-left: 4pt;
+  padding: 0 4pt;
+  border: 1pt solid #111;
+  border-radius: 3pt;
+  font-size: 7pt;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 
 .pc-roles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150pt, 1fr));
-  gap: 12pt;
-  margin-top: 12pt;
-  padding-top: 8pt;
+  gap: 0 12pt;
+  margin-top: 6pt;
+  font-size: 8.5pt;
+}
+/* Long notes are what may run over, but each note stays whole, with its
+   own rule above it (one on the section stayed behind on page one). */
+.pc section.pc-roles { break-inside: auto; }
+.pc-roles > div {
+  break-inside: avoid;
+  padding-top: 4pt;
   border-top: 0.75pt solid #bbb;
 }
 
 .pc-foot {
-  margin-top: 12pt;
-  padding-top: 6pt;
+  margin-top: 5pt;
+  padding-top: 3pt;
   border-top: 0.75pt solid #bbb;
   font-size: 7.5pt;
   color: #444;
