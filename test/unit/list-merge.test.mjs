@@ -383,3 +383,70 @@ test('an account switch forgets the other account\'s base', () => {
   tab.sync.loadBase();
   assert.equal(tab.sync.base('tasks'), null);
 });
+
+test('two tabs, any order of saves and pushes: the next tab to open reads a list with the base it was agreed against', () => {
+  // The base is stored with the list it belongs to. When one tab's base was
+  // stored beside another tab's list, the next tab took the stale copy of a
+  // task for a newer edit (and kept it, and pushed it back).
+  const orders = {
+    'A saves, A pushes, B saves': (A, B, cloud) => { A.save(); A.push(cloud); B.save(); },
+    'A pulls first, then saves and pushes, then B saves': (A, B, cloud) => { A.pull(cloud); renameIn(A); A.save(); A.push(cloud); B.save(); },
+    'A saves, B saves, then A pushes': (A, B, cloud) => { A.save(); B.save(); A.push(cloud); },
+  };
+  function renameIn(tab) { tab.tasks.find((t) => t.id === 1).name = 'Renamed in tab A'; }
+  for (const [name, run] of Object.entries(orders)) {
+    const agreed = [T(1), T(3)];
+    const cloud = { tasks: plain(agreed) };
+    const store = memStore({ tasks: agreed, flux_sync_base_v1: { tasks: M.hashes(agreed) } });
+    const B = openTab(store);
+    const A = openTab(store);
+    renameIn(A);
+    B.tasks.find((t) => t.id === 3).done = true;    // B, not pulled yet, ticks another task
+    run(A, B, cloud);                               // and both close
+    const C = openTab(store);
+    const r = C.pull(cloud);
+    assert.equal(r.list.find((t) => t.id === 1).name, 'Renamed in tab A', name + ': the new tab kept B\'s stale copy');
+    assert.equal(r.list.find((t) => t.id === 3).done, true, name + ': B\'s tick was lost');
+  }
+});
+
+// ── When pushes may go: after a pull that came back and was merged ───────────
+
+test('a pull that failed, or got no answer, keeps pushes held', () => {
+  // It used to open the gate all the same, and the next push sent this
+  // device's unmerged copy over the cloud: from a new device, an empty list.
+  for (const res of [
+    { error: { code: '500', message: 'upstream' }, data: null },
+    { error: { message: 'Failed to fetch' } },
+    { error: null, data: null },
+    undefined,                                         // the request threw: nothing came back
+  ]) {
+    const o = M.pullOutcome(res);
+    assert.equal(o, 'failed', JSON.stringify(res));
+    assert.equal(M.pullOpensPushes(o, false), false, 'a failed pull opened pushes: ' + JSON.stringify(res));
+    assert.equal(M.pullOpensPushes(o, true), false);
+  }
+});
+
+test('a changed row left for later (typing) keeps pushes held until it is merged', () => {
+  const o = M.pullOutcome({ data: { data: { tasks: [] } }, fingerprint: 'new', applied: 'old', typing: true });
+  assert.equal(o, 'later');
+  assert.equal(M.pullOpensPushes(o, false), false);
+});
+
+test('a changed row opens pushes only once both lists are merged', () => {
+  const o = M.pullOutcome({ data: { data: { tasks: [] } }, fingerprint: 'new', applied: 'old', typing: false });
+  assert.equal(o, 'apply');
+  assert.equal(M.pullOpensPushes(o, false), false, 'the merge threw part way and pushes opened anyway');
+  assert.equal(M.pullOpensPushes(o, true), true);
+});
+
+test('no row yet (a new account), or the row already applied: pushes may go', () => {
+  assert.equal(M.pullOutcome({ error: { code: 'PGRST116' }, data: null }), 'new');
+  assert.equal(M.pullOpensPushes('new', false), true);
+  const same = M.pullOutcome({ data: { data: {} }, fingerprint: 'abc', applied: 'abc', typing: true });
+  assert.equal(same, 'same', 'an unchanged row has nothing to wait for, typing or not');
+  assert.equal(M.pullOpensPushes(same, false), true);
+  // A row whose fingerprint could not be taken is not taken for the same one.
+  assert.equal(M.pullOutcome({ data: { data: {} }, fingerprint: '', applied: '' }), 'apply');
+});

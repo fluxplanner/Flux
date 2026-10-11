@@ -11022,6 +11022,15 @@ function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll){
 }
 window.fluxApplyCloudList=fluxApplyCloudList;
 
+/** See FluxListMerge.pullOutcome: 'new' | 'failed' | 'same' | 'later' | 'apply'. */
+function fluxPullOutcome(res){
+  if(window.FluxListMerge&&typeof FluxListMerge.pullOutcome==='function')return FluxListMerge.pullOutcome(res);
+  return res&&!res.error&&res.data?'apply':'failed';
+}
+function fluxPullOpensPushes(outcome,merged){
+  if(window.FluxListMerge&&typeof FluxListMerge.pullOpensPushes==='function')return FluxListMerge.pullOpensPushes(outcome,merged);
+  return outcome==='apply'&&!!merged;
+}
 /** opts.render===false: apply the row but leave the redraw to the caller (sign-in draws once, after it). */
 async function syncFromCloud(opts){
   if(!currentUser)return;
@@ -11034,25 +11043,16 @@ async function syncFromCloud(opts){
   _syncFromCloudInFlight=true;
   const sb=getSB();if(!sb){_syncFromCloudInFlight=false;return;}
   if(syncUiWantsActivity())setSyncStatus('syncing');
-  /* True once the row has come back and been merged (or there is no row yet,
-     or it is the one already applied). Only then may pushes go out: after a
-     failed pull, or one left for later (mid-word), the next push would send
-     this device's unmerged copy — on a new device, an empty one. */
-  let _pullOk=false;
+  /* What came back, and whether both lists got merged. Pushes open only
+     after a pull that came back and was merged (or found no row yet, or the
+     row already applied): after a failed pull, or one left for later
+     (mid-word), the next push would send this device's unmerged copy — on a
+     new device, an empty one. FluxListMerge.pullOutcome / pullOpensPushes
+     (unit tested) make that call; the finally block acts on it. */
+  let _pullOutcome='failed',_pullMerged=false;
   try{
     const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
-    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it.
-    if(error&&String(error.code||'')==='PGRST116'){
-      _pullOk=true;
-      return;
-    }
-    if(error||!data){
-      window._fluxSyncFailed=true;
-      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
-      setSyncStatus('offline');
-      return;
-    }
-    const d=data.data;
+    const d=data&&!error?data.data:undefined;
     /* ── Do nothing when nothing changed ──────────────────────────────────
        This runs every 8 seconds, and everything below it — ~40 module
        applyFromCloud() calls and thirteen full re-renders — used to run on
@@ -11070,9 +11070,17 @@ async function syncFromCloud(opts){
        what was last applied turns those into nothing at all. A pull that
        genuinely brings new data still applies it, exactly as before. */
     let _cloudFp='';
-    try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}
-    if(_cloudFp&&_cloudFp===window._fluxLastCloudFingerprint){
-      _pullOk=true;
+    if(d!==undefined){try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}}
+    _pullOutcome=fluxPullOutcome({error,data,fingerprint:_cloudFp,applied:window._fluxLastCloudFingerprint,typing:fluxIsTyping()});
+    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it.
+    if(_pullOutcome==='new')return;
+    if(_pullOutcome==='failed'){
+      window._fluxSyncFailed=true;
+      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
+      setSyncStatus('offline');
+      return;
+    }
+    if(_pullOutcome==='same'){
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11082,7 +11090,7 @@ async function syncFromCloud(opts){
        being typed. Leave the fingerprint unstamped and let the next pull, a
        few seconds after they stop, apply it. Nothing is lost by waiting; the
        row is not going anywhere. */
-    if(fluxIsTyping()){
+    if(_pullOutcome==='later'){
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11238,7 +11246,7 @@ async function syncFromCloud(opts){
       notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones);
     }
     // Both lists are merged: what this device pushes from here on includes the cloud's.
-    _pullOk=true;
+    _pullMerged=true;
     if(cloudListWins(d.habits,habits)){habits=d.habits;save('flux_habits',habits);}
     if(cloudListWins(d.goals,goals)){goals=d.goals;save('flux_goals',goals);}
     if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
@@ -11354,7 +11362,7 @@ async function syncFromCloud(opts){
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
   finally{
     _syncFromCloudInFlight=false;
-    if(_pullOk)fluxCloudPullSettled();
+    if(fluxPullOpensPushes(_pullOutcome,_pullMerged))fluxCloudPullSettled();
   }
 }
 

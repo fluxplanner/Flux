@@ -237,6 +237,35 @@
     return list.filter((_,i)=>keep.has(i));
   }
 
+  /**
+   * What the answer to a pull was (syncFromCloud reads it):
+   *   'new'    no row yet (PGRST116: a new account), so nothing to merge
+   *   'failed' an error, no data, or no answer at all, so nothing was merged
+   *   'same'   the row this device last applied, so nothing to merge
+   *   'later'  a changed row, left until the typing stops
+   *   'apply'  a changed row, merged now
+   * res: {error, data, fingerprint (of the row), applied (fingerprint last applied), typing}.
+   */
+  function pullOutcome(res){
+    res=res||{};
+    const err=res.error;
+    if(err&&String(err.code||'')==='PGRST116')return 'new';
+    if(err||!res.data)return 'failed';
+    if(res.fingerprint&&res.fingerprint===res.applied)return 'same';
+    if(res.typing)return 'later';
+    return 'apply';
+  }
+  /**
+   * May pushes go out after this pull? Only when it came back and the lists
+   * are merged (merged: the 'apply' got through both lists without
+   * throwing). After 'failed' or 'later' the next push would send this
+   * device's unmerged copy over the cloud, and from a new device that copy
+   * is empty.
+   */
+  function pullOpensPushes(outcome,merged){
+    return outcome==='new'||outcome==='same'||(outcome==='apply'&&!!merged);
+  }
+
   const BASE_KEY='flux_sync_base_v1';
   const TOMB_KEY='flux_list_tombstones_v1';
   const STORE_OF={tasks:'tasks',notes:'flux_notes'};
@@ -367,5 +396,5 @@
     return api;
   }
 
-  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs,sourceKey,newest,createListSync};
+  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs,sourceKey,newest,createListSync,pullOutcome,pullOpensPushes};
 })();
