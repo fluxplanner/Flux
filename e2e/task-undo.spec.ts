@@ -66,6 +66,106 @@ test.describe('Finding and undoing a completed task', () => {
     await expect.poll(() => page.evaluate(() => (window as any).tasks.find((t: any) => t.id === 9301).done)).toBe(false);
   });
 
+  /* The bar names the completion, but its Undo took back the latest change of
+     any kind. A task dragged to another day on the calendar records a change
+     with no bar of its own: Undo then moved that task back and left the named
+     one ticked. */
+  const dragOnCalendar = (page: Page, id: number, date: string) => page.evaluate(([i, d]) => {
+    const cell = document.createElement('div');
+    cell.setAttribute('data-cal-date', d as string);
+    (window as any).fluxCalDrop({ preventDefault() {}, currentTarget: cell, dataTransfer: { getData: () => String(i) } });
+  }, [id, date] as const);
+  const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  const taskNow = (page: Page, id: number) => page.evaluate((i) => {
+    const t = (window as any).tasks.find((x: any) => x.id === i);
+    return t ? { done: !!t.done, date: t.date } : null;
+  }, id);
+
+  test('the bar\'s Undo takes back the completion it names, not a calendar drag made since', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await seedToday(page);
+    await page.locator('#taskList .task-item[data-task-id="9302"] .check').click();
+    const bar = page.locator('#undoSnackbar');
+    await expect(bar).toContainText('Maths sheet');
+    await dragOnCalendar(page, 9301, inDays(3));             // another task moved, bar still up
+    expect((await taskNow(page, 9301))?.date).toBe(inDays(3));
+    await bar.getByRole('button', { name: 'Undo' }).click();
+    await expect.poll(() => taskNow(page, 9302), { message: 'Undo did not take back the completion it named' }).toEqual({ done: false, date: today() });
+    expect((await taskNow(page, 9301))?.date, 'Undo took back the calendar drag instead').toBe(inDays(3));
+    // Saved like that too, and Ctrl+Z still undoes the drag after it.
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tasks') || '[]').find((t: any) => t.id === 9302).done)).toBe(false);
+    await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => taskNow(page, 9301)).toEqual({ done: false, date: today() });
+    expect((await taskNow(page, 9302))?.done, 'undoing the drag ticked the task again').toBe(false);
+  });
+
+  test('the bar\'s Undo says it can\'t when that task has been changed since, and changes nothing', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await seedToday(page);
+    await page.locator('#taskList .task-item[data-task-id="9302"] .check').click();
+    const bar = page.locator('#undoSnackbar');
+    await expect(bar).toContainText('Maths sheet');
+    await dragOnCalendar(page, 9302, inDays(2));             // the ticked task itself, moved
+    await bar.getByRole('button', { name: 'Undo' }).click();
+    await expect(page.locator('#toastLive')).toContainText('Can’t undo that');
+    expect(await taskNow(page, 9302)).toEqual({ done: true, date: inDays(2) });
+    expect((await taskNow(page, 9301))?.done).toBe(false);
+  });
+
+  test('a recurring task\'s next one goes too when its completion is undone from the bar', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    await page.evaluate((d) => {
+      const w = window as any;
+      w.tasks.splice(0, w.tasks.length,
+        { id: 9311, name: 'Weekly quiz', date: d, priority: 'med', type: 'hw', estTime: 0, done: false, subtasks: [], createdAt: Date.now(), recurringType: 'weekly', recurringWeekly: true },
+        { id: 9312, name: 'Essay plan', date: d, priority: 'med', type: 'hw', estTime: 0, done: false, subtasks: [], createdAt: Date.now() });
+      w.save('tasks', w.tasks);
+      w.renderTasks();
+    }, today());
+    await page.locator('#taskList .task-item[data-task-id="9311"] .check').click();
+    await expect(page.locator('#undoSnackbar')).toContainText('Weekly quiz');
+    const count = () => page.evaluate(() => (window as any).tasks.filter((t: any) => t.name === 'Weekly quiz').length);
+    expect(await count(), 'ticking it added the next one').toBe(2);
+    await dragOnCalendar(page, 9312, inDays(4));
+    await page.locator('#undoSnackbar').getByRole('button', { name: 'Undo' }).click();
+    await expect.poll(() => taskNow(page, 9311)).toEqual({ done: false, date: today() });
+    expect(await count(), 'the next repeat stayed behind').toBe(1);
+    expect((await taskNow(page, 9312))?.date).toBe(inDays(4));
+  });
+
+  test('Ctrl+Z in the note editor is the text\'s own undo, not a task\'s', async ({ page }) => {
+    // The shortcut skipped inputs and textareas but not a contenteditable
+    // editor: Ctrl+Z there took back the last task change instead. Letters
+    // typed there opened quick add too.
+    await gotoScenario(page, 'student-semester');
+    await seedToday(page);
+    await page.locator('#taskList .task-item[data-task-id="9301"] .check').click();
+    await page.waitForTimeout(700);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.openNewNote();
+      const panel = document.getElementById('notes')!;
+      panel.style.display = 'block';
+      panel.classList.add('active');
+    });
+    const editor = page.locator('#noteEditor');
+    await editor.click();
+    await page.keyboard.insertText('Need to finish the lab');   // text in, no key events
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(300);
+    expect((await taskNow(page, 9301))?.done, 'Ctrl+Z in the note undid a task').toBe(true);
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('noteEditor');
+    await page.keyboard.type(' now');
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => (window as any).FluxOverlays.anyOpen()), 'typing "n" in the note opened quick add').toBe(false);
+    await expect(editor).toContainText('now');
+    // Out of the editor, Ctrl+Z is the planner's again.
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => taskNow(page, 9301).then((t) => t?.done)).toBe(false);
+  });
+
   test('undo keeps a task another device added in the meantime', async ({ page }) => {
     // teacher-workflow has a signed-in user; the stub stands in for Supabase.
     await gotoScenario(page, 'teacher-workflow');

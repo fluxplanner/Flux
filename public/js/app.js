@@ -13211,6 +13211,19 @@ const FluxOverlays={
 window.FluxOverlays=FluxOverlays;
 
 // ══ KEYBOARD SHORTCUTS ══
+/** Is this key going into something that takes text (a field, a list, the note editor)? */
+function fluxKeyIsForText(e){
+  const isText=n=>{
+    if(!n||n.nodeType!==1||n===document.body||n===document.documentElement)return false;
+    const tag=n.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||n.isContentEditable)return true;
+    return !!(n.closest&&n.closest('[contenteditable]:not([contenteditable="false"])'));
+  };
+  let t=e&&e.target;
+  try{const p=e&&e.composedPath&&e.composedPath();if(p&&p.length)t=p[0];}catch(_){}
+  return isText(t)||isText(document.activeElement);
+}
+window.fluxKeyIsForText=fluxKeyIsForText;
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
     // ⌘⇧K / Ctrl+Shift+K — Global search · ⌘K / Ctrl+K — Educators: toggle Work/Personal · others: command palette
@@ -13241,14 +13254,15 @@ function initKeyboardShortcuts(){
     if((e.metaKey||e.ctrlKey)&&e.key==='d'){e.preventDefault();startDeepWork();return;}
     // Cmd+P — Present Mode
     if((e.metaKey||e.ctrlKey)&&e.key==='p'){e.preventDefault();startPresentMode();return;}
-    // Ctrl+Z / Cmd+Z — Undo
-    if((e.metaKey||e.ctrlKey)&&e.key==='z'){
-      const tag=document.activeElement?.tagName;
-      if(!['INPUT','TEXTAREA','SELECT'].includes(tag)){e.preventDefault();undoLastChange();return;}
+    // Ctrl+Z / Cmd+Z — Undo. Not while typing: there it is the text's own
+    // undo (the note editor is contenteditable, and used to undo a task).
+    const typing=fluxKeyIsForText(e);
+    if((e.metaKey||e.ctrlKey)&&!e.altKey&&(e.key==='z'||e.key==='Z')&&!e.shiftKey){
+      if(!typing){e.preventDefault();undoLastChange();}
+      return;
     }
-    // Don't fire letter shortcuts when typing in inputs
-    const tag=document.activeElement?.tagName;
-    if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
+    // Don't fire letter shortcuts when typing in inputs (or the note editor)
+    if(typing)return;
     if(e.metaKey||e.ctrlKey||e.altKey)return;
     // Any open overlay swallows single-key shortcuts entirely — a palette
     // that lost focus must never let "n" spawn quick-add on top of it.
@@ -16056,10 +16070,16 @@ function showSessionRecap(subject,mins){
    which it leaves as they are now. Restoring the whole old list would have
    quietly dropped them, and the next save would have deleted them everywhere. */
 let _taskHistory=[];
+let _fluxUndoSeq=0;
+/** Changes already undone (by seq), so a second press on an old Undo bar can say so. */
+const _fluxUndoneSeqs=[];
 function snapshotTasks(){
-  _taskHistory.push({before:JSON.parse(JSON.stringify(tasks)),remote:new Set()});
+  const seq=++_fluxUndoSeq;
+  _taskHistory.push({seq,before:JSON.parse(JSON.stringify(tasks)),remote:new Set()});
   if(_taskHistory.length>10)_taskHistory.shift();
+  return seq;
 }
+function fluxMarkUndone(seq){_fluxUndoneSeqs.push(seq);if(_fluxUndoneSeqs.length>50)_fluxUndoneSeqs.shift();}
 const fluxTaskKey=t=>window.FluxListMerge?FluxListMerge.keyOf(t):String(t&&t.id);
 /** A cloud pull changed these tasks: undo must not roll them back. */
 function fluxNoteRemoteTaskChanges(before,after){
@@ -16072,9 +16092,27 @@ function fluxNoteRemoteTaskChanges(before,after){
   b.forEach((h,k)=>{if(!a.has(k))changed.push(k);});
   if(changed.length)_taskHistory.forEach(e=>changed.forEach(k=>e.remote.add(k)));
 }
-function undoLastChange(){
-  if(!_taskHistory.length){showToast('Nothing to undo','info');return;}
+/**
+ * Undo. With no seq (Ctrl+Z, the planner's own Undo): the latest change.
+ * With a seq (an Undo bar): that change and no other. The bar names what it
+ * undoes, a completion say, but a calendar drag made since records a change
+ * with no bar of its own, and undoing "the latest" then took back the drag
+ * and left the task ticked. When later changes are recorded, only the tasks
+ * this one changed are put back, and only if nothing has changed them since;
+ * otherwise it says it can't, rather than undo something else.
+ */
+function undoLastChange(seq){
+  if(seq!=null){
+    const i=_taskHistory.findIndex(x=>x.seq===seq);
+    if(i<0){
+      showToast(_fluxUndoneSeqs.includes(seq)?'Already undone':'That change can’t be undone any more','info');
+      return false;
+    }
+    if(i<_taskHistory.length-1)return fluxUndoOneChange(i);
+  }
+  if(!_taskHistory.length){showToast('Nothing to undo','info');return false;}
   const e=_taskHistory.pop();
+  fluxMarkUndone(e.seq);
   if(!e.remote.size){tasks=e.before;}
   else{
     const now=new Map(tasks.map(t=>[fluxTaskKey(t),t]));
@@ -16092,6 +16130,51 @@ function undoLastChange(){
   fluxTaskRebuildNow();
   syncKey('tasks',tasks);
   showToast('↩ Change undone','info');
+  return true;
+}
+/** Undo the change at _taskHistory[i] when others are recorded after it (see undoLastChange). */
+function fluxUndoOneChange(i){
+  const e=_taskHistory[i];
+  const hash=t=>t===undefined?'':(window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t));
+  const byKey=list=>new Map(list.map(t=>[fluxTaskKey(t),t]));
+  const B=byKey(e.before);                      // before this change
+  const A=byKey(_taskHistory[i+1].before);      // as this change left them
+  const N=byKey(tasks);                         // now
+  // What this change did, less what a cloud pull has changed since (left as it is now).
+  const keys=[...new Set([...B.keys(),...A.keys()])].filter(k=>hash(B.get(k))!==hash(A.get(k))&&!e.remote.has(k));
+  const cant=msg=>{showToast(msg,'warning');return false;};
+  if(!keys.length)return cant('That change can’t be undone any more');
+  if(keys.some(k=>hash(N.get(k))!==hash(A.get(k))))return cant('Can’t undo that: it has been changed since');
+  const putBack=list=>{
+    const out=list.slice();
+    keys.forEach(k=>{
+      const was=B.get(k);
+      const at=out.findIndex(t=>fluxTaskKey(t)===k);
+      if(was===undefined){if(at>=0)out.splice(at,1);return;}          // this change added it
+      const copy=JSON.parse(JSON.stringify(was));
+      if(at>=0){out[at]=copy;return;}
+      // This change removed it: back where it was, after the task that was above it.
+      const pos=e.before.indexOf(was);
+      let after=-1;
+      for(let j=pos-1;j>=0&&after<0;j--){const pk=fluxTaskKey(e.before[j]);after=out.findIndex(t=>fluxTaskKey(t)===pk);}
+      out.splice(after+1,0,copy);
+    });
+    return out;
+  };
+  tasks=putBack(tasks);
+  // Later changes were recorded on top of this one: undoing them must not bring it back.
+  for(let j=i+1;j<_taskHistory.length;j++){
+    const later=_taskHistory[j];
+    const L=byKey(later.before);
+    if(keys.every(k=>hash(L.get(k))===hash(A.get(k))))later.before=putBack(later.before);
+  }
+  _taskHistory.splice(i,1);
+  fluxMarkUndone(e.seq);
+  save('tasks',tasks);
+  fluxTaskRebuildNow();
+  syncKey('tasks',tasks);
+  showToast('↩ Change undone','info');
+  return true;
 }
 /** Toasts sit above the Undo bar while it is up, so nothing covers its button. */
 function fluxUndoLift(){
@@ -16103,12 +16186,16 @@ function fluxDismissUndo(){document.getElementById('undoSnackbar')?.remove();flu
 window.fluxDismissUndo=fluxDismissUndo;
 function showUndoSnackbar(msg,undoFn){
   const existing=document.getElementById('undoSnackbar');if(existing)existing.remove();
+  // The bar undoes the change just recorded, the one it names — not whatever
+  // is latest by the time Undo is pressed (see undoLastChange).
+  const seq=(undoFn==null||undoFn==='undoLastChange')&&_taskHistory.length?_taskHistory[_taskHistory.length-1].seq:null;
+  const undoCall=seq!=null?'undoLastChange('+(+seq)+')':'undoLastChange()';
   const bar=document.createElement('div');
   bar.id='undoSnackbar';
   // Read out when it appears, so a tick (or a swipe you did not mean) is never silent.
   bar.setAttribute('role','status');
   bar.style.cssText='position:fixed;bottom:var(--flux-dock-clearance,20px);left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
-  bar.innerHTML=`<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:56vw">${esc(msg)}</span><button type="button" onclick="undoLastChange();fluxDismissUndo()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0" title="Undo (Ctrl+Z)">Undo</button><button type="button" aria-label="Dismiss" onclick="fluxDismissUndo()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
+  bar.innerHTML=`<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:56vw">${esc(msg)}</span><button type="button" onclick="${undoCall};fluxDismissUndo()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0" title="Undo (Ctrl+Z)">Undo</button><button type="button" aria-label="Dismiss" onclick="fluxDismissUndo()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
   document.body.appendChild(bar);
   fluxUndoLift();
   const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>{bar.remove();fluxUndoLift();},400);}};
