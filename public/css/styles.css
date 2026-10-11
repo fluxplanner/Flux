@@ -3227,7 +3227,8 @@ html[data-flux-perf="on"] .focus-card{
    ══════════════════════════════════════════════════════════════ */
 
 /* ── STAGGERED TASK LIST ENTRANCE ── */
-.task-item{animation:taskEnter .3s var(--ease) both}
+/* Once per row: a rebuild redraws rows you have already seen as .task-seen (renderTasks). */
+.task-item:not(.task-seen){animation:taskEnter .3s var(--ease) both}
 .task-item:nth-child(1){animation-delay:0s}
 .task-item:nth-child(2){animation-delay:.03s}
 .task-item:nth-child(3){animation-delay:.06s}

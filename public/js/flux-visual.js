@@ -683,11 +683,12 @@
 
     const taskObserver = new MutationObserver(() => {
       injectTaskShootingStars();
-      const items = [...document.querySelectorAll('.task-item:not([data-flux-visual-init])')];
-      items.forEach((el) => {
+      // Rows already seen (.task-seen) are only redrawn: no fade from blank again.
+      const items = [...document.querySelectorAll('.task-item:not([data-flux-visual-init])')].filter((el) => {
         el.dataset.fluxVisualInit = '1';
-        el.classList.add('stagger-item');
+        return !el.classList.contains('task-seen');
       });
+      items.forEach((el) => el.classList.add('stagger-item'));
       if (items.length) staggerItems(items, 40);
     });
     const taskList = document.getElementById('taskList');

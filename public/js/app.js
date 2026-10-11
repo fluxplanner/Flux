@@ -5074,15 +5074,142 @@ function renderStats(){
 // byte-identical to the unwindowed version, so DnD/selection/animations
 // behave exactly the same on the cards that exist.
 const FLUX_LIST_WINDOW=100;
-function fluxWindowedListHtml(items,renderFn,key){
-  if(items.length<=FLUX_LIST_WINDOW)return{html:items.map(renderFn).join(''),rest:null};
-  const head=items.slice(0,FLUX_LIST_WINDOW).map(renderFn).join('');
-  const restCount=items.length-FLUX_LIST_WINDOW;
+/* Tasks whose row has been on screen. Every rebuild (a tick, a pull, an undo,
+   opening the app) replaces every row, and new elements replay their CSS
+   entrance and FluxVisual's stagger: the whole list went blank and faded back
+   in, row by row, for a second or more after each tick. A row seen before is
+   drawn with .task-seen and comes back as it was; only rows new to you enter. */
+const _fluxRowsShown=new Set();
+/** `min`: render at least this many at once — as many as were already on screen, so a rebuild does not cut the list short under you. */
+function fluxWindowedListHtml(items,renderFn,key,min){
+  const win=Math.max(FLUX_LIST_WINDOW,+min||0);
+  if(items.length<=win)return{html:items.map(renderFn).join(''),rest:null};
+  const head=items.slice(0,win).map(renderFn).join('');
+  const restCount=items.length-win;
   return{
     html:head+`<div class="flux-list-sentinel" data-flux-sentinel="${key}" style="padding:14px;text-align:center;color:var(--muted);font-size:.78rem">Loading ${restCount} more…</div>`,
-    rest:items.slice(FLUX_LIST_WINDOW),
+    rest:items.slice(win),
   };
 }
+
+/* ── Keeping your place when the task list is rebuilt ───────────────────────
+   renderTasks() replaces the whole list. Scrolled down a long list, that could
+   throw you back up (and cut the list back to its first 100); with a check or
+   button focused, focus fell to the page. Before a rebuild we note the first
+   row in view and the focused control; afterwards that row goes back to the
+   same height on screen and the same control (or, if its task left the list,
+   the next task's check) gets focus again. */
+function fluxScrollParent(el){
+  for(let n=el&&el.parentElement;n&&n!==document.body&&n!==document.documentElement;n=n.parentElement){
+    const oy=getComputedStyle(n).overflowY;
+    if((oy==='auto'||oy==='scroll')&&n.scrollHeight>n.clientHeight+1)return n;
+  }
+  return document.scrollingElement||document.documentElement;
+}
+function fluxTaskControlKind(ae,row){
+  if(ae===row)return'row';
+  if(ae.classList.contains('check'))return'check';
+  if(ae.matches('.task-chip-due,.task-chip-nodate'))return'date';
+  const t=ae.getAttribute('title')||ae.getAttribute('aria-label');
+  return t?'title:'+t:'check';
+}
+function fluxTaskControl(row,kind){
+  if(kind==='row')return row;
+  if(kind==='date')return row.querySelector('.task-chip-due,.task-chip-nodate');
+  if(kind&&kind.indexOf('title:')===0){
+    const v=kind.slice(6);
+    const hit=[...row.querySelectorAll('[title],[aria-label]')].find(n=>(n.getAttribute('title')||n.getAttribute('aria-label'))===v);
+    if(hit)return hit;
+  }
+  return row.querySelector('.check');
+}
+function fluxTaskListKeep(el){
+  try{
+    if(!el||!el.isConnected||el.offsetParent===null)return null;
+    const rows=[...el.querySelectorAll('.task-item[data-task-id]')];
+    const keep={ids:rows.map(r=>r.dataset.taskId),count:el.querySelectorAll(':scope > .task-item').length,anchor:null,focus:null,scroller:fluxScrollParent(el)};
+    const sc=keep.scroller;
+    const viewTop=(sc===document.scrollingElement||sc===document.documentElement)?0:sc.getBoundingClientRect().top;
+    // Only when the list has been scrolled into: at the top, new rows should push down as usual.
+    if(el.getBoundingClientRect().top<viewTop){
+      const r=rows.find(n=>n.offsetParent!==null&&n.getBoundingClientRect().bottom>viewTop+1);
+      if(r)keep.anchor={id:r.dataset.taskId,top:r.getBoundingClientRect().top};
+    }
+    const ae=document.activeElement;
+    if(ae&&ae!==document.body&&el.contains(ae)){
+      const row=ae.closest('[data-task-id]');
+      if(row)keep.focus={id:row.dataset.taskId,kind:fluxTaskControlKind(ae,row),done:!!row.closest('#completedTasksWrap')};
+    }
+    return keep;
+  }catch(_){return null;}
+}
+function fluxTaskListRestore(el,keep){
+  if(!keep||!el)return;
+  try{
+    // Only rows you can see: a ticked task can sit in a collapsed Completed section.
+    const find=id=>{const r=el.querySelector(`.task-item[data-task-id="${CSS.escape(String(id))}"]`);return r&&r.offsetParent!==null?r:null;};
+    // The row, or failing that the first one after it (before it, for focus) still here.
+    const near=(id,back,notSelf)=>{
+      let r=notSelf?null:find(id);if(r)return r;
+      const i=keep.ids.indexOf(String(id));if(i<0)return null;
+      for(let j=i+1;j<keep.ids.length;j++){r=find(keep.ids[j]);if(r)return r;}
+      if(back)for(let j=i-1;j>=0;j--){r=find(keep.ids[j]);if(r)return r;}
+      return null;
+    };
+    if(keep.anchor){
+      const realign=()=>{
+        const r=near(keep.anchor.id,false);
+        if(!r)return;
+        const d=r.getBoundingClientRect().top-keep.anchor.top;
+        if(Math.abs(d)<=1)return;
+        const sc=keep.scroller;
+        const win=sc===document.scrollingElement||sc===document.documentElement;
+        (win?window:sc).scrollBy({top:d,left:0,behavior:'instant'});
+      };
+      realign();
+      fluxKeepRowSteady(el,keep.scroller,realign);
+    }
+    const ae=document.activeElement;
+    if(keep.focus&&(!ae||ae===document.body||!ae.isConnected)){
+      // Same task, same control — unless a tick moved it into or out of
+      // Completed: then the next task where it was, so Space, Space, Space
+      // goes down the list.
+      let same=find(keep.focus.id);
+      if(same&&!!same.closest('#completedTasksWrap')!==keep.focus.done)same=null;
+      const next=same?null:near(keep.focus.id,true,true);
+      const target=same?fluxTaskControl(same,keep.focus.kind):next&&next.querySelector('.check');
+      if(target&&typeof target.focus==='function')target.focus({preventScroll:true});
+    }
+  }catch(_){}
+}
+/* And for a moment after a rebuild: the wrappers around renderTasks() add
+   buttons and badges (at once and on later frames) and the panels above
+   redraw, any of which can change heights above the row you were on. A
+   ResizeObserver on the list and what holds it puts the row back before the
+   frame is painted. Never against you: a scroll, key or touch of yours ends
+   it, and so does the next rebuild, which keeps its own place. */
+let _fluxRowSteadyStop=null;
+function fluxKeepRowSteady(el,scroller,realign){
+  if(_fluxRowSteadyStop)_fluxRowSteadyStop();
+  const evs=['wheel','touchstart','keydown','pointerdown'];
+  let ro=null,timer=0;
+  const stop=()=>{
+    if(ro){ro.disconnect();ro=null;}
+    clearTimeout(timer);
+    evs.forEach(ev=>window.removeEventListener(ev,stop,true));
+    if(_fluxRowSteadyStop===stop)_fluxRowSteadyStop=null;
+  };
+  _fluxRowSteadyStop=stop;
+  evs.forEach(ev=>window.addEventListener(ev,stop,{capture:true,passive:true}));
+  if(typeof ResizeObserver==='function'){
+    ro=new ResizeObserver(()=>{try{realign();}catch(_){}});
+    for(let n=el;n&&n!==scroller&&n!==document.body&&n!==document.documentElement;n=n.parentElement)ro.observe(n);
+  }else{
+    requestAnimationFrame(()=>requestAnimationFrame(realign));
+  }
+  timer=setTimeout(stop,1500);
+}
+
 function fluxArmListSentinel(container,rest,renderFn,chunk){
   if(!container||!rest||!rest.length)return;
   const sentinel=container.querySelector('[data-flux-sentinel]');
@@ -5159,6 +5286,7 @@ function renderTasks(){
     try{ensureDashboardDom();}catch(_){}
     return;
   }
+  const keep=fluxTaskListKeep(el);
   if(!list.length){
     const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
     const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
@@ -5239,7 +5367,7 @@ function renderTasks(){
         ghostHtml=`<details class="ghost-draft ghost-draft--collapsible" data-ghost-task-id="${t.id}"><summary class="ghost-draft-summary"><span class="ghost-draft-title">✦ Ghost draft</span><span class="ghost-draft-chevron" aria-hidden="true"></span></summary>${ghostBody}</details>`;
       }
     }
-    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}${_fluxRowsShown.has(String(t.id))?' task-seen':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
 <div class="check ${t.done?'done':''}" role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="${esc(t.name)}" onkeydown="fluxCheckKey(event,this)" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
@@ -5278,7 +5406,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
 </div>
 </div>`;
   };
-  const win=fluxWindowedListHtml(active,renderCard,'tasks');
+  const win=fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
   let html=win.html;
   if(taskFilter==='done'){
     html=`<div class="flux-done-notice" role="note"><span aria-hidden="true">🗑</span> Finished tasks are deleted 2 weeks after you complete them. Untick one to keep it.</div>`
@@ -5296,6 +5424,8 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   const prevSig=el.dataset.fluxTaskListSig||'';
   el.dataset.fluxTaskListSig=listSig;
   el.innerHTML=html;
+  // Shown now: from here on these rows come back without an entrance (task-seen).
+  if(el.offsetParent!==null&&document.getElementById('app')?.classList.contains('visible'))list.forEach(t=>_fluxRowsShown.add(String(t.id)));
   fluxArmListSentinel(el,win.rest,renderCard);
   /* Only rows that were not in the list before come in. This used to replay
      the entrance on every row whenever anything changed — tick one task and
@@ -5312,6 +5442,8 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
   if(typeof fluxRenderDashMob==='function')fluxRenderDashMob();
   try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
+  // Last: the swipe binder above moves each row's children, which drops focus.
+  fluxTaskListRestore(el,keep);
 }
 function renderSmartSug(){}
 function openDashAddTaskModal(){

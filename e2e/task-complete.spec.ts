@@ -31,8 +31,11 @@ async function seed(page: Page, n = 40) {
     const enter = FA.tasksEnter;
     FA.tasksEnter = function (els: any) { w.__entered += (els && els.length) || 0; return enter.apply(this, arguments as any); };
   }, n);
-  // Let the first render's own entrance finish before measuring anything.
-  await page.waitForTimeout(400);
+  // Let the first render's own entrance (rows coming in one after another) finish before measuring anything.
+  await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('#taskList .task-item')].filter((r) => {
+    const cs = getComputedStyle(r);
+    return cs.opacity !== '1' || (cs.transform !== 'none' && cs.transform !== 'matrix(1, 0, 0, 1, 0, 0)');
+  }).length), { timeout: 10_000 }).toBe(0);
   await page.evaluate(() => { (window as any).__entered = 0; });
 }
 
@@ -85,9 +88,27 @@ test.describe('Ticking a task off', () => {
   });
 
   test('ticking one task does not replay the animation on the rest of the list', async ({ page }) => {
+    // Also the CSS entrance and FluxVisual's stagger, which every new row
+    // element replayed: at the rebuild the whole list went blank and faded back.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__blankMax = 0;
+      const t0 = performance.now();
+      const look = () => {
+        const n = [...document.querySelectorAll('#taskList > .task-item:not([data-task-id="9100"])')].filter((row) => {
+          let o = 1;
+          for (let e: Element | null = row; e && e !== document.body; e = e.parentElement) o *= +getComputedStyle(e).opacity;
+          return o < 0.9;
+        }).length;
+        w.__blankMax = Math.max(w.__blankMax, n);
+        if (performance.now() - t0 < 1500) requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
     await check(page, 9100).click();
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1600);
     expect(await page.evaluate(() => (window as any).__entered), 'rows re-animated after one tick').toBe(0);
+    expect(await page.evaluate(() => (window as any).__blankMax), 'rows faded out and back in after one tick').toBe(0);
     // The rebuild did happen: the finished task left the Active list.
     await expect(page.locator('#taskList .task-item[data-task-id="9100"]')).toHaveCount(0);
   });
