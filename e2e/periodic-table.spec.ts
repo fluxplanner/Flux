@@ -338,6 +338,14 @@ test.describe('Periodic table page: taps that must not move it, and paper', () =
  *   · the planner's moving backdrop was a full-window canvas redrawn 24
  *     times a second, reading a style off the page on every frame;
  *   · Study tools ran twinkling stars and drifting lines behind the table.
+ * And the second time ("INCREDIBLY laggy right now", 2026-10-11):
+ *   · from 6pm to 6am the planner's whole main area sat under a filter, so
+ *     the browser redrew it off-screen on every frame anything in it moved;
+ *   · the aurora, the ambient wash, the logo's shimmer, the quick-add glow
+ *     and the backdrop canvas kept the whole screen recompositing behind
+ *     Study tools — they now hold still while it is open;
+ *   · every click repainted all 118 cells, and the Temperature slider did so
+ *     on every frame; now only the cells that change are touched.
  */
 test.describe('Periodic table: nothing repaints the screen behind it', () => {
   test('no page paints a fixed body background, signed in or not', async ({ page }) => {
@@ -381,5 +389,86 @@ test.describe('Periodic table: nothing repaints the screen behind it', () => {
     });
     if (r.canvas) expect(r.canvas, 'the backdrop canvas is drawn at full size').toBeLessThanOrEqual(r.window / 8);
     expect(r.endless, 'endless animations behind the table').toEqual([]);
+  });
+
+  test('in the evening, nothing filters the planner\'s main area', async ({ page }) => {
+    await gotoScenario(page, 'student-semester');
+    // What the theme scheduler does from 6pm to 6am.
+    await page.evaluate(() => document.documentElement.setAttribute('data-flux-theme-time', 'night'));
+    const filter = await page.evaluate(() => getComputedStyle(document.querySelector('.main-content')!).filter);
+    expect(filter).toBe('none');
+  });
+
+  test('Study tools holds the background still, and it moves again after', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    // Count what the backdrop canvas draws.
+    await page.addInitScript(() => {
+      const fill = CanvasRenderingContext2D.prototype.fillRect;
+      (window as any).__meshDraws = 0;
+      CanvasRenderingContext2D.prototype.fillRect = function (x: number, y: number, w: number, h: number) {
+        if (this.canvas && this.canvas.id === 'fluxMeshCanvas') (window as any).__meshDraws++;
+        return fill.call(this, x, y, w, h);
+      };
+    });
+    await gotoScenario(page, 'student-semester');
+    const nav = (t: string) => page.evaluate((x) => (window as unknown as { nav: (t: string) => void }).nav(x), t);
+    const watch = () => page.evaluate(async () => {
+      const w = window as any;
+      const before = w.__meshDraws;
+      await new Promise((r) => setTimeout(r, 700));
+      const running = document.getAnimations()
+        .filter((a) => a.playState === 'running' && a.effect!.getTiming().iterations === Infinity)
+        .map((a) => (a as CSSAnimation).animationName || 'animation');
+      return { still: document.documentElement.classList.contains('flux-tools-still'), draws: w.__meshDraws - before, running };
+    });
+    const hasCanvas = async () => (await page.locator('#fluxMeshCanvas').count()) > 0;
+
+    await nav('toolbox');
+    await page.evaluate(() => (window as any).fluxStudyHub.selectSubject('chemistry'));
+    await expect(page.locator('.fsh-ptable-host .fpt-el')).toHaveCount(118);
+    const inTools = await watch();
+    expect(inTools.still).toBe(true);
+    expect(inTools.draws, 'the backdrop redrawn behind the table').toBe(0);
+    expect(inTools.running, 'endless animations anywhere on the screen').toEqual([]);
+
+    await nav('dashboard');
+    const after = await watch();
+    expect(after.still).toBe(false);
+    if (await hasCanvas()) expect(after.draws, 'the backdrop drifts again').toBeGreaterThan(0);
+  });
+
+  test('picking an element, or moving the temperature, touches only the cells that change', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 950 });
+    const watch = () => page.evaluate(() => {
+      const w = window as any;
+      w.__touched = new Set<number>();
+      if (w.__mo) w.__mo.disconnect();
+      w.__mo = new MutationObserver((recs) => recs.forEach((r) => {
+        const el = (r.target instanceof Element ? r.target : r.target.parentElement)?.closest('.fpt-el') as HTMLElement | null;
+        if (el) w.__touched.add(+el.dataset.n!);
+      }));
+      w.__mo.observe(document.querySelector('#ptHost .fpt-grid')!, { subtree: true, childList: true, attributes: true, characterData: true });
+    });
+    const touched = () => page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      return ([...(window as any).__touched] as number[]).sort((a, b) => a - b);
+    });
+
+    await page.goto('/periodic.html');
+    await page.locator('#ptHost .fpt-el[data-n="26"]').click();
+    await watch();
+    await page.locator('#ptHost .fpt-el[data-n="8"]').click();
+    expect(await touched(), 'iron lets go, oxygen is picked, nothing else').toEqual([8, 26]);
+
+    await page.goto('/periodic.html#temperature');
+    await expect(page.locator('.fpt-range')).toBeVisible();
+    await watch();
+    // 298 K to 303 K: caesium (301.6 K) and gallium (302.9 K) melt.
+    await page.locator('.fpt-range').focus();
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.fpt-temp-v')).toContainText('303 K');
+    const t = await touched();
+    expect(t).toEqual(expect.arrayContaining([31, 55]));
+    expect(t.length, 'cells rewritten for a 5-degree step').toBeLessThanOrEqual(4);
   });
 });
