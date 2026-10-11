@@ -311,6 +311,41 @@
     return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
+  /**
+   * pdf.js text items ({ str, transform: [a, b, c, d, x, y], width, height,
+   * hasEOL }) from page.getTextContent() into lines, with a blank line where
+   * the gap between lines is bigger than usual, then pdfLinesToText. Joining
+   * the items with spaces instead loses every line and paragraph break.
+   */
+  function pdfItemsToText(items) {
+    const lines = [];
+    let cur = '';
+    let lastY = null;
+    let lastEnd = null;
+    let lastH = 0;
+    (Array.isArray(items) ? items : []).forEach((it) => {
+      if (!it || typeof it.str !== 'string') return;
+      const tr = Array.isArray(it.transform) ? it.transform : null;
+      const x = tr ? Number(tr[4]) : null;
+      const y = tr ? Number(tr[5]) : null;
+      const h = Math.abs(Number(it.height)) || lastH || 10;
+      if (lastY != null && y != null && Math.abs(y - lastY) > h * 0.5) {
+        if (cur.trim()) lines.push(cur);
+        if (Math.abs(y - lastY) > Math.max(h, lastH) * 1.8) lines.push('');
+        cur = '';
+        lastEnd = null;
+      }
+      if (cur && lastEnd != null && x != null && x - lastEnd > h * 0.15 && !/\s$/.test(cur) && !/^\s/.test(it.str)) cur += ' ';
+      cur += it.str;
+      if (y != null) lastY = y;
+      lastH = h;
+      lastEnd = x != null && Number.isFinite(Number(it.width)) ? x + Number(it.width) : null;
+      if (it.hasEOL) { if (cur.trim()) lines.push(cur); cur = ''; lastEnd = null; }
+    });
+    if (cur.trim()) lines.push(cur);
+    return pdfLinesToText(lines);
+  }
+
   const PAGE_RE = /^(?:[-–—=]+\s*)?(?:page|p\.)\s*(\d{1,4})(?:\s*[-–—=]+)?$/i;
   const MARKER_RE = /^\[[^\]]{1,240}\]$/;
   const BULLET_RE = /^\s*(?:[-*•▪◦·‣–—+]|\(?\d{1,3}[.)]|\(?[a-zA-Z][.)](?=\s))\s+/;
@@ -345,6 +380,15 @@
     if (/[.!?,;]["'”’)]*$/.test(t)) return false;
     if (/:\s+\S/.test(t)) return false;
     return true;
+  }
+  /**
+   * A photo's or PDF's line that carries on into the next ("Evaporation is the
+   * process by which" / "water changes…") is a wrapped sentence, not a heading.
+   */
+  const RUNS_ON_END = /\b(?:a|an|the|of|and|or|but|to|in|on|at|by|for|with|from|into|onto|that|which|who|whose|where|when|while|as|than|is|are|was|were|be|been|its|their|his|her|this|these|those|because|if|so|not|no|very|more|most|can|will|may|has|have|had)$/i;
+  function runsOn(line, next) {
+    if (RUNS_ON_END.test(line.trim())) return true;
+    return typeof next === 'string' && /^[\p{Ll}]/u.test(next.trim());
   }
   function cleanHeading(line) {
     return line.replace(/^#{1,6}\s+/, '').replace(/[*_`]+/g, '').replace(/:\s*$/, '').trim();
@@ -474,7 +518,7 @@
               if (title) open(title, md[1].length, seg.page);
               return;
             }
-            if (li === 0 && headingLike(line) && (lines.length > 1 || bi < lastBlock)) {
+            if (li === 0 && headingLike(line) && (lines.length > 1 || bi < lastBlock) && !runsOn(line, lines[1])) {
               flush();
               const title = cleanHeading(line);
               if (title) open(title, hasTop ? 2 : 1, seg.page);
@@ -1873,6 +1917,47 @@
     return { right, total, pct: total ? Math.round(right / total * 100) : 0, results };
   }
 
+  /** A question as one line of plain text, for reviews and saved results. */
+  function questionText(q) {
+    if (!q) return '';
+    if (q.type === 'tf') return q.statement || '';
+    if (q.type === 'cloze') return (q.before || '') + '_____' + (q.after || '');
+    if (q.type === 'match') return 'Match: ' + (q.pairs || []).map((p) => p.term).join(', ');
+    if (q.type === 'mcdef') return 'What does “' + (q.stem || q.concept || '') + '” mean?';
+    return q.stem || q.prompt || '';
+  }
+  /**
+   * What a finished practice test saves in set.tests: the score, the time,
+   * and each question missed with the right answer and its source.
+   * opts: { seconds, timed (minutes, 0 = untimed), now }.
+   */
+  function practiceRecord(questions, answers, graded, opts) {
+    const o = opts || {};
+    const g = graded || gradePracticeTest(questions, answers);
+    const byId = new Map((questions || []).map((q) => [q.id, q]));
+    const missed = g.results.filter((r) => !isRight(r.verdict)).map((r) => {
+      const q = byId.get(r.qid);
+      const given = answers ? answers[r.qid] : '';
+      return {
+        prompt: questionText(q).slice(0, 3000),
+        answer: answerText(q).slice(0, 3000),
+        given: typeof given === 'string' ? given.slice(0, LIMITS.answer)
+          : (plainObject(given) ? Object.keys(given).map((k) => given[k]).filter((v) => typeof v === 'string').join(', ').slice(0, LIMITS.answer) : ''),
+        source: q && q.type === 'match' ? ((q.sources || [])[0] || null) : (q ? q.source : null),
+      };
+    });
+    return {
+      id: uid('test-'),
+      at: o.now || new Date().toISOString(),
+      right: g.right,
+      total: g.total,
+      pct: g.pct,
+      seconds: clampInt(o.seconds, 0, 1e6, 0),
+      timed: clampInt(o.timed, 0, 600, 0),
+      missed: missed.slice(0, LIMITS.testQuestions),
+    };
+  }
+
   /* ── Ask your notes (BM25) ──────────────────────────────────────────── */
 
   function buildSearchIndex(corpus) {
@@ -2713,7 +2798,7 @@
   root.FluxTutor = {
     VERSION, LIMITS, KINDS, QTYPES, MASTERED, MAX_LEVEL,
     uid, hashText, seeded, shuffle, safeUrl, cap, ymd, isYmd, addDays, daysBetween,
-    tokenize, words, stem, norm, lev, normalizeText, pdfLinesToText, splitSentences,
+    tokenize, words, stem, norm, lev, normalizeText, pdfLinesToText, pdfItemsToText, splitSentences,
     buildCorpus, formatRef, measure, mentionsOf,
     findDefinition, extractTerms, extractFacts, buildOutline, buildGuide, mergeGuide, sourcesHash,
     addTerm, addFact, editItem, removeItem, restoreItem,
@@ -2723,7 +2808,7 @@
     newMastery, applyResult, statusOf, weakness, masterySummary,
     startLearn, answerCheck, finishCheck, nextStep, currentStep, answerStep, dontKnow, skipStep, repeatStep, backStep, atLatest, learnSummary,
     simplerFor, examplesFor,
-    buildPracticeTest, gradePracticeTest,
+    buildPracticeTest, gradePracticeTest, practiceRecord, questionText,
     buildSearchIndex, searchNotes, highlightSegments,
     buildStudyPlan,
     newSet, newSource, normalizeSet, cloneSet, guideStale, hasNotes, summarizeSet, wordCount,

@@ -147,6 +147,18 @@ test('messy notes: bullets, glossary lines, PDF page markers and wrapped lines',
   assert.ok(M.guide.facts.some((f) => f.text.startsWith('Over 9 million') && f.tags.includes('number')));
 });
 
+test('photo (OCR) text: a line wrapped mid-sentence is joined to the next, not taken for a heading', () => {
+  const ocr = 'The Water Cycle\n\nEvaporation is the process by which\nwater changes from a liquid into a gas.\n\nCondensation happens when water vapour\ncools and turns back into liquid droplets\nthat form clouds.\n\nPrecipitation\nWater falls from clouds as rain, snow,\nsleet or hail when the droplets get heavy.';
+  const B = build([{ id: 'o', name: 'board.jpg', kind: 'Photo', text: ocr }]);
+  eq(B.guide.outline.map((o) => o.title), ['The Water Cycle', 'Precipitation']);
+  eq(B.corpus.sentences.map((x) => x.text), [
+    'Evaporation is the process by which water changes from a liquid into a gas.',
+    'Condensation happens when water vapour cools and turns back into liquid droplets that form clouds.',
+    'Water falls from clouds as rain, snow, sleet or hail when the droplets get heavy.',
+  ]);
+  assert.equal(termOf(B, 'Evaporation').def, 'The process by which water changes from a liquid into a gas.');
+});
+
 test('pasted notes with no headings: one section, definitions, names with "St." in them', () => {
   eq(P.guide.outline.map((o) => o.title), ['Pasted notes']);
   assert.ok(P.guide.outline[0].summary.length >= 1);
@@ -176,6 +188,13 @@ test('text clean-up: ligatures, words broken over a line, PDF lines into paragra
   assert.match(paras[0], /just one cell\.$/);
   eq(clone(T.splitSentences('It costs 3.5 dollars, e.g. on Mon. Dr. Who said so. Then it ended!')),
     ['It costs 3.5 dollars, e.g. on Mon.', 'Dr. Who said so.', 'Then it ended!']);
+  // pdf.js items: two lines of a paragraph, a bigger gap, then a new paragraph; "Cells" and "are" have no space item between them.
+  const item = (str, x, y, width, eol) => ({ str, transform: [12, 0, 0, 12, x, y], width, height: 12, hasEOL: !!eol });
+  eq(T.pdfItemsToText([
+    item('Cells', 72, 700, 30), item('are the basic unit of life and every living thing is made of', 106, 700, 380, true),
+    item('at least one cell.', 72, 686, 100, true),
+    item('Tissues form organs.', 72, 650, 120, true),
+  ]), 'Cells are the basic unit of life and every living thing is made of\nat least one cell.\n\nTissues form organs.');
   assert.equal(T.measure(T.buildCorpus([{ text: 'Too short.' }])).enough, false);
   assert.equal(T.measure(S.corpus).enough, true);
 });
@@ -507,6 +526,14 @@ test('practice test: mixed questions, graded, wrong answers reviewable with thei
   assert.equal(half.pct, 50);
   const missed = half.results.filter((r) => !T.isRight(r.verdict)).map((r) => qs.find((q) => q.id === r.qid));
   assert.ok(missed.every((q) => q.type === 'match' ? q.sources.length : q.source.text), 'every missed question carries its source');
+  // What the set saves: score, time, and the missed questions with the answer and where it came from.
+  const answers = Object.fromEntries(qs.map((q, i) => [q.id, i % 2 ? rightAnswer(q) : wrongAnswer(q)]));
+  const rec = T.practiceRecord(qs, answers, half, { seconds: 412, timed: 10, now: NOW });
+  assert.deepEqual([rec.right, rec.total, rec.pct, rec.seconds, rec.timed, rec.at], [6, 12, 50, 412, 10, NOW]);
+  assert.equal(rec.missed.length, 6);
+  rec.missed.forEach((m) => { assert.ok(m.prompt && m.answer && m.source && m.source.text); assert.ok(!m.prompt.includes('undefined')); });
+  const saved = T.normalizeSet({ title: 'x', tests: [rec] });
+  eq(saved.tests[0], rec, 'the record survives saving as it is');
 });
 
 test('practice test: "weak only" asks about terms not yet mastered; matching only still fills the test', () => {
