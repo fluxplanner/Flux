@@ -963,6 +963,9 @@
     const T = Object.assign({ PY: 12, CY: 12, begin: false }, t);
     const i = periodRate(T.I, T.PY, T.CY);
     if (round == null) return tvmSolve(Object.assign({}, T, { N: n }), 'FV') * -1 * -1;
+    // The rounded path advances one period per iteration. Reject unsafe counts
+    // before entering the loop, including values whose increment stalls.
+    if (!Number.isSafeInteger(n) || n > 1000000) fail('INVALID DIM');
     const rd = (v) => { const f = Math.pow(10, round); return Math.round(v * f) / f; };
     let b = rd(T.PV);
     const pmt = rd(T.PMT);
