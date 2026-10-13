@@ -674,6 +674,13 @@
   function sseOf(model, p, xs, ys, ws) { let s = 0; xs.forEach((x, i) => { const e = ys[i] - model(p, x); s += ws[i] * e * e; }); return s; }
   function sortedPairs(xs, ys, ws) {
     const out = [];
+    const MAX_EXPANDED_SAMPLE = 10000;
+    let total = 0;
+    ws.forEach((w) => {
+      const count = Math.round(w);
+      if (!Number.isSafeInteger(count) || count < 0 || count > MAX_EXPANDED_SAMPLE - total) fail('INVALID DIM');
+      total += count;
+    });
     xs.forEach((x, i) => { for (let k = 0; k < Math.round(ws[i]); k++) out.push([x, ys[i]]); });
     return out.sort((a, b) => a[0] - b[0]);
   }
