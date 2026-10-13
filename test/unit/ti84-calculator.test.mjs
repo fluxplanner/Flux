@@ -313,6 +313,7 @@ test('large random and distribution requests fail before large loops or allocati
 
 test('TABLE SETUP Depend: Ask accepts and displays manually entered Y values', () => {
   const st = T.freshState();
+  st.ui = Object.assign({}, st.ui, { yOn: {}, yCol: {}, yStyle: {} });
   st.y['Y₁'] = 'X+1';
   st.tbl.depend = 'ask';
   const c = { st, rows: () => 8, pop() {}, typeInto: () => false };
