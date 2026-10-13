@@ -252,7 +252,7 @@
   }
 
   function lchoose(n, k) { return lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1); }
-  function checkInt(v, lo) { if (v !== Math.floor(v) || v < lo) fail('DOMAIN'); }
+  function checkInt(v, lo) { if (!Number.isSafeInteger(v) || v < lo) fail('DOMAIN'); }
   function binomPoint(n, p, x) {
     if (x < 0 || x > n || x !== Math.floor(x)) return 0;
     if (p === 0) return x === 0 ? 1 : 0;
