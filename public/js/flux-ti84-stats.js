@@ -333,17 +333,34 @@
   function weights(xs, fs) {
     if (fs == null) return xs.map(() => 1);
     if (fs.length !== xs.length) fail('DIM MISMATCH');
-    fs.forEach((f) => { if (!(f >= 0)) fail('STAT'); });
+    fs.forEach((f) => { if (!Number.isFinite(f) || f < 0) fail('STAT'); });
     return fs;
   }
-  /** Median of a sorted, weighted sample (weights must be whole numbers to split halves exactly). */
-  function sortedExpand(xs, ws) {
+  /**
+   * Quartiles of an integer-frequency sample without expanding each frequency
+   * into repeated values. Besides avoiding large allocations, rank lookup
+   * remains O(number of input rows) even when a frequency is large.
+   */
+  function weightedQuartiles(xs, ws) {
     const pairs = xs.map((x, i) => [x, ws[i]]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
-    const whole = pairs.every((p) => p[1] === Math.floor(p[1]));
-    if (!whole) return null;
-    const out = [];
-    pairs.forEach((p) => { for (let k = 0; k < p[1]; k++) out.push(p[0]); });
-    return out;
+    if (!pairs.every((p) => Number.isSafeInteger(p[1]))) return { q1: NaN, med: NaN, q3: NaN };
+    const n = pairs.reduce((sum, p) => sum + p[1], 0);
+    if (!Number.isSafeInteger(n) || n <= 0) return { q1: NaN, med: NaN, q3: NaN };
+    const at = (index) => {
+      let end = 0;
+      for (const [value, count] of pairs) {
+        end += count;
+        if (index < end) return value;
+      }
+      return NaN;
+    };
+    const medianRange = (start, count) => {
+      if (count <= 0) return NaN;
+      const right = start + Math.floor(count / 2);
+      return count % 2 ? at(right) : (at(right - 1) + at(right)) / 2;
+    };
+    const half = Math.floor(n / 2);
+    return { q1: medianRange(0, half), med: medianRange(0, n), q3: medianRange(n - half, half) };
   }
   function medianSorted(s) {
     const n = s.length;
@@ -373,8 +390,7 @@
     const mean = sx / n;
     let ss = 0;
     xs.forEach((x, i) => { ss += ws[i] * (x - mean) * (x - mean); });
-    const s = sortedExpand(xs, ws);
-    const q = s ? quartiles(s) : { q1: NaN, med: NaN, q3: NaN };
+    const q = weightedQuartiles(xs, ws);
     return {
       mean: mean, sum: sx, sum2: sx2,
       Sx: n > 1 ? Math.sqrt(ss / (n - 1)) : NaN, sigma: Math.sqrt(ss / n),
