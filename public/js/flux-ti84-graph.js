@@ -1047,9 +1047,10 @@
     return Array.from({ length: this.c.rows(TROWS0) }, (_, i) => +(this.start + i * st.tbl['ΔTbl']).toPrecision(12));
   };
   TableApp.prototype.editor = function () {
-    const tbl = this.c.st.tbl;
+    const tbl = this.c.st.tbl, fns = this.fns();
     const editX = this.col === 0 && tbl.indpnt === 'ask';
-    const editY = this.col > 0 && tbl.depend === 'ask' && !!this.fns()[this.col - 1];
+    const editY = this.col > 0 && tbl.depend === 'ask' &&
+      (this.col <= fns.length || (fns.length === 0 && this.col === 1));
     if (!editX && !editY) return null;
     return this.ed || (this.ed = new window.FluxTIEditor({ mathprint: false }));
   };
@@ -1065,9 +1066,10 @@
       return;
     }
     const fn = this.fns()[this.col - 1];
-    if (!fn) return;
-    if (!this.askedY[fn.name]) this.askedY[fn.name] = [];
-    this.askedY[fn.name][this.row] = v;
+    const name = fn ? fn.name : (this.col === 1 ? 'Y₁' : null);
+    if (!name) return;
+    if (!this.askedY[name]) this.askedY[name] = [];
+    this.askedY[name][this.row] = v;
   };
   TableApp.prototype.key = function (k) {
     const st = this.c.st, fns = this.fns();
@@ -1111,7 +1113,14 @@
       const selX = this.row === r && this.col === 0;
       html += '<div class="t84tb-c' + (selX ? ' is-sel' : '') + '">' + (selX && this.ed ? this.ed.html(this.c.cursorMark()) : esc(x == null ? '' : f(x))) + '</div>';
       if (selX) selText = 'X=' + (x == null ? '' : T().fmtReal(x));
-      if (!shown.length) html += '<div class="t84tb-c"></div>';
+      if (!shown.length) {
+        const selY = this.row === r && this.col === 1;
+        const y = this.askedY['Y₁'] && this.askedY['Y₁'][r] != null ? this.askedY['Y₁'][r] : null;
+        const yText = y == null ? '' : f(y);
+        html += '<div class="t84tb-c' + (selY ? ' is-sel' : '') + '">' +
+          (selY && this.ed ? this.ed.html(this.c.cursorMark()) : esc(yText)) + '</div>';
+        if (selY) selText = 'Y₁=' + (y == null ? '' : T().fmtReal(+y.toPrecision(10), st.mode));
+      }
       shown.forEach((fn, j) => {
         const col = this.left0 + j;
         const sel = this.row === r && this.col === col;
