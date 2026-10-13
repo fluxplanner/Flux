@@ -33,7 +33,7 @@
   // and hang the browser even when the intended tick count is small.
   function steppedValues(start, end, step, limit) {
     if (!(Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(step) && step > 0) || end < start) return [];
-    const rawCount = Math.floor((end - start) / step + 1e-9) + 1;
+    const rawCount = Math.floor((end - start) / step) + 1;
     if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
     const out = [];
     for (let i = 0; i < rawCount; i++) {
