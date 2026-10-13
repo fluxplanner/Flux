@@ -359,3 +359,12 @@ test('large integer frequencies do not expand into enormous sample arrays', () =
     (e) => e.ti === 'INVALID DIM'
   );
 });
+
+
+test('graph tick generation stays bounded when floating-point increments stop advancing', () => {
+  const ticks = W.FluxTIGraph.tickValues(1e15, 1e15 + 1, 0.1, 301);
+  assert.ok(ticks.length > 0 && ticks.length <= 301);
+  assert.ok(ticks.every(Number.isFinite));
+  assert.ok(ticks.every((v, i) => i === 0 || v > ticks[i - 1]));
+  same(W.FluxTIGraph.tickValues(-1, 1, 0.5, 10), [-1, -0.5, 0, 0.5, 1]);
+});
