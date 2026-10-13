@@ -1036,6 +1036,7 @@
     this.col = 1;
     this.start = c.st.tbl.TblStart;
     this.asked = [];
+    this.askedY = Object.create(null);
     this.ed = null;
     this.left0 = 1;
   }
@@ -1046,7 +1047,10 @@
     return Array.from({ length: this.c.rows(TROWS0) }, (_, i) => +(this.start + i * st.tbl['ΔTbl']).toPrecision(12));
   };
   TableApp.prototype.editor = function () {
-    if (this.col !== 0 || this.c.st.tbl.indpnt !== 'ask') return null;
+    const tbl = this.c.st.tbl;
+    const editX = this.col === 0 && tbl.indpnt === 'ask';
+    const editY = this.col > 0 && tbl.depend === 'ask' && !!this.fns()[this.col - 1];
+    if (!editX && !editY) return null;
     return this.ed || (this.ed = new window.FluxTIEditor({ mathprint: false }));
   };
   TableApp.prototype.commit = function () {
@@ -1055,8 +1059,15 @@
     this.ed = null;
     if (!code.trim()) return;
     const v = T().evaluate(code, this.c.st);
-    if (typeof v !== 'number') T().fail('DATA TYPE');
-    this.asked[this.row] = v;
+    if (typeof v !== 'number' || !Number.isFinite(v)) T().fail('DATA TYPE');
+    if (this.col === 0) {
+      this.asked[this.row] = v;
+      return;
+    }
+    const fn = this.fns()[this.col - 1];
+    if (!fn) return;
+    if (!this.askedY[fn.name]) this.askedY[fn.name] = [];
+    this.askedY[fn.name][this.row] = v;
   };
   TableApp.prototype.key = function (k) {
     const st = this.c.st, fns = this.fns();
@@ -1102,10 +1113,17 @@
       if (selX) selText = 'X=' + (x == null ? '' : T().fmtReal(x));
       if (!shown.length) html += '<div class="t84tb-c"></div>';
       shown.forEach((fn, j) => {
-        const y = x == null ? null : num(fn.f(x));
-        const sel = this.row === r && this.col === this.left0 + j;
-        html += '<div class="t84tb-c' + (sel ? ' is-sel' : '') + '">' + esc(x == null ? '' : f(y)) + '</div>';
-        if (sel) selText = fn.name + '=' + (x == null ? '' : Number.isFinite(y) ? T().fmtReal(+y.toPrecision(10), st.mode) : 'ERROR');
+        const col = this.left0 + j;
+        const sel = this.row === r && this.col === col;
+        let y;
+        if (st.tbl.depend === 'ask') {
+          y = this.askedY[fn.name] && this.askedY[fn.name][r] != null ? this.askedY[fn.name][r] : null;
+        } else {
+          y = x == null ? null : num(fn.f(x));
+        }
+        const yText = y == null ? '' : f(y);
+        html += '<div class="t84tb-c' + (sel ? ' is-sel' : '') + '">' + (sel && this.ed ? this.ed.html(this.c.cursorMark()) : esc(yText)) + '</div>';
+        if (sel) selText = fn.name + '=' + (y == null ? '' : Number.isFinite(y) ? T().fmtReal(+y.toPrecision(10), st.mode) : 'ERROR');
       });
     }
     return html + '</div><div class="t84tb-b">' + esc(selText || (fns.length ? '' : 'No functions are on — press y=')) + '</div></div>';
