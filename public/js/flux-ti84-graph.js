@@ -31,21 +31,25 @@
   // Generate a bounded tick array instead of incrementing a floating-point
   // coordinate in a loop. At large magnitudes, x += 0.1 may leave x unchanged
   // and hang the browser even when the intended tick count is small.
+  function steppedValues(start, end, step, limit) {
+    if (!(Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(step) && step > 0) || end < start) return [];
+    const rawCount = Math.floor((end - start) / step + 1e-9) + 1;
+    if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
+    const out = [];
+    for (let i = 0; i < rawCount; i++) {
+      const value = start + i * step;
+      if (!Number.isFinite(value)) break;
+      // Use an integer loop counter. Adding step to a large coordinate may
+      // round to the same value forever, even when the intended range is short.
+      if (!out.length || value !== out[out.length - 1]) out.push(value);
+    }
+    return out;
+  }
   function tickValues(min, max, step, limit) {
     if (!(Number.isFinite(min) && Number.isFinite(max) && Number.isFinite(step) && step > 0)) return [];
     const first = Math.ceil(min / step) * step;
     if (!Number.isFinite(first) || first > max) return [];
-    const rawCount = Math.floor((max - first) / step) + 1;
-    if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
-    const out = [];
-    for (let i = 0; i < rawCount; i++) {
-      const value = first + i * step;
-      if (!Number.isFinite(value)) break;
-      // Distinct loop counters are essential even when adding step to the
-      // coordinate itself would round back to the previous representable value.
-      if (!out.length || value !== out[out.length - 1]) out.push(value);
-    }
-    return out;
+    return steppedValues(first, max, step, limit);
   }
 
   /* ── Functions to draw ──────────────────────────────────────────────── */
@@ -91,7 +95,7 @@
       if (last < first || last - first > 1000) return { kind: 'web', reference: null, series: [] };
       const series = fns.map((fn) => {
         const points = [];
-        for (let n = first; n <= last; n += stride) {
+        for (const n of steppedValues(first, last, stride, 1001)) {
           const current = num(fn.f(n - stride)), next = num(fn.f(n));
           if (!Number.isFinite(current) || !Number.isFinite(next)) { points.push(null); continue; }
           // The WEB graph is u(n) against u(n−1); TRACE draws the stair-step.
@@ -302,14 +306,14 @@
     if (fn.seq) {
       const lo = seqFirst(w), hi = w.nMax, step = seqStep(w);
       if (!(step > 0) || (hi - lo) / step > 1000) return;
-      for (let n = lo; n <= hi + step * 1e-9; n += step) {
+      for (const n of steppedValues(lo, hi + step * 1e-9, step, 1001)) {
         const y = num(fn.f(Math.round(n)));
         pts.push(Number.isFinite(y) ? [F.sx(n), F.sy(Math.max(w.Ymin - span * 4, Math.min(w.Ymax + span * 4, y)))] : null);
       }
     } else if (fn.par || fn.pol) {
       const lo = fn.par ? w.Tmin : w['θmin'], hi = fn.par ? w.Tmax : w['θmax'], step = fn.par ? w.Tstep : w['θstep'];
       if (!(step > 0) || (hi - lo) / step > 20000) return;
-      for (let t = lo; t <= hi + step * 1e-9; t += step) {
+      for (const t of steppedValues(lo, hi + step * 1e-9, step, 20001)) {
         let x, y;
         if (fn.par) { x = num(fn.fx(t)); y = num(fn.fy(t)); } else {
           const r = num(fn.f(t));
@@ -1348,6 +1352,7 @@
     applyZoom: applyZoom,
     activeFns: activeFns,
     tickValues: tickValues,
+    steppedValues: steppedValues,
     sequenceGraphData: sequenceGraphData,
     sequenceTraceData: sequenceTraceData,
     sequenceWebTrail: sequenceWebTrail,
