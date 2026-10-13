@@ -1124,11 +1124,19 @@
    * Returns { kind: 'unique', x: [...] } | { kind: 'none' } | { kind: 'infinite', rref }.
    */
   function solveSystem(aug) {
-    const R = rref(aug);
     const vars = aug[0].length - 1;
+    // Each equation is independently scale-normalized before elimination.
+    // Scaling an equation does not change its solution, and prevents a tiny
+    // but nonzero contradiction from being hidden by an absolute tolerance.
+    const scaled = aug.map((row) => {
+      const scale = Math.max.apply(null, row.map(Math.abs));
+      if (!Number.isFinite(scale)) fail('DATA TYPE');
+      return scale === 0 ? row.slice() : row.map((v) => v / scale);
+    });
+    const R = rref(scaled);
     for (const row of R) {
       const allZero = row.slice(0, vars).every((v) => v === 0);
-      if (allZero && Math.abs(row[vars]) > 1e-10) return { kind: 'none', rref: R };
+      if (allZero && row[vars] !== 0) return { kind: 'none', rref: R };
     }
     let rank = 0;
     R.forEach((row) => { if (row.slice(0, vars).some((v) => v !== 0)) rank++; });
