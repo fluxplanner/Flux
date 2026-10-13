@@ -317,6 +317,10 @@ test('large random and distribution requests fail before large loops or allocati
   assert.throws(() => S.binomcdf(1000, 0.5), (e) => e.ti === 'INVALID DIM');
   assert.throws(() => S.invBinom(0.5, 1000, 0.5), (e) => e.ti === 'INVALID DIM');
   assert.throws(() => S.npv(5, 0, [1], [1000]), (e) => e.ti === 'INVALID DIM');
+  assert.throws(
+    () => S.bal({ PV: 100, PMT: -10, I: 5, PY: 12, CY: 12 }, 1e16, 2),
+    (e) => e.ti === 'INVALID DIM'
+  );
 });
 
 test('TABLE SETUP Depend: Ask accepts and displays manually entered Y values', () => {
