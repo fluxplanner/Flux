@@ -327,6 +327,15 @@ test('TABLE SETUP Depend: Ask accepts and displays manually entered Y values', (
   table.key('enter');
   assert.equal(table.askedY['Y₁'][0], 42);
   assert.match(table.render(), /42/);
+
+  // The placeholder Y₁ column should still be editable when no Y equation is active.
+  st.y['Y₁'] = '';
+  const blankTable = new W.FluxTIGraph.TableApp(c);
+  blankTable.col = 1;
+  blankTable.ed = { serialize: () => '17', html: () => '17' };
+  blankTable.key('enter');
+  assert.equal(blankTable.askedY['Y₁'][0], 17);
+  assert.match(blankTable.render(), /17/);
 });
 
 
