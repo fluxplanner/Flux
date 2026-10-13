@@ -328,3 +328,13 @@ test('TABLE SETUP Depend: Ask accepts and displays manually entered Y values', (
   assert.equal(table.askedY['Y₁'][0], 42);
   assert.match(table.render(), /42/);
 });
+
+
+test('large integer frequencies do not expand into enormous sample arrays', () => {
+  const s = S.oneVar([1, 2], [1e15, 1]);
+  assert.equal(s.n, 1e15 + 1);
+  assert.equal(s.q1, 1);
+  assert.equal(s.med, 1);
+  assert.equal(s.q3, 1);
+  assert.throws(() => S.oneVar([1], [Infinity]), (e) => e.ti === 'STAT');
+});
