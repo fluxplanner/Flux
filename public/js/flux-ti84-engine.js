@@ -1325,7 +1325,7 @@
     'randInt(': (lo, hi, n, cx) => {
       const a = needSafeInt(lo), b = needSafeInt(hi);
       const L = Math.min(a, b), H = Math.max(a, b), span = H - L;
-      if (!Number.isSafeInteger(span)) fail('DOMAIN');
+      if (!Number.isSafeInteger(span) || !Number.isSafeInteger(span + 1)) fail('DOMAIN');
       return randCount(n, () => L + Math.floor(rand(cx) * (span + 1)));
     },
     'randNorm(': (mu, sigma, n, cx) => randCount(n, () => R(real(mu) + real(sigma) * S().invPhi(Math.min(1 - 1e-15, Math.max(1e-15, rand(cx)))))),
