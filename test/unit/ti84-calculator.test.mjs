@@ -279,6 +279,8 @@ test('tiny but well-scaled linear systems retain their pivots', () => {
   const sys = S.solveSystem([[1e-13, 2e-13]]);
   assert.equal(sys.kind, 'unique');
   assert.equal(sys.x[0], 2);
+  assert.equal(S.solveSystem([[0, 1e-13]]).kind, 'none');
+  assert.equal(S.solveSystem([[1e13, 1e13], [0, 1e-13]]).kind, 'none');
 });
 
 test('matrix inversion is scale-aware and element stores require integer indexes', () => {
