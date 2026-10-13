@@ -272,6 +272,8 @@ test('programs: Input waits for an answer, errors stop with the line', async () 
 
 test('tiny but well-scaled linear systems retain their pivots', () => {
   same(S.rref([[1e-13, 0], [0, 1e-13]]), [[1, 0], [0, 1]]);
+  same(S.rref([[1, 1e-13]]), [[1, 1e-13]]);
+  same(S.ref([[1, 1e-13]]), [[1, 1e-13]]);
   const sys = S.solveSystem([[1e-13, 2e-13]]);
   assert.equal(sys.kind, 'unique');
   assert.equal(sys.x[0], 2);
