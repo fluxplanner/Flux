@@ -969,11 +969,19 @@
   }
 
   function permComb(op, n, r) {
-    if (n !== Math.floor(n) || r !== Math.floor(r) || n < 0 || r < 0) fail('DOMAIN');
+    if (!Number.isSafeInteger(n) || !Number.isSafeInteger(r) || n < 0 || r < 0) fail('DOMAIN');
     if (r > n) return 0;
-    let out = 1;
-    if (op === 'nPr') { for (let k = 0; k < r; k++) out *= (n - k); return R(out); }
+    // Results requiring more than 999 multiplicative steps overflow the
+    // calculator's representable range long before those loops finish.
+    if (op === 'nPr') {
+      if (r > 999) fail('OVERFLOW');
+      let out = 1;
+      for (let k = 0; k < r; k++) out *= (n - k);
+      return R(out);
+    }
     const k = Math.min(r, n - r);
+    if (k > 999) fail('OVERFLOW');
+    let out = 1;
     for (let j = 1; j <= k; j++) out = out * (n - k + j) / j;
     return R(Math.round(out));
   }
@@ -1551,9 +1559,10 @@
       }
       case 'Σ(': {
         const v = varName(a[1]);
-        const s = needInt(real(ev(a[2], cx))), e = needInt(real(ev(a[3], cx)));
+        const s = needSafeInt(real(ev(a[2], cx))), e = needSafeInt(real(ev(a[3], cx)));
         let total = 0;
-        if (e - s > 1e6) fail('INVALID DIM');
+        const count = e >= s ? e - s + 1 : 0;
+        if (!Number.isSafeInteger(count) || count > 1e6) fail('INVALID DIM');
         for (let k = s; k <= e; k++) total = add(total, withVar(cx, v, k, a[0]));
         return total;
       }
