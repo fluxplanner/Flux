@@ -259,9 +259,14 @@
     if (p === 1) return x === n ? 1 : 0;
     return Math.exp(lchoose(n, x) + x * Math.log(p) + (n - x) * Math.log(1 - p));
   }
+  const MAX_DISTRIBUTION_ROWS = 999;
+  function checkDistributionRows(n) { if (n > MAX_DISTRIBUTION_ROWS) fail('INVALID DIM'); }
   function binompdf(n, p, x) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1)) fail('DOMAIN');
-    if (x == null) { const out = []; for (let k = 0; k <= n; k++) out.push(binomPoint(n, p, k)); return out; }
+    if (x == null) {
+      checkDistributionRows(n);
+      const out = []; for (let k = 0; k <= n; k++) out.push(binomPoint(n, p, k)); return out;
+    }
     return binomPoint(n, p, x);
   }
   function binomcdf(n, p, x) {
@@ -273,11 +278,15 @@
       // Summed from the smaller side, the rest by complement.
       return 1 - betaI(p, top + 1, n - top);
     };
-    if (x == null) { const out = []; for (let k = 0; k <= n; k++) out.push(cum(k)); return out; }
+    if (x == null) {
+      checkDistributionRows(n);
+      const out = []; for (let k = 0; k <= n; k++) out.push(cum(k)); return out;
+    }
     return cum(x);
   }
   function invBinom(area, n, p) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1) || !(area >= 0 && area <= 1)) fail('DOMAIN');
+    checkDistributionRows(n);
     for (let k = 0; k <= n; k++) if (binomcdf(n, p, k) >= area - 1e-13) return k;
     return n;
   }
@@ -524,8 +533,14 @@
    */
   function regress(kind, xs, ys, fs, opts) {
     if (xs.length !== ys.length) fail('DIM MISMATCH');
-    const ws = weights(xs, fs);
-    const pts = xs.filter((x, i) => ws[i] > 0).length;
+    let ws = weights(xs, fs);
+    // A zero-frequency row is not part of the data. Filter it before applying
+    // transformations such as log: IEEE-754 makes 0 * NaN equal NaN.
+    const active = xs.map((x, i) => i).filter((i) => ws[i] > 0);
+    xs = active.map((i) => xs[i]);
+    ys = active.map((i) => ys[i]);
+    ws = active.map((i) => ws[i]);
+    const pts = xs.length;
     if (pts < 2) fail('STAT');
     const o = opts || {};
     switch (kind) {
@@ -902,6 +917,7 @@
     list.forEach((cf, i) => {
       const k = freq ? freq[i] : 1;
       if (k !== Math.floor(k) || k < 0) fail('DOMAIN');
+      if (k > 999 - out.length) fail('INVALID DIM');
       for (let j = 0; j < k; j++) out.push(cf);
     });
     return out;
@@ -943,19 +959,27 @@
       const s = String(v);
       const dot = s.indexOf('.');
       const dec = dot < 0 ? '' : s.slice(dot + 1);
-      let mm, dd, yy;
-      if (dec.length > 2) {                        // MM.DDYY
-        mm = Math.floor(v);
-        const f = dec.padEnd(4, '0');
-        dd = +f.slice(0, 2); yy = +f.slice(2, 4);
-      } else {                                     // DDMM.YY
-        const w = String(Math.floor(v)).padStart(4, '0');
-        dd = +w.slice(0, 2); mm = +w.slice(2, 4); yy = +dec.padEnd(2, '0');
+      const makeDate = (mm, dd, yy) => {
+        if (!(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yy >= 0 && yy <= 99)) return null;
+        const year = yy < 50 ? 2000 + yy : 1900 + yy;
+        const d = new Date(Date.UTC(year, mm - 1, dd));
+        return d.getUTCMonth() === mm - 1 && d.getUTCDate() === dd ? d.getTime() : null;
+      };
+      // Numeric evaluation drops trailing zeroes (1.0100 becomes 1.01). Keep
+      // the existing DDMM.YY preference when valid, but fall back to MM.DDYY
+      // when only the latter is a valid calendar date.
+      if (dec.length > 2) {
+        const mm = Math.floor(v), f = dec.padEnd(4, '0');
+        const date = makeDate(mm, +f.slice(0, 2), +f.slice(2, 4));
+        if (date == null) fail('DOMAIN');
+        return date;
       }
-      const year = yy < 50 ? 2000 + yy : 1900 + yy;
-      const d = new Date(Date.UTC(year, mm - 1, dd));
-      if (d.getUTCMonth() !== mm - 1 || d.getUTCDate() !== dd) fail('DOMAIN');
-      return d.getTime();
+      const w = String(Math.floor(v)).padStart(4, '0');
+      const ddmm = makeDate(+w.slice(2, 4), +w.slice(0, 2), +dec.padEnd(2, '0'));
+      if (ddmm != null) return ddmm;
+      const mmdd = makeDate(Math.floor(v), +(dec + '0000').slice(0, 2), +(dec + '0000').slice(2, 4));
+      if (mmdd != null) return mmdd;
+      fail('DOMAIN');
     };
     return Math.round((parse(d2) - parse(d1)) / 86400000);
   }
@@ -1008,23 +1032,32 @@
   function rref(M) {
     const A = M.map((r) => r.slice());
     const rows = A.length, cols = A[0].length;
+    // Compare pivots against the original scale of their own column rather
+    // than a fixed absolute epsilon. This preserves systems uniformly scaled
+    // by tiny constants while still rejecting elimination noise.
+    const colScale = Array.from({ length: cols }, (_, c) => Math.max.apply(null, A.map((row) => Math.abs(row[c]))));
+    const tol = 1e-12;
     let lead = 0;
     for (let r = 0; r < rows && lead < cols; r++) {
-      let i = r;
       let best = r;
       for (; lead < cols; lead++) {
+        if (!colScale[lead]) continue;
         best = r;
-        for (i = r; i < rows; i++) if (Math.abs(A[i][lead]) > Math.abs(A[best][lead])) best = i;
-        if (Math.abs(A[best][lead]) > 1e-12) break;
+        for (let i = r + 1; i < rows; i++) if (Math.abs(A[i][lead]) > Math.abs(A[best][lead])) best = i;
+        if (Math.abs(A[best][lead]) > tol * colScale[lead]) break;
       }
       if (lead >= cols) break;
+      if (!colScale[lead] || Math.abs(A[best][lead]) <= tol * colScale[lead]) break;
       [A[r], A[best]] = [A[best], A[r]];
       const lv = A[r][lead];
       for (let k = 0; k < cols; k++) A[r][k] /= lv;
-      for (i = 0; i < rows; i++) {
+      A[r][lead] = 1;
+      for (let i = 0; i < rows; i++) {
         if (i === r) continue;
         const f = A[i][lead];
+        if (f === 0) continue;
         for (let k = 0; k < cols; k++) A[i][k] -= f * A[r][k];
+        A[i][lead] = 0;
       }
       lead++;
     }
@@ -1034,17 +1067,23 @@
   function ref(M) {
     const A = M.map((r) => r.slice());
     const rows = A.length, cols = A[0].length;
+    const colScale = Array.from({ length: cols }, (_, c) => Math.max.apply(null, A.map((row) => Math.abs(row[c]))));
+    const tol = 1e-12;
     let r = 0;
     for (let c = 0; c < cols && r < rows; c++) {
+      if (!colScale[c]) continue;
       let best = r;
-      for (let i = r; i < rows; i++) if (Math.abs(A[i][c]) > Math.abs(A[best][c])) best = i;
-      if (Math.abs(A[best][c]) < 1e-12) continue;
+      for (let i = r + 1; i < rows; i++) if (Math.abs(A[i][c]) > Math.abs(A[best][c])) best = i;
+      if (Math.abs(A[best][c]) <= tol * colScale[c]) continue;
       [A[r], A[best]] = [A[best], A[r]];
       const lv = A[r][c];
       for (let k = 0; k < cols; k++) A[r][k] /= lv;
+      A[r][c] = 1;
       for (let i = r + 1; i < rows; i++) {
         const f = A[i][c];
+        if (f === 0) continue;
         for (let k = 0; k < cols; k++) A[i][k] -= f * A[r][k];
+        A[i][c] = 0;
       }
       r++;
     }
