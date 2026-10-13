@@ -28,6 +28,17 @@
     const start = seqStart(w), min = Number.isFinite(w.nMin) ? w.nMin : start, step = seqStep(w);
     return start + Math.max(0, Math.ceil((min - start) / step)) * step;
   };
+  // Generate a bounded tick array instead of incrementing a floating-point
+  // coordinate in a loop. At large magnitudes, x += 0.1 may leave x unchanged
+  // and hang the browser even when the intended tick count is small.
+  function tickValues(min, max, step, limit) {
+    if (!(Number.isFinite(min) && Number.isFinite(max) && Number.isFinite(step) && step > 0)) return [];
+    const first = Math.ceil(min / step) * step;
+    if (!Number.isFinite(first) || first > max) return [];
+    const rawCount = Math.floor((max - first) / step) + 1;
+    if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
+    return Array.from({ length: rawCount }, (_, i) => first + i * step);
+  }
 
   /* ── Functions to draw ──────────────────────────────────────────────── */
 
@@ -168,15 +179,17 @@
     if (!(w.Xmin < w.Xmax) || !(w.Ymin < w.Ymax)) return null;
     const F = frame(st, W, H);
 
+    const xTicks = tickValues(w.Xmin, w.Xmax, w.Xscl, 301);
+    const yTicks = tickValues(w.Ymin, w.Ymax, w.Yscl, 301);
     if (fmt.grid !== 'off' && w.Xscl > 0 && w.Yscl > 0 && (w.Xmax - w.Xmin) / w.Xscl < 200 && (w.Ymax - w.Ymin) / w.Yscl < 200) {
       g.fillStyle = '#b9c0cc';
       g.strokeStyle = '#dde2ea';
       g.lineWidth = 1;
-      for (let x = Math.ceil(w.Xmin / w.Xscl) * w.Xscl; x <= w.Xmax; x += w.Xscl) {
+      for (const x of xTicks) {
         if (fmt.grid === 'line') { g.beginPath(); g.moveTo(F.sx(x), 0); g.lineTo(F.sx(x), H); g.stroke(); continue; }
-        for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) g.fillRect(F.sx(x) - 0.8, F.sy(y) - 0.8, 1.6, 1.6);
+        for (const y of yTicks) g.fillRect(F.sx(x) - 0.8, F.sy(y) - 0.8, 1.6, 1.6);
       }
-      if (fmt.grid === 'line') for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) { g.beginPath(); g.moveTo(0, F.sy(y)); g.lineTo(W, F.sy(y)); g.stroke(); }
+      if (fmt.grid === 'line') for (const y of yTicks) { g.beginPath(); g.moveTo(0, F.sy(y)); g.lineTo(W, F.sy(y)); g.stroke(); }
     }
     if (fmt.axes) {
       g.strokeStyle = '#1b1d22';
@@ -185,10 +198,10 @@
       if (Y0 >= 0 && Y0 <= H) { g.beginPath(); g.moveTo(0, Y0 + 0.5); g.lineTo(W, Y0 + 0.5); g.stroke(); }
       if (X0 >= 0 && X0 <= W) { g.beginPath(); g.moveTo(X0 + 0.5, 0); g.lineTo(X0 + 0.5, H); g.stroke(); }
       if (w.Xscl > 0 && (w.Xmax - w.Xmin) / w.Xscl < 300 && Y0 >= 0 && Y0 <= H) {
-        for (let x = Math.ceil(w.Xmin / w.Xscl) * w.Xscl; x <= w.Xmax; x += w.Xscl) { g.beginPath(); g.moveTo(F.sx(x) + 0.5, Y0 - 3); g.lineTo(F.sx(x) + 0.5, Y0 + 3); g.stroke(); }
+        for (const x of xTicks) { g.beginPath(); g.moveTo(F.sx(x) + 0.5, Y0 - 3); g.lineTo(F.sx(x) + 0.5, Y0 + 3); g.stroke(); }
       }
       if (w.Yscl > 0 && (w.Ymax - w.Ymin) / w.Yscl < 300 && X0 >= 0 && X0 <= W) {
-        for (let y = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; y <= w.Ymax; y += w.Yscl) { g.beginPath(); g.moveTo(X0 - 3, F.sy(y) + 0.5); g.lineTo(X0 + 3, F.sy(y) + 0.5); g.stroke(); }
+        for (const y of yTicks) { g.beginPath(); g.moveTo(X0 - 3, F.sy(y) + 0.5); g.lineTo(X0 + 3, F.sy(y) + 0.5); g.stroke(); }
       }
       if (fmt.label) {
         g.fillStyle = '#1b1d22';
