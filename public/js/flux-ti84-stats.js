@@ -260,7 +260,9 @@
     return Math.exp(lchoose(n, x) + x * Math.log(p) + (n - x) * Math.log(1 - p));
   }
   const MAX_DISTRIBUTION_ROWS = 999;
-  function checkDistributionRows(n) { if (n > MAX_DISTRIBUTION_ROWS) fail('INVALID DIM'); }
+  const MAX_BINOMIAL_SCAN = 999;
+  function checkDistributionRows(n) { if (n + 1 > MAX_DISTRIBUTION_ROWS) fail('INVALID DIM'); }
+  function checkBinomialScan(n) { if (n > MAX_BINOMIAL_SCAN) fail('INVALID DIM'); }
   function binompdf(n, p, x) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1)) fail('DOMAIN');
     if (x == null) {
@@ -286,7 +288,7 @@
   }
   function invBinom(area, n, p) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1) || !(area >= 0 && area <= 1)) fail('DOMAIN');
-    checkDistributionRows(n);
+    checkBinomialScan(n);
     for (let k = 0; k <= n; k++) if (binomcdf(n, p, k) >= area - 1e-13) return k;
     return n;
   }
