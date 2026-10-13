@@ -367,4 +367,6 @@ test('graph tick generation stays bounded when floating-point increments stop ad
   assert.ok(ticks.every(Number.isFinite));
   assert.ok(ticks.every((v, i) => i === 0 || v > ticks[i - 1]));
   same(W.FluxTIGraph.tickValues(-1, 1, 0.5, 10), [-1, -0.5, 0, 0.5, 1]);
+  same(W.FluxTIGraph.steppedValues(1e16, 1e16, 1, 10), [1e16]);
+  same(W.FluxTIGraph.steppedValues(1e16, 1e16 + 2, 1, 10), [1e16, 1e16 + 2]);
 });
