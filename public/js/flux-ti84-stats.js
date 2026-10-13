@@ -1061,7 +1061,8 @@
       }
       lead++;
     }
-    return A.map((row) => row.map((v, col) => (!colScale[col] || Math.abs(v) < tol * colScale[col] ? 0 : v)));
+    const resultScale = Array.from({ length: cols }, (_, col) => Math.max.apply(null, A.map((row) => Math.abs(row[col]))));
+    return A.map((row) => row.map((v, col) => (!resultScale[col] || Math.abs(v) < tol * resultScale[col] ? 0 : v)));
   }
   /** Row-echelon form (ref(): leading 1s, zeros below only. */
   function ref(M) {
@@ -1087,7 +1088,8 @@
       }
       r++;
     }
-    return A.map((row) => row.map((v, col) => (!colScale[col] || Math.abs(v) < tol * colScale[col] ? 0 : v)));
+    const resultScale = Array.from({ length: cols }, (_, col) => Math.max.apply(null, A.map((row) => Math.abs(row[col]))));
+    return A.map((row) => row.map((v, col) => (!resultScale[col] || Math.abs(v) < tol * resultScale[col] ? 0 : v)));
   }
   /**
    * Solve a system given as an augmented matrix (n equations, n unknowns + 1).
