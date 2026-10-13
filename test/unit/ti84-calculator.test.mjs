@@ -363,7 +363,7 @@ test('large integer frequencies do not expand into enormous sample arrays', () =
 });
 
 
-test('graph tick generation stays bounded when floating-point increments stop advancing', () => {
+test('graph sampling remains bounded when coordinates stop advancing', () => {
   const ticks = W.FluxTIGraph.tickValues(1e15, 1e15 + 1, 0.1, 301);
   assert.ok(ticks.length > 0 && ticks.length <= 301);
   assert.ok(ticks.every(Number.isFinite));
