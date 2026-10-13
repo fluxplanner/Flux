@@ -37,7 +37,15 @@
     if (!Number.isFinite(first) || first > max) return [];
     const rawCount = Math.floor((max - first) / step) + 1;
     if (!Number.isSafeInteger(rawCount) || rawCount < 1 || rawCount > limit) return [];
-    return Array.from({ length: rawCount }, (_, i) => first + i * step);
+    const out = [];
+    for (let i = 0; i < rawCount; i++) {
+      const value = first + i * step;
+      if (!Number.isFinite(value)) break;
+      // Distinct loop counters are essential even when adding step to the
+      // coordinate itself would round back to the previous representable value.
+      if (!out.length || value !== out[out.length - 1]) out.push(value);
+    }
+    return out;
   }
 
   /* ── Functions to draw ──────────────────────────────────────────────── */
@@ -1339,6 +1347,7 @@
     command: command,
     applyZoom: applyZoom,
     activeFns: activeFns,
+    tickValues: tickValues,
     sequenceGraphData: sequenceGraphData,
     sequenceTraceData: sequenceTraceData,
     sequenceWebTrail: sequenceWebTrail,
