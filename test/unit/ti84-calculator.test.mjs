@@ -309,6 +309,8 @@ test('large random and distribution requests fail before large loops or allocati
   assert.equal(show('randIntNoRep(1,1000)', T.freshState()), 'ERR:INVALID DIM');
   assert.equal(show('randIntNoRep(1ᴇ16,1ᴇ16)', T.freshState()), 'ERR:DOMAIN');
   assert.equal(show('randBin(1000,.5)', T.freshState()), 'ERR:INVALID DIM');
+  assert.equal(show('1ᴇ16 nPr 1ᴇ16', T.freshState()), 'ERR:DOMAIN');
+  assert.equal(show('Σ(X,X,1ᴇ16,1ᴇ16)', T.freshState()), 'ERR:DOMAIN');
   assert.throws(() => S.binompdf(999, 0.5), (e) => e.ti === 'INVALID DIM');
   assert.throws(() => S.binomcdf(999, 0.5), (e) => e.ti === 'INVALID DIM');
   assert.throws(() => S.binompdf(1000, 0.5), (e) => e.ti === 'INVALID DIM');
@@ -348,4 +350,8 @@ test('large integer frequencies do not expand into enormous sample arrays', () =
   assert.equal(s.med, 1);
   assert.equal(s.q3, 1);
   assert.throws(() => S.oneVar([1], [Infinity]), (e) => e.ti === 'STAT');
+  assert.throws(
+    () => S.regress('Med-Med', [1, 2, 3], [1, 2, 3], [1e15, 1, 1]),
+    (e) => e.ti === 'INVALID DIM'
+  );
 });
