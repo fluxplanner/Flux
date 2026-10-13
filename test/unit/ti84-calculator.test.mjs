@@ -268,3 +268,107 @@ test('programs: Input waits for an answer, errors stop with the line', async () 
   P.run(c, 'BAD');
   same(c.errors, ['LABEL']);
 });
+
+
+test('tiny but well-scaled linear systems retain their pivots', () => {
+  same(S.rref([[1e-13, 0], [0, 1e-13]]), [[1, 0], [0, 1]]);
+  same(S.rref([[1e13, 0], [0, 1e13]]), [[1, 0], [0, 1]]);
+  same(S.ref([[1e13, 0], [0, 1e13]]), [[1, 0], [0, 1]]);
+  same(S.rref([[1, 1e-13]]), [[1, 1e-13]]);
+  same(S.ref([[1, 1e-13]]), [[1, 1e-13]]);
+  const sys = S.solveSystem([[1e-13, 2e-13]]);
+  assert.equal(sys.kind, 'unique');
+  assert.equal(sys.x[0], 2);
+  assert.equal(S.solveSystem([[0, 1e-13]]).kind, 'none');
+  assert.equal(S.solveSystem([[1e13, 1e13], [0, 1e-13]]).kind, 'none');
+});
+
+test('matrix inversion is scale-aware and element stores require integer indexes', () => {
+  const st = T.freshState();
+  T.run('[[.00000000000001]]→⟦A⟧', st);
+  const inv = T.run('⟦A⟧⁻¹', st).value;
+  same(inv.v, [[1e14]]);
+
+  st.mats.A = [[1, 2], [3, 4]];
+  assert.equal(show('9→⟦A⟧(1,1.5)', st), 'ERR:INVALID DIM');
+  same(st.mats.A, [[1, 2], [3, 4]]);
+  assert.equal(show('9→⟦A⟧(1.5,1)', st), 'ERR:INVALID DIM');
+  same(st.mats.A, [[1, 2], [3, 4]]);
+});
+
+test('regressions ignore values whose frequency is zero before transforms', () => {
+  const fit = S.regress('LnReg', [1, 2, 0], [2, 4, 999], [1, 1, 0]);
+  assert.ok(Math.abs(fit.coef.a - 2) < 1e-12);
+  assert.ok(Math.abs(fit.coef.b - 2 / Math.log(2)) < 1e-12);
+  assert.ok(Number.isFinite(fit.r));
+});
+
+test('DBD tolerates numeric dates whose trailing zeroes were stripped', () => {
+  assert.equal(S.dbd(1.01, 1.02), 1);
+});
+
+test('large random and distribution requests fail before large loops or allocations', () => {
+  assert.equal(show('randIntNoRep(1,1000)', T.freshState()), 'ERR:INVALID DIM');
+  assert.equal(show('randIntNoRep(1ᴇ16,1ᴇ16)', T.freshState()), 'ERR:DOMAIN');
+  assert.equal(show('randBin(1000,.5)', T.freshState()), 'ERR:INVALID DIM');
+  assert.equal(show('1ᴇ16 nPr 1ᴇ16', T.freshState()), 'ERR:DOMAIN');
+  assert.equal(show('Σ(X,X,1ᴇ16,1ᴇ16)', T.freshState()), 'ERR:DOMAIN');
+  assert.throws(() => S.binompdf(999, 0.5), (e) => e.ti === 'INVALID DIM');
+  assert.throws(() => S.binomcdf(999, 0.5), (e) => e.ti === 'INVALID DIM');
+  assert.throws(() => S.binompdf(1000, 0.5), (e) => e.ti === 'INVALID DIM');
+  assert.throws(() => S.binomcdf(1000, 0.5), (e) => e.ti === 'INVALID DIM');
+  assert.throws(() => S.invBinom(0.5, 1000, 0.5), (e) => e.ti === 'INVALID DIM');
+  assert.throws(() => S.npv(5, 0, [1], [1000]), (e) => e.ti === 'INVALID DIM');
+  assert.throws(
+    () => S.bal({ PV: 100, PMT: -10, I: 5, PY: 12, CY: 12 }, 1e16, 2),
+    (e) => e.ti === 'INVALID DIM'
+  );
+});
+
+test('TABLE SETUP Depend: Ask accepts and displays manually entered Y values', () => {
+  const st = T.freshState();
+  st.ui = Object.assign({}, st.ui, { yOn: {}, yCol: {}, yStyle: {} });
+  st.y['Y₁'] = 'X+1';
+  st.tbl.depend = 'ask';
+  const c = { st, rows: () => 8, pop() {}, typeInto: () => false };
+  const table = new W.FluxTIGraph.TableApp(c);
+  table.col = 1;
+  table.ed = { serialize: () => '42', html: () => '42' };
+  table.key('enter');
+  assert.equal(table.askedY['Y₁'][0], 42);
+  assert.match(table.render(), /42/);
+
+  // The placeholder Y₁ column should still be editable when no Y equation is active.
+  st.y['Y₁'] = '';
+  const blankTable = new W.FluxTIGraph.TableApp(c);
+  blankTable.col = 1;
+  blankTable.ed = { serialize: () => '17', html: () => '17' };
+  blankTable.key('enter');
+  assert.equal(blankTable.askedY['Y₁'][0], 17);
+  assert.match(blankTable.render(), /17/);
+});
+
+
+test('large integer frequencies do not expand into enormous sample arrays', () => {
+  const s = S.oneVar([1, 2], [1e15, 1]);
+  assert.equal(s.n, 1e15 + 1);
+  assert.equal(s.q1, 1);
+  assert.equal(s.med, 1);
+  assert.equal(s.q3, 1);
+  assert.throws(() => S.oneVar([1], [Infinity]), (e) => e.ti === 'STAT');
+  assert.throws(
+    () => S.regress('Med-Med', [1, 2, 3], [1, 2, 3], [1e15, 1, 1]),
+    (e) => e.ti === 'INVALID DIM'
+  );
+});
+
+
+test('graph sampling remains bounded when coordinates stop advancing', () => {
+  const ticks = W.FluxTIGraph.tickValues(1e15, 1e15 + 1, 0.1, 301);
+  assert.ok(ticks.length > 0 && ticks.length <= 301);
+  assert.ok(ticks.every(Number.isFinite));
+  assert.ok(ticks.every((v, i) => i === 0 || v > ticks[i - 1]));
+  same(W.FluxTIGraph.tickValues(-1, 1, 0.5, 10), [-1, -0.5, 0, 0.5, 1]);
+  same(W.FluxTIGraph.steppedValues(1e16, 1e16, 1, 10), [1e16]);
+  same(W.FluxTIGraph.steppedValues(1e16, 1e16 + 2, 1, 10), [1e16, 1e16 + 2]);
+});

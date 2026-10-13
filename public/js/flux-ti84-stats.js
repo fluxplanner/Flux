@@ -252,16 +252,23 @@
   }
 
   function lchoose(n, k) { return lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1); }
-  function checkInt(v, lo) { if (v !== Math.floor(v) || v < lo) fail('DOMAIN'); }
+  function checkInt(v, lo) { if (!Number.isSafeInteger(v) || v < lo) fail('DOMAIN'); }
   function binomPoint(n, p, x) {
     if (x < 0 || x > n || x !== Math.floor(x)) return 0;
     if (p === 0) return x === 0 ? 1 : 0;
     if (p === 1) return x === n ? 1 : 0;
     return Math.exp(lchoose(n, x) + x * Math.log(p) + (n - x) * Math.log(1 - p));
   }
+  const MAX_DISTRIBUTION_ROWS = 999;
+  const MAX_BINOMIAL_SCAN = 999;
+  function checkDistributionRows(n) { if (n + 1 > MAX_DISTRIBUTION_ROWS) fail('INVALID DIM'); }
+  function checkBinomialScan(n) { if (n > MAX_BINOMIAL_SCAN) fail('INVALID DIM'); }
   function binompdf(n, p, x) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1)) fail('DOMAIN');
-    if (x == null) { const out = []; for (let k = 0; k <= n; k++) out.push(binomPoint(n, p, k)); return out; }
+    if (x == null) {
+      checkDistributionRows(n);
+      const out = []; for (let k = 0; k <= n; k++) out.push(binomPoint(n, p, k)); return out;
+    }
     return binomPoint(n, p, x);
   }
   function binomcdf(n, p, x) {
@@ -273,11 +280,15 @@
       // Summed from the smaller side, the rest by complement.
       return 1 - betaI(p, top + 1, n - top);
     };
-    if (x == null) { const out = []; for (let k = 0; k <= n; k++) out.push(cum(k)); return out; }
+    if (x == null) {
+      checkDistributionRows(n);
+      const out = []; for (let k = 0; k <= n; k++) out.push(cum(k)); return out;
+    }
     return cum(x);
   }
   function invBinom(area, n, p) {
     checkInt(n, 0); if (!(p >= 0 && p <= 1) || !(area >= 0 && area <= 1)) fail('DOMAIN');
+    checkBinomialScan(n);
     for (let k = 0; k <= n; k++) if (binomcdf(n, p, k) >= area - 1e-13) return k;
     return n;
   }
@@ -324,17 +335,34 @@
   function weights(xs, fs) {
     if (fs == null) return xs.map(() => 1);
     if (fs.length !== xs.length) fail('DIM MISMATCH');
-    fs.forEach((f) => { if (!(f >= 0)) fail('STAT'); });
+    fs.forEach((f) => { if (!Number.isFinite(f) || f < 0) fail('STAT'); });
     return fs;
   }
-  /** Median of a sorted, weighted sample (weights must be whole numbers to split halves exactly). */
-  function sortedExpand(xs, ws) {
+  /**
+   * Quartiles of an integer-frequency sample without expanding each frequency
+   * into repeated values. Besides avoiding large allocations, rank lookup
+   * remains O(number of input rows) even when a frequency is large.
+   */
+  function weightedQuartiles(xs, ws) {
     const pairs = xs.map((x, i) => [x, ws[i]]).filter((p) => p[1] > 0).sort((a, b) => a[0] - b[0]);
-    const whole = pairs.every((p) => p[1] === Math.floor(p[1]));
-    if (!whole) return null;
-    const out = [];
-    pairs.forEach((p) => { for (let k = 0; k < p[1]; k++) out.push(p[0]); });
-    return out;
+    if (!pairs.every((p) => Number.isSafeInteger(p[1]))) return { q1: NaN, med: NaN, q3: NaN };
+    const n = pairs.reduce((sum, p) => sum + p[1], 0);
+    if (!Number.isSafeInteger(n) || n <= 0) return { q1: NaN, med: NaN, q3: NaN };
+    const at = (index) => {
+      let end = 0;
+      for (const [value, count] of pairs) {
+        end += count;
+        if (index < end) return value;
+      }
+      return NaN;
+    };
+    const medianRange = (start, count) => {
+      if (count <= 0) return NaN;
+      const right = start + Math.floor(count / 2);
+      return count % 2 ? at(right) : (at(right - 1) + at(right)) / 2;
+    };
+    const half = Math.floor(n / 2);
+    return { q1: medianRange(0, half), med: medianRange(0, n), q3: medianRange(n - half, half) };
   }
   function medianSorted(s) {
     const n = s.length;
@@ -364,8 +392,7 @@
     const mean = sx / n;
     let ss = 0;
     xs.forEach((x, i) => { ss += ws[i] * (x - mean) * (x - mean); });
-    const s = sortedExpand(xs, ws);
-    const q = s ? quartiles(s) : { q1: NaN, med: NaN, q3: NaN };
+    const q = weightedQuartiles(xs, ws);
     return {
       mean: mean, sum: sx, sum2: sx2,
       Sx: n > 1 ? Math.sqrt(ss / (n - 1)) : NaN, sigma: Math.sqrt(ss / n),
@@ -524,8 +551,14 @@
    */
   function regress(kind, xs, ys, fs, opts) {
     if (xs.length !== ys.length) fail('DIM MISMATCH');
-    const ws = weights(xs, fs);
-    const pts = xs.filter((x, i) => ws[i] > 0).length;
+    let ws = weights(xs, fs);
+    // A zero-frequency row is not part of the data. Filter it before applying
+    // transformations such as log: IEEE-754 makes 0 * NaN equal NaN.
+    const active = xs.map((x, i) => i).filter((i) => ws[i] > 0);
+    xs = active.map((i) => xs[i]);
+    ys = active.map((i) => ys[i]);
+    ws = active.map((i) => ws[i]);
+    const pts = xs.length;
     if (pts < 2) fail('STAT');
     const o = opts || {};
     switch (kind) {
@@ -641,6 +674,13 @@
   function sseOf(model, p, xs, ys, ws) { let s = 0; xs.forEach((x, i) => { const e = ys[i] - model(p, x); s += ws[i] * e * e; }); return s; }
   function sortedPairs(xs, ys, ws) {
     const out = [];
+    const MAX_EXPANDED_SAMPLE = 10000;
+    let total = 0;
+    ws.forEach((w) => {
+      const count = Math.round(w);
+      if (!Number.isSafeInteger(count) || count < 0 || count > MAX_EXPANDED_SAMPLE - total) fail('INVALID DIM');
+      total += count;
+    });
     xs.forEach((x, i) => { for (let k = 0; k < Math.round(ws[i]); k++) out.push([x, ys[i]]); });
     return out.sort((a, b) => a[0] - b[0]);
   }
@@ -902,6 +942,7 @@
     list.forEach((cf, i) => {
       const k = freq ? freq[i] : 1;
       if (k !== Math.floor(k) || k < 0) fail('DOMAIN');
+      if (k > 999 - out.length) fail('INVALID DIM');
       for (let j = 0; j < k; j++) out.push(cf);
     });
     return out;
@@ -922,6 +963,9 @@
     const T = Object.assign({ PY: 12, CY: 12, begin: false }, t);
     const i = periodRate(T.I, T.PY, T.CY);
     if (round == null) return tvmSolve(Object.assign({}, T, { N: n }), 'FV') * -1 * -1;
+    // The rounded path advances one period per iteration. Reject unsafe counts
+    // before entering the loop, including values whose increment stalls.
+    if (!Number.isSafeInteger(n) || n > 1000000) fail('INVALID DIM');
     const rd = (v) => { const f = Math.pow(10, round); return Math.round(v * f) / f; };
     let b = rd(T.PV);
     const pmt = rd(T.PMT);
@@ -943,19 +987,27 @@
       const s = String(v);
       const dot = s.indexOf('.');
       const dec = dot < 0 ? '' : s.slice(dot + 1);
-      let mm, dd, yy;
-      if (dec.length > 2) {                        // MM.DDYY
-        mm = Math.floor(v);
-        const f = dec.padEnd(4, '0');
-        dd = +f.slice(0, 2); yy = +f.slice(2, 4);
-      } else {                                     // DDMM.YY
-        const w = String(Math.floor(v)).padStart(4, '0');
-        dd = +w.slice(0, 2); mm = +w.slice(2, 4); yy = +dec.padEnd(2, '0');
+      const makeDate = (mm, dd, yy) => {
+        if (!(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yy >= 0 && yy <= 99)) return null;
+        const year = yy < 50 ? 2000 + yy : 1900 + yy;
+        const d = new Date(Date.UTC(year, mm - 1, dd));
+        return d.getUTCMonth() === mm - 1 && d.getUTCDate() === dd ? d.getTime() : null;
+      };
+      // Numeric evaluation drops trailing zeroes (1.0100 becomes 1.01). Keep
+      // the existing DDMM.YY preference when valid, but fall back to MM.DDYY
+      // when only the latter is a valid calendar date.
+      if (dec.length > 2) {
+        const mm = Math.floor(v), f = dec.padEnd(4, '0');
+        const date = makeDate(mm, +f.slice(0, 2), +f.slice(2, 4));
+        if (date == null) fail('DOMAIN');
+        return date;
       }
-      const year = yy < 50 ? 2000 + yy : 1900 + yy;
-      const d = new Date(Date.UTC(year, mm - 1, dd));
-      if (d.getUTCMonth() !== mm - 1 || d.getUTCDate() !== dd) fail('DOMAIN');
-      return d.getTime();
+      const w = String(Math.floor(v)).padStart(4, '0');
+      const ddmm = makeDate(+w.slice(2, 4), +w.slice(0, 2), +dec.padEnd(2, '0'));
+      if (ddmm != null) return ddmm;
+      const mmdd = makeDate(Math.floor(v), +(dec + '0000').slice(0, 2), +(dec + '0000').slice(2, 4));
+      if (mmdd != null) return mmdd;
+      fail('DOMAIN');
     };
     return Math.round((parse(d2) - parse(d1)) / 86400000);
   }
@@ -1008,58 +1060,83 @@
   function rref(M) {
     const A = M.map((r) => r.slice());
     const rows = A.length, cols = A[0].length;
+    // Compare pivots against the original scale of their own column rather
+    // than a fixed absolute epsilon. This preserves systems uniformly scaled
+    // by tiny constants while still rejecting elimination noise.
+    const colScale = Array.from({ length: cols }, (_, c) => Math.max.apply(null, A.map((row) => Math.abs(row[c]))));
+    const tol = 1e-12;
     let lead = 0;
     for (let r = 0; r < rows && lead < cols; r++) {
-      let i = r;
       let best = r;
       for (; lead < cols; lead++) {
+        if (!colScale[lead]) continue;
         best = r;
-        for (i = r; i < rows; i++) if (Math.abs(A[i][lead]) > Math.abs(A[best][lead])) best = i;
-        if (Math.abs(A[best][lead]) > 1e-12) break;
+        for (let i = r + 1; i < rows; i++) if (Math.abs(A[i][lead]) > Math.abs(A[best][lead])) best = i;
+        if (Math.abs(A[best][lead]) > tol * colScale[lead]) break;
       }
       if (lead >= cols) break;
+      if (!colScale[lead] || Math.abs(A[best][lead]) <= tol * colScale[lead]) break;
       [A[r], A[best]] = [A[best], A[r]];
       const lv = A[r][lead];
       for (let k = 0; k < cols; k++) A[r][k] /= lv;
-      for (i = 0; i < rows; i++) {
+      A[r][lead] = 1;
+      for (let i = 0; i < rows; i++) {
         if (i === r) continue;
         const f = A[i][lead];
+        if (f === 0) continue;
         for (let k = 0; k < cols; k++) A[i][k] -= f * A[r][k];
+        A[i][lead] = 0;
       }
       lead++;
     }
-    return A.map((row) => row.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)));
+    const resultScale = Array.from({ length: cols }, (_, col) => Math.max.apply(null, A.map((row) => Math.abs(row[col]))));
+    return A.map((row) => row.map((v, col) => (!resultScale[col] || Math.abs(v) < tol * resultScale[col] ? 0 : v)));
   }
   /** Row-echelon form (ref(): leading 1s, zeros below only. */
   function ref(M) {
     const A = M.map((r) => r.slice());
     const rows = A.length, cols = A[0].length;
+    const colScale = Array.from({ length: cols }, (_, c) => Math.max.apply(null, A.map((row) => Math.abs(row[c]))));
+    const tol = 1e-12;
     let r = 0;
     for (let c = 0; c < cols && r < rows; c++) {
+      if (!colScale[c]) continue;
       let best = r;
-      for (let i = r; i < rows; i++) if (Math.abs(A[i][c]) > Math.abs(A[best][c])) best = i;
-      if (Math.abs(A[best][c]) < 1e-12) continue;
+      for (let i = r + 1; i < rows; i++) if (Math.abs(A[i][c]) > Math.abs(A[best][c])) best = i;
+      if (Math.abs(A[best][c]) <= tol * colScale[c]) continue;
       [A[r], A[best]] = [A[best], A[r]];
       const lv = A[r][c];
       for (let k = 0; k < cols; k++) A[r][k] /= lv;
+      A[r][c] = 1;
       for (let i = r + 1; i < rows; i++) {
         const f = A[i][c];
+        if (f === 0) continue;
         for (let k = 0; k < cols; k++) A[i][k] -= f * A[r][k];
+        A[i][c] = 0;
       }
       r++;
     }
-    return A.map((row) => row.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)));
+    const resultScale = Array.from({ length: cols }, (_, col) => Math.max.apply(null, A.map((row) => Math.abs(row[col]))));
+    return A.map((row) => row.map((v, col) => (!resultScale[col] || Math.abs(v) < tol * resultScale[col] ? 0 : v)));
   }
   /**
    * Solve a system given as an augmented matrix (n equations, n unknowns + 1).
    * Returns { kind: 'unique', x: [...] } | { kind: 'none' } | { kind: 'infinite', rref }.
    */
   function solveSystem(aug) {
-    const R = rref(aug);
     const vars = aug[0].length - 1;
+    // Each equation is independently scale-normalized before elimination.
+    // Scaling an equation does not change its solution, and prevents a tiny
+    // but nonzero contradiction from being hidden by an absolute tolerance.
+    const scaled = aug.map((row) => {
+      const scale = Math.max.apply(null, row.map(Math.abs));
+      if (!Number.isFinite(scale)) fail('DATA TYPE');
+      return scale === 0 ? row.slice() : row.map((v) => v / scale);
+    });
+    const R = rref(scaled);
     for (const row of R) {
       const allZero = row.slice(0, vars).every((v) => v === 0);
-      if (allZero && Math.abs(row[vars]) > 1e-10) return { kind: 'none', rref: R };
+      if (allZero && row[vars] !== 0) return { kind: 'none', rref: R };
     }
     let rank = 0;
     R.forEach((row) => { if (row.slice(0, vars).some((v) => v !== 0)) rank++; });
