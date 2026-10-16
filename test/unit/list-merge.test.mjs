@@ -52,12 +52,33 @@ test('both sides changed the same task: the newer edit wins', () => {
   assert.equal(M.merge(local, cloudNewer, { base }).list[0].name, 'Cloud');
 });
 
-test('an older copy pushed by a device that had not refreshed does not undo a newer edit', () => {
+test('an older copy pushed by a Flux that does not merge first does not undo a newer edit', () => {
   const mine = [T(1, { done: true, updatedAt: 9000 })];
   const base = M.hashes(mine);                         // we pushed this
-  const stale = [T(1, { done: false, updatedAt: 1000 })]; // someone pushed their old copy over it
-  const r = M.merge(plain(mine), stale, { base });
+  const stale = [T(1, { done: false, updatedAt: 1000 })]; // an older Flux pushed its old copy over it
+  const r = M.merge(plain(mine), stale, { base, staleWriter: true });
   assert.equal(r.list[0].done, true);
+  assert.equal(r.differsFromCloud, true);
+});
+
+test('a change from a writer that merged first is taken, whatever the two clocks say', () => {
+  // The phone's clock is 5 minutes slow. The laptop renamed the task; the
+  // phone pulled that, ticked it, and pushed. The laptop's pull used to keep
+  // its own unticked copy (stamped later by its own clock) and push it back.
+  const laptop = [T(1, { name: 'Renamed', updatedAt: 1_000_000 })];
+  const base = M.hashes(laptop);
+  const phone = [T(1, { name: 'Renamed', done: true, updatedAt: 1_000_000 - 300_000 + 60_000 })];
+  const r = M.merge(plain(laptop), phone, { base });
+  assert.equal(r.list[0].done, true, 'the tick made on the phone was undone');
+  assert.equal(r.differsFromCloud, false);
+});
+
+test('a task missing from a row an older Flux wrote is not taken for deleted', () => {
+  // It may only be older than the list that had the task: kept, and sent back up.
+  const mine = [T(1), T(2, { name: 'Added here' })];
+  const base = M.hashes(mine);
+  const r = M.merge(plain(mine), [T(1)], { base, staleWriter: true });
+  assert.deepEqual(plain(r.list.map((t) => t.id)), [1, 2]);
   assert.equal(r.differsFromCloud, true);
 });
 
@@ -449,4 +470,169 @@ test('no row yet (a new account), or the row already applied: pushes may go', ()
   assert.equal(M.pullOpensPushes(same, false), true);
   // A row whose fingerprint could not be taken is not taken for the same one.
   assert.equal(M.pullOutcome({ data: { data: {} }, fingerprint: '', applied: '' }), 'apply');
+});
+
+// ── Conditional pushes (fluxWriteRow): a write only lands on the row it merged ──
+// A stand-in for the row in Supabase, and devices that write it the way
+// fluxWriteRow does: an update only where updated_at is still the one they
+// merged, an insert only where there is no row. A write that matches nothing
+// means someone wrote first: the device pulls, merges, and pushes again.
+
+function account(tasks) {
+  return { row: { data: { tasks: plain(tasks), syncCas: 1 }, at: 'v0' }, n: 0 };
+}
+/** fresh: a device that has never synced (nothing stored, no base). */
+function device(acct, name, clock, fresh) {
+  const list = acct.row && !fresh ? acct.row.data.tasks : [];
+  const store = memStore(fresh ? {} : { tasks: list, flux_sync_base_v1: { tasks: M.hashes(list) } });
+  const sync = M.createListSync(store, clock);
+  sync.loadBase();
+  sync.startSession({ tasks: plain(list) });
+  const d = { sync, store, tasks: plain(list), row: acct.row && !fresh ? { exists: true, at: acct.row.at } : null };
+  d.save = () => { sync.noteEdits('tasks', d.tasks); store.set('tasks', d.tasks); };
+  d.pull = () => {
+    const r = acct.row;
+    if (!r) { d.row = { exists: false, at: null }; return null; }
+    const res = sync.pull('tasks', d.tasks, plain(r.data.tasks), r.data.listTombstones, { staleWriter: r.data.syncCas !== 1 });
+    d.tasks = res.list;
+    d.row = { exists: true, at: r.at };
+    return res;
+  };
+  /** One conditional write. True if it landed. */
+  d.write = () => {
+    const plan = M.writePlan(d.row);
+    const fits = plan.mode === 'update' ? !!acct.row && acct.row.at === plan.at : !acct.row;
+    if (!fits) return false;
+    const data = { tasks: plain(d.tasks), listTombstones: store.get('flux_list_tombstones_v1') || {}, syncCas: 1 };
+    acct.row = { data, at: name + ++acct.n };
+    sync.recordBase('tasks', data.tasks);
+    d.row = { exists: true, at: acct.row.at };
+    return true;
+  };
+  /** syncToCloud: write; if someone wrote first, pull and write again. Returns the misses. */
+  d.push = () => {
+    for (let miss = 0; miss < 4; miss++) { if (d.write()) return miss; d.pull(); }
+    throw new Error(name + ': the push never landed');
+  };
+  return d;
+}
+const ids = (list) => plain(list.map((t) => t.id)).sort((a, b) => a - b);
+const cloudIds = (acct) => ids(acct.row.data.tasks);
+
+test('a tab that has not pulled since another tab added a task cannot write its older list over it', () => {
+  const acct = account([T(1), T(2)]);
+  const A = device(acct, 'A'), B = device(acct, 'B');
+  A.tasks.unshift(T(3, { name: 'Added in A' }));
+  A.save();
+  assert.equal(A.push(), 0);
+  // B's payload changed for some other reason (a counter shared between tabs) and it pushes.
+  B.tasks.find((t) => t.id === 2).done = true;
+  B.save();
+  assert.equal(B.push(), 1, 'B wrote over a row it had not merged');
+  assert.deepEqual(cloudIds(acct), [1, 2, 3], 'A\'s new task is gone from the cloud');
+  assert.equal(acct.row.data.tasks.find((t) => t.id === 2).done, true);
+  A.pull();
+  assert.deepEqual(ids(A.tasks), [1, 2, 3], 'A\'s next pull dropped its own task');
+});
+
+test('a laptop back online merges what the phone did meanwhile before its own edits go up', () => {
+  const acct = account([T(1), T(2)]);
+  const laptop = device(acct, 'laptop'), phone = device(acct, 'phone');
+  laptop.tasks.find((t) => t.id === 1).done = true;   // ticked offline
+  laptop.save();
+  phone.tasks.unshift(T(5, { name: 'Added on the phone' }));
+  phone.save();
+  phone.push();
+  laptop.push();                                       // reconnects
+  assert.deepEqual(cloudIds(acct), [1, 2, 5]);
+  assert.equal(acct.row.data.tasks.find((t) => t.id === 1).done, true);
+  phone.pull();
+  assert.deepEqual(ids(phone.tasks), [1, 2, 5], 'the phone lost its own new task');
+});
+
+test('Claude deletes one task and adds another while Flux is open: a tick made then keeps both changes', () => {
+  const acct = account([T(1), T(2), T(3)]);
+  const flux = device(acct, 'flux');
+  // The connector's own conditional write (mcp/index.ts mutateTasks): it keeps the rest of the row as it is.
+  acct.row = { data: { ...acct.row.data, tasks: [T(9, { name: 'From Claude' }), T(1), T(3)] }, at: 'mcp1' };
+  flux.tasks.find((t) => t.id === 1).done = true;
+  flux.save();
+  assert.equal(flux.push(), 1);
+  assert.deepEqual(cloudIds(acct), [1, 3, 9], 'the deleted task came back, or Claude\'s was lost');
+  assert.equal(acct.row.data.tasks.find((t) => t.id === 1).done, true);
+});
+
+test('a slow clock on one device does not undo its edits on another', () => {
+  let laptopNow = 10_000_000, phoneNow = 10_000_000 - 300_000;
+  const acct = account([T(1)]);
+  const laptop = device(acct, 'laptop', () => laptopNow), phone = device(acct, 'phone', () => phoneNow);
+  laptop.tasks[0].name = 'Renamed';
+  laptop.save();
+  laptop.push();
+  laptopNow += 1000; phoneNow += 1000;
+  phone.pull();
+  phone.tasks[0].done = true;
+  phone.save();
+  phone.push();
+  laptop.pull();
+  assert.deepEqual(plain(laptop.tasks[0]).done, true, 'the laptop kept its own unticked copy');
+  assert.equal(laptop.push(), 0);
+  assert.equal(acct.row.data.tasks[0].done, true, 'the tick was lost in the cloud');
+});
+
+test('an older Flux, still open somewhere, writes its stale list over the row: nothing is lost', () => {
+  const acct = account([T(1), T(2)]);
+  const now = device(acct, 'now');
+  now.tasks.unshift(T(3, { name: 'Added here' }));
+  now.save();
+  now.push();
+  // The old one never pulled task 3, and writes unconditionally, without the mark or tombstones.
+  acct.row = { data: { tasks: [T(1), T(2)] }, at: 'old1' };
+  const r = now.pull();
+  assert.deepEqual(ids(now.tasks), [1, 2, 3], 'task 3 was taken for deleted');
+  assert.equal(r.differsFromCloud, true);
+  now.push();
+  assert.deepEqual(cloudIds(acct), [1, 2, 3]);
+  assert.equal(acct.row.data.syncCas, 1);
+});
+
+test('a pull that wrongly finds no row lets a new device create one, never replace one', () => {
+  // Reported as PGRST116 when the session had lapsed: the row was there all along.
+  const acct = account([T(1), T(2)]);
+  const d = device(acct, 'fresh', undefined, true);
+  d.row = { exists: false, at: null };                 // what its pull said
+  assert.equal(d.write(), false, 'an insert replaced the account\'s row');
+  assert.deepEqual(cloudIds(acct), [1, 2]);
+  d.pull();
+  assert.equal(d.push(), 0);
+  assert.deepEqual(cloudIds(acct), [1, 2], 'the new device\'s empty list emptied the cloud');
+});
+
+test('writePlan: update only over the row as it was seen, insert only where there was none', () => {
+  assert.deepEqual(plain(M.writePlan(null)), { mode: 'insert' });
+  assert.deepEqual(plain(M.writePlan({ exists: false, at: null })), { mode: 'insert' });
+  assert.deepEqual(plain(M.writePlan({ exists: true, at: '2026-10-16T11:19:59.425+00:00' })), { mode: 'update', at: '2026-10-16T11:19:59.425+00:00' });
+  assert.deepEqual(plain(M.writePlan({ exists: true, at: null })), { mode: 'update', at: null });
+});
+
+test('a pull sent before this tab\'s own push landed is dropped', () => {
+  assert.equal(M.pullOutcome({ stale: true, data: { data: {} }, fingerprint: 'a', applied: 'b' }), 'stale');
+  assert.equal(M.pullOpensPushes('stale', true), false);
+});
+
+test('"keep my guest data" into an account that already has a row: both lists are kept', () => {
+  // The first push may only create a row, so here it writes nothing; the pull
+  // that follows has no base, and keeps the guest's tasks beside the account's.
+  const acct = account([T(1, { name: 'Account task' })]);
+  const d = device(acct, 'guest', undefined, true);
+  d.tasks = [T(50, { name: 'Guest task' })];
+  d.store.set('tasks', d.tasks);
+  d.sync.startSession({ tasks: d.tasks });
+  d.sync.adopt('tasks', d.tasks);
+  d.row = null;                                        // signed in, nothing pulled yet
+  assert.equal(d.write(), false, 'the guest\'s list replaced the account\'s row');
+  d.pull();
+  assert.equal(d.push(), 0);
+  assert.deepEqual(cloudIds(acct), [1, 50]);
+  assert.deepEqual(ids(d.tasks), [1, 50]);
 });

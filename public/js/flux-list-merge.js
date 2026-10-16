@@ -83,6 +83,13 @@
    * opts.localTomb / opts.cloudTomb: {key: deletedAtMs}.
    * opts.edited: {key: true} for items changed or deleted here since this
    *            account session began. Only read without a base.
+   * opts.staleWriter: the row was last written by something that does not
+   *            merge before it writes (a Flux from before conditional pushes,
+   *            still open in some tab). It may have written an old copy, so a
+   *            cloud copy older than ours is not taken, and an item missing
+   *            from the row is not taken for deleted unless a tombstone says so.
+   *            Otherwise whoever wrote the row had merged what we last agreed
+   *            on, and a change in it is taken whatever the clocks say.
    * Returns {list, differsFromCloud, differsFromLocal, kept:{local:[],cloud:[]}}.
    *
    * A local delete is never inferred. An item the cloud has and this side
@@ -97,6 +104,7 @@
     const base=opts.base&&typeof opts.base==='object'?opts.base:null;
     const lt=opts.localTomb||{},ct=opts.cloudTomb||{};
     const edited=opts.edited&&typeof opts.edited==='object'?opts.edited:{};
+    const stale=!!opts.staleWriter;
     const L=new Map(),C=new Map();
     local.forEach(it=>L.set(keyOf(it),it));
     cloud.forEach(it=>C.set(keyOf(it),it));
@@ -138,8 +146,10 @@
         if(!cc){why.local.push(k);return l;}
         if(!lc){
           // The cloud copy is older than ours: another device pushed a list it
-          // had not refreshed. Keep ours and send it back up.
-          if(stamp(c)<stamp(l)){why.local.push(k);return l;}
+          // had not refreshed. Keep ours and send it back up. Only a writer
+          // that does not merge first can do that; from any other, the stamps
+          // are two devices' clocks, and a slow one would undo real edits.
+          if(stale&&stamp(c)<stamp(l)){why.local.push(k);return l;}
           return c;
         }
         if(stamp(l)>stamp(c)){why.local.push(k);return l;}
@@ -152,8 +162,9 @@
         // the row no longer does: it was deleted elsewhere — the Claude
         // connector deletes without a tombstone. Edited here since, it stays.
         // (An item without an id is keyed by its content, so this also drops
-        // the old version of one edited elsewhere.)
-        if(hb!==undefined&&hl===hb)return null;
+        // the old version of one edited elsewhere.) Not from a stale writer:
+        // its list may just be older than the one that had this item.
+        if(hb!==undefined&&hl===hb&&!stale)return null;
         why.local.push(k);
         return l;                                          // new here, or edited since
       }
@@ -239,15 +250,18 @@
 
   /**
    * What the answer to a pull was (syncFromCloud reads it):
+   *   'stale'  a push from this tab landed while the pull was out, so the row
+   *            it read is older than the one this tab wrote: dropped
    *   'new'    no row yet (PGRST116: a new account), so nothing to merge
    *   'failed' an error, no data, or no answer at all, so nothing was merged
    *   'same'   the row this device last applied, so nothing to merge
    *   'later'  a changed row, left until the typing stops
    *   'apply'  a changed row, merged now
-   * res: {error, data, fingerprint (of the row), applied (fingerprint last applied), typing}.
+   * res: {stale, error, data, fingerprint (of the row), applied (fingerprint last applied), typing}.
    */
   function pullOutcome(res){
     res=res||{};
+    if(res.stale)return 'stale';
     const err=res.error;
     if(err&&String(err.code||'')==='PGRST116')return 'new';
     if(err||!res.data)return 'failed';
@@ -264,6 +278,20 @@
    */
   function pullOpensPushes(outcome,merged){
     return outcome==='new'||outcome==='same'||(outcome==='apply'&&!!merged);
+  }
+
+  /**
+   * How a push may write the row, given what this tab last saw of it (row:
+   * {exists, at} from its last merged pull or landed push; null before any):
+   *   {mode:'update', at}  only where the row still has that updated_at, so
+   *                        nothing written since this tab merged is lost
+   *   {mode:'insert'}      only where there is no row at all, never over one:
+   *                        a pull can wrongly find no row (a lost session)
+   * A write that matches nothing means someone wrote first: pull, then push.
+   */
+  function writePlan(row){
+    if(row&&row.exists)return{mode:'update',at:row.at==null?null:String(row.at)};
+    return{mode:'insert'};
   }
 
   const BASE_KEY='flux_sync_base_v1';
@@ -332,6 +360,15 @@
       },
       /** The next save of this list is not an edit (it is what a merge produced, or what was loaded). */
       prime(sk,list){seen[sk]=hashes(list);},
+      /**
+       * Everything in this list counts as changed here this session: a guest's
+       * lists, which they asked to keep on signing in. Into an account that
+       * already has a row, the pull then keeps them beside the account's.
+       */
+      adopt(sk,list){
+        const ed=edited[cloudKeyOf(sk)]||(edited[cloudKeyOf(sk)]={});
+        (Array.isArray(list)?list:[]).forEach(it=>{if(it&&typeof it==='object')ed[keyOf(it)]=true;});
+      },
       edited(ck){return edited[ck]||{};},
       /**
        * Called with each save of 'tasks' or 'flux_notes': stamps updatedAt on
@@ -361,8 +398,11 @@
         if(changed){tombAll[ck]=mergeTombs(mine,null,t);try{store.set(TOMB_KEY,tombAll);}catch(_){}}
         persistBase(ck,false);
       },
-      /** Merge a pulled cloud list into this tab's; stores the result and returns the merge. */
-      pull(ck,local,cloud,cloudTombAll){
+      /**
+       * Merge a pulled cloud list into this tab's; stores the result and returns the merge.
+       * opts.staleWriter: see merge().
+       */
+      pull(ck,local,cloud,cloudTombAll,opts){
         const sk=STORE_OF[ck]||ck;
         local=Array.isArray(local)?local:[];
         // An edit can be in memory and not saved yet (a tick mid-animation):
@@ -370,7 +410,7 @@
         api.noteEdits(sk,local);
         const tombAll=read(TOMB_KEY,{})||{};
         const cloudTomb=(cloudTombAll&&typeof cloudTombAll==='object'&&cloudTombAll[ck])||{};
-        const r=merge(local,cloud,{base:api.base(ck),localTomb:tombAll[ck]||{},cloudTomb,edited:edited[ck]});
+        const r=merge(local,cloud,{base:api.base(ck),localTomb:tombAll[ck]||{},cloudTomb,edited:edited[ck],staleWriter:!!(opts&&opts.staleWriter)});
         tombAll[ck]=mergeTombs(tombAll[ck],cloudTomb,now());
         try{store.set(TOMB_KEY,tombAll);}catch(_){}
         base[ck]=hashes(cloud);
@@ -396,5 +436,5 @@
     return api;
   }
 
-  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs,sourceKey,newest,createListSync,pullOutcome,pullOpensPushes};
+  window.FluxListMerge={canon,itemHash,keyOf,hashes,merge,mergeTombs,sourceKey,newest,createListSync,pullOutcome,pullOpensPushes,writePlan};
 })();

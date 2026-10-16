@@ -10545,6 +10545,9 @@ function getCloudPayload(){
     // Tasks and notes deleted here, so other devices delete them too rather
     // than taking a missing item for one they should keep (fluxApplyCloudList).
     listTombstones:load('flux_list_tombstones_v1',{}),
+    // Written by a push that merged the row first (fluxWriteRow). A row
+    // without it came from an older Flux, and is merged with more care.
+    syncCas:1,
     habits,
     goals,
     colleges,
@@ -10715,6 +10718,12 @@ let _syncToCloudInFlight=false;
 let _syncToCloudQueued=false;
 /** Has a pull finished since sign-in? Pushes wait for one (see fluxCloudPullSettled). */
 let _fluxPulledOnce=false;
+/** The row as this tab last merged or wrote it: {exists, at (its updated_at)}, or null before any. See fluxWriteRow. */
+let _fluxRow=null;
+/** Bumped each time a push from this tab lands: a pull sent before that read an older row. */
+let _fluxRowGen=0;
+/** Pushes in a row that found the row written by someone else first. */
+let _fluxRowMisses=0;
 
 function stopFluxCloudSyncLoops(){
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
@@ -10732,6 +10741,45 @@ function startFluxCloudSyncLoops(){
     void syncFromCloud();
   },FLUX_SYNC_PULL_INTERVAL_MS);
   void syncToCloud();
+}
+
+/* ── Pushes write only over the row they merged ──────────────────────────────
+   The push was an upsert of whatever this tab held. A tab or device that had
+   not pulled lately — a second tab, a laptop back online, a tab left open
+   while Claude edited the list — wrote its older copy over the newer row, and
+   the merge then took the tasks missing from it for deleted: gone here, on
+   every other device and in the cloud.
+
+   Now each write names the row it was merged against, by its updated_at (the
+   Claude connector's own writes already do this). If anything has written
+   since, no row matches and nothing is written; syncToCloud then pulls,
+   merges, and pushes again. With no row seen, a write may only create one,
+   never replace one: a pull that wrongly found no row (a session that had
+   lapsed, say) used to let a new device's empty lists replace the account's.
+   The plan itself is FluxListMerge.writePlan (unit tested). */
+async function fluxWriteRow(sb,payload){
+  const at=new Date().toISOString();
+  const plan=window.FluxListMerge&&typeof FluxListMerge.writePlan==='function'
+    ?FluxListMerge.writePlan(_fluxRow)
+    :(_fluxRow&&_fluxRow.exists?{mode:'update',at:_fluxRow.at}:{mode:'insert'});
+  let q;
+  if(plan.mode==='update'){
+    q=sb.from('user_data').update({data:payload,updated_at:at}).eq('id',currentUser.id);
+    q=plan.at==null?q.is('updated_at',null):q.eq('updated_at',plan.at);
+  }else{
+    q=sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:at},{onConflict:'id',ignoreDuplicates:true});
+  }
+  const{data,error}=await q.select('updated_at');
+  if(error)return{error};
+  const row=Array.isArray(data)?data[0]:data;
+  return row?{written:true,at:row.updated_at==null?at:row.updated_at}:{written:false};
+}
+/** Resolves when the pull now in flight, if any, is done. */
+let _fluxPullIdle=null;
+/** A push found the row moved: merge the row as it is now (a pull sent before that may have missed it). */
+async function fluxPullBeforePush(){
+  for(let i=0;i<5&&_syncFromCloudInFlight&&_fluxPullIdle;i++)await _fluxPullIdle;
+  await syncFromCloud();
 }
 
 async function syncToCloud(opts){
@@ -10797,26 +10845,11 @@ async function syncToCloud(opts){
         payload.feedbackTombstones=[...tomb].slice(-500);
       }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
     }
-    // MCP (Claude) may have written tasks server-side since our last pull. Don't
-    // clobber them: if the remote mcpMeta.rev advanced, fold in any remote-only
-    // tasks before pushing. Mirrors the feedbackInbox read-merge-write above.
-    // Flag-gated so users without the connector pay no extra round-trip.
-    if(window.FluxFeatureFlags?.isEnabled?.('enable_claude_mcp',false)){
-      try{
-        const {data:rrow}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
-        const rd=rrow&&rrow.data;
-        const rRev=(rd&&rd.mcpMeta&&rd.mcpMeta.rev)||0;
-        if(rRev>(window._fluxMcpSeenRev||0)&&rd&&Array.isArray(rd.tasks)){
-          const have=new Set((payload.tasks||[]).map(t=>String(t&&t.id)));
-          const merged=(payload.tasks||[]).slice();
-          let added=0;
-          rd.tasks.forEach(rt=>{if(rt&&!have.has(String(rt.id))){merged.push(rt);added++;}});
-          if(added){payload.tasks=merged;try{tasks=merged;save('tasks',merged);}catch(_){}}
-          payload.mcpMeta=rd.mcpMeta;
-          window._fluxMcpSeenRev=rRev;
-        }
-      }catch(_){}
-    }
+    /* Claude (the MCP connector) writes the row server-side. Its writes no
+       longer need folding in here: they change the row's updated_at, so the
+       conditional write below finds the row moved, and the pull it runs
+       merges them — deletions included, which the old fold-in (every remote
+       task this list lacked, added back) used to undo. */
     /* Nothing new since the cloud last agreed with us: no write. The interval
        pushed every 2.5s regardless, and a device sitting idle kept writing its
        copy over edits made on another one between pulls. */
@@ -10830,7 +10863,17 @@ async function syncToCloud(opts){
     }
     // Taken now: a tick made while the request is out must not count as sent.
     const _pushedLists=window.FluxListMerge?{tasks:FluxListMerge.hashes(payload.tasks),notes:FluxListMerge.hashes(payload.notes)}:{};
-    const{error}=await sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:new Date().toISOString()},{onConflict:'id'});
+    const _write=await fluxWriteRow(sb,payload);
+    const error=_write.error;
+    if(!error&&!_write.written){
+      /* Someone wrote the row since this tab last merged it — another tab or
+         device, or Claude. Nothing was written. Merge theirs, then push again
+         (the finally block re-runs this): ours goes up with theirs in it. */
+      _fluxRowMisses++;
+      await fluxPullBeforePush();
+      if(_fluxRowMisses<=3)_syncToCloudQueued=true;   // past that, the 2.5s timer retries
+      return;
+    }
     if(error){
       console.error('Sync error:',error);
       setSyncStatus('offline');
@@ -10850,6 +10893,9 @@ async function syncToCloud(opts){
       }catch(_){}
       return;
     }
+    _fluxRow={exists:true,at:_write.at};
+    _fluxRowGen++;
+    _fluxRowMisses=0;
     window._fluxSyncFailed=false;
     window._fluxConsecutiveSyncFails=0;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -10865,7 +10911,7 @@ async function syncToCloud(opts){
        typing and it happened every eight seconds, for as long as you typed.
        Reported as the test score fields clearing themselves.
 
-       The upsert above succeeded, so the row now holds exactly this payload.
+       The write above landed, so the row now holds exactly this payload.
        Recording that here means the next pull recognises its own handiwork
        and does nothing. A row that differs — a genuine change from another
        device — still fails the comparison and is applied as before. */
@@ -11011,11 +11057,11 @@ function fluxPrimeListSeen(storeKey,list){
 function fluxRecordSyncBase(cloudKey,listOrHashes){
   if(fluxListSync)fluxListSync.recordBase(cloudKey,listOrHashes);
 }
-/** Merge a cloud list into the local one; saves and returns the result. */
-function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll){
+/** Merge a cloud list into the local one; saves and returns the result. opts.staleWriter: see FluxListMerge.merge. */
+function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll,opts){
   const storeKey=fluxListStoreKey(cloudKey);
   if(!fluxListSync){save(storeKey,cloud);return cloud;}
-  const r=fluxListSync.pull(cloudKey,local,cloud,cloudTombAll);
+  const r=fluxListSync.pull(cloudKey,local,cloud,cloudTombAll,opts);
   // Kept something the cloud does not have yet: send it up.
   if(r.differsFromCloud)window.__fluxListNeedsPush=true;
   return r.list;
@@ -11040,8 +11086,10 @@ async function syncFromCloud(opts){
   // intentionally a local-only sandbox.
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   if(_syncFromCloudInFlight)return;
+  const sb=getSB();if(!sb)return;
   _syncFromCloudInFlight=true;
-  const sb=getSB();if(!sb){_syncFromCloudInFlight=false;return;}
+  let _pullDone;
+  _fluxPullIdle=new Promise(r=>{_pullDone=r;});
   if(syncUiWantsActivity())setSyncStatus('syncing');
   /* What came back, and whether both lists got merged. Pushes open only
      after a pull that came back and was merged (or found no row yet, or the
@@ -11050,9 +11098,12 @@ async function syncFromCloud(opts){
      new device, an empty one. FluxListMerge.pullOutcome / pullOpensPushes
      (unit tested) make that call; the finally block acts on it. */
   let _pullOutcome='failed',_pullMerged=false;
+  const _gen=_fluxRowGen;
   try{
-    const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
+    const{data,error}=await sb.from('user_data').select('data,updated_at').eq('id',currentUser.id).single();
     const d=data&&!error?data.data:undefined;
+    // The row as it was read: what a push may write over once it is merged (fluxWriteRow).
+    const _readRow={exists:true,at:data&&data.updated_at!=null?data.updated_at:null};
     /* ── Do nothing when nothing changed ──────────────────────────────────
        This runs every 8 seconds, and everything below it — ~40 module
        applyFromCloud() calls and thirteen full re-renders — used to run on
@@ -11071,9 +11122,11 @@ async function syncFromCloud(opts){
        genuinely brings new data still applies it, exactly as before. */
     let _cloudFp='';
     if(d!==undefined){try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}}
-    _pullOutcome=fluxPullOutcome({error,data,fingerprint:_cloudFp,applied:window._fluxLastCloudFingerprint,typing:fluxIsTyping()});
-    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it.
-    if(_pullOutcome==='new')return;
+    _pullOutcome=fluxPullOutcome({stale:_gen!==_fluxRowGen,error,data,fingerprint:_cloudFp,applied:window._fluxLastCloudFingerprint,typing:fluxIsTyping()});
+    // A push from this tab landed while this was out: what it read is older than that. The next pull gets the row.
+    if(_pullOutcome==='stale')return;
+    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it (and only creates it).
+    if(_pullOutcome==='new'){_fluxRow={exists:false,at:null};return;}
     if(_pullOutcome==='failed'){
       window._fluxSyncFailed=true;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11081,6 +11134,7 @@ async function syncFromCloud(opts){
       return;
     }
     if(_pullOutcome==='same'){
+      _fluxRow=_readRow;
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -11099,9 +11153,14 @@ async function syncFromCloud(opts){
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.applyCloudPayload){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
     }
+    /* Rows written by a Flux from before conditional pushes (still open in
+       some tab) lack this mark, and may hold an older list: merged more
+       carefully (FluxListMerge.merge, staleWriter). Every push now sets it,
+       and the Claude connector keeps it when it writes. */
+    const _listOpts={staleWriter:d.syncCas!==1};
     if(Array.isArray(d.tasks)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
       const _tasksBefore=tasks;
-      tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones);
+      tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones,_listOpts);
       try{fluxNoteRemoteTaskChanges(_tasksBefore,tasks);}catch(_){}
       migrateCompletedAtBackfill();fluxPurgeOldCompleted();
     }
@@ -11243,10 +11302,11 @@ async function syncFromCloud(opts){
       try{if(window.FluxCalcHistory?.applyFromCloud)FluxCalcHistory.applyFromCloud(d.calcHistory);else save('flux_calc_history_v1',d.calcHistory);}catch(_){}
     }
     if(Array.isArray(d.notes)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
-      notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones);
+      notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones,_listOpts);
     }
     // Both lists are merged: what this device pushes from here on includes the cloud's.
     _pullMerged=true;
+    _fluxRow=_readRow;
     if(cloudListWins(d.habits,habits)){habits=d.habits;save('flux_habits',habits);}
     if(cloudListWins(d.goals,goals)){goals=d.goals;save('flux_goals',goals);}
     if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
@@ -11362,6 +11422,7 @@ async function syncFromCloud(opts){
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
   finally{
     _syncFromCloudInFlight=false;
+    _pullDone();
     if(fluxPullOpensPushes(_pullOutcome,_pullMerged))fluxCloudPullSettled();
   }
 }
@@ -11596,8 +11657,10 @@ function flushPendingSyncToCloud(){
   void syncToCloud();
 }
 /**
- * Unload / tab-close: PostgREST upsert with fetch keepalive so the browser does not
+ * Unload / tab-close: a PostgREST update with fetch keepalive so the browser does not
  * drop the request when the page tears down (normal syncToCloud may never finish).
+ * Conditional, like every push (fluxWriteRow): if the row has moved since this tab
+ * merged it, nothing is written, and these edits wait on this device for its next pull.
  * Skips if payload is too large for the ~64KB keepalive body limit.
  */
 function trySyncToCloudKeepalive(){
@@ -11607,6 +11670,9 @@ function trySyncToCloudKeepalive(){
   // Closed before the first pull came back: this copy has not seen the
   // cloud's yet, so writing it would undo changes made on other devices.
   if(!_fluxPulledOnce)return;
+  // No row seen yet: creating it is left to an ordinary push.
+  const row=_fluxRow;
+  if(!row||!row.exists)return;
   const sb=getSB();
   if(!sb)return;
   sb.auth.getSession().then(res=>{
@@ -11615,18 +11681,19 @@ function trySyncToCloudKeepalive(){
     try{
       const payload=getCloudPayload();
       try{if(fluxCanonicalJson(payload)===window._fluxLastCloudFingerprint)return;}catch(_){}
-      const body=JSON.stringify([{id:currentUser.id,data:payload,updated_at:new Date().toISOString()}]);
+      const body=JSON.stringify({data:payload,updated_at:new Date().toISOString()});
       if(body.length>62000){
         if(typeof console!=='undefined'&&console.warn)console.warn('Flux: payload large for keepalive; rely on last visibility flush');
         return;
       }
-      fetch(SB_URL+'/rest/v1/user_data?on_conflict=id',{
-        method:'POST',
+      const where='id=eq.'+encodeURIComponent(currentUser.id)+'&updated_at='+(row.at==null?'is.null':'eq.'+encodeURIComponent(row.at));
+      fetch(SB_URL+'/rest/v1/user_data?'+where,{
+        method:'PATCH',
         headers:{
           'Content-Type':'application/json',
           'apikey':SB_ANON,
           'Authorization':'Bearer '+session.access_token,
-          'Prefer':'return=minimal,resolution=merge-duplicates',
+          'Prefer':'return=minimal',
         },
         body,
         keepalive:true,
@@ -11643,8 +11710,8 @@ function initSyncLifecycle(){
       flushPendingSyncToCloud();
       return;
     }
-    flushPendingSyncToCloud();
-    void syncFromCloud();
+    // Back in view: take in what changed elsewhere first, then send what changed here.
+    void syncFromCloud().finally(flushPendingSyncToCloud);
   });
   const onLeave=()=>{
     if(!currentUser)return;
@@ -11803,8 +11870,8 @@ function initConnectivityAndNotifications(){
     updateConnectivityBanner();
     if(currentUser){
       try{if(window.FluxOfflineSync?.flushOutbox)FluxOfflineSync.flushOutbox();}catch(_){}
-      flushPendingSyncToCloud();
-      void syncFromCloud();
+      // Pull first: what was done here offline goes up merged with what changed meanwhile.
+      void syncFromCloud().finally(flushPendingSyncToCloud);
     }
   });
   window.addEventListener('offline',updateConnectivityBanner);
@@ -14816,6 +14883,7 @@ async function handleSignedIn(user,session){
   // A new session for this account: nothing goes up until its first pull is in.
   if(!currentUser||currentUser.id!==user.id){
     _fluxPulledOnce=false;
+    _fluxRow=null;_fluxRowMisses=0;
     // Edits count from here: anything done before signing in (as a guest)
     // does not get merged into the account unless it was asked for
     // (flux_migrate_guest below).
@@ -14873,6 +14941,9 @@ async function handleSignedIn(user,session){
   if(migratingGuest){
     save('flux_migrate_guest',false);
     save('flux_onboarded',true);
+    // Theirs to keep: a new account's row is made from them; an account that
+    // already has one (the push may only create a row) keeps them beside its own.
+    try{if(fluxListSync){fluxListSync.adopt('tasks',tasks);fluxListSync.adopt('flux_notes',notes);}}catch(_){}
     await syncToCloud({beforePull:true});
   }
 
@@ -15231,6 +15302,7 @@ function handleSignedOut(){
   currentUser=null;gmailToken=null;
   stopFluxCloudSyncLoops();
   _fluxPulledOnce=false;
+  _fluxRow=null;_fluxRowMisses=0;
   sessionStorage.clear();
   const keysToKeep=[
     'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
@@ -16065,28 +16137,35 @@ function showSessionRecap(subject,mins){
 
 
 // ══ VERSION HISTORY + UNDO ════════════════════════════════════
-/* Each entry is the list as it was before one change. Undo puts that back —
-   except for tasks a cloud pull has changed since (another device's edits),
-   which it leaves as they are now. Restoring the whole old list would have
-   quietly dropped them, and the next save would have deleted them everywhere. */
+/* Each entry is one change: the list as it was before it, and what the change
+   left (each task's hash, taken as soon as the change is made). Undo puts back
+   only the tasks that change touched, and only while they are still as it
+   left them. Restoring the whole old list also took back everything done
+   since that kept no entry of its own — a task added after it, a rename in
+   the edit window — and the next save then deleted those everywhere. Tasks a
+   cloud pull has changed since (another device's edits) are left as they are. */
 let _taskHistory=[];
 let _fluxUndoSeq=0;
 /** Changes already undone (by seq), so a second press on an old Undo bar can say so. */
 const _fluxUndoneSeqs=[];
+const fluxTaskKey=t=>window.FluxListMerge?FluxListMerge.keyOf(t):String(t&&t.id);
+const fluxTaskHash=t=>t===undefined?'':(window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t));
+/** Map of key → hash for a task list. */
+function fluxTaskHashes(list){const m=new Map();(list||[]).forEach(t=>m.set(fluxTaskKey(t),fluxTaskHash(t)));return m;}
 function snapshotTasks(){
   const seq=++_fluxUndoSeq;
-  _taskHistory.push({seq,before:JSON.parse(JSON.stringify(tasks)),remote:new Set()});
+  const e={seq,before:JSON.parse(JSON.stringify(tasks)),after:null,remote:new Set()};
+  _taskHistory.push(e);
   if(_taskHistory.length>10)_taskHistory.shift();
+  // Every caller makes its change straight after this, in the same turn.
+  Promise.resolve().then(()=>{if(!e.after)e.after=fluxTaskHashes(tasks);});
   return seq;
 }
 function fluxMarkUndone(seq){_fluxUndoneSeqs.push(seq);if(_fluxUndoneSeqs.length>50)_fluxUndoneSeqs.shift();}
-const fluxTaskKey=t=>window.FluxListMerge?FluxListMerge.keyOf(t):String(t&&t.id);
 /** A cloud pull changed these tasks: undo must not roll them back. */
 function fluxNoteRemoteTaskChanges(before,after){
   if(!_taskHistory.length)return;
-  const hash=t=>window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t);
-  const a=new Map((before||[]).map(t=>[fluxTaskKey(t),hash(t)]));
-  const b=new Map((after||[]).map(t=>[fluxTaskKey(t),hash(t)]));
+  const a=fluxTaskHashes(before),b=fluxTaskHashes(after);
   const changed=[];
   a.forEach((h,k)=>{if(b.get(k)!==h)changed.push(k);});
   b.forEach((h,k)=>{if(!a.has(k))changed.push(k);});
@@ -16097,9 +16176,9 @@ function fluxNoteRemoteTaskChanges(before,after){
  * With a seq (an Undo bar): that change and no other. The bar names what it
  * undoes, a completion say, but a calendar drag made since records a change
  * with no bar of its own, and undoing "the latest" then took back the drag
- * and left the task ticked. When later changes are recorded, only the tasks
- * this one changed are put back, and only if nothing has changed them since;
- * otherwise it says it can't, rather than undo something else.
+ * and left the task ticked. Either way only the tasks the change touched are
+ * put back, and only if nothing has changed them since; otherwise it says it
+ * can't, rather than undo something else.
  */
 function undoLastChange(seq){
   if(seq!=null){
@@ -16108,43 +16187,29 @@ function undoLastChange(seq){
       showToast(_fluxUndoneSeqs.includes(seq)?'Already undone':'That change can’t be undone any more','info');
       return false;
     }
-    if(i<_taskHistory.length-1)return fluxUndoOneChange(i);
+    return fluxUndoOneChange(i);
   }
   if(!_taskHistory.length){showToast('Nothing to undo','info');return false;}
-  const e=_taskHistory.pop();
-  fluxMarkUndone(e.seq);
-  if(!e.remote.size){tasks=e.before;}
-  else{
-    const now=new Map(tasks.map(t=>[fluxTaskKey(t),t]));
-    const out=[];
-    const seen=new Set();
-    e.before.forEach(t=>{
-      const k=fluxTaskKey(t);seen.add(k);
-      if(!e.remote.has(k))out.push(t);
-      else if(now.has(k))out.push(now.get(k));
-    });
-    tasks.forEach(t=>{const k=fluxTaskKey(t);if(e.remote.has(k)&&!seen.has(k))out.unshift(t);});
-    tasks=out;
-  }
-  save('tasks',tasks);
-  fluxTaskRebuildNow();
-  syncKey('tasks',tasks);
-  showToast('↩ Change undone','info');
-  return true;
+  const i=_taskHistory.length-1;
+  if(fluxUndoOneChange(i))return true;
+  // One that can't be undone is set aside: the next Ctrl+Z goes on to the change before it.
+  _taskHistory.splice(i,1);
+  return false;
 }
-/** Undo the change at _taskHistory[i] when others are recorded after it (see undoLastChange). */
+/** Undo the change at _taskHistory[i] (see undoLastChange). */
 function fluxUndoOneChange(i){
   const e=_taskHistory[i];
-  const hash=t=>t===undefined?'':(window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t));
   const byKey=list=>new Map(list.map(t=>[fluxTaskKey(t),t]));
   const B=byKey(e.before);                      // before this change
-  const A=byKey(_taskHistory[i+1].before);      // as this change left them
+  // As this change left them (taken just after it; failing that, the next change's before, or now).
+  const A=e.after||fluxTaskHashes(i<_taskHistory.length-1?_taskHistory[i+1].before:tasks);
+  const ha=k=>A.has(k)?A.get(k):'';
   const N=byKey(tasks);                         // now
   // What this change did, less what a cloud pull has changed since (left as it is now).
-  const keys=[...new Set([...B.keys(),...A.keys()])].filter(k=>hash(B.get(k))!==hash(A.get(k))&&!e.remote.has(k));
+  const keys=[...new Set([...B.keys(),...A.keys()])].filter(k=>fluxTaskHash(B.get(k))!==ha(k)&&!e.remote.has(k));
   const cant=msg=>{showToast(msg,'warning');return false;};
   if(!keys.length)return cant('That change can’t be undone any more');
-  if(keys.some(k=>hash(N.get(k))!==hash(A.get(k))))return cant('Can’t undo that: it has been changed since');
+  if(keys.some(k=>fluxTaskHash(N.get(k))!==ha(k)))return cant('Can’t undo that: it has been changed since');
   const putBack=list=>{
     const out=list.slice();
     keys.forEach(k=>{
@@ -16166,7 +16231,13 @@ function fluxUndoOneChange(i){
   for(let j=i+1;j<_taskHistory.length;j++){
     const later=_taskHistory[j];
     const L=byKey(later.before);
-    if(keys.every(k=>hash(L.get(k))===hash(A.get(k))))later.before=putBack(later.before);
+    if(keys.every(k=>fluxTaskHash(L.get(k))===ha(k)))later.before=putBack(later.before);
+    // Nor take what this undo put back for a change of theirs.
+    const LA=later.after;
+    if(LA)keys.forEach(k=>{
+      if((LA.has(k)?LA.get(k):'')!==ha(k))return;
+      if(B.has(k))LA.set(k,fluxTaskHash(B.get(k)));else LA.delete(k);
+    });
   }
   _taskHistory.splice(i,1);
   fluxMarkUndone(e.seq);

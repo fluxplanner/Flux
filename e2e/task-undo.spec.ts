@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { gotoScenario } from './helpers';
+import { gotoScenario, stubCloudRow } from './helpers';
 
 /*
  * "It's impossible to find and undo it. Do completed tasks in completed
@@ -113,6 +113,39 @@ test.describe('Finding and undoing a completed task', () => {
     expect((await taskNow(page, 9301))?.done).toBe(false);
   });
 
+  test('the bar\'s Undo takes back only its own change: a task added and a rename made since both stay', async ({ page }) => {
+    // It put back the whole list from before the tick: the task added after
+    // it was deleted (and tombstoned, so deleted on every device), and the
+    // rename made in the edit window was reverted.
+    await gotoScenario(page, 'student-semester');
+    await seedToday(page);
+    await page.locator('#taskList .task-item[data-task-id="9302"] .check').click();
+    const bar = page.locator('#undoSnackbar');
+    await expect(bar).toContainText('Maths sheet');
+    const added = await page.evaluate(() => {
+      const w = window as any;
+      (document.getElementById('taskName') as HTMLInputElement).value = 'Added after the tick';
+      w.addTask();
+      w.openEdit(9301);
+      (document.getElementById('editText') as HTMLInputElement).value = 'Read chapter 5';
+      w.saveEdit();
+      return w.tasks.find((t: any) => t.name === 'Added after the tick')?.id;
+    });
+    expect(added, 'the task was not added').toBeTruthy();
+    await bar.getByRole('button', { name: 'Undo' }).click();
+    await expect.poll(() => taskNow(page, 9302), { message: 'Undo did not take back the tick' }).toEqual({ done: false, date: today() });
+    const after = await page.evaluate((id) => {
+      const w = window as any;
+      const tomb = JSON.parse(localStorage.getItem(w.fluxNamespacedKey('flux_list_tombstones_v1')) || '{}').tasks || {};
+      return {
+        kept: w.tasks.some((t: any) => t.id === id),
+        name: w.tasks.find((t: any) => t.id === 9301)?.name,
+        tombstoned: Object.keys(tomb).includes(String(id)),
+      };
+    }, added);
+    expect(after).toEqual({ kept: true, name: 'Read chapter 5', tombstoned: false });
+  });
+
   test('a recurring task\'s next one goes too when its completion is undone from the bar', async ({ page }) => {
     await gotoScenario(page, 'student-semester');
     await page.evaluate((d) => {
@@ -169,24 +202,20 @@ test.describe('Finding and undoing a completed task', () => {
   test('undo keeps a task another device added in the meantime', async ({ page }) => {
     // teacher-workflow has a signed-in user; the stub stands in for Supabase.
     await gotoScenario(page, 'teacher-workflow');
+    await stubCloudRow(page);
     const res = await page.evaluate(async () => {
       const w = window as any;
-      let row = JSON.parse(JSON.stringify(w.getCloudPayload()));
-      w.getSB = () => ({
-        from: () => ({
-          select: () => ({ eq: () => ({ single: async () => ({ data: { data: JSON.parse(JSON.stringify(row)) }, error: null }) }) }),
-          upsert: async (o: any) => { row = JSON.parse(JSON.stringify(o.data)); return { error: null }; },
-        }),
-      });
+      w.__fluxStubRow();
       w.tasks.push({ id: 9401, name: 'Lab write-up', date: '', priority: 'med', done: false, subtasks: [], createdAt: Date.now() });
       w.save('tasks', w.tasks);
       await w.syncFromCloud();          // agree with the stub first
       await w.syncToCloud();
       w.toggleTask(9401);               // the change to undo
       // Meanwhile, on a phone:
-      row = JSON.parse(JSON.stringify(row));
-      row.tasks.unshift({ id: 9402, name: 'Added on my phone', date: '', priority: 'med', done: false, subtasks: [], createdAt: Date.now(), updatedAt: Date.now() });
-      w._fluxLastCloudFingerprint = undefined;
+      w.__writeRow((row: any) => {
+        row.tasks.unshift({ id: 9402, name: 'Added on my phone', date: '', priority: 'med', done: false, subtasks: [], createdAt: Date.now(), updatedAt: Date.now() });
+        return row;
+      });
       await w.syncFromCloud();
       const arrived = w.tasks.some((t: any) => t.id === 9402);
       w.undoLastChange();

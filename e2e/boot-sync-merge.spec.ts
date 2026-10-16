@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { bootSignedIn, gotoScenario, type BootTask } from './helpers';
+import { bootSignedIn, gotoScenario, stubCloudRow, type BootTask } from './helpers';
 
 /*
  * "Site is very laggy and refreshes multiple times when first opened and
@@ -194,33 +194,20 @@ test.describe('A pull that is out while you work', () => {
   test('ticking a task while a pull is in flight is not undone by it', async ({ page }) => {
     // teacher-workflow has a signed-in user; the stub stands in for Supabase.
     await gotoScenario(page, 'teacher-workflow');
+    await stubCloudRow(page);
     const res = await page.evaluate(async () => {
       const w = window as any;
-      let row = JSON.parse(JSON.stringify(w.getCloudPayload()));
-      let hold: (() => void) | null = null;
-      w.getSB = () => ({
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              single: async () => {
-                const snap = JSON.parse(JSON.stringify(row));
-                if (hold === null) await new Promise<void>((r) => { hold = r; });
-                return { data: { data: snap }, error: null };
-              },
-            }),
-          }),
-          upsert: async (o: any) => { row = JSON.parse(JSON.stringify(o.data)); w.__row = row; return { error: null }; },
-        }),
-      });
+      w.__fluxStubRow();
       // Settle once so this device and the stub agree.
-      hold = () => {};
       await w.syncFromCloud();
-      hold = null;
+      let release: () => void = () => {};
+      w.__rowRead = () => new Promise<void>((r) => { release = r; });
       const id = w.tasks.find((t: any) => !t.done).id;
       const pull = w.syncFromCloud();          // goes out, holds
       await new Promise((r) => setTimeout(r, 50));
+      w.__rowRead = null;
       w.toggleTask(id);                         // ticked while it is out
-      (hold as any)?.();                        // the old row comes back
+      release();                                // the old row comes back
       await pull;
       return { id, here: w.tasks.find((t: any) => t.id === id).done };
     });
@@ -229,5 +216,101 @@ test.describe('A pull that is out while you work', () => {
       const row = (window as any).__row;
       return row ? row.tasks.find((t: any) => t.id === id)?.done : undefined;
     }, res.id), { message: 'the tick never went back up', timeout: 5000 }).toBe(true);
+  });
+});
+
+test.describe('Pushes only write over the row they merged', () => {
+  // A tab or device that had not pulled lately wrote its older list over the
+  // row, and the merge then took the tasks missing from it for deleted —
+  // everywhere. Now each write names the updated_at it merged; the stand-in
+  // answers like PostgREST, so a write over a newer row lands nowhere.
+  async function open(page: import('@playwright/test').Page) {
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect(page.locator('#fluxRoleSkeletonOverlay')).toHaveCount(0, { timeout: 10_000 });
+  }
+  const task = (id: number, name: string) => ({ id, name, done: false, subtasks: [], createdAt: Date.now() });
+
+  test('a tab that has not pulled since another tab added a task cannot write its older list over it', async ({ page, context }) => {
+    const boot = await bootSignedIn(page, { tasks: TASKS });
+    await open(page);                                         // tab B
+    await expect.poll(() => (boot.state.cloud as any).syncCas, { timeout: 10_000 }).toBe(1);
+    const tabA = await context.newPage();
+    await open(tabA);
+    await tabA.evaluate(async (t) => {
+      const w = window as any;
+      w.tasks.unshift(t);
+      w.save('tasks', w.tasks);
+      await w.FluxSync.push();
+    }, task(7150, 'Added in tab A'));
+    await expect.poll(() => boot.cloudTask(7150)?.name, { timeout: 10_000 }).toBe('Added in tab A');
+    await tabA.close();
+    const missed = boot.state.missed;
+    // Tab B has not pulled since. It ticks something and pushes straight away.
+    await page.evaluate(async () => { const w = window as any; w.toggleTask(7002); await w.FluxSync.push(); });
+    await expect.poll(() => boot.cloudTask(7002)?.done, { message: 'tab B\'s tick never went up', timeout: 10_000 }).toBe(true);
+    expect(boot.cloudTask(7150)?.name, 'tab B wrote its older list over tab A\'s task').toBe('Added in tab A');
+    expect(boot.state.missed, 'tab B\'s first write should have matched nothing').toBeGreaterThan(missed);
+    expect(await page.evaluate(() => (window as any).tasks.some((t: any) => t.id === 7150)), 'tab B never took in tab A\'s task').toBe(true);
+  });
+
+  test('Claude deletes a task and adds one while Flux is open: a tick made then keeps both changes', async ({ page }) => {
+    const boot = await bootSignedIn(page, { tasks: TASKS });
+    await open(page);
+    await expect.poll(() => (boot.state.cloud as any).syncCas, { timeout: 10_000 }).toBe(1);
+    // The connector's write (mcp/index.ts): conditional, and it keeps the rest of the row.
+    boot.writeElsewhere((row) => ({ ...row, tasks: [task(7190, 'From Claude'), ...(row.tasks || []).filter((t) => t.id !== 7004)] }));
+    await page.evaluate(() => (window as any).toggleTask(7001));
+    await expect.poll(() => boot.cloudTask(7001)?.done, { message: 'the tick never went up', timeout: 10_000 }).toBe(true);
+    expect(boot.cloudTask(7004), 'the task Claude deleted came back').toBeUndefined();
+    expect(boot.cloudTask(7190)?.name, 'the task Claude added was lost').toBe('From Claude');
+    const here = await page.evaluate(() => (window as any).tasks.map((t: any) => t.id));
+    expect(here).toContain(7190);
+    expect(here).not.toContain(7004);
+  });
+
+  test('back online: what another device did meanwhile is merged before this one\'s tick goes up', async ({ page, context }) => {
+    const boot = await bootSignedIn(page, { tasks: TASKS });
+    await open(page);
+    await expect.poll(() => (boot.state.cloud as any).syncCas, { timeout: 10_000 }).toBe(1);
+    await context.setOffline(true);
+    await page.evaluate(() => (window as any).toggleTask(7003));
+    boot.writeElsewhere((row) => ({ ...row, tasks: [task(7170, 'Added on the phone'), ...(row.tasks || [])] }));
+    await page.waitForTimeout(3000);                          // the push timer fails while offline
+    await context.setOffline(false);
+    await expect.poll(() => boot.cloudTask(7003)?.done, { message: 'the offline tick never went up', timeout: 15_000 }).toBe(true);
+    expect(boot.cloudTask(7170)?.name, 'the phone\'s task was written over').toBe('Added on the phone');
+    await expect.poll(() => page.evaluate(() => (window as any).tasks.some((t: any) => t.id === 7170))).toBe(true);
+  });
+
+  test('an older Flux, still open in some tab, writes its stale list over the row: the task it never saw stays', async ({ page }) => {
+    const boot = await bootSignedIn(page, { tasks: TASKS });
+    await open(page);
+    await expect.poll(() => (boot.state.cloud as any).syncCas, { timeout: 10_000 }).toBe(1);
+    await page.evaluate(async (t) => {
+      const w = window as any;
+      w.tasks.unshift(t);
+      w.save('tasks', w.tasks);
+      await w.FluxSync.push();
+    }, task(7160, 'Added here'));
+    await expect.poll(() => boot.cloudTask(7160)?.name, { timeout: 10_000 }).toBe('Added here');
+    // It never pulled task 7160, and writes without merging: no mark, no tombstones.
+    boot.writeElsewhere(() => ({ tasks: TASKS, onboarded: true }));
+    await page.evaluate(() => (window as any).FluxSync.pull());
+    expect(await page.evaluate(() => (window as any).tasks.some((t: any) => t.id === 7160)), 'taken for deleted').toBe(true);
+    await expect.poll(() => boot.cloudTask(7160)?.name, { message: 'not sent back up', timeout: 10_000 }).toBe('Added here');
+  });
+
+  test('a first pull that wrongly finds no row does not let this device replace the account\'s', async ({ page }) => {
+    // PGRST116 also comes back when the session has lapsed and the read runs
+    // without it. Taken for a new account, the first push replaced the row
+    // with this device's lists — empty, on a new device.
+    const boot = await bootSignedIn(page, { tasks: [], cloud: { tasks: TASKS, onboarded: true }, missingPulls: 1 });
+    await page.goto('/');
+    await expect(page.locator('#app')).toHaveClass(/visible/);
+    await expect.poll(() => boot.state.missingPulls).toBe(1);
+    await expect.poll(() => page.evaluate(() => (window as any).tasks.length), { message: 'the account\'s tasks never arrived', timeout: 20_000 }).toBe(TASKS.length);
+    await page.waitForTimeout(3000);
+    expect((boot.state.cloud.tasks || []).length, 'the account\'s tasks were replaced').toBe(TASKS.length);
   });
 });
