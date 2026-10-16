@@ -218,7 +218,19 @@
 
   /* ── Saving ─────────────────────────────────────────────────────────── */
 
+  /**
+   * Save the open set now. Every tap that changes it (an answer, a rating, an
+   * edit) saves straight away: a write still waiting when the tab closes or
+   * reloads can be lost, and a finished test must not be.
+   */
   function save() {
+    const o = app.open;
+    if (!o || o.draft || !app.store) return;
+    app.store.autosave(o.set);
+    app.store.flush();
+  }
+  /** While typing: saved after a short pause, and at once when the field is left. */
+  function saveSoon() {
     const o = app.open;
     if (!o || o.draft || !app.store) return;
     app.store.autosave(o.set);
@@ -887,7 +899,7 @@
       refreshBuildButton();
     } else return;
     persistDraft();
-    save();
+    saveSoon();
   }
   function addTypedNotes() {
     const set = app.open.set;
@@ -1543,10 +1555,11 @@
     if (step.help.examples) {
       const list = T.examplesFor(corpus, c, shown);
       const showing = list.slice(0, step.help.examples);
+      // Once every passage the notes have is on screen, say so (and the button goes).
       more = step.help.examples < list.length;
-      examples = '<section class="ft-help-panel" aria-labelledby="ftExampleTitle"><h4 class="ft-h4" id="ftExampleTitle">' + (showing.length > 1 ? 'More from your notes' : 'Another example') + '</h4>'
+      examples = '<section class="ft-help-panel" aria-labelledby="ftExampleTitle"><h4 class="ft-h4" id="ftExampleTitle" tabindex="-1">' + (showing.length > 1 ? 'More from your notes' : 'Another example') + '</h4>'
         + showing.map((ex) => '<div class="ft-example">' + ex.sentences.map((p) => quote(p)).join('') + '</div>').join('')
-        + (step.help.examples > list.length ? '<p class="ft-none-msg" id="ftNoMore">Your notes have no more examples of “' + esc(c.label) + '”.</p>' : '')
+        + (!more ? '<p class="ft-none-msg" id="ftNoMore" tabindex="-1">Your notes have no more examples of “' + esc(c.label) + '”.</p>' : '')
         + '</section>';
     }
     return '<div class="ft-help-row" role="group" aria-label="More help with ' + esc(c.label) + '">'
@@ -1674,10 +1687,11 @@
       const panel = root.querySelector('.ft-help-panel');
       announce(panel ? panel.textContent : '');
     } else if (kind === 'example') {
-      const panel = root.querySelector('#ftExampleTitle');
-      const box = panel && panel.parentNode;
-      const last = box && (box.querySelector('#ftNoMore') || Array.from(box.querySelectorAll('.ft-example')).pop());
-      announce(last ? last.textContent : '');
+      const title = root.querySelector('#ftExampleTitle');
+      const box = title && title.parentNode;
+      const newest = box && Array.from(box.querySelectorAll('.ft-example')).pop();
+      const none = document.getElementById('ftNoMore');
+      announce([newest ? newest.textContent : '', none ? none.textContent : ''].join(' ').trim());
     }
   }
 
@@ -2233,7 +2247,9 @@
       return;
     }
     if (t.dataset && t.dataset.plan && t.type === 'checkbox') { togglePlan(t); return; }
-    if (t.dataset && t.dataset.field === 'examDate') { onNotesInput(t); return; }
+    if (t.dataset && t.dataset.field === 'examDate') { onNotesInput(t); save(); return; }
+    // A typed field was left: save what is waiting now.
+    if (t.dataset && (t.dataset.field || t.dataset.srcText)) { save(); return; }
     if (t.closest && t.closest('form[data-form="test"]')) collectTestAnswer(t);
   });
   root.addEventListener('toggle', (e) => {
