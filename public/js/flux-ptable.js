@@ -373,7 +373,16 @@
     h += '<div class="fpt-printkey" style="grid-row:2/5;grid-column:4/14" aria-hidden="true"></div>';
     this.grid.innerHTML = h;
     this.cells = {};
-    this.grid.querySelectorAll('.fpt-el').forEach((b) => { this.cells[b.dataset.n] = b; });
+    this.cellVal = {};
+    /* What paint() last wrote into each cell, so the next paint touches only
+       the cells that change: picking an element changes two, a step of the
+       temperature slider a handful, not all 118. */
+    this.cellWas = {};
+    this.grid.querySelectorAll('.fpt-el').forEach((b) => {
+      this.cells[b.dataset.n] = b;
+      this.cellVal[b.dataset.n] = b.querySelector('.fpt-v');
+      this.cellWas[b.dataset.n] = {};
+    });
   };
 
   App.prototype.wire = function () {
@@ -604,17 +613,27 @@
           value = prop.unit === 'temp' ? this.tempText(v, true) : String(prop.f ? prop.f(v) : fmt(v));
         }
       }
-      b.style.setProperty('--c', bg || '');
+      const dim = !!((st.hl && !st.hl.has(e.n)) || (st.catFilter && e.cat !== st.catFilter && cid === 'cat'));
+      const hl = !!(st.hl && st.hl.has(e.n));
       // A property colours the cell outright; categories tint it (see the CSS).
-      b.style.background = prop.kind ? '' : (bg || '');
-      b.style.color = ink;
-      b.classList.toggle('is-heat', !prop.kind && !none);
-      b.classList.toggle('is-none', none);
-      b.querySelector('.fpt-v').textContent = value;
-      const dim = (st.hl && !st.hl.has(e.n)) || (st.catFilter && e.cat !== st.catFilter && cid === 'cat');
-      b.classList.toggle('is-dim', !!dim);
-      b.classList.toggle('is-hl', !!(st.hl && st.hl.has(e.n)));
-      b.classList.toggle('is-sel', st.sel === e.n);
+      const fill = prop.kind ? '' : (bg || '');
+      const flags = (!prop.kind && !none ? 1 : 0) | (none ? 2 : 0) | (dim ? 4 : 0) | (hl ? 8 : 0) | (st.sel === e.n ? 16 : 0);
+      /* Only what changed is written. Writing every cell on every paint made
+         the browser restyle and re-lay-out the whole table for each click,
+         and on the Temperature tab sixty times a second. */
+      const was = this.cellWas[e.n];
+      if (was.c !== bg) { b.style.setProperty('--c', bg || ''); was.c = bg; }
+      if (was.fill !== fill) { b.style.background = fill; was.fill = fill; }
+      if (was.ink !== ink) { b.style.color = ink; was.ink = ink; }
+      if (was.value !== value) { this.cellVal[e.n].textContent = value; was.value = value; }
+      if (was.flags !== flags) {
+        b.classList.toggle('is-heat', !!(flags & 1));
+        b.classList.toggle('is-none', !!(flags & 2));
+        b.classList.toggle('is-dim', !!(flags & 4));
+        b.classList.toggle('is-hl', !!(flags & 8));
+        b.classList.toggle('is-sel', !!(flags & 16));
+        was.flags = flags;
+      }
     });
     this.root.dataset.colour = cid;
     this.renderChart();
@@ -803,13 +822,14 @@
     const L = this.legend, st = this.st;
     const range = L.querySelector('.fpt-range');
     if (range && +range.value !== Math.round(st.temp)) range.value = Math.round(st.temp);
-    const v = L.querySelector('.fpt-temp-v');
-    if (v) v.innerHTML = this.tempLabel();
+    // Each readout is rewritten only when its text changes: while the slider
+    // moves or the table heats up this runs on every frame.
+    const put = (el, html) => { if (el && el._fptHtml !== html) { el.innerHTML = html; el._fptHtml = html; } };
+    put(L.querySelector('.fpt-temp-v'), this.tempLabel());
     const counts = { s: 0, l: 0, g: 0, u: 0 };
     model().forEach((e) => { counts[stateAt(e, st.temp)]++; });
-    L.querySelectorAll('.fpt-states .fpt-chip b').forEach((b, i) => { b.textContent = counts['slgu'[i]]; });
-    const ev = L.querySelector('.fpt-events');
-    if (ev) ev.innerHTML = this.tempEvents();
+    L.querySelectorAll('.fpt-states .fpt-chip b').forEach((b, i) => { const c = String(counts['slgu'[i]]); if (b.textContent !== c) b.textContent = c; });
+    put(L.querySelector('.fpt-events'), this.tempEvents());
   };
   /** The melting or boiling just below the current temperature, and the next one above it. */
   App.prototype.tempEvents = function () {
@@ -851,7 +871,7 @@
     const view = this.st.view;
     if (!n && isExplore(view)) return;          // the tabs about one element always show one
     this.st.sel = n;
-    if (n && this.cells[n]) Object.keys(this.cells).forEach((k) => { this.cells[k].tabIndex = +k === n ? 0 : -1; });
+    if (n && this.cells[n]) this.rove(n);
     if (this.o.hash) this.writeHash();
     /* Picking another element — a cell, the ‹ › arrows, a link — redraws the
        panel you are reading, and the page must not move while it does. Chrome
@@ -993,10 +1013,17 @@
     if (!target) return;
     ev.preventDefault();
     const b = this.cells[target.n];
-    Object.keys(this.cells).forEach((k) => { this.cells[k].tabIndex = -1; });
-    b.tabIndex = 0;
+    this.rove(target.n);
     b.focus();
     if (this.st.sel) this.select(target.n);
+  };
+  /** The one cell Tab lands on (a roving tabindex). Only the two cells that
+      change are written, not all 118. */
+  App.prototype.rove = function (n) {
+    Object.keys(this.cells).forEach((k) => {
+      const t = +k === n ? 0 : -1;
+      if (this.cells[k].tabIndex !== t) this.cells[k].tabIndex = t;
+    });
   };
 
   /* ── The side panel ─────────────────────────────────────────────────── */

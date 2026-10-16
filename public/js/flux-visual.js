@@ -596,15 +596,21 @@
 
     /* 12 frames a second: the shapes drift a couple of pixels a second, so
        more frames bought nothing but work. A canvas hidden by low-end or
-       reduced-motion mode is not drawn at all. */
+       reduced-motion mode is not drawn at all. While Study tools is open the
+       backdrop is held: its last frame stays up and nothing is redrawn (see
+       syncToolsStill). */
     let raf = 0;
     let running = true;
+    let held = false;
     let lastDraw = 0;
     let shown = true;
     let showTick = 0;
     const frameMs = 1000 / 12;
     function loop(now) {
-      if (!running) return;
+      if (!running || held) {
+        raf = 0;
+        return;
+      }
       if (!lastDraw || now - lastDraw >= frameMs) {
         if (showTick++ % 24 === 0) shown = canvas.isConnected && getComputedStyle(canvas).display !== 'none';
         if (shown) draw();
@@ -619,6 +625,8 @@
     function onResize() {
       fit();
       createNodes();
+      // Resizing clears the canvas to black; a held backdrop draws once more.
+      if (held) draw();
     }
     window.addEventListener('resize', onResize);
 
@@ -662,6 +670,29 @@
       canvas.remove();
       window.removeEventListener('resize', onResize);
     };
+    /** Hold the backdrop on its current frame (true), or let it drift again. */
+    window._fluxMeshHold = (on) => {
+      on = !!on;
+      if (on === held) return;
+      held = on;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (!held && running && !document.hidden) raf = requestAnimationFrame(loop);
+    };
+  }
+
+  /* Study tools holds the planner's background still: the drifting backdrop
+     canvas, the aurora, the ambient wash, the sidebar logo's shimmer and the
+     quick-add glow (flux-visual.css, html.flux-tools-still). Each of them made
+     the browser redraw and recomposite the whole screen on every frame, behind
+     a periodic table of 118 cells, a graph or a calculator that need those
+     frames — the periodic table lagged badly on school laptops. Everything
+     carries on where it stopped when you leave. */
+  const FLUX_STILL_PANELS = new Set(['toolbox']);
+  function syncToolsStill(panelId) {
+    const still = FLUX_STILL_PANELS.has(panelId);
+    document.documentElement.classList.toggle('flux-tools-still', still);
+    if (typeof window._fluxMeshHold === 'function') window._fluxMeshHold(still);
   }
 
   function initFluxVisual() {
@@ -692,6 +723,7 @@
       'flux-nav',
       (e) => {
         const panelId = e.detail?.panel;
+        if (panelId) syncToolsStill(panelId);
         if (panelId) setTimeout(() => initPanelStarField(panelId), 120);
         if (panelId === 'dashboard' && typeof window.renderStats === 'function') {
           setTimeout(() => {
@@ -723,6 +755,7 @@
 
     const activePanel = document.querySelector('.panel.active')?.id;
     if (activePanel) initPanelStarField(activePanel);
+    if (activePanel) syncToolsStill(activePanel);
   }
 
   window.FluxVisual = {
