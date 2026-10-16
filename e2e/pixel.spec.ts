@@ -142,3 +142,103 @@ test.describe('Flux Pixel', () => {
     expect(over).toBeLessThanOrEqual(0);
   });
 });
+
+/*
+ * Teachers asked for more than one eraser: "drag and create a box to erase"
+ * and a "circle eraser as well as [the] line eraser". Whole item takes away
+ * anything it touches (the old eraser); Circle and Box rub out only the part
+ * under them, as holes that stay with the item when it moves.
+ */
+test.describe('Flux Pixel: the eraser', () => {
+  type Box = { x: number; y: number; width: number; height: number };
+  const at = (box: Box, x: number, y: number): [number, number] => [box.x + (x * box.width) / 1600, box.y + (y * box.height) / 1000];
+  async function stroke(page: import('@playwright/test').Page, box: Box, y: number) {
+    await page.locator('[data-tool="pen"]').click();
+    await page.mouse.move(...at(box, 200, y));
+    await page.mouse.down();
+    for (let x = 220; x <= 1000; x += 20) await page.mouse.move(...at(box, x, y));
+    await page.mouse.up();
+  }
+  async function drag(page: import('@playwright/test').Page, box: Box, from: [number, number], to: [number, number]) {
+    await page.mouse.move(...at(box, ...from));
+    await page.mouse.down();
+    await page.mouse.move(...at(box, ...to), { steps: 12 });
+    await page.mouse.up();
+  }
+  /** What the page shows at these page points: true where there is ink. */
+  const inked = (page: import('@playwright/test').Page, pts: [number, number][]) => page.evaluate(async (pts) => {
+    const svg = document.getElementById('pxSvg')!;
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+    await img.decode();
+    const c = document.createElement('canvas'); c.width = 1600; c.height = 1000;
+    const g = c.getContext('2d')!; g.drawImage(img, 0, 0, 1600, 1000);
+    return pts.map(([x, y]) => g.getImageData(x, y, 1, 1).data[0] < 128);
+  }, pts);
+
+  test('Circle rubs out only what it passes over, the gap moves with the line, and undo brings it back', async ({ page }) => {
+    const box = await newPage(page);
+    await stroke(page, box, 300);
+    await page.locator('[data-tool="eraser"]').click();
+    await page.locator('[data-erase="circle"]').click();
+    await expect(page.locator('[data-erase-size]')).toBeVisible();
+    await drag(page, box, [600, 200], [600, 400]);
+    await page.waitForTimeout(450);
+    expect(await inked(page, [[400, 300], [600, 300], [800, 300]])).toEqual([true, false, true]);
+    expect((await items(page)).length, 'the line itself is kept').toBe(1);
+
+    await page.locator('[data-tool="select"]').click();
+    await drag(page, box, [800, 300], [800, 450]);
+    await page.waitForTimeout(450);
+    expect(await inked(page, [[800, 450], [600, 450], [400, 450]]), 'the gap travelled with the line').toEqual([true, false, true]);
+
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(450);
+    expect(await inked(page, [[400, 300], [600, 300], [800, 300]])).toEqual([true, true, true]);
+    // The SVG export carries the same picture.
+    const svg = await page.evaluate(() => (window as any).FluxPixel._docSVG({ bg: 'plain', items: [{ id: 'a', type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, width: 3, color: '#111827', cuts: [{ r: 10, pts: [[50, 0]] }] }] }));
+    expect(svg).toContain('<mask');
+  });
+
+  test('Box: what lies inside goes, what crosses the edge loses the part inside', async ({ page }) => {
+    const box = await newPage(page);
+    await stroke(page, box, 300);
+    await stroke(page, box, 600);
+    await page.locator('[data-tool="eraser"]').click();
+    await page.locator('[data-erase="box"]').click();
+    await expect(page.locator('[data-erase-size]')).toHaveCount(0);
+    await drag(page, box, [150, 250], [450, 350]);
+    await page.waitForTimeout(450);
+    expect(await inked(page, [[300, 300], [700, 300]])).toEqual([false, true]);
+    await drag(page, box, [150, 550], [1050, 650]);
+    await page.waitForTimeout(450);
+    expect((await items(page)).length, 'the line wholly inside the box is gone').toBe(1);
+    expect(await inked(page, [[600, 600]])).toEqual([false]);
+  });
+
+  test('Circle across a whole short line removes it; Whole item still takes the lot; the choice is remembered', async ({ page }) => {
+    const box = await newPage(page);
+    await page.locator('[data-tool="line"]').click();
+    await drag(page, box, [500, 500], [540, 500]);
+    await stroke(page, box, 300);
+    await page.waitForTimeout(450);
+    expect((await items(page)).length).toBe(2);
+    await page.locator('[data-tool="eraser"]').click();
+    await page.locator('[data-erase="circle"]').click();
+    await page.locator('[data-erase-size]').fill('40');
+    await drag(page, box, [480, 500], [560, 500]);
+    await page.waitForTimeout(450);
+    expect((await items(page)).map((i: any) => i.type), 'a line with nothing left showing is removed').toEqual(['pen']);
+
+    await page.locator('[data-erase="whole"]').click();
+    await page.mouse.click(...at(box, 600, 300));
+    await page.waitForTimeout(450);
+    expect(await items(page)).toEqual([]);
+
+    await page.locator('[data-erase="box"]').click();
+    await page.reload();
+    await page.locator('[data-tool="eraser"]').click();
+    await expect(page.locator('[data-erase="box"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+});
