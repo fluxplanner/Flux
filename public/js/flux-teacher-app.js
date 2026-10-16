@@ -1053,7 +1053,9 @@
   async function extractPdfText(file) {
     const pdfjs = await loadReader('pdfjsLib', PDFJS_SRC);
     try { pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (_) { /* older build */ }
-    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    // isEvalSupported: false — pdf.js 3.x can otherwise be made to run script
+    // from a crafted PDF's font data (CVE-2024-4367); this is the advisory's fix.
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
     const count = Math.min(pdf.numPages, MAX_PDF_PAGES);
     const pages = [];
     try {

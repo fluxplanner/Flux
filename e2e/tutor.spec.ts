@@ -463,7 +463,7 @@ test.describe('Flux Tutor', () => {
       ];
       w.pdfjsLib = {
         GlobalWorkerOptions: {},
-        getDocument: () => ({ promise: Promise.resolve({
+        getDocument: (opts: any) => (w.__pdfOptions = { ...opts, data: undefined }, { promise: Promise.resolve({
           numPages: pages.length,
           getPage: (n: number) => Promise.resolve({ getTextContent: () => Promise.resolve({ items: pages[n - 1] }), cleanup() {} }),
           destroy: () => Promise.resolve(),
@@ -495,6 +495,8 @@ test.describe('Flux Tutor', () => {
     await expect(page.locator('.ft-source-name')).toHaveText(['Your notes', 'transport.pdf', 'cells.docx', 'board.png', 'extra.txt']);
     await expect(page.locator('.ft-source .ft-kind')).toHaveText(['Typed', 'PDF', 'Word', 'Photo', 'Text']);
     // The text is there to check and fix before building: the PDF kept its pages and lines.
+    // pdf.js is opened with eval switched off (CVE-2024-4367).
+    expect(await page.evaluate(() => (window as any).__pdfOptions)).toEqual({ isEvalSupported: false });
     await expect(page.getByLabel('transport.pdf', { exact: true })).toHaveValue(/^Page 1\nPlant transport\n\nTranspiration is the loss/);
     await expect(page.getByLabel('transport.pdf', { exact: true })).toHaveValue(/\n\nPage 2\nPhloem is the tissue/);
     await page.getByLabel('board.png', { exact: true }).fill('A root hair cell is a cell with a large surface area for absorbing water.');
