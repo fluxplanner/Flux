@@ -581,6 +581,39 @@ test.describe('Flux Tutor', () => {
     await check('plan');
   });
 
+  test('no BETA badge; the light / dark switch flips the page, is remembered, and wins over the device and the planner\'s theme', async ({ page }) => {
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const header = () => page.evaluate(() => getComputedStyle(document.querySelector('.ft-top') as Element).backgroundColor);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto(APP);
+    await expect(page.locator('.ft-top')).not.toContainText('BETA');
+    const toLight = page.getByRole('button', { name: 'Switch to light mode' });
+    await expect(toLight).toBeVisible();
+    expect(await bg()).toBe('rgb(8, 13, 24)');
+    await toLight.click();
+    expect(await bg()).toBe('rgb(243, 246, 251)');
+    await page.reload();
+    expect(await bg(), 'the pick was not remembered').toBe('rgb(243, 246, 251)');
+    await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+    expect(await bg()).toBe('rgb(8, 13, 24)');
+    // A device set to light: dark, once picked, stays dark.
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.reload();
+    expect(await bg()).toBe('rgb(8, 13, 24)');
+    // Signed in with a dark planner theme, which flux-theme-carry.js paints: light is still all light.
+    await page.evaluate(() => {
+      localStorage.setItem('sb-test-auth-token', '{"access_token":"x"}');
+      localStorage.setItem('flux_theme', 'ocean');
+      localStorage.setItem('flux_tutor_theme', 'light');
+    });
+    await page.reload();
+    expect(await page.evaluate(() => document.documentElement.getAttribute('data-flux-theme'))).toBe('ocean');
+    expect(await bg()).toBe('rgb(243, 246, 251)');
+    expect(await header(), 'the planner\'s dark header stayed under light text').toBe('rgb(255, 255, 255)');
+    await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+    expect(await bg(), 'the planner\'s theme did not come back').toBe('rgb(2, 8, 16)');
+  });
+
   test('fits a 390px phone with no sideways scroll, dark and light', async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 390, height: 844 });

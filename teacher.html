@@ -18,16 +18,20 @@
   browser (IndexedDB) by flux-tutor-store.js. Flux AI is never called.
 -->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
-<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=2bf0ed30">
+<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=76426718">
 <script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
+<script src="public/js/flux-tutor-theme.js?v=85252ce1"></script>
 </head>
 <body>
   <header class="top ft-top">
     <img class="brand-mark" src="public/flux-planner-logo.png" alt="Flux" width="32" height="32">
     <span class="brand">Flux Tutor</span>
-    <span class="ft-beta">BETA</span>
     <span class="grow"></span>
     <span class="ft-save" id="ftSaveState" hidden></span>
+    <button type="button" class="ft-theme-btn" id="ftThemeBtn" aria-label="Switch to light mode" title="Switch to light mode" hidden>
+      <svg class="ft-ico-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.3 4.3l1.6 1.6M18.1 18.1l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.3 19.7l1.6-1.6M18.1 5.9l1.6-1.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ft-ico-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
     <div data-flux-hub="teacher"></div>
   </header>
 
