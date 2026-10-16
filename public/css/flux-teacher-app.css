@@ -480,6 +480,7 @@ a { color: var(--ft-accent); }
 .ft-step-title { margin: 0 0 12px; font-size: clamp(1.15rem, 3.4vw, 1.4rem); line-height: 1.25; letter-spacing: -.015em; }
 .ft-learn-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-top: 10px; }
 .ft-learn-bar .ft-help { margin: 0; }
+.ft-learn-bar .ft-link-btn { font-size: .86rem; }
 .ft-learn .ft-notice { margin: 12px 0 0; }
 .ft-explain { margin-bottom: 16px; }
 .ft-explain-label { margin: 0; font-weight: 800; font-size: .9rem; }

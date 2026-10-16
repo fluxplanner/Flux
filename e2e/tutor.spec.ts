@@ -446,6 +446,75 @@ test.describe('Flux Tutor', () => {
     expect(errors).toEqual([]);
   });
 
+  test('files: a PDF, a Word document, a photo and a dropped text file are read in for review, and the guide cites their pages', async ({ page }) => {
+    const external: string[] = [];
+    page.on('request', (r) => { if (!/^(http:\/\/127\.0\.0\.1|blob:|data:)/.test(r.url())) external.push(r.url()); });
+    // The readers normally come from a CDN when a file needs one; these stand-ins keep the test offline.
+    await page.addInitScript(() => {
+      const w = window as any;
+      const line = (str: string, y: number) => ({ str, transform: [1, 0, 0, 1, 72, y], width: str.length * 6, height: 12, hasEOL: true });
+      const pages = [
+        [line('Plant transport', 760), line('Transpiration is the loss of water vapour from the leaves of a plant.', 730), line('Stomata are small pores on the underside of a leaf.', 716)],
+        [line('Phloem is the tissue that carries sugars made in the leaves to the rest of the plant.', 760), line('Xylem is the tissue that carries water up from the roots.', 746)],
+      ];
+      w.pdfjsLib = {
+        GlobalWorkerOptions: {},
+        getDocument: () => ({ promise: Promise.resolve({
+          numPages: pages.length,
+          getPage: (n: number) => Promise.resolve({ getTextContent: () => Promise.resolve({ items: pages[n - 1] }), cleanup() {} }),
+          destroy: () => Promise.resolve(),
+        }) }),
+      };
+      w.mammoth = { extractRawText: () => Promise.resolve({ value: 'Osmosis is the diffusion of water through a partially permeable membrane.\n\nTurgor is the pressure of water pushing against the cell wall.' }) };
+      w.Tesseract = { createWorker: () => Promise.resolve({ recognize: () => Promise.resolve({ data: { text: 'A root hair cell is a cell with a large surface area for taking in water.' } }), terminate: () => Promise.resolve() }) };
+    });
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    await page.goto(APP);
+    await page.getByRole('link', { name: 'New study set' }).click();
+    await page.getByLabel('Title').fill('Plant transport');
+    const status = page.locator('#ftUploadStatus');
+    await page.locator('#ftMaterialFiles').setInputFiles([
+      { name: 'transport.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 stand-in') },
+      { name: 'cells.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('PK stand-in') },
+      { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3') },
+    ]);
+    await expect(status).toContainText('2 files added below');
+    await expect(status).toContainText('song.mp3: This kind of file cannot be read.');
+    await page.locator('#ftPhotoFiles').setInputFiles({ name: 'board.png', mimeType: 'image/png', buffer: png });
+    await expect(status).toContainText('1 file added below');
+    const dropped = await page.evaluateHandle(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['Guard cells are the cells that open and close the stomata.'], 'extra.txt', { type: 'text/plain' }));
+      return dt;
+    });
+    await page.dispatchEvent('.ft-importer', 'drop', { dataTransfer: dropped });
+    await expect(page.locator('.ft-source-name')).toHaveText(['Your notes', 'transport.pdf', 'cells.docx', 'board.png', 'extra.txt']);
+    await expect(page.locator('.ft-source .ft-kind')).toHaveText(['Typed', 'PDF', 'Word', 'Photo', 'Text']);
+    // The text is there to check and fix before building: the PDF kept its pages and lines.
+    await expect(page.getByLabel('transport.pdf', { exact: true })).toHaveValue(/^Page 1\nPlant transport\n\nTranspiration is the loss/);
+    await expect(page.getByLabel('transport.pdf', { exact: true })).toHaveValue(/\n\nPage 2\nPhloem is the tissue/);
+    await page.getByLabel('board.png', { exact: true }).fill('A root hair cell is a cell with a large surface area for absorbing water.');
+    // Removing a file can be undone.
+    await page.getByRole('button', { name: 'Remove extra.txt' }).click();
+    await expect(page.locator('.ft-source-name')).toHaveCount(4);
+    await page.locator('.ft-toast').getByRole('button', { name: 'Undo' }).click();
+    await expect(page.locator('.ft-source-name')).toHaveText(['Your notes', 'transport.pdf', 'cells.docx', 'board.png', 'extra.txt']);
+
+    await page.getByRole('button', { name: 'Build my study guide' }).click();
+    await expect(page).toHaveURL(/\/guide$/);
+    const citeOf = (term: string) => page.locator('.ft-item').filter({ has: page.locator('dfn', { hasText: new RegExp('^' + term + '$') }) }).locator('cite');
+    await expect(citeOf('Transpiration')).toHaveText('transport.pdf · page 1 · paragraph 1');
+    await expect(citeOf('Phloem')).toHaveText('transport.pdf · page 2 · paragraph 1');
+    await expect(citeOf('Osmosis')).toHaveText('cells.docx · paragraph 1');
+    await expect(citeOf('Root hair cell')).toHaveText('board.png · paragraph 1');
+    await expect(page.locator('.ft-item').filter({ has: page.locator('dfn', { hasText: /^Root hair cell$/ }) })).toContainText('absorbing water');
+    await expect(citeOf('Guard cells')).toHaveText('extra.txt · paragraph 1');
+    // The empty typed-notes box was left out.
+    await tab(page, 'Notes').click();
+    await expect(page.locator('.ft-source-name')).toHaveText(['transport.pdf', 'cells.docx', 'board.png', 'extra.txt']);
+    expect(external).toEqual([]);
+  });
+
   test('when the browser will not save, the student is told plainly', async ({ page }) => {
     await openSample(page);
     await saved(page);

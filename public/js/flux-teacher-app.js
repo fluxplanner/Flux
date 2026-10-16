@@ -993,7 +993,8 @@
     el.dataset.state = state || '';
   }
   function updateImportControls() {
-    root.querySelectorAll('[data-act="pick-photo"], [data-act="pick-file"]').forEach((b) => { b.disabled = importBusy; });
+    const box = root.querySelector('.ft-importer');
+    if (box) box.setAttribute('aria-busy', importBusy ? 'true' : 'false');
   }
   async function getOcrWorker() {
     if (!ocrWorkerPromise) {
@@ -1108,55 +1109,69 @@
     }
     return { text: raw, cut: '' };
   }
-  async function importFiles(fileList, expected) {
-    const o = app.open;
-    if (importBusy || !o) return;
-    const selected = Array.from(fileList || []);
-    if (!selected.length) return;
-    const room = Math.max(0, T.LIMITS.sources - o.set.sources.length);
-    const files = selected.slice(0, room);
-    if (!files.length) { setImportStatus('A study set can hold up to ' + T.LIMITS.sources + ' notes and files. Remove one to add another.', 'error'); return; }
+  /**
+   * Read files into the open set's notes, one after another. Files added
+   * while others are still being read wait their turn (nothing is dropped).
+   */
+  const importQueue = [];
+  function importFiles(fileList, expected) {
+    const files = Array.from(fileList || []);
+    if (!files.length || !app.open) return;
+    importQueue.push({ files, expected, o: app.open });
+    if (!importBusy) runImports();
+  }
+  async function runImports() {
     importBusy = true;
     updateImportControls();
-    const errors = [];
-    const notes = [];
+    const summary = [];
     let added = 0;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      try {
-        const kind = fileKind(file);
-        if (!kind || (expected === 'Photo' && kind !== 'Photo') || (expected === 'File' && kind === 'Photo')) {
-          throw new Error('This kind of file cannot be read. Use a photo, a PDF, a Word document (.docx) or a text file.');
-        }
-        if (file.size > MAX_FILE_BYTES) throw new Error('Files must be 15 MB or smaller.');
-        if (!file.size) throw new Error('This file is empty.');
-        setImportStatus('Reading ' + file.name + ' (' + (i + 1) + ' of ' + files.length + ')…');
-        const got = await extractFileText(file, kind);
-        let text = T.normalizeText(got.text);
-        if (!text) throw new Error('No readable text was found in it.');
-        if (text.length > T.LIMITS.sourceText) { text = text.slice(0, T.LIMITS.sourceText); notes.push(file.name + ' was too long, so only its first part was kept.'); }
-        if (got.cut) notes.push(got.cut);
+    let failed = 0;
+    let lastSet = null;
+    while (importQueue.length) {
+      const job = importQueue.shift();
+      const o = job.o;
+      if (app.open !== o) continue;
+      lastSet = o;
+      for (let i = 0; i < job.files.length; i++) {
+        const file = job.files[i];
         if (app.open !== o) break;
-        const src = T.newSource(file.name, kind, text);
-        o.set.sources.push(src);
-        added++;
-        persistDraft();
-        save();
-        if (app.tab === 'notes') appendSource(src);
-      } catch (error) {
-        errors.push(file.name + ': ' + ((error && error.message) || 'It could not be read.'));
+        if (o.set.sources.length >= T.LIMITS.sources) {
+          summary.push(file.name + ' was not added: a study set can hold up to ' + T.LIMITS.sources + ' notes and files.');
+          failed++;
+          continue;
+        }
+        try {
+          const kind = fileKind(file);
+          if (!kind || (job.expected === 'Photo' && kind !== 'Photo') || (job.expected === 'File' && kind === 'Photo')) {
+            throw new Error('This kind of file cannot be read. Use a photo, a PDF, a Word document (.docx) or a text file.');
+          }
+          if (file.size > MAX_FILE_BYTES) throw new Error('Files must be 15 MB or smaller.');
+          if (!file.size) throw new Error('This file is empty.');
+          setImportStatus('Reading ' + file.name + (job.files.length > 1 ? ' (' + (i + 1) + ' of ' + job.files.length + ')' : '') + '…');
+          const got = await extractFileText(file, kind);
+          let text = T.normalizeText(got.text);
+          if (!text) throw new Error('No readable text was found in it.');
+          if (text.length > T.LIMITS.sourceText) { text = text.slice(0, T.LIMITS.sourceText); summary.push(file.name + ' was too long, so only its first part was kept.'); }
+          if (got.cut) summary.push(got.cut);
+          if (app.open !== o) break;
+          const src = T.newSource(file.name, kind, text);
+          o.set.sources.push(src);
+          added++;
+          persistDraft();
+          save();
+          if (app.tab === 'notes') appendSource(src);
+        } catch (error) {
+          failed++;
+          summary.push(file.name + ': ' + ((error && error.message) || 'It could not be read.'));
+        }
       }
     }
     importBusy = false;
     updateImportControls();
-    if (app.open !== o) return;
-    const omitted = selected.length - files.length;
-    const summary = [];
-    if (added) summary.push(plural(added, 'file') + ' added below. Check the text, then build your study guide.');
-    notes.forEach((n) => summary.push(n));
-    if (omitted) summary.push(plural(omitted, 'file') + ' not added: a study set can hold up to ' + T.LIMITS.sources + ' notes and files.');
-    errors.forEach((e) => summary.push(e));
-    setImportStatus(summary.join('\n'), errors.length && !added ? 'error' : '');
+    if (!lastSet || app.open !== lastSet) return;
+    if (added) summary.unshift(plural(added, 'file') + ' added below. Check the text, then build your study guide.');
+    setImportStatus(summary.join('\n'), failed && !added ? 'error' : '');
+    announce(summary.join(' '));
   }
 
   /* ── Study guide ────────────────────────────────────────────────────── */
