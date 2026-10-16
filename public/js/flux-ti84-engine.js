@@ -1826,8 +1826,12 @@
     /* Sci and Eng used to turn every answer into exponent form, so 32 became
        3.2ᴇ1. Keep decimal notation whenever the displayed answer fits in a
        short line; use Sci/Eng only for results that would otherwise be long.
-       The setting still selects which exponent style to use for those values. */
-    if (ordinaryWidth > 11) s = sci(notation === 'eng');
+       The setting still selects which exponent style to use for those values.
+       Tiny and huge values still switch, as on the handheld in Normal mode
+       (below .001, or 1ᴇ10 and up): 1.56ᴇ⁻7, never .000000156, whose run of
+       zeros hid a wrong answer by a factor of ten thousand. */
+    const r = +a.toPrecision(10);
+    if (r < 1e-3 || r >= 1e10 || ordinaryWidth > 11) s = sci(notation === 'eng');
     else s = ordinary;
     return (neg ? SUPMINUS : '') + s;
   }
