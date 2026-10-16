@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Flux Tutor · Guided study</title>
-<meta name="description" content="A focused study session built around your class notes, photos, documents and questions.">
+<title>Flux Tutor · Study from your notes</title>
+<meta name="description" content="Turn your class notes, PDFs, Word documents and photos into a study guide with sources, step-by-step lessons, practice tests, flashcards and a plan to your exam, built only from your own notes.">
 <meta name="theme-color" content="#080d18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,8 +12,13 @@
 <link rel="icon" type="image/png" href="public/flux-planner-logo.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-title" content="Flux Tutor">
+<!--
+  Flux Tutor: study sets built only from the student's own notes. Plain
+  scripts, no app bundles and no account needed: sets are saved in this
+  browser (IndexedDB) by flux-tutor-store.js. Flux AI is never called.
+-->
 <link rel="stylesheet" href="public/css/flux-hub.css?v=6a462093">
-<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=c5fd6149">
+<link rel="stylesheet" href="public/css/flux-teacher-app.css?v=30ca644b">
 <script src="public/js/flux-theme-carry.js?v=41b239bd"></script>
 </head>
 <body>
@@ -22,12 +27,21 @@
     <span class="brand">Flux Tutor</span>
     <span class="ft-beta">BETA</span>
     <span class="grow"></span>
+    <span class="ft-save" id="ftSaveState" hidden></span>
     <div data-flux-hub="teacher"></div>
   </header>
 
-  <main id="teacherApp" class="ft-main"></main>
+  <main id="teacherApp" class="ft-main">
+    <p class="ft-loading">Opening your study sets…</p>
+    <noscript><p class="ft-alert">Flux Tutor needs JavaScript to run.</p></noscript>
+  </main>
+  <div class="ft-toasts" id="ftToasts"></div>
+  <div class="ft-visually-hidden" id="ftLive" aria-live="polite" aria-atomic="true"></div>
 
   <script src="public/js/flux-hub.js?v=423c00d8"></script>
-  <script src="public/js/flux-teacher-app.js?v=90a93730"></script>
+  <script src="public/js/flux-tutor-core.js?v=5dfa6f83"></script>
+  <script src="public/js/flux-tutor-store.js?v=103ffc2a"></script>
+  <script src="public/js/flux-flash-core.js?v=4b8fcb32"></script>
+  <script src="public/js/flux-teacher-app.js?v=8b93168c"></script>
 </body>
 </html>
