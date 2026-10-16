@@ -386,6 +386,14 @@ a { color: var(--ft-accent); }
   background: var(--ft-surface); box-shadow: var(--ft-shadow);
 }
 .ft-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+/* A timed test keeps its clock in view while the questions scroll by. */
+.ft-panel-head--sticky {
+  position: sticky; top: calc(57px + env(safe-area-inset-top, 0px)); z-index: 5;
+  margin: calc(-1 * clamp(16px, 4vw, 28px)) calc(-1 * clamp(16px, 4vw, 28px)) 0;
+  padding: 12px clamp(16px, 4vw, 28px);
+  border-bottom: 1px solid var(--ft-line); border-radius: 20px 20px 0 0;
+  background: var(--ft-header);
+}
 .ft-empty-state { margin-top: 14px; padding: 16px; border: 1px dashed var(--ft-line-strong); border-radius: 14px; }
 .ft-empty-state p { margin: 0 0 12px; }
 .ft-guide-sec { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--ft-line); }

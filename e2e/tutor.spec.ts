@@ -1,4 +1,5 @@
 import { test, expect, Page, Locator } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 /*
  * Flux Tutor (teacher.html): the library of study sets and, for one set, the
@@ -211,6 +212,9 @@ test.describe('Flux Tutor', () => {
       return JSON.parse(sessionStorage.getItem(k!)!).qs;
     });
     await answer(page.locator(`.ft-test-q[data-qid="${qs[0].id}"]`), qs[0], true);
+    // Enter in an answer box does not hand the test in.
+    await page.locator('.ft-test-q input').first().press('Enter');
+    await expect(page.getByRole('button', { name: 'Finish and mark' })).toBeVisible();
     await page.getByRole('button', { name: 'Finish and mark' }).click();
     await expect(page.getByRole('heading', { name: 'Your result' })).toBeFocused();
     await expect(page.locator('.ft-score')).toContainText('1 of 5');
@@ -537,6 +541,44 @@ test.describe('Flux Tutor', () => {
     await openSample(page);
     await expect(page.locator('.ft-warn')).toContainText('This browser is not letting Flux save anything');
     await expect(page.locator('#ftSaveState')).toHaveText('Only kept in this tab');
+  });
+
+  test('no axe accessibility violations on the main screens', async ({ page }) => {
+    test.setTimeout(90_000);
+    const check = async (where: string) => {
+      const r = await new AxeBuilder({ page }).include('#teacherApp').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      expect(r.violations.map((v) => where + ': ' + v.id + ' ' + v.nodes.map((n) => n.target.join(' ')).join(', '))).toEqual([]);
+    };
+    await openSample(page);
+    await check('guide');
+    await page.getByRole('link', { name: 'All study sets' }).click();
+    await expect(page.locator('.ft-set-card')).toHaveCount(1);
+    await check('library');
+    await page.getByRole('link', { name: 'Sample: Cells and energy' }).click();
+    await tab(page, 'Notes').click();
+    await check('notes');
+    await tab(page, 'Learn').click();
+    await check('learn topics');
+    await page.getByRole('button', { name: 'Start learning' }).click();
+    await page.getByRole('button', { name: 'I’m not sure' }).click();
+    await check('learn feedback');
+    await tab(page, 'Practice test').click();
+    await page.getByRole('button', { name: 'Start the test' }).click();
+    await check('test');
+    await page.getByRole('button', { name: 'Finish and mark' }).click();
+    await check('test results');
+    await tab(page, 'Flashcards').click();
+    await page.getByRole('button', { name: 'Show answer' }).click();
+    await check('flashcards');
+    await tab(page, 'Ask your notes').click();
+    await page.getByLabel('Your question').fill('photosynthesis light');
+    await page.getByRole('button', { name: 'Search' }).click();
+    await check('ask');
+    await tab(page, 'Study plan').click();
+    const exam = await page.evaluate(() => { const T = (window as any).FluxTutor; return T.addDays(T.ymd(), 5); });
+    await page.getByLabel('Exam date').fill(exam);
+    await page.getByRole('button', { name: 'Make my plan' }).click();
+    await check('plan');
   });
 
   test('fits a 390px phone with no sideways scroll, dark and light', async ({ page }) => {

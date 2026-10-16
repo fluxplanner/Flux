@@ -613,10 +613,12 @@
     const chips = (m.subject ? '<span class="ft-chip">' + esc(m.subject) + '</span>' : '')
       + (m.sample ? '<span class="ft-chip ft-chip--accent">Sample</span>' : '')
       + (!m.hasGuide ? '<span class="ft-chip">' + (m.words ? 'Guide not built yet' : 'No notes yet') + '</span>' : '');
-    const progress = m.terms
-      ? '<div class="ft-meter" role="progressbar" aria-label="Terms mastered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + m.percent + '"><span style="width:' + m.percent + '%"></span></div>'
-        + '<p class="ft-set-progress">' + m.mastered + ' of ' + plural(m.terms, 'term') + ' mastered' + (m.lastTestPct != null ? ' · last test ' + m.lastTestPct + '%' : '') + '</p>'
-      : '<p class="ft-set-progress">' + (m.words ? plural(m.words, 'word') + ' of notes' : 'Add notes to start') + '</p>';
+    const num = (v) => Math.max(0, Math.round(Number(v) || 0));
+    const pct = Math.min(100, num(m.percent));
+    const progress = num(m.terms)
+      ? '<div class="ft-meter" role="progressbar" aria-label="Terms mastered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></div>'
+        + '<p class="ft-set-progress">' + num(m.mastered) + ' of ' + plural(num(m.terms), 'term') + ' mastered' + (m.lastTestPct != null ? ' · last test ' + Math.min(100, num(m.lastTestPct)) + '%' : '') + '</p>'
+      : '<p class="ft-set-progress">' + (num(m.words) ? plural(num(m.words), 'word') + ' of notes' : 'Add notes to start') + '</p>';
     const id = esc(m.id);
     return '<li class="ft-set-card" data-set="' + id + '">'
       + '<h2 class="ft-set-title"><a href="' + esc(setHash(m.id, '')) + '" data-open="' + id + '">' + esc(title) + '</a></h2>'
@@ -1784,7 +1786,7 @@
         + '</details></li>').join('') + '</ul></section>';
   }
   function runningTestHtml(t) {
-    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><div class="ft-panel-head"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Practice test</h2>'
+    return '<section class="ft-panel" aria-labelledby="ftScreenTitle"><div class="ft-panel-head' + (t.timed ? ' ft-panel-head--sticky' : '') + '"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Practice test</h2>'
       + (t.timed ? '<p class="ft-timer"><span class="ft-visually-hidden">Time left: </span>' + icon('plan', 16) + '<span id="ftTimerText">' + clock(t.deadline - Date.now()) + '</span></p>' : '')
       + '</div><p class="ft-help">' + plural(t.qs.length, 'question') + '. Nothing is marked until you finish' + (t.timed ? ', or until the time runs out' : '') + '.</p>'
       + '<form class="ft-test" data-form="test" novalidate><ol class="ft-test-list">'
@@ -2271,10 +2273,13 @@
     if (e.target && e.target.classList && e.target.classList.contains('ft-bin')) app.binOpen = e.target.open;
   }, true);
   root.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && e.target.closest && e.target.closest('form[data-form="item-edit"]')) {
+    const t = e.target;
+    if (e.key === 'Escape' && t.closest && t.closest('form[data-form="item-edit"]')) {
       e.preventDefault();
       cancelEdit();
     }
+    // Enter in one answer must not hand in the whole practice test.
+    if (e.key === 'Enter' && t.tagName === 'INPUT' && t.closest && t.closest('form[data-form="test"]')) e.preventDefault();
   });
   // Flashcard keys: Space shows the answer, 1–4 rate it (never while typing).
   document.addEventListener('keydown', (e) => {
