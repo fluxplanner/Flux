@@ -78,8 +78,17 @@ const load=(k,def)=>{
 };
 const save=(k,v)=>{
   try{if(window.FluxDebug&&typeof FluxDebug.traceStorage==='function')FluxDebug.traceStorage('save',k);}catch(e){}
+  // Tasks and notes merge item by item on a cloud pull, so each write notes
+  // which items changed (see fluxNoteListEdits by the sync code).
+  if(k==='tasks'||k==='flux_notes'){try{fluxNoteListEdits(k,v);}catch(_){}}
   _fluxSaveRaw(k,v);
 };
+/* This tab's bookkeeping for the merged task and note lists: its own merge
+   base, what it last saved, its tombstones (flux-list-merge.js). It writes
+   through the raw helpers, so its own writes never count as edits. */
+const fluxListSync=(window.FluxListMerge&&typeof FluxListMerge.createListSync==='function')
+  ?FluxListMerge.createListSync({get:k=>_fluxLoadRaw(k,null),set:(k,v)=>_fluxSaveRaw(k,v)})
+  :null;
 /** Prefs historically stored as raw '1'/'0' or via save() (JSON); respects namespacing. */
 function fluxLoadLegacy01(k){
   try{
@@ -270,9 +279,15 @@ const DATA_VERSION=6;
   window.fluxEstimateLocalStorageBytes=estBytes;
   window.fluxCompactStorageIfNeeded=function(){
     if(estBytes()<=5*1024*1024)return;
+    // Keeps the 240 newest notes (they are stored newest first, so slice(-240)
+    // kept the OLDEST), and writes them without edit tracking: through save()
+    // every note trimmed off got a tombstone and was deleted on every device.
     try{
-      const notes=load('flux_notes',[]);
-      if(Array.isArray(notes)&&notes.length>240)save('flux_notes',notes.slice(-240));
+      if(fluxListSync)fluxListSync.compact('flux_notes',240);
+      else{
+        const notes=_fluxLoadRaw('flux_notes',[]);
+        if(Array.isArray(notes)&&notes.length>240)_fluxSaveRaw('flux_notes',notes.slice(0,240));
+      }
     }catch(e){}
     // AI chat shards use physical keys (may include `imp:…` prefix). Must read/write `k` as-is — not `load(key)` (would re-namespace).
     try{
@@ -1303,7 +1318,9 @@ function _renderToastItem(item,onDone){
     stack.id='fluxToastStack';
     stack.setAttribute('aria-live','polite');
     stack.setAttribute('aria-atomic','false');
-    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:var(--flux-dock-clearance,20px);z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
+    // Above the Undo bar while it shows (--flux-undo-lift): a toast landing
+    // on top of it (the "Up next" one follows every tick) hid the Undo button.
+    stack.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--flux-dock-clearance,20px) + var(--flux-undo-lift,0px));z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none;max-width:90vw;`;
     document.body.appendChild(stack);
   }
   const t=document.createElement('div');
@@ -2092,9 +2109,16 @@ try{
  */
 function fluxNavHome(id){
   if(_fluxUserNavIntent)return false;
+  /* Signing in draws the planner once its account has loaded (showApp). The
+     route home that follows found the dashboard already open and drew it all
+     again, replaying its entrance — one of the "refreshes" on opening. A
+     different home (an educator's, in Work mode) still goes through nav(). */
+  if(_fluxBootDrawn&&id==='dashboard'&&!(FluxRole.isWorkMode&&FluxRole.isWorkMode())&&document.getElementById('dashboard')?.classList.contains('active'))return true;
   if(typeof nav==='function')nav(id);
   return true;
 }
+/** True from sign-in's one redraw until its route home has run. */
+let _fluxBootDrawn=false;
 window.fluxNavHome=fluxNavHome;
 
 /** Route educator to role-appropriate home after mode switch or sign-in. */
@@ -2230,13 +2254,15 @@ function showDashboardRoleSkeleton(){
 }
 window.showDashboardRoleSkeleton=showDashboardRoleSkeleton;
 
-function clearDashboardRoleSkeleton(){
+/** opts.render===false: just take it off — the caller redraws straight after. */
+function clearDashboardRoleSkeleton(opts){
   const el=document.getElementById('dashboard');
   if(!el)return;
   const hadOverlay=el.dataset.fluxRoleSkeleton==='1'||!!document.getElementById('fluxRoleSkeletonOverlay');
   delete el.dataset.fluxRoleSkeleton;
   document.getElementById('fluxRoleSkeletonOverlay')?.remove();
   if(!document.getElementById('taskList'))ensureDashboardDom();
+  if(opts&&opts.render===false)return;
   if(hadOverlay||el.classList.contains('active')){
     try{
       renderStats();renderTasks();renderCountdown();renderSmartSug();
@@ -2352,6 +2378,7 @@ const FluxImpersonate={
     try{
       if(typeof tasks!=='undefined')tasks=load('tasks',[]);
       if(typeof notes!=='undefined')notes=load('flux_notes',[]);
+      if(typeof tasks!=='undefined'&&typeof notes!=='undefined')fluxListSyncFromStorage();
       if(typeof habits!=='undefined')habits=load('flux_habits',[]);
       if(typeof goals!=='undefined')goals=load('flux_goals',[]);
       if(typeof colleges!=='undefined')colleges=load('flux_colleges',[]);
@@ -3206,6 +3233,12 @@ try{
   });
 }catch(_){ window.tasks=tasks; }
 let notes=load('flux_notes',[]);
+/** The lists were just read from storage: so is the base they were agreed against, into this tab. */
+function fluxListSyncFromStorage(){
+  if(!fluxListSync)return;
+  try{fluxListSync.loadBase();fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
+}
+fluxListSyncFromStorage();
 let habits=load('flux_habits',[]);
 function getFluxHabits(){return habits;}
 function setFluxHabits(next){habits=Array.isArray(next)?next:[];save('flux_habits',habits);syncKey('habits',habits);}
@@ -4494,22 +4527,87 @@ function addTask(){
   const planAfter=document.getElementById('taskPlanAfter');
   if(planAfter&&planAfter.checked){planAfter.checked=false;if(task.date)setTimeout(()=>openPlanItOut(task.id),250);else showToast('Add a due date to plan it out.','warning');}
 }
+/* ── Ticking a task off ─────────────────────────────────────────────────────
+   It used to wait for the whole completion animation (~800ms) before it saved
+   anything or filled the check, then rebuilt the list and replayed the enter
+   animation on every row. A tick felt ignored, a reload or a cloud pull in that
+   window lost it, and a second tap landed on a row about to be replaced.
+
+   Now the tick is saved and painted at once (the check fills on the next
+   frame); the motion is one small burst and the tick drawing itself; and the
+   list is rebuilt once, a beat after the last tick — so rows do not move
+   under your finger while you work down a list, and never mid-press. */
+const FLUX_TASK_REBUILD_MS=550;
+let _fluxTaskRebuildTimer=0,_fluxTaskRebuildDue=0,_fluxTaskPress=false,_fluxTaskReleasedAt=0;
+function fluxTaskMotionOn(){
+  try{
+    const h=document.documentElement;
+    return !(matchMedia('(prefers-reduced-motion: reduce)').matches||h.classList.contains('flux-reduce-motion')||h.getAttribute('data-flux-perf')==='on'||h.hasAttribute('data-flux-lowend'));
+  }catch(_){return false;}
+}
+/** Every row for this task shows its new state now, without a rebuild. */
+function fluxPaintTaskDone(id,done){
+  document.querySelectorAll(`[data-task-id="${id}"]`).forEach(row=>{
+    row.classList.toggle('task-done',!!done);
+    row.querySelectorAll('.task-text').forEach(n=>n.classList.toggle('done',!!done));
+    const chk=row.querySelector('.check');
+    if(!chk)return;
+    chk.classList.toggle('done',!!done);
+    chk.classList.toggle('check-pop',!!done);
+    if(!done){chk.textContent='';row.querySelectorAll('.fmm-strike').forEach(n=>n.remove());}
+    else if(!chk.querySelector('.fmm-tick'))chk.textContent='✓';
+    if(chk.hasAttribute('aria-checked'))chk.setAttribute('aria-checked',done?'true':'false');
+  });
+}
+function fluxTaskRebuildNow(){
+  clearTimeout(_fluxTaskRebuildTimer);_fluxTaskRebuildTimer=0;_fluxTaskRebuildDue=0;
+  renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();
+}
+/** Rebuild after `ms`, pushed back by every later tick, and held while a finger or button is down on a task. */
+function fluxQueueTaskRebuild(ms){
+  const due=Date.now()+Math.max(0,ms||0);
+  if(_fluxTaskRebuildTimer&&due<=_fluxTaskRebuildDue)return;
+  clearTimeout(_fluxTaskRebuildTimer);
+  _fluxTaskRebuildDue=due;
+  const run=()=>{
+    if(_fluxTaskPress||Date.now()-_fluxTaskReleasedAt<150){_fluxTaskRebuildTimer=setTimeout(run,80);return;}
+    fluxTaskRebuildNow();
+  };
+  _fluxTaskRebuildTimer=setTimeout(run,Math.max(0,due-Date.now()));
+}
+document.addEventListener('pointerdown',e=>{
+  try{if(e.target&&e.target.closest&&e.target.closest('.task-item,#taskList,#calDayTasks'))_fluxTaskPress=true;}catch(_){}
+},true);
+['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,()=>{
+  if(_fluxTaskPress){_fluxTaskPress=false;_fluxTaskReleasedAt=Date.now();}
+},true));
+window.fluxQueueTaskRebuild=fluxQueueTaskRebuild;
+/** Space or Enter on a task's check box does what a click does. */
+function fluxCheckKey(e,el){
+  if(e.key!==' '&&e.key!=='Enter')return;
+  e.preventDefault();e.stopPropagation();
+  if(!e.repeat)el.click();
+}
+window.fluxCheckKey=fluxCheckKey;
+
 function toggleTask(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
   snapshotTasks();
   const wasDone=t.done;
   t.done=!wasDone;
-  let card=null;
+  const motionOn=fluxTaskMotionOn();
   if(t.done){
     t.completedAt=Date.now();
-    card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
-    if(card){
-      card.classList.add('completing');
-      setTimeout(()=>{try{if(card.isConnected)card.classList.remove('completing');}catch(_){}},620);
+    const card=document.querySelector(`.task-item[data-task-id="${id}"]`)||document.querySelector(`[data-task-id="${id}"]`);
+    fluxPaintTaskDone(id,true);
+    if(card&&motionOn){
+      // One burst and the tick drawing itself. No confetti over the page and no
+      // second particle system: they were most of the lag on a phone.
       const chk=card.querySelector('.check');
+      const nameEl=card.querySelector('.task-text.task-primary-line')||card.querySelector('.task-text');
+      try{window.FluxMotionMore?.tickAndStrike(chk,nameEl);}catch(_){}
       if(chk)spawnTaskBurstFromEl(chk);
     }
-    spawnConfetti();
     addMomentum();
     if(window.FluxIntel&&FluxIntel.recordCompletionStreak)FluxIntel.recordCompletionStreak();
     // V4 Effort Accuracy: ask for actual time when an estimate exists. A Plan my
@@ -4521,7 +4619,7 @@ function toggleTask(id){
       if(window.FluxSrsV2?.enabled?.()&&typeof FluxSrsV2.scheduleReviews==='function')FluxSrsV2.scheduleReviews(t);
       else generateSRSReviews(t);
     },800);
-    showUndoSnackbar('Task completed','undoLastChange');
+    showUndoSnackbar('Done: “'+String(t.name||'Task').slice(0,48)+'”','undoLastChange');
     // A planned task finished early needs none of the sessions (or Plan my week
     // blocks) still ahead of it.
     if(tasks.some(x=>x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done))tasks=tasks.filter(x=>!(x.planOf!=null&&String(x.planOf)===String(t.id)&&!x.done));
@@ -4550,26 +4648,13 @@ function toggleTask(id){
       }
     }
   }
-  const flush=function(){
-    save('tasks',tasks);renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();checkAllPanic();syncKey('tasks',tasks);
-  };
-  // Animation callback must fire to persist + re-render. If anime.js fails to
-  // load (CDN block) or its onComplete never fires, the task would visually
-  // stay un-checked AND silently fail to save. Safety timer ensures flush
-  // runs within 800ms regardless — animations are ~600ms so this only kicks
-  // in on genuine failure, never preempts the real callback.
-  let _flushed=false;
-  const safeFlush=function(){ if(_flushed)return; _flushed=true; flush(); };
-  let skipAnime=false;
-  try{
-    skipAnime=matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.getAttribute('data-flux-perf')==='on';
-  }catch(_){}
-  if(t.done&&!wasDone&&card&&typeof window.fluxAnimeOnTaskComplete==='function'&&!skipAnime){
-    window.fluxAnimeOnTaskComplete(card,safeFlush);
-    setTimeout(safeFlush,800);
-  }else{
-    safeFlush();
-  }
+  else fluxPaintTaskDone(id,false);
+  // Saved now, before any motion: a reload or a cloud pull a moment later finds it.
+  save('tasks',tasks);
+  syncKey('tasks',tasks);
+  // A beat to see the tick before the row moves — shorter with motion off,
+  // where nothing is animating, but still long enough to see it filled.
+  fluxQueueTaskRebuild(motionOn?FLUX_TASK_REBUILD_MS:300);
 }
 // Calendar cleanup is fire-and-forget: undo is unbounded (Cmd+Z, not just the
 // 5s snackbar), so there is no window to defer it behind. An undone delete
@@ -5029,15 +5114,169 @@ function renderStats(){
 // byte-identical to the unwindowed version, so DnD/selection/animations
 // behave exactly the same on the cards that exist.
 const FLUX_LIST_WINDOW=100;
-function fluxWindowedListHtml(items,renderFn,key){
-  if(items.length<=FLUX_LIST_WINDOW)return{html:items.map(renderFn).join(''),rest:null};
-  const head=items.slice(0,FLUX_LIST_WINDOW).map(renderFn).join('');
-  const restCount=items.length-FLUX_LIST_WINDOW;
+/* Tasks whose row has been on screen. Every rebuild (a tick, a pull, an undo,
+   opening the app) replaces every row, and new elements replay their CSS
+   entrance and FluxVisual's stagger: the whole list went blank and faded back
+   in, row by row, for a second or more after each tick. A row seen before is
+   drawn with .task-seen and comes back as it was; only rows new to you enter. */
+const _fluxRowsShown=new Set();
+/** `min`: render at least this many at once — as many as were already on screen, so a rebuild does not cut the list short under you. */
+function fluxWindowedListHtml(items,renderFn,key,min){
+  const win=Math.max(FLUX_LIST_WINDOW,+min||0);
+  if(items.length<=win)return{html:items.map(renderFn).join(''),rest:null};
+  const head=items.slice(0,win).map(renderFn).join('');
+  const restCount=items.length-win;
   return{
     html:head+`<div class="flux-list-sentinel" data-flux-sentinel="${key}" style="padding:14px;text-align:center;color:var(--muted);font-size:.78rem">Loading ${restCount} more…</div>`,
-    rest:items.slice(FLUX_LIST_WINDOW),
+    rest:items.slice(win),
   };
 }
+
+/* ── Keeping your place when the task list is rebuilt ───────────────────────
+   renderTasks() replaces the whole list. Scrolled down a long list, that could
+   throw you back up (and cut the list back to its first 100); with a check or
+   button focused, focus fell to the page. Before a rebuild we note the first
+   row in view and the focused control; afterwards that row goes back to the
+   same height on screen and the same control (or, if its task left the list,
+   the next task's check) gets focus again. */
+function fluxScrollParent(el){
+  for(let n=el&&el.parentElement;n&&n!==document.body&&n!==document.documentElement;n=n.parentElement){
+    const oy=getComputedStyle(n).overflowY;
+    if((oy==='auto'||oy==='scroll')&&n.scrollHeight>n.clientHeight+1)return n;
+  }
+  return document.scrollingElement||document.documentElement;
+}
+function fluxTaskControlKind(ae,row){
+  if(ae===row)return'row';
+  if(ae.classList.contains('check'))return'check';
+  if(ae.matches('.task-chip-due,.task-chip-nodate'))return'date';
+  const t=ae.getAttribute('title')||ae.getAttribute('aria-label');
+  return t?'title:'+t:'check';
+}
+function fluxTaskControl(row,kind){
+  if(kind==='row')return row;
+  if(kind==='date')return row.querySelector('.task-chip-due,.task-chip-nodate');
+  if(kind&&kind.indexOf('title:')===0){
+    const v=kind.slice(6);
+    const hit=[...row.querySelectorAll('[title],[aria-label]')].find(n=>(n.getAttribute('title')||n.getAttribute('aria-label'))===v);
+    if(hit)return hit;
+  }
+  return row.querySelector('.check');
+}
+/* Did the last input come from the keyboard? A click focuses the .check it
+   lands on, and carrying that focus on to the next task after the rebuild
+   meant a later Space or Enter ticked a task nobody chose. Focus follows the
+   list only for the keyboard. */
+let _fluxKeyboardInput=true;
+try{
+  window.addEventListener('keydown',()=>{_fluxKeyboardInput=true;},true);
+  window.addEventListener('pointerdown',()=>{_fluxKeyboardInput=false;},true);
+}catch(_){}
+function fluxTaskListKeep(el){
+  try{
+    if(!el||!el.isConnected||el.offsetParent===null)return null;
+    const rows=[...el.querySelectorAll('.task-item[data-task-id]')];
+    const keep={ids:rows.map(r=>r.dataset.taskId),count:el.querySelectorAll(':scope > .task-item').length,anchor:null,focus:null,scroller:fluxScrollParent(el)};
+    const sc=keep.scroller;
+    const viewTop=(sc===document.scrollingElement||sc===document.documentElement)?0:sc.getBoundingClientRect().top;
+    // Only when the list has been scrolled into: at the top, new rows should push down as usual.
+    if(el.getBoundingClientRect().top<viewTop){
+      const r=rows.find(n=>n.offsetParent!==null&&n.getBoundingClientRect().bottom>viewTop+1);
+      if(r)keep.anchor={id:r.dataset.taskId,top:r.getBoundingClientRect().top};
+    }
+    const ae=document.activeElement;
+    if(_fluxKeyboardInput&&ae&&ae!==document.body&&el.contains(ae)){
+      const row=ae.closest('[data-task-id]');
+      if(row)keep.focus={id:row.dataset.taskId,kind:fluxTaskControlKind(ae,row),done:!!row.closest('#completedTasksWrap')};
+    }
+    return keep;
+  }catch(_){return null;}
+}
+function fluxTaskListRestore(el,keep){
+  if(!keep||!el)return;
+  try{
+    // Only rows you can see: a ticked task can sit in a collapsed Completed section.
+    const find=id=>{const r=el.querySelector(`.task-item[data-task-id="${CSS.escape(String(id))}"]`);return r&&r.offsetParent!==null?r:null;};
+    // The row, or failing that the first one after it (before it, for focus) still here.
+    const near=(id,back,notSelf)=>{
+      let r=notSelf?null:find(id);if(r)return r;
+      const i=keep.ids.indexOf(String(id));if(i<0)return null;
+      for(let j=i+1;j<keep.ids.length;j++){r=find(keep.ids[j]);if(r)return r;}
+      if(back)for(let j=i-1;j>=0;j--){r=find(keep.ids[j]);if(r)return r;}
+      return null;
+    };
+    if(keep.anchor){
+      const realign=()=>{
+        const r=near(keep.anchor.id,false);
+        if(!r)return;
+        const d=r.getBoundingClientRect().top-keep.anchor.top;
+        if(Math.abs(d)<=1)return;
+        const sc=keep.scroller;
+        const win=sc===document.scrollingElement||sc===document.documentElement;
+        (win?window:sc).scrollBy({top:d,left:0,behavior:'instant'});
+      };
+      realign();
+      fluxKeepRowSteady(el,keep.scroller,realign);
+    }
+    const ae=document.activeElement;
+    if(keep.focus&&(!ae||ae===document.body||!ae.isConnected)){
+      // Same task, same control — unless a tick moved it into or out of
+      // Completed: then the next task where it was, so Space, Space, Space
+      // goes down the list.
+      let same=find(keep.focus.id);
+      if(same&&!!same.closest('#completedTasksWrap')!==keep.focus.done)same=null;
+      const next=same?null:near(keep.focus.id,true,true);
+      const target=same?fluxTaskControl(same,keep.focus.kind):next&&next.querySelector('.check');
+      if(target&&typeof target.focus==='function')target.focus({preventScroll:true});
+    }
+  }catch(_){}
+}
+/* And for a moment after a rebuild: the wrappers around renderTasks() add
+   buttons and badges (at once and on later frames) and the panels above
+   redraw, any of which can change heights above the row you were on. A
+   ResizeObserver on the list and what holds it puts the row back before the
+   frame is painted. Never against you: a scroll, key or touch of yours ends
+   it, and so does the next rebuild, which keeps its own place.
+
+   "A scroll of yours" includes the ones with no wheel, touch or key behind
+   them — momentum still running after a flick, a scrollbar being dragged.
+   Any scroll that leaves the list somewhere other than where this put it
+   ends the hold; it used to pull the page back for a second and a half. */
+let _fluxRowSteadyStop=null;
+function fluxKeepRowSteady(el,scroller,realign){
+  if(_fluxRowSteadyStop)_fluxRowSteadyStop();
+  const evs=['wheel','touchstart','keydown','pointerdown'];
+  const win=!scroller||scroller===document.scrollingElement||scroller===document.documentElement||scroller===document.body;
+  const pos=()=>win?(window.scrollY||document.documentElement.scrollTop||0):scroller.scrollTop;
+  // Where our own scrolling (the realign before this, and any below) left it.
+  let ours=pos();
+  let ro=null,timer=0;
+  const onScroll=e=>{
+    const t=e.target;
+    if(win?!(t===document||t===window||t===document.documentElement||t===document.body):t!==scroller)return;
+    if(Math.abs(pos()-ours)<=1)return;   // the scroll event of our own scrollBy
+    stop();
+  };
+  const run=()=>{try{realign();}catch(_){}ours=pos();};
+  const stop=()=>{
+    if(ro){ro.disconnect();ro=null;}
+    clearTimeout(timer);
+    evs.forEach(ev=>window.removeEventListener(ev,stop,true));
+    window.removeEventListener('scroll',onScroll,true);
+    if(_fluxRowSteadyStop===stop)_fluxRowSteadyStop=null;
+  };
+  _fluxRowSteadyStop=stop;
+  evs.forEach(ev=>window.addEventListener(ev,stop,{capture:true,passive:true}));
+  window.addEventListener('scroll',onScroll,{capture:true,passive:true});
+  if(typeof ResizeObserver==='function'){
+    ro=new ResizeObserver(run);
+    for(let n=el;n&&n!==scroller&&n!==document.body&&n!==document.documentElement;n=n.parentElement)ro.observe(n);
+  }else{
+    requestAnimationFrame(()=>requestAnimationFrame(run));
+  }
+  timer=setTimeout(stop,1500);
+}
+
 function fluxArmListSentinel(container,rest,renderFn,chunk){
   if(!container||!rest||!rest.length)return;
   const sentinel=container.querySelector('[data-flux-sentinel]');
@@ -5114,6 +5353,7 @@ function renderTasks(){
     try{ensureDashboardDom();}catch(_){}
     return;
   }
+  const keep=fluxTaskListKeep(el);
   if(!list.length){
     const msgs={active:"You're free — want to plan your day or add one task?",done:'No completed tasks yet',overdue:'No overdue tasks',today:'Nothing due today',high:'No high-priority tasks',all:'No tasks yet — press T to quick add'};
     const icons={active:'✓',done:'🎉',overdue:'⏰',today:'📋',high:'🔥',all:'✦'};
@@ -5130,7 +5370,9 @@ function renderTasks(){
   const tm={hw:{l:'HW',c:'var(--muted)'},test:{l:'Test',c:'var(--red)'},quiz:{l:'Quiz',c:'var(--gold)'},project:{l:'Project',c:'var(--purple)'},essay:{l:'Essay',c:'var(--blue)'},lab:{l:'Lab',c:'var(--green)'},reading:{l:'Reading',c:'var(--blue)'},other:{l:'Other',c:'var(--muted)'}};
   const todayS=todayStr();
   const active=list.filter(t=>!t.done);
-  const done=list.filter(t=>t.done);
+  // Finished tasks newest first, whatever order the open ones are in: the one
+  // you just ticked (by accident or not) is at the top of Completed.
+  const done=list.filter(t=>t.done).sort((a,b)=>(fluxDoneAtMs(b)||0)-(fluxDoneAtMs(a)||0));
   const renderCard=t=>{
     const sub=getSubjects()[t.subject];
     const isOver=isTaskOverdueDay(t);
@@ -5192,9 +5434,9 @@ function renderTasks(){
         ghostHtml=`<details class="ghost-draft ghost-draft--collapsible" data-ghost-task-id="${t.id}"><summary class="ghost-draft-summary"><span class="ghost-draft-title">✦ Ghost draft</span><span class="ghost-draft-chevron" aria-hidden="true"></span></summary>${ghostBody}</details>`;
       }
     }
-    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
+    return`<div class="task-item ${priClass}${extraCls}${frictionCls}${srsCls} ${t.done?'task-done':''}${_fluxRowsShown.has(String(t.id))?' task-seen':''}" data-task-id="${t.id}" data-priority="${t.priority||'med'}"${frictionData}${srsData} draggable="${!_taskBulkMode}" style="${blockedStyle}">
 ${bulk}
-<div class="check ${t.done?'done':''}" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
+<div class="check ${t.done?'done':''}" role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="${esc(t.name)}" onkeydown="fluxCheckKey(event,this)" onclick="${blocked?'showToast(\'Complete blockers first\',\'warning\');return':'toggleTask('+t.id+')'}">${t.done?'✓':blocked?'🔒':''}</div>
 <div class="task-body">
 <div class="task-text task-primary-line ${t.done?'done':''}">${esc(t.name)}${t.canvasAssignmentId?'<span class="task-canvas-badge" title="From Canvas"></span>':''} ${depBadge}</div>
 <div class="task-tags task-meta-line">
@@ -5231,7 +5473,7 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
 </div>
 </div>`;
   };
-  const win=fluxWindowedListHtml(active,renderCard,'tasks');
+  const win=fluxWindowedListHtml(active,renderCard,'tasks',keep&&keep.count);
   let html=win.html;
   if(taskFilter==='done'){
     html=`<div class="flux-done-notice" role="note"><span aria-hidden="true">🗑</span> Finished tasks are deleted 2 weeks after you complete them. Untick one to keep it.</div>`
@@ -5247,19 +5489,28 @@ ${!t.done&&!_taskBulkMode?`<button type="button" class="task-action-btn" onclick
   }
   const listSig=list.map(t=>`${t.id}:${t.done?1:0}`).join('|');
   const prevSig=el.dataset.fluxTaskListSig||'';
-  const listChanged=listSig!==prevSig;
   el.dataset.fluxTaskListSig=listSig;
   el.innerHTML=html;
+  // Shown now: from here on these rows come back without an entrance (task-seen).
+  if(el.offsetParent!==null&&document.getElementById('app')?.classList.contains('visible'))list.forEach(t=>_fluxRowsShown.add(String(t.id)));
   fluxArmListSentinel(el,win.rest,renderCard);
-  requestAnimationFrame(()=>{
-    try{
-      const items=[...el.querySelectorAll('.task-item')];
-      if(listChanged&&items.length&&window.FluxAnim?.tasksEnter)FluxAnim.tasksEnter(items);
-    }catch(e){}
-  });
+  /* Only rows that were not in the list before come in. This used to replay
+     the entrance on every row whenever anything changed — tick one task and
+     all forty faded and slid in again. The first render of a list still does. */
+  if(listSig!==prevSig){
+    const before=new Set(prevSig?prevSig.split('|').map(x=>x.slice(0,x.lastIndexOf(':'))):[]);
+    requestAnimationFrame(()=>{
+      try{
+        const items=[...el.querySelectorAll('.task-item')].filter(n=>!prevSig||!before.has(String(n.dataset.taskId)));
+        if(items.length&&window.FluxAnim?.tasksEnter)FluxAnim.tasksEnter(items);
+      }catch(e){}
+    });
+  }
   if(typeof fluxAfterRenderTasks==='function')fluxAfterRenderTasks();
   if(typeof fluxRenderDashMob==='function')fluxRenderDashMob();
   try{if(typeof renderScheduleConflictNotices==='function')renderScheduleConflictNotices();}catch(_){}
+  // Last: the swipe binder above moves each row's children, which drops focus.
+  fluxTaskListRestore(el,keep);
 }
 function renderSmartSug(){}
 function openDashAddTaskModal(){
@@ -5671,7 +5922,7 @@ function completeAllSubtasksInEdit(){
   showToast('All subtasks marked complete','success');
 }
 function saveEdit(){const t=tasks.find(x=>x.id===editingId);if(!t)return;const oldDate=t.date;const staffPersonal=fluxIsStaffPersonalMode();t.name=document.getElementById('editText').value.trim()||t.name;t.subject=staffPersonal?'':(document.getElementById('editSubject')?.value||'');t.priority=document.getElementById('editPriority').value;t.type=document.getElementById('editType').value;t.date=document.getElementById('editDue').value;t.estTime=parseInt(document.getElementById('editEstTime').value)||0;t.difficulty=parseInt(document.getElementById('editDifficulty').value)||3;t.notes=document.getElementById('editNotes').value.trim();const _recTypeEdit=(document.getElementById('editRecurringType')?.value)||'none';t.recurringType=_recTypeEdit!=='none'?_recTypeEdit:undefined;t.recurringWeekly=_recTypeEdit==='weekly'||!!document.getElementById('editRecurringWeekly')?.checked;try{if(window.FluxRecurring?.bindTask)FluxRecurring.bindTask(t);}catch(_){}const wo=(document.getElementById('editWaitingOn')?.value||'').trim();t.waitingOn=wo||undefined;const _scopeSel=document.getElementById('editScope');if(_scopeSel)t.scope=_scopeSel.value==='outside'?'outside':'school';const stLines=document.getElementById('editSubtasks').value.split('\n').map(s=>s.trim()).filter(Boolean);t.subtasks=stLines.map((s,i)=>({text:s,done:t.subtasks?.[i]?.done||false}));if(window.FluxFriction?.enabled?.()&&typeof FluxFriction.recordDateChange==='function'){FluxFriction.recordDateChange(t,oldDate,t.date);}else if(oldDate&&t.date!==oldDate)t.rescheduled=(t.rescheduled||0)+1;t.urgencyScore=calcUrgency(t);save('tasks',tasks);closeEdit();renderStats();renderTasks();renderCalendar();renderCountdown();syncKey('tasks',tasks);setTimeout(()=>checkFrictionIntervention(t),500);}
-function spawnConfetti(){const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
+function spawnConfetti(){if(!fluxTaskMotionOn())return;const colors=['#00C2FF','#7C5CFF','#22FF88','#4ddbff','#fbbf24','#a78bfa'];for(let i=0;i<22;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.left=Math.random()*100+'vw';p.style.animationDelay=Math.random()*.5+'s';p.style.background=colors[Math.floor(Math.random()*colors.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
 
 // ══ CALENDAR ══
 function changeMonth(d){
@@ -10294,6 +10545,12 @@ function getCloudPayload(){
     theme:fluxLoadStoredString('flux_theme','dark'),
     tasks,
     notes:notes.map(n=>({...n,body:n.body||''})),
+    // Tasks and notes deleted here, so other devices delete them too rather
+    // than taking a missing item for one they should keep (fluxApplyCloudList).
+    listTombstones:load('flux_list_tombstones_v1',{}),
+    // Written by a push that merged the row first (fluxWriteRow). A row
+    // without it came from an older Flux, and is merged with more care.
+    syncCas:1,
     habits,
     goals,
     colleges,
@@ -10462,6 +10719,17 @@ const FLUX_SYNC_PULL_INTERVAL_MS=8000;
 
 let _syncToCloudInFlight=false;
 let _syncToCloudQueued=false;
+/** Has a pull finished since sign-in? Pushes wait for one (see fluxCloudPullSettled). */
+let _fluxPulledOnce=false;
+/** The row as this tab last merged or wrote it: {exists, at (its updated_at)}, or null before any. See fluxWriteRow. */
+let _fluxRow=null;
+/** Bumped each time a push from this tab lands: a pull sent before that read an older row. */
+let _fluxRowGen=0;
+/** Pushes in a row that found the row written by someone else first. */
+let _fluxRowMisses=0;
+/** Each field of the row as this tab last agreed with it ({key: canonical JSON}); null before any. */
+let _fluxAgreed=null;
+function fluxFieldCanon(o){const m={};if(o&&typeof o==='object')Object.keys(o).forEach(k=>{try{m[k]=fluxCanonicalJson(o[k]);}catch(_){}});return m;}
 
 function stopFluxCloudSyncLoops(){
   if(window._syncInterval){clearInterval(window._syncInterval);window._syncInterval=null;}
@@ -10481,7 +10749,46 @@ function startFluxCloudSyncLoops(){
   void syncToCloud();
 }
 
-async function syncToCloud(){
+/* ── Pushes write only over the row they merged ──────────────────────────────
+   The push was an upsert of whatever this tab held. A tab or device that had
+   not pulled lately — a second tab, a laptop back online, a tab left open
+   while Claude edited the list — wrote its older copy over the newer row, and
+   the merge then took the tasks missing from it for deleted: gone here, on
+   every other device and in the cloud.
+
+   Now each write names the row it was merged against, by its updated_at (the
+   Claude connector's own writes already do this). If anything has written
+   since, no row matches and nothing is written; syncToCloud then pulls,
+   merges, and pushes again. With no row seen, a write may only create one,
+   never replace one: a pull that wrongly found no row (a session that had
+   lapsed, say) used to let a new device's empty lists replace the account's.
+   The plan itself is FluxListMerge.writePlan (unit tested). */
+async function fluxWriteRow(sb,payload,seen){
+  const at=new Date().toISOString();
+  const plan=window.FluxListMerge&&typeof FluxListMerge.writePlan==='function'
+    ?FluxListMerge.writePlan(seen)
+    :(seen&&seen.exists?{mode:'update',at:seen.at}:{mode:'insert'});
+  let q;
+  if(plan.mode==='update'){
+    q=sb.from('user_data').update({data:payload,updated_at:at}).eq('id',currentUser.id);
+    q=plan.at==null?q.is('updated_at',null):q.eq('updated_at',plan.at);
+  }else{
+    q=sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:at},{onConflict:'id',ignoreDuplicates:true});
+  }
+  const{data,error}=await q.select('updated_at');
+  if(error)return{error};
+  const row=Array.isArray(data)?data[0]:data;
+  return row?{written:true,at:row.updated_at==null?at:row.updated_at}:{written:false};
+}
+/** Resolves when the pull now in flight, if any, is done. */
+let _fluxPullIdle=null;
+/** A push found the row moved: merge the row as it is now (a pull sent before that may have missed it). */
+async function fluxPullBeforePush(){
+  for(let i=0;i<5&&_syncFromCloudInFlight&&_fluxPullIdle;i++)await _fluxPullIdle;
+  await syncFromCloud();
+}
+
+async function syncToCloud(opts){
   if(!currentUser)return;
   // A delete is in progress — pushing now would write the still-populated
   // in-memory arrays straight back over the row we just removed.
@@ -10490,6 +10797,9 @@ async function syncToCloud(){
   // owner's Supabase row. Preview lives only on this browser, in its own
   // localStorage namespace, until the actual teacher signs in for real.
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
+  // Not before this session's first pull: held, and sent once it lands. Only
+  // a guest's first upload (their data, a brand-new row) goes ahead of it.
+  if(!_fluxPulledOnce&&!(opts&&opts.beforePull)){_syncToCloudQueued=true;return;}
   if(_syncToCloudInFlight){
     // Stuck-flag safety: if an in-flight sync silently stalled (network
     // hang, exception swallowed by an unhandled promise), the flag would
@@ -10509,6 +10819,7 @@ async function syncToCloud(){
   if(syncUiWantsActivity())setSyncStatus('syncing');
   try{
     let payload=getCloudPayload();
+    const _rowSeen=_fluxRow;   // the row this payload was merged against
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.beforePush)payload=FluxOfflineSync.beforePush(payload);
     if(isOwner()){
       try{
@@ -10541,27 +10852,35 @@ async function syncToCloud(){
         payload.feedbackTombstones=[...tomb].slice(-500);
       }catch(e){console.warn('[Flux] feedback inbox merge skipped',e);}
     }
-    // MCP (Claude) may have written tasks server-side since our last pull. Don't
-    // clobber them: if the remote mcpMeta.rev advanced, fold in any remote-only
-    // tasks before pushing. Mirrors the feedbackInbox read-merge-write above.
-    // Flag-gated so users without the connector pay no extra round-trip.
-    if(window.FluxFeatureFlags?.isEnabled?.('enable_claude_mcp',false)){
-      try{
-        const {data:rrow}=await sb.from('user_data').select('data').eq('id',currentUser.id).maybeSingle();
-        const rd=rrow&&rrow.data;
-        const rRev=(rd&&rd.mcpMeta&&rd.mcpMeta.rev)||0;
-        if(rRev>(window._fluxMcpSeenRev||0)&&rd&&Array.isArray(rd.tasks)){
-          const have=new Set((payload.tasks||[]).map(t=>String(t&&t.id)));
-          const merged=(payload.tasks||[]).slice();
-          let added=0;
-          rd.tasks.forEach(rt=>{if(rt&&!have.has(String(rt.id))){merged.push(rt);added++;}});
-          if(added){payload.tasks=merged;try{tasks=merged;save('tasks',merged);}catch(_){}}
-          payload.mcpMeta=rd.mcpMeta;
-          window._fluxMcpSeenRev=rRev;
-        }
-      }catch(_){}
+    /* Claude (the MCP connector) writes the row server-side. Its writes no
+       longer need folding in here: they change the row's updated_at, so the
+       conditional write below finds the row moved, and the pull it runs
+       merges them — deletions included, which the old fold-in (every remote
+       task this list lacked, added back) used to undo. */
+    /* Nothing new since the cloud last agreed with us: no write. The interval
+       pushed every 2.5s regardless, and a device sitting idle kept writing its
+       copy over edits made on another one between pulls. */
+    let _pushFp='';
+    try{_pushFp=fluxCanonicalJson(payload);}catch(_){_pushFp='';}
+    if(_pushFp&&_pushFp===window._fluxLastCloudFingerprint){
+      setSyncStatus('synced');
+      window._fluxSyncFailed=false;
+      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
+      return;
     }
-    const{error}=await sb.from('user_data').upsert({id:currentUser.id,data:payload,updated_at:new Date().toISOString()},{onConflict:'id'});
+    // Taken now: a tick made while the request is out must not count as sent.
+    const _pushedLists=window.FluxListMerge?{tasks:FluxListMerge.hashes(payload.tasks),notes:FluxListMerge.hashes(payload.notes)}:{};
+    const _write=await fluxWriteRow(sb,payload,_rowSeen);
+    const error=_write.error;
+    if(!error&&!_write.written){
+      /* Someone wrote the row since this tab last merged it — another tab or
+         device, or Claude. Nothing was written. Merge theirs, then push again
+         (the finally block re-runs this): ours goes up with theirs in it. */
+      _fluxRowMisses++;
+      await fluxPullBeforePush();
+      if(_fluxRowMisses<=3)_syncToCloudQueued=true;   // past that, the 2.5s timer retries
+      return;
+    }
     if(error){
       console.error('Sync error:',error);
       setSyncStatus('offline');
@@ -10581,6 +10900,10 @@ async function syncToCloud(){
       }catch(_){}
       return;
     }
+    _fluxRow={exists:true,at:_write.at};
+    _fluxAgreed=fluxFieldCanon(payload);
+    _fluxRowGen++;
+    _fluxRowMisses=0;
     window._fluxSyncFailed=false;
     window._fluxConsecutiveSyncFails=0;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -10596,11 +10919,13 @@ async function syncToCloud(){
        typing and it happened every eight seconds, for as long as you typed.
        Reported as the test score fields clearing themselves.
 
-       The upsert above succeeded, so the row now holds exactly this payload.
+       The write above landed, so the row now holds exactly this payload.
        Recording that here means the next pull recognises its own handiwork
        and does nothing. A row that differs — a genuine change from another
        device — still fails the comparison and is applied as before. */
-    try{window._fluxLastCloudFingerprint=fluxCanonicalJson(payload);}catch(_){}
+    window._fluxLastCloudFingerprint=_pushFp||undefined;
+    // The row now holds exactly these lists: they are the new base to merge against.
+    try{fluxRecordSyncBase('tasks',_pushedLists.tasks);fluxRecordSyncBase('notes',_pushedLists.notes);}catch(_){}
     console.log('✓ Synced to cloud at',new Date().toLocaleTimeString());
   }catch(e){
     console.error('Sync error:',e);
@@ -10714,7 +11039,54 @@ function cloudListWins(cloudVal,localVal){
   return !Array.isArray(localVal)||localVal.length===0;
 }
 
-async function syncFromCloud(){
+/* ── Tasks and notes: merged item by item, never replaced ────────────────────
+   The other half of the note above, for the two lists people edit most. The
+   pull used to do `tasks=d.tasks`. A pull that left before you ticked a task
+   and landed after it took the tick with it, and the next push wrote the old
+   list back over the cloud as well — "undoes what you do before that refresh".
+
+   Every save of these lists records which items changed (and stamps their
+   updatedAt) or went (a tombstone). The pull then merges against the base —
+   what the cloud held when THIS TAB last agreed with it — so a cloud copy can
+   only change an item that this tab has not changed since, and nothing is
+   taken for deleted here unless it was. The rules live in flux-list-merge.js,
+   and so does each tab's base (fluxListSync, by storage at the top). */
+function fluxListStoreKey(cloudKey){return cloudKey==='notes'?'flux_notes':'tasks';}
+
+/** Called by save() for 'tasks' and 'flux_notes'. */
+function fluxNoteListEdits(k,list){
+  if(fluxListSync)fluxListSync.noteEdits(k,list);
+}
+/** The next save of this list is not a local edit: it is what a merge produced. */
+function fluxPrimeListSeen(storeKey,list){
+  if(fluxListSync)fluxListSync.prime(storeKey,list);
+}
+/** Remember, in this tab, what the cloud now holds for this list (the list itself, or its hashes). */
+function fluxRecordSyncBase(cloudKey,listOrHashes){
+  if(fluxListSync)fluxListSync.recordBase(cloudKey,listOrHashes);
+}
+/** Merge a cloud list into the local one; saves and returns the result. opts.staleWriter: see FluxListMerge.merge. */
+function fluxApplyCloudList(cloudKey,local,cloud,cloudTombAll,opts){
+  const storeKey=fluxListStoreKey(cloudKey);
+  if(!fluxListSync){save(storeKey,cloud);return cloud;}
+  const r=fluxListSync.pull(cloudKey,local,cloud,cloudTombAll,opts);
+  // Kept something the cloud does not have yet: send it up.
+  if(r.differsFromCloud)window.__fluxListNeedsPush=true;
+  return r.list;
+}
+window.fluxApplyCloudList=fluxApplyCloudList;
+
+/** See FluxListMerge.pullOutcome: 'new' | 'failed' | 'same' | 'later' | 'apply'. */
+function fluxPullOutcome(res){
+  if(window.FluxListMerge&&typeof FluxListMerge.pullOutcome==='function')return FluxListMerge.pullOutcome(res);
+  return res&&!res.error&&res.data?'apply':'failed';
+}
+function fluxPullOpensPushes(outcome,merged){
+  if(window.FluxListMerge&&typeof FluxListMerge.pullOpensPushes==='function')return FluxListMerge.pullOpensPushes(outcome,merged);
+  return outcome==='apply'&&!!merged;
+}
+/** opts.render===false: apply the row but leave the redraw to the caller (sign-in draws once, after it). */
+async function syncFromCloud(opts){
   if(!currentUser)return;
   // Owner is previewing as a teacher — don't pull the owner's cloud data
   // into the preview bubble (it'd visually look like a leak even though
@@ -10722,18 +11094,27 @@ async function syncFromCloud(){
   // intentionally a local-only sandbox.
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
   if(_syncFromCloudInFlight)return;
+  const sb=getSB();if(!sb)return;
   _syncFromCloudInFlight=true;
-  const sb=getSB();if(!sb){_syncFromCloudInFlight=false;return;}
+  let _pullDone;
+  _fluxPullIdle=new Promise(r=>{_pullDone=r;});
   if(syncUiWantsActivity())setSyncStatus('syncing');
+  /* What came back, and whether both lists got merged. Pushes open only
+     after a pull that came back and was merged (or found no row yet, or the
+     row already applied): after a failed pull, or one left for later
+     (mid-word), the next push would send this device's unmerged copy — on a
+     new device, an empty one. FluxListMerge.pullOutcome / pullOpensPushes
+     (unit tested) make that call; the finally block acts on it. */
+  let _pullOutcome='failed',_pullMerged=false;
+  const _gen=_fluxRowGen;
   try{
-    const{data,error}=await sb.from('user_data').select('data').eq('id',currentUser.id).single();
-    if(error||!data){
-      window._fluxSyncFailed=true;
-      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
-      setSyncStatus('offline');
-      return;
-    }
-    const d=data.data;
+    // A pull that never answers would hold every push that finds the row moved (fluxPullBeforePush).
+    let _q=sb.from('user_data').select('data,updated_at').eq('id',currentUser.id);
+    try{if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout&&_q.abortSignal)_q=_q.abortSignal(AbortSignal.timeout(15000));}catch(_){}
+    const{data,error}=await _q.single();
+    const d=data&&!error?data.data:undefined;
+    // The row as it was read: what a push may write over once it is merged (fluxWriteRow).
+    const _readRow={exists:true,at:data&&data.updated_at!=null?data.updated_at:null};
     /* ── Do nothing when nothing changed ──────────────────────────────────
        This runs every 8 seconds, and everything below it — ~40 module
        applyFromCloud() calls and thirteen full re-renders — used to run on
@@ -10751,8 +11132,20 @@ async function syncFromCloud(){
        what was last applied turns those into nothing at all. A pull that
        genuinely brings new data still applies it, exactly as before. */
     let _cloudFp='';
-    try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}
-    if(_cloudFp&&_cloudFp===window._fluxLastCloudFingerprint){
+    if(d!==undefined){try{_cloudFp=fluxCanonicalJson(d);}catch(_){_cloudFp='';}}
+    _pullOutcome=fluxPullOutcome({stale:_gen!==_fluxRowGen,error,data,fingerprint:_cloudFp,applied:window._fluxLastCloudFingerprint,typing:fluxIsTyping()});
+    // A push from this tab landed while this was out: what it read is older than that. The next pull gets the row.
+    if(_pullOutcome==='stale')return;
+    // No row at all (PGRST116): a new account. Nothing to merge; the first push creates it (and only creates it).
+    if(_pullOutcome==='new'){_fluxRow={exists:false,at:null};return;}
+    if(_pullOutcome==='failed'){
+      window._fluxSyncFailed=true;
+      if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
+      setSyncStatus('offline');
+      return;
+    }
+    if(_pullOutcome==='same'){
+      _fluxRow=_readRow;
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
@@ -10762,17 +11155,37 @@ async function syncFromCloud(){
        being typed. Leave the fingerprint unstamped and let the next pull, a
        few seconds after they stop, apply it. Nothing is lost by waiting; the
        row is not going anywhere. */
-    if(fluxIsTyping()){
+    if(_pullOutcome==='later'){
       setSyncStatus('synced');
       window._fluxSyncFailed=false;
       if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
       return;
     }
+    const _cloudFields=fluxFieldCanon(d);
+    if(_fluxAgreed){
+      try{
+        const mine=getCloudPayload();
+        Object.keys(mine).forEach(k=>{
+          if(k==='tasks'||k==='notes'||k==='listTombstones')return;   // merged item by item below
+          const a=_fluxAgreed[k];
+          if(a===undefined||_cloudFields[k]!==a)return;              // no record, or changed there: theirs
+          if(fluxCanonicalJson(mine[k])!==a)d[k]=mine[k];             // changed only here: kept, and pushed
+        });
+      }catch(_){}
+    }
     if(window.FluxOfflineSync?.enabled?.()&&FluxOfflineSync.applyCloudPayload){
       try{FluxOfflineSync.applyCloudPayload(d);}catch(e){console.warn('[FluxOfflineSync]',e);}
     }
-    if(d.tasks&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
-      tasks=d.tasks;save('tasks',tasks);migrateCompletedAtBackfill();fluxPurgeOldCompleted();
+    /* Rows written by a Flux from before conditional pushes (still open in
+       some tab) lack this mark, and may hold an older list: merged more
+       carefully (FluxListMerge.merge, staleWriter). Every push now sets it,
+       and the Claude connector keeps it when it writes. */
+    const _listOpts={staleWriter:d.syncCas!==1};
+    if(Array.isArray(d.tasks)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('tasks'))){
+      const _tasksBefore=tasks;
+      tasks=fluxApplyCloudList('tasks',tasks,d.tasks,d.listTombstones,_listOpts);
+      try{fluxNoteRemoteTaskChanges(_tasksBefore,tasks);}catch(_){}
+      migrateCompletedAtBackfill();fluxPurgeOldCompleted();
     }
     if(d.recurringSeries&&typeof d.recurringSeries==='object'){
       try{if(window.FluxRecurring?.applyFromCloud)FluxRecurring.applyFromCloud(d.recurringSeries);else save('flux_recurring_series_v1',d.recurringSeries);}catch(_){}
@@ -10911,9 +11324,12 @@ async function syncFromCloud(){
     if(d.calcHistory&&typeof d.calcHistory==='object'){
       try{if(window.FluxCalcHistory?.applyFromCloud)FluxCalcHistory.applyFromCloud(d.calcHistory);else save('flux_calc_history_v1',d.calcHistory);}catch(_){}
     }
-    if(d.notes&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
-      notes=d.notes;save('flux_notes',notes);
+    if(Array.isArray(d.notes)&&!(window.FluxOfflineSync?.shouldSkipCloudOverwrite?.('notes'))){
+      notes=fluxApplyCloudList('notes',notes,d.notes,d.listTombstones,_listOpts);
     }
+    // Both lists are merged: what this device pushes from here on includes the cloud's.
+    _pullMerged=true;
+    _fluxRow=_readRow;
     if(cloudListWins(d.habits,habits)){habits=d.habits;save('flux_habits',habits);}
     if(cloudListWins(d.goals,goals)){goals=d.goals;save('flux_goals',goals);}
     if(cloudListWins(d.colleges,colleges)){colleges=d.colleges;save('flux_colleges',colleges);}
@@ -11020,18 +11436,39 @@ async function syncFromCloud(){
     setSyncStatus('synced');
     window._fluxSyncFailed=false;
     if(typeof updateConnectivityBanner==='function')updateConnectivityBanner();
-    renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderNotesList();renderExtrasList();renderSchoolsList();renderMoodHistory();renderSchool();updateTStats();
-    populateSubjectSelects();
-    // Re-apply accent after renders in case sidebar was rebuilt
-    updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
-    if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
-    updateMasterBacklogCardVisibility();
+    if(opts&&opts.render===false)window.__fluxPullNeedsRender=true;
+    else fluxRenderAfterPull();
     /* Stamped here, at the end, rather than where it is read: if applying
        threw part way through, the next pull must try again rather than skip
        a payload it never finished using. */
     window._fluxLastCloudFingerprint=_cloudFp;
+    _fluxAgreed=_cloudFields;
   }catch(e){console.error('Sync from cloud error',e);setSyncStatus('offline');}
-  finally{_syncFromCloudInFlight=false;}
+  finally{
+    _syncFromCloudInFlight=false;
+    _pullDone();
+    if(fluxPullOpensPushes(_pullOutcome,_pullMerged))fluxCloudPullSettled();
+  }
+}
+
+/** Everything a pull can change, redrawn. */
+function fluxRenderAfterPull(){
+  window.__fluxPullNeedsRender=false;
+  renderStats();renderTasks();renderCalendar();renderCountdown();renderSmartSug();renderProfile();renderNotesList();renderExtrasList();renderSchoolsList();renderMoodHistory();renderSchool();updateTStats();
+  populateSubjectSelects();
+  // Re-apply accent after renders in case sidebar was rebuilt
+  updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));
+  if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();
+  updateMasterBacklogCardVisibility();
+}
+
+/* A pull has been and gone: pushes may now go out. Until the first one of a
+   session has, they wait — pushing first would write this device's old copy
+   over changes made elsewhere, before it had even looked at them. */
+function fluxCloudPullSettled(){
+  _fluxPulledOnce=true;
+  if(window.__fluxListNeedsPush){window.__fluxListNeedsPush=false;_syncToCloudQueued=true;}
+  if(_syncToCloudQueued&&!_syncToCloudInFlight){_syncToCloudQueued=false;void syncToCloud();}
 }
 
 /**
@@ -11244,14 +11681,22 @@ function flushPendingSyncToCloud(){
   void syncToCloud();
 }
 /**
- * Unload / tab-close: PostgREST upsert with fetch keepalive so the browser does not
+ * Unload / tab-close: a PostgREST update with fetch keepalive so the browser does not
  * drop the request when the page tears down (normal syncToCloud may never finish).
+ * Conditional, like every push (fluxWriteRow): if the row has moved since this tab
+ * merged it, nothing is written, and these edits wait on this device for its next pull.
  * Skips if payload is too large for the ~64KB keepalive body limit.
  */
 function trySyncToCloudKeepalive(){
   if(!currentUser)return;
   // Same guard as syncToCloud — never push impersonation-preview data.
   try{if(window.FluxImpersonate&&FluxImpersonate.active())return;}catch(_){}
+  // Closed before the first pull came back: this copy has not seen the
+  // cloud's yet, so writing it would undo changes made on other devices.
+  if(!_fluxPulledOnce)return;
+  // No row seen yet: creating it is left to an ordinary push.
+  const row=_fluxRow;
+  if(!row||!row.exists)return;
   const sb=getSB();
   if(!sb)return;
   sb.auth.getSession().then(res=>{
@@ -11259,18 +11704,20 @@ function trySyncToCloudKeepalive(){
     if(!session?.access_token)return;
     try{
       const payload=getCloudPayload();
-      const body=JSON.stringify([{id:currentUser.id,data:payload,updated_at:new Date().toISOString()}]);
+      try{if(fluxCanonicalJson(payload)===window._fluxLastCloudFingerprint)return;}catch(_){}
+      const body=JSON.stringify({data:payload,updated_at:new Date().toISOString()});
       if(body.length>62000){
         if(typeof console!=='undefined'&&console.warn)console.warn('Flux: payload large for keepalive; rely on last visibility flush');
         return;
       }
-      fetch(SB_URL+'/rest/v1/user_data?on_conflict=id',{
-        method:'POST',
+      const where='id=eq.'+encodeURIComponent(currentUser.id)+'&updated_at='+(row.at==null?'is.null':'eq.'+encodeURIComponent(row.at));
+      fetch(SB_URL+'/rest/v1/user_data?'+where,{
+        method:'PATCH',
         headers:{
           'Content-Type':'application/json',
           'apikey':SB_ANON,
           'Authorization':'Bearer '+session.access_token,
-          'Prefer':'return=minimal,resolution=merge-duplicates',
+          'Prefer':'return=minimal',
         },
         body,
         keepalive:true,
@@ -11287,8 +11734,8 @@ function initSyncLifecycle(){
       flushPendingSyncToCloud();
       return;
     }
-    flushPendingSyncToCloud();
-    void syncFromCloud();
+    // Back in view: take in what changed elsewhere first, then send what changed here.
+    void syncFromCloud().finally(flushPendingSyncToCloud);
   });
   const onLeave=()=>{
     if(!currentUser)return;
@@ -11447,8 +11894,8 @@ function initConnectivityAndNotifications(){
     updateConnectivityBanner();
     if(currentUser){
       try{if(window.FluxOfflineSync?.flushOutbox)FluxOfflineSync.flushOutbox();}catch(_){}
-      flushPendingSyncToCloud();
-      void syncFromCloud();
+      // Pull first: what was done here offline goes up merged with what changed meanwhile.
+      void syncFromCloud().finally(flushPendingSyncToCloud);
     }
   });
   window.addEventListener('offline',updateConnectivityBanner);
@@ -12855,6 +13302,19 @@ const FluxOverlays={
 window.FluxOverlays=FluxOverlays;
 
 // ══ KEYBOARD SHORTCUTS ══
+/** Is this key going into something that takes text (a field, a list, the note editor)? */
+function fluxKeyIsForText(e){
+  const isText=n=>{
+    if(!n||n.nodeType!==1||n===document.body||n===document.documentElement)return false;
+    const tag=n.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||n.isContentEditable)return true;
+    return !!(n.closest&&n.closest('[contenteditable]:not([contenteditable="false"])'));
+  };
+  let t=e&&e.target;
+  try{const p=e&&e.composedPath&&e.composedPath();if(p&&p.length)t=p[0];}catch(_){}
+  return isText(t)||isText(document.activeElement);
+}
+window.fluxKeyIsForText=fluxKeyIsForText;
 function initKeyboardShortcuts(){
   document.addEventListener('keydown',e=>{
     // ⌘⇧K / Ctrl+Shift+K — Global search · ⌘K / Ctrl+K — Educators: toggle Work/Personal · others: command palette
@@ -12885,14 +13345,15 @@ function initKeyboardShortcuts(){
     if((e.metaKey||e.ctrlKey)&&e.key==='d'){e.preventDefault();startDeepWork();return;}
     // Cmd+P — Present Mode
     if((e.metaKey||e.ctrlKey)&&e.key==='p'){e.preventDefault();startPresentMode();return;}
-    // Ctrl+Z / Cmd+Z — Undo
-    if((e.metaKey||e.ctrlKey)&&e.key==='z'){
-      const tag=document.activeElement?.tagName;
-      if(!['INPUT','TEXTAREA','SELECT'].includes(tag)){e.preventDefault();undoLastChange();return;}
+    // Ctrl+Z / Cmd+Z — Undo. Not while typing: there it is the text's own
+    // undo (the note editor is contenteditable, and used to undo a task).
+    const typing=fluxKeyIsForText(e);
+    if((e.metaKey||e.ctrlKey)&&!e.altKey&&(e.key==='z'||e.key==='Z')&&!e.shiftKey){
+      if(!typing){e.preventDefault();undoLastChange();}
+      return;
     }
-    // Don't fire letter shortcuts when typing in inputs
-    const tag=document.activeElement?.tagName;
-    if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
+    // Don't fire letter shortcuts when typing in inputs (or the note editor)
+    if(typing)return;
     if(e.metaKey||e.ctrlKey||e.altKey)return;
     // Any open overlay swallows single-key shortcuts entirely — a palette
     // that lost focus must never let "n" spawn quick-add on top of it.
@@ -14195,6 +14656,12 @@ function showApp(){
   // B4: drop the marketing/login chrome out of the live document once the app
   // is up (delayed past the login teardown animations).
   setTimeout(()=>{try{detachLandingChrome();}catch(_){}},600);
+  // A sign-in pull left its redraw to this one: the two bits above don't cover.
+  if(window.__fluxPullNeedsRender){
+    window.__fluxPullNeedsRender=false;
+    try{updateLogoColor(fluxLoadStoredString('flux_accent','#00bfff'));}catch(_){}
+    try{if(typeof FluxPersonal!=='undefined')FluxPersonal.applyAll();}catch(_){}
+  }
 }
 
 function initFluxExtensionIdSettings(){
@@ -14424,6 +14891,8 @@ async function handleSignedIn(user,session){
       window.__fluxWarnedCounselorEnsure=0;
     }catch(_){}
     console.log('Account switched — wiped previous user data');
+    // The base in this tab was the other account's: none now, so the first pull takes the cloud as it is.
+    fluxListSyncFromStorage();
     try{
       const dg=document.getElementById('dashGreeting');
       if(dg){delete dg.dataset.fluxGreetKey;delete dg.dataset.fluxGreetIntroDone;}
@@ -14435,6 +14904,16 @@ async function handleSignedIn(user,session){
   fluxSaveStoredString('flux_last_user_email',user.email||'');
   // ────────────────────────────────────────────────────────────
 
+  // A new session for this account: nothing goes up until its first pull is in.
+  if(!currentUser||currentUser.id!==user.id){
+    _fluxPulledOnce=false;
+    _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
+    // Edits count from here: anything done before signing in (as a guest)
+    // does not get merged into the account unless it was asked for
+    // (flux_migrate_guest below).
+    try{if(fluxListSync)fluxListSync.startSession({tasks,flux_notes:notes});}catch(_){}
+    window._fluxLastCloudFingerprint=undefined;
+  }
   currentUser=user;
   let _signInFailed=false;
   try{
@@ -14486,10 +14965,14 @@ async function handleSignedIn(user,session){
   if(migratingGuest){
     save('flux_migrate_guest',false);
     save('flux_onboarded',true);
-    await syncToCloud();
+    // Theirs to keep: a new account's row is made from them; an account that
+    // already has one (the push may only create a row) keeps them beside its own.
+    try{if(fluxListSync){fluxListSync.adopt('tasks',tasks);fluxListSync.adopt('flux_notes',notes);}}catch(_){}
+    await syncToCloud({beforePull:true});
   }
 
-  await syncFromCloud();
+  // Its redraw waits for the one below, once the role is known too.
+  await syncFromCloud({render:false});
   }finally{popSyncUiActivity();}
 
   initFluxSessionIdleAdvisory();
@@ -14639,7 +15122,11 @@ async function handleSignedIn(user,session){
   try{if(window.FluxNeuroDashboard?.install)FluxNeuroDashboard.install();}catch(_){}
   try{if(window.FluxSrsV2?.install)FluxSrsV2.install();}catch(_){}
   try{if(window.FluxPredictV2?.install)FluxPredictV2.install();}catch(_){}
-  try{clearDashboardRoleSkeleton();}catch(_){}
+  /* From here to the end the planner is drawn once: showApp() below (or, on
+     the onboarding path, the finally block). It used to be drawn here, again
+     in showApp(), again by the route home and again in the finally block —
+     the list rebuilt four times inside half a second, each one eating a tap. */
+  try{clearDashboardRoleSkeleton({render:false});}catch(_){}
   try{if(typeof applyRoleUI==='function')applyRoleUI();}catch(_){}
   const isStaffRole=['teacher','counselor','staff','admin'].includes(resolvedRole);
 
@@ -14671,6 +15158,7 @@ async function handleSignedIn(user,session){
       // Educator: skip the student questionnaire entirely; show the app shell
       // first so the role-specific onboarding overlay sits on top of it.
       showApp();
+      _fluxBootDrawn=true;
       _updateUserUI(user, user.user_metadata?.full_name||user.email?.split('@')[0]||'');
       try{renderImpersonatePill();}catch(_){}
       try{startOnboarding(resolvedRole);}catch(e){console.warn('[Flux] startOnboarding',e);}
@@ -14687,6 +15175,7 @@ async function handleSignedIn(user,session){
     const ob=document.getElementById('onboarding');
     if(ob)ob.classList.remove('visible');
     showApp();
+    _fluxBootDrawn=true;
     // Staff used to be left out because the tour only knew the student tabs;
     // it now has steps for every role and for Work and Personal mode.
     if(!isTourCompleted())setTimeout(()=>startOnboardingTour(),1600);
@@ -14740,10 +15229,13 @@ async function handleSignedIn(user,session){
     const ls=document.getElementById('loginScreen');
     if(ls){ls.style.display='none';ls.classList.remove('visible');}
     try{ensureDashboardDom();}catch(_){}
-    try{clearDashboardRoleSkeleton();}catch(_){}
     const appEl=document.getElementById('app');
-    if(appEl&&!appEl.classList.contains('visible'))try{showApp();}catch(_){}
-    else if(_signInFailed)try{showApp();}catch(_){}
+    const reshow=(appEl&&!appEl.classList.contains('visible'))||_signInFailed;
+    // Drawn already, or about to be: the skeleton comes off without a redraw of its own.
+    try{clearDashboardRoleSkeleton({render:!(_fluxBootDrawn||reshow||window.__fluxPullNeedsRender)});}catch(_){}
+    if(reshow){try{showApp();}catch(_){}}
+    else if(window.__fluxPullNeedsRender){try{fluxRenderAfterPull();}catch(_){}}
+    _fluxBootDrawn=false;
     setTimeout(()=>{
       try{if(window.FluxModuleLoader?.install)FluxModuleLoader.install();}catch(_){}
       try{if(window.FluxI18n?.install)FluxI18n.install();}catch(_){}
@@ -14833,6 +15325,8 @@ function handleSignedOut(){
   document.querySelectorAll('.flux-tester-badge').forEach(el => el.remove());
   currentUser=null;gmailToken=null;
   stopFluxCloudSyncLoops();
+  _fluxPulledOnce=false;
+  _fluxRow=null;_fluxRowMisses=0;_fluxAgreed=null;
   sessionStorage.clear();
   const keysToKeep=[
     'flux_splash_shown','flux_theme','flux_accent','flux_accent_rgb',
@@ -14948,6 +15442,9 @@ function initQuickAdd(){
 let _dragTaskId=null,_dragOverId=null;
 function initTaskDrag(){
   const list=document.getElementById('taskList');if(!list)return;
+  // Once per element: a second set made every drop splice the list twice.
+  if(list.__fluxDragBound)return;
+  list.__fluxDragBound=true;
   list.addEventListener('dragstart',e=>{
     const item=e.target.closest('[data-task-id]');if(!item)return;
     _dragTaskId=fluxParseId(item.dataset.taskId);
@@ -15041,29 +15538,34 @@ function initMobileNav(){
 }
 
 // ══ DASHBOARD INIT ══
+/* Once per page. showApp() runs more than once while signing in, and every
+   run used to add another clock interval, another set of drag and swipe
+   listeners on the task list and another tab-switch listener — so one swipe
+   ticked a task two or three times over (an even count leaves it unticked). */
+let _fluxDashFeaturesInit=false;
 function initDashboardFeatures(){
-  initTopbar();
-  initQuickAdd();
   initTaskDrag();
-  initMobileNav();
-  smartReorderDashboard();
+  if(!_fluxDashFeaturesInit){
+    _fluxDashFeaturesInit=true;
+    initTopbar();
+    initQuickAdd();
+    initMobileNav();
+    smartReorderDashboard();
+    setInterval(()=>{checkTimePoverty();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
+    initIntelligenceEngine();
+    initPomodoroVisibilityPause();
+    initV4Systems();
+    if(typeof fluxRenderV4Dashboard==='function')setInterval(fluxRenderV4Dashboard,5*60*1000);
+  }
+  // Redraws only — safe to repeat once the account's settings have arrived.
   checkTimePoverty();
-  setInterval(()=>{checkTimePoverty();if(typeof updateNextClassPill==='function')updateNextClassPill();if(typeof renderDynamicFocus==='function')renderDynamicFocus();},60000);
-  initIntelligenceEngine();
-  // New systems
-  initPomodoroVisibilityPause();
-  initTaskSwipeGestures();
   applyCollapsedSections();
   applyHighContrast();
   renderSavedViewsDropdown();
   if(typeof updateMomentumUI==='function'){try{updateMomentumUI();}catch(_){}}
   renderEffortReport();
   renderSubjectEfficiencyHeatmap();
-  initV4Systems();
-  if(typeof fluxRenderV4Dashboard==='function'){
-    fluxRenderV4Dashboard();
-    setInterval(fluxRenderV4Dashboard,5*60*1000);
-  }
+  if(typeof fluxRenderV4Dashboard==='function')fluxRenderV4Dashboard();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -15313,6 +15815,7 @@ function handleCheckoutReturn(){
         reloadState(){
           tasks=load('tasks',[]);
           notes=load('flux_notes',[]);
+          fluxListSyncFromStorage();
           classes=load('flux_classes',[]);
           settings=load('flux_settings',settings);
         },
@@ -15658,30 +16161,148 @@ function showSessionRecap(subject,mins){
 
 
 // ══ VERSION HISTORY + UNDO ════════════════════════════════════
+/* Each entry is one change: the list as it was before it, and what the change
+   left (each task's hash, taken as soon as the change is made). Undo puts back
+   only the tasks that change touched, and only while they are still as it
+   left them. Restoring the whole old list also took back everything done
+   since that kept no entry of its own — a task added after it, a rename in
+   the edit window — and the next save then deleted those everywhere. Tasks a
+   cloud pull has changed since (another device's edits) are left as they are. */
 let _taskHistory=[];
+let _fluxUndoSeq=0;
+/** Changes already undone (by seq), so a second press on an old Undo bar can say so. */
+const _fluxUndoneSeqs=[];
+const fluxTaskKey=t=>window.FluxListMerge?FluxListMerge.keyOf(t):String(t&&t.id);
+const fluxTaskHash=t=>t===undefined?'':(window.FluxListMerge?FluxListMerge.itemHash(t):JSON.stringify(t));
+/** Map of key → hash for a task list. */
+function fluxTaskHashes(list){const m=new Map();(list||[]).forEach(t=>m.set(fluxTaskKey(t),fluxTaskHash(t)));return m;}
 function snapshotTasks(){
-  _taskHistory.push(JSON.parse(JSON.stringify(tasks)));
+  const seq=++_fluxUndoSeq;
+  const e={seq,before:JSON.parse(JSON.stringify(tasks)),after:null,remote:new Set()};
+  _taskHistory.push(e);
   if(_taskHistory.length>10)_taskHistory.shift();
+  // Every caller makes its change straight after this, in the same turn.
+  Promise.resolve().then(()=>{if(!e.after)e.after=fluxTaskHashes(tasks);});
+  return seq;
 }
-function undoLastChange(){
-  if(!_taskHistory.length){showToast('Nothing to undo','info');return;}
-  tasks=_taskHistory.pop();
+function fluxMarkUndone(seq){_fluxUndoneSeqs.push(seq);if(_fluxUndoneSeqs.length>50)_fluxUndoneSeqs.shift();}
+/** A cloud pull changed these tasks: undo must not roll them back. */
+function fluxNoteRemoteTaskChanges(before,after){
+  if(!_taskHistory.length)return;
+  const a=fluxTaskHashes(before),b=fluxTaskHashes(after);
+  const changed=[];
+  a.forEach((h,k)=>{if(b.get(k)!==h)changed.push(k);});
+  b.forEach((h,k)=>{if(!a.has(k))changed.push(k);});
+  if(changed.length)_taskHistory.forEach(e=>changed.forEach(k=>e.remote.add(k)));
+}
+/**
+ * Undo. With no seq (Ctrl+Z, the planner's own Undo): the latest change.
+ * With a seq (an Undo bar): that change and no other. The bar names what it
+ * undoes, a completion say, but a calendar drag made since records a change
+ * with no bar of its own, and undoing "the latest" then took back the drag
+ * and left the task ticked. Either way only the tasks the change touched are
+ * put back, and only if nothing has changed them since; otherwise it says it
+ * can't, rather than undo something else.
+ */
+function undoLastChange(seq){
+  if(seq!=null){
+    const i=_taskHistory.findIndex(x=>x.seq===seq);
+    if(i<0){
+      showToast(_fluxUndoneSeqs.includes(seq)?'Already undone':'That change can’t be undone any more','info');
+      return false;
+    }
+    return fluxUndoOneChange(i);
+  }
+  if(!_taskHistory.length){showToast('Nothing to undo','info');return false;}
+  const i=_taskHistory.length-1;
+  if(fluxUndoOneChange(i))return true;
+  // One that can't be undone is set aside: the next Ctrl+Z goes on to the change before it.
+  _taskHistory.splice(i,1);
+  return false;
+}
+/** Undo the change at _taskHistory[i] (see undoLastChange). */
+function fluxUndoOneChange(i){
+  const e=_taskHistory[i];
+  const byKey=list=>new Map(list.map(t=>[fluxTaskKey(t),t]));
+  const B=byKey(e.before);                      // before this change
+  // As this change left them (taken just after it; failing that, the next change's before, or now).
+  const A=e.after||fluxTaskHashes(i<_taskHistory.length-1?_taskHistory[i+1].before:tasks);
+  const ha=k=>A.has(k)?A.get(k):'';
+  const N=byKey(tasks);                         // now
+  // What this change did, less what a cloud pull has changed since (left as it is now).
+  const keys=[...new Set([...B.keys(),...A.keys()])].filter(k=>fluxTaskHash(B.get(k))!==ha(k)&&!e.remote.has(k));
+  const cant=msg=>{showToast(msg,'warning');return false;};
+  if(!keys.length)return cant('That change can’t be undone any more');
+  if(keys.some(k=>fluxTaskHash(N.get(k))!==ha(k)))return cant('Can’t undo that: it has been changed since');
+  const putBack=list=>{
+    const out=list.slice();
+    keys.forEach(k=>{
+      const was=B.get(k);
+      const at=out.findIndex(t=>fluxTaskKey(t)===k);
+      if(was===undefined){if(at>=0)out.splice(at,1);return;}          // this change added it
+      const copy=JSON.parse(JSON.stringify(was));
+      if(at>=0){out[at]=copy;return;}
+      // This change removed it: back where it was, after the task that was above it.
+      const pos=e.before.indexOf(was);
+      let after=-1;
+      for(let j=pos-1;j>=0&&after<0;j--){const pk=fluxTaskKey(e.before[j]);after=out.findIndex(t=>fluxTaskKey(t)===pk);}
+      out.splice(after+1,0,copy);
+    });
+    return out;
+  };
+  tasks=putBack(tasks);
+  // Later changes were recorded on top of this one: undoing them must not bring it back.
+  for(let j=i+1;j<_taskHistory.length;j++){
+    const later=_taskHistory[j];
+    const L=byKey(later.before);
+    if(keys.every(k=>fluxTaskHash(L.get(k))===ha(k)))later.before=putBack(later.before);
+    // Nor take what this undo put back for a change of theirs.
+    const LA=later.after;
+    if(LA)keys.forEach(k=>{
+      if((LA.has(k)?LA.get(k):'')!==ha(k))return;
+      if(B.has(k))LA.set(k,fluxTaskHash(B.get(k)));else LA.delete(k);
+    });
+  }
+  _taskHistory.splice(i,1);
+  fluxMarkUndone(e.seq);
   save('tasks',tasks);
-  renderStats();renderTasks();renderCalendar();renderCountdown();
+  fluxTaskRebuildNow();
   syncKey('tasks',tasks);
   showToast('↩ Change undone','info');
+  return true;
 }
+/** Toasts sit above the Undo bar while it is up, so nothing covers its button. */
+function fluxUndoLift(){
+  const bar=document.getElementById('undoSnackbar');
+  const h=bar&&bar.isConnected?Math.ceil(bar.getBoundingClientRect().height)+10:0;
+  document.documentElement.style.setProperty('--flux-undo-lift',h+'px');
+}
+function fluxDismissUndo(){document.getElementById('undoSnackbar')?.remove();fluxUndoLift();}
+window.fluxDismissUndo=fluxDismissUndo;
 function showUndoSnackbar(msg,undoFn){
   const existing=document.getElementById('undoSnackbar');if(existing)existing.remove();
+  // The bar undoes the change just recorded, the one it names — not whatever
+  // is latest by the time Undo is pressed (see undoLastChange).
+  const seq=(undoFn==null||undoFn==='undoLastChange')&&_taskHistory.length?_taskHistory[_taskHistory.length-1].seq:null;
+  const undoCall=seq!=null?'undoLastChange('+(+seq)+')':'undoLastChange()';
   const bar=document.createElement('div');
   bar.id='undoSnackbar';
-  bar.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
-  bar.innerHTML=`<span style="color:var(--text)">${esc(msg)}</span><button onclick="undoLastChange();document.getElementById('undoSnackbar')?.remove()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0">Undo</button><button onclick="this.closest('#undoSnackbar').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
+  // Read out when it appears, so a tick (or a swipe you did not mean) is never silent.
+  bar.setAttribute('role','status');
+  bar.style.cssText='position:fixed;bottom:var(--flux-dock-clearance,20px);left:50%;transform:translateX(-50%);z-index:3500;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideUpToast .25s var(--ease-spring);font-size:.8rem;white-space:nowrap';
+  bar.innerHTML=`<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:56vw">${esc(msg)}</span><button type="button" onclick="${undoCall};fluxDismissUndo()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:700;font-size:.78rem;padding:0" title="Undo (Ctrl+Z)">Undo</button><button type="button" aria-label="Dismiss" onclick="fluxDismissUndo()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 2px">✕</button>`;
   document.body.appendChild(bar);
-  const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>bar.remove(),400);}};
-  // With motion on, a bar runs down the 5 seconds (and pauses while hovered); otherwise a plain timer.
+  fluxUndoLift();
+  const fade=()=>{if(bar.isConnected){bar.style.opacity='0';bar.style.transition='opacity .4s';setTimeout(()=>{bar.remove();fluxUndoLift();},400);}};
+  // With motion on, a bar runs down the 5 seconds (and pauses while hovered); otherwise a plain timer that pauses the same way.
   let timed=null;try{timed=window.FluxMotionMore?.undoTimer(bar,5000,fade);}catch(_){}
-  if(!timed)setTimeout(fade,5000);
+  if(!timed){
+    let left=5000,start=Date.now(),timer=setTimeout(fade,left);
+    const pause=()=>{if(!timer)return;clearTimeout(timer);timer=0;left-=Date.now()-start;};
+    const play=()=>{if(timer||!bar.isConnected)return;start=Date.now();timer=setTimeout(fade,Math.max(1200,left));};
+    bar.addEventListener('pointerenter',pause);bar.addEventListener('pointerleave',play);
+    bar.addEventListener('focusin',pause);bar.addEventListener('focusout',play);
+  }
 }
 
 
@@ -15704,7 +16325,8 @@ function addMomentum(){
     }catch(e){}
   }
   if(_momentum>=3)showToast(''+_momentum+'× Momentum! Keep going!','success');
-  if(_momentum>=5)spawnConfetti();
+  // Once, on reaching five — not again with every tick after it.
+  if(_momentum===5)spawnConfetti();
 }
 function updateMomentumUI(){
   try{
@@ -16140,42 +16762,9 @@ function applyHighContrast(){
 }
 
 // ══ TASK SWIPE GESTURES ═══════════════════════════════════════
-function initTaskSwipeGestures(){
-  const list=document.getElementById('taskList');if(!list)return;
-  let _touchStartX=0,_touchEl=null;
-  list.addEventListener('touchstart',e=>{
-    _touchEl=e.target.closest('[data-task-id]');
-    if(_touchEl)_touchStartX=e.touches[0].clientX;
-  },{passive:true});
-  list.addEventListener('touchmove',e=>{
-    if(!_touchEl)return;
-    const dx=e.touches[0].clientX-_touchStartX;
-    if(Math.abs(dx)>10){
-      _touchEl.style.transform=`translateX(${Math.sign(dx)*Math.min(Math.abs(dx),80)}px)`;
-      _touchEl.style.transition='none';
-      _touchEl.style.opacity=String(1-Math.abs(dx)/200);
-    }
-  },{passive:true});
-  list.addEventListener('touchend',e=>{
-    if(!_touchEl)return;
-    const dx=e.changedTouches[0].clientX-_touchStartX;
-    _touchEl.style.transition='transform .3s var(--ease-spring),opacity .3s';
-    if(dx>60){
-      // Swipe right → complete
-      const id=fluxParseId(_touchEl.dataset.taskId);
-      _touchEl.style.transform='translateX(100vw)';_touchEl.style.opacity='0';
-      setTimeout(()=>toggleTask(id),300);
-    }else if(dx<-60){
-      // Swipe left → show reschedule
-      const id=fluxParseId(_touchEl.dataset.taskId);
-      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
-      openEdit(id);
-    }else{
-      _touchEl.style.transform='translateX(0)';_touchEl.style.opacity='1';
-    }
-    _touchEl=null;
-  },{passive:true});
-}
+// Live in flux-mobile-swipe.js. A second handler here completed a task on any
+// touch that drifted 60px sideways — no check on vertical movement at all, so
+// scrolling the list ticked tasks off — and fired alongside that one.
 
 
 // ══ LOADING SKELETONS ═════════════════════════════════════════
@@ -18143,7 +18732,7 @@ function renderTimeline(){
 // ══ 4. FULL KEYBOARD NAVIGATION ══
 function initFullKeyboardNav(){
   let focusIdx=-1;
-  const getFocusable=()=>[...document.querySelectorAll('.nav-item,.bnav-item,button:not([disabled]),.task-item,.card')].filter(el=>el.offsetParent!==null&&!el.closest('#splash')&&!el.closest('#loginScreen'));
+  const getFocusable=()=>[...document.querySelectorAll('.nav-item,.bnav-item,button:not([disabled]),.task-item .check[tabindex],.task-item,.card')].filter(el=>el.offsetParent!==null&&!el.closest('#splash')&&!el.closest('#loginScreen'));
 
   document.addEventListener('keydown',e=>{
     const tag=document.activeElement?.tagName;
@@ -18175,12 +18764,13 @@ function initFullKeyboardNav(){
       e.preventDefault();
     }
 
-    if(e.key==='Enter'&&document.activeElement?.classList.contains('task-item')){
+    // flux-pro.js may already have ticked this row (it listens first): once only.
+    if(e.key==='Enter'&&!e.defaultPrevented&&document.activeElement?.classList.contains('task-item')){
       const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id)toggleTask(id);
     }
 
-    if(e.key==='Delete'&&document.activeElement?.classList.contains('task-item')){
+    if(e.key==='Delete'&&!e.defaultPrevented&&document.activeElement?.classList.contains('task-item')){
       const id=fluxParseId(document.activeElement.dataset.taskId);
       if(id&&confirm('Delete this task?'))deleteTask(id);
     }
