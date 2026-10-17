@@ -184,9 +184,28 @@
   let busy = false;
 
   /** The open set's notes as cited sentences (rebuilt only when the notes change). */
+  /**
+   * The notes' fingerprint, worked out again only after they change (hashing
+   * up to 4 million characters on every keystroke froze the page).
+   */
+  function srcKey() {
+    const o = app.open;
+    if (o.srcKeyFor !== o.set.sources || o.srcDirty) {
+      o.srcKeyValue = T.sourcesHash(o.set.sources);
+      o.srcKeyFor = o.set.sources;
+      o.srcDirty = false;
+    }
+    return o.srcKeyValue;
+  }
+  function notesChanged() { if (app.open) app.open.srcDirty = true; }
+  /** T.guideStale(set), with the fingerprint above. */
+  function guideStale() {
+    const set = app.open.set;
+    return !set.guide || set.guide.hash !== srcKey();
+  }
   function corpusNow() {
     const o = app.open;
-    const h = T.sourcesHash(o.set.sources);
+    const h = srcKey();
     if (h !== o.srcHash || !o.corpus) {
       o.srcHash = h;
       o.corpus = T.buildCorpus(o.set.sources);
@@ -226,6 +245,7 @@
   function save() {
     const o = app.open;
     if (!o || o.draft || !app.store) return;
+    if (o.conflict) { keptUnsaved(); return; }
     app.store.autosave(o.set);
     app.store.flush();
   }
@@ -233,7 +253,72 @@
   function saveSoon() {
     const o = app.open;
     if (!o || o.draft || !app.store) return;
+    if (o.conflict) { keptUnsaved(); return; }
     app.store.autosave(o.set);
+  }
+
+  /* Another tab changed this set. Saving from here would undo that work, so
+     this tab stops saving, says so, and offers to load the latest version
+     (without saving first) or to keep this tab's version as a copy. */
+  function enterConflict(refused) {
+    const o = app.open;
+    if (!o || o.draft) return;
+    if (refused) o.unsaved = true;
+    if (app.store.hasPending(o.set.id)) { o.unsaved = true; app.store.discard(o.set.id); }
+    const first = !o.conflict;
+    o.conflict = true;
+    setSaveLabel('Not saved', 'error');
+    paintConflict(first);
+    if (first) announce('This study set was changed in another tab, so changes made here are not being saved. Load the latest version to keep working.');
+  }
+  function keptUnsaved() {
+    const o = app.open;
+    const was = o.unsaved;
+    o.unsaved = true;
+    setSaveLabel('Not saved', 'error');
+    if (!was) paintConflict(false);
+  }
+  function conflictBanner() {
+    const o = app.open;
+    return '<div class="ft-banner ft-banner--conflict"><p><strong>This study set was changed in another tab.</strong> '
+      + 'So that neither tab undoes the other’s work, nothing you do here is saved until you load the latest version.'
+      + (o.unsaved ? ' Loading it drops the changes made here since then; keep them as a separate copy first if you need them.' : '') + '</p>'
+      + '<div class="ft-row"><button type="button" class="ft-btn ft-btn--small" data-act="reload-set">Load the latest version</button>'
+      + (o.unsaved ? '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="keep-copy">Keep this tab’s version as a copy</button>' : '')
+      + '</div></div>';
+  }
+  function paintConflict(alertNow) {
+    const host = document.getElementById('ftOtherTab');
+    if (!host || !app.open) return;
+    host.innerHTML = conflictBanner();
+    const box = host.firstElementChild;
+    if (box && alertNow) box.setAttribute('role', 'alert');
+  }
+  /** Load the stored copy over this tab's one: nothing of this tab's is saved first. */
+  async function reloadLatest() {
+    const o = app.open;
+    if (!o) return;
+    const sid = o.set.id;
+    app.store.discard(sid);
+    const set = await app.store.get(sid);
+    if (app.open !== o) return;
+    if (!set) { renderMissing(); focusEl('#ftScreenTitle'); return; }
+    const tab = app.tab;
+    openSet(set, false);
+    if (set.deletedAt) { renderDeleted(); focusEl('#ftScreenTitle'); return; }
+    app.tab = tab;
+    prepareTab(tab);
+    renderScreen(focusTarget());
+    announce('Loaded the latest version of this study set.');
+  }
+  async function keepTabCopy() {
+    const o = app.open;
+    if (!o) return;
+    const title = ((o.set.title || 'Untitled study set') + ' (from another tab)').slice(0, T.LIMITS.title);
+    const res = await app.store.save(T.cloneSet(o.set, title));
+    if (!res.ok) { showStoreError(res.error); return; }
+    await reloadLatest();
+    toast('Saved this tab’s version as “' + res.set.title + '”. It is in your library.');
   }
   /** A new set is saved the first time the student types or adds something. */
   function persistDraft() {
@@ -256,6 +341,10 @@
   }
   let askedPersist = false;
   function onStatus(s) {
+    if (s && s.state === 'error' && s.error && s.error.code === 'conflict') {
+      if (app.open && s.id === app.open.set.id) enterConflict(true);
+      return;
+    }
     if (s.state === 'error') { showStoreError(s.error); }
     if (!app.open || !s || s.id !== app.open.set.id) return;
     if (s.state === 'pending' || s.state === 'saving') setSaveLabel('Saving…', 'saving');
@@ -512,7 +601,7 @@
   }
 
   function openSet(set, draft) {
-    app.open = { set, draft, srcHash: '', corpus: null, guideVer: 0, conceptsKey: '', concepts: [], index: null, otherTab: false };
+    app.open = { set, draft, srcHash: '', corpus: null, guideVer: 0, conceptsKey: '', concepts: [], index: null, conflict: false, unsaved: false, srcDirty: true };
     app.ui = freshUi();
     app.view = 'set';
     app.notice = '';
@@ -537,7 +626,7 @@
 
   function prepareTab(tab) {
     const set = app.open.set;
-    if (tab !== 'notes' && T.hasNotes(set) && (!set.guide || T.guideStale(set))) buildGuide();
+    if (tab !== 'notes' && T.hasNotes(set) && guideStale()) buildGuide();
     if (tab === 'learn') {
       const s = set.learn;
       if (s && s.phase === 'learn' && !T.currentStep(s) && set.guide) {
@@ -771,7 +860,7 @@
       + subline(set)
       + (o.draft ? '' : tabsNav())
       + '</div>'
-      + '<div id="ftOtherTab">' + (o.otherTab ? otherTabBanner() : '') + '</div>'
+      + '<div id="ftOtherTab">' + (o.conflict ? conflictBanner() : '') + '</div>'
       + screen;
   }
   function renderScreen(target) {
@@ -791,9 +880,6 @@
     root.innerHTML = '<section class="ft-panel" aria-labelledby="ftScreenTitle"><h1 class="ft-h1" id="ftScreenTitle" tabindex="-1">' + esc(set.title || 'Untitled study set') + ' is in Recently deleted</h1>'
       + '<p>Restore it to study it again.</p><div class="ft-row"><button type="button" class="ft-btn" data-act="restore-open">Restore</button>'
       + '<a class="ft-btn ft-btn--quiet" href="#library">All study sets</a></div></section>';
-  }
-  function otherTabBanner() {
-    return '<p class="ft-banner" role="status">This study set was changed in another tab. <button type="button" class="ft-link-btn" data-act="reload-set">Load the latest version</button></p>';
   }
   function needGuide(title) {
     const set = app.open.set;
@@ -842,7 +928,7 @@
   function buildLabel() {
     const set = app.open.set;
     if (!set.guide) return 'Build my study guide';
-    return T.guideStale(set) ? 'Update my study guide' : 'Open my study guide';
+    return guideStale() ? 'Update my study guide' : 'Open my study guide';
   }
   function sourceItem(src) {
     const id = esc(src.id);
@@ -874,6 +960,7 @@
     const b = document.getElementById('ftBuildBtn');
     if (b && app.open) b.innerHTML = icon('sparkle') + buildLabel();
   }
+  let wordTimer = 0;
   function onNotesInput(target) {
     const o = app.open;
     if (!o) return;
@@ -895,10 +982,15 @@
       const src = set.sources.find((s) => s.id === target.dataset.srcText);
       if (!src) return;
       src.text = target.value.slice(0, T.LIMITS.sourceText);
-      const li = target.closest('.ft-source');
-      const w = li && li.querySelector('[data-words]');
-      if (w) w.textContent = plural(T.wordCount(src.text), 'word');
-      refreshBuildButton();
+      notesChanged();
+      // The word count and the button wait for a pause in typing (big notes are slow to count).
+      clearTimeout(wordTimer);
+      wordTimer = setTimeout(() => {
+        const li = target.closest('.ft-source');
+        const w = li && li.querySelector('[data-words]');
+        if (w) w.textContent = plural(T.wordCount(src.text), 'word');
+        refreshBuildButton();
+      }, 300);
     } else return;
     persistDraft();
     saveSoon();
@@ -909,6 +1001,7 @@
     const n = set.sources.filter((s) => s.kind === 'Notes').length;
     const src = T.newSource(n ? 'More notes ' + (n + 1) : 'Your notes', 'Notes', '');
     set.sources.push(src);
+    notesChanged();
     persistDraft();
     save();
     appendSource(src);
@@ -928,6 +1021,7 @@
     const index = set.sources.findIndex((s) => s.id === id);
     if (index < 0) return;
     const src = set.sources.splice(index, 1)[0];
+    notesChanged();
     persistDraft();
     save();
     renderScreen();
@@ -939,6 +1033,7 @@
         run: () => {
           if (app.open !== o) return;
           o.set.sources.splice(Math.min(index, o.set.sources.length), 0, src);
+          notesChanged();
           save();
           if (app.tab === 'notes') renderScreen('#ftSrc-' + cssEsc(src.id));
           announce('Put “' + src.name + '” back.');
@@ -953,7 +1048,7 @@
     const say = (text, focusSel) => { if (msg) msg.textContent = text; if (focusSel) focusEl(focusSel); };
     if (!set.title.trim()) { say('Give the study set a title first.', '#ftTitle'); return; }
     if (!T.hasNotes(set)) { say('Add your notes first: type or paste them, or add a file.'); return; }
-    if (set.guide && !T.guideStale(set)) { go(setHash(set.id, 'guide')); return; }
+    if (set.guide && !guideStale()) { go(setHash(set.id, 'guide')); return; }
     persistDraft();
     // Empty boxes are not notes: they are left out once the guide is built.
     const before = set.sources;
@@ -1160,6 +1255,7 @@
           if (app.open !== o) break;
           const src = T.newSource(file.name, kind, text);
           o.set.sources.push(src);
+          if (app.open === o) notesChanged();
           added++;
           persistDraft();
           save();
@@ -1184,7 +1280,7 @@
     const set = app.open.set;
     const g = set.guide;
     if (!g) return needGuide('Study guide');
-    const stale = T.guideStale(set);
+    const stale = guideStale();
     return '<section class="ft-panel" aria-labelledby="ftScreenTitle">'
       + '<div class="ft-panel-head"><h2 class="ft-h2" id="ftScreenTitle" tabindex="-1">Study guide</h2>'
       + '<button type="button" class="ft-btn ft-btn--quiet ft-btn--small" data-act="guide-download">' + icon('download', 16) + 'Download</button></div>'
@@ -2163,17 +2259,8 @@
         app.open.set = res.set;
         route();
       }); break;
-      case 'reload-set': guarded(async () => {
-        const sid = app.open.set.id;
-        await app.store.flush();
-        const set = await app.store.get(sid);
-        if (!set) { renderMissing(); return; }
-        const tab = app.tab;
-        openSet(set, false);
-        app.tab = tab;
-        prepareTab(tab);
-        renderScreen(focusTarget());
-      }); break;
+      case 'reload-set': guarded(reloadLatest); break;
+      case 'keep-copy': guarded(keepTabCopy); break;
       case 'pick-photo': { const f = document.getElementById('ftPhotoFiles'); if (f) f.click(); break; }
       case 'pick-file': { const f = document.getElementById('ftMaterialFiles'); if (f) f.click(); break; }
       case 'src-add': addTypedNotes(); break;
@@ -2336,10 +2423,10 @@
       if (!busy && !typing && !document.querySelector('dialog[open]')) refreshLibrary();
       return;
     }
-    if (app.open && !app.open.draft && c.id === app.open.set.id && !app.open.otherTab) {
-      app.open.otherTab = true;
-      const host = document.getElementById('ftOtherTab');
-      if (host) host.innerHTML = otherTabBanner();
+    const o = app.open;
+    if (o && !o.draft && c.id === o.set.id && !o.conflict) {
+      // Only if the stored copy really is newer than the one on screen.
+      app.store.isCurrent(c.id).then((current) => { if (!current && app.open === o) enterConflict(false); });
     }
   }
 

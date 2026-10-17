@@ -19,7 +19,25 @@
    Nothing here throws at the page or rejects: every call resolves with
    { ok: true, … } or { ok: false, error: { code, message } } where message is
    a plain sentence to show the student (codes: quota, blocked, write,
-   missing, invalid).
+   missing, invalid, conflict).
+
+   TWO TABS ON ONE SET
+   -------------------
+   Every write stamps the set with a new revision (rev). A tab remembers the
+   revision it last read (get) or wrote, and a save is refused with code
+   'conflict' when the stored copy has changed since: another tab saved,
+   deleted or restored it. The check and the write are one IndexedDB
+   transaction, so two tabs cannot both win. The tab with the old copy loads
+   the latest one (get) before it can save again; nothing is written over the
+   newer copy.
+
+   CLOSING THE TAB
+   ---------------
+   An autosave still waiting when the tab is hidden or closed is also written
+   at once to localStorage (flux_tutor.v2.set.<id>, with the revision it was
+   based on), because an IndexedDB write started then may never finish. The
+   next open moves it into IndexedDB, but only if nothing else saved the set
+   in between; then the key is removed.
 
    THE FIRST BETA
    --------------
@@ -59,7 +77,11 @@
     write: 'Flux Tutor could not save that change. Try again, and if it keeps failing use Export to keep a copy.',
     missing: 'That study set is no longer on this device.',
     title: 'Give the study set a name.',
+    conflict: 'This study set was changed in another tab, so this change was not saved here. Load the latest version to keep working on it.',
   };
+  /** What a write may assume about the stored copy. */
+  const NEVER = null;      // nothing is stored under this id (as far as this tab knows)
+  const FORCE = undefined; // write whatever is stored (moving a backup copy in)
 
   function plainError(code, detail, message) {
     const out = { code, message: message || MESSAGES[code] || MESSAGES.write };
@@ -119,7 +141,7 @@
         try { tx = db.transaction(stores, mode); } catch (e) { reject(e); return; }
         const box = { result: undefined };
         tx.oncomplete = () => resolve(box.result);
-        tx.onabort = () => reject(tx.error || new Error('The save was cancelled'));
+        tx.onabort = () => reject(box.error || tx.error || new Error('The save was cancelled'));
         tx.onerror = (ev) => { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); };
         try { fn(tx, box); } catch (e) { try { tx.abort(); } catch (_) {} reject(e); }
       }));
@@ -143,9 +165,21 @@
         const r = tx.objectStore(SETS).get(id);
         r.onsuccess = () => { box.result = r.result || null; };
       }),
-      put: (set, meta) => run([SETS, META], 'readwrite', (tx) => {
-        tx.objectStore(SETS).put(set);
-        tx.objectStore(META).put(meta);
+      // Check and write in one transaction: a tab with an old copy cannot slip in between.
+      put: (set, meta, expect) => run([SETS, META], 'readwrite', (tx, box) => {
+        const sets = tx.objectStore(SETS);
+        const write = () => {
+          sets.put(set);
+          tx.objectStore(META).put(meta);
+          box.result = { ok: true };
+        };
+        if (expect === FORCE) { write(); return; }
+        const r = sets.get(set.id);
+        r.onsuccess = () => {
+          if (clash(r.result, expect)) { box.result = { conflict: true }; return; }
+          // A failure here (a full disk) is reported as itself, not as "cancelled".
+          try { write(); } catch (e) { box.error = e; try { tx.abort(); } catch (_) {} }
+        };
       }),
       del: (id) => run([SETS, META], 'readwrite', (tx) => {
         tx.objectStore(SETS).delete(id);
@@ -194,11 +228,19 @@
       get: (id) => {
         try {
           const v = ls.getItem(LS_SET + id);
-          return Promise.resolve(v ? parse(v) : null);
+          if (!v) return Promise.resolve(null);
+          let raw = null;
+          try { raw = JSON.parse(v); } catch (_) { raw = null; }
+          return Promise.resolve(raw && typeof raw === 'object' ? raw : null);
         } catch (e) { return Promise.reject(e); }
       },
-      put: (set) => {
+      put: (set, meta, expect) => {
         try {
+          if (expect !== FORCE) {
+            let cur = null;
+            try { cur = JSON.parse(ls.getItem(LS_SET + set.id) || 'null'); } catch (_) { cur = null; }
+            if (clash(cur, expect)) return Promise.resolve({ conflict: true });
+          }
           const text = JSON.stringify(set);
           const used = lsEntries(ls).reduce((n, e) => n + (e.id === set.id ? 0 : e.text.length), 0);
           if (used + text.length > budget) {
@@ -207,7 +249,7 @@
             return Promise.reject(err);
           }
           ls.setItem(LS_SET + set.id, text);
-          return Promise.resolve();
+          return Promise.resolve({ ok: true });
         } catch (e) { return Promise.reject(e); }
       },
       del: (id) => {
@@ -225,7 +267,11 @@
       ready: () => Promise.resolve(true),
       allMeta: () => Promise.resolve(Array.from(sets.values()).map((t) => metaOf(core, JSON.parse(t)))),
       get: (id) => Promise.resolve(sets.has(id) ? JSON.parse(sets.get(id)) : null),
-      put: (set) => { sets.set(set.id, JSON.stringify(set)); return Promise.resolve(); },
+      put: (set, meta, expect) => {
+        if (expect !== FORCE && clash(sets.has(set.id) ? JSON.parse(sets.get(set.id)) : null, expect)) return Promise.resolve({ conflict: true });
+        sets.set(set.id, JSON.stringify(set));
+        return Promise.resolve({ ok: true });
+      },
       del: (id) => { sets.delete(id); return Promise.resolve(); },
       close: () => {},
     };
@@ -235,6 +281,16 @@
     const m = core.summarizeSet(set);
     m.deletedAt = set.deletedAt || '';
     return m;
+  }
+  function revOf(raw) { return raw && typeof raw.rev === 'string' ? raw.rev : ''; }
+  /**
+   * Would writing over `stored` undo someone else's work? expect is the
+   * revision this tab based its copy on, or NEVER when it knows of no stored copy.
+   */
+  function clash(stored, expect) {
+    if (!stored) return expect !== NEVER;   // based on a copy that is gone (deleted for good elsewhere)
+    if (expect === NEVER) return true;      // something is stored that this tab never read
+    return revOf(stored) !== expect;
   }
 
   /* ── Picking where to save ──────────────────────────────────────────── */
@@ -306,6 +362,10 @@
     const statusListeners = new Set();
     const changeListeners = new Set();
     const pending = new Map();
+    /** id → the revision this tab last read or wrote (a missing id: nothing stored, as far as this tab knows). */
+    const known = new Map();
+    /** Sets another tab has written since this tab read them (as far as this tab has heard). */
+    const stale = new Set();
     const delay = Number.isFinite(o.autosaveDelay) ? o.autosaveDelay : 600;
     let channel = null;
     const BC = 'BroadcastChannel' in o ? o.BroadcastChannel : (typeof root.BroadcastChannel === 'function' ? root.BroadcastChannel : null);
@@ -314,7 +374,10 @@
         channel = new BC(CHANNEL);
         channel.onmessage = (ev) => {
           const d = ev && ev.data;
-          if (d && typeof d.id === 'string') changeListeners.forEach((fn) => { try { fn({ id: d.id, type: String(d.type || 'saved'), fromOtherTab: true }); } catch (_) {} });
+          if (d && typeof d.id === 'string') {
+            stale.add(d.id);
+            changeListeners.forEach((fn) => { try { fn({ id: d.id, type: String(d.type || 'saved'), fromOtherTab: true }); } catch (_) {} });
+          }
         };
       } catch (_) { channel = null; }
     }
@@ -324,39 +387,70 @@
     function status(s) {
       statusListeners.forEach((fn) => { try { fn(s); } catch (_) {} });
     }
+    function baseOf(id) { return known.has(id) ? known.get(id) : NEVER; }
 
-    async function write(set) {
+    /**
+     * Write a normalized set. opts.base: the revision the change was made on
+     * (default: what this tab last read or wrote); opts.force skips the check;
+     * opts.rev: the new revision (default: a fresh one).
+     */
+    async function write(set, opts) {
+      const op = opts || {};
+      const expect = op.force ? FORCE : ('base' in op ? op.base : baseOf(set.id));
+      set.rev = op.rev || core.uid('r');
       const meta = metaOf(core, set);
+      let res;
       try {
-        await backend.put(set, meta);
+        res = await backend.put(set, meta, expect);
       } catch (e) {
         if (e && e.name === 'FluxTutorBudget') return plainError('quota', 'localStorage budget', MESSAGES.budget);
         return fail(e);
       }
+      if (res && res.conflict) {
+        stale.add(set.id);
+        return plainError('conflict', 'the stored copy changed');
+      }
+      known.set(set.id, set.rev);
+      stale.delete(set.id);
       return { ok: true, set, meta };
+    }
+    /** The stored copy as it is, without changing what this tab knows. */
+    async function readRaw(id) {
+      if (typeof id !== 'string' || !id) return null;
+      try { return (await backend.get(id)) || null; } catch (_) { return null; }
     }
 
     /**
      * Save a set (normalized first, so only known fields are kept).
-     * opts.touch === false keeps updatedAt as it is.
+     * opts.touch === false keeps updatedAt as it is. Refused with code
+     * 'conflict' when the stored copy changed since this tab read it.
      */
     async function save(set, opts) {
-      const touch = !opts || opts.touch !== false;
+      const op = opts || {};
       let clean;
       try { clean = core.normalizeSet(copy(set)); } catch (e) { clean = null; }
       if (!clean) return plainError('invalid', 'not a set', 'That is not a study set Flux Tutor can save.');
-      if (touch) clean.updatedAt = nowIso();
-      const res = await write(clean);
+      if (op.touch !== false) clean.updatedAt = nowIso();
+      const res = await write(clean, op);
       if (res.ok) announce(clean.id, 'saved');
       return res;
     }
 
+    /** Read a set to work on: later saves of it are checked against this copy. */
     async function get(id) {
-      if (typeof id !== 'string' || !id) return null;
-      try {
-        const raw = await backend.get(id);
-        return raw ? core.normalizeSet(raw) : null;
-      } catch (_) { return null; }
+      const raw = await readRaw(id);
+      if (!raw) { if (typeof id === 'string') known.delete(id); return null; }
+      let set = null;
+      try { set = core.normalizeSet(raw); } catch (_) { set = null; }
+      if (!set) return null;
+      known.set(id, revOf(raw));
+      stale.delete(id);
+      return set;
+    }
+    /** Is the stored copy still the one this tab last read or wrote? */
+    async function isCurrent(id) {
+      const raw = await readRaw(id);
+      return !clash(raw, baseOf(id));
     }
 
     /**
@@ -372,14 +466,17 @@
       return { ok: true, sets: out };
     }
 
+    /** Change the stored copy (read fresh, so it never works on an old one). */
     async function change(id, fn, opts) {
       // An autosave waiting for this set goes first, so it cannot undo this change a moment later.
       await runPending(id);
-      const set = await get(id);
+      const raw = await readRaw(id);
+      let set = null;
+      try { set = raw ? core.normalizeSet(raw) : null; } catch (_) { set = null; }
       if (!set) return plainError('missing');
       const bad = fn(set);
       if (bad) return bad;
-      return save(set, opts);
+      return save(set, Object.assign({}, opts, { base: revOf(raw) }));
     }
     function rename(id, title) {
       const t = String(title == null ? '' : title).replace(/\s+/g, ' ').trim().slice(0, core.LIMITS.title);
@@ -388,9 +485,10 @@
     }
     async function duplicate(id, title) {
       await runPending(id);
-      const set = await get(id);
+      const raw = await readRaw(id);
+      const set = raw ? core.normalizeSet(raw) : null;
       if (!set) return plainError('missing');
-      return save(core.cloneSet(set, title), { touch: false });
+      return save(core.cloneSet(set, title), { touch: false, base: NEVER });
     }
     /** Delete with undo: the set goes to the bin; restore(id) brings it back. */
     async function remove(id) {
@@ -407,6 +505,7 @@
     async function purge(id) {
       cancelPending(id);
       try { await backend.del(id); } catch (e) { return fail(e); }
+      known.delete(id);
       announce(id, 'purged');
       return { ok: true, id };
     }
@@ -423,14 +522,16 @@
     }
 
     /* Autosave: call autosave(set) after every edit; the last version is saved
-       after a short pause. Status listeners hear 'pending' → 'saving' →
-       'saved' (or 'error' with a plain message). flush() saves now. */
+       after a short pause (copied then, not on every call). Status listeners
+       hear 'pending' → 'saving' → 'saved' (or 'error' with a plain message).
+       flush() saves now; discard(id) drops what is waiting without saving. */
     function cancelPending(id) {
       const p = pending.get(id);
-      if (!p) return;
+      if (!p) return false;
       clearTimeout(p.timer);
       pending.delete(id);
       p.resolvers.forEach((r) => r({ ok: false, error: { code: 'cancelled', message: '' } }));
+      return true;
     }
     function runPending(id) {
       const p = pending.get(id);
@@ -438,21 +539,24 @@
       pending.delete(id);
       clearTimeout(p.timer);
       status({ state: 'saving', id });
-      return save(p.set, p.opts).then((res) => {
+      // A copy already made as the tab was hidden is written as it is, so the two copies match.
+      const job = p.early
+        ? write(p.early.clean, { base: p.early.base, rev: p.early.clean.rev }).then((res) => { if (res.ok) { announce(id, 'saved'); dropEarlyCopy(id, p.early.clean.rev); } return res; })
+        : save(p.set, p.opts);
+      return job.then((res) => {
         status(res.ok ? { state: 'saved', id, at: res.set.updatedAt } : { state: 'error', id, error: res.error });
         p.resolvers.forEach((r) => r(res));
         return res;
       });
     }
     function autosave(set, opts) {
-      if (!set || typeof set.id !== 'string') return Promise.resolve(plainError('invalid', 'no id', 'That is not a study set Flux Tutor can save.'));
-      let snapshot;
-      try { snapshot = copy(set); } catch (e) { return Promise.resolve(plainError('invalid', String(e))); }
+      if (!set || typeof set !== 'object' || typeof set.id !== 'string') return Promise.resolve(plainError('invalid', 'no id', 'That is not a study set Flux Tutor can save.'));
       const prev = pending.get(set.id);
       const entry = prev || { resolvers: [] };
       if (prev) clearTimeout(prev.timer);
-      entry.set = snapshot;
+      entry.set = set;
       entry.opts = opts || null;
+      entry.early = null;
       pending.set(set.id, entry);
       status({ state: 'pending', id: set.id });
       return new Promise((resolve) => {
@@ -463,12 +567,47 @@
     function flush() {
       return Promise.all(Array.from(pending.keys()).map(runPending));
     }
-    function hasPending() { return pending.size > 0; }
+    function hasPending(id) { return typeof id === 'string' ? pending.has(id) : pending.size > 0; }
+    function discard(id) { return cancelPending(id); }
+
+    /**
+     * The tab is being hidden or closed: an IndexedDB write started now may
+     * never finish, so what is waiting is also written to localStorage at once
+     * (with the revision it was based on). adoptLocalSets() moves it in on the
+     * next open. Sets another tab has changed are left alone.
+     */
+    function writeEarlyCopies() {
+      if (backend.name !== 'indexeddb' || !ls || !lsOk) return;
+      pending.forEach((p, id) => {
+        if (stale.has(id)) return;
+        let clean = p.early ? p.early.clean : null;
+        if (!clean) {
+          try { clean = core.normalizeSet(copy(p.set)); } catch (_) { clean = null; }
+          if (!clean) return;
+          if (!p.opts || p.opts.touch !== false) clean.updatedAt = nowIso();
+          clean.rev = core.uid('r');
+          p.early = { clean, base: baseOf(id) };
+        }
+        try {
+          const text = JSON.stringify(Object.assign({}, clean, { closing: true, baseRev: p.early.base }));
+          const used = lsEntries(ls).reduce((n, e) => n + (e.id === id ? 0 : e.text.length), 0);
+          if (used + text.length <= (o.lsBudget || LS_BUDGET)) ls.setItem(LS_SET + id, text);
+        } catch (_) { /* no room: the IndexedDB write may still finish */ }
+      });
+    }
+    function dropEarlyCopy(id, rev) {
+      if (!ls) return;
+      try {
+        const v = ls.getItem(LS_SET + id);
+        if (v && JSON.parse(v).rev === rev) ls.removeItem(LS_SET + id);
+      } catch (_) {}
+    }
 
     /* Export and import. */
     async function exportSet(id) {
       await runPending(id);
-      const set = await get(id);
+      const raw = await readRaw(id);
+      const set = raw ? core.normalizeSet(raw) : null;
       if (!set) return plainError('missing');
       return { ok: true, filename: slug(set.title) + '.flux-tutor.json', text: JSON.stringify(core.exportSet(set)) };
     }
@@ -477,7 +616,7 @@
       const l = await list();
       if (!l.ok) return l;
       const sets = [];
-      for (const m of l.sets) { const s = await get(m.id); if (s) sets.push(s); }
+      for (const m of l.sets) { const raw = await readRaw(m.id); const s = raw ? core.normalizeSet(raw) : null; if (s) sets.push(s); }
       return { ok: true, count: sets.length, filename: 'flux-tutor-library-' + new Date().toISOString().slice(0, 10) + '.json', text: JSON.stringify(core.exportLibrary(sets)) };
     }
     /**
@@ -490,8 +629,8 @@
       if (parsed.error) return Object.assign(plainError('invalid', 'import', parsed.error), { sets: [], skipped: parsed.skipped || 0 });
       const added = [];
       for (const set of parsed.sets) {
-        if (await get(set.id)) set.id = core.uid('set-');
-        const res = await save(set, { touch: false });
+        if (await readRaw(set.id)) set.id = core.uid('set-');
+        const res = await save(set, { touch: false, base: NEVER });
         if (!res.ok) return Object.assign(res, { sets: added, skipped: parsed.skipped });
         added.push(res.meta);
       }
@@ -524,14 +663,16 @@
         const set = sets[i];
         set.id = 'set-beta-' + hash + '-' + i;
         ids.push(set.id);
-        if (await get(set.id)) continue;
-        const res = await save(set, { touch: false });
+        if (await readRaw(set.id)) continue;
+        const res = await save(set, { touch: false, base: NEVER });
+        // Another tab moved the same set a moment ago: it is there, which is all that matters.
+        if (!res.ok && res.error.code === 'conflict') continue;
         if (!res.ok) return Object.assign(res, { migrated, ids });
         migrated++;
       }
       // Read every copy back before the old key goes.
       for (const id of ids) {
-        if (!(await get(id))) return Object.assign(plainError('write', 'read-back failed'), { migrated, ids });
+        if (!(await readRaw(id))) return Object.assign(plainError('write', 'read-back failed'), { migrated, ids });
       }
       if (backend.persistent) {
         try { ls.setItem(MIGRATED_KEY, JSON.stringify({ hash, ids, at: nowIso() })); } catch (_) {}
@@ -540,21 +681,37 @@
       return { ok: true, migrated, ids };
     }
 
-    /** Sets saved to localStorage while IndexedDB was unavailable move into IndexedDB. */
+    /**
+     * Sets in localStorage move into IndexedDB: ones saved there while
+     * IndexedDB was unavailable (the newer copy wins), and copies written as
+     * a tab closed (taken only if nothing else saved the set since that tab
+     * read it). The key goes once IndexedDB has the set, or when the copy is
+     * out of date.
+     */
     async function adoptLocalSets() {
       if (backend.name !== 'indexeddb' || !ls) return { ok: true, moved: 0 };
       let moved = 0;
       for (const e of lsEntries(ls)) {
+        let raw = null;
+        try { raw = JSON.parse(e.text); } catch (_) { raw = null; }
         let set = null;
-        try { set = core.normalizeSet(JSON.parse(e.text)); } catch (_) { set = null; }
+        try { set = raw ? core.normalizeSet(raw) : null; } catch (_) { set = null; }
         if (!set || set.id !== e.id) continue;
-        const here = await get(set.id);
-        if (!here || String(here.updatedAt) < String(set.updatedAt)) {
-          const res = await write(set);
-          if (!res.ok) continue;
+        const here = await readRaw(set.id);
+        let take;
+        if (raw.closing === true) {
+          const base = typeof raw.baseRev === 'string' ? raw.baseRev : NEVER;
+          take = here ? (revOf(here) !== revOf(raw) && !clash(here, base)) : base === NEVER;
+        } else {
+          take = !here || String(here.updatedAt || '') < String(set.updatedAt);
         }
-        if (await get(set.id)) {
-          try { ls.removeItem(e.key); moved++; } catch (_) {}
+        if (take) {
+          const res = await write(set, { force: true, rev: revOf(raw) || undefined });
+          if (!res.ok) continue;
+          known.delete(set.id);
+        }
+        if (await readRaw(set.id) || (raw.closing === true && !take)) {
+          try { ls.removeItem(e.key); moved += take ? 1 : 0; } catch (_) {}
         }
       }
       return { ok: true, moved };
@@ -570,8 +727,10 @@
     }
 
     if (typeof root.addEventListener === 'function' && typeof root.document !== 'undefined') {
-      root.addEventListener('pagehide', () => { flush(); });
-      root.document.addEventListener('visibilitychange', () => { if (root.document.visibilityState === 'hidden') flush(); });
+      root.addEventListener('pagehide', () => { writeEarlyCopies(); flush(); });
+      root.document.addEventListener('visibilitychange', () => {
+        if (root.document.visibilityState === 'hidden') { writeEarlyCopies(); flush(); }
+      });
     }
 
     return {
@@ -579,10 +738,10 @@
       persistent: backend.persistent,
       warning: backend.persistent ? '' : MESSAGES.blocked,
       note: '',
-      list, get, save, autosave, flush, hasPending,
+      list, get, save, autosave, flush, hasPending, discard, isCurrent,
       rename, duplicate, remove, restore, purge, purgeDeleted,
       exportSet, exportAll, importText,
-      migrateLegacy, adoptLocalSets, requestPersist,
+      migrateLegacy, adoptLocalSets, requestPersist, writeEarlyCopies,
       onStatus(fn) { statusListeners.add(fn); return () => statusListeners.delete(fn); },
       onChange(fn) { changeListeners.add(fn); return () => changeListeners.delete(fn); },
       close() {

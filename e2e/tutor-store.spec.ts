@@ -101,6 +101,45 @@ test.describe('Flux Tutor library store', () => {
     expect(r.fallback).toBeNull();
   });
 
+  test('a copy written as a tab closes moves in on the next open, unless another tab saved the set since; its key goes either way', async ({ page }) => {
+    await load(page);
+    const r = await page.evaluate(async () => {
+      const w = window as any;
+      const T = w.FluxTutor;
+      const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('flux_tutor.v2.set.'));
+      const a = await w.FluxTutorStore.open({ BroadcastChannel: null });
+      const set = T.newSet({ title: 'Typed before closing' });
+      await a.save(set);
+      // The tab closes while its autosave is still waiting: the quick copy is written, the IndexedDB write never happens.
+      const mine = await a.get(set.id);
+      mine.subject = 'Kept';
+      a.autosave(mine);
+      a.writeEarlyCopies();
+      a.discard(set.id);
+      const keysAfterClose = keys();
+      const next = await w.FluxTutorStore.open({ BroadcastChannel: null });
+      const kept = (await next.get(set.id)).subject;
+      const keysAfterOpen = keys();
+      // Again, but another tab saves the set before the next open: its newer work wins.
+      const again = await next.get(set.id);
+      again.subject = 'From the closing tab';
+      next.autosave(again);
+      next.writeEarlyCopies();
+      next.discard(set.id);
+      const other = await w.FluxTutorStore.open({ BroadcastChannel: null });
+      const theirs = await other.get(set.id);
+      theirs.subject = 'From the other tab';
+      await other.save(theirs);
+      const third = await w.FluxTutorStore.open({ BroadcastChannel: null });
+      return { keysAfterClose: keysAfterClose.length, kept, keysAfterOpen, final: (await third.get(set.id)).subject, keysAtEnd: keys() };
+    });
+    expect(r.keysAfterClose).toBe(1);
+    expect(r.kept).toBe('Kept');
+    expect(r.keysAfterOpen).toEqual([]);
+    expect(r.final).toBe('From the other tab');
+    expect(r.keysAtEnd).toEqual([]);
+  });
+
   test('a save in one tab is announced to another tab', async ({ page, context }) => {
     await load(page);
     const other = await context.newPage();

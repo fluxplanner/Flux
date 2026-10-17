@@ -301,3 +301,80 @@ test('save refuses things that are not sets, and keeps only known fields', async
   const kept = await store.save(Object.assign(T.newSet({ title: 'Untouched time' }), { updatedAt: '2026-01-01T00:00:00.000Z' }), { touch: false });
   assert.equal(kept.set.updatedAt, '2026-01-01T00:00:00.000Z');
 });
+
+test('two tabs on one set: a save from the tab with the older copy is refused, never written over the newer one', async () => {
+  const ls = fakeLS();
+  const a = await openLS(ls);
+  const b = await openLS(ls);
+  const set = sampleWithGuide();
+  assert.equal((await a.save(set)).ok, true);
+  const inA = await a.get(set.id);
+  const inB = await b.get(set.id);
+  inA.guide.terms[0].def = 'My own definition, typed in tab A.';
+  inA.cards[inA.guide.terms[0].id] = { state: 'review', S: 3, D: 5, due: Date.now() + 86400000, reps: 1 };
+  assert.equal((await a.save(inA)).ok, true);
+  assert.equal(await b.isCurrent(set.id), false, 'tab B can tell its copy is old');
+  assert.equal(await a.isCurrent(set.id), true);
+
+  inB.subject = 'Typed in tab B';
+  const res = await b.save(inB);
+  assert.equal(res.ok, false);
+  assert.equal(res.error.code, 'conflict');
+  assert.match(res.error.message, /changed in another tab/);
+  let now = await a.get(set.id);
+  assert.equal(now.guide.terms[0].def, 'My own definition, typed in tab A.', 'tab A\'s edit is kept');
+  assert.equal(Object.keys(now.cards).length, 1, 'tab A\'s flashcard rating is kept');
+  assert.equal(now.subject, set.subject);
+
+  // An autosave from tab B is refused too, as an error the page can show.
+  const states = [];
+  b.onStatus((s) => states.push(s.state + (s.error ? ':' + s.error.code : '')));
+  const auto = await b.autosave(inB);
+  assert.equal(auto.ok, false);
+  assert.ok(states.includes('error:conflict'));
+  // Waiting autosaves can be dropped without saving.
+  b.autosave(inB);
+  assert.equal(b.hasPending(set.id), true);
+  assert.equal(b.discard(set.id), true);
+  assert.equal(b.hasPending(set.id), false);
+
+  // Once tab B loads the latest copy, it saves again (and now tab A is the one behind).
+  const fresh = await b.get(set.id);
+  assert.equal(fresh.guide.terms[0].def, 'My own definition, typed in tab A.');
+  fresh.subject = 'Typed in tab B, on the latest copy';
+  assert.equal((await b.save(fresh)).ok, true);
+  assert.equal((await a.save(inA)).error.code, 'conflict');
+  now = await b.get(set.id);
+  assert.equal(now.subject, 'Typed in tab B, on the latest copy');
+  assert.equal(now.guide.terms[0].def, 'My own definition, typed in tab A.');
+
+  // Deleted in one tab: an old copy in the other tab cannot quietly bring it back.
+  assert.equal((await a.remove(set.id)).ok, true);
+  now.title = 'Saved from the old copy';
+  assert.equal((await b.save(now)).error.code, 'conflict');
+  assert.equal((await a.list({ deleted: true })).sets.length, 1);
+  await a.purge(set.id);
+  assert.equal((await b.save(now)).error.code, 'conflict', 'deleted for good stays deleted');
+  assert.equal(await a.get(set.id), null);
+});
+
+test('library changes read the stored copy fresh, so they never undo another tab\'s work', async () => {
+  const ls = fakeLS();
+  const a = await openLS(ls);
+  const b = await openLS(ls);
+  const set = T.newSet({ title: 'Shared' });
+  await a.save(set);
+  const inA = await a.get(set.id);
+  inA.subject = 'Chemistry';
+  await a.save(inA);
+  // Tab B never re-read the set, but rename, duplicate, delete and restore all start from what is stored.
+  assert.equal((await b.rename(set.id, 'Renamed in B')).ok, true);
+  const stored = await b.get(set.id);
+  assert.equal(stored.title, 'Renamed in B');
+  assert.equal(stored.subject, 'Chemistry');
+  const dup = await b.duplicate(set.id);
+  assert.equal(dup.set.subject, 'Chemistry');
+  assert.equal((await b.remove(set.id)).ok, true);
+  assert.equal((await b.restore(set.id)).ok, true);
+  assert.equal((await a.save(inA)).error.code, 'conflict', 'tab A\'s copy is now the old one');
+});

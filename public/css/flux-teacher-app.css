@@ -258,6 +258,9 @@ a { color: var(--ft-accent); }
 .ft-notice { border-color: var(--ft-accent-line); background: var(--ft-accent-soft); }
 .ft-notice .ft-icon { flex: none; color: var(--ft-accent); }
 .ft-banner { border-color: var(--ft-warn-line); background: var(--ft-warn-soft); flex-wrap: wrap; }
+.ft-banner--conflict { display: block; border-color: var(--ft-bad-line); background: var(--ft-bad-soft); }
+.ft-banner--conflict p { margin: 0; }
+.ft-banner--conflict .ft-row { margin-top: 10px; }
 .ft-error { margin: 8px 0 0; color: var(--ft-bad); font-size: .86rem; font-weight: 700; }
 .ft-error:empty { display: none; }
 

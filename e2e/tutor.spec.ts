@@ -521,6 +521,81 @@ test.describe('Flux Tutor', () => {
     expect(external).toEqual([]);
   });
 
+  test('two tabs on one set: the tab with the older copy stops saving, says so, and can keep its version as a copy', async ({ context }) => {
+    const a = await context.newPage();
+    const b = await context.newPage();
+    await openSample(a);
+    await saved(a);
+    const id = decodeURIComponent(/#set\/([^/]+)/.exec(a.url())![1]);
+    await b.goto(APP + '#set/' + encodeURIComponent(id) + '/notes');
+    await expect(b.locator('#ftTitle')).toHaveValue('Sample: Cells and energy');
+    // Tab A: the student's own definition, and a flashcard rating.
+    await a.getByRole('button', { name: 'Edit Cell', exact: true }).click();
+    await a.locator('#ftEditDef').fill('My own definition, typed in tab A.');
+    await a.getByRole('button', { name: 'Save', exact: true }).click();
+    await saved(a);
+    await tab(a, 'Flashcards').click();
+    await a.getByRole('button', { name: 'Show answer' }).click();
+    await a.getByRole('button', { name: /^Good, see it again in/ }).click();
+    await saved(a);
+    // Tab B hears of it: it stops saving and says so in plain words.
+    const banner = b.locator('#ftOtherTab');
+    await expect(banner).toContainText('This study set was changed in another tab.');
+    await expect(banner).toContainText('nothing you do here is saved until you load the latest version');
+    await expect(b.locator('#ftSaveState')).toHaveText('Not saved');
+    await b.locator('#ftSubject').fill('Typed in tab B');
+    const keep = banner.getByRole('button', { name: 'Keep this tab’s version as a copy' });
+    await expect(keep).toBeVisible();
+    await b.waitForTimeout(800);
+    let s: any = await stored(a);
+    expect(s.guide.terms.find((t: any) => t.term === 'Cell').def).toBe('My own definition, typed in tab A.');
+    expect(Object.keys(s.cards)).toHaveLength(1);
+    expect(s.subject).toBe('Biology');
+    // Keep tab B's version as a copy; tab B then shows the latest version and saves again.
+    await keep.click();
+    await expect(b.locator('.ft-toast')).toContainText('Saved this tab’s version as “Sample: Cells and energy (from another tab)”.');
+    await expect(banner).toBeEmpty();
+    await expect(b.locator('#ftSubject')).toHaveValue('Biology');
+    await expect(b.locator('#ftSaveState')).toHaveText('Saved');
+    // "Load the latest version" saves nothing from the old copy first.
+    await a.getByRole('link', { name: 'Study guide', exact: true }).click();
+    await a.getByRole('button', { name: 'Edit Cell', exact: true }).click();
+    await a.locator('#ftEditDef').fill('Changed again in tab A.');
+    await a.getByRole('button', { name: 'Save', exact: true }).click();
+    await saved(a);
+    await expect(banner).toContainText('This study set was changed in another tab.');
+    await b.locator('#ftSubject').fill('Lost on purpose');
+    await banner.getByRole('button', { name: 'Load the latest version' }).click();
+    await expect(b.locator('#ftSubject')).toHaveValue('Biology');
+    s = await stored(a);
+    expect(s.subject).toBe('Biology');
+    expect(s.guide.terms.find((t: any) => t.term === 'Cell').def).toBe('Changed again in tab A.');
+    await b.locator('#ftSubject').fill('Typed in tab B, after loading');
+    await b.locator('#ftSubject').blur();
+    await saved(b);
+    expect(((await stored(a)) as any).subject).toBe('Typed in tab B, after loading');
+    // The copy is in the library with what tab B had typed.
+    await b.getByRole('link', { name: 'All study sets' }).click();
+    await b.getByRole('link', { name: 'Sample: Cells and energy (from another tab)' }).click();
+    await tab(b, 'Notes').click();
+    await expect(b.locator('#ftSubject')).toHaveValue('Typed in tab B');
+  });
+
+  test('typing is kept when the page is reloaded straight away', async ({ page }) => {
+    await openSample(page);
+    await saved(page);
+    await tab(page, 'Notes').click();
+    await page.locator('#ftSubject').fill('Typed just before a reload');
+    await page.reload();
+    await expect(page.locator('#ftSubject')).toHaveValue('Typed just before a reload');
+    const box = page.locator('textarea[data-src-text]').first();
+    await box.fill((await box.inputValue()) + '\n\nOsmosis needs no energy from the cell.');
+    await page.reload();
+    await expect(page.locator('textarea[data-src-text]').first()).toHaveValue(/Osmosis needs no energy from the cell\.$/);
+    // The quick copy kept in localStorage has been moved into the library and removed.
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('flux_tutor.v2.set.')))).toEqual([]);
+  });
+
   test('when the browser will not save, the student is told plainly', async ({ page }) => {
     await openSample(page);
     await saved(page);
