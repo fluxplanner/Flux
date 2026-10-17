@@ -4781,7 +4781,18 @@
 
   function create(host, opts) {
     if (!host) return null;
+    // The 3D mode lives in flux-grapher-3d.js, which only grapher.html loads.
+    if (opts && opts.mode === '3d') return window.FluxGrapher3D ? window.FluxGrapher3D.create(host, opts) : null;
     return new Grapher(host, opts || {});
+  }
+
+  /** Which half a saved row opens in. The saved-graphs table knows two
+      kinds, so a 3D graph is stored as kind 'functions' with kind: '3d' in
+      its payload (flux-grapher-3d.js). */
+  function kindOf(row) {
+    if (row && row.payload && row.payload.kind === '3d') return '3d';
+    if (row && row.space === '3d') return '3d';
+    return row && row.kind === 'functions' ? 'functions' : 'data';
   }
 
   /* ══ The planner's Study tools surface ════════════════════════════════
@@ -4799,7 +4810,9 @@
      Functions from the left, Measurements from the right — so the switch reads
      as moving across, not as the page being swapped out. Used by the planner's
      tabs here and by grapher.html's header. Off under reduced motion. */
-  const MODE_SIDE = { functions: 'l', data: 'r' };
+  /* The tabs in order: the new grapher comes in from the side its tab is
+     on, relative to the one you left. */
+  const MODE_ORDER = ['functions', 'data', '3d'];
   function reducedMotion() {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
   }
@@ -4838,7 +4851,7 @@
   /** Bring the newly opened grapher in from its tab's side. */
   function enterFrom(root, mode, prevMode) {
     if (!root || !prevMode || prevMode === mode || reducedMotion()) return;
-    const cls = 'flg-in-' + (MODE_SIDE[mode] || 'r');
+    const cls = 'flg-in-' + (MODE_ORDER.indexOf(mode) < MODE_ORDER.indexOf(prevMode) ? 'l' : 'r');
     root.classList.remove('flg-in-l', 'flg-in-r');
     void root.offsetWidth;
     root.classList.add(cls);
@@ -4900,6 +4913,15 @@
       else if (act === 'open') {
         if (!C) { toast('Saving has not loaded yet.', 'warning'); return; }
         C.open(function (row) {
+          /* 3D graphs open in the full-screen grapher, where the 3D mode is;
+             the planner's copy of the grapher has only the 2D halves. */
+          if (kindOf(row) === '3d') {
+            writeJSON(HANDOFF_KEY, { kind: '3d', payload: row.payload, cloud: { id: row.id, title: row.title }, at: Date.now() });
+            toast('3D graphs open in the full-screen grapher.', 'info');
+            if (window.FluxHub && window.FluxHub.openPage) window.FluxHub.openPage('grapher.html');
+            else window.open('grapher.html', '_blank', 'noopener');
+            return;
+          }
           if (row.kind !== inst.kind) show(row.kind);
           inst.loadDoc(row.payload, { id: row.id, title: row.title });
           toast('Opened "' + row.title + '".', 'success');
@@ -4948,6 +4970,10 @@
     MODE_KEY: MODE_KEY,
     WORKING_KEY: WORK_KEYS.data,
     PALETTE: PALETTE,
+    kindOf: kindOf,
+    MODES: MODE_ORDER,
+    // Shared with the 3D mode (flux-grapher-3d.js).
+    _shared: { typesetExpr: typesetExpr, isFormatted: isFormatted, openMenu: openMenu, reducedMotion: reducedMotion },
     // For the unit tests: pure functions, no DOM.
     _test: {
       keyPoints: keyPoints, intersections: intersections, parseExpr: parseExpr,
